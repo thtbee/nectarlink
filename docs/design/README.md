@@ -1,6 +1,15 @@
 # Design
 
-Preview: open `themes/index.html` in a browser (switch themes and Material You seeds at the top).
+Contents:
+
+| Path | What it is |
+|---|---|
+| `tokens.json` | Single source of truth for colors (per theme and seed), type, spacing, shapes, elevation and motion. QML and Compose themes are generated from it |
+| `themes/index.html` | Theme overview: Home screens, color roles, typography, components |
+| `mockups/index.html` | Core flows: pairing, phone setup, Choose your power, notifications, messages, mirroring and app windows, Deck, Power settings |
+| `assets/` | Shared preview stylesheet and helpers used by the mockups |
+
+Open the HTML files in a browser and switch themes and Material You seeds at the top.
 
 ## Decision (2026-10-05)
 

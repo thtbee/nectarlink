@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nectarlink Mockups</title>
+<!-- Preview only: the apps bundle these OFL fonts locally. -->
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Instrument+Serif&family=Space+Mono:wght@400;700&family=Caveat:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/nl.css">
+<style>
+/* --- pairing --- */
+.pair{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px 40px;gap:14px}
+.pair h2{font-family:var(--display);font-weight:var(--display-weight);font-size:28px;letter-spacing:var(--display-track)}
+.qrbox{width:200px;height:200px;padding:14px;border-radius:var(--r-lg);background:var(--surface);color:var(--on-surface);border:1px solid var(--outline-variant)}
+[data-theme^="bloom"] .qrbox{box-shadow:0 0 0 8px var(--surface-container-high)}
+.steps{display:flex;gap:18px;font-size:12.5px;color:var(--on-surface-variant)}
+.steps b{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--secondary-container);color:var(--on-secondary-container);font-size:11px;margin-right:6px}
+[data-theme^="graphite"] .steps b{border-radius:2px;font-family:var(--mono);font-weight:400}
+.alt{display:flex;gap:10px}
+.timer{font-size:12px;color:var(--on-surface-variant)}
+/* camera viewfinder */
+.finder{flex:1;margin:-46px -16px 0;background:radial-gradient(120% 80% at 50% 40%,#4a5058,#15181c);position:relative;display:grid;place-items:center}
+.finder .frame{width:190px;height:190px;position:relative}
+.finder .frame i{position:absolute;width:34px;height:34px;border:3px solid #fff;border-radius:6px}
+.finder .frame i:nth-child(1){top:0;left:0;border-right:0;border-bottom:0}.finder .frame i:nth-child(2){top:0;right:0;border-left:0;border-bottom:0}
+.finder .frame i:nth-child(3){bottom:0;left:0;border-right:0;border-top:0}.finder .frame i:nth-child(4){bottom:0;right:0;border-left:0;border-top:0}
+.finder .ghost{position:absolute;inset:22px;color:rgba(255,255,255,.35);--qr-bg:transparent}
+.finder .tip{position:absolute;bottom:22px;left:16px;right:16px;color:#fff;font-size:13px;text-align:center;line-height:1.5}
+.sheet{margin:0 -16px -14px;padding:18px 16px 16px;border-radius:var(--r-xl) var(--r-xl) 0 0;background:var(--surface-container);display:flex;flex-direction:column;gap:10px}
+[data-theme^="graphite"] .sheet{background:var(--surface);border-top:1px solid var(--outline-variant)}
+.sas{display:flex;justify-content:center;gap:8px;margin:6px 0}
+.sas span{width:36px;height:46px;border-radius:var(--r-sm);background:var(--surface-container-high);display:grid;place-items:center;font:700 22px var(--mono)}
+[data-theme^="graphite"] .sas span{background:transparent;border:1px solid var(--outline-variant)}
+/* checklist */
+.check{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:var(--r-md);background:var(--surface-container)}
+[data-theme^="graphite"] .check{background:transparent;border:1px solid var(--outline-variant)}
+.check .st{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--surface-container-highest);color:var(--on-surface-variant)}
+.check.done .st{background:var(--ok);color:#fff}
+[data-theme^="graphite"] .check .st{border-radius:3px}
+.check .tx{flex:1;min-width:0}.check b{font-size:13px;display:block}.check small{font-size:11.5px;color:var(--on-surface-variant)}
+.progress{height:6px;border-radius:9px;background:var(--surface-container-highest);overflow:hidden}
+.progress i{display:block;height:100%;width:60%;background:var(--primary);border-radius:9px}
+/* power cards */
+.power{border-radius:var(--r-lg);padding:13px 14px;background:var(--surface-container);border:1.5px solid transparent}
+.power.sel{border-color:var(--primary);background:color-mix(in srgb,var(--primary-container) 55%,var(--surface))}
+[data-theme^="graphite"] .power{background:transparent;border:1px solid var(--outline-variant)}
+[data-theme^="graphite"] .power.sel{border:1.5px solid var(--on-surface);box-shadow:3px 3px 0 var(--outline-variant)}
+.power .hd{display:flex;justify-content:space-between;align-items:center}
+.power h4{font-size:14.5px;font-weight:700}
+.power .eff{font-size:11px;color:var(--on-surface-variant);font-weight:600}
+.power p{font-size:11.5px;color:var(--on-surface-variant);margin-top:4px;line-height:1.45}
+.power .gets{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.power .gets span{font-size:10.5px;padding:3px 7px;border-radius:var(--r-pill);background:var(--surface-container-highest)}
+[data-theme^="graphite"] .power .gets span{background:transparent;border:1px solid var(--outline-variant);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.05em}
+.path{display:flex;gap:12px;align-items:center;padding:12px;border-radius:var(--r-md);background:var(--surface-container)}
+[data-theme^="graphite"] .path{background:transparent;border:1px solid var(--outline-variant)}
+.path .ic{width:36px;height:36px;border-radius:var(--r-sm);display:grid;place-items:center;background:var(--secondary-container);color:var(--on-secondary-container);flex:none}
+[data-theme^="graphite"] .path .ic{background:transparent;border:1px solid var(--outline-variant);color:var(--on-surface)}
+.path .tx{flex:1}.path b{font-size:13px}.path small{display:block;font-size:11.5px;color:var(--on-surface-variant);margin-top:1px}
+.rec{font-size:10px;font-weight:700;padding:2px 7px;border-radius:var(--r-pill);background:var(--primary);color:var(--on-primary);margin-left:6px;vertical-align:2px}
+[data-theme^="graphite"] .rec{font-family:var(--mono);font-weight:400;letter-spacing:.08em;border-radius:2px}
+/* notifications page */
+.col-list{width:300px;border-right:1px solid var(--outline-variant);display:flex;flex-direction:column;flex:none}
+.col-list .head{padding:14px 16px 10px;display:flex;gap:6px;flex-wrap:wrap}
+.col-list .list{padding:0 8px;overflow:hidden}
+.detail{flex:1;display:flex;flex-direction:column;min-width:0}
+.detail .dh{display:flex;gap:12px;align-items:center;padding:16px 22px;border-bottom:1px solid var(--outline-variant)}
+.detail .dh>div{min-width:0}.detail .dh h4{font-size:15px;font-weight:700}.detail .dh p{font-size:12px;color:var(--on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thread{flex:1;padding:18px 22px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.bub{max-width:70%;padding:10px 14px;border-radius:18px;font-size:13.5px;line-height:1.45;background:var(--surface-container-high);align-self:flex-start}
+.bub.me{align-self:flex-end;background:var(--primary);color:var(--on-primary)}
+[data-theme^="graphite"] .bub{border-radius:4px;background:transparent;border:1px solid var(--outline-variant)}
+[data-theme^="graphite"] .bub.me{background:var(--on-surface);color:var(--surface);border-color:var(--on-surface)}
+.bub small{display:block;font-size:10.5px;opacity:.7;margin-top:4px}
+.mms{width:210px;height:150px;border-radius:14px;align-self:flex-end;background:linear-gradient(135deg,#e9b66f,#a3542b 60%,#3d2414)}
+[data-theme^="graphite"] .mms{border-radius:3px;filter:grayscale(1) contrast(1.1)}
+.day{align-self:center;font-size:11px;color:var(--on-surface-variant)}
+.composer{margin:0 22px 18px;display:flex;align-items:center;gap:10px;padding:6px 6px 6px 16px;border-radius:var(--r-pill);background:var(--surface-container-high);font-size:13px;color:var(--on-surface-variant)}
+[data-theme^="graphite"] .composer{border-radius:4px;background:transparent;border:1px solid var(--outline)}
+.composer .send{width:38px;height:38px;border-radius:50%;background:var(--btn-bg);color:var(--btn-ink);display:grid;place-items:center;box-shadow:var(--btn-shadow)}
+[data-theme^="graphite"] .composer .send{border-radius:3px}
+.via{font-size:11px;color:var(--on-surface-variant);text-align:center;margin:-8px 0 12px}
+/* toast (native Windows style, theme-tinted accent only) */
+.toast{width:364px;border-radius:8px;background:#2B2B2B;color:#fff;box-shadow:0 16px 40px rgba(0,0,0,.35);font-family:"Segoe UI Variable Text","Segoe UI",sans-serif;padding:14px 14px 12px;font-size:13px}
+.toast .t{display:flex;gap:8px;align-items:center;font-size:12px;color:#c8c8c8}
+.toast .t i{width:16px;height:16px;border-radius:4px;background:var(--primary)}
+.toast h5{font-size:14px;margin-top:10px;font-weight:600}.toast p{color:#d6d6d6;margin-top:2px}
+.toast .reply{margin-top:12px;display:flex;gap:8px}.toast .reply span{flex:1;height:32px;border-radius:4px;background:#3a3a3a;padding:0 10px;display:flex;align-items:center;color:#9d9d9d;font-size:12.5px}
+.toast .reply b{height:32px;padding:0 14px;border-radius:4px;background:#4a4a4a;display:grid;place-items:center;font-weight:600;font-size:12.5px}
+/* mirror */
+.mwin{width:420px;height:600px;border-radius:12px;background:#1b1b1d;display:flex;flex-direction:column;overflow:hidden;box-shadow:var(--win-shadow);border:1px solid #2a2a2d;color:#e8e8ea}
+.mwin .tb{height:38px;display:flex;align-items:center;gap:10px;padding:0 12px;font-size:12.5px;background:var(--surface);color:var(--on-surface);border-bottom:1px solid var(--outline-variant)}
+.mwin .tb .ap{width:18px;height:18px;border-radius:5px}
+.mwin .tb .wc{display:flex;gap:16px;margin-left:auto;color:var(--on-surface-variant)}
+.mwin .stage{flex:1;display:flex;min-height:0}
+.mwin .ps{flex:1;display:grid;place-items:center;background:#0e0e10}
+.mwin .tools{width:52px;background:var(--surface);border-left:1px solid var(--outline-variant);display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0;color:var(--on-surface-variant)}
+.mwin .tools span{width:36px;height:36px;border-radius:var(--r-sm);display:grid;place-items:center}
+.mwin .tools span.on{background:var(--indicator);color:var(--on-indicator)}
+.mwin .foot{height:30px;display:flex;align-items:center;gap:14px;padding:0 12px;font-size:11px;background:var(--surface);color:var(--on-surface-variant);border-top:1px solid var(--outline-variant)}
+[data-theme^="graphite"] .mwin .foot{font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;font-size:9.5px}
+.fake{width:250px;height:520px;border-radius:16px;overflow:hidden;background:#fff;color:#1d1d1f;font-family:system-ui,sans-serif;display:flex;flex-direction:column}
+.fake .ah{height:56px;background:#0f7a5f;color:#fff;display:flex;align-items:center;gap:10px;padding:0 12px;font-weight:600;font-size:14px}
+.fake .ah i{width:30px;height:30px;border-radius:50%;background:#cfe9df}
+.fake .cl{flex:1;background:#efe7dd;padding:10px;display:flex;flex-direction:column;gap:6px;font-size:12px}
+.fake .m{background:#fff;padding:7px 9px;border-radius:8px;max-width:75%}.fake .m.o{align-self:flex-end;background:#d9fdd3}
+.fake .in{height:46px;background:#f0f0f0;display:flex;align-items:center;padding:0 10px;font-size:12px;color:#888}
+.appwin{width:380px;height:600px;border-radius:12px;overflow:hidden;box-shadow:var(--win-shadow);border:1px solid var(--outline-variant);display:flex;flex-direction:column;background:#fff}
+.appwin .tb{height:36px;display:flex;align-items:center;gap:8px;padding:0 12px;font-size:12.5px;background:var(--surface);color:var(--on-surface);border-bottom:1px solid var(--outline-variant)}
+.appwin .tb small{color:var(--on-surface-variant)}
+.spot{flex:1;background:linear-gradient(180deg,#2c4a3a,#121212 55%);color:#fff;font-family:system-ui,sans-serif;padding:20px;display:flex;flex-direction:column;gap:14px}
+.spot .cv{width:100%;aspect-ratio:1;border-radius:6px;background:linear-gradient(135deg,#a8d8b9,#2d6a4f 60%,#1b3a2b)}
+.spot h4{font-size:18px}.spot p{font-size:12.5px;color:#b3b3b3}
+.spot .bar{height:4px;border-radius:4px;background:#535353}.spot .bar i{display:block;width:35%;height:100%;background:#fff;border-radius:4px}
+.spot .ctl{display:flex;justify-content:center;gap:26px;align-items:center}
+.spot .ctl b{width:52px;height:52px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center}
+/* deck */
+.dk-head{display:flex;justify-content:space-between;align-items:center}
+.dk-pages{display:flex;gap:6px}
+.dk-pages span{height:30px;padding:0 12px;border-radius:var(--r-pill);font-size:12px;font-weight:600;display:grid;place-items:center;background:var(--surface-container-high);color:var(--on-surface-variant)}
+.dk-pages span.on{background:var(--secondary-container);color:var(--on-secondary-container)}
+[data-theme^="graphite"] .dk-pages span{background:transparent;border:1px solid var(--outline-variant);font-family:var(--mono);font-weight:400;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
+[data-theme^="graphite"] .dk-pages span.on{background:var(--on-surface);color:var(--surface)}
+.dk{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.key{aspect-ratio:1;border-radius:var(--r-lg);background:var(--surface-container);display:flex;flex-direction:column;justify-content:space-between;padding:11px;font-size:11.5px;font-weight:600}
+.key .ic{width:30px;height:30px;border-radius:var(--r-sm);display:grid;place-items:center;background:var(--surface-container-highest)}
+.key.active{background:var(--primary);color:var(--on-primary)}
+.key.active .ic{background:color-mix(in srgb,var(--on-primary) 18%,transparent)}
+.key small{font-weight:400;font-size:10px;opacity:.75;display:block}
+[data-theme^="graphite"] .key{background:transparent;border:1px solid var(--outline-variant)}
+[data-theme^="graphite"] .key .ic{background:transparent;border:1px solid var(--outline-variant)}
+[data-theme^="graphite"] .key.active{background:var(--on-surface);color:var(--surface);border-color:var(--on-surface)}
+.key.add{border:1.5px dashed var(--outline-variant);background:transparent;align-items:center;justify-content:center;color:var(--on-surface-variant)}
+/* settings */
+.set-nav{width:220px;border-right:1px solid var(--outline-variant);padding:14px 10px;flex:none}
+.set-main{flex:1;padding:20px 26px;overflow:hidden;display:flex;flex-direction:column;gap:14px}
+.lvl{display:flex;gap:16px;align-items:center;padding:16px;border-radius:var(--r-xl);background:var(--hero-bg);color:var(--hero-ink);border:1px solid var(--card-border)}
+.lvl .big{width:52px;height:52px;border-radius:var(--r-md);display:grid;place-items:center;background:var(--primary);color:var(--on-primary)}
+[data-theme^="graphite"] .lvl .big{border-radius:3px}
+.lvl h4{font-family:var(--display);font-weight:var(--display-weight);font-size:22px;letter-spacing:var(--display-track)}
+.lvl p{font-size:12.5px;opacity:.8;margin-top:2px}
+.feat{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--outline-variant);font-size:13px}
+.feat:first-of-type{border-top:0}
+.feat .tx{flex:1}.feat small{display:block;font-size:11.5px;color:var(--on-surface-variant);margin-top:1px}
+.feat.off{color:var(--on-surface-variant)}
+.state{font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.state.partial{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+[data-theme^="graphite"] .state{font-family:var(--mono);font-weight:400;letter-spacing:.06em;text-transform:uppercase;font-size:9.5px;background:transparent;border:1px solid currentColor;border-radius:2px}
+</style>
+</head>
+<body data-theme="bloom-light">
+<div class="bar">
+  <div class="brand">Nectarlink <span>· Mockups</span></div>
+  <div class="seg" id="themes">
+    <button data-t="bloom-light" class="on">Bloom Light</button><button data-t="bloom-dark">Bloom Dark</button>
+    <button data-t="graphite-paper">Graphite Paper</button><button data-t="graphite-slate">Graphite Slate</button>
+  </div>
+  <div class="seeds" id="seeds">Material You
+    <button data-s="honey" class="on" style="background:#B7791F" title="Honey"></button><button data-s="sage" style="background:#5B8C5A" title="Sage"></button>
+    <button data-s="lavender" style="background:#7E6AA8" title="Lavender"></button><button data-s="ocean" style="background:#3D7DA8" title="Ocean"></button>
+  </div>
+</div>
+
+<div class="toc">
+  <span class="kicker">Phase 0 · Design</span>
+  <h1>Core screens</h1>
+  <p>The key flows in both themes. Same components, same layout; only the tokens change. Content is placeholder. Switch themes and Material You seeds at the top.</p>
+  <nav><a href="#pair">1 · Pairing</a><a href="#onboard">2 · Phone setup</a><a href="#power">3 · Choose your power</a><a href="#notif">4 · Notifications</a><a href="#msgs">5 · Messages</a><a href="#mirror">6 · Mirroring & app windows</a><a href="#deck">7 · Deck</a><a href="#settings">8 · Power settings</a></nav>
+</div>
+
+<main id="screens"></main>
+
+<script src="../assets/nl.js"></script>
+<script>
+const rail = (on) => `<aside class="rail"><div class="mark">${i('hex')}</div>
+  ${[['home','Home'],['msg','Messages'],['bell','Alerts'],['photo','Photos'],['apps','Apps'],['deck','Deck']].map(([ic,l])=>`<div class="nav ${l===on?'on':''}"><i>${i(ic)}</i>${l}</div>`).join('')}
+  <div class="spacer"></div><div class="nav ${on==='Settings'?'on':''}"><i>${i('gear')}</i>Settings</div></aside>`;
+const topbar = (t) => `<header class="top"><h3>${t}</h3><span class="status"><span class="dot"></span>Pixel 9 · Wi-Fi · 12 ms</span><span class="fill"></span></header>`;
+const phone = (inner, cls='') => `<div class="phone"><div class="scr ${cls}"><div class="cam"></div><div class="sb"><span>9:41</span><span>82%</span></div>${inner}</div></div>`;
+const set = (id, k, h, p, body) => `<section class="screen-set" id="${id}"><div class="set-head"><span class="kicker">${k}</span><h2>${h}</h2><p>${p}</p></div><div class="row">${body}</div></section>`;
+
+document.getElementById('screens').innerHTML =
+
+set('pair','1 · First run','Pair in under a minute',
+ 'The PC shows a QR code; the phone scans it and both sides are paired and authenticated, with no codes to type. Nearby pairing (6-digit code check) and USB pairing are one click away.',
+ `<div class="win sm"><div class="main">
+   <header class="top"><h3>Welcome to Nectarlink</h3><span class="fill"></span><span class="cap">Step 1 of 2</span></header>
+   <div class="pair">
+     <div class="crop"><i></i><i></i><i></i><i></i><div class="qrbox">${qrSVG()}</div></div>
+     <span class="G cap">Fig. 00 // Pairing code</span>
+     <h2>Scan with your phone</h2>
+     <div class="steps"><span><b>1</b>Install Nectarlink</span><span><b>2</b>Tap “Pair with PC”</span><span><b>3</b>Scan this code</span></div>
+     <div class="alt"><button class="btn tonal sm">${i('wifi')}Pair nearby instead</button><button class="btn out sm">${i('usb')}Use a USB cable</button></div>
+     <span class="timer">Code refreshes in 4:12 · Only works on this network</span>
+   </div></div></div>
+  <div>${phone(`<div class="finder"><div class="frame"><i></i><i></i><i></i><i></i><div class="ghost">${qrSVG(25,7)}</div></div>
+     <div class="tip">Point your camera at the code on your PC</div></div>
+     <div class="sheet"><b style="font-size:14px">Found “Bee's Desktop”</b><span class="hint">Windows 11 · on Home Wi-Fi</span><button class="btn fill wide">Pair</button></div>`)}
+   <p class="caption"><b>Scan.</b> The phone finds the PC from the code and pairs securely.</p></div>
+  <div>${phone(`<div class="ph-title" style="margin-top:8px">Check the code</div>
+     <p class="ph-sub">Make sure this matches the code on <b>Bee's Desktop</b>. This keeps anyone else from pairing in between.</p>
+     <div class="sas"><span>4</span><span>8</span><span>2</span><span>9</span><span>1</span><span>3</span></div>
+     <div class="card" style="display:flex;gap:10px;align-items:center"><span class="av p">${i('screen')}</span><div><b style="font-size:13px">Bee's Desktop</b><div class="hint">Windows 11 · nearby</div></div></div>
+     <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px"><button class="btn fill wide">Codes match</button><button class="btn text wide">They don't match</button></div>`)}
+   <p class="caption"><b>Nearby pairing.</b> No camera needed; both screens show the same 6 digits.</p></div>`) +
+
+set('onboard','2 · Phone setup','One live checklist',
+ 'Every permission shows its real state, why it is needed, and one tap to grant it. Nothing is buried in settings, and the list updates the moment a permission is granted.',
+ `<div>${phone(`<div class="ph-title" style="margin-top:6px">Almost there</div>
+    <p class="ph-sub">Give Nectarlink what it needs. You can change any of this later.</p>
+    <div class="progress"><i></i></div>
+    <div class="check done"><span class="st">${i('check')}</span><div class="tx"><b>Notifications</b><small>Show your phone's alerts on your PC</small></div></div>
+    <div class="check done"><span class="st">${i('check')}</span><div class="tx"><b>Messages & calls</b><small>Texts, call alerts and contacts</small></div></div>
+    <div class="check done"><span class="st">${i('check')}</span><div class="tx"><b>Photos & files</b><small>Send and browse from your PC</small></div></div>
+    <div class="check"><span class="st">${i('bolt')}</span><div class="tx"><b>Stay connected</b><small>Allow running in the background</small></div><button class="btn tonal sm">Allow</button></div>
+    <div class="check"><span class="st">${i('bell')}</span><div class="tx"><b>Restricted settings</b><small>Needed because the app came from GitHub</small></div><button class="btn tonal sm">Show me</button></div>
+    <button class="btn fill wide" style="margin-top:auto">Continue</button>`)}
+   <p class="caption"><b>Checklist.</b> States are live; sideloaded installs get a guided “Allow restricted settings” step.</p></div>
+  <div>${phone(`<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span class="ph-title">Nectarlink</span><span class="av p">B</span></div>
+    <div class="card" style="background:var(--hero-bg);color:var(--hero-ink);border-radius:var(--r-xl)"><span class="G cap">Fig. 02 // Linked to</span><div class="ph-title" style="font-size:21px">Bee's Desktop</div><div class="hint" style="color:inherit;opacity:.8">Connected · Wi-Fi · 12 ms</div>
+      <div style="display:flex;gap:6px;margin-top:10px"><span class="chip">Laptop 64%</span><span class="chip">Basic</span></div></div>
+    <div class="card" style="display:flex;gap:12px;align-items:center"><span class="av p">${i('bolt')}</span><div style="flex:1"><b style="font-size:13px">Unlock more</b><div class="hint">Auto clipboard, OTP codes, app windows</div></div>${i('chev')}</div>
+    <div class="card"><div class="lbl" style="margin-bottom:8px">Recent</div><div class="hint">IMG_2041.jpg · sent to PC · now</div></div>
+    <div class="tabbar"><span class="on">${i('home')}</span><span>${i('send')}</span><span>${i('deck')}</span><span>${i('gear')}</span></div>`)}
+   <p class="caption"><b>Home.</b> A gentle “Unlock more” card instead of nagging. It disappears once you choose.</p></div>`) +
+
+set('power','3 · Choose your power','Pick how much Nectarlink can do',
+ 'Three clear levels, each showing what it unlocks, what it needs, how long it takes and how to undo it. A smart default is pre-selected; “Decide later” is always available.',
+ `<div>${phone(`<div class="ph-title" style="margin-top:4px">Choose your power</div>
+    <p class="ph-sub">Everything works at Basic. More access unlocks more.</p>
+    <div class="power"><div class="hd"><h4>Basic</h4><span class="eff">Ready now</span></div><p>Notifications, messages, calls, files, media, webcam.</p></div>
+    <div class="power sel"><div class="hd"><h4>Elevated <span class="rec">Recommended</span></h4><span class="eff">~2 min</span></div><p>One-time setup. No extra apps. Undo anytime.</p>
+      <div class="gets"><span>Auto clipboard</span><span>OTP codes</span><span>App windows</span><span>Full control</span><span>Phone audio</span></div></div>
+    <div class="power"><div class="hd"><h4>Root</h4><span class="eff">Detected: no</span></div><p>For rooted phones. Survives reboots.</p></div>
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:6px"><button class="btn fill wide">Set up Elevated</button><button class="btn text wide">Decide later</button></div>`)}
+   <p class="caption"><b>Levels.</b> Plain language, honest effort estimates, and a “what this access means” explainer behind each card.</p></div>
+  <div>${phone(`<div style="display:flex;align-items:center;gap:6px;margin-top:4px;color:var(--on-surface-variant)">${i('back')}<span class="cap">Elevated setup</span></div>
+    <div class="ph-title">How do you want to set it up?</div>
+    <p class="ph-sub">Pick whichever is easiest right now.</p>
+    <div class="path"><span class="ic">${i('wifi')}</span><div class="tx"><b>Scan from your PC</b><span class="rec">Best</span><small>Wireless debugging · no cable</small></div>${i('chev')}</div>
+    <div class="path"><span class="ic">${i('usb')}</span><div class="tx"><b>Plug into your PC</b><small>USB debugging · 1 min</small></div>${i('chev')}</div>
+    <div class="path"><span class="ic">${i('handset')}</span><div class="tx"><b>On this phone only</b><small>No PC needed · Android 11+</small></div>${i('chev')}</div>
+    <div class="path"><span class="ic">${i('shield')}</span><div class="tx"><b>Use Shizuku</b><small>Already installed · 1 tap</small></div>${i('chev')}</div>
+    <p class="hint" style="margin-top:auto">Nectarlink starts a helper with developer access, built into this app. It never leaves your phone and you can revoke it in Settings.</p>`)}
+   <p class="caption"><b>Setup paths.</b> Recommended path chosen from what's detected (Android version, USB, Shizuku, root).</p></div>`) +
+
+set('notif','4 · Notifications','Your phone’s alerts, organized',
+ 'Native Windows toasts with replies and actions for the moment, and a calm feed in the app for everything else: filter by app, reply inline, copy codes in one click.',
+ `<div class="win">${rail('Alerts')}<div class="main">${topbar('Notifications')}
+   <div class="body"><div class="col-list">
+     <div class="head"><span class="chip on">All</span><span class="chip">Messages</span><span class="chip">Codes</span><span class="chip">${i('filter')}Apps</span></div>
+     <div class="list">
+       <div class="it"><span class="av">G</span><div class="tx"><h5>Google<span>now</span></h5><p>Sign-in code for your account</p></div></div>
+       <div class="it on"><span class="av p">M</span><div class="tx"><h5>Mom · WhatsApp<span>2m</span></h5><p>Dinner at 8? Bring the charger…</p></div><span class="badge">2</span></div>
+       <div class="it"><span class="av">S</span><div class="tx"><h5>Swiggy<span>18m</span></h5><p>Arriving in 12 min</p></div></div>
+       <div class="it"><span class="av">C</span><div class="tx"><h5>Calendar<span>1h</span></h5><p>Design review at 4:30 PM</p></div></div>
+       <div class="it"><span class="av">D</span><div class="tx"><h5>Discord<span>2h</span></h5><p>#general: 6 new messages</p></div></div>
+     </div></div>
+     <div class="detail"><div class="dh"><span class="av p">M</span><div><h4>Mom</h4><p>WhatsApp · via Pixel 9</p></div><span class="fill"></span><button class="btn text sm">Open on phone</button></div>
+       <div class="thread"><span class="day">Today</span>
+         <div class="bub">Are you coming home this weekend?<small>11:02</small></div>
+         <div class="bub me">Yes! Saturday morning 🙂<small>11:05</small></div>
+         <div class="bub">Dinner at 8? Bring the charger you borrowed.<small>11:40</small></div></div>
+       <div class="composer">Reply to Mom…<span class="fill"></span><span class="send">${i('send')}</span></div>
+       <div class="via">Replies are sent through WhatsApp on your phone</div></div></div></div></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="toast"><div class="t"><i></i>Nectarlink · Pixel 9<span class="fill"></span>now</div><h5>Mom · WhatsApp</h5><p>Dinner at 8? Bring the charger you borrowed.</p><div class="reply"><span>Type a reply</span><b>Send</b></div></div>
+    <div class="toast"><div class="t"><i></i>Nectarlink · Pixel 9<span class="fill"></span>now</div><h5>Google</h5><p>Your sign-in code is 482 913</p><div class="reply"><b style="flex:1">Copy code</b><b>Dismiss</b></div></div>
+    <p class="caption" style="max-width:364px"><b>Toasts.</b> Native Windows style for system consistency; only the small app badge picks up the theme accent.</p>
+  </div>`) +
+
+set('msgs','5 · Messages','Texts and chat apps in one inbox',
+ 'SMS and MMS directly, plus RCS, WhatsApp, Telegram and others through their notifications. Drag an image in to send it. It is always clear which app a reply goes through.',
+ `<div class="win">${rail('Messages')}<div class="main">${topbar('Messages')}
+   <div class="body"><div class="col-list">
+     <div class="head" style="padding-bottom:12px"><div class="chip" style="flex:1;justify-content:flex-start">${i('search')}Search messages</div><button class="btn fill sm" style="padding:0 10px">${i('plus')}</button></div>
+     <div class="list">
+       <div class="it on"><span class="av p">A</span><div class="tx"><h5>Aanya<span>4:12 PM</span></h5><p>Look at this view!!</p></div></div>
+       <div class="it"><span class="av">M</span><div class="tx"><h5>Mom<span>11:40</span></h5><p>Dinner at 8?</p></div><span class="badge">2</span></div>
+       <div class="it"><span class="av">R</span><div class="tx"><h5>Rahul · Telegram<span>Tue</span></h5><p>Pushed the fix, check it</p></div></div>
+       <div class="it"><span class="av">H</span><div class="tx"><h5>HDFC Bank<span>Mon</span></h5><p>Your statement is ready</p></div></div>
+       <div class="it"><span class="av">K</span><div class="tx"><h5>Kabir<span>Sun</span></h5><p>Game night at mine?</p></div></div>
+     </div></div>
+     <div class="detail"><div class="dh"><span class="av p">A</span><div><h4>Aanya</h4><p>+91 98xxx xxx21 · SMS / MMS</p></div><span class="fill"></span><button class="btn out sm">Call from phone</button></div>
+       <div class="thread"><span class="day">Today</span>
+         <div class="bub">Reached the top finally</div>
+         <div class="mms"></div>
+         <div class="bub me">Look at this view!!<small>Delivered · 4:12 PM</small></div>
+         <div class="bub">Okay I'm jealous 😭<small>4:13 PM</small></div></div>
+       <div class="composer">${i('attach')}Text message<span class="fill"></span>${i('emoji')}<span class="send">${i('send')}</span></div>
+       <div class="via">Sent as SMS from Pixel 9 · SIM 1</div></div></div></div></div>`) +
+
+set('mirror','6 · Mirroring & app windows','Your phone, or just one app, on your PC',
+ 'Full-screen mirroring with a slim side toolbar, or any phone app in its own resizable window with a taskbar icon. Video is decoded on the GPU and drawn with no extra copies.',
+ `<div><div class="mwin"><div class="tb"><span class="ap" style="background:var(--primary)"></span>Pixel 9<span class="cap" style="margin-left:4px">Mirroring</span><div class="wc">— ▢ ✕</div></div>
+    <div class="stage"><div class="ps"><div class="fake"><div class="ah"><i></i>Aanya</div><div class="cl"><div class="m">Reached the top finally</div><div class="m o">Look at this view!!</div><div class="m">Okay I'm jealous 😭</div></div><div class="in">Message</div></div></div>
+      <div class="tools"><span class="on">${i('kb')}</span><span>${i('vol')}</span><span>${i('rotate')}</span><span>${i('camera')}</span><span>${i('clip')}</span><div class="spacer"></div><span>${i('screen')}</span></div></div>
+    <div class="foot"><span>1080p · 60 fps</span><span>34 ms</span><span>Audio on</span><span class="fill"></span><span>Screen off on phone</span></div></div>
+    <p class="caption"><b>Mirror window.</b> Keyboard, audio, rotate, screenshot and clipboard tools; phone screen can stay off.</p></div>
+  <div><div class="appwin"><div class="tb"><span style="width:18px;height:18px;border-radius:50%;background:#1DB954"></span>Spotify <small>· on Pixel 9</small><span class="fill"></span><small>— ▢ ✕</small></div>
+    <div class="spot"><div class="cv"></div><div><h4>Saturn</h4><p>SZA</p></div><div class="bar"><i></i></div><div class="ctl">${i('prev')}<b>${i('pause')}</b>${i('next')}</div></div></div>
+    <p class="caption"><b>App window.</b> Runs on a virtual display (Elevated): resize it, pin it to the taskbar, use it while the phone does something else.</p></div>`) +
+
+set('deck','7 · Deck','A macro pad in your pocket',
+ 'Turn the phone into a Stream-Deck-style controller for the PC: live tiles for mic, media, scenes, apps and scripts, in pages. Edited on either device.',
+ `<div>${phone(`<div class="dk-head" style="margin-top:6px"><span class="ph-title">Deck</span><button class="btn text sm">Edit</button></div>
+    <div class="dk-pages"><span class="on">Work</span><span>Stream</span><span>Media</span></div>
+    <div class="dk">
+      <div class="key active"><span class="ic">${i('mic')}</span><div>Mic<small>Muted</small></div></div>
+      <div class="key"><span class="ic">${i('play')}</span><div>Play / pause<small>Spotify</small></div></div>
+      <div class="key"><span class="ic">${i('moon')}</span><div>Focus<small>Off</small></div></div>
+      <div class="key"><span class="ic">${i('code')}</span><div>VS Code<small>Launch</small></div></div>
+      <div class="key"><span class="ic">${i('obs')}</span><div>Scene 2<small>OBS</small></div></div>
+      <div class="key"><span class="ic">${i('lock')}</span><div>Lock PC<small>Win + L</small></div></div>
+      <div class="key"><span class="ic">${i('folder')}</span><div>Downloads<small>Open</small></div></div>
+      <div class="key"><span class="ic">${i('screen')}</span><div>Screenshot<small>Region</small></div></div>
+      <div class="key add">${i('plus')}</div>
+    </div>
+    <p class="hint">Haptic tap on every press. Tiles show live state from your PC.</p>
+    <div class="tabbar"><span>${i('home')}</span><span>${i('send')}</span><span class="on">${i('deck')}</span><span>${i('gear')}</span></div>`)}
+   <p class="caption"><b>Deck.</b> Pages, live state (the mic tile shows it's muted), and an add tile.</p></div>`) +
+
+set('settings','8 · Power settings','What works, what doesn’t, and why',
+ 'The capability matrix made visible: every feature shows whether it is on, partly working, or locked, and locked items open exactly the setup they need.',
+ `<div class="win">${rail('Settings')}<div class="main">${topbar('Settings')}
+   <div class="body"><div class="set-nav list">
+     <div class="it"><span>${i('screen')}</span><div class="tx"><h5>Devices</h5></div></div>
+     <div class="it on"><span>${i('bolt')}</span><div class="tx"><h5>Power</h5></div></div>
+     <div class="it"><span>${i('wifi')}</span><div class="tx"><h5>Connections</h5></div></div>
+     <div class="it"><span>${i('bell')}</span><div class="tx"><h5>Notifications</h5></div></div>
+     <div class="it"><span>${i('apps')}</span><div class="tx"><h5>Add-ons</h5></div></div>
+     <div class="it"><span>${i('photo')}</span><div class="tx"><h5>Appearance</h5></div></div>
+   </div>
+   <div class="set-main">
+     <div class="lvl"><span class="big">${i('bolt')}</span><div style="flex:1"><span class="G cap">Fig. 03 // Current level</span><h4>Elevated</h4><p>Set up over Wi-Fi from this PC · re-arms automatically after reboots</p></div><button class="btn out sm">Revoke</button></div>
+     <div class="card" style="padding:4px 16px">
+       <div class="feat"><div class="tx">Notifications<small>Including one-time codes</small></div><span class="state">On</span></div>
+       <div class="feat"><div class="tx">Clipboard<small>Automatic in both directions</small></div><span class="state">On</span></div>
+       <div class="feat"><div class="tx">App windows<small>Phone apps in their own windows</small></div><span class="state">On</span></div>
+       <div class="feat"><div class="tx">Call audio on PC<small>Bluetooth calling is not set up</small></div><span class="state partial">Partial</span><button class="btn text sm">Set up</button></div>
+       <div class="feat off"><div class="tx">Use phone as webcam<small>Needs the virtual camera add-on</small></div><span class="lock">${i('lock')}Add-on · 1 min</span></div>
+       <div class="feat off"><div class="tx">Reach phone away from home<small>Off · uses encrypted relays</small></div><span class="switch"></span></div>
+     </div></div></div></div></div>`);
+
+setupThemeBar();
+</script>
+</body>
+</html>
