@@ -23,6 +23,8 @@ clap = { version = "4.6", features = ["derive"] }
 data-encoding = "2.11"
 hmac = "0.13"
 iroh = "1.3"
+iroh-mdns-address-lookup = "0.6"
+n0-future = "0.3"
 rand = "0.10"
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
@@ -30,10 +32,12 @@ serde_bytes = "0.11"
 sha2 = "0.11"
 tempfile = "3"
 thiserror = "2"
+tokio-util = "0.7"
 tokio = { version = "1.53", features = ["rt-multi-thread", "macros", "io-util", "sync", "time", "fs"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = "2.5"
+windows = "0.62"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

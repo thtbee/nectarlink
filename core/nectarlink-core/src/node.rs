@@ -1,0 +1,715 @@
+// SPDX-License-Identifier: MPL-2.0
+//! [`Node`]: the core's entry point. Owns the network endpoint, the trust
+//! store, live sessions and one reconnect supervisor per paired device.
+
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    sync::{Arc, Mutex, RwLock, Weak},
+    time::Duration,
+};
+
+use iroh::{
+    Endpoint, EndpointAddr, RelayMode,
+    address_lookup::{DnsAddressLookup, MemoryLookup, PkarrPublisher, PkarrResolver},
+    endpoint::{Connection, VarInt, presets},
+    endpoint_info::{EndpointInfo, UserData},
+    protocol::{AcceptError, ProtocolHandler, Router},
+};
+use iroh_mdns_address_lookup::{DiscoveryEvent, MdnsAddressLookup};
+use nectarlink_protocol::{
+    ALPN_PAIR, ALPN_SESSION, DeviceId, Envelope, ErrorCode,
+    messages::{Battery, DeviceInfo, HelloUpdate, PowerLevel, Ring, types},
+    pairing::PairingUri,
+};
+use tokio::sync::{Notify, broadcast};
+use tokio_util::sync::CancellationToken;
+
+use crate::{
+    Error, NodeConfig, Platform, Result,
+    events::{DiscoveredDevice, LinkState, NodeEvent, PairedDevice, PairingEvent},
+    identity,
+    pairing::{self, PairingState},
+    session::{self, CLOSE_DUPLICATE, CLOSE_NORMAL, REQUEST_TIMEOUT, Session},
+    store::Store,
+};
+
+const DIAL_TIMEOUT: Duration = Duration::from_secs(15);
+const BACKOFF_MIN: Duration = Duration::from_secs(1);
+const BACKOFF_MAX: Duration = Duration::from_secs(30);
+/// How long the device with the higher ID waits before dialing (see `maintain`).
+const DEFER_DIAL: Duration = Duration::from_millis(750);
+const EVENT_CAPACITY: usize = 512;
+
+/// Capabilities every build offers.
+const BASE_CAPABILITIES: &[&str] = &["core.ping", "device.battery", "device.ring"];
+
+/// This device's mutable description, sent to peers.
+#[derive(Debug, Clone)]
+pub(crate) struct LocalState {
+    pub app_version: String,
+    pub device: DeviceInfo,
+    pub power: PowerLevel,
+    pub extra_capabilities: Vec<String>,
+    pub battery: Option<Battery>,
+}
+
+impl LocalState {
+    pub fn capabilities(&self) -> Vec<String> {
+        let mut caps: Vec<String> = BASE_CAPABILITIES.iter().map(|c| (*c).to_owned()).collect();
+        for cap in &self.extra_capabilities {
+            if !caps.contains(cap) {
+                caps.push(cap.clone());
+            }
+        }
+        caps
+    }
+}
+
+struct Supervisor {
+    wake: Arc<Notify>,
+    cancel: CancellationToken,
+}
+
+/// State shared by the node, its sessions and background tasks.
+pub(crate) struct Shared {
+    pub id: DeviceId,
+    pub endpoint: Endpoint,
+    pub store: Store,
+    pub platform: Arc<dyn Platform>,
+    pub local: RwLock<LocalState>,
+    pub pairing: PairingState,
+    pub cancel: CancellationToken,
+    events: broadcast::Sender<NodeEvent>,
+    sessions: Mutex<HashMap<DeviceId, Arc<Session>>>,
+    links: Mutex<HashMap<DeviceId, LinkState>>,
+    supervisors: Mutex<HashMap<DeviceId, Supervisor>>,
+    discovered: Mutex<HashMap<DeviceId, DiscoveredDevice>>,
+    memory: MemoryLookup,
+}
+
+impl std::fmt::Debug for Shared {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Shared").field("id", &self.id).finish_non_exhaustive()
+    }
+}
+
+fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+impl Shared {
+    pub fn emit(&self, event: NodeEvent) {
+        // No subscribers is fine; events are a UI convenience.
+        let _ = self.events.send(event);
+    }
+
+    pub fn session(&self, peer: &DeviceId) -> Option<Arc<Session>> {
+        lock(&self.sessions).get(peer).filter(|s| s.is_alive()).cloned()
+    }
+
+    fn set_link(&self, peer: DeviceId, link: LinkState) {
+        let changed = lock(&self.links).insert(peer, link.clone()).as_ref() != Some(&link);
+        if changed {
+            self.emit(NodeEvent::LinkChanged { device: peer, link });
+        }
+    }
+
+    pub fn link(&self, peer: &DeviceId, last_seen: Option<i64>) -> LinkState {
+        lock(&self.links).get(peer).cloned().unwrap_or(LinkState::Offline { last_seen })
+    }
+
+    /// Publishes the session's current path and round-trip time.
+    pub fn publish_online(&self, session: &Session) {
+        self.set_link(session.peer, LinkState::Online { path: session.path(), rtt_ms: session.rtt_ms() });
+    }
+
+    /// Our direct addresses, for pairing links. Waits briefly for the
+    /// endpoint to learn them right after startup.
+    pub async fn direct_addrs(&self) -> Vec<SocketAddr> {
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+        loop {
+            let addrs: Vec<SocketAddr> = self.endpoint.addr().ip_addrs().copied().collect();
+            if !addrs.is_empty() || tokio::time::Instant::now() >= deadline {
+                return addrs;
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    }
+
+    /// Feeds known addresses of a peer into address lookup.
+    pub fn remember_addrs(&self, peer: &DeviceId, addrs: &[SocketAddr]) {
+        if addrs.is_empty() {
+            return;
+        }
+        if let Ok(key) = crate::public_key(peer) {
+            self.memory.add_endpoint_info(EndpointInfo::new(key).with_ip_addrs(addrs.to_vec()));
+        }
+    }
+
+    /// Stores a newly paired device and starts keeping it connected.
+    pub async fn complete_pairing(self: &Arc<Self>, peer: DeviceId, info: DeviceInfo) -> Result<()> {
+        let paired_at = crate::now_unix();
+        self.store.upsert_peer(&peer, &info, paired_at)?;
+        tracing::info!(peer = %peer.short(), "paired");
+        let device = PairedDevice { id: peer, info, paired_at, link: LinkState::Offline { last_seen: None } };
+        self.emit(NodeEvent::DeviceAdded(device.clone()));
+        self.emit(NodeEvent::Pairing(PairingEvent::Paired(device)));
+        lock(&self.discovered).remove(&peer);
+        self.start_supervisor(peer);
+        Ok(())
+    }
+
+    /// Removes a paired device locally (after we or the peer unpaired).
+    pub async fn forget_peer(&self, peer: &DeviceId) -> Result<()> {
+        let existed = self.store.remove_peer(peer)?;
+        if let Some(sup) = lock(&self.supervisors).remove(peer) {
+            sup.cancel.cancel();
+        }
+        if let Some(session) = lock(&self.sessions).remove(peer) {
+            session.close(CLOSE_NORMAL, b"unpaired");
+        }
+        lock(&self.links).remove(peer);
+        if existed {
+            self.emit(NodeEvent::DeviceRemoved(*peer));
+        }
+        Ok(())
+    }
+
+    /// Registers an established session, resolving duplicates: if both
+    /// devices dialed at once, the connection opened by the device with the
+    /// lower ID wins on both sides.
+    fn register_session(
+        self: &Arc<Self>,
+        conn: Connection,
+        dialer: DeviceId,
+        streams: (iroh::endpoint::SendStream, iroh::endpoint::RecvStream),
+        remote: nectarlink_protocol::messages::Hello,
+    ) -> Option<Arc<Session>> {
+        let peer = crate::device_id(&conn.remote_id());
+        let mut sessions = lock(&self.sessions);
+        if let Some(existing) = sessions.get(&peer).filter(|s| s.is_alive()) {
+            let keep_existing = existing.dialer != dialer && existing.dialer < dialer;
+            if keep_existing {
+                drop(sessions);
+                conn.close(VarInt::from_u32(CLOSE_DUPLICATE), b"duplicate");
+                return None;
+            }
+            existing.close(CLOSE_DUPLICATE, b"duplicate");
+        }
+
+        let weak = Arc::downgrade(self);
+        let session = Session::spawn(self, conn, dialer, streams, move |ended| {
+            if let Some(shared) = weak.upgrade() {
+                shared.on_session_end(&ended);
+            }
+        });
+        sessions.insert(peer, session.clone());
+        drop(sessions);
+
+        tracing::info!(peer = %peer.short(), path = ?session.path(), "connected");
+        let addrs = session.remote_ip_addrs();
+        if let Err(e) = self.store.record_seen(&peer, crate::now_unix(), &addrs) {
+            tracing::warn!(error = %e, "failed to record peer addresses");
+        }
+        self.remember_addrs(&peer, &addrs);
+        if let Err(e) = self.store.update_info(&peer, &remote.device) {
+            tracing::warn!(error = %e, "failed to update peer info");
+        }
+        self.emit(NodeEvent::PeerInfoChanged { device: peer, info: remote.device });
+        self.emit(NodeEvent::PeerPowerChanged { device: peer, power: remote.power.effective() });
+        self.publish_online(&session);
+
+        // Bring the peer up to date with state it may have missed.
+        let battery = self.local.read().unwrap_or_else(|e| e.into_inner()).battery.clone();
+        if let Some(battery) = battery {
+            let s = session.clone();
+            tokio::spawn(async move {
+                if let Ok(env) = Envelope::new(types::EVENT_BATTERY, &battery) {
+                    let _ = s.send(env).await;
+                }
+            });
+        }
+        Some(session)
+    }
+
+    fn on_session_end(&self, ended: &Arc<Session>) {
+        let removed = {
+            let mut sessions = lock(&self.sessions);
+            match sessions.get(&ended.peer) {
+                Some(current) if Arc::ptr_eq(current, ended) => sessions.remove(&ended.peer).is_some(),
+                _ => false,
+            }
+        };
+        if removed && self.store.is_paired(&ended.peer).unwrap_or(false) {
+            tracing::info!(peer = %ended.peer.short(), "disconnected");
+            self.set_link(ended.peer, LinkState::Offline { last_seen: Some(crate::now_unix()) });
+        }
+    }
+
+    fn start_supervisor(self: &Arc<Self>, peer: DeviceId) {
+        let mut supervisors = lock(&self.supervisors);
+        if supervisors.contains_key(&peer) {
+            return;
+        }
+        let wake = Arc::new(Notify::new());
+        let cancel = self.cancel.child_token();
+        supervisors.insert(peer, Supervisor { wake: wake.clone(), cancel: cancel.clone() });
+        tokio::spawn(maintain(Arc::downgrade(self), peer, wake, cancel));
+    }
+
+    fn wake_supervisor(&self, peer: &DeviceId) {
+        if let Some(sup) = lock(&self.supervisors).get(peer) {
+            sup.wake.notify_one();
+        }
+    }
+
+    /// Dials a paired device and runs the handshake.
+    async fn dial(self: &Arc<Self>, peer: DeviceId) -> Result<Arc<Session>> {
+        let addr = EndpointAddr::new(crate::public_key(&peer)?);
+        let conn = tokio::time::timeout(DIAL_TIMEOUT, self.endpoint.connect(addr, ALPN_SESSION))
+            .await
+            .map_err(|_| Error::Timeout)?
+            .map_err(crate::error::net)?;
+        let hello = session::local_hello(self);
+        let (send, recv, remote) = session::handshake_dialer(&conn, &hello).await?;
+        self.register_session(conn, self.id, (send, recv), remote)
+            .or_else(|| self.session(&peer))
+            .ok_or(Error::Offline)
+    }
+
+    /// Sends a message to every connected device.
+    async fn broadcast(&self, env: Envelope) {
+        let sessions: Vec<_> = lock(&self.sessions).values().filter(|s| s.is_alive()).cloned().collect();
+        for session in sessions {
+            if let Err(e) = session.send(env.clone()).await {
+                tracing::debug!(peer = %session.peer.short(), error = %e, "broadcast failed");
+            }
+        }
+    }
+}
+
+/// Keeps one paired device connected: waits while a session is alive,
+/// otherwise dials with exponential backoff. Woken early by LAN discovery.
+async fn maintain(shared: Weak<Shared>, peer: DeviceId, wake: Arc<Notify>, cancel: CancellationToken) {
+    let mut backoff = BACKOFF_MIN;
+    loop {
+        let Some(node) = shared.upgrade() else { return };
+        if cancel.is_cancelled() {
+            return;
+        }
+        if let Some(session) = node.session(&peer) {
+            drop(node);
+            tokio::select! {
+                _ = session.cancel.cancelled() => {}
+                _ = cancel.cancelled() => return,
+            }
+            backoff = BACKOFF_MIN;
+            continue;
+        }
+        // When both devices come up together they'd dial each other at once and
+        // one connection would be dropped. The higher ID briefly defers so the
+        // lower one usually wins; it still dials in case the other can't reach it.
+        if node.id > peer && backoff == BACKOFF_MIN {
+            drop(node);
+            tokio::select! {
+                _ = tokio::time::sleep(DEFER_DIAL) => {}
+                _ = cancel.cancelled() => return,
+            }
+            let Some(again) = shared.upgrade() else { return };
+            if again.session(&peer).is_some() {
+                continue;
+            }
+            let result = again.dial(peer).await;
+            drop(again);
+            if handle_dial_result(result, peer, &mut backoff) {
+                continue;
+            }
+        } else {
+            let result = node.dial(peer).await;
+            drop(node);
+            if handle_dial_result(result, peer, &mut backoff) {
+                continue;
+            }
+        }
+        // Up to 20% jitter so many devices don't retry in lockstep.
+        let jitter = backoff.mul_f64(rand::random::<f64>() * 0.2);
+        tokio::select! {
+            _ = tokio::time::sleep(backoff + jitter) => {}
+            _ = wake.notified() => {}
+            _ = cancel.cancelled() => return,
+        }
+        backoff = (backoff * 2).min(BACKOFF_MAX);
+    }
+}
+
+/// Returns true if the dial succeeded (and resets the backoff).
+fn handle_dial_result(result: Result<Arc<Session>>, peer: DeviceId, backoff: &mut Duration) -> bool {
+    match result {
+        Ok(_) => {
+            *backoff = BACKOFF_MIN;
+            true
+        }
+        Err(e) => {
+            tracing::debug!(peer = %peer.short(), error = %e, retry_in = ?backoff, "dial failed");
+            false
+        }
+    }
+}
+
+/// Accepts `nectarlink/0` sessions from paired devices.
+#[derive(Debug, Clone)]
+struct SessionProtocol(Weak<Shared>);
+
+impl ProtocolHandler for SessionProtocol {
+    async fn accept(&self, conn: Connection) -> Result<(), AcceptError> {
+        let Some(shared) = self.0.upgrade() else { return Err(AcceptError::from_err(Error::Offline)) };
+        let peer = crate::device_id(&conn.remote_id());
+        if !shared.store.is_paired(&peer).unwrap_or(false) {
+            tracing::debug!(peer = %peer.short(), "refusing session from unpaired device");
+            conn.close(VarInt::from_u32(ErrorCode::Unpaired.close_code()), b"unpaired");
+            return Err(AcceptError::from_err(Error::NotPaired));
+        }
+        let hello = session::local_hello(&shared);
+        match session::handshake_listener(&conn, &hello).await {
+            Ok((send, recv, remote)) => {
+                shared.register_session(conn, peer, (send, recv), remote);
+                Ok(())
+            }
+            Err(e) => {
+                tracing::debug!(peer = %peer.short(), error = %e, "incoming handshake failed");
+                Err(AcceptError::from_err(e))
+            }
+        }
+    }
+}
+
+/// Accepts `nectarlink-pair/0` connections while pairing.
+#[derive(Debug, Clone)]
+struct PairProtocol(Weak<Shared>);
+
+impl ProtocolHandler for PairProtocol {
+    async fn accept(&self, conn: Connection) -> Result<(), AcceptError> {
+        let Some(shared) = self.0.upgrade() else { return Err(AcceptError::from_err(Error::Offline)) };
+        pairing::accept(shared, conn).await;
+        Ok(())
+    }
+}
+
+/// The Nectarlink engine. One per app.
+///
+/// Commands are async methods; everything that changes is reported through
+/// [`Node::events`]. Cheap to clone.
+#[derive(Clone)]
+pub struct Node {
+    shared: Arc<Shared>,
+    router: Arc<Router>,
+}
+
+impl std::fmt::Debug for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Node").field("id", &self.shared.id).finish_non_exhaustive()
+    }
+}
+
+impl Node {
+    /// Loads or creates the device identity and trust store, starts
+    /// networking, and begins reconnecting to paired devices.
+    pub async fn start(config: NodeConfig, platform: Arc<dyn Platform>) -> Result<Node> {
+        std::fs::create_dir_all(&config.data_dir)?;
+        let protector = config.key_protector.clone().unwrap_or_else(identity::default_protector);
+        let secret = identity::load_or_create(&config.data_dir, protector.as_ref())?;
+        let store = Store::open(&config.data_dir)?;
+
+        let mut builder = Endpoint::builder(presets::Minimal)
+            .secret_key(secret)
+            .alpns(vec![ALPN_SESSION.to_vec(), ALPN_PAIR.to_vec()]);
+        builder = if config.away_mode {
+            builder
+                .relay_mode(RelayMode::Default)
+                .address_lookup(PkarrPublisher::n0_dns())
+                .address_lookup(PkarrResolver::n0_dns())
+                .address_lookup(DnsAddressLookup::n0_dns())
+        } else {
+            // LAN only: no relays, nothing published outside the network.
+            builder.relay_mode(RelayMode::Disabled)
+        };
+        if config.port != 0 {
+            builder = builder
+                .clear_ip_transports()
+                .bind_addr(SocketAddr::from(([0, 0, 0, 0], config.port)))
+                .map_err(crate::error::net)?
+                .bind_addr(SocketAddr::from(([0u16; 8], config.port)))
+                .map_err(crate::error::net)?;
+        }
+        let endpoint = builder.bind().await.map_err(crate::error::net)?;
+        let id = crate::device_id(&endpoint.id());
+
+        let lookups = endpoint.address_lookup().map_err(crate::error::net)?;
+        let memory = MemoryLookup::new();
+        lookups.add(memory.clone());
+
+        let (events, _) = broadcast::channel(EVENT_CAPACITY);
+        let shared = Arc::new(Shared {
+            id,
+            endpoint: endpoint.clone(),
+            store,
+            platform,
+            local: RwLock::new(LocalState {
+                app_version: config.app_version.clone(),
+                device: config.device.clone(),
+                power: config.power,
+                extra_capabilities: Vec::new(),
+                battery: None,
+            }),
+            pairing: PairingState::default(),
+            cancel: CancellationToken::new(),
+            events,
+            sessions: Mutex::new(HashMap::new()),
+            links: Mutex::new(HashMap::new()),
+            supervisors: Mutex::new(HashMap::new()),
+            discovered: Mutex::new(HashMap::new()),
+            memory,
+        });
+
+        if config.lan_discovery {
+            start_lan_discovery(&shared, &config.device.name)?;
+        }
+
+        let router = Router::builder(endpoint)
+            .accept(ALPN_SESSION, SessionProtocol(Arc::downgrade(&shared)))
+            .accept(ALPN_PAIR, PairProtocol(Arc::downgrade(&shared)))
+            .spawn();
+
+        for peer in shared.store.list_peers()? {
+            shared.remember_addrs(&peer.id, &peer.last_addrs);
+            shared.start_supervisor(peer.id);
+        }
+        tracing::info!(device = %id.short(), lan = config.lan_discovery, away = config.away_mode, "node started");
+        Ok(Node { shared, router: Arc::new(router) })
+    }
+
+    /// Stops all sessions and networking.
+    pub async fn shutdown(&self) {
+        self.shared.cancel.cancel();
+        let sessions: Vec<_> = lock(&self.shared.sessions).drain().map(|(_, s)| s).collect();
+        for session in sessions {
+            session.close(CLOSE_NORMAL, b"shutdown");
+        }
+        if let Err(e) = self.router.shutdown().await {
+            tracing::warn!(error = %e, "router shutdown failed");
+        }
+        self.shared.endpoint.close().await;
+    }
+
+    pub fn device_id(&self) -> DeviceId {
+        self.shared.id
+    }
+
+    /// Subscribes to node events. Each subscriber gets its own stream.
+    pub fn events(&self) -> broadcast::Receiver<NodeEvent> {
+        self.shared.events.subscribe()
+    }
+
+    /// This device's direct addresses (for diagnostics and tests).
+    pub async fn direct_addrs(&self) -> Vec<SocketAddr> {
+        self.shared.direct_addrs().await
+    }
+
+    // ---- Pairing ----
+
+    /// Enters pairing mode and returns the link to show as a QR code.
+    pub async fn pairing_start_qr(&self) -> Result<PairingUri> {
+        pairing::start_host(&self.shared).await
+    }
+
+    /// Pairs with the device whose pairing link was scanned.
+    pub async fn pairing_join(&self, uri: &str) -> Result<()> {
+        let uri = PairingUri::parse(uri)?;
+        if uri.id == self.shared.id {
+            return Err(Error::Protocol("cannot pair a device with itself".into()));
+        }
+        pairing::join_qr(&self.shared, &uri).await
+    }
+
+    /// Starts nearby pairing with a discovered device. The other device must
+    /// be in pairing mode (showing its pairing screen). The 6-digit code
+    /// arrives as [`PairingEvent::SasCode`] on both devices.
+    pub async fn pairing_start_nearby(&self, peer: DeviceId) -> Result<()> {
+        pairing::start_nearby(&self.shared, peer).await
+    }
+
+    /// Answers the 6-digit code comparison shown via
+    /// [`PairingEvent::SasCode`].
+    pub fn pairing_confirm(&self, codes_match: bool) -> Result<()> {
+        self.shared.pairing.decide(codes_match)
+    }
+
+    /// Leaves pairing mode and abandons any code comparison.
+    pub fn pairing_cancel(&self) {
+        pairing::cancel(&self.shared);
+    }
+
+    /// Whether this device is currently showing a pairing code.
+    pub fn is_pairing(&self) -> bool {
+        self.shared.pairing.is_hosting()
+    }
+
+    /// Adds addresses where a device can be reached. Used for "connect by IP"
+    /// when local discovery is blocked (some routers and VPNs filter mDNS).
+    pub fn add_known_addrs(&self, peer: DeviceId, addrs: &[SocketAddr]) {
+        self.shared.remember_addrs(&peer, addrs);
+        self.shared.wake_supervisor(&peer);
+    }
+
+    /// Devices discovered on the local network that aren't paired yet.
+    pub fn discovered_devices(&self) -> Vec<DiscoveredDevice> {
+        lock(&self.shared.discovered).values().cloned().collect()
+    }
+
+    // ---- Paired devices ----
+
+    pub fn paired_devices(&self) -> Result<Vec<PairedDevice>> {
+        Ok(self
+            .shared
+            .store
+            .list_peers()?
+            .into_iter()
+            .map(|p| PairedDevice {
+                link: self.shared.link(&p.id, p.last_seen),
+                id: p.id,
+                info: p.info,
+                paired_at: p.paired_at,
+            })
+            .collect())
+    }
+
+    /// Unpairs a device, telling it if it's connected.
+    pub async fn unpair(&self, peer: DeviceId) -> Result<()> {
+        if !self.shared.store.is_paired(&peer)? {
+            return Err(Error::NotPaired);
+        }
+        if let Some(session) = self.shared.session(&peer) {
+            let _ = session.send(Envelope::empty(types::PAIR_REVOKE)).await;
+            // Let the revoke reach the peer before the connection closes.
+            tokio::time::sleep(Duration::from_millis(150)).await;
+        }
+        self.shared.forget_peer(&peer).await
+    }
+
+    /// Asks a device to start or stop ringing.
+    pub async fn ring(&self, peer: DeviceId, on: bool) -> Result<()> {
+        let reply = self.request(peer, Envelope::new(types::DEVICE_RING, &Ring { on })?).await?;
+        reply.expect(types::OK)?;
+        Ok(())
+    }
+
+    /// Sends a request to a connected device. If the connection is replaced
+    /// mid-request (e.g. a duplicate connection was resolved), retries once
+    /// on the new one, so requests must be idempotent.
+    async fn request(&self, peer: DeviceId, env: Envelope) -> Result<Envelope> {
+        let first = self.connected(&peer)?;
+        match first.request(env.clone(), REQUEST_TIMEOUT).await {
+            Err(Error::Offline) => match self.shared.session(&peer) {
+                Some(next) if !Arc::ptr_eq(&next, &first) => next.request(env, REQUEST_TIMEOUT).await,
+                _ => Err(Error::Offline),
+            },
+            other => other,
+        }
+    }
+
+    fn connected(&self, peer: &DeviceId) -> Result<Arc<Session>> {
+        if !self.shared.store.is_paired(peer)? {
+            return Err(Error::NotPaired);
+        }
+        self.shared.session(peer).ok_or(Error::Offline)
+    }
+
+    // ---- Local state reported by the app ----
+
+    /// Reports this device's battery; forwarded to connected devices.
+    pub async fn update_battery(&self, battery: Battery) {
+        self.shared.local.write().unwrap_or_else(|e| e.into_inner()).battery = Some(battery.clone());
+        if let Ok(env) = Envelope::new(types::EVENT_BATTERY, &battery) {
+            self.shared.broadcast(env).await;
+        }
+    }
+
+    /// Updates this device's description (e.g. after a rename).
+    pub async fn update_device_info(&self, device: DeviceInfo) {
+        self.shared.local.write().unwrap_or_else(|e| e.into_inner()).device = device.clone();
+        let update = HelloUpdate { device: Some(device), ..Default::default() };
+        if let Ok(env) = Envelope::new(types::HELLO_UPDATE, &update) {
+            self.shared.broadcast(env).await;
+        }
+    }
+
+    /// Updates this device's power level and extra capabilities.
+    pub async fn update_power(&self, power: PowerLevel, extra_capabilities: Vec<String>) {
+        let caps = {
+            let mut local = self.shared.local.write().unwrap_or_else(|e| e.into_inner());
+            local.power = power;
+            local.extra_capabilities = extra_capabilities;
+            local.capabilities()
+        };
+        let update = HelloUpdate { power: Some(power), caps: Some(caps), device: None };
+        if let Ok(env) = Envelope::new(types::HELLO_UPDATE, &update) {
+            self.shared.broadcast(env).await;
+        }
+    }
+}
+
+/// Announces this device on the LAN and watches for others.
+fn start_lan_discovery(shared: &Arc<Shared>, name: &str) -> Result<()> {
+    let mdns = MdnsAddressLookup::builder()
+        .service_name("nectarlink")
+        .build(shared.endpoint.id())
+        .map_err(crate::error::net)?;
+    shared.endpoint.address_lookup().map_err(crate::error::net)?.add(mdns.clone());
+    // Announce our name so nearby pairing can show it; truncate safely.
+    let mut announced = name.to_owned();
+    while announced.len() > UserData::MAX_LENGTH {
+        announced.pop();
+    }
+    if let Ok(data) = UserData::try_from(announced) {
+        shared.endpoint.set_user_data_for_address_lookup(Some(data));
+    }
+
+    let weak = Arc::downgrade(shared);
+    let cancel = shared.cancel.child_token();
+    tokio::spawn(async move {
+        use n0_future::StreamExt;
+        let mut events = mdns.subscribe().await;
+        loop {
+            let event = tokio::select! {
+                _ = cancel.cancelled() => return,
+                event = events.next() => match event { Some(e) => e, None => return },
+            };
+            let Some(shared) = weak.upgrade() else { return };
+            match event {
+                DiscoveryEvent::Discovered { endpoint_info, .. } => {
+                    let id = crate::device_id(&endpoint_info.endpoint_id);
+                    if shared.store.is_paired(&id).unwrap_or(false) {
+                        shared.wake_supervisor(&id);
+                        continue;
+                    }
+                    let device =
+                        DiscoveredDevice { id, name: endpoint_info.user_data().map(|d| d.to_string()) };
+                    let is_new =
+                        lock(&shared.discovered).insert(id, device.clone()).as_ref() != Some(&device);
+                    if is_new {
+                        shared.emit(NodeEvent::Discovered(device));
+                    }
+                }
+                DiscoveryEvent::Expired { endpoint_id } => {
+                    let id = crate::device_id(&endpoint_id);
+                    if lock(&shared.discovered).remove(&id).is_some() {
+                        shared.emit(NodeEvent::DiscoveryExpired(id));
+                    }
+                }
+                _ => {}
+            }
+        }
+    });
+    Ok(())
+}

@@ -10,6 +10,23 @@ repository.workspace = true
 
 [dependencies]
 nectarlink-protocol.workspace = true
+iroh.workspace = true
+iroh-mdns-address-lookup.workspace = true
+n0-future.workspace = true
+rand.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
+
+[dev-dependencies]
+tempfile.workspace = true
+tracing-subscriber.workspace = true
 
 [lints]
 workspace = true

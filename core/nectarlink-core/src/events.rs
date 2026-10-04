@@ -1,0 +1,84 @@
+// SPDX-License-Identifier: MPL-2.0
+//! Events the core pushes to the UI. UIs render from these; they never poll.
+
+use nectarlink_protocol::{
+    DeviceId,
+    messages::{Battery, DeviceInfo, PowerLevel},
+};
+
+/// How a session is currently carried.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConnectionPath {
+    /// A direct connection on the local network.
+    Lan,
+    /// Through a relay server (away mode).
+    Relay,
+}
+
+/// Connection state of a paired device.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LinkState {
+    Offline { last_seen: Option<i64> },
+    Connecting,
+    Online { path: ConnectionPath, rtt_ms: u32 },
+}
+
+/// A device this device is paired with.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PairedDevice {
+    pub id: DeviceId,
+    pub info: DeviceInfo,
+    /// Unix seconds.
+    pub paired_at: i64,
+    pub link: LinkState,
+}
+
+/// A device found on the local network that could be paired with.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiscoveredDevice {
+    pub id: DeviceId,
+    /// The name it announces, if any.
+    pub name: Option<String>,
+}
+
+/// Why pairing failed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PairingFailure {
+    /// The pairing code, proof or confirmation didn't match.
+    Rejected,
+    /// The user (on either device) declined.
+    Declined,
+    /// Pairing mode expired before anyone connected.
+    Expired,
+    /// The other device couldn't be reached.
+    Unreachable,
+    /// Anything else; the string is for logs.
+    Other(String),
+}
+
+/// Progress of a pairing ceremony.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PairingEvent {
+    /// Show this 6-digit code and ask the user to confirm it matches.
+    SasCode {
+        peer: DeviceId,
+        code: String,
+    },
+    Paired(PairedDevice),
+    Failed(PairingFailure),
+}
+
+/// Everything the UI needs to know about.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NodeEvent {
+    DeviceAdded(PairedDevice),
+    DeviceRemoved(DeviceId),
+    LinkChanged { device: DeviceId, link: LinkState },
+    PeerInfoChanged { device: DeviceId, info: DeviceInfo },
+    PeerPowerChanged { device: DeviceId, power: PowerLevel },
+    Battery { device: DeviceId, battery: Battery },
+    Ring { device: DeviceId, on: bool },
+    Discovered(DiscoveredDevice),
+    DiscoveryExpired(DeviceId),
+    Pairing(PairingEvent),
+}
