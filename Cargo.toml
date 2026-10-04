@@ -21,10 +21,13 @@ anyhow = "1"
 ciborium = "0.2"
 clap = { version = "4.6", features = ["derive"] }
 data-encoding = "2.11"
+dirs = "7"
+hostname = "0.4"
 hmac = "0.13"
 iroh = "1.3"
 iroh-mdns-address-lookup = "0.6"
 n0-future = "0.3"
+qrcode = { version = "0.14", default-features = false }
 rand = "0.10"
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }

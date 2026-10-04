@@ -24,6 +24,7 @@ pub mod types {
     pub const PAIR_NONCE: &str = "pair.nonce";
     pub const PAIR_REVEAL: &str = "pair.reveal";
     pub const PAIR_CONFIRM: &str = "pair.confirm";
+    pub const PAIR_DONE: &str = "pair.done";
     pub const PAIR_REVOKE: &str = "pair.revoke";
 }
 
