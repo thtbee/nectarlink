@@ -25,6 +25,8 @@ Open the HTML files in a browser and switch themes and Material You seeds at the
 
 ## Principles
 
+- No traffic-light green: success, done and connected states use the theme's own color
+  (Material You primary in Bloom, ink/chalk in Graphite).
 - Calm first: neutral surfaces, color only where it carries meaning (state, primary action, the
   connected device).
 - No sloppy decoration: every texture, shadow and annotation must survive a 9-hour workday.

@@ -17,7 +17,7 @@
 | Windows app | **Qt Quick (QML) for the UI + Rust for everything else** (bridged by cxx-qt), `windows-rs` for OS integration, mirrored video drawn inside the UI with no copies. **No WebView, no web stack** ✅ | Visual ceiling equal to web (real blur, shaders, Caelestia-level motion) at a fraction of the RAM, best fit for video and always-on overlays. Gated by a Phase 0 "Qt + Rust proof" (§5.1) |
 | Android app | **Kotlin + Jetpack Compose + Material 3 Expressive**, core via **UniFFI** | Deep OS integration needs native Kotlin, and Compose/M3 Expressive is the best-looking, smoothest Android UI stack |
 | Mirroring | **Two engines:** *Elevated* (scrcpy-server, Apache-2.0) and *Standard* (MediaProjection). PC side decodes in hardware with Media Foundation and renders with D3D11 | Best quality and features when privileged access exists, and it still works when it doesn't |
-| Superpowers without root | **Power Levels** (Basic → Assist → Elevated → Root). Elevated mode runs Nectarlink's *own* code as the `shell` user, so there's **no extra app to install**. Several setup paths, and the UI greys out features by level | Unlocks background clipboard, sensitive notifications, consent-free mirroring, app windows and toggles on **any** Android phone |
+| Superpowers without root | **Power Levels** (Basic → Assist → Elevated). A Root level is parked for later. Elevated mode runs Nectarlink's *own* code as the `shell` user, so there's **no extra app to install**. Several setup paths, and the UI greys out features by level | Unlocks background clipboard, sensitive notifications, consent-free mirroring, app windows and toggles on **any** Android phone |
 | Accounts / cloud | **None.** Local-first. Optional "away from home" mode via relays (self-hostable) | Privacy is the #1 reason people leave Phone Link |
 | Platforms | **Windows 11 only** (x64 + native ARM64). Android 8+. **macOS desktop = future scope** (Qt Quick, the Rust core and the `Platform`/`VideoSink` layers make it a port, not a rewrite). iPhone = later | Win11-only frees us to use Mica, the virtual camera API and the Win11 context menu |
 | Distribution | **GitHub-first**: GitHub Releases + winget (Windows), GitHub Releases + Obtainium + later IzzyOnDroid (Android). No Play account for now | Free, fast to ship, no Play policy limits on SMS/Accessibility/files |
@@ -93,7 +93,7 @@ What we deliberately do differently: discovery and connectivity (their #1 weakne
 3. **Local-first and private.** No account, no telemetry by default, E2E encryption always, open protocol.
 4. **One app, not five.** Mirroring, files, clipboard, notifications, messages, calls and webcam live in one place, with one pairing.
 5. **Beautiful, fast, light.** Native GPU rendering, 60–120 fps, spring physics, fast start, and a tray app that stays light all day.
-6. **Graceful power tiers.** Everything works with standard permissions. Elevated adds superpowers, and Root adds a little more. The UI always shows which tier you're on and what the next tier unlocks.
+6. **Graceful power tiers.** Everything works with standard permissions. Elevated adds superpowers. The UI always shows which tier you're on and what the next tier unlocks.
 7. **Keyboard-first on PC, thumb-first on phone.**
 
 ---
@@ -101,7 +101,7 @@ What we deliberately do differently: discovery and connectivity (their #1 weakne
 ## 3. Feature set
 
 Tiers: **P0** = needed for the first public release, **P1** = 1.0, **P2** = after 1.0.
-Power: 🟢 Basic · 🔵 Assist · 🟣 Elevated · 🔴 Root (see §4.6).
+Power: 🟢 Basic · 🔵 Assist · 🟣 Elevated (see §4.6).
 
 ### 3.1 Connection & setup
 | Feature | Tier |
@@ -234,6 +234,7 @@ Power: 🟢 Basic · 🔵 Assist · 🟣 Elevated · 🔴 Root (see §4.6).
 ### 3.13 Rejected for now (parked, can be revived later)
 | Idea | Why parked |
 |---|---|
+| **Root power level** (Magisk / KernelSU / APatch: Elevated features that survive reboots without re-arming) | Removed by the maintainer to keep setup simple; can be added later as an extra Elevated setup path |
 | **Smart notification routing** (phone silent while you're active on PC, buzz when idle) | Not prioritized by the maintainer. Depends on presence heuristics that are easy to get wrong |
 | **Desk Mode** (phone goes quiet + ambient dock screen when charging at desk, PC locks when you leave) | Not prioritized. Overlaps partly with Proximity lock |
 | **Instant Hotspot** (one click: phone hotspot on + PC joins) | Not prioritized. Needs Elevated plus per-OEM hotspot quirks |
@@ -339,14 +340,12 @@ Everything ships inside the single Nectarlink APK. "Elevated" is **not a separat
 | **🟢 Basic** | Install + grant normal permissions | ~1 min | Forever | Notifications (non-sensitive), SMS/MMS, calls, contacts, files, photos, media both ways, PC→phone clipboard, webcam, Continuity Camera, voice recorder, voice typing, touchpad/air mouse/Deck, standard mirroring (consent prompt each session, view-only) |
 | **🔵 Assist** | Turn on Nectarlink's Accessibility service (one toggle, plus the "restricted settings" step for sideloaded installs) | ~1 min | Forever | Control the phone during standard mirroring, global actions (back/home/recents/lock) |
 | **🟣 Elevated** | Any one of the setup paths below | 1–3 min | Until phone reboot (auto re-arms) | **Auto** phone→PC clipboard, OTP/sensitive notifications, prompt-free mirroring with full control, phone audio to PC, **app windows**, type into the phone with the PC keyboard, Wi-Fi/BT/DND toggles from PC, install APKs from PC, self-whitelist from battery killers |
-| **🔴 Root** | Magisk / KernelSU / APatch detected | Instant | Forever | Elevated features survive reboots with no re-arm, plus deeper system toggles |
 
-**Setup paths to Elevated** (Nectarlink recommends the best one by detecting Android version, USB state, root and Shizuku):
+**Setup paths to Elevated** (Nectarlink recommends the best one by detecting Android version, USB state and Shizuku):
 1. **USB cable:** guided "enable USB debugging" (animated, per-OEM steps), then plug in. The PC app has a **built-in ADB client**, so there's nothing else to install. This also turns on the USB connection path.
 2. **Wireless, using the PC's QR** (Android 11+): the PC shows an ADB-pairing QR, and the phone scans it in *Developer options → Wireless debugging → Pair with QR code*. No cable.
 3. **Phone only** (Android 11+): Nectarlink opens Wireless debugging, the user types the pairing code into a Nectarlink notification, and Nectarlink pairs with itself. No PC needed.
 4. **Shizuku / Sui:** one tap if already installed. Never required.
-5. **Root:** auto-detected.
 
 **Re-arming after a reboot (keeping it painless):**
 - If the PC is paired for wireless debugging, the PC silently re-arms the phone the next time both are on the same network.
@@ -362,7 +361,7 @@ Everything ships inside the single Nectarlink APK. "Elevated" is **not a separat
   - **Locked:** greyed, with a chip showing the level and effort, e.g. "Elevated · ~2 min"
   - **Unsupported:** explained, e.g. "Needs Android 11+"
 - Tapping anything locked opens *that exact* setup sheet, then drops you back into the feature, now working.
-- **Onboarding: "Choose your power"** (after pairing). Cards for Basic / Elevated / Root, each showing what it unlocks, what you need, how long it takes, how to undo it, and a plain-language "what this access means" explainer. A smart default is pre-selected, and "Decide later" is always available.
+- **Onboarding: "Choose your power"** (after pairing). Cards for Basic / Assist / Elevated, each showing what it unlocks, what you need, how long it takes, how to undo it, and a plain-language "what this access means" explainer. A smart default is pre-selected, and "Decide later" is always available.
 - **Settings → Power:** current level, how it was obtained, re-arm status, and a one-tap **Revoke**.
 - **Settings → Connections** (separate axis): Wi-Fi/LAN, USB, Away (relay), Bluetooth. Each shows live status, or a greyed state with "Set up".
 - **PC add-ons** use the same pattern on Windows: Virtual camera, Explorer integration, Bluetooth calling, Firewall rule, Unlock with phone. Each is opt-in with an explanation, and asks for admin only when it truly needs it.
@@ -523,7 +522,7 @@ Build Home, a notification card, the Deck grid, one hero transition and a live m
 **Feel:** calm, premium, alive. Think "Apple Continuity polish with Material You warmth". It should never look like a settings dump.
 
 **Shared language across both apps**
-- Same iconography, the same names for features, and the same power-level badges (🟢🔵🟣🔴 mapped to a refined palette).
+- Same iconography, the same names for features, and the same power-level badges (mapped to the theme's own palette, no traffic-light colors).
 - **Dynamic color:** default warm honey/amber accent (on brand for Nectarlink). Once paired, both apps can adopt the phone's Material You palette.
 - Motion: spring-based (no linear easing), choreographed transitions (a notification card grows into the conversation view), honoring reduced motion.
 
@@ -592,7 +591,7 @@ Each phase ends with a usable, releasable product. Phase sizes are relative; act
 - **Exit:** a KDE Connect / Phone Link-basics user can switch fully. Reliability green for 7 days across the tester group's phones (Pixel, Samsung, Xiaomi, OnePlus at minimum).
 
 ### Phase 2: Superpowers (beta, v0.4–0.6)
-- **Power Levels** with all setup paths (USB, PC QR, phone-only self-pairing, Shizuku, root) + capability-driven greyed UI + re-arm → auto clipboard, OTP notifications.
+- **Power Levels** with all setup paths (USB, PC QR, phone-only self-pairing, Shizuku) + capability-driven greyed UI + re-arm → auto clipboard, OTP notifications.
 - **Mirroring** (Standard + Elevated engines), audio, keyboard/mouse.
 - **App windows** (virtual displays, taskbar icons).
 - SMS/MMS + contacts. Calls (alerts, control, log; HFP audio if the spike passed).

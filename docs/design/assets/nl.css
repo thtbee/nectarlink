@@ -22,9 +22,9 @@ svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8;stroke
   --rail-bg:var(--surface-low);--indicator:var(--secondary-container);--on-indicator:var(--on-secondary-container);
   --win-bg:var(--surface);--win-border:var(--outline-variant);
   --win-shadow:0 1px 2px rgba(0,0,0,.06),0 24px 60px -20px rgba(0,0,0,.18);
-  --texture:none;--grid:none;--ok:#2E7D4F;--warn:#9A6700;
+  --texture:none;--grid:none;--ok:var(--primary);--warn:#9A6700;
 }
-[data-theme="bloom-dark"]{--ok:#7BD8A0;--warn:#F2C14E}
+[data-theme="bloom-dark"]{--warn:#F2C14E}
 [data-theme^="graphite"]{
   --display:var(--serif);--display-weight:400;--display-track:-.01em;
   --label:var(--mono);--label-case:uppercase;--label-track:.12em;--label-size:10.5px;--label-weight:400;
@@ -39,7 +39,7 @@ svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8;stroke
   --primary:#1A1918;--on-primary:#F5F2EB;--primary-container:#E8E3D7;--on-primary-container:#1A1918;
   --secondary-container:#E8E3D7;--on-secondary-container:#1A1918;
   --card-border:#D5CFC2;--hero-ink:#1A1918;--btn-bg:#1A1918;--btn-ink:#F5F2EB;--btn-shadow:3px 3px 0 #D5CFC2;
-  --indicator:#1A1918;--on-indicator:#F5F2EB;--win-bg:#F5F2EB;--win-border:#CFC8BA;--ok:#3F6B4A;--warn:#8A6A1F;
+  --indicator:#1A1918;--on-indicator:#F5F2EB;--win-bg:#F5F2EB;--win-border:#CFC8BA;--ok:#1A1918;--warn:#8A6A1F;
   --texture:url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
   --grid:linear-gradient(rgba(74,71,67,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(74,71,67,.06) 1px,transparent 1px);
 }
@@ -50,7 +50,7 @@ svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8;stroke
   --primary:#E8EAED;--on-primary:#0D0D0E;--primary-container:#1A1A1D;--on-primary-container:#E8EAED;
   --secondary-container:#1A1A1D;--on-secondary-container:#E8EAED;
   --card-border:#26272A;--hero-ink:#E8EAED;--btn-bg:#E8EAED;--btn-ink:#0D0D0E;--btn-shadow:3px 3px 0 #26272A;
-  --indicator:#E8EAED;--on-indicator:#0D0D0E;--win-bg:#0D0D0E;--win-border:#232427;--ok:#8FC7A0;--warn:#E2C47A;
+  --indicator:#E8EAED;--on-indicator:#0D0D0E;--win-bg:#0D0D0E;--win-border:#232427;--ok:#E8EAED;--warn:#E2C47A;
   --texture:url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.12'/%3E%3C/svg%3E");
   --grid:linear-gradient(rgba(200,208,216,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(200,208,216,.035) 1px,transparent 1px);
 }
@@ -100,13 +100,13 @@ section.screen-set{max-width:1280px;margin:0 auto;padding:56px 28px 8px}
 .status{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--on-surface-variant)}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 22%,transparent)}
 [data-theme^="graphite"] .status{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
-.fill{flex:1}
+.grow{flex:1}
 .body{flex:1;min-height:0;display:flex}
 .pane{padding:18px 22px;overflow:hidden}
 
 /* ---------- components ---------- */
 .card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--r-lg);padding:16px}
-.btn{height:40px;padding:0 18px;border-radius:var(--r-pill);font:600 13.5px var(--sans);display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;white-space:nowrap}
+.btn{height:40px;padding:0 18px;border-radius:var(--r-pill);font:600 13.5px var(--sans);display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;white-space:nowrap;flex-shrink:0}
 .btn.fill{background:var(--btn-bg);color:var(--btn-ink);box-shadow:var(--btn-shadow)}
 .btn.tonal{background:var(--secondary-container);color:var(--on-secondary-container)}
 .btn.out{background:transparent;color:var(--on-surface);border:1px solid var(--outline)}

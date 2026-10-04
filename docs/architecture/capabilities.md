@@ -37,7 +37,7 @@ pub struct FeatureDef {
 pub enum Requirement {
     PeerCap(&'static str),             // peer offers a capability ID
     LocalCap(&'static str),            // this device offers a capability ID
-    PowerAtLeast(PowerLevel),          // Basic < Assist < Elevated < Root
+    PowerAtLeast(PowerLevel),          // Basic < Assist < Elevated
     AndroidApiAtLeast(u32),
     WindowsBuildAtLeast(u32),
     Path(ConnectionPath),              // e.g. Usb, Relay
