@@ -1,0 +1,19 @@
+[package]
+name = "nectarlink-cli"
+description = "Nectarlink command-line client for development and scripting"
+license = "GPL-3.0-or-later"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "nectarlink"
+path = "src/main.rs"
+
+[dependencies]
+nectarlink-core.workspace = true
+
+[lints]
+workspace = true
