@@ -1,0 +1,32 @@
+Nectarlink is distributed under several licenses, depending on the part of the
+project. The full license texts are in the LICENSES/ directory.
+
+  Part of the project                          License
+  -------------------------------------------  ----------------------------------
+  Desktop app   (desktop/)                     GPL-3.0-or-later, with the
+  Android app   (android/)                     additional permission in
+  CLI           (core/nectarlink-cli/)         LICENSES/APP-STORE-EXCEPTION.md
+
+  Core libraries (core/, except the CLI):      MPL-2.0
+    nectarlink-core, nectarlink-protocol,
+    nectarlink-adb, nectarlink-localsend,
+    nectarlink-ffi
+
+  Protocol specification and documentation     CC-BY-4.0
+  (docs/)
+
+  Anything not listed above                    GPL-3.0-or-later, with the
+                                               additional permission in
+                                               LICENSES/APP-STORE-EXCEPTION.md
+
+Individual source files may state their license with an SPDX header, for
+example:
+
+  // SPDX-License-Identifier: MPL-2.0
+
+When a file's header and this table disagree, the file's header applies.
+
+The Nectarlink name and logo are not licensed under any of the licenses above.
+See TRADEMARKS.md.
+
+Copyright (C) 2026 The Nectarlink contributors.

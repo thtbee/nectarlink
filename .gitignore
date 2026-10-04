@@ -1,0 +1,58 @@
+# ---- Secrets: never commit these ----
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+keystore.properties
+signing.properties
+.env
+.env.*
+!.env.example
+
+# ---- Rust ----
+/target/
+**/target/
+**/*.rs.bk
+
+# ---- Qt / C++ build output ----
+build/
+build-*/
+*.qmlc
+*.jsc
+.qmlls.ini
+CMakeLists.txt.user*
+*.pro.user*
+compile_commands.json
+
+# ---- Android / Gradle ----
+.gradle/
+**/build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+android/**/jniLibs/
+
+# ---- IDEs and editors ----
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+
+# ---- OS clutter ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Logs and tool output ----
+*.log
+aqtinstall.log

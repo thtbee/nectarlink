@@ -1,0 +1,30 @@
+# Normalize line endings: LF in the repo, native checkout where it matters.
+* text=auto eol=lf
+
+# Windows scripts need CRLF
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binary files
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.icns binary
+*.ttf  binary
+*.otf  binary
+*.woff binary
+*.woff2 binary
+*.mp3  binary
+*.mp4  binary
+*.ogg  binary
+*.opus binary
+*.zip  binary
+*.7z   binary
+*.jar  binary
+*.so   binary
+*.dll  binary
+*.exe  binary
