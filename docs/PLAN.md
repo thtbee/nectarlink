@@ -540,7 +540,7 @@ Build Home, a notification card, the Deck grid, one hero transition and a live m
 
 **Setup target (< 60 s):** install PC app → it shows a QR → install phone app → scan → checklist → done. No firewall dialogs (the installer handles it) and no ADB knowledge needed.
 
-Phase 0 produces the design system doc + 2–3 visual directions + hi-fi mockups of Home, Onboarding, Choose-your-power, Messages, Mirror window, Island and Deck, before any UI code.
+Themes are decided (Bloom default + Graphite; see §10.3). Phase 0 produces the design tokens + hi-fi mockups of Home, Onboarding, Choose-your-power, Messages, Mirror window, Island and Deck, before any UI code.
 
 ---
 
@@ -656,8 +656,8 @@ Each phase ends with a usable, releasable product. Phase sizes are relative; act
 | Name + logo | **Trademark policy** (like Firefox/Signal) | Forks are welcome but must rebrand |
 | Contributions | **DCO** sign-off (no CLA) | Contributor-friendly, with a clear provenance trail |
 
-### 10.3 Design direction (deferred to Phase 0)
-We'll explore 2–3 visual directions before any UI code.
+### 10.3 Design direction ✅
+**Bloom** (default; refined Material You, minimal and soothing, light/dark, wallpaper-seeded color) plus a built-in **Graphite** theme (paper/slate, ink, hairlines, mono annotations; from github.com/thtbee/graphite). Directions A and B rejected. See `docs/design/README.md` and `docs/design/themes/index.html`.
 
 ### 10.4 Windows ✅
 **Windows 11 only**, x64 + ARM64.
