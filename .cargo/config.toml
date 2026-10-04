@@ -1,0 +1,6 @@
+# Read all C++ sources as UTF-8 on Windows. Without this, MSVC uses the
+# system codepage and non-ASCII text in generated QML code (e.g. "·", or any
+# translated string) is garbled.
+[env]
+CXXFLAGS_x86_64_pc_windows_msvc = "/utf-8"
+CXXFLAGS_aarch64_pc_windows_msvc = "/utf-8"

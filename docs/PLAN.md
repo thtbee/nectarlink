@@ -464,7 +464,7 @@ What we optimize for, in order:
 | Issue | Rule / mitigation |
 |---|---|
 | Three languages in the UI layer (QML, Rust, a little C++) | **QML is presentation only**: screens, layout and animation. No business logic in QML/JavaScript. C++ is limited to the video item and a few window tweaks |
-| cxx-qt is pre-1.0 (0.9.x, KDAB) | Pin the version, upgrade on purpose. **One bridge crate (`nectarlink-qt`)** is the only place Rust touches Qt |
+| cxx-qt is pre-1.0 (0.10.x, KDAB) | Pin the version, upgrade on purpose. **One bridge crate (`nectarlink-qt`)** is the only place Rust touches Qt |
 | Heavier build (Qt install, C++ glue, separate ARM64 build) | Install Qt via aqtinstall, cached in CI. Windows ARM64 is a supported Qt platform (MSVC 2022). Scripts make it one command locally |
 | Two threading worlds (Rust async runtime vs Qt's screen thread) | **One pattern everywhere** for handing core events to the screen thread (cxx-qt's thread queue). No ad-hoc cross-thread calls |
 | Bigger installer (+30–50 MB) | Ship only the Qt modules we use. `windeployqt` with an explicit module list |

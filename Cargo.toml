@@ -4,6 +4,7 @@ members = [
     "core/nectarlink-protocol",
     "core/nectarlink-core",
     "core/nectarlink-cli",
+    "spikes/s1-qt-rust",
 ]
 
 [workspace.package]
