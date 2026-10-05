@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Repository automation. Run as `cargo xtask <task>`.
 //!
-//! - `tokens`: generates the desktop theme (`desktop/app/qml/Tokens.qml`)
-//!   from `docs/design/tokens.json`, the single source of truth.
+//! - `tokens`: generates the desktop and Android themes
+//!   (`desktop/app/qml/Tokens.qml`, `android/.../ui/theme/Tokens.kt`) from
+//!   `docs/design/tokens.json`, the single source of truth.
 //! - `tokens --check`: fails if the generated files are out of date (CI).
 
 use std::{
@@ -16,6 +17,7 @@ use serde_json::{Map, Value};
 
 const TOKENS: &str = "docs/design/tokens.json";
 const QML_OUT: &str = "desktop/app/qml/Tokens.qml";
+const KOTLIN_OUT: &str = "android/app/src/main/kotlin/app/nectarlink/android/ui/theme/Tokens.kt";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -46,18 +48,28 @@ fn tokens(check: bool) -> Result<()> {
     let source = fs::read_to_string(root.join(TOKENS)).with_context(|| format!("reading {TOKENS}"))?;
     let tokens: Value = serde_json::from_str(&source).with_context(|| format!("parsing {TOKENS}"))?;
     validate(&tokens)?;
-    let qml = render_qml(&tokens)?;
+    let outputs = [(QML_OUT, render_qml(&tokens)?), (KOTLIN_OUT, render_kotlin(&tokens)?)];
 
-    let out = root.join(QML_OUT);
-    if check {
-        let current = fs::read_to_string(&out).unwrap_or_default();
-        if current != qml {
-            bail!("{QML_OUT} is out of date; run `cargo xtask tokens`");
+    let mut stale = Vec::new();
+    for (path, content) in outputs {
+        let out = root.join(path);
+        if check {
+            if fs::read_to_string(&out).unwrap_or_default() != content {
+                stale.push(path);
+            }
+        } else {
+            if let Some(dir) = out.parent() {
+                fs::create_dir_all(dir)?;
+            }
+            fs::write(&out, content).with_context(|| format!("writing {path}"))?;
+            println!("wrote {path}");
         }
-        println!("{QML_OUT} is up to date");
-    } else {
-        fs::write(&out, qml).with_context(|| format!("writing {QML_OUT}"))?;
-        println!("wrote {QML_OUT}");
+    }
+    if !stale.is_empty() {
+        bail!("out of date: {}; run `cargo xtask tokens`", stale.join(", "));
+    }
+    if check {
+        println!("generated theme files are up to date");
     }
     Ok(())
 }
@@ -145,6 +157,85 @@ fn render_qml(tokens: &Value) -> Result<String> {
     ))
 }
 
+/// `#RRGGBB` as a Compose color literal.
+fn kotlin_color(hex: &str) -> String {
+    format!("Color(0xFF{})", hex.trim_start_matches('#').to_ascii_uppercase())
+}
+
+/// A `Palette(...)` expression, its lines indented by `indent` spaces.
+fn kotlin_palette(palette: &Value, indent: usize) -> Result<String> {
+    let pad = " ".repeat(indent);
+    let mut lines = vec!["Palette(".to_owned()];
+    for role in ROLES {
+        let hex = palette.get(*role).and_then(Value::as_str).with_context(|| format!("missing {role}"))?;
+        lines.push(format!("{pad}    {role} = {},", kotlin_color(hex)));
+    }
+    lines.push(format!("{pad})"));
+    Ok(lines.join(
+        "
+",
+    ))
+}
+
+fn render_kotlin(tokens: &Value) -> Result<String> {
+    let bloom = tokens.pointer("/themes/bloom").context("missing bloom")?;
+    let seeds = bloom.get("seeds").and_then(Value::as_object).context("missing seeds")?;
+    let default_seed = bloom.get("defaultSeed").and_then(Value::as_str).context("missing defaultSeed")?;
+    let variants = tokens.pointer("/themes/graphite/variants").context("missing graphite variants")?;
+    let status = bloom.get("status").context("missing bloom status")?;
+    let status_color = |mode: &str, key: &str| -> Result<String> {
+        let hex = status
+            .pointer(&format!("/{mode}/{key}"))
+            .and_then(Value::as_str)
+            .context("missing status color")?;
+        Ok(kotlin_color(hex))
+    };
+
+    let mut out: Vec<String> = vec![
+        "// SPDX-License-Identifier: GPL-3.0-or-later".into(),
+        "// Generated from docs/design/tokens.json by `cargo xtask tokens`. Do not edit.".into(),
+        "package app.nectarlink.android.ui.theme".into(),
+        String::new(),
+        "import androidx.compose.ui.graphics.Color".into(),
+        String::new(),
+        "/** Material color roles of one theme variant. */".into(),
+        "data class Palette(".into(),
+    ];
+    out.extend(ROLES.iter().map(|r| format!("    val {r}: Color,")));
+    out.extend([
+        ")".into(),
+        String::new(),
+        "/** A Bloom color preset: its seed swatch and light and dark palettes. */".into(),
+        "data class Seed(val color: Color, val light: Palette, val dark: Palette)".into(),
+        String::new(),
+        "object Tokens {".into(),
+        format!("    const val DEFAULT_SEED = \"{default_seed}\""),
+        String::new(),
+        "    val bloomSeeds: Map<String, Seed> = linkedMapOf(".into(),
+    ]);
+    for (name, def) in seeds {
+        let seed = def.get("seed").and_then(Value::as_str).context("missing seed color")?;
+        out.push(format!("        \"{name}\" to Seed("));
+        out.push(format!("            color = {},", kotlin_color(seed)));
+        out.push(format!("            light = {},", kotlin_palette(&def["light"], 12)?));
+        out.push(format!("            dark = {},", kotlin_palette(&def["dark"], 12)?));
+        out.push("        ),".into());
+    }
+    out.push("    )".into());
+    out.push(String::new());
+    out.push(format!("    val graphitePaper = {}", kotlin_palette(&variants["paper"], 4)?));
+    out.push(String::new());
+    out.push(format!("    val graphiteSlate = {}", kotlin_palette(&variants["slate"], 4)?));
+    out.push(String::new());
+    out.push(format!("    val warningLight = {}", status_color("light", "warning")?));
+    out.push(format!("    val warningDark = {}", status_color("dark", "warning")?));
+    out.push(format!("    val errorLight = {}", status_color("light", "error")?));
+    out.push(format!("    val errorDark = {}", status_color("dark", "error")?));
+    out.push("}".into());
+    out.push(String::new());
+    Ok(out.join("\n"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -166,6 +257,17 @@ mod tests {
         assert!(check_palette(Some(&Value::Object(palette.clone())), "bad").is_err());
         palette.remove("primary");
         assert!(check_palette(Some(&Value::Object(palette)), "missing").is_err());
+    }
+
+    #[test]
+    fn kotlin_theme_has_every_seed() {
+        let source = fs::read_to_string(repo_root().join(TOKENS)).unwrap();
+        let tokens: Value = serde_json::from_str(&source).unwrap();
+        let kotlin = render_kotlin(&tokens).unwrap();
+        for seed in tokens.pointer("/themes/bloom/seeds").unwrap().as_object().unwrap().keys() {
+            assert!(kotlin.contains(&format!("\"{seed}\" to Seed(")), "{seed}");
+        }
+        assert!(kotlin.contains("primary = Color(0xFF8A5100)"));
     }
 
     #[test]

@@ -13,6 +13,10 @@
 .PARAMETER Arm64
     Also cross-compiles the workspace for Windows ARM64.
 
+.PARAMETER Android
+    Also builds the Android app and runs its unit tests (needs the Android
+    SDK, NDK and cargo-ndk; see android/README.md).
+
 .PARAMETER Fast
     Skips the slow steps (tests and the dependency audit).
 
@@ -22,6 +26,7 @@
 #>
 param(
     [switch]$Arm64,
+    [switch]$Android,
     [switch]$Fast
 )
 $ErrorActionPreference = "Stop"
@@ -112,6 +117,17 @@ try {
                 cargo build --workspace --release --locked --target aarch64-pc-windows-msvc
             } finally {
                 $env:QMAKE = $previous
+            }
+        }
+    }
+    if ($Android) {
+        Invoke-Step "Android" {
+            Push-Location (Join-Path $root "android")
+            try {
+                if (-not $env:JAVA_HOME) { $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr" }
+                & .\gradlew.bat --console=plain -q testDebugUnitTest assembleDebug
+            } finally {
+                Pop-Location
             }
         }
     }

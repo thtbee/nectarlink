@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- The device identity lives in no_backup and is never backed up: a
+     restored copy on another phone would impersonate this one. -->
+<full-backup-content>
+    <include domain="sharedpref" path="appearance.xml" />
+</full-backup-content>

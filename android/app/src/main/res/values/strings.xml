@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="app_name">Nectarlink</string>
+
+    <!-- Pairing -->
+    <string name="pair_title">Pair with your PC</string>
+    <string name="pair_scan_hint">On your PC, open Nectarlink. Point the camera at the code it shows.</string>
+    <string name="pair_nearby_title">Pair nearby</string>
+    <string name="pair_nearby_hint">On your PC, open Nectarlink and keep its pairing screen open. It shows up here.</string>
+    <string name="pair_looking">Looking for PCs…</string>
+    <string name="pair_joining">Pairing…</string>
+    <string name="pair_connecting">Connecting to %1$s…</string>
+    <string name="pair_waiting">Waiting for %1$s…</string>
+    <string name="pair_check_code">Check the code</string>
+    <string name="pair_compare_hint">Make sure %1$s shows the same code. This keeps anyone else from pairing in between.</string>
+    <string name="pair_done_title">Paired</string>
+    <string name="pair_done">%1$s is paired with this phone.</string>
+    <string name="pair_failed_title">Pairing didn\'t work</string>
+    <string name="pair_failed_rejected">The codes didn\'t match, so nothing was paired.</string>
+    <string name="pair_failed_declined">Pairing was declined on one of the devices.</string>
+    <string name="pair_failed_expired">The code expired. Show a new one on your PC.</string>
+    <string name="pair_failed_unreachable">Couldn\'t reach the PC. Make sure both are on the same network.</string>
+    <string name="pair_failed_other">That isn\'t a Nectarlink pairing code, or something went wrong.</string>
+    <string name="your_pc">your PC</string>
+    <string name="camera_permission_needed">Nectarlink needs the camera to scan the pairing code. Nothing is recorded.</string>
+
+    <!-- Home -->
+    <string name="home_title">Home</string>
+    <string name="link_online">Connected</string>
+    <string name="link_online_rtt">Connected · %1$d ms</string>
+    <string name="link_away">Connected while away</string>
+    <string name="link_connecting">Connecting…</string>
+    <string name="link_offline_seen">Offline · seen %1$s</string>
+    <string name="link_never">Not connected yet</string>
+    <string name="battery_level">%1$d%%</string>
+    <string name="battery_charging">%1$d%% · charging</string>
+    <string name="ringing_title">%1$s is ringing your phone</string>
+    <string name="ringing_title_unknown">Your PC is ringing your phone</string>
+    <string name="connected">Connected</string>
+    <string name="not_connected">Not connected</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_mode">Mode</string>
+    <string name="settings_dynamic_color">Colors from wallpaper</string>
+    <string name="settings_dynamic_color_hint">Your PC follows the same colors.</string>
+    <string name="settings_devices">PCs</string>
+    <string name="settings_about">About</string>
+    <string name="theme_bloom">Bloom</string>
+    <string name="theme_graphite">Graphite</string>
+    <string name="mode_system">System</string>
+    <string name="mode_light">Light</string>
+    <string name="mode_dark">Dark</string>
+    <string name="about_version">Nectarlink %1$s</string>
+    <string name="unpair_title">Unpair %1$s?</string>
+    <string name="unpair_text">Both devices forget each other. You can pair them again any time.</string>
+    <string name="core_failed">Nectarlink couldn\'t start: %1$s</string>
+
+    <!-- Actions -->
+    <string name="action_pair">Pair</string>
+    <string name="action_pair_nearby">Pair nearby instead</string>
+    <string name="action_scan_instead">Scan a code instead</string>
+    <string name="action_codes_match">Codes match</string>
+    <string name="action_codes_differ">They don\'t match</string>
+    <string name="action_try_again">Try again</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_allow_camera">Allow camera</string>
+    <string name="action_ring_pc">Ring PC</string>
+    <string name="action_stop_ringing">Stop ringing</string>
+    <string name="action_unpair">Unpair</string>
+    <string name="action_pair_new">Pair another PC</string>
+
+    <!-- Notifications -->
+    <string name="channel_connection">Connection</string>
+    <string name="channel_ringing">Find my phone</string>
+    <string name="notification_connected_to">Connected to %1$s</string>
+    <string name="notification_connected_many">Connected to %1$d PCs</string>
+    <string name="notification_waiting">Waiting for your PC</string>
+    <string name="notification_not_paired">Not paired with a PC yet</string>
+</resources>

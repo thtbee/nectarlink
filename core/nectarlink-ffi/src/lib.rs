@@ -217,12 +217,12 @@ pub enum NectarlinkError {
     InvalidPairingLink,
     #[error("invalid device ID")]
     InvalidDeviceId,
-    #[error("network error: {message}")]
-    Network { message: String },
-    #[error("storage error: {message}")]
-    Storage { message: String },
-    #[error("internal error: {message}")]
-    Internal { message: String },
+    #[error("network error: {reason}")]
+    Network { reason: String },
+    #[error("storage error: {reason}")]
+    Storage { reason: String },
+    #[error("internal error: {reason}")]
+    Internal { reason: String },
 }
 
 impl From<core::Error> for NectarlinkError {
@@ -239,11 +239,11 @@ impl From<core::Error> for NectarlinkError {
             core::Error::Unsupported => NectarlinkError::Unsupported,
             core::Error::NotPairing => NectarlinkError::NotPairing,
             core::Error::InvalidPairingLink(_) => NectarlinkError::InvalidPairingLink,
-            core::Error::Network(message) => NectarlinkError::Network { message },
-            core::Error::Storage(message) => NectarlinkError::Storage { message },
-            core::Error::Io(e) => NectarlinkError::Storage { message: e.to_string() },
-            core::Error::Protocol(message) | core::Error::Internal(message) => {
-                NectarlinkError::Internal { message }
+            core::Error::Network(reason) => NectarlinkError::Network { reason },
+            core::Error::Storage(reason) => NectarlinkError::Storage { reason },
+            core::Error::Io(e) => NectarlinkError::Storage { reason: e.to_string() },
+            core::Error::Protocol(reason) | core::Error::Internal(reason) => {
+                NectarlinkError::Internal { reason }
             }
         }
     }
@@ -549,7 +549,7 @@ impl NectarlinkNode {
             .thread_name("nectarlink-core")
             .enable_all()
             .build()
-            .map_err(|e| NectarlinkError::Internal { message: e.to_string() })?;
+            .map_err(|e| NectarlinkError::Internal { reason: e.to_string() })?;
         let mut config =
             NodeConfig::new(PathBuf::from(options.data_dir), options.device.into(), options.app_version);
         config.power = options.power.into();
@@ -689,7 +689,7 @@ pub fn init_logging(filter: String) {
     use tracing_subscriber::{EnvFilter, prelude::*};
     let filter = EnvFilter::try_new(&filter).unwrap_or_else(|_| EnvFilter::new("info"));
     #[cfg(target_os = "android")]
-    let layer = paranoid_android::layer("Nectarlink");
+    let layer = paranoid_android::layer("Nectarlink").with_ansi(false);
     #[cfg(not(target_os = "android"))]
     let layer = tracing_subscriber::fmt::layer();
     let _ = tracing_subscriber::registry().with(filter).with(layer).try_init();
@@ -708,7 +708,7 @@ mod tests {
         );
         assert!(matches!(
             NectarlinkError::from(core::Error::Internal("x".into())),
-            NectarlinkError::Internal { message } if message == "x"
+            NectarlinkError::Internal { reason } if reason == "x"
         ));
     }
 

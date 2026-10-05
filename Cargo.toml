@@ -63,3 +63,9 @@ all = { level = "warn", priority = -1 }
 lto = "thin"
 codegen-units = 1
 strip = "symbols"
+
+# Android: release optimizations, but symbols are kept so UniFFI can read its
+# metadata from the library; the Android build strips them when packaging.
+[profile.android]
+inherits = "release"
+strip = "debuginfo"

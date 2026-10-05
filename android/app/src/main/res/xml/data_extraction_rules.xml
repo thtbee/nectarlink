@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="sharedpref" path="appearance.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="sharedpref" path="appearance.xml" />
+    </device-transfer>
+</data-extraction-rules>
