@@ -135,6 +135,13 @@ impl Session {
         on_end: impl FnOnce(Arc<Session>) + Send + 'static,
     ) -> Arc<Session> {
         let peer = crate::device_id(&conn.remote_id());
+        // Start from QUIC's estimate (from the handshake) until the first
+        // heartbeat measures the round trip end to end.
+        let initial_rtt = conn
+            .paths()
+            .iter()
+            .find(|p| p.is_selected())
+            .map_or(0, |p| p.rtt().as_millis().min(u128::from(u32::MAX)) as u32);
         let (outbox, outbox_rx) = mpsc::channel(OUTBOX_CAPACITY);
         let session = Arc::new(Session {
             peer,
@@ -143,7 +150,7 @@ impl Session {
             outbox,
             pending: Mutex::new(HashMap::new()),
             next_id: AtomicU64::new(1),
-            rtt_ms: AtomicU32::new(0),
+            rtt_ms: AtomicU32::new(initial_rtt),
             cancel: shared.cancel.child_token(),
         });
 

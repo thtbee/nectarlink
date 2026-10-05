@@ -616,6 +616,16 @@ impl Node {
         self.shared.wake_supervisor(&peer);
     }
 
+    /// Tells the core the network may have changed (Wi-Fi switched, resumed
+    /// from sleep). Paths are re-checked and offline devices are dialed right
+    /// away instead of after their backoff. Harmless when nothing changed.
+    pub async fn network_changed(&self) {
+        self.shared.endpoint.network_change().await;
+        for supervisor in lock(&self.shared.supervisors).values() {
+            supervisor.wake.notify_one();
+        }
+    }
+
     /// Devices discovered on the local network that aren't paired yet.
     pub fn discovered_devices(&self) -> Vec<DiscoveredDevice> {
         lock(&self.shared.discovered).values().cloned().collect()

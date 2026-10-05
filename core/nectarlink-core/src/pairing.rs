@@ -14,6 +14,7 @@
 //! that close. Failures close with [`CLOSE_FAILED`] and nobody stores.
 
 use std::{
+    net::{IpAddr, SocketAddr},
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -156,7 +157,43 @@ pub(crate) async fn start_host(shared: &Arc<Shared>) -> Result<PairingUri> {
     });
 
     let name = local_device(shared).name;
-    Ok(PairingUri { id: shared.id, secret, name, addrs: shared.direct_addrs().await })
+    Ok(PairingUri { id: shared.id, secret, name, addrs: link_addrs(shared.direct_addrs().await) })
+}
+
+/// Most addresses a pairing link carries; more only make the QR code denser.
+const MAX_LINK_ADDRS: usize = 3;
+
+/// Picks the addresses worth putting in a pairing link: private IPv4 first
+/// (what a phone on the same network almost always uses), then other IPv4,
+/// then at most one IPv6. Link-local IPv6 is useless without a scope ID.
+/// Discovery on the network finds the device even if none of these work.
+fn link_addrs(mut addrs: Vec<SocketAddr>) -> Vec<SocketAddr> {
+    let rank = |a: &SocketAddr| match a.ip() {
+        IpAddr::V4(v4) if v4.is_private() => 0,
+        IpAddr::V4(v4) if v4.is_loopback() || v4.is_link_local() => 3,
+        IpAddr::V4(_) => 1,
+        IpAddr::V6(_) => 2,
+    };
+    addrs.retain(|a| match a.ip() {
+        IpAddr::V6(v6) => !v6.is_loopback() && !v6.is_unicast_link_local(),
+        IpAddr::V4(v4) => !v4.is_loopback(),
+    });
+    addrs.sort_by_key(rank);
+    let mut picked = Vec::new();
+    let mut has_v6 = false;
+    for addr in addrs {
+        if addr.is_ipv6() {
+            if has_v6 {
+                continue;
+            }
+            has_v6 = true;
+        }
+        picked.push(addr);
+        if picked.len() == MAX_LINK_ADDRS {
+            break;
+        }
+    }
+    picked
 }
 
 pub(crate) fn cancel(shared: &Shared) {
@@ -433,4 +470,27 @@ fn fail(shared: &Shared, err: Error) -> Error {
     };
     shared.emit(NodeEvent::Pairing(PairingEvent::Failed(failure)));
     err
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pairing_links_carry_the_useful_addresses() {
+        let addrs: Vec<SocketAddr> = [
+            "[2409:40d2::1]:5000",
+            "[fe80::1]:5000",
+            "100.64.0.1:5000",
+            "[2409:40d2::2]:5000",
+            "192.168.31.121:5000",
+            "127.0.0.1:5000",
+        ]
+        .iter()
+        .map(|a| a.parse().unwrap())
+        .collect();
+        let picked: Vec<String> = link_addrs(addrs).iter().map(ToString::to_string).collect();
+        assert_eq!(picked, ["192.168.31.121:5000", "100.64.0.1:5000", "[2409:40d2::1]:5000"]);
+        assert!(link_addrs(Vec::new()).is_empty());
+    }
 }
