@@ -309,6 +309,8 @@ async fn reconnects_after_a_restart() {
     pair_qr(&mut pc, &mut phone).await;
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
 
+    let old_ports: std::collections::BTreeSet<u16> =
+        phone.node.direct_addrs().await.iter().map(SocketAddr::port).collect();
     // The phone restarts (app update, reboot...).
     phone.node.shutdown().await;
     wait_for(&mut pc, "peer offline", |e| match e {
@@ -317,8 +319,14 @@ async fn reconnects_after_a_restart() {
     })
     .await;
 
-    let dir = std::mem::replace(&mut phone.dir, tempfile::tempdir().unwrap());
+    let ports = |addrs: Vec<SocketAddr>| {
+        addrs.iter().map(SocketAddr::port).collect::<std::collections::BTreeSet<_>>()
+    };
+    // A restart is a new process: the old node and its sockets are gone.
+    let TestDevice { node: old_node, dir, .. } = phone;
+    drop(old_node);
     let mut phone = start_in(dir, "Pixel", DeviceKind::Phone).await;
+    assert_eq!(ports(phone.node.direct_addrs().await), old_ports, "the port is kept across restarts");
     assert_eq!(phone.node.device_id(), phone_id, "identity survives the restart");
     assert_eq!(phone.node.paired_devices().unwrap().len(), 1, "pairing survives the restart");
 

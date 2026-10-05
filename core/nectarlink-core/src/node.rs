@@ -473,28 +473,27 @@ impl Node {
         let secret = identity::load_or_create(&config.data_dir, protector.as_ref())?;
         let store = Store::open(&config.data_dir)?;
 
-        let mut builder = Endpoint::builder(presets::Minimal)
-            .secret_key(secret)
-            .alpns(vec![ALPN_SESSION.to_vec(), ALPN_PAIR.to_vec()]);
-        builder = if config.away_mode {
-            builder
-                .relay_mode(RelayMode::Default)
-                .address_lookup(PkarrPublisher::n0_dns())
-                .address_lookup(PkarrResolver::n0_dns())
-                .address_lookup(DnsAddressLookup::n0_dns())
-        } else {
-            // LAN only: no relays, nothing published outside the network.
-            builder.relay_mode(RelayMode::Disabled)
+        // A stable port lets paired devices reconnect to the addresses they
+        // remember even where local discovery is blocked (guest Wi-Fi, some
+        // routers and VPNs). Reuse the last one; take any free port if it's
+        // gone, and remember that instead.
+        let saved = if config.port == 0 { Ports::load(&config.data_dir) } else { None };
+        let wanted =
+            if config.port != 0 { Some(Ports { v4: config.port, v6: Some(config.port) }) } else { saved };
+        let endpoint = match bind_endpoint(&config, secret.clone(), wanted).await {
+            Ok(endpoint) => endpoint,
+            Err(e) if config.port == 0 && wanted.is_some() => {
+                tracing::info!(error = %e, "saved ports unavailable; using others");
+                bind_endpoint(&config, secret, None).await?
+            }
+            Err(e) => return Err(e),
         };
-        if config.port != 0 {
-            builder = builder
-                .clear_ip_transports()
-                .bind_addr(SocketAddr::from(([0, 0, 0, 0], config.port)))
-                .map_err(crate::error::net)?
-                .bind_addr(SocketAddr::from(([0u16; 8], config.port)))
-                .map_err(crate::error::net)?;
+        if config.port == 0
+            && let Some(bound) = Ports::of(&endpoint.bound_sockets())
+            && Some(bound) != saved
+        {
+            bound.save(&config.data_dir);
         }
-        let endpoint = builder.bind().await.map_err(crate::error::net)?;
         let id = crate::device_id(&endpoint.id());
 
         let lookups = endpoint.address_lookup().map_err(crate::error::net)?;
@@ -760,6 +759,74 @@ impl Node {
         }
         self.shared.refresh_all_capabilities();
     }
+}
+
+const PORT_FILE: &str = "port";
+
+/// The UDP ports the endpoint listens on, remembered across restarts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Ports {
+    v4: u16,
+    /// None where the machine has no IPv6.
+    v6: Option<u16>,
+}
+
+impl Ports {
+    /// Reads "<v4> [<v6>]".
+    fn load(dir: &std::path::Path) -> Option<Ports> {
+        let text = std::fs::read_to_string(dir.join(PORT_FILE)).ok()?;
+        let mut parts = text.split_whitespace().map(str::parse::<u16>);
+        let v4 = parts.next()?.ok().filter(|p| *p != 0)?;
+        let v6 = parts.next().and_then(Result::ok).filter(|p| *p != 0);
+        Some(Ports { v4, v6 })
+    }
+
+    fn of(bound: &[SocketAddr]) -> Option<Ports> {
+        let v4 = bound.iter().find(|a| a.is_ipv4())?.port();
+        let v6 = bound.iter().find(|a| a.is_ipv6()).map(SocketAddr::port);
+        Some(Ports { v4, v6 })
+    }
+
+    fn save(self, dir: &std::path::Path) {
+        let text = match self.v6 {
+            Some(v6) => format!("{} {v6}", self.v4),
+            None => self.v4.to_string(),
+        };
+        if let Err(e) = std::fs::write(dir.join(PORT_FILE), text) {
+            tracing::warn!(error = %e, "can't remember the ports");
+        }
+    }
+}
+
+/// Binds the endpoint on `ports`, or any free ports.
+async fn bind_endpoint(
+    config: &NodeConfig,
+    secret: iroh::SecretKey,
+    ports: Option<Ports>,
+) -> Result<Endpoint> {
+    let mut builder = Endpoint::builder(presets::Minimal)
+        .secret_key(secret)
+        .alpns(vec![ALPN_SESSION.to_vec(), ALPN_PAIR.to_vec()]);
+    builder = if config.away_mode {
+        builder
+            .relay_mode(RelayMode::Default)
+            .address_lookup(PkarrPublisher::n0_dns())
+            .address_lookup(PkarrResolver::n0_dns())
+            .address_lookup(DnsAddressLookup::n0_dns())
+    } else {
+        // LAN only: no relays, nothing published outside the network.
+        builder.relay_mode(RelayMode::Disabled)
+    };
+    if let Some(ports) = ports {
+        builder = builder
+            .clear_ip_transports()
+            .bind_addr(SocketAddr::from(([0, 0, 0, 0], ports.v4)))
+            .map_err(crate::error::net)?;
+        if let Some(v6) = ports.v6 {
+            builder = builder.bind_addr(SocketAddr::from(([0u16; 8], v6))).map_err(crate::error::net)?;
+        }
+    }
+    builder.bind().await.map_err(crate::error::net)
 }
 
 /// Announces this device on the LAN and watches for others.
