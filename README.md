@@ -73,9 +73,10 @@ place and tested; the user-facing features of Phase 1 come next.
 - **Capability matrix**: both apps compute which features work for a pair of
   devices and what would enable the rest, so the interface never offers
   something that can't work.
-- **Windows app**: home and settings, two themes (Bloom and Graphite) in light
-  and dark, Mica, a custom title bar with Snap Layouts, and a tray icon. In the
-  background it uses about 10 MB of memory (as shown in Task Manager).
+- **Windows app**: home and settings, two themes in light and dark (Bloom,
+  which takes its colors from the desktop wallpaper, and Graphite), Mica, a
+  custom title bar with Snap Layouts, and a tray icon. In the background it
+  uses about 10 MB of memory (as shown in Task Manager).
 - **Android app**: pairing, home and settings, Material You colors, a background
   connection service, and an identity key protected by the Android Keystore.
 - **Command-line client** for development and testing (`nectarlink`).
@@ -134,6 +135,7 @@ core/
   nectarlink-cli/        Command-line client for development and testing   (GPL)
 desktop/app/             Windows app: Rust host, cxx-qt bridge, QML UI     (GPL)
 android/                 Android app: Kotlin and Jetpack Compose           (GPL)
+assets/fonts/            Fonts both apps ship with                         (OFL-1.1)
 tools/xtask/             Code generation (theme tokens) and checks
 spikes/                  Technical experiments with their results
 scripts/                 Build and check scripts

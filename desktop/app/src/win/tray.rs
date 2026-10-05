@@ -42,7 +42,8 @@ pub enum TrayEvent {
     Quit,
     /// The PC woke from sleep.
     Resumed,
-    /// Dark mode or the animation setting changed.
+    /// Dark mode, the accent color, the wallpaper or the animation setting
+    /// changed.
     AppearanceChanged,
 }
 
@@ -63,6 +64,7 @@ const PBT_APMRESUMEAUTOMATIC: usize = 0x12;
 /// NIN_SELECT | NINF_KEY (shellapi.h): the icon was activated with the keyboard.
 const NIN_KEYSELECT: u32 = NIN_SELECT | 0x1;
 const SPI_SETCLIENTAREAANIMATION: usize = 0x1043;
+const SPI_SETDESKWALLPAPER: usize = 0x0014;
 
 type Handler = Box<dyn Fn(TrayEvent)>;
 
@@ -292,7 +294,10 @@ unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lpar
             // null-terminated string for the duration of the message.
             let area =
                 if lparam.0 == 0 { None } else { unsafe { PCWSTR(lparam.0 as *const u16).to_string().ok() } };
-            if area.as_deref() == Some("ImmersiveColorSet") || wparam.0 == SPI_SETCLIENTAREAANIMATION {
+            if area.as_deref() == Some("ImmersiveColorSet")
+                || wparam.0 == SPI_SETCLIENTAREAANIMATION
+                || wparam.0 == SPI_SETDESKWALLPAPER
+            {
                 emit(TrayEvent::AppearanceChanged);
             }
             LRESULT(0)

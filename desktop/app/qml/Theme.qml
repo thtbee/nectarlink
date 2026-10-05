@@ -16,10 +16,19 @@ QtObject {
     readonly property bool reduceMotion: AppController.reduceMotion
 
     readonly property var bloomSeeds: Tokens.data.themes.bloom.seeds
-    readonly property string seed: bloomSeeds[Preferences.seed] ? Preferences.seed : Tokens.data.themes.bloom.defaultSeed
+    // Colors made from the desktop wallpaper (or null until they're known),
+    // in the shape of a preset seed.
+    readonly property var wallpaperSeed: AppController.wallpaperColors !== ""
+        ? JSON.parse(AppController.wallpaperColors) : null
+    // "wallpaper" or a preset name; the wallpaper falls back to the default
+    // preset while its colors are being worked out.
+    readonly property string seed: Preferences.seed === "wallpaper"
+        ? (wallpaperSeed ? "wallpaper" : Tokens.data.themes.bloom.defaultSeed)
+        : (bloomSeeds[Preferences.seed] ? Preferences.seed : Tokens.data.themes.bloom.defaultSeed)
+    readonly property var seedColors: seed === "wallpaper" ? wallpaperSeed : bloomSeeds[seed]
     readonly property var palette: graphite
         ? Tokens.data.themes.graphite.variants[dark ? "slate" : "paper"]
-        : bloomSeeds[seed][dark ? "dark" : "light"]
+        : seedColors[dark ? "dark" : "light"]
     readonly property var status: graphite ? palette : Tokens.data.themes.bloom.status[dark ? "dark" : "light"]
 
     // ---- Color roles ----
@@ -68,11 +77,10 @@ QtObject {
     function pill(height) { return graphite ? shape.full : height / 2 }
 
     // ---- Type ----
-    // Bundled fonts (Figtree, Instrument Serif, Space Mono, Caveat) replace
-    // these system fallbacks once added to the build.
-    readonly property string fontUi: "Segoe UI Variable Text"
-    readonly property string fontDisplay: graphite ? "Georgia" : "Segoe UI Variable Display"
-    readonly property string fontMono: "Cascadia Mono"
+    // Bundled with the app (assets/fonts).
+    readonly property string fontUi: "Figtree"
+    readonly property string fontDisplay: graphite ? "Instrument Serif" : "Figtree"
+    readonly property string fontMono: "Space Mono"
     readonly property var typography: Tokens.data.typography
     readonly property var labelStyle: graphite ? Tokens.data.themes.graphite.label : Tokens.data.themes.bloom.label
 

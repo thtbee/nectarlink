@@ -33,7 +33,8 @@ pub enum ColorMode {
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     pub theme: Theme,
-    /// Bloom seed preset, e.g. "honey" (see docs/design/tokens.json).
+    /// Bloom colors: "wallpaper" (from the desktop wallpaper) or a preset,
+    /// e.g. "honey" (see docs/design/tokens.json).
     pub seed: String,
     pub color_mode: ColorMode,
     /// Use the Windows 11 Mica backdrop.
@@ -46,7 +47,7 @@ impl Default for Settings {
     fn default() -> Self {
         Settings {
             theme: Theme::default(),
-            seed: "honey".into(),
+            seed: "wallpaper".into(),
             color_mode: ColorMode::default(),
             backdrop: true,
             close_to_tray: true,
@@ -120,7 +121,7 @@ mod tests {
         fs::write(dir.path().join(FILE_NAME), r#"{ "theme": "graphite" }"#).unwrap();
         let loaded = Settings::load(dir.path());
         assert_eq!(loaded.theme, Theme::Graphite);
-        assert_eq!(loaded.seed, "honey");
+        assert_eq!(loaded.seed, "wallpaper");
 
         fs::write(dir.path().join(FILE_NAME), "{ not json").unwrap();
         assert_eq!(Settings::load(dir.path()), Settings::default());

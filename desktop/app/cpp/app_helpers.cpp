@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "app_helpers.h"
 
+#include <QtCore/QDir>
 #include <QtCore/QtEnvironmentVariables>
+#include <QtGui/QFontDatabase>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QIcon>
 #include <QtGui/QImage>
@@ -43,4 +45,15 @@ void apply_app_icon()
 void keep_running_without_windows()
 {
     QGuiApplication::setQuitOnLastWindowClosed(false);
+}
+
+int32_t load_bundled_fonts()
+{
+    int32_t loaded = 0;
+    const QDir dir(QStringLiteral(":/fonts"));
+    for (const QString &name : dir.entryList({QStringLiteral("*.ttf")}, QDir::Files)) {
+        if (QFontDatabase::addApplicationFont(dir.filePath(name)) >= 0)
+            ++loaded;
+    }
+    return loaded;
 }

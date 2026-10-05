@@ -10,6 +10,7 @@ pub mod net;
 pub mod single_instance;
 pub mod sound;
 pub mod tray;
+pub mod wallpaper;
 
 use windows::{
     Win32::{

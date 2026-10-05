@@ -15,3 +15,7 @@ void apply_app_icon();
 
 // Keeps the app running with no windows open (it lives in the tray).
 void keep_running_without_windows();
+
+// Registers every font compiled in under :/fonts/ and returns how many
+// loaded. Call after QGuiApplication is created.
+int32_t load_bundled_fonts();

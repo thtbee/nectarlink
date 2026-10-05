@@ -79,22 +79,39 @@ Item {
                         visible: !Theme.graphite
                         iconPath: Icons.sparkle
                         title: qsTr("Color")
+                        description: qsTr("Match your wallpaper, or pick a color.")
                         Row {
                             spacing: 10
                             Repeater {
-                                model: Object.keys(Tokens.data.themes.bloom.seeds)
+                                model: ["wallpaper"].concat(Object.keys(Tokens.data.themes.bloom.seeds))
                                 delegate: Rectangle {
                                     id: swatch
                                     required property string modelData
-                                    readonly property bool selected: Theme.seed === modelData
+                                    readonly property bool wallpaper: modelData === "wallpaper"
+                                    readonly property bool selected: Preferences.seed === "wallpaper"
+                                        ? wallpaper : Theme.seed === modelData
+                                    // The wallpaper swatch shows the accent it gives, in the
+                                    // current mode, with a picture mark on it.
+                                    readonly property var wallpaperPalette: Theme.wallpaperSeed
+                                        ? Theme.wallpaperSeed[Theme.dark ? "dark" : "light"] : null
                                     width: 26; height: 26; radius: 13
-                                    color: Tokens.data.themes.bloom.seeds[modelData].seed
+                                    color: !wallpaper ? Tokens.data.themes.bloom.seeds[modelData].seed
+                                        : wallpaperPalette ? wallpaperPalette.primary : Theme.surfaceContainerHighest
                                     border.width: selected ? 2 : 0
                                     border.color: Theme.surfaceContent
                                     Accessible.role: Accessible.RadioButton
-                                    Accessible.name: modelData
+                                    Accessible.name: wallpaper ? qsTr("Wallpaper")
+                                        : modelData.charAt(0).toUpperCase() + modelData.slice(1)
                                     Accessible.checked: selected
                                     Accessible.onPressAction: Preferences.seed = modelData
+                                    Icon {
+                                        visible: swatch.wallpaper
+                                        anchors.centerIn: parent
+                                        width: 14; height: 14
+                                        stroke: 2
+                                        path: Icons.photo
+                                        color: swatch.wallpaperPalette ? swatch.wallpaperPalette.onPrimary : Theme.surfaceContent
+                                    }
                                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                                     TapHandler { onTapped: Preferences.seed = swatch.modelData }
                                 }

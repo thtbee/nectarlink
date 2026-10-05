@@ -34,6 +34,7 @@ hostname = "0.4"
 hmac = "0.13"
 iroh = "1.3"
 iroh-mdns-address-lookup = "0.6"
+material-colors = { version = "0.5", default-features = false, features = ["std", "quantize"] }
 n0-future = "0.3"
 qrcode = { version = "0.14", default-features = false }
 rand = "0.10"

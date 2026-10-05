@@ -11,6 +11,7 @@
 mod bridge;
 mod core_host;
 mod logging;
+mod palette;
 mod qr;
 mod settings;
 mod state;
@@ -30,6 +31,9 @@ use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};
 use nectarlink_core::Platform;
 
 use crate::win::single_instance::{self, Instance};
+
+/// How many fonts `build.rs` compiles in.
+const BUNDLED_FONTS: i32 = 4;
 
 /// Rings the PC when a phone asks ("find my PC").
 #[derive(Debug)]
@@ -133,6 +137,11 @@ fn main() -> ExitCode {
         app.as_mut().set_application_version(&QString::from(env!("CARGO_PKG_VERSION")));
     }
     bridge::native::ffi::keep_running_without_windows();
+    // Text falls back to system fonts if these are missing, so it's not fatal.
+    let fonts = bridge::native::ffi::load_bundled_fonts();
+    if fonts < BUNDLED_FONTS {
+        tracing::warn!(loaded = fonts, expected = BUNDLED_FONTS, "some bundled fonts didn't load");
+    }
     for size in [16, 20, 24, 32, 40, 48, 64, 256] {
         bridge::native::ffi::add_app_icon_image(size, &win::icon::render(size as usize));
     }

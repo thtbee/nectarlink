@@ -29,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.nectarlink.android.R
 import app.nectarlink.android.core.CoreState
@@ -56,7 +55,6 @@ fun HomeScreen(
             Text(
                 stringResource(R.string.home_title),
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
             )
         }
@@ -105,7 +103,7 @@ private fun PcCard(device: Device, onRing: (String, Boolean) -> Unit) {
                 Text(linkText(device.link), style = MaterialTheme.typography.labelLarge)
             }
             Spacer(Modifier.height(12.dp))
-            Text(device.name, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.SemiBold)
+            Text(device.name, style = MaterialTheme.typography.headlineLarge)
             device.model?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 2.dp))
             }

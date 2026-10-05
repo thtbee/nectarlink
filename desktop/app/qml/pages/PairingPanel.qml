@@ -101,7 +101,7 @@ Item {
                             color: Theme.graphite ? "transparent" : Theme.secondaryContainer
                             border.width: Theme.graphite ? 1 : 0
                             border.color: Theme.outlineVariant
-                            Txt { anchors.centerIn: parent; text: index + 1; role: "caption"; font.weight: 700 }
+                            Txt { anchors.centerIn: parent; text: index + 1; role: "caption"; weight: 700 }
                         }
                         Txt { anchors.verticalCenter: parent.verticalCenter; text: modelData; role: "bodySmall"; muted: true }
                     }

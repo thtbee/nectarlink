@@ -34,8 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.R
@@ -43,6 +41,7 @@ import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.CoreStatus
 import app.nectarlink.android.core.Device
 import app.nectarlink.android.ui.theme.Appearance
+import app.nectarlink.android.ui.theme.LocalAppFonts
 import app.nectarlink.android.ui.theme.Tokens
 
 @Composable
@@ -63,7 +62,6 @@ fun SettingsScreen(
         Text(
             stringResource(R.string.settings_title),
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
         )
 
@@ -141,7 +139,7 @@ fun SettingsScreen(
                 Text(
                     it.deviceId,
                     style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = LocalAppFonts.current.mono,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

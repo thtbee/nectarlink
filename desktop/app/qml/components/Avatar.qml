@@ -30,7 +30,7 @@ Rectangle {
         anchors.centerIn: parent
         text: avatar.name.length > 0 ? avatar.name.charAt(0).toUpperCase() : ""
         role: "label"
-        font.weight: 700
+        weight: 700
         color: avatar.ink
     }
 }

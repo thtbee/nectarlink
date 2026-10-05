@@ -4,7 +4,10 @@
 
 use std::{
     pin::Pin,
-    sync::{Mutex, OnceLock},
+    sync::{
+        Mutex, OnceLock,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 use cxx_qt::{CxxQtThread, CxxQtType, Threading};
@@ -51,6 +54,9 @@ pub mod qobject {
         #[qproperty(QString, ringing_from)]
         #[qproperty(bool, system_dark)]
         #[qproperty(bool, reduce_motion)]
+        /// Bloom colors from the desktop wallpaper, as JSON in the shape of
+        /// a tokens.json seed (`{ seed, light, dark }`); "" until known.
+        #[qproperty(QString, wallpaper_colors)]
         #[qproperty(QString, version)]
         type AppController = super::AppControllerRust;
 
@@ -104,6 +110,7 @@ pub struct AppControllerRust {
     ringing_from: QString,
     system_dark: bool,
     reduce_motion: bool,
+    wallpaper_colors: QString,
     version: QString,
     tray: Option<tray::Tray>,
 }
@@ -199,6 +206,30 @@ fn on_tray_event(qt: &CxxQtThread<qobject::AppController>, event: tray::TrayEven
     }
 }
 
+/// Bumped per wallpaper refresh, so a slow, older one can't overwrite a
+/// newer result.
+static WALLPAPER_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// Works out the wallpaper's colors on a worker thread (decoding a photo
+/// takes a moment) and hands them to QML.
+fn refresh_wallpaper_colors(qt: CxxQtThread<qobject::AppController>) {
+    let generation = WALLPAPER_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
+    let spawned = std::thread::Builder::new().name("wallpaper-colors".into()).spawn(move || {
+        let seed = win::wallpaper::seed();
+        tracing::debug!(seed = ?seed.map(|s| format!("#{:06X}", s.as_u32())), "wallpaper colors");
+        let json = seed.map(|seed| crate::palette::scheme_json(seed).to_string());
+        if WALLPAPER_GENERATION.load(Ordering::SeqCst) != generation {
+            return;
+        }
+        let _ = qt.queue(move |object| {
+            object.set_wallpaper_colors(QString::from(json.as_deref().unwrap_or_default()));
+        });
+    });
+    if let Err(e) = spawned {
+        tracing::warn!(error = %e, "can't start reading the wallpaper's colors");
+    }
+}
+
 fn ring_device(device: DeviceId, on: bool) {
     let Some(node) = core_host::node() else { return };
     core_host::spawn(async move {
@@ -246,6 +277,7 @@ impl qobject::AppController {
     fn refresh_appearance(mut self: Pin<&mut Self>) {
         self.as_mut().set_system_dark(win::system_dark());
         self.as_mut().set_reduce_motion(win::reduce_motion());
+        refresh_wallpaper_colors(self.qt_thread());
     }
 
     pub fn ring(self: Pin<&mut Self>, device: &QString, on: bool) {

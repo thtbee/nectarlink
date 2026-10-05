@@ -42,7 +42,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -50,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import app.nectarlink.android.R
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.PairingState
+import app.nectarlink.android.ui.theme.LocalAppFonts
 import app.nectarlink.core.DiscoveredDevice
 import app.nectarlink.core.PairingFailure
 import kotlinx.coroutines.delay
@@ -104,7 +104,6 @@ fun PairingScreen(
                 else -> if (nearby) stringResource(R.string.pair_nearby_title) else stringResource(R.string.pair_title)
             },
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(20.dp))
@@ -243,7 +242,7 @@ private fun CodeDigits(code: String) {
                 modifier = Modifier.size(width = 44.dp, height = 56.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(digit.toString(), fontFamily = FontFamily.Monospace, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                    Text(digit.toString(), fontFamily = LocalAppFonts.current.mono, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

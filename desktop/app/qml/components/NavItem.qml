@@ -47,7 +47,7 @@ FocusScope {
         anchors.topMargin: 4
         text: item.text
         role: "caption"
-        font.weight: Theme.graphite ? 400 : 600
+        weight: Theme.graphite ? 400 : 600
         color: item.selected ? Theme.surfaceContent : Theme.surfaceContentVariant
     }
     Rectangle {

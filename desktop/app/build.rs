@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Builds the QML module `app.nectarlink` (QML files compiled ahead of time,
-//! Rust QObjects, C++ helpers) and links the Windows libraries C++ uses.
+//! Rust QObjects, C++ helpers), compiles in the bundled fonts and links the
+//! Windows libraries C++ uses.
+
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use cxx_qt_build::{CxxQtBuilder, QmlFile, QmlModule};
 
@@ -36,6 +42,28 @@ const QML: &[&str] = &[
 /// QML singletons.
 const QML_SINGLETONS: &[&str] = &["qml/Tokens.qml", "qml/Theme.qml", "qml/Icons.qml"];
 
+/// Bundled fonts (in `assets/fonts`), compiled in under `:/fonts/`.
+const FONTS: &[&str] =
+    &["Figtree.ttf", "InstrumentSerif-Regular.ttf", "SpaceMono-Regular.ttf", "SpaceMono-Bold.ttf"];
+
+/// Writes a resource file listing the fonts (they live outside this crate,
+/// so each needs an alias) and returns its path.
+fn fonts_qrc() -> PathBuf {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/fonts");
+    let mut qrc = String::from("<RCC>\n  <qresource prefix=\"/fonts\">\n");
+    for font in FONTS {
+        let path = dir.join(font).canonicalize().unwrap_or_else(|e| panic!("missing font {font}: {e}"));
+        println!("cargo::rerun-if-changed={}", path.display());
+        // rcc takes forward slashes; strip the verbatim prefix canonicalize adds.
+        let path = path.display().to_string().trim_start_matches(r"\\?\").replace('\\', "/");
+        qrc.push_str(&format!("    <file alias=\"{font}\">{path}</file>\n"));
+    }
+    qrc.push_str("  </qresource>\n</RCC>\n");
+    let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR")).join("fonts.qrc");
+    fs::write(&out, qrc).expect("write fonts.qrc");
+    out
+}
+
 fn main() {
     let module = QmlModule::new("app.nectarlink")
         .qml_files(QML.iter().map(|f| QmlFile::from(*f)))
@@ -44,6 +72,7 @@ fn main() {
         .qt_module("Quick")
         .include_dir("cpp")
         .cpp_files(["cpp/app_helpers.cpp", "cpp/native_window.h", "cpp/native_window.cpp"])
+        .qrc(fonts_qrc())
         .files([
             "src/bridge/native.rs",
             "src/bridge/app.rs",

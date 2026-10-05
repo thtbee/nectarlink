@@ -93,6 +93,26 @@ abstract class UniffiBindgen : DefaultTask() {
     }
 }
 
+// ---- Fonts ----
+//
+// The shared fonts in `assets/fonts` (with their licenses) are packaged as
+// app assets under `fonts/`.
+
+/** Copies the bundled fonts and their licenses into `<outputDir>/fonts`. */
+abstract class BundleFonts : DefaultTask() {
+    @get:Inject abstract val fs: FileSystemOperations
+    @get:InputDirectory @get:PathSensitive(PathSensitivity.RELATIVE) abstract val fonts: DirectoryProperty
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        fs.sync {
+            from(fonts) { include("*.ttf", "OFL-*.txt") }
+            into(outputDir.dir("fonts"))
+        }
+    }
+}
+
 val workspaceDir: Directory = rootProject.layout.projectDirectory.dir("..")
 val rustAbis: List<String> =
     (findProperty("nectarlink.abis") as String?)?.split(",")?.map(String::trim) ?: listOf("arm64-v8a", "x86_64")
@@ -113,8 +133,13 @@ androidComponents {
             library.set(cargo.flatMap { it.outputDir.file("${rustAbis.first()}/libnectarlink_ffi.so") })
             workspace.set(workspaceDir)
         }
+        val fonts = tasks.register<BundleFonts>("bundleFonts$suffix") {
+            description = "Packages the shared fonts as assets."
+            this.fonts.set(workspaceDir.dir("assets/fonts"))
+        }
         variant.sources.jniLibs?.addGeneratedSourceDirectory(cargo, CargoNdkBuild::outputDir)
         variant.sources.java?.addGeneratedSourceDirectory(bindgen, UniffiBindgen::outputDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(fonts, BundleFonts::outputDir)
     }
 }
 

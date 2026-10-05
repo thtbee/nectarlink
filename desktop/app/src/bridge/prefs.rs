@@ -25,7 +25,8 @@ pub mod qobject {
         #[qml_singleton]
         /// "bloom" or "graphite".
         #[qproperty(QString, theme)]
-        /// Bloom color preset: "honey", "sage", "lavender" or "ocean".
+        /// Bloom colors: "wallpaper", or a preset: "honey", "sage", "lavender"
+        /// or "ocean".
         #[qproperty(QString, seed)]
         /// "system", "light" or "dark".
         #[qproperty(QString, color_mode)]

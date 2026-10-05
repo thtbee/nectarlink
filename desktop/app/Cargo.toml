@@ -3,7 +3,8 @@ name = "nectarlink-desktop"
 description = "Nectarlink for Windows: the desktop app"
 version.workspace = true
 edition.workspace = true
-rust-version.workspace = true
+# Above the workspace minimum: material-colors needs Rust 1.97.
+rust-version = "1.97"
 authors.workspace = true
 repository.workspace = true
 license = "GPL-3.0-or-later"
@@ -20,6 +21,7 @@ cxx-qt.workspace = true
 cxx-qt-lib.workspace = true
 dirs.workspace = true
 hostname.workspace = true
+material-colors.workspace = true
 nectarlink-core.workspace = true
 qrcode.workspace = true
 serde.workspace = true
@@ -33,8 +35,10 @@ windows = { workspace = true, features = [
     "Win32_Foundation",
     "Win32_Graphics_Dwm",
     "Win32_Graphics_Gdi",
+    "Win32_Graphics_Imaging",
     "Win32_System_LibraryLoader",
     "Win32_Security",
+    "Win32_System_Com",
     "Win32_System_Power",
     "Win32_System_Registry",
     "Win32_System_Threading",

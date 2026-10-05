@@ -11,5 +11,8 @@ pub mod ffi {
         fn add_app_icon_image(size: i32, rgba: &[u8]);
         fn apply_app_icon();
         fn keep_running_without_windows();
+        /// Registers the fonts compiled in under `:/fonts/`; returns how
+        /// many loaded.
+        fn load_bundled_fonts() -> i32;
     }
 }
