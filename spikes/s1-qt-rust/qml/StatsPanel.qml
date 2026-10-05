@@ -6,6 +6,7 @@ import app.nectarlink.spike
 Rectangle {
     id: panel
     required property DeviceModel model
+    required property MirrorPanel mirror
     property real fps: 0
     property bool measuring: false
 
@@ -62,6 +63,12 @@ Rectangle {
             color: panel.measuring ? "#8A5100" : "#3d2f22"
             Text { anchors.centerIn: parent; text: panel.measuring ? "Measuring frame rate" : "Measure frame rate"; color: "white"; font.family: "Segoe UI Variable Text"; font.pixelSize: 12; font.weight: Font.DemiBold }
             TapHandler { onTapped: panel.measuring = !panel.measuring }
+        }
+        Rectangle {
+            width: 200; height: 26; radius: 13
+            color: panel.mirror.running ? "#8A5100" : "#3d2f22"
+            Text { anchors.centerIn: parent; text: panel.mirror.running ? "Stop video" : "Video 1080p60 (GPU)"; color: "white"; font.family: "Segoe UI Variable Text"; font.pixelSize: 12; font.weight: Font.DemiBold }
+            TapHandler { onTapped: panel.mirror.running = !panel.mirror.running }
         }
     }
 }

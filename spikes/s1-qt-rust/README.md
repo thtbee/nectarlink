@@ -3,7 +3,7 @@
 Throwaway code. What we keep is the knowledge below.
 
 Run (needs Qt 6.12 on PATH and `QMAKE` set):
-`cargo run --release -p s1-qt-rust` · `-- --autotest` (self-driving measurement) · `-- --mica`
+`cargo run --release -p s1-qt-rust` · `-- --autotest` (self-driving measurement) · `-- --mica` · `-- --video`
 
 ## Results (2026-10-05, this machine, 144 Hz display, release build)
 
@@ -15,7 +15,7 @@ Run (needs Qt 6.12 on PATH and `QMAKE` set):
 | Core→UI events | 10k/s without stutter | ✅ with coalescing (see below) | ✅ |
 | Bloom design fidelity | matches mockups | Home, notification cards, Deck, shared-element conversation transition, real blur (MultiEffect) | ✅ |
 | Mica | works | Works on D3D11 with no cost: 144 fps under load, same memory (see lesson 7) | ✅ |
-| Video in scene graph (zero copy) | works | ⏳ not started | follow-up (with S2) |
+| Video in scene graph (zero copy) | works | 1080p60 GPU frames from a Rust thread on its own D3D11 device: 240/240 shown, 0 dropped, 144 fps alongside 10k events/s. Video alone: 11% of one core, 9% GPU, +6.5 MB | ✅ |
 | ARM64 build | CI builds | ⏳ not tried | follow-up |
 | Tray-only RAM < 60 MB | | ⏳ not measured (no tray mode yet) | follow-up |
 
@@ -42,10 +42,23 @@ Run (needs Qt 6.12 on PATH and `QMAKE` set):
    Mica tint.
 9. **Drop the engine and app before `process::exit`**, or Qt's render and
    vsync threads are torn down mid-flight and log warnings at exit.
+10. **Video path** (`src/video.rs`, `cpp/video_surface.cpp`): the producer
+    owns its device on Qt's adapter (matched by LUID) and publishes into a
+    shared NT-handle texture guarded by a keyed mutex, taken with a zero
+    timeout on both sides so neither thread ever waits: "latest frame wins".
+    Qt copies it GPU-to-GPU during sync. Gotchas: `QSGD3D11Texture::fromNative`
+    assumes **RGBA8** (BGRA fails SRV creation and renders nothing);
+    `AcquireSync`'s `WAIT_TIMEOUT` is a *success* HRESULT (the `windows`
+    crate maps it to `Ok`, so check `S_OK` through the vtable); keep the
+    `QSGTexture` wrapper's lifetime shorter than the native texture.
+11. Wake the item with a coalesced notifier (at most one queued `update()`),
+    the same idea as `UiPump`, so the scene only re-renders on new frames.
 
 ## Verdict
 
 **Gate passed for the UI stack** (looks, smoothness, memory, startup, event throughput).
-The zero-copy video item, ARM64 and tray-mode memory remain to verify. The
+ARM64 and tray-mode memory remain to verify; S2 replaces the test pattern
+with the hardware H.264/H.265 decoder (NV12 → RGBA via the D3D11 video
+processor, into the same shared texture). The
 real app also needs a custom title bar so Mica runs edge to edge (the system
 caption is drawn in the accent color here).

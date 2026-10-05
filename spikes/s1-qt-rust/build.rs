@@ -10,10 +10,16 @@ fn main() {
         QmlFile::from("qml/NotificationCard.qml"),
         QmlFile::from("qml/DeckKey.qml"),
         QmlFile::from("qml/StatsPanel.qml"),
+        QmlFile::from("qml/MirrorPanel.qml"),
     ]))
     .qt_module("Quick")
     .include_dir("cpp")
-    .cpp_file("cpp/window_helpers.cpp")
-    .files(["src/bridge.rs", "src/native.rs"])
+    .cpp_files([
+        "cpp/window_helpers.cpp",
+        "cpp/frame_notifier.cpp",
+        "cpp/video_surface.h",
+        "cpp/video_surface.cpp",
+    ])
+    .files(["src/bridge.rs", "src/native.rs", "src/video.rs"])
     .build();
 }

@@ -5,6 +5,7 @@
 mod bridge;
 mod mica;
 mod native;
+mod video;
 
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};
 

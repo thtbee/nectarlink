@@ -14,7 +14,12 @@ Window {
     color: mica ? "transparent" : Theme.surface
 
     // The frame and the Mica tint follow the app theme, not the system one.
-    Component.onCompleted: Qt.styleHints.colorScheme = Theme.dark ? Qt.ColorScheme.Dark : Qt.ColorScheme.Light
+    Component.onCompleted: {
+        Qt.styleHints.colorScheme = Theme.dark ? Qt.ColorScheme.Dark : Qt.ColorScheme.Light
+        // --video: start the GPU video right away (for CPU/GPU cost measurements).
+        if (Qt.application.arguments.indexOf("--video") >= 0)
+            mirror.running = true
+    }
 
     DeviceModel {
         id: device
@@ -49,12 +54,15 @@ Window {
     }
     Timer {
         id: phase3; interval: 2500
-        onTriggered: { detail.close(); phase4.start() }
+        onTriggered: { detail.close(); mirror.running = true; phase4.start() }
     }
     Timer {
-        id: phase4; interval: 2000
+        id: phase4; interval: 4000
         onTriggered: {
             device.refreshMemory()
+            const video = mirror.surface.stats()
+            console.log("AUTOTEST video published=" + video.published + " shown=" + video.shown
+                        + " dropped=" + video.dropped + " error=" + (mirror.surface.error || "none"))
             console.log("AUTOTEST fps_avg=" + (window.fpsSum / Math.max(1, window.fpsSamples)).toFixed(1)
                         + " fps_min=" + window.minFps.toFixed(1)
                         + " events_per_s=" + device.eventsPerSecond
@@ -63,6 +71,7 @@ Window {
                         + " mem_mb=" + device.workingSetMb.toFixed(1)
                         + " first_frame_ms=" + device.startupMs.toFixed(0))
             device.stopStress()
+            mirror.running = false
             Qt.quit()
         }
     }
@@ -308,8 +317,15 @@ Window {
             StatsPanel {
                 id: stats
                 model: device
+                mirror: mirror
                 anchors { right: parent.right; bottom: parent.bottom; margins: 24 }
                 z: 5
+            }
+
+            MirrorPanel {
+                id: mirror
+                anchors { left: parent.left; bottom: parent.bottom; margins: 24 }
+                z: 6
             }
 
             // Shared-element transition: the conversation grows out of the tapped card.
