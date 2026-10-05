@@ -15,8 +15,8 @@ authors = ["The Nectarlink contributors"]
 repository = "https://github.com/thtbee/nectarlink"
 
 [workspace.dependencies]
-nectarlink-protocol = { path = "core/nectarlink-protocol" }
-nectarlink-core = { path = "core/nectarlink-core" }
+nectarlink-protocol = { path = "core/nectarlink-protocol", version = "0.0.1" }
+nectarlink-core = { path = "core/nectarlink-core", version = "0.0.1" }
 
 anyhow = "1"
 ciborium = "0.2"

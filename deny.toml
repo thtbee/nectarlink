@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Dependency policy, enforced by `cargo deny check` (run by scripts/check.ps1).
+
+[graph]
+all-features = true
+
+[advisories]
+# Known vulnerabilities fail the build; unmaintained crates are reported
+# only when they are direct dependencies.
+unmaintained = "workspace"
+yanked = "deny"
+
+[licenses]
+# Permissive and weak-copyleft licenses that are compatible with both the
+# MPL-2.0 core libraries and the GPL-3.0-or-later apps (see LICENSE).
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+confidence-threshold = 0.9
+# The apps themselves are GPL; nothing else may be, so a GPL dependency can
+# never end up in the MPL core by accident.
+exceptions = [
+    { crate = "nectarlink-cli", allow = ["GPL-3.0-or-later"] },
+    { crate = "s1-qt-rust", allow = ["GPL-3.0-or-later"] },
+]
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
