@@ -46,7 +46,7 @@ Rectangle {
                     radius: Theme.pill(height)
                     color: option.selected ? (Theme.graphite ? Theme.surfaceContent : Theme.surface) : "transparent"
                     Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
-                    border.width: option.activeFocus ? 2 : 0
+                    border.width: Theme.focusVisible(option) ? 2 : 0
                     border.color: Theme.primary
                 }
                 Txt {

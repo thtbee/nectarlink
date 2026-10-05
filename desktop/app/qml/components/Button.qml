@@ -114,7 +114,7 @@ FocusScope {
         color: "transparent"
         border.width: 2
         border.color: Theme.primary
-        visible: button.activeFocus
+        visible: Theme.focusVisible(button)
     }
 
     HoverHandler { id: hover; cursorShape: button.interactive ? Qt.PointingHandCursor : Qt.ArrowCursor }

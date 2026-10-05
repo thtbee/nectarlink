@@ -35,9 +35,10 @@ Item {
 
         Column {
             id: column
-            x: Theme.contentPadding
+            // A readable column, centered in wide windows.
+            width: Math.min(760, parent.width - Theme.contentPadding * 2)
+            x: Math.max(Theme.contentPadding, (parent.width - width) / 2)
             y: Theme.contentPadding
-            width: Math.min(720, parent.width - Theme.contentPadding * 2)
             spacing: Theme.gutter
 
             // ---- Appearance ----

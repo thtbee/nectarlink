@@ -57,7 +57,7 @@ FocusScope {
         color: "transparent"
         border.width: 2
         border.color: Theme.primary
-        visible: item.activeFocus
+        visible: Theme.focusVisible(item)
     }
     HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
     TapHandler { id: tap; onTapped: item.clicked() }

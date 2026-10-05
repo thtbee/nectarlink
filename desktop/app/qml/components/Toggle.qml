@@ -56,7 +56,7 @@ FocusScope {
         color: "transparent"
         border.width: 2
         border.color: Theme.primary
-        visible: toggle.activeFocus
+        visible: Theme.focusVisible(toggle)
     }
     HoverHandler { cursorShape: Qt.PointingHandCursor }
     TapHandler { id: tap; onTapped: toggle.toggled(!toggle.checked) }

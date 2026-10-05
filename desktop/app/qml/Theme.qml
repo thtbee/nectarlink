@@ -84,6 +84,12 @@ QtObject {
     readonly property int gutter: layout.gutter
     function space(step) { return Tokens.data.spacing.scale[step] }
 
+    // Focus rings show for keyboard focus only, not after a click (the
+    // web's :focus-visible).
+    function focusVisible(item) {
+        return item.activeFocus && (item.focusReason === Qt.TabFocusReason || item.focusReason === Qt.BacktabFocusReason)
+    }
+
     // ---- Motion ----
     // QML springs take a strength and a damping ratio; these are tuned to
     // match the token springs (gentle / standard / snappy).

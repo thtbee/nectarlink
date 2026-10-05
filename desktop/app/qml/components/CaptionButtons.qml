@@ -89,7 +89,7 @@ Row {
             color: "transparent"
             border.width: 2
             border.color: Theme.primary
-            visible: button.activeFocus
+            visible: Theme.focusVisible(button)
         }
         HoverHandler { id: hover; enabled: !button.nativeInput }
         TapHandler { id: tap; enabled: !button.nativeInput; onTapped: button.activated() }
