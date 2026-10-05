@@ -43,6 +43,8 @@ pub struct Settings {
     pub close_to_tray: bool,
     /// Send what's copied on this PC to connected phones.
     pub auto_clipboard: bool,
+    /// Paired phones in Explorer's "Send to" menu.
+    pub send_to_menu: bool,
 }
 
 impl Default for Settings {
@@ -54,6 +56,7 @@ impl Default for Settings {
             backdrop: true,
             close_to_tray: true,
             auto_clipboard: true,
+            send_to_menu: true,
         }
     }
 }
@@ -114,6 +117,7 @@ mod tests {
             backdrop: false,
             close_to_tray: false,
             auto_clipboard: false,
+            send_to_menu: false,
         };
         settings.save(dir.path()).unwrap();
         assert_eq!(Settings::load(dir.path()), settings);

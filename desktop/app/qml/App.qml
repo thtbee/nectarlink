@@ -11,6 +11,7 @@ QtObject {
     property MainWindow mainWindow: null
     readonly property Component mainComponent: Component { MainWindow {} }
     readonly property bool startMinimized: Qt.application.arguments.indexOf("--minimized") >= 0
+        || Qt.application.arguments.indexOf("--send-to") >= 0
 
     function showMain() {
         if (!mainWindow) {

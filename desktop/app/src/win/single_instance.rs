@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! One Nectarlink per user session and data folder. A second launch (from
-//! the Start menu, a shortcut or a jump list) asks the running one to show
-//! its window and exits.
+//! the Start menu, a shortcut or Explorer's "Send to") leaves its request
+//! (`crate::launch`), wakes the running one with [`wake`] and exits.
 
 use std::{
     hash::{DefaultHasher, Hash, Hasher},
@@ -35,7 +35,7 @@ unsafe impl Sync for PrimaryInstance {}
 #[derive(Debug)]
 pub enum Instance {
     Primary(PrimaryInstance),
-    /// Another instance is running and was asked to show itself.
+    /// Another instance is running.
     Secondary,
 }
 
@@ -59,14 +59,6 @@ pub fn acquire(data_dir: &Path) -> windows::core::Result<Instance> {
         let mutex = CreateMutexW(None, true, &mutex_name)?;
         if GetLastError() == ERROR_ALREADY_EXISTS {
             let _ = CloseHandle(mutex);
-            // We were just launched by the user, so we may take the
-            // foreground; pass that right on so the running instance's
-            // window comes to the front instead of only flashing.
-            let _ = AllowSetForegroundWindow(ASFW_ANY);
-            if let Ok(event) = OpenEventW(EVENT_MODIFY_STATE, false, &event_name) {
-                let _ = SetEvent(event);
-                let _ = CloseHandle(event);
-            }
             return Ok(Instance::Secondary);
         }
         // Auto-reset: each SetEvent wakes the waiter once.
@@ -75,9 +67,25 @@ pub fn acquire(data_dir: &Path) -> windows::core::Result<Instance> {
     }
 }
 
+/// Wakes the running instance (after leaving it a request).
+pub fn wake(data_dir: &Path) {
+    let (_, event_name) = names(data_dir);
+    // SAFETY: plain kernel object calls; the handle is closed right away.
+    unsafe {
+        // We were just launched by the user, so we may take the foreground;
+        // pass that right on so the running instance's window comes to the
+        // front instead of only flashing.
+        let _ = AllowSetForegroundWindow(ASFW_ANY);
+        if let Ok(event) = OpenEventW(EVENT_MODIFY_STATE, false, &event_name) {
+            let _ = SetEvent(event);
+            let _ = CloseHandle(event);
+        }
+    }
+}
+
 impl PrimaryInstance {
     /// Calls `on_activate` (on a background thread) whenever another launch
-    /// asks this instance to show itself.
+    /// wakes this instance.
     pub fn watch(&'static self, on_activate: impl Fn() + Send + 'static) {
         let spawned = std::thread::Builder::new().name("single-instance".into()).spawn(move || {
             loop {
@@ -110,11 +118,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn second_acquire_is_secondary_and_activates_the_first() {
+    fn second_acquire_is_secondary_and_wakes_the_first() {
         let dir = tempfile::tempdir().unwrap();
         let Instance::Primary(primary) = acquire(dir.path()).unwrap() else { panic!("first is primary") };
         assert!(matches!(acquire(dir.path()).unwrap(), Instance::Secondary));
-        // The secondary set the activation event.
+        // SAFETY: as below.
+        assert_ne!(unsafe { WaitForSingleObject(primary.activate, 0) }, WAIT_OBJECT_0, "not woken yet");
+        wake(dir.path());
         // SAFETY: the handle is owned by `primary`, alive for this call.
         assert_eq!(unsafe { WaitForSingleObject(primary.activate, 0) }, WAIT_OBJECT_0);
         drop(primary);

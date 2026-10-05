@@ -27,6 +27,7 @@ clap = { version = "4.6", features = ["derive"] }
 cxx = "1"
 cxx-qt = "0.10"
 cxx-qt-build = "0.10"
+embed-resource = "3"
 cxx-qt-lib = { version = "0.10", features = ["qt_gui", "qt_qml"] }
 data-encoding = "2.11"
 dirs = "7"

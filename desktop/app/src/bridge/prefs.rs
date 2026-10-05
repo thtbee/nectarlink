@@ -41,6 +41,8 @@ pub mod qobject {
         #[qproperty(bool, close_to_tray)]
         /// Send what's copied on this PC to connected phones.
         #[qproperty(bool, auto_clipboard)]
+        /// Paired phones in Explorer's "Send to" menu.
+        #[qproperty(bool, send_to_menu)]
         type Preferences = super::PreferencesRust;
     }
 
@@ -55,6 +57,7 @@ pub struct PreferencesRust {
     backdrop: bool,
     close_to_tray: bool,
     auto_clipboard: bool,
+    send_to_menu: bool,
 }
 
 impl cxx_qt::Initialize for qobject::Preferences {
@@ -74,6 +77,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_close_to_tray(settings.close_to_tray);
         self.as_mut().set_auto_clipboard(settings.auto_clipboard);
         crate::clipboard::set_auto_send(settings.auto_clipboard);
+        self.as_mut().set_send_to_menu(settings.send_to_menu);
 
         // Save after any change (connected after loading, so loading doesn't
         // rewrite the file).
@@ -85,6 +89,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_auto_clipboard_changed(|p| {
                 crate::clipboard::set_auto_send(p.auto_clipboard);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_send_to_menu_changed(|p| {
+                crate::send_to::set_enabled(p.send_to_menu);
                 p.save();
             })
             .release();
@@ -105,6 +115,7 @@ impl qobject::Preferences {
             backdrop: p.backdrop,
             close_to_tray: p.close_to_tray,
             auto_clipboard: p.auto_clipboard,
+            send_to_menu: p.send_to_menu,
         };
         save_in_background(settings);
     }

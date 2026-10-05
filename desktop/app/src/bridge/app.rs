@@ -137,6 +137,13 @@ fn controller() -> Option<CxxQtThread<qobject::AppController>> {
     CONTROLLER.get()?.lock().unwrap_or_else(|e| e.into_inner()).clone()
 }
 
+/// Asks the app to quit (from any thread), as Quit in the tray does.
+pub fn request_quit() {
+    if let Some(qt) = controller() {
+        let _ = qt.queue(|object| object.quit_requested());
+    }
+}
+
 /// Asks the UI to show the main window (from any thread).
 pub fn request_activation() {
     if let Some(qt) = controller() {

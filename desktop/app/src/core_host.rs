@@ -12,7 +12,10 @@ use std::{
 };
 
 use nectarlink_core::{DeviceInfo, DeviceKind, LinkState, Node, NodeConfig, Platform};
-use tokio::{runtime::Runtime, sync::broadcast::error::RecvError};
+use tokio::{
+    runtime::Runtime,
+    sync::{Notify, broadcast::error::RecvError},
+};
 
 use crate::state::{Changes, CoreStatus, Hub};
 
@@ -22,6 +25,8 @@ const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(2);
 pub struct CoreHost {
     runtime: Runtime,
     node: OnceLock<Node>,
+    /// Signaled once the node is up, or has failed to start.
+    started: Notify,
     pub hub: Arc<Hub>,
     pub data_dir: PathBuf,
 }
@@ -38,6 +43,22 @@ pub fn node() -> Option<Node> {
     host().node.get().cloned()
 }
 
+/// The node once it has started, or `None` if it couldn't.
+pub async fn wait_for_node() -> Option<Node> {
+    let host = host();
+    loop {
+        // Created before checking, so a signal in between isn't missed.
+        let started = host.started.notified();
+        if let Some(node) = node() {
+            return Some(node);
+        }
+        if host.hub.read(|s| matches!(s.status, Some(CoreStatus::Failed(_)))) {
+            return None;
+        }
+        started.await;
+    }
+}
+
 /// Runs a command on the core's runtime.
 pub fn spawn(fut: impl Future<Output = ()> + Send + 'static) {
     host().runtime.spawn(fut);
@@ -50,7 +71,13 @@ pub fn start(data_dir: PathBuf, platform: Arc<dyn Platform>) -> std::io::Result<
         .thread_name("nectarlink-core")
         .enable_all()
         .build()?;
-    let host = CoreHost { runtime, node: OnceLock::new(), hub: Hub::new(), data_dir: data_dir.clone() };
+    let host = CoreHost {
+        runtime,
+        node: OnceLock::new(),
+        started: Notify::new(),
+        hub: Hub::new(),
+        data_dir: data_dir.clone(),
+    };
     if HOST.set(host).is_err() {
         panic!("core host started twice");
     }
@@ -75,6 +102,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 s.status = Some(CoreStatus::Failed(e.to_string()));
                 Changes::STATUS
             });
+            host.started.notify_waiters();
             return;
         }
     };
@@ -102,6 +130,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         changes |= Changes::STATUS | Changes::CAPABILITIES;
         changes
     });
+    host.started.notify_waiters();
 
     loop {
         match events.recv().await {
@@ -110,6 +139,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 crate::notifications::update_toasts(&event);
                 crate::clipboard::on_event(&event);
                 crate::transfers::on_event(&event);
+                crate::send_to::on_event(&event);
             }
             Err(RecvError::Lagged(missed)) => {
                 // Resynchronize what can be re-read; transient events are lost.

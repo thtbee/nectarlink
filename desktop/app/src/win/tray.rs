@@ -194,7 +194,7 @@ fn add_icon(hwnd: HWND) {
 fn create_icon() -> windows::core::Result<HICON> {
     // SAFETY: GetSystemMetrics has no preconditions.
     let size = unsafe { GetSystemMetrics(SM_CXSMICON) }.clamp(16, 64) as usize;
-    let rgba = super::icon::render(size);
+    let rgba = crate::mark::render(size);
     // SAFETY: a top-down 32-bit DIB of `size`×`size`; we write exactly
     // size*size*4 bytes into its pixel buffer, then hand both bitmaps to
     // CreateIconIndirect, which copies them, and delete ours.

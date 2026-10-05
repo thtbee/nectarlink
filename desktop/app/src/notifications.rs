@@ -105,6 +105,7 @@ fn show(device: DeviceId, n: &Notification) {
         actions: n.actions.iter().filter(|a| !a.reply).map(|a| (a.id.clone(), a.title.clone())).collect(),
         reply: reply.map(|a| (a.id.clone(), a.title.clone())),
         silent: n.silent,
+        progress: None,
     };
     toasted(|t| t.entry(device).or_default().insert(n.key.clone()));
     toast::show(toast);
@@ -121,6 +122,14 @@ pub fn on_toast(event: ToastEvent) {
             return crate::transfers::show_in_folder(std::path::Path::new(key));
         }
         ToastEvent::Dismissed { device, .. } if device == crate::transfers::TOAST_GROUP => return,
+        // Sends from Explorer: open the app, or cancel.
+        ToastEvent::Action { device, key, action } if device == crate::send_to::TOAST_GROUP => {
+            if action == crate::send_to::ACTION_CANCEL {
+                crate::transfers::cancel(key);
+            }
+            return;
+        }
+        ToastEvent::Dismissed { device, .. } if device == crate::send_to::TOAST_GROUP => return,
         _ => {}
     }
     match event {

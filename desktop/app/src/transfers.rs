@@ -88,5 +88,6 @@ pub fn on_event(event: &NodeEvent) {
         actions: vec![(ACTION_SHOW.into(), "Show in folder".into())],
         reply: None,
         silent: false,
+        progress: None,
     });
 }

@@ -18,15 +18,16 @@ use windows::{
     Data::Xml::Dom::XmlDocument,
     Foundation::{IPropertyValue, TypedEventHandler},
     UI::Notifications::{
-        NotificationSetting, ToastActivatedEventArgs, ToastDismissalReason, ToastDismissedEventArgs,
-        ToastNotification, ToastNotificationManager, ToastNotifier,
+        NotificationData, NotificationSetting, ToastActivatedEventArgs, ToastDismissalReason,
+        ToastDismissedEventArgs, ToastNotification, ToastNotificationManager, ToastNotifier,
     },
     Win32::{
+        Foundation::ERROR_FILE_NOT_FOUND,
         System::{
             Com::{COINIT_MULTITHREADED, CoInitializeEx},
             Registry::{
                 HKEY, HKEY_CURRENT_USER, KEY_WRITE, REG_OPTION_NON_VOLATILE, REG_SZ, RegCloseKey,
-                RegCreateKeyExW, RegSetValueExW,
+                RegCreateKeyExW, RegDeleteTreeW, RegSetValueExW,
             },
         },
         UI::Shell::SetCurrentProcessExplicitAppUserModelID,
@@ -67,6 +68,19 @@ pub struct Toast {
     /// `(action id, placeholder)` for an inline reply.
     pub reply: Option<(String, String)>,
     pub silent: bool,
+    /// A progress bar, updated in place with [`update_progress`].
+    pub progress: Option<Progress>,
+}
+
+/// A toast's progress bar.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Progress {
+    /// Under the bar, on the left ("Sending…").
+    pub status: String,
+    /// 0 to 1, or `None` while it's not known yet.
+    pub value: Option<f64>,
+    /// Under the bar, on the right ("12 MB of 80 MB").
+    pub label: String,
 }
 
 impl std::fmt::Debug for Toast {
@@ -79,6 +93,7 @@ enum Command {
     Show(Box<Toast>),
     Remove { device: String, key: String },
     RemoveDevice { device: String },
+    Progress { device: String, key: String, progress: Progress },
 }
 
 type Handler = Box<dyn Fn(ToastEvent) + Send + Sync>;
@@ -130,6 +145,11 @@ pub fn show(toast: Toast) {
     send(Command::Show(Box::new(toast)));
 }
 
+/// Moves a shown toast's progress bar, without showing the toast again.
+pub fn update_progress(device: &str, key: &str, progress: Progress) {
+    send(Command::Progress { device: device.to_owned(), key: key.to_owned(), progress });
+}
+
 pub fn remove(device: &str, key: &str) {
     send(Command::Remove { device: device.to_owned(), key: key.to_owned() });
 }
@@ -139,10 +159,26 @@ pub fn remove_device(device: &str) {
     send(Command::RemoveDevice { device: device.to_owned() });
 }
 
+fn registration_key() -> HSTRING {
+    HSTRING::from(format!(r"Software\Classes\AppUserModelId\{AUMID}"))
+}
+
+/// Removes the registration (when uninstalling), and the app's toasts.
+pub fn unregister() {
+    if let Ok(history) = ToastNotificationManager::History() {
+        let _ = history.ClearWithId(&HSTRING::from(AUMID));
+    }
+    // SAFETY: deletes a key under HKCU by a valid path.
+    let result = unsafe { RegDeleteTreeW(HKEY_CURRENT_USER, &registration_key()) };
+    if result.is_err() && result != ERROR_FILE_NOT_FOUND {
+        tracing::warn!(error = ?result, "can't remove the notification registration");
+    }
+}
+
 /// `HKCU\Software\Classes\AppUserModelId\<AUMID>`: how Windows names the
 /// sender of toasts from an unpackaged app.
 fn register(icon: &Path) -> windows::core::Result<()> {
-    let key_path = HSTRING::from(format!(r"Software\Classes\AppUserModelId\{AUMID}"));
+    let key_path = registration_key();
     let mut key = HKEY::default();
     // SAFETY: creating/opening a key under HKCU with a valid path; the handle
     // is closed below.
@@ -225,6 +261,11 @@ fn run(icon: &Path, queue: mpsc::Receiver<Command>, handler: Handler) {
                 Some(h) => h.RemoveGroupWithId(&HSTRING::from(group(&device)), &aumid),
                 None => Ok(()),
             },
+            Command::Progress { device, key, progress } => progress_data(&progress).and_then(|data| {
+                notifier
+                    .UpdateWithTagAndGroup(&data, &HSTRING::from(tag(&key)), &HSTRING::from(group(&device)))
+                    .map(drop)
+            }),
         };
         if let Err(e) = result {
             tracing::debug!(error = %e, "toast command failed");
@@ -240,6 +281,9 @@ fn show_now(notifier: &ToastNotifier, toast: Toast, handler: &'static Handler) -
     notification.SetGroup(&HSTRING::from(group(&toast.device)))?;
     // Silent on the phone: straight to the notification center, no pop-up.
     notification.SetSuppressPopup(toast.silent)?;
+    if let Some(progress) = &toast.progress {
+        notification.SetData(&progress_data(progress)?)?;
+    }
 
     let (device, key) = (toast.device.clone(), toast.key.clone());
     notification.Activated(&TypedEventHandler::<ToastNotification, IInspectable>::new(move |_, args| {
@@ -277,6 +321,22 @@ fn show_now(notifier: &ToastNotifier, toast: Toast, handler: &'static Handler) -
     ))?;
     notifier.Show(&notification)
 }
+
+/// The values bound into a toast's progress bar.
+fn progress_data(progress: &Progress) -> windows::core::Result<NotificationData> {
+    let data = NotificationData::new()?;
+    let values = data.Values()?;
+    let value =
+        progress.value.map_or_else(|| "indeterminate".to_owned(), |v| format!("{:.3}", v.clamp(0.0, 1.0)));
+    values.Insert(&HSTRING::from(PROGRESS_VALUE), &HSTRING::from(value))?;
+    values.Insert(&HSTRING::from(PROGRESS_STATUS), &HSTRING::from(&progress.status))?;
+    values.Insert(&HSTRING::from(PROGRESS_LABEL), &HSTRING::from(&progress.label))?;
+    Ok(data)
+}
+
+const PROGRESS_VALUE: &str = "progressValue";
+const PROGRESS_STATUS: &str = "progressStatus";
+const PROGRESS_LABEL: &str = "progressLabel";
 
 /// The text typed in the reply field, if any.
 fn reply_text(args: &ToastActivatedEventArgs) -> Option<String> {
@@ -325,6 +385,11 @@ fn toast_xml(toast: &Toast) -> String {
         xml.push_str(&format!("<text>{}</text>", escape(&toast.body)));
     }
     xml.push_str(&format!(r#"<text placement="attribution">{}</text>"#, escape(&toast.attribution)));
+    if toast.progress.is_some() {
+        xml.push_str(&format!(
+            r#"<progress value="{{{PROGRESS_VALUE}}}" status="{{{PROGRESS_STATUS}}}" valueStringOverride="{{{PROGRESS_LABEL}}}"/>"#
+        ));
+    }
     if let Some(icon) = &toast.icon {
         xml.push_str(&format!(
             r#"<image placement="appLogoOverride" src="{}"/>"#,
@@ -373,6 +438,7 @@ mod tests {
             actions: (0..6).map(|i| (i.to_string(), format!("Action {i}"))).collect(),
             reply: Some(("r".into(), "Reply".into())),
             silent: true,
+            progress: None,
         }
     }
 
@@ -387,6 +453,23 @@ mod tests {
         assert!(xml.ends_with(r#"<audio silent="true"/></toast>"#));
         // Windows parses it.
         XmlDocument::new().unwrap().LoadXml(&HSTRING::from(xml)).expect("well-formed XML");
+    }
+
+    #[test]
+    fn progress_bars_are_bound_to_data() {
+        let toast = Toast {
+            progress: Some(Progress { status: "Sending…".into(), value: None, label: String::new() }),
+            ..toast()
+        };
+        let xml = toast_xml(&toast);
+        assert!(
+            xml.contains(r#"<progress value="{progressValue}" status="{progressStatus}" valueStringOverride="{progressLabel}"/>"#),
+            "{xml}"
+        );
+        XmlDocument::new().unwrap().LoadXml(&HSTRING::from(xml)).expect("well-formed XML");
+        let data =
+            progress_data(&Progress { status: "s".into(), value: Some(1.5), label: "l".into() }).unwrap();
+        assert_eq!(data.Values().unwrap().Lookup(&HSTRING::from(PROGRESS_VALUE)).unwrap(), "1.000");
     }
 
     #[test]

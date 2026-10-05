@@ -162,6 +162,18 @@ Item {
                             onToggled: (on) => Preferences.autoClipboard = on
                         }
                     }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.send
+                        title: qsTr("Show your phones in File Explorer")
+                        description: qsTr("Right-click files, choose Send to, then your phone.")
+                        Toggle {
+                            label: qsTr("Show your phones in File Explorer")
+                            checked: Preferences.sendToMenu
+                            onToggled: (on) => Preferences.sendToMenu = on
+                        }
+                    }
                 }
             }
 

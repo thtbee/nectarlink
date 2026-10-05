@@ -8,6 +8,7 @@
 pub mod clipboard;
 pub mod icon;
 pub mod net;
+pub mod shortcut;
 pub mod single_instance;
 pub mod sound;
 pub mod toast;

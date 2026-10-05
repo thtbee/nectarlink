@@ -79,8 +79,9 @@ place and tested; the user-facing features of Phase 1 come next.
   in the app (Android lets only the app in front read the clipboard).
   Passwords that password managers mark private are never sent.
 - **Files** in both directions, at Wi-Fi speed. On the PC, drop files on the
-  window or pick them; on the phone, share them from any app or pick them in
-  Nectarlink. They land in `Downloads\Nectarlink` on the PC and
+  window, pick them, or right-click them in File Explorer and choose
+  **Send to** and your phone (a notification follows the transfer); on the
+  phone, share them from any app or pick them in Nectarlink. They land in `Downloads\Nectarlink` on the PC and
   `Download/Nectarlink` on the phone, with progress, cancelling, and transfers
   that pick up where they left off after a dropped connection.
 - **Capability matrix**: both apps compute which features work for a pair of
@@ -94,8 +95,8 @@ place and tested; the user-facing features of Phase 1 come next.
   connection service, and an identity key protected by the Android Keystore.
 - **Command-line client** for development and testing (`nectarlink`).
 
-**Next (Phase 1)**: "Send to phone" in Explorer, images on the clipboard, media
-controls, notification filters and history, and a Windows installer. Mirroring, messages, calls and the other
+**Next (Phase 1)**: images on the clipboard, media controls, notification
+filters and history, and a Windows installer. Mirroring, messages, calls and the other
 features in the plan follow in later phases.
 
 ## Screenshots

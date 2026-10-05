@@ -58,6 +58,7 @@ windows = { workspace = true, features = [
 
 [build-dependencies]
 cxx-qt-build = { workspace = true, features = ["link_qt_object_files"] }
+embed-resource.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

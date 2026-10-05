@@ -12,10 +12,13 @@ mod bridge;
 mod clipboard;
 mod core_host;
 mod icons;
+mod launch;
 mod logging;
+mod mark;
 mod notifications;
 mod palette;
 mod qr;
+mod send_to;
 mod settings;
 mod state;
 mod transfers;
@@ -34,7 +37,10 @@ use std::{
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};
 use nectarlink_core::Platform;
 
-use crate::win::single_instance::{self, Instance};
+use crate::{
+    launch::Request,
+    win::single_instance::{self, Instance},
+};
 
 /// How many fonts `build.rs` compiles in.
 const BUNDLED_FONTS: i32 = 4;
@@ -62,18 +68,39 @@ struct Options {
     data_dir: Option<PathBuf>,
     /// Start in the tray without opening the window (autostart).
     minimized: bool,
+    /// `--send-to <device> <files…>`: Explorer's "Send to" menu.
+    send_to: Option<(String, Vec<PathBuf>)>,
+    /// Ask the running app to quit (the installer, before an update).
+    quit: bool,
+    /// Quit the running app and undo what it set up in Windows (the
+    /// uninstaller). Data is kept.
+    uninstall: bool,
 }
 
 fn parse_options() -> Options {
     let mut options = Options::default();
-    let mut args = std::env::args().skip(1);
+    let mut paths = Vec::new();
+    let mut args = std::env::args_os().skip(1);
     while let Some(arg) = args.next() {
-        match arg.as_str() {
-            "--data-dir" => options.data_dir = args.next().map(PathBuf::from),
-            "--minimized" => options.minimized = true,
-            // Qt reads its own arguments; ignore everything else.
+        match arg.to_str() {
+            Some("--data-dir") => options.data_dir = args.next().map(PathBuf::from),
+            Some("--minimized") => options.minimized = true,
+            Some("--quit") => options.quit = true,
+            Some("--uninstall") => options.uninstall = true,
+            Some(send_to::ARG) => {
+                let device = args.next().map(|d| d.to_string_lossy().into_owned()).unwrap_or_default();
+                options.send_to = Some((device, Vec::new()));
+            }
+            // Explorer adds the chosen files after the shortcut's arguments.
+            _ if !arg.to_string_lossy().starts_with('-') => paths.push(PathBuf::from(arg)),
+            // Qt reads its own options; ignore everything else.
             _ => {}
         }
+    }
+    if let Some((_, files)) = &mut options.send_to {
+        *files = paths;
+        // Sending doesn't need the window.
+        options.minimized = true;
     }
     options
 }
@@ -107,6 +134,16 @@ fn start_toasts() {
     win::toast::start(icon, notifications::on_toast);
 }
 
+/// Removes what the app set up in Windows: the "Send to" entries and the
+/// notification sender registration.
+fn uninstall() {
+    tracing::info!("uninstalling");
+    if let Err(e) = send_to::remove_all() {
+        tracing::warn!(error = %e, "can't remove the Send to entries");
+    }
+    win::toast::unregister();
+}
+
 fn install_panic_logging() {
     let default = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
@@ -126,10 +163,25 @@ fn main() -> ExitCode {
     install_panic_logging();
     tracing::info!(version = env!("CARGO_PKG_VERSION"), minimized = options.minimized, "starting");
 
+    if options.uninstall {
+        uninstall();
+    }
+    let request = match options.send_to.clone() {
+        _ if options.quit || options.uninstall => Request::Quit,
+        Some((device, paths)) => Request::Send { device, paths },
+        None => Request::Show,
+    };
     let instance = match single_instance::acquire(&data_dir) {
+        // Nothing running to quit.
+        Ok(Instance::Primary(_)) if request == Request::Quit => return ExitCode::SUCCESS,
         Ok(Instance::Primary(primary)) => Some(&*Box::leak(Box::new(primary))),
         Ok(Instance::Secondary) => {
-            tracing::info!("already running; asked it to show itself");
+            // Without the request, the running instance still shows itself.
+            if let Err(e) = launch::queue(&data_dir, &request) {
+                tracing::warn!(error = %e, "can't pass the request on");
+            }
+            single_instance::wake(&data_dir);
+            tracing::info!("already running; passed the request on");
             return ExitCode::SUCCESS;
         }
         Err(e) => {
@@ -140,13 +192,27 @@ fn main() -> ExitCode {
 
     // Before any window: toasts and the taskbar both go by this ID.
     win::toast::set_process_id();
-    if let Err(e) = core_host::start(data_dir, Arc::new(DesktopPlatform)) {
+    if let Err(e) = core_host::start(data_dir.clone(), Arc::new(DesktopPlatform)) {
         tracing::error!(error = %e, "can't start the core runtime");
         return ExitCode::FAILURE;
     }
     watch_network();
     start_toasts();
     clipboard::start();
+    send_to::set_enabled(settings::Settings::load(&data_dir).send_to_menu);
+    // A test instance (own data folder) leaves the user's menu alone.
+    if options.data_dir.is_none() {
+        send_to::start();
+    }
+    // Requests left while no instance was running, then this launch's own.
+    for waiting in launch::drain(&data_dir) {
+        if matches!(waiting, Request::Send { .. }) {
+            send_to::handle(waiting);
+        }
+    }
+    if matches!(request, Request::Send { .. }) {
+        send_to::handle(request);
+    }
 
     bridge::native::ffi::prepare_qt();
     let mut app = QGuiApplication::new();
@@ -161,12 +227,19 @@ fn main() -> ExitCode {
         tracing::warn!(loaded = fonts, expected = BUNDLED_FONTS, "some bundled fonts didn't load");
     }
     for size in [16, 20, 24, 32, 40, 48, 64, 256] {
-        bridge::native::ffi::add_app_icon_image(size, &win::icon::render(size as usize));
+        bridge::native::ffi::add_app_icon_image(size, &mark::render(size as usize));
     }
     bridge::native::ffi::apply_app_icon();
 
     if let Some(instance) = instance {
-        instance.watch(bridge::app::request_activation);
+        let data_dir = data_dir.clone();
+        instance.watch(move || {
+            let requests = launch::drain(&data_dir);
+            if requests.is_empty() {
+                bridge::app::request_activation();
+            }
+            requests.into_iter().for_each(send_to::handle);
+        });
     }
 
     let mut engine = QQmlApplicationEngine::new();
