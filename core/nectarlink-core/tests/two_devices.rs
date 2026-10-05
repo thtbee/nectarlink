@@ -514,27 +514,35 @@ async fn notification_toggles_are_honored_on_both_devices() {
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
     grant_notification_access(&phone).await;
     phone.node.notifications_reset(vec![note("a", "com.chat", "Sam", false)]).await;
-    let snapshot = |e: &NodeEvent| match e {
-        NodeEvent::NotificationsReset { device, items } if *device == phone_id => Some(items.len()),
-        _ => None,
+    // Snapshots are idempotent and may repeat (one on connect, one when
+    // the phone's list is reset), so wait for the one with the expected size.
+    let snapshot = |expected: usize| {
+        move |e: &NodeEvent| match e {
+            NodeEvent::NotificationsReset { device, items }
+                if *device == phone_id && items.len() == expected =>
+            {
+                Some(())
+            }
+            _ => None,
+        }
     };
-    assert_eq!(wait_for(&mut pc, "first snapshot", snapshot).await, 1);
+    wait_for(&mut pc, "first snapshot", snapshot(1)).await;
 
     // The phone stops sharing with this PC: the PC is cleared, and actions
     // from it are refused.
     phone.node.set_device_toggle(pc_id, "notifications", false).unwrap();
-    assert_eq!(wait_for(&mut pc, "cleared by the phone", snapshot).await, 0);
+    wait_for(&mut pc, "cleared by the phone", snapshot(0)).await;
     let denied = with_timeout("denied", pc.node.dismiss_notification(phone_id, "a".into())).await;
     assert!(matches!(denied, Err(Error::Denied)), "{denied:?}");
     phone.node.set_device_toggle(pc_id, "notifications", true).unwrap();
-    assert_eq!(wait_for(&mut pc, "shared again", snapshot).await, 1);
+    wait_for(&mut pc, "shared again", snapshot(1)).await;
 
     // The PC hides this phone's notifications, then shows them again: it
     // asks the phone for what's showing.
     pc.node.set_device_toggle(phone_id, "notifications", false).unwrap();
-    assert_eq!(wait_for(&mut pc, "hidden on the PC", snapshot).await, 0);
+    wait_for(&mut pc, "hidden on the PC", snapshot(0)).await;
     pc.node.set_device_toggle(phone_id, "notifications", true).unwrap();
-    assert_eq!(wait_for(&mut pc, "synced again", snapshot).await, 1);
+    wait_for(&mut pc, "synced again", snapshot(1)).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
