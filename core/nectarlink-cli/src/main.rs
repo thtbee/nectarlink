@@ -111,6 +111,18 @@ enum Command {
     },
     /// Stay online and print events until Ctrl+C.
     Run,
+    /// Dismiss a phone's notification (`run` prints the keys).
+    Dismiss { device: String, key: String },
+    /// Run an action of a phone's notification, or reply to it.
+    Act {
+        device: String,
+        key: String,
+        /// The action's ID (`run` prints them).
+        action: String,
+        /// Text to send, for a reply action.
+        #[arg(long)]
+        reply: Option<String>,
+    },
     /// Show a notification on paired PCs as if this were a phone (use with
     /// --as-phone), then stay online to show what the PC does with it.
     Notify {
@@ -265,6 +277,20 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             wait_until_online(node, id).await?;
             node.ring(id, !off).await.context("ring failed")?;
             println!("{}", if *off { "Stopped ringing." } else { "Ringing…" });
+        }
+        Command::Dismiss { device, key } => {
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            node.dismiss_notification(id, key.clone()).await.context("dismiss failed")?;
+            println!("Dismissed.");
+        }
+        Command::Act { device, key, action, reply } => {
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            node.run_notification_action(id, key.clone(), action.clone(), reply.clone())
+                .await
+                .context("action failed")?;
+            println!("Done.");
         }
         Command::Connect { device, addrs } => {
             let id = resolve(node, device)?;
@@ -454,12 +480,18 @@ fn print_event(node: &Node, event: &NodeEvent) {
         NodeEvent::NotificationsReset { device, items } => {
             println!("{}: {} notifications showing", name(device), items.len())
         }
-        NodeEvent::NotificationPosted { device, notification: n } => println!(
-            "{}: {} · {}",
-            name(device),
-            n.app_name,
-            n.title.as_deref().or(n.text.as_deref()).unwrap_or_default()
-        ),
+        NodeEvent::NotificationPosted { device, notification: n } => {
+            println!(
+                "{}: {} · {}  [key {}]",
+                name(device),
+                n.app_name,
+                n.title.as_deref().or(n.text.as_deref()).unwrap_or_default(),
+                n.key
+            );
+            for a in &n.actions {
+                println!("    action {}: {}{}", a.id, a.title, if a.reply { " (reply)" } else { "" });
+            }
+        }
         NodeEvent::NotificationRemoved { device, .. } => {
             println!("{}: a notification went away", name(device))
         }

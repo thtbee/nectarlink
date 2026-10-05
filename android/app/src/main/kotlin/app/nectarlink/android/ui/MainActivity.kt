@@ -80,6 +80,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Back from Settings, maybe with notification access changed.
+        (application as NectarlinkApplication).core.refreshNotificationAccess()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handlePairingLink(intent)

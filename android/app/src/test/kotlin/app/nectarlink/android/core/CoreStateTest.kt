@@ -7,6 +7,7 @@ import app.nectarlink.core.DeviceKind
 import app.nectarlink.core.DiscoveredDevice
 import app.nectarlink.core.Event
 import app.nectarlink.core.Link
+import app.nectarlink.core.Notification
 import app.nectarlink.core.PairedDevice
 import app.nectarlink.core.PairingFailure
 import org.junit.Assert.assertEquals
@@ -72,4 +73,13 @@ class CoreStateTest {
         state = state.reduce(Event.DiscoveryExpired("n"))
         assertTrue(state.discovered.isEmpty())
     }
-}
+
+    @Test
+    fun notificationEventsLeaveThePhoneStateAlone() {
+        val state = CoreState().reduce(Event.DeviceAdded(pc("a", "Desk", 10)))
+        val note = Notification("k", "com.chat", "Chat", "Sam", "Hi", null, 0L, emptyList(), false, null)
+        assertEquals(state, state.reduce(Event.NotificationPosted("a", note)))
+        assertEquals(state, state.reduce(Event.NotificationRemoved("a", "k")))
+        assertEquals(state, state.reduce(Event.NotificationsReset("a", listOf(note))))
+        assertTrue("access is off until the listener connects", !state.notificationAccess)
+    }}

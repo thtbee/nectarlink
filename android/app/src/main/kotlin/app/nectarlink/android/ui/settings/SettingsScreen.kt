@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.ui.settings
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -31,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -40,6 +46,7 @@ import app.nectarlink.android.R
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.CoreStatus
 import app.nectarlink.android.core.Device
+import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.ui.theme.Appearance
 import app.nectarlink.android.ui.theme.LocalAppFonts
 import app.nectarlink.android.ui.theme.Tokens
@@ -64,6 +71,10 @@ fun SettingsScreen(
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
         )
+
+        Section(stringResource(R.string.settings_notifications)) {
+            NotificationAccess(state.notificationAccess)
+        }
 
         Section(stringResource(R.string.settings_appearance)) {
             Label(stringResource(R.string.settings_theme))
@@ -162,6 +173,59 @@ fun SettingsScreen(
         )
     }
 }
+
+/**
+ * Notification access, which mirroring needs. Android shows the switch in
+ * its own settings; sideloaded apps on Android 13+ must first be allowed
+ * "restricted settings" there.
+ */
+@Composable
+private fun NotificationAccess(granted: Boolean) {
+    val context = LocalContext.current
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(stringResource(R.string.notifications_title), style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(if (granted) R.string.notifications_on else R.string.notifications_off),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        val open = { context.startActivity(notificationAccessIntent(context)) }
+        if (granted) {
+            OutlinedButton(onClick = open) { Text(stringResource(R.string.action_manage)) }
+        } else {
+            Button(onClick = open) { Text(stringResource(R.string.action_allow)) }
+        }
+    }
+    if (!granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(
+                stringResource(R.string.notifications_restricted),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = {
+                context.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }) { Text(stringResource(R.string.action_app_info)) }
+        }
+    }
+}
+
+/** Android's notification access screen, on Nectarlink's own switch where possible. */
+private fun notificationAccessIntent(context: Context): Intent =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).putExtra(
+            Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+            NotificationListener.component(context).flattenToString(),
+        )
+    } else {
+        Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+    }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {

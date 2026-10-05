@@ -34,6 +34,10 @@ sources; nothing generated is checked in except the theme tokens
   encrypts the identity key with a non-exportable Android Keystore key;
   `Ringer` rings on the alarm stream; battery and network monitors feed the
   core (Android doesn't let native code watch the network).
+- `notifications/`: the notification listener (with the user's notification
+  access) that hands notifications to the core for mirroring, and reads them
+  (messaging-style content, actions, app icons); replies and actions from a
+  PC run through `core/PhonePlatform`.
 - `service/ConnectionService`: a "connected device" foreground service that
   keeps the phone reachable and holds the Wi-Fi multicast lock local
   discovery needs.

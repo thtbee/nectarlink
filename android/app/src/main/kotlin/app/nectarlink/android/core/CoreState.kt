@@ -55,6 +55,8 @@ data class CoreState(
     val pairing: PairingState = PairingState.Idle,
     /** Name of the device making this phone ring, or null. */
     val ringingFrom: String? = null,
+    /** Whether the user let Nectarlink read notifications (to mirror them). */
+    val notificationAccess: Boolean = false,
 ) {
     fun device(id: String): Device? = devices.firstOrNull { it.id == id }
 
@@ -90,6 +92,8 @@ data class CoreState(
         // don't open the pairing screen.
         is Event.PairingFailed ->
             if (pairing == PairingState.Idle) this else copy(pairing = PairingState.Failed(event.failure))
+        // PCs don't send notifications; nothing for the phone to show.
+        is Event.NotificationsReset, is Event.NotificationPosted, is Event.NotificationRemoved -> this
     }
 
     private fun update(id: String, change: (Device) -> Device): CoreState =

@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+package app.nectarlink.android.core
+
+import android.app.ActivityOptions
+import android.app.PendingIntent
+import android.app.RemoteInput
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.os.Bundle
+import app.nectarlink.android.notifications.NotificationListener
+import app.nectarlink.core.NotificationFailure
+import app.nectarlink.core.Platform
+
+/**
+ * What the core asks of the phone: ring it, and act on its notifications
+ * for a PC (dismiss, reply, run an action).
+ */
+internal class PhonePlatform(context: Context, private val ringer: Ringer) : Platform {
+    private val context = context.applicationContext
+
+    override fun startRinging() = ringer.startRinging()
+
+    override fun stopRinging() = ringer.stopRinging()
+
+    override fun dismissNotification(key: String) {
+        val listener = NotificationListener.instance ?: throw NotificationFailure.Unsupported()
+        listener.dismiss(key)
+    }
+
+    override fun runNotificationAction(key: String, action: String, reply: String?) {
+        val listener = NotificationListener.instance ?: throw NotificationFailure.Unsupported()
+        val sbn = listener.find(key) ?: throw NotificationFailure.NotFound()
+        val target = action.toIntOrNull()?.let { sbn.notification.actions?.getOrNull(it) }
+            ?: throw NotificationFailure.NotFound()
+        val intent = target.actionIntent ?: throw NotificationFailure.NotFound()
+
+        // A reply goes to the app the way the notification shade sends it:
+        // the text as the result of the action's free-form input.
+        val fillIn = Intent()
+        if (reply != null) {
+            val inputs = target.remoteInputs.orEmpty().filter { it.allowFreeFormInput }
+            if (inputs.isEmpty()) throw NotificationFailure.NotFound()
+            val results = Bundle().apply { inputs.forEach { putCharSequence(it.resultKey, reply) } }
+            RemoteInput.addResultsToIntent(inputs.toTypedArray(), fillIn, results)
+            RemoteInput.setResultsSource(fillIn, RemoteInput.SOURCE_FREE_FORM_INPUT)
+        }
+        try {
+            intent.send(context, 0, fillIn, null, null, null, sendOptions())
+        } catch (e: PendingIntent.CanceledException) {
+            throw NotificationFailure.NotFound()
+        }
+    }
+
+    /** Lets an action open its app's screen, as tapping it on the phone would. */
+    private fun sendOptions(): Bundle? {
+        val mode = when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA -> ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                @Suppress("DEPRECATION")
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+            }
+            else -> return null
+        }
+        return ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(mode).toBundle()
+    }
+}

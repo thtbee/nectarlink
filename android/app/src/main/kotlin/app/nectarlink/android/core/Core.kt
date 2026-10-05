@@ -3,19 +3,23 @@ package app.nectarlink.android.core
 
 import android.content.Context
 import android.net.wifi.WifiManager
+import android.service.notification.NotificationListenerService
 import android.util.Log
 import app.nectarlink.android.BuildConfig
+import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
 import app.nectarlink.core.NectarlinkException
 import app.nectarlink.core.NectarlinkNode
 import app.nectarlink.core.NodeOptions
+import app.nectarlink.core.Notification
 import app.nectarlink.core.PairingFailure
 import app.nectarlink.core.PowerLevel
 import app.nectarlink.core.initLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +38,12 @@ import kotlinx.coroutines.launch
 class Core(context: Context, private val scope: CoroutineScope) : EventListener {
     private val context = context.applicationContext
     private val ringer = Ringer(this.context)
+    private val platform = PhonePlatform(this.context, ringer)
+    /**
+     * Notification changes, in order: a removal must never overtake the post
+     * it removes. Runs once the node is up.
+     */
+    private val notificationOps = Channel<suspend (NectarlinkNode) -> Unit>(Channel.UNLIMITED)
     private val _state = MutableStateFlow(CoreState())
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
     private var node: NectarlinkNode? = null
@@ -77,7 +87,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 awayMode = false,
             )
             val started = try {
-                NectarlinkNode.start(options, ringer, KeystoreKeyProtector(), this@Core)
+                NectarlinkNode.start(options, platform, KeystoreKeyProtector(), this@Core)
             } catch (e: NectarlinkException) {
                 Log.e(TAG, "core failed to start", e)
                 _state.update { it.copy(status = CoreStatus.Failed(e.message ?: e.javaClass.simpleName)) }
@@ -90,6 +100,46 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 battery.start()
                 network.start()
             }
+            scope.launch {
+                for (op in notificationOps) {
+                    runCatching { op(started) }.onFailure { Log.w(TAG, "notification update failed", it) }
+                }
+            }
+        }
+    }
+
+    // ---- Notifications (from NotificationListener) ----
+
+    /**
+     * The notification listener connected (with what's showing now) or lost
+     * access. What this phone offers PCs follows.
+     */
+    fun notificationAccessChanged(granted: Boolean, showing: List<Notification>) {
+        _state.update { it.copy(notificationAccess = granted) }
+        notificationOps.trySend { node ->
+            node.updatePower(PowerLevel.BASIC, if (granted) NOTIFICATION_CAPABILITIES else emptyList())
+            node.notificationsReset(showing)
+        }
+    }
+
+    fun notificationPosted(notification: Notification) {
+        notificationOps.trySend { it.notificationPosted(notification) }
+    }
+
+    fun notificationRemoved(key: String) {
+        notificationOps.trySend { it.notificationRemoved(key) }
+    }
+
+    /**
+     * Re-checks notification access (the user may have changed it in
+     * Settings) and asks Android to reconnect the listener if it's allowed
+     * but not running.
+     */
+    fun refreshNotificationAccess() {
+        val granted = NotificationListener.hasAccess(context)
+        _state.update { it.copy(notificationAccess = granted) }
+        if (granted && NotificationListener.instance == null) {
+            NotificationListenerService.requestRebind(NotificationListener.component(context))
         }
     }
 
@@ -192,5 +242,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     private companion object {
         const val TAG = "Nectarlink"
+        /** Offered while notification access is granted (docs/protocol/capabilities.md). */
+        val NOTIFICATION_CAPABILITIES = listOf("notify.mirror", "notify.reply")
     }
 }

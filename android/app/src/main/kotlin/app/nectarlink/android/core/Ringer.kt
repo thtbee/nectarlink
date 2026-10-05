@@ -11,23 +11,22 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.os.Build
-import app.nectarlink.core.Platform
 
 /**
  * "Find my phone": plays the alarm sound on the alarm stream (audible even
  * when the ringer is silent) and vibrates, until stopped or for a minute.
  */
-class Ringer(context: Context) : Platform {
+class Ringer(context: Context) {
     private val context = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
     private var player: MediaPlayer? = null
     private val timeout = Runnable { stopRingingNow() }
 
-    override fun startRinging() {
+    fun startRinging() {
         main.post { startRingingNow() }
     }
 
-    override fun stopRinging() {
+    fun stopRinging() {
         main.post { stopRingingNow() }
     }
 

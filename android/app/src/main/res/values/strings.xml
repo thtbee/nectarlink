@@ -50,6 +50,14 @@
     <string name="settings_dynamic_color_hint">Use your wallpaper\'s colors.</string>
     <string name="settings_devices">PCs</string>
     <string name="settings_about">About</string>
+    <string name="settings_notifications">Notifications</string>
+    <string name="notifications_title">Show notifications on your PC</string>
+    <string name="notifications_on">On. Notifications appear on your paired PCs, where you can reply to and dismiss them.</string>
+    <string name="notifications_off">Nectarlink needs notification access to show this phone’s notifications on your PC.</string>
+    <string name="notifications_restricted">Switch greyed out? Open App info, tap ⋮, choose “Allow restricted settings”, then try again.</string>
+    <string name="action_allow">Allow</string>
+    <string name="action_manage">Manage</string>
+    <string name="action_app_info">App info</string>
     <string name="theme_bloom">Bloom</string>
     <string name="theme_graphite">Graphite</string>
     <string name="mode_system">System</string>

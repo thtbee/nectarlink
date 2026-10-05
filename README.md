@@ -70,6 +70,10 @@ place and tested; the user-facing features of Phase 1 come next.
   power level.
 - **Find my device** in both directions. The phone rings on the alarm stream,
   even in silent mode.
+- **Notifications** from the phone on the PC, as Windows notifications and in
+  a feed in the app, with the app's icon. Reply inline, run their actions
+  (such as "Mark as read") or dismiss them from the PC; what's cleared on one
+  side is cleared on the other.
 - **Capability matrix**: both apps compute which features work for a pair of
   devices and what would enable the rest, so the interface never offers
   something that can't work.
@@ -81,8 +85,8 @@ place and tested; the user-facing features of Phase 1 come next.
   connection service, and an identity key protected by the Android Keystore.
 - **Command-line client** for development and testing (`nectarlink`).
 
-**Next (Phase 1)**: notifications with replies, clipboard, file transfer, media
-controls, and a Windows installer. Mirroring, messages, calls and the other
+**Next (Phase 1)**: clipboard, file transfer, media controls, notification
+filters and history, and a Windows installer. Mirroring, messages, calls and the other
 features in the plan follow in later phases.
 
 ## Screenshots

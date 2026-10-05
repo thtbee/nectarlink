@@ -28,7 +28,7 @@ capability is missing.
 
 | ID | Meaning | Unlocked by |
 |---|---|---|
-| `notify.mirror` | Forwards notifications | notification access |
+| `notify.mirror` | Forwards notifications ([notifications service](notifications.md)) | notification access |
 | `notify.reply` | Accepts inline replies and actions on notifications | notification access |
 | `notify.sensitive` | Forwards notifications Android hides as sensitive (e.g. one-time codes) | Elevated |
 | `sms.read` | Reads SMS conversations | SMS permission |
