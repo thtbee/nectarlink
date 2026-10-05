@@ -1,0 +1,59 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+import QtQuick
+import app.nectarlink
+
+// A modal dialog over the window: a scrim and a card that springs in.
+// Escape or a click on the scrim closes it (unless `dismissable` is false).
+Item {
+    id: sheet
+    property bool opened: false
+    property bool dismissable: true
+    property real cardWidth: 460
+    default property alias content: body.data
+    signal dismissed
+
+    function open() { opened = true }
+    function close() { opened = false }
+
+    anchors.fill: parent
+    visible: opened || fade.running
+    z: 100
+
+    Rectangle {
+        id: scrim
+        anchors.fill: parent
+        color: Theme.scrim
+        opacity: sheet.opened ? 1 : 0
+        Behavior on opacity { NumberAnimation { id: fade; duration: Theme.fadeNormal } }
+        TapHandler {
+            onTapped: if (sheet.dismissable) { sheet.close(); sheet.dismissed() }
+        }
+    }
+
+    Rectangle {
+        id: card
+        anchors.centerIn: parent
+        width: Math.min(sheet.cardWidth, parent.width - 48)
+        height: Math.min(body.childrenRect.height + 48, parent.height - 48)
+        radius: Theme.radiusXl
+        color: Theme.surface
+        border.width: 1
+        border.color: Theme.outlineVariant
+        opacity: sheet.opened ? 1 : 0
+        scale: sheet.opened || Theme.reduceMotion ? 1 : 0.96
+        Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
+        Behavior on scale { SpringAnimation { spring: Theme.springStandard; damping: Theme.dampingStandard } }
+        clip: true
+
+        // Swallow clicks so they don't reach the scrim.
+        TapHandler {}
+        Item {
+            id: body
+            anchors.fill: parent
+            anchors.margins: 24
+        }
+    }
+
+    focus: opened
+    Keys.onEscapePressed: if (sheet.dismissable) { sheet.close(); sheet.dismissed() }
+}

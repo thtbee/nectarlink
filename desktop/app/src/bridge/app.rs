@@ -1,0 +1,384 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//! `AppController`: app-wide state and commands for QML (core status, this
+//! PC, capabilities, ringing, appearance) plus the tray icon.
+
+use std::{
+    pin::Pin,
+    sync::{Mutex, OnceLock},
+};
+
+use cxx_qt::{CxxQtThread, CxxQtType, Threading};
+use cxx_qt_lib::{
+    QHash, QHashPair_QString_QVariant, QList, QMap, QMapPair_QString_QVariant, QString, QVariant,
+};
+use nectarlink_core::{
+    ConnectionPath, DeviceId, Error, FeatureState, LinkState, PowerLevel,
+    features::{Effort, Role, UnsupportedReason, Upgrade, UpgradeAction},
+};
+
+use crate::{
+    core_host,
+    state::{Changes, CoreStatus},
+    win::{self, sound, tray},
+};
+
+#[cxx_qt::bridge]
+pub mod qobject {
+    unsafe extern "C++" {
+        include!("cxx-qt-lib/qstring.h");
+        type QString = cxx_qt_lib::QString;
+        include!("cxx-qt-lib/qmap.h");
+        type QMap_QString_QVariant = cxx_qt_lib::QMap<cxx_qt_lib::QMapPair_QString_QVariant>;
+        include!("cxx-qt-lib/qlist.h");
+        type QList_QVariant = cxx_qt_lib::QList<cxx_qt_lib::QVariant>;
+    }
+
+    #[auto_cxx_name]
+    unsafe extern "RustQt" {
+        #[qobject]
+        #[qml_element]
+        #[qml_singleton]
+        /// "starting", "ready" or "failed".
+        #[qproperty(QString, status)]
+        #[qproperty(QString, error)]
+        /// This PC's name and device ID, as phones see them.
+        #[qproperty(QString, device_name)]
+        #[qproperty(QString, device_id)]
+        #[qproperty(bool, has_devices)]
+        /// Bumped whenever any capability matrix changes, so bindings that
+        /// call `featureState` re-evaluate.
+        #[qproperty(i32, caps_revision)]
+        /// Bumped when a device toggle is changed from this PC.
+        #[qproperty(i32, toggles_revision)]
+        /// Name of the device making this PC ring ("" when not ringing).
+        #[qproperty(QString, ringing_from)]
+        #[qproperty(bool, system_dark)]
+        #[qproperty(bool, reduce_motion)]
+        #[qproperty(QString, version)]
+        type AppController = super::AppControllerRust;
+
+        /// Asks a paired device to ring (or stop).
+        #[qinvokable]
+        fn ring(self: Pin<&mut AppController>, device: &QString, on: bool);
+        /// Stops this PC ringing.
+        #[qinvokable]
+        fn stop_ringing(self: Pin<&mut AppController>);
+        #[qinvokable]
+        fn unpair(self: Pin<&mut AppController>, device: &QString);
+
+        /// `{ state, limit, action, target, minutes, reason }` for a feature
+        /// of a device (see docs/architecture/capabilities.md).
+        #[qinvokable]
+        fn feature_state(self: &AppController, device: &QString, feature: &QString) -> QMap_QString_QVariant;
+        /// `[{ name, on }]`: what the user allows this device to do.
+        #[qinvokable]
+        fn device_toggles(self: &AppController, device: &QString) -> QList_QVariant;
+        #[qinvokable]
+        fn set_device_toggle(self: Pin<&mut AppController>, device: &QString, name: &QString, on: bool);
+
+        /// The folder with the app's logs, as a file URL.
+        #[qinvokable]
+        fn logs_url(self: &AppController) -> QString;
+
+        /// A short message for the user (e.g. a command failed).
+        #[qsignal]
+        fn toast(self: Pin<&mut AppController>, message: QString);
+        /// Show the main window (tray click, second launch).
+        #[qsignal]
+        fn activate_requested(self: Pin<&mut AppController>);
+        /// The user chose Quit in the tray.
+        #[qsignal]
+        fn quit_requested(self: Pin<&mut AppController>);
+    }
+
+    impl cxx_qt::Threading for AppController {}
+    impl cxx_qt::Initialize for AppController {}
+}
+
+#[derive(Default)]
+pub struct AppControllerRust {
+    status: QString,
+    error: QString,
+    device_name: QString,
+    device_id: QString,
+    has_devices: bool,
+    caps_revision: i32,
+    toggles_revision: i32,
+    ringing_from: QString,
+    system_dark: bool,
+    reduce_motion: bool,
+    version: QString,
+    tray: Option<tray::Tray>,
+}
+
+/// The controller's thread handle, so other threads (second launch) can
+/// reach it.
+static CONTROLLER: OnceLock<Mutex<Option<CxxQtThread<qobject::AppController>>>> = OnceLock::new();
+
+fn controller() -> Option<CxxQtThread<qobject::AppController>> {
+    CONTROLLER.get()?.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+/// Asks the UI to show the main window (from any thread).
+pub fn request_activation() {
+    if let Some(qt) = controller() {
+        let _ = qt.queue(|object| object.activate_requested());
+    }
+}
+
+/// Shows a toast (from any thread).
+fn toast(message: impl Into<String>) {
+    let message = message.into();
+    if let Some(qt) = controller() {
+        let _ = qt.queue(move |object| object.toast(QString::from(&message)));
+    }
+}
+
+/// Explains a failed command in a sentence the user understands.
+fn describe(error: &Error) -> String {
+    match error {
+        Error::Offline => "The device isn't connected right now.".into(),
+        Error::NotPaired => "That device isn't paired anymore.".into(),
+        Error::Timeout => "The device didn't answer in time.".into(),
+        Error::Denied | Error::Declined => "The device declined.".into(),
+        Error::Unsupported => "The device's app doesn't support that yet.".into(),
+        other => format!("Something went wrong: {other}"),
+    }
+}
+
+impl cxx_qt::Initialize for qobject::AppController {
+    fn initialize(mut self: Pin<&mut Self>) {
+        self.as_mut().set_version(QString::from(env!("CARGO_PKG_VERSION")));
+        self.as_mut().refresh_appearance();
+        let qt = self.qt_thread();
+        *CONTROLLER.get_or_init(Mutex::default).lock().unwrap_or_else(|e| e.into_inner()) = Some(qt.clone());
+        super::subscribe(
+            qt.clone(),
+            Changes::STATUS | Changes::DEVICES | Changes::CAPABILITIES | Changes::RINGING,
+            Self::refresh,
+        );
+
+        let labels = tray::MenuLabels {
+            open: "Open Nectarlink".into(),
+            find_phone: "Find my phone".into(),
+            quit: "Quit Nectarlink".into(),
+        };
+        match tray::Tray::create("Nectarlink", labels, move |event| on_tray_event(&qt, event)) {
+            Ok(tray) => self.rust_mut().tray = Some(tray),
+            Err(e) => tracing::warn!(error = %e, "no tray icon"),
+        }
+    }
+}
+
+fn on_tray_event(qt: &CxxQtThread<qobject::AppController>, event: tray::TrayEvent) {
+    match event {
+        tray::TrayEvent::Open => {
+            let _ = qt.queue(|object| object.activate_requested());
+        }
+        tray::TrayEvent::Quit => {
+            let _ = qt.queue(|object| object.quit_requested());
+        }
+        tray::TrayEvent::FindPhone => {
+            let phone = core_host::host().hub.read(|s| {
+                s.devices
+                    .iter()
+                    .find(|d| matches!(d.link, LinkState::Online { .. }))
+                    .or(s.devices.first())
+                    .map(|d| d.id)
+            });
+            if let Some(phone) = phone {
+                ring_device(phone, true);
+            }
+        }
+        tray::TrayEvent::Resumed => {
+            tracing::info!("resumed from sleep; reconnecting");
+            if let Some(node) = core_host::node() {
+                core_host::spawn(async move { node.network_changed().await });
+            }
+        }
+        tray::TrayEvent::AppearanceChanged => {
+            let _ = qt.queue(|object| object.refresh_appearance());
+        }
+    }
+}
+
+fn ring_device(device: DeviceId, on: bool) {
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        if let Err(e) = node.ring(device, on).await {
+            toast(describe(&e));
+        }
+    });
+}
+
+impl qobject::AppController {
+    fn refresh(mut self: Pin<&mut Self>) {
+        let hub = &core_host::host().hub;
+        let (status, devices, ringing, online, caps_version) = hub.read(|s| {
+            let ringing = s.ringing_from.and_then(|id| s.name_of(&id)).unwrap_or_default();
+            let online = s.devices.iter().filter(|d| matches!(d.link, LinkState::Online { .. })).count();
+            (s.core_status(), s.devices.len(), ringing, online, s.matrices_version)
+        });
+        let (status_text, error) = match &status {
+            CoreStatus::Starting => ("starting", String::new()),
+            CoreStatus::Ready { device_id, name } => {
+                self.as_mut().set_device_name(QString::from(name));
+                self.as_mut().set_device_id(QString::from(&device_id.to_string()));
+                ("ready", String::new())
+            }
+            CoreStatus::Failed(message) => ("failed", message.clone()),
+        };
+        self.as_mut().set_status(QString::from(status_text));
+        self.as_mut().set_error(QString::from(&error));
+        self.as_mut().set_has_devices(devices > 0);
+        self.as_mut().set_ringing_from(QString::from(&ringing));
+        // Truncation is fine: QML only compares revisions for equality.
+        self.as_mut().set_caps_revision(caps_version as i32);
+
+        if let Some(tray) = self.rust().tray.as_ref() {
+            tray.set_find_phone_enabled(devices > 0);
+            tray.set_tooltip(&match (devices, online) {
+                (0, _) => "Nectarlink · no devices paired".to_owned(),
+                (_, 0) => "Nectarlink · not connected".to_owned(),
+                (_, 1) => "Nectarlink · 1 device connected".to_owned(),
+                (_, n) => format!("Nectarlink · {n} devices connected"),
+            });
+        }
+    }
+
+    fn refresh_appearance(mut self: Pin<&mut Self>) {
+        self.as_mut().set_system_dark(win::system_dark());
+        self.as_mut().set_reduce_motion(win::reduce_motion());
+    }
+
+    pub fn ring(self: Pin<&mut Self>, device: &QString, on: bool) {
+        if let Some(id) = super::parse_device(device) {
+            ring_device(id, on);
+        }
+    }
+
+    pub fn stop_ringing(self: Pin<&mut Self>) {
+        sound::stop_ringing();
+        core_host::host()
+            .hub
+            .update(|s| if s.ringing_from.take().is_some() { Changes::RINGING } else { Changes::NONE });
+    }
+
+    pub fn unpair(self: Pin<&mut Self>, device: &QString) {
+        let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return };
+        core_host::spawn(async move {
+            if let Err(e) = node.unpair(id).await {
+                toast(describe(&e));
+            }
+        });
+    }
+
+    pub fn feature_state(&self, device: &QString, feature: &QString) -> QMap<QMapPair_QString_QVariant> {
+        let feature = String::from(feature);
+        let state = super::parse_device(device).and_then(|id| {
+            core_host::host().hub.read(|s| s.matrices.get(&id).and_then(|m| m.state(&feature)))
+        });
+        feature_state_map(state)
+    }
+
+    pub fn device_toggles(&self, device: &QString) -> QList<QVariant> {
+        let mut list = QList::default();
+        let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return list };
+        for (name, on) in node.device_toggles(id).unwrap_or_default() {
+            let mut item = QHash::<QHashPair_QString_QVariant>::default();
+            item.insert(QString::from("name"), QVariant::from(&QString::from(name)));
+            item.insert(QString::from("on"), QVariant::from(&on));
+            list.append(QVariant::from(&item));
+        }
+        list
+    }
+
+    pub fn set_device_toggle(mut self: Pin<&mut Self>, device: &QString, name: &QString, on: bool) {
+        let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return };
+        if let Err(e) = node.set_device_toggle(id, &String::from(name), on) {
+            toast(describe(&e));
+        }
+        let revision = self.toggles_revision.wrapping_add(1);
+        self.as_mut().set_toggles_revision(revision);
+    }
+
+    pub fn logs_url(&self) -> QString {
+        let dir = crate::logging::logs_dir(&core_host::host().data_dir);
+        QString::from(&format!("file:///{}", dir.to_string_lossy().replace('\\', "/")))
+    }
+}
+
+impl Drop for AppControllerRust {
+    fn drop(&mut self) {
+        if let Some(cell) = CONTROLLER.get() {
+            *cell.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        }
+    }
+}
+
+/// Flattens a feature state for QML.
+fn feature_state_map(state: Option<FeatureState>) -> QMap<QMapPair_QString_QVariant> {
+    let mut map = QMap::<QMapPair_QString_QVariant>::default();
+    let mut put = |key: &str, value: QVariant| map.insert(QString::from(key), value);
+    let text = |s: &str| QVariant::from(&QString::from(s));
+    let upgrade_fields = |put: &mut dyn FnMut(&str, QVariant), upgrade: &Upgrade| {
+        let (action, target) = describe_upgrade(upgrade.action);
+        put("action", text(action));
+        put("target", text(&target));
+        put(
+            "minutes",
+            QVariant::from(&match upgrade.effort {
+                Effort::Instant => 0i32,
+                Effort::Minutes(m) => i32::from(m),
+            }),
+        );
+    };
+    match state {
+        None => put("state", text("unknown")),
+        Some(FeatureState::Available) => put("state", text("available")),
+        Some(FeatureState::Partial { limit, upgrade }) => {
+            put("state", text("partial"));
+            put("limit", text(limit));
+            if let Some(upgrade) = upgrade {
+                upgrade_fields(&mut put, &upgrade);
+            }
+        }
+        Some(FeatureState::Locked { upgrade }) => {
+            put("state", text("locked"));
+            upgrade_fields(&mut put, &upgrade);
+        }
+        Some(FeatureState::Unsupported { reason }) => {
+            put("state", text("unsupported"));
+            let reason = match reason {
+                UnsupportedReason::DeviceKinds => "deviceKinds".to_owned(),
+                UnsupportedReason::AndroidTooOld { needs } => format!("android:{needs}"),
+                UnsupportedReason::WindowsTooOld { needs_build } => format!("windows:{needs_build}"),
+                UnsupportedReason::NotOnThisDevice => "notOnThisDevice".to_owned(),
+            };
+            put("reason", text(&reason));
+        }
+    }
+    map
+}
+
+/// An upgrade as `(action, target)` strings for QML.
+fn describe_upgrade(action: UpgradeAction) -> (&'static str, String) {
+    match action {
+        UpgradeAction::RaisePower(level) => (
+            "raisePower",
+            match level {
+                PowerLevel::Assist => "assist",
+                PowerLevel::Elevated => "elevated",
+                _ => "basic",
+            }
+            .into(),
+        ),
+        UpgradeAction::GrantPermission(p) => ("grantPermission", p.as_str().into()),
+        UpgradeAction::EnableAddon(addon) => ("enableAddon", addon.into()),
+        UpgradeAction::EnablePath(ConnectionPath::Relay) => ("enablePath", "relay".into()),
+        UpgradeAction::EnablePath(ConnectionPath::Lan) => ("enablePath", "lan".into()),
+        UpgradeAction::EnableDeviceToggle(toggle) => ("enableToggle", toggle.into()),
+        UpgradeAction::UpdateApp(Role::Phone) => ("updateApp", "phone".into()),
+        UpgradeAction::UpdateApp(Role::Desktop) => ("updateApp", "desktop".into()),
+    }
+}

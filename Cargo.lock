@@ -2148,6 +2148,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "nectarlink-desktop"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "cxx",
+ "cxx-qt",
+ "cxx-qt-build",
+ "cxx-qt-lib",
+ "dirs",
+ "hostname",
+ "nectarlink-core",
+ "qrcode",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "windows",
+]
+
+[[package]]
 name = "nectarlink-protocol"
 version = "0.0.1"
 dependencies = [
@@ -4466,6 +4488,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7d8a75eaf6557bb84a65ace8609883db44a29951042ada9b393151532e41fcb"
 dependencies = [
  "xml-rs",
+]
+
+[[package]]
+name = "xtask"
+version = "0.0.1"
+dependencies = [
+ "anyhow",
+ "serde_json",
 ]
 
 [[package]]

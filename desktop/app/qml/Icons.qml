@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma Singleton
+import QtQuick
+
+// Stroke icons as SVG paths on a 24×24 grid (round caps and joins), drawn
+// by Icon. Same shapes as the design mockups.
+QtObject {
+    readonly property string home: "M3 11l9-7 9 7M5 10v10h14V10"
+    readonly property string messages: "M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"
+    readonly property string bell: "M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"
+    readonly property string photo: "M6 3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM21 15l-5-5L5 21"
+    readonly property string apps: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"
+    readonly property string deck: "M6 5h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3zM8 14h8"
+    readonly property string settings: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"
+    readonly property string clipboard: "M9 3h6v4H9zM16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"
+    readonly property string mirror: "M4 4h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM18.5 8h2a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5h-2A1.5 1.5 0 0 1 17 16.5v-7A1.5 1.5 0 0 1 18.5 8zM6 18h6"
+    readonly property string send: "M22 2L11 13M22 2l-7 20-4-9-9-4z"
+    readonly property string ring: "M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0M2 8c0-2 1-4 2-5M22 8c0-2-1-4-2-5"
+    readonly property string mic: "M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v4"
+    readonly property string lock: "M7 11h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2zM8 11V8a4 4 0 0 1 8 0v3"
+    readonly property string mark: "M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5zM9 12h6"
+    readonly property string back: "M15 6l-6 6 6 6"
+    readonly property string chevronRight: "M9 6l6 6-6 6"
+    readonly property string battery: "M4 7h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM22 11v2"
+    readonly property string phone: "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2"
+    readonly property string laptop: "M5 5h14a1 1 0 0 1 1 1v10H4V6a1 1 0 0 1 1-1zM2 19h20"
+    readonly property string desktop: "M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 21h6M12 17v4"
+    readonly property string wifi: "M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01"
+    readonly property string plus: "M12 5v14M5 12h14"
+    readonly property string close: "M6 6l12 12M18 6L6 18"
+    readonly property string check: "M5 12.5l4.5 4.5L19 7.5"
+    readonly property string refresh: "M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"
+    readonly property string unlink: "M9 15l-2 2a3 3 0 0 1-4.2-4.2l3-3a3 3 0 0 1 4.2 0M15 9l2-2a3 3 0 0 1 4.2 4.2l-3 3a3 3 0 0 1-4.2 0M3 3l18 18"
+    readonly property string copy: "M9 9h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2V9zM5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+    readonly property string warning: "M12 3l10 18H2zM12 10v4M12 17.5h.01"
+    readonly property string info: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 11v6M12 7.5h.01"
+    readonly property string palette: "M12 3a9 9 0 1 0 0 18c1 0 1.5-.8 1.5-1.6 0-.6-.4-1-.4-1.6 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4c0-5-4-9.2-9-9.2zM7.5 11.5h.01M10 7.5h.01M15 7.5h.01"
+    readonly property string power: "M12 2v10M5.6 5.6a9 9 0 1 0 12.8 0"
+    readonly property string folder: "M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+    readonly property string sparkle: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"
+}
