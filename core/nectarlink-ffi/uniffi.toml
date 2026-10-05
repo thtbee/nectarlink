@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: MPL-2.0
+[bindings.kotlin]
+package_name = "app.nectarlink.core"
+cdylib_name = "nectarlink_ffi"

@@ -132,6 +132,31 @@ pub enum UpgradeAction {
     UpdateApp(Role),
 }
 
+impl UpgradeAction {
+    /// A stable `(action, target)` pair for UIs and bindings, e.g.
+    /// `("raisePower", "elevated")` or `("enableToggle", "clipboard")`.
+    pub fn describe(self) -> (&'static str, String) {
+        match self {
+            UpgradeAction::RaisePower(level) => (
+                "raisePower",
+                match level {
+                    PowerLevel::Assist => "assist",
+                    PowerLevel::Elevated => "elevated",
+                    _ => "basic",
+                }
+                .into(),
+            ),
+            UpgradeAction::GrantPermission(p) => ("grantPermission", p.as_str().into()),
+            UpgradeAction::EnableAddon(addon) => ("enableAddon", addon.into()),
+            UpgradeAction::EnablePath(ConnectionPath::Relay) => ("enablePath", "relay".into()),
+            UpgradeAction::EnablePath(ConnectionPath::Lan) => ("enablePath", "lan".into()),
+            UpgradeAction::EnableDeviceToggle(toggle) => ("enableToggle", toggle.into()),
+            UpgradeAction::UpdateApp(Role::Phone) => ("updateApp", "phone".into()),
+            UpgradeAction::UpdateApp(Role::Desktop) => ("updateApp", "desktop".into()),
+        }
+    }
+}
+
 /// Roughly how long an upgrade takes, so the UI can say "~2 min".
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Effort {
@@ -174,6 +199,29 @@ pub enum UnsupportedReason {
     /// The phone has the needed power level but still doesn't offer the
     /// capability (hardware or OEM limitation).
     NotOnThisDevice,
+}
+
+impl UnsupportedReason {
+    /// A stable key for UIs and bindings: `deviceKinds`, `android:<release>`,
+    /// `windows:<build>` or `notOnThisDevice`.
+    pub fn describe(self) -> String {
+        match self {
+            UnsupportedReason::DeviceKinds => "deviceKinds".into(),
+            UnsupportedReason::AndroidTooOld { needs } => format!("android:{needs}"),
+            UnsupportedReason::WindowsTooOld { needs_build } => format!("windows:{needs_build}"),
+            UnsupportedReason::NotOnThisDevice => "notOnThisDevice".into(),
+        }
+    }
+}
+
+impl Effort {
+    /// Whole minutes (0 for instant).
+    pub fn minutes(self) -> u8 {
+        match self {
+            Effort::Instant => 0,
+            Effort::Minutes(m) => m,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

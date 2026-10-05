@@ -11,10 +11,7 @@ use cxx_qt::{CxxQtThread, CxxQtType, Threading};
 use cxx_qt_lib::{
     QHash, QHashPair_QString_QVariant, QList, QMap, QMapPair_QString_QVariant, QString, QVariant,
 };
-use nectarlink_core::{
-    ConnectionPath, DeviceId, Error, FeatureState, LinkState, PowerLevel,
-    features::{Effort, Role, UnsupportedReason, Upgrade, UpgradeAction},
-};
+use nectarlink_core::{DeviceId, Error, FeatureState, LinkState, features::Upgrade};
 
 use crate::{
     core_host,
@@ -322,16 +319,10 @@ fn feature_state_map(state: Option<FeatureState>) -> QMap<QMapPair_QString_QVari
     let mut put = |key: &str, value: QVariant| map.insert(QString::from(key), value);
     let text = |s: &str| QVariant::from(&QString::from(s));
     let upgrade_fields = |put: &mut dyn FnMut(&str, QVariant), upgrade: &Upgrade| {
-        let (action, target) = describe_upgrade(upgrade.action);
+        let (action, target) = upgrade.action.describe();
         put("action", text(action));
         put("target", text(&target));
-        put(
-            "minutes",
-            QVariant::from(&match upgrade.effort {
-                Effort::Instant => 0i32,
-                Effort::Minutes(m) => i32::from(m),
-            }),
-        );
+        put("minutes", QVariant::from(&i32::from(upgrade.effort.minutes())));
     };
     match state {
         None => put("state", text("unknown")),
@@ -349,36 +340,8 @@ fn feature_state_map(state: Option<FeatureState>) -> QMap<QMapPair_QString_QVari
         }
         Some(FeatureState::Unsupported { reason }) => {
             put("state", text("unsupported"));
-            let reason = match reason {
-                UnsupportedReason::DeviceKinds => "deviceKinds".to_owned(),
-                UnsupportedReason::AndroidTooOld { needs } => format!("android:{needs}"),
-                UnsupportedReason::WindowsTooOld { needs_build } => format!("windows:{needs_build}"),
-                UnsupportedReason::NotOnThisDevice => "notOnThisDevice".to_owned(),
-            };
-            put("reason", text(&reason));
+            put("reason", text(&reason.describe()));
         }
     }
     map
-}
-
-/// An upgrade as `(action, target)` strings for QML.
-fn describe_upgrade(action: UpgradeAction) -> (&'static str, String) {
-    match action {
-        UpgradeAction::RaisePower(level) => (
-            "raisePower",
-            match level {
-                PowerLevel::Assist => "assist",
-                PowerLevel::Elevated => "elevated",
-                _ => "basic",
-            }
-            .into(),
-        ),
-        UpgradeAction::GrantPermission(p) => ("grantPermission", p.as_str().into()),
-        UpgradeAction::EnableAddon(addon) => ("enableAddon", addon.into()),
-        UpgradeAction::EnablePath(ConnectionPath::Relay) => ("enablePath", "relay".into()),
-        UpgradeAction::EnablePath(ConnectionPath::Lan) => ("enablePath", "lan".into()),
-        UpgradeAction::EnableDeviceToggle(toggle) => ("enableToggle", toggle.into()),
-        UpgradeAction::UpdateApp(Role::Phone) => ("updateApp", "phone".into()),
-        UpgradeAction::UpdateApp(Role::Desktop) => ("updateApp", "desktop".into()),
-    }
 }
