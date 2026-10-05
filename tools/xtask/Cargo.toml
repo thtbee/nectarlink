@@ -1,0 +1,15 @@
+[package]
+name = "xtask"
+description = "Repository automation: code generation and checks (cargo xtask <task>)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license = "GPL-3.0-or-later"
+publish = false
+
+[dependencies]
+anyhow.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

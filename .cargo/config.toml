@@ -4,3 +4,7 @@
 [env]
 CXXFLAGS_x86_64_pc_windows_msvc = "/utf-8"
 CXXFLAGS_aarch64_pc_windows_msvc = "/utf-8"
+
+[alias]
+# Repository automation (code generation, checks): see tools/xtask.
+xtask = "run --quiet --package xtask --"
