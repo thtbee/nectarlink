@@ -28,6 +28,11 @@ NativeWindow {
             close.accepted = true
             window.closeRequested()
         }
+        // Back from Settings, maybe with Windows notifications turned on.
+        function onActiveChanged() {
+            if (window.active)
+                AppController.refreshToastsEnabled()
+        }
     }
 
     function openPairing() { pairingSheet.open() }

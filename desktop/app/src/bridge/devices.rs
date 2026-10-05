@@ -8,6 +8,7 @@ use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::{QByteArray, QHash, QHashPair_i32_QByteArray, QList, QModelIndex, QString, QVariant};
 use nectarlink_core::{ConnectionPath, DeviceKind, LinkState, PowerLevel};
 
+use super::{Edit, diff};
 use crate::{
     core_host,
     state::{Changes, DeviceView},
@@ -181,7 +182,7 @@ impl qobject::DeviceList {
     fn refresh(mut self: Pin<&mut Self>) {
         let new = core_host::host().hub.read(|s| s.devices.clone());
         let root = QModelIndex::default();
-        match diff(&self.rows, &new) {
+        match diff(&self.rows, &new, |d| d.id) {
             None => {
                 // SAFETY: begin/end pairs are balanced around the swap.
                 unsafe {
@@ -251,42 +252,6 @@ impl qobject::DeviceList {
     }
 }
 
-/// One step turning the current rows into the new ones.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Edit {
-    Remove(usize),
-    Insert(usize),
-    Change(usize),
-}
-
-/// Edits from `old` to `new`, applied in order. `None` when the devices that
-/// stay changed their relative order (then the model is reset).
-fn diff(old: &[DeviceView], new: &[DeviceView]) -> Option<Vec<Edit>> {
-    let mut edits = Vec::new();
-    // Removals, from the end so earlier indices stay valid.
-    for (row, device) in old.iter().enumerate().rev() {
-        if !new.iter().any(|d| d.id == device.id) {
-            edits.push(Edit::Remove(row));
-        }
-    }
-    let kept: Vec<&DeviceView> = old.iter().filter(|d| new.iter().any(|n| n.id == d.id)).collect();
-    let mut next_kept = 0;
-    for (row, device) in new.iter().enumerate() {
-        match kept.get(next_kept) {
-            Some(k) if k.id == device.id => {
-                if *k != device {
-                    edits.push(Edit::Change(row));
-                }
-                next_kept += 1;
-            }
-            // Devices already in the list must come in the same order.
-            _ if kept.iter().any(|k| k.id == device.id) => return None,
-            _ => edits.push(Edit::Insert(row)),
-        }
-    }
-    Some(edits)
-}
-
 #[cfg(test)]
 mod tests {
     use nectarlink_core::{DeviceId, DeviceInfo};
@@ -314,7 +279,7 @@ mod tests {
     /// Applies edits the way the model does and checks the result.
     fn apply(old: &[DeviceView], new: &[DeviceView]) -> Vec<DeviceView> {
         let mut rows = old.to_vec();
-        for edit in diff(old, new).expect("incremental") {
+        for edit in diff(old, new, |d| d.id).expect("incremental") {
             match edit {
                 Edit::Remove(r) => {
                     rows.remove(r);
@@ -333,12 +298,12 @@ mod tests {
         let mut b2 = b.clone();
         b2.info.name = "b2".into();
         let new = vec![a.clone(), b2.clone(), d.clone()];
-        assert_eq!(diff(&old, &new).unwrap(), [Edit::Remove(2), Edit::Change(1), Edit::Insert(2)]);
+        assert_eq!(diff(&old, &new, |d| d.id).unwrap(), [Edit::Remove(2), Edit::Change(1), Edit::Insert(2)]);
         assert_eq!(apply(&old, &new), new);
 
         assert_eq!(apply(&[], &new), new);
         assert_eq!(apply(&new, &[]), Vec::<DeviceView>::new());
-        assert_eq!(diff(&new, &new).unwrap(), []);
+        assert_eq!(diff(&new, &new, |d| d.id).unwrap(), []);
         let interleaved = vec![d.clone(), a.clone(), c.clone(), b2.clone()];
         assert_eq!(apply(&[a.clone(), b2.clone()], &interleaved), interleaved);
     }
@@ -346,7 +311,7 @@ mod tests {
     #[test]
     fn reordering_falls_back_to_a_reset() {
         let (a, b) = (device(1, "a"), device(2, "b"));
-        assert_eq!(diff(&[a.clone(), b.clone()], &[b, a]), None);
+        assert_eq!(diff(&[a.clone(), b.clone()], &[b, a], |d| d.id), None);
     }
 
     #[test]

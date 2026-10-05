@@ -10,7 +10,8 @@ use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use nectarlink_core::{
     Battery, ConnectionPath, DeviceId, DeviceInfo, DeviceKind, FeatureState, LinkState, Node, NodeConfig,
-    NodeEvent, PairedDevice, PairingEvent, Platform, PowerLevel,
+    NodeEvent, Notification, NotificationAction, NotificationError, PairedDevice, PairingEvent, Platform,
+    PowerLevel,
     features::{Effort, FEATURES, Role, UnsupportedReason, Upgrade, UpgradeAction},
 };
 use tokio::sync::broadcast::error::RecvError;
@@ -110,6 +111,21 @@ enum Command {
     },
     /// Stay online and print events until Ctrl+C.
     Run,
+    /// Show a notification on paired PCs as if this were a phone (use with
+    /// --as-phone), then stay online to show what the PC does with it.
+    Notify {
+        title: String,
+        text: String,
+        /// App name shown with it.
+        #[arg(long, default_value = "Messages")]
+        app: String,
+        /// Offer an inline reply.
+        #[arg(long)]
+        reply: bool,
+        /// Don't alert (like a silent notification on the phone).
+        #[arg(long)]
+        silent: bool,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -135,6 +151,22 @@ impl Platform for TerminalPlatform {
     }
     fn stop_ringing(&self) {
         println!("🔕 Stopped ringing.");
+    }
+    fn dismiss_notification(&self, key: &str) -> Result<(), NotificationError> {
+        println!("The PC dismissed {key}");
+        Ok(())
+    }
+    fn run_notification_action(
+        &self,
+        key: &str,
+        action: &str,
+        reply: Option<&str>,
+    ) -> Result<(), NotificationError> {
+        match reply {
+            Some(text) => println!("The PC replied to {key}: {text}"),
+            None => println!("The PC ran action {action} of {key}"),
+        }
+        Ok(())
     }
 }
 
@@ -166,12 +198,7 @@ async fn start_node(cli: &Cli) -> Result<Node> {
         (DeviceKind::Desktop, std::env::consts::OS.into(), String::new())
     };
     let device = DeviceInfo { name, kind, os, os_ver, model: None, accent: None };
-    let power = match (cli.as_phone, cli.power) {
-        (false, _) => PowerLevel::NotApplicable,
-        (true, Power::Basic) => PowerLevel::Basic,
-        (true, Power::Assist) => PowerLevel::Assist,
-        (true, Power::Elevated) => PowerLevel::Elevated,
-    };
+    let power = node_power(cli);
     let mut config = NodeConfig::new(data_dir, device, env!("CARGO_PKG_VERSION"));
     config.port = cli.port;
     config.lan_discovery = !cli.no_lan;
@@ -186,6 +213,15 @@ async fn start_node(cli: &Cli) -> Result<Node> {
         node.update_battery(Battery { level, charging: cli.charging, plugged }).await;
     }
     Ok(node)
+}
+
+fn node_power(cli: &Cli) -> PowerLevel {
+    match (cli.as_phone, cli.power) {
+        (false, _) => PowerLevel::NotApplicable,
+        (true, Power::Basic) => PowerLevel::Basic,
+        (true, Power::Assist) => PowerLevel::Assist,
+        (true, Power::Elevated) => PowerLevel::Elevated,
+    }
 }
 
 async fn run(cli: &Cli, node: &Node) -> Result<()> {
@@ -273,6 +309,36 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             println!("{name} is now {}", if on { "on" } else { "off" });
         }
         Command::Run => watch(node).await?,
+        Command::Notify { title, text, app, reply, silent } => {
+            if !cli.as_phone {
+                bail!("notifications come from phones: add --as-phone");
+            }
+            let mut offers = cli.offers.clone();
+            offers.extend(["notify.mirror".to_owned(), "notify.reply".to_owned()]);
+            node.update_power(node_power(cli), offers).await;
+            let when = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis() as i64;
+            let mut actions =
+                vec![NotificationAction { id: "read".into(), title: "Mark as read".into(), reply: false }];
+            if *reply {
+                actions
+                    .insert(0, NotificationAction { id: "reply".into(), title: "Reply".into(), reply: true });
+            }
+            node.notification_posted(Notification {
+                key: format!("cli|{when}"),
+                app: "dev.nectarlink.cli".into(),
+                app_name: app.clone(),
+                title: Some(title.clone()),
+                text: Some(text.clone()),
+                sub: None,
+                when,
+                actions,
+                silent: *silent,
+                icon: None,
+            })
+            .await;
+            println!("Notification sent to connected PCs (and to others when they connect).");
+            watch(node).await?;
+        }
     }
     Ok(())
 }
@@ -384,6 +450,18 @@ fn print_event(node: &Node, event: &NodeEvent) {
         NodeEvent::Capabilities(m) => {
             let available = m.features.values().filter(|s| **s == FeatureState::Available).count();
             println!("{}: {available} of {} features available", name(&m.device), m.features.len())
+        }
+        NodeEvent::NotificationsReset { device, items } => {
+            println!("{}: {} notifications showing", name(device), items.len())
+        }
+        NodeEvent::NotificationPosted { device, notification: n } => println!(
+            "{}: {} · {}",
+            name(device),
+            n.app_name,
+            n.title.as_deref().or(n.text.as_deref()).unwrap_or_default()
+        ),
+        NodeEvent::NotificationRemoved { device, .. } => {
+            println!("{}: a notification went away", name(device))
         }
         _ => {}
     }

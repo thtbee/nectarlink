@@ -134,6 +134,44 @@ pub struct Feature {
     pub status: FeatureStatus,
 }
 
+/// A button on a notification.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct NotificationAction {
+    pub id: String,
+    pub title: String,
+    /// Takes text (an inline reply).
+    pub reply: bool,
+}
+
+/// A notification, as mirrored between devices
+/// (docs/protocol/notifications.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Notification {
+    /// This device's ID for it (Android: the StatusBarNotification key).
+    pub key: String,
+    /// Package name.
+    pub app: String,
+    pub app_name: String,
+    pub title: Option<String>,
+    pub text: Option<String>,
+    pub sub: Option<String>,
+    /// Unix milliseconds.
+    pub when: i64,
+    pub actions: Vec<NotificationAction>,
+    /// Arrived without sound or pop-up.
+    pub silent: bool,
+    /// The app icon as PNG; pass it every time, the core sends it once per
+    /// device and connection.
+    pub icon: Option<Vec<u8>>,
+}
+
+/// Never prints content (protocol v0 §11).
+impl std::fmt::Debug for Notification {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Notification").field("app", &self.app).finish_non_exhaustive()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct DeviceToggle {
     pub name: String,
@@ -191,6 +229,18 @@ pub enum Event {
         id: String,
         features: Vec<Feature>,
     },
+    NotificationsReset {
+        id: String,
+        items: Vec<Notification>,
+    },
+    NotificationPosted {
+        id: String,
+        notification: Notification,
+    },
+    NotificationRemoved {
+        id: String,
+        key: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -211,6 +261,8 @@ pub enum NectarlinkError {
     VersionTooOld { this_device: bool },
     #[error("not supported by the other device")]
     Unsupported,
+    #[error("it no longer exists")]
+    NotFound,
     #[error("no pairing in progress")]
     NotPairing,
     #[error("invalid pairing link")]
@@ -237,6 +289,7 @@ impl From<core::Error> for NectarlinkError {
                 NectarlinkError::VersionTooOld { this_device: side == core::Side::Local }
             }
             core::Error::Unsupported => NectarlinkError::Unsupported,
+            core::Error::NotFound => NectarlinkError::NotFound,
             core::Error::NotPairing => NectarlinkError::NotPairing,
             core::Error::InvalidPairingLink(_) => NectarlinkError::InvalidPairingLink,
             core::Error::Network(reason) => NectarlinkError::Network { reason },
@@ -378,6 +431,48 @@ impl From<core::PairingFailure> for PairingFailure {
     }
 }
 
+impl From<core::Notification> for Notification {
+    fn from(n: core::Notification) -> Self {
+        Notification {
+            key: n.key,
+            app: n.app,
+            app_name: n.app_name,
+            title: n.title,
+            text: n.text,
+            sub: n.sub,
+            when: n.when,
+            actions: n
+                .actions
+                .into_iter()
+                .map(|a| NotificationAction { id: a.id, title: a.title, reply: a.reply })
+                .collect(),
+            silent: n.silent,
+            icon: n.icon,
+        }
+    }
+}
+
+impl From<Notification> for core::Notification {
+    fn from(n: Notification) -> Self {
+        core::Notification {
+            key: n.key,
+            app: n.app,
+            app_name: n.app_name,
+            title: n.title,
+            text: n.text,
+            sub: n.sub,
+            when: n.when,
+            actions: n
+                .actions
+                .into_iter()
+                .map(|a| core::NotificationAction { id: a.id, title: a.title, reply: a.reply })
+                .collect(),
+            silent: n.silent,
+            icon: n.icon,
+        }
+    }
+}
+
 fn upgrade(u: core::features::Upgrade) -> Upgrade {
     let (action, target) = u.action.describe();
     Upgrade { action: action.into(), target, minutes: u.effort.minutes() }
@@ -430,6 +525,16 @@ impl From<NodeEvent> for Event {
             NodeEvent::Capabilities(matrix) => {
                 Event::Capabilities { id: matrix.device.to_string(), features: features(&matrix) }
             }
+            NodeEvent::NotificationsReset { device, items } => Event::NotificationsReset {
+                id: device.to_string(),
+                items: items.into_iter().map(Into::into).collect(),
+            },
+            NodeEvent::NotificationPosted { device, notification } => {
+                Event::NotificationPosted { id: device.to_string(), notification: notification.into() }
+            }
+            NodeEvent::NotificationRemoved { device, key } => {
+                Event::NotificationRemoved { id: device.to_string(), key }
+            }
         }
     }
 }
@@ -440,12 +545,53 @@ fn parse_id(id: &str) -> Result<DeviceId> {
 
 // ---- Foreign interfaces (implemented in Kotlin) ----
 
-/// What the app does for the core: ring the phone.
+/// Why a notification couldn't be dismissed or its action run.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum NotificationFailure {
+    /// The notification or action is gone.
+    #[error("no longer exists")]
+    NotFound,
+    /// Not possible here (e.g. notification access was revoked).
+    #[error("not available")]
+    Unsupported,
+    /// `reason` is for logs; never put notification content in it.
+    #[error("failed: {reason}")]
+    Failed { reason: String },
+}
+
+impl From<uniffi::UnexpectedUniFFICallbackError> for NotificationFailure {
+    fn from(e: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        NotificationFailure::Failed { reason: e.reason }
+    }
+}
+
+impl From<NotificationFailure> for core::NotificationError {
+    fn from(f: NotificationFailure) -> Self {
+        match f {
+            NotificationFailure::NotFound => core::NotificationError::NotFound,
+            NotificationFailure::Unsupported => core::NotificationError::Unsupported,
+            NotificationFailure::Failed { reason } => core::NotificationError::Failed(reason),
+        }
+    }
+}
+
+/// What the app does for the core: ring the phone, act on its
+/// notifications.
 #[uniffi::export(with_foreign)]
 pub trait Platform: Send + Sync {
     /// Ring loudly, even in silent mode, until `stop_ringing`.
     fn start_ringing(&self);
     fn stop_ringing(&self);
+    /// A PC dismissed this notification.
+    fn dismiss_notification(&self, key: String) -> Result<(), NotificationFailure>;
+    /// A PC ran this notification's action; `reply` is the text for a reply
+    /// action.
+    fn run_notification_action(
+        &self,
+        key: String,
+        action: String,
+        reply: Option<String>,
+    ) -> Result<(), NotificationFailure>;
 }
 
 /// Encrypts the device key at rest (Android: a Keystore key).
@@ -475,6 +621,17 @@ impl core::Platform for PlatformAdapter {
     }
     fn stop_ringing(&self) {
         self.0.stop_ringing();
+    }
+    fn dismiss_notification(&self, key: &str) -> Result<(), core::NotificationError> {
+        Ok(self.0.dismiss_notification(key.to_owned())?)
+    }
+    fn run_notification_action(
+        &self,
+        key: &str,
+        action: &str,
+        reply: Option<&str>,
+    ) -> Result<(), core::NotificationError> {
+        Ok(self.0.run_notification_action(key.to_owned(), action.to_owned(), reply.map(str::to_owned))?)
     }
 }
 
@@ -654,6 +811,27 @@ impl NectarlinkNode {
 
     pub fn set_device_toggle(&self, id: String, name: String, enabled: bool) -> Result<()> {
         Ok(self.node.set_device_toggle(parse_id(&id)?, &name, enabled)?)
+    }
+
+    // ---- Notifications ----
+
+    /// A notification appeared or changed on this phone.
+    pub async fn notification_posted(&self, notification: Notification) {
+        let node = self.node.clone();
+        self.run(async move { node.notification_posted(notification.into()).await }).await;
+    }
+
+    pub async fn notification_removed(&self, key: String) {
+        let node = self.node.clone();
+        self.run(async move { node.notification_removed(key).await }).await;
+    }
+
+    /// Everything this phone shows now (listener connected), or nothing
+    /// (access revoked).
+    pub async fn notifications_reset(&self, items: Vec<Notification>) {
+        let node = self.node.clone();
+        self.run(async move { node.notifications_reset(items.into_iter().map(Into::into).collect()).await })
+            .await;
     }
 
     // ---- This device ----

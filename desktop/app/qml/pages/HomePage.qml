@@ -230,6 +230,97 @@ Item {
                     ready: false
                 }
             }
+
+            // ---- Notifications ----
+            Card {
+                id: feed
+                width: parent.width
+                readonly property var state: home.feature("notifications.mirror")
+                readonly property int count: NotificationList.count >= 0 ? NotificationList.countFor(home.deviceId) : 0
+
+                Column {
+                    width: parent.width
+                    spacing: 8
+                    Item {
+                        width: parent.width
+                        height: Math.max(header.height, clearAll.height)
+                        Txt {
+                            id: header
+                            anchors.verticalCenter: parent.verticalCenter
+                            role: "label"
+                            muted: true
+                            text: feed.count > 0 ? qsTr("Notifications · %1").arg(feed.count) : qsTr("Notifications")
+                        }
+                        Button {
+                            id: clearAll
+                            anchors.right: parent.right
+                            visible: feed.count > 1
+                            variant: "text"
+                            size: "sm"
+                            text: qsTr("Clear all")
+                            onClicked: NotificationList.dismissAll(home.deviceId)
+                        }
+                    }
+                    Column {
+                        width: parent.width
+                        Repeater {
+                            model: NotificationList
+                            delegate: NotificationItem {
+                                width: parent.width
+                                visible: deviceId === home.deviceId
+                            }
+                        }
+                    }
+                    // Empty: say why, and what turns it on.
+                    Txt {
+                        width: parent.width
+                        visible: feed.count === 0 && !lockedHint.visible
+                        role: "bodySmall"
+                        muted: true
+                        wrapMode: Text.WordWrap
+                        text: feed.state.state === "available"
+                              ? qsTr("Notifications from %1 show up here and as Windows notifications.").arg(home.name)
+                              : home.lastSeen > 0 || home.online
+                                ? qsTr("Notifications from %1 aren't available yet.").arg(home.name)
+                                : qsTr("Notifications show up here once %1 has connected.").arg(home.name)
+                    }
+                    LockChip { id: lockedHint; visible: feed.count === 0 && label.length > 0; feature: feed.state }
+                    // Windows hides every app's notifications when they're
+                    // turned off in Settings; say so instead of staying quiet.
+                    Rectangle {
+                        width: parent.width
+                        height: toastsOff.height + 20
+                        visible: !AppController.toastsEnabled && feed.state.state === "available"
+                        radius: Theme.radiusMd
+                        color: Theme.graphite ? "transparent" : Theme.surfaceContainerHigh
+                        border.width: Theme.graphite ? 1 : 0
+                        border.color: Theme.outlineVariant
+                        Row {
+                            id: toastsOff
+                            x: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 24
+                            spacing: 12
+                            Icon { anchors.verticalCenter: parent.verticalCenter; path: Icons.bell; color: Theme.surfaceContentVariant }
+                            Txt {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 32 - turnOn.width - 24
+                                role: "bodySmall"
+                                wrapMode: Text.WordWrap
+                                text: qsTr("Windows notifications are turned off, so these only show up here.")
+                            }
+                            Button {
+                                id: turnOn
+                                anchors.verticalCenter: parent.verticalCenter
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Turn on")
+                                onClicked: Qt.openUrlExternally("ms-settings:notifications")
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // ---- Details ----

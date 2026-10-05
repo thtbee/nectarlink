@@ -10,7 +10,9 @@
 
 mod bridge;
 mod core_host;
+mod icons;
 mod logging;
+mod notifications;
 mod palette;
 mod qr;
 mod settings;
@@ -93,6 +95,18 @@ fn watch_network() {
     });
 }
 
+/// Phone notifications as Windows toasts, sent by "Nectarlink" with the
+/// app's icon (written as a PNG, which Windows needs as a file).
+fn start_toasts() {
+    let icon = core_host::host().data_dir.join("cache").join("nectarlink.png");
+    if !icon.exists()
+        && let Err(e) = win::icon::write_png(&icon, 256)
+    {
+        tracing::warn!(error = %e, "can't write the app icon");
+    }
+    win::toast::start(&icon, notifications::on_toast);
+}
+
 fn install_panic_logging() {
     let default = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
@@ -124,11 +138,14 @@ fn main() -> ExitCode {
         }
     };
 
+    // Before any window: toasts and the taskbar both go by this ID.
+    win::toast::set_process_id();
     if let Err(e) = core_host::start(data_dir, Arc::new(DesktopPlatform)) {
         tracing::error!(error = %e, "can't start the core runtime");
         return ExitCode::FAILURE;
     }
     watch_network();
+    start_toasts();
 
     bridge::native::ffi::prepare_qt();
     let mut app = QGuiApplication::new();

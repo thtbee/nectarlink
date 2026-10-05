@@ -12,6 +12,8 @@ pub mod devices;
 #[allow(unsafe_code)]
 pub mod native;
 #[allow(unsafe_code)]
+pub mod notifications;
+#[allow(unsafe_code)]
 pub mod pairing;
 #[allow(unsafe_code)]
 pub mod prefs;
@@ -55,4 +57,45 @@ where
 /// Parses a device ID coming from QML.
 pub(crate) fn parse_device(id: &QString) -> Option<DeviceId> {
     String::from(id).parse().ok()
+}
+
+/// One step turning a list model's rows into new ones.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Edit {
+    Remove(usize),
+    Insert(usize),
+    Change(usize),
+}
+
+/// Edits from `old` to `new` (rows identified by `key`), applied in order,
+/// so QML delegates keep their state and animate. `None` when rows that stay
+/// changed their relative order (then the model is reset).
+pub(crate) fn diff<T: PartialEq, K: PartialEq>(
+    old: &[T],
+    new: &[T],
+    key: impl Fn(&T) -> K,
+) -> Option<Vec<Edit>> {
+    let mut edits = Vec::new();
+    // Removals, from the end so earlier indices stay valid.
+    for (row, item) in old.iter().enumerate().rev() {
+        if !new.iter().any(|n| key(n) == key(item)) {
+            edits.push(Edit::Remove(row));
+        }
+    }
+    let kept: Vec<&T> = old.iter().filter(|o| new.iter().any(|n| key(n) == key(o))).collect();
+    let mut next_kept = 0;
+    for (row, item) in new.iter().enumerate() {
+        match kept.get(next_kept) {
+            Some(k) if key(k) == key(item) => {
+                if *k != item {
+                    edits.push(Edit::Change(row));
+                }
+                next_kept += 1;
+            }
+            // Rows already in the list must come in the same order.
+            _ if kept.iter().any(|k| key(k) == key(item)) => return None,
+            _ => edits.push(Edit::Insert(row)),
+        }
+    }
+    Some(edits)
 }

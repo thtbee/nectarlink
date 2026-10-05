@@ -104,7 +104,10 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
 
     loop {
         match events.recv().await {
-            Ok(event) => host.hub.update(|s| s.apply(&event)),
+            Ok(event) => {
+                crate::notifications::apply(&event);
+                crate::notifications::update_toasts(&event);
+            }
             Err(RecvError::Lagged(missed)) => {
                 // Resynchronize what can be re-read; transient events are lost.
                 tracing::warn!(missed, "UI fell behind core events; resyncing");

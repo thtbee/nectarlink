@@ -9,6 +9,7 @@ pub mod icon;
 pub mod net;
 pub mod single_instance;
 pub mod sound;
+pub mod toast;
 pub mod tray;
 pub mod wallpaper;
 

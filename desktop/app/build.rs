@@ -25,6 +25,7 @@ const QML: &[&str] = &[
     "qml/components/ListRow.qml",
     "qml/components/LockChip.qml",
     "qml/components/NavItem.qml",
+    "qml/components/NotificationItem.qml",
     "qml/components/QrCode.qml",
     "qml/components/Segmented.qml",
     "qml/components/Sheet.qml",
@@ -77,6 +78,7 @@ fn main() {
             "src/bridge/native.rs",
             "src/bridge/app.rs",
             "src/bridge/devices.rs",
+            "src/bridge/notifications.rs",
             "src/bridge/pairing.rs",
             "src/bridge/prefs.rs",
         ])

@@ -5,13 +5,14 @@
 
 use std::{
     collections::HashMap,
+    path::PathBuf,
     sync::{Arc, Mutex, MutexGuard},
     time::SystemTime,
 };
 
 use nectarlink_core::{
-    Battery, CapabilityMatrix, DeviceId, DeviceInfo, DiscoveredDevice, LinkState, NodeEvent, PairedDevice,
-    PairingEvent, PairingFailure, PowerLevel,
+    Battery, CapabilityMatrix, DeviceId, DeviceInfo, DiscoveredDevice, LinkState, NodeEvent, Notification,
+    PairedDevice, PairingEvent, PairingFailure, PowerLevel,
 };
 
 /// Which parts of the state changed, so listeners refresh only what they show.
@@ -26,6 +27,7 @@ impl Changes {
     pub const PAIRING: Changes = Changes(1 << 3);
     pub const CAPABILITIES: Changes = Changes(1 << 4);
     pub const RINGING: Changes = Changes(1 << 5);
+    pub const NOTIFICATIONS: Changes = Changes(1 << 6);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
@@ -114,6 +116,17 @@ pub enum PairingView {
     Failed(PairingFailure),
 }
 
+/// A phone notification as the UI shows it. The icon bytes are kept on disk
+/// (see [`AppState::app_icons`]), not here.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NotificationView {
+    pub device: DeviceId,
+    pub notification: Notification,
+}
+
+/// The most notifications kept; the oldest go first.
+pub const MAX_NOTIFICATIONS: usize = 200;
+
 #[derive(Debug, Default)]
 pub struct AppState {
     pub status: Option<CoreStatus>,
@@ -126,6 +139,10 @@ pub struct AppState {
     pub matrices_version: u32,
     /// The device that asked this PC to ring, while it rings.
     pub ringing_from: Option<DeviceId>,
+    /// Phone notifications, newest first.
+    pub notifications: Vec<NotificationView>,
+    /// App icon files by package name.
+    pub app_icons: HashMap<String, PathBuf>,
 }
 
 impl AppState {
@@ -186,6 +203,11 @@ impl AppState {
                     self.ringing_from = None;
                     changes |= Changes::RINGING;
                 }
+                let notifications = self.notifications.len();
+                self.notifications.retain(|n| n.device != *id);
+                if self.notifications.len() != notifications {
+                    changes |= Changes::NOTIFICATIONS;
+                }
                 changes
             }
             NodeEvent::LinkChanged { device, link } => self.update_device(device, |d| d.link = link.clone()),
@@ -224,7 +246,46 @@ impl AppState {
                 if self.discovered.len() == before { Changes::NONE } else { Changes::DISCOVERED }
             }
             NodeEvent::Pairing(event) => self.apply_pairing(event),
+            NodeEvent::NotificationsReset { device, items } => {
+                let before = self.notifications.len();
+                self.notifications.retain(|n| n.device != *device);
+                if before == self.notifications.len() && items.is_empty() {
+                    return Changes::NONE;
+                }
+                for n in items {
+                    self.insert_notification(*device, n.clone());
+                }
+                Changes::NOTIFICATIONS
+            }
+            NodeEvent::NotificationPosted { device, notification } => {
+                self.notifications
+                    .retain(|n| !(n.device == *device && n.notification.key == notification.key));
+                self.insert_notification(*device, notification.clone());
+                Changes::NOTIFICATIONS
+            }
+            NodeEvent::NotificationRemoved { device, key } => {
+                let before = self.notifications.len();
+                self.notifications.retain(|n| !(n.device == *device && n.notification.key == *key));
+                if before == self.notifications.len() { Changes::NONE } else { Changes::NOTIFICATIONS }
+            }
         }
+    }
+
+    /// Adds a notification in time order (newest first), without its icon.
+    fn insert_notification(&mut self, device: DeviceId, mut notification: Notification) {
+        notification.icon = None;
+        let at = self.notifications.partition_point(|n| n.notification.when >= notification.when);
+        self.notifications.insert(at, NotificationView { device, notification });
+        self.notifications.truncate(MAX_NOTIFICATIONS);
+    }
+
+    /// Records where an app's icon is stored.
+    pub fn set_app_icon(&mut self, app: &str, path: PathBuf) -> Changes {
+        if self.app_icons.get(app) == Some(&path) {
+            return Changes::NONE;
+        }
+        self.app_icons.insert(app.to_owned(), path);
+        Changes::NOTIFICATIONS
     }
 
     fn update_device(&mut self, id: &DeviceId, f: impl FnOnce(&mut DeviceView)) -> Changes {
@@ -419,6 +480,75 @@ mod tests {
         assert_eq!(s.name_of(&id).as_deref(), Some("Pixel"));
         assert_eq!(s.apply(&NodeEvent::DiscoveryExpired(id)), Changes::DISCOVERED);
         assert!(s.discovered.is_empty());
+    }
+
+    fn note(key: &str, when: i64) -> Notification {
+        Notification {
+            key: key.into(),
+            app: "com.chat".into(),
+            app_name: "Chat".into(),
+            title: Some(key.to_uppercase()),
+            text: Some("hi".into()),
+            sub: None,
+            when,
+            actions: Vec::new(),
+            silent: false,
+            icon: Some(vec![1, 2, 3]),
+        }
+    }
+
+    fn keys(s: &AppState) -> Vec<&str> {
+        s.notifications.iter().map(|n| n.notification.key.as_str()).collect()
+    }
+
+    #[test]
+    fn notifications_stay_newest_first_and_follow_the_phone() {
+        let mut s = AppState::default();
+        let (phone, other) = (DeviceId([1; 32]), DeviceId([2; 32]));
+        let reset =
+            NodeEvent::NotificationsReset { device: phone, items: vec![note("a", 10), note("b", 30)] };
+        assert_eq!(s.apply(&reset), Changes::NOTIFICATIONS);
+        s.apply(&NodeEvent::NotificationPosted { device: other, notification: note("c", 20) });
+        assert_eq!(keys(&s), ["b", "c", "a"]);
+        assert!(s.notifications.iter().all(|n| n.notification.icon.is_none()), "icons live on disk");
+
+        // An update replaces the old version and moves to its new time.
+        s.apply(&NodeEvent::NotificationPosted { device: phone, notification: note("a", 40) });
+        assert_eq!(keys(&s), ["a", "b", "c"]);
+
+        assert_eq!(
+            s.apply(&NodeEvent::NotificationRemoved { device: phone, key: "b".into() }),
+            Changes::NOTIFICATIONS
+        );
+        assert_eq!(
+            s.apply(&NodeEvent::NotificationRemoved { device: phone, key: "b".into() }),
+            Changes::NONE
+        );
+
+        // A snapshot replaces only that phone's notifications.
+        s.apply(&NodeEvent::NotificationsReset { device: phone, items: Vec::new() });
+        assert_eq!(keys(&s), ["c"]);
+        assert_eq!(
+            s.apply(&NodeEvent::NotificationsReset { device: phone, items: Vec::new() }),
+            Changes::NONE
+        );
+
+        // Unpairing forgets them.
+        assert!(s.apply(&NodeEvent::DeviceRemoved(other)).intersects(Changes::NOTIFICATIONS));
+        assert!(s.notifications.is_empty());
+    }
+
+    #[test]
+    fn the_feed_is_bounded() {
+        let mut s = AppState::default();
+        for i in 0..(MAX_NOTIFICATIONS as i64 + 10) {
+            s.apply(&NodeEvent::NotificationPosted {
+                device: DeviceId([1; 32]),
+                notification: note(&i.to_string(), i),
+            });
+        }
+        assert_eq!(s.notifications.len(), MAX_NOTIFICATIONS);
+        assert_eq!(s.notifications[0].notification.when, MAX_NOTIFICATIONS as i64 + 9, "the oldest go first");
     }
 
     #[test]

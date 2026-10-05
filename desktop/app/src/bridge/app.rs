@@ -57,6 +57,8 @@ pub mod qobject {
         /// Bloom colors from the desktop wallpaper, as JSON in the shape of
         /// a tokens.json seed (`{ seed, light, dark }`); "" until known.
         #[qproperty(QString, wallpaper_colors)]
+        /// Whether Windows shows this app's notifications.
+        #[qproperty(bool, toasts_enabled)]
         #[qproperty(QString, version)]
         type AppController = super::AppControllerRust;
 
@@ -78,6 +80,12 @@ pub mod qobject {
         fn device_toggles(self: &AppController, device: &QString) -> QList_QVariant;
         #[qinvokable]
         fn set_device_toggle(self: Pin<&mut AppController>, device: &QString, name: &QString, on: bool);
+
+        /// Re-reads whether Windows shows this app's notifications (the user
+        /// may have changed it in Settings).
+        #[qinvokable]
+        #[cxx_name = "refreshToastsEnabled"]
+        fn refresh_toasts_enabled(self: Pin<&mut AppController>);
 
         /// The folder with the app's logs, as a file URL.
         #[qinvokable]
@@ -111,6 +119,7 @@ pub struct AppControllerRust {
     system_dark: bool,
     reduce_motion: bool,
     wallpaper_colors: QString,
+    toasts_enabled: bool,
     version: QString,
     tray: Option<tray::Tray>,
 }
@@ -130,8 +139,8 @@ pub fn request_activation() {
     }
 }
 
-/// Shows a toast (from any thread).
-fn toast(message: impl Into<String>) {
+/// Shows a short message in the app (from any thread).
+pub(crate) fn show_message(message: impl Into<String>) {
     let message = message.into();
     if let Some(qt) = controller() {
         let _ = qt.queue(move |object| object.toast(QString::from(&message)));
@@ -139,7 +148,7 @@ fn toast(message: impl Into<String>) {
 }
 
 /// Explains a failed command in a sentence the user understands.
-fn describe(error: &Error) -> String {
+pub(crate) fn describe(error: &Error) -> String {
     match error {
         Error::Offline => "The device isn't connected right now.".into(),
         Error::NotPaired => "That device isn't paired anymore.".into(),
@@ -234,7 +243,7 @@ fn ring_device(device: DeviceId, on: bool) {
     let Some(node) = core_host::node() else { return };
     core_host::spawn(async move {
         if let Err(e) = node.ring(device, on).await {
-            toast(describe(&e));
+            show_message(describe(&e));
         }
     });
 }
@@ -278,6 +287,11 @@ impl qobject::AppController {
         self.as_mut().set_system_dark(win::system_dark());
         self.as_mut().set_reduce_motion(win::reduce_motion());
         refresh_wallpaper_colors(self.qt_thread());
+        self.refresh_toasts_enabled();
+    }
+
+    pub fn refresh_toasts_enabled(self: Pin<&mut Self>) {
+        self.set_toasts_enabled(win::toast::enabled());
     }
 
     pub fn ring(self: Pin<&mut Self>, device: &QString, on: bool) {
@@ -297,7 +311,7 @@ impl qobject::AppController {
         let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return };
         core_host::spawn(async move {
             if let Err(e) = node.unpair(id).await {
-                toast(describe(&e));
+                show_message(describe(&e));
             }
         });
     }
@@ -325,7 +339,7 @@ impl qobject::AppController {
     pub fn set_device_toggle(mut self: Pin<&mut Self>, device: &QString, name: &QString, on: bool) {
         let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return };
         if let Err(e) = node.set_device_toggle(id, &String::from(name), on) {
-            toast(describe(&e));
+            show_message(describe(&e));
         }
         let revision = self.toggles_revision.wrapping_add(1);
         self.as_mut().set_toggles_revision(revision);
