@@ -26,6 +26,8 @@ pub enum Error {
     VersionTooOld { side: Side },
     #[error("not supported by the other device")]
     Unsupported,
+    #[error("it no longer exists")]
+    NotFound,
     #[error("no pairing in progress")]
     NotPairing,
     #[error("invalid pairing link: {0}")]
@@ -51,6 +53,7 @@ impl From<ProtocolError> for Error {
                 ErrorCode::Denied => Error::Denied,
                 ErrorCode::Unpaired => Error::NotPaired,
                 ErrorCode::Unsupported => Error::Unsupported,
+                ErrorCode::NotFound => Error::NotFound,
                 ErrorCode::VersionTooOld => Error::VersionTooOld { side: Side::Local },
                 other => Error::Protocol(format!("{other}: {msg}")),
             },

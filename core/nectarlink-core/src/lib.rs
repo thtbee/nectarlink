@@ -12,6 +12,7 @@ mod events;
 pub mod features;
 mod identity;
 mod node;
+mod notifications;
 mod pairing;
 mod session;
 mod store;
@@ -25,10 +26,11 @@ pub use features::{CapabilityMatrix, FeatureState};
 pub use identity::{KeyProtector, PlainKeyProtector, default_protector};
 pub use nectarlink_protocol::{
     DeviceId,
-    messages::{Battery, DeviceInfo, DeviceKind, PowerLevel},
+    messages::{Battery, DeviceInfo, DeviceKind, Notification, NotificationAction, PowerLevel},
     pairing::PairingUri,
 };
 pub use node::Node;
+pub use notifications::NotificationError;
 
 pub(crate) fn device_id(key: &iroh::PublicKey) -> DeviceId {
     DeviceId(*key.as_bytes())

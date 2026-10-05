@@ -19,7 +19,9 @@ use iroh::{
 use iroh_mdns_address_lookup::{DiscoveryEvent, MdnsAddressLookup};
 use nectarlink_protocol::{
     ALPN_PAIR, ALPN_SESSION, DeviceId, Envelope, ErrorCode,
-    messages::{Battery, DeviceInfo, HelloUpdate, PowerLevel, Ring, types},
+    messages::{
+        Battery, DeviceInfo, HelloUpdate, Notification, NotifyAction, NotifyKey, PowerLevel, Ring, types,
+    },
     pairing::PairingUri,
 };
 use tokio::sync::{Notify, broadcast};
@@ -30,6 +32,7 @@ use crate::{
     events::{ConnectionPath, DiscoveredDevice, LinkState, NodeEvent, PairedDevice, PairingEvent},
     features::{self, CapabilityMatrix, DeviceFacts, MatrixInputs},
     identity,
+    notifications::{self, Feed},
     pairing::{self, PairingState},
     session::{self, CLOSE_DUPLICATE, CLOSE_NORMAL, REQUEST_TIMEOUT, Session},
     store::Store,
@@ -95,6 +98,10 @@ pub(crate) struct Shared {
     matrices: Mutex<HashMap<DeviceId, CapabilityMatrix>>,
     away_mode: bool,
     memory: MemoryLookup,
+    /// This device's notifications, when it mirrors them (phones).
+    pub notifications: Feed,
+    /// The node's runtime, for work started from non-async callers.
+    runtime: tokio::runtime::Handle,
 }
 
 impl std::fmt::Debug for Shared {
@@ -111,6 +118,16 @@ impl Shared {
     pub fn emit(&self, event: NodeEvent) {
         // No subscribers is fine; events are a UI convenience.
         let _ = self.events.send(event);
+    }
+
+    /// Every connected device's session.
+    pub fn live_sessions(&self) -> Vec<Arc<Session>> {
+        lock(&self.sessions).values().filter(|s| s.is_alive()).cloned().collect()
+    }
+
+    /// The capabilities this device offers right now.
+    pub fn local_capabilities(&self) -> Vec<String> {
+        self.local.read().unwrap_or_else(|e| e.into_inner()).capabilities()
     }
 
     pub fn session(&self, peer: &DeviceId) -> Option<Arc<Session>> {
@@ -279,14 +296,16 @@ impl Shared {
 
         // Bring the peer up to date with state it may have missed.
         let battery = self.local.read().unwrap_or_else(|e| e.into_inner()).battery.clone();
-        if let Some(battery) = battery {
-            let s = session.clone();
-            tokio::spawn(async move {
-                if let Ok(env) = Envelope::new(types::EVENT_BATTERY, &battery) {
-                    let _ = s.send(env).await;
-                }
-            });
-        }
+        let shared = self.clone();
+        let s = session.clone();
+        tokio::spawn(async move {
+            if let Some(battery) = battery
+                && let Ok(env) = Envelope::new(types::EVENT_BATTERY, &battery)
+            {
+                let _ = s.send(env).await;
+            }
+            shared.send_notification_snapshot(&s).await;
+        });
         Some(session)
     }
 
@@ -337,8 +356,7 @@ impl Shared {
 
     /// Sends a message to every connected device.
     async fn broadcast(&self, env: Envelope) {
-        let sessions: Vec<_> = lock(&self.sessions).values().filter(|s| s.is_alive()).cloned().collect();
-        for session in sessions {
+        for session in self.live_sessions() {
             if let Err(e) = session.send(env.clone()).await {
                 tracing::debug!(peer = %session.peer.short(), error = %e, "broadcast failed");
             }
@@ -528,6 +546,8 @@ impl Node {
             matrices: Mutex::new(HashMap::new()),
             away_mode: config.away_mode,
             memory,
+            notifications: Feed::default(),
+            runtime: tokio::runtime::Handle::current(),
         });
 
         if config.lan_discovery {
@@ -726,6 +746,72 @@ impl Node {
         }
         self.shared.store.set_toggle(&peer, toggle, enabled)?;
         self.shared.refresh_capabilities(&peer);
+        if toggle == notifications::TOGGLE {
+            self.notifications_toggled(peer, enabled);
+        }
+        Ok(())
+    }
+
+    /// Brings both sides in line after the user allowed or stopped
+    /// notifications for a device.
+    fn notifications_toggled(&self, peer: DeviceId, enabled: bool) {
+        let shared = &self.shared;
+        if shared.notifications.is_active() {
+            // This phone: send the PC everything, or clear it.
+            if let Some(session) = shared.session(&peer) {
+                let task = shared.clone();
+                shared.runtime.spawn(async move { task.send_notification_snapshot(&session).await });
+            }
+        } else if enabled {
+            // This PC: ask the phone for what it shows now.
+            if let Some(session) = shared.session(&peer) {
+                shared.runtime.spawn(async move {
+                    let _ = session.send(Envelope::empty(types::NOTIFY_SYNC)).await;
+                });
+            }
+        } else {
+            shared.emit(NodeEvent::NotificationsReset { device: peer, items: Vec::new() });
+        }
+    }
+
+    // ---- Notifications (docs/protocol/notifications.md) ----
+
+    /// A notification appeared or changed on this phone; sent to every
+    /// connected PC the user allows. Include the app icon (PNG) each time:
+    /// the core sends it once per PC and session.
+    pub async fn notification_posted(&self, notification: Notification) {
+        self.shared.notification_posted(notification).await;
+    }
+
+    /// A notification went away on this phone.
+    pub async fn notification_removed(&self, key: String) {
+        self.shared.notification_removed(key).await;
+    }
+
+    /// Everything this phone shows now (when the notification listener
+    /// connects, or an empty list when access was revoked).
+    pub async fn notifications_reset(&self, items: Vec<Notification>) {
+        self.shared.notifications_reset(items).await;
+    }
+
+    /// Dismisses a phone's notification there.
+    pub async fn dismiss_notification(&self, peer: DeviceId, key: String) -> Result<()> {
+        let env = Envelope::new(types::NOTIFY_DISMISS, &NotifyKey { key })?;
+        self.request(peer, env).await?.expect(types::OK)?;
+        Ok(())
+    }
+
+    /// Runs an action of a phone's notification; `reply` is the text for a
+    /// reply action.
+    pub async fn run_notification_action(
+        &self,
+        peer: DeviceId,
+        key: String,
+        action: String,
+        reply: Option<String>,
+    ) -> Result<()> {
+        let env = Envelope::new(types::NOTIFY_ACTION, &NotifyAction { key, action, reply })?;
+        self.request(peer, env).await?.expect(types::OK)?;
         Ok(())
     }
 

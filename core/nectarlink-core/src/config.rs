@@ -3,7 +3,7 @@ use std::{fmt, path::PathBuf};
 
 use nectarlink_protocol::messages::{DeviceInfo, PowerLevel};
 
-use crate::identity::KeyProtector;
+use crate::{identity::KeyProtector, notifications::NotificationError};
 
 /// Configuration for starting a [`Node`](crate::Node).
 #[derive(Clone)]
@@ -67,6 +67,21 @@ pub trait Platform: Send + Sync + 'static {
     fn start_ringing(&self) {}
     /// Stop ringing.
     fn stop_ringing(&self) {}
+
+    /// Dismiss one of this device's notifications (a PC dismissed it).
+    fn dismiss_notification(&self, _key: &str) -> Result<(), NotificationError> {
+        Err(NotificationError::Unsupported)
+    }
+    /// Run an action of one of this device's notifications; `reply` holds
+    /// the text for a reply action.
+    fn run_notification_action(
+        &self,
+        _key: &str,
+        _action: &str,
+        _reply: Option<&str>,
+    ) -> Result<(), NotificationError> {
+        Err(NotificationError::Unsupported)
+    }
 }
 
 /// A platform that does nothing; useful for tests and headless tools.

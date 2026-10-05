@@ -10,7 +10,8 @@ use std::{
 
 use nectarlink_core::{
     Battery, DeviceInfo, DeviceKind, Error, FeatureState, LinkState, Node, NodeConfig, NodeEvent,
-    PairingEvent, PairingFailure, PairingUri, PlainKeyProtector, Platform, PowerLevel,
+    Notification, NotificationAction, NotificationError, PairingEvent, PairingFailure, PairingUri,
+    PlainKeyProtector, Platform, PowerLevel,
     features::{Effort, Upgrade, UpgradeAction},
 };
 use tempfile::TempDir;
@@ -21,6 +22,8 @@ const WAIT: Duration = Duration::from_secs(20);
 #[derive(Debug, Default)]
 struct RecordingPlatform {
     rings: Mutex<Vec<bool>>,
+    dismissed: Mutex<Vec<String>>,
+    actions: Mutex<Vec<(String, String, Option<String>)>>,
 }
 
 impl Platform for RecordingPlatform {
@@ -29,6 +32,22 @@ impl Platform for RecordingPlatform {
     }
     fn stop_ringing(&self) {
         self.rings.lock().unwrap().push(false);
+    }
+    fn dismiss_notification(&self, key: &str) -> Result<(), NotificationError> {
+        self.dismissed.lock().unwrap().push(key.to_owned());
+        Ok(())
+    }
+    fn run_notification_action(
+        &self,
+        key: &str,
+        action: &str,
+        reply: Option<&str>,
+    ) -> Result<(), NotificationError> {
+        if key == "gone" {
+            return Err(NotificationError::NotFound);
+        }
+        self.actions.lock().unwrap().push((key.to_owned(), action.to_owned(), reply.map(str::to_owned)));
+        Ok(())
     }
 }
 
@@ -397,4 +416,118 @@ async fn capabilities_follow_power_and_toggles() {
     pc.node.set_device_toggle(phone_id, "clipboard", true).unwrap();
     let matrix = pc.node.capabilities(phone_id).unwrap();
     assert_eq!(matrix.state("clipboard.auto_phone_to_pc"), Some(FeatureState::Available));
+}
+
+fn note(key: &str, app: &str, title: &str, icon: bool) -> Notification {
+    Notification {
+        key: key.into(),
+        app: app.into(),
+        app_name: "Chat".into(),
+        title: Some(title.into()),
+        text: Some("Are you coming?".into()),
+        sub: None,
+        when: 1_760_000_000_000,
+        actions: vec![
+            NotificationAction { id: "0".into(), title: "Reply".into(), reply: true },
+            NotificationAction { id: "1".into(), title: "Mark as read".into(), reply: false },
+        ],
+        silent: false,
+        icon: icon.then(|| vec![0x89, b'P', b'N', b'G', 1, 2, 3]),
+    }
+}
+
+/// A phone that mirrors notifications (notification access granted).
+async fn grant_notification_access(phone: &TestDevice) {
+    phone.node.update_power(PowerLevel::Basic, vec!["notify.mirror".into(), "notify.reply".into()]).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn notifications_mirror_to_the_pc_and_actions_reach_the_phone() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    grant_notification_access(&phone).await;
+
+    // The listener connects: everything showing goes over as a snapshot,
+    // with each app's icon once.
+    phone
+        .node
+        .notifications_reset(vec![note("a", "com.chat", "Sam", true), note("b", "com.chat", "Alex", true)])
+        .await;
+    let items = wait_for(&mut pc, "snapshot", |e| match e {
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id => Some(items.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(items.len(), 2);
+    assert_eq!(items.iter().filter(|n| n.icon.is_some()).count(), 1, "one icon per app and session");
+
+    // A new one: the PC already has this app's icon.
+    phone.node.notification_posted(note("c", "com.chat", "Kim", true)).await;
+    let posted = wait_for(&mut pc, "posted", |e| match e {
+        NodeEvent::NotificationPosted { device, notification } if *device == phone_id => {
+            Some(notification.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(posted.key, "c");
+    assert_eq!(posted.title.as_deref(), Some("Kim"));
+    assert_eq!(posted.icon, None);
+
+    phone.node.notification_removed("a".into()).await;
+    let removed = wait_for(&mut pc, "removed", |e| match e {
+        NodeEvent::NotificationRemoved { device, key } if *device == phone_id => Some(key.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(removed, "a");
+
+    // The PC dismisses one and replies to another.
+    with_timeout("dismiss", pc.node.dismiss_notification(phone_id, "b".into())).await.expect("dismissed");
+    with_timeout(
+        "reply",
+        pc.node.run_notification_action(phone_id, "c".into(), "0".into(), Some("Yes!".into())),
+    )
+    .await
+    .expect("replied");
+    assert_eq!(*phone.platform.dismissed.lock().unwrap(), vec!["b".to_owned()]);
+    assert_eq!(*phone.platform.actions.lock().unwrap(), vec![("c".into(), "0".into(), Some("Yes!".into()))]);
+
+    let gone =
+        with_timeout("gone", pc.node.run_notification_action(phone_id, "gone".into(), "1".into(), None))
+            .await;
+    assert!(matches!(gone, Err(Error::NotFound)), "{gone:?}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn notification_toggles_are_honored_on_both_devices() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    grant_notification_access(&phone).await;
+    phone.node.notifications_reset(vec![note("a", "com.chat", "Sam", false)]).await;
+    let snapshot = |e: &NodeEvent| match e {
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id => Some(items.len()),
+        _ => None,
+    };
+    assert_eq!(wait_for(&mut pc, "first snapshot", snapshot).await, 1);
+
+    // The phone stops sharing with this PC: the PC is cleared, and actions
+    // from it are refused.
+    phone.node.set_device_toggle(pc_id, "notifications", false).unwrap();
+    assert_eq!(wait_for(&mut pc, "cleared by the phone", snapshot).await, 0);
+    let denied = with_timeout("denied", pc.node.dismiss_notification(phone_id, "a".into())).await;
+    assert!(matches!(denied, Err(Error::Denied)), "{denied:?}");
+    phone.node.set_device_toggle(pc_id, "notifications", true).unwrap();
+    assert_eq!(wait_for(&mut pc, "shared again", snapshot).await, 1);
+
+    // The PC hides this phone's notifications, then shows them again: it
+    // asks the phone for what's showing.
+    pc.node.set_device_toggle(phone_id, "notifications", false).unwrap();
+    assert_eq!(wait_for(&mut pc, "hidden on the PC", snapshot).await, 0);
+    pc.node.set_device_toggle(phone_id, "notifications", true).unwrap();
+    assert_eq!(wait_for(&mut pc, "synced again", snapshot).await, 1);
 }

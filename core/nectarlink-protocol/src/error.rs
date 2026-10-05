@@ -14,6 +14,8 @@ pub enum ErrorCode {
     Denied,
     Busy,
     Internal,
+    /// The thing the request names no longer exists.
+    NotFound,
     /// A code this implementation doesn't know yet (forward compatibility).
     Other(String),
 }
@@ -29,6 +31,7 @@ impl ErrorCode {
             ErrorCode::Denied => "DENIED",
             ErrorCode::Busy => "BUSY",
             ErrorCode::Internal => "INTERNAL",
+            ErrorCode::NotFound => "NOT_FOUND",
             ErrorCode::Other(code) => code,
         }
     }
@@ -43,6 +46,7 @@ impl ErrorCode {
             ErrorCode::BadMessage => 5,
             ErrorCode::Denied => 6,
             ErrorCode::Busy => 7,
+            ErrorCode::NotFound => 9,
             ErrorCode::Internal | ErrorCode::Other(_) => 8,
         }
     }
@@ -67,6 +71,7 @@ impl FromStr for ErrorCode {
             "DENIED" => ErrorCode::Denied,
             "BUSY" => ErrorCode::Busy,
             "INTERNAL" => ErrorCode::Internal,
+            "NOT_FOUND" => ErrorCode::NotFound,
             other => ErrorCode::Other(other.to_owned()),
         })
     }
@@ -124,7 +129,7 @@ mod tests {
 
     #[test]
     fn codes_round_trip_and_tolerate_unknown_values() {
-        for code in ["UNSUPPORTED", "UNPAIRED", "DENIED", "VERSION_TOO_OLD"] {
+        for code in ["UNSUPPORTED", "UNPAIRED", "DENIED", "VERSION_TOO_OLD", "NOT_FOUND"] {
             assert_eq!(code.parse::<ErrorCode>().unwrap().as_str(), code);
         }
         assert_eq!("FUTURE_CODE".parse::<ErrorCode>().unwrap(), ErrorCode::Other("FUTURE_CODE".into()));

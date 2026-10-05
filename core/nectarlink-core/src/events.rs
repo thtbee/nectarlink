@@ -3,7 +3,7 @@
 
 use nectarlink_protocol::{
     DeviceId,
-    messages::{Battery, DeviceInfo, PowerLevel},
+    messages::{Battery, DeviceInfo, Notification, PowerLevel},
 };
 
 use crate::features::CapabilityMatrix;
@@ -100,4 +100,19 @@ pub enum NodeEvent {
     Discovered(DiscoveredDevice),
     DiscoveryExpired(DeviceId),
     Pairing(PairingEvent),
+    /// Everything a phone shows now, replacing what was known before (no
+    /// alerts for these). Empty when the phone stopped sharing them.
+    NotificationsReset {
+        device: DeviceId,
+        items: Vec<Notification>,
+    },
+    /// A new notification, or an update of the one with the same key.
+    NotificationPosted {
+        device: DeviceId,
+        notification: Notification,
+    },
+    NotificationRemoved {
+        device: DeviceId,
+        key: String,
+    },
 }

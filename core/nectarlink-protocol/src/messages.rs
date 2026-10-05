@@ -26,6 +26,13 @@ pub mod types {
     pub const PAIR_CONFIRM: &str = "pair.confirm";
     pub const PAIR_DONE: &str = "pair.done";
     pub const PAIR_REVOKE: &str = "pair.revoke";
+
+    pub const NOTIFY_SNAPSHOT: &str = "notify.snapshot";
+    pub const NOTIFY_POSTED: &str = "notify.posted";
+    pub const NOTIFY_REMOVED: &str = "notify.removed";
+    pub const NOTIFY_SYNC: &str = "notify.sync";
+    pub const NOTIFY_DISMISS: &str = "notify.dismiss";
+    pub const NOTIFY_ACTION: &str = "notify.action";
 }
 
 /// What kind of device this is.
@@ -174,6 +181,140 @@ pub struct PairReveal {
     pub n_a: Vec<u8>,
 }
 
+// ---- Notifications (docs/protocol/notifications.md) ----
+
+/// Size limits from the notifications spec (§2); senders and receivers both
+/// enforce them with [`Notification::sanitized`].
+pub mod notify_limits {
+    pub const KEY_BYTES: usize = 256;
+    pub const ACTION_ID_BYTES: usize = 64;
+    pub const TITLE_CHARS: usize = 256;
+    pub const TEXT_CHARS: usize = 4096;
+    pub const ACTION_TITLE_CHARS: usize = 64;
+    pub const ACTIONS: usize = 5;
+    pub const ICON_BYTES: usize = 64 * 1024;
+    pub const SNAPSHOT_ITEMS: usize = 100;
+}
+
+/// A button on a notification.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotificationAction {
+    /// Opaque to the PC.
+    pub id: String,
+    pub title: String,
+    /// Takes text: shown as an inline reply field.
+    #[serde(default)]
+    pub reply: bool,
+}
+
+/// A phone notification, as mirrored to a PC.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Notification {
+    /// The phone's ID for it.
+    pub key: String,
+    /// Package name, e.g. "com.whatsapp".
+    pub app: String,
+    /// User-visible app name.
+    pub app_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    /// Secondary line, e.g. a conversation or account name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sub: Option<String>,
+    /// When it was posted, Unix milliseconds.
+    pub when: i64,
+    #[serde(default)]
+    pub actions: Vec<NotificationAction>,
+    /// Arrived without sound or pop-up on the phone.
+    #[serde(default)]
+    pub silent: bool,
+    /// The app's icon (PNG), sent with an app's first notification per
+    /// session.
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    pub icon: Option<Vec<u8>>,
+}
+
+/// Never prints content: notification text must not reach logs (protocol
+/// v0 §11).
+impl std::fmt::Debug for Notification {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Notification")
+            .field("app", &self.app)
+            .field("actions", &self.actions.len())
+            .field("silent", &self.silent)
+            .finish_non_exhaustive()
+    }
+}
+
+fn truncate_chars(s: &mut String, max: usize) {
+    if let Some((cut, _)) = s.char_indices().nth(max) {
+        s.truncate(cut);
+    }
+}
+
+fn clean_text(s: Option<String>, max: usize) -> Option<String> {
+    let mut s = s?.trim().to_owned();
+    truncate_chars(&mut s, max);
+    (!s.is_empty()).then_some(s)
+}
+
+impl Notification {
+    /// Applies the spec's limits: truncates text, drops extra actions,
+    /// oversized icons and malformed actions. `None` if the notification
+    /// can't be shown at all (no key, or neither a title nor a text).
+    pub fn sanitized(mut self) -> Option<Notification> {
+        use notify_limits::*;
+        if self.key.is_empty() || self.key.len() > KEY_BYTES {
+            return None;
+        }
+        self.title = clean_text(self.title, TITLE_CHARS);
+        self.text = clean_text(self.text, TEXT_CHARS);
+        self.sub = clean_text(self.sub, TITLE_CHARS);
+        if self.title.is_none() && self.text.is_none() {
+            return None;
+        }
+        truncate_chars(&mut self.app, TITLE_CHARS);
+        truncate_chars(&mut self.app_name, TITLE_CHARS);
+        self.actions.retain_mut(|a| {
+            truncate_chars(&mut a.title, ACTION_TITLE_CHARS);
+            !a.id.is_empty() && a.id.len() <= ACTION_ID_BYTES && !a.title.trim().is_empty()
+        });
+        self.actions.truncate(ACTIONS);
+        if self.icon.as_ref().is_some_and(|i| i.is_empty() || i.len() > ICON_BYTES) {
+            self.icon = None;
+        }
+        Some(self)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotifySnapshot {
+    pub items: Vec<Notification>,
+}
+
+/// Body of `notify.removed` and `notify.dismiss`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotifyKey {
+    pub key: String,
+}
+
+/// Body of `notify.action`.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotifyAction {
+    pub key: String,
+    pub action: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reply: Option<String>,
+}
+
+impl std::fmt::Debug for NotifyAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NotifyAction").field("action", &self.action).finish_non_exhaustive()
+    }
+}
+
 /// A paired device identity as stored in trust stores and exchanged in tests.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PeerIdentity {
@@ -228,6 +369,71 @@ mod tests {
         let parsed: Parsed = env.body().unwrap();
         assert_eq!(parsed.kind, DeviceKind::Unknown);
         assert_eq!(parsed.power.effective(), PowerLevel::Basic);
+    }
+
+    fn notification() -> Notification {
+        Notification {
+            key: "0|com.example|1|null|10123".into(),
+            app: "com.example".into(),
+            app_name: "Example".into(),
+            title: Some("Sam".into()),
+            text: Some("Lunch?".into()),
+            sub: None,
+            when: 1_760_000_000_000,
+            actions: vec![NotificationAction { id: "0".into(), title: "Reply".into(), reply: true }],
+            silent: false,
+            icon: Some(vec![0x89, b'P', b'N', b'G']),
+        }
+    }
+
+    #[test]
+    fn notifications_round_trip_with_binary_icons() {
+        let n = notification();
+        let env = Envelope::new(types::NOTIFY_POSTED, &n).unwrap();
+        // The icon travels as a CBOR byte string, not an array of numbers.
+        let icon = match &env.b {
+            Some(ciborium::Value::Map(fields)) => fields.iter().find(|(k, _)| k.as_text() == Some("icon")),
+            _ => None,
+        };
+        assert!(matches!(icon, Some((_, ciborium::Value::Bytes(_)))));
+        let back: Notification = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, n);
+    }
+
+    #[test]
+    fn sanitizing_enforces_the_limits() {
+        let mut n = notification();
+        n.title = Some("é".repeat(300));
+        n.text = Some("  ".into());
+        n.actions = (0..8)
+            .map(|i| NotificationAction { id: i.to_string(), title: "Go".into(), reply: false })
+            .collect();
+        n.actions.push(NotificationAction { id: String::new(), title: "No id".into(), reply: false });
+        n.icon = Some(vec![0; notify_limits::ICON_BYTES + 1]);
+        let n = n.sanitized().unwrap();
+        assert_eq!(n.title.unwrap().chars().count(), notify_limits::TITLE_CHARS);
+        assert_eq!(n.text, None, "blank text is dropped");
+        assert_eq!(n.actions.len(), notify_limits::ACTIONS);
+        assert_eq!(n.icon, None);
+    }
+
+    #[test]
+    fn notifications_without_content_or_key_are_dropped() {
+        let mut n = notification();
+        n.title = None;
+        n.text = Some(" ".into());
+        assert_eq!(n.sanitized(), None);
+        let mut n = notification();
+        n.key = String::new();
+        assert_eq!(n.sanitized(), None);
+    }
+
+    #[test]
+    fn debug_output_hides_content() {
+        let shown = format!("{:?}", notification());
+        assert!(!shown.contains("Lunch") && !shown.contains("Sam"), "{shown}");
+        let action = NotifyAction { key: "k".into(), action: "0".into(), reply: Some("secret".into()) };
+        assert!(!format!("{action:?}").contains("secret"));
     }
 
     #[test]

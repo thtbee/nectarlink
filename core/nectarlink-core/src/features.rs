@@ -270,15 +270,7 @@ impl DeviceFacts {
     }
 
     fn role(&self) -> Option<Role> {
-        match self.kind {
-            DeviceKind::Phone | DeviceKind::Tablet => Some(Role::Phone),
-            DeviceKind::Desktop | DeviceKind::Laptop => Some(Role::Desktop),
-            DeviceKind::Unknown => match self.os.as_str() {
-                "android" => Some(Role::Phone),
-                "windows" | "macos" => Some(Role::Desktop),
-                _ => None,
-            },
-        }
+        role_from(self.kind, &self.os)
     }
 
     /// The Android release (`"16"` → 16), if this is an Android device.
@@ -289,6 +281,24 @@ impl DeviceFacts {
     /// The Windows build (`"10.0.26200"` → 26200), if this is a Windows device.
     fn windows_build(&self) -> Option<u32> {
         (self.os == "windows").then(|| self.os_ver.split('.').nth(2).and_then(leading_number)).flatten()
+    }
+}
+
+/// Which role a device plays in a pair, from its kind (or OS when the kind
+/// is unknown to this version).
+pub(crate) fn role_of(info: &DeviceInfo) -> Option<Role> {
+    role_from(info.kind, &info.os)
+}
+
+fn role_from(kind: DeviceKind, os: &str) -> Option<Role> {
+    match kind {
+        DeviceKind::Phone | DeviceKind::Tablet => Some(Role::Phone),
+        DeviceKind::Desktop | DeviceKind::Laptop => Some(Role::Desktop),
+        DeviceKind::Unknown => match os {
+            "android" => Some(Role::Phone),
+            "windows" | "macos" => Some(Role::Desktop),
+            _ => None,
+        },
     }
 }
 

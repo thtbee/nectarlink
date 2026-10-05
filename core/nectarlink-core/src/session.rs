@@ -112,6 +112,8 @@ pub(crate) struct Session {
     pending: Mutex<HashMap<u64, oneshot::Sender<Envelope>>>,
     next_id: AtomicU64,
     rtt_ms: AtomicU32,
+    /// Apps whose notification icon this peer already got.
+    sent_icons: crate::notifications::SentIcons,
     pub(crate) cancel: CancellationToken,
 }
 
@@ -151,6 +153,7 @@ impl Session {
             pending: Mutex::new(HashMap::new()),
             next_id: AtomicU64::new(1),
             rtt_ms: AtomicU32::new(initial_rtt),
+            sent_icons: Default::default(),
             cancel: shared.cancel.child_token(),
         });
 
@@ -194,6 +197,10 @@ impl Session {
                 _ => None,
             })
             .collect()
+    }
+
+    pub(crate) fn sent_icons(&self) -> std::sync::MutexGuard<'_, std::collections::HashSet<String>> {
+        self.sent_icons.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     pub fn is_alive(&self) -> bool {
@@ -330,6 +337,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
             tracing::info!(peer = %peer.short(), "peer unpaired this device");
             shared.forget_peer(&peer).await?;
         }
+        t if t.starts_with("notify.") && crate::notifications::handle(shared, session, &env).await? => {}
         other => {
             if env.id.is_some() {
                 let reply = Envelope::error(ErrorCode::Unsupported, format!("unknown message type {other}"));
