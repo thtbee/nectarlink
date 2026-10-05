@@ -15,11 +15,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -69,7 +71,11 @@ class MainActivity : ComponentActivity() {
                 if (state.devices.isNotEmpty()) ConnectionService.start(this@MainActivity)
             }
             NectarlinkTheme(appearance) {
-                App(core, state, preferences)
+                // Every screen sits on the theme's background, not the
+                // window's (which can't follow the app's own light/dark choice).
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    App(core, state, preferences)
+                }
             }
         }
     }
@@ -145,7 +151,7 @@ private fun App(core: Core, state: CoreState, preferences: Preferences) {
         ) { padding ->
             val modifier = Modifier.fillMaxSize().padding(padding)
             when (tab) {
-                Tab.Home -> HomeScreen(state, core::ring, core::stopRinging, modifier)
+                Tab.Home -> HomeScreen(state, core::ring, core::stopRinging, onPairNew = { pairing = true }, modifier = modifier)
                 Tab.Settings -> SettingsScreen(
                     state = state,
                     appearance = preferences.appearance.collectAsStateWithLifecycle().value,

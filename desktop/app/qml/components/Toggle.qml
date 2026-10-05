@@ -44,8 +44,9 @@ FocusScope {
             anchors.verticalCenter: parent.verticalCenter
             x: toggle.checked ? parent.width - width - 4.5 : 6.5
             color: toggle.checked ? Theme.primaryContent : Theme.outline
-            Behavior on x { SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
-            Behavior on size { SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
+            // Quick and settled, never springy: a switch must feel immediate.
+            Behavior on x { NumberAnimation { duration: Theme.reduceMotion ? 0 : 140; easing.type: Easing.OutCubic } }
+            Behavior on size { NumberAnimation { duration: Theme.reduceMotion ? 0 : 140; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
         }
     }

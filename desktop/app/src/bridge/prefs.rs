@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! `Preferences`: the app's look and behavior, saved whenever it changes.
 
-use std::pin::Pin;
+use std::{
+    pin::Pin,
+    sync::{
+        Mutex,
+        atomic::{AtomicU64, Ordering},
+    },
+};
 
 use cxx_qt::CxxQtType;
 use cxx_qt_lib::QString;
@@ -88,8 +94,27 @@ impl qobject::Preferences {
             backdrop: p.backdrop,
             close_to_tray: p.close_to_tray,
         };
+        save_in_background(settings);
+    }
+}
+
+/// Saves off the UI thread (the write is flushed to disk, which can take a
+/// moment), newest settings last even when changes come in quick succession.
+fn save_in_background(settings: Settings) {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    static WRITTEN: Mutex<u64> = Mutex::new(0);
+    let seq = NEXT.fetch_add(1, Ordering::SeqCst) + 1;
+    let save = move || {
+        let mut written = WRITTEN.lock().unwrap_or_else(|e| e.into_inner());
+        if *written > seq {
+            return; // A newer save already ran.
+        }
         if let Err(e) = settings.save(&core_host::host().data_dir) {
             tracing::warn!(error = %e, "can't save preferences");
         }
+        *written = seq;
+    };
+    if let Err(e) = std::thread::Builder::new().name("save-preferences".into()).spawn(save) {
+        tracing::warn!(error = %e, "can't save preferences");
     }
 }

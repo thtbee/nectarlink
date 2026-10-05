@@ -12,7 +12,7 @@ use std::{
 use iroh::{
     Endpoint, EndpointAddr, RelayMode,
     address_lookup::{DnsAddressLookup, MemoryLookup, PkarrPublisher, PkarrResolver},
-    endpoint::{Connection, VarInt, presets},
+    endpoint::{Connection, QuicTransportConfig, VarInt, presets},
     endpoint_info::{EndpointInfo, UserData},
     protocol::{AcceptError, ProtocolHandler, Router},
 };
@@ -41,6 +41,11 @@ const BACKOFF_MAX: Duration = Duration::from_secs(30);
 /// How long the device with the higher ID waits before dialing (see `maintain`).
 const DEFER_DIAL: Duration = Duration::from_millis(750);
 const EVENT_CAPACITY: usize = 512;
+/// A connection with no traffic for this long is dead. iroh sends a
+/// keep-alive every 5 s, so a healthy link is never idle that long, and a
+/// device that drops off the network shows as offline within seconds
+/// instead of after QUIC's default of 30 s.
+const IDLE_TIMEOUT: Duration = Duration::from_secs(8);
 
 /// Capabilities every build offers.
 const BASE_CAPABILITIES: &[&str] = &["core.ping", "device.battery", "device.ring"];
@@ -804,9 +809,13 @@ async fn bind_endpoint(
     secret: iroh::SecretKey,
     ports: Option<Ports>,
 ) -> Result<Endpoint> {
+    let transport = QuicTransportConfig::builder()
+        .max_idle_timeout(Some(IDLE_TIMEOUT.try_into().expect("the idle timeout fits a QUIC varint")))
+        .build();
     let mut builder = Endpoint::builder(presets::Minimal)
         .secret_key(secret)
-        .alpns(vec![ALPN_SESSION.to_vec(), ALPN_PAIR.to_vec()]);
+        .alpns(vec![ALPN_SESSION.to_vec(), ALPN_PAIR.to_vec()])
+        .transport_config(transport);
     builder = if config.away_mode {
         builder
             .relay_mode(RelayMode::Default)
