@@ -27,7 +27,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     Error, NodeConfig, Platform, Result,
-    events::{DiscoveredDevice, LinkState, NodeEvent, PairedDevice, PairingEvent},
+    events::{ConnectionPath, DiscoveredDevice, LinkState, NodeEvent, PairedDevice, PairingEvent},
+    features::{self, CapabilityMatrix, DeviceFacts, MatrixInputs},
     identity,
     pairing::{self, PairingState},
     session::{self, CLOSE_DUPLICATE, CLOSE_NORMAL, REQUEST_TIMEOUT, Session},
@@ -85,6 +86,9 @@ pub(crate) struct Shared {
     links: Mutex<HashMap<DeviceId, LinkState>>,
     supervisors: Mutex<HashMap<DeviceId, Supervisor>>,
     discovered: Mutex<HashMap<DeviceId, DiscoveredDevice>>,
+    /// The last capability matrix emitted per device, to emit only changes.
+    matrices: Mutex<HashMap<DeviceId, CapabilityMatrix>>,
+    away_mode: bool,
     memory: MemoryLookup,
 }
 
@@ -147,6 +151,48 @@ impl Shared {
         }
     }
 
+    /// Computes the capability matrix for a paired device from its last known
+    /// capabilities, this device's state and the user's toggles.
+    pub fn capability_matrix(&self, peer: &DeviceId) -> Result<CapabilityMatrix> {
+        let record = self.store.get_peer(peer)?.ok_or(Error::NotPaired)?;
+        let toggles = self.store.toggles(peer)?;
+        let local = {
+            let local = self.local.read().unwrap_or_else(|e| e.into_inner());
+            DeviceFacts::new(&local.device, local.capabilities().into_iter().collect(), local.power)
+        };
+        let remote = DeviceFacts::new(&record.info, record.caps, record.power);
+        let paths: &[ConnectionPath] = if self.away_mode {
+            &[ConnectionPath::Lan, ConnectionPath::Relay]
+        } else {
+            &[ConnectionPath::Lan]
+        };
+        Ok(features::compute(*peer, MatrixInputs { local: &local, peer: &remote, paths, toggles: &toggles }))
+    }
+
+    /// Recomputes a device's capability matrix and emits it if it changed.
+    pub fn refresh_capabilities(&self, peer: &DeviceId) {
+        let matrix = match self.capability_matrix(peer) {
+            Ok(matrix) => matrix,
+            Err(Error::NotPaired) => return,
+            Err(e) => {
+                tracing::warn!(peer = %peer.short(), error = %e, "failed to compute capabilities");
+                return;
+            }
+        };
+        let changed = lock(&self.matrices).insert(*peer, matrix.clone()).as_ref() != Some(&matrix);
+        if changed {
+            self.emit(NodeEvent::Capabilities(matrix));
+        }
+    }
+
+    /// Recomputes every paired device's matrix (after a local change).
+    fn refresh_all_capabilities(&self) {
+        match self.store.list_peers() {
+            Ok(peers) => peers.iter().for_each(|p| self.refresh_capabilities(&p.id)),
+            Err(e) => tracing::warn!(error = %e, "failed to list peers"),
+        }
+    }
+
     /// Stores a newly paired device and starts keeping it connected.
     pub async fn complete_pairing(self: &Arc<Self>, peer: DeviceId, info: DeviceInfo) -> Result<()> {
         let paired_at = crate::now_unix();
@@ -170,6 +216,7 @@ impl Shared {
             session.close(CLOSE_NORMAL, b"unpaired");
         }
         lock(&self.links).remove(peer);
+        lock(&self.matrices).remove(peer);
         if existed {
             self.emit(NodeEvent::DeviceRemoved(*peer));
         }
@@ -216,8 +263,13 @@ impl Shared {
         if let Err(e) = self.store.update_info(&peer, &remote.device) {
             tracing::warn!(error = %e, "failed to update peer info");
         }
+        let caps = features::sanitize_capabilities(remote.caps);
+        if let Err(e) = self.store.update_capabilities(&peer, Some(&caps), Some(remote.power.effective())) {
+            tracing::warn!(error = %e, "failed to update peer capabilities");
+        }
         self.emit(NodeEvent::PeerInfoChanged { device: peer, info: remote.device });
         self.emit(NodeEvent::PeerPowerChanged { device: peer, power: remote.power.effective() });
+        self.refresh_capabilities(&peer);
         self.publish_online(&session);
 
         // Bring the peer up to date with state it may have missed.
@@ -469,6 +521,8 @@ impl Node {
             links: Mutex::new(HashMap::new()),
             supervisors: Mutex::new(HashMap::new()),
             discovered: Mutex::new(HashMap::new()),
+            matrices: Mutex::new(HashMap::new()),
+            away_mode: config.away_mode,
             memory,
         });
 
@@ -625,6 +679,42 @@ impl Node {
         self.shared.session(peer).ok_or(Error::Offline)
     }
 
+    // ---- Capabilities ----
+
+    /// What works with a paired device, and how to unlock what doesn't.
+    /// Changes arrive as [`NodeEvent::Capabilities`]. Before the device has
+    /// connected once, its capabilities are unknown and most features show
+    /// as locked.
+    pub fn capabilities(&self, peer: DeviceId) -> Result<CapabilityMatrix> {
+        self.shared.capability_matrix(&peer)
+    }
+
+    /// The per-device toggles (see [`features::DEVICE_TOGGLES`]) with their
+    /// current values.
+    pub fn device_toggles(&self, peer: DeviceId) -> Result<Vec<(&'static str, bool)>> {
+        if !self.shared.store.is_paired(&peer)? {
+            return Err(Error::NotPaired);
+        }
+        let set = self.shared.store.toggles(&peer)?;
+        Ok(features::DEVICE_TOGGLES
+            .iter()
+            .map(|(name, default)| (*name, set.get(*name).copied().unwrap_or(*default)))
+            .collect())
+    }
+
+    /// Allows or disallows something for one device, e.g. `"clipboard"`.
+    pub fn set_device_toggle(&self, peer: DeviceId, toggle: &str, enabled: bool) -> Result<()> {
+        if features::toggle_default(toggle).is_none() {
+            return Err(Error::Unsupported);
+        }
+        if !self.shared.store.is_paired(&peer)? {
+            return Err(Error::NotPaired);
+        }
+        self.shared.store.set_toggle(&peer, toggle, enabled)?;
+        self.shared.refresh_capabilities(&peer);
+        Ok(())
+    }
+
     // ---- Local state reported by the app ----
 
     /// Reports this device's battery; forwarded to connected devices.
@@ -642,9 +732,11 @@ impl Node {
         if let Ok(env) = Envelope::new(types::HELLO_UPDATE, &update) {
             self.shared.broadcast(env).await;
         }
+        self.shared.refresh_all_capabilities();
     }
 
-    /// Updates this device's power level and extra capabilities.
+    /// Updates this device's power level and the capabilities it offers
+    /// beyond the built-in ones (they depend on permissions and add-ons).
     pub async fn update_power(&self, power: PowerLevel, extra_capabilities: Vec<String>) {
         let caps = {
             let mut local = self.shared.local.write().unwrap_or_else(|e| e.into_inner());
@@ -656,6 +748,7 @@ impl Node {
         if let Ok(env) = Envelope::new(types::HELLO_UPDATE, &update) {
             self.shared.broadcast(env).await;
         }
+        self.shared.refresh_all_capabilities();
     }
 }
 

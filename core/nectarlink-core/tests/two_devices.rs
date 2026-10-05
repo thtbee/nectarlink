@@ -9,8 +9,9 @@ use std::{
 };
 
 use nectarlink_core::{
-    Battery, DeviceInfo, DeviceKind, Error, LinkState, Node, NodeConfig, NodeEvent, PairingEvent,
-    PairingFailure, PairingUri, PlainKeyProtector, Platform,
+    Battery, DeviceInfo, DeviceKind, Error, FeatureState, LinkState, Node, NodeConfig, NodeEvent,
+    PairingEvent, PairingFailure, PairingUri, PlainKeyProtector, Platform, PowerLevel,
+    features::{Effort, Upgrade, UpgradeAction},
 };
 use tempfile::TempDir;
 use tokio::sync::broadcast::Receiver;
@@ -324,4 +325,68 @@ async fn reconnects_after_a_restart() {
     wait_online(&mut phone, pc_id).await;
     wait_online(&mut pc, phone_id).await;
     with_timeout("ring after reconnect", pc.node.ring(phone_id, true)).await.expect("ring works again");
+}
+
+/// Waits for a capability matrix of `peer` whose `feature` is in a state
+/// matching `want`.
+async fn wait_feature(
+    dev: &mut TestDevice,
+    peer: nectarlink_core::DeviceId,
+    feature: &str,
+    want: impl Fn(&FeatureState) -> bool,
+) -> FeatureState {
+    wait_for(dev, feature, |e| match e {
+        NodeEvent::Capabilities(m) if m.device == peer => m.state(feature).filter(|s| want(s)),
+        _ => None,
+    })
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn capabilities_follow_power_and_toggles() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Right after connecting, the PC knows what the phone offers.
+    let matrix = pc.node.capabilities(phone_id).unwrap();
+    assert_eq!(matrix.state("device.find_phone"), Some(FeatureState::Available));
+    let elevated =
+        Upgrade { action: UpgradeAction::RaisePower(PowerLevel::Elevated), effort: Effort::Minutes(2) };
+    assert_eq!(matrix.state("clipboard.auto_phone_to_pc"), Some(FeatureState::Locked { upgrade: elevated }));
+    // Both devices compute the same matrix for the pair.
+    assert_eq!(phone.node.capabilities(pc_id).unwrap().features, matrix.features);
+
+    // The phone is raised to Elevated and now offers automatic clipboard.
+    phone.node.update_power(PowerLevel::Elevated, vec!["clip.read.auto".into(), "clip.write".into()]).await;
+    wait_feature(&mut pc, phone_id, "clipboard.auto_phone_to_pc", |s| *s == FeatureState::Available).await;
+
+    // The PC user turns clipboard off for this phone.
+    pc.node.set_device_toggle(phone_id, "clipboard", false).unwrap();
+    let state =
+        wait_feature(&mut pc, phone_id, "clipboard.pc_to_phone", |s| *s != FeatureState::Available).await;
+    assert_eq!(
+        state,
+        FeatureState::Locked {
+            upgrade: Upgrade {
+                action: UpgradeAction::EnableDeviceToggle("clipboard"),
+                effort: Effort::Instant
+            }
+        }
+    );
+    let toggles = pc.node.device_toggles(phone_id).unwrap();
+    assert!(toggles.contains(&("clipboard", false)) && toggles.contains(&("photos", true)));
+    assert!(matches!(pc.node.set_device_toggle(phone_id, "no-such-toggle", true), Err(Error::Unsupported)));
+
+    // What the phone offered is remembered while it's offline.
+    phone.node.shutdown().await;
+    wait_for(&mut pc, "peer offline", |e| match e {
+        NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    pc.node.set_device_toggle(phone_id, "clipboard", true).unwrap();
+    let matrix = pc.node.capabilities(phone_id).unwrap();
+    assert_eq!(matrix.state("clipboard.auto_phone_to_pc"), Some(FeatureState::Available));
 }

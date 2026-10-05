@@ -299,9 +299,15 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
                 shared.store.update_info(&peer, &info)?;
                 shared.emit(NodeEvent::PeerInfoChanged { device: peer, info });
             }
-            if let Some(power) = update.power {
-                shared.emit(NodeEvent::PeerPowerChanged { device: peer, power: power.effective() });
+            let caps = update.caps.map(crate::features::sanitize_capabilities);
+            let power = update.power.map(PowerLevel::effective);
+            if caps.is_some() || power.is_some() {
+                shared.store.update_capabilities(&peer, caps.as_ref(), power)?;
             }
+            if let Some(power) = power {
+                shared.emit(NodeEvent::PeerPowerChanged { device: peer, power });
+            }
+            shared.refresh_capabilities(&peer);
         }
         types::DEVICE_RING => {
             let ring: Ring = env.body()?;

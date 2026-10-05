@@ -3,30 +3,33 @@
 The capability matrix decides, for every feature and every paired device,
 whether the feature is **Available**, **Partial**, **Locked** or
 **Unsupported**, and what the user can do about it. Both apps render their UI
-from the same matrix, computed by `nectarlink-core`, so the phone and PC can
-never disagree about what works.
+from the matrix, computed by `nectarlink-core` (`features.rs`), so the phone
+and PC agree about what works.
 
 ## Inputs
 
 | Input | Source |
 |---|---|
-| Peer capabilities | The peer's `hello.caps` (protocol §6) |
-| Local capabilities | This device's own state (permissions, add-ons, OS version) |
-| Power level | The phone's `hello.power` |
-| Connection paths | Which paths are active (LAN, USB, relay) |
-| Per-device permissions | The user's toggles for this paired device |
-| Feature registry | Static definitions compiled into the core (below) |
+| Capabilities of both devices | Each device's `hello.caps` / `hello.update` (protocol §6, registry in `docs/protocol/capabilities.md`); the peer's are stored, so the matrix also works while it is offline |
+| Phone power level | The phone's `hello.power` |
+| OS versions | `DeviceInfo.os_ver`: Android release (`"16"`), Windows build (`"10.0.26200"`) |
+| Enabled connection paths | LAN always; relay when Away mode is on |
+| Per-device toggles | The user's switches for this paired device (`DEVICE_TOGGLES`) |
+| Feature registry | Static definitions compiled into the core (`FEATURES`) |
 
-The matrix is recomputed whenever any input changes and is pushed to the UI
-as an event.
+The matrix is recomputed whenever an input changes and emitted as
+`NodeEvent::Capabilities` only when it actually changed. `Node::capabilities`
+returns it on demand.
 
 ## Feature definitions
 
-Each feature is declared once, in Rust, in `nectarlink-core::features`:
+Each feature is declared once, in Rust. Requirements name the **phone** and
+the **desktop**, never "local" and "peer": the same definitions evaluated on
+either device give the same answer.
 
 ```rust
 pub struct FeatureDef {
-    pub id: FeatureId,                 // e.g. "clipboard.auto_phone_to_pc"
+    pub id: &'static str,              // e.g. "clipboard.auto_phone_to_pc"
     pub group: FeatureGroup,           // Notifications, Clipboard, Files, Mirroring…
     /// Every requirement must hold for the feature to be Available.
     pub requires: &'static [Requirement],
@@ -35,19 +38,26 @@ pub struct FeatureDef {
 }
 
 pub enum Requirement {
-    PeerCap(&'static str),             // peer offers a capability ID
-    LocalCap(&'static str),            // this device offers a capability ID
-    PowerAtLeast(PowerLevel),          // Basic < Assist < Elevated
-    AndroidApiAtLeast(u32),
-    WindowsBuildAtLeast(u32),
-    Path(ConnectionPath),              // e.g. Usb, Relay
+    /// The device in `role` (Phone or Desktop) announces capability `id`.
+    /// `unlock` says how a missing capability is obtained.
+    Cap { role: Role, id: &'static str, unlock: Unlock },
+    PowerAtLeast(PowerLevel),          // phone: Basic < Assist < Elevated
+    AndroidAtLeast(u32),               // phone's Android release
+    WindowsBuildAtLeast(u32),          // desktop's Windows build
+    Path(ConnectionPath),              // e.g. Relay (Away mode)
     DeviceToggle(&'static str),        // per-device user permission
-    Addon(&'static str),               // e.g. "vcam", "explorer", "hfp"
+}
+
+pub enum Unlock {
+    Power(PowerLevel),                 // the phone offers it from this level on
+    Permission(Permission),            // … once this Android permission is granted
+    Addon(&'static str),               // the desktop offers it once the add-on is installed
+    UpdateApp,                         // every current app offers it: that app is too old
 }
 
 pub struct PartialDef {
     pub requires: &'static [Requirement],
-    pub limit: &'static str,           // translation key, e.g. "clip.partial.manual"
+    pub limit: &'static str,           // translation key, e.g. "clipboard.limit.manual"
 }
 ```
 
@@ -56,54 +66,82 @@ pub struct PartialDef {
 ```rust
 pub enum FeatureState {
     Available,
-    /// Works, with a limitation shown inline, plus how to remove it.
-    Partial { limit: MessageKey, upgrade: Option<Upgrade> },
+    /// Works, with a limitation shown inline, plus how to remove it (if possible).
+    Partial { limit: &'static str, upgrade: Option<Upgrade> },
     /// Doesn't work yet, but the user can unlock it.
     Locked { upgrade: Upgrade },
-    /// Can't work on this device combination; explained, not actionable.
-    Unsupported { reason: MessageKey },
+    /// Can't work on this device pair; explained, not actionable.
+    Unsupported { reason: UnsupportedReason },
 }
 
-pub struct Upgrade {
-    pub action: UpgradeAction,         // which setup sheet to open
-    pub effort: Effort,                // e.g. Minutes(2), Instant
-}
+pub struct Upgrade { pub action: UpgradeAction, pub effort: Effort }   // Effort: Instant | Minutes(n)
 
 pub enum UpgradeAction {
-    RaisePower(PowerLevel),            // open "Choose your power" at that level
-    GrantPermission(Permission),       // e.g. notification access
-    EnableAddon(&'static str),         // e.g. install the virtual camera
-    EnablePath(ConnectionPath),        // e.g. turn on Away mode
-    EnableDeviceToggle(&'static str),  // flip a per-device permission
-    UpdateApp(DeviceSide),             // peer or local app too old
+    RaisePower(PowerLevel),            // open "Choose your power" at that level   (Assist ~1 min, Elevated ~2 min)
+    GrantPermission(Permission),       // e.g. notification access                 (instant)
+    EnableAddon(&'static str),         // e.g. install the virtual camera          (~1 min)
+    EnablePath(ConnectionPath),        // e.g. turn on Away mode                   (instant)
+    EnableDeviceToggle(&'static str),  // flip a per-device permission             (instant)
+    UpdateApp(Role),                   // that device's app is too old             (~2 min)
+}
+
+pub enum UnsupportedReason {
+    DeviceKinds,                       // the pair isn't one phone + one desktop
+    AndroidTooOld { needs: u32 },
+    WindowsTooOld { needs_build: u32 },
+    NotOnThisDevice,                   // right power level, still not offered (hardware/OEM)
 }
 ```
 
+### How each requirement is checked
+
+- `Cap`: met if announced. Otherwise, by `unlock`: `Power(level)` gives
+  `RaisePower(level)` if the phone is below that level, and
+  `NotOnThisDevice` if it already has it; the others give the matching
+  upgrade.
+- `AndroidAtLeast` / `WindowsBuildAtLeast`: an older OS can't be fixed, so the
+  requirement is impossible. An unparseable version doesn't block anything.
+- `Path`, `DeviceToggle`, `PowerAtLeast`: give the matching upgrade.
+
 ### How a state is chosen
 
-1. If any requirement is impossible on this device pair (OS version too old,
-   hardware missing), the state is **Unsupported**.
-2. Else, if all `requires` hold: **Available**.
-3. Else, if a `partial` set holds: **Partial**, with an `upgrade` pointing at
-   the first unmet requirement of the full set.
-4. Else: **Locked**, with an `upgrade` for the first unmet requirement. When
-   several requirements are unmet, the one with the lowest effort is offered
-   first.
+1. All `requires` hold: **Available**.
+2. Else, if a `partial` set holds: **Partial**. Part of the feature works, so
+   this wins even when the rest never will; `upgrade` is the easiest unmet
+   requirement of the full set, or none if one of them is impossible.
+3. Else, if any requirement is impossible: **Unsupported**, with the first
+   reason.
+4. Else: **Locked**, with the lowest-effort upgrade among the unmet
+   requirements (declaration order breaks ties).
 
-## Examples
+A pair that isn't one phone (or tablet) and one desktop (or laptop) has every
+feature Unsupported (`DeviceKinds`). An `Unknown` device kind falls back to
+the OS (`android` → phone, `windows`/`macos` → desktop).
 
-| Feature | Requires | Partial | Typical state at Basic |
+## Per-device toggles
+
+`notifications`, `messages`, `calls`, `clipboard`, `photos`, `pc_actions`
+(on by default) and `remote_files` (off by default). Toggles are this
+device's policy for that peer and are stored locally, so a feature the PC
+user switched off is Locked on the PC while the phone may still show it as
+Available. Everything else in the matrix is identical on both devices.
+
+## Examples (phone at Basic, all Basic permissions granted)
+
+| Feature | Requires | Partial | State |
 |---|---|---|---|
-| `clipboard.pc_to_phone` | `PeerCap("clip.write")` | – | Available |
-| `clipboard.auto_phone_to_pc` | `PeerCap("clip.read.auto")` (needs Elevated) | `PeerCap("clip.share")` → "Manual: tap to send" | Partial, upgrade → Elevated · ~2 min |
-| `notifications.sensitive` | `PeerCap("notify.sensitive")` | – | Locked, upgrade → Elevated · ~2 min |
-| `mirroring.app_windows` | `PeerCap("mirror.virtual_display")`, `PowerAtLeast(Elevated)` | – | Locked |
-| `mirroring.control` | `PeerCap("mirror.input")` | – | Locked → Assist · ~1 min (or Elevated) |
-| `camera.webcam` | `PeerCap("camera.stream")`, `Addon("vcam")`, `WindowsBuildAtLeast(22000)` | – | Locked → install virtual camera |
+| `clipboard.pc_to_phone` | phone `clip.write`, toggle `clipboard` | – | Available |
+| `clipboard.auto_phone_to_pc` | phone `clip.read.auto` (Elevated), toggle | phone `clip.share` → "Manual: tap to send" | Partial, upgrade → Elevated · ~2 min |
+| `notifications.sensitive` | phone `notify.sensitive` (Elevated), toggle | – | Locked → Elevated · ~2 min |
+| `mirroring.control` | phone `mirror.capture`, `mirror.input` (Assist) | – | Locked → Assist · ~1 min |
+| `mirroring.app_windows` | phone `mirror.virtual_display` (Elevated), Elevated, Android ≥ 11 | – | Locked → Elevated |
+| `camera.webcam` | phone `camera.stream` (camera permission), desktop `addon.vcam`, Windows build ≥ 22000 | – | Locked → install virtual camera · ~1 min |
+
+The full registry is `FEATURES` in `core/nectarlink-core/src/features.rs`.
 
 ## UI contract
 
-- Both UIs receive `CapabilityMatrix { device_id, features: Map<FeatureId, FeatureState> }`.
+- Both UIs receive `CapabilityMatrix { device, features: Map<FeatureId, FeatureState> }`.
 - **Available:** normal control.
 - **Partial:** normal control plus an inline hint (`limit`) and, if present, an
   "Unlock" affordance.

@@ -6,6 +6,8 @@ use nectarlink_protocol::{
     messages::{Battery, DeviceInfo, PowerLevel},
 };
 
+use crate::features::CapabilityMatrix;
+
 /// How a session is currently carried.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectionPath {
@@ -73,11 +75,28 @@ pub enum PairingEvent {
 pub enum NodeEvent {
     DeviceAdded(PairedDevice),
     DeviceRemoved(DeviceId),
-    LinkChanged { device: DeviceId, link: LinkState },
-    PeerInfoChanged { device: DeviceId, info: DeviceInfo },
-    PeerPowerChanged { device: DeviceId, power: PowerLevel },
-    Battery { device: DeviceId, battery: Battery },
-    Ring { device: DeviceId, on: bool },
+    LinkChanged {
+        device: DeviceId,
+        link: LinkState,
+    },
+    PeerInfoChanged {
+        device: DeviceId,
+        info: DeviceInfo,
+    },
+    PeerPowerChanged {
+        device: DeviceId,
+        power: PowerLevel,
+    },
+    /// What works with a device changed (see `docs/architecture/capabilities.md`).
+    Capabilities(CapabilityMatrix),
+    Battery {
+        device: DeviceId,
+        battery: Battery,
+    },
+    Ring {
+        device: DeviceId,
+        on: bool,
+    },
     Discovered(DiscoveredDevice),
     DiscoveryExpired(DeviceId),
     Pairing(PairingEvent),

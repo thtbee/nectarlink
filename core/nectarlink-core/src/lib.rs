@@ -9,6 +9,7 @@
 mod config;
 mod error;
 mod events;
+pub mod features;
 mod identity;
 mod node;
 mod pairing;
@@ -20,6 +21,7 @@ pub use error::{Error, Result, Side};
 pub use events::{
     ConnectionPath, DiscoveredDevice, LinkState, NodeEvent, PairedDevice, PairingEvent, PairingFailure,
 };
+pub use features::{CapabilityMatrix, FeatureState};
 pub use identity::{KeyProtector, PlainKeyProtector, default_protector};
 pub use nectarlink_protocol::{
     DeviceId,

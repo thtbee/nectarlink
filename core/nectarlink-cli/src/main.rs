@@ -7,10 +7,11 @@
 use std::{io::Write, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::{Context, Result, bail};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use nectarlink_core::{
-    DeviceId, DeviceInfo, DeviceKind, LinkState, Node, NodeConfig, NodeEvent, PairedDevice, PairingEvent,
-    Platform,
+    ConnectionPath, DeviceId, DeviceInfo, DeviceKind, FeatureState, LinkState, Node, NodeConfig, NodeEvent,
+    PairedDevice, PairingEvent, Platform, PowerLevel,
+    features::{Effort, FEATURES, Role, UnsupportedReason, Upgrade, UpgradeAction},
 };
 use tokio::sync::broadcast::error::RecvError;
 
@@ -32,6 +33,15 @@ struct Cli {
     /// Allow connections through relay servers when away from home.
     #[arg(long, global = true)]
     away: bool,
+    /// Announce this client as an Android phone, to test a PC without one.
+    #[arg(long, global = true)]
+    as_phone: bool,
+    /// Power level to announce with --as-phone.
+    #[arg(long, global = true, value_enum, default_value_t = Power::Basic, requires = "as_phone")]
+    power: Power,
+    /// Extra capability to announce, e.g. clip.read.auto (repeatable).
+    #[arg(long = "offer", global = true, value_name = "CAPABILITY")]
+    offers: Vec<String>,
     /// Log verbosity (error, warn, info, debug, trace).
     #[arg(long, global = true, default_value = "warn")]
     log: String,
@@ -77,8 +87,36 @@ enum Command {
     },
     /// Unpair a device.
     Unpair { device: String },
+    /// Show which features work with a paired device, and how to unlock the rest.
+    Caps {
+        device: String,
+        /// Seconds to wait for the device to connect (0: use what's known).
+        #[arg(long, default_value_t = 3)]
+        wait: u64,
+    },
+    /// Show or change what a paired device is allowed to do.
+    Toggle {
+        device: String,
+        /// Toggle to change, e.g. "clipboard" (omit to list them).
+        name: Option<String>,
+        #[arg(requires = "name")]
+        state: Option<OnOff>,
+    },
     /// Stay online and print events until Ctrl+C.
     Run,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum Power {
+    Basic,
+    Assist,
+    Elevated,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum OnOff {
+    On,
+    Off,
 }
 
 /// Rings by printing to the terminal (the CLI has no speaker access).
@@ -116,19 +154,28 @@ async fn start_node(cli: &Cli) -> Result<Node> {
     let name = cli.name.clone().unwrap_or_else(|| {
         hostname::get().ok().and_then(|h| h.into_string().ok()).unwrap_or_else(|| "Nectarlink CLI".into())
     });
-    let device = DeviceInfo {
-        name,
-        kind: DeviceKind::Desktop,
-        os: std::env::consts::OS.into(),
-        os_ver: String::new(),
-        model: None,
-        accent: None,
+    let (kind, os, os_ver) = if cli.as_phone {
+        (DeviceKind::Phone, "android".into(), "16".into())
+    } else {
+        (DeviceKind::Desktop, std::env::consts::OS.into(), String::new())
+    };
+    let device = DeviceInfo { name, kind, os, os_ver, model: None, accent: None };
+    let power = match (cli.as_phone, cli.power) {
+        (false, _) => PowerLevel::NotApplicable,
+        (true, Power::Basic) => PowerLevel::Basic,
+        (true, Power::Assist) => PowerLevel::Assist,
+        (true, Power::Elevated) => PowerLevel::Elevated,
     };
     let mut config = NodeConfig::new(data_dir, device, env!("CARGO_PKG_VERSION"));
     config.port = cli.port;
     config.lan_discovery = !cli.no_lan;
     config.away_mode = cli.away;
-    Node::start(config, Arc::new(TerminalPlatform)).await.context("failed to start")
+    config.power = power;
+    let node = Node::start(config, Arc::new(TerminalPlatform)).await.context("failed to start")?;
+    if !cli.offers.is_empty() {
+        node.update_power(power, cli.offers.clone()).await;
+    }
+    Ok(node)
 }
 
 async fn run(cli: &Cli, node: &Node) -> Result<()> {
@@ -183,6 +230,37 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             let id = resolve(node, device)?;
             node.unpair(id).await?;
             println!("✓ Unpaired.");
+        }
+        Command::Caps { device, wait } => {
+            let id = resolve(node, device)?;
+            if *wait > 0
+                && tokio::time::timeout(Duration::from_secs(*wait), wait_until_online(node, id))
+                    .await
+                    .is_err()
+            {
+                println!("(not connected; showing what the device offered last time)");
+            }
+            print_capabilities(node, id)?;
+        }
+        Command::Toggle { device, name: None, .. } => {
+            let id = resolve(node, device)?;
+            for (name, on) in node.device_toggles(id)? {
+                println!("{name:<16} {}", if on { "on" } else { "off" });
+            }
+        }
+        Command::Toggle { device, name: Some(name), state } => {
+            let id = resolve(node, device)?;
+            let current = node.device_toggles(id)?.into_iter().find(|(n, _)| n == name).map(|(_, on)| on);
+            let Some(current) = current else {
+                bail!("unknown toggle {name:?}; run without a name to list them")
+            };
+            let on = match state {
+                Some(OnOff::On) => true,
+                Some(OnOff::Off) => false,
+                None => !current,
+            };
+            node.set_device_toggle(id, name, on)?;
+            println!("{name} is now {}", if on { "on" } else { "off" });
         }
         Command::Run => watch(node).await?,
     }
@@ -293,7 +371,73 @@ fn print_event(node: &Node, event: &NodeEvent) {
         NodeEvent::Discovered(d) => {
             println!("Found nearby: {} ({})", d.name.as_deref().unwrap_or("unnamed"), d.id.short())
         }
+        NodeEvent::Capabilities(m) => {
+            let available = m.features.values().filter(|s| **s == FeatureState::Available).count();
+            println!("{}: {available} of {} features available", name(&m.device), m.features.len())
+        }
         _ => {}
+    }
+}
+
+fn print_capabilities(node: &Node, id: DeviceId) -> Result<()> {
+    let matrix = node.capabilities(id)?;
+    let mut group = None;
+    for def in FEATURES {
+        if group != Some(def.group) {
+            group = Some(def.group);
+            println!("\n{:?}", def.group);
+        }
+        let state = matrix.state(def.id).context("feature missing from the matrix")?;
+        println!("  {:<30} {}", def.id, describe_state(&state));
+    }
+    Ok(())
+}
+
+fn describe_state(state: &FeatureState) -> String {
+    match state {
+        FeatureState::Available => "✓ available".into(),
+        FeatureState::Partial { limit, upgrade: Some(u) } => {
+            format!("◐ partial ({limit}); unlock: {}", describe_upgrade(u))
+        }
+        FeatureState::Partial { limit, upgrade: None } => format!("◐ partial ({limit})"),
+        FeatureState::Locked { upgrade } => format!("🔒 {}", describe_upgrade(upgrade)),
+        FeatureState::Unsupported { reason } => format!("✗ {}", describe_reason(reason)),
+    }
+}
+
+fn describe_upgrade(upgrade: &Upgrade) -> String {
+    let action = match upgrade.action {
+        UpgradeAction::RaisePower(level) => format!("raise the phone to {}", power_name(level)),
+        UpgradeAction::GrantPermission(p) => format!("grant the {} permission on the phone", p.as_str()),
+        UpgradeAction::EnableAddon(addon) => format!("install the {addon} add-on"),
+        UpgradeAction::EnablePath(ConnectionPath::Relay) => "turn on Away mode".into(),
+        UpgradeAction::EnablePath(path) => format!("enable the {path:?} connection"),
+        UpgradeAction::EnableDeviceToggle(t) => format!("allow {t} (nectarlink toggle <device> {t} on)"),
+        UpgradeAction::UpdateApp(Role::Phone) => "update the app on the phone".into(),
+        UpgradeAction::UpdateApp(Role::Desktop) => "update the app on the PC".into(),
+    };
+    match upgrade.effort {
+        Effort::Instant => action,
+        Effort::Minutes(n) => format!("{action} · ~{n} min"),
+    }
+}
+
+fn describe_reason(reason: &UnsupportedReason) -> String {
+    match reason {
+        UnsupportedReason::DeviceKinds => "needs a phone paired with a PC".into(),
+        UnsupportedReason::AndroidTooOld { needs } => format!("needs Android {needs} or newer"),
+        UnsupportedReason::WindowsTooOld { needs_build } => {
+            format!("needs Windows build {needs_build} or newer")
+        }
+        UnsupportedReason::NotOnThisDevice => "not available on this phone".into(),
+    }
+}
+
+fn power_name(level: PowerLevel) -> &'static str {
+    match level {
+        PowerLevel::Assist => "Assist",
+        PowerLevel::Elevated => "Elevated",
+        _ => "Basic",
     }
 }
 
