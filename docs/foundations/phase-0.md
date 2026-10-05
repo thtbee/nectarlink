@@ -33,9 +33,12 @@ nectarlink/
     nectarlink-ffi/          UniFFI bindings                           (MPL-2.0)
     nectarlink-cli/          dev/debug CLI: pair, ping, status         (GPL)
   desktop/
-    app/                     Rust binary: startup, tray, windows       (GPL)
-    nectarlink-qt/           cxx-qt bridge (view-models)               (GPL)
-    qml/                     design system + screens                   (GPL)
+    app/                     the desktop app, one crate               (GPL)
+      src/bridge/            cxx-qt bridge: the only Rust↔Qt code
+      src/win/               Windows integration (tray, power, sound)
+      cpp/                   C++ for Qt hooks (window chrome)
+      qml/                   design system + screens
+  tools/xtask/               code generation (theme tokens) and checks (GPL)
   android/                   Gradle project (app module)               (GPL)
   spikes/                    throwaway experiments, one folder each
   docs/

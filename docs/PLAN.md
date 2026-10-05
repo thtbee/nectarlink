@@ -251,7 +251,7 @@ Power: 🟢 Basic · 🔵 Assist · 🟣 Elevated (see §4.6).
 │  Qt Quick UI (QML screens, Nectarlink design system)          │        │  Compose UI (Material 3 Expressive)                              │
 │   main window · Island · Shelf · Deck editor · palette   │        │   home · devices · onboarding · Deck · tiles · widgets           │
 │   mirror/app windows: decoded D3D11 video inside the UI   │        │        ▲  Kotlin facades (Flows)                                  │
-│        ▲  nectarlink-qt bridge (cxx-qt view-models, in-proc)  │        │  ┌─────┴───────────────────────────────────────────────────┐    │
+│        ▲  cxx-qt bridge (view-models, in-process)           │        │  ┌─────┴───────────────────────────────────────────────────┐    │
 │  ┌─────┴──────────────────────────────────────────────┐   │        │  │ Android services (Kotlin)                               │    │
 │  │ nectarlink-desktop (Rust)                              │   │        │  │  NotificationListener · SMS/Calls/Contacts · MediaSession│   │
 │  │  nectarlink-win: toasts+reply · Cloud Files · GSMTC/   │   │        │  │  CameraX · AudioRecord · MediaProjection · CDM · FGS     │    │
@@ -281,9 +281,10 @@ nectarlink/
     nectarlink-ffi/         UniFFI bindings for Kotlin
     nectarlink-cli/         command-line client
   desktop/
-    app/                Rust host: startup, tray, window lifecycle, wiring to core
-    nectarlink-qt/          the ONLY Rust↔Qt bridge: cxx-qt view-models exposed to QML
-    qml/                Nectarlink design system (tokens, ~30 components) + screens. Presentation only
+    app/                one crate (cxx-qt builds the QML module, bridge and binary together):
+      src/              Rust host: startup, tray, window lifecycle, wiring to core
+      src/bridge/       the ONLY Rust↔Qt bridge: cxx-qt view-models exposed to QML
+      qml/              Nectarlink design system (tokens, ~30 components) + screens. Presentation only
     platform/           `Platform` trait: nectarlink-win (windows-rs) now, nectarlink-mac later
     video/              `VideoSink`: MF decode + D3D11 texture → Qt Quick scene-graph item (small C++)
                         now; VideoToolbox + Metal later
@@ -464,7 +465,7 @@ What we optimize for, in order:
 | Issue | Rule / mitigation |
 |---|---|
 | Three languages in the UI layer (QML, Rust, a little C++) | **QML is presentation only**: screens, layout and animation. No business logic in QML/JavaScript. C++ is limited to the video item and a few window tweaks |
-| cxx-qt is pre-1.0 (0.10.x, KDAB) | Pin the version, upgrade on purpose. **One bridge crate (`nectarlink-qt`)** is the only place Rust touches Qt |
+| cxx-qt is pre-1.0 (0.10.x, KDAB) | Pin the version, upgrade on purpose. **One bridge module (`desktop/app/src/bridge`)** is the only place Rust touches Qt |
 | Heavier build (Qt install, C++ glue, separate ARM64 build) | Install Qt via aqtinstall, cached in CI. Windows ARM64 is a supported Qt platform (MSVC 2022). Scripts make it one command locally |
 | Two threading worlds (Rust async runtime vs Qt's screen thread) | **One pattern everywhere** for handing core events to the screen thread (cxx-qt's thread queue). No ad-hoc cross-thread calls |
 | Bigger installer (+30–50 MB) | Ship only the Qt modules we use. `windeployqt` with an explicit module list |
@@ -681,7 +682,7 @@ Each phase ends with a usable, releasable product. Phase sizes are relative; act
 | **Total, year 1** | **Bare minimum ≈ $10–50 · Comfortable ≈ $250–450** | Funded via GitHub Sponsors / Open Collective once public |
 
 ### 10.7 Future scope (recorded)
-- **macOS desktop:** the maintainer has a MacBook. A port, not a rewrite: the Rust core, the `nectarlink-qt` bridge and ~90 % of the QML screens are shared (Qt Quick renders with Metal on Mac). Mac-specific work sits behind `Platform`/`VideoSink`:
+- **macOS desktop:** the maintainer has a MacBook. A port, not a rewrite: the Rust core, the cxx-qt bridge and ~90 % of the QML screens are shared (Qt Quick renders with Metal on Mac). Mac-specific work sits behind `Platform`/`VideoSink`:
 
   | Feature | Windows | Mac |
   |---|---|---|
