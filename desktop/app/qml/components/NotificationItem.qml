@@ -17,13 +17,18 @@ Item {
     required property string actions
     required property string replyAction
     required property string replyLabel
+    required property string replies
+    // Bumped by the feed every minute, so relative times stay right.
+    property int clock: 0
 
     readonly property var buttons: { try { return JSON.parse(actions) } catch (e) { return [] } }
+    readonly property var sent: { try { return JSON.parse(replies) } catch (e) { return [] } }
     property bool replying: false
 
     implicitHeight: content.height + 24
 
     function timeText() {
+        clock // re-evaluated each minute
         const minutes = Math.round((Date.now() - when) / 60000)
         if (minutes < 1) return qsTr("now")
         if (minutes < 60) return qsTr("%n min", "", minutes)
@@ -40,13 +45,22 @@ Item {
         item.replying = false
     }
 
-    HoverHandler { id: hover }
+    // Hover tracking only: clicks go to the buttons inside.
+    MouseArea {
+        id: hover
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.NoButton
+        readonly property bool hovered: containsMouse
+    }
 
+    // A light wash of the text color, so hovering never looks like selection.
     Rectangle {
         anchors.fill: parent
         radius: Theme.radiusMd
-        color: hover.hovered ? (Theme.graphite ? Theme.surfaceContainer : Theme.surfaceContainerHigh) : "transparent"
-        Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
+        color: Theme.surfaceContent
+        opacity: hover.hovered ? 0.045 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
     }
 
     // App icon, or its initial when the phone didn't send one.
@@ -99,6 +113,32 @@ Item {
             text: item.text
             wrapMode: Text.Wrap
             maximumLineCount: 4
+        }
+
+        // Replies sent from this PC.
+        Repeater {
+            model: item.sent
+            delegate: Row {
+                required property var modelData
+                width: content.width
+                spacing: 6
+                opacity: modelData.pending ? 0.55 : 1
+                Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
+                Icon {
+                    width: 14; height: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                    path: modelData.pending ? Icons.send : Icons.check
+                    color: Theme.primary
+                }
+                Txt {
+                    width: parent.width - 20
+                    role: "bodySmall"
+                    muted: true
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 3
+                    text: modelData.pending ? qsTr("Sending: %1").arg(modelData.text) : qsTr("You: %1").arg(modelData.text)
+                }
+            }
         }
 
         Flow {

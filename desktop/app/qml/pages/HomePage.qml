@@ -254,21 +254,64 @@ Item {
                         Button {
                             id: clearAll
                             anchors.right: parent.right
-                            visible: feed.count > 1
-                            variant: "text"
+                            visible: feed.count > 0
+                            variant: "tonal"
                             size: "sm"
+                            iconPath: Icons.close
                             text: qsTr("Clear all")
                             onClicked: NotificationList.dismissAll(home.deviceId)
                         }
                     }
-                    Column {
+                    // Ticks every minute so "5 min" ages without new events.
+                    Timer {
+                        id: feedClock
+                        property int minutes: 0
+                        interval: 60000
+                        repeat: true
+                        running: feed.count > 0
+                        onTriggered: minutes++
+                    }
+                    // The page scrolls; this list only lays out and animates:
+                    // new notifications fade and slide in, dismissed ones fade
+                    // out, and the rest glide into place.
+                    ListView {
+                        id: list
                         width: parent.width
-                        Repeater {
-                            model: NotificationList
-                            delegate: NotificationItem {
-                                width: parent.width
-                                visible: deviceId === home.deviceId
+                        height: contentHeight
+                        interactive: false
+                        model: NotificationList
+                        delegate: NotificationItem {
+                            width: list.width
+                            clock: feedClock.minutes
+                            visible: deviceId === home.deviceId
+                            height: visible ? implicitHeight : 0
+                        }
+                        add: Transition {
+                            enabled: !Theme.reduceMotion
+                            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 220; easing.type: Easing.OutCubic }
+                            NumberAnimation {
+                                property: "y"
+                                from: ViewTransition.destination.y - 10
+                                to: ViewTransition.destination.y
+                                duration: 260
+                                easing.type: Easing.OutCubic
                             }
+                        }
+                        addDisplaced: Transition {
+                            enabled: !Theme.reduceMotion
+                            NumberAnimation { property: "y"; duration: 240; easing.type: Easing.OutCubic }
+                        }
+                        remove: Transition {
+                            enabled: !Theme.reduceMotion
+                            NumberAnimation { property: "opacity"; to: 0; duration: 160 }
+                        }
+                        removeDisplaced: Transition {
+                            enabled: !Theme.reduceMotion
+                            NumberAnimation { property: "y"; duration: 240; easing.type: Easing.OutCubic }
+                        }
+                        Behavior on height {
+                            enabled: !Theme.reduceMotion
+                            NumberAnimation { duration: 240; easing.type: Easing.OutCubic }
                         }
                     }
                     // Empty: say why, and what turns it on.

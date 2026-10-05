@@ -99,12 +99,7 @@ fn watch_network() {
 /// app's icon (written as a PNG, which Windows needs as a file).
 fn start_toasts() {
     let icon = core_host::host().data_dir.join("cache").join("nectarlink.png");
-    if !icon.exists()
-        && let Err(e) = win::icon::write_png(&icon, 256)
-    {
-        tracing::warn!(error = %e, "can't write the app icon");
-    }
-    win::toast::start(&icon, notifications::on_toast);
+    win::toast::start(icon, notifications::on_toast);
 }
 
 fn install_panic_logging() {

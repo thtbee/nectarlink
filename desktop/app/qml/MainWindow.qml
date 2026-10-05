@@ -16,7 +16,39 @@ NativeWindow {
     minimumWidth: Theme.layout.minWindow[0]
     minimumHeight: Theme.layout.minWindow[1]
     title: "Nectarlink"
-    backdrop: Preferences.backdrop
+    // Mica is applied by Windows a moment after it's requested. Showing
+    // through before it's there reveals the bare desktop (a flash), so the
+    // window turns translucent only once Mica is in place, and opaque again
+    // before Mica is removed.
+    property bool micaApplied: false
+    property bool micaVisible: false
+    backdrop: micaApplied
+    Timer {
+        id: micaSettle
+        interval: 280
+        onTriggered: window.micaVisible = Preferences.backdrop
+    }
+    Timer {
+        id: micaRelease
+        interval: Theme.fadeNormal + 60
+        onTriggered: window.micaApplied = Preferences.backdrop
+    }
+    function followBackdrop() {
+        if (Preferences.backdrop) {
+            micaRelease.stop()
+            micaApplied = true
+            micaSettle.restart()
+        } else {
+            micaSettle.stop()
+            micaVisible = false
+            micaRelease.restart()
+        }
+    }
+    Connections {
+        target: Preferences
+        function onBackdropChanged() { window.followBackdrop() }
+    }
+    Component.onCompleted: followBackdrop()
     darkFrame: Theme.dark
     captionHeight: Theme.topBarHeight
 
@@ -37,11 +69,12 @@ NativeWindow {
 
     function openPairing() { pairingSheet.open() }
 
-    // Window background: translucent over Mica, opaque otherwise.
+    // Window background: a light veil of the theme over Mica (so the
+    // desktop's colors come through, as Mica is meant to), opaque otherwise.
     Rectangle {
         anchors.fill: parent
-        color: Preferences.backdrop ? Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.7 : 0.62)
-                                    : Theme.surface
+        color: window.micaVisible ? Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.45 : 0.32)
+                                  : Theme.surface
         Behavior on color { ColorAnimation { duration: Theme.fadeNormal } }
     }
 
@@ -51,7 +84,7 @@ NativeWindow {
         visible: !window.welcome
         width: Theme.railWidth
         height: parent.height
-        color: Preferences.backdrop ? "transparent" : Theme.railColor
+        color: window.micaVisible ? "transparent" : Theme.railColor
 
         Rectangle {
             id: mark

@@ -135,8 +135,18 @@ pub fn dismiss(device: &str, key: String) {
 /// Runs a notification's action on the phone (`reply` for a reply action).
 pub fn run_action(device: &str, key: String, action: String, reply: Option<String>) {
     let (Ok(device), Some(node)) = (device.parse::<DeviceId>(), core_host::node()) else { return };
+    let hub = &core_host::host().hub;
+    // A reply shows under its notification right away, faded until the
+    // phone has taken it.
+    if let Some(text) = &reply {
+        hub.update(|s| s.reply_sending(device, &key, text));
+    }
     core_host::spawn(async move {
-        if let Err(e) = node.run_notification_action(device, key, action, reply).await {
+        let result = node.run_notification_action(device, key.clone(), action, reply.clone()).await;
+        if let Some(text) = &reply {
+            core_host::host().hub.update(|s| s.reply_done(device, &key, text, result.is_ok()));
+        }
+        if let Err(e) = result {
             report(&e);
         }
     });

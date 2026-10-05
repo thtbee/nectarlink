@@ -68,34 +68,85 @@ pub(crate) enum Edit {
 }
 
 /// Edits from `old` to `new` (rows identified by `key`), applied in order,
-/// so QML delegates keep their state and animate. `None` when rows that stay
-/// changed their relative order (then the model is reset).
-pub(crate) fn diff<T: PartialEq, K: PartialEq>(
-    old: &[T],
-    new: &[T],
-    key: impl Fn(&T) -> K,
-) -> Option<Vec<Edit>> {
+/// so QML delegates keep their state and animate. A row that moved (e.g. an
+/// updated notification going to the top) is removed and inserted again;
+/// the model is never reset.
+pub(crate) fn diff<T: PartialEq, K: PartialEq>(old: &[T], new: &[T], key: impl Fn(&T) -> K) -> Vec<Edit> {
     let mut edits = Vec::new();
-    // Removals, from the end so earlier indices stay valid.
-    for (row, item) in old.iter().enumerate().rev() {
-        if !new.iter().any(|n| key(n) == key(item)) {
+    // Rows as they are after each edit so far.
+    let mut rows: Vec<&T> = old.iter().collect();
+    // Removals first, from the end so earlier indices stay valid.
+    for row in (0..rows.len()).rev() {
+        if !new.iter().any(|n| key(n) == key(rows[row])) {
+            rows.remove(row);
             edits.push(Edit::Remove(row));
         }
     }
-    let kept: Vec<&T> = old.iter().filter(|o| new.iter().any(|n| key(n) == key(o))).collect();
-    let mut next_kept = 0;
     for (row, item) in new.iter().enumerate() {
-        match kept.get(next_kept) {
-            Some(k) if key(k) == key(item) => {
-                if *k != item {
-                    edits.push(Edit::Change(row));
-                }
-                next_kept += 1;
+        let k = key(item);
+        if rows.get(row).is_some_and(|r| key(r) == k) {
+            if *rows[row] != *item {
+                rows[row] = item;
+                edits.push(Edit::Change(row));
             }
-            // Rows already in the list must come in the same order.
-            _ if kept.iter().any(|k| key(k) == key(item)) => return None,
-            _ => edits.push(Edit::Insert(row)),
+            continue;
+        }
+        // Moved here from further down: take it out there first.
+        if let Some(from) = rows.iter().skip(row).position(|r| key(r) == k).map(|i| i + row) {
+            rows.remove(from);
+            edits.push(Edit::Remove(from));
+        }
+        rows.insert(row, item);
+        edits.push(Edit::Insert(row));
+    }
+    edits
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Applies edits the way the models do.
+    fn apply(old: &[(u8, &str)], new: &[(u8, &str)]) -> Vec<(u8, String)> {
+        let mut rows: Vec<(u8, String)> = old.iter().map(|(k, v)| (*k, (*v).to_owned())).collect();
+        for edit in diff(old, new, |r| r.0) {
+            match edit {
+                Edit::Remove(r) => {
+                    rows.remove(r);
+                }
+                Edit::Insert(r) => rows.insert(r, (new[r].0, new[r].1.to_owned())),
+                Edit::Change(r) => rows[r] = (new[r].0, new[r].1.to_owned()),
+            }
+        }
+        rows
+    }
+
+    fn owned(rows: &[(u8, &str)]) -> Vec<(u8, String)> {
+        rows.iter().map(|(k, v)| (*k, (*v).to_owned())).collect()
+    }
+
+    #[test]
+    fn edits_turn_old_rows_into_new_ones() {
+        type Rows<'a> = &'a [(u8, &'a str)];
+        let cases: &[(Rows, Rows)] = &[
+            (&[], &[(1, "a"), (2, "b")]),
+            (&[(1, "a"), (2, "b")], &[]),
+            (&[(1, "a"), (2, "b"), (3, "c")], &[(1, "a"), (2, "B"), (4, "d")]),
+            // An update moves to the top.
+            (&[(1, "a"), (2, "b"), (3, "c")], &[(3, "C"), (1, "a"), (2, "b")]),
+            // Reversed, with additions and removals.
+            (&[(1, "a"), (2, "b"), (3, "c"), (4, "d")], &[(5, "e"), (4, "d"), (2, "b"), (1, "a")]),
+        ];
+        for (old, new) in cases {
+            assert_eq!(apply(old, new), owned(new), "{old:?} -> {new:?}");
         }
     }
-    Some(edits)
+
+    #[test]
+    fn unchanged_rows_need_no_edits_and_moves_touch_only_the_moved_row() {
+        let rows = [(1, "a"), (2, "b"), (3, "c")];
+        assert_eq!(diff(&rows, &rows, |r| r.0), []);
+        let moved = [(3, "c"), (1, "a"), (2, "b")];
+        assert_eq!(diff(&rows, &moved, |r| r.0), [Edit::Remove(2), Edit::Insert(0)]);
+    }
 }

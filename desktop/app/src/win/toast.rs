@@ -105,15 +105,13 @@ pub fn set_process_id() {
     }
 }
 
-/// Registers the app for toasts and starts the toast thread. `icon` is a
-/// PNG of the app icon; `on_event` gets what the user does with toasts.
-pub fn start(icon: &Path, on_event: impl Fn(ToastEvent) + Send + Sync + 'static) {
-    if let Err(e) = register(icon) {
-        tracing::warn!(error = %e, "can't register for notifications");
-    }
+/// Starts the toast thread, which registers the app for toasts with its
+/// icon (written to `icon` as a PNG if missing); `on_event` gets what the
+/// user does with toasts.
+pub fn start(icon: PathBuf, on_event: impl Fn(ToastEvent) + Send + Sync + 'static) {
     let (commands, queue) = mpsc::channel();
     let handler: Handler = Box::new(on_event);
-    let spawned = std::thread::Builder::new().name("toasts".into()).spawn(move || run(queue, handler));
+    let spawned = std::thread::Builder::new().name("toasts".into()).spawn(move || run(&icon, queue, handler));
     match spawned {
         Ok(_) => {
             let _ = TOASTER.set(Mutex::new(Toaster { commands }));
@@ -184,11 +182,20 @@ fn register(icon: &Path) -> windows::core::Result<()> {
     result
 }
 
-fn run(queue: mpsc::Receiver<Command>, handler: Handler) {
+fn run(icon: &Path, queue: mpsc::Receiver<Command>, handler: Handler) {
     // SAFETY: initializes COM for this thread, which lives as long as the app.
     if let Err(e) = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }.ok() {
         tracing::warn!(error = %e, "notifications are unavailable");
         return;
+    }
+    // WIC needs COM, which is why this happens here and not on the UI thread.
+    if !icon.exists()
+        && let Err(e) = super::icon::write_png(icon, 256)
+    {
+        tracing::warn!(error = %e, "can't write the app icon");
+    }
+    if let Err(e) = register(icon) {
+        tracing::warn!(error = %e, "can't register for notifications");
     }
     let notifier = match ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(AUMID)) {
         Ok(notifier) => notifier,

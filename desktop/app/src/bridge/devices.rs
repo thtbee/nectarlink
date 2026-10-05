@@ -54,12 +54,6 @@ pub mod qobject {
         #[cxx_name = "endRemoveRows"]
         unsafe fn end_remove_rows(self: Pin<&mut DeviceList>);
         #[inherit]
-        #[cxx_name = "beginResetModel"]
-        unsafe fn begin_reset_model(self: Pin<&mut DeviceList>);
-        #[inherit]
-        #[cxx_name = "endResetModel"]
-        unsafe fn end_reset_model(self: Pin<&mut DeviceList>);
-        #[inherit]
         fn index(self: &DeviceList, row: i32, column: i32, parent: &QModelIndex) -> QModelIndex;
 
         #[inherit]
@@ -182,42 +176,30 @@ impl qobject::DeviceList {
     fn refresh(mut self: Pin<&mut Self>) {
         let new = core_host::host().hub.read(|s| s.devices.clone());
         let root = QModelIndex::default();
-        match diff(&self.rows, &new, |d| d.id) {
-            None => {
-                // SAFETY: begin/end pairs are balanced around the swap.
-                unsafe {
-                    self.as_mut().begin_reset_model();
-                    self.as_mut().rust_mut().rows = new;
-                    self.as_mut().end_reset_model();
-                }
-            }
-            Some(edits) => {
-                for edit in edits {
-                    match edit {
-                        Edit::Remove(row) => {
-                            let r = row as i32;
-                            // SAFETY: row exists; begin/end are balanced.
-                            unsafe {
-                                self.as_mut().begin_remove_rows(&root, r, r);
-                                self.as_mut().rust_mut().rows.remove(row);
-                                self.as_mut().end_remove_rows();
-                            }
-                        }
-                        Edit::Insert(row) => {
-                            let r = row as i32;
-                            // SAFETY: row <= len; begin/end are balanced.
-                            unsafe {
-                                self.as_mut().begin_insert_rows(&root, r, r);
-                                self.as_mut().rust_mut().rows.insert(row, new[row].clone());
-                                self.as_mut().end_insert_rows();
-                            }
-                        }
-                        Edit::Change(row) => {
-                            self.as_mut().rust_mut().rows[row] = new[row].clone();
-                            let index = self.index(row as i32, 0, &root);
-                            self.as_mut().data_changed(&index, &index, &QList::default());
-                        }
+        for edit in diff(&self.rows, &new, |d| d.id) {
+            match edit {
+                Edit::Remove(row) => {
+                    let r = row as i32;
+                    // SAFETY: row exists; begin/end are balanced.
+                    unsafe {
+                        self.as_mut().begin_remove_rows(&root, r, r);
+                        self.as_mut().rust_mut().rows.remove(row);
+                        self.as_mut().end_remove_rows();
                     }
+                }
+                Edit::Insert(row) => {
+                    let r = row as i32;
+                    // SAFETY: row <= len; begin/end are balanced.
+                    unsafe {
+                        self.as_mut().begin_insert_rows(&root, r, r);
+                        self.as_mut().rust_mut().rows.insert(row, new[row].clone());
+                        self.as_mut().end_insert_rows();
+                    }
+                }
+                Edit::Change(row) => {
+                    self.as_mut().rust_mut().rows[row] = new[row].clone();
+                    let index = self.index(row as i32, 0, &root);
+                    self.as_mut().data_changed(&index, &index, &QList::default());
                 }
             }
         }
@@ -274,44 +256,6 @@ mod tests {
             battery: None,
             power: PowerLevel::Basic,
         }
-    }
-
-    /// Applies edits the way the model does and checks the result.
-    fn apply(old: &[DeviceView], new: &[DeviceView]) -> Vec<DeviceView> {
-        let mut rows = old.to_vec();
-        for edit in diff(old, new, |d| d.id).expect("incremental") {
-            match edit {
-                Edit::Remove(r) => {
-                    rows.remove(r);
-                }
-                Edit::Insert(r) => rows.insert(r, new[r].clone()),
-                Edit::Change(r) => rows[r] = new[r].clone(),
-            }
-        }
-        rows
-    }
-
-    #[test]
-    fn inserts_removes_and_changes() {
-        let (a, b, c, d) = (device(1, "a"), device(2, "b"), device(3, "c"), device(4, "d"));
-        let old = vec![a.clone(), b.clone(), c.clone()];
-        let mut b2 = b.clone();
-        b2.info.name = "b2".into();
-        let new = vec![a.clone(), b2.clone(), d.clone()];
-        assert_eq!(diff(&old, &new, |d| d.id).unwrap(), [Edit::Remove(2), Edit::Change(1), Edit::Insert(2)]);
-        assert_eq!(apply(&old, &new), new);
-
-        assert_eq!(apply(&[], &new), new);
-        assert_eq!(apply(&new, &[]), Vec::<DeviceView>::new());
-        assert_eq!(diff(&new, &new, |d| d.id).unwrap(), []);
-        let interleaved = vec![d.clone(), a.clone(), c.clone(), b2.clone()];
-        assert_eq!(apply(&[a.clone(), b2.clone()], &interleaved), interleaved);
-    }
-
-    #[test]
-    fn reordering_falls_back_to_a_reset() {
-        let (a, b) = (device(1, "a"), device(2, "b"));
-        assert_eq!(diff(&[a.clone(), b.clone()], &[b, a], |d| d.id), None);
     }
 
     #[test]

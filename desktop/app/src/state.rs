@@ -124,6 +124,14 @@ pub struct NotificationView {
     pub notification: Notification,
 }
 
+/// A reply sent from this PC to a notification, shown under it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SentReply {
+    pub text: String,
+    /// Still on its way to the phone.
+    pub pending: bool,
+}
+
 /// The most notifications kept; the oldest go first.
 pub const MAX_NOTIFICATIONS: usize = 200;
 
@@ -143,6 +151,8 @@ pub struct AppState {
     pub notifications: Vec<NotificationView>,
     /// App icon files by package name.
     pub app_icons: HashMap<String, PathBuf>,
+    /// Replies sent from this PC, per notification, oldest first.
+    pub replies: HashMap<(DeviceId, String), Vec<SentReply>>,
 }
 
 impl AppState {
@@ -174,6 +184,14 @@ impl AppState {
 
     /// Folds one core event into the state.
     pub fn apply(&mut self, event: &NodeEvent) -> Changes {
+        let changes = self.apply_event(event);
+        if changes.intersects(Changes::NOTIFICATIONS) {
+            self.prune_replies();
+        }
+        changes
+    }
+
+    fn apply_event(&mut self, event: &NodeEvent) -> Changes {
         match event {
             NodeEvent::DeviceAdded(device) => {
                 match self.device_mut(&device.id) {
@@ -269,6 +287,34 @@ impl AppState {
                 if before == self.notifications.len() { Changes::NONE } else { Changes::NOTIFICATIONS }
             }
         }
+    }
+
+    /// Records a reply on its way to the phone.
+    pub fn reply_sending(&mut self, device: DeviceId, key: &str, text: &str) -> Changes {
+        let reply = SentReply { text: text.to_owned(), pending: true };
+        self.replies.entry((device, key.to_owned())).or_default().push(reply);
+        Changes::NOTIFICATIONS
+    }
+
+    /// The phone took the reply (`delivered`), or it failed and is dropped.
+    pub fn reply_done(&mut self, device: DeviceId, key: &str, text: &str, delivered: bool) -> Changes {
+        let id = (device, key.to_owned());
+        let Some(replies) = self.replies.get_mut(&id) else { return Changes::NONE };
+        let Some(at) = replies.iter().position(|r| r.pending && r.text == text) else { return Changes::NONE };
+        if delivered {
+            replies[at].pending = false;
+        } else {
+            replies.remove(at);
+        }
+        Changes::NOTIFICATIONS
+    }
+
+    /// Forgets replies to notifications that are gone.
+    fn prune_replies(&mut self) {
+        let notifications = &self.notifications;
+        self.replies.retain(|(device, key), _| {
+            notifications.iter().any(|n| n.device == *device && n.notification.key == *key)
+        });
     }
 
     /// Adds a notification in time order (newest first), without its icon.
@@ -536,6 +582,26 @@ mod tests {
         // Unpairing forgets them.
         assert!(s.apply(&NodeEvent::DeviceRemoved(other)).intersects(Changes::NOTIFICATIONS));
         assert!(s.notifications.is_empty());
+    }
+
+    #[test]
+    fn replies_show_until_their_notification_goes() {
+        let mut s = AppState::default();
+        let phone = DeviceId([1; 32]);
+        s.apply(&NodeEvent::NotificationPosted { device: phone, notification: note("a", 10) });
+        s.reply_sending(phone, "a", "On my way");
+        s.reply_sending(phone, "a", "Five minutes");
+        s.reply_done(phone, "a", "On my way", true);
+        s.reply_done(phone, "a", "Five minutes", false);
+        let replies = &s.replies[&(phone, "a".to_owned())];
+        assert_eq!(
+            replies,
+            &[SentReply { text: "On my way".into(), pending: false }],
+            "failed ones are dropped"
+        );
+
+        s.apply(&NodeEvent::NotificationRemoved { device: phone, key: "a".into() });
+        assert!(s.replies.is_empty());
     }
 
     #[test]

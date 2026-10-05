@@ -11,7 +11,7 @@ use nectarlink_core::DeviceId;
 use super::{Edit, diff};
 use crate::{
     core_host, icons,
-    state::{Changes, NotificationView},
+    state::{Changes, NotificationView, SentReply},
 };
 
 #[cxx_qt::bridge]
@@ -65,12 +65,6 @@ pub mod qobject {
         #[inherit]
         #[cxx_name = "endRemoveRows"]
         unsafe fn end_remove_rows(self: Pin<&mut NotificationList>);
-        #[inherit]
-        #[cxx_name = "beginResetModel"]
-        unsafe fn begin_reset_model(self: Pin<&mut NotificationList>);
-        #[inherit]
-        #[cxx_name = "endResetModel"]
-        unsafe fn end_reset_model(self: Pin<&mut NotificationList>);
         #[inherit]
         fn index(self: &NotificationList, row: i32, column: i32, parent: &QModelIndex) -> QModelIndex;
 
@@ -129,6 +123,8 @@ struct Row {
     device_name: String,
     /// A file URL, or "" (the UI then shows the app's initial).
     icon_url: String,
+    /// Replies sent from this PC.
+    replies: Vec<SentReply>,
 }
 
 #[derive(Default)]
@@ -153,6 +149,7 @@ const ROLES: &[&str] = &[
     "replyAction",
     "replyLabel",
     "silent",
+    "replies",
 ];
 const USER_ROLE: i32 = 0x0100;
 
@@ -185,6 +182,16 @@ fn role_value(row: &Row, role: &str) -> QVariant {
         "replyAction" => text(reply.map_or("", |a| a.id.as_str())),
         "replyLabel" => text(reply.map_or("", |a| a.title.as_str())),
         "silent" => QVariant::from(&n.silent),
+        // As JSON: [{ "text", "pending" }].
+        "replies" => text(
+            &serde_json::Value::from(
+                row.replies
+                    .iter()
+                    .map(|r| serde_json::json!({ "text": r.text, "pending": r.pending }))
+                    .collect::<Vec<_>>(),
+            )
+            .to_string(),
+        ),
         _ => QVariant::default(),
     }
 }
@@ -211,47 +218,40 @@ impl qobject::NotificationList {
                         .get(&view.notification.app)
                         .map(|p| icons::file_url(p))
                         .unwrap_or_default(),
+                    replies: s
+                        .replies
+                        .get(&(view.device, view.notification.key.clone()))
+                        .cloned()
+                        .unwrap_or_default(),
                     view: view.clone(),
                 })
                 .collect()
         });
         let root = QModelIndex::default();
-        match diff(&self.rows, &new, key_of) {
-            None => {
-                // SAFETY: begin/end pairs are balanced around the swap.
-                unsafe {
-                    self.as_mut().begin_reset_model();
-                    self.as_mut().rust_mut().rows = new;
-                    self.as_mut().end_reset_model();
-                }
-            }
-            Some(edits) => {
-                for edit in edits {
-                    match edit {
-                        Edit::Remove(row) => {
-                            let r = row as i32;
-                            // SAFETY: row exists; begin/end are balanced.
-                            unsafe {
-                                self.as_mut().begin_remove_rows(&root, r, r);
-                                self.as_mut().rust_mut().rows.remove(row);
-                                self.as_mut().end_remove_rows();
-                            }
-                        }
-                        Edit::Insert(row) => {
-                            let r = row as i32;
-                            // SAFETY: row <= len; begin/end are balanced.
-                            unsafe {
-                                self.as_mut().begin_insert_rows(&root, r, r);
-                                self.as_mut().rust_mut().rows.insert(row, new[row].clone());
-                                self.as_mut().end_insert_rows();
-                            }
-                        }
-                        Edit::Change(row) => {
-                            self.as_mut().rust_mut().rows[row] = new[row].clone();
-                            let index = self.index(row as i32, 0, &root);
-                            self.as_mut().data_changed(&index, &index, &QList::default());
-                        }
+        for edit in diff(&self.rows, &new, key_of) {
+            match edit {
+                Edit::Remove(row) => {
+                    let r = row as i32;
+                    // SAFETY: row exists; begin/end are balanced.
+                    unsafe {
+                        self.as_mut().begin_remove_rows(&root, r, r);
+                        self.as_mut().rust_mut().rows.remove(row);
+                        self.as_mut().end_remove_rows();
                     }
+                }
+                Edit::Insert(row) => {
+                    let r = row as i32;
+                    // SAFETY: row <= len; begin/end are balanced.
+                    unsafe {
+                        self.as_mut().begin_insert_rows(&root, r, r);
+                        self.as_mut().rust_mut().rows.insert(row, new[row].clone());
+                        self.as_mut().end_insert_rows();
+                    }
+                }
+                Edit::Change(row) => {
+                    self.as_mut().rust_mut().rows[row] = new[row].clone();
+                    let index = self.index(row as i32, 0, &root);
+                    self.as_mut().data_changed(&index, &index, &QList::default());
                 }
             }
         }
@@ -348,6 +348,7 @@ mod tests {
             },
             device_name: "Pixel".into(),
             icon_url: String::new(),
+            replies: vec![SentReply { text: "On my way".into(), pending: true }],
         };
         let text = |role| role_value(&row, role).value::<QString>().map(String::from).unwrap_or_default();
         assert_eq!(text("title"), "Sam");
@@ -355,5 +356,6 @@ mod tests {
         assert_eq!(text("replyAction"), "r");
         assert_eq!(text("actions"), r#"[{"id":"m","title":"Mute"}]"#);
         assert_eq!(role_value(&row, "when").value::<f64>(), Some(1_760_000_000_000.0));
+        assert_eq!(text("replies"), r#"[{"pending":true,"text":"On my way"}]"#);
     }
 }
