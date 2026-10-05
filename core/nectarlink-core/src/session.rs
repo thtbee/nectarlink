@@ -166,6 +166,7 @@ impl Session {
                 _ = writer(send, outbox_rx) => {}
                 _ = reader(&s, recv, &weak) => {}
                 _ = heartbeat(&s, &weak) => {}
+                _ = streams(&s, &weak) => {}
                 _ = s.conn.closed() => {}
             }
             cancel.cancel();
@@ -348,6 +349,14 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         }
     }
     Ok(())
+}
+
+/// Streams the other device opens (file transfers), each handled on its own.
+async fn streams(session: &Arc<Session>, shared: &Weak<Shared>) {
+    while let Ok((send, recv)) = session.conn.accept_bi().await {
+        let Some(shared) = shared.upgrade() else { return };
+        tokio::spawn(crate::transfer::accept_stream(shared, session.clone(), send, recv));
+    }
 }
 
 async fn heartbeat(session: &Arc<Session>, shared: &Weak<Shared>) {

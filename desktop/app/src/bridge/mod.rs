@@ -17,6 +17,8 @@ pub mod notifications;
 pub mod pairing;
 #[allow(unsafe_code)]
 pub mod prefs;
+#[allow(unsafe_code)]
+pub mod transfers;
 
 use std::{
     pin::Pin,

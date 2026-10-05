@@ -5,7 +5,11 @@ import android.content.Context
 import android.net.wifi.WifiManager
 import android.service.notification.NotificationListenerService
 import android.util.Log
+import android.net.Uri
 import app.nectarlink.android.BuildConfig
+import app.nectarlink.android.files.OutgoingFiles
+import app.nectarlink.android.files.ReceivedFiles
+import app.nectarlink.android.files.TransferNotifications
 import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.core.Event
@@ -16,6 +20,9 @@ import app.nectarlink.core.NodeOptions
 import app.nectarlink.core.Notification
 import app.nectarlink.core.PairingFailure
 import app.nectarlink.core.PowerLevel
+import app.nectarlink.core.Transfer
+import app.nectarlink.core.TransferDirection
+import app.nectarlink.core.TransferStatus
 import app.nectarlink.core.initLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -86,6 +93,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 appVersion = BuildConfig.VERSION_NAME,
                 power = PowerLevel.BASIC,
                 awayMode = false,
+                downloadsDir = context.cacheDir.resolve("received").absolutePath,
             )
             val started = try {
                 NectarlinkNode.start(options, platform, KeystoreKeyProtector(), this@Core)
@@ -148,6 +156,50 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     override fun onEvent(event: Event) {
         _state.update { it.reduce(event) }
+        if (event is Event.Transfer) onTransfer(event.transfer)
+    }
+
+    // ---- Files ----
+
+    private fun onTransfer(transfer: Transfer) {
+        val pc = _state.value.nameOf(transfer.deviceId).orEmpty()
+        TransferNotifications.update(context, transfer, pc)
+        val done = transfer.status as? TransferStatus.Done ?: return
+        if (transfer.direction != TransferDirection.INCOMING) return
+        // Out of the app's cache, into Downloads, then tell the user.
+        scope.launch(Dispatchers.IO) {
+            val published = done.saved.mapNotNull { ReceivedFiles.publish(context, java.io.File(it)) }
+            TransferNotifications.received(context, transfer, published, pc)
+        }
+    }
+
+    /**
+     * Sends picked or shared files to a PC; problems arrive as messages.
+     * The files are opened right away: Android's permission to read a
+     * shared item ends with the activity that received it.
+     */
+    fun sendFiles(pcId: String, uris: List<Uri>) {
+        val files = OutgoingFiles.open(context, uris)
+        if (files.isEmpty()) {
+            _messages.tryEmit(context.getString(R.string.transfer_nothing))
+            return
+        }
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val node = node ?: return@launch
+            try {
+                node.sendFiles(pcId, files)
+            } catch (e: NectarlinkException) {
+                val name = _state.value.nameOf(pcId).orEmpty()
+                _messages.tryEmit(
+                    if (e is NectarlinkException.Denied) context.getString(R.string.transfer_off_for, name) else describe(e),
+                )
+            }
+        }
+    }
+
+    fun cancelTransfer(id: String) {
+        node?.cancelTransfer(id)
     }
 
     // ---- Clipboard ----

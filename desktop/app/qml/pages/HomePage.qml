@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Dialogs
 import app.nectarlink
 
 // Home: the paired phone at a glance (status, battery, power level) and
@@ -9,6 +10,10 @@ Item {
     id: page
     property bool active: true
     property int current: 0
+    // The device shown, for dropped files.
+    property string currentDeviceId
+    property string currentDeviceName
+    property bool currentCanReceive: false
     signal pairRequested
 
     opacity: active ? 1 : 0
@@ -79,6 +84,48 @@ Item {
         }
     }
 
+    // Files dragged onto the page are sent to the device on screen.
+    DropArea {
+        id: drop
+        anchors.fill: parent
+        enabled: page.currentCanReceive
+        onEntered: (drag) => drag.accepted = drag.hasUrls
+        onDropped: (drag) => {
+            if (drag.hasUrls) {
+                TransferList.send(page.currentDeviceId, drag.urls.map(url => url.toString()))
+                drag.accept(Qt.CopyAction)
+            }
+        }
+    }
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: Theme.contentPadding / 2
+        radius: Theme.radiusXl
+        visible: opacity > 0
+        opacity: drop.containsDrag ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
+        color: Qt.rgba(Theme.primaryContainer.r, Theme.primaryContainer.g, Theme.primaryContainer.b, 0.92)
+        border.width: 2
+        border.color: Theme.primary
+        Column {
+            anchors.centerIn: parent
+            spacing: 12
+            Icon {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 40; height: 40
+                stroke: 1.6
+                path: Icons.send
+                color: Theme.primaryContainerContent
+            }
+            Txt {
+                anchors.horizontalCenter: parent.horizontalCenter
+                role: "headline"
+                color: Theme.primaryContainerContent
+                text: qsTr("Drop to send to %1").arg(page.currentDeviceName)
+            }
+        }
+    }
+
     component DeviceHome: Row {
         id: home
         required property string deviceId
@@ -94,6 +141,16 @@ Item {
         required property string power
         required property real lastSeen
         required property real pairedAt
+
+        // Dropped files go to the device on screen.
+        Binding { target: page; property: "currentDeviceId"; value: home.deviceId; when: home.visible }
+        Binding { target: page; property: "currentDeviceName"; value: home.name; when: home.visible }
+        Binding {
+            target: page
+            property: "currentCanReceive"
+            value: home.feature("files.send").state === "available"
+            when: home.visible
+        }
 
         // Re-read capabilities whenever any matrix changes.
         function feature(id) {
@@ -224,10 +281,62 @@ Item {
                 ActionTile {
                     width: actions.tileWidth
                     title: qsTr("Send files")
-                    subtitle: qsTr("Or drop anywhere")
+                    subtitle: qsTr("Or drop them here")
                     iconPath: Icons.send
                     feature: home.feature("files.send")
-                    ready: false
+                    onClicked: filePicker.open()
+                }
+            }
+            FileDialog {
+                id: filePicker
+                title: qsTr("Send to %1").arg(home.name)
+                fileMode: FileDialog.OpenFiles
+                onAccepted: TransferList.send(home.deviceId, selectedFiles.map(url => url.toString()))
+            }
+
+            // ---- Transfers ----
+            Card {
+                width: parent.width
+                visible: TransferList.count > 0
+                Column {
+                    width: parent.width
+                    spacing: 4
+                    Item {
+                        width: parent.width
+                        height: Math.max(transfersHeader.height, clearTransfers.height)
+                        Txt {
+                            id: transfersHeader
+                            anchors.verticalCenter: parent.verticalCenter
+                            role: "label"
+                            muted: true
+                            text: qsTr("Transfers")
+                        }
+                        Button {
+                            id: clearTransfers
+                            anchors.right: parent.right
+                            visible: TransferList.count > TransferList.active
+                            variant: "text"
+                            size: "sm"
+                            text: qsTr("Clear finished")
+                            onClicked: TransferList.clearFinished()
+                        }
+                    }
+                    ListView {
+                        id: transferList
+                        width: parent.width
+                        height: contentHeight
+                        interactive: false
+                        model: TransferList
+                        delegate: TransferItem { width: transferList.width }
+                        add: Transition {
+                            enabled: !Theme.reduceMotion
+                            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200 }
+                        }
+                        displaced: Transition {
+                            enabled: !Theme.reduceMotion
+                            NumberAnimation { property: "y"; duration: 220; easing.type: Easing.OutCubic }
+                        }
+                    }
                 }
             }
 

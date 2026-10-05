@@ -9,9 +9,10 @@ use std::{
 };
 
 use nectarlink_core::{
-    Battery, DeviceInfo, DeviceKind, Error, FeatureState, LinkState, Node, NodeConfig, NodeEvent,
-    Notification, NotificationAction, NotificationError, PairingEvent, PairingFailure, PairingUri,
-    PlainKeyProtector, Platform, PowerLevel,
+    Battery, DeviceInfo, DeviceKind, Direction, Error, FeatureState, FileSource, LinkState, Node, NodeConfig,
+    NodeEvent, Notification, NotificationAction, NotificationError, OutgoingFile, PairingEvent,
+    PairingFailure, PairingUri, PlainKeyProtector, Platform, PowerLevel, Transfer, TransferFailure,
+    TransferState,
     features::{Effort, Upgrade, UpgradeAction},
 };
 use tempfile::TempDir;
@@ -350,7 +351,13 @@ async fn reconnects_after_a_restart() {
     let TestDevice { node: old_node, dir, .. } = phone;
     drop(old_node);
     let mut phone = start_in(dir, "Pixel", DeviceKind::Phone).await;
-    assert_eq!(ports(phone.node.direct_addrs().await), old_ports, "the port is kept across restarts");
+    // The port is kept, unless something else took it in the meantime
+    // (other tests run in parallel); then any free port is fine.
+    let new_ports = ports(phone.node.direct_addrs().await);
+    if new_ports != old_ports {
+        let taken = old_ports.iter().any(|p| std::net::UdpSocket::bind(("0.0.0.0", *p)).is_err());
+        assert!(taken, "the port is kept across restarts when it's free: {old_ports:?} -> {new_ports:?}");
+    }
     assert_eq!(phone.node.device_id(), phone_id, "identity survives the restart");
     assert_eq!(phone.node.paired_devices().unwrap().len(), 1, "pairing survives the restart");
 
@@ -576,4 +583,162 @@ async fn clipboard_text_goes_both_ways_with_consent() {
 
     let huge = "x".repeat(nectarlink_core::CLIP_MAX_BYTES + 1);
     assert!(matches!(pc.node.send_clipboard(phone_id, huge).await, Err(Error::TooLarge)));
+}
+
+/// Deterministic, incompressible-looking test data.
+fn data(len: usize, seed: u64) -> Vec<u8> {
+    let mut x = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+    (0..len)
+        .map(|_| {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x as u8
+        })
+        .collect()
+}
+
+fn outgoing(dir: &std::path::Path, name: &str, contents: &[u8]) -> OutgoingFile {
+    let path = dir.join(name);
+    std::fs::write(&path, contents).unwrap();
+    OutgoingFile { name: name.into(), source: FileSource::Path(path) }
+}
+
+/// Waits for a transfer to reach a state matching `pick`.
+async fn wait_transfer<T>(
+    dev: &mut TestDevice,
+    id: &str,
+    what: &str,
+    mut pick: impl FnMut(&Transfer) -> Option<T>,
+) -> T {
+    wait_for(dev, what, |e| match e {
+        NodeEvent::Transfer(t) if t.id == id => pick(t),
+        _ => None,
+    })
+    .await
+}
+
+fn saved(t: &Transfer) -> Option<Vec<std::path::PathBuf>> {
+    match &t.state {
+        TransferState::Done { saved } => Some(saved.clone()),
+        TransferState::Failed(f) => panic!("transfer failed: {f:?}"),
+        TransferState::Cancelled => panic!("transfer cancelled"),
+        _ => None,
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn files_arrive_intact_under_free_names() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    let src = tempfile::tempdir().unwrap();
+    let big = data(3 * 1024 * 1024 + 17, 1);
+    let small = b"hello".to_vec();
+
+    // The phone already has a "notes.txt".
+    let downloads = phone.dir.path().join("received");
+    std::fs::create_dir_all(&downloads).unwrap();
+    std::fs::write(downloads.join("notes.txt"), "old").unwrap();
+
+    let files = vec![outgoing(src.path(), "video.bin", &big), outgoing(src.path(), "notes.txt", &small)];
+    let id = with_timeout("send", pc.node.send_files(phone_id, files)).await.expect("send starts");
+
+    let received = wait_transfer(&mut phone, &id, "received", |t| {
+        assert_eq!(t.direction, Direction::Incoming);
+        assert_eq!(t.names, ["video.bin", "notes.txt"]);
+        saved(t)
+    })
+    .await;
+    assert_eq!(received, [downloads.join("video.bin"), downloads.join("notes (2).txt")]);
+    assert_eq!(std::fs::read(&received[0]).unwrap(), big);
+    assert_eq!(std::fs::read(&received[1]).unwrap(), small);
+    assert_eq!(std::fs::read(downloads.join("notes.txt")).unwrap(), b"old", "existing files are kept");
+
+    let sent = wait_transfer(&mut pc, &id, "sent", |t| {
+        assert_eq!(t.direction, Direction::Outgoing);
+        saved(t).map(|_| t.done)
+    })
+    .await;
+    assert_eq!(sent, big.len() as u64 + 5);
+    assert!(
+        std::fs::read_dir(phone.dir.path().join("incoming")).unwrap().next().is_none(),
+        "no partial files are left"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn files_need_the_toggle_and_can_be_cancelled() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let src = tempfile::tempdir().unwrap();
+
+    // The phone doesn't take files from this PC.
+    phone.node.set_device_toggle(pc_id, "files", false).unwrap();
+    let id = pc.node.send_files(phone_id, vec![outgoing(src.path(), "a.txt", b"a")]).await.unwrap();
+    let state =
+        wait_transfer(&mut pc, &id, "refused", |t| t.state.is_finished().then(|| t.state.clone())).await;
+    assert_eq!(state, TransferState::Failed(TransferFailure::Denied));
+    phone.node.set_device_toggle(pc_id, "files", true).unwrap();
+    // This PC doesn't send files to the phone.
+    pc.node.set_device_toggle(phone_id, "files", false).unwrap();
+    assert!(matches!(
+        pc.node.send_files(phone_id, vec![outgoing(src.path(), "b.txt", b"b")]).await,
+        Err(Error::Denied)
+    ));
+    pc.node.set_device_toggle(phone_id, "files", true).unwrap();
+
+    // Cancelled by the receiver as soon as bytes flow.
+    let big = data(64 * 1024 * 1024, 2);
+    let id = pc.node.send_files(phone_id, vec![outgoing(src.path(), "big.bin", &big)]).await.unwrap();
+    wait_transfer(&mut phone, &id, "receiving", |t| {
+        (t.state == TransferState::Running && t.done > 0).then_some(())
+    })
+    .await;
+    phone.node.cancel_transfer(&id);
+    let on_phone =
+        wait_transfer(&mut phone, &id, "cancelled here", |t| t.state.is_finished().then(|| t.state.clone()))
+            .await;
+    let on_pc =
+        wait_transfer(&mut pc, &id, "cancelled there", |t| t.state.is_finished().then(|| t.state.clone()))
+            .await;
+    assert_eq!((on_phone, on_pc), (TransferState::Cancelled, TransferState::Cancelled));
+    assert!(!phone.dir.path().join("received").join("big.bin").exists());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn transfers_resume_after_the_receiver_restarts() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let src = tempfile::tempdir().unwrap();
+    let big = data(96 * 1024 * 1024, 3);
+    let id = pc.node.send_files(phone_id, vec![outgoing(src.path(), "big.bin", &big)]).await.unwrap();
+
+    // The phone goes away part way through.
+    let before = wait_transfer(&mut phone, &id, "receiving", |t| (t.done > 0).then_some(t.done)).await;
+    phone.node.shutdown().await;
+    let TestDevice { node, dir, .. } = phone;
+    drop(node);
+    let interrupted = std::fs::metadata(dir.path().join("incoming").join(&id).join("0.part")).unwrap().len();
+    assert!(interrupted >= before && interrupted < big.len() as u64, "{interrupted} of {}", big.len());
+    wait_transfer(&mut pc, &id, "waiting for the phone", |t| {
+        (t.state == TransferState::Waiting).then_some(())
+    })
+    .await;
+
+    // Back again: the transfer continues where it stopped.
+    let mut phone = start_in(dir, "Pixel", DeviceKind::Phone).await;
+    let resumed_at =
+        wait_transfer(&mut phone, &id, "resumed", |t| (t.state == TransferState::Running).then_some(t.done))
+            .await;
+    assert!(resumed_at >= interrupted, "resumed at {resumed_at}, had {interrupted}");
+    let received = wait_transfer(&mut phone, &id, "received", saved).await;
+    assert_eq!(std::fs::read(&received[0]).unwrap(), big);
+    wait_transfer(&mut pc, &id, "sent", saved).await;
+    let _ = pc_id;
 }

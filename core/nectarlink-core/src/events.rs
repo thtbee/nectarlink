@@ -6,7 +6,7 @@ use nectarlink_protocol::{
     messages::{Battery, DeviceInfo, Notification, PowerLevel},
 };
 
-use crate::features::CapabilityMatrix;
+use crate::{features::CapabilityMatrix, transfer::Transfer};
 
 /// How a session is currently carried.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -119,4 +119,6 @@ pub enum NodeEvent {
     ClipboardReceived {
         device: DeviceId,
     },
+    /// A file transfer started, progressed or finished.
+    Transfer(Transfer),
 }

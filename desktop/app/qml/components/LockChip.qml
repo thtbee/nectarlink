@@ -13,7 +13,10 @@ Rectangle {
         let what = ""
         switch (s.action) {
         case "raisePower": what = s.target === "elevated" ? qsTr("Elevated") : qsTr("Assist"); break
-        case "grantPermission": what = qsTr("Permission"); break
+        case "grantPermission":
+            what = feature.target === "notification_access" ? qsTr("Allow notification access on the phone")
+                                                             : qsTr("Allow it on the phone")
+            break
         case "enableAddon": what = qsTr("Add-on"); break
         case "enablePath": what = qsTr("Away mode"); break
         case "enableToggle": what = qsTr("Turned off"); break

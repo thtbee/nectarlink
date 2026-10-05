@@ -317,6 +317,83 @@ impl std::fmt::Debug for NotifyAction {
     }
 }
 
+// ---- Files (docs/protocol/files.md) ----
+
+/// The files service and its one operation, for stream headers.
+pub mod files {
+    pub const SERVICE: &str = "files";
+    pub const OP_SEND: &str = "send";
+    pub const VERSION: u32 = 1;
+    pub const OFFER: &str = "files.offer";
+    pub const ACCEPT: &str = "files.accept";
+    pub const DONE: &str = "files.done";
+    /// Stream reset code for a cancelled transfer.
+    pub const CANCELLED: u32 = 10;
+    pub const MAX_FILES: usize = 1000;
+    pub const MAX_NAME_BYTES: usize = 255;
+}
+
+/// One file of an offer.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FileEntry {
+    pub name: String,
+    pub size: u64,
+}
+
+/// Never prints the name (protocol v0 §11).
+impl std::fmt::Debug for FileEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FileEntry").field("size", &self.size).finish_non_exhaustive()
+    }
+}
+
+/// Body of `files.offer`.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FilesOffer {
+    pub id: String,
+    pub files: Vec<FileEntry>,
+}
+
+/// Never prints file names (protocol v0 §11).
+impl std::fmt::Debug for FilesOffer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FilesOffer").field("id", &self.id).field("files", &self.files.len()).finish()
+    }
+}
+
+/// Body of `files.accept`: bytes already received, per file.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FilesAccept {
+    pub have: Vec<u64>,
+}
+
+/// Whether a name is a plain file name the spec allows (no path, no
+/// control characters, not `.` or `..`).
+pub fn is_valid_file_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= files::MAX_NAME_BYTES
+        && name != "."
+        && name != ".."
+        && !name.chars().any(|c| c == '/' || c == '\\' || c.is_control())
+}
+
+/// Whether a transfer ID is 16–64 of `[A-Za-z0-9_-]`.
+pub fn is_valid_transfer_id(id: &str) -> bool {
+    (16..=64).contains(&id.len()) && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+}
+
+impl FilesOffer {
+    pub fn is_valid(&self) -> bool {
+        is_valid_transfer_id(&self.id)
+            && (1..=files::MAX_FILES).contains(&self.files.len())
+            && self.files.iter().all(|f| is_valid_file_name(&f.name))
+    }
+
+    pub fn total_size(&self) -> u64 {
+        self.files.iter().map(|f| f.size).fold(0, u64::saturating_add)
+    }
+}
+
 // ---- Clipboard (docs/protocol/clipboard.md) ----
 
 /// Largest clipboard text sent or accepted, in UTF-8 bytes.
@@ -461,6 +538,22 @@ mod tests {
         assert!(!shown.contains("Lunch") && !shown.contains("Sam"), "{shown}");
         let action = NotifyAction { key: "k".into(), action: "0".into(), reply: Some("secret".into()) };
         assert!(!format!("{action:?}").contains("secret"));
+    }
+
+    #[test]
+    fn file_offers_are_validated() {
+        let offer = |id: &str, names: &[&str]| FilesOffer {
+            id: id.into(),
+            files: names.iter().map(|n| FileEntry { name: (*n).into(), size: 1 }).collect(),
+        };
+        assert!(offer("abcdefghijklmnop", &["photo.jpg", "Résumé (final).pdf"]).is_valid());
+        for bad in ["", ".", "..", "a/b", "a\\b", "x\u{0}y", "tab\there"] {
+            assert!(!offer("abcdefghijklmnop", &[bad]).is_valid(), "{bad:?}");
+        }
+        assert!(!offer("short", &["a"]).is_valid(), "IDs are 16+ characters");
+        assert!(!offer("abcdefghijklmnop!", &["a"]).is_valid());
+        assert!(!offer("abcdefghijklmnop", &[]).is_valid(), "at least one file");
+        assert!(!format!("{:?}", offer("abcdefghijklmnop", &["secret.pdf"])).contains("secret"));
     }
 
     #[test]

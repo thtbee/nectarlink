@@ -329,6 +329,7 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("messages", true),
     ("calls", true),
     ("clipboard", true),
+    ("files", true),
     ("photos", true),
     ("pc_actions", true),
     // Browsing the PC's files from anywhere is opt-in.
@@ -606,7 +607,11 @@ pub const FEATURES: &[FeatureDef] = &[
     FeatureDef {
         id: "files.send",
         group: FeatureGroup::Files,
-        requires: &[phone("files.transfer", UPDATE), desktop("files.transfer", UPDATE)],
+        requires: &[
+            phone("files.transfer", UPDATE),
+            desktop("files.transfer", UPDATE),
+            DeviceToggle("files"),
+        ],
         partial: None,
     },
     FeatureDef {

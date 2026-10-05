@@ -37,6 +37,7 @@ use crate::{
     pairing::{self, PairingState},
     session::{self, CLOSE_DUPLICATE, CLOSE_NORMAL, REQUEST_TIMEOUT, Session},
     store::Store,
+    transfer,
 };
 
 const DIAL_TIMEOUT: Duration = Duration::from_secs(15);
@@ -52,7 +53,7 @@ const EVENT_CAPACITY: usize = 512;
 const IDLE_TIMEOUT: Duration = Duration::from_secs(8);
 
 /// Capabilities every build offers.
-const BASE_CAPABILITIES: &[&str] = &["core.ping", "device.battery", "device.ring"];
+const BASE_CAPABILITIES: &[&str] = &["core.ping", "device.battery", "device.ring", "files.transfer"];
 
 /// This device's mutable description, sent to peers.
 #[derive(Debug, Clone)]
@@ -101,6 +102,11 @@ pub(crate) struct Shared {
     memory: MemoryLookup,
     /// This device's notifications, when it mirrors them (phones).
     pub notifications: Feed,
+    pub data_dir: std::path::PathBuf,
+    /// Where received files go.
+    pub downloads_dir: std::path::PathBuf,
+    /// Running transfers, to cancel them.
+    transfers: Mutex<HashMap<String, CancellationToken>>,
     /// The node's runtime, for work started from non-async callers.
     runtime: tokio::runtime::Handle,
 }
@@ -119,6 +125,19 @@ impl Shared {
     pub fn emit(&self, event: NodeEvent) {
         // No subscribers is fine; events are a UI convenience.
         let _ = self.events.send(event);
+    }
+
+    /// Where partly received files wait until complete.
+    pub fn incoming_dir(&self) -> std::path::PathBuf {
+        self.data_dir.join("incoming")
+    }
+
+    pub fn register_transfer(&self, id: &str, cancel: CancellationToken) {
+        lock(&self.transfers).insert(id.to_owned(), cancel);
+    }
+
+    pub fn unregister_transfer(&self, id: &str) {
+        lock(&self.transfers).remove(id);
     }
 
     /// Every connected device's session.
@@ -515,7 +534,17 @@ impl Node {
         let saved = if config.port == 0 { Ports::load(&config.data_dir) } else { None };
         let wanted =
             if config.port != 0 { Some(Ports { v4: config.port, v6: Some(config.port) }) } else { saved };
-        let endpoint = match bind_endpoint(&config, secret.clone(), wanted).await {
+        // Right after a restart the previous process may still be letting go
+        // of the ports, so try them for a moment before taking others.
+        let mut bound = bind_endpoint(&config, secret.clone(), wanted).await;
+        for _ in 0..PORT_RETRIES {
+            if bound.is_ok() || wanted.is_none() {
+                break;
+            }
+            tokio::time::sleep(PORT_RETRY_DELAY).await;
+            bound = bind_endpoint(&config, secret.clone(), wanted).await;
+        }
+        let endpoint = match bound {
             Ok(endpoint) => endpoint,
             Err(e) if config.port == 0 && wanted.is_some() => {
                 tracing::info!(error = %e, "saved ports unavailable; using others");
@@ -559,6 +588,9 @@ impl Node {
             away_mode: config.away_mode,
             memory,
             notifications: Feed::default(),
+            data_dir: config.data_dir.clone(),
+            downloads_dir: config.downloads_dir.clone().unwrap_or_else(|| config.data_dir.join("received")),
+            transfers: Mutex::new(HashMap::new()),
             runtime: tokio::runtime::Handle::current(),
         });
 
@@ -570,6 +602,9 @@ impl Node {
             .accept(ALPN_SESSION, SessionProtocol(Arc::downgrade(&shared)))
             .accept(ALPN_PAIR, PairProtocol(Arc::downgrade(&shared)))
             .spawn();
+
+        let incoming = shared.incoming_dir();
+        tokio::task::spawn_blocking(move || transfer::clean_incoming(&incoming));
 
         for peer in shared.store.list_peers()? {
             shared.remember_addrs(&peer.id, &peer.last_addrs);
@@ -786,6 +821,22 @@ impl Node {
         }
     }
 
+    // ---- Files (docs/protocol/files.md) ----
+
+    /// Sends files to a paired device; returns the transfer's ID. Progress
+    /// and the outcome arrive as [`NodeEvent::Transfer`]; the transfer
+    /// waits for the device to connect and resumes after interruptions.
+    pub async fn send_files(&self, peer: DeviceId, files: Vec<transfer::OutgoingFile>) -> Result<String> {
+        transfer::send(&self.shared, peer, files).await
+    }
+
+    /// Cancels a transfer in either direction. Unknown IDs are ignored.
+    pub fn cancel_transfer(&self, id: &str) {
+        if let Some(cancel) = lock(&self.shared.transfers).get(id) {
+            cancel.cancel();
+        }
+    }
+
     // ---- Clipboard (docs/protocol/clipboard.md) ----
 
     /// Puts text on a paired device's clipboard. Fails with
@@ -886,6 +937,9 @@ impl Node {
 }
 
 const PORT_FILE: &str = "port";
+/// Retrying the saved ports: 5 × 200 ms.
+const PORT_RETRIES: usize = 5;
+const PORT_RETRY_DELAY: Duration = Duration::from_millis(200);
 
 /// The UDP ports the endpoint listens on, remembered across restarts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

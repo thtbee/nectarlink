@@ -17,6 +17,7 @@ mod notifications;
 mod pairing;
 mod session;
 mod store;
+mod transfer;
 
 pub use config::{NodeConfig, NoopPlatform, Platform};
 pub use error::{Error, Result, Side};
@@ -34,6 +35,9 @@ pub use nectarlink_protocol::{
 };
 pub use node::Node;
 pub use notifications::NotificationError;
+pub use transfer::{
+    Direction, FileSource, OutgoingFile, Transfer, TransferFailure, TransferState, safe_file_name,
+};
 
 pub(crate) fn device_id(key: &iroh::PublicKey) -> DeviceId {
     DeviceId(*key.as_bytes())

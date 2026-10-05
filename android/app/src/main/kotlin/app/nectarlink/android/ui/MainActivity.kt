@@ -157,7 +157,15 @@ private fun App(core: Core, state: CoreState, preferences: Preferences) {
         ) { padding ->
             val modifier = Modifier.fillMaxSize().padding(padding)
             when (tab) {
-                Tab.Home -> HomeScreen(state, core::ring, core::stopRinging, onPairNew = { pairing = true }, modifier = modifier)
+                Tab.Home -> HomeScreen(
+                    state,
+                    core::ring,
+                    core::stopRinging,
+                    onPairNew = { pairing = true },
+                    onSendFiles = core::sendFiles,
+                    onCancelTransfer = core::cancelTransfer,
+                    modifier = modifier,
+                )
                 Tab.Settings -> SettingsScreen(
                     state = state,
                     appearance = preferences.appearance.collectAsStateWithLifecycle().value,

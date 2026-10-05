@@ -2,10 +2,13 @@
 package app.nectarlink.android.clipboard
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
+import androidx.core.content.IntentCompat
 import app.nectarlink.android.NectarlinkApplication
 import app.nectarlink.android.R
 import kotlinx.coroutines.CoroutineScope
@@ -15,9 +18,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 /**
- * Sends text to the connected PCs, without a screen of its own: text shared
- * from another app, or the clipboard (from the Quick Settings tile or the
- * connection notification). Android lets only the focused app read the
+ * Sends to the connected PCs, without a screen of its own: files or text
+ * shared from another app, or the clipboard (from the Quick Settings tile or
+ * the connection notification). Android lets only the focused app read the
  * clipboard, which is why this is an activity: it reads once it has focus.
  */
 class SendActivity : Activity() {
@@ -26,11 +29,45 @@ class SendActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (intent?.action == Intent.ACTION_SEND) {
-            val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
-            if (text.isNullOrBlank()) finishWith(getString(R.string.clip_nothing_shared)) else send(text)
+        val intent = intent ?: return finish()
+        when (intent.action) {
+            Intent.ACTION_SEND -> {
+                val stream = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+                val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+                when {
+                    stream != null -> sendFiles(listOf(stream))
+                    !text.isNullOrBlank() -> send(text)
+                    else -> finishWith(getString(R.string.clip_nothing_shared))
+                }
+            }
+            Intent.ACTION_SEND_MULTIPLE -> {
+                val streams = IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+                if (streams.isNullOrEmpty()) finishWith(getString(R.string.transfer_nothing)) else sendFiles(streams)
+            }
         }
         // The clipboard is read in onWindowFocusChanged.
+    }
+
+    /** Files go to one PC: the connected one, or the one the user picks. */
+    private fun sendFiles(uris: List<Uri>) {
+        sent = true
+        val core = (application as NectarlinkApplication).core
+        val pcs = core.state.value.devices.filter { it.online }
+        when (pcs.size) {
+            0 -> finishWith(getString(R.string.clip_no_pc))
+            1 -> {
+                core.sendFiles(pcs[0].id, uris)
+                finishWith(getString(R.string.transfer_sending, pcs[0].name))
+            }
+            else -> AlertDialog.Builder(this)
+                .setTitle(R.string.transfer_pick_pc)
+                .setItems(pcs.map { it.name }.toTypedArray()) { _, which ->
+                    core.sendFiles(pcs[which].id, uris)
+                    finishWith(getString(R.string.transfer_sending, pcs[which].name))
+                }
+                .setOnCancelListener { finish() }
+                .show()
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

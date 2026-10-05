@@ -112,6 +112,17 @@ fn show(device: DeviceId, n: &Notification) {
 
 /// What the user did with a toast.
 pub fn on_toast(event: ToastEvent) {
+    // Received-file toasts: open the file, or show it in its folder.
+    match &event {
+        ToastEvent::Opened { device, key } if device == crate::transfers::TOAST_GROUP => {
+            return crate::transfers::open(std::path::Path::new(key));
+        }
+        ToastEvent::Action { device, key, .. } if device == crate::transfers::TOAST_GROUP => {
+            return crate::transfers::show_in_folder(std::path::Path::new(key));
+        }
+        ToastEvent::Dismissed { device, .. } if device == crate::transfers::TOAST_GROUP => return,
+        _ => {}
+    }
     match event {
         ToastEvent::Opened { .. } => crate::bridge::app::request_activation(),
         ToastEvent::Action { device, key, action } => run_action(&device, key, action, None),

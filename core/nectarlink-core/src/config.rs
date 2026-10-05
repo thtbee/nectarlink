@@ -27,6 +27,9 @@ pub struct NodeConfig {
     /// How the device key is protected at rest. `None` uses the platform
     /// default (DPAPI on Windows).
     pub key_protector: Option<std::sync::Arc<dyn KeyProtector>>,
+    /// Where received files go once complete. `None`: a `received` folder
+    /// in `data_dir`.
+    pub downloads_dir: Option<PathBuf>,
 }
 
 impl NodeConfig {
@@ -40,6 +43,7 @@ impl NodeConfig {
             lan_discovery: true,
             port: 0,
             key_protector: None,
+            downloads_dir: None,
         }
     }
 }
@@ -54,6 +58,7 @@ impl fmt::Debug for NodeConfig {
             .field("away_mode", &self.away_mode)
             .field("lan_discovery", &self.lan_discovery)
             .field("port", &self.port)
+            .field("downloads_dir", &self.downloads_dir)
             .finish_non_exhaustive()
     }
 }

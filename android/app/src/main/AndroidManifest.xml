@@ -73,9 +73,29 @@
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
+
+        <receiver
+            android:name=".files.TransferNotifications$CancelReceiver"
+            android:exported="false" />
+
+        <!-- Opening received files on Android 8–9 (later versions use MediaStore). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <service
             android:name=".clipboard.ClipboardTileService"

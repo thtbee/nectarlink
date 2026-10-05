@@ -18,6 +18,7 @@ mod palette;
 mod qr;
 mod settings;
 mod state;
+mod transfers;
 mod win;
 
 use std::{

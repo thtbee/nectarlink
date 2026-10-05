@@ -57,6 +57,23 @@
     <string name="notifications_restricted">Switch greyed out? Open App info, tap ⋮, choose “Allow restricted settings”, then try again.</string>
     <string name="action_allow">Allow</string>
     <string name="clip_share_label">Send to PC</string>
+    <string name="channel_transfers">File transfers</string>
+    <string name="channel_received">Received files</string>
+    <string name="action_send_files">Send files</string>
+    <string name="transfers_title">Transfers</string>
+    <string name="transfer_sending">Sending to %1$s</string>
+    <string name="transfer_receiving">Receiving from %1$s</string>
+    <string name="transfer_waiting">Waiting for %1$s</string>
+    <string name="transfer_received_from">From %1$s · in Download/Nectarlink</string>
+    <string name="transfer_sent_to">Sent to %1$s</string>
+    <string name="transfer_cancelled">Cancelled</string>
+    <string name="transfer_denied">%1$s doesn’t accept files from this phone.</string>
+    <string name="transfer_unreachable">Couldn’t reach %1$s.</string>
+    <string name="transfer_no_space">There isn’t enough space.</string>
+    <string name="transfer_failed">The transfer didn’t go through.</string>
+    <string name="transfer_nothing">Those files can’t be opened.</string>
+    <string name="transfer_off_for">Files are turned off for %1$s.</string>
+    <string name="transfer_pick_pc">Send to which PC?</string>
     <string name="clip_tile_label">Send clipboard</string>
     <string name="action_send_clipboard">Send clipboard</string>
     <string name="clip_sent_to">Sent to %1$s</string>
@@ -101,4 +118,8 @@
     <string name="notification_connected_many">Connected to %1$d PCs</string>
     <string name="notification_waiting">Waiting for your PC</string>
     <string name="notification_not_paired">Not paired with a PC yet</string>
+    <plurals name="transfer_files">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
 </resources>

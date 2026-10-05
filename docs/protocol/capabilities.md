@@ -21,7 +21,7 @@ capability is missing.
 | `core.ping` | Answers `ping` | always offered |
 | `device.battery` | Sends `event.battery` | always offered |
 | `device.ring` | Rings on `device.ring`, even on silent | always offered |
-| `files.transfer` | Sends and receives files | app update |
+| `files.transfer` | Sends and receives files ([files service](files.md)) | app update |
 | `media.control` | Exposes its media sessions for remote control (phone: needs notification access) | phone: notification access · desktop: app update |
 
 ## Phone

@@ -33,6 +33,7 @@ const QML: &[&str] = &[
     "qml/components/StatusDot.qml",
     "qml/components/Toast.qml",
     "qml/components/Toggle.qml",
+    "qml/components/TransferItem.qml",
     "qml/components/Txt.qml",
     "qml/pages/HomePage.qml",
     "qml/pages/PairingPanel.qml",
@@ -81,6 +82,7 @@ fn main() {
             "src/bridge/notifications.rs",
             "src/bridge/pairing.rs",
             "src/bridge/prefs.rs",
+            "src/bridge/transfers.rs",
         ])
         .build();
 

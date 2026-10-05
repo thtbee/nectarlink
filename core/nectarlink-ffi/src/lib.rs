@@ -172,6 +172,65 @@ impl std::fmt::Debug for Notification {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum TransferDirection {
+    Outgoing,
+    Incoming,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum TransferStatus {
+    /// Waiting for the other device (to connect, or to continue).
+    Waiting,
+    Running,
+    /// `saved`: where received files are, one path per file (empty when
+    /// sending).
+    Done {
+        saved: Vec<String>,
+    },
+    /// `reason`: "denied", "unreachable", "noSpace", "interrupted" or
+    /// "other".
+    Failed {
+        reason: String,
+    },
+    Cancelled,
+}
+
+/// A file transfer (docs/protocol/files.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Transfer {
+    pub id: String,
+    /// The other device.
+    pub device_id: String,
+    pub direction: TransferDirection,
+    pub names: Vec<String>,
+    pub total: u64,
+    pub done: u64,
+    pub status: TransferStatus,
+}
+
+/// Never prints file names (protocol v0 §11).
+impl std::fmt::Debug for Transfer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Transfer").field("id", &self.id).field("status", &self.status).finish_non_exhaustive()
+    }
+}
+
+/// A file to send.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum FileToSend {
+    /// An open, readable descriptor (Android: from a content URI). The core
+    /// takes ownership and closes it.
+    Fd {
+        name: String,
+        fd: i32,
+    },
+    Path {
+        name: String,
+        path: String,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct DeviceToggle {
     pub name: String,
@@ -244,6 +303,10 @@ pub enum Event {
     /// A device put text on this phone's clipboard.
     ClipboardReceived {
         id: String,
+    },
+    /// A file transfer started, progressed or finished.
+    Transfer {
+        transfer: Transfer,
     },
 }
 
@@ -480,6 +543,66 @@ impl From<Notification> for core::Notification {
     }
 }
 
+impl From<core::Transfer> for Transfer {
+    fn from(t: core::Transfer) -> Self {
+        Transfer {
+            id: t.id,
+            device_id: t.device.to_string(),
+            direction: match t.direction {
+                core::Direction::Outgoing => TransferDirection::Outgoing,
+                core::Direction::Incoming => TransferDirection::Incoming,
+            },
+            names: t.names,
+            total: t.total,
+            done: t.done,
+            status: match t.state {
+                core::TransferState::Waiting => TransferStatus::Waiting,
+                core::TransferState::Running => TransferStatus::Running,
+                core::TransferState::Done { saved } => TransferStatus::Done {
+                    saved: saved.into_iter().map(|p| p.to_string_lossy().into_owned()).collect(),
+                },
+                core::TransferState::Failed(failure) => TransferStatus::Failed {
+                    reason: match failure {
+                        core::TransferFailure::Denied => "denied",
+                        core::TransferFailure::Unreachable => "unreachable",
+                        core::TransferFailure::NoSpace => "noSpace",
+                        core::TransferFailure::Interrupted => "interrupted",
+                        core::TransferFailure::Other(_) => "other",
+                    }
+                    .into(),
+                },
+                core::TransferState::Cancelled => TransferStatus::Cancelled,
+            },
+        }
+    }
+}
+
+fn file_to_send(file: FileToSend) -> Result<core::OutgoingFile> {
+    Ok(match file {
+        FileToSend::Path { name, path } => {
+            core::OutgoingFile { name, source: core::FileSource::Path(path.into()) }
+        }
+        #[cfg(unix)]
+        FileToSend::Fd { name, fd } => {
+            use std::os::fd::FromRawFd;
+            if fd < 0 {
+                return Err(NectarlinkError::Internal { reason: "invalid file descriptor".into() });
+            }
+            // SAFETY: the caller hands over an open descriptor it no longer
+            // uses (documented on `FileToSend::Fd`); the File closes it.
+            #[allow(unsafe_code)]
+            let file = unsafe { std::fs::File::from_raw_fd(fd) };
+            core::OutgoingFile { name, source: core::FileSource::File(file) }
+        }
+        #[cfg(not(unix))]
+        FileToSend::Fd { .. } => {
+            return Err(NectarlinkError::Internal {
+                reason: "file descriptors exist only on Android".into(),
+            });
+        }
+    })
+}
+
 fn upgrade(u: core::features::Upgrade) -> Upgrade {
     let (action, target) = u.action.describe();
     Upgrade { action: action.into(), target, minutes: u.effort.minutes() }
@@ -543,6 +666,7 @@ impl From<NodeEvent> for Event {
                 Event::NotificationRemoved { id: device.to_string(), key }
             }
             NodeEvent::ClipboardReceived { device } => Event::ClipboardReceived { id: device.to_string() },
+            NodeEvent::Transfer(t) => Event::Transfer { transfer: t.into() },
         }
     }
 }
@@ -676,6 +800,9 @@ pub struct NodeOptions {
     pub power: PowerLevel,
     /// Allow connections through relays when away from home.
     pub away_mode: bool,
+    /// Where received files are put once complete (the app then moves them
+    /// where the user finds them).
+    pub downloads_dir: String,
 }
 
 /// The Nectarlink engine. One per app process.
@@ -724,6 +851,7 @@ impl NectarlinkNode {
             NodeConfig::new(PathBuf::from(options.data_dir), options.device.into(), options.app_version);
         config.power = options.power.into();
         config.away_mode = options.away_mode;
+        config.downloads_dir = Some(PathBuf::from(options.downloads_dir));
         config.key_protector = Some(Arc::new(KeyProtectorAdapter(key_protector)));
         let node = runtime.block_on(Node::start(config, Arc::new(PlatformAdapter(platform))))?;
 
@@ -824,6 +952,22 @@ impl NectarlinkNode {
 
     pub fn set_device_toggle(&self, id: String, name: String, enabled: bool) -> Result<()> {
         Ok(self.node.set_device_toggle(parse_id(&id)?, &name, enabled)?)
+    }
+
+    // ---- Files ----
+
+    /// Sends files to a paired PC; returns the transfer's ID. Progress
+    /// arrives as `Event::Transfer`.
+    pub async fn send_files(&self, id: String, files: Vec<FileToSend>) -> Result<String> {
+        let id = parse_id(&id)?;
+        let files = files.into_iter().map(file_to_send).collect::<Result<Vec<_>>>()?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.send_files(id, files).await?) }).await
+    }
+
+    /// Cancels a transfer in either direction.
+    pub fn cancel_transfer(&self, transfer_id: String) {
+        self.node.cancel_transfer(&transfer_id);
     }
 
     // ---- Clipboard ----

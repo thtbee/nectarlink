@@ -7,12 +7,12 @@ use std::{
     collections::HashMap,
     path::PathBuf,
     sync::{Arc, Mutex, MutexGuard},
-    time::SystemTime,
+    time::{Instant, SystemTime},
 };
 
 use nectarlink_core::{
     Battery, CapabilityMatrix, DeviceId, DeviceInfo, DiscoveredDevice, LinkState, NodeEvent, Notification,
-    PairedDevice, PairingEvent, PairingFailure, PowerLevel,
+    PairedDevice, PairingEvent, PairingFailure, PowerLevel, Transfer, TransferState,
 };
 
 /// Which parts of the state changed, so listeners refresh only what they show.
@@ -28,6 +28,7 @@ impl Changes {
     pub const CAPABILITIES: Changes = Changes(1 << 4);
     pub const RINGING: Changes = Changes(1 << 5);
     pub const NOTIFICATIONS: Changes = Changes(1 << 6);
+    pub const TRANSFERS: Changes = Changes(1 << 7);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
@@ -132,6 +133,19 @@ pub struct SentReply {
     pub pending: bool,
 }
 
+/// A file transfer as the UI shows it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TransferView {
+    pub transfer: Transfer,
+    /// Recent speed, bytes per second (0 when not running).
+    pub rate: f64,
+    /// When progress was last reported.
+    pub(crate) sampled: Instant,
+}
+
+/// Finished transfers kept in the list.
+pub const MAX_FINISHED_TRANSFERS: usize = 20;
+
 /// The most notifications kept; the oldest go first.
 pub const MAX_NOTIFICATIONS: usize = 200;
 
@@ -153,6 +167,8 @@ pub struct AppState {
     pub app_icons: HashMap<String, PathBuf>,
     /// Replies sent from this PC, per notification, oldest first.
     pub replies: HashMap<(DeviceId, String), Vec<SentReply>>,
+    /// File transfers, newest first.
+    pub transfers: Vec<TransferView>,
 }
 
 impl AppState {
@@ -288,7 +304,45 @@ impl AppState {
             }
             // Feedback only (see crate::clipboard); nothing to keep.
             NodeEvent::ClipboardReceived { .. } => Changes::NONE,
+            NodeEvent::Transfer(transfer) => self.update_transfer(transfer.clone(), Instant::now()),
         }
+    }
+
+    /// Adds or updates a transfer, keeping a smoothed speed.
+    pub fn update_transfer(&mut self, transfer: Transfer, now: Instant) -> Changes {
+        match self.transfers.iter_mut().find(|t| t.transfer.id == transfer.id) {
+            Some(view) => {
+                let elapsed = now.saturating_duration_since(view.sampled).as_secs_f64();
+                let running = transfer.state == TransferState::Running;
+                if running && elapsed > 0.0 && transfer.done >= view.transfer.done {
+                    let instant = (transfer.done - view.transfer.done) as f64 / elapsed;
+                    // Smoothed, so the number doesn't jump around.
+                    view.rate = if view.rate == 0.0 { instant } else { view.rate * 0.7 + instant * 0.3 };
+                } else if !running {
+                    view.rate = 0.0;
+                }
+                view.sampled = now;
+                view.transfer = transfer;
+            }
+            None => self.transfers.insert(0, TransferView { transfer, rate: 0.0, sampled: now }),
+        }
+        // Keep every unfinished transfer and the latest finished ones.
+        let mut finished = 0;
+        self.transfers.retain(|t| {
+            if !t.transfer.state.is_finished() {
+                return true;
+            }
+            finished += 1;
+            finished <= MAX_FINISHED_TRANSFERS
+        });
+        Changes::TRANSFERS
+    }
+
+    /// Forgets finished transfers.
+    pub fn clear_finished_transfers(&mut self) -> Changes {
+        let before = self.transfers.len();
+        self.transfers.retain(|t| !t.transfer.state.is_finished());
+        if self.transfers.len() == before { Changes::NONE } else { Changes::TRANSFERS }
     }
 
     /// Records a reply on its way to the phone.
@@ -604,6 +658,39 @@ mod tests {
 
         s.apply(&NodeEvent::NotificationRemoved { device: phone, key: "a".into() });
         assert!(s.replies.is_empty());
+    }
+
+    fn transfer(id: &str, done: u64, state: TransferState) -> Transfer {
+        Transfer {
+            id: id.into(),
+            device: DeviceId([1; 32]),
+            direction: nectarlink_core::Direction::Outgoing,
+            names: vec!["a.bin".into()],
+            total: 1000,
+            done,
+            state,
+        }
+    }
+
+    #[test]
+    fn transfers_update_in_place_with_a_speed() {
+        let mut s = AppState::default();
+        let t0 = Instant::now();
+        s.update_transfer(transfer("a", 0, TransferState::Running), t0);
+        s.update_transfer(transfer("b", 0, TransferState::Waiting), t0);
+        assert_eq!(s.transfers.iter().map(|t| t.transfer.id.as_str()).collect::<Vec<_>>(), ["b", "a"]);
+        s.update_transfer(transfer("a", 500, TransferState::Running), t0 + std::time::Duration::from_secs(1));
+        let a = s.transfers.iter().find(|t| t.transfer.id == "a").unwrap();
+        assert_eq!((a.transfer.done, a.rate), (500, 500.0));
+        s.update_transfer(transfer("a", 1000, TransferState::Done { saved: Vec::new() }), t0);
+        assert_eq!(s.transfers[1].rate, 0.0, "no speed once finished");
+
+        assert_eq!(s.clear_finished_transfers(), Changes::TRANSFERS);
+        assert_eq!(s.transfers.len(), 1, "the waiting one stays");
+        for i in 0..(MAX_FINISHED_TRANSFERS + 5) {
+            s.update_transfer(transfer(&i.to_string(), 1000, TransferState::Cancelled), t0);
+        }
+        assert_eq!(s.transfers.len(), MAX_FINISHED_TRANSFERS + 1);
     }
 
     #[test]

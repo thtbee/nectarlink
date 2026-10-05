@@ -9,9 +9,9 @@ use std::{io::Write, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use nectarlink_core::{
-    Battery, ConnectionPath, DeviceId, DeviceInfo, DeviceKind, FeatureState, LinkState, Node, NodeConfig,
-    NodeEvent, Notification, NotificationAction, NotificationError, PairedDevice, PairingEvent, Platform,
-    PowerLevel,
+    Battery, ConnectionPath, DeviceId, DeviceInfo, DeviceKind, Direction, FeatureState, FileSource,
+    LinkState, Node, NodeConfig, NodeEvent, Notification, NotificationAction, NotificationError,
+    OutgoingFile, PairedDevice, PairingEvent, Platform, PowerLevel, TransferState,
     features::{Effort, FEATURES, Role, UnsupportedReason, Upgrade, UpgradeAction},
 };
 use tokio::sync::broadcast::error::RecvError;
@@ -111,6 +111,12 @@ enum Command {
     },
     /// Stay online and print events until Ctrl+C.
     Run,
+    /// Send files to a paired device and wait until they've arrived.
+    Send {
+        device: String,
+        #[arg(required = true)]
+        files: Vec<PathBuf>,
+    },
     /// Put text on a paired device's clipboard.
     Clip { device: String, text: String },
     /// Dismiss a phone's notification (`run` prints the keys).
@@ -284,6 +290,11 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             node.ring(id, !off).await.context("ring failed")?;
             println!("{}", if *off { "Stopped ringing." } else { "Ringing…" });
         }
+        Command::Send { device, files } => {
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            send_files(node, id, files).await?;
+        }
         Command::Clip { device, text } => {
             let id = resolve(node, device)?;
             wait_until_online(node, id).await?;
@@ -441,6 +452,39 @@ async fn confirm_code(code: String) -> Result<bool> {
     .await?
 }
 
+/// Sends files and shows progress until they've arrived.
+async fn send_files(node: &Node, device: DeviceId, paths: &[PathBuf]) -> Result<()> {
+    let mut events = node.events();
+    let files = paths
+        .iter()
+        .map(|path| OutgoingFile {
+            name: path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
+            source: FileSource::Path(path.clone()),
+        })
+        .collect();
+    let id = node.send_files(device, files).await.context("can't send")?;
+    loop {
+        match events.recv().await {
+            Ok(NodeEvent::Transfer(t)) if t.id == id => match t.state {
+                TransferState::Done { .. } => {
+                    println!("\rSent {} file(s), {} bytes.          ", t.names.len(), t.total);
+                    return Ok(());
+                }
+                TransferState::Failed(why) => bail!("transfer failed: {why:?}"),
+                TransferState::Cancelled => bail!("transfer cancelled"),
+                TransferState::Waiting => print!("\rWaiting for the device…          "),
+                TransferState::Running => {
+                    let percent = (t.done * 100).checked_div(t.total).unwrap_or(100);
+                    print!("\rSending… {percent}%          ");
+                }
+            },
+            Ok(_) | Err(RecvError::Lagged(_)) => {}
+            Err(RecvError::Closed) => bail!("node stopped"),
+        }
+        std::io::stdout().flush()?;
+    }
+}
+
 async fn watch(node: &Node) -> Result<()> {
     println!("Online as {}. Press Ctrl+C to stop.", node.device_id());
     for d in node.paired_devices()? {
@@ -507,6 +551,17 @@ fn print_event(node: &Node, event: &NodeEvent) {
         NodeEvent::NotificationRemoved { device, .. } => {
             println!("{}: a notification went away", name(device))
         }
+        NodeEvent::ClipboardReceived { device } => println!("{}: sent its clipboard", name(device)),
+        NodeEvent::Transfer(t) if t.direction == Direction::Incoming => match &t.state {
+            TransferState::Done { saved } => {
+                for path in saved {
+                    println!("{}: received {}", name(&t.device), path.display());
+                }
+            }
+            TransferState::Failed(why) => println!("{}: a transfer failed ({why:?})", name(&t.device)),
+            TransferState::Cancelled => println!("{}: a transfer was cancelled", name(&t.device)),
+            _ => {}
+        },
         _ => {}
     }
 }

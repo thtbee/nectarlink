@@ -65,7 +65,8 @@ pub fn start(data_dir: PathBuf, platform: Arc<dyn Platform>) -> std::io::Result<
 
 async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     let host = host();
-    let config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
+    let mut config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
+    config.downloads_dir = Some(downloads_dir());
     let node = match Node::start(config, platform).await {
         Ok(node) => node,
         Err(e) => {
@@ -108,6 +109,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 crate::notifications::apply(&event);
                 crate::notifications::update_toasts(&event);
                 crate::clipboard::on_event(&event);
+                crate::transfers::on_event(&event);
             }
             Err(RecvError::Lagged(missed)) => {
                 // Resynchronize what can be re-read; transient events are lost.
@@ -119,6 +121,11 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
             Err(RecvError::Closed) => return,
         }
     }
+}
+
+/// Where files from phones go: `Downloads\Nectarlink`.
+pub fn downloads_dir() -> PathBuf {
+    dirs::download_dir().unwrap_or_else(|| host().data_dir.join("received")).join("Nectarlink")
 }
 
 /// How this PC presents itself to phones.

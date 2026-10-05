@@ -8,6 +8,7 @@ import app.nectarlink.core.Link
 import app.nectarlink.core.PairedDevice
 import app.nectarlink.core.PairingFailure
 import app.nectarlink.core.PowerLevel
+import app.nectarlink.core.Transfer
 
 /** Whether the core is running. */
 sealed interface CoreStatus {
@@ -59,6 +60,8 @@ data class CoreState(
     val notificationAccess: Boolean = false,
     /** Whether Android lets Nectarlink run unrestricted in the background. */
     val backgroundUnrestricted: Boolean = true,
+    /** File transfers, newest first (running ones and the latest finished). */
+    val transfers: List<Transfer> = emptyList(),
 ) {
     fun device(id: String): Device? = devices.firstOrNull { it.id == id }
 
@@ -98,11 +101,28 @@ data class CoreState(
         is Event.NotificationsReset, is Event.NotificationPosted, is Event.NotificationRemoved -> this
         // Android shows its own "copied" confirmation.
         is Event.ClipboardReceived -> this
+        is Event.Transfer -> copy(transfers = withTransfer(event.transfer))
+    }
+
+    private fun withTransfer(transfer: Transfer): List<Transfer> {
+        val updated = if (transfers.any { it.id == transfer.id }) {
+            transfers.map { if (it.id == transfer.id) transfer else it }
+        } else {
+            listOf(transfer) + transfers
+        }
+        val finished = updated.filter { it.isFinished() }.take(MAX_FINISHED_TRANSFERS).toSet()
+        return updated.filter { !it.isFinished() || it in finished }
     }
 
     private fun update(id: String, change: (Device) -> Device): CoreState =
         copy(devices = devices.map { if (it.id == id) change(it) else it })
 }
+
+/** Finished transfers kept on Home. */
+const val MAX_FINISHED_TRANSFERS = 5
+
+fun Transfer.isFinished(): Boolean =
+    status !is app.nectarlink.core.TransferStatus.Running && status !is app.nectarlink.core.TransferStatus.Waiting
 
 internal fun PairedDevice.toDevice() = Device(
     id = id,
