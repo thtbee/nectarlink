@@ -251,7 +251,7 @@ Power: 🟢 Basic · 🔵 Assist · 🟣 Elevated (see §4.6).
 │  Qt Quick UI (QML screens, Nectarlink design system)          │        │  Compose UI (Material 3 Expressive)                              │
 │   main window · Island · Shelf · Deck editor · palette   │        │   home · devices · onboarding · Deck · tiles · widgets           │
 │   mirror/app windows: decoded D3D11 video inside the UI   │        │        ▲  Kotlin facades (Flows)                                  │
-│        ▲  cxx-qt bridge (view-models, in-process)           │        │  ┌─────┴───────────────────────────────────────────────────┐    │
+│        ▲  cxx-qt bridge (view-models, in-process)             │        │  ┌─────┴───────────────────────────────────────────────────┐    │
 │  ┌─────┴──────────────────────────────────────────────┐   │        │  │ Android services (Kotlin)                               │    │
 │  │ nectarlink-desktop (Rust)                              │   │        │  │  NotificationListener · SMS/Calls/Contacts · MediaSession│   │
 │  │  nectarlink-win: toasts+reply · Cloud Files · GSMTC/   │   │        │  │  CameraX · AudioRecord · MediaProjection · CDM · FGS     │    │
