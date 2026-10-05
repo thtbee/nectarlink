@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Applies the Windows 11 Mica backdrop to this thread's top-level windows.
-//! The QML root must have a transparent background for Mica to show.
+//! Requires `native::ffi::enable_window_alpha()` before Qt starts and a
+//! transparent QML root. Mica's light or dark tint follows the window's
+//! color scheme, which QML sets to match the app theme.
 
 #[cfg(windows)]
 #[allow(unsafe_code)]
@@ -24,15 +26,14 @@ pub fn apply_to_process_windows() {
         // SAFETY: hwnd comes from EnumThreadWindows; the attribute buffer is a
         // live DWM_SYSTEMBACKDROP_TYPE of the size passed.
         unsafe {
-            let extend = DwmExtendFrameIntoClientArea(hwnd, &margins);
-            let set = DwmSetWindowAttribute(
+            // Best effort: on failure the window keeps its opaque frame.
+            let _ = DwmExtendFrameIntoClientArea(hwnd, &margins);
+            let _ = DwmSetWindowAttribute(
                 hwnd,
                 DWMWA_SYSTEMBACKDROP_TYPE,
                 std::ptr::from_ref(&backdrop).cast(),
                 std::mem::size_of::<DWM_SYSTEMBACKDROP_TYPE>() as u32,
             );
-            let visible = windows::Win32::UI::WindowsAndMessaging::IsWindowVisible(hwnd).as_bool();
-            eprintln!("mica: hwnd={hwnd:?} visible={visible} extend={extend:?} backdrop={set:?}");
         }
         BOOL(1)
     }

@@ -6,7 +6,8 @@ pub mod ffi {
     unsafe extern "C++" {
         include!("window_helpers.h");
 
-        /// Must be called before any QQuickWindow is created.
+        /// Prepares windows for a DWM backdrop. Must be called before
+        /// QGuiApplication and any QQuickWindow are created.
         fn enable_window_alpha();
     }
 }

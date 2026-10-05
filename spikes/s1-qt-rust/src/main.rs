@@ -26,7 +26,10 @@ fn main() {
     if mica {
         mica::apply_to_process_windows();
     }
-    if let Some(app) = app.as_mut() {
-        std::process::exit(app.exec());
-    }
+    let code = app.as_mut().map_or(1, |app| app.exec());
+    // Tear down in order (QML before the application) so Qt's render and
+    // vsync threads stop cleanly; `process::exit` would skip destructors.
+    drop(engine);
+    drop(app);
+    std::process::exit(code);
 }

@@ -207,7 +207,7 @@ impl qobject::DeviceModel {
                     if let Some(eps) = per_second {
                         state.events_per_second = eps;
                     }
-                    if n % 2_500 == 0 {
+                    if n.is_multiple_of(2_500) {
                         let (app, title, body) =
                             SAMPLE_NOTIFICATIONS[(n as usize / 2_500) % SAMPLE_NOTIFICATIONS.len()];
                         state.notifications.push((app, title, body));

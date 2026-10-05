@@ -13,6 +13,9 @@ Window {
     title: "Nectarlink · S1 proof"
     color: mica ? "transparent" : Theme.surface
 
+    // The frame and the Mica tint follow the app theme, not the system one.
+    Component.onCompleted: Qt.styleHints.colorScheme = Theme.dark ? Qt.ColorScheme.Dark : Qt.ColorScheme.Light
+
     DeviceModel {
         id: device
         onNotification: (app, title, body) => {

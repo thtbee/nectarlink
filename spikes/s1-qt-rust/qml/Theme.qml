@@ -4,6 +4,8 @@ import QtQuick
 // Bloom Light, Honey seed (docs/design/tokens.json). The real app generates
 // this from the tokens file and swaps palettes for dark mode and other seeds.
 QtObject {
+    readonly property bool dark: false
+
     readonly property color primary: "#8A5100"
     readonly property color primaryContent: "#FFFFFF"
     readonly property color primaryContainer: "#FFDDB8"
