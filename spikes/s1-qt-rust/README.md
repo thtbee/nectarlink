@@ -23,7 +23,7 @@ ARM64: `$env:QMAKE = ./scripts/qmake-arm64.ps1` then
 | ARM64 build | CI builds | Cross-builds from x64 into an ARM64 exe linking ARM64 Qt; not run yet (needs ARM64 hardware or a `windows-11-arm` CI runner) | ✅ build |
 | Tray-only RAM | < 60 MB | After closing the main window: 64 MB working set, 52 MB private commit, **19.6 MB in Task Manager**. Never-opened floor: 34 / 23 MB. Core not included yet | ✅ |
 
-## Lessons (apply to the real `nectarlink-qt`)
+## Lessons (applied in the desktop app)
 
 1. **Never queue one closure per core event.** It ballooned to 5.7 GB at 10k/s.
    Use a coalescing pump: latest state in a shared slot, at most one queued

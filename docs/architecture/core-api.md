@@ -2,7 +2,7 @@
 
 This is the boundary between the shared Rust core and the two apps. The
 desktop app calls it directly from Rust (and exposes it to QML through
-`nectarlink-qt`); the Android app calls it through UniFFI-generated Kotlin.
+the cxx-qt bridge in `desktop/app`); the Android app calls it through UniFFI-generated Kotlin.
 
 Design rules:
 
@@ -119,7 +119,7 @@ platform surface grows feature by feature.
 
 - `Node` runs on its own multi-threaded tokio runtime, created in `start`.
 - Methods are safe to call from any thread.
-- **Desktop:** `nectarlink-qt` reads `events()` on a background task and hands
+- **Desktop:** the bridge (`desktop/app/src/core_host.rs`) reads `events()` on a background task and hands
   each event to the Qt GUI thread through cxx-qt's thread queue. This is the
   only place core events cross into Qt.
 - **Android:** UniFFI exposes `events()` as a callback interface; the Kotlin

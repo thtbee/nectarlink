@@ -1,0 +1,137 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  QT_VERSION: "6.12.0"
+  # The crates that build without Qt or the Android NDK.
+  CORE_CRATES: -p nectarlink-protocol -p nectarlink-core -p nectarlink-ffi -p nectarlink-cli -p xtask
+
+jobs:
+  core:
+    name: Core (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        if: runner.os == 'Linux'
+        run: cargo fmt --all --check
+      - name: Clippy
+        shell: bash
+        run: cargo clippy --locked $CORE_CRATES --all-targets -- -D warnings
+      - name: Tests
+        shell: bash
+        run: cargo test --locked $CORE_CRATES
+      - name: Generated files are up to date
+        if: runner.os == 'Linux'
+        run: cargo xtask tokens --check
+
+  desktop:
+    name: Windows app (x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+          cache: true
+          # Qt 6.12's repository layout needs a current aqtinstall.
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+      - name: Clippy
+        run: cargo clippy --locked -p nectarlink-desktop -p s1-qt-rust --all-targets -- -D warnings
+      - name: Tests
+        run: cargo test --locked -p nectarlink-desktop
+      - name: Release build
+        run: cargo build --locked --release -p nectarlink-desktop
+
+  desktop-arm64:
+    name: Windows app (ARM64 cross build)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the pinned Rust toolchain and the ARM64 target
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add aarch64-pc-windows-msvc
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Qt (ARM64, with the x64 host tools)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_arm64_cross_compiled
+          cache: true
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+      - name: Build
+        shell: pwsh
+        run: |
+          $env:QMAKE = ./scripts/qmake-arm64.ps1 -QtRoot (Split-Path -Parent $env:QT_ROOT_DIR)
+          cargo build --locked --release --target aarch64-pc-windows-msvc -p nectarlink-desktop
+
+  android:
+    name: Android app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the pinned Rust toolchain and the Android targets
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add aarch64-linux-android x86_64-linux-android
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-ndk
+        run: cargo install --locked cargo-ndk
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-37 ndk;30.0.16248370"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Unit tests and debug build
+        working-directory: android
+        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nectarlink-android-debug
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+  policy:
+    name: Licenses and dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: License headers
+        shell: pwsh
+        run: ./scripts/check-headers.ps1
+      - name: Dependency policy (licenses, advisories, sources)
+        uses: EmbarkStudios/cargo-deny-action@v2

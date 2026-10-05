@@ -2,7 +2,7 @@
 //! The Rust side of the proof: a QObject that QML binds to, fed from a
 //! background thread the way `nectarlink-core` events will be. All updates
 //! cross into Qt through `qt_thread().queue(...)`, the single pattern the
-//! real `nectarlink-qt` bridge will use.
+//! desktop app bridge uses.
 
 use std::{
     pin::Pin,

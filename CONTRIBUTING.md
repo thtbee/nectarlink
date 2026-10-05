@@ -37,13 +37,22 @@ Your contribution is licensed under the license that covers the files you
 change, as described in the top-level [LICENSE](LICENSE) file. For GPL-licensed
 parts, this includes the [app-store exception](LICENSES/APP-STORE-EXCEPTION.md).
 
+## Building and checking
+
+The [README](README.md#building) lists the requirements and build commands.
+Before opening a pull request, run the same checks as CI:
+
+```powershell
+./scripts/check.ps1
+```
+
 ## Ground rules for code
 
 These come from the plan and will grow into a full style guide:
 
 - **Rust is the source of truth.** Business logic lives in Rust. QML only
   describes screens, layout and animation.
-- **One bridge.** Only the `nectarlink-qt` crate talks to Qt.
+- **One bridge.** Only `desktop/app/src/bridge` (cxx-qt) connects Rust to Qt.
 - **Privacy first.** Never log notification text, message content, file names
   or keys. No telemetry.
 - **All user-facing strings are translatable** (`qsTr` in QML, string

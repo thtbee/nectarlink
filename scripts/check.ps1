@@ -55,45 +55,13 @@ function Invoke-Step {
     $results.Add([pscustomobject]@{ Step = $Name; Ok = $ok; Seconds = [math]::Round($timer.Elapsed.TotalSeconds, 1) })
 }
 
-# Which license a source file must declare (mirrors LICENSE).
-function Get-ExpectedLicense([string]$path) {
-    if ($path -like "core/nectarlink-cli/*") { return "GPL-3.0-or-later" }
-    if ($path -like "core/*") { return "MPL-2.0" }
-    return "GPL-3.0-or-later"
-}
-
-function Test-SpdxHeaders {
-    $extensions = @(".rs", ".qml", ".cpp", ".h", ".hpp", ".ps1", ".sh", ".kt", ".kts")
-    $files = @(git ls-files --cached --others --exclude-standard) |
-        Where-Object { $extensions -contains [System.IO.Path]::GetExtension($_) } |
-        Where-Object { Test-Path $_ }
-    $problems = 0
-    foreach ($file in $files) {
-        $head = Get-Content $file -TotalCount 5 -ErrorAction SilentlyContinue
-        $line = $head | Where-Object { $_ -match "SPDX-License-Identifier:\s*(\S+)" } | Select-Object -First 1
-        if (-not $line) {
-            Write-Host "  missing SPDX header: $file" -ForegroundColor Red
-            $problems++
-            continue
-        }
-        $null = $line -match "SPDX-License-Identifier:\s*(\S+)"
-        $expected = Get-ExpectedLicense $file
-        if ($Matches[1] -ne $expected) {
-            Write-Host "  wrong license in $file ($($Matches[1]), expected $expected)" -ForegroundColor Red
-            $problems++
-        }
-    }
-    Write-Host "  $($files.Count) files checked, $problems problem(s)"
-    $global:LASTEXITCODE = [int]($problems -gt 0)
-}
-
 try {
     Invoke-Step "Format" { cargo fmt --all --check }
     Invoke-Step "Clippy" { cargo clippy --workspace --all-targets --locked -- -D warnings }
     if (-not $Fast) {
         Invoke-Step "Tests" { cargo test --workspace --locked }
     }
-    Invoke-Step "License headers" { Test-SpdxHeaders }
+    Invoke-Step "License headers" { & (Join-Path $PSScriptRoot "check-headers.ps1") }
     Invoke-Step "Generated files" { cargo xtask tokens --check }
     if (-not $Fast) {
         Invoke-Step "Dependency policy" {

@@ -1,0 +1,48 @@
+name: Bug report
+description: Something doesn't work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Nectarlink is in early development, so please check
+        the open issues first. Security problems go through SECURITY.md instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version and build
+      placeholder: Windows 11 24H2 (26100.1234), x64
+  - type: input
+    id: phone
+    attributes:
+      label: Phone model and Android version
+      placeholder: Pixel 9, Android 16
+  - type: input
+    id: versions
+    attributes:
+      label: Nectarlink versions
+      description: Desktop app and Android app (commit hash if built from source).
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >
+        Desktop logs are in %LOCALAPPDATA%\Nectarlink\logs. Please remove anything
+        personal before attaching them.
+      render: text
