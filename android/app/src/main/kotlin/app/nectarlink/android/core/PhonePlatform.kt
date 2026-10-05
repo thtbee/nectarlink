@@ -43,7 +43,9 @@ internal class PhonePlatform(context: Context, private val ringer: Ringer) : Pla
             if (inputs.isEmpty()) throw NotificationFailure.NotFound()
             val results = Bundle().apply { inputs.forEach { putCharSequence(it.resultKey, reply) } }
             RemoteInput.addResultsToIntent(inputs.toTypedArray(), fillIn, results)
-            RemoteInput.setResultsSource(fillIn, RemoteInput.SOURCE_FREE_FORM_INPUT)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                RemoteInput.setResultsSource(fillIn, RemoteInput.SOURCE_FREE_FORM_INPUT)
+            }
         }
         try {
             intent.send(context, 0, fillIn, null, null, null, sendOptions())

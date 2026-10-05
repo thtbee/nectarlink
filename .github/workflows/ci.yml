@@ -120,7 +120,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: Unit tests and debug build
         working-directory: android
-        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
       - uses: actions/upload-artifact@v7
         with:
           name: nectarlink-android-debug

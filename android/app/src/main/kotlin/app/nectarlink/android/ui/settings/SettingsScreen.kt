@@ -191,7 +191,7 @@ private fun NotificationAccess(granted: Boolean) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        val open = { context.startActivity(notificationAccessIntent(context)) }
+        val open = { context.startActivity(NotificationListener.settingsIntent(context)) }
         if (granted) {
             OutlinedButton(onClick = open) { Text(stringResource(R.string.action_manage)) }
         } else {
@@ -215,17 +215,6 @@ private fun NotificationAccess(granted: Boolean) {
         }
     }
 }
-
-/** Android's notification access screen, on Nectarlink's own switch where possible. */
-private fun notificationAccessIntent(context: Context): Intent =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).putExtra(
-            Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
-            NotificationListener.component(context).flattenToString(),
-        )
-    } else {
-        Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-    }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {

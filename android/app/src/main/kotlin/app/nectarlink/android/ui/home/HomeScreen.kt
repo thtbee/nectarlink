@@ -30,12 +30,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.nectarlink.android.R
+import app.nectarlink.android.core.BackgroundAccess
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.Device
+import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.core.Link
 
 /**
@@ -70,7 +73,39 @@ fun HomeScreen(
         state.ringingFrom?.let { from ->
             item { RingingBanner(from, onStopRinging) }
         }
+        if (state.devices.isNotEmpty() && !state.backgroundUnrestricted) {
+            item {
+                val context = LocalContext.current
+                SetupCard(
+                    stringResource(R.string.background_title),
+                    stringResource(R.string.background_text),
+                ) { context.startActivity(BackgroundAccess.requestIntent(context)) }
+            }
+        }
+        if (state.devices.isNotEmpty() && !state.notificationAccess) {
+            item {
+                val context = LocalContext.current
+                SetupCard(
+                    stringResource(R.string.notifications_title),
+                    stringResource(R.string.notifications_off),
+                ) { context.startActivity(NotificationListener.settingsIntent(context)) }
+            }
+        }
         items(state.devices, key = { it.id }) { device -> PcCard(device, onRing) }
+    }
+}
+
+/** Something the phone needs before mirroring works, with the button that fixes it. */
+@Composable
+private fun SetupCard(title: String, text: String, onAllow: () -> Unit) {
+    Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.secondaryContainer) {
+        Column(Modifier.fillMaxWidth().padding(20.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            Spacer(Modifier.height(4.dp))
+            Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = onAllow) { Text(stringResource(R.string.action_allow)) }
+        }
     }
 }
 

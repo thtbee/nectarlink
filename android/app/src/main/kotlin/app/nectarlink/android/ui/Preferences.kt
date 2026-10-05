@@ -2,6 +2,7 @@
 package app.nectarlink.android.ui
 
 import android.content.Context
+import androidx.core.content.edit
 import app.nectarlink.android.ui.theme.Appearance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,12 +26,12 @@ class Preferences(context: Context) {
 
     fun update(change: (Appearance) -> Appearance) {
         val next = change(_appearance.value)
-        prefs.edit()
-            .putString(THEME, next.theme)
-            .putString(MODE, next.mode)
-            .putString(SEED, next.seed)
-            .putBoolean(DYNAMIC, next.dynamicColor)
-            .apply()
+        prefs.edit {
+            putString(THEME, next.theme)
+            putString(MODE, next.mode)
+            putString(SEED, next.seed)
+            putBoolean(DYNAMIC, next.dynamicColor)
+        }
         _appearance.value = next
     }
 

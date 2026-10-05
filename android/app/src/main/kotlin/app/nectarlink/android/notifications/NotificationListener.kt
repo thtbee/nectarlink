@@ -3,6 +3,9 @@ package app.nectarlink.android.notifications
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationManagerCompat
@@ -74,5 +77,16 @@ class NotificationListener : NotificationListenerService() {
             NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
 
         fun component(context: Context) = ComponentName(context, NotificationListener::class.java)
+
+        /** Android's notification access screen, on Nectarlink's own switch where possible. */
+        fun settingsIntent(context: Context): Intent =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).putExtra(
+                    Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                    component(context).flattenToString(),
+                )
+            } else {
+                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+            }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 }

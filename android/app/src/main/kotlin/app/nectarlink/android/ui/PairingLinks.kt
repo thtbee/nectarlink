@@ -2,6 +2,7 @@
 package app.nectarlink.android.ui
 
 import android.content.Context
+import androidx.core.content.edit
 import java.security.MessageDigest
 
 /** Remembers pairing links already used, so each is used at most once. */
@@ -15,7 +16,7 @@ class PairingLinks(context: Context) {
             .joinToString("") { "%02x".format(it) }
         val used = prefs.getString(KEY, "").orEmpty().split(',').filter { it.isNotEmpty() }
         if (digest in used) return false
-        prefs.edit().putString(KEY, (used + digest).takeLast(MAX_REMEMBERED).joinToString(",")).apply()
+        prefs.edit { putString(KEY, (used + digest).takeLast(MAX_REMEMBERED).joinToString(",")) }
         return true
     }
 

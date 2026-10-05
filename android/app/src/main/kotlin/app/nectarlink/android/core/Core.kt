@@ -131,13 +131,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     }
 
     /**
-     * Re-checks notification access (the user may have changed it in
-     * Settings) and asks Android to reconnect the listener if it's allowed
+     * Re-checks notification access and background restrictions (the user
+     * may have changed them in Settings) and asks Android to reconnect the listener if it's allowed
      * but not running.
      */
     fun refreshNotificationAccess() {
         val granted = NotificationListener.hasAccess(context)
-        _state.update { it.copy(notificationAccess = granted) }
+        val unrestricted = BackgroundAccess.isUnrestricted(context)
+        _state.update { it.copy(notificationAccess = granted, backgroundUnrestricted = unrestricted) }
         if (granted && NotificationListener.instance == null) {
             NotificationListenerService.requestRebind(NotificationListener.component(context))
         }

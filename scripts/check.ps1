@@ -14,7 +14,7 @@
     Also cross-compiles the workspace for Windows ARM64.
 
 .PARAMETER Android
-    Also builds the Android app and runs its unit tests (needs the Android
+    Also builds the Android app, runs its unit tests and lint (needs the Android
     SDK, NDK and cargo-ndk; see android/README.md).
 
 .PARAMETER Fast
@@ -93,7 +93,7 @@ try {
             Push-Location (Join-Path $root "android")
             try {
                 if (-not $env:JAVA_HOME) { $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr" }
-                & .\gradlew.bat --console=plain -q testDebugUnitTest assembleDebug
+                & .\gradlew.bat --console=plain -q testDebugUnitTest lintDebug assembleDebug
             } finally {
                 Pop-Location
             }

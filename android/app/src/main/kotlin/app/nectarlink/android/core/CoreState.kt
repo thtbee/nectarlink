@@ -57,6 +57,8 @@ data class CoreState(
     val ringingFrom: String? = null,
     /** Whether the user let Nectarlink read notifications (to mirror them). */
     val notificationAccess: Boolean = false,
+    /** Whether Android lets Nectarlink run unrestricted in the background. */
+    val backgroundUnrestricted: Boolean = true,
 ) {
     fun device(id: String): Device? = devices.firstOrNull { it.id == id }
 

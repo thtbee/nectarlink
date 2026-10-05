@@ -16,6 +16,18 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Find my phone. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Asking to run unrestricted in the background: phones such as Samsung's
+         otherwise freeze the app, and PCs can't reach it. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- Names and icons of the apps whose notifications are mirrored: Android
+         hides other apps unless they're declared here. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
