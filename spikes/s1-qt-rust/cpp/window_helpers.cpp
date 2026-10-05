@@ -2,6 +2,7 @@
 #include "window_helpers.h"
 
 #include <QtCore/QtEnvironmentVariables>
+#include <QtGui/QGuiApplication>
 #include <QtQuick/QQuickWindow>
 
 void enable_window_alpha()
@@ -13,4 +14,9 @@ void enable_window_alpha()
     // when presented through DirectComposition, which Qt uses when the window
     // has no redirection surface. Without this, transparent pixels are white.
     qputenv("QT_QPA_DISABLE_REDIRECTION_SURFACE", "1");
+}
+
+void set_quit_on_last_window_closed(bool quit)
+{
+    QGuiApplication::setQuitOnLastWindowClosed(quit);
 }

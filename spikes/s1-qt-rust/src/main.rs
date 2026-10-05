@@ -21,8 +21,12 @@ fn main() {
     if let Some(app) = app.as_mut() {
         app.set_application_name(&QString::from("Nectarlink S1"));
     }
+    // The tray test closes the main window and keeps running, like tray mode.
+    if std::env::args().any(|a| a == "--tray-test") {
+        native::ffi::set_quit_on_last_window_closed(false);
+    }
     if let Some(engine) = engine.as_mut() {
-        engine.load(&QUrl::from("qrc:/qt/qml/app/nectarlink/spike/qml/Main.qml"));
+        engine.load(&QUrl::from("qrc:/qt/qml/app/nectarlink/spike/qml/App.qml"));
     }
     if mica {
         mica::apply_to_process_windows();

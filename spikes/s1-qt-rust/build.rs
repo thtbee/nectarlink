@@ -3,6 +3,7 @@ use cxx_qt_build::{CxxQtBuilder, QmlFile, QmlModule};
 
 fn main() {
     CxxQtBuilder::new_qml_module(QmlModule::new("app.nectarlink.spike").qml_files([
+        QmlFile::from("qml/App.qml"),
         QmlFile::from("qml/Main.qml"),
         QmlFile::from("qml/Theme.qml").singleton(true),
         QmlFile::from("qml/Icon.qml"),
@@ -17,6 +18,7 @@ fn main() {
     .cpp_files([
         "cpp/window_helpers.cpp",
         "cpp/frame_notifier.cpp",
+        "cpp/memory_tools.h",
         "cpp/video_surface.h",
         "cpp/video_surface.cpp",
     ])

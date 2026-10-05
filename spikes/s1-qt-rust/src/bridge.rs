@@ -36,6 +36,7 @@ pub mod qobject {
         #[qproperty(i32, events_per_second)]
         #[qproperty(f64, events_total)]
         #[qproperty(f64, working_set_mb)]
+        #[qproperty(f64, private_mb)]
         #[qproperty(f64, startup_ms)]
         #[qproperty(bool, stress_running)]
         type DeviceModel = super::DeviceModelRust;
@@ -51,8 +52,14 @@ pub mod qobject {
         #[qinvokable]
         fn first_frame(self: Pin<&mut DeviceModel>);
 
+        /// Updates `working_set_mb` and `private_mb`.
         #[qinvokable]
         fn refresh_memory(self: Pin<&mut DeviceModel>);
+
+        /// Asks Windows to page out what the process isn't using (what it
+        /// does anyway under memory pressure). Used after closing windows.
+        #[qinvokable]
+        fn trim_working_set(self: Pin<&mut DeviceModel>);
 
         /// A phone notification arrived.
         #[qsignal]
@@ -73,6 +80,7 @@ pub struct DeviceModelRust {
     events_per_second: i32,
     events_total: f64,
     working_set_mb: f64,
+    private_mb: f64,
     startup_ms: f64,
     stress_running: bool,
     stop: Option<Arc<AtomicBool>>,
@@ -88,6 +96,7 @@ impl Default for DeviceModelRust {
             events_per_second: 0,
             events_total: 0.0,
             working_set_mb: 0.0,
+            private_mb: 0.0,
             startup_ms: 0.0,
             stress_running: false,
             stop: None,
@@ -247,29 +256,68 @@ impl qobject::DeviceModel {
         self.refresh_memory();
     }
 
-    pub fn refresh_memory(self: Pin<&mut Self>) {
-        let mb = working_set_mb();
-        self.set_working_set_mb(mb);
+    pub fn refresh_memory(mut self: Pin<&mut Self>) {
+        let usage = memory_usage();
+        self.as_mut().set_working_set_mb(usage.working_set_mb);
+        self.set_private_mb(usage.private_mb);
+    }
+
+    pub fn trim_working_set(self: Pin<&mut Self>) {
+        trim_working_set();
+        self.refresh_memory();
+    }
+}
+
+#[derive(Default)]
+struct MemoryUsage {
+    /// Physical memory in use (what most tools call "memory").
+    working_set_mb: f64,
+    /// Committed private memory: what the process really owns.
+    private_mb: f64,
+}
+
+#[cfg(windows)]
+#[allow(unsafe_code)]
+fn memory_usage() -> MemoryUsage {
+    use windows::Win32::System::{
+        ProcessStatus::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS, PROCESS_MEMORY_COUNTERS_EX},
+        Threading::GetCurrentProcess,
+    };
+    const MB: f64 = 1024.0 * 1024.0;
+    let mut counters = PROCESS_MEMORY_COUNTERS_EX {
+        cb: std::mem::size_of::<PROCESS_MEMORY_COUNTERS_EX>() as u32,
+        ..Default::default()
+    };
+    // SAFETY: valid pseudo-handle; the EX struct starts with the base struct
+    // and `cb` tells the API which one it is.
+    let ok = unsafe {
+        GetProcessMemoryInfo(
+            GetCurrentProcess(),
+            std::ptr::from_mut(&mut counters).cast::<PROCESS_MEMORY_COUNTERS>(),
+            counters.cb,
+        )
+    };
+    if ok.is_err() {
+        return MemoryUsage::default();
+    }
+    MemoryUsage {
+        working_set_mb: counters.WorkingSetSize as f64 / MB,
+        private_mb: counters.PrivateUsage as f64 / MB,
     }
 }
 
 #[cfg(windows)]
 #[allow(unsafe_code)]
-fn working_set_mb() -> f64 {
-    use windows::Win32::System::{
-        ProcessStatus::{GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS},
-        Threading::GetCurrentProcess,
-    };
-    let mut counters = PROCESS_MEMORY_COUNTERS {
-        cb: std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32,
-        ..Default::default()
-    };
-    // SAFETY: valid pseudo-handle and a correctly sized, writable struct.
-    let ok = unsafe { GetProcessMemoryInfo(GetCurrentProcess(), &mut counters, counters.cb) };
-    if ok.is_ok() { counters.WorkingSetSize as f64 / (1024.0 * 1024.0) } else { 0.0 }
+fn trim_working_set() {
+    use windows::Win32::System::{ProcessStatus::EmptyWorkingSet, Threading::GetCurrentProcess};
+    // SAFETY: valid pseudo-handle for this process.
+    let _ = unsafe { EmptyWorkingSet(GetCurrentProcess()) };
 }
 
 #[cfg(not(windows))]
-fn working_set_mb() -> f64 {
-    0.0
+fn memory_usage() -> MemoryUsage {
+    MemoryUsage::default()
 }
+
+#[cfg(not(windows))]
+fn trim_working_set() {}
