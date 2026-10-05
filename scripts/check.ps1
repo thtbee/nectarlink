@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 <#
 .SYNOPSIS
-    Runs the same checks as CI: formatting, lints, tests, license headers and
-    the dependency policy. Exits non-zero if any step fails.
+    Runs the same checks as CI: formatting, lints, tests, license headers,
+    generated files and the dependency policy. Exits non-zero if any step
+    fails.
 
 .DESCRIPTION
     Every step runs even after a failure, so one run shows everything that
@@ -88,12 +89,19 @@ try {
         Invoke-Step "Tests" { cargo test --workspace --locked }
     }
     Invoke-Step "License headers" { Test-SpdxHeaders }
+    Invoke-Step "Generated files" { cargo xtask tokens --check }
     if (-not $Fast) {
         Invoke-Step "Dependency policy" {
             if (-not (Get-Command cargo-deny -ErrorAction SilentlyContinue)) {
                 throw "cargo-deny is not installed: cargo install --locked cargo-deny"
             }
-            cargo deny --log-level error check
+            $output = cargo deny --log-level error check 2>&1 | Out-String
+            if ($LASTEXITCODE -ne 0 -and $output -match "unable to access|Could not resolve host|failed to fetch") {
+                # Offline: check against the advisories fetched last time.
+                Write-Host "  advisory database unreachable; using the cached copy" -ForegroundColor Yellow
+                $output = cargo deny --offline --log-level error check 2>&1 | Out-String
+            }
+            Write-Host $output.Trim()
         }
     }
     if ($Arm64) {
