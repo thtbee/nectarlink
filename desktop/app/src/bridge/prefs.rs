@@ -39,6 +39,8 @@ pub mod qobject {
         /// Mica behind the window.
         #[qproperty(bool, backdrop)]
         #[qproperty(bool, close_to_tray)]
+        /// Send what's copied on this PC to connected phones.
+        #[qproperty(bool, auto_clipboard)]
         type Preferences = super::PreferencesRust;
     }
 
@@ -52,6 +54,7 @@ pub struct PreferencesRust {
     color_mode: QString,
     backdrop: bool,
     close_to_tray: bool,
+    auto_clipboard: bool,
 }
 
 impl cxx_qt::Initialize for qobject::Preferences {
@@ -69,6 +72,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
         }));
         self.as_mut().set_backdrop(settings.backdrop);
         self.as_mut().set_close_to_tray(settings.close_to_tray);
+        self.as_mut().set_auto_clipboard(settings.auto_clipboard);
+        crate::clipboard::set_auto_send(settings.auto_clipboard);
 
         // Save after any change (connected after loading, so loading doesn't
         // rewrite the file).
@@ -77,6 +82,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_color_mode_changed(|p| p.save()).release();
         self.as_mut().on_backdrop_changed(|p| p.save()).release();
         self.as_mut().on_close_to_tray_changed(|p| p.save()).release();
+        self.as_mut()
+            .on_auto_clipboard_changed(|p| {
+                crate::clipboard::set_auto_send(p.auto_clipboard);
+                p.save();
+            })
+            .release();
     }
 }
 
@@ -93,6 +104,7 @@ impl qobject::Preferences {
             },
             backdrop: p.backdrop,
             close_to_tray: p.close_to_tray,
+            auto_clipboard: p.auto_clipboard,
         };
         save_in_background(settings);
     }

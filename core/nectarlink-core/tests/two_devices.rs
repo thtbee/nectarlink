@@ -24,6 +24,7 @@ struct RecordingPlatform {
     rings: Mutex<Vec<bool>>,
     dismissed: Mutex<Vec<String>>,
     actions: Mutex<Vec<(String, String, Option<String>)>>,
+    clipboard: Mutex<Vec<String>>,
 }
 
 impl Platform for RecordingPlatform {
@@ -47,6 +48,10 @@ impl Platform for RecordingPlatform {
             return Err(NotificationError::NotFound);
         }
         self.actions.lock().unwrap().push((key.to_owned(), action.to_owned(), reply.map(str::to_owned)));
+        Ok(())
+    }
+    fn set_clipboard(&self, text: &str) -> Result<(), String> {
+        self.clipboard.lock().unwrap().push(text.to_owned());
         Ok(())
     }
 }
@@ -530,4 +535,37 @@ async fn notification_toggles_are_honored_on_both_devices() {
     assert_eq!(wait_for(&mut pc, "hidden on the PC", snapshot).await, 0);
     pc.node.set_device_toggle(phone_id, "notifications", true).unwrap();
     assert_eq!(wait_for(&mut pc, "synced again", snapshot).await, 1);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn clipboard_text_goes_both_ways_with_consent() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    with_timeout("pc to phone", pc.node.send_clipboard(phone_id, "from the PC".into())).await.expect("sent");
+    assert_eq!(*phone.platform.clipboard.lock().unwrap(), ["from the PC"]);
+    wait_for(&mut phone, "clipboard received", |e| match e {
+        NodeEvent::ClipboardReceived { device } if *device == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    with_timeout("phone to pc", phone.node.send_clipboard(pc_id, "from the phone ✓".into()))
+        .await
+        .expect("sent");
+    assert_eq!(*pc.platform.clipboard.lock().unwrap(), ["from the phone ✓"]);
+
+    // The receiver turned the clipboard off for the sender.
+    phone.node.set_device_toggle(pc_id, "clipboard", false).unwrap();
+    let denied = with_timeout("denied", pc.node.send_clipboard(phone_id, "nope".into())).await;
+    assert!(matches!(denied, Err(Error::Denied)), "{denied:?}");
+    // The sender turned it off: nothing leaves.
+    let not_sent = with_timeout("not sent", phone.node.send_clipboard(pc_id, "nope".into())).await;
+    assert!(matches!(not_sent, Err(Error::Denied)), "{not_sent:?}");
+    assert_eq!(phone.platform.clipboard.lock().unwrap().len(), 1);
+
+    let huge = "x".repeat(nectarlink_core::CLIP_MAX_BYTES + 1);
+    assert!(matches!(pc.node.send_clipboard(phone_id, huge).await, Err(Error::TooLarge)));
 }

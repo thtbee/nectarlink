@@ -35,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.nectarlink.android.R
+import app.nectarlink.android.clipboard.SendActivity
 import app.nectarlink.android.core.BackgroundAccess
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.Device
@@ -164,14 +165,23 @@ private fun PcCard(device: Device, onRing: (String, Boolean) -> Unit) {
                 )
             }
             Spacer(Modifier.height(20.dp))
-            Button(
-                enabled = device.online,
-                onClick = {
-                    ringing = !ringing
-                    onRing(device.id, ringing)
-                },
-            ) {
-                Text(stringResource(if (ringing) R.string.action_stop_ringing else R.string.action_ring_pc))
+            val context = LocalContext.current
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    enabled = device.online,
+                    onClick = {
+                        ringing = !ringing
+                        onRing(device.id, ringing)
+                    },
+                ) {
+                    Text(stringResource(if (ringing) R.string.action_stop_ringing else R.string.action_ring_pc))
+                }
+                FilledTonalButton(
+                    enabled = device.online,
+                    onClick = { context.startActivity(SendActivity.sendClipboardIntent(context)) },
+                ) {
+                    Text(stringResource(R.string.action_send_clipboard))
+                }
             }
         }
     }

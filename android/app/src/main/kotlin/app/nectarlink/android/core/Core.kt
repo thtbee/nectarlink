@@ -6,6 +6,7 @@ import android.net.wifi.WifiManager
 import android.service.notification.NotificationListenerService
 import android.util.Log
 import app.nectarlink.android.BuildConfig
+import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
@@ -100,6 +101,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 battery.start()
                 network.start()
             }
+            started.updatePower(PowerLevel.BASIC, capabilities(NotificationListener.hasAccess(context)))
             scope.launch {
                 for (op in notificationOps) {
                     runCatching { op(started) }.onFailure { Log.w(TAG, "notification update failed", it) }
@@ -117,7 +119,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     fun notificationAccessChanged(granted: Boolean, showing: List<Notification>) {
         _state.update { it.copy(notificationAccess = granted) }
         notificationOps.trySend { node ->
-            node.updatePower(PowerLevel.BASIC, if (granted) NOTIFICATION_CAPABILITIES else emptyList())
+            node.updatePower(PowerLevel.BASIC, capabilities(granted))
             node.notificationsReset(showing)
         }
     }
@@ -147,6 +149,38 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     override fun onEvent(event: Event) {
         _state.update { it.reduce(event) }
     }
+
+    // ---- Clipboard ----
+
+    /**
+     * Sends text to every connected PC; returns what to tell the user.
+     * Waits for the core when the app was just launched to send.
+     */
+    suspend fun sendClipboard(text: String): String {
+        startJob?.join()
+        val node = node ?: return context.getString(R.string.clip_no_pc)
+        val pcs = _state.value.devices.filter { it.online }
+        if (pcs.isEmpty()) return context.getString(R.string.clip_no_pc)
+        val sentTo = mutableListOf<String>()
+        var failure: String? = null
+        for (pc in pcs) {
+            try {
+                node.sendClipboard(pc.id, text)
+                sentTo += pc.name
+            } catch (e: NectarlinkException) {
+                failure = when (e) {
+                    is NectarlinkException.Denied -> context.getString(R.string.clip_off_for, pc.name)
+                    is NectarlinkException.TooLarge -> context.getString(R.string.clip_too_large)
+                    else -> describe(e)
+                }
+            }
+        }
+        return if (sentTo.isNotEmpty()) context.getString(R.string.clip_sent_to, sentTo.joinToString()) else failure.orEmpty()
+    }
+
+    /** What this phone offers PCs (docs/protocol/capabilities.md). */
+    private fun capabilities(notificationAccess: Boolean): List<String> =
+        CLIPBOARD_CAPABILITIES + if (notificationAccess) NOTIFICATION_CAPABILITIES else emptyList()
 
     // ---- Pairing ----
 
@@ -245,5 +279,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         const val TAG = "Nectarlink"
         /** Offered while notification access is granted (docs/protocol/capabilities.md). */
         val NOTIFICATION_CAPABILITIES = listOf("notify.mirror", "notify.reply")
+        /** Accepting the PC's clipboard, and sending this one when asked. */
+        val CLIPBOARD_CAPABILITIES = listOf("clip.write", "clip.share")
     }
 }

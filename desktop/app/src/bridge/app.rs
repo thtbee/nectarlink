@@ -81,6 +81,11 @@ pub mod qobject {
         #[qinvokable]
         fn set_device_toggle(self: Pin<&mut AppController>, device: &QString, name: &QString, on: bool);
 
+        /// Sends what's copied on this PC to a device.
+        #[qinvokable]
+        #[cxx_name = "sendClipboard"]
+        fn send_clipboard(self: &AppController, device: &QString);
+
         /// Re-reads whether Windows shows this app's notifications (the user
         /// may have changed it in Settings).
         #[qinvokable]
@@ -288,6 +293,12 @@ impl qobject::AppController {
         self.as_mut().set_reduce_motion(win::reduce_motion());
         refresh_wallpaper_colors(self.qt_thread());
         self.refresh_toasts_enabled();
+    }
+
+    pub fn send_clipboard(&self, device: &QString) {
+        if let Some(id) = super::parse_device(device) {
+            crate::clipboard::send_now(id);
+        }
     }
 
     pub fn refresh_toasts_enabled(self: Pin<&mut Self>) {

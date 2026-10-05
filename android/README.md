@@ -38,6 +38,10 @@ sources; nothing generated is checked in except the theme tokens
   access) that hands notifications to the core for mirroring, and reads them
   (messaging-style content, actions, app icons); replies and actions from a
   PC run through `core/PhonePlatform`.
+- `clipboard/`: sending text to the PC (share sheet, Quick Settings tile,
+  the connection notification's button) through `SendActivity`, which reads
+  the clipboard once it has focus, as Android requires; and writing text a
+  PC sent.
 - `service/ConnectionService`: a "connected device" foreground service that
   keeps the phone reachable and holds the Wi-Fi multicast lock local
   discovery needs.

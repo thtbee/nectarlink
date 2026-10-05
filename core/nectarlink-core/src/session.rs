@@ -338,6 +338,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
             shared.forget_peer(&peer).await?;
         }
         t if t.starts_with("notify.") && crate::notifications::handle(shared, session, &env).await? => {}
+        t if t.starts_with("clip.") && crate::clipboard::handle(shared, session, &env).await? => {}
         other => {
             if env.id.is_some() {
                 let reply = Envelope::error(ErrorCode::Unsupported, format!("unknown message type {other}"));

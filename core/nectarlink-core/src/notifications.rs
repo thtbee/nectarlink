@@ -152,12 +152,7 @@ fn approx_size(n: &Notification) -> usize {
 impl Shared {
     /// Whether the user allows notifications for `peer` on this device.
     pub(crate) fn notifications_allowed(&self, peer: &DeviceId) -> bool {
-        self.store
-            .toggles(peer)
-            .ok()
-            .and_then(|t| t.get(TOGGLE).copied())
-            .or_else(|| crate::features::toggle_default(TOGGLE))
-            .unwrap_or(false)
+        self.toggle_on(peer, TOGGLE)
     }
 
     /// Sessions that should get this phone's notifications: connected PCs
@@ -169,7 +164,7 @@ impl Shared {
             .collect()
     }
 
-    fn is_desktop(&self, peer: &DeviceId) -> bool {
+    pub(crate) fn is_desktop(&self, peer: &DeviceId) -> bool {
         self.store.get_peer(peer).ok().flatten().is_some_and(|p| role_of(&p.info) == Some(Role::Desktop))
     }
 

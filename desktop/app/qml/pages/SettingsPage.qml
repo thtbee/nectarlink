@@ -137,15 +137,30 @@ Item {
             Txt { text: qsTr("Behavior"); role: "label"; muted: true }
             Card {
                 width: parent.width
-                ListRow {
+                Column {
                     width: parent.width
-                    iconPath: Icons.power
-                    title: qsTr("Keep running when the window is closed")
-                    description: qsTr("Nectarlink stays in the notification area so your phone can reach this PC.")
-                    Toggle {
-                        label: qsTr("Keep running when the window is closed")
-                        checked: Preferences.closeToTray
-                        onToggled: (on) => Preferences.closeToTray = on
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.power
+                        title: qsTr("Keep running when the window is closed")
+                        description: qsTr("Nectarlink stays in the notification area so your phone can reach this PC.")
+                        Toggle {
+                            label: qsTr("Keep running when the window is closed")
+                            checked: Preferences.closeToTray
+                            onToggled: (on) => Preferences.closeToTray = on
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.clipboard
+                        title: qsTr("Send what you copy to your phone")
+                        description: qsTr("Text you copy on this PC is ready to paste on your phone. Passwords from password managers are never sent.")
+                        Toggle {
+                            label: qsTr("Send what you copy to your phone")
+                            checked: Preferences.autoClipboard
+                            onToggled: (on) => Preferences.autoClipboard = on
+                        }
                     }
                 }
             }

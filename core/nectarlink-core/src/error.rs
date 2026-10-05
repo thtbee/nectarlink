@@ -28,6 +28,8 @@ pub enum Error {
     Unsupported,
     #[error("it no longer exists")]
     NotFound,
+    #[error("too large to send")]
+    TooLarge,
     #[error("no pairing in progress")]
     NotPairing,
     #[error("invalid pairing link: {0}")]

@@ -286,6 +286,8 @@ impl AppState {
                 self.notifications.retain(|n| !(n.device == *device && n.notification.key == *key));
                 if before == self.notifications.len() { Changes::NONE } else { Changes::NOTIFICATIONS }
             }
+            // Feedback only (see crate::clipboard); nothing to keep.
+            NodeEvent::ClipboardReceived { .. } => Changes::NONE,
         }
     }
 

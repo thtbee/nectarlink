@@ -96,6 +96,8 @@ data class CoreState(
             if (pairing == PairingState.Idle) this else copy(pairing = PairingState.Failed(event.failure))
         // PCs don't send notifications; nothing for the phone to show.
         is Event.NotificationsReset, is Event.NotificationPosted, is Event.NotificationRemoved -> this
+        // Android shows its own "copied" confirmation.
+        is Event.ClipboardReceived -> this
     }
 
     private fun update(id: String, change: (Device) -> Device): CoreState =

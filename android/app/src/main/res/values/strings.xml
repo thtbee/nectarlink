@@ -56,6 +56,16 @@
     <string name="notifications_off">Nectarlink needs notification access to show this phone’s notifications on your PC.</string>
     <string name="notifications_restricted">Switch greyed out? Open App info, tap ⋮, choose “Allow restricted settings”, then try again.</string>
     <string name="action_allow">Allow</string>
+    <string name="clip_share_label">Send to PC</string>
+    <string name="clip_tile_label">Send clipboard</string>
+    <string name="action_send_clipboard">Send clipboard</string>
+    <string name="clip_sent_to">Sent to %1$s</string>
+    <string name="clip_no_pc">No PC is connected right now.</string>
+    <string name="clip_off_for">The clipboard is turned off for %1$s.</string>
+    <string name="clip_too_large">That’s too much text to send at once.</string>
+    <string name="clip_private">What you copied is marked private by its app, so it wasn’t sent.</string>
+    <string name="clip_empty">There’s no text on the clipboard.</string>
+    <string name="clip_nothing_shared">There’s no text to send.</string>
     <string name="background_title">Stay reachable in the background</string>
     <string name="background_text">Your phone pauses Nectarlink to save battery, so your PC can’t reach it, and replies and dismissals from the PC time out. Let it run in the background.</string>
     <string name="action_manage">Manage</string>

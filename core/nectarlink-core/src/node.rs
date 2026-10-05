@@ -20,7 +20,8 @@ use iroh_mdns_address_lookup::{DiscoveryEvent, MdnsAddressLookup};
 use nectarlink_protocol::{
     ALPN_PAIR, ALPN_SESSION, DeviceId, Envelope, ErrorCode,
     messages::{
-        Battery, DeviceInfo, HelloUpdate, Notification, NotifyAction, NotifyKey, PowerLevel, Ring, types,
+        Battery, ClipSet, DeviceInfo, HelloUpdate, Notification, NotifyAction, NotifyKey, PowerLevel, Ring,
+        types,
     },
     pairing::PairingUri,
 };
@@ -123,6 +124,17 @@ impl Shared {
     /// Every connected device's session.
     pub fn live_sessions(&self) -> Vec<Arc<Session>> {
         lock(&self.sessions).values().filter(|s| s.is_alive()).cloned().collect()
+    }
+
+    /// Whether a device toggle (see [`features::DEVICE_TOGGLES`]) is on for
+    /// `peer`; unknown toggles are off.
+    pub fn toggle_on(&self, peer: &DeviceId, toggle: &str) -> bool {
+        self.store
+            .toggles(peer)
+            .ok()
+            .and_then(|t| t.get(toggle).copied())
+            .or_else(|| features::toggle_default(toggle))
+            .unwrap_or(false)
     }
 
     /// The capabilities this device offers right now.
@@ -772,6 +784,27 @@ impl Node {
         } else {
             shared.emit(NodeEvent::NotificationsReset { device: peer, items: Vec::new() });
         }
+    }
+
+    // ---- Clipboard (docs/protocol/clipboard.md) ----
+
+    /// Puts text on a paired device's clipboard. Fails with
+    /// [`Error::Denied`] when the user turned the clipboard off for that
+    /// device (here or there), and [`Error::TooLarge`] beyond
+    /// [`crate::CLIP_MAX_BYTES`].
+    pub async fn send_clipboard(&self, peer: DeviceId, text: String) -> Result<()> {
+        if text.is_empty() {
+            return Ok(());
+        }
+        if text.len() > nectarlink_protocol::messages::CLIP_MAX_BYTES {
+            return Err(Error::TooLarge);
+        }
+        if !self.shared.toggle_on(&peer, crate::clipboard::TOGGLE) {
+            return Err(Error::Denied);
+        }
+        let env = Envelope::new(types::CLIP_SET, &ClipSet { text })?;
+        self.request(peer, env).await?.expect(types::OK)?;
+        Ok(())
     }
 
     // ---- Notifications (docs/protocol/notifications.md) ----

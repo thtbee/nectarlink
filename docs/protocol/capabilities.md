@@ -34,7 +34,7 @@ capability is missing.
 | `sms.read` | Reads SMS conversations | SMS permission |
 | `sms.send` | Sends SMS | SMS permission |
 | `call.state` | Reports incoming and ongoing calls | phone permission |
-| `clip.write` | Accepts clipboard content from the PC | app update |
+| `clip.write` | Accepts clipboard content from the PC ([clipboard service](clipboard.md)) | app update |
 | `clip.share` | Sends the clipboard when the user taps "Send" | app update |
 | `clip.read.auto` | Sends clipboard changes automatically, in the background | Elevated |
 | `photos.read` | Lists and sends recent photos and screenshots | photos permission |

@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.core.NotificationFailure
 import app.nectarlink.core.Platform
@@ -22,6 +23,8 @@ internal class PhonePlatform(context: Context, private val ringer: Ringer) : Pla
     override fun startRinging() = ringer.startRinging()
 
     override fun stopRinging() = ringer.stopRinging()
+
+    override fun setClipboard(text: String): Boolean = PhoneClipboard.write(context, text)
 
     override fun dismissNotification(key: String) {
         val listener = NotificationListener.instance ?: throw NotificationFailure.Unsupported()

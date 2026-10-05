@@ -9,6 +9,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod bridge;
+mod clipboard;
 mod core_host;
 mod icons;
 mod logging;
@@ -47,6 +48,9 @@ impl Platform for DesktopPlatform {
     }
     fn stop_ringing(&self) {
         win::sound::stop_ringing();
+    }
+    fn set_clipboard(&self, text: &str) -> Result<(), String> {
+        win::clipboard::write(text)
     }
 }
 
@@ -141,6 +145,7 @@ fn main() -> ExitCode {
     }
     watch_network();
     start_toasts();
+    clipboard::start();
 
     bridge::native::ffi::prepare_qt();
     let mut app = QGuiApplication::new();

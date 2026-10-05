@@ -107,6 +107,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
             Ok(event) => {
                 crate::notifications::apply(&event);
                 crate::notifications::update_toasts(&event);
+                crate::clipboard::on_event(&event);
             }
             Err(RecvError::Lagged(missed)) => {
                 // Resynchronize what can be re-read; transient events are lost.

@@ -111,6 +111,8 @@ enum Command {
     },
     /// Stay online and print events until Ctrl+C.
     Run,
+    /// Put text on a paired device's clipboard.
+    Clip { device: String, text: String },
     /// Dismiss a phone's notification (`run` prints the keys).
     Dismiss { device: String, key: String },
     /// Run an action of a phone's notification, or reply to it.
@@ -163,6 +165,10 @@ impl Platform for TerminalPlatform {
     }
     fn stop_ringing(&self) {
         println!("🔕 Stopped ringing.");
+    }
+    fn set_clipboard(&self, text: &str) -> Result<(), String> {
+        println!("Clipboard from a paired device: {text}");
+        Ok(())
     }
     fn dismiss_notification(&self, key: &str) -> Result<(), NotificationError> {
         println!("The PC dismissed {key}");
@@ -277,6 +283,12 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             wait_until_online(node, id).await?;
             node.ring(id, !off).await.context("ring failed")?;
             println!("{}", if *off { "Stopped ringing." } else { "Ringing…" });
+        }
+        Command::Clip { device, text } => {
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            node.send_clipboard(id, text.clone()).await.context("clipboard failed")?;
+            println!("Sent.");
         }
         Command::Dismiss { device, key } => {
             let id = resolve(node, device)?;

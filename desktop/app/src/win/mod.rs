@@ -5,6 +5,7 @@
 
 #![allow(unsafe_code)]
 
+pub mod clipboard;
 pub mod icon;
 pub mod net;
 pub mod single_instance;

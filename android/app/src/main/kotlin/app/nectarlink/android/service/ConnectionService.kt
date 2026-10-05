@@ -17,6 +17,7 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import app.nectarlink.android.NectarlinkApplication
 import app.nectarlink.android.R
+import app.nectarlink.android.clipboard.SendActivity
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.ui.MainActivity
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -91,7 +92,7 @@ class ConnectionService : LifecycleService() {
             status.paired == 0 -> getString(R.string.notification_not_paired)
             else -> getString(R.string.notification_waiting)
         }
-        return NotificationCompat.Builder(this, CHANNEL_CONNECTION)
+        val builder = NotificationCompat.Builder(this, CHANNEL_CONNECTION)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(text)
             .setContentIntent(openApp())
@@ -99,7 +100,13 @@ class ConnectionService : LifecycleService() {
             .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .build()
+        if (status.connected.isNotEmpty()) {
+            val send = PendingIntent.getActivity(
+                this, 2, SendActivity.sendClipboardIntent(this), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            builder.addAction(0, getString(R.string.action_send_clipboard), send)
+        }
+        return builder.build()
     }
 
     private fun ringingNotification(from: String): Notification {

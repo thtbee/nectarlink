@@ -31,6 +31,8 @@ pub mod types {
     pub const NOTIFY_POSTED: &str = "notify.posted";
     pub const NOTIFY_REMOVED: &str = "notify.removed";
     pub const NOTIFY_SYNC: &str = "notify.sync";
+
+    pub const CLIP_SET: &str = "clip.set";
     pub const NOTIFY_DISMISS: &str = "notify.dismiss";
     pub const NOTIFY_ACTION: &str = "notify.action";
 }
@@ -312,6 +314,31 @@ pub struct NotifyAction {
 impl std::fmt::Debug for NotifyAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NotifyAction").field("action", &self.action).finish_non_exhaustive()
+    }
+}
+
+// ---- Clipboard (docs/protocol/clipboard.md) ----
+
+/// Largest clipboard text sent or accepted, in UTF-8 bytes.
+pub const CLIP_MAX_BYTES: usize = 512 * 1024;
+
+/// Body of `clip.set`.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClipSet {
+    pub text: String,
+}
+
+impl ClipSet {
+    /// Whether the text is within the spec's limits.
+    pub fn is_valid(&self) -> bool {
+        !self.text.is_empty() && self.text.len() <= CLIP_MAX_BYTES
+    }
+}
+
+/// Never prints content (protocol v0 §11).
+impl std::fmt::Debug for ClipSet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ClipSet").field("bytes", &self.text.len()).finish()
     }
 }
 

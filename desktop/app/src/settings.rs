@@ -41,6 +41,8 @@ pub struct Settings {
     pub backdrop: bool,
     /// Closing the window keeps Nectarlink running in the tray.
     pub close_to_tray: bool,
+    /// Send what's copied on this PC to connected phones.
+    pub auto_clipboard: bool,
 }
 
 impl Default for Settings {
@@ -51,6 +53,7 @@ impl Default for Settings {
             color_mode: ColorMode::default(),
             backdrop: true,
             close_to_tray: true,
+            auto_clipboard: true,
         }
     }
 }
@@ -110,6 +113,7 @@ mod tests {
             color_mode: ColorMode::Dark,
             backdrop: false,
             close_to_tray: false,
+            auto_clipboard: false,
         };
         settings.save(dir.path()).unwrap();
         assert_eq!(Settings::load(dir.path()), settings);

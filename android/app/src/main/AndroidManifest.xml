@@ -59,6 +59,35 @@
             </intent-filter>
         </activity>
 
+        <!-- Sending text to the PC: shared from other apps, or the clipboard
+             (from the tile and the connection notification). No screen of
+             its own. -->
+        <activity
+            android:name=".clipboard.SendActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/clip_share_label"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".clipboard.ClipboardTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_clipboard"
+            android:label="@string/clip_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- Mirroring notifications to PCs; the user grants access in Settings. -->
         <service
             android:name=".notifications.NotificationListener"

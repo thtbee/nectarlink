@@ -6,6 +6,7 @@
 //! changes is reported as a [`NodeEvent`]. See
 //! `docs/architecture/core-api.md` for the design.
 
+mod clipboard;
 mod config;
 mod error;
 mod events;
@@ -26,7 +27,9 @@ pub use features::{CapabilityMatrix, FeatureState};
 pub use identity::{KeyProtector, PlainKeyProtector, default_protector};
 pub use nectarlink_protocol::{
     DeviceId,
-    messages::{Battery, DeviceInfo, DeviceKind, Notification, NotificationAction, PowerLevel},
+    messages::{
+        Battery, CLIP_MAX_BYTES, DeviceInfo, DeviceKind, Notification, NotificationAction, PowerLevel,
+    },
     pairing::PairingUri,
 };
 pub use node::Node;

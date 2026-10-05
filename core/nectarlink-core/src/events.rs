@@ -115,4 +115,8 @@ pub enum NodeEvent {
         device: DeviceId,
         key: String,
     },
+    /// A device put text on this device's clipboard.
+    ClipboardReceived {
+        device: DeviceId,
+    },
 }

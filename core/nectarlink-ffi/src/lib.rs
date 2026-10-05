@@ -241,6 +241,10 @@ pub enum Event {
         id: String,
         key: String,
     },
+    /// A device put text on this phone's clipboard.
+    ClipboardReceived {
+        id: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -263,6 +267,8 @@ pub enum NectarlinkError {
     Unsupported,
     #[error("it no longer exists")]
     NotFound,
+    #[error("too large to send")]
+    TooLarge,
     #[error("no pairing in progress")]
     NotPairing,
     #[error("invalid pairing link")]
@@ -290,6 +296,7 @@ impl From<core::Error> for NectarlinkError {
             }
             core::Error::Unsupported => NectarlinkError::Unsupported,
             core::Error::NotFound => NectarlinkError::NotFound,
+            core::Error::TooLarge => NectarlinkError::TooLarge,
             core::Error::NotPairing => NectarlinkError::NotPairing,
             core::Error::InvalidPairingLink(_) => NectarlinkError::InvalidPairingLink,
             core::Error::Network(reason) => NectarlinkError::Network { reason },
@@ -535,6 +542,7 @@ impl From<NodeEvent> for Event {
             NodeEvent::NotificationRemoved { device, key } => {
                 Event::NotificationRemoved { id: device.to_string(), key }
             }
+            NodeEvent::ClipboardReceived { device } => Event::ClipboardReceived { id: device.to_string() },
         }
     }
 }
@@ -592,6 +600,8 @@ pub trait Platform: Send + Sync {
         action: String,
         reply: Option<String>,
     ) -> Result<(), NotificationFailure>;
+    /// A PC sent this text: put it on the clipboard. False if that failed.
+    fn set_clipboard(&self, text: String) -> bool;
 }
 
 /// Encrypts the device key at rest (Android: a Keystore key).
@@ -632,6 +642,9 @@ impl core::Platform for PlatformAdapter {
         reply: Option<&str>,
     ) -> Result<(), core::NotificationError> {
         Ok(self.0.run_notification_action(key.to_owned(), action.to_owned(), reply.map(str::to_owned))?)
+    }
+    fn set_clipboard(&self, text: &str) -> Result<(), String> {
+        if self.0.set_clipboard(text.to_owned()) { Ok(()) } else { Err("the clipboard rejected it".into()) }
     }
 }
 
@@ -811,6 +824,15 @@ impl NectarlinkNode {
 
     pub fn set_device_toggle(&self, id: String, name: String, enabled: bool) -> Result<()> {
         Ok(self.node.set_device_toggle(parse_id(&id)?, &name, enabled)?)
+    }
+
+    // ---- Clipboard ----
+
+    /// Puts text on a paired PC's clipboard.
+    pub async fn send_clipboard(&self, id: String, text: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.send_clipboard(id, text).await?) }).await
     }
 
     // ---- Notifications ----
