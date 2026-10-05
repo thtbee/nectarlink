@@ -79,12 +79,18 @@ class MainActivity : ComponentActivity() {
         handlePairingLink(intent)
     }
 
-    /** A PC's pairing QR code opened from another app (e.g. the camera). */
+    /**
+     * A PC's pairing QR code opened from another app (e.g. the camera).
+     * Each link holds a one-time secret, so a link is used once: Android
+     * re-delivers the original intent when the task is restored or reopened
+     * from Recents, and that must not start a stale pairing.
+     */
     private fun handlePairingLink(intent: Intent?) {
         val link = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString ?: return
-        if (link.startsWith("nectarlink://pair?")) {
-            (application as NectarlinkApplication).core.joinWhenReady(link)
-        }
+        if (!link.startsWith("nectarlink://pair?")) return
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+        if (!PairingLinks(this).consume(link)) return
+        (application as NectarlinkApplication).core.joinWhenReady(link)
     }
 }
 

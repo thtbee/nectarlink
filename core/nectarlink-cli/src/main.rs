@@ -9,8 +9,8 @@ use std::{io::Write, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use nectarlink_core::{
-    ConnectionPath, DeviceId, DeviceInfo, DeviceKind, FeatureState, LinkState, Node, NodeConfig, NodeEvent,
-    PairedDevice, PairingEvent, Platform, PowerLevel,
+    Battery, ConnectionPath, DeviceId, DeviceInfo, DeviceKind, FeatureState, LinkState, Node, NodeConfig,
+    NodeEvent, PairedDevice, PairingEvent, Platform, PowerLevel,
     features::{Effort, FEATURES, Role, UnsupportedReason, Upgrade, UpgradeAction},
 };
 use tokio::sync::broadcast::error::RecvError;
@@ -39,6 +39,12 @@ struct Cli {
     /// Power level to announce with --as-phone.
     #[arg(long, global = true, value_enum, default_value_t = Power::Basic, requires = "as_phone")]
     power: Power,
+    /// Battery level (0–100) to report, to test a PC without a phone.
+    #[arg(long, global = true, value_parser = clap::value_parser!(u8).range(0..=100))]
+    battery: Option<u8>,
+    /// Report the battery as charging (with --battery).
+    #[arg(long, global = true, requires = "battery")]
+    charging: bool,
     /// Extra capability to announce, e.g. clip.read.auto (repeatable).
     #[arg(long = "offer", global = true, value_name = "CAPABILITY")]
     offers: Vec<String>,
@@ -174,6 +180,10 @@ async fn start_node(cli: &Cli) -> Result<Node> {
     let node = Node::start(config, Arc::new(TerminalPlatform)).await.context("failed to start")?;
     if !cli.offers.is_empty() {
         node.update_power(power, cli.offers.clone()).await;
+    }
+    if let Some(level) = cli.battery {
+        let plugged = cli.charging.then(|| "ac".to_owned());
+        node.update_battery(Battery { level, charging: cli.charging, plugged }).await;
     }
     Ok(node)
 }

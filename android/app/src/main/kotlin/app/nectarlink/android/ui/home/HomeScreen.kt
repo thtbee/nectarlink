@@ -143,10 +143,18 @@ private fun linkText(link: Link): String = when (link) {
         else -> stringResource(R.string.link_online)
     }
     Link.Connecting -> stringResource(R.string.link_connecting)
-    is Link.Offline -> link.lastSeen?.let {
-        stringResource(
-            R.string.link_offline_seen,
-            DateUtils.getRelativeTimeSpanString(it * 1000, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS),
-        )
-    } ?: stringResource(R.string.link_never)
+    is Link.Offline -> when (val seen = link.lastSeen) {
+        null -> stringResource(R.string.link_never)
+        else -> {
+            val now = System.currentTimeMillis()
+            if (now - seen * 1000 < DateUtils.MINUTE_IN_MILLIS) {
+                stringResource(R.string.link_offline_now)
+            } else {
+                stringResource(
+                    R.string.link_offline_seen,
+                    DateUtils.getRelativeTimeSpanString(seen * 1000, now, DateUtils.MINUTE_IN_MILLIS),
+                )
+            }
+        }
+    }
 }
