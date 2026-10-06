@@ -505,6 +505,13 @@ Item {
             width: home.sideWidth
             spacing: Theme.gutter
 
+            // The call in progress on the phone.
+            Binding { target: PhoneCall; property: "device"; value: home.deviceId; when: home.visible; restoreMode: Binding.RestoreNone }
+            CallCard {
+                width: home.sideWidth
+                visible: PhoneCall.active && PhoneCall.device === home.deviceId
+            }
+
             // What plays on the phone (its first player).
             Repeater {
                 model: MediaList

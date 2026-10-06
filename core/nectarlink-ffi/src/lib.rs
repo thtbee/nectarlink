@@ -636,6 +636,19 @@ pub struct Call {
     pub photo: Option<Vec<u8>>,
     /// With `Ended`: it rang and nobody answered.
     pub missed: bool,
+    /// With `Active`: when it was answered, in Unix milliseconds.
+    pub since: Option<i64>,
+    /// With `Active`, when this app controls the call (its in-call service
+    /// is bound): mute, speaker and hold.
+    pub controls: Option<CallControls>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct CallControls {
+    pub muted: bool,
+    pub speaker: bool,
+    pub held: bool,
+    pub can_hold: bool,
 }
 
 /// Never prints the number, name or photo (protocol v0 §11).
@@ -653,13 +666,33 @@ pub enum CallPhase {
 }
 
 /// What a PC asked of a call.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum CallCommand {
     Answer,
     /// Decline a ringing call, or hang up an active one.
     Decline,
     /// Stop the ringing.
     Silence,
+    /// Mute (true) or unmute the microphone on the call.
+    Mute {
+        on: bool,
+    },
+    /// The speaker (true) or the earpiece.
+    Speaker {
+        on: bool,
+    },
+    /// Put the call on hold (true) or take it off.
+    Hold {
+        on: bool,
+    },
+    /// A keypad tone: "0"–"9", "*" or "#".
+    Dtmf {
+        digit: String,
+    },
+    /// The call's volume up (true) or down.
+    Volume {
+        up: bool,
+    },
 }
 
 /// A photo or screenshot that just appeared on this phone
@@ -1317,6 +1350,11 @@ impl core::Platform for PlatformAdapter {
             core::CallCommand::Answer => CallCommand::Answer,
             core::CallCommand::Decline => CallCommand::Decline,
             core::CallCommand::Silence => CallCommand::Silence,
+            core::CallCommand::Mute(on) => CallCommand::Mute { on },
+            core::CallCommand::Speaker(on) => CallCommand::Speaker { on },
+            core::CallCommand::Hold(on) => CallCommand::Hold { on },
+            core::CallCommand::Dtmf(digit) => CallCommand::Dtmf { digit: digit.to_string() },
+            core::CallCommand::Volume(up) => CallCommand::Volume { up },
         };
         if self.0.call_command(id.to_owned(), command) { Ok(()) } else { Err("the phone couldn't".into()) }
     }
@@ -1651,6 +1689,13 @@ impl NectarlinkNode {
             name: call.name,
             photo: call.photo,
             missed: call.missed,
+            since: call.since,
+            controls: call.controls.map(|c| core::CallControls {
+                muted: c.muted,
+                speaker: c.speaker,
+                held: c.held,
+                can_hold: c.can_hold,
+            }),
         };
         self.run(async move { Ok(node.call_changed(call).await?) }).await
     }

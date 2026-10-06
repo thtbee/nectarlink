@@ -50,9 +50,12 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
         var answered: Boolean = false,
         /** Declined from a PC: not a missed call. */
         var declined: Boolean = false,
+        /** When it was answered (Unix ms). */
+        var since: Long? = null,
     )
 
     fun start() {
+        instance = this
         if (receiver != null || !canFollow(context)) return
         receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
@@ -98,12 +101,14 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
             TelephonyManager.EXTRA_STATE_OFFHOOK -> when {
                 call == null -> {
                     // Calling out.
-                    val tracked = Tracked(id = System.currentTimeMillis().toString(), incoming = false, number = number, answered = true)
+                    val now = System.currentTimeMillis()
+                    val tracked = Tracked(id = now.toString(), incoming = false, number = number, answered = true, since = now)
                     current = tracked
                     report(tracked, CallPhase.ACTIVE, withContact = false)
                 }
                 !call.answered -> {
                     call.answered = true
+                    call.since = System.currentTimeMillis()
                     report(call, CallPhase.ACTIVE, withContact = false)
                 }
             }
@@ -125,10 +130,19 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
         // A snapshot: the call may change while this waits its turn.
         val number = call.number
         val incoming = call.incoming
-        worker.execute { send(call.id, phase, incoming, number, withContact, missedCheck) }
+        val since = call.since
+        worker.execute { send(call.id, phase, incoming, number, since, withContact, missedCheck) }
     }
 
-    private fun send(id: String, phase: CallPhase, incoming: Boolean, number: String?, withContact: Boolean, missedCheck: Boolean) {
+    private fun send(
+        id: String,
+        phase: CallPhase,
+        incoming: Boolean,
+        number: String?,
+        since: Long?,
+        withContact: Boolean,
+        missedCheck: Boolean,
+    ) {
         val (name, photo) = if (withContact) contact(number) else null to null
         val missed = missedCheck && wasMissed()
         onChange(
@@ -140,8 +154,17 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
                 name = name,
                 photo = photo.takeIf { phase == CallPhase.RINGING },
                 missed = missed,
+                since = since.takeIf { phase == CallPhase.ACTIVE },
+                controls = if (phase == CallPhase.ACTIVE) CallCompanion.controls() else null,
             ),
         )
+    }
+
+    /** The companion's mute, speaker or hold changed: PCs hear of it. */
+    private fun resendActive() {
+        main.post {
+            current?.takeIf { it.answered }?.let { report(it, CallPhase.ACTIVE, withContact = true) }
+        }
     }
 
     /** The contact's name and photo for a number, when allowed and known. */
@@ -188,31 +211,56 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
         }.getOrDefault(true)
     }
 
-    /** Runs what a PC asked; false if the phone couldn't. */
+    /**
+     * Runs what a PC asked; false if the phone couldn't. The companion
+     * (when Telecom has bound it) controls the call itself; otherwise
+     * Telecom answers and ends it, and in-call controls aren't there.
+     */
     @SuppressLint("MissingPermission")
     fun command(id: String, command: CallCommand): Boolean {
         val call = current?.takeIf { it.id == id } ?: return false
-        if (!granted(context, Manifest.permission.ANSWER_PHONE_CALLS)) return false
-        val telecom = context.getSystemService(TelecomManager::class.java) ?: return false
         return runCatching {
             when (command) {
-                // Deprecated for dialer apps, which get the call directly;
-                // still how any other app answers one.
-                @Suppress("DEPRECATION")
-                CallCommand.ANSWER -> telecom.acceptRingingCall()
-                CallCommand.DECLINE -> {
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return false
-                    call.declined = !call.answered
+                CallCommand.Answer -> CallCompanion.answer() || telecom()?.let {
+                    // Deprecated for dialer apps, which get the call directly;
+                    // still how any other app answers one.
                     @Suppress("DEPRECATION")
-                    if (!telecom.endCall()) return false
+                    it.acceptRingingCall()
+                    true
+                } == true
+                CallCommand.Decline -> {
+                    call.declined = !call.answered
+                    CallCompanion.hangUp() || hangUpWithTelecom()
                 }
-                CallCommand.SILENCE -> silence(telecom)
+                CallCommand.Silence -> telecom()?.let { silence(it); true } == true
+                is CallCommand.Mute -> CallCompanion.mute(command.on)
+                is CallCommand.Speaker -> CallCompanion.speaker(command.on)
+                is CallCommand.Hold -> CallCompanion.hold(command.on)
+                is CallCommand.Dtmf -> command.digit.singleOrNull()?.let(CallCompanion::dtmf) ?: false
+                is CallCommand.Volume -> {
+                    context.getSystemService(AudioManager::class.java).adjustStreamVolume(
+                        AudioManager.STREAM_VOICE_CALL,
+                        if (command.up) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER,
+                        0,
+                    )
+                    true
+                }
             }
-            true
         }.getOrElse {
             Log.w(TAG, "a call action failed", it)
             false
         }
+    }
+
+    /** Telecom, when the app may answer and end calls. */
+    private fun telecom(): TelecomManager? =
+        context.getSystemService(TelecomManager::class.java)?.takeIf { granted(context, Manifest.permission.ANSWER_PHONE_CALLS) }
+
+    @SuppressLint("MissingPermission")
+    private fun hangUpWithTelecom(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return false
+        @Suppress("DEPRECATION")
+        return telecom()?.endCall() == true
     }
 
     private var mutedRinger = false
@@ -240,6 +288,13 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
 
     companion object {
         private const val TAG = "PhoneCalls"
+
+        @Volatile private var instance: PhoneCalls? = null
+
+        /** The companion's view of the call changed (mute, speaker, hold). */
+        internal fun controlsChanged() {
+            instance?.resendActive()
+        }
         private const val MAX_PHOTO_BYTES = 64 * 1024
         /** How long the call log takes to have the call that just ended. */
         private const val LOG_DELAY_MS = 1500L

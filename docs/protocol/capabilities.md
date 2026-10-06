@@ -38,6 +38,7 @@ capability is missing.
 | `sms.send` | Sends texts when a PC asks ([messages](sms.md)) | SMS permission |
 | `call.state` | Reports incoming and ongoing calls ([calls](calls.md)) | phone permission |
 | `call.control` | Answers, declines and silences calls when a PC asks ([calls](calls.md)) | phone permission |
+| `call.incall` | Mutes, holds and presses keys on the call in progress ([calls](calls.md)) | Elevated, Android 12+ |
 | `clip.write` | Accepts clipboard content from the PC ([clipboard service](clipboard.md)) | app update |
 | `clip.share` | Sends the clipboard when the user taps "Send" | app update |
 | `clip.read.auto` | Sends clipboard changes automatically, in the background | Elevated |

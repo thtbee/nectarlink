@@ -69,6 +69,8 @@ pub struct Toast {
     pub actions: Vec<(String, String)>,
     /// `(action id, placeholder)` for an inline reply.
     pub reply: Option<(String, String)>,
+    /// No sound and no pop-up (straight to the notification center); a
+    /// call's notification (ringing, or with End) still pops up, quietly.
     pub silent: bool,
     /// A progress bar, updated in place with [`update_progress`].
     pub progress: Option<Progress>,
@@ -285,7 +287,8 @@ fn show_now(notifier: &ToastNotifier, toast: Toast, handler: &'static Handler) -
     notification.SetTag(&HSTRING::from(tag(&toast.key)))?;
     notification.SetGroup(&HSTRING::from(group(&toast.device)))?;
     // Silent on the phone: straight to the notification center, no pop-up.
-    notification.SetSuppressPopup(toast.silent)?;
+    // A call's stays in sight: it's about something happening now.
+    notification.SetSuppressPopup(toast.silent && !toast.call && !ends_call(&toast))?;
     if let Some(progress) = &toast.progress {
         notification.SetData(&progress_data(progress)?)?;
     }
@@ -385,11 +388,20 @@ fn escape(text: &str) -> String {
 /// On a call toast, the actions shown as Answer (green) and Decline (red).
 pub const CALL_ANSWER: &str = "answer";
 pub const CALL_DECLINE: &str = "decline";
+/// On any toast, the action shown as End (red): hanging up a call.
+pub const CALL_END: &str = "end";
+
+/// Whether it's about a call in progress (it has an End button).
+fn ends_call(toast: &Toast) -> bool {
+    toast.actions.iter().any(|(id, _)| id == CALL_END)
+}
 
 /// The toast's XML (Windows toast schema).
 fn toast_xml(toast: &Toast) -> String {
     let mut xml = String::from(if toast.call {
         r#"<toast launch="open" scenario="incomingCall" useButtonStyle="true"><visual><binding template="ToastGeneric">"#
+    } else if ends_call(toast) {
+        r#"<toast launch="open" useButtonStyle="true"><visual><binding template="ToastGeneric">"#
     } else {
         r#"<toast launch="open"><visual><binding template="ToastGeneric">"#
     });
@@ -429,10 +441,10 @@ fn toast_xml(toast: &Toast) -> String {
         // Windows shows at most five buttons, the send button included.
         let room = 5 - usize::from(toast.reply.is_some());
         for (id, label) in toast.actions.iter().take(room) {
-            // On a call: Answer green, Decline red.
+            // On a call: Answer green, Decline and End red.
             let style = match (toast.call, id.as_str()) {
                 (true, CALL_ANSWER) => r#" hint-buttonStyle="Success""#,
-                (true, CALL_DECLINE) => r#" hint-buttonStyle="Critical""#,
+                (true, CALL_DECLINE) | (_, CALL_END) => r#" hint-buttonStyle="Critical""#,
                 _ => "",
             };
             xml.push_str(&format!(
@@ -499,6 +511,17 @@ mod tests {
         assert!(xml.contains(r#"arguments="a:decline" hint-buttonStyle="Critical""#), "{xml}");
         assert!(xml.contains(r#"placement="appLogoOverride" hint-crop="circle""#), "{xml}");
         assert!(xml.contains(r#"Notification.Looping.Call" loop="true""#), "{xml}");
+        XmlDocument::new().unwrap().LoadXml(&HSTRING::from(xml)).expect("well-formed XML");
+    }
+
+    #[test]
+    fn calls_in_progress_end_in_red_quietly() {
+        let actions = vec![("mute".into(), "Mute".into()), (CALL_END.into(), "End".into())];
+        let xml = toast_xml(&Toast { silent: true, reply: None, actions, ..toast() });
+        assert!(xml.starts_with(r#"<toast launch="open" useButtonStyle="true">"#), "{xml}");
+        assert!(xml.contains(r#"arguments="a:end" hint-buttonStyle="Critical""#), "{xml}");
+        assert!(xml.contains(r#"arguments="a:mute"/>"#), "{xml}");
+        assert!(!xml.contains("incomingCall"), "{xml}");
         XmlDocument::new().unwrap().LoadXml(&HSTRING::from(xml)).expect("well-formed XML");
     }
 

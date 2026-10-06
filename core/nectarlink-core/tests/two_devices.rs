@@ -1158,6 +1158,8 @@ async fn calls_show_on_the_pc_which_can_answer_them() {
         name: Some("Sam".into()),
         photo: Some(vec![0xff, 0xd8]),
         missed: false,
+        since: None,
+        controls: None,
     };
     // The call in `state` (a PC that just connected may hear the earlier
     // one again).
@@ -1189,6 +1191,28 @@ async fn calls_show_on_the_pc_which_can_answer_them() {
         pc.node.call_command(phone_id, "c1".into(), CallCommand::Silence).await,
         Err(Error::NotFound)
     ));
+    // The volume works on any phone; mute needs one that controls the call.
+    pc.node.call_command(phone_id, "c1".into(), CallCommand::Volume(true)).await.unwrap();
+    assert!(matches!(
+        pc.node.call_command(phone_id, "c1".into(), CallCommand::Mute(true)).await,
+        Err(Error::Unsupported)
+    ));
+    phone
+        .node
+        .update_power(
+            PowerLevel::NotApplicable,
+            vec![
+                "media.control".into(),
+                nectarlink_core::CALLS_STATE.into(),
+                nectarlink_core::CALLS_CONTROL.into(),
+                nectarlink_core::CALLS_IN_CALL.into(),
+            ],
+        )
+        .await;
+    pc.node.call_command(phone_id, "c1".into(), CallCommand::Mute(true)).await.unwrap();
+    pc.node.call_command(phone_id, "c1".into(), CallCommand::Dtmf('5')).await.unwrap();
+    let seen: Vec<CallCommand> = phone.platform.calls.lock().unwrap().iter().map(|(_, c)| *c).collect();
+    assert_eq!(seen[1..], [CallCommand::Volume(true), CallCommand::Mute(true), CallCommand::Dtmf('5')]);
     pc.node.call_command(phone_id, "c1".into(), CallCommand::Decline).await.unwrap();
 
     let ended = CallState { state: "ended".into(), ..active };

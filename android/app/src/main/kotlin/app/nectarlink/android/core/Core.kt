@@ -16,6 +16,7 @@ import app.nectarlink.android.files.ReceivedFiles
 import app.nectarlink.android.files.TransferNotifications
 import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
+import app.nectarlink.android.calls.CallCompanion
 import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.mirror.InputService
@@ -383,6 +384,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (_state.value.photoAccess) PHOTO_CAPABILITIES else emptyList()) +
             (if (PhoneCalls.canFollow(context)) listOf("call.state") else emptyList()) +
             (if (PhoneCalls.canControl(context)) listOf("call.control") else emptyList()) +
+            (if (PhoneCalls.canControl(context) && CallCompanion.allowed(context)) listOf("call.incall") else emptyList()) +
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
             (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList())

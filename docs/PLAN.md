@@ -138,9 +138,14 @@ Power: 🟢 Basic · 🔵 Assist · 🟣 Elevated (see §4.6).
 | Feature | Tier |
 |---|---|
 | Incoming call alert on PC with caller photo; answer / decline / silence (audio stays on phone) | P0 🟢 |
+| Call in progress on PC: timer, hang up, volume; with Elevated (Android 12+), mute, speaker, hold and keypad through a calling-companion `InCallService` | P0 🟢 |
 | Call log, dialer, call from contacts | P1 🟢 |
 | **Call audio on PC via Bluetooth HFP** (PC mic/speakers) | P1 (after spike) |
 | Auto-pause PC media during calls | P1 |
+
+Not planned: **recording calls.** Android keeps call audio (`VOICE_CALL`
+capture) to privileged apps, so a third-party app can't record calls on
+current Android. Talking through the PC comes with the HFP item above.
 
 ### 3.5 Clipboard
 | Feature | Tier |
@@ -398,7 +403,7 @@ Everything ships inside the single Nectarlink APK. "Elevated" is **not a separat
 | Stay alive | FGS `connectedDevice`, CompanionDeviceManager + presence observing, battery exemption |
 | Notifications | `NotificationListenerService` (+ RemoteInput replies, actions, MessagingStyle parsing) |
 | SMS/MMS, call log, contacts | Telephony & Contacts providers |
-| Calls | `TelephonyCallback`, `TelecomManager.acceptRingingCall/endCall` |
+| Calls | `TelephonyCallback`, `TelecomManager.acceptRingingCall/endCall`; in-call controls through an `InCallService` bound as a calling companion (`MANAGE_ONGOING_CALLS`, granted by Elevated) |
 | Media | `MediaSessionManager.getActiveSessions`, our own `MediaSession` for PC media |
 | Voice recorder | `AudioRecord` / MediaCodec (Opus/AAC), with format conversion in the Rust core on PC for MP3/WAV/FLAC |
 | Voice typing | `SpeechRecognizer` (on-device where available) |

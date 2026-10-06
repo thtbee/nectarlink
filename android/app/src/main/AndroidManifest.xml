@@ -38,6 +38,14 @@
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <!-- Controlling the call in progress for a PC (mute, speaker, hold,
+         keypad) as a calling companion, without being the phone app. -->
+    <uses-permission android:name="android.permission.CALL_COMPANION_APP" />
+    <!-- The same, through the app-op the shell grants at Elevated: Telecom
+         binds a companion that has it. -->
+    <uses-permission
+        android:name="android.permission.MANAGE_ONGOING_CALLS"
+        tools:ignore="ProtectedPermissions" />
     <!-- Calls and texts need a phone line, but tablets without one still
          run everything else. -->
     <uses-feature
@@ -190,6 +198,16 @@
         <receiver
             android:name=".elevated.PairingNotification$Receiver"
             android:exported="false" />
+
+        <!-- Telecom binds it while there are calls (CALL_COMPANION_APP). -->
+        <service
+            android:name=".calls.CallCompanion"
+            android:exported="true"
+            android:permission="android.permission.BIND_INCALL_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.InCallService" />
+            </intent-filter>
+        </service>
 
         <service
             android:name=".mirror.MirrorService"

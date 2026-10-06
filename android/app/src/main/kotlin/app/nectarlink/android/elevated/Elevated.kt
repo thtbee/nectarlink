@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.core.content.edit
+import app.nectarlink.android.calls.CallCompanion
 import app.nectarlink.core.MirrorInputEvent
 import app.nectarlink.core.TouchPhase
 import io.github.muntashirakon.adb.AbsAdbConnectionManager
@@ -181,6 +182,11 @@ object Elevated {
         // Turning wireless debugging back on later is Nectarlink's to do.
         if (context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) != PackageManager.PERMISSION_GRANTED) {
             run(adb, "pm grant ${context.packageName} ${Manifest.permission.WRITE_SECURE_SETTINGS}")
+        }
+        // Lets Telecom bind the calling companion: mute, speaker, hold and
+        // the keypad from a PC.
+        if (!CallCompanion.allowed(context) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            run(adb, "appops set ${context.packageName} ${CallCompanion.OP_NAME} allow")
         }
         val token = ByteArray(24).also(SecureRandom()::nextBytes).joinToString("") { "%02x".format(it) }
         val apk = context.applicationInfo.sourceDir

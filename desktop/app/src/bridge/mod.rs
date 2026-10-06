@@ -8,6 +8,8 @@
 #[allow(unsafe_code)]
 pub mod app;
 #[allow(unsafe_code)]
+pub mod calls;
+#[allow(unsafe_code)]
 pub mod devices;
 #[allow(unsafe_code)]
 pub mod history;

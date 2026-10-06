@@ -77,7 +77,7 @@
     <string name="local_network_text">Android asks before an app talks to devices on your network. Nectarlink needs it to reach your PC.</string>
     <string name="channel_elevated">Wireless debugging setup</string>
     <string name="elevated_title">Real touch and keys (Wireless debugging)</string>
-    <string name="elevated_not_set_up">Drag in real time and use every key. Uses the phone\'s own Wireless debugging; nothing else to install.</string>
+    <string name="elevated_not_set_up">Drag in real time, use every key, and mute, hold or use the keypad on calls from a PC. Uses the phone\'s own Wireless debugging; nothing else to install.</string>
     <string name="elevated_waiting">Set up. Waiting for Wireless debugging: turn it on in Developer options (Nectarlink turns it on by itself after the first time).</string>
     <string name="elevated_starting">Starting…</string>
     <string name="elevated_running">On: your PC\'s mouse and keyboard work like a real touchscreen and keyboard.</string>

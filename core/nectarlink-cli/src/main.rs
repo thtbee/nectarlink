@@ -198,6 +198,23 @@ enum Command {
     /// Act as a phone with a few sample conversations (use with --as-phone),
     /// so a PC can read them and text through this client; stays online.
     Texts,
+    /// Act as a phone with an incoming call (use with --as-phone): PCs can
+    /// answer it, then mute, use the speaker, hold, press keys or hang up,
+    /// as on a phone that controls its calls. Stays online.
+    IncomingCall {
+        /// The caller's number.
+        #[arg(default_value = "+15550144")]
+        number: String,
+        /// The caller's name, as in contacts.
+        #[arg(long)]
+        caller: Option<String>,
+        /// Without the in-call controls (`call.incall`): only answer and end.
+        #[arg(long)]
+        basic: bool,
+        /// Already answered on the phone: the call is in progress.
+        #[arg(long)]
+        answered: bool,
+    },
     /// A paired phone's text messages: list conversations, show one, or send.
     Sms {
         device: String,
@@ -209,6 +226,12 @@ enum Command {
     Calls {
         #[arg(long, value_enum)]
         auto: Option<CallArg>,
+        /// With the first ringing call, run these actions in order, comma
+        /// separated: answer, decline, silence, mute, unmute, speaker,
+        /// earpiece, hold, unhold, up, down, a keypad key (0-9, *, #), or
+        /// wait:N (seconds).
+        #[arg(long)]
+        script: Option<String>,
     },
     /// Announce a picture as a photo just taken on this phone (use with
     /// --as-phone), then stay online to send it to PCs that ask.
@@ -404,6 +427,12 @@ fn sample_texts() {
         .collect();
 }
 
+/// The call `incoming-call` pretends to have, and how to tell PCs it changed.
+static CALL: std::sync::Mutex<Option<nectarlink_core::CallState>> = std::sync::Mutex::new(None);
+static CALL_NODE: std::sync::OnceLock<Node> = std::sync::OnceLock::new();
+/// Whether `incoming-call` offers in-call controls (without --basic).
+static CALL_CONTROLS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// The picture `photo` announced, for PCs that ask for it.
 static PHOTO: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
 const PHOTO_ID: &str = "cli-photo";
@@ -494,6 +523,52 @@ impl Platform for TerminalPlatform {
         texts.push((thread, to[0].clone(), String::new(), false, body.to_owned(), now));
         if let Some(node) = TEXTS_NODE.get().cloned() {
             tokio::runtime::Handle::current().spawn(async move { node.sms_changed(None).await });
+        }
+        Ok(())
+    }
+    fn call_command(
+        &self,
+        id: &str,
+        command: nectarlink_core::CallCommand,
+    ) -> std::result::Result<(), String> {
+        use nectarlink_core::CallCommand as C;
+        let mut current = CALL.lock().unwrap();
+        let call = current.as_mut().filter(|c| c.id == id).ok_or("no such call")?;
+        let controls = call.controls.get_or_insert_default();
+        match command {
+            C::Answer => {
+                controls.can_hold = true;
+                call.state = "active".into();
+                call.photo = None;
+                call.since = Some(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map_or(0, |d| d.as_millis() as i64),
+                );
+            }
+            C::Decline => call.state = "ended".into(),
+            C::Silence => println!("Silenced."),
+            C::Mute(on) => controls.muted = on,
+            C::Speaker(on) => controls.speaker = on,
+            C::Hold(on) => controls.held = on,
+            C::Dtmf(digit) => println!("Key {digit}."),
+            C::Volume(up) => println!("Volume {}.", if up { "up" } else { "down" }),
+        }
+        println!("A PC asked: {command:?}.");
+        // Only an answered call has controls, and only on a phone that offers them.
+        if call.state != "active" || !CALL_CONTROLS.load(std::sync::atomic::Ordering::Relaxed) {
+            call.controls = None;
+        }
+        let call = call.clone();
+        if call.state == "ended" {
+            *current = None;
+        }
+        if let Some(node) = CALL_NODE.get().cloned() {
+            tokio::runtime::Handle::current().spawn(async move {
+                if let Err(e) = node.call_changed(call).await {
+                    println!("Couldn't tell PCs: {e}");
+                }
+            });
         }
         Ok(())
     }
@@ -868,6 +943,37 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             println!("Sharing sample conversations with paired PCs.");
             watch(node, false).await?;
         }
+        Command::IncomingCall { number, caller, basic, answered } => {
+            if !cli.as_phone {
+                bail!("calls are on phones: add --as-phone");
+            }
+            let _ = CALL_NODE.set(node.clone());
+            let mut offers = cli.offers.clone();
+            offers
+                .extend([nectarlink_core::CALLS_STATE.to_owned(), nectarlink_core::CALLS_CONTROL.to_owned()]);
+            CALL_CONTROLS.store(!*basic, std::sync::atomic::Ordering::Relaxed);
+            if !*basic {
+                offers.push(nectarlink_core::CALLS_IN_CALL.to_owned());
+            }
+            node.update_power(node_power(cli), offers).await;
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis() as i64;
+            let call = nectarlink_core::CallState {
+                id: now.to_string(),
+                state: if *answered { "active" } else { "ringing" }.into(),
+                incoming: true,
+                number: Some(number.clone()),
+                name: caller.clone(),
+                photo: None,
+                missed: false,
+                since: answered.then_some(now),
+                controls: (*answered && !*basic)
+                    .then(|| nectarlink_core::CallControls { can_hold: true, ..Default::default() }),
+            };
+            *CALL.lock().unwrap() = Some(call.clone());
+            node.call_changed(call).await.context("can't tell PCs")?;
+            println!("Ringing on connected PCs (and on others when they connect).");
+            watch(node, false).await?;
+        }
         Command::Sms { device, action } => {
             let mut offers = cli.offers.clone();
             offers.push(nectarlink_core::SMS_SHOW.into());
@@ -917,7 +1023,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 }
             }
         }
-        Command::Calls { auto } => {
+        Command::Calls { auto, script } => {
             let mut offers = cli.offers.clone();
             offers.push(nectarlink_core::CALLS_SHOW.into());
             node.update_power(node_power(cli), offers).await;
@@ -928,8 +1034,45 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             });
             let mut events = node.events();
             let answerer = node.clone();
+            let mut script = script.clone();
             tokio::spawn(async move {
                 while let Ok(event) = events.recv().await {
+                    if let (Some(steps), NodeEvent::Call { device, call }) = (script.as_ref(), &event)
+                        && call.state == "ringing"
+                        && call.incoming
+                    {
+                        use nectarlink_core::CallCommand as C;
+                        for step in steps.split(',').map(str::trim) {
+                            let command = match step {
+                                "answer" => C::Answer,
+                                "decline" | "end" => C::Decline,
+                                "silence" => C::Silence,
+                                "mute" => C::Mute(true),
+                                "unmute" => C::Mute(false),
+                                "speaker" => C::Speaker(true),
+                                "earpiece" => C::Speaker(false),
+                                "hold" => C::Hold(true),
+                                "unhold" => C::Hold(false),
+                                "up" => C::Volume(true),
+                                "down" => C::Volume(false),
+                                s if s.starts_with("wait:") => {
+                                    let secs = s[5..].parse().unwrap_or(1);
+                                    tokio::time::sleep(std::time::Duration::from_secs(secs)).await;
+                                    continue;
+                                }
+                                s if s.len() == 1 => C::Dtmf(s.chars().next().unwrap_or('0')),
+                                other => {
+                                    println!("Unknown step {other}");
+                                    continue;
+                                }
+                            };
+                            match answerer.call_command(*device, call.id.clone(), command).await {
+                                Ok(()) => println!("Did it: {command:?}."),
+                                Err(e) => println!("Couldn't {command:?}: {e}"),
+                            }
+                        }
+                        script = None;
+                    }
                     if let (Some(command), NodeEvent::Call { device, call }) = (command, &event)
                         && call.state == "ringing"
                         && call.incoming
@@ -1302,12 +1445,14 @@ fn print_event(node: &Node, event: &NodeEvent) {
                 (None, Some(num)) => format!(" from {num}"),
                 _ => String::new(),
             },
-            if call.missed {
-                ", missed"
-            } else if call.photo.is_some() {
-                ", with photo"
-            } else {
-                ""
+            match (call.missed, call.photo.is_some(), call.controls) {
+                (true, ..) => ", missed".to_owned(),
+                (_, _, Some(c)) => format!(
+                    " [muted {}, speaker {}, held {}, can hold {}]",
+                    c.muted, c.speaker, c.held, c.can_hold
+                ),
+                (_, true, _) => ", with photo".to_owned(),
+                _ => String::new(),
             },
         ),
         NodeEvent::PhotoAdded { device, photo } => println!(

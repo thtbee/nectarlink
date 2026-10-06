@@ -21,6 +21,7 @@ const QML: &[&str] = &[
     "qml/MirrorWindow.qml",
     "qml/components/Avatar.qml",
     "qml/components/Button.qml",
+    "qml/components/CallCard.qml",
     "qml/components/CaptionButtons.qml",
     "qml/components/Card.qml",
     "qml/components/Chip.qml",
@@ -197,6 +198,7 @@ fn main() {
         .files([
             "src/bridge/native.rs",
             "src/bridge/app.rs",
+            "src/bridge/calls.rs",
             "src/bridge/devices.rs",
             "src/bridge/history.rs",
             "src/bridge/media.rs",

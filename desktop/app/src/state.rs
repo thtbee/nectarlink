@@ -40,6 +40,8 @@ impl Changes {
     pub const MESSAGES: Changes = Changes(1 << 12);
     /// Mirroring a phone's screen (kept by crate::mirror).
     pub const MIRROR: Changes = Changes(1 << 13);
+    /// A call in progress on a phone (kept by crate::calls).
+    pub const CALLS: Changes = Changes(1 << 14);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0

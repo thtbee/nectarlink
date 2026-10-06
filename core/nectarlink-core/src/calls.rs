@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use nectarlink_protocol::{
     Envelope, ErrorCode,
-    messages::{CallAction, CallState, calls, types},
+    messages::{CallAction, CallState, calls, is_dtmf_digit, types},
 };
 
 use crate::{Error, Result, events::NodeEvent, node::Shared, session::Session};
@@ -23,6 +23,16 @@ pub enum CallCommand {
     Decline,
     /// Stops the ringing; the call still rings on for the caller.
     Silence,
+    /// Mutes (true) or unmutes the phone's microphone on the call.
+    Mute(bool),
+    /// The speaker (true) or the earpiece.
+    Speaker(bool),
+    /// Puts the call on hold (true) or takes it off.
+    Hold(bool),
+    /// A keypad tone: `0`–`9`, `*` or `#`.
+    Dtmf(char),
+    /// The call's volume up (true) or down.
+    Volume(bool),
 }
 
 impl CallCommand {
@@ -31,16 +41,60 @@ impl CallCommand {
             CallCommand::Answer => calls::ANSWER,
             CallCommand::Decline => calls::DECLINE,
             CallCommand::Silence => calls::SILENCE,
+            CallCommand::Mute(true) => calls::MUTE,
+            CallCommand::Mute(false) => calls::UNMUTE,
+            CallCommand::Speaker(true) => calls::SPEAKER,
+            CallCommand::Speaker(false) => calls::EARPIECE,
+            CallCommand::Hold(true) => calls::HOLD,
+            CallCommand::Hold(false) => calls::UNHOLD,
+            CallCommand::Dtmf(_) => calls::DTMF,
+            CallCommand::Volume(true) => calls::VOLUME_UP,
+            CallCommand::Volume(false) => calls::VOLUME_DOWN,
         }
     }
 
-    pub fn parse(action: &str) -> Option<CallCommand> {
-        match action {
-            calls::ANSWER => Some(CallCommand::Answer),
-            calls::DECLINE => Some(CallCommand::Decline),
-            calls::SILENCE => Some(CallCommand::Silence),
+    /// The command for an action (and, for `dtmf`, its digit).
+    pub fn parse(action: &str, digit: Option<&str>) -> Option<CallCommand> {
+        Some(match action {
+            calls::ANSWER => CallCommand::Answer,
+            calls::DECLINE => CallCommand::Decline,
+            calls::SILENCE => CallCommand::Silence,
+            calls::MUTE => CallCommand::Mute(true),
+            calls::UNMUTE => CallCommand::Mute(false),
+            calls::SPEAKER => CallCommand::Speaker(true),
+            calls::EARPIECE => CallCommand::Speaker(false),
+            calls::HOLD => CallCommand::Hold(true),
+            calls::UNHOLD => CallCommand::Hold(false),
+            calls::DTMF => CallCommand::Dtmf(digit.filter(|d| is_dtmf_digit(d))?.chars().next()?),
+            calls::VOLUME_UP => CallCommand::Volume(true),
+            calls::VOLUME_DOWN => CallCommand::Volume(false),
+            _ => return None,
+        })
+    }
+
+    /// The `digit` field it goes with.
+    fn digit(self) -> Option<String> {
+        match self {
+            CallCommand::Dtmf(c) => Some(c.to_string()),
             _ => None,
         }
+    }
+
+    /// Whether it applies to a call in `state` ("ringing" or "active"),
+    /// and whether it needs the phone to control the call (`call.incall`).
+    fn fits(self, state: &str) -> bool {
+        match self {
+            CallCommand::Answer | CallCommand::Silence => state == calls::RINGING,
+            CallCommand::Decline => true,
+            _ => state == calls::ACTIVE,
+        }
+    }
+
+    fn needs_in_call(self) -> bool {
+        matches!(
+            self,
+            CallCommand::Mute(_) | CallCommand::Speaker(_) | CallCommand::Hold(_) | CallCommand::Dtmf(_)
+        )
     }
 }
 
@@ -104,7 +158,8 @@ pub(crate) async fn command(
     if !shared.toggle_on(&session.peer, TOGGLE) {
         return Err(Error::Denied);
     }
-    let env = Envelope::new(types::CALL_ACTION, &CallAction { id, action: command.as_str().into() })?;
+    let action = CallAction { id, action: command.as_str().into(), digit: command.digit() };
+    let env = Envelope::new(types::CALL_ACTION, &action)?;
     session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect(types::OK)?;
     Ok(())
 }
@@ -122,19 +177,20 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             Ok(true)
         }
         types::CALL_ACTION => {
-            let CallAction { id, action } = env.body()?;
+            let CallAction { id, action, digit } = env.body()?;
             let current = shared.calls.get();
+            let offers = |cap: &str| shared.local_capabilities().iter().any(|c| c == cap);
+            let command = CallCommand::parse(&action, digit.as_deref());
             let reply = if !shared.toggle_on(&peer, TOGGLE) {
                 Envelope::error(ErrorCode::Denied, "calls are off for this device")
-            } else if !shared.local_capabilities().iter().any(|c| c == calls::CONTROL) {
-                Envelope::error(ErrorCode::Unsupported, "this phone doesn't take call actions")
+            } else if !offers(calls::CONTROL)
+                || command.is_some_and(|c| c.needs_in_call() && !offers(calls::IN_CALL))
+            {
+                Envelope::error(ErrorCode::Unsupported, "this phone doesn't take that call action")
             } else {
-                match (CallCommand::parse(&action), current) {
+                match (command, current) {
                     (None, _) => Envelope::error(ErrorCode::Unsupported, "unknown action"),
-                    (Some(command), Some(call))
-                        if call.id == id
-                            && (call.state == calls::RINGING || command == CallCommand::Decline) =>
-                    {
+                    (Some(command), Some(call)) if call.id == id && command.fits(&call.state) => {
                         let platform = shared.platform.clone();
                         match tokio::task::spawn_blocking(move || platform.call_command(&id, command))
                             .await
@@ -163,10 +219,35 @@ mod tests {
 
     #[test]
     fn commands_round_trip() {
-        for c in [CallCommand::Answer, CallCommand::Decline, CallCommand::Silence] {
-            assert_eq!(CallCommand::parse(c.as_str()), Some(c));
+        let all = [
+            CallCommand::Answer,
+            CallCommand::Decline,
+            CallCommand::Silence,
+            CallCommand::Mute(true),
+            CallCommand::Mute(false),
+            CallCommand::Speaker(true),
+            CallCommand::Speaker(false),
+            CallCommand::Hold(true),
+            CallCommand::Hold(false),
+            CallCommand::Dtmf('#'),
+            CallCommand::Volume(true),
+            CallCommand::Volume(false),
+        ];
+        for c in all {
+            assert_eq!(CallCommand::parse(c.as_str(), c.digit().as_deref()), Some(c));
         }
-        assert_eq!(CallCommand::parse("hold"), None);
+        assert_eq!(CallCommand::parse("transfer", None), None);
+        assert_eq!(CallCommand::parse("dtmf", Some("12")), None);
+        assert_eq!(CallCommand::parse("dtmf", Some("x")), None);
+        assert_eq!(CallCommand::parse("dtmf", None), None);
+    }
+
+    #[test]
+    fn commands_fit_the_call() {
+        assert!(CallCommand::Answer.fits("ringing") && !CallCommand::Answer.fits("active"));
+        assert!(CallCommand::Mute(true).fits("active") && !CallCommand::Mute(true).fits("ringing"));
+        assert!(CallCommand::Decline.fits("ringing") && CallCommand::Decline.fits("active"));
+        assert!(CallCommand::Volume(true).fits("active") && !CallCommand::Volume(true).needs_in_call());
     }
 
     #[test]
@@ -180,6 +261,8 @@ mod tests {
             name: None,
             photo: None,
             missed: false,
+            since: None,
+            controls: None,
         };
         current.set(&call);
         assert_eq!(current.get().map(|c| c.id), Some("7".into()));

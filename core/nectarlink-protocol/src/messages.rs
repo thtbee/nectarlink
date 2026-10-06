@@ -783,6 +783,9 @@ pub mod calls {
     pub const CONTROL: &str = "call.control";
     /// Offered by PCs that show calls.
     pub const SHOW: &str = "call.show";
+    /// Offered by phones that control a call in progress (mute, speaker,
+    /// hold, keypad) when a PC asks.
+    pub const IN_CALL: &str = "call.incall";
     /// A caller's photo: a JPEG of at most this many bytes.
     pub const MAX_PHOTO_BYTES: usize = 64 * 1024;
     pub const MAX_ID_BYTES: usize = 64;
@@ -795,6 +798,30 @@ pub mod calls {
     pub const ANSWER: &str = "answer";
     pub const DECLINE: &str = "decline";
     pub const SILENCE: &str = "silence";
+    pub const MUTE: &str = "mute";
+    pub const UNMUTE: &str = "unmute";
+    pub const SPEAKER: &str = "speaker";
+    pub const EARPIECE: &str = "earpiece";
+    pub const HOLD: &str = "hold";
+    pub const UNHOLD: &str = "unhold";
+    /// A keypad tone: `digit` is one of `0`–`9`, `*`, `#`.
+    pub const DTMF: &str = "dtmf";
+    pub const VOLUME_UP: &str = "volume_up";
+    pub const VOLUME_DOWN: &str = "volume_down";
+}
+
+/// A call in progress, as the phone controls it (with `call.incall`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct CallControls {
+    #[serde(default)]
+    pub muted: bool,
+    #[serde(default)]
+    pub speaker: bool,
+    #[serde(default)]
+    pub held: bool,
+    /// The call can be put on hold.
+    #[serde(default)]
+    pub can_hold: bool,
 }
 
 /// Body of `call.state`: a call on the phone started ringing, was
@@ -820,6 +847,13 @@ pub struct CallState {
     /// With `ended`: it rang and nobody answered.
     #[serde(default)]
     pub missed: bool,
+    /// With `active`: when it was answered, in Unix milliseconds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub since: Option<i64>,
+    /// With `active`, when the phone controls the call: its mute, speaker
+    /// and hold.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub controls: Option<CallControls>,
 }
 
 fn yes() -> bool {
@@ -854,6 +888,14 @@ impl CallState {
 pub struct CallAction {
     pub id: String,
     pub action: String,
+    /// With `dtmf`: the key.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub digit: Option<String>,
+}
+
+/// Whether `digit` is a keypad key (`0`–`9`, `*`, `#`).
+pub fn is_dtmf_digit(digit: &str) -> bool {
+    digit.len() == 1 && digit.chars().all(|c| c.is_ascii_digit() || c == '*' || c == '#')
 }
 
 // ---- Photos (docs/protocol/photos.md) ----
@@ -1279,6 +1321,8 @@ mod tests {
             name: Some("Sam".into()),
             photo: Some(vec![0xff, 0xd8]),
             missed: false,
+            since: None,
+            controls: None,
         };
         assert!(call.is_valid());
         let shown = format!("{call:?}");
