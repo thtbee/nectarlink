@@ -26,6 +26,9 @@ pub use events::{
 };
 pub use features::{CapabilityMatrix, FeatureState};
 pub use identity::{KeyProtector, PlainKeyProtector, default_protector};
+pub use nectarlink_protocol::messages::clip::{
+    IMAGE_TYPES as CLIP_IMAGE_TYPES, MAX_IMAGE_BYTES as CLIP_MAX_IMAGE_BYTES,
+};
 pub use nectarlink_protocol::{
     DeviceId,
     messages::{

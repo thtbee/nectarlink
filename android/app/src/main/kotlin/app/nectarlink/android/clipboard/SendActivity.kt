@@ -75,6 +75,7 @@ class SendActivity : Activity() {
         if (!hasFocus || sent || intent?.action != ACTION_SEND_CLIPBOARD) return
         when (val clip = PhoneClipboard.read(this)) {
             is PhoneClipboard.Read.Text -> send(clip.text)
+            is PhoneClipboard.Read.Image -> sendImage(clip.uri)
             PhoneClipboard.Read.Private -> finishWith(getString(R.string.clip_private))
             PhoneClipboard.Read.Empty -> finishWith(getString(R.string.clip_empty))
         }
@@ -84,6 +85,12 @@ class SendActivity : Activity() {
         sent = true
         val core = (application as NectarlinkApplication).core
         scope.launch { finishWith(core.sendClipboard(text)) }
+    }
+
+    private fun sendImage(uri: Uri) {
+        sent = true
+        val core = (application as NectarlinkApplication).core
+        scope.launch { finishWith(core.sendClipboardImage(uri)) }
     }
 
     private fun finishWith(message: String) {

@@ -26,6 +26,7 @@ struct RecordingPlatform {
     dismissed: Mutex<Vec<String>>,
     actions: Mutex<Vec<(String, String, Option<String>)>>,
     clipboard: Mutex<Vec<String>>,
+    images: Mutex<Vec<(String, Vec<u8>)>>,
 }
 
 impl Platform for RecordingPlatform {
@@ -53,6 +54,10 @@ impl Platform for RecordingPlatform {
     }
     fn set_clipboard(&self, text: &str) -> Result<(), String> {
         self.clipboard.lock().unwrap().push(text.to_owned());
+        Ok(())
+    }
+    fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
+        self.images.lock().unwrap().push((mime.to_owned(), bytes.to_vec()));
         Ok(())
     }
 }
@@ -583,6 +588,56 @@ async fn clipboard_text_goes_both_ways_with_consent() {
 
     let huge = "x".repeat(nectarlink_core::CLIP_MAX_BYTES + 1);
     assert!(matches!(pc.node.send_clipboard(phone_id, huge).await, Err(Error::TooLarge)));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn clipboard_images_go_both_ways_with_consent() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // A large screenshot, and a small photo the other way.
+    let screenshot = data(9 * 1024 * 1024 + 17, 3);
+    with_timeout(
+        "pc to phone",
+        pc.node.send_clipboard_image(phone_id, "image/png".into(), screenshot.clone()),
+    )
+    .await
+    .expect("sent");
+    assert_eq!(*phone.platform.images.lock().unwrap(), [("image/png".to_owned(), screenshot)]);
+    wait_for(&mut phone, "clipboard received", |e| match e {
+        NodeEvent::ClipboardReceived { device } if *device == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+    let photo = data(40_000, 4);
+    with_timeout("phone to pc", phone.node.send_clipboard_image(pc_id, "image/jpeg".into(), photo.clone()))
+        .await
+        .expect("sent");
+    assert_eq!(*pc.platform.images.lock().unwrap(), [("image/jpeg".to_owned(), photo)]);
+
+    // Only PNG and JPEG, and not too large.
+    let gif = pc.node.send_clipboard_image(phone_id, "image/gif".into(), vec![1; 10]).await;
+    assert!(matches!(gif, Err(Error::Internal(_))), "{gif:?}");
+    let max = usize::try_from(nectarlink_core::CLIP_MAX_IMAGE_BYTES).unwrap();
+    let huge = pc.node.send_clipboard_image(phone_id, "image/png".into(), vec![0; max + 1]).await;
+    assert!(matches!(huge, Err(Error::TooLarge)), "{huge:?}");
+
+    // The receiver turned the clipboard off for the sender; the sender's
+    // stream is refused and nothing lands.
+    phone.node.set_device_toggle(pc_id, "clipboard", false).unwrap();
+    let denied = with_timeout(
+        "denied",
+        pc.node.send_clipboard_image(phone_id, "image/png".into(), data(2_000_000, 5)),
+    )
+    .await;
+    assert!(matches!(denied, Err(Error::Denied)), "{denied:?}");
+    assert_eq!(phone.platform.images.lock().unwrap().len(), 1);
+    // And the connection still works.
+    with_timeout("still connected", pc.node.send_clipboard(phone_id, "x".into()))
+        .await
+        .expect_err("still off");
 }
 
 /// Deterministic, incompressible-looking test data.

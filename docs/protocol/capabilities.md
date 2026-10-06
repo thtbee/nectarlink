@@ -22,6 +22,7 @@ capability is missing.
 | `device.battery` | Sends `event.battery` | always offered |
 | `device.ring` | Rings on `device.ring`, even on silent | always offered |
 | `files.transfer` | Sends and receives files ([files service](files.md)) | app update |
+| `clip.image` | Accepts images on its clipboard ([clipboard service](clipboard.md)) | app update |
 | `media.control` | Exposes its media sessions for remote control (phone: needs notification access) | phone: notification access · desktop: app update |
 
 ## Phone

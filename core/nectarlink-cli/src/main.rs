@@ -117,8 +117,15 @@ enum Command {
         #[arg(required = true)]
         files: Vec<PathBuf>,
     },
-    /// Put text on a paired device's clipboard.
-    Clip { device: String, text: String },
+    /// Put text, or an image with --image, on a paired device's clipboard.
+    Clip {
+        device: String,
+        #[arg(required_unless_present = "image", conflicts_with = "image")]
+        text: Option<String>,
+        /// A PNG or JPEG file to put on the clipboard instead of text.
+        #[arg(long)]
+        image: Option<PathBuf>,
+    },
     /// Dismiss a phone's notification (`run` prints the keys).
     Dismiss { device: String, key: String },
     /// Run an action of a phone's notification, or reply to it.
@@ -174,6 +181,13 @@ impl Platform for TerminalPlatform {
     }
     fn set_clipboard(&self, text: &str) -> Result<(), String> {
         println!("Clipboard from a paired device: {text}");
+        Ok(())
+    }
+    fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
+        let extension = if mime == "image/jpeg" { "jpg" } else { "png" };
+        let path = std::env::temp_dir().join(format!("nectarlink-clipboard.{extension}"));
+        std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
+        println!("Clipboard image from a paired device ({} bytes): {}", bytes.len(), path.display());
         Ok(())
     }
     fn dismiss_notification(&self, key: &str) -> Result<(), NotificationError> {
@@ -295,10 +309,25 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             wait_until_online(node, id).await?;
             send_files(node, id, files).await?;
         }
-        Command::Clip { device, text } => {
+        Command::Clip { device, text, image } => {
             let id = resolve(node, device)?;
             wait_until_online(node, id).await?;
-            node.send_clipboard(id, text.clone()).await.context("clipboard failed")?;
+            match (text, image) {
+                (_, Some(path)) => {
+                    let mime = match path.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase) {
+                        Some(e) if e == "png" => "image/png",
+                        Some(e) if e == "jpg" || e == "jpeg" => "image/jpeg",
+                        _ => anyhow::bail!("only PNG and JPEG images can go on the clipboard"),
+                    };
+                    let bytes =
+                        std::fs::read(path).with_context(|| format!("can't read {}", path.display()))?;
+                    node.send_clipboard_image(id, mime.into(), bytes).await.context("clipboard failed")?;
+                }
+                (Some(text), None) => {
+                    node.send_clipboard(id, text.clone()).await.context("clipboard failed")?
+                }
+                (None, None) => unreachable!("clap requires text or --image"),
+            }
             println!("Sent.");
         }
         Command::Dismiss { device, key } => {

@@ -86,7 +86,8 @@
             android:name=".files.TransferNotifications$CancelReceiver"
             android:exported="false" />
 
-        <!-- Opening received files on Android 8–9 (later versions use MediaStore). -->
+        <!-- Opening received files on Android 8–9 (later versions use MediaStore),
+             and images from a PC on the clipboard. -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.files"

@@ -726,6 +726,9 @@ pub trait Platform: Send + Sync {
     ) -> Result<(), NotificationFailure>;
     /// A PC sent this text: put it on the clipboard. False if that failed.
     fn set_clipboard(&self, text: String) -> bool;
+    /// A PC sent this image (`image/png` or `image/jpeg`): put it on the
+    /// clipboard. False if that failed.
+    fn set_clipboard_image(&self, mime: String, bytes: Vec<u8>) -> bool;
 }
 
 /// Encrypts the device key at rest (Android: a Keystore key).
@@ -769,6 +772,13 @@ impl core::Platform for PlatformAdapter {
     }
     fn set_clipboard(&self, text: &str) -> Result<(), String> {
         if self.0.set_clipboard(text.to_owned()) { Ok(()) } else { Err("the clipboard rejected it".into()) }
+    }
+    fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
+        if self.0.set_clipboard_image(mime.to_owned(), bytes.to_vec()) {
+            Ok(())
+        } else {
+            Err("the clipboard rejected it".into())
+        }
     }
 }
 
@@ -977,6 +987,14 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.send_clipboard(id, text).await?) }).await
+    }
+
+    /// Puts an image (`image/png` or `image/jpeg`) on a paired PC's
+    /// clipboard.
+    pub async fn send_clipboard_image(&self, id: String, mime: String, bytes: Vec<u8>) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.send_clipboard_image(id, mime, bytes).await?) }).await
     }
 
     // ---- Notifications ----

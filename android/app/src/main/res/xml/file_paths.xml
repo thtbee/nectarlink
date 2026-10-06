@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
-<!-- Received files on Android 8–9 (see files/ReceivedFiles.kt). -->
+<!-- Received files on Android 8–9 (see files/ReceivedFiles.kt), and images
+     a PC put on the clipboard (see clipboard/PhoneClipboard.kt). -->
 <paths>
     <external-files-path name="received" path="Download/Nectarlink/" />
+    <cache-path name="clipboard" path="clipboard/" />
 </paths>

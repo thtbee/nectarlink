@@ -7,6 +7,7 @@
 
 pub mod clipboard;
 pub mod icon;
+pub mod image;
 pub mod net;
 pub mod shortcut;
 pub mod single_instance;
@@ -19,6 +20,7 @@ use windows::{
     Win32::{
         Foundation::ERROR_SUCCESS,
         System::{
+            Com::{COINIT_APARTMENTTHREADED, CoInitializeEx, CoUninitialize},
             Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS},
             Registry::{
                 HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, RRF_RT_REG_DWORD, RRF_RT_REG_SZ, RegGetValueW,
@@ -114,6 +116,19 @@ pub fn reduce_motion() -> bool {
     }
     .is_ok();
     ok && !enabled.as_bool()
+}
+
+/// Runs `f` with COM available on this thread.
+pub fn with_com<T>(f: impl FnOnce() -> T) -> T {
+    // SAFETY: balanced below; if the thread already has COM in another mode
+    // (RPC_E_CHANGED_MODE), it's usable as is and isn't uninitialized here.
+    let initialized = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) }.is_ok();
+    let result = f();
+    if initialized {
+        // SAFETY: pairs with the successful CoInitializeEx above.
+        unsafe { CoUninitialize() };
+    }
+    result
 }
 
 #[cfg(test)]

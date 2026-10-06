@@ -7,6 +7,7 @@ import android.service.notification.NotificationListenerService
 import android.util.Log
 import android.net.Uri
 import app.nectarlink.android.BuildConfig
+import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.android.files.OutgoingFiles
 import app.nectarlink.android.files.ReceivedFiles
 import app.nectarlink.android.files.TransferNotifications
@@ -37,6 +38,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * The app's single connection to `nectarlink-core`. Owns the node, folds
@@ -208,7 +210,22 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * Sends text to every connected PC; returns what to tell the user.
      * Waits for the core when the app was just launched to send.
      */
-    suspend fun sendClipboard(text: String): String {
+    suspend fun sendClipboard(text: String): String =
+        sendToPcs(image = false) { node, pc -> node.sendClipboard(pc, text) }
+
+    /** Sends a copied image to the connected PCs; returns what to tell the user. */
+    suspend fun sendClipboardImage(uri: Uri): String {
+        startJob?.join()
+        if (_state.value.devices.none { it.online }) return context.getString(R.string.clip_no_pc)
+        val image = when (val read = withContext(Dispatchers.IO) { PhoneClipboard.readImage(context, uri) }) {
+            is PhoneClipboard.ImageResult.Ready -> read.image
+            PhoneClipboard.ImageResult.TooLarge -> return context.getString(R.string.clip_image_too_large)
+            PhoneClipboard.ImageResult.Unreadable -> return context.getString(R.string.clip_image_unreadable)
+        }
+        return sendToPcs(image = true) { node, pc -> node.sendClipboardImage(pc, image.mime, image.bytes) }
+    }
+
+    private suspend fun sendToPcs(image: Boolean, send: suspend (NectarlinkNode, String) -> Unit): String {
         startJob?.join()
         val node = node ?: return context.getString(R.string.clip_no_pc)
         val pcs = _state.value.devices.filter { it.online }
@@ -217,12 +234,16 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         var failure: String? = null
         for (pc in pcs) {
             try {
-                node.sendClipboard(pc.id, text)
+                send(node, pc.id)
                 sentTo += pc.name
             } catch (e: NectarlinkException) {
                 failure = when (e) {
                     is NectarlinkException.Denied -> context.getString(R.string.clip_off_for, pc.name)
-                    is NectarlinkException.TooLarge -> context.getString(R.string.clip_too_large)
+                    is NectarlinkException.TooLarge -> context.getString(
+                        if (image) R.string.clip_image_too_large else R.string.clip_too_large,
+                    )
+                    is NectarlinkException.Unsupported ->
+                        if (image) context.getString(R.string.clip_image_unsupported, pc.name) else describe(e)
                     else -> describe(e)
                 }
             }

@@ -13,7 +13,7 @@ use iroh::endpoint::{ReadError, RecvStream, SendStream, VarInt, WriteError};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
     messages::{
-        ErrorBody, FileEntry, FilesAccept, FilesOffer, StreamHeader, files, is_valid_file_name, types,
+        ErrorBody, FileEntry, FilesAccept, FilesOffer, StreamHeader, clip, files, is_valid_file_name, types,
     },
     read_frame, write_frame,
 };
@@ -434,6 +434,9 @@ pub(crate) async fn accept_stream(
     match header {
         Some(h) if h.svc == files::SERVICE && h.op == files::OP_SEND && h.v == files::VERSION => {
             receive(shared, session.peer, send, recv).await;
+        }
+        Some(h) if h.svc == clip::SERVICE && h.op == clip::OP_IMAGE && h.v == clip::VERSION => {
+            crate::clipboard::receive_image(shared, session.peer, send, recv).await;
         }
         _ => {
             let reply = Envelope::error(ErrorCode::Unsupported, "unknown stream");

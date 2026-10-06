@@ -81,7 +81,10 @@
     <string name="clip_off_for">The clipboard is turned off for %1$s.</string>
     <string name="clip_too_large">That’s too much text to send at once.</string>
     <string name="clip_private">What you copied is marked private by its app, so it wasn’t sent.</string>
-    <string name="clip_empty">There’s no text on the clipboard.</string>
+    <string name="clip_empty">There’s no text or image on the clipboard.</string>
+    <string name="clip_image_too_large">That image is too large to send.</string>
+    <string name="clip_image_unreadable">That image can’t be read.</string>
+    <string name="clip_image_unsupported">Update Nectarlink on %1$s to send it images.</string>
     <string name="clip_nothing_shared">There’s no text to send.</string>
     <string name="background_title">Stay reachable in the background</string>
     <string name="background_text">Your phone pauses Nectarlink to save battery, so your PC can’t reach it, and replies and dismissals from the PC time out. Let it run in the background.</string>

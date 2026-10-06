@@ -59,6 +59,9 @@ impl Platform for DesktopPlatform {
     fn set_clipboard(&self, text: &str) -> Result<(), String> {
         win::clipboard::write(text)
     }
+    fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
+        win::clipboard::write_image(mime, bytes)
+    }
 }
 
 /// Command-line options (also used by shortcuts and autostart).

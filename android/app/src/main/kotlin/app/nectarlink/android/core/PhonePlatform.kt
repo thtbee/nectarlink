@@ -26,6 +26,9 @@ internal class PhonePlatform(context: Context, private val ringer: Ringer) : Pla
 
     override fun setClipboard(text: String): Boolean = PhoneClipboard.write(context, text)
 
+    override fun setClipboardImage(mime: String, bytes: ByteArray): Boolean =
+        PhoneClipboard.writeImage(context, mime, bytes)
+
     override fun dismissNotification(key: String) {
         val listener = NotificationListener.instance ?: throw NotificationFailure.Unsupported()
         listener.dismiss(key)

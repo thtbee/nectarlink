@@ -93,6 +93,12 @@ pub trait Platform: Send + Sync + 'static {
     fn set_clipboard(&self, _text: &str) -> Result<(), String> {
         Err("this device has no clipboard".into())
     }
+
+    /// Put an image on this device's clipboard (a paired device sent it).
+    /// `mime` is `image/png` or `image/jpeg`.
+    fn set_clipboard_image(&self, _mime: &str, _bytes: &[u8]) -> Result<(), String> {
+        Err("this device has no clipboard".into())
+    }
 }
 
 /// A platform that does nothing; useful for tests and headless tools.

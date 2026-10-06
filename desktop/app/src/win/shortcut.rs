@@ -5,14 +5,13 @@ use std::path::{Path, PathBuf};
 
 use windows::{
     Win32::{
-        System::Com::{
-            CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx, CoTaskMemFree,
-            CoUninitialize, IPersistFile,
-        },
+        System::Com::{CLSCTX_INPROC_SERVER, CoCreateInstance, CoTaskMemFree, IPersistFile},
         UI::Shell::{FOLDERID_SendTo, IShellLinkW, KF_FLAG_DEFAULT, SHGetKnownFolderPath, ShellLink},
     },
     core::{HSTRING, Interface},
 };
+
+use super::with_com;
 
 /// What a shortcut starts.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,19 +20,6 @@ pub struct Shortcut {
     pub arguments: String,
     /// The tooltip.
     pub description: String,
-}
-
-/// Runs `f` with COM available on this thread.
-fn with_com<T>(f: impl FnOnce() -> T) -> T {
-    // SAFETY: balanced below; if the thread already has COM in another mode
-    // (RPC_E_CHANGED_MODE), it's usable as is and isn't uninitialized here.
-    let initialized = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) }.is_ok();
-    let result = f();
-    if initialized {
-        // SAFETY: pairs with the successful CoInitializeEx above.
-        unsafe { CoUninitialize() };
-    }
-    result
 }
 
 /// Writes (or replaces) a shortcut at `path`, with the target's own icon.

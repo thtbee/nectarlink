@@ -53,7 +53,8 @@ const EVENT_CAPACITY: usize = 512;
 const IDLE_TIMEOUT: Duration = Duration::from_secs(8);
 
 /// Capabilities every build offers.
-const BASE_CAPABILITIES: &[&str] = &["core.ping", "device.battery", "device.ring", "files.transfer"];
+const BASE_CAPABILITIES: &[&str] =
+    &["core.ping", "device.battery", "device.ring", "files.transfer", "clip.image"];
 
 /// This device's mutable description, sent to peers.
 #[derive(Debug, Clone)]
@@ -856,6 +857,16 @@ impl Node {
         let env = Envelope::new(types::CLIP_SET, &ClipSet { text })?;
         self.request(peer, env).await?.expect(types::OK)?;
         Ok(())
+    }
+
+    /// Puts an image on a paired device's clipboard (`image/png` or
+    /// `image/jpeg`), when the user copied one. [`Error::Unsupported`] when
+    /// the device's app can't take images, [`Error::Denied`] when the user
+    /// turned the clipboard off for it, and [`Error::TooLarge`] beyond
+    /// [`crate::CLIP_MAX_IMAGE_BYTES`].
+    pub async fn send_clipboard_image(&self, peer: DeviceId, mime: String, bytes: Vec<u8>) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::clipboard::send_image(&self.shared, &session, mime, bytes).await
     }
 
     // ---- Notifications (docs/protocol/notifications.md) ----

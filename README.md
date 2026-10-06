@@ -74,10 +74,10 @@ place and tested; the user-facing features of Phase 1 come next.
   a feed in the app, with the app's icon. Reply inline, run their actions
   (such as "Mark as read") or dismiss them from the PC; what's cleared on one
   side is cleared on the other.
-- **Clipboard**: text you copy on the PC is ready to paste on the phone. From
-  the phone, send it with the Quick Settings tile, the share sheet or a button
-  in the app (Android lets only the app in front read the clipboard).
-  Passwords that password managers mark private are never sent.
+- **Clipboard**: text and images you copy on the PC are ready to paste on the
+  phone. From the phone, send them with the Quick Settings tile, the share
+  sheet or a button in the app (Android lets only the app in front read the
+  clipboard). Passwords that password managers mark private are never sent.
 - **Files** in both directions, at Wi-Fi speed. On the PC, drop files on the
   window, pick them, or right-click them in File Explorer and choose
   **Send to** and your phone (a notification follows the transfer); on the
@@ -95,8 +95,8 @@ place and tested; the user-facing features of Phase 1 come next.
   connection service, and an identity key protected by the Android Keystore.
 - **Command-line client** for development and testing (`nectarlink`).
 
-**Next (Phase 1)**: images on the clipboard, media controls, notification
-filters and history, and a Windows installer. Mirroring, messages, calls and the other
+**Next (Phase 1)**: media controls, notification filters and history, and a
+Windows installer. Mirroring, messages, calls and the other
 features in the plan follow in later phases.
 
 ## Screenshots

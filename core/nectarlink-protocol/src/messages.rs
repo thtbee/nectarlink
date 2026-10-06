@@ -419,6 +419,33 @@ impl std::fmt::Debug for ClipSet {
     }
 }
 
+/// Clipboard images, which travel on their own stream.
+pub mod clip {
+    pub const SERVICE: &str = "clip";
+    pub const OP_IMAGE: &str = "image";
+    pub const VERSION: u32 = 1;
+    pub const IMAGE: &str = "clip.image";
+    /// The largest image sent or accepted.
+    pub const MAX_IMAGE_BYTES: u64 = 32 * 1024 * 1024;
+    /// Image types a receiver accepts.
+    pub const IMAGE_TYPES: &[&str] = &["image/png", "image/jpeg"];
+}
+
+/// Body of `clip.image`: what follows on the stream.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ClipImage {
+    /// `image/png` or `image/jpeg`.
+    pub mime: String,
+    pub size: u64,
+}
+
+impl ClipImage {
+    /// Whether the type and size are within the spec's limits.
+    pub fn is_valid(&self) -> bool {
+        clip::IMAGE_TYPES.contains(&self.mime.as_str()) && (1..=clip::MAX_IMAGE_BYTES).contains(&self.size)
+    }
+}
+
 /// A paired device identity as stored in trust stores and exchanged in tests.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PeerIdentity {
