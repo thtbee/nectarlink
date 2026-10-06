@@ -5,6 +5,7 @@
 
 #![allow(unsafe_code)]
 
+pub mod autostart;
 pub mod clipboard;
 pub mod icon;
 pub mod image;

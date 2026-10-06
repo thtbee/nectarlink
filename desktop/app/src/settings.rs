@@ -45,6 +45,11 @@ pub struct Settings {
     pub auto_clipboard: bool,
     /// Paired phones in Explorer's "Send to" menu.
     pub send_to_menu: bool,
+    /// Start when the user signs in. Unset until the user chooses: then an
+    /// installed copy starts with Windows and a build run from its folder
+    /// doesn't.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_with_windows: Option<bool>,
 }
 
 impl Default for Settings {
@@ -57,6 +62,7 @@ impl Default for Settings {
             close_to_tray: true,
             auto_clipboard: true,
             send_to_menu: true,
+            start_with_windows: None,
         }
     }
 }
@@ -118,6 +124,7 @@ mod tests {
             close_to_tray: false,
             auto_clipboard: false,
             send_to_menu: false,
+            start_with_windows: Some(true),
         };
         settings.save(dir.path()).unwrap();
         assert_eq!(Settings::load(dir.path()), settings);

@@ -22,6 +22,7 @@ mod palette;
 mod qr;
 mod send_to;
 mod settings;
+mod startup;
 mod state;
 mod transfers;
 mod win;
@@ -155,6 +156,7 @@ fn uninstall() {
         tracing::warn!(error = %e, "can't remove the Send to entries");
     }
     win::toast::unregister();
+    startup::remove();
 }
 
 fn install_panic_logging() {
@@ -219,10 +221,13 @@ fn main() -> ExitCode {
     clipboard::start();
     win::smtc::start(media::on_flyout);
     win::media_sessions::start(media::local_changed);
-    send_to::set_enabled(settings::Settings::load(&data_dir).send_to_menu);
-    // A test instance (own data folder) leaves the user's menu alone.
+    let settings = settings::Settings::load(&data_dir);
+    send_to::set_enabled(settings.send_to_menu);
+    // A test instance (own data folder) leaves the user's menu and sign-in
+    // alone.
     if options.data_dir.is_none() {
         send_to::start();
+        startup::start(settings.start_with_windows);
     }
     // Requests left while no instance was running, then this launch's own.
     for waiting in launch::drain(&data_dir) {

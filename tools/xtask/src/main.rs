@@ -5,6 +5,9 @@
 //!   (`desktop/app/qml/Tokens.qml`, `android/.../ui/theme/Tokens.kt`) from
 //!   `docs/design/tokens.json`, the single source of truth.
 //! - `tokens --check`: fails if the generated files are out of date (CI).
+//! - `notices <out>`: the third-party notices shipped with the Windows app.
+
+mod notices;
 
 use std::{
     fs,
@@ -24,8 +27,9 @@ fn main() -> ExitCode {
     let result = match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
         ["tokens"] => tokens(false),
         ["tokens", "--check"] => tokens(true),
+        ["notices", rest @ ..] => notices::run(rest),
         _ => {
-            eprintln!("usage: cargo xtask tokens [--check]");
+            eprintln!("usage: cargo xtask tokens [--check] | notices <out> [--target <triple>]");
             return ExitCode::from(2);
         }
     };

@@ -144,6 +144,18 @@ Item {
                     ListRow {
                         width: parent.width
                         iconPath: Icons.power
+                        title: qsTr("Start with Windows")
+                        description: qsTr("Nectarlink starts in the notification area when you sign in, so your phone can reach this PC right away.")
+                        Toggle {
+                            label: qsTr("Start with Windows")
+                            checked: Preferences.startWithWindows
+                            onToggled: (on) => Preferences.startWithWindows = on
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.power
                         title: qsTr("Keep running when the window is closed")
                         description: qsTr("Nectarlink stays in the notification area so your phone can reach this PC.")
                         Toggle {

@@ -70,6 +70,24 @@ jobs:
         run: cargo test --locked -p nectarlink-desktop
       - name: Release build
         run: cargo build --locked --release -p nectarlink-desktop
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and
+              -not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
+            choco install nsis --yes --no-progress
+          }
+      - name: Installer
+        shell: pwsh
+        run: ./scripts/package.ps1 -SkipBuild
+      - name: Install, run and uninstall it
+        shell: pwsh
+        run: ./scripts/smoke-installer.ps1
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nectarlink-windows-x64
+          path: target/package/*-setup.exe
+          retention-days: 14
 
   desktop-arm64:
     name: Windows app (ARM64 cross build)

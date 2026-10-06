@@ -43,6 +43,8 @@ pub mod qobject {
         #[qproperty(bool, auto_clipboard)]
         /// Paired phones in Explorer's "Send to" menu.
         #[qproperty(bool, send_to_menu)]
+        /// Start when the user signs in.
+        #[qproperty(bool, start_with_windows)]
         type Preferences = super::PreferencesRust;
     }
 
@@ -58,6 +60,9 @@ pub struct PreferencesRust {
     close_to_tray: bool,
     auto_clipboard: bool,
     send_to_menu: bool,
+    start_with_windows: bool,
+    /// What the user chose (`start_with_windows` shows the default until then).
+    start_choice: Option<bool>,
 }
 
 impl cxx_qt::Initialize for qobject::Preferences {
@@ -78,6 +83,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_auto_clipboard(settings.auto_clipboard);
         crate::clipboard::set_auto_send(settings.auto_clipboard);
         self.as_mut().set_send_to_menu(settings.send_to_menu);
+        self.as_mut().set_start_with_windows(crate::startup::effective(settings.start_with_windows));
+        self.as_mut().rust_mut().start_choice = settings.start_with_windows;
 
         // Save after any change (connected after loading, so loading doesn't
         // rewrite the file).
@@ -95,6 +102,14 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_send_to_menu_changed(|p| {
                 crate::send_to::set_enabled(p.send_to_menu);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_start_with_windows_changed(|mut p| {
+                let on = p.start_with_windows;
+                p.as_mut().rust_mut().start_choice = Some(on);
+                crate::startup::apply(on);
                 p.save();
             })
             .release();
@@ -116,6 +131,7 @@ impl qobject::Preferences {
             close_to_tray: p.close_to_tray,
             auto_clipboard: p.auto_clipboard,
             send_to_menu: p.send_to_menu,
+            start_with_windows: p.start_choice,
         };
         save_in_background(settings);
     }
