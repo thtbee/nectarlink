@@ -67,6 +67,12 @@
     <string name="media_previous">Previous</string>
     <string name="action_send_files">Send files</string>
     <string name="action_send_folder">Send a folder</string>
+    <string name="input_service_label">Nectarlink: control from your PC</string>
+    <string name="input_service_description">Lets you use your PC\'s mouse and keyboard on this phone while its screen is shown on the PC: clicks become taps, drags swipes, and typing goes into the text field you\'re in. Nectarlink uses it only while you share your screen with a paired PC, and reads nothing else.</string>
+    <string name="settings_control">Control from your PC</string>
+    <string name="control_title">Use your PC\'s mouse and keyboard</string>
+    <string name="control_on">On: while your screen is shown on your PC, you can tap, swipe and type from there.</string>
+    <string name="control_off">While your screen is shown on your PC, tap, swipe and type from there. Turn on Nectarlink in Accessibility.</string>
     <string name="channel_mirroring">Screen sharing</string>
     <string name="channel_mirror_requests">Screen sharing requests</string>
     <string name="mirror_request_title">%1$s wants to see your screen</string>

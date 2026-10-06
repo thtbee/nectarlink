@@ -43,6 +43,117 @@ Window {
         id: video
         anchors.fill: parent
         stream: Mirror.device
+        focus: true
+
+        // Where on the phone's screen a point in the window is (0 to 1).
+        function at(x, y) {
+            const r = pictureRect()
+            return { x: (x - r.x) / Math.max(1, r.width), y: (y - r.y) / Math.max(1, r.height),
+                     inside: x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height }
+        }
+
+        // The mouse: left is a finger, right is Back, middle is Home.
+        MouseArea {
+            anchors.fill: parent
+            enabled: Mirror.canControl && Mirror.phase === "showing"
+            acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            property bool down: false
+            property double lastMove: 0
+            onPressed: (mouse) => {
+                video.forceActiveFocus()
+                const p = video.at(mouse.x, mouse.y)
+                if (mouse.button === Qt.RightButton) { Mirror.key("back"); return }
+                if (mouse.button === Qt.MiddleButton) { Mirror.key("home"); return }
+                if (!p.inside) return
+                down = true
+                Mirror.touch("down", p.x, p.y)
+            }
+            onPositionChanged: (mouse) => {
+                if (!down) return
+                // About 60 a second is plenty for a finger.
+                const now = Date.now()
+                if (now - lastMove < 16) return
+                lastMove = now
+                const p = video.at(mouse.x, mouse.y)
+                Mirror.touch("move", p.x, p.y)
+            }
+            onReleased: (mouse) => {
+                if (!down) return
+                down = false
+                const p = video.at(mouse.x, mouse.y)
+                Mirror.touch("up", p.x, p.y)
+            }
+            onWheel: (wheel) => {
+                const p = video.at(wheel.x, wheel.y)
+                if (p.inside)
+                    Mirror.scroll(p.x, p.y, -wheel.angleDelta.x / 120, -wheel.angleDelta.y / 120)
+            }
+        }
+
+        // The keyboard: text goes into the phone's text field; a few keys
+        // have phone meanings.
+        Keys.onPressed: (event) => {
+            if (!Mirror.canControl || Mirror.phase !== "showing")
+                return
+            const keys = {}
+            keys[Qt.Key_Escape] = "back"
+            keys[Qt.Key_Back] = "back"
+            keys[Qt.Key_Home] = "home"
+            keys[Qt.Key_Return] = "enter"
+            keys[Qt.Key_Enter] = "enter"
+            keys[Qt.Key_Backspace] = "backspace"
+            keys[Qt.Key_Delete] = "delete"
+            keys[Qt.Key_Left] = "left"
+            keys[Qt.Key_Right] = "right"
+            keys[Qt.Key_Up] = "up"
+            keys[Qt.Key_Down] = "down"
+            keys[Qt.Key_Tab] = "tab"
+            if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) {
+                Mirror.paste()
+                event.accepted = true
+            } else if (keys[event.key] !== undefined) {
+                Mirror.key(keys[event.key])
+                event.accepted = true
+            } else if (event.text.length > 0 && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier))
+                       && event.text.charCodeAt(0) >= 32) {
+                Mirror.text(event.text)
+                event.accepted = true
+            }
+        }
+    }
+
+    // How to control it, until the phone allows it.
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 12
+        height: hint.implicitHeight + 20
+        radius: Theme.radiusMd
+        visible: Mirror.phase === "showing" && video.frameSize.width > 0 && !Mirror.canControl && !hintClose.closed
+        color: Qt.rgba(0, 0, 0, 0.72)
+        Txt {
+            id: hint
+            anchors.left: parent.left
+            anchors.right: hintClose.left
+            anchors.margins: 10
+            anchors.verticalCenter: parent.verticalCenter
+            wrapMode: Text.WordWrap
+            role: "bodySmall"
+            color: "white"
+            text: qsTr("To use your mouse and keyboard on the phone, open Nectarlink on the phone and turn on Control from your PC in Settings.")
+        }
+        IconButton {
+            id: hintClose
+            property bool closed: false
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            iconPath: Icons.close
+            iconColor: "white"
+            label: qsTr("Hide")
+            onClicked: closed = true
+        }
     }
 
     // Before the picture: waiting for the phone, or why it ended.

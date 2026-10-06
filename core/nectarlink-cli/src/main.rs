@@ -176,6 +176,13 @@ enum Command {
         #[arg(long)]
         at: Vec<std::net::SocketAddr>,
     },
+    /// Use a paired phone's screen: tap at x,y (fractions of the screen),
+    /// swipe, scroll, press a key (back, home, recents, enter...) or type.
+    Input {
+        device: String,
+        #[command(subcommand)]
+        action: InputArg,
+    },
     /// Act as a phone sharing its screen (use with --as-phone): when a PC
     /// asks, streams an H.264 file (Annex B, with access unit delimiters) in
     /// a loop at `fps`. Stays online.
@@ -282,6 +289,15 @@ impl From<MediaCommandArg> for MediaAction {
 /// Media commands from paired devices, for `play`.
 static MEDIA_COMMANDS: std::sync::OnceLock<tokio::sync::mpsc::UnboundedSender<(MediaAction, Option<u64>)>> =
     std::sync::OnceLock::new();
+
+#[derive(Debug, Subcommand)]
+enum InputArg {
+    Tap { x: f32, y: f32 },
+    Swipe { x1: f32, y1: f32, x2: f32, y2: f32 },
+    Scroll { x: f32, y: f32, notches: f32 },
+    Key { key: String },
+    Type { text: String },
+}
 
 #[derive(Debug, Subcommand)]
 enum SmsArg {
@@ -734,6 +750,43 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             offers.push(nectarlink_core::PHOTOS_SHOW.into());
             node.update_power(node_power(cli), offers).await;
             watch(node, true).await?;
+        }
+        Command::Input { device, action } => {
+            use nectarlink_core::{MirrorInput, TouchAction};
+            let mut offers = cli.offers.clone();
+            offers.push(nectarlink_core::MIRROR_VIEW.into());
+            node.update_power(node_power(cli), offers).await;
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            let touch = |action, x, y| MirrorInput::Touch { action, x, y };
+            let inputs = match action {
+                InputArg::Tap { x, y } => {
+                    vec![touch(TouchAction::Down, *x, *y), touch(TouchAction::Up, *x, *y)]
+                }
+                InputArg::Swipe { x1, y1, x2, y2 } => (0..=10)
+                    .map(|i| {
+                        let t = i as f32 / 10.0;
+                        let action = match i {
+                            0 => TouchAction::Down,
+                            10 => TouchAction::Up,
+                            _ => TouchAction::Move,
+                        };
+                        touch(action, x1 + (x2 - x1) * t, y1 + (y2 - y1) * t)
+                    })
+                    .collect(),
+                InputArg::Scroll { x, y, notches } => {
+                    vec![MirrorInput::Scroll { x: *x, y: *y, dx: 0.0, dy: *notches }]
+                }
+                InputArg::Key { key } => vec![MirrorInput::Key { key: key.clone() }],
+                InputArg::Type { text } => vec![MirrorInput::Text { text: text.clone() }],
+            };
+            for input in inputs {
+                node.mirror_input(id, input).await.context("not sent")?;
+                tokio::time::sleep(Duration::from_millis(30)).await;
+            }
+            // Let it leave before this client goes.
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            println!("Sent.");
         }
         Command::Mirror { device, out, seconds, at } => {
             let recording = std::sync::Arc::new(Recording::default());

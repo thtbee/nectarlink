@@ -101,6 +101,27 @@ pub fn on_event(event: &NodeEvent) {
     }
 }
 
+/// The PC's mouse and keyboard on the shown phone, sent in order.
+pub fn input(device: DeviceId, input: nectarlink_core::MirrorInput) {
+    static QUEUE: std::sync::OnceLock<
+        tokio::sync::mpsc::UnboundedSender<(DeviceId, nectarlink_core::MirrorInput)>,
+    > = std::sync::OnceLock::new();
+    let queue = QUEUE.get_or_init(|| {
+        let (queue, mut inputs) = tokio::sync::mpsc::unbounded_channel();
+        core_host::spawn(async move {
+            while let Some((device, input)) = inputs.recv().await {
+                if let Some(node) = core_host::node()
+                    && let Err(e) = node.mirror_input(device, input).await
+                {
+                    tracing::debug!(error = %e, "input didn't reach the phone");
+                }
+            }
+        });
+        queue
+    });
+    let _ = queue.send((device, input));
+}
+
 /// Where the core puts a phone's video: only for phones this PC asked.
 pub fn sink(device: &DeviceId) -> Option<Arc<dyn MirrorSink>> {
     matches!(phase(device), Some(Phase::Asking | Phase::Showing))

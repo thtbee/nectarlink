@@ -162,6 +162,21 @@
             android:taskAffinity=""
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
+        <!-- The PC's mouse and keyboard on the mirrored screen (Assist); the
+             user turns it on in Android's accessibility settings. -->
+        <service
+            android:name=".mirror.InputService"
+            android:exported="true"
+            android:label="@string/input_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/input_service" />
+        </service>
+
         <service
             android:name=".mirror.MirrorService"
             android:exported="false"

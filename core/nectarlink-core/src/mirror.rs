@@ -15,7 +15,7 @@ use std::sync::{
 use iroh::endpoint::{RecvStream, SendStream, VarInt};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, PacketKind,
-    messages::{MirrorConfig, MirrorStart, StreamHeader, mirror, types},
+    messages::{MirrorConfig, MirrorInput, MirrorStart, StreamHeader, mirror, types},
     read_video_packet, video_packet_header, write_frame,
 };
 use tokio::sync::mpsc;
@@ -62,6 +62,18 @@ pub(crate) async fn stop(session: &Session) -> Result<()> {
         .await?
         .expect(types::OK)?;
     Ok(())
+}
+
+/// Mouse and keyboard on a phone's mirrored screen (not answered: input
+/// is only worth it right away).
+pub(crate) async fn input(shared: &Shared, session: &Session, input: MirrorInput) -> Result<()> {
+    if !shared.toggle_on(&session.peer, TOGGLE) {
+        return Err(Error::Denied);
+    }
+    if !input.is_valid() {
+        return Err(Error::Protocol("invalid input".into()));
+    }
+    session.send(Envelope::new(types::MIRROR_INPUT, &input)?).await
 }
 
 pub(crate) async fn request_keyframe(session: &Session) {
@@ -141,6 +153,14 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         }
         types::MIRROR_KEYFRAME => {
             tokio::task::spawn_blocking(move || platform.mirror_keyframe_requested(&peer));
+        }
+        types::MIRROR_INPUT => {
+            let input: MirrorInput = env.body()?;
+            let allowed = shared.toggle_on(&peer, TOGGLE)
+                && shared.local_capabilities().iter().any(|c| c == mirror::INPUT);
+            if allowed && input.is_valid() {
+                platform.mirror_input(&peer, input);
+            }
         }
         _ => return Ok(false),
     }

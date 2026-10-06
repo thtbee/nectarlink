@@ -62,6 +62,8 @@ data class CoreState(
     val ringingFrom: String? = null,
     /** Whether the user let Nectarlink read notifications (to mirror them). */
     val notificationAccess: Boolean = false,
+    /** Whether the user turned on control from the PC (the accessibility service). */
+    val inputAccess: Boolean = false,
     /** Whether the user let Nectarlink read and send texts (for PCs). */
     val smsAccess: Boolean = false,
     /** Whether the user let Nectarlink follow and answer calls (to show them on PCs). */

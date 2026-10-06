@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.R
+import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.update.AppUpdater
 import app.nectarlink.android.update.CheckForUpdates
 import app.nectarlink.android.core.CoreState
@@ -77,6 +78,10 @@ fun SettingsScreen(
 
         Section(stringResource(R.string.settings_notifications)) {
             NotificationAccess(state.notificationAccess)
+        }
+
+        Section(stringResource(R.string.settings_control)) {
+            ControlAccess(state.inputAccess)
         }
 
         Section(stringResource(R.string.settings_appearance)) {
@@ -216,6 +221,28 @@ private fun NotificationAccess(granted: Boolean) {
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 )
             }) { Text(stringResource(R.string.action_app_info)) }
+        }
+    }
+}
+
+/** Control from the PC: Nectarlink's accessibility service, turned on in Android's settings. */
+@Composable
+private fun ControlAccess(on: Boolean) {
+    val context = LocalContext.current
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(stringResource(R.string.control_title), style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(if (on) R.string.control_on else R.string.control_off),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        val open = { context.startActivity(InputService.settingsIntent()) }
+        if (on) {
+            OutlinedButton(onClick = open) { Text(stringResource(R.string.action_manage)) }
+        } else {
+            Button(onClick = open) { Text(stringResource(R.string.action_allow)) }
         }
     }
 }

@@ -95,6 +95,9 @@ impl Platform for RecordingPlatform {
     fn mirror_keyframe_requested(&self, _peer: &nectarlink_core::DeviceId) {
         self.mirror_asks.lock().unwrap().push("keyframe".into());
     }
+    fn mirror_input(&self, _peer: &nectarlink_core::DeviceId, input: nectarlink_core::MirrorInput) {
+        self.mirror_asks.lock().unwrap().push(format!("{input:?}"));
+    }
     fn sms_threads(&self, limit: u32) -> Result<Vec<nectarlink_core::SmsThread>, String> {
         let thread = |i: u32| nectarlink_core::SmsThread {
             id: i.to_string(),
@@ -1032,7 +1035,12 @@ async fn folders_arrive_with_their_layout() {
 async fn the_phone_screen_streams_to_the_pc() {
     use nectarlink_core::{MirrorSend, PacketKind};
     let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::MIRROR_VIEW]).await;
-    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::MIRROR_CAPTURE]).await;
+    let mut phone = device_with(
+        "Pixel",
+        DeviceKind::Phone,
+        &[nectarlink_core::MIRROR_CAPTURE, nectarlink_core::MIRROR_INPUT],
+    )
+    .await;
     pair_qr(&mut pc, &mut phone).await;
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
 
@@ -1063,6 +1071,14 @@ async fn the_phone_screen_streams_to_the_pc() {
     assert_eq!(*screen.got.lock().unwrap(), ["config 1080x2400", "key 1 90000", "frame 16667 4000"]);
 
     pc.node.mirror_keyframe(phone_id).await;
+    // The PC's mouse on the phone's screen; nonsense never leaves the PC.
+    use nectarlink_core::{MirrorInput, TouchAction};
+    pc.node
+        .mirror_input(phone_id, MirrorInput::Touch { action: TouchAction::Down, x: 0.5, y: 0.25 })
+        .await
+        .unwrap();
+    pc.node.mirror_input(phone_id, MirrorInput::Key { key: "back".into() }).await.unwrap();
+    assert!(pc.node.mirror_input(phone_id, MirrorInput::Key { key: "power".into() }).await.is_err());
     // The PC stops watching: the phone hears it, and its stream closes.
     pc.node.mirror_stop(phone_id).await;
     wait_for(&mut pc, "stopped", |e| matches!(e, NodeEvent::Mirroring { on: false, .. }).then_some(())).await;
@@ -1075,7 +1091,9 @@ async fn the_phone_screen_streams_to_the_pc() {
     }
     assert!(stream.is_closed(), "the phone's stream closes");
     let asks = phone.platform.mirror_asks.lock().unwrap().clone();
-    assert!(asks.contains(&"keyframe".to_owned()) && asks.contains(&"stop".to_owned()), "{asks:?}");
+    for wanted in ["keyframe", "Touch(Down)", "Key(back)", "stop"] {
+        assert!(asks.iter().any(|a| a == wanted), "{wanted}: {asks:?}");
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]

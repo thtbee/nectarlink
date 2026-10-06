@@ -17,6 +17,7 @@ import app.nectarlink.android.files.TransferNotifications
 import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.calls.PhoneCalls
+import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.mirror.MirrorRequests
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
@@ -160,7 +161,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     smsAccess = PhoneSms.hasAll(context),
                 )
             }
-            started.updatePower(PowerLevel.BASIC, capabilities(NotificationListener.hasAccess(context)))
+            started.updatePower(powerLevel(), capabilities(NotificationListener.hasAccess(context)))
             scope.launch(Dispatchers.Main) {
                 if (_state.value.photoAccess) photos.start()
                 calls.start()
@@ -184,7 +185,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         _state.update { it.copy(notificationAccess = granted) }
         scope.launch(Dispatchers.Main) { if (granted) phoneMedia.start() else phoneMedia.stop() }
         notificationOps.trySend { node ->
-            node.updatePower(PowerLevel.BASIC, capabilities(granted))
+            node.updatePower(powerLevel(), capabilities(granted))
             node.notificationsReset(showing)
         }
     }
@@ -208,6 +209,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         val photoAccess = RecentPhotos.hasAccess(context)
         val callAccess = PhoneCalls.hasAll(context)
         val smsAccess = PhoneSms.hasAll(context)
+        val inputAccess = InputService.running
+        val inputChanged = inputAccess != _state.value.inputAccess
         val photosChanged = photoAccess != _state.value.photoAccess
         val callsChanged = callAccess != _state.value.callAccess
         val smsChanged = smsAccess != _state.value.smsAccess
@@ -218,16 +221,17 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 photoAccess = photoAccess,
                 callAccess = callAccess,
                 smsAccess = smsAccess,
+                inputAccess = inputAccess,
             )
         }
         if (granted && NotificationListener.instance == null) {
             NotificationListenerService.requestRebind(NotificationListener.component(context))
         }
-        if ((photosChanged || callsChanged || smsChanged) && node != null) {
+        if ((photosChanged || callsChanged || smsChanged || inputChanged) && node != null) {
             if (photoAccess) photos.start() else photos.stop()
             if (PhoneCalls.canFollow(context)) calls.start() else calls.stop()
             if (PhoneSms.canRead(context)) sms.start() else sms.stop()
-            notificationOps.trySend { it.updatePower(PowerLevel.BASIC, capabilities(_state.value.notificationAccess)) }
+            notificationOps.trySend { it.updatePower(powerLevel(), capabilities(_state.value.notificationAccess)) }
         }
     }
 
@@ -366,7 +370,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneCalls.canFollow(context)) listOf("call.state") else emptyList()) +
             (if (PhoneCalls.canControl(context)) listOf("call.control") else emptyList()) +
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
-            (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList())
+            (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
+            (if (InputService.running) listOf("mirror.input") else emptyList())
+
+    /** Assist when the user turned on control from the PC (docs/PLAN.md §4.6). */
+    private fun powerLevel(): PowerLevel = if (InputService.running) PowerLevel.ASSIST else PowerLevel.BASIC
 
     // ---- Pairing ----
 

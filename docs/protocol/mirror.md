@@ -5,7 +5,7 @@
 
 A PC shows a phone's screen. The phone's user agrees each time (Android
 asks); the phone then streams its screen as H.264 on a stream of its own.
-This version is view-only: controlling the phone comes later.
+The PC can also use the phone with its mouse and keyboard (§4).
 
 ## 1. Capabilities
 
@@ -13,6 +13,7 @@ This version is view-only: controlling the phone comes later.
 |---|---|---|
 | `mirror.capture` | phone | Shares its screen when its user agrees |
 | `mirror.view` | PC | Shows a phone's screen |
+| `mirror.input` | phone | Takes the PC's mouse and keyboard while mirrored (Assist: an accessibility service the user turns on; Elevated: injected input) |
 
 Both devices must allow it: the `mirroring` device toggle, on by default,
 on each side.
@@ -62,7 +63,33 @@ u64 time      // capture time in microseconds, big-endian (only differences mean
 
 Packets are at most 8 MiB. Video is BT.709, limited range.
 
-## 4. Latency over completeness
+## 4. Input
+
+```
+t = "mirror.input"   b = { type: "touch", action: "down" | "move" | "up", x: float, y: float }
+                   | { type: "scroll", x: float, y: float, dx: float, dy: float }
+                   | { type: "key", key: text }
+                   | { type: "text", text: text }
+```
+
+Sent by the PC, not answered (input is only worth it right away), and
+only to phones that offer `mirror.input`. Positions are fractions of the
+screen as the phone shows it now (0 at the left or top, 1 at the right or
+bottom), so they hold at any size and rotation.
+
+- `touch`: one finger. At Assist, Android plays a gesture whole, so the
+  phone turns each down–up into a tap (barely moved), a long press (held
+  450 ms or more) or a swipe along the way it went, when it comes up.
+- `scroll`: the mouse wheel at a point, in notches (positive: down or
+  right); the phone swipes the other way.
+- `key`: `back`, `home`, `recents`, `notifications`, `enter`, `backspace`,
+  `delete`, `left`, `right`, `up`, `down` or `tab`. Others are dropped.
+- `text`: typed text (at most 4 KiB), into the focused text field.
+
+The Windows app maps the left button to a finger, right-click to Back,
+middle-click to Home and Ctrl+V to typing the PC's clipboard.
+
+## 5. Latency over completeness
 
 The stream is reliable, so a slow network would otherwise build up delay.
 Instead, the phone keeps only a few packets waiting to go out: when that's
@@ -71,7 +98,7 @@ its encoder for one. The PC likewise decodes everything it gets but shows
 only the newest picture when it's behind, and asks for a keyframe when a
 picture doesn't decode.
 
-## 5. Privacy
+## 6. Privacy
 
 The screen is never recorded or logged by either side. Android shows that
 the screen is being shared (in the status bar), and the user can stop it

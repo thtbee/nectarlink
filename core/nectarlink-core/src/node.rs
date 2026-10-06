@@ -948,6 +948,12 @@ impl Node {
         }
     }
 
+    /// The PC's mouse and keyboard on a phone's mirrored screen.
+    pub async fn mirror_input(&self, peer: DeviceId, input: crate::MirrorInput) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::mirror::input(&self.shared, &session, input).await
+    }
+
     /// Opens this phone's video stream to a PC that asked for the screen.
     pub async fn mirror_open(&self, peer: DeviceId) -> Result<crate::MirrorStream> {
         let session = self.connected(&peer)?;

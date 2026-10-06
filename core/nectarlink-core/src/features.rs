@@ -658,7 +658,12 @@ pub const FEATURES: &[FeatureDef] = &[
     FeatureDef {
         id: "mirroring.control",
         group: FeatureGroup::Mirroring,
-        requires: &[phone("mirror.capture", UPDATE), phone("mirror.input", ASSIST)],
+        requires: &[
+            phone("mirror.capture", UPDATE),
+            phone("mirror.input", ASSIST),
+            desktop("mirror.view", UPDATE),
+            DeviceToggle("mirroring"),
+        ],
         partial: None,
     },
     FeatureDef {

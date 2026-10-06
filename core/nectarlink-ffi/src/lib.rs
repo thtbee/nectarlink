@@ -455,6 +455,70 @@ pub enum VideoPacketKind {
     Keyframe,
 }
 
+/// The PC's mouse or keyboard on the mirrored screen. Positions are
+/// fractions of the screen (0 to 1).
+#[derive(Clone, PartialEq, uniffi::Enum)]
+pub enum MirrorInputEvent {
+    Touch {
+        action: TouchPhase,
+        x: f32,
+        y: f32,
+    },
+    /// The mouse wheel, in notches (positive: down / right).
+    Scroll {
+        x: f32,
+        y: f32,
+        dx: f32,
+        dy: f32,
+    },
+    /// "back", "home", "recents", "enter", "backspace", "delete", "left",
+    /// "right", "up", "down", "tab" or "notifications".
+    Key {
+        key: String,
+    },
+    Text {
+        text: String,
+    },
+}
+
+/// Never prints typed text (protocol v0 §11).
+impl std::fmt::Debug for MirrorInputEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MirrorInputEvent::Text { text } => write!(f, "Text({} bytes)", text.len()),
+            MirrorInputEvent::Touch { action, .. } => write!(f, "Touch({action:?})"),
+            MirrorInputEvent::Scroll { .. } => f.write_str("Scroll"),
+            MirrorInputEvent::Key { key } => write!(f, "Key({key})"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum TouchPhase {
+    Down,
+    Move,
+    Up,
+}
+
+impl From<core::MirrorInput> for MirrorInputEvent {
+    fn from(input: core::MirrorInput) -> Self {
+        match input {
+            core::MirrorInput::Touch { action, x, y } => MirrorInputEvent::Touch {
+                action: match action {
+                    core::TouchAction::Down => TouchPhase::Down,
+                    core::TouchAction::Move => TouchPhase::Move,
+                    core::TouchAction::Up => TouchPhase::Up,
+                },
+                x,
+                y,
+            },
+            core::MirrorInput::Scroll { x, y, dx, dy } => MirrorInputEvent::Scroll { x, y, dx, dy },
+            core::MirrorInput::Key { key } => MirrorInputEvent::Key { key },
+            core::MirrorInput::Text { text } => MirrorInputEvent::Text { text },
+        }
+    }
+}
+
 /// What became of a video packet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum MirrorSendResult {
@@ -1108,6 +1172,9 @@ pub trait Platform: Send + Sync {
     fn mirror_stop_requested(&self, pc_id: String);
     /// The PC needs a keyframe.
     fn mirror_keyframe_requested(&self, pc_id: String);
+    /// The PC's mouse or keyboard on the mirrored screen (only while this
+    /// phone offers `mirror.input`). Return quickly.
+    fn mirror_input(&self, pc_id: String, input: MirrorInputEvent);
     /// A PC asked for the latest conversations, newest first.
     fn sms_threads(&self, limit: u32) -> Vec<SmsThread>;
     /// A PC asked for a conversation's messages before `before` (Unix ms;
@@ -1192,6 +1259,9 @@ impl core::Platform for PlatformAdapter {
     }
     fn mirror_keyframe_requested(&self, peer: &DeviceId) {
         self.0.mirror_keyframe_requested(peer.to_string());
+    }
+    fn mirror_input(&self, peer: &DeviceId, input: core::MirrorInput) {
+        self.0.mirror_input(peer.to_string(), input.into());
     }
     fn sms_threads(&self, limit: u32) -> Result<Vec<core::SmsThread>, String> {
         Ok(self

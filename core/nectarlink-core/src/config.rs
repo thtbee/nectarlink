@@ -147,6 +147,10 @@ pub trait Platform: Send + Sync + 'static {
     /// The PC stopped watching: stop sharing the screen.
     fn mirror_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
 
+    /// The PC's mouse or keyboard on this phone's mirrored screen (checked,
+    /// and only while it offers `mirror.input`). Must return quickly.
+    fn mirror_input(&self, _peer: &nectarlink_protocol::DeviceId, _input: crate::MirrorInput) {}
+
     /// The PC's decoder needs a fresh start: encode a keyframe next.
     fn mirror_keyframe_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
 

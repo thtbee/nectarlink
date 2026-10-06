@@ -12,6 +12,7 @@ import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.media.PhoneMedia
 import app.nectarlink.android.photos.RecentPhotos
+import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.mirror.MirrorRequest
 import app.nectarlink.android.mirror.MirrorRequests
 import app.nectarlink.android.mirror.MirrorService
@@ -22,6 +23,7 @@ import app.nectarlink.core.SmsPartData
 import app.nectarlink.core.SmsThread
 import app.nectarlink.core.FileToSend
 import app.nectarlink.core.MediaAction
+import app.nectarlink.core.MirrorInputEvent
 import app.nectarlink.core.NotificationFailure
 import app.nectarlink.core.Platform
 
@@ -71,6 +73,8 @@ internal class PhonePlatform(
     }
 
     override fun mirrorKeyframeRequested(pcId: String) = MirrorService.keyframe(pcId)
+
+    override fun mirrorInput(pcId: String, input: MirrorInputEvent) = InputService.handle(input)
 
     override fun smsThreads(limit: UInt): List<SmsThread> = sms().threads(limit.toInt())
 

@@ -53,6 +53,7 @@ pub mod types {
     pub const MIRROR_START: &str = "mirror.start";
     pub const MIRROR_STOP: &str = "mirror.stop";
     pub const MIRROR_KEYFRAME: &str = "mirror.keyframe";
+    pub const MIRROR_INPUT: &str = "mirror.input";
 }
 
 /// What kind of device this is.
@@ -478,6 +479,10 @@ pub mod mirror {
     pub const VERSION: u32 = 1;
     /// Stream reset code: mirroring stopped.
     pub const STOPPED: u32 = 11;
+    /// Offered by phones that take input from the PC while mirrored.
+    pub const INPUT: &str = "mirror.input";
+    /// Typed text in one message: at most this many bytes.
+    pub const MAX_TEXT_BYTES: usize = 4096;
     pub const H264: &str = "h264";
 }
 
@@ -490,6 +495,80 @@ pub struct MirrorStart {
     pub fps: u32,
     /// Bits per second to aim for.
     pub bitrate: u32,
+}
+
+/// Body of `mirror.input`: the PC's mouse and keyboard, on the mirrored
+/// screen. Positions are fractions of the screen (0 at the left or top, 1
+/// at the right or bottom), so they hold at any size.
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum MirrorInput {
+    /// A finger: down, moved, up (the phone turns these into taps, long
+    /// presses and swipes).
+    Touch { action: TouchAction, x: f32, y: f32 },
+    /// The mouse wheel at a point, in notches (positive: down / right).
+    Scroll { x: f32, y: f32, dx: f32, dy: f32 },
+    /// A key with no text: one of [`mirror_keys`].
+    Key { key: String },
+    /// Typed text, into what has the focus.
+    Text { text: String },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TouchAction {
+    Down,
+    Move,
+    Up,
+}
+
+/// Keys `mirror.input` can send.
+pub mod mirror_keys {
+    pub const BACK: &str = "back";
+    pub const HOME: &str = "home";
+    pub const RECENTS: &str = "recents";
+    pub const ENTER: &str = "enter";
+    pub const BACKSPACE: &str = "backspace";
+    pub const DELETE: &str = "delete";
+    pub const LEFT: &str = "left";
+    pub const RIGHT: &str = "right";
+    pub const UP: &str = "up";
+    pub const DOWN: &str = "down";
+    pub const TAB: &str = "tab";
+    pub const NOTIFICATIONS: &str = "notifications";
+    pub const ALL: &[&str] =
+        &[BACK, HOME, RECENTS, ENTER, BACKSPACE, DELETE, LEFT, RIGHT, UP, DOWN, TAB, NOTIFICATIONS];
+}
+
+/// Never prints typed text (protocol v0 §11).
+impl std::fmt::Debug for MirrorInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MirrorInput::Touch { action, .. } => write!(f, "Touch({action:?})"),
+            MirrorInput::Scroll { .. } => f.write_str("Scroll"),
+            MirrorInput::Key { key } => write!(f, "Key({key})"),
+            MirrorInput::Text { text } => write!(f, "Text({} bytes)", text.len()),
+        }
+    }
+}
+
+impl MirrorInput {
+    pub fn is_valid(&self) -> bool {
+        let on_screen = |v: f32| v.is_finite() && (0.0..=1.0).contains(&v);
+        match self {
+            MirrorInput::Touch { x, y, .. } => on_screen(*x) && on_screen(*y),
+            MirrorInput::Scroll { x, y, dx, dy } => {
+                on_screen(*x)
+                    && on_screen(*y)
+                    && dx.is_finite()
+                    && dy.is_finite()
+                    && dx.abs() <= 100.0
+                    && dy.abs() <= 100.0
+            }
+            MirrorInput::Key { key } => mirror_keys::ALL.contains(&key.as_str()),
+            MirrorInput::Text { text } => !text.is_empty() && text.len() <= mirror::MAX_TEXT_BYTES,
+        }
+    }
 }
 
 /// The format of a mirroring stream (a config packet's data, in CBOR).
@@ -1163,6 +1242,20 @@ mod tests {
         let env = Envelope::new("x", &plain).unwrap();
         assert!(!format!("{:?}", env.b).contains("folder"));
         assert!(!format!("{:?}", offer("Secret")).contains("Secret"));
+    }
+
+    #[test]
+    fn mirror_input_is_checked() {
+        let touch = MirrorInput::Touch { action: TouchAction::Down, x: 0.5, y: 1.0 };
+        assert!(touch.is_valid());
+        let env = Envelope::new(types::MIRROR_INPUT, &touch).unwrap();
+        assert_eq!(env.body::<MirrorInput>().unwrap(), touch);
+        assert!(!MirrorInput::Touch { action: TouchAction::Up, x: 1.5, y: 0.0 }.is_valid());
+        assert!(!MirrorInput::Touch { action: TouchAction::Up, x: f32::NAN, y: 0.0 }.is_valid());
+        assert!(MirrorInput::Key { key: "back".into() }.is_valid());
+        assert!(!MirrorInput::Key { key: "power".into() }.is_valid());
+        assert!(!MirrorInput::Text { text: String::new() }.is_valid());
+        assert!(!format!("{:?}", MirrorInput::Text { text: "secret".into() }).contains("secret"));
     }
 
     #[test]
