@@ -24,7 +24,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AssistChip
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -261,6 +263,18 @@ private fun PcCard(
             }
             Spacer(Modifier.height(20.dp))
             val context = LocalContext.current
+            // Secondary buttons take their colors from the card, so they
+            // stand out on it in every theme (the theme's own tonal color
+            // can be the card's color, as in Graphite).
+            val ink = MaterialTheme.colorScheme.onPrimaryContainer
+            val tonal = ButtonDefaults.filledTonalButtonColors(
+                containerColor = ink.copy(alpha = 0.10f),
+                contentColor = ink,
+                disabledContainerColor = ink.copy(alpha = 0.05f),
+                disabledContentColor = ink.copy(alpha = 0.38f),
+            )
+            val outlined = ButtonDefaults.outlinedButtonColors(contentColor = ink, disabledContentColor = ink.copy(alpha = 0.38f))
+            val outline = BorderStroke(1.dp, ink.copy(alpha = if (device.online) 0.45f else 0.15f))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     enabled = device.online,
@@ -273,21 +287,22 @@ private fun PcCard(
                 }
                 FilledTonalButton(
                     enabled = device.online,
+                    colors = tonal,
                     onClick = { context.startActivity(SendActivity.sendClipboardIntent(context)) },
                 ) {
                     Text(stringResource(R.string.action_send_clipboard))
                 }
-                FilledTonalButton(enabled = device.online, onClick = { pickFiles.launch(arrayOf("*/*")) }) {
+                FilledTonalButton(enabled = device.online, colors = tonal, onClick = { pickFiles.launch(arrayOf("*/*")) }) {
                     Text(stringResource(R.string.action_send_files))
                 }
-                FilledTonalButton(enabled = device.online, onClick = { pickFolder.launch(null) }) {
+                FilledTonalButton(enabled = device.online, colors = tonal, onClick = { pickFolder.launch(null) }) {
                     Text(stringResource(R.string.action_send_folder))
                 }
                 if (device.has("device.pc_actions")) {
-                    OutlinedButton(enabled = device.online, onClick = { onPower(device.id, false) }) {
+                    OutlinedButton(enabled = device.online, colors = outlined, border = outline, onClick = { onPower(device.id, false) }) {
                         Text(stringResource(R.string.action_lock_pc))
                     }
-                    OutlinedButton(enabled = device.online, onClick = { onPower(device.id, true) }) {
+                    OutlinedButton(enabled = device.online, colors = outlined, border = outline, onClick = { onPower(device.id, true) }) {
                         Text(stringResource(R.string.action_sleep_pc))
                     }
                 }

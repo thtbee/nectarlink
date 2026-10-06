@@ -10,7 +10,8 @@ use windows::{
         Media::MediaFoundation::{
             CLSID_MSH264DecoderMFT, IMF2DBuffer, IMFMediaType, IMFSample, IMFTransform, MF_E_NOTACCEPTING,
             MF_E_TRANSFORM_NEED_MORE_INPUT, MF_E_TRANSFORM_STREAM_CHANGE, MF_LOW_LATENCY, MF_MT_FRAME_SIZE,
-            MF_MT_MAJOR_TYPE, MF_MT_SUBTYPE, MF_VERSION, MFCreateMediaType, MFCreateMemoryBuffer,
+            MF_MT_MAJOR_TYPE, MF_MT_SUBTYPE, MF_MT_VIDEO_NOMINAL_RANGE, MF_MT_YUV_MATRIX, MFNominalRange_0_255,
+            MFVideoTransferMatrix_BT601, MF_VERSION, MFCreateMediaType, MFCreateMemoryBuffer,
             MFCreateSample, MFMediaType_Video, MFSTARTUP_NOSOCKET, MFStartup, MFT_MESSAGE_COMMAND_FLUSH,
             MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, MFT_MESSAGE_NOTIFY_START_OF_STREAM, MFT_OUTPUT_DATA_BUFFER,
             MFT_OUTPUT_STREAM_PROVIDES_SAMPLES, MFVideoFormat_H264, MFVideoFormat_NV12,
@@ -29,6 +30,30 @@ pub struct Picture {
     pub stride: usize,
     pub plane_rows: usize,
     pub nv12: Vec<u8>,
+    /// How its colors turn into RGB, as the stream says.
+    pub colors: Colors,
+}
+
+/// The YUV-to-RGB formula a stream uses (its VUI, as the decoder reports
+/// it). Phones are asked for BT.709 limited range, but not all comply.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Colors {
+    pub bt601: bool,
+    pub full_range: bool,
+}
+
+impl Colors {
+    /// Fixed-point (×256) coefficients: luma scale, then V→R, U→G, V→G, U→B.
+    fn coefficients(self) -> (i32, i32, i32, i32, i32) {
+        let luma = if self.full_range { 256 } else { 298 };
+        let chroma = match (self.bt601, self.full_range) {
+            (false, false) => (459, 55, 136, 541),
+            (false, true) => (403, 48, 120, 475),
+            (true, false) => (409, 100, 208, 516),
+            (true, true) => (359, 88, 183, 454),
+        };
+        (luma, chroma.0, chroma.1, chroma.2, chroma.3)
+    }
 }
 
 pub struct Decoder {
@@ -37,6 +62,7 @@ pub struct Decoder {
     coded: (u32, u32),
     provides_samples: bool,
     output_size: u32,
+    colors: Colors,
 }
 
 impl std::fmt::Debug for Decoder {
@@ -62,7 +88,8 @@ impl Decoder {
             input.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;
             input.SetGUID(&MF_MT_SUBTYPE, &MFVideoFormat_H264)?;
             transform.SetInputType(0, &input, 0)?;
-            let mut decoder = Decoder { transform, coded: (0, 0), provides_samples: false, output_size: 0 };
+            let mut decoder =
+                Decoder { transform, coded: (0, 0), provides_samples: false, output_size: 0, colors: Colors::default() };
             decoder.choose_output()?;
             decoder.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0)?;
             decoder.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0)?;
@@ -85,6 +112,13 @@ impl Decoder {
             self.transform.SetOutputType(0, &chosen, 0)?;
             let size = chosen.GetUINT64(&MF_MT_FRAME_SIZE).unwrap_or(0);
             self.coded = ((size >> 32) as u32, size as u32);
+            // Unknown until the stream says (then the type changes again).
+            self.colors = Colors {
+                bt601: chosen.GetUINT32(&MF_MT_YUV_MATRIX).is_ok_and(|m| m == MFVideoTransferMatrix_BT601.0 as u32),
+                full_range: chosen
+                    .GetUINT32(&MF_MT_VIDEO_NOMINAL_RANGE)
+                    .is_ok_and(|r| r == MFNominalRange_0_255.0 as u32),
+            };
             let info = self.transform.GetOutputStreamInfo(0)?;
             self.provides_samples = info.dwFlags & MFT_OUTPUT_STREAM_PROVIDES_SAMPLES.0 as u32 != 0;
             self.output_size = info.cbSize;
@@ -169,7 +203,7 @@ impl Decoder {
                 let len = stride * rows * 3 / 2;
                 let nv12 = std::slice::from_raw_parts(scan0, len).to_vec();
                 two_d.Unlock2D()?;
-                return Ok(Picture { width, height, stride, plane_rows: rows, nv12 });
+                return Ok(Picture { width, height, stride, plane_rows: rows, nv12, colors: self.colors });
             }
             let mut data = std::ptr::null_mut();
             let mut length = 0;
@@ -178,7 +212,7 @@ impl Decoder {
             buffer.Unlock()?;
             let stride = width as usize;
             let plane_rows = (nv12.len() * 2 / 3) / stride.max(1);
-            Ok(Picture { width, height, stride, plane_rows, nv12 })
+            Ok(Picture { width, height, stride, plane_rows, nv12, colors: self.colors })
         }
     }
 }
@@ -201,7 +235,7 @@ fn sample_of(data: &[u8], time_us: u64) -> windows::core::Result<IMFSample> {
     }
 }
 
-/// NV12 (BT.709, limited range, as phones encode) to 32-bit BGRX, the
+/// NV12 (in the picture's own colors) to 32-bit BGRX, the
 /// visible `width` x `height`, across a few threads.
 pub fn to_bgrx(picture: &Picture, width: u32, height: u32) -> Vec<u8> {
     let (w, h) = (width.min(picture.width) as usize, height.min(picture.height) as usize);
@@ -223,17 +257,19 @@ pub fn to_bgrx(picture: &Picture, width: u32, height: u32) -> Vec<u8> {
 
 fn convert_rows(p: &Picture, w: usize, first: usize, out: &mut [u8]) {
     let uv_plane = p.stride * p.plane_rows;
+    let (luma, vr, ug, vg, ub) = p.colors.coefficients();
+    let black = if p.colors.full_range { 0 } else { 16 };
     for (i, row) in out.chunks_exact_mut(w * 4).enumerate() {
         let y_row = first + i;
         let y_line = &p.nv12[y_row * p.stride..][..w];
         let uv_line = &p.nv12[uv_plane + (y_row / 2) * p.stride..][..w.next_multiple_of(2).min(p.stride)];
         for (x, px) in row.as_chunks_mut::<4>().0.iter_mut().enumerate() {
-            let c = (i32::from(y_line[x]) - 16) * 298;
+            let c = (i32::from(y_line[x]) - black) * luma;
             let d = i32::from(uv_line[x & !1]) - 128;
             let e = i32::from(uv_line[(x & !1) + 1]) - 128;
-            px[0] = clamp((c + 541 * d + 128) >> 8);
-            px[1] = clamp((c - 55 * d - 136 * e + 128) >> 8);
-            px[2] = clamp((c + 459 * e + 128) >> 8);
+            px[0] = clamp((c + ub * d + 128) >> 8);
+            px[1] = clamp((c - ug * d - vg * e + 128) >> 8);
+            px[2] = clamp((c + vr * e + 128) >> 8);
             px[3] = 255;
         }
     }
@@ -248,6 +284,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_stream_says_which_colors() {
+        // 3 frames tagged BT.601, full range (as some phones encode).
+        let units = access_units(include_bytes!("testdata/bt601-full.h264"));
+        let mut decoder = Decoder::new().unwrap();
+        let pictures: Vec<Picture> =
+            units.iter().enumerate().flat_map(|(i, u)| decoder.decode(u, i as u64).unwrap()).collect();
+        assert_eq!(pictures.last().unwrap().colors, Colors { bt601: true, full_range: true });
+    }
+
+    #[test]
     fn colors_convert() {
         // 4x2: black, white, and BT.709 red and blue.
         let (w, h) = (4usize, 2usize);
@@ -256,7 +302,7 @@ mod tests {
         // Chroma for pixel pairs (0,1) and (2,3): neutral; then red's... the
         // second pair holds red's chroma (u=102, v=240).
         nv12[8..12].copy_from_slice(&[128, 128, 102, 240]);
-        let picture = Picture { width: 4, height: 2, stride: 4, plane_rows: 2, nv12 };
+        let picture = Picture { width: 4, height: 2, stride: 4, plane_rows: 2, nv12, colors: Colors::default() };
         let out = to_bgrx(&picture, 4, 2);
         assert_eq!(&out[..4], &[0, 0, 0, 255], "black");
         assert_eq!(&out[4..8], &[255, 255, 255, 255], "white");
@@ -266,7 +312,8 @@ mod tests {
 
     #[test]
     fn odd_sizes_are_cropped_safely() {
-        let picture = Picture { width: 6, height: 4, stride: 8, plane_rows: 4, nv12: vec![128; 8 * 6] };
+        let picture =
+            Picture { width: 6, height: 4, stride: 8, plane_rows: 4, nv12: vec![128; 8 * 6], colors: Colors::default() };
         assert_eq!(to_bgrx(&picture, 5, 3).len(), 5 * 3 * 4);
         assert_eq!(to_bgrx(&picture, 10, 10).len(), 6 * 4 * 4, "never larger than the picture");
     }
@@ -300,6 +347,7 @@ mod tests {
         }
         let first = &pictures[0];
         assert_eq!((first.width, first.height), (320, 240));
+        assert_eq!(first.colors, Colors { bt601: false, full_range: false }, "tagged BT.709, limited");
         let bgrx = to_bgrx(first, 320, 240);
         // A colorful test pattern, not a blank picture.
         let distinct: std::collections::HashSet<&[u8; 4]> = bgrx.as_chunks::<4>().0.iter().collect();
