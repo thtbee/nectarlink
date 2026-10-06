@@ -238,6 +238,22 @@ Item {
                             onToggled: (on) => NotificationList.setHistoryEnabled(on)
                         }
                     }
+                    Divider { width: parent.width }
+                    // Windows' Do not disturb holds back phone notifications
+                    // too (they still reach the feed), so quiet hours are its
+                    // schedule rather than a second one.
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.moon
+                        title: qsTr("Quiet hours")
+                        description: qsTr("When Windows' Do not disturb is on, phone notifications don't pop up; they wait in the app. Set when it turns on by itself in Windows Settings.")
+                        Button {
+                            variant: "tonal"
+                            size: "sm"
+                            text: qsTr("Set a schedule")
+                            onClicked: Qt.openUrlExternally("ms-settings:notifications")
+                        }
+                    }
                     Repeater {
                         model: { try { return JSON.parse(NotificationList.apps) } catch (e) { return [] } }
                         delegate: Column {
