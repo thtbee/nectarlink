@@ -11,6 +11,8 @@ import android.os.Bundle
 import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.media.PhoneMedia
+import app.nectarlink.android.photos.RecentPhotos
+import app.nectarlink.core.FileToSend
 import app.nectarlink.core.MediaAction
 import app.nectarlink.core.NotificationFailure
 import app.nectarlink.core.Platform
@@ -41,6 +43,8 @@ internal class PhonePlatform(
         media.command(player, action, position)
 
     override fun openLink(fromId: String, url: String): Boolean = onLink(fromId, url)
+
+    override fun openPhoto(id: String): FileToSend? = RecentPhotos.open(context, id)
 
     override fun dismissNotification(key: String) {
         val listener = NotificationListener.instance ?: throw NotificationFailure.Unsupported()

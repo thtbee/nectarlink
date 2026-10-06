@@ -115,6 +115,8 @@ pub(crate) struct Shared {
     pub notifications: Feed,
     /// This device's media players (docs/protocol/media.md).
     pub players: crate::media::Players,
+    /// Photos this phone announced lately (docs/protocol/photos.md).
+    pub(crate) photos: crate::photos::Recent,
     pub data_dir: std::path::PathBuf,
     /// Where received files go.
     pub downloads_dir: std::path::PathBuf,
@@ -603,6 +605,7 @@ impl Node {
             memory,
             notifications: Feed::default(),
             players: Default::default(),
+            photos: Default::default(),
             data_dir: config.data_dir.clone(),
             downloads_dir: config.downloads_dir.clone().unwrap_or_else(|| config.data_dir.join("received")),
             transfers: Mutex::new(HashMap::new()),
@@ -912,6 +915,22 @@ impl Node {
     pub async fn open_link(&self, peer: DeviceId, url: String) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::actions::open_link(&self.shared, &session, url).await
+    }
+
+    // ---- Photos (docs/protocol/photos.md) ----
+
+    /// A photo or screenshot just appeared on this phone; announced to every
+    /// connected PC the user allows. PCs then ask for it through
+    /// [`Platform::open_photo`](crate::Platform::open_photo).
+    pub async fn photo_taken(&self, photo: crate::Photo) -> Result<()> {
+        self.shared.photo_taken(photo).await
+    }
+
+    /// Asks a phone for a photo it announced; returns the ID of the
+    /// transfer that brings it (reported like any other).
+    pub async fn fetch_photo(&self, peer: DeviceId, id: String) -> Result<String> {
+        let session = self.connected(&peer)?;
+        crate::photos::fetch(&self.shared, &session, id).await
     }
 
     // ---- Media (docs/protocol/media.md) ----

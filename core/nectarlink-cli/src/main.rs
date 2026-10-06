@@ -161,6 +161,17 @@ enum Command {
     },
     /// Open a web link on a paired device.
     Open { device: String, url: String },
+    /// Show new photos from paired phones as this PC would, and fetch each
+    /// one; stays online until Ctrl+C.
+    Photos,
+    /// Announce a picture as a photo just taken on this phone (use with
+    /// --as-phone), then stay online to send it to PCs that ask.
+    Photo {
+        path: PathBuf,
+        /// A JPEG preview (at most 96 KB) to show with it.
+        #[arg(long)]
+        preview: Option<PathBuf>,
+    },
     /// Pretend to play a song and share it with paired devices, which can
     /// control it; stays online until Ctrl+C.
     Play {
@@ -239,11 +250,24 @@ enum OnOff {
     Off,
 }
 
+/// The picture `photo` announced, for PCs that ask for it.
+static PHOTO: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+const PHOTO_ID: &str = "cli-photo";
+
 /// Rings by printing to the terminal (the CLI has no speaker access).
 #[derive(Debug)]
 struct TerminalPlatform;
 
 impl Platform for TerminalPlatform {
+    fn open_photo(&self, id: &str) -> std::result::Result<nectarlink_core::OutgoingFile, String> {
+        let path = PHOTO.get().filter(|_| id == PHOTO_ID).ok_or("no such photo")?;
+        println!("A PC asked for the photo; sending it.");
+        Ok(nectarlink_core::OutgoingFile {
+            name: nectarlink_core::safe_file_name(&path.to_string_lossy()),
+            folder: None,
+            source: nectarlink_core::FileSource::Path(path.clone()),
+        })
+    }
     fn start_ringing(&self) {
         println!("\x07🔔 Ringing! (stop it from the other device)");
     }
@@ -482,7 +506,13 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             node.set_device_toggle(id, name, on)?;
             println!("{name} is now {}", if on { "on" } else { "off" });
         }
-        Command::Run => watch(node).await?,
+        Command::Run => watch(node, false).await?,
+        Command::Photos => {
+            let mut offers = cli.offers.clone();
+            offers.push(nectarlink_core::PHOTOS_SHOW.into());
+            node.update_power(node_power(cli), offers).await;
+            watch(node, true).await?;
+        }
         Command::Power { device, action } => {
             let id = resolve(node, device)?;
             wait_until_online(node, id).await?;
@@ -517,6 +547,35 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             node.update_power(node_power(cli), offers).await;
             play(node, title, artist, app, *length, art.as_deref()).await?;
         }
+        Command::Photo { path, preview } => {
+            if !cli.as_phone {
+                bail!("photos come from phones: add --as-phone");
+            }
+            let thumb =
+                preview.as_deref().map(std::fs::read).transpose().context("can't read the preview")?;
+            let size = std::fs::metadata(path).context("can't read the picture")?.len();
+            let _ = PHOTO.set(path.clone());
+            let mut offers = cli.offers.clone();
+            offers.push(nectarlink_core::PHOTOS_READ.into());
+            node.update_power(node_power(cli), offers).await;
+            // Only connected PCs hear of it.
+            let first = node.paired_devices()?.first().map(|d| d.id).context("pair with a PC first")?;
+            wait_until_online(node, first).await?;
+            let name = nectarlink_core::safe_file_name(&path.to_string_lossy());
+            let taken = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_secs() as i64;
+            node.photo_taken(nectarlink_core::Photo {
+                id: PHOTO_ID.into(),
+                screenshot: name.to_ascii_lowercase().contains("screenshot"),
+                name,
+                size,
+                taken,
+                thumb: thumb.unwrap_or_default(),
+            })
+            .await
+            .context("can't announce it")?;
+            println!("Announced to connected PCs that show photos.");
+            watch(node, false).await?;
+        }
         Command::Notify { title, text, app, reply, silent, image } => {
             let image = image.as_deref().map(std::fs::read).transpose().context("can't read the picture")?;
             if !cli.as_phone {
@@ -547,7 +606,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             })
             .await;
             println!("Notification sent to connected PCs (and to others when they connect).");
-            watch(node).await?;
+            watch(node, false).await?;
         }
     }
     Ok(())
@@ -721,7 +780,8 @@ async fn play(
     }
 }
 
-async fn watch(node: &Node) -> Result<()> {
+/// Prints events until Ctrl+C; with `fetch_photos`, also asks for each new photo.
+async fn watch(node: &Node, fetch_photos: bool) -> Result<()> {
     println!("Online as {}. Press Ctrl+C to stop.", node.device_id());
     for d in node.paired_devices()? {
         print_device(&d);
@@ -731,7 +791,17 @@ async fn watch(node: &Node) -> Result<()> {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => return Ok(()),
             event = events.recv() => match event {
-                Ok(event) => print_event(node, &event),
+                Ok(event) => {
+                    print_event(node, &event);
+                    if let (true, NodeEvent::PhotoAdded { device, photo }) = (fetch_photos, &event) {
+                        let (node, device, id) = (node.clone(), *device, photo.id.clone());
+                        tokio::spawn(async move {
+                            if let Err(e) = node.fetch_photo(device, id).await {
+                                println!("Couldn't fetch it: {e}");
+                            }
+                        });
+                    }
+                }
                 Err(RecvError::Lagged(n)) => println!("(missed {n} events)"),
                 Err(RecvError::Closed) => return Ok(()),
             }
@@ -789,6 +859,14 @@ fn print_event(node: &Node, event: &NodeEvent) {
             println!("{}: a notification went away", name(device))
         }
         NodeEvent::ClipboardReceived { device } => println!("{}: sent its clipboard", name(device)),
+        NodeEvent::PhotoAdded { device, photo } => println!(
+            "{}: new {} {} ({} bytes, preview {} bytes)",
+            name(device),
+            if photo.screenshot { "screenshot" } else { "photo" },
+            photo.name,
+            photo.size,
+            photo.thumb.len()
+        ),
         NodeEvent::MediaChanged { device, players } if players.is_empty() => {
             println!("{}: nothing playing", name(device));
         }

@@ -116,6 +116,13 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't open links".into())
     }
 
+    /// Open a photo this phone announced (with
+    /// [`Node::photo_taken`](crate::Node::photo_taken)), for sending it to a
+    /// PC that asked. `Err` (a reason for logs) when it's gone.
+    fn open_photo(&self, _id: &str) -> Result<crate::OutgoingFile, String> {
+        Err("this device doesn't share photos".into())
+    }
+
     /// Run a command on one of this device's media players (a paired device
     /// asked); `position` is set for [`MediaAction::Seek`].
     fn media_command(

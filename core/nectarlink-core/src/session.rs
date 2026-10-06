@@ -350,6 +350,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if (t.starts_with("pc.") || t.starts_with("link."))
             && crate::actions::handle(shared, session, &env).await? => {}
         t if t.starts_with("clip.") && crate::clipboard::handle(shared, session, &env).await? => {}
+        t if t.starts_with("photos.") && crate::photos::handle(shared, session, &env).await? => {}
         other => {
             if env.id.is_some() {
                 let reply = Envelope::error(ErrorCode::Unsupported, format!("unknown message type {other}"));

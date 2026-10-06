@@ -62,6 +62,8 @@ data class CoreState(
     val ringingFrom: String? = null,
     /** Whether the user let Nectarlink read notifications (to mirror them). */
     val notificationAccess: Boolean = false,
+    /** Whether the user let Nectarlink see the phone's photos (to show new ones on PCs). */
+    val photoAccess: Boolean = false,
     /** Whether Android lets Nectarlink run unrestricted in the background. */
     val backgroundUnrestricted: Boolean = true,
     /** File transfers, newest first (running ones and the latest finished). */
@@ -108,6 +110,8 @@ data class CoreState(
         is Event.Transfer -> copy(transfers = withTransfer(event.transfer))
         // Shown in Android's media controls (see media/PcMedia).
         is Event.MediaChanged -> this
+        // PCs only: phones announce their own photos.
+        is Event.PhotoAdded -> this
     }
 
     private fun withTransfer(transfer: Transfer): List<Transfer> {

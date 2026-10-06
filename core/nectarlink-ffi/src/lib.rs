@@ -424,6 +424,33 @@ pub enum Event {
         id: String,
         players: Vec<MediaPlayer>,
     },
+    /// A paired phone took a photo (PCs only; phones announce theirs).
+    PhotoAdded {
+        id: String,
+        photo_id: String,
+    },
+}
+
+/// A photo or screenshot that just appeared on this phone
+/// (docs/protocol/photos.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Photo {
+    /// This app's ID for it (a PC asks for it by this ID).
+    pub id: String,
+    pub name: String,
+    pub size: u64,
+    /// When it was taken, in Unix seconds.
+    pub taken: i64,
+    pub screenshot: bool,
+    /// A JPEG preview of at most 96 KB, at most 512 pixels a side.
+    pub thumb: Vec<u8>,
+}
+
+/// Never prints the name or picture (protocol v0 §11).
+impl std::fmt::Debug for Photo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Photo").field("id", &self.id).finish_non_exhaustive()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -790,6 +817,9 @@ impl From<NodeEvent> for Event {
                 id: device.to_string(),
                 players: players.into_iter().map(Into::into).collect(),
             },
+            NodeEvent::PhotoAdded { device, photo } => {
+                Event::PhotoAdded { id: device.to_string(), photo_id: photo.id }
+            }
         }
     }
 }
@@ -893,6 +923,9 @@ pub trait Platform: Send + Sync {
     /// A paired PC sent a web link (http or https, checked) to open.
     /// False if it couldn't be shown.
     fn open_link(&self, from_id: String, url: String) -> bool;
+    /// A PC asked for a photo announced with `photo_taken`: open it, or
+    /// `null` when it's gone.
+    fn open_photo(&self, id: String) -> Option<FileToSend>;
 }
 
 /// Encrypts the device key at rest (Android: a Keystore key).
@@ -954,6 +987,10 @@ impl core::Platform for PlatformAdapter {
         } else {
             Err("the clipboard rejected it".into())
         }
+    }
+    fn open_photo(&self, id: &str) -> Result<core::OutgoingFile, String> {
+        let file = self.0.open_photo(id.to_owned()).ok_or("it's gone")?;
+        file_to_send(file).map_err(|e| e.to_string())
     }
 }
 
@@ -1248,6 +1285,21 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.open_link(id, url).await?) }).await
+    }
+
+    /// A photo or screenshot just appeared on this phone: tells the PCs
+    /// that show photos (and are allowed them).
+    pub async fn photo_taken(&self, photo: Photo) -> Result<()> {
+        let node = self.node.clone();
+        let photo = core::Photo {
+            id: photo.id,
+            name: photo.name,
+            size: photo.size,
+            taken: photo.taken,
+            screenshot: photo.screenshot,
+            thumb: photo.thumb,
+        };
+        self.run(async move { Ok(node.photo_taken(photo).await?) }).await
     }
 
     /// Reconnects to PCs that aren't connected and syncs connected ones.

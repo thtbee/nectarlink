@@ -89,6 +89,8 @@ place and tested; the user-facing features of Phase 1 come next.
   on the phone, share them from any app or pick them in Nectarlink. They land in `Downloads\Nectarlink` on the PC and
   `Download/Nectarlink` on the phone, with progress, cancelling, and transfers
   that pick up where they left off after a dropped connection.
+- **New photos and screenshots** from the phone pop up on the PC with a
+  preview: save them to Downloads or copy them, ready to paste.
 - **Media** both ways: what plays on the phone shows on the PC, in the app and
   in Windows' own media flyout (so the keyboard's media keys work too), and
   what plays on the PC shows in the phone's media controls, with artwork and

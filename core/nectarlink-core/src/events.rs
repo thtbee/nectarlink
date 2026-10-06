@@ -128,4 +128,10 @@ pub enum NodeEvent {
         device: DeviceId,
         players: Vec<MediaPlayer>,
     },
+    /// A phone took a photo or screenshot (with a preview); fetch it with
+    /// [`Node::fetch_photo`](crate::Node::fetch_photo).
+    PhotoAdded {
+        device: DeviceId,
+        photo: crate::Photo,
+    },
 }

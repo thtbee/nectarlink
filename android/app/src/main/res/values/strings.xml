@@ -67,6 +67,8 @@
     <string name="media_previous">Previous</string>
     <string name="action_send_files">Send files</string>
     <string name="action_send_folder">Send a folder</string>
+    <string name="photos_title">Show new photos on your PC</string>
+    <string name="photos_off">Screenshots and photos you take pop up on your PC, ready to save or paste. Nectarlink needs access to your photos for that.</string>
     <string name="transfer_too_many">That folder has too many files to send at once.</string>
     <string name="transfers_title">Transfers</string>
     <string name="transfer_sending">Sending to %1$s</string>

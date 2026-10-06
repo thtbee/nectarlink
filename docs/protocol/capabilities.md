@@ -40,7 +40,7 @@ capability is missing.
 | `clip.write` | Accepts clipboard content from the PC ([clipboard service](clipboard.md)) | app update |
 | `clip.share` | Sends the clipboard when the user taps "Send" | app update |
 | `clip.read.auto` | Sends clipboard changes automatically, in the background | Elevated |
-| `photos.read` | Lists and sends recent photos and screenshots | photos permission |
+| `photos.read` | Announces new photos and screenshots and sends them on request ([photos](photos.md)) | photos permission |
 | `mirror.capture` | Streams its screen (with the system's capture prompt at Basic) | app update |
 | `mirror.input` | Accepts touch, key and scroll input while mirrored | Assist |
 | `mirror.virtual_display` | Runs apps on a separate virtual display (app windows) | Elevated |
@@ -53,6 +53,7 @@ capability is missing.
 | ID | Meaning | Unlocked by |
 |---|---|---|
 | `pc.power` | Locks or sleeps on request ([actions](actions.md)) | app update |
+| `photos.show` | Shows a phone's new photos ([photos](photos.md)) | app update |
 | `files.browse` | Lets a paired phone browse and fetch its files | app update |
 | `input.inject` | Accepts pointer and keyboard input (touchpad, air mouse, voice typing) | app update |
 | `deck.actions` | Runs Deck actions | app update |

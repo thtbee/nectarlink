@@ -51,6 +51,7 @@ import app.nectarlink.android.core.BackgroundAccess
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.Device
 import app.nectarlink.android.files.transferTitle
+import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.core.isFinished
 import app.nectarlink.core.Transfer
 import app.nectarlink.core.TransferDirection
@@ -77,6 +78,7 @@ fun HomeScreen(
     updater: AppUpdater,
     onSendFiles: (pcId: String, uris: List<Uri>) -> Unit,
     onSendFolder: (pcId: String, tree: Uri) -> Unit,
+    onAccessChanged: () -> Unit,
     onCancelTransfer: (id: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -133,6 +135,17 @@ fun HomeScreen(
                     stringResource(R.string.notifications_title),
                     stringResource(R.string.notifications_off),
                 ) { context.startActivity(NotificationListener.settingsIntent(context)) }
+            }
+        }
+        if (state.devices.isNotEmpty() && !state.photoAccess) {
+            item {
+                val askPhotos = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+                    onAccessChanged()
+                }
+                SetupCard(
+                    stringResource(R.string.photos_title),
+                    stringResource(R.string.photos_off),
+                ) { askPhotos.launch(RecentPhotos.permissions) }
             }
         }
         items(state.devices, key = { it.id }) { device -> PcCard(device, onRing, onSendFiles, onSendFolder, onPower) }

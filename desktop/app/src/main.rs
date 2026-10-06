@@ -22,6 +22,7 @@ mod media;
 mod notification_store;
 mod notifications;
 mod palette;
+mod photos;
 mod qr;
 mod send_to;
 mod settings;

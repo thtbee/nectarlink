@@ -72,7 +72,8 @@ pub fn show_in_folder(path: &Path) {
 /// A Windows notification when files from a phone are saved.
 pub fn on_event(event: &NodeEvent) {
     let NodeEvent::Transfer(t) = event else { return };
-    if t.direction != Direction::Incoming {
+    // Photos the user asked to open or copy say nothing about being saved.
+    if t.direction != Direction::Incoming || crate::photos::handles(&t.id) {
         return;
     }
     let TransferState::Done { saved } = &t.state else { return };

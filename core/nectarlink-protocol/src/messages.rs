@@ -40,6 +40,9 @@ pub mod types {
     pub const MEDIA_COMMAND: &str = "media.command";
     pub const PC_POWER: &str = "pc.power";
     pub const LINK_OPEN: &str = "link.open";
+    pub const PHOTOS_NEW: &str = "photos.new";
+    pub const PHOTOS_GET: &str = "photos.get";
+    pub const PHOTOS_SENDING: &str = "photos.sending";
 }
 
 /// What kind of device this is.
@@ -453,6 +456,74 @@ pub struct PcPower {
 /// The longest link sent, in bytes.
 pub const LINK_MAX_BYTES: usize = 4096;
 
+// ---- Photos (docs/protocol/photos.md) ----
+
+pub mod photos {
+    /// Offered by phones that announce new photos (and can read them).
+    pub const READ: &str = "photos.read";
+    /// Offered by PCs that show announced photos.
+    pub const SHOW: &str = "photos.show";
+    /// A photo's ID: at most this many bytes.
+    pub const MAX_ID_BYTES: usize = 64;
+    /// A preview: a JPEG of at most this many bytes.
+    pub const MAX_THUMB_BYTES: usize = 96 * 1024;
+}
+
+/// Body of `photos.new`: a photo or screenshot just appeared on the phone.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoNew {
+    /// The phone's ID for it; asks for the photo with `photos.get`.
+    pub id: String,
+    pub name: String,
+    pub size: u64,
+    /// When it was taken, in Unix seconds.
+    pub taken: i64,
+    /// A screenshot rather than a photo.
+    #[serde(default)]
+    pub screenshot: bool,
+    /// A small JPEG preview.
+    #[serde(with = "serde_bytes")]
+    pub thumb: Vec<u8>,
+}
+
+/// Never prints the name or picture (protocol v0 §11).
+impl std::fmt::Debug for PhotoNew {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PhotoNew")
+            .field("id", &self.id)
+            .field("size", &self.size)
+            .field("screenshot", &self.screenshot)
+            .field("thumb", &self.thumb.len())
+            .finish_non_exhaustive()
+    }
+}
+
+impl PhotoNew {
+    pub fn is_valid(&self) -> bool {
+        is_valid_photo_id(&self.id)
+            && is_valid_file_name(&self.name)
+            && self.thumb.len() <= photos::MAX_THUMB_BYTES
+    }
+}
+
+/// Whether a photo ID is 1–64 printable ASCII characters.
+pub fn is_valid_photo_id(id: &str) -> bool {
+    (1..=photos::MAX_ID_BYTES).contains(&id.len()) && id.bytes().all(|b| b.is_ascii_graphic())
+}
+
+/// Body of `photos.get`: send this photo.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoGet {
+    pub id: String,
+}
+
+/// Body of `photos.sending`, the answer to `photos.get`: the files
+/// transfer that brings it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoSending {
+    pub transfer: String,
+}
+
 /// Body of `link.open`.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LinkOpen {
@@ -771,6 +842,24 @@ mod tests {
         let env = Envelope::new("x", &plain).unwrap();
         assert!(!format!("{:?}", env.b).contains("folder"));
         assert!(!format!("{:?}", offer("Secret")).contains("Secret"));
+    }
+
+    #[test]
+    fn photos_are_validated() {
+        let photo = PhotoNew {
+            id: "content:42".into(),
+            name: "Screenshot_20261006.png".into(),
+            size: 1000,
+            taken: 1_790_000_000,
+            screenshot: true,
+            thumb: vec![0xff, 0xd8],
+        };
+        assert!(photo.is_valid());
+        assert!(!format!("{photo:?}").contains("Screenshot_"));
+        assert!(!PhotoNew { id: String::new(), ..photo.clone() }.is_valid());
+        assert!(!PhotoNew { id: "a b".into(), ..photo.clone() }.is_valid());
+        assert!(!PhotoNew { name: "../x.png".into(), ..photo.clone() }.is_valid());
+        assert!(!PhotoNew { thumb: vec![0; photos::MAX_THUMB_BYTES + 1], ..photo }.is_valid());
     }
 
     #[test]

@@ -30,6 +30,8 @@ struct RecordingPlatform {
     media: Mutex<Vec<(String, MediaAction, Option<u64>)>>,
     power: Mutex<Vec<PowerAction>>,
     links: Mutex<Vec<String>>,
+    /// Photos `open_photo` finds, by ID.
+    photos: Mutex<std::collections::HashMap<String, std::path::PathBuf>>,
 }
 
 impl Platform for RecordingPlatform {
@@ -70,6 +72,11 @@ impl Platform for RecordingPlatform {
     fn open_link(&self, _from: &nectarlink_core::DeviceId, url: &str) -> Result<(), String> {
         self.links.lock().unwrap().push(url.to_owned());
         Ok(())
+    }
+    fn open_photo(&self, id: &str) -> Result<OutgoingFile, String> {
+        let path = self.photos.lock().unwrap().get(id).cloned().ok_or("gone")?;
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        Ok(OutgoingFile { name, folder: None, source: FileSource::Path(path) })
     }
     fn media_command(
         &self,
@@ -934,6 +941,48 @@ async fn folders_arrive_with_their_layout() {
         std::fs::read_dir(downloads.join("Trip")).unwrap().next().is_none(),
         "the old folder is untouched"
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn new_photos_reach_the_pc_and_come_when_asked() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::PHOTOS_SHOW]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::PHOTOS_READ]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let shot = phone.dir.path().join("Screenshot_1.png");
+    let pixels = data(300_000, 7);
+    std::fs::write(&shot, &pixels).unwrap();
+    phone.platform.photos.lock().unwrap().insert("media:1".into(), shot);
+    let photo = nectarlink_core::Photo {
+        id: "media:1".into(),
+        name: "Screenshot_1.png".into(),
+        size: pixels.len() as u64,
+        taken: 1_790_000_000,
+        screenshot: true,
+        thumb: vec![0xff, 0xd8, 0xff],
+    };
+
+    phone.node.photo_taken(photo.clone()).await.unwrap();
+    let got = wait_for(&mut pc, "the photo", |e| match e {
+        NodeEvent::PhotoAdded { device, photo } if *device == phone_id => Some(photo.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(got, photo);
+
+    // The PC asks for it: it comes as a transfer.
+    let id = with_timeout("fetch", pc.node.fetch_photo(phone_id, "media:1".into())).await.unwrap();
+    let saved = wait_transfer(&mut pc, &id, "the photo", saved).await;
+    assert_eq!(std::fs::read(&saved[0]).unwrap(), pixels);
+
+    // Only announced photos can be asked for.
+    assert!(matches!(pc.node.fetch_photo(phone_id, "media:2".into()).await, Err(Error::NotFound)));
+    // The phone's user turned photos off for this PC: nothing more comes.
+    phone.node.set_device_toggle(pc_id, "photos", false).unwrap();
+    assert!(matches!(pc.node.fetch_photo(phone_id, "media:1".into()).await, Err(Error::Denied)));
+    // An oversized preview isn't sent.
+    let big = nectarlink_core::Photo { thumb: vec![0; nectarlink_core::PHOTO_MAX_THUMB_BYTES + 1], ..photo };
+    assert!(matches!(phone.node.photo_taken(big).await, Err(Error::TooLarge)));
 }
 
 #[tokio::test(flavor = "multi_thread")]

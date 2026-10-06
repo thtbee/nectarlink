@@ -28,7 +28,7 @@ fn toasted<T>(f: impl FnOnce(&mut HashMap<DeviceId, HashSet<String>>) -> T) -> T
 /// Pictures from notifications, kept for a couple of days (history lasts one).
 const KEEP_IMAGES: std::time::Duration = std::time::Duration::from_secs(2 * 24 * 3600);
 
-fn images_dir() -> std::path::PathBuf {
+pub(crate) fn images_dir() -> std::path::PathBuf {
     core_host::host().data_dir.join("cache").join("images")
 }
 
@@ -210,6 +210,14 @@ pub fn on_toast(event: ToastEvent) {
             return crate::bridge::app::install_update_in_background();
         }
         ToastEvent::Dismissed { device, .. } if device == crate::updater::TOAST_GROUP => return,
+        // New photos: open, save or copy one.
+        ToastEvent::Opened { device, key } if device == crate::photos::TOAST_GROUP => {
+            return crate::photos::on_toast(key, None);
+        }
+        ToastEvent::Action { device, key, action } if device == crate::photos::TOAST_GROUP => {
+            return crate::photos::on_toast(key, Some(action));
+        }
+        ToastEvent::Dismissed { device, .. } if device == crate::photos::TOAST_GROUP => return,
         ToastEvent::Dismissed { device, .. } | ToastEvent::Action { device, .. }
             if device == crate::battery::TOAST_GROUP =>
         {

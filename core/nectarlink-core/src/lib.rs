@@ -17,6 +17,7 @@ mod media;
 mod node;
 mod notifications;
 mod pairing;
+mod photos;
 mod session;
 mod store;
 mod transfer;
@@ -37,7 +38,8 @@ pub use nectarlink_protocol::{
     DeviceId,
     messages::{
         Battery, CLIP_MAX_BYTES, DeviceInfo, DeviceKind, MediaPlayer, Notification, NotificationAction,
-        PowerLevel,
+        PhotoNew as Photo, PowerLevel,
+        photos::{MAX_THUMB_BYTES as PHOTO_MAX_THUMB_BYTES, READ as PHOTOS_READ, SHOW as PHOTOS_SHOW},
     },
     pairing::PairingUri,
 };

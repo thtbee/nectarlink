@@ -16,6 +16,7 @@ import app.nectarlink.android.files.ReceivedFiles
 import app.nectarlink.android.files.TransferNotifications
 import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
+import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
 import app.nectarlink.core.FileToSend
@@ -59,6 +60,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     }
     private val platform = PhonePlatform(this.context, ringer, phoneMedia) { pc, url ->
         LinkNotifications.show(this.context, _state.value.nameOf(pc).orEmpty(), url)
+    }
+    private val photos = RecentPhotos(this.context) { photo ->
+        notificationOps.trySend { node ->
+            runCatching { node.photoTaken(photo) }.onFailure { Log.i(TAG, "a new photo wasn't announced", it) }
+        }
     }
 
     /** What plays on the PCs, in Android's media controls. */
@@ -127,7 +133,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 battery.start()
                 network.start()
             }
+            _state.update { it.copy(photoAccess = RecentPhotos.hasAccess(context)) }
             started.updatePower(PowerLevel.BASIC, capabilities(NotificationListener.hasAccess(context)))
+            scope.launch(Dispatchers.Main) { if (_state.value.photoAccess) photos.start() }
             scope.launch {
                 for (op in notificationOps) {
                     runCatching { op(started) }.onFailure { Log.w(TAG, "notification update failed", it) }
@@ -167,9 +175,15 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     fun refreshNotificationAccess() {
         val granted = NotificationListener.hasAccess(context)
         val unrestricted = BackgroundAccess.isUnrestricted(context)
-        _state.update { it.copy(notificationAccess = granted, backgroundUnrestricted = unrestricted) }
+        val photoAccess = RecentPhotos.hasAccess(context)
+        val photosChanged = photoAccess != _state.value.photoAccess
+        _state.update { it.copy(notificationAccess = granted, backgroundUnrestricted = unrestricted, photoAccess = photoAccess) }
         if (granted && NotificationListener.instance == null) {
             NotificationListenerService.requestRebind(NotificationListener.component(context))
+        }
+        if (photosChanged && node != null) {
+            if (photoAccess) photos.start() else photos.stop()
+            notificationOps.trySend { it.updatePower(PowerLevel.BASIC, capabilities(_state.value.notificationAccess)) }
         }
     }
 
@@ -295,7 +309,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     /** What this phone offers PCs (docs/protocol/capabilities.md). */
     private fun capabilities(notificationAccess: Boolean): List<String> =
-        CLIPBOARD_CAPABILITIES + if (notificationAccess) NOTIFICATION_CAPABILITIES + MEDIA_CAPABILITIES else emptyList()
+        CLIPBOARD_CAPABILITIES +
+            (if (notificationAccess) NOTIFICATION_CAPABILITIES + MEDIA_CAPABILITIES else emptyList()) +
+            (if (_state.value.photoAccess) PHOTO_CAPABILITIES else emptyList())
 
     // ---- Pairing ----
 
@@ -432,5 +448,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         val MEDIA_CAPABILITIES = listOf("media.control")
         /** Accepting the PC's clipboard, and sending this one when asked. */
         val CLIPBOARD_CAPABILITIES = listOf("clip.write", "clip.share")
+        /** With access to the phone's photos. */
+        val PHOTO_CAPABILITIES = listOf("photos.read")
     }
 }

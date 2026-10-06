@@ -21,6 +21,11 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Installing its own updates from GitHub releases (the user allows it once). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- New photos and screenshots, shown on paired PCs (asked for in the app). -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
 
     <!-- Names and icons of the apps whose notifications are mirrored: Android
          hides other apps unless they're declared here. -->
