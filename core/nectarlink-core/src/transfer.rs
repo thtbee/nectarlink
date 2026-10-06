@@ -589,7 +589,7 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
     if !shared.toggle_on(&peer, TOGGLE) {
         return refuse(&mut send, ErrorCode::Denied, "files are off for this device").await;
     }
-    let dir = shared.incoming_dir().join(&offer.id);
+    let dir = shared.incoming_dir().join(peer.to_string()).join(&offer.id);
     if let Err(e) = tokio::fs::create_dir_all(&dir).await {
         tracing::warn!(error = %e, "can't store incoming files");
         return refuse(&mut send, ErrorCode::Internal, "can't store files").await;
@@ -638,6 +638,9 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
         Err(state) => {
             if state == TransferState::Cancelled {
                 let _ = tokio::fs::remove_dir_all(&dir).await;
+                if let Some(parent) = dir.parent() {
+                    let _ = tokio::fs::remove_dir(parent).await;
+                }
             }
             state
         }
@@ -811,6 +814,9 @@ async fn store(
             }
         }
         let _ = std::fs::remove_dir_all(&dir);
+        if let Some(parent) = dir.parent() {
+            let _ = std::fs::remove_dir(parent);
+        }
         Ok(saved)
     })
     .await
@@ -819,15 +825,30 @@ async fn store(
 
 /// Deletes partly received files nobody resumed in time.
 pub(crate) fn clean_incoming(dir: &Path) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return };
-    for entry in entries.flatten() {
-        let stale = entry
+    let is_stale = |entry: &std::fs::DirEntry| {
+        entry
             .metadata()
             .and_then(|m| m.modified())
-            .is_ok_and(|t| t.elapsed().unwrap_or_default() > KEEP_PARTIAL);
-        if stale {
-            let _ = std::fs::remove_dir_all(entry.path());
+            .is_ok_and(|t| t.elapsed().unwrap_or_default() > KEEP_PARTIAL)
+    };
+    let Ok(peers) = std::fs::read_dir(dir) else { return };
+    for peer in peers.flatten() {
+        let path = peer.path();
+        // Transfers from before they were kept per peer: `incoming/<offer>`.
+        if peer.file_name().to_str().and_then(|n| n.parse::<DeviceId>().ok()).is_none() {
+            if is_stale(&peer) {
+                let _ = std::fs::remove_dir_all(&path);
+            }
+            continue;
         }
+        if let Ok(offers) = std::fs::read_dir(&path) {
+            for offer in offers.flatten() {
+                if is_stale(&offer) {
+                    let _ = std::fs::remove_dir_all(offer.path());
+                }
+            }
+        }
+        let _ = std::fs::remove_dir(&path);
     }
 }
 

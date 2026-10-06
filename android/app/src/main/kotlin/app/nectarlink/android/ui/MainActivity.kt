@@ -77,9 +77,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             val appearance by preferences.appearance.collectAsStateWithLifecycle()
             val state by core.state.collectAsStateWithLifecycle()
-            // Stay reachable in the background once a PC is paired.
-            LaunchedEffect(state.devices.isNotEmpty()) {
-                if (state.devices.isNotEmpty()) ConnectionService.start(this@MainActivity)
+            // Stay reachable in the background while a PC is paired.
+            LaunchedEffect(state.devices.isNotEmpty(), state.status is CoreStatus.Ready) {
+                if (state.devices.isNotEmpty()) {
+                    ConnectionService.start(this@MainActivity)
+                } else if (state.status is CoreStatus.Ready) {
+                    ConnectionService.stop(this@MainActivity)
+                }
             }
             NectarlinkTheme(appearance) {
                 // Every screen sits on the theme's background, not the

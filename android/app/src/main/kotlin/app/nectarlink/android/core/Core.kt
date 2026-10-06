@@ -24,6 +24,7 @@ import app.nectarlink.android.mirror.AppWindows
 import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.mirror.MirrorRequests
 import app.nectarlink.android.photos.RecentPhotos
+import app.nectarlink.android.service.ConnectionService
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
@@ -157,6 +158,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             node = started
             val devices = runCatching { started.pairedDevices() }.getOrDefault(emptyList())
             _state.update { it.withDevices(devices).copy(status = CoreStatus.Ready(started.deviceId())) }
+            if (devices.isNotEmpty()) ConnectionService.start(context)
             scope.launch(Dispatchers.Main) {
                 battery.start()
                 network.start()
@@ -173,8 +175,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             scope.launch { Elevated.start() }
             scope.launch(Dispatchers.Main) {
                 if (_state.value.photoAccess) photos.start()
-                calls.start()
-                sms.start()
+                if (PhoneCalls.canFollow(context)) calls.start()
+                if (PhoneSms.canRead(context)) sms.start()
             }
             scope.launch {
                 for (op in notificationOps) {
@@ -192,6 +194,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      */
     fun notificationAccessChanged(granted: Boolean, showing: List<Notification>) {
         _state.update { it.copy(notificationAccess = granted) }
+        if (granted && _state.value.devices.isNotEmpty()) ConnectionService.start(context)
         scope.launch(Dispatchers.Main) { if (granted) phoneMedia.start() else phoneMedia.stop() }
         notificationOps.trySend { node ->
             node.updatePower(powerLevel(), capabilities(granted))
@@ -219,17 +222,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         val callAccess = PhoneCalls.hasAll(context)
         val smsAccess = PhoneSms.hasAll(context)
         val inputAccess = InputService.running
-        val inputChanged = inputAccess != _state.value.inputAccess
         val elevated = Elevated.running
-        val elevatedChanged = elevated != _state.value.elevated
         val localNetwork = LocalNetwork.granted(context)
         if (localNetwork && !_state.value.localNetwork) {
             // Just allowed: reach the PCs now rather than at the next retry.
             scope.launch { node?.networkChanged() }
         }
-        val photosChanged = photoAccess != _state.value.photoAccess
-        val callsChanged = callAccess != _state.value.callAccess
-        val smsChanged = smsAccess != _state.value.smsAccess
         _state.update {
             it.copy(
                 notificationAccess = granted,
@@ -245,10 +243,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         if (granted && NotificationListener.instance == null) {
             NotificationListenerService.requestRebind(NotificationListener.component(context))
         }
-        if ((photosChanged || callsChanged || smsChanged || inputChanged || elevatedChanged) && node != null) {
-            if (photoAccess) photos.start() else photos.stop()
-            if (PhoneCalls.canFollow(context)) calls.start() else calls.stop()
-            if (PhoneSms.canRead(context)) sms.start() else sms.stop()
+        if (node != null) {
+            scope.launch(Dispatchers.Main) {
+                if (photoAccess) photos.start() else photos.stop()
+                if (PhoneCalls.canFollow(context)) calls.start() else calls.stop()
+                if (PhoneSms.canRead(context)) sms.start() else sms.stop()
+            }
             notificationOps.trySend { it.updatePower(powerLevel(), capabilities(_state.value.notificationAccess)) }
         }
     }
@@ -261,7 +261,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             // A PC that's gone isn't playing for this phone anymore; it
             // sends what plays when it's back.
             is Event.LinkChanged -> if (event.link is Link.Offline) pcMedia.update(event.id, "", emptyList())
-            is Event.DeviceRemoved -> pcMedia.update(event.id, "", emptyList())
+            is Event.DeviceAdded -> ConnectionService.start(context)
+            is Event.DeviceRemoved -> {
+                pcMedia.update(event.id, "", emptyList())
+                if (_state.value.devices.isEmpty()) ConnectionService.stop(context)
+            }
+            is Event.Paired -> ConnectionService.start(context)
             else -> {}
         }
     }

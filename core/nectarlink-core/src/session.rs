@@ -292,10 +292,36 @@ async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shar
             continue;
         }
         let Some(shared) = shared.upgrade() else { return };
-        if let Err(e) = handle(&shared, session, env).await {
+        if is_background_rpc(&env.t) {
+            let session = session.clone();
+            tokio::spawn(async move {
+                if let Err(e) = handle(&shared, &session, env).await {
+                    tracing::warn!(peer = %session.peer.short(), error = %e, "failed to handle message");
+                }
+            });
+        } else if let Err(e) = handle(&shared, session, env).await {
             tracing::warn!(peer = %session.peer.short(), error = %e, "failed to handle message");
         }
     }
+}
+
+/// Requests that can take a while (the phone's user or apps, a whole photo
+/// to send) run on a task of their own so they never stall the control
+/// stream (heartbeats, and other messages). Ones whose order matters
+/// (clipboard, media and call commands: pause after play, unmute after
+/// mute) stay in order on the stream.
+fn is_background_rpc(t: &str) -> bool {
+    matches!(
+        t,
+        types::DEVICE_RING
+            | types::NOTIFY_DISMISS
+            | types::NOTIFY_ACTION
+            | types::PC_POWER
+            | types::LINK_OPEN
+            | types::PHOTOS_GET
+            | types::MIRROR_START
+            | types::MIRROR_APPS
+    )
 }
 
 /// Handles one incoming message that isn't a reply.
@@ -333,11 +359,16 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         }
         types::DEVICE_RING => {
             let ring: Ring = env.body()?;
-            if ring.on {
-                shared.platform.start_ringing();
-            } else {
-                shared.platform.stop_ringing();
-            }
+            let platform = shared.platform.clone();
+            let on = ring.on;
+            let _ = tokio::task::spawn_blocking(move || {
+                if on {
+                    platform.start_ringing();
+                } else {
+                    platform.stop_ringing();
+                }
+            })
+            .await;
             shared.emit(NodeEvent::Ring { device: peer, on: ring.on });
             session.send(Envelope::empty(types::OK).reply_to(env.id)).await?;
         }
@@ -365,11 +396,20 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
     Ok(())
 }
 
+/// Concurrent incoming data streams allowed from one peer at a time.
+const MAX_INCOMING_STREAMS: usize = 32;
+
 /// Streams the other device opens (file transfers), each handled on its own.
 async fn streams(session: &Arc<Session>, shared: &Weak<Shared>) {
+    let limit = Arc::new(tokio::sync::Semaphore::new(MAX_INCOMING_STREAMS));
     while let Ok((send, recv)) = session.conn.accept_bi().await {
         let Some(shared) = shared.upgrade() else { return };
-        tokio::spawn(crate::transfer::accept_stream(shared, session.clone(), send, recv));
+        let Ok(permit) = limit.clone().acquire_owned().await else { return };
+        let session = session.clone();
+        tokio::spawn(async move {
+            crate::transfer::accept_stream(shared, session, send, recv).await;
+            drop(permit);
+        });
     }
 }
 

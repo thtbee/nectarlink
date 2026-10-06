@@ -167,6 +167,7 @@ pub fn windows() -> Vec<(Window, Shown)> {
 /// Asks the phone for its screen.
 pub fn start(device: DeviceId) {
     let window = Window::screen(device);
+    ffi::video_clear(&window.key());
     state(|s| s.windows.insert(window, Shown { phase: Phase::Asking, app: None, pkg: None }));
     request(window, OPTIONS);
 }

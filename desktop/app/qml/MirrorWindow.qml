@@ -234,12 +234,7 @@ Window {
                 visible: win.phase === "ended" && !win.info.app
                 variant: "tonal"
                 text: qsTr("Try again")
-                // A new window takes this one's place.
-                onClicked: {
-                    const device = win.info.device
-                    Mirror.stop(win.mirrorKey)
-                    Mirror.start(device)
-                }
+                onClicked: Mirror.start(win.info.device)
             }
         }
     }

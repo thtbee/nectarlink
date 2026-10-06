@@ -38,14 +38,18 @@ import java.security.MessageDigest
  * connection closes the window.
  */
 object InputServer {
+    private val windows = java.util.Collections.synchronizedSet(LinkedHashSet<AppDisplay>())
+    @Volatile private var serverSocket: ServerSocket? = null
+
     @JvmStatic
     fun main(args: Array<String>) {
         val token = args.getOrNull(0) ?: return fail("no token")
         val injector = runCatching { Injector() }.getOrElse { return fail("can't inject input: $it") }
         val server = runCatching { ServerSocket(0, 1, InetAddress.getLoopbackAddress()) }.getOrElse { return fail("can't listen: $it") }
+        serverSocket = server
         println("ready ${server.localPort}")
         System.out.flush()
-        while (true) {
+        while (!server.isClosed) {
             val client = runCatching { server.accept() }.getOrNull() ?: continue
             Thread { serve(client, token, injector) }.start()
         }
@@ -55,45 +59,77 @@ object InputServer {
         System.err.println(why)
     }
 
+    private fun shutdown() {
+        runCatching { serverSocket?.close() }
+        val open = synchronized(windows) { windows.toList().also { windows.clear() } }
+        open.forEach { runCatching { it.stop() } }
+        kotlin.system.exitProcess(0)
+    }
+
     private fun serve(client: Socket, token: String, injector: Injector) {
         client.use {
             client.tcpNoDelay = true
             client.soTimeout = 0
             val reader = client.inputStream.bufferedReader()
             // Compared in constant time: the token is the only key.
-            val given = runCatching { reader.readLine() }.getOrNull() ?: return
+            val given = runCatching { reader.nextLine() }.getOrNull() ?: return
             if (!MessageDigest.isEqual(given.toByteArray(), token.toByteArray())) return
-            val first = reader.readLine() ?: return
-            if (first.startsWith("V ")) return appWindow(client, first, reader)
-            var line: String? = first
-            while (line != null) {
-                val input = line
-                runCatching { injector.handle(input) }.onFailure { System.err.println("input failed: $it") }
-                line = reader.readLine()
+            val first = runCatching { reader.nextLine() }.getOrNull()
+            if (first != null && first.startsWith("V ")) return appWindow(client, first, reader)
+            try {
+                var line: String? = first
+                while (line != null) {
+                    val input = line
+                    runCatching { injector.handle(input) }.onFailure { System.err.println("input failed: $it") }
+                    line = runCatching { reader.nextLine() }.getOrNull()
+                }
+            } finally {
+                shutdown()
             }
+        }
+    }
+
+    /**
+     * Reads until `\n` (ignoring bare `\r` as a line break so embedded `\r`
+     * in typed text can never start a second command).
+     */
+    private fun java.io.Reader.nextLine(): String? {
+        val sb = StringBuilder()
+        while (true) {
+            val ch = read()
+            if (ch < 0) return if (sb.isEmpty()) null else sb.toString()
+            if (ch == '\n'.code) return sb.toString()
+            if (ch != '\r'.code) sb.append(ch.toChar())
         }
     }
 
     /** An app window on this connection, until it closes. */
     private fun appWindow(client: Socket, request: String, reader: java.io.BufferedReader) {
         val parts = request.split(' ')
+        if (parts.size < 7) return
         val numbers = parts.subList(1, 6).map { it.toIntOrNull() ?: return }
         val (width, height, dpi, bitrate, fps) = numbers
         val pkg = parts.getOrNull(6)?.takeIf { PACKAGE.matches(it) } ?: return
         if (width !in 16..4096 || height !in 16..4096 || dpi !in 72..1000) return
         val window = AppDisplay(width, height, dpi, bitrate.coerceIn(500_000, 40_000_000), fps.coerceIn(1, 120))
+        windows.add(window)
         // Further lines: keyframe requests; the end of them closes the window.
         Thread {
             try {
                 while (true) {
-                    val line = reader.readLine() ?: break
+                    val line = reader.nextLine() ?: break
                     if (line == "K") window.requestKeyframe()
                 }
             } catch (_: java.io.IOException) {
             }
             window.stop()
         }.start()
-        runCatching { window.run(pkg, client.getOutputStream()) }.onFailure { System.err.println("app window ended: $it") }
+        try {
+            runCatching { window.run(pkg, client.getOutputStream()) }.onFailure { System.err.println("app window ended: $it") }
+        } finally {
+            windows.remove(window)
+            window.stop()
+        }
     }
 
     private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")

@@ -37,6 +37,8 @@ struct RecordingPlatform {
     screen: Arc<ScreenSink>,
     /// Photos `open_photo` finds, by ID.
     photos: Mutex<std::collections::HashMap<String, std::path::PathBuf>>,
+    /// Optional barrier `open_photo` waits on to simulate a slow platform call.
+    photo_barrier: Mutex<Option<Arc<std::sync::Barrier>>>,
 }
 
 impl Platform for RecordingPlatform {
@@ -168,6 +170,11 @@ impl Platform for RecordingPlatform {
         Ok(())
     }
     fn open_photo(&self, id: &str) -> Result<OutgoingFile, String> {
+        let barrier = self.photo_barrier.lock().unwrap().clone();
+        if let Some(barrier) = barrier {
+            barrier.wait();
+            barrier.wait();
+        }
         let path = self.photos.lock().unwrap().get(id).cloned().ok_or("gone")?;
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         Ok(OutgoingFile { name, folder: None, source: FileSource::Path(path) })
@@ -475,6 +482,52 @@ async fn nearby_pairing_fails_if_either_user_declines() {
     .await;
     assert!(pc.node.paired_devices().unwrap().is_empty());
     assert!(phone.node.paired_devices().unwrap().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn second_nearby_pairing_is_refused_while_one_awaits_confirmation() {
+    let (mut pc, mut phone_a, addrs) = start_nearby_setup().await;
+    let pc_id = pc.node.device_id();
+    let phone_b = device("Other", DeviceKind::Phone).await;
+    phone_b.node.add_known_addrs(pc_id, &addrs);
+
+    let initiator_a = phone_a.node.clone();
+    let task_a = tokio::spawn(async move { initiator_a.pairing_start_nearby(pc_id).await });
+    let (code_a, code_pc) = (sas_code(&mut phone_a).await, sas_code(&mut pc).await);
+    assert_eq!(code_a, code_pc);
+
+    // A second phone tries to pair while the PC is waiting for the user to
+    // confirm the first phone's 6-digit code.
+    let second = with_timeout("second nearby", phone_b.node.pairing_start_nearby(pc_id)).await;
+    assert!(matches!(second, Err(Error::Denied)), "second ceremony is refused: {second:?}");
+
+    // The first ceremony's decision channel is untouched and still completes.
+    phone_a.node.pairing_confirm(true).unwrap();
+    pc.node.pairing_confirm(true).unwrap();
+    with_timeout("first nearby", task_a).await.unwrap().expect("first pairing succeeds");
+    assert_eq!(pc.node.paired_devices().unwrap().len(), 1);
+    assert_eq!(pc.node.paired_devices().unwrap()[0].id, phone_a.node.device_id());
+    assert!(phone_b.node.paired_devices().unwrap().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn too_many_failed_nearby_attempts_end_pairing_mode() {
+    let (mut pc, mut phone, _) = start_nearby_setup().await;
+    let pc_id = pc.node.device_id();
+    for _ in 0..5 {
+        let initiator = phone.node.clone();
+        let task = tokio::spawn(async move { initiator.pairing_start_nearby(pc_id).await });
+        sas_code(&mut phone).await;
+        sas_code(&mut pc).await;
+        phone.node.pairing_confirm(false).unwrap();
+        let _ = with_timeout("nearby attempt", task).await.unwrap();
+        wait_for(&mut pc, "attempt failed", |e| match e {
+            NodeEvent::Pairing(PairingEvent::Failed(_)) => Some(()),
+            _ => None,
+        })
+        .await;
+    }
+    assert!(!pc.node.is_pairing(), "pairing mode ends after 5 failed nearby attempts");
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1498,7 +1551,10 @@ async fn transfers_resume_after_the_receiver_restarts() {
     phone.node.shutdown().await;
     let TestDevice { node, dir, .. } = phone;
     drop(node);
-    let interrupted = std::fs::metadata(dir.path().join("incoming").join(&id).join("0.part")).unwrap().len();
+    let interrupted =
+        std::fs::metadata(dir.path().join("incoming").join(pc_id.to_string()).join(&id).join("0.part"))
+            .unwrap()
+            .len();
     assert!(interrupted >= before && interrupted < big.len() as u64, "{interrupted} of {}", big.len());
     wait_transfer(&mut pc, &id, "waiting for the phone", |t| {
         (t.state == TransferState::Waiting).then_some(())
@@ -1515,4 +1571,55 @@ async fn transfers_resume_after_the_receiver_restarts() {
     assert_eq!(std::fs::read(&received[0]).unwrap(), big);
     wait_transfer(&mut pc, &id, "sent", saved).await;
     let _ = pc_id;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn slow_rpc_does_not_block_control_stream() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::PHOTOS_SHOW]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::PHOTOS_READ]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+
+    let file = phone.dir.path().join("IMG_1.jpg");
+    let pixels = b"jpeg-bytes";
+    std::fs::write(&file, pixels).unwrap();
+    phone.platform.photos.lock().unwrap().insert("media:1".into(), file);
+    let photo = nectarlink_core::Photo {
+        id: "media:1".into(),
+        name: "IMG_1.jpg".into(),
+        size: pixels.len() as u64,
+        taken: 1_790_000_000,
+        screenshot: true,
+        thumb: vec![0xff, 0xd8, 0xff],
+    };
+    phone.node.photo_taken(photo).await.unwrap();
+    wait_for(&mut pc, "the photo", |e| match e {
+        NodeEvent::PhotoAdded { device, .. } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    let barrier = Arc::new(std::sync::Barrier::new(2));
+    *phone.platform.photo_barrier.lock().unwrap() = Some(barrier.clone());
+
+    let pc_node = pc.node.clone();
+    let get_task = tokio::spawn(async move { pc_node.fetch_photo(phone_id, "media:1".into()).await });
+
+    // Wait until the phone's `open_photo` is blocked inside `photos.get`.
+    tokio::task::spawn_blocking({
+        let barrier = barrier.clone();
+        move || barrier.wait()
+    })
+    .await
+    .unwrap();
+
+    // While `photos.get` is stuck, another control-stream RPC still completes.
+    with_timeout("ring while photos.get is blocked", pc.node.ring(phone_id, true))
+        .await
+        .expect("ring succeeds without waiting for photos.get");
+
+    // Release `open_photo` so `photos.get` finishes cleanly.
+    tokio::task::spawn_blocking(move || barrier.wait()).await.unwrap();
+    let transfer_id = with_timeout("photos.get finishes", get_task).await.unwrap().expect("photo sent");
+    wait_transfer(&mut pc, &transfer_id, "photo received", saved).await;
 }

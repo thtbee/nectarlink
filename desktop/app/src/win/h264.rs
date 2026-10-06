@@ -12,9 +12,10 @@ use windows::{
             MF_E_TRANSFORM_NEED_MORE_INPUT, MF_E_TRANSFORM_STREAM_CHANGE, MF_LOW_LATENCY, MF_MT_FRAME_SIZE,
             MF_MT_MAJOR_TYPE, MF_MT_SUBTYPE, MF_MT_VIDEO_NOMINAL_RANGE, MF_MT_YUV_MATRIX, MF_VERSION,
             MFCreateMediaType, MFCreateMemoryBuffer, MFCreateSample, MFMediaType_Video, MFNominalRange_0_255,
-            MFSTARTUP_NOSOCKET, MFStartup, MFT_MESSAGE_COMMAND_FLUSH, MFT_MESSAGE_NOTIFY_BEGIN_STREAMING,
-            MFT_MESSAGE_NOTIFY_START_OF_STREAM, MFT_OUTPUT_DATA_BUFFER, MFT_OUTPUT_STREAM_PROVIDES_SAMPLES,
-            MFVideoFormat_H264, MFVideoFormat_NV12, MFVideoTransferMatrix_BT601,
+            MFSTARTUP_NOSOCKET, MFShutdown, MFStartup, MFT_MESSAGE_COMMAND_FLUSH,
+            MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, MFT_MESSAGE_NOTIFY_START_OF_STREAM, MFT_OUTPUT_DATA_BUFFER,
+            MFT_OUTPUT_STREAM_PROVIDES_SAMPLES, MFVideoFormat_H264, MFVideoFormat_NV12,
+            MFVideoTransferMatrix_BT601,
         },
         System::Com::{CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx},
     },
@@ -56,6 +57,26 @@ impl Colors {
     }
 }
 
+/// Media Foundation, started for as long as a decoder lives.
+struct MfGuard;
+
+impl MfGuard {
+    fn start() -> windows::core::Result<Self> {
+        // SAFETY: plain Media Foundation startup call.
+        unsafe { MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET)? };
+        Ok(Self)
+    }
+}
+
+impl Drop for MfGuard {
+    fn drop(&mut self) {
+        // SAFETY: paired with the `MFStartup` in `MfGuard::start`.
+        unsafe {
+            let _ = MFShutdown();
+        }
+    }
+}
+
 pub struct Decoder {
     transform: IMFTransform,
     /// The decoded size, as the output type says (padded).
@@ -63,6 +84,7 @@ pub struct Decoder {
     provides_samples: bool,
     output_size: u32,
     colors: Colors,
+    _mf: MfGuard,
 }
 
 impl std::fmt::Debug for Decoder {
@@ -77,7 +99,7 @@ impl Decoder {
         // SAFETY: plain COM and Media Foundation calls with owned values.
         unsafe {
             let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
-            MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET)?;
+            let mf = MfGuard::start()?;
             let transform: IMFTransform =
                 CoCreateInstance(&CLSID_MSH264DecoderMFT, None, CLSCTX_INPROC_SERVER)?;
             // One picture in, one out: no reordering delay.
@@ -94,6 +116,7 @@ impl Decoder {
                 provides_samples: false,
                 output_size: 0,
                 colors: Colors::default(),
+                _mf: mf,
             };
             decoder.choose_output()?;
             decoder.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0)?;
@@ -243,7 +266,9 @@ fn sample_of(data: &[u8], time_us: u64) -> windows::core::Result<IMFSample> {
 }
 
 /// NV12 (in the picture's own colors) to 32-bit BGRX, the
-/// visible `width` x `height`, across a few threads.
+/// visible `width` x `height`, across a few threads. A 1080p picture
+/// takes about 16 ms on one core, too long at 60 frames a second; scoped
+/// threads cost microseconds next to that.
 pub fn to_bgrx(picture: &Picture, width: u32, height: u32) -> Vec<u8> {
     let (w, h) = (width.min(picture.width) as usize, height.min(picture.height) as usize);
     let mut out = vec![0u8; w * h * 4];

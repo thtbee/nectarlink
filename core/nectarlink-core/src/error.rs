@@ -52,7 +52,7 @@ impl From<ProtocolError> for Error {
     fn from(err: ProtocolError) -> Self {
         match err {
             ProtocolError::Remote { code, msg } => match code {
-                ErrorCode::Denied => Error::Denied,
+                ErrorCode::Denied | ErrorCode::Busy => Error::Denied,
                 ErrorCode::Unpaired => Error::NotPaired,
                 ErrorCode::Unsupported => Error::Unsupported,
                 ErrorCode::NotFound => Error::NotFound,

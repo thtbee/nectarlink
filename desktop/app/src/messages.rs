@@ -440,15 +440,17 @@ pub fn send(body: String) {
 
 /// Sends a text to a number (a new conversation), then opens it.
 pub fn send_to(to: Vec<String>, body: String) {
+    static NEXT_LOCAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    let now = now_ms();
+    let local_id = format!("local:{now}:{}", NEXT_LOCAL.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
     let Some(device) = state(|s| {
         s.sending = true;
         // Shown at once as "Sending…"; the phone's copy replaces it.
         if let Some(thread) = s.thread.clone() {
-            let now = now_ms();
             s.messages.insert(
                 0,
                 SmsMessage {
-                    id: format!("local:{now}"),
+                    id: local_id.clone(),
                     thread,
                     address: to.join(", "),
                     body: body.clone(),
@@ -471,7 +473,7 @@ pub fn send_to(to: Vec<String>, body: String) {
             s.sending = false;
             if result.is_err() {
                 // Not sent: say so on it.
-                for m in s.messages.iter_mut().filter(|m| m.id.starts_with("local:")) {
+                if let Some(m) = s.messages.iter_mut().find(|m| m.id == local_id) {
                     m.status = Some("failed".into());
                 }
             }

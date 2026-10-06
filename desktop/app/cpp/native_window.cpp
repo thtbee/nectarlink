@@ -239,6 +239,7 @@ bool NativeWindow::nativeEvent(const QByteArray &eventType, void *message, qintp
             *result = 0;
             return true;
         }
+        setMaximizeState(false, false);
         break;
     default:
         break;

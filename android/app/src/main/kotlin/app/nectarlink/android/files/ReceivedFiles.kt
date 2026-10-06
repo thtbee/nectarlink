@@ -34,7 +34,11 @@ internal object ReceivedFiles {
             item.walkTopDown().filter { it.isFile }.mapNotNull { file ->
                 val folder = file.parentFile!!.relativeTo(item.parentFile!!).invariantSeparatorsPath
                 publishFile(context, file, folder)
-            }.toList().also { item.deleteRecursively() }
+            }.toList().also {
+                item.walkBottomUp().filter { it.isDirectory }.forEach { dir ->
+                    if (dir.list()?.isEmpty() == true) dir.delete()
+                }
+            }
         } else {
             listOfNotNull(publishFile(context, item, folder = null))
         }

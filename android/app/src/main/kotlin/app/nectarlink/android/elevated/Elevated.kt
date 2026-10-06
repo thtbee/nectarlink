@@ -295,7 +295,7 @@ object Elevated {
             is MirrorInputEvent.Key -> keys[event.key]?.let { "K $it" }
                 ?: if (event.key == "notifications" && display == null) "C cmd statusbar expand-notifications" else return true
             // One line per piece: no line breaks inside.
-            is MirrorInputEvent.Text -> return event.text.split('\n').withIndex().all { (i, piece) ->
+            is MirrorInputEvent.Text -> return event.text.split(LINE_BREAK).withIndex().all { (i, piece) ->
                 (i == 0 || send(writer, "${to}K ${KeyEvent.KEYCODE_ENTER}")) && (piece.isEmpty() || send(writer, "${to}T $piece"))
             }
         }
@@ -309,6 +309,7 @@ object Elevated {
      * isn't running. Write "K\n" for a keyframe; close it to close the window.
      */
     fun openApp(pkg: String, width: Int, height: Int, dpi: Int, bitrate: Int, fps: Int): java.net.Socket? {
+        if (!PACKAGE.matches(pkg)) return null
         val (port, token) = helper ?: return null
         return runCatching {
             java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
@@ -321,6 +322,7 @@ object Elevated {
     }
 
     private fun send(writer: Writer, line: String): Boolean = try {
+        require('\r' !in line && '\n' !in line)
         synchronized(writer) {
             writer.write(line + "\n")
             writer.flush()
@@ -331,6 +333,9 @@ object Elevated {
         input = null
         false
     }
+
+    private val LINE_BREAK = Regex("\r\n|\r|\n")
+    private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
 
     private val keys = mapOf(
         "back" to KeyEvent.KEYCODE_BACK,

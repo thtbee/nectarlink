@@ -149,9 +149,16 @@ fn latest() -> Result<Option<Update>, String> {
     Ok(newer_release(release, env!("CARGO_PKG_VERSION")))
 }
 
-/// The release as an update, if it's a newer published one with an x64
-/// installer and its sums.
+const INSTALLER_SUFFIX: &str =
+    if cfg!(target_arch = "aarch64") { "-arm64-setup.exe" } else { "-x64-setup.exe" };
+
+/// The release as an update, if it's a newer published one with an
+/// installer for this architecture and its sums.
 fn newer_release(release: Release, current: &str) -> Option<Update> {
+    newer_release_for(release, current, INSTALLER_SUFFIX)
+}
+
+fn newer_release_for(release: Release, current: &str, suffix: &str) -> Option<Update> {
     if release.draft || release.prerelease {
         return None;
     }
@@ -159,7 +166,7 @@ fn newer_release(release: Release, current: &str) -> Option<Update> {
     if !is_newer(&version, current) {
         return None;
     }
-    let installer = release.assets.iter().find(|a| a.name.ends_with("-x64-setup.exe"))?;
+    let installer = release.assets.iter().find(|a| a.name.ends_with(suffix))?;
     let sums = release.assets.iter().find(|a| a.name == "SHA256SUMS.txt")?;
     Some(Update {
         version,
@@ -259,6 +266,10 @@ mod tests {
                     name: "Nectarlink-9.0.0-x64-setup.exe".into(),
                     browser_download_url: "https://x/setup".into(),
                 },
+                Asset {
+                    name: "Nectarlink-9.0.0-arm64-setup.exe".into(),
+                    browser_download_url: "https://x/setup-arm64".into(),
+                },
                 Asset { name: "SHA256SUMS.txt".into(), browser_download_url: "https://x/sums".into() },
             ],
         }
@@ -266,8 +277,13 @@ mod tests {
 
     #[test]
     fn releases_become_updates_when_newer_and_complete() {
-        let update = newer_release(release("v9.0.0"), "0.0.1").unwrap();
-        assert_eq!((update.version.as_str(), update.installer_url.as_str()), ("9.0.0", "https://x/setup"));
+        let x64 = newer_release_for(release("v9.0.0"), "0.0.1", "-x64-setup.exe").unwrap();
+        assert_eq!((x64.version.as_str(), x64.installer_url.as_str()), ("9.0.0", "https://x/setup"));
+        let arm64 = newer_release_for(release("v9.0.0"), "0.0.1", "-arm64-setup.exe").unwrap();
+        assert_eq!(
+            (arm64.installer_name.as_str(), arm64.installer_url.as_str()),
+            ("Nectarlink-9.0.0-arm64-setup.exe", "https://x/setup-arm64")
+        );
         assert!(newer_release(release("v0.0.1"), "0.0.1").is_none());
         let mut draft = release("v9.0.0");
         draft.prerelease = true;

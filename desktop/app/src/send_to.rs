@@ -51,7 +51,8 @@ fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
 static MANAGED: AtomicBool = AtomicBool::new(false);
 /// The "Show your phones in Send to" preference.
 static ENABLED: AtomicBool = AtomicBool::new(true);
-/// The devices the shortcuts were last made for.
+/// The devices the shortcuts should currently be made for, and what was last applied.
+static DESIRED: Mutex<Option<Vec<(DeviceId, String)>>> = Mutex::new(None);
 static APPLIED: Mutex<Option<Vec<(DeviceId, String)>>> = Mutex::new(None);
 /// One update of the folder at a time.
 static UPDATING: Mutex<()> = Mutex::new(());
@@ -85,19 +86,29 @@ fn sync() {
         desired.clear();
     }
     {
-        let mut applied = lock(&APPLIED);
-        if applied.as_ref() == Some(&desired) {
+        let mut target = lock(&DESIRED);
+        if target.as_ref() == Some(&desired) && lock(&APPLIED).as_ref() == Some(&desired) {
             return;
         }
-        *applied = Some(desired.clone());
+        *target = Some(desired);
     }
-    let spawned = std::thread::Builder::new().name("send-to".into()).spawn(move || {
+    let spawned = std::thread::Builder::new().name("send-to".into()).spawn(|| {
         let _one = lock(&UPDATING);
         let (Some(dir), Ok(exe)) = (shortcut::send_to_dir(), std::env::current_exe()) else { return };
-        if let Err(e) = reconcile(&dir, &desired, &exe) {
-            tracing::warn!(error = %e, "can't update the Send to menu");
-            // Try again on the next change.
-            *lock(&APPLIED) = None;
+        loop {
+            let next = lock(&DESIRED).clone();
+            let Some(desired) = next else { return };
+            if lock(&APPLIED).as_ref() == Some(&desired) {
+                return;
+            }
+            match reconcile(&dir, &desired, &exe) {
+                Ok(()) => *lock(&APPLIED) = Some(desired),
+                Err(e) => {
+                    tracing::warn!(error = %e, "can't update the Send to menu");
+                    *lock(&APPLIED) = None;
+                    return;
+                }
+            }
         }
     });
     if let Err(e) = spawned {

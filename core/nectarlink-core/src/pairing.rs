@@ -69,6 +69,18 @@ pub(crate) struct PairingState {
     host: Mutex<Option<HostMode>>,
     /// Waiting for the local user to confirm or reject the 6-digit code.
     sas_decision: Mutex<Option<(DeviceId, oneshot::Sender<bool>)>>,
+    /// True while a nearby ceremony is in flight, so a second one cannot
+    /// overwrite `sas_decision`.
+    nearby_active: std::sync::atomic::AtomicBool,
+}
+
+pub(crate) struct NearbyGuard<'a>(&'a PairingState);
+
+impl Drop for NearbyGuard<'_> {
+    fn drop(&mut self) {
+        self.0.clear_decision();
+        self.0.nearby_active.store(false, std::sync::atomic::Ordering::Release);
+    }
 }
 
 impl std::fmt::Debug for PairingState {
@@ -115,6 +127,18 @@ impl PairingState {
         false
     }
 
+    fn begin_nearby(&self) -> Option<NearbyGuard<'_>> {
+        self.nearby_active
+            .compare_exchange(
+                false,
+                true,
+                std::sync::atomic::Ordering::AcqRel,
+                std::sync::atomic::Ordering::Acquire,
+            )
+            .ok()
+            .map(|_| NearbyGuard(self))
+    }
+
     /// Delivers the local user's decision about the 6-digit code.
     pub(crate) fn decide(&self, matches: bool) -> Result<()> {
         match lock(&self.sas_decision).take() {
@@ -126,10 +150,14 @@ impl PairingState {
         }
     }
 
-    fn await_decision(&self, peer: DeviceId) -> oneshot::Receiver<bool> {
+    fn await_decision(&self, peer: DeviceId) -> Result<oneshot::Receiver<bool>> {
+        let mut slot = lock(&self.sas_decision);
+        if slot.is_some() {
+            return Err(Error::Denied);
+        }
         let (tx, rx) = oneshot::channel();
-        *lock(&self.sas_decision) = Some((peer, tx));
-        rx
+        *slot = Some((peer, tx));
+        Ok(rx)
     }
 
     fn clear_decision(&self) {
@@ -224,6 +252,7 @@ pub(crate) async fn join_qr(shared: &Arc<Shared>, uri: &PairingUri) -> Result<()
 /// mode. The 6-digit code arrives as [`PairingEvent::SasCode`]; answer with
 /// [`crate::Node::pairing_confirm`].
 pub(crate) async fn start_nearby(shared: &Arc<Shared>, peer: DeviceId) -> Result<()> {
+    let _nearby = shared.pairing.begin_nearby().ok_or(Error::Denied)?;
     let conn = dial(shared, &peer).await?;
     let result = async {
         let (mut send, mut recv) = conn.open_bi().await.map_err(crate::error::net)?;
@@ -295,9 +324,18 @@ pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
         let first = recv_env(&mut recv, STEP_TIMEOUT).await?;
         let device = match first.t.as_str() {
             types::PAIR_REQUEST => accept_qr(&shared, peer, first, &mut send).await?,
-            types::PAIR_COMMIT => accept_nearby(&shared, peer, first, &mut send, &mut recv)
-                .await
-                .map_err(|e| fail(&shared, e))?,
+            types::PAIR_COMMIT => match accept_nearby(&shared, peer, first, &mut send, &mut recv).await {
+                Ok(Some(device)) => device,
+                Ok(None) => return Err(Error::Denied),
+                Err(e) => {
+                    let ended = shared.pairing.record_failure();
+                    let err = fail(&shared, e);
+                    if ended && !matches!(err, Error::Denied) {
+                        shared.emit(NodeEvent::Pairing(PairingEvent::Failed(PairingFailure::Rejected)));
+                    }
+                    return Err(err);
+                }
+            },
             other => {
                 let reply = Envelope::error(ErrorCode::Unsupported, format!("unexpected {other}"));
                 send_env(&mut send, reply).await?;
@@ -357,7 +395,15 @@ async fn accept_nearby(
     env: Envelope,
     send: &mut SendStream,
     recv: &mut RecvStream,
-) -> Result<DeviceInfo> {
+) -> Result<Option<DeviceInfo>> {
+    if !shared.pairing.is_hosting() {
+        send_env(send, Envelope::error(ErrorCode::Denied, "pairing mode ended")).await?;
+        return Ok(None);
+    }
+    let Some(_nearby) = shared.pairing.begin_nearby() else {
+        send_env(send, Envelope::error(ErrorCode::Busy, "another pairing is in progress")).await?;
+        return Ok(None);
+    };
     let commit: PairCommit = env.body()?;
     let n_b: [u8; NONCE_LEN] = rand::random();
     let nonce = PairNonce { device: local_device(shared), n_b: n_b.to_vec() };
@@ -372,7 +418,7 @@ async fn accept_nearby(
     let code = proto::sas_code(&reveal.n_a, &n_b, &peer, &shared.id);
     exchange_decisions(shared, peer, code, send, recv, Role::Host).await?;
     shared.pairing.end_host();
-    Ok(commit.device)
+    Ok(Some(commit.device))
 }
 
 // ---- Code comparison ----
@@ -396,7 +442,7 @@ async fn exchange_decisions(
     recv: &mut RecvStream,
     role: Role,
 ) -> Result<()> {
-    let decision = shared.pairing.await_decision(peer);
+    let decision = shared.pairing.await_decision(peer)?;
     shared.emit(NodeEvent::Pairing(PairingEvent::SasCode { peer, code }));
 
     let mut decision = Box::pin(tokio::time::timeout(SAS_DECISION_TIMEOUT, decision));
@@ -492,5 +538,23 @@ mod tests {
         let picked: Vec<String> = link_addrs(addrs).iter().map(ToString::to_string).collect();
         assert_eq!(picked, ["192.168.31.121:5000", "100.64.0.1:5000", "[2409:40d2::1]:5000"]);
         assert!(link_addrs(Vec::new()).is_empty());
+    }
+
+    #[test]
+    fn second_nearby_ceremony_is_refused_without_clobbering_decision() {
+        let state = PairingState::default();
+        let guard = state.begin_nearby().expect("first nearby starts");
+        assert!(state.begin_nearby().is_none(), "concurrent nearby is refused");
+
+        let peer_a = DeviceId([1; 32]);
+        let peer_b = DeviceId([2; 32]);
+        let mut rx = state.await_decision(peer_a).expect("first decision registered");
+        assert!(matches!(state.await_decision(peer_b), Err(Error::Denied)));
+
+        state.decide(true).expect("decision delivered to first ceremony");
+        assert_eq!(rx.try_recv(), Ok(true));
+
+        drop(guard);
+        assert!(state.begin_nearby().is_some(), "slot released after guard drops");
     }
 }

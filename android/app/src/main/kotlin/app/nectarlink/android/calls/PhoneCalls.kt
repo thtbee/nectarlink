@@ -144,7 +144,7 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
         missedCheck: Boolean,
     ) {
         val (name, photo) = if (withContact) contact(number) else null to null
-        val missed = missedCheck && wasMissed()
+        val missed = missedCheck && wasMissed(id, number)
         onChange(
             Call(
                 id = id,
@@ -196,18 +196,28 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
         }
     }
 
-    /** Whether the latest call in the log is a missed one (not turned down or blocked). */
+    /** Whether the call that just ended is in the log as a missed one (not turned down or blocked). */
     @SuppressLint("MissingPermission")
-    private fun wasMissed(): Boolean {
+    private fun wasMissed(id: String, number: String?): Boolean {
         if (!granted(context, Manifest.permission.READ_CALL_LOG)) return true
+        val started = id.toLongOrNull() ?: 0L
         return runCatching {
             context.contentResolver.query(
                 CallLog.Calls.CONTENT_URI.buildUpon().appendQueryParameter(CallLog.Calls.LIMIT_PARAM_KEY, "1").build(),
-                arrayOf(CallLog.Calls.TYPE),
+                arrayOf(CallLog.Calls.TYPE, CallLog.Calls.DATE, CallLog.Calls.NUMBER),
                 null,
                 null,
                 "${CallLog.Calls.DATE} DESC",
-            )?.use { if (it.moveToFirst()) it.getInt(0) == CallLog.Calls.MISSED_TYPE else true } ?: true
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use true
+                val date = cursor.getLong(1)
+                val loggedNumber = cursor.getString(2)
+                if (started > 0L && date < started - 10_000L) return@use true
+                if (number != null && !loggedNumber.isNullOrBlank() && !android.telephony.PhoneNumberUtils.compare(context, number, loggedNumber)) {
+                    return@use true
+                }
+                cursor.getInt(0) == CallLog.Calls.MISSED_TYPE
+            } ?: true
         }.getOrDefault(true)
     }
 

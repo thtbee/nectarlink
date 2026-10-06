@@ -134,8 +134,15 @@ async fn take_image(
         return Err((ErrorCode::Denied, "the clipboard is off for this device"));
     }
     let size = usize::try_from(image.size).map_err(|_| (ErrorCode::BadMessage, "invalid image"))?;
-    let mut bytes = vec![0u8; size];
-    recv.read_exact(&mut bytes).await.map_err(|_| (ErrorCode::BadMessage, "the image ended early"))?;
+    let mut bytes = Vec::with_capacity(size.min(64 * 1024));
+    let mut buf = vec![0u8; 64 * 1024];
+    while bytes.len() < size {
+        let want = (size - bytes.len()).min(buf.len());
+        match recv.read(&mut buf[..want]).await {
+            Ok(Some(n)) if n > 0 => bytes.extend_from_slice(&buf[..n]),
+            _ => return Err((ErrorCode::BadMessage, "the image ended early")),
+        }
+    }
     let platform = shared.platform.clone();
     let mime = image.mime;
     match tokio::task::spawn_blocking(move || platform.set_clipboard_image(&mime, &bytes)).await {

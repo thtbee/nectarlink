@@ -157,10 +157,22 @@ class InputService : AccessibilityService() {
                     node.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
                 }
             }
-            "backspace" -> edit { text, start, end -> if (start != end) Edit(text.removeRange(start, end), start) else if (start > 0) Edit(text.removeRange(start - 1, start), start - 1) else null }
-            "delete" -> edit { text, start, end -> if (start != end) Edit(text.removeRange(start, end), start) else if (end < text.length) Edit(text.removeRange(end, end + 1), start) else null }
-            "left" -> edit { text, start, _ -> Edit(text, (start - 1).coerceAtLeast(0)) }
-            "right" -> edit { text, _, end -> Edit(text, (end + 1).coerceAtMost(text.length)) }
+            "backspace" -> edit { text, start, end ->
+                if (start != end) Edit(text.removeRange(start, end), start)
+                else if (start > 0) {
+                    val prev = text.offsetByCodePoints(start, -1)
+                    Edit(text.removeRange(prev, start), prev)
+                } else null
+            }
+            "delete" -> edit { text, start, end ->
+                if (start != end) Edit(text.removeRange(start, end), start)
+                else if (end < text.length) {
+                    val next = text.offsetByCodePoints(end, 1)
+                    Edit(text.removeRange(end, next), start)
+                } else null
+            }
+            "left" -> edit { text, start, _ -> Edit(text, if (start > 0) text.offsetByCodePoints(start, -1) else 0) }
+            "right" -> edit { text, _, end -> Edit(text, if (end < text.length) text.offsetByCodePoints(end, 1) else text.length) }
         }
     }
 

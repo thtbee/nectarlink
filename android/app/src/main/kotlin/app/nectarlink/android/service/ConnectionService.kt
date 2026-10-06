@@ -40,16 +40,25 @@ class ConnectionService : LifecycleService() {
         app.nectarlink.android.media.PcMedia.createChannel(this)
         app.nectarlink.android.links.LinkNotifications.createChannel(this)
         val core = (application as NectarlinkApplication).core
-        startInForeground(core.state.value)
+        if (!startInForeground(core.state.value)) {
+            stopSelf()
+            return
+        }
         multicastLock = getSystemService(WifiManager::class.java)
             ?.createMulticastLock("nectarlink-discovery")
             ?.apply { setReferenceCounted(false); acquire() }
 
         lifecycleScope.launch {
-            core.state.map { Status.of(it) }.distinctUntilChanged().collect { status ->
-                getSystemService(NotificationManager::class.java)
-                    .notify(ONGOING_ID, ongoingNotification(status))
-            }
+            core.state.map { Status.of(it) to (it.status is app.nectarlink.android.core.CoreStatus.Ready) }
+                .distinctUntilChanged()
+                .collect { (status, ready) ->
+                    if (ready && status.paired == 0) {
+                        stopSelf()
+                    } else {
+                        getSystemService(NotificationManager::class.java)
+                            .notify(ONGOING_ID, ongoingNotification(status))
+                    }
+                }
         }
         lifecycleScope.launch {
             core.state.map { it.ringingFrom }.distinctUntilChanged().collect { from ->
@@ -72,14 +81,16 @@ class ConnectionService : LifecycleService() {
         super.onDestroy()
     }
 
-    private fun startInForeground(state: CoreState) {
+    private fun startInForeground(state: CoreState): Boolean = runCatching {
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
         } else {
             0
         }
         ServiceCompat.startForeground(this, ONGOING_ID, ongoingNotification(Status.of(state)), type)
-    }
+    }.onFailure {
+        android.util.Log.w("ConnectionService", "can't enter foreground", it)
+    }.isSuccess
 
     /** What the ongoing notification says. */
     private data class Status(val connected: List<String>, val paired: Int) {
@@ -141,9 +152,19 @@ class ConnectionService : LifecycleService() {
         private const val CHANNEL_RINGING = "ringing"
         private const val ACTION_STOP_RINGING = "app.nectarlink.action.STOP_RINGING"
 
-        /** Starts the service (from the foreground: Android forbids it otherwise). */
+        /** Starts the service when allowed by Android's foreground-service rules. */
         fun start(context: Context) {
-            ContextCompat.startForegroundService(context, Intent(context, ConnectionService::class.java))
+            runCatching {
+                ContextCompat.startForegroundService(context, Intent(context, ConnectionService::class.java))
+            }.onFailure {
+                android.util.Log.w("ConnectionService", "can't start in background", it)
+            }
+        }
+
+        fun stop(context: Context) {
+            runCatching {
+                context.stopService(Intent(context, ConnectionService::class.java))
+            }
         }
 
         private fun createChannels(context: Context) {
