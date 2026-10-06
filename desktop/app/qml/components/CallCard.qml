@@ -55,7 +55,7 @@ Card {
             Rectangle {
                 z: -1
                 anchors.fill: parent
-                radius: width / 2
+                radius: Theme.pill(height)
                 visible: control.on
                 color: Theme.graphite ? Theme.surfaceContent : Theme.primary
             }

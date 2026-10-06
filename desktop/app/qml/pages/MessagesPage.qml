@@ -99,12 +99,15 @@ Item {
     }
     onDeviceIdChanged: { composing = false; load() }
 
-    // "14:05", "Tue", or a date.
+    // "14:05", "Yesterday", "Tue", or a date.
     function shortTime(ms) {
         const date = new Date(ms)
         const now = new Date()
         if (date.toDateString() === now.toDateString())
             return date.toLocaleTimeString(Qt.locale(), Locale.ShortFormat)
+        const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+        if (date.toDateString() === yesterday.toDateString())
+            return qsTr("Yesterday")
         if (now - date < 6 * 24 * 3600 * 1000)
             return date.toLocaleDateString(Qt.locale(), "ddd")
         return date.toLocaleDateString(Qt.locale(), Locale.ShortFormat)

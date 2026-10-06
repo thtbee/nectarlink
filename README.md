@@ -15,12 +15,12 @@ no account and no cloud.
 </div>
 
 > [!IMPORTANT]
-> **Nectarlink is in early development.** The foundations work end to end (pairing,
-> encrypted connections, live device status, find my device), but most features
-> are still ahead. There are no releases yet. See [Project status](#project-status).
+> **Nectarlink is in active development.** The everyday features work end to end
+> (notifications, clipboard, files, media) and mirroring, messages and calls are
+> well along, but there are no releases yet. See [Project status](#project-status).
 
 <p align="center">
-  <img src="docs/screenshots/desktop-graphite-home.png" alt="Nectarlink for Windows, home screen, Graphite theme" width="880">
+  <img src="docs/screenshots/desktop-bloom-home.png" alt="Nectarlink for Windows, home screen with notifications and what plays on the phone, Bloom theme" width="880">
 </p>
 
 ## Why Nectarlink
@@ -54,9 +54,10 @@ is in [docs/PLAN.md](docs/PLAN.md).
 
 ## Project status
 
-Nectarlink is completing **Phase 0: Foundations** of the
-[roadmap](docs/PLAN.md#8-roadmap). The pieces every feature builds on are in
-place and tested; the user-facing features of Phase 1 come next.
+Nectarlink has finished **Phase 1** of the [roadmap](docs/PLAN.md#8-roadmap)
+(the everyday features) and is working through **Phase 2** (mirroring,
+messages and calls). Everything below works end to end and is covered by
+tests; there are no releases yet.
 
 **Working today**
 
@@ -91,7 +92,9 @@ place and tested; the user-facing features of Phase 1 come next.
   that pick up where they left off after a dropped connection.
 - **Screen mirroring**: see the phone's screen on the PC, in a window of
   its own, at up to 1920 pixels and 60 frames a second, hardware encoded on
-  the phone; Android asks each time. Turn on **Control from your PC** in
+  the phone, with the phone's sound playing on the PC (Android 10 and
+  later; mute it from the window); Android asks each time. Turn on
+  **Control from your PC** in
   the phone's Nectarlink settings to tap, swipe, scroll and type with the
   PC's mouse and keyboard (right-click is Back), or set up **Wireless
   debugging** there once for real touch (live dragging) and keys, with
@@ -99,20 +102,26 @@ place and tested; the user-facing features of Phase 1 come next.
   itself after a reboot.
 - **Texts** on the PC: a Messages page with the phone's conversations
   (pictures included), to reply or start a new one; texts go out through
-  the phone.
+  the phone. Search them, copy a one-time code with one click, and open
+  links.
 - **Calls**: see who's calling on the PC (with the contact's name and
-  photo), and answer, decline or silence it from there; the call itself
-  stays on the phone. Calls nobody answered show as missed.
+  photo), and answer, decline or silence it from there. During the call,
+  the PC shows how long it has been going and can hang up and change the
+  volume; with Wireless debugging set up (Android 12 and later), also mute,
+  switch to the speaker, hold and use the keypad. The call itself stays
+  on the phone. Calls nobody answered show as missed.
 - **New photos and screenshots** from the phone pop up on the PC with a
   preview: save them to Downloads or copy them, ready to paste.
 - **Media** both ways: what plays on the phone shows on the PC, in the app and
   in Windows' own media flyout (so the keyboard's media keys work too), and
   what plays on the PC shows in the phone's media controls, with artwork and
   a seek bar.
+- **Battery alerts** on the PC when the phone runs low or is fully charged.
+  Phone notifications follow Windows' Do not disturb (they wait in the app).
 - **Capability matrix**: both apps compute which features work for a pair of
   devices and what would enable the rest, so the interface never offers
   something that can't work.
-- **Windows app**: home and settings, two themes in light and dark (Bloom,
+- **Windows app**: home, messages and settings, two themes in light and dark (Bloom,
   which takes its colors from the desktop wallpaper, and Graphite), Mica, a
   custom title bar with Snap Layouts, and a tray icon. In the background it
   uses about 10 MB of memory (as shown in Task Manager).
@@ -127,8 +136,9 @@ place and tested; the user-facing features of Phase 1 come next.
   against their SHA-256 sums.
 - **Command-line client** for development and testing (`nectarlink`).
 
-**Next**: Phase 2: mirroring, messages, calls and the other features in the
-plan.
+**Next**: phone apps in windows of their own on the PC, contacts and the
+call log, talking on calls through the PC (Bluetooth), and the rest of the
+[plan](docs/PLAN.md).
 
 ## Screenshots
 
@@ -137,8 +147,14 @@ and colorful. Both come in light and dark.
 
 | Graphite | Bloom |
 |:---:|:---:|
-| <img src="docs/screenshots/desktop-graphite-home.png" alt="Home, Graphite theme"> | <img src="docs/screenshots/desktop-bloom-home.png" alt="Home, Bloom theme"> |
+| <img src="docs/screenshots/desktop-graphite-home.png" alt="Home during a call, Graphite theme"> | <img src="docs/screenshots/desktop-bloom-home.png" alt="Home, Bloom theme"> |
 | <img src="docs/screenshots/desktop-graphite-settings.png" alt="Settings, Graphite theme"> | <img src="docs/screenshots/desktop-bloom-settings.png" alt="Settings, Bloom theme"> |
+
+<p align="center">
+  <img src="docs/screenshots/desktop-messages.png" alt="Messages: the phone's conversations on the PC" height="436">
+  <img src="docs/screenshots/desktop-mirroring.png" alt="The phone's screen in a window on the PC" height="436"><br>
+  <sub>The phone's texts on the PC, and its screen in a window of its own.</sub>
+</p>
 
 <p align="center">
   <img src="docs/screenshots/desktop-pairing.png" alt="Pairing a phone by QR code" width="640"><br>
@@ -146,7 +162,8 @@ and colorful. Both come in light and dark.
 </p>
 
 <sub>Screenshots are from the current development build. The connected phone is
-simulated with the command-line client.</sub>
+simulated with the command-line client (`nectarlink --as-phone demo`); the
+mirrored screen is the Android app on an emulator.</sub>
 
 ## How it works
 

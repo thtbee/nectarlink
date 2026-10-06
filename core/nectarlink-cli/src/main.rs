@@ -138,8 +138,6 @@ enum Command {
         #[arg(long)]
         reply: Option<String>,
     },
-    /// Show a notification on paired PCs as if this were a phone (use with
-    /// --as-phone), then stay online to show what the PC does with it.
     /// Control what plays on a paired device: play, pause, next, previous,
     /// or seek with --position.
     Media {
@@ -205,6 +203,18 @@ enum Command {
     /// Act as a phone with a few sample conversations (use with --as-phone),
     /// so a PC can read them and text through this client; stays online.
     Texts,
+    /// Act as a phone with sample content all at once (use with
+    /// --as-phone): notifications, a song playing, conversations and,
+    /// with --call, a call in progress. For screenshots and trying the PC
+    /// app; stays online.
+    Demo {
+        /// Also a call in progress.
+        #[arg(long)]
+        call: bool,
+        /// Artwork for the song (JPEG or PNG).
+        #[arg(long)]
+        art: Option<PathBuf>,
+    },
     /// Act as a phone with an incoming call (use with --as-phone): PCs can
     /// answer it, then mute, use the speaker, hold, press keys or hang up,
     /// as on a phone that controls its calls. Stays online.
@@ -264,6 +274,8 @@ enum Command {
         #[arg(long)]
         art: Option<PathBuf>,
     },
+    /// Show a notification on paired PCs as if this were a phone (use with
+    /// --as-phone), then stay online to show what the PC does with it.
     Notify {
         title: String,
         text: String,
@@ -279,6 +291,10 @@ enum Command {
         /// A picture it shows (JPEG, at most 160 KiB).
         #[arg(long)]
         image: Option<PathBuf>,
+        /// More notifications shown with it, each "App|Title|Text"
+        /// (repeatable).
+        #[arg(long)]
+        also: Vec<String>,
     },
 }
 
@@ -1114,6 +1130,87 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             println!("Ringing on connected PCs (and on others when they connect).");
             watch(node, false).await?;
         }
+        Command::Demo { call, art } => {
+            if !cli.as_phone {
+                bail!("the demo is a phone: add --as-phone");
+            }
+            sample_texts();
+            let _ = TEXTS_NODE.set(node.clone());
+            let _ = CALL_NODE.set(node.clone());
+            CALL_CONTROLS.store(true, std::sync::atomic::Ordering::Relaxed);
+            let mut offers = cli.offers.clone();
+            offers.extend(
+                [
+                    "notify.mirror",
+                    "notify.reply",
+                    "media.control",
+                    "clip.write",
+                    "clip.share",
+                    nectarlink_core::SMS_READ,
+                    nectarlink_core::SMS_SEND,
+                    nectarlink_core::CALLS_STATE,
+                    nectarlink_core::CALLS_CONTROL,
+                    nectarlink_core::CALLS_IN_CALL,
+                ]
+                .map(str::to_owned),
+            );
+            node.update_power(node_power(cli), offers).await;
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis() as i64;
+            let samples = [
+                ("Messages", "Sam Rivera", "Are we still on for dinner tonight?", true),
+                ("Calendar", "Design review", "Today 15:30 · Room 4", false),
+                (
+                    "Gmail",
+                    "Alex Chen",
+                    "Photos from Saturday: here they are, plus the ones from the lake",
+                    false,
+                ),
+            ];
+            for (i, (app, title, text, reply)) in samples.into_iter().enumerate() {
+                let mut actions = vec![NotificationAction {
+                    id: "read".into(),
+                    title: "Mark as read".into(),
+                    reply: false,
+                }];
+                if reply {
+                    actions.insert(
+                        0,
+                        NotificationAction { id: "reply".into(), title: "Reply".into(), reply: true },
+                    );
+                }
+                node.notification_posted(Notification {
+                    key: format!("demo|{i}"),
+                    app: format!("dev.nectarlink.demo.{}", app.to_lowercase()),
+                    app_name: app.into(),
+                    title: Some(title.into()),
+                    text: Some(text.into()),
+                    sub: None,
+                    when: now - 7 * 60_000 * i as i64,
+                    actions,
+                    silent: true,
+                    icon: None,
+                    image: None,
+                })
+                .await;
+            }
+            if *call {
+                let call = nectarlink_core::CallState {
+                    id: now.to_string(),
+                    state: "active".into(),
+                    incoming: true,
+                    number: Some("+15550144".into()),
+                    name: Some("Sam Rivera".into()),
+                    photo: None,
+                    missed: false,
+                    since: Some(now - 83_000),
+                    controls: Some(nectarlink_core::CallControls { can_hold: true, ..Default::default() }),
+                };
+                *CALL.lock().unwrap() = Some(call.clone());
+                node.call_changed(call).await.context("can't tell PCs")?;
+            }
+            println!("Showing sample content to paired PCs.");
+            play(node, "Golden Hour Drive", "Lumen Coast", "Music", 215, art.as_deref()).await?;
+        }
         Command::Sms { device, action } => {
             let mut offers = cli.offers.clone();
             offers.push(nectarlink_core::SMS_SHOW.into());
@@ -1291,7 +1388,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             println!("Announced to connected PCs that show photos.");
             watch(node, false).await?;
         }
-        Command::Notify { title, text, app, reply, silent, image } => {
+        Command::Notify { title, text, app, reply, silent, image, also } => {
             let image = image.as_deref().map(std::fs::read).transpose().context("can't read the picture")?;
             if !cli.as_phone {
                 bail!("notifications come from phones: add --as-phone");
@@ -1320,6 +1417,26 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 image,
             })
             .await;
+            for (i, extra) in also.iter().enumerate() {
+                let mut parts = extra.splitn(3, '|');
+                let (Some(app), Some(title), Some(text)) = (parts.next(), parts.next(), parts.next()) else {
+                    bail!("--also takes \"App|Title|Text\"");
+                };
+                node.notification_posted(Notification {
+                    key: format!("cli|{when}|{i}"),
+                    app: format!("dev.nectarlink.cli.{i}"),
+                    app_name: app.into(),
+                    title: Some(title.into()),
+                    text: Some(text.into()),
+                    sub: None,
+                    when: when - 60_000 * (i as i64 + 1),
+                    actions: Vec::new(),
+                    silent: true,
+                    icon: None,
+                    image: None,
+                })
+                .await;
+            }
             println!("Notification sent to connected PCs (and to others when they connect).");
             watch(node, false).await?;
         }

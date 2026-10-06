@@ -266,7 +266,7 @@ Item {
                 ActionTile {
                     width: actions.tileWidth
                     title: qsTr("Send clipboard")
-                    subtitle: Preferences.autoClipboard ? qsTr("Copies go over by themselves") : qsTr("To the phone")
+                    subtitle: Preferences.autoClipboard ? qsTr("Syncs automatically") : qsTr("To the phone")
                     iconPath: Icons.clipboard
                     feature: home.feature("clipboard.pc_to_phone")
                     onClicked: AppController.sendClipboard(home.deviceId)
