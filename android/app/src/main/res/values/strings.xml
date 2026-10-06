@@ -102,6 +102,12 @@
     <string name="mirror_request_text">Tap to share it. You can stop anytime.</string>
     <string name="mirror_sharing">Sharing your screen with %1$s</string>
     <string name="action_stop">Stop</string>
+    <plurals name="app_windows_title">
+        <item quantity="one">An app is open in a window on a PC</item>
+        <item quantity="other">%d apps are open in windows on a PC</item>
+    </plurals>
+    <string name="app_windows_text">Shown on %1$s. They run here, beside what\'s on your screen.</string>
+    <string name="action_close_all">Close all</string>
     <string name="sms_title">Text from your PC</string>
     <string name="sms_off">Read your conversations and send texts from your PC. Nectarlink needs access to your messages and contacts for that.</string>
     <string name="calls_title">Show calls on your PC</string>

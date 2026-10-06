@@ -69,6 +69,8 @@ object Elevated {
     private var shell: AdbStream? = null
     @Volatile private var input: Writer? = null
     private var socket: java.net.Socket? = null
+    /** Where the helper listens, and the token it wants, while it runs. */
+    @Volatile private var helper: Pair<Int, String>? = null
 
     val running: Boolean get() = input != null
 
@@ -198,6 +200,7 @@ object Elevated {
         val first = output.readLine().orEmpty()
         val port = first.removePrefix("ready ").toIntOrNull()
         check(first.startsWith("ready ") && port != null) { "the helper said ${first.ifEmpty { "nothing" }}" }
+        helper = port to token
         val local = java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply { tcpNoDelay = true }
         socket = local
         val writer = OutputStreamWriter(local.outputStream, Charsets.UTF_8)
@@ -240,6 +243,7 @@ object Elevated {
 
     private fun stopLocked() {
         input = null
+        helper = null
         runCatching { socket?.close() }
         runCatching { shell?.close() }
         runCatching { adb?.disconnect() }
@@ -267,9 +271,18 @@ object Elevated {
 
     /** The PC's input as real events; false if Elevated isn't running. */
     fun handle(event: MirrorInputEvent): Boolean {
-        val writer = input ?: return false
         val (w, h) = screen()
-        val line = when (event) {
+        return handleOn(null, w, h, event)
+    }
+
+    /**
+     * The PC's input on display [display] (an app window's, [w] × [h]
+     * pixels), or the screen when null.
+     */
+    fun handleOn(display: Int?, w: Float, h: Float, event: MirrorInputEvent): Boolean {
+        val writer = input ?: return false
+        val to = display?.let { "@$it " }.orEmpty()
+        val line = to + when (event) {
             is MirrorInputEvent.Touch -> {
                 val action = when (event.action) {
                     TouchPhase.DOWN -> "D"
@@ -280,13 +293,31 @@ object Elevated {
             }
             is MirrorInputEvent.Scroll -> "S ${event.x * w} ${event.y * h} ${event.dx} ${event.dy}"
             is MirrorInputEvent.Key -> keys[event.key]?.let { "K $it" }
-                ?: if (event.key == "notifications") "C cmd statusbar expand-notifications" else return true
+                ?: if (event.key == "notifications" && display == null) "C cmd statusbar expand-notifications" else return true
             // One line per piece: no line breaks inside.
             is MirrorInputEvent.Text -> return event.text.split('\n').withIndex().all { (i, piece) ->
-                (i == 0 || send(writer, "K ${KeyEvent.KEYCODE_ENTER}")) && (piece.isEmpty() || send(writer, "T $piece"))
+                (i == 0 || send(writer, "${to}K ${KeyEvent.KEYCODE_ENTER}")) && (piece.isEmpty() || send(writer, "${to}T $piece"))
             }
         }
         return send(writer, line)
+    }
+
+    /**
+     * Opens an app window: the helper runs [pkg] on a display of its own of
+     * [width] × [height] pixels at [dpi], and streams it on the returned
+     * connection (packets as [AppDisplay] writes them). Null when Elevated
+     * isn't running. Write "K\n" for a keyframe; close it to close the window.
+     */
+    fun openApp(pkg: String, width: Int, height: Int, dpi: Int, bitrate: Int, fps: Int): java.net.Socket? {
+        val (port, token) = helper ?: return null
+        return runCatching {
+            java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
+                tcpNoDelay = true
+                val out = OutputStreamWriter(getOutputStream(), Charsets.UTF_8)
+                out.write("$token\nV $width $height $dpi $bitrate $fps $pkg\n")
+                out.flush()
+            }
+        }.onFailure { Log.w(TAG, "can't open an app window", it) }.getOrNull()
     }
 
     private fun send(writer: Writer, line: String): Boolean = try {

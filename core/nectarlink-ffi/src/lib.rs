@@ -434,9 +434,11 @@ pub enum Event {
         id: String,
         call_id: String,
     },
-    /// A paired phone's screen started or stopped showing (PCs only).
+    /// A paired phone's screen (session 0) or app window started or
+    /// stopped showing (PCs only).
     Mirroring {
         id: String,
+        session: u32,
         on: bool,
     },
     /// A paired phone's messages changed (PCs only).
@@ -559,10 +561,42 @@ impl MirrorStream {
     }
 }
 
-/// The bytes of a config packet for an H.264 stream of this size.
+/// The bytes of a config packet for an H.264 stream of this size, for the
+/// screen (session 0) or an app window.
 #[uniffi::export]
-pub fn mirror_config(width: u32, height: u32) -> Vec<u8> {
-    core::MirrorConfig { codec: "h264".into(), width, height }.to_cbor()
+pub fn mirror_config(width: u32, height: u32, session: u32) -> Vec<u8> {
+    core::MirrorConfig { codec: "h264".into(), width, height, session }.to_cbor()
+}
+
+/// What a PC asked to mirror, and how (docs/protocol/mirror.md).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct MirrorOptions {
+    /// The longer side, in pixels, at most.
+    pub max_size: u32,
+    pub fps: u32,
+    pub bitrate: u32,
+    /// The sound too (the screen only).
+    pub audio: bool,
+    /// 0 for the screen; another for an app window.
+    pub session: u32,
+    /// The app (package name) to show in a window of its own.
+    pub app: Option<String>,
+}
+
+/// An app a PC can open in a window (docs/protocol/mirror.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PhoneApp {
+    /// Package name.
+    pub pkg: String,
+    pub label: String,
+    /// A small PNG icon (at most 8 KiB).
+    pub icon: Option<Vec<u8>>,
+}
+
+impl std::fmt::Debug for PhoneApp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PhoneApp").field("pkg", &self.pkg).finish_non_exhaustive()
+    }
 }
 
 /// The bytes of a config packet for 16-bit PCM sound.
@@ -1097,7 +1131,9 @@ impl From<NodeEvent> for Event {
                 Event::CallChanged { id: device.to_string(), call_id: call.id }
             }
             NodeEvent::SmsChanged { device, thread } => Event::SmsChanged { id: device.to_string(), thread },
-            NodeEvent::Mirroring { device, on } => Event::Mirroring { id: device.to_string(), on },
+            NodeEvent::Mirroring { device, session, on } => {
+                Event::Mirroring { id: device.to_string(), session, on }
+            }
         }
     }
 }
@@ -1209,15 +1245,19 @@ pub trait Platform: Send + Sync {
     fn call_command(&self, id: String, command: CallCommand) -> bool;
     /// A PC asked for this phone's screen (and, with `audio`, its sound):
     /// ask the user (then call `mirror_open`, and `mirror_open_audio` for
-    /// the sound). False if the user couldn't be asked.
-    fn mirror_requested(&self, pc_id: String, max_size: u32, fps: u32, bitrate: u32, audio: bool) -> bool;
-    /// The PC stopped watching: stop sharing.
-    fn mirror_stop_requested(&self, pc_id: String);
+    /// the sound). With `app` (and a `session` other than 0): run that app
+    /// on a display of its own and stream it with `mirror_open`, its config
+    /// packets carrying the session. False if it can't.
+    fn mirror_requested(&self, pc_id: String, options: MirrorOptions) -> bool;
+    /// The PC stopped watching the screen (session 0) or an app window.
+    fn mirror_stop_requested(&self, pc_id: String, session: u32);
     /// The PC needs a keyframe.
-    fn mirror_keyframe_requested(&self, pc_id: String);
+    fn mirror_keyframe_requested(&self, pc_id: String, session: u32);
     /// The PC's mouse or keyboard on the mirrored screen (only while this
-    /// phone offers `mirror.input`). Return quickly.
-    fn mirror_input(&self, pc_id: String, input: MirrorInputEvent);
+    /// phone offers `mirror.input`) or an app window. Return quickly.
+    fn mirror_input(&self, pc_id: String, session: u32, input: MirrorInputEvent);
+    /// A PC asked for the apps it may open in windows (launchable ones).
+    fn phone_apps(&self) -> Vec<PhoneApp>;
     /// A PC asked for the latest conversations, newest first.
     fn sms_threads(&self, limit: u32) -> Vec<SmsThread>;
     /// A PC asked for a conversation's messages before `before` (Unix ms;
@@ -1291,26 +1331,36 @@ impl core::Platform for PlatformAdapter {
         }
     }
     fn mirror_requested(&self, peer: &DeviceId, options: &core::MirrorStart) -> Result<(), String> {
-        if self.0.mirror_requested(
-            peer.to_string(),
-            options.max_size,
-            options.fps,
-            options.bitrate,
-            options.audio,
-        ) {
+        let options = MirrorOptions {
+            max_size: options.max_size,
+            fps: options.fps,
+            bitrate: options.bitrate,
+            audio: options.audio,
+            session: options.session,
+            app: options.app.clone(),
+        };
+        if self.0.mirror_requested(peer.to_string(), options) {
             Ok(())
         } else {
-            Err("the user couldn't be asked".into())
+            Err("the phone couldn't".into())
         }
     }
-    fn mirror_stop_requested(&self, peer: &DeviceId) {
-        self.0.mirror_stop_requested(peer.to_string());
+    fn mirror_stop_requested(&self, peer: &DeviceId, session: u32) {
+        self.0.mirror_stop_requested(peer.to_string(), session);
     }
-    fn mirror_keyframe_requested(&self, peer: &DeviceId) {
-        self.0.mirror_keyframe_requested(peer.to_string());
+    fn mirror_keyframe_requested(&self, peer: &DeviceId, session: u32) {
+        self.0.mirror_keyframe_requested(peer.to_string(), session);
     }
-    fn mirror_input(&self, peer: &DeviceId, input: core::MirrorInput) {
-        self.0.mirror_input(peer.to_string(), input.into());
+    fn mirror_input(&self, peer: &DeviceId, session: u32, input: core::MirrorInput) {
+        self.0.mirror_input(peer.to_string(), session, input.into());
+    }
+    fn phone_apps(&self) -> Result<Vec<core::PhoneApp>, String> {
+        Ok(self
+            .0
+            .phone_apps()
+            .into_iter()
+            .map(|a| core::PhoneApp { pkg: a.pkg, label: a.label, icon: a.icon })
+            .collect())
     }
     fn sms_threads(&self, limit: u32) -> Result<Vec<core::SmsThread>, String> {
         Ok(self

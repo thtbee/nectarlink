@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! `Mirror`: the phone whose screen the mirror window shows, and how far
-//! along it is.
+//! `Mirror`: the phone screens and app windows shown on this PC (each a
+//! window, by key), the phone's apps that open in windows, and the input
+//! QML sends to them.
 
 use std::pin::Pin;
 
-use cxx_qt::{CxxQtType, Threading};
+use cxx_qt::Threading;
 use cxx_qt_lib::QString;
-use nectarlink_core::DeviceId;
+use nectarlink_core::{FeatureState, MIRROR_SCREEN, MirrorInput};
 
 use crate::{
-    mirror::{self, Phase},
+    mirror::{self, Apps, Phase, Window},
     state::Changes,
 };
 
@@ -24,19 +25,20 @@ pub mod qobject {
         #[qobject]
         #[qml_element]
         #[qml_singleton]
-        /// The phone shown ("" when the window is closed).
-        #[qproperty(QString, device)]
-        #[qproperty(QString, name)]
-        /// "asking", "showing" or "ended" ("" when closed).
-        #[qproperty(QString, phase)]
-        /// Why it ended, when there's something to say.
-        #[qproperty(QString, reason)]
-        /// The PC's mouse and keyboard work on the phone.
-        #[qproperty(bool, can_control, cxx_name = "canControl")]
-        /// The phone's sound is coming in.
-        #[qproperty(bool, sound)]
-        /// The user turned the sound off on this PC.
+        /// The windows, as JSON: `[{ key, device, session, name, title,
+        /// phase ("asking", "showing", "ended"), reason, canControl, sound,
+        /// app }]`.
+        #[qproperty(QString, windows)]
+        /// The user turned the phones' sound off on this PC.
         #[qproperty(bool, muted)]
+        /// The phone whose apps [`apps`] lists.
+        #[qproperty(QString, apps_device, cxx_name = "appsDevice")]
+        /// Its apps, as JSON: `[{ pkg, label, icon }]` (icon: a file URL or "").
+        #[qproperty(QString, apps)]
+        /// "", "loading", "ready" or "failed".
+        #[qproperty(QString, apps_state, cxx_name = "appsState")]
+        /// Why they couldn't be loaded.
+        #[qproperty(QString, apps_error, cxx_name = "appsError")]
         type Mirror = super::MirrorRust;
     }
 
@@ -44,29 +46,37 @@ pub mod qobject {
     impl cxx_qt::Initialize for Mirror {}
 
     unsafe extern "RustQt" {
-        /// Asks a phone for its screen and opens the window.
+        /// Asks a phone for its screen (a window opens).
         #[qinvokable]
-        fn start(self: Pin<&mut Mirror>, device: &QString);
-        /// Closes the window and stops mirroring.
+        fn start(self: &Mirror, device: &QString);
+        /// Opens one of a phone's apps in a window of its own.
         #[qinvokable]
-        fn stop(self: Pin<&mut Mirror>);
-        /// A finger on the screen: "down", "move" or "up", at a fraction of
-        /// the screen's width and height.
+        #[cxx_name = "startApp"]
+        fn start_app(self: &Mirror, device: &QString, pkg: &QString, label: &QString);
+        /// Closes a window, ending its mirroring.
         #[qinvokable]
-        fn touch(self: &Mirror, action: &QString, x: f64, y: f64);
+        fn stop(self: &Mirror, key: &QString);
+        /// Loads a phone's apps (into `apps`).
+        #[qinvokable]
+        #[cxx_name = "loadApps"]
+        fn load_apps(self: Pin<&mut Mirror>, device: &QString);
+        /// A finger on a window's screen: "down", "move" or "up", at a
+        /// fraction of its width and height.
+        #[qinvokable]
+        fn touch(self: &Mirror, key: &QString, action: &QString, x: f64, y: f64);
         /// The mouse wheel, in notches (positive: down / right).
         #[qinvokable]
-        fn scroll(self: &Mirror, x: f64, y: f64, dx: f64, dy: f64);
+        fn scroll(self: &Mirror, key: &QString, x: f64, y: f64, dx: f64, dy: f64);
         /// A key without text ("back", "home", "enter"...).
         #[qinvokable]
-        fn key(self: &Mirror, key: &QString);
+        fn press(self: &Mirror, key: &QString, name: &QString);
         /// Typed text.
         #[qinvokable]
-        fn text(self: &Mirror, text: &QString);
+        fn text(self: &Mirror, key: &QString, text: &QString);
         /// Types the PC's clipboard text on the phone.
         #[qinvokable]
-        fn paste(self: &Mirror);
-        /// Turns the phone's sound off on this PC, or back on.
+        fn paste(self: &Mirror, key: &QString);
+        /// Turns the phones' sound off on this PC, or back on.
         #[qinvokable]
         #[cxx_name = "toggleSound"]
         fn toggle_sound(self: &Mirror);
@@ -75,65 +85,122 @@ pub mod qobject {
 
 #[derive(Default)]
 pub struct MirrorRust {
-    device: QString,
-    name: QString,
-    phase: QString,
-    reason: QString,
-    can_control: bool,
-    sound: bool,
+    windows: QString,
     muted: bool,
-    shown: Option<DeviceId>,
+    apps_device: QString,
+    apps: QString,
+    apps_state: QString,
+    apps_error: QString,
 }
 
 impl cxx_qt::Initialize for qobject::Mirror {
     fn initialize(self: Pin<&mut Self>) {
-        super::subscribe(self.qt_thread(), Changes::MIRROR | Changes::CAPABILITIES, Self::refresh);
+        super::subscribe(
+            self.qt_thread(),
+            Changes::MIRROR | Changes::CAPABILITIES | Changes::DEVICES,
+            Self::refresh,
+        );
     }
 }
 
 impl qobject::Mirror {
     fn refresh(mut self: Pin<&mut Self>) {
-        let Some(device) = self.rust().shown else {
-            self.as_mut().set_phase(QString::default());
-            return;
-        };
-        let control = crate::core_host::host().hub.read(|s| {
-            s.matrices.get(&device).and_then(|m| m.state("mirroring.control"))
-                == Some(nectarlink_core::FeatureState::Available)
-        });
-        self.as_mut().set_can_control(control);
-        self.as_mut().set_sound(mirror::has_sound(&device));
+        let hub = &crate::core_host::host().hub;
+        let windows: Vec<serde_json::Value> = mirror::windows()
+            .into_iter()
+            .map(|(window, shown)| {
+                let (control, name) = hub.read(|s| {
+                    // The screen needs control turned on; app windows are Elevated already.
+                    let feature = if window.session == MIRROR_SCREEN {
+                        "mirroring.control"
+                    } else {
+                        "mirroring.app_windows"
+                    };
+                    let control = s.matrices.get(&window.device).and_then(|m| m.state(feature))
+                        == Some(FeatureState::Available);
+                    (control, s.name_of(&window.device).unwrap_or_default())
+                });
+                let (phase, reason) = match shown.phase {
+                    Phase::Asking => ("asking", String::new()),
+                    Phase::Showing => ("showing", String::new()),
+                    Phase::Ended(reason) => ("ended", reason.unwrap_or_default()),
+                };
+                serde_json::json!({
+                    "key": window.key(),
+                    "device": window.device.to_string(),
+                    "session": window.session,
+                    "name": name,
+                    "title": shown.app.clone().unwrap_or_else(|| name.clone()),
+                    "app": shown.app.is_some(),
+                    "phase": phase,
+                    "reason": reason,
+                    "canControl": control,
+                    "sound": window.session == MIRROR_SCREEN && mirror::has_sound(&window.device),
+                })
+            })
+            .collect();
+        let json = serde_json::Value::Array(windows).to_string();
+        if self.windows.to_string() != json {
+            self.as_mut().set_windows(QString::from(&json));
+        }
         self.as_mut().set_muted(mirror::muted());
-        let (phase, reason) = match mirror::phase(&device) {
-            None => ("", String::new()),
-            Some(Phase::Asking) => ("asking", String::new()),
-            Some(Phase::Showing) => ("showing", String::new()),
-            Some(Phase::Ended(reason)) => ("ended", reason.unwrap_or_default()),
+
+        let Some(device) = super::parse_device(&self.apps_device) else { return };
+        let (state, apps, error) = match mirror::apps(&device) {
+            None => ("", Vec::new(), String::new()),
+            Some(Apps::Loading) => ("loading", Vec::new(), String::new()),
+            Some(Apps::Failed(why)) => ("failed", Vec::new(), why),
+            Some(Apps::Ready(apps)) => ("ready", apps, String::new()),
         };
-        self.as_mut().set_reason(QString::from(&reason));
-        self.as_mut().set_phase(QString::from(phase));
+        let apps: Vec<serde_json::Value> = apps
+            .into_iter()
+            .map(|a| {
+                serde_json::json!({
+                    "pkg": a.pkg,
+                    "label": a.label,
+                    "icon": a.icon.as_deref().map(crate::icons::file_url).unwrap_or_default(),
+                })
+            })
+            .collect();
+        self.as_mut().set_apps(QString::from(&serde_json::Value::Array(apps).to_string()));
+        self.as_mut().set_apps_error(QString::from(&error));
+        self.as_mut().set_apps_state(QString::from(state));
     }
 
-    pub fn start(mut self: Pin<&mut Self>, device: &QString) {
-        let Some(id) = super::parse_device(device) else { return };
-        if let Some(previous) = self.rust().shown.filter(|p| *p != id) {
-            mirror::stop(previous);
+    pub fn start(&self, device: &QString) {
+        if let Some(device) = super::parse_device(device) {
+            mirror::start(device);
         }
-        self.as_mut().rust_mut().shown = Some(id);
-        self.as_mut().set_device(device.clone());
-        let name = crate::core_host::host().hub.read(|s| s.name_of(&id)).unwrap_or_default();
-        self.as_mut().set_name(QString::from(&name));
-        mirror::start(id);
+    }
+
+    pub fn start_app(&self, device: &QString, pkg: &QString, label: &QString) {
+        let pkg = String::from(pkg);
+        if let (Some(device), true) = (super::parse_device(device), nectarlink_core::is_package_name(&pkg)) {
+            mirror::start_app(device, pkg, String::from(label));
+        }
+    }
+
+    pub fn stop(&self, key: &QString) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::stop(window);
+        }
+    }
+
+    pub fn load_apps(mut self: Pin<&mut Self>, device: &QString) {
+        let Some(id) = super::parse_device(device) else { return };
+        self.as_mut().set_apps_device(device.clone());
+        mirror::load_apps(id);
         self.refresh();
     }
 
-    fn send(&self, input: nectarlink_core::MirrorInput) {
-        if let (Some(device), true) = (self.rust().shown, self.rust().can_control) {
-            mirror::input(device, input);
+    fn send(&self, key: &QString, input: MirrorInput) {
+        let Some(window) = Window::parse(&String::from(key)) else { return };
+        if matches!(mirror::phase(&window), Some(Phase::Showing)) {
+            mirror::input(window, input);
         }
     }
 
-    pub fn touch(&self, action: &QString, x: f64, y: f64) {
+    pub fn touch(&self, key: &QString, action: &QString, x: f64, y: f64) {
         use nectarlink_core::TouchAction;
         let action = match String::from(action).as_str() {
             "down" => TouchAction::Down,
@@ -141,56 +208,50 @@ impl qobject::Mirror {
             "up" => TouchAction::Up,
             _ => return,
         };
-        self.send(nectarlink_core::MirrorInput::Touch { action, x: fraction(x), y: fraction(y) });
+        self.send(key, MirrorInput::Touch { action, x: fraction(x), y: fraction(y) });
     }
 
-    pub fn scroll(&self, x: f64, y: f64, dx: f64, dy: f64) {
-        self.send(nectarlink_core::MirrorInput::Scroll {
-            x: fraction(x),
-            y: fraction(y),
-            dx: dx.clamp(-100.0, 100.0) as f32,
-            dy: dy.clamp(-100.0, 100.0) as f32,
-        });
+    pub fn scroll(&self, key: &QString, x: f64, y: f64, dx: f64, dy: f64) {
+        self.send(
+            key,
+            MirrorInput::Scroll {
+                x: fraction(x),
+                y: fraction(y),
+                dx: dx.clamp(-100.0, 100.0) as f32,
+                dy: dy.clamp(-100.0, 100.0) as f32,
+            },
+        );
     }
 
-    pub fn key(&self, key: &QString) {
-        self.send(nectarlink_core::MirrorInput::Key { key: String::from(key) });
+    pub fn press(&self, key: &QString, name: &QString) {
+        self.send(key, MirrorInput::Key { key: String::from(name) });
     }
 
-    pub fn text(&self, text: &QString) {
+    pub fn text(&self, key: &QString, text: &QString) {
         let text = String::from(text);
         if !text.is_empty() && text.len() <= nectarlink_core::MIRROR_MAX_TEXT_BYTES {
-            self.send(nectarlink_core::MirrorInput::Text { text });
+            self.send(key, MirrorInput::Text { text });
         }
     }
 
-    pub fn paste(&self) {
+    pub fn paste(&self, key: &QString) {
         if let crate::win::clipboard::Clip::Text(text) = crate::win::clipboard::read() {
             // Long text goes in pieces, each a whole number of characters.
             let mut piece = String::new();
             for c in text.chars() {
                 if piece.len() + c.len_utf8() > nectarlink_core::MIRROR_MAX_TEXT_BYTES {
-                    self.send(nectarlink_core::MirrorInput::Text { text: std::mem::take(&mut piece) });
+                    self.send(key, MirrorInput::Text { text: std::mem::take(&mut piece) });
                 }
                 piece.push(c);
             }
             if !piece.is_empty() {
-                self.send(nectarlink_core::MirrorInput::Text { text: piece });
+                self.send(key, MirrorInput::Text { text: piece });
             }
         }
     }
 
     pub fn toggle_sound(&self) {
         mirror::set_muted(!mirror::muted());
-    }
-
-    pub fn stop(mut self: Pin<&mut Self>) {
-        if let Some(id) = self.as_mut().rust_mut().shown.take() {
-            mirror::stop(id);
-        }
-        self.as_mut().set_device(QString::default());
-        self.as_mut().set_reason(QString::default());
-        self.set_phase(QString::default());
     }
 }
 

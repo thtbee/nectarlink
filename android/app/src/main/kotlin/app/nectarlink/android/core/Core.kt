@@ -20,6 +20,7 @@ import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.calls.CallCompanion
 import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.elevated.Elevated
+import app.nectarlink.android.mirror.AppWindows
 import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.mirror.MirrorRequests
 import app.nectarlink.android.photos.RecentPhotos
@@ -76,6 +77,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         onMirror = { pc, request ->
             MirrorRequests.show(this.context, request, _state.value.nameOf(pc).orEmpty())
         },
+        appWindows = AppWindows(this.context, scope, open = { pc -> mirrorOpen(pc) }, nameOf = { pc -> _state.value.nameOf(pc).orEmpty() }),
     )
     private val sms = PhoneSms(this.context) {
         notificationOps.trySend { it.smsChanged(null) }
@@ -396,6 +398,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
             (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList()) +
+            // Apps in windows of their own run on displays the Elevated helper makes.
+            (if (Elevated.running && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) listOf("mirror.virtual_display") else emptyList()) +
             // Asked for when a PC wants the sound.
             (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) listOf("mirror.audio.playback") else emptyList())
 

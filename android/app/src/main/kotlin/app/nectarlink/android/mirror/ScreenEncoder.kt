@@ -93,7 +93,7 @@ internal class ScreenEncoder(
                     current.resize(size.width, size.height, size.dpi)
                     current.surface = surface
                 }
-                val closed = stream.send(VideoPacketKind.CONFIG, 0u, mirrorConfig(size.width.toUInt(), size.height.toUInt())) ==
+                val closed = stream.send(VideoPacketKind.CONFIG, 0u, mirrorConfig(size.width.toUInt(), size.height.toUInt(), 0u)) ==
                     MirrorSendResult.CLOSED || drain(codec)
                 runCatching { codec.stop() }
                 codec.release()

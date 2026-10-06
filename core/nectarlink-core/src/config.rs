@@ -123,19 +123,24 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't share photos".into())
     }
 
-    /// Where a phone's screen goes on this PC, when it starts streaming
-    /// (after [`Node::mirror_start`](crate::Node::mirror_start)). `None`
-    /// refuses the stream.
+    /// Where a phone's screen (`session` 0, with its sound) or app window
+    /// goes on this PC, when it starts streaming (after
+    /// [`Node::mirror_start`](crate::Node::mirror_start)). `None` refuses
+    /// the stream.
     fn mirror_sink(
         &self,
         _peer: &nectarlink_protocol::DeviceId,
+        _session: u32,
     ) -> Option<std::sync::Arc<dyn crate::MirrorSink>> {
         None
     }
 
     /// A PC asked for this phone's screen: ask the user, then (if they
     /// agree) stream it with [`Node::mirror_open`](crate::Node::mirror_open).
-    /// `Err` (a reason for logs) when the user can't be asked.
+    /// Or, with `options.app`, for an app in a window of its own: run it on
+    /// a display of its own and stream that (no asking: that's Elevated).
+    /// The stream's config packets carry `options.session`. `Err` (a
+    /// reason for logs) when it can't.
     fn mirror_requested(
         &self,
         _peer: &nectarlink_protocol::DeviceId,
@@ -144,15 +149,23 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't share its screen".into())
     }
 
-    /// The PC stopped watching: stop sharing the screen.
-    fn mirror_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
+    /// The PC stopped watching: stop sharing the screen or app window.
+    fn mirror_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32) {}
 
-    /// The PC's mouse or keyboard on this phone's mirrored screen (checked,
-    /// and only while it offers `mirror.input`). Must return quickly.
-    fn mirror_input(&self, _peer: &nectarlink_protocol::DeviceId, _input: crate::MirrorInput) {}
+    /// The PC's mouse or keyboard on this phone's mirrored screen or app
+    /// window (checked, and only while it offers `mirror.input`, or
+    /// `mirror.virtual_display` for app windows). Must return quickly.
+    fn mirror_input(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32, _input: crate::MirrorInput) {
+    }
 
     /// The PC's decoder needs a fresh start: encode a keyframe next.
-    fn mirror_keyframe_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
+    fn mirror_keyframe_requested(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32) {}
+
+    /// The apps a PC may open in windows of their own (launchable ones),
+    /// with small PNG icons (a PC asked).
+    fn phone_apps(&self) -> Result<Vec<crate::PhoneApp>, String> {
+        Err("this device doesn't open apps in windows".into())
+    }
 
     /// This phone's latest conversations, newest first (a PC asked).
     fn sms_threads(&self, _limit: u32) -> Result<Vec<crate::SmsThread>, String> {

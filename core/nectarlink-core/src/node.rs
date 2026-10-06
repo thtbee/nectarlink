@@ -93,6 +93,9 @@ struct Supervisor {
     cancel: CancellationToken,
 }
 
+/// A PC's reader of a phone's mirroring: the phone, the session, video or sound.
+pub(crate) type MirrorStop = (DeviceId, u32, &'static str);
+
 /// State shared by the node, its sessions and background tasks.
 pub(crate) struct Shared {
     pub id: DeviceId,
@@ -120,7 +123,7 @@ pub(crate) struct Shared {
     /// This phone's call in progress (docs/protocol/calls.md).
     pub(crate) calls: crate::calls::Current,
     /// Stop signals for phone screens shown here, by phone.
-    pub(crate) mirror_stops: Mutex<HashMap<(DeviceId, &'static str), Arc<tokio::sync::Notify>>>,
+    pub(crate) mirror_stops: Mutex<HashMap<MirrorStop, Arc<tokio::sync::Notify>>>,
     pub data_dir: std::path::PathBuf,
     /// Where received files go.
     pub downloads_dir: std::path::PathBuf,
@@ -933,25 +936,37 @@ impl Node {
         crate::mirror::start(&self.shared, &session, options).await
     }
 
-    /// Stops showing a phone's screen, and tells the phone.
-    pub async fn mirror_stop(&self, peer: DeviceId) {
-        self.shared.stop_showing(&peer);
+    /// Stops showing a phone's screen or app window (`mirroring`), and
+    /// tells the phone.
+    pub async fn mirror_stop(&self, peer: DeviceId, mirroring: u32) {
+        self.shared.stop_showing(&peer, mirroring);
         if let Ok(session) = self.connected(&peer) {
-            let _ = crate::mirror::stop(&session).await;
+            let _ = crate::mirror::stop(&session, mirroring).await;
         }
     }
 
     /// Asks a phone for a keyframe (the decoder lost its place).
-    pub async fn mirror_keyframe(&self, peer: DeviceId) {
+    pub async fn mirror_keyframe(&self, peer: DeviceId, mirroring: u32) {
         if let Ok(session) = self.connected(&peer) {
-            crate::mirror::request_keyframe(&session).await;
+            crate::mirror::request_keyframe(&session, mirroring).await;
         }
     }
 
-    /// The PC's mouse and keyboard on a phone's mirrored screen.
-    pub async fn mirror_input(&self, peer: DeviceId, input: crate::MirrorInput) -> Result<()> {
+    /// The PC's mouse and keyboard on a phone's mirrored screen or app window.
+    pub async fn mirror_input(
+        &self,
+        peer: DeviceId,
+        mirroring: u32,
+        input: crate::MirrorInput,
+    ) -> Result<()> {
         let session = self.connected(&peer)?;
-        crate::mirror::input(&self.shared, &session, input).await
+        crate::mirror::input(&self.shared, &session, mirroring, input).await
+    }
+
+    /// The apps a phone can open in windows of their own (Elevated), by name.
+    pub async fn mirror_apps(&self, peer: DeviceId) -> Result<Vec<crate::PhoneApp>> {
+        let session = self.connected(&peer)?;
+        crate::mirror::apps(&self.shared, &session).await
     }
 
     /// Opens this phone's video stream to a PC that asked for the screen.

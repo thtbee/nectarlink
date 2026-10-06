@@ -217,6 +217,10 @@
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
 
+        <receiver
+            android:name=".mirror.AppWindows$CloseReceiver"
+            android:exported="false" />
+
         <service
             android:name=".service.ConnectionService"
             android:exported="false"

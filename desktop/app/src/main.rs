@@ -90,8 +90,9 @@ impl Platform for DesktopPlatform {
     fn mirror_sink(
         &self,
         peer: &nectarlink_core::DeviceId,
+        session: u32,
     ) -> Option<std::sync::Arc<dyn nectarlink_core::MirrorSink>> {
-        mirror::sink(peer)
+        mirror::sink(peer, session)
     }
 }
 

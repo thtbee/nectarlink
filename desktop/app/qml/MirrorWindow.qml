@@ -3,13 +3,26 @@ import QtQuick
 import QtQuick.Window
 import app.nectarlink
 
-// A phone's screen in a window of its own, sized like the phone.
+// A phone's screen, or one of its apps, in a window of its own, sized like
+// the phone. One per mirroring (`mirrorKey`); closing it ends that one.
 Window {
     id: win
-    readonly property string deviceName: Mirror.name
+    required property string mirrorKey
+    // This window's mirroring (see Mirror.windows).
+    readonly property var info: {
+        try {
+            return JSON.parse(Mirror.windows).find(w => w.key === mirrorKey) || ({})
+        } catch (e) {
+            return ({})
+        }
+    }
+    readonly property string deviceName: info.name || ""
+    readonly property string phase: info.phase || ""
+    readonly property bool canControl: info.canControl === true
 
-    visible: Mirror.phase.length > 0
-    title: deviceName.length > 0 ? qsTr("%1 · Nectarlink").arg(deviceName) : qsTr("Phone screen · Nectarlink")
+    visible: true
+    title: info.app ? qsTr("%1 · %2").arg(info.title).arg(deviceName)
+         : deviceName.length > 0 ? qsTr("%1 · Nectarlink").arg(deviceName) : qsTr("Phone screen · Nectarlink")
     color: "black"
     minimumWidth: 240
     minimumHeight: 240
@@ -30,19 +43,14 @@ Window {
             sized = true
         }
     }
-    onVisibleChanged: {
-        if (visible) {
-            sized = false
-            width = 420
-            height = 860
-        }
-    }
-    onClosing: Mirror.stop()
+    width: 420
+    height: 860
+    onClosing: Mirror.stop(mirrorKey)
 
     VideoView {
         id: video
         anchors.fill: parent
-        stream: Mirror.device
+        stream: win.mirrorKey
         focus: true
 
         // Where on the phone's screen a point in the window is (0 to 1).
@@ -55,7 +63,7 @@ Window {
         // The mouse: left is a finger, right is Back, middle is Home.
         MouseArea {
             anchors.fill: parent
-            enabled: Mirror.canControl && Mirror.phase === "showing"
+            enabled: win.canControl && win.phase === "showing"
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
             property bool down: false
@@ -63,11 +71,11 @@ Window {
             onPressed: (mouse) => {
                 video.forceActiveFocus()
                 const p = video.at(mouse.x, mouse.y)
-                if (mouse.button === Qt.RightButton) { Mirror.key("back"); return }
-                if (mouse.button === Qt.MiddleButton) { Mirror.key("home"); return }
+                if (mouse.button === Qt.RightButton) { Mirror.press(win.mirrorKey, "back"); return }
+                if (mouse.button === Qt.MiddleButton) { Mirror.press(win.mirrorKey, "home"); return }
                 if (!p.inside) return
                 down = true
-                Mirror.touch("down", p.x, p.y)
+                Mirror.touch(win.mirrorKey, "down", p.x, p.y)
             }
             onPositionChanged: (mouse) => {
                 if (!down) return
@@ -76,25 +84,25 @@ Window {
                 if (now - lastMove < 16) return
                 lastMove = now
                 const p = video.at(mouse.x, mouse.y)
-                Mirror.touch("move", p.x, p.y)
+                Mirror.touch(win.mirrorKey, "move", p.x, p.y)
             }
             onReleased: (mouse) => {
                 if (!down) return
                 down = false
                 const p = video.at(mouse.x, mouse.y)
-                Mirror.touch("up", p.x, p.y)
+                Mirror.touch(win.mirrorKey, "up", p.x, p.y)
             }
             onWheel: (wheel) => {
                 const p = video.at(wheel.x, wheel.y)
                 if (p.inside)
-                    Mirror.scroll(p.x, p.y, -wheel.angleDelta.x / 120, -wheel.angleDelta.y / 120)
+                    Mirror.scroll(win.mirrorKey, p.x, p.y, -wheel.angleDelta.x / 120, -wheel.angleDelta.y / 120)
             }
         }
 
         // The keyboard: text goes into the phone's text field; a few keys
         // have phone meanings.
         Keys.onPressed: (event) => {
-            if (!Mirror.canControl || Mirror.phase !== "showing")
+            if (!win.canControl || win.phase !== "showing")
                 return
             const keys = {}
             keys[Qt.Key_Escape] = "back"
@@ -110,14 +118,14 @@ Window {
             keys[Qt.Key_Down] = "down"
             keys[Qt.Key_Tab] = "tab"
             if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) {
-                Mirror.paste()
+                Mirror.paste(win.mirrorKey)
                 event.accepted = true
             } else if (keys[event.key] !== undefined) {
-                Mirror.key(keys[event.key])
+                Mirror.press(win.mirrorKey, keys[event.key])
                 event.accepted = true
             } else if (event.text.length > 0 && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier))
                        && event.text.charCodeAt(0) >= 32) {
-                Mirror.text(event.text)
+                Mirror.text(win.mirrorKey, event.text)
                 event.accepted = true
             }
         }
@@ -133,7 +141,7 @@ Window {
         width: 40; height: 40
         radius: 20
         color: Qt.rgba(0, 0, 0, 0.6)
-        visible: Mirror.sound && Mirror.phase === "showing"
+        visible: win.info.sound === true && win.phase === "showing"
         opacity: hovering.hovered || Mirror.muted ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
         IconButton {
@@ -153,7 +161,7 @@ Window {
         anchors.margins: 12
         height: hint.implicitHeight + 20
         radius: Theme.radiusMd
-        visible: Mirror.phase === "showing" && video.frameSize.width > 0 && !Mirror.canControl && !hintClose.closed
+        visible: win.phase === "showing" && video.frameSize.width > 0 && !win.canControl && !win.info.app && !hintClose.closed
         color: Qt.rgba(0, 0, 0, 0.72)
         Txt {
             id: hint
@@ -181,7 +189,7 @@ Window {
     // Before the picture: waiting for the phone, or why it ended.
     Rectangle {
         anchors.fill: parent
-        visible: Mirror.phase !== "showing" || video.frameSize.width <= 0
+        visible: win.phase !== "showing" || video.frameSize.width <= 0
         color: Theme.surface
         Column {
             anchors.centerIn: parent
@@ -189,12 +197,12 @@ Window {
             spacing: 14
             Spinner {
                 anchors.horizontalCenter: parent.horizontalCenter
-                visible: Mirror.phase !== "ended"
+                visible: win.phase !== "ended"
                 width: 28; height: 28
             }
             Icon {
                 anchors.horizontalCenter: parent.horizontalCenter
-                visible: Mirror.phase === "ended"
+                visible: win.phase === "ended"
                 width: 32; height: 32
                 path: Icons.mirror
                 color: Theme.surfaceContentVariant
@@ -204,8 +212,8 @@ Window {
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
                 role: "title"
-                text: Mirror.phase === "asking" ? qsTr("Allow it on your phone")
-                    : Mirror.phase === "ended" ? qsTr("Mirroring stopped")
+                text: win.phase === "asking" ? (win.info.app ? qsTr("Opening %1").arg(win.info.title) : qsTr("Allow it on your phone"))
+                    : win.phase === "ended" ? (win.info.app ? qsTr("%1 closed").arg(win.info.title) : qsTr("Mirroring stopped"))
                     : qsTr("Starting…")
             }
             Txt {
@@ -214,17 +222,24 @@ Window {
                 wrapMode: Text.WordWrap
                 role: "body"
                 muted: true
-                text: Mirror.phase === "asking"
+                text: win.phase === "asking" && !win.info.app
                       ? qsTr("Tap the notification on %1, then choose to share the entire screen.").arg(win.deviceName)
-                      : Mirror.phase === "ended" ? (Mirror.reason.length > 0 ? Mirror.reason : qsTr("The phone stopped sharing its screen."))
+                      : win.phase === "ended" ? ((win.info.reason || "").length > 0 ? win.info.reason
+                                                : win.info.app ? qsTr("The phone closed the window.")
+                                                : qsTr("The phone stopped sharing its screen."))
                       : ""
             }
             Button {
                 anchors.horizontalCenter: parent.horizontalCenter
-                visible: Mirror.phase === "ended"
+                visible: win.phase === "ended" && !win.info.app
                 variant: "tonal"
                 text: qsTr("Try again")
-                onClicked: Mirror.start(Mirror.device)
+                // A new window takes this one's place.
+                onClicked: {
+                    const device = win.info.device
+                    Mirror.stop(win.mirrorKey)
+                    Mirror.start(device)
+                }
             }
         }
     }

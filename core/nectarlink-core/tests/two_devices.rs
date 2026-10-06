@@ -78,7 +78,12 @@ impl Platform for RecordingPlatform {
         self.links.lock().unwrap().push(url.to_owned());
         Ok(())
     }
-    fn mirror_sink(&self, _peer: &nectarlink_core::DeviceId) -> Option<Arc<dyn nectarlink_core::MirrorSink>> {
+    fn mirror_sink(
+        &self,
+        _peer: &nectarlink_core::DeviceId,
+        session: u32,
+    ) -> Option<Arc<dyn nectarlink_core::MirrorSink>> {
+        self.mirror_asks.lock().unwrap().push(format!("sink {session}"));
         Some(self.screen.clone())
     }
     fn mirror_requested(
@@ -87,17 +92,38 @@ impl Platform for RecordingPlatform {
         options: &nectarlink_core::MirrorStart,
     ) -> Result<(), String> {
         let sound = if options.audio { " with sound" } else { "" };
-        self.mirror_asks.lock().unwrap().push(format!("start {}{sound}", options.max_size));
+        let app = options.app.as_deref().map(|a| format!(" {a} as {}", options.session)).unwrap_or_default();
+        self.mirror_asks.lock().unwrap().push(format!("start {}{sound}{app}", options.max_size));
         Ok(())
     }
-    fn mirror_stop_requested(&self, _peer: &nectarlink_core::DeviceId) {
-        self.mirror_asks.lock().unwrap().push("stop".into());
+    fn mirror_stop_requested(&self, _peer: &nectarlink_core::DeviceId, session: u32) {
+        self.mirror_asks.lock().unwrap().push(format!("stop {session}"));
     }
-    fn mirror_keyframe_requested(&self, _peer: &nectarlink_core::DeviceId) {
-        self.mirror_asks.lock().unwrap().push("keyframe".into());
+    fn mirror_keyframe_requested(&self, _peer: &nectarlink_core::DeviceId, session: u32) {
+        self.mirror_asks.lock().unwrap().push(format!("keyframe {session}"));
     }
-    fn mirror_input(&self, _peer: &nectarlink_core::DeviceId, input: nectarlink_core::MirrorInput) {
-        self.mirror_asks.lock().unwrap().push(format!("{input:?}"));
+    fn mirror_input(
+        &self,
+        _peer: &nectarlink_core::DeviceId,
+        session: u32,
+        input: nectarlink_core::MirrorInput,
+    ) {
+        self.mirror_asks.lock().unwrap().push(format!("{input:?} on {session}"));
+    }
+    fn phone_apps(&self) -> Result<Vec<nectarlink_core::PhoneApp>, String> {
+        let app = |pkg: &str, label: &str, icon: usize| nectarlink_core::PhoneApp {
+            pkg: pkg.into(),
+            label: label.into(),
+            icon: Some(vec![1; icon]),
+        };
+        Ok(vec![
+            app("com.example.notes", "notes", 100),
+            app("com.example.chat", "Chat", 100),
+            // Not a package name: never offered.
+            app("not a package", "Bad", 10),
+            // Too big an icon: shown without.
+            app("com.example.maps", "Maps", 9 * 1024),
+        ])
     }
     fn sms_threads(&self, limit: u32) -> Result<Vec<nectarlink_core::SmsThread>, String> {
         let thread = |i: u32| nectarlink_core::SmsThread {
@@ -1063,13 +1089,21 @@ async fn the_phone_screen_streams_to_the_pc() {
     pair_qr(&mut pc, &mut phone).await;
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
 
-    let options = nectarlink_core::MirrorStart { max_size: 1920, fps: 60, bitrate: 8_000_000, audio: true };
+    let options = nectarlink_core::MirrorStart {
+        max_size: 1920,
+        fps: 60,
+        bitrate: 8_000_000,
+        audio: true,
+        session: 0,
+        app: None,
+    };
     with_timeout("start", pc.node.mirror_start(phone_id, options)).await.unwrap();
     assert_eq!(*phone.platform.mirror_asks.lock().unwrap(), ["start 1920 with sound"]);
 
     // The user agreed: the phone streams.
     let stream = Arc::new(with_timeout("open", phone.node.mirror_open(pc_id)).await.unwrap());
-    let config = nectarlink_core::MirrorConfig { codec: "h264".into(), width: 1080, height: 2400 };
+    let config =
+        nectarlink_core::MirrorConfig { codec: "h264".into(), width: 1080, height: 2400, session: 0 };
     let sender = stream.clone();
     let sent = tokio::task::spawn_blocking(move || {
         [
@@ -1112,17 +1146,17 @@ async fn the_phone_screen_streams_to_the_pc() {
     }
     assert_eq!(screen.got.lock().unwrap()[3..], ["sound 48000 Hz x2", "sound 10000 1920"]);
 
-    pc.node.mirror_keyframe(phone_id).await;
+    pc.node.mirror_keyframe(phone_id, 0).await;
     // The PC's mouse on the phone's screen; nonsense never leaves the PC.
     use nectarlink_core::{MirrorInput, TouchAction};
     pc.node
-        .mirror_input(phone_id, MirrorInput::Touch { action: TouchAction::Down, x: 0.5, y: 0.25 })
+        .mirror_input(phone_id, 0, MirrorInput::Touch { action: TouchAction::Down, x: 0.5, y: 0.25 })
         .await
         .unwrap();
-    pc.node.mirror_input(phone_id, MirrorInput::Key { key: "back".into() }).await.unwrap();
-    assert!(pc.node.mirror_input(phone_id, MirrorInput::Key { key: "power".into() }).await.is_err());
+    pc.node.mirror_input(phone_id, 0, MirrorInput::Key { key: "back".into() }).await.unwrap();
+    assert!(pc.node.mirror_input(phone_id, 0, MirrorInput::Key { key: "power".into() }).await.is_err());
     // The PC stops watching: the phone hears it, and its stream closes.
-    pc.node.mirror_stop(phone_id).await;
+    pc.node.mirror_stop(phone_id, 0).await;
     wait_for(&mut pc, "stopped", |e| matches!(e, NodeEvent::Mirroring { on: false, .. }).then_some(())).await;
     let deadline = tokio::time::Instant::now() + WAIT;
     while !screen.got.lock().unwrap().iter().any(|g| g == "sound ended")
@@ -1147,9 +1181,87 @@ async fn the_phone_screen_streams_to_the_pc() {
     }
     assert!(sound.is_closed(), "and its sound stream");
     let asks = phone.platform.mirror_asks.lock().unwrap().clone();
-    for wanted in ["keyframe", "Touch(Down)", "Key(back)", "stop"] {
+    for wanted in ["keyframe 0", "Touch(Down) on 0", "Key(back) on 0", "stop 0"] {
         assert!(asks.iter().any(|a| a == wanted), "{wanted}: {asks:?}");
     }
+    let shown = pc.platform.mirror_asks.lock().unwrap().clone();
+    assert_eq!(shown, ["sink 0", "sink 0"], "the screen and its sound");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn phone_apps_open_in_windows_of_their_own() {
+    use nectarlink_core::{MirrorInput, MirrorSend, PacketKind};
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::MIRROR_VIEW]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::MIRROR_CAPTURE]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let app = |session: u32| nectarlink_core::MirrorStart {
+        max_size: 1280,
+        fps: 30,
+        bitrate: 4_000_000,
+        audio: false,
+        session,
+        app: Some("com.example.chat".into()),
+    };
+
+    // Not Elevated yet: no apps, no app windows.
+    assert!(pc.node.mirror_apps(phone_id).await.is_err());
+    assert!(pc.node.mirror_start(phone_id, app(7)).await.is_err());
+    phone
+        .node
+        .update_power(
+            PowerLevel::Elevated,
+            vec![nectarlink_core::MIRROR_CAPTURE.into(), nectarlink_core::MIRROR_VIRTUAL_DISPLAY.into()],
+        )
+        .await;
+    let deadline = tokio::time::Instant::now() + WAIT;
+    let apps = loop {
+        match pc.node.mirror_apps(phone_id).await {
+            Ok(apps) => break apps,
+            Err(_) if tokio::time::Instant::now() < deadline => {
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await
+            }
+            Err(e) => panic!("no apps: {e}"),
+        }
+    };
+    let listed: Vec<_> = apps.iter().map(|a| (a.label.as_str(), a.icon.is_some())).collect();
+    assert_eq!(listed, [("Chat", true), ("Maps", false), ("notes", true)], "by name; big icons left out");
+
+    // An app window is a session of its own; the screen's (0) can't have an app.
+    assert!(pc.node.mirror_start(phone_id, app(0)).await.is_err());
+    with_timeout("start", pc.node.mirror_start(phone_id, app(7))).await.unwrap();
+    let stream = Arc::new(with_timeout("open", phone.node.mirror_open(pc_id)).await.unwrap());
+    let config = nectarlink_core::MirrorConfig { codec: "h264".into(), width: 720, height: 1280, session: 7 };
+    let sender = stream.clone();
+    let sent = tokio::task::spawn_blocking(move || {
+        [
+            sender.send(PacketKind::Config, 0, config.to_cbor()),
+            sender.send(PacketKind::Keyframe, 1, vec![0; 10]),
+        ]
+    })
+    .await
+    .unwrap();
+    assert!(sent.iter().all(|s| *s == MirrorSend::Queued), "{sent:?}");
+    let session = wait_for(&mut pc, "showing", |e| match e {
+        NodeEvent::Mirroring { session, on: true, .. } => Some(*session),
+        _ => None,
+    })
+    .await;
+    assert_eq!(session, 7);
+    pc.node.mirror_input(phone_id, 7, MirrorInput::Key { key: "back".into() }).await.unwrap();
+    pc.node.mirror_keyframe(phone_id, 7).await;
+    pc.node.mirror_stop(phone_id, 7).await;
+    let ended = wait_for(&mut pc, "stopped", |e| match e {
+        NodeEvent::Mirroring { session, on: false, .. } => Some(*session),
+        _ => None,
+    })
+    .await;
+    assert_eq!(ended, 7);
+    let asks = phone.platform.mirror_asks.lock().unwrap().clone();
+    for wanted in ["start 1280 com.example.chat as 7", "Key(back) on 7", "keyframe 7", "stop 7"] {
+        assert!(asks.iter().any(|a| a == wanted), "{wanted}: {asks:?}");
+    }
+    assert_eq!(*pc.platform.mirror_asks.lock().unwrap(), ["sink 7"]);
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -673,6 +673,8 @@ pub const FEATURES: &[FeatureDef] = &[
             phone("mirror.virtual_display", ELEVATED),
             PowerAtLeast(PowerLevel::Elevated),
             AndroidAtLeast(11),
+            desktop("mirror.view", UPDATE),
+            DeviceToggle("mirroring"),
         ],
         partial: None,
     },

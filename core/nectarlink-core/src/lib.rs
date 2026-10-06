@@ -44,14 +44,16 @@ pub use nectarlink_protocol::{
     messages::{
         Battery, CLIP_MAX_BYTES, CallControls, CallState, DeviceInfo, DeviceKind, MediaPlayer,
         MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorStart, Notification, NotificationAction,
-        PhotoNew as Photo, PowerLevel, SmsMessage, SmsPart, SmsThread, TouchAction,
+        PhoneApp, PhotoNew as Photo, PowerLevel, SmsMessage, SmsPart, SmsThread, TouchAction,
         calls::{
             CONTROL as CALLS_CONTROL, IN_CALL as CALLS_IN_CALL, SHOW as CALLS_SHOW, STATE as CALLS_STATE,
         },
+        is_package_name,
         mirror::{
             AUDIO as MIRROR_AUDIO, AUDIO_PLAYBACK as MIRROR_AUDIO_PLAYBACK, CAPTURE as MIRROR_CAPTURE,
             INPUT as MIRROR_INPUT, LISTEN as MIRROR_LISTEN, MAX_TEXT_BYTES as MIRROR_MAX_TEXT_BYTES,
-            PCM as MIRROR_PCM, VIEW as MIRROR_VIEW,
+            PCM as MIRROR_PCM, SCREEN as MIRROR_SCREEN, VIEW as MIRROR_VIEW,
+            VIRTUAL_DISPLAY as MIRROR_VIRTUAL_DISPLAY,
         },
         mirror_keys,
         photos::{MAX_THUMB_BYTES as PHOTO_MAX_THUMB_BYTES, READ as PHOTOS_READ, SHOW as PHOTOS_SHOW},

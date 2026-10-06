@@ -154,7 +154,7 @@ class MirrorService : Service() {
 
     companion object {
         private const val TAG = "MirrorService"
-        private const val CHANNEL = "mirroring"
+        internal const val CHANNEL = "mirroring"
         private const val NOTIFICATION_ID = 4
         private const val ACTION_STOP = "app.nectarlink.android.mirror.STOP"
         private const val EXTRA_PC = "pc"

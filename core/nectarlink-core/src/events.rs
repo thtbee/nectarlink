@@ -142,6 +142,8 @@ pub enum NodeEvent {
     /// A phone's screen started or stopped showing here.
     Mirroring {
         device: DeviceId,
+        /// Which mirroring: 0 for the screen, others for app windows.
+        session: u32,
         on: bool,
     },
     /// A phone's messages changed: in `thread`, or anywhere when `None`.

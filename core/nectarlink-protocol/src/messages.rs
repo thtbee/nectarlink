@@ -54,6 +54,7 @@ pub mod types {
     pub const MIRROR_STOP: &str = "mirror.stop";
     pub const MIRROR_KEYFRAME: &str = "mirror.keyframe";
     pub const MIRROR_INPUT: &str = "mirror.input";
+    pub const MIRROR_APPS: &str = "mirror.apps";
 }
 
 /// What kind of device this is.
@@ -493,6 +494,26 @@ pub mod mirror {
     pub const OP_AUDIO: &str = "audio";
     /// 16-bit little-endian PCM, channels interleaved.
     pub const PCM: &str = "pcm_s16le";
+    /// Offered by phones that run an app on a display of its own, shown in
+    /// a window of its own (Elevated).
+    pub const VIRTUAL_DISPLAY: &str = "mirror.virtual_display";
+    /// The session of the phone's own screen; app windows have others.
+    pub const SCREEN: u32 = 0;
+    /// Apps in a `mirror.apps` answer, at most.
+    pub const MAX_APPS: usize = 500;
+    /// An app's icon (PNG), at most.
+    pub const MAX_ICON_BYTES: usize = 8 * 1024;
+}
+
+/// Whether `name` looks like an Android package name.
+pub fn is_package_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 255
+        && name.split('.').count() >= 2
+        && name.split('.').all(|part| {
+            part.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+                && part.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        })
 }
 
 /// Body of `mirror.start`: show me your screen.
@@ -507,6 +528,58 @@ pub struct MirrorStart {
     /// Also stream the phone's sound, when it can.
     #[serde(default)]
     pub audio: bool,
+    /// The PC's number for this mirroring: [`mirror::SCREEN`] for the
+    /// phone's screen, any other for an app window.
+    #[serde(default)]
+    pub session: u32,
+    /// An app (package name) to run on a display of its own and show,
+    /// instead of the phone's screen (with a session other than SCREEN).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app: Option<String>,
+}
+
+impl MirrorStart {
+    /// The screen without an app, or an app with a session of its own.
+    pub fn is_valid(&self) -> bool {
+        match &self.app {
+            None => self.session == mirror::SCREEN,
+            Some(app) => self.session != mirror::SCREEN && is_package_name(app),
+        }
+    }
+}
+
+/// Which mirroring a `mirror.stop`, `mirror.keyframe` or `mirror.input` is
+/// about (its body, or part of it; missing means the screen).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorSession {
+    #[serde(default)]
+    pub session: u32,
+}
+
+/// An app a PC can open in a window (in a `mirror.apps` answer).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhoneApp {
+    /// Package name.
+    pub pkg: String,
+    pub label: String,
+    /// A small icon (PNG), at most [`mirror::MAX_ICON_BYTES`].
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    pub icon: Option<Vec<u8>>,
+}
+
+impl std::fmt::Debug for PhoneApp {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PhoneApp")
+            .field("pkg", &self.pkg)
+            .field("icon", &self.icon.as_ref().map(Vec::len))
+            .finish_non_exhaustive()
+    }
+}
+
+/// Body of a `mirror.apps` answer: the phone's apps, by name.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct PhoneApps {
+    pub apps: Vec<PhoneApp>,
 }
 
 /// Body of `mirror.input`: the PC's mouse and keyboard, on the mirrored
@@ -552,6 +625,21 @@ pub mod mirror_keys {
         &[BACK, HOME, RECENTS, ENTER, BACKSPACE, DELETE, LEFT, RIGHT, UP, DOWN, TAB, NOTIFICATIONS];
 }
 
+/// `mirror.input`: the input's fields, and the session when it isn't the
+/// screen (phones that predate sessions ignore it).
+pub fn mirror_input_envelope(
+    input: &MirrorInput,
+    session: u32,
+) -> Result<crate::Envelope, crate::ProtocolError> {
+    let mut env = crate::Envelope::new(types::MIRROR_INPUT, input)?;
+    if session != mirror::SCREEN
+        && let Some(ciborium::Value::Map(fields)) = env.b.as_mut()
+    {
+        fields.push((ciborium::Value::Text("session".into()), ciborium::Value::Integer(session.into())));
+    }
+    Ok(env)
+}
+
 /// Never prints typed text (protocol v0 §11).
 impl std::fmt::Debug for MirrorInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -590,6 +678,9 @@ pub struct MirrorConfig {
     pub codec: String,
     pub width: u32,
     pub height: u32,
+    /// Which mirroring this stream is (see [`MirrorStart::session`]).
+    #[serde(default)]
+    pub session: u32,
 }
 
 impl MirrorConfig {

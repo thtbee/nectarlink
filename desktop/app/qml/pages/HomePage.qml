@@ -277,8 +277,19 @@ Item {
                     subtitle: qsTr("See it on this PC")
                     iconPath: Icons.mirror
                     feature: home.feature("mirroring.view")
-                    active: Mirror.device === home.deviceId && Mirror.phase !== "" && Mirror.phase !== "ended"
+                    // The phone's screen is showing (its session is 0).
+                    active: {
+                        try {
+                            return JSON.parse(Mirror.windows).some(w => w.device === home.deviceId && w.session === 0
+                                                                       && w.phase !== "ended")
+                        } catch (e) {
+                            return false
+                        }
+                    }
                     onClicked: Mirror.start(home.deviceId)
+                    sideIcon: home.feature("mirroring.app_windows").state === "available" ? Icons.apps : ""
+                    sideLabel: qsTr("Open an app")
+                    onSideClicked: appsSheet.openFor(home.deviceId, home.name)
                 }
                 ActionTile {
                     width: actions.tileWidth
@@ -646,6 +657,10 @@ Item {
     }
 
     // Notifications from the last day that are gone from the phone.
+    AppsSheet {
+        id: appsSheet
+    }
+
     Sheet {
         id: historySheet
         cardWidth: 560

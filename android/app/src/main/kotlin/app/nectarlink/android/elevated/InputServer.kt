@@ -28,6 +28,14 @@ import java.security.MessageDigest
  *   K keycode               a key, pressed and released
  *   T text                  typed text (what the keyboard map can type)
  *   C command...            a shell command of a fixed set (see `allowed`)
+ * Any of these after `@display ` goes to that display (an app window's).
+ *
+ * A connection whose first line (after the token) is
+ *   V width height dpi bitrate fps package
+ * is an app window instead: the helper makes it a display of its own, runs
+ * the app there and streams the display's video back on that connection
+ * (see [AppDisplay]); a `K` line asks for a keyframe; closing the
+ * connection closes the window.
  */
 object InputServer {
     @JvmStatic
@@ -55,17 +63,50 @@ object InputServer {
             // Compared in constant time: the token is the only key.
             val given = runCatching { reader.readLine() }.getOrNull() ?: return
             if (!MessageDigest.isEqual(given.toByteArray(), token.toByteArray())) return
-            while (true) {
-                val line = reader.readLine() ?: return
-                runCatching { injector.handle(line) }.onFailure { System.err.println("input failed: $it") }
+            val first = reader.readLine() ?: return
+            if (first.startsWith("V ")) return appWindow(client, first, reader)
+            var line: String? = first
+            while (line != null) {
+                val input = line
+                runCatching { injector.handle(input) }.onFailure { System.err.println("input failed: $it") }
+                line = reader.readLine()
             }
         }
     }
+
+    /** An app window on this connection, until it closes. */
+    private fun appWindow(client: Socket, request: String, reader: java.io.BufferedReader) {
+        val parts = request.split(' ')
+        val numbers = parts.subList(1, 6).map { it.toIntOrNull() ?: return }
+        val (width, height, dpi, bitrate, fps) = numbers
+        val pkg = parts.getOrNull(6)?.takeIf { PACKAGE.matches(it) } ?: return
+        if (width !in 16..4096 || height !in 16..4096 || dpi !in 72..1000) return
+        val window = AppDisplay(width, height, dpi, bitrate.coerceIn(500_000, 40_000_000), fps.coerceIn(1, 120))
+        // Further lines: keyframe requests; the end of them closes the window.
+        Thread {
+            try {
+                while (true) {
+                    val line = reader.readLine() ?: break
+                    if (line == "K") window.requestKeyframe()
+                }
+            } catch (_: java.io.IOException) {
+            }
+            window.stop()
+        }.start()
+        runCatching { window.run(pkg, client.getOutputStream()) }.onFailure { System.err.println("app window ended: $it") }
+    }
+
+    private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
 
     private class Injector {
         private val manager: Any
         private val inject: Method
         private var downTime = 0L
+        /** The display the line being handled is for (-1: the screen's own). */
+        private var display = -1
+        private val setDisplayId: Method? = runCatching {
+            InputEvent::class.java.getMethod("setDisplayId", Int::class.javaPrimitiveType)
+        }.getOrNull()
 
         init {
             // Android 14 moved injection to InputManagerGlobal.
@@ -75,7 +116,14 @@ object InputServer {
             inject = owner.getMethod("injectInputEvent", InputEvent::class.java, Int::class.javaPrimitiveType)
         }
 
-        fun handle(line: String) {
+        fun handle(full: String) {
+            var line = full
+            display = -1
+            if (line.startsWith("@")) {
+                val space = line.indexOf(' ')
+                display = line.substring(1, space).toInt()
+                line = line.substring(space + 1)
+            }
             val parts = line.split(' ', limit = 2)
             val rest = parts.getOrElse(1) { "" }
             when (parts[0]) {
@@ -89,11 +137,12 @@ object InputServer {
                 }
                 "K" -> key(rest.toInt())
                 "T" -> type(rest)
-                "C" -> if (rest in allowed) Runtime.getRuntime().exec(rest.split(' ').toTypedArray()).waitFor()
+                "C" -> if (rest in allowed && display < 0) Runtime.getRuntime().exec(rest.split(' ').toTypedArray()).waitFor()
             }
         }
 
         private fun send(event: InputEvent) {
+            if (display >= 0) setDisplayId?.invoke(event, display)
             // 0: asynchronous; the app doesn't wait for the target app.
             inject.invoke(manager, event, 0)
         }

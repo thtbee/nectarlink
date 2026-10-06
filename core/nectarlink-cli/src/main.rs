@@ -176,11 +176,29 @@ enum Command {
         /// Also ask for the phone's sound, and save it here (WAV).
         #[arg(long)]
         sound: Option<PathBuf>,
+        /// An app (package name) to show in a window of its own instead of
+        /// the screen (Elevated phones; `apps` lists them).
+        #[arg(long)]
+        app: Option<String>,
+        /// Taps while recording, one every 2 s from the first frame, each
+        /// "x,y" in fractions of the screen (repeatable).
+        #[arg(long)]
+        tap: Vec<String>,
+    },
+    /// List the apps a paired phone can open in windows of their own.
+    Apps {
+        device: String,
+        /// Where to reach the phone, when discovery can't.
+        #[arg(long)]
+        at: Vec<std::net::SocketAddr>,
     },
     /// Use a paired phone's screen: tap at x,y (fractions of the screen),
     /// swipe, scroll, press a key (back, home, recents, enter...) or type.
     Input {
         device: String,
+        /// The app window's session (from `mirror --app`), or 0 for the screen.
+        #[arg(long, default_value_t = 0)]
+        session: u32,
         #[command(subcommand)]
         action: InputArg,
     },
@@ -199,6 +217,10 @@ enum Command {
         /// file of 16-bit PCM).
         #[arg(long)]
         sound: Option<PathBuf>,
+        /// Also offer a few sample apps to open in windows (as an Elevated
+        /// phone would), each streaming the same video.
+        #[arg(long)]
+        apps: bool,
     },
     /// Act as a phone with a few sample conversations (use with --as-phone),
     /// so a PC can read them and text through this client; stays online.
@@ -494,10 +516,83 @@ fn stream_sound(sound: &nectarlink_core::MirrorStream, rate: u32, channels: u8, 
     println!("Stopped sharing the sound.");
 }
 
-/// PCs that asked for the screen (and whether they want the sound), for
-/// `screen`.
-static SCREEN_ASKS: std::sync::OnceLock<tokio::sync::mpsc::UnboundedSender<(DeviceId, bool)>> =
+/// PCs that asked for the screen or an app (whether they want the sound,
+/// and the session), for `screen`.
+static SCREEN_ASKS: std::sync::OnceLock<tokio::sync::mpsc::UnboundedSender<(DeviceId, bool, u32)>> =
     std::sync::OnceLock::new();
+/// Whether `screen` offers apps in windows.
+static SCREEN_APPS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// The apps `screen --apps` offers.
+const SAMPLE_APPS: &[(&str, &str)] = &[
+    ("com.example.calendar", "Calendar"),
+    ("com.example.camera", "Camera"),
+    ("com.example.chat", "Chat"),
+    ("com.example.maps", "Maps"),
+    ("com.example.music", "Music"),
+    ("com.example.notes", "Notes"),
+    ("com.example.photos", "Photos"),
+    ("com.example.settings", "Settings"),
+];
+
+/// A small, plain PNG icon in a color of its own (a rounded square would
+/// need drawing; a solid one is enough to tell them apart).
+fn sample_icon(i: usize) -> Vec<u8> {
+    const SIZE: u32 = 48;
+    let hues = [(234, 67, 53), (66, 133, 244), (52, 168, 83), (251, 188, 5), (171, 71, 188), (0, 172, 193)];
+    let (r, g, b) = hues[i % hues.len()];
+    // Each scanline: no filter, then its pixels.
+    let line: Vec<u8> =
+        std::iter::once(0).chain(std::iter::repeat_n([r, g, b], SIZE as usize).flatten()).collect();
+    let raw = line.repeat(SIZE as usize);
+    png(SIZE, SIZE, &raw)
+}
+
+/// An RGB PNG from filtered scanlines (stored, uncompressed).
+fn png(width: u32, height: u32, raw: &[u8]) -> Vec<u8> {
+    fn crc(data: &[u8]) -> u32 {
+        let mut c = 0xffff_ffffu32;
+        for &b in data {
+            c ^= u32::from(b);
+            for _ in 0..8 {
+                c = if c & 1 != 0 { 0xedb8_8320 ^ (c >> 1) } else { c >> 1 };
+            }
+        }
+        !c
+    }
+    fn chunk(out: &mut Vec<u8>, kind: &[u8], data: &[u8]) {
+        out.extend_from_slice(&(data.len() as u32).to_be_bytes());
+        let start = out.len();
+        out.extend_from_slice(kind);
+        out.extend_from_slice(data);
+        let sum = crc(&out[start..]);
+        out.extend_from_slice(&sum.to_be_bytes());
+    }
+    // zlib with stored blocks, and its Adler-32.
+    let mut zlib = vec![0x78, 0x01];
+    for (i, block) in raw.chunks(65_535).enumerate() {
+        let last = (i + 1) * 65_535 >= raw.len();
+        zlib.push(u8::from(last));
+        let len = block.len() as u16;
+        zlib.extend_from_slice(&len.to_le_bytes());
+        zlib.extend_from_slice(&(!len).to_le_bytes());
+        zlib.extend_from_slice(block);
+    }
+    let (mut a, mut b) = (1u32, 0u32);
+    for &byte in raw {
+        a = (a + u32::from(byte)) % 65_521;
+        b = (b + a) % 65_521;
+    }
+    zlib.extend_from_slice(&((b << 16) | a).to_be_bytes());
+    let mut out = b"\x89PNG\r\n\x1a\n".to_vec();
+    let mut header = Vec::new();
+    header.extend_from_slice(&width.to_be_bytes());
+    header.extend_from_slice(&height.to_be_bytes());
+    header.extend_from_slice(&[8, 2, 0, 0, 0]);
+    chunk(&mut out, b"IHDR", &header);
+    chunk(&mut out, b"IDAT", &zlib);
+    chunk(&mut out, b"IEND", &[]);
+    out
+}
 
 /// A sample text for `texts`: (thread, number, name, incoming, body, Unix ms).
 type SampleText = (u32, String, String, bool, String, i64);
@@ -548,7 +643,11 @@ const PHOTO_ID: &str = "cli-photo";
 struct TerminalPlatform;
 
 impl Platform for TerminalPlatform {
-    fn mirror_sink(&self, _peer: &DeviceId) -> Option<std::sync::Arc<dyn nectarlink_core::MirrorSink>> {
+    fn mirror_sink(
+        &self,
+        _peer: &DeviceId,
+        _session: u32,
+    ) -> Option<std::sync::Arc<dyn nectarlink_core::MirrorSink>> {
         RECORDING.get().map(|r| r.clone() as std::sync::Arc<dyn nectarlink_core::MirrorSink>)
     }
     fn mirror_requested(
@@ -557,16 +656,44 @@ impl Platform for TerminalPlatform {
         options: &nectarlink_core::MirrorStart,
     ) -> std::result::Result<(), String> {
         let asks = SCREEN_ASKS.get().ok_or("not sharing a screen (run `screen`)")?;
-        if options.audio {
-            println!("It wants the sound too.");
+        match &options.app {
+            Some(app) if SAMPLE_APPS.iter().any(|(pkg, _)| pkg == app) => {
+                println!("A PC opened {app} in a window (session {}).", options.session);
+            }
+            Some(_) => return Err("no such app".into()),
+            None => {
+                if options.audio {
+                    println!("It wants the sound too.");
+                }
+                println!(
+                    "A PC asked for the screen ({}px, {} fps); sharing it.",
+                    options.max_size, options.fps
+                );
+            }
         }
-        println!("A PC asked for the screen ({}px, {} fps); sharing it.", options.max_size, options.fps);
-        asks.send((*peer, options.audio)).map_err(|e| e.to_string())
+        asks.send((*peer, options.audio, options.session)).map_err(|e| e.to_string())
     }
-    fn mirror_stop_requested(&self, _peer: &DeviceId) {
-        println!("The PC stopped watching.");
+    fn mirror_stop_requested(&self, _peer: &DeviceId, session: u32) {
+        println!("The PC stopped watching (session {session}).");
     }
-    fn mirror_keyframe_requested(&self, _peer: &DeviceId) {
+    fn mirror_input(&self, _peer: &DeviceId, session: u32, input: nectarlink_core::MirrorInput) {
+        println!("Input on session {session}: {input:?}");
+    }
+    fn phone_apps(&self) -> std::result::Result<Vec<nectarlink_core::PhoneApp>, String> {
+        if !SCREEN_APPS.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err("not offering apps (run `screen --apps`)".into());
+        }
+        Ok(SAMPLE_APPS
+            .iter()
+            .enumerate()
+            .map(|(i, (pkg, label))| nectarlink_core::PhoneApp {
+                pkg: (*pkg).into(),
+                label: (*label).into(),
+                icon: Some(sample_icon(i)),
+            })
+            .collect())
+    }
+    fn mirror_keyframe_requested(&self, _peer: &DeviceId, _session: u32) {
         println!("The PC asked for a keyframe.");
     }
     fn sms_threads(&self, limit: u32) -> std::result::Result<Vec<nectarlink_core::SmsThread>, String> {
@@ -935,7 +1062,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             node.update_power(node_power(cli), offers).await;
             watch(node, true).await?;
         }
-        Command::Input { device, action } => {
+        Command::Input { device, session, action } => {
             use nectarlink_core::{MirrorInput, TouchAction};
             let mut offers = cli.offers.clone();
             offers.push(nectarlink_core::MIRROR_VIEW.into());
@@ -965,14 +1092,29 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 InputArg::Type { text } => vec![MirrorInput::Text { text: text.clone() }],
             };
             for input in inputs {
-                node.mirror_input(id, input).await.context("not sent")?;
+                node.mirror_input(id, *session, input).await.context("not sent")?;
                 tokio::time::sleep(Duration::from_millis(30)).await;
             }
             // Let it leave before this client goes.
             tokio::time::sleep(Duration::from_millis(500)).await;
             println!("Sent.");
         }
-        Command::Mirror { device, out, seconds, at, sound } => {
+        Command::Apps { device, at } => {
+            let id = resolve(node, device)?;
+            if !at.is_empty() {
+                node.add_known_addrs(id, at);
+            }
+            wait_until_online(node, id).await?;
+            for app in node.mirror_apps(id).await.context("no apps")? {
+                println!(
+                    "{:<40} {}{}",
+                    app.pkg,
+                    app.label,
+                    app.icon.map(|i| format!(" ({} B icon)", i.len())).unwrap_or_default()
+                );
+            }
+        }
+        Command::Mirror { device, out, seconds, at, sound, app, tap } => {
             let recording = std::sync::Arc::new(Recording::default());
             *recording.file.lock().unwrap() =
                 Some(std::fs::File::create(out).context("can't create the file")?);
@@ -988,11 +1130,15 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 node.add_known_addrs(id, at);
             }
             wait_until_online(node, id).await?;
+            // An app window is a session of its own.
+            let session = u32::from(app.is_some());
             let options = nectarlink_core::MirrorStart {
                 max_size: 1920,
                 fps: 60,
                 bitrate: 8_000_000,
-                audio: sound.is_some(),
+                audio: sound.is_some() && app.is_none(),
+                session,
+                app: app.clone(),
             };
             node.mirror_start(id, options).await.context("the phone didn't ask its user")?;
             println!(
@@ -1005,8 +1151,21 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 }
             }
             let started = std::time::Instant::now();
-            tokio::time::sleep(std::time::Duration::from_secs(*seconds)).await;
-            node.mirror_stop(id).await;
+            for at in tap {
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                let (x, y) = at.split_once(',').context("--tap takes x,y")?;
+                let (x, y): (f32, f32) = (x.trim().parse()?, y.trim().parse()?);
+                use nectarlink_core::{MirrorInput, TouchAction};
+                for action in [TouchAction::Down, TouchAction::Up] {
+                    node.mirror_input(id, session, MirrorInput::Touch { action, x, y })
+                        .await
+                        .context("not sent")?;
+                }
+                println!("Tapped {x},{y}.");
+            }
+            let left = std::time::Duration::from_secs(*seconds).saturating_sub(started.elapsed());
+            tokio::time::sleep(left).await;
+            node.mirror_stop(id, session).await;
             let RecordingStats { frames, keyframes, bytes, size } = *recording.stats.lock().unwrap();
             let secs = started.elapsed().as_secs_f64();
             println!(
@@ -1036,7 +1195,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 }
             }
         }
-        Command::Screen { video, width, height, fps, sound } => {
+        Command::Screen { video, width, height, fps, sound, apps } => {
             if !cli.as_phone {
                 bail!("screens are shared by phones: add --as-phone");
             }
@@ -1060,12 +1219,16 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             if sound.is_some() {
                 offers.push(nectarlink_core::MIRROR_AUDIO_PLAYBACK.into());
             }
+            if *apps {
+                SCREEN_APPS.store(true, std::sync::atomic::Ordering::Relaxed);
+                offers.push(nectarlink_core::MIRROR_VIRTUAL_DISPLAY.into());
+            }
             node.update_power(node_power(cli), offers).await;
             println!("Sharing a {width}x{height} screen ({} frames) with PCs that ask.", units.len());
             let streamer = node.clone();
             let (width, height, fps) = (*width, *height, *fps);
             tokio::spawn(async move {
-                while let Some((pc, wants_sound)) = asked.recv().await {
+                while let Some((pc, wants_sound, session)) = asked.recv().await {
                     let mirror = match streamer.mirror_open(pc).await {
                         Ok(mirror) => std::sync::Arc::new(mirror),
                         Err(e) => {
@@ -1074,7 +1237,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                         }
                     };
                     let units = units.clone();
-                    std::thread::spawn(move || stream_screen(&mirror, &units, width, height, fps));
+                    std::thread::spawn(move || stream_screen(&mirror, &units, width, height, fps, session));
                     if let (true, Some((rate, channels, samples))) = (wants_sound, sound.clone()) {
                         match streamer.mirror_open_audio(pc).await {
                             Ok(stream) => {
@@ -1905,9 +2068,10 @@ fn stream_screen(
     width: u32,
     height: u32,
     fps: u32,
+    session: u32,
 ) {
     use nectarlink_core::{MirrorSend, PacketKind};
-    let config = nectarlink_core::MirrorConfig { codec: "h264".into(), width, height }.to_cbor();
+    let config = nectarlink_core::MirrorConfig { codec: "h264".into(), width, height, session }.to_cbor();
     if mirror.send(PacketKind::Config, 0, config) == MirrorSend::Closed {
         return;
     }

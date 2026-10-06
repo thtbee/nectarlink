@@ -13,6 +13,7 @@ import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.media.PhoneMedia
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.elevated.Elevated
+import app.nectarlink.android.mirror.AppWindows
 import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.mirror.MirrorRequest
 import app.nectarlink.android.mirror.MirrorRequests
@@ -25,6 +26,8 @@ import app.nectarlink.core.SmsThread
 import app.nectarlink.core.FileToSend
 import app.nectarlink.core.MediaAction
 import app.nectarlink.core.MirrorInputEvent
+import app.nectarlink.core.MirrorOptions
+import app.nectarlink.core.PhoneApp
 import app.nectarlink.core.NotificationFailure
 import app.nectarlink.core.Platform
 
@@ -44,6 +47,8 @@ internal class PhonePlatform(
     private val sms: () -> PhoneSms,
     /** Asks the user to share the screen with a PC: (PC's ID, request) → asked. */
     private val onMirror: (String, MirrorRequest) -> Boolean,
+    /** Apps in windows of their own on PCs (Elevated). */
+    private val appWindows: AppWindows,
 ) : Platform {
     private val context = context.applicationContext
 
@@ -65,20 +70,30 @@ internal class PhonePlatform(
 
     override fun callCommand(id: String, command: CallCommand): Boolean = onCall(id, command)
 
-    override fun mirrorRequested(pcId: String, maxSize: UInt, fps: UInt, bitrate: UInt, audio: Boolean): Boolean =
-        onMirror(pcId, MirrorRequest(pcId, maxSize.toInt(), fps.toInt(), bitrate.toInt(), audio))
+    override fun mirrorRequested(pcId: String, options: MirrorOptions): Boolean =
+        if (options.app != null) {
+            appWindows.open(pcId, options)
+        } else {
+            val request = MirrorRequest(pcId, options.maxSize.toInt(), options.fps.toInt(), options.bitrate.toInt(), options.audio)
+            onMirror(pcId, request)
+        }
 
-    override fun mirrorStopRequested(pcId: String) {
+    override fun mirrorStopRequested(pcId: String, session: UInt) {
+        if (session != SCREEN) return appWindows.close(pcId, session)
         MirrorRequests.dismiss(context, pcId)
         MirrorService.stop(pcId)
     }
 
-    override fun mirrorKeyframeRequested(pcId: String) = MirrorService.keyframe(pcId)
+    override fun mirrorKeyframeRequested(pcId: String, session: UInt) =
+        if (session == SCREEN) MirrorService.keyframe(pcId) else appWindows.keyframe(pcId, session)
 
     // Real events when Elevated runs; gestures through the accessibility service otherwise.
-    override fun mirrorInput(pcId: String, input: MirrorInputEvent) {
+    override fun mirrorInput(pcId: String, session: UInt, input: MirrorInputEvent) {
+        if (session != SCREEN) return appWindows.input(pcId, session, input)
         if (!Elevated.handle(input)) InputService.handle(input)
     }
+
+    override fun phoneApps(): List<PhoneApp> = AppWindows.list(context)
 
     override fun smsThreads(limit: UInt): List<SmsThread> = sms().threads(limit.toInt())
 
@@ -131,5 +146,10 @@ internal class PhonePlatform(
             else -> return null
         }
         return ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(mode).toBundle()
+    }
+
+    private companion object {
+        /** The phone's own screen's mirroring session. */
+        const val SCREEN = 0u
     }
 }
