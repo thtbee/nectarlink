@@ -89,6 +89,9 @@ place and tested; the user-facing features of Phase 1 come next.
   on the phone, share them from any app or pick them in Nectarlink. They land in `Downloads\Nectarlink` on the PC and
   `Download/Nectarlink` on the phone, with progress, cancelling, and transfers
   that pick up where they left off after a dropped connection.
+- **Screen mirroring** (view): see the phone's screen on the PC, in a
+  window of its own, at up to 1920 pixels and 60 frames a second, hardware
+  encoded on the phone. Android asks each time; stop it from either side.
 - **Texts** on the PC: a Messages page with the phone's conversations
   (pictures included), to reply or start a new one; texts go out through
   the phone.

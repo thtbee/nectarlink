@@ -486,8 +486,8 @@ impl MirrorStream {
         }
     }
 
-    /// Ends the stream.
-    pub fn close(&self) {
+    /// Ends the stream (`close` frees the object, as for every object).
+    pub fn end(&self) {
         self.0.close();
     }
 }

@@ -67,6 +67,12 @@
     <string name="media_previous">Previous</string>
     <string name="action_send_files">Send files</string>
     <string name="action_send_folder">Send a folder</string>
+    <string name="channel_mirroring">Screen sharing</string>
+    <string name="channel_mirror_requests">Screen sharing requests</string>
+    <string name="mirror_request_title">%1$s wants to see your screen</string>
+    <string name="mirror_request_text">Tap to share it. You can stop anytime.</string>
+    <string name="mirror_sharing">Sharing your screen with %1$s</string>
+    <string name="action_stop">Stop</string>
     <string name="sms_title">Text from your PC</string>
     <string name="sms_off">Read your conversations and send texts from your PC. Nectarlink needs access to your messages and contacts for that.</string>
     <string name="calls_title">Show calls on your PC</string>

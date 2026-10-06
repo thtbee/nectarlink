@@ -114,8 +114,8 @@ data class CoreState(
         is Event.Transfer -> copy(transfers = withTransfer(event.transfer))
         // Shown in Android's media controls (see media/PcMedia).
         is Event.MediaChanged -> this
-        // PCs only: phones announce their own photos and calls.
-        is Event.PhotoAdded, is Event.CallChanged, is Event.SmsChanged -> this
+        // PCs only: phones announce their own photos, calls, texts and screen.
+        is Event.PhotoAdded, is Event.CallChanged, is Event.SmsChanged, is Event.Mirroring -> this
     }
 
     private fun withTransfer(transfer: Transfer): List<Transfer> {

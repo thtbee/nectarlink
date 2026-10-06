@@ -17,11 +17,13 @@ import app.nectarlink.android.files.TransferNotifications
 import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.calls.PhoneCalls
+import app.nectarlink.android.mirror.MirrorRequests
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
 import app.nectarlink.core.FileToSend
+import app.nectarlink.core.MirrorStream
 import app.nectarlink.core.Link
 import app.nectarlink.core.NectarlinkException
 import app.nectarlink.core.NectarlinkNode
@@ -67,6 +69,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         onLink = { pc, url -> LinkNotifications.show(this.context, _state.value.nameOf(pc).orEmpty(), url) },
         onCall = { id, command -> calls.command(id, command) },
         sms = { sms },
+        onMirror = { pc, request ->
+            MirrorRequests.show(this.context, request, _state.value.nameOf(pc).orEmpty())
+        },
     )
     private val sms = PhoneSms(this.context) {
         notificationOps.trySend { it.smsChanged(null) }
@@ -258,6 +263,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * The files are opened right away: Android's permission to read a
      * shared item ends with the activity that received it.
      */
+    /** Opens this phone's screen stream to a PC (after the user agreed). */
+    suspend fun mirrorOpen(pcId: String): MirrorStream {
+        startJob?.join()
+        val node = checkNotNull(node) { "the core isn't running" }
+        return node.mirrorOpen(pcId)
+    }
+
     fun sendFiles(pcId: String, uris: List<Uri>) = send(pcId, OutgoingFiles.open(context, uris))
 
     /** Sends a folder the user picked, with everything in it. */
@@ -490,7 +502,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         /** Sharing this phone's players, which also needs notification access. */
         val MEDIA_CAPABILITIES = listOf("media.control")
         /** Accepting the PC's clipboard, and sending this one when asked. */
-        val CLIPBOARD_CAPABILITIES = listOf("clip.write", "clip.share")
+        val CLIPBOARD_CAPABILITIES = listOf("clip.write", "clip.share", "mirror.capture")
         /** With access to the phone's photos. */
         val PHOTO_CAPABILITIES = listOf("photos.read")
     }

@@ -12,6 +12,9 @@ import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.media.PhoneMedia
 import app.nectarlink.android.photos.RecentPhotos
+import app.nectarlink.android.mirror.MirrorRequest
+import app.nectarlink.android.mirror.MirrorRequests
+import app.nectarlink.android.mirror.MirrorService
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.core.CallCommand
 import app.nectarlink.core.SmsMessage
@@ -36,6 +39,8 @@ internal class PhonePlatform(
     private val onCall: (String, CallCommand) -> Boolean,
     /** The phone's texts (created after this). */
     private val sms: () -> PhoneSms,
+    /** Asks the user to share the screen with a PC: (PC's ID, request) → asked. */
+    private val onMirror: (String, MirrorRequest) -> Boolean,
 ) : Platform {
     private val context = context.applicationContext
 
@@ -56,6 +61,16 @@ internal class PhonePlatform(
     override fun openPhoto(id: String): FileToSend? = RecentPhotos.open(context, id)
 
     override fun callCommand(id: String, command: CallCommand): Boolean = onCall(id, command)
+
+    override fun mirrorRequested(pcId: String, maxSize: UInt, fps: UInt, bitrate: UInt): Boolean =
+        onMirror(pcId, MirrorRequest(pcId, maxSize.toInt(), fps.toInt(), bitrate.toInt()))
+
+    override fun mirrorStopRequested(pcId: String) {
+        MirrorRequests.dismiss(context, pcId)
+        MirrorService.stop(pcId)
+    }
+
+    override fun mirrorKeyframeRequested(pcId: String) = MirrorService.keyframe(pcId)
 
     override fun smsThreads(limit: UInt): List<SmsThread> = sms().threads(limit.toInt())
 

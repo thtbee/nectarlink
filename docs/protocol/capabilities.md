@@ -42,7 +42,7 @@ capability is missing.
 | `clip.share` | Sends the clipboard when the user taps "Send" | app update |
 | `clip.read.auto` | Sends clipboard changes automatically, in the background | Elevated |
 | `photos.read` | Announces new photos and screenshots and sends them on request ([photos](photos.md)) | photos permission |
-| `mirror.capture` | Streams its screen (with the system's capture prompt at Basic) | app update |
+| `mirror.capture` | Streams its screen (with the system's capture prompt at Basic; [mirroring](mirror.md)) | app update |
 | `mirror.input` | Accepts touch, key and scroll input while mirrored | Assist |
 | `mirror.virtual_display` | Runs apps on a separate virtual display (app windows) | Elevated |
 | `mirror.audio` | Streams all audio while mirrored | Elevated |
@@ -57,6 +57,7 @@ capability is missing.
 | `photos.show` | Shows a phone's new photos ([photos](photos.md)) | app update |
 | `call.show` | Shows a phone's calls ([calls](calls.md)) | app update |
 | `sms.show` | Shows a phone's text messages ([messages](sms.md)) | app update |
+| `mirror.view` | Shows a phone's screen ([mirroring](mirror.md)) | app update |
 | `files.browse` | Lets a paired phone browse and fetch its files | app update |
 | `input.inject` | Accepts pointer and keyboard input (touchpad, air mouse, voice typing) | app update |
 | `deck.actions` | Runs Deck actions | app update |

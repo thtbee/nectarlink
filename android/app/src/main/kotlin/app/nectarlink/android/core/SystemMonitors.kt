@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.ConnectivityManager
+import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
@@ -76,9 +77,26 @@ class BatteryMonitor(private val context: Context, private val onChange: (Batter
 class NetworkMonitor(context: Context, private val onChange: () -> Unit) {
     private val connectivity = context.getSystemService(ConnectivityManager::class.java)
     private val callback = object : ConnectivityManager.NetworkCallback() {
+        /** Whether the default network was confirmed working, last we heard. */
+        private var validated = false
+
         override fun onAvailable(network: Network) = onChange()
-        override fun onLost(network: Network) = onChange()
-        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = Unit
+        override fun onLost(network: Network) {
+            validated = false
+            onChange()
+        }
+
+        // Right after boot a network is "available" before it has its
+        // addresses and routes, and before it's known to work: both come
+        // later, and the core has to hear of them too.
+        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) = onChange()
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            val now = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            if (now != validated) {
+                validated = now
+                onChange()
+            }
+        }
     }
 
     fun start() {

@@ -164,6 +164,18 @@ enum Command {
     /// Show new photos from paired phones as this PC would, and fetch each
     /// one; stays online until Ctrl+C.
     Photos,
+    /// Ask a paired phone for its screen and save the video (H.264, Annex B)
+    /// for `seconds`; prints what arrived.
+    Mirror {
+        device: String,
+        out: PathBuf,
+        #[arg(long, default_value_t = 10)]
+        seconds: u64,
+        /// Where to reach the phone, when discovery can't (e.g. an emulator
+        /// with a forwarded port).
+        #[arg(long)]
+        at: Vec<std::net::SocketAddr>,
+    },
     /// Act as a phone sharing its screen (use with --as-phone): when a PC
     /// asks, streams an H.264 file (Annex B, with access unit delimiters) in
     /// a loop at `fps`. Stays online.
@@ -301,6 +313,43 @@ enum OnOff {
     Off,
 }
 
+/// Where `mirror` saves the video, and what arrived.
+static RECORDING: std::sync::OnceLock<std::sync::Arc<Recording>> = std::sync::OnceLock::new();
+
+#[derive(Debug, Default)]
+struct Recording {
+    file: std::sync::Mutex<Option<std::fs::File>>,
+    stats: std::sync::Mutex<RecordingStats>,
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+struct RecordingStats {
+    frames: u32,
+    keyframes: u32,
+    bytes: u64,
+    size: Option<(u32, u32)>,
+}
+
+impl nectarlink_core::MirrorSink for Recording {
+    fn config(&self, config: nectarlink_core::MirrorConfig) {
+        println!("The phone streams {}x{} {}.", config.width, config.height, config.codec);
+        self.stats.lock().unwrap().size = Some((config.width, config.height));
+    }
+    fn packet(&self, keyframe: bool, _time_us: u64, data: Vec<u8>) {
+        use std::io::Write;
+        let mut stats = self.stats.lock().unwrap();
+        stats.frames += 1;
+        stats.keyframes += u32::from(keyframe);
+        stats.bytes += data.len() as u64;
+        if let Some(file) = self.file.lock().unwrap().as_mut() {
+            let _ = file.write_all(&data);
+        }
+    }
+    fn ended(&self) {
+        println!("The stream ended.");
+    }
+}
+
 /// PCs that asked for the screen, for `screen`.
 static SCREEN_ASKS: std::sync::OnceLock<tokio::sync::mpsc::UnboundedSender<DeviceId>> =
     std::sync::OnceLock::new();
@@ -346,6 +395,9 @@ const PHOTO_ID: &str = "cli-photo";
 struct TerminalPlatform;
 
 impl Platform for TerminalPlatform {
+    fn mirror_sink(&self, _peer: &DeviceId) -> Option<std::sync::Arc<dyn nectarlink_core::MirrorSink>> {
+        RECORDING.get().map(|r| r.clone() as std::sync::Arc<dyn nectarlink_core::MirrorSink>)
+    }
     fn mirror_requested(
         &self,
         peer: &DeviceId,
@@ -680,6 +732,42 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             offers.push(nectarlink_core::PHOTOS_SHOW.into());
             node.update_power(node_power(cli), offers).await;
             watch(node, true).await?;
+        }
+        Command::Mirror { device, out, seconds, at } => {
+            let recording = std::sync::Arc::new(Recording::default());
+            *recording.file.lock().unwrap() =
+                Some(std::fs::File::create(out).context("can't create the file")?);
+            let _ = RECORDING.set(recording.clone());
+            let mut offers = cli.offers.clone();
+            offers.push(nectarlink_core::MIRROR_VIEW.into());
+            node.update_power(node_power(cli), offers).await;
+            let id = resolve(node, device)?;
+            if !at.is_empty() {
+                node.add_known_addrs(id, at);
+            }
+            wait_until_online(node, id).await?;
+            let options = nectarlink_core::MirrorStart { max_size: 1920, fps: 60, bitrate: 8_000_000 };
+            node.mirror_start(id, options).await.context("the phone didn't ask its user")?;
+            println!(
+                "Asked the phone; accept on the phone. Recording for {seconds} s after the first frame."
+            );
+            let mut events = node.events();
+            loop {
+                if let Ok(NodeEvent::Mirroring { on: true, .. }) = events.recv().await {
+                    break;
+                }
+            }
+            let started = std::time::Instant::now();
+            tokio::time::sleep(std::time::Duration::from_secs(*seconds)).await;
+            node.mirror_stop(id).await;
+            let RecordingStats { frames, keyframes, bytes, size } = *recording.stats.lock().unwrap();
+            let secs = started.elapsed().as_secs_f64();
+            println!(
+                "{frames} frames ({keyframes} keyframes) in {secs:.1} s: {:.1} fps, {:.1} Mbit/s{}",
+                f64::from(frames) / secs,
+                bytes as f64 * 8.0 / secs / 1e6,
+                size.map(|(w, h)| format!(", {w}x{h}")).unwrap_or_default()
+            );
         }
         Command::Screen { video, width, height, fps } => {
             if !cli.as_phone {
