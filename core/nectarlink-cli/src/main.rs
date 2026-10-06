@@ -377,6 +377,8 @@ fn sample_texts() {
             "Your parcel will arrive tomorrow between 9:00 and 13:00.",
             now - 26 * 60 * min,
         ),
+        (2, "+15550123", "", true, "Track it at https://example.com/track?id=42.", now - 26 * 60 * min + min),
+        (4, "JD-BANK", "", true, "243928 is your one time password (OTP). Do not share it.", now - 5 * min),
         (3, "+15550188", "Alex", false, "Can you send me the photos from Saturday?", now - 3 * 24 * 60 * min),
         (3, "+15550188", "Alex", true, "Sure, uploading them now", now - 3 * 24 * 60 * min + 5 * min),
     ];

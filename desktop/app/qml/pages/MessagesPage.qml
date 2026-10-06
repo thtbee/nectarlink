@@ -17,6 +17,50 @@ Item {
     readonly property var messages: { try { return JSON.parse(Messages.messages) } catch (e) { return [] } }
     readonly property var openThread: threads.find(t => t.id === Messages.thread) || null
     readonly property bool ready: Messages.status === "ready"
+    // Conversations matching the search box.
+    readonly property string query: search.text.trim().toLocaleLowerCase()
+    readonly property var shownThreads: query.length === 0 ? threads
+        : threads.filter(t => (t.title + " " + t.addresses + " " + t.snippet).toLocaleLowerCase().indexOf(query) >= 0)
+
+    // Back to the list: nothing open.
+    function closeChat() {
+        Messages.closeThread()
+        composing = false
+        toField.text = ""
+    }
+
+    // A stable color for a contact (in Bloom).
+    function hueOf(name) {
+        let h = 0
+        for (let i = 0; i < name.length; i++)
+            h = (h * 31 + name.charCodeAt(i)) % 360
+        return h / 360
+    }
+
+    // "Today", "Yesterday", or the date, for separators.
+    function dayLabel(ms) {
+        const date = new Date(ms)
+        const today = new Date()
+        const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)
+        if (date.toDateString() === today.toDateString()) return qsTr("Today")
+        if (date.toDateString() === yesterday.toDateString()) return qsTr("Yesterday")
+        return date.toLocaleDateString(Qt.locale(), date.getFullYear() === today.getFullYear() ? "dddd, d MMMM" : Locale.LongFormat)
+    }
+
+    // Text as HTML with its web links clickable.
+    function linkified(text) {
+        const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")
+        return escaped.replace(/\b(https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"])/g, '<a href="$1">$1</a>')
+    }
+
+    // How many texts a message takes (GSM letters: 160 in one, 153 each
+    // when split; anything else: 70 and 67).
+    function smsCount(text) {
+        const gsm = /^[\x0A\x0D\x20-\x7E£¥èéùìòÇØøÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉÄÖÑÜ§¿äöñüà€]*$/.test(text)
+        const one = gsm ? 160 : 70
+        const each = gsm ? 153 : 67
+        return text.length <= one ? 1 : Math.ceil(text.length / each)
+    }
 
     opacity: active ? 1 : 0
     visible: opacity > 0
@@ -30,7 +74,29 @@ Item {
         if (active && deviceId.length > 0)
             Messages.open(deviceId)
     }
-    onActiveChanged: load()
+    // Leaving the page closes the open conversation.
+    onActiveChanged: active ? load() : closeChat()
+
+    Shortcut {
+        sequence: "Esc"
+        enabled: page.active && (!!page.openThread || page.composing)
+        onActivated: page.closeChat()
+    }
+    Shortcut {
+        sequence: StandardKey.Find
+        enabled: page.active && page.ready
+        onActivated: search.forceActiveFocus()
+    }
+    Shortcut {
+        sequence: StandardKey.New
+        enabled: page.active && page.ready
+        onActivated: page.startNew()
+    }
+    function startNew() {
+        Messages.closeThread()
+        composing = true
+        toField.forceActiveFocus()
+    }
     onDeviceIdChanged: { composing = false; load() }
 
     // "14:05", "Tue", or a date.
@@ -112,39 +178,105 @@ Item {
                 role: "title"
             }
             IconButton {
+                id: newButton
                 anchors.right: parent.right
                 anchors.rightMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
                 iconPath: Icons.plus
-                label: qsTr("New message")
+                label: qsTr("New message (Ctrl+N)")
                 tonal: page.composing
                 enabled: page.ready
-                onClicked: {
-                    Messages.closeThread()
-                    page.composing = true
-                    toField.forceActiveFocus()
+                onClicked: page.startNew()
+            }
+            IconButton {
+                anchors.right: newButton.left
+                anchors.verticalCenter: parent.verticalCenter
+                iconPath: Icons.refresh
+                label: qsTr("Refresh")
+                enabled: Messages.status !== "loading"
+                onClicked: Messages.refresh()
+            }
+        }
+
+        // Search: by name, number or the latest text.
+        Rectangle {
+            id: searchBox
+            anchors.top: listHeader.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 16
+            anchors.rightMargin: 16
+            height: 38
+            radius: Theme.graphite ? Theme.radiusSm : height / 2
+            color: Theme.graphite ? "transparent" : Theme.surfaceContainerHighest
+            border.width: search.activeFocus ? 2 : (Theme.graphite ? 1 : 0)
+            border.color: search.activeFocus ? Theme.primary : Theme.outlineVariant
+            Icon {
+                id: searchIcon
+                anchors.left: parent.left
+                anchors.leftMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                width: 16; height: 16
+                path: Icons.search
+                color: Theme.surfaceContentVariant
+            }
+            TextInput {
+                id: search
+                anchors.left: searchIcon.right
+                anchors.leftMargin: 8
+                anchors.right: clearSearch.left
+                anchors.verticalCenter: parent.verticalCenter
+                font.family: Theme.fontUi
+                font.pixelSize: 14
+                color: Theme.surfaceContent
+                selectionColor: Theme.primaryContainer
+                selectedTextColor: Theme.primaryContainerContent
+                clip: true
+                Accessible.name: qsTr("Search conversations")
+                Keys.onEscapePressed: (event) => {
+                    event.accepted = text.length > 0
+                    text = ""
                 }
+                Txt {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: search.text.length === 0
+                    role: "body"
+                    muted: true
+                    text: qsTr("Search")
+                }
+            }
+            IconButton {
+                id: clearSearch
+                anchors.right: parent.right
+                anchors.rightMargin: 2
+                anchors.verticalCenter: parent.verticalCenter
+                width: 32; height: 32
+                visible: search.text.length > 0
+                iconPath: Icons.close
+                label: qsTr("Clear search")
+                onClicked: search.text = ""
             }
         }
 
         ListView {
             id: threadList
-            anchors.top: listHeader.bottom
+            anchors.top: searchBox.bottom
+            anchors.topMargin: 8
             anchors.bottom: parent.bottom
             width: parent.width
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            model: page.threads
+            model: page.shownThreads
             delegate: ThreadRow {
                 width: threadList.width
                 thread: modelData
             }
             Txt {
                 anchors.centerIn: parent
-                visible: page.ready && page.threads.length === 0
+                visible: page.ready && page.shownThreads.length === 0
                 role: "body"
                 muted: true
-                text: qsTr("No conversations yet.")
+                text: page.query.length > 0 ? qsTr("No conversations match.") : qsTr("No conversations yet.")
             }
         }
         Divider { anchors.right: parent.right; width: 1; height: parent.height }
@@ -171,9 +303,18 @@ Item {
             visible: !!page.openThread || page.composing
             width: parent.width
             height: 64
-            Column {
+            IconButton {
+                id: backButton
                 anchors.left: parent.left
-                anchors.leftMargin: 24
+                anchors.leftMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                iconPath: Icons.back
+                label: qsTr("Back to conversations (Esc)")
+                onClicked: page.closeChat()
+            }
+            Column {
+                anchors.left: backButton.right
+                anchors.leftMargin: 8
                 anchors.right: parent.right
                 anchors.rightMargin: 24
                 anchors.verticalCenter: parent.verticalCenter
@@ -196,8 +337,8 @@ Item {
             }
             // New message: who to.
             Row {
-                anchors.left: parent.left
-                anchors.leftMargin: 24
+                anchors.left: backButton.right
+                anchors.leftMargin: 8
                 anchors.right: parent.right
                 anchors.rightMargin: 24
                 anchors.verticalCenter: parent.verticalCenter
@@ -260,6 +401,7 @@ Item {
             delegate: Bubble {
                 width: messageList.width
                 message: modelData
+                previous: index > 0 ? page.messages[index - 1] : null
             }
             Txt {
                 anchors.centerIn: parent
@@ -364,6 +506,17 @@ Item {
                 anchors.centerIn: sendButton
                 visible: Messages.sending
             }
+            // Long texts: how many SMS they take.
+            Txt {
+                anchors.right: parent.right
+                anchors.rightMargin: 16
+                anchors.bottom: parent.top
+                anchors.bottomMargin: 4
+                visible: input.text.length > 120
+                role: "bodySmall"
+                muted: true
+                text: qsTr("%1 characters · %n text(s)", "", page.smsCount(input.text)).arg(input.text.length)
+            }
         }
     }
 
@@ -411,6 +564,7 @@ Item {
                 readonly property bool named: !/^[\d+(#*]/.test(row.thread.title)
                 name: row.thread.group || !named ? "" : row.thread.title
                 iconPath: row.thread.group ? Icons.messages : named ? "" : Icons.person
+                hue: named && !row.thread.group ? page.hueOf(row.thread.title) : -1
                 emphasized: row.thread.unread > 0
             }
         }
@@ -485,12 +639,42 @@ Item {
     component Bubble: Item {
         id: bubble
         property var message
+        property var previous: null
         readonly property bool mine: message.outgoing
         readonly property real maxWidth: Math.min(width * 0.72, 520)
-        height: content.height + meta.height + 4
+        readonly property bool newDay: !previous || new Date(previous.date).toDateString() !== new Date(message.date).toDateString()
+        readonly property bool showSender: !!message.sender && (!previous || previous.sender !== message.sender || newDay)
+        height: day.height + sender.height + content.height + meta.height + codeRow.height + 4
+
+        HoverHandler { id: bubbleHover }
+
+        // The day, above its first message.
+        Txt {
+            id: day
+            width: parent.width
+            height: bubble.newDay ? implicitHeight + 20 : 0
+            visible: bubble.newDay
+            topPadding: 8
+            horizontalAlignment: Text.AlignHCenter
+            role: "label"
+            muted: true
+            text: page.dayLabel(bubble.message.date)
+        }
+        // Who wrote it, in a group.
+        Txt {
+            id: sender
+            anchors.top: day.bottom
+            x: 30
+            height: bubble.showSender ? implicitHeight + 2 : 0
+            visible: bubble.showSender
+            role: "bodySmall"
+            muted: true
+            text: bubble.message.sender || ""
+        }
 
         Rectangle {
             id: content
+            anchors.top: sender.bottom
             anchors.right: bubble.mine ? parent.right : undefined
             anchors.left: bubble.mine ? undefined : parent.left
             anchors.leftMargin: 24
@@ -533,12 +717,14 @@ Item {
                 x: 14
                 width: Math.min(implicitWidth, bubble.maxWidth - 28)
                 visible: bubble.message.body.length > 0 || bubble.message.attachments > 0
-                text: bubble.message.body.length > 0 ? bubble.message.body
+                text: bubble.message.body.length > 0 ? page.linkified(bubble.message.body)
                     : qsTr("Attachment (open it on the phone)")
                 readOnly: true
                 selectByMouse: true
                 wrapMode: TextEdit.Wrap
-                textFormat: TextEdit.PlainText
+                textFormat: bubble.message.body.length > 0 ? TextEdit.RichText : TextEdit.PlainText
+                onLinkActivated: (link) => Qt.openUrlExternally(link)
+                HoverHandler { cursorShape: text.hoveredLink.length > 0 ? Qt.PointingHandCursor : Qt.IBeamCursor }
                 font.family: Theme.fontUi
                 font.pixelSize: 14
                 font.italic: bubble.message.body.length === 0
@@ -560,7 +746,46 @@ Item {
             color: bubble.message.status === "failed" ? Theme.error : Theme.surfaceContentVariant
             text: bubble.message.status === "failed" ? qsTr("Not sent")
                 : bubble.message.status === "pending" ? qsTr("Sending…")
-                : page.shortTime(bubble.message.date)
+                // The day is in the separator above.
+                : new Date(bubble.message.date).toLocaleTimeString(Qt.locale(), Locale.ShortFormat)
+        }
+        // Copy the text (shown while hovered).
+        IconButton {
+            anchors.verticalCenter: content.verticalCenter
+            anchors.left: bubble.mine ? undefined : content.right
+            anchors.right: bubble.mine ? content.left : undefined
+            anchors.margins: 4
+            width: 32; height: 32
+            visible: bubble.message.body.length > 0
+            opacity: bubbleHover.hovered || activeFocus ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
+            iconPath: Icons.copy
+            label: qsTr("Copy text")
+            onClicked: Messages.copy(bubble.message.body)
+        }
+        // A one-time code, one click from the clipboard.
+        Item {
+            id: codeRow
+            anchors.top: meta.bottom
+            width: parent.width
+            height: bubble.message.code ? codeButton.height + 6 : 0
+            visible: !!bubble.message.code
+            Button {
+                id: codeButton
+                x: 24
+                y: 4
+                variant: "tonal"
+                size: "sm"
+                iconPath: copied ? Icons.check : Icons.copy
+                property bool copied: false
+                text: copied ? qsTr("Copied") : qsTr("Copy code %1").arg(bubble.message.code || "")
+                onClicked: {
+                    Messages.copy(bubble.message.code)
+                    copied = true
+                    copiedTimer.restart()
+                }
+                Timer { id: copiedTimer; interval: 2000; onTriggered: codeButton.copied = false }
+            }
         }
     }
 }

@@ -10,11 +10,11 @@ use windows::{
         Media::MediaFoundation::{
             CLSID_MSH264DecoderMFT, IMF2DBuffer, IMFMediaType, IMFSample, IMFTransform, MF_E_NOTACCEPTING,
             MF_E_TRANSFORM_NEED_MORE_INPUT, MF_E_TRANSFORM_STREAM_CHANGE, MF_LOW_LATENCY, MF_MT_FRAME_SIZE,
-            MF_MT_MAJOR_TYPE, MF_MT_SUBTYPE, MF_MT_VIDEO_NOMINAL_RANGE, MF_MT_YUV_MATRIX, MFNominalRange_0_255,
-            MFVideoTransferMatrix_BT601, MF_VERSION, MFCreateMediaType, MFCreateMemoryBuffer,
-            MFCreateSample, MFMediaType_Video, MFSTARTUP_NOSOCKET, MFStartup, MFT_MESSAGE_COMMAND_FLUSH,
-            MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, MFT_MESSAGE_NOTIFY_START_OF_STREAM, MFT_OUTPUT_DATA_BUFFER,
-            MFT_OUTPUT_STREAM_PROVIDES_SAMPLES, MFVideoFormat_H264, MFVideoFormat_NV12,
+            MF_MT_MAJOR_TYPE, MF_MT_SUBTYPE, MF_MT_VIDEO_NOMINAL_RANGE, MF_MT_YUV_MATRIX, MF_VERSION,
+            MFCreateMediaType, MFCreateMemoryBuffer, MFCreateSample, MFMediaType_Video, MFNominalRange_0_255,
+            MFSTARTUP_NOSOCKET, MFStartup, MFT_MESSAGE_COMMAND_FLUSH, MFT_MESSAGE_NOTIFY_BEGIN_STREAMING,
+            MFT_MESSAGE_NOTIFY_START_OF_STREAM, MFT_OUTPUT_DATA_BUFFER, MFT_OUTPUT_STREAM_PROVIDES_SAMPLES,
+            MFVideoFormat_H264, MFVideoFormat_NV12, MFVideoTransferMatrix_BT601,
         },
         System::Com::{CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx},
     },
@@ -88,8 +88,13 @@ impl Decoder {
             input.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;
             input.SetGUID(&MF_MT_SUBTYPE, &MFVideoFormat_H264)?;
             transform.SetInputType(0, &input, 0)?;
-            let mut decoder =
-                Decoder { transform, coded: (0, 0), provides_samples: false, output_size: 0, colors: Colors::default() };
+            let mut decoder = Decoder {
+                transform,
+                coded: (0, 0),
+                provides_samples: false,
+                output_size: 0,
+                colors: Colors::default(),
+            };
             decoder.choose_output()?;
             decoder.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0)?;
             decoder.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0)?;
@@ -114,7 +119,9 @@ impl Decoder {
             self.coded = ((size >> 32) as u32, size as u32);
             // Unknown until the stream says (then the type changes again).
             self.colors = Colors {
-                bt601: chosen.GetUINT32(&MF_MT_YUV_MATRIX).is_ok_and(|m| m == MFVideoTransferMatrix_BT601.0 as u32),
+                bt601: chosen
+                    .GetUINT32(&MF_MT_YUV_MATRIX)
+                    .is_ok_and(|m| m == MFVideoTransferMatrix_BT601.0 as u32),
                 full_range: chosen
                     .GetUINT32(&MF_MT_VIDEO_NOMINAL_RANGE)
                     .is_ok_and(|r| r == MFNominalRange_0_255.0 as u32),
@@ -302,7 +309,8 @@ mod tests {
         // Chroma for pixel pairs (0,1) and (2,3): neutral; then red's... the
         // second pair holds red's chroma (u=102, v=240).
         nv12[8..12].copy_from_slice(&[128, 128, 102, 240]);
-        let picture = Picture { width: 4, height: 2, stride: 4, plane_rows: 2, nv12, colors: Colors::default() };
+        let picture =
+            Picture { width: 4, height: 2, stride: 4, plane_rows: 2, nv12, colors: Colors::default() };
         let out = to_bgrx(&picture, 4, 2);
         assert_eq!(&out[..4], &[0, 0, 0, 255], "black");
         assert_eq!(&out[4..8], &[255, 255, 255, 255], "white");
@@ -312,8 +320,14 @@ mod tests {
 
     #[test]
     fn odd_sizes_are_cropped_safely() {
-        let picture =
-            Picture { width: 6, height: 4, stride: 8, plane_rows: 4, nv12: vec![128; 8 * 6], colors: Colors::default() };
+        let picture = Picture {
+            width: 6,
+            height: 4,
+            stride: 8,
+            plane_rows: 4,
+            nv12: vec![128; 8 * 6],
+            colors: Colors::default(),
+        };
         assert_eq!(to_bgrx(&picture, 5, 3).len(), 5 * 3 * 4);
         assert_eq!(to_bgrx(&picture, 10, 10).len(), 6 * 4 * 4, "never larger than the picture");
     }

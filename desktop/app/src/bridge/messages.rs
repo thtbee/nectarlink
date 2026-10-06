@@ -60,6 +60,12 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "sendTo"]
         fn send_to(self: &Messages, to: &QString, body: &QString);
+        /// Reads the conversations (and the open one) again.
+        #[qinvokable]
+        fn refresh(self: &Messages);
+        /// Puts text on this PC's clipboard (it isn't sent back to the phone).
+        #[qinvokable]
+        fn copy(self: &Messages, text: &QString);
     }
 }
 
@@ -82,13 +88,13 @@ impl cxx_qt::Initialize for qobject::Messages {
         self.as_mut().set_status(QString::from("idle"));
         self.as_mut().set_threads(QString::from("[]"));
         self.as_mut().set_messages(QString::from("[]"));
-        super::subscribe(self.qt_thread(), Changes::MESSAGES, Self::refresh);
-        self.refresh();
+        super::subscribe(self.qt_thread(), Changes::MESSAGES, Self::update_view);
+        self.update_view();
     }
 }
 
 impl qobject::Messages {
-    fn refresh(mut self: Pin<&mut Self>) {
+    fn update_view(mut self: Pin<&mut Self>) {
         let view = messages::view();
         if self.rust().last.as_ref() == Some(&view) {
             return;
@@ -132,6 +138,16 @@ impl qobject::Messages {
         let body = String::from(body);
         if !body.trim().is_empty() {
             messages::send(body);
+        }
+    }
+
+    pub fn refresh(&self) {
+        messages::reload();
+    }
+
+    pub fn copy(&self, text: &QString) {
+        if let Err(reason) = crate::win::clipboard::write(&String::from(text)) {
+            tracing::warn!(reason, "can't copy");
         }
     }
 

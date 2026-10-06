@@ -110,7 +110,18 @@ pub fn view() -> View {
         status: s.status,
         threads: Value::Array(s.threads.iter().map(|t| thread_json(t, s.photos.get(&t.id))).collect()),
         thread: s.thread.clone(),
-        messages: Value::Array(s.messages.iter().rev().map(|m| message_json(m, &s.pictures)).collect()),
+        messages: {
+            // In a group, who sent each message (by contact name when known).
+            let thread = s.thread.as_ref().and_then(|id| s.threads.iter().find(|t| &t.id == id));
+            let group = thread.filter(|t| t.addresses.len() > 1);
+            Value::Array(
+                s.messages
+                    .iter()
+                    .rev()
+                    .map(|m| message_json(m, &s.pictures, group.map(|t| sender_of(t, &m.address))))
+                    .collect(),
+            )
+        },
         more: s.more,
         loading_older: s.loading_older,
         sending: s.sending,
@@ -141,7 +152,60 @@ fn thread_json(t: &SmsThread, photo: Option<&PathBuf>) -> Value {
     })
 }
 
-fn message_json(m: &SmsMessage, pictures: &HashMap<String, PathBuf>) -> Value {
+fn now_ms() -> i64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis() as i64)
+}
+
+/// A group member's name, or their number.
+fn sender_of(thread: &SmsThread, address: &str) -> String {
+    let wanted = digits(address);
+    thread
+        .addresses
+        .iter()
+        .position(|a| digits(a) == wanted)
+        .and_then(|i| thread.names.get(i))
+        .filter(|n| !n.trim().is_empty())
+        .cloned()
+        .unwrap_or_else(|| address.to_owned())
+}
+
+/// A one-time code in a text ("243928 is your OTP"): 4 to 8 digits on
+/// their own, in a text that says it's a code.
+pub fn one_time_code(body: &str) -> Option<String> {
+    let lower = body.to_lowercase();
+    const WORDS: [&str; 7] = ["otp", "code", "password", "passcode", "verification", "pin", "one time"];
+    if !WORDS.iter().any(|w| lower.contains(w)) {
+        return None;
+    }
+    let chars: Vec<char> = body.chars().collect();
+    let mut i = 0;
+    while i < chars.len() {
+        if !chars[i].is_ascii_digit() {
+            i += 1;
+            continue;
+        }
+        let start = i;
+        while i < chars.len() && chars[i].is_ascii_digit() {
+            i += 1;
+        }
+        // On its own: not part of a word ("XX3465"), an amount ("Rs.500",
+        // "1,000") or a longer number.
+        let before = start.checked_sub(1).map(|b| chars[b]);
+        let after = chars.get(i).copied();
+        let alone = before
+            .is_none_or(|c| !c.is_alphanumeric() && !matches!(c, '.' | ',' | '₹' | '$' | '€' | '£'))
+            && after.is_none_or(|c| {
+                !c.is_alphanumeric()
+                    && !(matches!(c, '.' | ',') && chars.get(i + 1).is_some_and(char::is_ascii_digit))
+            });
+        if alone && (4..=8).contains(&(i - start)) {
+            return Some(chars[start..i].iter().collect());
+        }
+    }
+    None
+}
+
+fn message_json(m: &SmsMessage, pictures: &HashMap<String, PathBuf>, sender: Option<String>) -> Value {
     let images: Vec<Value> = m
         .parts
         .iter()
@@ -157,6 +221,8 @@ fn message_json(m: &SmsMessage, pictures: &HashMap<String, PathBuf>) -> Value {
         "status": m.status.clone().unwrap_or_default(),
         "images": images,
         "attachments": others,
+        "sender": if m.outgoing { None } else { sender },
+        "code": if m.outgoing { None } else { one_time_code(&m.body) },
     })
 }
 
@@ -376,6 +442,23 @@ pub fn send(body: String) {
 pub fn send_to(to: Vec<String>, body: String) {
     let Some(device) = state(|s| {
         s.sending = true;
+        // Shown at once as "Sending…"; the phone's copy replaces it.
+        if let Some(thread) = s.thread.clone() {
+            let now = now_ms();
+            s.messages.insert(
+                0,
+                SmsMessage {
+                    id: format!("local:{now}"),
+                    thread,
+                    address: to.join(", "),
+                    body: body.clone(),
+                    date: now,
+                    outgoing: true,
+                    status: Some("pending".into()),
+                    parts: Vec::new(),
+                },
+            );
+        }
         s.device
     }) else {
         return;
@@ -384,7 +467,15 @@ pub fn send_to(to: Vec<String>, body: String) {
     let Some(node) = core_host::node() else { return };
     core_host::spawn(async move {
         let result = node.sms_send(device, to.clone(), body).await;
-        state(|s| s.sending = false);
+        state(|s| {
+            s.sending = false;
+            if result.is_err() {
+                // Not sent: say so on it.
+                for m in s.messages.iter_mut().filter(|m| m.id.starts_with("local:")) {
+                    m.status = Some("failed".into());
+                }
+            }
+        });
         changed();
         match result {
             Ok(()) => {
@@ -417,6 +508,14 @@ static PENDING_OPEN: Mutex<Option<Vec<String>>> = Mutex::new(None);
 fn digits(number: &str) -> String {
     let all: String = number.chars().filter(char::is_ascii_digit).collect();
     all[all.len().saturating_sub(9)..].to_owned()
+}
+
+/// Reads the conversations and the open one again.
+pub fn reload() {
+    load_threads();
+    if state(|s| s.thread.is_some()) {
+        load_messages(None);
+    }
 }
 
 /// Closes the open conversation (for writing a new one).
@@ -490,6 +589,28 @@ mod tests {
         assert_eq!(title_of(&thread(&["+1555"], &["Sam"])), "Sam");
         assert_eq!(title_of(&thread(&["+1555", "+1666"], &["Sam", ""])), "Sam, +1666");
         assert_eq!(title_of(&thread(&["+1555"], &[])), "+1555");
+    }
+
+    #[test]
+    fn one_time_codes_are_found() {
+        let found = |body: &str| one_time_code(body);
+        assert_eq!(
+            found(
+                "Dear Customer,
+243928 is your one time password (OTP)."
+            ),
+            Some("243928".into())
+        );
+        assert_eq!(found("840941 is your OTP to create JioID"), Some("840941".into()));
+        assert_eq!(found("740421 is OTP for Aadhaar (XX3465) valid for 10 mins"), Some("740421".into()));
+        // Google's "G-482193" is typed without the "G-".
+        assert_eq!(found("G-482193 is your Google verification code."), Some("482193".into()));
+        assert_eq!(found("Your code is AB4821CD"), None, "letters stuck to it");
+        assert_eq!(found("Use code 1234-5678"), Some("1234".into()));
+        assert_eq!(found("Payment received for Rs. 2000 - thanks"), None, "no code words");
+        assert_eq!(found("Your code is ready. Pay Rs.5000 at the counter"), None, "an amount");
+        assert_eq!(found("OTP 12"), None, "too short");
+        assert_eq!(found("PIN 1,234 used"), None, "a formatted number");
     }
 
     #[test]
