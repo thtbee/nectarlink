@@ -43,6 +43,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.R
+import app.nectarlink.android.update.AppUpdater
+import app.nectarlink.android.update.CheckForUpdates
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.CoreStatus
 import app.nectarlink.android.core.Device
@@ -58,6 +60,7 @@ fun SettingsScreen(
     onAppearance: ((Appearance) -> Appearance) -> Unit,
     onUnpair: (String) -> Unit,
     onPairNew: () -> Unit,
+    updater: AppUpdater,
     modifier: Modifier = Modifier,
 ) {
     var confirmUnpair by remember { mutableStateOf<Device?>(null) }
@@ -146,6 +149,7 @@ fun SettingsScreen(
 
         Section(stringResource(R.string.settings_about)) {
             Text(stringResource(R.string.about_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodyMedium)
+            CheckForUpdates(updater)
             (state.status as? CoreStatus.Ready)?.let {
                 Text(
                     it.deviceId,

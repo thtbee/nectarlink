@@ -19,6 +19,8 @@
     <!-- Asking to run unrestricted in the background: phones such as Samsung's
          otherwise freeze the app, and PCs can't reach it. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Installing its own updates from GitHub releases (the user allows it once). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Names and icons of the apps whose notifications are mirrored: Android
          hides other apps unless they're declared here. -->
@@ -84,6 +86,11 @@
 
         <receiver
             android:name=".files.TransferNotifications$CancelReceiver"
+            android:exported="false" />
+
+        <!-- Android's answers while installing an update. -->
+        <receiver
+            android:name=".update.AppUpdater$InstallResult"
             android:exported="false" />
 
         <!-- The PC media notification's buttons (Android 12 and earlier). -->

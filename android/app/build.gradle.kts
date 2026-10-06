@@ -6,6 +6,14 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// The version comes from the workspace (Cargo.toml), like the PC app's.
+val appVersion: String = rootProject.file("../Cargo.toml").readLines()
+    .first { it.startsWith("version = ") }
+    .substringAfter('"').substringBefore('"')
+/** 1.2.3 → 1002003: every release must have a larger code than the last. */
+val appVersionCode: Int = appVersion.substringBefore('-').split('.').map(String::toInt)
+    .let { (major, minor, patch) -> major * 1_000_000 + minor * 1_000 + patch }
+
 android {
     namespace = "app.nectarlink.android"
     compileSdk = 37
@@ -15,12 +23,28 @@ android {
         applicationId = "app.nectarlink"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.0.1"
+        versionCode = appVersionCode
+        versionName = appVersion
+    }
+
+    // Release builds are signed with the project's key when CI provides it
+    // (NECTARLINK_KEYSTORE: a .jks file; NECTARLINK_KEYSTORE_PASSWORD).
+    // Without it, a release build comes out unsigned.
+    val keystore = System.getenv("NECTARLINK_KEYSTORE")?.let(::file)?.takeIf { it.exists() }
+    signingConfigs {
+        if (keystore != null) {
+            create("release") {
+                storeFile = keystore
+                storePassword = System.getenv("NECTARLINK_KEYSTORE_PASSWORD")
+                keyAlias = "nectarlink"
+                keyPassword = System.getenv("NECTARLINK_KEYSTORE_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
+            if (keystore != null) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

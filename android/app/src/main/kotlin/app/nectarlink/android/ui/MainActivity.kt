@@ -32,9 +32,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import app.nectarlink.android.NectarlinkApplication
 import app.nectarlink.android.R
 import app.nectarlink.android.core.Core
@@ -83,7 +86,9 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // Back from Settings, maybe with notification access changed.
-        (application as NectarlinkApplication).core.refreshNotificationAccess()
+        val app = application as NectarlinkApplication
+        app.core.refreshNotificationAccess()
+        if (app.updater.enabled) lifecycleScope.launch { app.updater.checkIfDue() }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -164,6 +169,7 @@ private fun App(core: Core, state: CoreState, preferences: Preferences) {
                     onPairNew = { pairing = true },
                     onRefresh = core::refresh,
                     onPower = core::pcPower,
+                    updater = (LocalContext.current.applicationContext as NectarlinkApplication).updater,
                     onSendFiles = core::sendFiles,
                     onCancelTransfer = core::cancelTransfer,
                     modifier = modifier,
@@ -174,6 +180,7 @@ private fun App(core: Core, state: CoreState, preferences: Preferences) {
                     onAppearance = preferences::update,
                     onUnpair = core::unpair,
                     onPairNew = { pairing = true },
+                    updater = (LocalContext.current.applicationContext as NectarlinkApplication).updater,
                     modifier = modifier,
                 )
             }

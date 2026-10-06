@@ -62,6 +62,12 @@ missing_debug_implementations = "warn"
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
 
+# Debug builds: full debug info for our crates, line tables only for
+# dependencies (backtraces still name their lines). Keeps target/debug from
+# growing by gigabytes per rebuild.
+[profile.dev.package."*"]
+debug = "line-tables-only"
+
 [profile.release]
 lto = "thin"
 codegen-units = 1

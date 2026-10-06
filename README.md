@@ -106,13 +106,13 @@ place and tested; the user-facing features of Phase 1 come next.
   connecting (firewall, a public network, a VPN) and fixes what it can.
 - **Windows installer**: installs for everyone on the PC, allows the app
   through Windows Firewall, starts it with Windows, and uninstalls cleanly.
-  Each `v*` tag drafts a GitHub release with the installer. Installed copies
-  update themselves from GitHub releases (checked with SHA-256).
+  Each `v*` tag drafts a GitHub release with the installer and the signed
+  Android app; both apps update themselves from published releases, checked
+  against their SHA-256 sums.
 - **Command-line client** for development and testing (`nectarlink`).
 
-**Next**: the Android app updating itself (it needs signed release builds
-first). Then Phase 2: mirroring, messages, calls and the other features in
-the plan.
+**Next**: Phase 2: mirroring, messages, calls and the other features in the
+plan.
 
 ## Screenshots
 

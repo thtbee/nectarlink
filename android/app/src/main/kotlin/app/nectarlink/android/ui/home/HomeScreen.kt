@@ -45,6 +45,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.nectarlink.android.R
+import app.nectarlink.android.update.AppUpdater
+import app.nectarlink.android.update.UpdateCard
 import app.nectarlink.android.clipboard.SendActivity
 import app.nectarlink.android.core.BackgroundAccess
 import app.nectarlink.android.core.CoreState
@@ -72,6 +74,7 @@ fun HomeScreen(
     onPairNew: () -> Unit,
     onRefresh: () -> Unit,
     onPower: (pcId: String, sleep: Boolean) -> Unit,
+    updater: AppUpdater,
     onSendFiles: (pcId: String, uris: List<Uri>) -> Unit,
     onCancelTransfer: (id: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -112,6 +115,7 @@ fun HomeScreen(
         state.ringingFrom?.let { from ->
             item { RingingBanner(from, onStopRinging) }
         }
+        item { UpdateCard(updater) }
         if (state.devices.isNotEmpty() && !state.backgroundUnrestricted) {
             item {
                 val context = LocalContext.current

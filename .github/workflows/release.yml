@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# A tag like v0.1.0 builds the Windows installer and puts it on a draft
-# GitHub release, which a maintainer reviews and publishes.
+# A tag like v0.1.0 builds the Windows installer and the signed Android app,
+# and puts both on a draft GitHub release (with their SHA-256 sums, which
+# the apps' updaters check), for a maintainer to review and publish.
 name: Release
 
 on:
@@ -15,16 +16,24 @@ env:
   QT_VERSION: "6.12.0"
 
 jobs:
+  version:
+    name: The tag matches the version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          if [ "v$version" != "${{ github.ref_name }}" ]; then
+            echo "::error::tag ${{ github.ref_name }} but Cargo.toml says $version"
+            exit 1
+          fi
+
   windows:
     name: Windows installer (x64)
+    needs: version
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
-      - name: The tag matches the version
-        shell: pwsh
-        run: |
-          $version = (Select-String -Path Cargo.toml -Pattern '^version = "([^"]+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
-          if ("v$version" -ne "${{ github.ref_name }}") { throw "tag ${{ github.ref_name }} but Cargo.toml says $version" }
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
       - name: Install Qt
@@ -49,12 +58,74 @@ jobs:
       - name: Check it installs and uninstalls
         shell: pwsh
         run: ./scripts/smoke-installer.ps1
-      - name: Draft the release
-        shell: pwsh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: target/package/*-setup.exe
+
+  android:
+    name: Android app (signed)
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install the pinned Rust toolchain and the Android targets
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add aarch64-linux-android armv7-linux-androideabi
+      - name: Install cargo-ndk
+        run: cargo install --locked cargo-ndk
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v4
+        with:
+          cmdline-tools-version: "16111833"
+          packages: "platforms;android-37.0 ndk;30.0.16248370 build-tools;37.0.0"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: The signing key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then echo "::error::the ANDROID_KEYSTORE secret isn't set"; exit 1; fi
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/release.jks"
+      - name: Build
+        working-directory: android
+        env:
+          NECTARLINK_KEYSTORE: ${{ runner.temp }}/release.jks
+          NECTARLINK_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        # Phones: 64-bit ARM, and 32-bit ARM for older ones.
+        run: ./gradlew --no-daemon assembleRelease -Pnectarlink.abis=arm64-v8a,armeabi-v7a
+      - name: Check the signature, and name the app
+        run: |
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs "$apk"
+          mkdir -p out
+          cp "$apk" "out/Nectarlink-${GITHUB_REF_NAME#v}-android.apk"
+      - name: Forget the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android
+          path: out/*.apk
+
+  publish:
+    name: Draft the release
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: files
+          merge-multiple: true
+      - name: Draft it
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $setup = (Get-ChildItem target/package/*-setup.exe).FullName
-          $hash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower()
-          "$hash  $(Split-Path -Leaf $setup)" | Set-Content target/package/SHA256SUMS.txt
-          gh release create "${{ github.ref_name }}" $setup target/package/SHA256SUMS.txt --draft --generate-notes --title "Nectarlink ${{ github.ref_name }}"
+          cd files
+          sha256sum *.exe *.apk > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          gh release create "${{ github.ref_name }}" *.exe *.apk SHA256SUMS.txt \
+            --repo "${{ github.repository }}" --draft --generate-notes --title "Nectarlink ${{ github.ref_name }}"

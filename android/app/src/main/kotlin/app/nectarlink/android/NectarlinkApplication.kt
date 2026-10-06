@@ -3,6 +3,7 @@ package app.nectarlink.android
 
 import android.app.Application
 import app.nectarlink.android.core.Core
+import app.nectarlink.android.update.AppUpdater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,6 +13,9 @@ class NectarlinkApplication : Application() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val core: Core by lazy { Core(this, scope) }
+
+    /** Updates from GitHub releases (release builds only). */
+    val updater: AppUpdater by lazy { AppUpdater(this) }
 
     override fun onCreate() {
         super.onCreate()
