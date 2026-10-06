@@ -12,7 +12,7 @@ use nectarlink_core::{
     Battery, DeviceInfo, DeviceKind, Direction, Error, FeatureState, FileSource, LinkState, MediaAction,
     MediaError, MediaPlayer, Node, NodeConfig, NodeEvent, Notification, NotificationAction,
     NotificationError, OutgoingFile, PairingEvent, PairingFailure, PairingUri, PlainKeyProtector, Platform,
-    PowerLevel, Transfer, TransferFailure, TransferState,
+    PowerAction, PowerLevel, Transfer, TransferFailure, TransferState,
     features::{Effort, Upgrade, UpgradeAction},
 };
 use tempfile::TempDir;
@@ -28,6 +28,8 @@ struct RecordingPlatform {
     clipboard: Mutex<Vec<String>>,
     images: Mutex<Vec<(String, Vec<u8>)>>,
     media: Mutex<Vec<(String, MediaAction, Option<u64>)>>,
+    power: Mutex<Vec<PowerAction>>,
+    links: Mutex<Vec<String>>,
 }
 
 impl Platform for RecordingPlatform {
@@ -59,6 +61,14 @@ impl Platform for RecordingPlatform {
     }
     fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
         self.images.lock().unwrap().push((mime.to_owned(), bytes.to_vec()));
+        Ok(())
+    }
+    fn power(&self, action: PowerAction) -> Result<(), String> {
+        self.power.lock().unwrap().push(action);
+        Ok(())
+    }
+    fn open_link(&self, _from: &nectarlink_core::DeviceId, url: &str) -> Result<(), String> {
+        self.links.lock().unwrap().push(url.to_owned());
         Ok(())
     }
     fn media_command(
@@ -117,6 +127,15 @@ async fn start_in(dir: TempDir, name: &'static str, kind: DeviceKind) -> TestDev
 
 async fn device(name: &'static str, kind: DeviceKind) -> TestDevice {
     start_in(tempfile::tempdir().unwrap(), name, kind).await
+}
+
+/// A device that offers more than the defaults.
+async fn device_with(name: &'static str, kind: DeviceKind, offers: &[&str]) -> TestDevice {
+    let dev = device(name, kind).await;
+    let mut caps = vec!["media.control".to_owned()];
+    caps.extend(offers.iter().map(|c| (*c).to_owned()));
+    dev.node.update_power(PowerLevel::NotApplicable, caps).await;
+    dev
 }
 
 /// Waits for the first event matching `pick`, failing the test on timeout.
@@ -764,6 +783,38 @@ async fn media_is_shared_and_controlled_with_consent() {
     .await
     .expect("next");
     assert_eq!(pc.platform.media.lock().unwrap()[0], ("Spotify.exe".to_owned(), MediaAction::Next, None));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn phones_lock_pcs_and_links_open_on_either_side() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &["pc.power"]).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    with_timeout("lock", phone.node.pc_power(pc_id, PowerAction::Lock)).await.expect("locked");
+    with_timeout("sleep", phone.node.pc_power(pc_id, PowerAction::Sleep)).await.expect("asleep");
+    // The PC answers first and acts a moment later.
+    tokio::time::sleep(Duration::from_millis(800)).await;
+    assert_eq!(*pc.platform.power.lock().unwrap(), [PowerAction::Lock, PowerAction::Sleep]);
+
+    // A phone doesn't lock or sleep on request.
+    let phone_power = pc.node.pc_power(phone_id, PowerAction::Lock).await;
+    assert!(matches!(phone_power, Err(Error::Unsupported)), "{phone_power:?}");
+
+    // The PC's user turned PC actions off for the phone.
+    pc.node.set_device_toggle(phone_id, "pc_actions", false).unwrap();
+    let denied = phone.node.pc_power(pc_id, PowerAction::Lock).await;
+    assert!(matches!(denied, Err(Error::Denied)), "{denied:?}");
+
+    // Links both ways; only web links.
+    with_timeout("to pc", phone.node.open_link(pc_id, "https://example.com/a".into())).await.expect("opened");
+    with_timeout("to phone", pc.node.open_link(phone_id, "http://example.org".into())).await.expect("opened");
+    assert_eq!(*pc.platform.links.lock().unwrap(), ["https://example.com/a"]);
+    assert_eq!(*phone.platform.links.lock().unwrap(), ["http://example.org"]);
+    let script = pc.node.open_link(phone_id, "javascript:alert(1)".into()).await;
+    assert!(script.is_err());
+    assert_eq!(phone.platform.links.lock().unwrap().len(), 1);
 }
 
 /// Deterministic, incompressible-looking test data.

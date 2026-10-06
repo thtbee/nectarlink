@@ -56,8 +56,15 @@ const STREAM_WINDOW: u32 = 16 * 1024 * 1024;
 const CONNECTION_WINDOW: u32 = 32 * 1024 * 1024;
 
 /// Capabilities every build offers.
-const BASE_CAPABILITIES: &[&str] =
-    &["core.ping", "device.battery", "device.ring", "files.transfer", "clip.image", "media.remote"];
+const BASE_CAPABILITIES: &[&str] = &[
+    "core.ping",
+    "device.battery",
+    "device.ring",
+    "files.transfer",
+    "clip.image",
+    "media.remote",
+    "link.open",
+];
 
 /// This device's mutable description, sent to peers.
 #[derive(Debug, Clone)]
@@ -891,6 +898,20 @@ impl Node {
     pub async fn send_clipboard_image(&self, peer: DeviceId, mime: String, bytes: Vec<u8>) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::clipboard::send_image(&self.shared, &session, mime, bytes).await
+    }
+
+    // ---- Actions (docs/protocol/actions.md) ----
+
+    /// Locks or sleeps a paired PC.
+    pub async fn pc_power(&self, peer: DeviceId, action: crate::PowerAction) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::actions::pc_power(&self.shared, &session, action).await
+    }
+
+    /// Opens a web link on a paired device.
+    pub async fn open_link(&self, peer: DeviceId, url: String) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::actions::open_link(&self.shared, &session, url).await
     }
 
     // ---- Media (docs/protocol/media.md) ----

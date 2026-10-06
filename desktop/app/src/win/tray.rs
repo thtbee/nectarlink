@@ -39,6 +39,8 @@ use windows::{
 pub enum TrayEvent {
     Open,
     FindPhone,
+    /// Open the link on the clipboard on the phone.
+    OpenLinkOnPhone,
     Quit,
     /// The PC woke from sleep.
     Resumed,
@@ -52,6 +54,7 @@ pub enum TrayEvent {
 pub struct MenuLabels {
     pub open: String,
     pub find_phone: String,
+    pub open_link: String,
     pub quit: String,
 }
 
@@ -60,6 +63,7 @@ const ICON_ID: u32 = 1;
 const CMD_OPEN: u32 = 1;
 const CMD_FIND_PHONE: u32 = 2;
 const CMD_QUIT: u32 = 3;
+const CMD_OPEN_LINK: u32 = 4;
 const PBT_APMRESUMEAUTOMATIC: usize = 0x12;
 /// NIN_SELECT | NINF_KEY (shellapi.h): the icon was activated with the keyboard.
 const NIN_KEYSELECT: u32 = NIN_SELECT | 0x1;
@@ -241,6 +245,7 @@ fn show_menu(hwnd: HWND, x: i32, y: i32) {
     let Some(labels) = LABELS.with(|l| l.borrow().clone()) else { return };
     let to_wide = |s: &str| s.encode_utf16().chain(Some(0)).collect::<Vec<u16>>();
     let (open, find, quit) = (to_wide(&labels.open), to_wide(&labels.find_phone), to_wide(&labels.quit));
+    let link = to_wide(&labels.open_link);
     // SAFETY: the menu and strings outlive TrackPopupMenuEx; the menu is
     // destroyed afterwards. SetForegroundWindow/WM_NULL are the documented
     // way to make the menu close when clicking elsewhere.
@@ -249,6 +254,7 @@ fn show_menu(hwnd: HWND, x: i32, y: i32) {
         let find_flags = if CAN_FIND_PHONE.with(Cell::get) { MF_STRING } else { MF_STRING | MF_GRAYED };
         let _ = AppendMenuW(menu, MF_STRING, CMD_OPEN as usize, PCWSTR(open.as_ptr()));
         let _ = AppendMenuW(menu, find_flags, CMD_FIND_PHONE as usize, PCWSTR(find.as_ptr()));
+        let _ = AppendMenuW(menu, find_flags, CMD_OPEN_LINK as usize, PCWSTR(link.as_ptr()));
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
         let _ = AppendMenuW(menu, MF_STRING, CMD_QUIT as usize, PCWSTR(quit.as_ptr()));
         let _ = SetForegroundWindow(hwnd);
@@ -261,6 +267,7 @@ fn show_menu(hwnd: HWND, x: i32, y: i32) {
     match command {
         CMD_OPEN => emit(TrayEvent::Open),
         CMD_FIND_PHONE => emit(TrayEvent::FindPhone),
+        CMD_OPEN_LINK => emit(TrayEvent::OpenLinkOnPhone),
         CMD_QUIT => emit(TrayEvent::Quit),
         _ => {}
     }

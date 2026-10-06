@@ -8,6 +8,7 @@ import android.util.Log
 import android.net.Uri
 import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.clipboard.PhoneClipboard
+import app.nectarlink.android.links.LinkNotifications
 import app.nectarlink.android.media.PcMedia
 import app.nectarlink.android.media.PhoneMedia
 import app.nectarlink.android.files.OutgoingFiles
@@ -55,7 +56,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val phoneMedia = PhoneMedia(this.context) { players ->
         notificationOps.trySend { it.mediaChanged(players) }
     }
-    private val platform = PhonePlatform(this.context, ringer, phoneMedia)
+    private val platform = PhonePlatform(this.context, ringer, phoneMedia) { pc, url ->
+        LinkNotifications.show(this.context, _state.value.nameOf(pc).orEmpty(), url)
+    }
 
     /** What plays on the PCs, in Android's media controls. */
     val pcMedia = PcMedia(this.context) { pc, player, action, position ->
@@ -340,6 +343,34 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     // ---- Devices ----
 
     fun ring(id: String, on: Boolean) = command { it.ring(id, on) }
+
+    /** Locks a PC, or puts it to sleep; says how it went. */
+    fun pcPower(id: String, sleep: Boolean) {
+        val node = node ?: return
+        val name = _state.value.nameOf(id).orEmpty()
+        scope.launch {
+            val message = try {
+                node.pcPower(id, sleep)
+                context.getString(if (sleep) R.string.pc_sleeping else R.string.pc_locked, name)
+            } catch (e: NectarlinkException) {
+                if (e is NectarlinkException.Denied) context.getString(R.string.pc_actions_off, name) else describe(e)
+            }
+            _messages.tryEmit(message)
+        }
+    }
+
+    /** Opens a link on a PC; returns what to tell the user. */
+    suspend fun openLinkOnPc(id: String, url: String): String {
+        startJob?.join()
+        val node = node ?: return context.getString(R.string.clip_no_pc)
+        val name = _state.value.nameOf(id).orEmpty()
+        return try {
+            node.openLink(id, url)
+            context.getString(R.string.link_opened_on, name)
+        } catch (e: NectarlinkException) {
+            describe(e)
+        }
+    }
 
     /** Reconnects to PCs that aren't connected and syncs connected ones. */
     fun refresh() {

@@ -56,3 +56,6 @@ desktop.ini
 # ---- Logs and tool output ----
 *.log
 aqtinstall.log
+
+# Kotlin compiler session data
+.kotlin/

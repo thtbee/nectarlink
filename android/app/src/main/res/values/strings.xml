@@ -120,6 +120,15 @@
     <string name="action_unpair">Unpair</string>
     <string name="action_pair_new">Pair another PC</string>
     <string name="action_refresh">Refresh</string>
+    <string name="action_lock_pc">Lock PC</string>
+    <string name="action_sleep_pc">Sleep</string>
+    <string name="pc_locked">%1$s is locked.</string>
+    <string name="pc_sleeping">%1$s is going to sleep.</string>
+    <string name="pc_actions_off">Locking and sleep are turned off for this phone on %1$s.</string>
+    <string name="channel_links">Links from your PC</string>
+    <string name="link_from">Link from %1$s</string>
+    <string name="link_opened_on">Opened on %1$s</string>
+    <string name="link_pick_pc">Open on which PC?</string>
 
     <!-- Notifications -->
     <string name="channel_connection">Connection</string>

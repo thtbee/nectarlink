@@ -546,6 +546,18 @@ pub const FEATURES: &[FeatureDef] = &[
         requires: &[desktop("pc.power", UPDATE), DeviceToggle("pc_actions")],
         partial: None,
     },
+    FeatureDef {
+        id: "device.links_to_pc",
+        group: FeatureGroup::Device,
+        requires: &[desktop("link.open", UPDATE)],
+        partial: None,
+    },
+    FeatureDef {
+        id: "device.links_to_phone",
+        group: FeatureGroup::Device,
+        requires: &[phone("link.open", UPDATE)],
+        partial: None,
+    },
     // Notifications
     FeatureDef {
         id: "notifications.mirror",

@@ -105,6 +105,17 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device has no clipboard".into())
     }
 
+    /// Lock or sleep this PC (a paired phone asked). Runs after the phone
+    /// got its answer. `Err` holds a reason for logs.
+    fn power(&self, _action: crate::actions::PowerAction) -> Result<(), String> {
+        Err("this device doesn't lock or sleep on request".into())
+    }
+
+    /// Open a web link a paired device sent (http or https; checked).
+    fn open_link(&self, _from: &nectarlink_protocol::DeviceId, _url: &str) -> Result<(), String> {
+        Err("this device doesn't open links".into())
+    }
+
     /// Run a command on one of this device's media players (a paired device
     /// asked); `position` is set for [`MediaAction::Seek`].
     fn media_command(

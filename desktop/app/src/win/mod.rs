@@ -11,6 +11,7 @@ pub mod icon;
 pub mod image;
 pub mod media_sessions;
 pub mod net;
+pub mod shell;
 pub mod shortcut;
 pub mod single_instance;
 pub mod smtc;

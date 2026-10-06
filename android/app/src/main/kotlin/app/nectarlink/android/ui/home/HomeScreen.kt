@@ -29,6 +29,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -70,6 +71,7 @@ fun HomeScreen(
     onStopRinging: () -> Unit,
     onPairNew: () -> Unit,
     onRefresh: () -> Unit,
+    onPower: (pcId: String, sleep: Boolean) -> Unit,
     onSendFiles: (pcId: String, uris: List<Uri>) -> Unit,
     onCancelTransfer: (id: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -128,7 +130,7 @@ fun HomeScreen(
                 ) { context.startActivity(NotificationListener.settingsIntent(context)) }
             }
         }
-        items(state.devices, key = { it.id }) { device -> PcCard(device, onRing, onSendFiles) }
+        items(state.devices, key = { it.id }) { device -> PcCard(device, onRing, onSendFiles, onPower) }
         if (state.transfers.isNotEmpty()) {
             item { TransfersCard(state, onCancelTransfer) }
         }
@@ -165,7 +167,12 @@ private fun RingingBanner(from: String, onStop: () -> Unit) {
 }
 
 @Composable
-private fun PcCard(device: Device, onRing: (String, Boolean) -> Unit, onSendFiles: (String, List<Uri>) -> Unit) {
+private fun PcCard(
+    device: Device,
+    onRing: (String, Boolean) -> Unit,
+    onSendFiles: (String, List<Uri>) -> Unit,
+    onPower: (String, Boolean) -> Unit,
+) {
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) onSendFiles(device.id, uris)
     }
@@ -226,6 +233,14 @@ private fun PcCard(device: Device, onRing: (String, Boolean) -> Unit, onSendFile
                 }
                 FilledTonalButton(enabled = device.online, onClick = { pickFiles.launch(arrayOf("*/*")) }) {
                     Text(stringResource(R.string.action_send_files))
+                }
+                if (device.has("device.pc_actions")) {
+                    OutlinedButton(enabled = device.online, onClick = { onPower(device.id, false) }) {
+                        Text(stringResource(R.string.action_lock_pc))
+                    }
+                    OutlinedButton(enabled = device.online, onClick = { onPower(device.id, true) }) {
+                        Text(stringResource(R.string.action_sleep_pc))
+                    }
                 }
             }
         }

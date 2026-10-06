@@ -568,7 +568,7 @@ async fn receive_bytes(
 ) -> std::result::Result<(), TransferState> {
     let mut done: u64 = have.iter().sum();
     for (i, (file, have)) in offer.files.iter().zip(have).enumerate() {
-        let out =
+        let mut out =
             tokio::fs::OpenOptions::new().create(true).append(true).open(part(i)).await.map_err(|e| {
                 TransferState::Failed(TransferFailure::Other(format!("can't write: {}", e.kind())))
             })?;
@@ -576,7 +576,9 @@ async fn receive_bytes(
         if *have < out.metadata().await.map(|m| m.len()).unwrap_or(0) {
             out.set_len(*have).await.ok();
         }
-        let mut out = tokio::io::BufWriter::with_capacity(WRITE_BUFFER, out);
+        // Gathered in memory and written in large pieces. Progress counts
+        // what's on disk, which is also where a resumed transfer continues.
+        let mut pending: Vec<u8> = Vec::with_capacity(WRITE_BUFFER);
         let mut left = file.size - have;
         while left > 0 {
             let max = CHUNK.min(usize::try_from(left).unwrap_or(usize::MAX));
@@ -590,46 +592,52 @@ async fn receive_bytes(
             };
             let bytes = match chunk {
                 Ok(Some(bytes)) => bytes,
-                Ok(None) => {
-                    out.flush().await.ok();
-                    return Err(TransferState::Waiting);
-                }
                 Err(ReadError::Reset(code)) if code.into_inner() == u64::from(files::CANCELLED) => {
                     return Err(TransferState::Cancelled);
                 }
-                // The connection dropped: keep what arrived; the sender
-                // resumes from there when it's back.
-                Err(_) => {
-                    out.flush().await.ok();
+                // The stream or connection ended early: keep what arrived;
+                // the sender resumes from there when it's back.
+                Ok(None) | Err(_) => {
+                    if write_out(&mut out, &mut pending, recv).await.is_ok() {
+                        reporter.progress(done);
+                    }
                     return Err(TransferState::Waiting);
                 }
             };
-            if let Err(e) = out.write_all(&bytes).await {
-                let no_space = e.kind() == std::io::ErrorKind::StorageFull;
-                let code = if no_space { ErrorCode::Busy } else { ErrorCode::Internal };
-                let _ = recv.stop(VarInt::from_u32(code.close_code()));
-                return Err(TransferState::Failed(if no_space {
-                    TransferFailure::NoSpace
-                } else {
-                    TransferFailure::Other(format!("can't write: {}", e.kind()))
-                }));
-            }
             left -= bytes.len() as u64;
             done += bytes.len() as u64;
-            reporter.progress(done);
-        }
-        if let Err(e) = out.flush().await {
-            let no_space = e.kind() == std::io::ErrorKind::StorageFull;
-            let code = if no_space { ErrorCode::Busy } else { ErrorCode::Internal };
-            let _ = recv.stop(VarInt::from_u32(code.close_code()));
-            return Err(TransferState::Failed(if no_space {
-                TransferFailure::NoSpace
-            } else {
-                TransferFailure::Other(format!("can't write: {}", e.kind()))
-            }));
+            pending.extend_from_slice(&bytes);
+            if pending.len() >= WRITE_BUFFER || left == 0 {
+                write_out(&mut out, &mut pending, recv).await?;
+                reporter.progress(done);
+            }
         }
     }
     Ok(())
+}
+
+/// Writes what's gathered; a failure stops the stream and says why.
+async fn write_out(
+    out: &mut tokio::fs::File,
+    pending: &mut Vec<u8>,
+    recv: &mut RecvStream,
+) -> std::result::Result<(), TransferState> {
+    let written = out.write_all(pending).await;
+    let written = match written {
+        Ok(()) => out.flush().await,
+        Err(e) => Err(e),
+    };
+    pending.clear();
+    written.map_err(|e| {
+        let no_space = e.kind() == std::io::ErrorKind::StorageFull;
+        let code = if no_space { ErrorCode::Busy } else { ErrorCode::Internal };
+        let _ = recv.stop(VarInt::from_u32(code.close_code()));
+        TransferState::Failed(if no_space {
+            TransferFailure::NoSpace
+        } else {
+            TransferFailure::Other(format!("can't write: {}", e.kind()))
+        })
+    })
 }
 
 /// Moves complete files where the user finds them; returns their paths.

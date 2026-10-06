@@ -13,6 +13,7 @@ mod clipboard;
 mod core_host;
 mod icons;
 mod launch;
+mod links;
 mod logging;
 mod mark;
 mod media;
@@ -38,7 +39,7 @@ use std::{
 };
 
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};
-use nectarlink_core::{MediaAction, MediaError, Platform};
+use nectarlink_core::{MediaAction, MediaError, Platform, PowerAction};
 
 use crate::{
     launch::Request,
@@ -64,6 +65,12 @@ impl Platform for DesktopPlatform {
     }
     fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
         win::clipboard::write_image(mime, bytes)
+    }
+    fn power(&self, action: PowerAction) -> Result<(), String> {
+        links::power(action)
+    }
+    fn open_link(&self, _from: &nectarlink_core::DeviceId, url: &str) -> Result<(), String> {
+        links::open_here(url)
     }
     fn media_command(
         &self,

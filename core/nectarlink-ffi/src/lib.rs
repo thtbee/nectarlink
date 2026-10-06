@@ -876,6 +876,9 @@ pub trait Platform: Send + Sync {
         action: MediaAction,
         position: Option<u64>,
     ) -> Result<(), MediaFailure>;
+    /// A paired PC sent a web link (http or https, checked) to open.
+    /// False if it couldn't be shown.
+    fn open_link(&self, from_id: String, url: String) -> bool;
 }
 
 /// Encrypts the device key at rest (Android: a Keystore key).
@@ -927,6 +930,9 @@ impl core::Platform for PlatformAdapter {
         position: Option<u64>,
     ) -> Result<(), core::MediaError> {
         Ok(self.0.media_command(player.to_owned(), action.into(), position)?)
+    }
+    fn open_link(&self, from: &DeviceId, url: &str) -> Result<(), String> {
+        if self.0.open_link(from.to_string(), url.to_owned()) { Ok(()) } else { Err("not shown".into()) }
     }
     fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
         if self.0.set_clipboard_image(mime.to_owned(), bytes.to_vec()) {
@@ -1213,6 +1219,21 @@ impl NectarlinkNode {
     pub async fn update_power(&self, power: PowerLevel, capabilities: Vec<String>) {
         let node = self.node.clone();
         self.run(async move { node.update_power(power.into(), capabilities).await }).await;
+    }
+
+    /// Locks a paired PC (`sleep`: puts it to sleep instead).
+    pub async fn pc_power(&self, id: String, sleep: bool) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        let action = if sleep { core::PowerAction::Sleep } else { core::PowerAction::Lock };
+        self.run(async move { Ok(node.pc_power(id, action).await?) }).await
+    }
+
+    /// Opens a web link on a paired PC.
+    pub async fn open_link(&self, id: String, url: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.open_link(id, url).await?) }).await
     }
 
     /// Reconnects to PCs that aren't connected and syncs connected ones.

@@ -36,6 +36,7 @@ class SendActivity : Activity() {
                 val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
                 when {
                     stream != null -> sendFiles(listOf(stream))
+                    !text.isNullOrBlank() && webLink(text) != null -> sendLink(webLink(text)!!, text)
                     !text.isNullOrBlank() -> send(text)
                     else -> finishWith(getString(R.string.clip_nothing_shared))
                 }
@@ -81,6 +82,28 @@ class SendActivity : Activity() {
         }
     }
 
+    /**
+     * A shared link opens on the PC (the one that takes links; the user
+     * picks when there are several). With no such PC, it goes to the
+     * clipboard like other text.
+     */
+    private fun sendLink(url: String, text: String) {
+        sent = true
+        val core = (application as NectarlinkApplication).core
+        val pcs = core.state.value.devices.filter { it.online && it.has("device.links_to_pc") }
+        when (pcs.size) {
+            0 -> send(text)
+            1 -> scope.launch { finishWith(core.openLinkOnPc(pcs[0].id, url)) }
+            else -> AlertDialog.Builder(this)
+                .setTitle(R.string.link_pick_pc)
+                .setItems(pcs.map { it.name }.toTypedArray()) { _, which ->
+                    scope.launch { finishWith(core.openLinkOnPc(pcs[which].id, url)) }
+                }
+                .setOnCancelListener { finish() }
+                .show()
+        }
+    }
+
     private fun send(text: String) {
         sent = true
         val core = (application as NectarlinkApplication).core
@@ -105,6 +128,16 @@ class SendActivity : Activity() {
     }
 
     companion object {
+        /** The text as a web link, if it's one (apps often share "Title https://…"). */
+        fun webLink(text: String): String? {
+            val words = text.trim().split(Regex("\\s+"))
+            val link = words.lastOrNull() ?: return null
+            val lower = link.lowercase()
+            val web = (lower.startsWith("https://") || lower.startsWith("http://")) && link.length in 9..4096
+            // Only when the link is the point: alone, or after a short title.
+            return link.takeIf { web && words.size <= 12 }
+        }
+
         const val ACTION_SEND_CLIPBOARD = "app.nectarlink.action.SEND_CLIPBOARD"
 
         fun sendClipboardIntent(context: Context): Intent =

@@ -11,8 +11,8 @@ use clap::{Parser, Subcommand, ValueEnum};
 use nectarlink_core::{
     Battery, ConnectionPath, DeviceId, DeviceInfo, DeviceKind, Direction, FeatureState, FileSource,
     LinkState, MediaAction, MediaError, MediaPlayer, Node, NodeConfig, NodeEvent, Notification,
-    NotificationAction, NotificationError, OutgoingFile, PairedDevice, PairingEvent, Platform, PowerLevel,
-    TransferState,
+    NotificationAction, NotificationError, OutgoingFile, PairedDevice, PairingEvent, Platform, PowerAction,
+    PowerLevel, TransferState,
     features::{Effort, FEATURES, Role, UnsupportedReason, Upgrade, UpgradeAction},
 };
 use tokio::sync::broadcast::error::RecvError;
@@ -154,6 +154,14 @@ enum Command {
         #[arg(long, required_if_eq("action", "seek"))]
         position: Option<u64>,
     },
+    /// Lock a paired PC, or put it to sleep.
+    Power {
+        device: String,
+        #[arg(value_enum)]
+        action: PowerArg,
+    },
+    /// Open a web link on a paired device.
+    Open { device: String, url: String },
     /// Pretend to play a song and share it with paired devices, which can
     /// control it; stays online until Ctrl+C.
     Play {
@@ -190,6 +198,12 @@ enum Power {
     Basic,
     Assist,
     Elevated,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum PowerArg {
+    Lock,
+    Sleep,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -261,6 +275,14 @@ impl Platform for TerminalPlatform {
         );
         let sender = MEDIA_COMMANDS.get().ok_or(MediaError::NotFound)?;
         sender.send((action, position)).map_err(|_| MediaError::NotFound)
+    }
+    fn open_link(&self, _from: &DeviceId, url: &str) -> Result<(), String> {
+        println!("A paired device sent a link: {url}");
+        Ok(())
+    }
+    fn power(&self, action: PowerAction) -> Result<(), String> {
+        println!("A paired device asked this computer to {} (not done: this is the CLI)", action.as_str());
+        Ok(())
     }
     fn dismiss_notification(&self, key: &str) -> Result<(), NotificationError> {
         println!("The PC dismissed {key}");
@@ -459,6 +481,22 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             println!("{name} is now {}", if on { "on" } else { "off" });
         }
         Command::Run => watch(node).await?,
+        Command::Power { device, action } => {
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            let action = match action {
+                PowerArg::Lock => PowerAction::Lock,
+                PowerArg::Sleep => PowerAction::Sleep,
+            };
+            node.pc_power(id, action).await.context("the PC didn't do it")?;
+            println!("Done.");
+        }
+        Command::Open { device, url } => {
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            node.open_link(id, url.clone()).await.context("the link didn't open")?;
+            println!("Opened.");
+        }
         Command::Media { device, action, player, position } => {
             let id = resolve(node, device)?;
             wait_until_online(node, id).await?;

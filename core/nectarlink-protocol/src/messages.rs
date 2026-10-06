@@ -38,6 +38,8 @@ pub mod types {
     pub const MEDIA_STATE: &str = "media.state";
     pub const MEDIA_SYNC: &str = "media.sync";
     pub const MEDIA_COMMAND: &str = "media.command";
+    pub const PC_POWER: &str = "pc.power";
+    pub const LINK_OPEN: &str = "link.open";
 }
 
 /// What kind of device this is.
@@ -431,6 +433,30 @@ pub struct MediaCommand {
     /// For `seek`: where to, milliseconds.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub position: Option<u64>,
+}
+
+// ---- Actions (docs/protocol/actions.md) ----
+
+/// Body of `pc.power`: `lock` or `sleep`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PcPower {
+    pub action: String,
+}
+
+/// The longest link sent, in bytes.
+pub const LINK_MAX_BYTES: usize = 4096;
+
+/// Body of `link.open`.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinkOpen {
+    pub url: String,
+}
+
+/// Never prints the link (protocol v0 §11).
+impl std::fmt::Debug for LinkOpen {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LinkOpen").field("bytes", &self.url.len()).finish()
+    }
 }
 
 // ---- Files (docs/protocol/files.md) ----

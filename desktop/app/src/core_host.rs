@@ -95,7 +95,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     let mut config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
     config.downloads_dir = Some(downloads_dir());
     // This PC's own players, for phones (crate::win::media_sessions).
-    config.capabilities = vec!["media.control".into()];
+    config.capabilities = vec!["media.control".into(), "pc.power".into()];
     let node = match Node::start(config, platform).await {
         Ok(node) => node,
         Err(e) => {

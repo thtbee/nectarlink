@@ -45,6 +45,10 @@ data class Device(
     val features: List<Feature> = emptyList(),
 ) {
     val online: Boolean get() = link is Link.Online
+
+    /** Whether a feature works with this device now (the capability matrix). */
+    fun has(feature: String): Boolean =
+        features.any { it.id == feature && it.status is app.nectarlink.core.FeatureStatus.Available }
 }
 
 /** Everything the UI renders, folded from core events. */

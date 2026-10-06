@@ -163,6 +163,7 @@ private fun App(core: Core, state: CoreState, preferences: Preferences) {
                     core::stopRinging,
                     onPairNew = { pairing = true },
                     onRefresh = core::refresh,
+                    onPower = core::pcPower,
                     onSendFiles = core::sendFiles,
                     onCancelTransfer = core::cancelTransfer,
                     modifier = modifier,

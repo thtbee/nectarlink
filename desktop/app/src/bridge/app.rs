@@ -190,6 +190,7 @@ impl cxx_qt::Initialize for qobject::AppController {
         let labels = tray::MenuLabels {
             open: "Open Nectarlink".into(),
             find_phone: "Find my phone".into(),
+            open_link: "Open copied link on phone".into(),
             quit: "Quit Nectarlink".into(),
         };
         match tray::Tray::create("Nectarlink", labels, move |event| on_tray_event(&qt, event)) {
@@ -204,6 +205,7 @@ fn on_tray_event(qt: &CxxQtThread<qobject::AppController>, event: tray::TrayEven
         tray::TrayEvent::Open => {
             let _ = qt.queue(|object| object.activate_requested());
         }
+        tray::TrayEvent::OpenLinkOnPhone => crate::links::open_copied_link_on_phone(),
         tray::TrayEvent::Quit => {
             let _ = qt.queue(|object| object.quit_requested());
         }

@@ -6,6 +6,7 @@
 //! changes is reported as a [`NodeEvent`]. See
 //! `docs/architecture/core-api.md` for the design.
 
+mod actions;
 mod clipboard;
 mod config;
 mod error;
@@ -20,6 +21,7 @@ mod session;
 mod store;
 mod transfer;
 
+pub use actions::PowerAction;
 pub use config::{NodeConfig, NoopPlatform, Platform};
 pub use error::{Error, Result, Side};
 pub use events::{

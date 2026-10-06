@@ -23,6 +23,8 @@ internal class PhonePlatform(
     context: Context,
     private val ringer: Ringer,
     private val media: PhoneMedia,
+    /** Shows a link a PC sent: (PC's ID, link) → shown. */
+    private val onLink: (String, String) -> Boolean,
 ) : Platform {
     private val context = context.applicationContext
 
@@ -37,6 +39,8 @@ internal class PhonePlatform(
 
     override fun mediaCommand(player: String, action: MediaAction, position: ULong?) =
         media.command(player, action, position)
+
+    override fun openLink(fromId: String, url: String): Boolean = onLink(fromId, url)
 
     override fun dismissNotification(key: String) {
         val listener = NotificationListener.instance ?: throw NotificationFailure.Unsupported()

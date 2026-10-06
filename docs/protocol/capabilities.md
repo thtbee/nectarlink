@@ -22,6 +22,7 @@ capability is missing.
 | `device.battery` | Sends `event.battery` | always offered |
 | `device.ring` | Rings on `device.ring`, even on silent | always offered |
 | `files.transfer` | Sends and receives files ([files service](files.md)) | app update |
+| `link.open` | Opens web links sent to it ([actions](actions.md)) | app update |
 | `clip.image` | Accepts images on its clipboard ([clipboard service](clipboard.md)) | app update |
 | `media.control` | Shares its media players for remote control ([media service](media.md); phone: needs notification access) | phone: notification access · desktop: app update |
 | `media.remote` | Shows and controls other devices' media players | app update |
@@ -51,7 +52,7 @@ capability is missing.
 
 | ID | Meaning | Unlocked by |
 |---|---|---|
-| `pc.power` | Locks, sleeps or shuts down on request | app update |
+| `pc.power` | Locks or sleeps on request ([actions](actions.md)) | app update |
 | `files.browse` | Lets a paired phone browse and fetch its files | app update |
 | `input.inject` | Accepts pointer and keyboard input (touchpad, air mouse, voice typing) | app update |
 | `deck.actions` | Runs Deck actions | app update |
