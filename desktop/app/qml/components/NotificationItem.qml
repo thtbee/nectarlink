@@ -3,11 +3,13 @@ import QtQuick
 import app.nectarlink
 
 // One phone notification in the feed: app, title and text, its actions,
-// an inline reply when the app offers one, and a dismiss button on hover.
+// an inline reply when the app offers one, and dismiss and options buttons
+// (what this app's notifications do on this PC).
 Item {
     id: item
     required property string deviceId
     required property string key
+    required property string app
     required property string appName
     required property string title
     required property string text
@@ -24,6 +26,7 @@ Item {
     readonly property var buttons: { try { return JSON.parse(actions) } catch (e) { return [] } }
     readonly property var sent: { try { return JSON.parse(replies) } catch (e) { return [] } }
     property bool replying: false
+    signal optionsRequested
 
     implicitHeight: content.height + 24
 
@@ -89,7 +92,7 @@ Item {
         anchors.left: icon.right
         anchors.leftMargin: 12
         anchors.right: parent.right
-        anchors.rightMargin: 44
+        anchors.rightMargin: 84
         y: 12
         spacing: 4
 
@@ -215,6 +218,18 @@ Item {
     }
 
     IconButton {
+        anchors.right: dismiss.left
+        y: 8
+        iconPath: Icons.more
+        label: qsTr("Options for %1").arg(item.appName)
+        // Like Dismiss: always there (for keyboards and screen readers),
+        // quiet until hovered.
+        opacity: hover.hovered || activeFocus ? 1 : 0.55
+        Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
+        onClicked: item.optionsRequested()
+    }
+    IconButton {
+        id: dismiss
         anchors.right: parent.right
         anchors.rightMargin: 8
         y: 8

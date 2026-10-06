@@ -13,7 +13,7 @@ use nectarlink_core::{DeviceId, Error, NodeEvent, Notification};
 
 use crate::{
     core_host, icons,
-    state::Changes,
+    state::{AppRule, Changes},
     win::toast::{self, Toast, ToastEvent},
 };
 
@@ -89,8 +89,13 @@ pub fn update_toasts(event: &NodeEvent) {
 }
 
 fn show(device: DeviceId, n: &Notification) {
-    let (device_name, icon) =
-        core_host::host().hub.read(|s| (s.name_of(&device), s.app_icons.get(&n.app).cloned()));
+    let (device_name, icon, rule) = core_host::host()
+        .hub
+        .read(|s| (s.name_of(&device), s.app_icons.get(&n.app).cloned(), s.app_rule(&n.app)));
+    // The user chose no pop-ups (or nothing at all) for this app.
+    if rule != AppRule::Show {
+        return;
+    }
     let reply = n.actions.iter().find(|a| a.reply);
     let toast = Toast {
         device: device.to_string(),
@@ -137,6 +142,27 @@ pub fn on_toast(event: ToastEvent) {
         ToastEvent::Action { device, key, action } => run_action(&device, key, action, None),
         ToastEvent::Reply { device, key, action, text } => run_action(&device, key, action, Some(text)),
         ToastEvent::Dismissed { device, key } => dismiss(&device, key),
+    }
+}
+
+/// Sets what an app's notifications do on this PC. Pop-ups it no longer
+/// gets are taken away.
+pub fn set_app_rule(app: &str, rule: AppRule) {
+    let hub = &core_host::host().hub;
+    hub.update(|s| s.set_app_rule(app, rule));
+    if rule == AppRule::Show {
+        return;
+    }
+    let shown: Vec<(DeviceId, String)> = hub.read(|s| {
+        s.notifications
+            .iter()
+            .filter(|n| n.notification.app == app)
+            .map(|n| (n.device, n.notification.key.clone()))
+            .collect()
+    });
+    for (device, key) in shown {
+        toasted(|t| t.get_mut(&device).map(|keys| keys.remove(&key)));
+        toast::remove(&device.to_string(), &key);
     }
 }
 

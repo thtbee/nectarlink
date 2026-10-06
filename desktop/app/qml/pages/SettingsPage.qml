@@ -157,7 +157,7 @@ Item {
                         width: parent.width
                         iconPath: Icons.clipboard
                         title: qsTr("Send what you copy to your phone")
-                        description: qsTr("Text you copy on this PC is ready to paste on your phone. Passwords from password managers are never sent.")
+                        description: qsTr("Text and images you copy on this PC are ready to paste on your phone. Passwords from password managers are never sent.")
                         Toggle {
                             label: qsTr("Send what you copy to your phone")
                             checked: Preferences.autoClipboard
@@ -174,6 +174,76 @@ Item {
                             label: qsTr("Show your phones in File Explorer")
                             checked: Preferences.sendToMenu
                             onToggled: (on) => Preferences.sendToMenu = on
+                        }
+                    }
+                }
+            }
+
+            // ---- Notifications ----
+            Txt { text: qsTr("Notifications"); role: "label"; muted: true }
+            Card {
+                width: parent.width
+                Column {
+                    width: parent.width
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.history
+                        title: qsTr("Keep a day of history")
+                        description: qsTr("Notifications that go away on your phone stay in History on this PC for a day.")
+                        Toggle {
+                            label: qsTr("Keep a day of history")
+                            checked: NotificationList.historyEnabled
+                            onToggled: (on) => NotificationList.setHistoryEnabled(on)
+                        }
+                    }
+                    Repeater {
+                        model: { try { return JSON.parse(NotificationList.apps) } catch (e) { return [] } }
+                        delegate: Column {
+                            id: appRow
+                            required property var modelData
+                            width: parent.width
+                            Divider { width: parent.width }
+                            Item {
+                                width: parent.width
+                                height: 60
+                                Item {
+                                    id: appIcon
+                                    x: 4
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 28; height: 28
+                                    Image {
+                                        id: appImage
+                                        anchors.fill: parent
+                                        source: appRow.modelData.icon
+                                        sourceSize: Qt.size(56, 56)
+                                        mipmap: true
+                                        visible: status === Image.Ready
+                                    }
+                                    Avatar { anchors.fill: parent; visible: appImage.status !== Image.Ready; name: appRow.modelData.name }
+                                }
+                                Txt {
+                                    anchors.left: appIcon.right
+                                    anchors.leftMargin: 14
+                                    anchors.right: appChoice.left
+                                    anchors.rightMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    role: "body"
+                                    text: appRow.modelData.name
+                                    elide: Text.ElideRight
+                                }
+                                Segmented {
+                                    id: appChoice
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    options: [
+                                        { value: "show", label: qsTr("Show") },
+                                        { value: "quiet", label: qsTr("No pop-ups") },
+                                        { value: "hidden", label: qsTr("Hide") }
+                                    ]
+                                    value: appRow.modelData.rule
+                                    onPicked: (value) => NotificationList.setAppRule(appRow.modelData.app, value)
+                                }
+                            }
                         }
                     }
                 }

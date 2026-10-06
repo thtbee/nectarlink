@@ -16,6 +16,7 @@ mod launch;
 mod logging;
 mod mark;
 mod media;
+mod notification_store;
 mod notifications;
 mod palette;
 mod qr;
@@ -208,6 +209,11 @@ fn main() -> ExitCode {
         tracing::error!(error = %e, "can't start the core runtime");
         return ExitCode::FAILURE;
     }
+    core_host::host().hub.update(|s| {
+        notification_store::load(&data_dir, s);
+        state::Changes::APPS | state::Changes::HISTORY
+    });
+    notification_store::start(data_dir.clone());
     watch_network();
     start_toasts();
     clipboard::start();

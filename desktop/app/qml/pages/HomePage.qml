@@ -361,6 +361,17 @@ Item {
                             text: feed.count > 0 ? qsTr("Notifications · %1").arg(feed.count) : qsTr("Notifications")
                         }
                         Button {
+                            anchors.right: clearAll.visible ? clearAll.left : parent.right
+                            anchors.rightMargin: clearAll.visible ? 8 : 0
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: NotificationList.historyEnabled && NotificationHistory.count > 0
+                            variant: "text"
+                            size: "sm"
+                            iconPath: Icons.history
+                            text: qsTr("History")
+                            onClicked: historySheet.open()
+                        }
+                        Button {
                             id: clearAll
                             anchors.right: parent.right
                             visible: feed.count > 0
@@ -394,6 +405,7 @@ Item {
                             clock: feedClock.minutes
                             visible: deviceId === home.deviceId
                             height: visible ? implicitHeight : 0
+                            onOptionsRequested: appSheet.openFor(app, appName)
                         }
                         add: Transition {
                             enabled: !Theme.reduceMotion
@@ -548,6 +560,113 @@ Item {
                         onClicked: page.pairRequested()
                     }
                 }
+            }
+        }
+    }
+
+    // What one app's notifications do on this PC.
+    Sheet {
+        id: appSheet
+        property string app
+        property string appName
+        property string rule: "show"
+        cardWidth: 420
+        function openFor(app, name) {
+            appSheet.app = app
+            appSheet.appName = name
+            appSheet.rule = NotificationList.appRule(app)
+            open()
+        }
+        Column {
+            width: parent.width
+            spacing: 16
+            Txt { width: parent.width; text: qsTr("%1 notifications").arg(appSheet.appName); role: "headline"; wrapMode: Text.WordWrap }
+            Segmented {
+                options: [
+                    { value: "show", label: qsTr("Show") },
+                    { value: "quiet", label: qsTr("No pop-ups") },
+                    { value: "hidden", label: qsTr("Hide") }
+                ]
+                value: appSheet.rule
+                onPicked: (value) => {
+                    appSheet.rule = value
+                    NotificationList.setAppRule(appSheet.app, value)
+                }
+            }
+            Txt {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                role: "body"
+                muted: true
+                text: appSheet.rule === "hidden"
+                      ? qsTr("Nothing from %1 shows on this PC. It still shows on your phone.").arg(appSheet.appName)
+                      : appSheet.rule === "quiet"
+                        ? qsTr("Notifications from %1 show here in Nectarlink, without Windows pop-ups or sounds.").arg(appSheet.appName)
+                        : qsTr("Notifications from %1 show here and as Windows notifications.").arg(appSheet.appName)
+            }
+            Txt {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                role: "bodySmall"
+                muted: true
+                text: qsTr("You can change this for every app in Settings.")
+            }
+            Row {
+                anchors.right: parent.right
+                Button { text: qsTr("Done"); onClicked: appSheet.close() }
+            }
+        }
+    }
+
+    // Notifications from the last day that are gone from the phone.
+    Sheet {
+        id: historySheet
+        cardWidth: 560
+        Column {
+            width: parent.width
+            spacing: 12
+            Item {
+                width: parent.width
+                height: Math.max(historyTitle.height, clearHistory.height)
+                Txt { id: historyTitle; anchors.verticalCenter: parent.verticalCenter; text: qsTr("History"); role: "headline" }
+                Button {
+                    id: clearHistory
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: NotificationHistory.count > 0
+                    variant: "text"
+                    size: "sm"
+                    text: qsTr("Clear history")
+                    onClicked: NotificationList.clearHistory()
+                }
+            }
+            Txt {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                role: "bodySmall"
+                muted: true
+                text: NotificationHistory.count > 0
+                      ? qsTr("Notifications that went away on your phone, or that you dismissed, for a day.")
+                      : qsTr("Nothing here yet. Notifications that go away on your phone are kept here for a day.")
+            }
+            Flickable {
+                width: parent.width
+                height: Math.min(historyColumn.height, page.height - 260)
+                contentHeight: historyColumn.height
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                Column {
+                    id: historyColumn
+                    width: parent.width
+                    Repeater {
+                        model: NotificationHistory
+                        delegate: HistoryItem { width: historyColumn.width }
+                    }
+                }
+            }
+            Row {
+                anchors.right: parent.right
+                Button { text: qsTr("Done"); onClicked: historySheet.close() }
             }
         }
     }

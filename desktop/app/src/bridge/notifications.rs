@@ -11,7 +11,7 @@ use nectarlink_core::DeviceId;
 use super::{Edit, diff};
 use crate::{
     core_host, icons,
-    state::{Changes, NotificationView, SentReply},
+    state::{AppRule, AppState, Changes, NotificationView, SentReply},
 };
 
 #[cxx_qt::bridge]
@@ -38,6 +38,11 @@ pub mod qobject {
         #[qml_element]
         #[qml_singleton]
         #[qproperty(i32, count)]
+        /// Keep a day of history.
+        #[qproperty(bool, history_enabled, cxx_name = "historyEnabled", READ, NOTIFY)]
+        /// Apps that sent notifications, as JSON sorted by name:
+        /// [{ "app", "name", "icon", "rule": "show" | "quiet" | "hidden" }].
+        #[qproperty(QString, apps, READ, NOTIFY)]
         type NotificationList = super::NotificationListRust;
     }
 
@@ -110,6 +115,19 @@ pub mod qobject {
         /// Sends a reply through its reply action.
         #[qinvokable]
         fn reply(self: &NotificationList, device: &QString, key: &QString, action: &QString, text: &QString);
+        /// "show", "quiet" (no pop-ups) or "hidden".
+        #[qinvokable]
+        #[cxx_name = "appRule"]
+        fn app_rule(self: &NotificationList, app: &QString) -> QString;
+        #[qinvokable]
+        #[cxx_name = "setAppRule"]
+        fn set_app_rule(self: &NotificationList, app: &QString, rule: &QString);
+        #[qinvokable]
+        #[cxx_name = "setHistoryEnabled"]
+        fn set_history_enabled_by_user(self: &NotificationList, on: bool);
+        #[qinvokable]
+        #[cxx_name = "clearHistory"]
+        fn clear_history(self: &NotificationList);
     }
 
     impl cxx_qt::Threading for NotificationList {}
@@ -130,6 +148,8 @@ struct Row {
 #[derive(Default)]
 pub struct NotificationListRust {
     count: i32,
+    history_enabled: bool,
+    apps: QString,
     rows: Vec<Row>,
 }
 
@@ -196,21 +216,54 @@ fn role_value(row: &Row, role: &str) -> QVariant {
     }
 }
 
+fn rule_name(rule: AppRule) -> &'static str {
+    match rule {
+        AppRule::Show => "show",
+        AppRule::Quiet => "quiet",
+        AppRule::Hidden => "hidden",
+    }
+}
+
+/// The apps list for Settings (see the `apps` property).
+fn apps_json(s: &AppState) -> String {
+    let mut apps: Vec<(&String, &String)> = s.app_names.iter().collect();
+    apps.sort_by_key(|(app, name)| (name.to_lowercase(), (*app).clone()));
+    serde_json::Value::from(
+        apps.into_iter()
+            .map(|(app, name)| {
+                serde_json::json!({
+                    "app": app,
+                    "name": name,
+                    "icon": s.app_icons.get(app).map(|p| icons::file_url(p)).unwrap_or_default(),
+                    "rule": rule_name(s.app_rule(app)),
+                })
+            })
+            .collect::<Vec<_>>(),
+    )
+    .to_string()
+}
+
 fn key_of(row: &Row) -> (DeviceId, String) {
     (row.view.device, row.view.notification.key.clone())
 }
 
 impl cxx_qt::Initialize for qobject::NotificationList {
     fn initialize(self: Pin<&mut Self>) {
-        super::subscribe(self.qt_thread(), Changes::NOTIFICATIONS | Changes::DEVICES, Self::refresh);
+        super::subscribe(
+            self.qt_thread(),
+            Changes::NOTIFICATIONS | Changes::DEVICES | Changes::APPS | Changes::HISTORY,
+            Self::refresh,
+        );
     }
 }
 
 impl qobject::NotificationList {
     fn refresh(mut self: Pin<&mut Self>) {
-        let new: Vec<Row> = core_host::host().hub.read(|s| {
-            s.notifications
+        let (new, apps, history): (Vec<Row>, String, bool) = core_host::host().hub.read(|s| {
+            let rows = s
+                .notifications
                 .iter()
+                .filter(|view| s.app_rule(&view.notification.app) != AppRule::Hidden)
                 .map(|view| Row {
                     device_name: s.name_of(&view.device).unwrap_or_default(),
                     icon_url: s
@@ -225,8 +278,13 @@ impl qobject::NotificationList {
                         .unwrap_or_default(),
                     view: view.clone(),
                 })
-                .collect()
+                .collect();
+            (rows, apps_json(s), s.history_enabled)
         });
+        if String::from(&self.apps) != apps {
+            self.as_mut().set_apps(QString::from(&apps));
+        }
+        self.as_mut().set_history_enabled(history);
         let root = QModelIndex::default();
         for edit in diff(&self.rows, &new, key_of) {
             match edit {
@@ -303,6 +361,40 @@ impl qobject::NotificationList {
             String::from(action),
             None,
         );
+    }
+
+    pub fn app_rule(&self, app: &QString) -> QString {
+        let rule = core_host::host().hub.read(|s| s.app_rule(&String::from(app)));
+        QString::from(rule_name(rule))
+    }
+
+    pub fn set_app_rule(&self, app: &QString, rule: &QString) {
+        let rule = match String::from(rule).as_str() {
+            "quiet" => AppRule::Quiet,
+            "hidden" => AppRule::Hidden,
+            _ => AppRule::Show,
+        };
+        crate::notifications::set_app_rule(&String::from(app), rule);
+    }
+
+    pub fn set_history_enabled_by_user(&self, on: bool) {
+        core_host::host().hub.update(|s| s.set_history_enabled(on));
+    }
+
+    pub fn clear_history(&self) {
+        core_host::host().hub.update(AppState::clear_history);
+    }
+
+    fn set_history_enabled(mut self: Pin<&mut Self>, on: bool) {
+        if self.history_enabled != on {
+            self.as_mut().rust_mut().history_enabled = on;
+            self.history_enabled_changed();
+        }
+    }
+
+    fn set_apps(mut self: Pin<&mut Self>, apps: QString) {
+        self.as_mut().rust_mut().apps = apps;
+        self.apps_changed();
     }
 
     pub fn reply(&self, device: &QString, key: &QString, action: &QString, text: &QString) {

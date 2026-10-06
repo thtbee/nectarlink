@@ -19,6 +19,8 @@ QtObject {
     readonly property string pause: "M9 5v14M15 5v14"
     readonly property string skipNext: "M5 6.2v11.6a1 1 0 0 0 1.6.8l7.4-5.8a1 1 0 0 0 0-1.6L6.6 5.4a1 1 0 0 0-1.6.8zM19 5v14"
     readonly property string skipPrevious: "M19 6.2v11.6a1 1 0 0 1-1.6.8L10 12.8a1 1 0 0 1 0-1.6l7.4-5.8a1 1 0 0 1 1.6.8zM5 5v14"
+    readonly property string more: "M5 12a1.2 1.2 0 1 0 2.4 0 1.2 1.2 0 1 0-2.4 0M10.8 12a1.2 1.2 0 1 0 2.4 0 1.2 1.2 0 1 0-2.4 0M16.6 12a1.2 1.2 0 1 0 2.4 0 1.2 1.2 0 1 0-2.4 0"
+    readonly property string history: "M3 12a9 9 0 1 0 2.6-6.4L3 8M3 3v5h5M12 7v5l3 2"
     readonly property string music: "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"
     readonly property string ring: "M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0M2 8c0-2 1-4 2-5M22 8c0-2-1-4-2-5"
     readonly property string mic: "M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v4"

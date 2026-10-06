@@ -73,7 +73,9 @@ place and tested; the user-facing features of Phase 1 come next.
 - **Notifications** from the phone on the PC, as Windows notifications and in
   a feed in the app, with the app's icon. Reply inline, run their actions
   (such as "Mark as read") or dismiss them from the PC; what's cleared on one
-  side is cleared on the other.
+  side is cleared on the other. Per app, choose whether they pop up, show
+  only in the app, or stay hidden, and find the last day's notifications in
+  History.
 - **Clipboard**: text and images you copy on the PC are ready to paste on the
   phone. From the phone, send them with the Quick Settings tile, the share
   sheet or a button in the app (Android lets only the app in front read the
@@ -99,7 +101,7 @@ place and tested; the user-facing features of Phase 1 come next.
   connection service, and an identity key protected by the Android Keystore.
 - **Command-line client** for development and testing (`nectarlink`).
 
-**Next (Phase 1)**: notification filters and history, and a Windows installer. Mirroring, messages, calls and the other
+**Next (Phase 1)**: a Windows installer. Mirroring, messages, calls and the other
 features in the plan follow in later phases.
 
 ## Screenshots

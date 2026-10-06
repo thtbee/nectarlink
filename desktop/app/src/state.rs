@@ -4,7 +4,7 @@
 //! changed so they can refresh. Nothing here touches Qt, so it is unit-tested.
 
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     path::PathBuf,
     sync::{Arc, Mutex, MutexGuard},
     time::{Instant, SystemTime},
@@ -30,6 +30,10 @@ impl Changes {
     pub const NOTIFICATIONS: Changes = Changes(1 << 6);
     pub const TRANSFERS: Changes = Changes(1 << 7);
     pub const MEDIA: Changes = Changes(1 << 8);
+    /// Notification history, or whether it's kept.
+    pub const HISTORY: Changes = Changes(1 << 9);
+    /// Apps that sent notifications, and the user's rules for them.
+    pub const APPS: Changes = Changes(1 << 10);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
@@ -137,6 +141,33 @@ pub struct NotificationView {
     pub notification: Notification,
 }
 
+/// What the user wants from an app's notifications on this PC.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AppRule {
+    /// In the feed, and as Windows notifications.
+    #[default]
+    Show,
+    /// In the feed only: no pop-ups or sounds.
+    Quiet,
+    /// Not shown at all.
+    Hidden,
+}
+
+/// A notification that went away on the phone (or was dismissed here).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryEntry {
+    pub device: DeviceId,
+    pub notification: Notification,
+    /// Unix milliseconds.
+    pub removed_at: i64,
+}
+
+/// How long history is kept, and how much of it.
+pub const HISTORY_MS: i64 = 24 * 3600 * 1000;
+pub const MAX_HISTORY: usize = 300;
+
 /// A reply sent from this PC to a notification, shown under it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SentReply {
@@ -153,6 +184,10 @@ pub struct TransferView {
     pub rate: f64,
     /// When progress was last reported.
     pub(crate) sampled: Instant,
+}
+
+pub fn unix_ms(time: SystemTime) -> i64 {
+    time.duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis() as i64)
 }
 
 /// Finished transfers kept in the list.
@@ -183,6 +218,13 @@ pub struct AppState {
     pub transfers: Vec<TransferView>,
     /// Media players on paired devices, each device's in its order.
     pub media: Vec<PlayerView>,
+    /// Apps that sent notifications (package → name), and the user's rules
+    /// for those that aren't shown normally.
+    pub app_names: BTreeMap<String, String>,
+    pub app_rules: BTreeMap<String, AppRule>,
+    /// Notifications that went away, newest first, while history is kept.
+    pub history: Vec<HistoryEntry>,
+    pub history_enabled: bool,
 }
 
 impl AppState {
@@ -303,25 +345,36 @@ impl AppState {
             NodeEvent::Pairing(event) => self.apply_pairing(event),
             NodeEvent::NotificationsReset { device, items } => {
                 let before = self.notifications.len();
+                // What's gone since the last list went away on the phone.
+                let gone: Vec<NotificationView> = self
+                    .notifications
+                    .iter()
+                    .filter(|n| n.device == *device && !items.iter().any(|i| i.key == n.notification.key))
+                    .cloned()
+                    .collect();
                 self.notifications.retain(|n| n.device != *device);
                 if before == self.notifications.len() && items.is_empty() {
                     return Changes::NONE;
                 }
+                let mut changes = Changes::NOTIFICATIONS;
                 for n in items {
-                    self.insert_notification(*device, n.clone());
+                    changes |= self.insert_notification(*device, n.clone());
                 }
-                Changes::NOTIFICATIONS
+                changes | self.remember(gone)
             }
             NodeEvent::NotificationPosted { device, notification } => {
                 self.notifications
                     .retain(|n| !(n.device == *device && n.notification.key == notification.key));
-                self.insert_notification(*device, notification.clone());
-                Changes::NOTIFICATIONS
+                Changes::NOTIFICATIONS | self.insert_notification(*device, notification.clone())
             }
             NodeEvent::NotificationRemoved { device, key } => {
-                let before = self.notifications.len();
-                self.notifications.retain(|n| !(n.device == *device && n.notification.key == *key));
-                if before == self.notifications.len() { Changes::NONE } else { Changes::NOTIFICATIONS }
+                let Some(at) =
+                    self.notifications.iter().position(|n| n.device == *device && n.notification.key == *key)
+                else {
+                    return Changes::NONE;
+                };
+                let gone = self.notifications.remove(at);
+                Changes::NOTIFICATIONS | self.remember(vec![gone])
             }
             // Feedback only (see crate::clipboard); nothing to keep.
             NodeEvent::ClipboardReceived { .. } => Changes::NONE,
@@ -410,11 +463,75 @@ impl AppState {
     }
 
     /// Adds a notification in time order (newest first), without its icon.
-    fn insert_notification(&mut self, device: DeviceId, mut notification: Notification) {
+    fn insert_notification(&mut self, device: DeviceId, mut notification: Notification) -> Changes {
         notification.icon = None;
+        let mut changes = Changes::NONE;
+        if self.app_names.get(&notification.app) != Some(&notification.app_name) {
+            self.app_names.insert(notification.app.clone(), notification.app_name.clone());
+            changes |= Changes::APPS;
+        }
         let at = self.notifications.partition_point(|n| n.notification.when >= notification.when);
         self.notifications.insert(at, NotificationView { device, notification });
         self.notifications.truncate(MAX_NOTIFICATIONS);
+        changes
+    }
+
+    /// The rule for an app's notifications.
+    pub fn app_rule(&self, app: &str) -> AppRule {
+        self.app_rules.get(app).copied().unwrap_or_default()
+    }
+
+    pub fn set_app_rule(&mut self, app: &str, rule: AppRule) -> Changes {
+        let changed = match rule {
+            AppRule::Show => self.app_rules.remove(app).is_some(),
+            rule => self.app_rules.insert(app.to_owned(), rule) != Some(rule),
+        };
+        if changed { Changes::APPS | Changes::NOTIFICATIONS | Changes::HISTORY } else { Changes::NONE }
+    }
+
+    /// Keeps notifications that went away, while history is on.
+    fn remember(&mut self, gone: Vec<NotificationView>) -> Changes {
+        if !self.history_enabled || gone.is_empty() {
+            return Changes::NONE;
+        }
+        let now = unix_ms(SystemTime::now());
+        for view in gone {
+            self.history
+                .retain(|h| !(h.device == view.device && h.notification.key == view.notification.key));
+            self.history.insert(
+                0,
+                HistoryEntry { device: view.device, notification: view.notification, removed_at: now },
+            );
+        }
+        self.prune_history(now);
+        Changes::HISTORY
+    }
+
+    /// Drops history older than a day, and beyond the most kept.
+    pub fn prune_history(&mut self, now: i64) -> Changes {
+        let before = self.history.len();
+        self.history.retain(|h| now - h.removed_at < HISTORY_MS);
+        self.history.truncate(MAX_HISTORY);
+        if self.history.len() == before { Changes::NONE } else { Changes::HISTORY }
+    }
+
+    pub fn set_history_enabled(&mut self, on: bool) -> Changes {
+        if self.history_enabled == on {
+            return Changes::NONE;
+        }
+        self.history_enabled = on;
+        if !on {
+            self.history.clear();
+        }
+        Changes::HISTORY
+    }
+
+    pub fn clear_history(&mut self) -> Changes {
+        if self.history.is_empty() {
+            return Changes::NONE;
+        }
+        self.history.clear();
+        Changes::HISTORY
     }
 
     /// Records where an app's icon is stored.
@@ -645,7 +762,7 @@ mod tests {
         let (phone, other) = (DeviceId([1; 32]), DeviceId([2; 32]));
         let reset =
             NodeEvent::NotificationsReset { device: phone, items: vec![note("a", 10), note("b", 30)] };
-        assert_eq!(s.apply(&reset), Changes::NOTIFICATIONS);
+        assert_eq!(s.apply(&reset), Changes::NOTIFICATIONS | Changes::APPS, "and the app is new");
         s.apply(&NodeEvent::NotificationPosted { device: other, notification: note("c", 20) });
         assert_eq!(keys(&s), ["b", "c", "a"]);
         assert!(s.notifications.iter().all(|n| n.notification.icon.is_none()), "icons live on disk");
@@ -767,5 +884,52 @@ mod tests {
         assert_eq!(pairing.load(Ordering::SeqCst), 2);
         hub.update(|_| Changes::NONE);
         assert_eq!(devices.load(Ordering::SeqCst), 2, "empty changes notify nobody");
+    }
+
+    #[test]
+    fn gone_notifications_are_kept_for_a_day() {
+        let phone = DeviceId([1; 32]);
+        let mut s = AppState { history_enabled: true, ..AppState::default() };
+        s.apply(&NodeEvent::NotificationsReset { device: phone, items: vec![note("a", 10), note("b", 20)] });
+        assert!(s.history.is_empty());
+
+        // Removed on the phone (or dismissed here).
+        let changes = s.apply(&NodeEvent::NotificationRemoved { device: phone, key: "a".into() });
+        assert!(changes.intersects(Changes::HISTORY));
+        assert_eq!(s.history.iter().map(|h| h.notification.key.as_str()).collect::<Vec<_>>(), ["a"]);
+
+        // Gone while disconnected: the next full list leaves it out.
+        s.apply(&NodeEvent::NotificationsReset { device: phone, items: vec![note("c", 30)] });
+        assert_eq!(s.history.iter().map(|h| h.notification.key.as_str()).collect::<Vec<_>>(), ["b", "a"]);
+
+        // Old entries go.
+        let later = s.history[0].removed_at + HISTORY_MS + 1;
+        assert!(s.prune_history(later).intersects(Changes::HISTORY));
+        assert!(s.history.is_empty());
+
+        // Turned off: nothing kept, and what was is cleared.
+        s.apply(&NodeEvent::NotificationRemoved { device: phone, key: "c".into() });
+        assert_eq!(s.history.len(), 1);
+        s.set_history_enabled(false);
+        assert!(s.history.is_empty());
+        s.apply(&NodeEvent::NotificationPosted { device: phone, notification: note("d", 40) });
+        s.apply(&NodeEvent::NotificationRemoved { device: phone, key: "d".into() });
+        assert!(s.history.is_empty());
+    }
+
+    #[test]
+    fn apps_and_their_rules() {
+        let phone = DeviceId([1; 32]);
+        let mut s = AppState::default();
+        let changes = s.apply(&NodeEvent::NotificationPosted { device: phone, notification: note("a", 10) });
+        assert!(changes.intersects(Changes::APPS), "a new app");
+        let app = s.notifications[0].notification.app.clone();
+        assert!(s.app_names.contains_key(&app));
+        assert_eq!(s.app_rule(&app), AppRule::Show);
+        assert!(s.set_app_rule(&app, AppRule::Hidden).intersects(Changes::NOTIFICATIONS));
+        assert_eq!(s.app_rule(&app), AppRule::Hidden);
+        assert_eq!(s.set_app_rule(&app, AppRule::Hidden), Changes::NONE);
+        s.set_app_rule(&app, AppRule::Show);
+        assert!(s.app_rules.is_empty(), "the default isn't stored");
     }
 }
