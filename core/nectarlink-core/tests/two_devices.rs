@@ -930,7 +930,10 @@ async fn folders_arrive_with_their_layout() {
     assert_eq!(received, [folder.clone(), downloads.join("ticket.pdf")]);
     assert_eq!(std::fs::read(folder.join("Day 1").join("beach.jpg")).unwrap(), b"sand");
     assert_eq!(std::fs::read(folder.join("notes.txt")).unwrap(), b"fun");
-    assert!(std::fs::read_dir(downloads.join("Trip")).unwrap().next().is_none(), "the old folder is untouched");
+    assert!(
+        std::fs::read_dir(downloads.join("Trip")).unwrap().next().is_none(),
+        "the old folder is untouched"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

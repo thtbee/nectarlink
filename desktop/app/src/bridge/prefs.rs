@@ -47,6 +47,8 @@ pub mod qobject {
         #[qproperty(bool, start_with_windows)]
         /// Check for updates on their own.
         #[qproperty(bool, auto_update)]
+        /// Tell when a phone's battery is low, or full.
+        #[qproperty(bool, battery_alerts)]
         type Preferences = super::PreferencesRust;
     }
 
@@ -64,6 +66,7 @@ pub struct PreferencesRust {
     send_to_menu: bool,
     start_with_windows: bool,
     auto_update: bool,
+    battery_alerts: bool,
     /// What the user chose (`start_with_windows` shows the default until then).
     start_choice: Option<bool>,
 }
@@ -87,6 +90,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         crate::clipboard::set_auto_send(settings.auto_clipboard);
         self.as_mut().set_send_to_menu(settings.send_to_menu);
         self.as_mut().set_auto_update(settings.auto_update);
+        self.as_mut().set_battery_alerts(settings.battery_alerts);
         self.as_mut().set_start_with_windows(crate::startup::effective(settings.start_with_windows));
         self.as_mut().rust_mut().start_choice = settings.start_with_windows;
 
@@ -112,6 +116,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_auto_update_changed(|p| {
                 crate::updater::set_auto(p.auto_update);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_battery_alerts_changed(|p| {
+                crate::battery::set_enabled(p.battery_alerts);
                 p.save();
             })
             .release();
@@ -142,6 +152,7 @@ impl qobject::Preferences {
             auto_clipboard: p.auto_clipboard,
             send_to_menu: p.send_to_menu,
             auto_update: p.auto_update,
+            battery_alerts: p.battery_alerts,
             start_with_windows: p.start_choice,
         };
         save_in_background(settings);

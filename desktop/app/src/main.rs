@@ -8,6 +8,7 @@
 // A GUI app: no console window in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod battery;
 mod bridge;
 mod clipboard;
 mod core_host;
@@ -233,6 +234,7 @@ fn main() -> ExitCode {
     win::media_sessions::start(media::local_changed);
     let settings = settings::Settings::load(&data_dir);
     send_to::set_enabled(settings.send_to_menu);
+    battery::set_enabled(settings.battery_alerts);
     // A test instance (own data folder) leaves the user's menu and sign-in
     // alone.
     if options.data_dir.is_none() {

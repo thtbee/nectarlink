@@ -188,6 +188,18 @@ Item {
                             onToggled: (on) => Preferences.sendToMenu = on
                         }
                     }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.battery
+                        title: qsTr("Battery alerts")
+                        description: qsTr("Get a notification when your phone's battery is low, and when it's fully charged.")
+                        Toggle {
+                            label: qsTr("Battery alerts")
+                            checked: Preferences.batteryAlerts
+                            onToggled: (on) => Preferences.batteryAlerts = on
+                        }
+                    }
                 }
             }
 

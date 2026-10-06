@@ -364,10 +364,19 @@ fn ring_device(device: DeviceId, on: bool) {
 impl qobject::AppController {
     fn refresh(mut self: Pin<&mut Self>) {
         let hub = &core_host::host().hub;
-        let (status, devices, ringing, online, caps_version) = hub.read(|s| {
+        let (status, devices, ringing, online, caps_version, battery) = hub.read(|s| {
             let ringing = s.ringing_from.and_then(|id| s.name_of(&id)).unwrap_or_default();
-            let online = s.devices.iter().filter(|d| matches!(d.link, LinkState::Online { .. })).count();
-            (s.core_status(), s.devices.len(), ringing, online, s.matrices_version)
+            let connected: Vec<_> =
+                s.devices.iter().filter(|d| matches!(d.link, LinkState::Online { .. })).collect();
+            // With one phone connected, the tray shows its battery.
+            let battery = match connected.as_slice() {
+                [one] => one.battery.as_ref().map(|b| {
+                    let charging = if b.charging { ", charging" } else { "" };
+                    format!("{} · {}%{charging}", one.info.name, b.level)
+                }),
+                _ => None,
+            };
+            (s.core_status(), s.devices.len(), ringing, connected.len(), s.matrices_version, battery)
         });
         let (status_text, error) = match &status {
             CoreStatus::Starting => ("starting", String::new()),
@@ -390,7 +399,10 @@ impl qobject::AppController {
             tray.set_tooltip(&match (devices, online) {
                 (0, _) => "Nectarlink · no devices paired".to_owned(),
                 (_, 0) => "Nectarlink · not connected".to_owned(),
-                (_, 1) => "Nectarlink · 1 device connected".to_owned(),
+                (_, 1) => battery.map_or_else(
+                    || "Nectarlink · 1 device connected".to_owned(),
+                    |b| format!("Nectarlink · {b}"),
+                ),
                 (_, n) => format!("Nectarlink · {n} devices connected"),
             });
         }

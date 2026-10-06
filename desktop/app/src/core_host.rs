@@ -143,6 +143,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 crate::clipboard::on_event(&event);
                 crate::transfers::on_event(&event);
                 crate::send_to::on_event(&event);
+                crate::battery::on_event(&event);
             }
             Err(RecvError::Lagged(missed)) => {
                 // Resynchronize what can be re-read; transient events are lost.
