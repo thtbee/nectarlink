@@ -380,9 +380,11 @@ impl AppState {
                 let gone = self.notifications.remove(at);
                 Changes::NOTIFICATIONS | self.remember(vec![gone])
             }
-            // Feedback (crate::clipboard) and notifications (crate::photos)
-            // only; nothing to keep.
-            NodeEvent::ClipboardReceived { .. } | NodeEvent::PhotoAdded { .. } => Changes::NONE,
+            // Feedback (crate::clipboard) and notifications (crate::photos,
+            // crate::calls) only; nothing to keep.
+            NodeEvent::ClipboardReceived { .. } | NodeEvent::PhotoAdded { .. } | NodeEvent::Call { .. } => {
+                Changes::NONE
+            }
             NodeEvent::Transfer(transfer) => self.update_transfer(transfer.clone(), Instant::now()),
             // With artwork saved first (see crate::media).
             NodeEvent::MediaChanged { .. } => Changes::NONE,

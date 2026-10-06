@@ -7,6 +7,7 @@
 //! `docs/architecture/core-api.md` for the design.
 
 mod actions;
+mod calls;
 mod clipboard;
 mod config;
 mod error;
@@ -23,6 +24,7 @@ mod store;
 mod transfer;
 
 pub use actions::PowerAction;
+pub use calls::CallCommand;
 pub use config::{NodeConfig, NoopPlatform, Platform};
 pub use error::{Error, Result, Side};
 pub use events::{
@@ -37,8 +39,9 @@ pub use nectarlink_protocol::messages::clip::{
 pub use nectarlink_protocol::{
     DeviceId,
     messages::{
-        Battery, CLIP_MAX_BYTES, DeviceInfo, DeviceKind, MediaPlayer, Notification, NotificationAction,
-        PhotoNew as Photo, PowerLevel,
+        Battery, CLIP_MAX_BYTES, CallState, DeviceInfo, DeviceKind, MediaPlayer, Notification,
+        NotificationAction, PhotoNew as Photo, PowerLevel,
+        calls::{CONTROL as CALLS_CONTROL, SHOW as CALLS_SHOW, STATE as CALLS_STATE},
         photos::{MAX_THUMB_BYTES as PHOTO_MAX_THUMB_BYTES, READ as PHOTOS_READ, SHOW as PHOTOS_SHOW},
     },
     pairing::PairingUri,

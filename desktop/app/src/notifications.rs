@@ -181,6 +181,7 @@ fn show(device: DeviceId, n: &Notification) {
         reply: reply.map(|a| (a.id.clone(), a.title.clone())),
         silent: n.silent,
         progress: None,
+        call: false,
     };
     toasted(|t| t.entry(device).or_default().insert(n.key.clone()));
     toast::show(toast);
@@ -218,6 +219,11 @@ pub fn on_toast(event: ToastEvent) {
             return crate::photos::on_toast(key, Some(action));
         }
         ToastEvent::Dismissed { device, .. } if device == crate::photos::TOAST_GROUP => return,
+        // Calls: answer, decline or silence; dismissing only hides it.
+        ToastEvent::Action { device, key, action } if device == crate::calls::TOAST_GROUP => {
+            return crate::calls::on_toast(key, action);
+        }
+        ToastEvent::Dismissed { device, .. } if device == crate::calls::TOAST_GROUP => return,
         ToastEvent::Dismissed { device, .. } | ToastEvent::Action { device, .. }
             if device == crate::battery::TOAST_GROUP =>
         {

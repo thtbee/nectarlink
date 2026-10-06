@@ -21,6 +21,12 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Installing its own updates from GitHub releases (the user allows it once). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Calls, shown on paired PCs, with the caller's number and contact
+         (asked for in the app). The call itself stays on the phone. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <!-- New photos and screenshots, shown on paired PCs (asked for in the app). -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission

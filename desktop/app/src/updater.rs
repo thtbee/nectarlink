@@ -122,6 +122,7 @@ fn announce(update: &Update) {
         reply: None,
         silent: true,
         progress: None,
+        call: false,
     });
 }
 

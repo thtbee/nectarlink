@@ -54,6 +54,7 @@ fn notice(title: &str, body: &str) {
         reply: None,
         silent: true,
         progress: None,
+        call: false,
     });
 }
 

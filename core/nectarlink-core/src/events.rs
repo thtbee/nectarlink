@@ -134,4 +134,9 @@ pub enum NodeEvent {
         device: DeviceId,
         photo: crate::Photo,
     },
+    /// A call on a phone rang, was answered or ended.
+    Call {
+        device: DeviceId,
+        call: crate::CallState,
+    },
 }

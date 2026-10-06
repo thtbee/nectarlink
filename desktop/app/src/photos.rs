@@ -84,6 +84,7 @@ fn show(device: DeviceId, photo: &Photo) {
         reply: None,
         silent: true,
         progress: None,
+        call: false,
     });
 }
 
@@ -104,7 +105,7 @@ fn save_preview(device: DeviceId, photo: &Photo) -> Option<PathBuf> {
     }
 }
 
-fn fingerprint(text: &str) -> u64 {
+pub(crate) fn fingerprint(text: &str) -> u64 {
     text.bytes().fold(0xcbf2_9ce4_8422_2325, |hash, b| (hash ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3))
 }
 

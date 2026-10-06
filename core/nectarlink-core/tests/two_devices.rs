@@ -30,6 +30,7 @@ struct RecordingPlatform {
     media: Mutex<Vec<(String, MediaAction, Option<u64>)>>,
     power: Mutex<Vec<PowerAction>>,
     links: Mutex<Vec<String>>,
+    calls: Mutex<Vec<(String, nectarlink_core::CallCommand)>>,
     /// Photos `open_photo` finds, by ID.
     photos: Mutex<std::collections::HashMap<String, std::path::PathBuf>>,
 }
@@ -71,6 +72,10 @@ impl Platform for RecordingPlatform {
     }
     fn open_link(&self, _from: &nectarlink_core::DeviceId, url: &str) -> Result<(), String> {
         self.links.lock().unwrap().push(url.to_owned());
+        Ok(())
+    }
+    fn call_command(&self, id: &str, command: nectarlink_core::CallCommand) -> Result<(), String> {
+        self.calls.lock().unwrap().push((id.to_owned(), command));
         Ok(())
     }
     fn open_photo(&self, id: &str) -> Result<OutgoingFile, String> {
@@ -941,6 +946,72 @@ async fn folders_arrive_with_their_layout() {
         std::fs::read_dir(downloads.join("Trip")).unwrap().next().is_none(),
         "the old folder is untouched"
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn calls_show_on_the_pc_which_can_answer_them() {
+    use nectarlink_core::{CallCommand, CallState};
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::CALLS_SHOW]).await;
+    let mut phone = device_with(
+        "Pixel",
+        DeviceKind::Phone,
+        &[nectarlink_core::CALLS_STATE, nectarlink_core::CALLS_CONTROL],
+    )
+    .await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let ringing = CallState {
+        id: "c1".into(),
+        state: "ringing".into(),
+        incoming: true,
+        number: Some("+15550100".into()),
+        name: Some("Sam".into()),
+        photo: Some(vec![0xff, 0xd8]),
+        missed: false,
+    };
+    async fn next_call(pc: &mut TestDevice, phone_id: nectarlink_core::DeviceId) -> CallState {
+        wait_for(pc, "a call", |e| match e {
+            NodeEvent::Call { device, call } if *device == phone_id => Some(call.clone()),
+            _ => None,
+        })
+        .await
+    }
+
+    phone.node.call_changed(ringing.clone()).await.unwrap();
+    assert_eq!(next_call(&mut pc, phone_id).await, ringing);
+    with_timeout("answer", pc.node.call_command(phone_id, "c1".into(), CallCommand::Answer)).await.unwrap();
+    assert_eq!(*phone.platform.calls.lock().unwrap(), [("c1".to_owned(), CallCommand::Answer)]);
+    // Only the call in progress.
+    assert!(matches!(
+        pc.node.call_command(phone_id, "c0".into(), CallCommand::Decline).await,
+        Err(Error::NotFound)
+    ));
+
+    let active = CallState { state: "active".into(), photo: None, ..ringing.clone() };
+    phone.node.call_changed(active.clone()).await.unwrap();
+    assert_eq!(next_call(&mut pc, phone_id).await.state, "active");
+    // An answered call doesn't ring anymore, but can be hung up.
+    assert!(matches!(
+        pc.node.call_command(phone_id, "c1".into(), CallCommand::Silence).await,
+        Err(Error::NotFound)
+    ));
+    pc.node.call_command(phone_id, "c1".into(), CallCommand::Decline).await.unwrap();
+
+    let ended = CallState { state: "ended".into(), ..active };
+    phone.node.call_changed(ended).await.unwrap();
+    assert_eq!(next_call(&mut pc, phone_id).await.state, "ended");
+    assert!(matches!(
+        pc.node.call_command(phone_id, "c1".into(), CallCommand::Decline).await,
+        Err(Error::NotFound)
+    ));
+
+    // The phone's user turned calls off for this PC.
+    phone.node.set_device_toggle(pc_id, "calls", false).unwrap();
+    phone.node.call_changed(CallState { id: "c2".into(), ..ringing }).await.unwrap();
+    assert!(matches!(
+        pc.node.call_command(phone_id, "c2".into(), CallCommand::Answer).await,
+        Err(Error::Denied)
+    ));
 }
 
 #[tokio::test(flavor = "multi_thread")]

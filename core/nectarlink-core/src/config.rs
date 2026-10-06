@@ -123,6 +123,12 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't share photos".into())
     }
 
+    /// Answer, decline or silence this phone's call `id` (a PC asked; the
+    /// core checked it's the call in progress). `Err` holds a reason for logs.
+    fn call_command(&self, _id: &str, _command: crate::CallCommand) -> Result<(), String> {
+        Err("this device doesn't take calls".into())
+    }
+
     /// Run a command on one of this device's media players (a paired device
     /// asked); `position` is set for [`MediaAction::Seek`].
     fn media_command(

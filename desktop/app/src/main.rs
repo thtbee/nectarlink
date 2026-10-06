@@ -10,6 +10,7 @@
 
 mod battery;
 mod bridge;
+mod calls;
 mod clipboard;
 mod core_host;
 mod doctor;

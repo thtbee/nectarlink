@@ -16,6 +16,7 @@ import app.nectarlink.android.files.ReceivedFiles
 import app.nectarlink.android.files.TransferNotifications
 import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
+import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
@@ -58,8 +59,17 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val phoneMedia = PhoneMedia(this.context) { players ->
         notificationOps.trySend { it.mediaChanged(players) }
     }
-    private val platform = PhonePlatform(this.context, ringer, phoneMedia) { pc, url ->
-        LinkNotifications.show(this.context, _state.value.nameOf(pc).orEmpty(), url)
+    private val platform = PhonePlatform(
+        this.context,
+        ringer,
+        phoneMedia,
+        onLink = { pc, url -> LinkNotifications.show(this.context, _state.value.nameOf(pc).orEmpty(), url) },
+        onCall = { id, command -> calls.command(id, command) },
+    )
+    private val calls = PhoneCalls(this.context) { call ->
+        notificationOps.trySend { node ->
+            runCatching { node.callChanged(call) }.onFailure { Log.i(TAG, "a call wasn't reported", it) }
+        }
     }
     private val photos = RecentPhotos(this.context) { photo ->
         notificationOps.trySend { node ->
@@ -133,9 +143,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 battery.start()
                 network.start()
             }
-            _state.update { it.copy(photoAccess = RecentPhotos.hasAccess(context)) }
+            _state.update { it.copy(photoAccess = RecentPhotos.hasAccess(context), callAccess = PhoneCalls.hasAll(context)) }
             started.updatePower(PowerLevel.BASIC, capabilities(NotificationListener.hasAccess(context)))
-            scope.launch(Dispatchers.Main) { if (_state.value.photoAccess) photos.start() }
+            scope.launch(Dispatchers.Main) {
+                if (_state.value.photoAccess) photos.start()
+                calls.start()
+            }
             scope.launch {
                 for (op in notificationOps) {
                     runCatching { op(started) }.onFailure { Log.w(TAG, "notification update failed", it) }
@@ -176,13 +189,23 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         val granted = NotificationListener.hasAccess(context)
         val unrestricted = BackgroundAccess.isUnrestricted(context)
         val photoAccess = RecentPhotos.hasAccess(context)
+        val callAccess = PhoneCalls.hasAll(context)
         val photosChanged = photoAccess != _state.value.photoAccess
-        _state.update { it.copy(notificationAccess = granted, backgroundUnrestricted = unrestricted, photoAccess = photoAccess) }
+        val callsChanged = callAccess != _state.value.callAccess
+        _state.update {
+            it.copy(
+                notificationAccess = granted,
+                backgroundUnrestricted = unrestricted,
+                photoAccess = photoAccess,
+                callAccess = callAccess,
+            )
+        }
         if (granted && NotificationListener.instance == null) {
             NotificationListenerService.requestRebind(NotificationListener.component(context))
         }
-        if (photosChanged && node != null) {
+        if ((photosChanged || callsChanged) && node != null) {
             if (photoAccess) photos.start() else photos.stop()
+            if (PhoneCalls.canFollow(context)) calls.start() else calls.stop()
             notificationOps.trySend { it.updatePower(PowerLevel.BASIC, capabilities(_state.value.notificationAccess)) }
         }
     }
@@ -311,7 +334,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private fun capabilities(notificationAccess: Boolean): List<String> =
         CLIPBOARD_CAPABILITIES +
             (if (notificationAccess) NOTIFICATION_CAPABILITIES + MEDIA_CAPABILITIES else emptyList()) +
-            (if (_state.value.photoAccess) PHOTO_CAPABILITIES else emptyList())
+            (if (_state.value.photoAccess) PHOTO_CAPABILITIES else emptyList()) +
+            (if (PhoneCalls.canFollow(context)) listOf("call.state") else emptyList()) +
+            (if (PhoneCalls.canControl(context)) listOf("call.control") else emptyList())
 
     // ---- Pairing ----
 

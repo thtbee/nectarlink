@@ -164,6 +164,12 @@ enum Command {
     /// Show new photos from paired phones as this PC would, and fetch each
     /// one; stays online until Ctrl+C.
     Photos,
+    /// Show calls on paired phones as this PC would; with --auto, answer,
+    /// decline or silence each ringing call. Stays online until Ctrl+C.
+    Calls {
+        #[arg(long, value_enum)]
+        auto: Option<CallArg>,
+    },
     /// Announce a picture as a photo just taken on this phone (use with
     /// --as-phone), then stay online to send it to PCs that ask.
     Photo {
@@ -243,6 +249,13 @@ impl From<MediaCommandArg> for MediaAction {
 /// Media commands from paired devices, for `play`.
 static MEDIA_COMMANDS: std::sync::OnceLock<tokio::sync::mpsc::UnboundedSender<(MediaAction, Option<u64>)>> =
     std::sync::OnceLock::new();
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum CallArg {
+    Answer,
+    Decline,
+    Silence,
+}
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum OnOff {
@@ -512,6 +525,34 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             offers.push(nectarlink_core::PHOTOS_SHOW.into());
             node.update_power(node_power(cli), offers).await;
             watch(node, true).await?;
+        }
+        Command::Calls { auto } => {
+            let mut offers = cli.offers.clone();
+            offers.push(nectarlink_core::CALLS_SHOW.into());
+            node.update_power(node_power(cli), offers).await;
+            let command = auto.map(|a| match a {
+                CallArg::Answer => nectarlink_core::CallCommand::Answer,
+                CallArg::Decline => nectarlink_core::CallCommand::Decline,
+                CallArg::Silence => nectarlink_core::CallCommand::Silence,
+            });
+            let mut events = node.events();
+            let answerer = node.clone();
+            tokio::spawn(async move {
+                while let Ok(event) = events.recv().await {
+                    if let (Some(command), NodeEvent::Call { device, call }) = (command, &event)
+                        && call.state == "ringing"
+                        && call.incoming
+                    {
+                        // Long enough to see it ring.
+                        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                        match answerer.call_command(*device, call.id.clone(), command).await {
+                            Ok(()) => println!("Did it: {command:?}."),
+                            Err(e) => println!("Couldn't {command:?}: {e}"),
+                        }
+                    }
+                }
+            });
+            watch(node, false).await?;
         }
         Command::Power { device, action } => {
             let id = resolve(node, device)?;
@@ -859,6 +900,25 @@ fn print_event(node: &Node, event: &NodeEvent) {
             println!("{}: a notification went away", name(device))
         }
         NodeEvent::ClipboardReceived { device } => println!("{}: sent its clipboard", name(device)),
+        NodeEvent::Call { device, call } => println!(
+            "{}: {} call {} {}{}{}",
+            name(device),
+            if call.incoming { "incoming" } else { "outgoing" },
+            call.id,
+            call.state,
+            match (&call.name, &call.number) {
+                (Some(n), Some(num)) => format!(" from {n} ({num})"),
+                (None, Some(num)) => format!(" from {num}"),
+                _ => String::new(),
+            },
+            if call.missed {
+                ", missed"
+            } else if call.photo.is_some() {
+                ", with photo"
+            } else {
+                ""
+            },
+        ),
         NodeEvent::PhotoAdded { device, photo } => println!(
             "{}: new {} {} ({} bytes, preview {} bytes)",
             name(device),

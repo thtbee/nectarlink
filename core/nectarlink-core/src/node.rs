@@ -117,6 +117,8 @@ pub(crate) struct Shared {
     pub players: crate::media::Players,
     /// Photos this phone announced lately (docs/protocol/photos.md).
     pub(crate) photos: crate::photos::Recent,
+    /// This phone's call in progress (docs/protocol/calls.md).
+    pub(crate) calls: crate::calls::Current,
     pub data_dir: std::path::PathBuf,
     /// Where received files go.
     pub downloads_dir: std::path::PathBuf,
@@ -352,6 +354,7 @@ impl Shared {
             }
             shared.send_notification_snapshot(&s).await;
             shared.send_media_state(&s).await;
+            shared.send_call_state(&s).await;
         });
         Some(session)
     }
@@ -606,6 +609,7 @@ impl Node {
             notifications: Feed::default(),
             players: Default::default(),
             photos: Default::default(),
+            calls: Default::default(),
             data_dir: config.data_dir.clone(),
             downloads_dir: config.downloads_dir.clone().unwrap_or_else(|| config.data_dir.join("received")),
             transfers: Mutex::new(HashMap::new()),
@@ -915,6 +919,20 @@ impl Node {
     pub async fn open_link(&self, peer: DeviceId, url: String) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::actions::open_link(&self.shared, &session, url).await
+    }
+
+    // ---- Calls (docs/protocol/calls.md) ----
+
+    /// A call on this phone rang, was answered or ended; sent to every
+    /// connected PC the user allows (and to PCs that connect during it).
+    pub async fn call_changed(&self, call: crate::CallState) -> Result<()> {
+        self.shared.call_changed(call).await
+    }
+
+    /// Answers, declines or silences a call on a paired phone.
+    pub async fn call_command(&self, peer: DeviceId, id: String, command: crate::CallCommand) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::calls::command(&self.shared, &session, id, command).await
     }
 
     // ---- Photos (docs/protocol/photos.md) ----

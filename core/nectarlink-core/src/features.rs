@@ -600,6 +600,16 @@ pub const FEATURES: &[FeatureDef] = &[
         requires: &[phone("call.state", Unlock::Permission(Permission::Phone)), DeviceToggle("calls")],
         partial: None,
     },
+    FeatureDef {
+        id: "calls.control",
+        group: FeatureGroup::Calls,
+        requires: &[
+            phone("call.state", Unlock::Permission(Permission::Phone)),
+            phone("call.control", Unlock::Permission(Permission::Phone)),
+            DeviceToggle("calls"),
+        ],
+        partial: None,
+    },
     // Clipboard
     FeatureDef {
         id: "clipboard.pc_to_phone",

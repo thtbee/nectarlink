@@ -429,6 +429,51 @@ pub enum Event {
         id: String,
         photo_id: String,
     },
+    /// A call on a paired phone changed (PCs only; phones report theirs).
+    CallChanged {
+        id: String,
+        call_id: String,
+    },
+}
+
+/// A call on this phone (docs/protocol/calls.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Call {
+    /// This app's ID for the call, the same while it lasts.
+    pub id: String,
+    pub state: CallPhase,
+    pub incoming: bool,
+    pub number: Option<String>,
+    /// The contact's name, when the number is a contact.
+    pub name: Option<String>,
+    /// The contact's photo: a JPEG of at most 64 KB, sent while ringing.
+    pub photo: Option<Vec<u8>>,
+    /// With `Ended`: it rang and nobody answered.
+    pub missed: bool,
+}
+
+/// Never prints the number, name or photo (protocol v0 §11).
+impl std::fmt::Debug for Call {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Call").field("id", &self.id).field("state", &self.state).finish_non_exhaustive()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum CallPhase {
+    Ringing,
+    Active,
+    Ended,
+}
+
+/// What a PC asked of a call.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum CallCommand {
+    Answer,
+    /// Decline a ringing call, or hang up an active one.
+    Decline,
+    /// Stop the ringing.
+    Silence,
 }
 
 /// A photo or screenshot that just appeared on this phone
@@ -820,6 +865,9 @@ impl From<NodeEvent> for Event {
             NodeEvent::PhotoAdded { device, photo } => {
                 Event::PhotoAdded { id: device.to_string(), photo_id: photo.id }
             }
+            NodeEvent::Call { device, call } => {
+                Event::CallChanged { id: device.to_string(), call_id: call.id }
+            }
         }
     }
 }
@@ -926,6 +974,9 @@ pub trait Platform: Send + Sync {
     /// A PC asked for a photo announced with `photo_taken`: open it, or
     /// `null` when it's gone.
     fn open_photo(&self, id: String) -> Option<FileToSend>;
+    /// A PC asked to answer, decline or silence call `id` (the call in
+    /// progress). False if the phone couldn't.
+    fn call_command(&self, id: String, command: CallCommand) -> bool;
 }
 
 /// Encrypts the device key at rest (Android: a Keystore key).
@@ -987,6 +1038,14 @@ impl core::Platform for PlatformAdapter {
         } else {
             Err("the clipboard rejected it".into())
         }
+    }
+    fn call_command(&self, id: &str, command: core::CallCommand) -> Result<(), String> {
+        let command = match command {
+            core::CallCommand::Answer => CallCommand::Answer,
+            core::CallCommand::Decline => CallCommand::Decline,
+            core::CallCommand::Silence => CallCommand::Silence,
+        };
+        if self.0.call_command(id.to_owned(), command) { Ok(()) } else { Err("the phone couldn't".into()) }
     }
     fn open_photo(&self, id: &str) -> Result<core::OutgoingFile, String> {
         let file = self.0.open_photo(id.to_owned()).ok_or("it's gone")?;
@@ -1285,6 +1344,27 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.open_link(id, url).await?) }).await
+    }
+
+    /// A call on this phone rang, was answered or ended: tells the PCs that
+    /// show calls (and are allowed them), now and when they connect during it.
+    pub async fn call_changed(&self, call: Call) -> Result<()> {
+        let node = self.node.clone();
+        let call = core::CallState {
+            id: call.id,
+            state: match call.state {
+                CallPhase::Ringing => "ringing",
+                CallPhase::Active => "active",
+                CallPhase::Ended => "ended",
+            }
+            .into(),
+            incoming: call.incoming,
+            number: call.number,
+            name: call.name,
+            photo: call.photo,
+            missed: call.missed,
+        };
+        self.run(async move { Ok(node.call_changed(call).await?) }).await
     }
 
     /// A photo or screenshot just appeared on this phone: tells the PCs

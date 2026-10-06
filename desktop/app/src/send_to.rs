@@ -255,6 +255,7 @@ fn failed(title: &str, body: &str) {
         reply: None,
         silent: false,
         progress: None,
+        call: false,
     });
 }
 
@@ -296,6 +297,7 @@ fn update(map: &mut HashMap<String, Tracked>, transfer: &Transfer) {
         reply: None,
         silent: false,
         progress: None,
+        call: false,
     };
     match &transfer.state {
         TransferState::Waiting | TransferState::Running => {

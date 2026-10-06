@@ -99,6 +99,7 @@ pub fn on_event(event: &NodeEvent) {
         reply: None,
         silent: false,
         progress: None,
+        call: false,
     });
 }
 

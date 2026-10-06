@@ -12,6 +12,7 @@ import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.media.PhoneMedia
 import app.nectarlink.android.photos.RecentPhotos
+import app.nectarlink.core.CallCommand
 import app.nectarlink.core.FileToSend
 import app.nectarlink.core.MediaAction
 import app.nectarlink.core.NotificationFailure
@@ -27,6 +28,8 @@ internal class PhonePlatform(
     private val media: PhoneMedia,
     /** Shows a link a PC sent: (PC's ID, link) → shown. */
     private val onLink: (String, String) -> Boolean,
+    /** Answers, declines or silences a call: (call ID, command) → done. */
+    private val onCall: (String, CallCommand) -> Boolean,
 ) : Platform {
     private val context = context.applicationContext
 
@@ -45,6 +48,8 @@ internal class PhonePlatform(
     override fun openLink(fromId: String, url: String): Boolean = onLink(fromId, url)
 
     override fun openPhoto(id: String): FileToSend? = RecentPhotos.open(context, id)
+
+    override fun callCommand(id: String, command: CallCommand): Boolean = onCall(id, command)
 
     override fun dismissNotification(key: String) {
         val listener = NotificationListener.instance ?: throw NotificationFailure.Unsupported()

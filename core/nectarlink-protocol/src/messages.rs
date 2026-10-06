@@ -43,6 +43,8 @@ pub mod types {
     pub const PHOTOS_NEW: &str = "photos.new";
     pub const PHOTOS_GET: &str = "photos.get";
     pub const PHOTOS_SENDING: &str = "photos.sending";
+    pub const CALL_STATE: &str = "call.state";
+    pub const CALL_ACTION: &str = "call.action";
 }
 
 /// What kind of device this is.
@@ -456,6 +458,88 @@ pub struct PcPower {
 /// The longest link sent, in bytes.
 pub const LINK_MAX_BYTES: usize = 4096;
 
+// ---- Calls (docs/protocol/calls.md) ----
+
+pub mod calls {
+    /// Offered by phones that report their calls.
+    pub const STATE: &str = "call.state";
+    /// Offered by phones that answer and decline calls when a PC asks.
+    pub const CONTROL: &str = "call.control";
+    /// Offered by PCs that show calls.
+    pub const SHOW: &str = "call.show";
+    /// A caller's photo: a JPEG of at most this many bytes.
+    pub const MAX_PHOTO_BYTES: usize = 64 * 1024;
+    pub const MAX_ID_BYTES: usize = 64;
+    pub const MAX_TEXT_BYTES: usize = 256;
+
+    pub const RINGING: &str = "ringing";
+    pub const ACTIVE: &str = "active";
+    pub const ENDED: &str = "ended";
+
+    pub const ANSWER: &str = "answer";
+    pub const DECLINE: &str = "decline";
+    pub const SILENCE: &str = "silence";
+}
+
+/// Body of `call.state`: a call on the phone started ringing, was
+/// answered, or ended.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallState {
+    /// The phone's ID for this call, the same in each of its messages.
+    pub id: String,
+    /// `ringing`, `active` or `ended`.
+    pub state: String,
+    /// Incoming (false: the phone's user made the call).
+    #[serde(default = "yes")]
+    pub incoming: bool,
+    /// The caller's number, when the phone knows it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number: Option<String>,
+    /// The contact's name, when the number is a contact.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// The contact's photo (JPEG), with `ringing` only.
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    pub photo: Option<Vec<u8>>,
+    /// With `ended`: it rang and nobody answered.
+    #[serde(default)]
+    pub missed: bool,
+}
+
+fn yes() -> bool {
+    true
+}
+
+/// Never prints the number, name or photo (protocol v0 §11).
+impl std::fmt::Debug for CallState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CallState")
+            .field("id", &self.id)
+            .field("state", &self.state)
+            .field("incoming", &self.incoming)
+            .field("missed", &self.missed)
+            .finish_non_exhaustive()
+    }
+}
+
+impl CallState {
+    pub fn is_valid(&self) -> bool {
+        let text_ok = |t: &Option<String>| t.as_ref().is_none_or(|t| t.len() <= calls::MAX_TEXT_BYTES);
+        (1..=calls::MAX_ID_BYTES).contains(&self.id.len())
+            && [calls::RINGING, calls::ACTIVE, calls::ENDED].contains(&self.state.as_str())
+            && text_ok(&self.number)
+            && text_ok(&self.name)
+            && self.photo.as_ref().is_none_or(|p| p.len() <= calls::MAX_PHOTO_BYTES)
+    }
+}
+
+/// Body of `call.action`: answer, decline or silence a ringing call.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallAction {
+    pub id: String,
+    pub action: String,
+}
+
 // ---- Photos (docs/protocol/photos.md) ----
 
 pub mod photos {
@@ -842,6 +926,29 @@ mod tests {
         let env = Envelope::new("x", &plain).unwrap();
         assert!(!format!("{:?}", env.b).contains("folder"));
         assert!(!format!("{:?}", offer("Secret")).contains("Secret"));
+    }
+
+    #[test]
+    fn calls_are_validated() {
+        let call = CallState {
+            id: "1".into(),
+            state: calls::RINGING.into(),
+            incoming: true,
+            number: Some("+1 555 0100".into()),
+            name: Some("Sam".into()),
+            photo: Some(vec![0xff, 0xd8]),
+            missed: false,
+        };
+        assert!(call.is_valid());
+        let shown = format!("{call:?}");
+        assert!(!shown.contains("555") && !shown.contains("Sam"), "{shown}");
+        assert!(!CallState { state: "on hold".into(), ..call.clone() }.is_valid());
+        assert!(!CallState { id: String::new(), ..call.clone() }.is_valid());
+        assert!(!CallState { photo: Some(vec![0; calls::MAX_PHOTO_BYTES + 1]), ..call.clone() }.is_valid());
+        // Missing fields take their defaults: incoming, not missed.
+        let env = Envelope::new("x", &CallState { number: None, name: None, photo: None, ..call }).unwrap();
+        let back: CallState = env.body().unwrap();
+        assert!(back.incoming && !back.missed && back.number.is_none());
     }
 
     #[test]

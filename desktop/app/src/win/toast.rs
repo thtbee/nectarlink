@@ -72,6 +72,9 @@ pub struct Toast {
     pub silent: bool,
     /// A progress bar, updated in place with [`update_progress`].
     pub progress: Option<Progress>,
+    /// An incoming call: stays up and rings until answered or removed, with
+    /// the icon (the caller's photo) in a circle.
+    pub call: bool,
 }
 
 /// A toast's progress bar.
@@ -379,9 +382,17 @@ fn escape(text: &str) -> String {
     out
 }
 
+/// On a call toast, the actions shown as Answer (green) and Decline (red).
+pub const CALL_ANSWER: &str = "answer";
+pub const CALL_DECLINE: &str = "decline";
+
 /// The toast's XML (Windows toast schema).
 fn toast_xml(toast: &Toast) -> String {
-    let mut xml = String::from(r#"<toast launch="open"><visual><binding template="ToastGeneric">"#);
+    let mut xml = String::from(if toast.call {
+        r#"<toast launch="open" scenario="incomingCall" useButtonStyle="true"><visual><binding template="ToastGeneric">"#
+    } else {
+        r#"<toast launch="open"><visual><binding template="ToastGeneric">"#
+    });
     xml.push_str(&format!(r#"<text hint-maxLines="1">{}</text>"#, escape(&toast.title)));
     if !toast.body.is_empty() {
         xml.push_str(&format!("<text>{}</text>", escape(&toast.body)));
@@ -396,8 +407,9 @@ fn toast_xml(toast: &Toast) -> String {
         ));
     }
     if let Some(icon) = &toast.icon {
+        let crop = if toast.call { r#" hint-crop="circle""# } else { "" };
         xml.push_str(&format!(
-            r#"<image placement="appLogoOverride" src="{}"/>"#,
+            r#"<image placement="appLogoOverride"{crop} src="{}"/>"#,
             escape(&crate::icons::file_url(icon))
         ));
     }
@@ -417,12 +429,24 @@ fn toast_xml(toast: &Toast) -> String {
         // Windows shows at most five buttons, the send button included.
         let room = 5 - usize::from(toast.reply.is_some());
         for (id, label) in toast.actions.iter().take(room) {
-            xml.push_str(&format!(r#"<action content="{}" arguments="a:{}"/>"#, escape(label), escape(id)));
+            // On a call: Answer green, Decline red.
+            let style = match (toast.call, id.as_str()) {
+                (true, CALL_ANSWER) => r#" hint-buttonStyle="Success""#,
+                (true, CALL_DECLINE) => r#" hint-buttonStyle="Critical""#,
+                _ => "",
+            };
+            xml.push_str(&format!(
+                r#"<action content="{}" arguments="a:{}"{style}/>"#,
+                escape(label),
+                escape(id)
+            ));
         }
         xml.push_str("</actions>");
     }
     if toast.silent {
         xml.push_str(r#"<audio silent="true"/>"#);
+    } else if toast.call {
+        xml.push_str(r#"<audio src="ms-winsoundevent:Notification.Looping.Call" loop="true"/>"#);
     }
     xml.push_str("</toast>");
     xml
@@ -445,6 +469,7 @@ mod tests {
             reply: Some(("r".into(), "Reply".into())),
             silent: true,
             progress: None,
+            call: false,
         }
     }
 
@@ -459,6 +484,21 @@ mod tests {
         assert_eq!(xml.matches("<action ").count(), 5, "five buttons at most");
         assert!(xml.ends_with(r#"<audio silent="true"/></toast>"#));
         // Windows parses it.
+        XmlDocument::new().unwrap().LoadXml(&HSTRING::from(xml)).expect("well-formed XML");
+    }
+
+    #[test]
+    fn calls_ring_until_handled() {
+        let actions = vec![(CALL_ANSWER.into(), "Answer".into()), (CALL_DECLINE.into(), "Decline".into())];
+        let xml = toast_xml(&Toast { call: true, silent: false, reply: None, actions, ..toast() });
+        assert!(
+            xml.starts_with(r#"<toast launch="open" scenario="incomingCall" useButtonStyle="true">"#),
+            "{xml}"
+        );
+        assert!(xml.contains(r#"arguments="a:answer" hint-buttonStyle="Success""#), "{xml}");
+        assert!(xml.contains(r#"arguments="a:decline" hint-buttonStyle="Critical""#), "{xml}");
+        assert!(xml.contains(r#"placement="appLogoOverride" hint-crop="circle""#), "{xml}");
+        assert!(xml.contains(r#"Notification.Looping.Call" loop="true""#), "{xml}");
         XmlDocument::new().unwrap().LoadXml(&HSTRING::from(xml)).expect("well-formed XML");
     }
 
