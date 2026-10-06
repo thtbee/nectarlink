@@ -94,6 +94,8 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     let host = host();
     let mut config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
     config.downloads_dir = Some(downloads_dir());
+    // This PC's own players, for phones (crate::win::media_sessions).
+    config.capabilities = vec!["media.control".into()];
     let node = match Node::start(config, platform).await {
         Ok(node) => node,
         Err(e) => {
@@ -136,6 +138,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         match events.recv().await {
             Ok(event) => {
                 crate::notifications::apply(&event);
+                crate::media::on_event(&event);
                 crate::notifications::update_toasts(&event);
                 crate::clipboard::on_event(&event);
                 crate::transfers::on_event(&event);

@@ -22,6 +22,8 @@ Item {
         messages: qsTr("Messages"),
         calls: qsTr("Calls"),
         clipboard: qsTr("Clipboard"),
+        files: qsTr("Files"),
+        media: qsTr("Media playing on either device"),
         photos: qsTr("Photos"),
         pc_actions: qsTr("Lock and sleep this PC"),
         remote_files: qsTr("Browse this PC's files while away")

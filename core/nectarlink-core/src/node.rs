@@ -20,8 +20,8 @@ use iroh_mdns_address_lookup::{DiscoveryEvent, MdnsAddressLookup};
 use nectarlink_protocol::{
     ALPN_PAIR, ALPN_SESSION, DeviceId, Envelope, ErrorCode,
     messages::{
-        Battery, ClipSet, DeviceInfo, HelloUpdate, Notification, NotifyAction, NotifyKey, PowerLevel, Ring,
-        types,
+        Battery, ClipSet, DeviceInfo, HelloUpdate, MediaCommand, MediaPlayer, Notification, NotifyAction,
+        NotifyKey, PowerLevel, Ring, types,
     },
     pairing::PairingUri,
 };
@@ -54,7 +54,7 @@ const IDLE_TIMEOUT: Duration = Duration::from_secs(8);
 
 /// Capabilities every build offers.
 const BASE_CAPABILITIES: &[&str] =
-    &["core.ping", "device.battery", "device.ring", "files.transfer", "clip.image"];
+    &["core.ping", "device.battery", "device.ring", "files.transfer", "clip.image", "media.remote"];
 
 /// This device's mutable description, sent to peers.
 #[derive(Debug, Clone)]
@@ -103,13 +103,15 @@ pub(crate) struct Shared {
     memory: MemoryLookup,
     /// This device's notifications, when it mirrors them (phones).
     pub notifications: Feed,
+    /// This device's media players (docs/protocol/media.md).
+    pub players: crate::media::Players,
     pub data_dir: std::path::PathBuf,
     /// Where received files go.
     pub downloads_dir: std::path::PathBuf,
     /// Running transfers, to cancel them.
     transfers: Mutex<HashMap<String, CancellationToken>>,
     /// The node's runtime, for work started from non-async callers.
-    runtime: tokio::runtime::Handle,
+    pub(crate) runtime: tokio::runtime::Handle,
 }
 
 impl std::fmt::Debug for Shared {
@@ -337,6 +339,7 @@ impl Shared {
                 let _ = s.send(env).await;
             }
             shared.send_notification_snapshot(&s).await;
+            shared.send_media_state(&s).await;
         });
         Some(session)
     }
@@ -575,7 +578,7 @@ impl Node {
                 app_version: config.app_version.clone(),
                 device: config.device.clone(),
                 power: config.power,
-                extra_capabilities: Vec::new(),
+                extra_capabilities: config.capabilities.clone(),
                 battery: None,
             }),
             pairing: PairingState::default(),
@@ -589,6 +592,7 @@ impl Node {
             away_mode: config.away_mode,
             memory,
             notifications: Feed::default(),
+            players: Default::default(),
             data_dir: config.data_dir.clone(),
             downloads_dir: config.downloads_dir.clone().unwrap_or_else(|| config.data_dir.join("received")),
             transfers: Mutex::new(HashMap::new()),
@@ -797,6 +801,9 @@ impl Node {
         if toggle == notifications::TOGGLE {
             self.notifications_toggled(peer, enabled);
         }
+        if toggle == crate::media::TOGGLE {
+            self.shared.media_toggled(peer, enabled);
+        }
         Ok(())
     }
 
@@ -867,6 +874,32 @@ impl Node {
     pub async fn send_clipboard_image(&self, peer: DeviceId, mime: String, bytes: Vec<u8>) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::clipboard::send_image(&self.shared, &session, mime, bytes).await
+    }
+
+    // ---- Media (docs/protocol/media.md) ----
+
+    /// This device's media players changed (most relevant first); sent to
+    /// every connected device the user allows. Include each player's
+    /// artwork every time: the core sends it once per device and session.
+    pub async fn media_changed(&self, players: Vec<MediaPlayer>) {
+        self.shared.media_changed(players).await;
+    }
+
+    /// Runs a command on a paired device's media player.
+    pub async fn media_command(
+        &self,
+        peer: DeviceId,
+        player: String,
+        action: crate::MediaAction,
+        position: Option<u64>,
+    ) -> Result<()> {
+        if !self.shared.toggle_on(&peer, crate::media::TOGGLE) {
+            return Err(Error::Denied);
+        }
+        let command = MediaCommand { player, action: action.as_str().into(), position };
+        let env = Envelope::new(types::MEDIA_COMMAND, &command)?;
+        self.request(peer, env).await?.expect(types::OK)?;
+        Ok(())
     }
 
     // ---- Notifications (docs/protocol/notifications.md) ----

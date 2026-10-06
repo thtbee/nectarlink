@@ -84,6 +84,10 @@ place and tested; the user-facing features of Phase 1 come next.
   phone, share them from any app or pick them in Nectarlink. They land in `Downloads\Nectarlink` on the PC and
   `Download/Nectarlink` on the phone, with progress, cancelling, and transfers
   that pick up where they left off after a dropped connection.
+- **Media** both ways: what plays on the phone shows on the PC, in the app and
+  in Windows' own media flyout (so the keyboard's media keys work too), and
+  what plays on the PC shows in the phone's media controls, with artwork and
+  a seek bar.
 - **Capability matrix**: both apps compute which features work for a pair of
   devices and what would enable the rest, so the interface never offers
   something that can't work.
@@ -95,8 +99,7 @@ place and tested; the user-facing features of Phase 1 come next.
   connection service, and an identity key protected by the Android Keystore.
 - **Command-line client** for development and testing (`nectarlink`).
 
-**Next (Phase 1)**: media controls, notification filters and history, and a
-Windows installer. Mirroring, messages, calls and the other
+**Next (Phase 1)**: notification filters and history, and a Windows installer. Mirroring, messages, calls and the other
 features in the plan follow in later phases.
 
 ## Screenshots

@@ -108,6 +108,43 @@ pub fn encode_png(bitmap: &Bitmap) -> Result<Vec<u8>> {
     })
 }
 
+/// Scaled down (never up) so neither side is longer than `max`, averaging
+/// the pixels each new one covers.
+pub fn scale_to(bitmap: &Bitmap, max: u32) -> Bitmap {
+    let longest = bitmap.width.max(bitmap.height);
+    if longest <= max || longest == 0 {
+        return bitmap.clone();
+    }
+    let scale = f64::from(max) / f64::from(longest);
+    let width = ((f64::from(bitmap.width) * scale).round() as u32).max(1);
+    let height = ((f64::from(bitmap.height) * scale).round() as u32).max(1);
+    let mut bgra = Vec::with_capacity((width * height * 4) as usize);
+    for y in 0..height {
+        let (y0, y1) = (
+            y * bitmap.height / height,
+            ((y + 1) * bitmap.height / height).max(y * bitmap.height / height + 1),
+        );
+        for x in 0..width {
+            let (x0, x1) = (
+                x * bitmap.width / width,
+                ((x + 1) * bitmap.width / width).max(x * bitmap.width / width + 1),
+            );
+            let mut sum = [0u32; 4];
+            for sy in y0..y1 {
+                for sx in x0..x1 {
+                    let i = ((sy * bitmap.width + sx) * 4) as usize;
+                    for (total, &value) in sum.iter_mut().zip(&bitmap.bgra[i..i + 4]) {
+                        *total += u32::from(value);
+                    }
+                }
+            }
+            let n = (y1 - y0) * (x1 - x0);
+            bgra.extend(sum.map(|s| (s / n) as u8));
+        }
+    }
+    Bitmap { width, height, bgra }
+}
+
 /// A device-independent bitmap (`CF_DIB` / `CF_DIBV5`) as a BMP file, which
 /// WIC can decode: the DIB with a file header in front.
 pub fn bmp_from_dib(dib: &[u8]) -> Option<Vec<u8>> {
@@ -193,6 +230,19 @@ mod tests {
         let png = encode_png(&bitmap).unwrap();
         assert_eq!(&png[1..4], b"PNG");
         assert_eq!(decode(&png).unwrap(), bitmap);
+    }
+
+    #[test]
+    fn large_pictures_scale_down_evenly() {
+        let big = Bitmap { width: 400, height: 200, bgra: [10, 20, 30, 255].repeat(400 * 200) };
+        let small = scale_to(&big, 100);
+        assert_eq!((small.width, small.height), (100, 50));
+        assert_eq!(&small.bgra[..4], &[10, 20, 30, 255]);
+        assert_eq!(scale_to(&small, 100), small, "never scaled up");
+        // A checkerboard averages to grey.
+        let checker = checker(4, 4);
+        let half = scale_to(&checker, 2);
+        assert_eq!(half.bgra.len(), 2 * 2 * 4);
     }
 
     #[test]

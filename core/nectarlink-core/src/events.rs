@@ -3,7 +3,7 @@
 
 use nectarlink_protocol::{
     DeviceId,
-    messages::{Battery, DeviceInfo, Notification, PowerLevel},
+    messages::{Battery, DeviceInfo, MediaPlayer, Notification, PowerLevel},
 };
 
 use crate::{features::CapabilityMatrix, transfer::Transfer};
@@ -121,4 +121,11 @@ pub enum NodeEvent {
     },
     /// A file transfer started, progressed or finished.
     Transfer(Transfer),
+    /// A device's media players changed (all of them; empty when nothing
+    /// plays there, or the user turned media off for it). Artwork is
+    /// attached when it's new for this session; keep it by `art_key`.
+    MediaChanged {
+        device: DeviceId,
+        players: Vec<MediaPlayer>,
+    },
 }

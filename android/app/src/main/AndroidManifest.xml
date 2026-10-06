@@ -86,6 +86,11 @@
             android:name=".files.TransferNotifications$CancelReceiver"
             android:exported="false" />
 
+        <!-- The PC media notification's buttons (Android 12 and earlier). -->
+        <receiver
+            android:name=".media.PcMedia$CommandReceiver"
+            android:exported="false" />
+
         <!-- Opening received files on Android 8–9 (later versions use MediaStore),
              and images from a PC on the clipboard. -->
         <provider

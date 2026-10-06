@@ -3,6 +3,7 @@ use std::{fmt, path::PathBuf};
 
 use nectarlink_protocol::messages::{DeviceInfo, PowerLevel};
 
+use crate::media::{MediaAction, MediaError};
 use crate::{identity::KeyProtector, notifications::NotificationError};
 
 /// Configuration for starting a [`Node`](crate::Node).
@@ -30,6 +31,9 @@ pub struct NodeConfig {
     /// Where received files go once complete. `None`: a `received` folder
     /// in `data_dir`.
     pub downloads_dir: Option<PathBuf>,
+    /// Capabilities this device offers beyond the ones every build does
+    /// (docs/protocol/capabilities.md), e.g. `media.control`.
+    pub capabilities: Vec<String>,
 }
 
 impl NodeConfig {
@@ -44,6 +48,7 @@ impl NodeConfig {
             port: 0,
             key_protector: None,
             downloads_dir: None,
+            capabilities: Vec::new(),
         }
     }
 }
@@ -98,6 +103,17 @@ pub trait Platform: Send + Sync + 'static {
     /// `mime` is `image/png` or `image/jpeg`.
     fn set_clipboard_image(&self, _mime: &str, _bytes: &[u8]) -> Result<(), String> {
         Err("this device has no clipboard".into())
+    }
+
+    /// Run a command on one of this device's media players (a paired device
+    /// asked); `position` is set for [`MediaAction::Seek`].
+    fn media_command(
+        &self,
+        _player: &str,
+        _action: MediaAction,
+        _position: Option<u64>,
+    ) -> Result<(), MediaError> {
+        Err(MediaError::Unsupported)
     }
 }
 

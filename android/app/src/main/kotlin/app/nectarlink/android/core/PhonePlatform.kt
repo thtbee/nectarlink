@@ -10,6 +10,8 @@ import android.os.Build
 import android.os.Bundle
 import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.android.notifications.NotificationListener
+import app.nectarlink.android.media.PhoneMedia
+import app.nectarlink.core.MediaAction
 import app.nectarlink.core.NotificationFailure
 import app.nectarlink.core.Platform
 
@@ -17,7 +19,11 @@ import app.nectarlink.core.Platform
  * What the core asks of the phone: ring it, and act on its notifications
  * for a PC (dismiss, reply, run an action).
  */
-internal class PhonePlatform(context: Context, private val ringer: Ringer) : Platform {
+internal class PhonePlatform(
+    context: Context,
+    private val ringer: Ringer,
+    private val media: PhoneMedia,
+) : Platform {
     private val context = context.applicationContext
 
     override fun startRinging() = ringer.startRinging()
@@ -28,6 +34,9 @@ internal class PhonePlatform(context: Context, private val ringer: Ringer) : Pla
 
     override fun setClipboardImage(mime: String, bytes: ByteArray): Boolean =
         PhoneClipboard.writeImage(context, mime, bytes)
+
+    override fun mediaCommand(player: String, action: MediaAction, position: ULong?) =
+        media.command(player, action, position)
 
     override fun dismissNotification(key: String) {
         val listener = NotificationListener.instance ?: throw NotificationFailure.Unsupported()

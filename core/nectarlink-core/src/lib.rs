@@ -12,6 +12,7 @@ mod error;
 mod events;
 pub mod features;
 mod identity;
+mod media;
 mod node;
 mod notifications;
 mod pairing;
@@ -26,13 +27,15 @@ pub use events::{
 };
 pub use features::{CapabilityMatrix, FeatureState};
 pub use identity::{KeyProtector, PlainKeyProtector, default_protector};
+pub use media::{MediaAction, MediaError};
 pub use nectarlink_protocol::messages::clip::{
     IMAGE_TYPES as CLIP_IMAGE_TYPES, MAX_IMAGE_BYTES as CLIP_MAX_IMAGE_BYTES,
 };
 pub use nectarlink_protocol::{
     DeviceId,
     messages::{
-        Battery, CLIP_MAX_BYTES, DeviceInfo, DeviceKind, Notification, NotificationAction, PowerLevel,
+        Battery, CLIP_MAX_BYTES, DeviceInfo, DeviceKind, MediaPlayer, Notification, NotificationAction,
+        PowerLevel,
     },
     pairing::PairingUri,
 };

@@ -10,6 +10,8 @@ pub mod app;
 #[allow(unsafe_code)]
 pub mod devices;
 #[allow(unsafe_code)]
+pub mod media;
+#[allow(unsafe_code)]
 pub mod native;
 #[allow(unsafe_code)]
 pub mod notifications;

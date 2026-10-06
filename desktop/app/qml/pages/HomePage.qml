@@ -480,6 +480,17 @@ Item {
             width: home.sideWidth
             spacing: Theme.gutter
 
+            // What plays on the phone (its first player).
+            Repeater {
+                model: MediaList
+                delegate: NowPlaying {
+                    required property int index
+                    width: home.sideWidth
+                    visible: deviceId === home.deviceId
+                             && MediaList.revision >= 0 && index === MediaList.firstFor(home.deviceId)
+                }
+            }
+
             Card {
                 width: parent.width
                 Column {

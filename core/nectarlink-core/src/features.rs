@@ -330,6 +330,7 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("calls", true),
     ("clipboard", true),
     ("files", true),
+    ("media", true),
     ("photos", true),
     ("pc_actions", true),
     // Browsing the PC's files from anywhere is opt-in.
@@ -656,13 +657,17 @@ pub const FEATURES: &[FeatureDef] = &[
     FeatureDef {
         id: "media.phone_control",
         group: FeatureGroup::Media,
-        requires: &[phone("media.control", Unlock::Permission(Permission::NotificationAccess))],
+        requires: &[
+            phone("media.control", Unlock::Permission(Permission::NotificationAccess)),
+            desktop("media.remote", UPDATE),
+            DeviceToggle("media"),
+        ],
         partial: None,
     },
     FeatureDef {
         id: "media.pc_control",
         group: FeatureGroup::Media,
-        requires: &[desktop("media.control", UPDATE)],
+        requires: &[desktop("media.control", UPDATE), phone("media.remote", UPDATE), DeviceToggle("media")],
         partial: None,
     },
     // Camera
@@ -732,10 +737,18 @@ mod tests {
         "mirror.capture",
         "mirror.audio.playback",
         "media.control",
+        "media.remote",
         "camera.stream",
     ];
-    const PC: &[&str] =
-        &["pc.power", "files.transfer", "files.browse", "media.control", "input.inject", "deck.actions"];
+    const PC: &[&str] = &[
+        "pc.power",
+        "files.transfer",
+        "files.browse",
+        "media.control",
+        "media.remote",
+        "input.inject",
+        "deck.actions",
+    ];
 
     fn pc() -> DeviceFacts {
         facts(DeviceKind::Laptop, "windows", "10.0.26200", PowerLevel::NotApplicable, PC)

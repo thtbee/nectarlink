@@ -59,6 +59,12 @@
     <string name="clip_share_label">Send to PC</string>
     <string name="channel_transfers">File transfers</string>
     <string name="channel_received">Received files</string>
+    <string name="channel_pc_media">Media on your PC</string>
+    <string name="media_on">%1$s on %2$s</string>
+    <string name="media_play">Play</string>
+    <string name="media_pause">Pause</string>
+    <string name="media_next">Next</string>
+    <string name="media_previous">Previous</string>
     <string name="action_send_files">Send files</string>
     <string name="transfers_title">Transfers</string>
     <string name="transfer_sending">Sending to %1$s</string>

@@ -9,10 +9,10 @@ use std::{
 };
 
 use nectarlink_core::{
-    Battery, DeviceInfo, DeviceKind, Direction, Error, FeatureState, FileSource, LinkState, Node, NodeConfig,
-    NodeEvent, Notification, NotificationAction, NotificationError, OutgoingFile, PairingEvent,
-    PairingFailure, PairingUri, PlainKeyProtector, Platform, PowerLevel, Transfer, TransferFailure,
-    TransferState,
+    Battery, DeviceInfo, DeviceKind, Direction, Error, FeatureState, FileSource, LinkState, MediaAction,
+    MediaError, MediaPlayer, Node, NodeConfig, NodeEvent, Notification, NotificationAction,
+    NotificationError, OutgoingFile, PairingEvent, PairingFailure, PairingUri, PlainKeyProtector, Platform,
+    PowerLevel, Transfer, TransferFailure, TransferState,
     features::{Effort, Upgrade, UpgradeAction},
 };
 use tempfile::TempDir;
@@ -27,6 +27,7 @@ struct RecordingPlatform {
     actions: Mutex<Vec<(String, String, Option<String>)>>,
     clipboard: Mutex<Vec<String>>,
     images: Mutex<Vec<(String, Vec<u8>)>>,
+    media: Mutex<Vec<(String, MediaAction, Option<u64>)>>,
 }
 
 impl Platform for RecordingPlatform {
@@ -58,6 +59,18 @@ impl Platform for RecordingPlatform {
     }
     fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
         self.images.lock().unwrap().push((mime.to_owned(), bytes.to_vec()));
+        Ok(())
+    }
+    fn media_command(
+        &self,
+        player: &str,
+        action: MediaAction,
+        position: Option<u64>,
+    ) -> Result<(), MediaError> {
+        if player == "gone" {
+            return Err(MediaError::NotFound);
+        }
+        self.media.lock().unwrap().push((player.to_owned(), action, position));
         Ok(())
     }
 }
@@ -95,6 +108,7 @@ async fn start_in(dir: TempDir, name: &'static str, kind: DeviceKind) -> TestDev
     config.lan_discovery = false;
     config.away_mode = false;
     config.key_protector = Some(Arc::new(PlainKeyProtector));
+    config.capabilities = vec!["media.control".into()];
     let platform = Arc::new(RecordingPlatform::default());
     let node = Node::start(config, platform.clone()).await.expect("node starts");
     let events = node.events();
@@ -638,6 +652,114 @@ async fn clipboard_images_go_both_ways_with_consent() {
     with_timeout("still connected", pc.node.send_clipboard(phone_id, "x".into()))
         .await
         .expect_err("still off");
+}
+
+fn player(id: &str, title: &str, art: Option<(&str, Vec<u8>)>) -> MediaPlayer {
+    MediaPlayer {
+        id: id.into(),
+        app: "Music".into(),
+        title: Some(title.into()),
+        artist: Some("Artist".into()),
+        album: None,
+        playing: true,
+        duration: Some(200_000),
+        position: Some(12_000),
+        actions: vec!["play".into(), "pause".into(), "next".into(), "seek".into(), "bogus".into()],
+        art_key: art.as_ref().map(|(key, _)| (*key).into()),
+        art: art.map(|(_, bytes)| bytes),
+    }
+}
+
+fn media_of(device: nectarlink_core::DeviceId) -> impl FnMut(&NodeEvent) -> Option<Vec<MediaPlayer>> {
+    move |e| match e {
+        NodeEvent::MediaChanged { device: d, players } if *d == device => Some(players.clone()),
+        _ => None,
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn media_is_shared_and_controlled_with_consent() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // The phone plays something; the PC gets it with its artwork.
+    let art = data(30_000, 7);
+    phone.node.media_changed(vec![player("com.music", "Song", Some(("a1", art.clone())))]).await;
+    let players = wait_for(&mut pc, "media", media_of(phone_id)).await;
+    assert_eq!(players.len(), 1);
+    assert_eq!(players[0].title.as_deref(), Some("Song"));
+    assert_eq!(players[0].art.as_deref(), Some(&art[..]));
+    assert_eq!(players[0].actions, ["play", "pause", "next", "seek"], "unknown actions are dropped");
+
+    // Artwork goes once per session; a new picture goes again.
+    phone.node.media_changed(vec![player("com.music", "Song", Some(("a1", art.clone())))]).await;
+    let players = wait_for(&mut pc, "same art", media_of(phone_id)).await;
+    assert_eq!((players[0].art_key.as_deref(), players[0].art.as_ref()), (Some("a1"), None));
+    phone.node.media_changed(vec![player("com.music", "Next song", Some(("a2", vec![9; 10])))]).await;
+    let players = wait_for(&mut pc, "new art", media_of(phone_id)).await;
+    assert_eq!(players[0].art.as_deref(), Some(&[9; 10][..]));
+
+    // The PC controls it.
+    with_timeout("pause", pc.node.media_command(phone_id, "com.music".into(), MediaAction::Pause, None))
+        .await
+        .expect("paused");
+    with_timeout(
+        "seek",
+        pc.node.media_command(phone_id, "com.music".into(), MediaAction::Seek, Some(60_000)),
+    )
+    .await
+    .expect("sought");
+    assert_eq!(
+        *phone.platform.media.lock().unwrap(),
+        [
+            ("com.music".to_owned(), MediaAction::Pause, None),
+            ("com.music".to_owned(), MediaAction::Seek, Some(60_000))
+        ]
+    );
+    let gone = pc.node.media_command(phone_id, "gone".into(), MediaAction::Play, None).await;
+    assert!(matches!(gone, Err(Error::NotFound)), "{gone:?}");
+    let no_position = pc.node.media_command(phone_id, "com.music".into(), MediaAction::Seek, None).await;
+    assert!(no_position.is_err(), "{no_position:?}");
+
+    // The PC turns media off for the phone: it's cleared there at once,
+    // and the phone stops taking its commands only if the phone turns it off.
+    pc.node.set_device_toggle(phone_id, "media", false).unwrap();
+    assert!(wait_for(&mut pc, "cleared", media_of(phone_id)).await.is_empty());
+    let off = pc.node.media_command(phone_id, "com.music".into(), MediaAction::Play, None).await;
+    assert!(matches!(off, Err(Error::Denied)), "{off:?}");
+    // On again: the PC asks for what plays now.
+    pc.node.set_device_toggle(phone_id, "media", true).unwrap();
+    let players = wait_for(&mut pc, "synced", media_of(phone_id)).await;
+    assert_eq!(players[0].title.as_deref(), Some("Next song"));
+
+    // The phone turns it off for the PC: the PC is told nothing plays, and
+    // commands are refused.
+    phone.node.set_device_toggle(pc_id, "media", false).unwrap();
+    assert!(wait_for(&mut pc, "cleared by the phone", media_of(phone_id)).await.is_empty());
+    let denied = pc.node.media_command(phone_id, "com.music".into(), MediaAction::Play, None).await;
+    assert!(matches!(denied, Err(Error::Denied)), "{denied:?}");
+
+    // And the other way: the PC's own players reach the phone once the
+    // phone allows media again.
+    phone.node.set_device_toggle(pc_id, "media", true).unwrap();
+    pc.node.media_changed(vec![player("Spotify.exe", "On the PC", None)]).await;
+    let players = wait_for(&mut phone, "pc media", |e| match e {
+        NodeEvent::MediaChanged { device, players } if *device == pc_id && !players.is_empty() => {
+            Some(players.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(players[0].title.as_deref(), Some("On the PC"));
+    with_timeout(
+        "phone controls the pc",
+        phone.node.media_command(pc_id, "Spotify.exe".into(), MediaAction::Next, None),
+    )
+    .await
+    .expect("next");
+    assert_eq!(pc.platform.media.lock().unwrap()[0], ("Spotify.exe".to_owned(), MediaAction::Next, None));
 }
 
 /// Deterministic, incompressible-looking test data.

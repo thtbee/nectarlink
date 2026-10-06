@@ -114,6 +114,8 @@ pub(crate) struct Session {
     rtt_ms: AtomicU32,
     /// Apps whose notification icon this peer already got.
     sent_icons: crate::notifications::SentIcons,
+    /// Artwork keys sent to this device (docs/protocol/media.md).
+    sent_art: crate::notifications::SentIcons,
     pub(crate) cancel: CancellationToken,
 }
 
@@ -154,6 +156,7 @@ impl Session {
             next_id: AtomicU64::new(1),
             rtt_ms: AtomicU32::new(initial_rtt),
             sent_icons: Default::default(),
+            sent_art: Default::default(),
             cancel: shared.cancel.child_token(),
         });
 
@@ -202,6 +205,10 @@ impl Session {
 
     pub(crate) fn sent_icons(&self) -> std::sync::MutexGuard<'_, std::collections::HashSet<String>> {
         self.sent_icons.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub(crate) fn sent_art(&self) -> std::sync::MutexGuard<'_, std::collections::HashSet<String>> {
+        self.sent_art.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     pub fn is_alive(&self) -> bool {
@@ -339,6 +346,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
             shared.forget_peer(&peer).await?;
         }
         t if t.starts_with("notify.") && crate::notifications::handle(shared, session, &env).await? => {}
+        t if t.starts_with("media.") && crate::media::handle(shared, session, &env).await? => {}
         t if t.starts_with("clip.") && crate::clipboard::handle(shared, session, &env).await? => {}
         other => {
             if env.id.is_some() {

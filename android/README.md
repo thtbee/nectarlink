@@ -45,6 +45,9 @@ sources; nothing generated is checked in except the theme tokens
 - `files/`: opening files to send, publishing received files to
   Download/Nectarlink (MediaStore on Android 10+), and the transfer
   notifications with progress and Cancel.
+- `media/`: this phone's media sessions for PCs (`PhoneMedia`, with
+  notification access), and a PC's player in Android's media controls
+  (`PcMedia`, a media session and its notification).
 - `service/ConnectionService`: a "connected device" foreground service that
   keeps the phone reachable and holds the Wi-Fi multicast lock local
   discovery needs.

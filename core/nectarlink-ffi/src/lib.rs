@@ -165,6 +165,105 @@ pub struct Notification {
     pub icon: Option<Vec<u8>>,
 }
 
+/// Something playing (or paused) on a device (docs/protocol/media.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct MediaPlayer {
+    /// Stable while the player exists (Android: the app's package name).
+    pub id: String,
+    /// User-visible app name.
+    pub app: String,
+    pub title: Option<String>,
+    pub artist: Option<String>,
+    pub album: Option<String>,
+    pub playing: bool,
+    /// Milliseconds.
+    pub duration: Option<u64>,
+    /// Milliseconds, now; it moves on in real time while `playing`.
+    pub position: Option<u64>,
+    pub actions: Vec<MediaAction>,
+    /// Identifies the artwork: the same key, the same picture.
+    pub art_key: Option<String>,
+    /// JPEG or PNG. Pass it every time; the core sends it once per device
+    /// and connection. Arrives the same way: keep it by `art_key`.
+    pub art: Option<Vec<u8>>,
+}
+
+/// Never prints what's playing (protocol v0 §11).
+impl std::fmt::Debug for MediaPlayer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MediaPlayer").field("id", &self.id).finish_non_exhaustive()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum MediaAction {
+    Play,
+    Pause,
+    Next,
+    Previous,
+    Seek,
+}
+
+impl From<MediaAction> for core::MediaAction {
+    fn from(a: MediaAction) -> Self {
+        match a {
+            MediaAction::Play => core::MediaAction::Play,
+            MediaAction::Pause => core::MediaAction::Pause,
+            MediaAction::Next => core::MediaAction::Next,
+            MediaAction::Previous => core::MediaAction::Previous,
+            MediaAction::Seek => core::MediaAction::Seek,
+        }
+    }
+}
+
+impl From<core::MediaAction> for MediaAction {
+    fn from(a: core::MediaAction) -> Self {
+        match a {
+            core::MediaAction::Play => MediaAction::Play,
+            core::MediaAction::Pause => MediaAction::Pause,
+            core::MediaAction::Next => MediaAction::Next,
+            core::MediaAction::Previous => MediaAction::Previous,
+            core::MediaAction::Seek => MediaAction::Seek,
+        }
+    }
+}
+
+impl From<MediaPlayer> for core::MediaPlayer {
+    fn from(p: MediaPlayer) -> Self {
+        core::MediaPlayer {
+            id: p.id,
+            app: p.app,
+            title: p.title,
+            artist: p.artist,
+            album: p.album,
+            playing: p.playing,
+            duration: p.duration,
+            position: p.position,
+            actions: p.actions.into_iter().map(|a| core::MediaAction::from(a).as_str().to_owned()).collect(),
+            art_key: p.art_key,
+            art: p.art,
+        }
+    }
+}
+
+impl From<core::MediaPlayer> for MediaPlayer {
+    fn from(p: core::MediaPlayer) -> Self {
+        MediaPlayer {
+            id: p.id,
+            app: p.app,
+            title: p.title,
+            artist: p.artist,
+            album: p.album,
+            playing: p.playing,
+            duration: p.duration,
+            position: p.position,
+            actions: p.actions.iter().filter_map(|a| core::MediaAction::parse(a)).map(Into::into).collect(),
+            art_key: p.art_key,
+            art: p.art,
+        }
+    }
+}
+
 /// Never prints content (protocol v0 §11).
 impl std::fmt::Debug for Notification {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -307,6 +406,12 @@ pub enum Event {
     /// A file transfer started, progressed or finished.
     Transfer {
         transfer: Transfer,
+    },
+    /// A device's media players (all of them; empty when nothing plays
+    /// there, or media is off for it).
+    MediaChanged {
+        id: String,
+        players: Vec<MediaPlayer>,
     },
 }
 
@@ -667,6 +772,10 @@ impl From<NodeEvent> for Event {
             }
             NodeEvent::ClipboardReceived { device } => Event::ClipboardReceived { id: device.to_string() },
             NodeEvent::Transfer(t) => Event::Transfer { transfer: t.into() },
+            NodeEvent::MediaChanged { device, players } => Event::MediaChanged {
+                id: device.to_string(),
+                players: players.into_iter().map(Into::into).collect(),
+            },
         }
     }
 }
@@ -707,6 +816,36 @@ impl From<NotificationFailure> for core::NotificationError {
     }
 }
 
+/// Why a media command didn't run.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum MediaFailure {
+    /// The player is gone.
+    #[error("no such player")]
+    NotFound,
+    /// The player can't do that (or media access was revoked).
+    #[error("not available")]
+    Unsupported,
+    /// `reason` is for logs.
+    #[error("failed: {reason}")]
+    Failed { reason: String },
+}
+
+impl From<uniffi::UnexpectedUniFFICallbackError> for MediaFailure {
+    fn from(e: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        MediaFailure::Failed { reason: e.reason }
+    }
+}
+
+impl From<MediaFailure> for core::MediaError {
+    fn from(f: MediaFailure) -> Self {
+        match f {
+            MediaFailure::NotFound => core::MediaError::NotFound,
+            MediaFailure::Unsupported => core::MediaError::Unsupported,
+            MediaFailure::Failed { reason } => core::MediaError::Failed(reason),
+        }
+    }
+}
+
 /// What the app does for the core: ring the phone, act on its
 /// notifications.
 #[uniffi::export(with_foreign)]
@@ -729,6 +868,14 @@ pub trait Platform: Send + Sync {
     /// A PC sent this image (`image/png` or `image/jpeg`): put it on the
     /// clipboard. False if that failed.
     fn set_clipboard_image(&self, mime: String, bytes: Vec<u8>) -> bool;
+    /// A paired device asked one of this phone's media players to do
+    /// something; `position` (milliseconds) is set for seeking.
+    fn media_command(
+        &self,
+        player: String,
+        action: MediaAction,
+        position: Option<u64>,
+    ) -> Result<(), MediaFailure>;
 }
 
 /// Encrypts the device key at rest (Android: a Keystore key).
@@ -772,6 +919,14 @@ impl core::Platform for PlatformAdapter {
     }
     fn set_clipboard(&self, text: &str) -> Result<(), String> {
         if self.0.set_clipboard(text.to_owned()) { Ok(()) } else { Err("the clipboard rejected it".into()) }
+    }
+    fn media_command(
+        &self,
+        player: &str,
+        action: core::MediaAction,
+        position: Option<u64>,
+    ) -> Result<(), core::MediaError> {
+        Ok(self.0.media_command(player.to_owned(), action.into(), position)?)
     }
     fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
         if self.0.set_clipboard_image(mime.to_owned(), bytes.to_vec()) {
@@ -995,6 +1150,29 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.send_clipboard_image(id, mime, bytes).await?) }).await
+    }
+
+    // ---- Media ----
+
+    /// This phone's media players changed (most relevant first).
+    pub async fn media_changed(&self, players: Vec<MediaPlayer>) {
+        let node = self.node.clone();
+        self.run(async move { node.media_changed(players.into_iter().map(Into::into).collect()).await })
+            .await;
+    }
+
+    /// Runs a command on a paired device's media player; `position`
+    /// (milliseconds) for seeking.
+    pub async fn media_command(
+        &self,
+        id: String,
+        player: String,
+        action: MediaAction,
+        position: Option<u64>,
+    ) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.media_command(id, player, action.into(), position).await?) }).await
     }
 
     // ---- Notifications ----

@@ -11,13 +11,13 @@ use std::{
 };
 
 use nectarlink_core::{
-    Battery, CapabilityMatrix, DeviceId, DeviceInfo, DiscoveredDevice, LinkState, NodeEvent, Notification,
-    PairedDevice, PairingEvent, PairingFailure, PowerLevel, Transfer, TransferState,
+    Battery, CapabilityMatrix, DeviceId, DeviceInfo, DiscoveredDevice, LinkState, MediaPlayer, NodeEvent,
+    Notification, PairedDevice, PairingEvent, PairingFailure, PowerLevel, Transfer, TransferState,
 };
 
 /// Which parts of the state changed, so listeners refresh only what they show.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Changes(u8);
+pub struct Changes(u16);
 
 impl Changes {
     pub const NONE: Changes = Changes(0);
@@ -29,6 +29,7 @@ impl Changes {
     pub const RINGING: Changes = Changes(1 << 5);
     pub const NOTIFICATIONS: Changes = Changes(1 << 6);
     pub const TRANSFERS: Changes = Changes(1 << 7);
+    pub const MEDIA: Changes = Changes(1 << 8);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
@@ -82,6 +83,17 @@ impl From<PairedDevice> for DeviceView {
             power: PowerLevel::Basic,
         }
     }
+}
+
+/// A player on a paired device (docs/protocol/media.md).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PlayerView {
+    pub device: DeviceId,
+    /// Without its artwork, which is in `art`.
+    pub player: MediaPlayer,
+    pub art: Option<PathBuf>,
+    /// When `player.position` was current.
+    pub at: SystemTime,
 }
 
 /// The pairing screen's state.
@@ -169,6 +181,8 @@ pub struct AppState {
     pub replies: HashMap<(DeviceId, String), Vec<SentReply>>,
     /// File transfers, newest first.
     pub transfers: Vec<TransferView>,
+    /// Media players on paired devices, each device's in its order.
+    pub media: Vec<PlayerView>,
 }
 
 impl AppState {
@@ -242,9 +256,16 @@ impl AppState {
                 if self.notifications.len() != notifications {
                     changes |= Changes::NOTIFICATIONS;
                 }
+                changes | self.set_media(*id, Vec::new())
+            }
+            NodeEvent::LinkChanged { device, link } => {
+                let mut changes = self.update_device(device, |d| d.link = link.clone());
+                // A device that comes back sends what plays then.
+                if matches!(link, LinkState::Offline { .. }) {
+                    changes |= self.set_media(*device, Vec::new());
+                }
                 changes
             }
-            NodeEvent::LinkChanged { device, link } => self.update_device(device, |d| d.link = link.clone()),
             NodeEvent::PeerInfoChanged { device, info } => {
                 self.update_device(device, |d| d.info = info.clone())
             }
@@ -305,7 +326,22 @@ impl AppState {
             // Feedback only (see crate::clipboard); nothing to keep.
             NodeEvent::ClipboardReceived { .. } => Changes::NONE,
             NodeEvent::Transfer(transfer) => self.update_transfer(transfer.clone(), Instant::now()),
+            // With artwork saved first (see crate::media).
+            NodeEvent::MediaChanged { .. } => Changes::NONE,
         }
+    }
+
+    /// Replaces a device's players.
+    pub fn set_media(&mut self, device: DeviceId, players: Vec<PlayerView>) -> Changes {
+        let at = self.media.iter().position(|p| p.device == device).unwrap_or(self.media.len());
+        let before: Vec<PlayerView> = self.media.iter().filter(|p| p.device == device).cloned().collect();
+        if before.is_empty() && players.is_empty() {
+            return Changes::NONE;
+        }
+        self.media.retain(|p| p.device != device);
+        let at = at.min(self.media.len());
+        self.media.splice(at..at, players);
+        Changes::MEDIA
     }
 
     /// Adds or updates a transfer, keeping a smoothed speed.

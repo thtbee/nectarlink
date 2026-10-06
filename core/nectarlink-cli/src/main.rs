@@ -10,8 +10,9 @@ use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use nectarlink_core::{
     Battery, ConnectionPath, DeviceId, DeviceInfo, DeviceKind, Direction, FeatureState, FileSource,
-    LinkState, Node, NodeConfig, NodeEvent, Notification, NotificationAction, NotificationError,
-    OutgoingFile, PairedDevice, PairingEvent, Platform, PowerLevel, TransferState,
+    LinkState, MediaAction, MediaError, MediaPlayer, Node, NodeConfig, NodeEvent, Notification,
+    NotificationAction, NotificationError, OutgoingFile, PairedDevice, PairingEvent, Platform, PowerLevel,
+    TransferState,
     features::{Effort, FEATURES, Role, UnsupportedReason, Upgrade, UpgradeAction},
 };
 use tokio::sync::broadcast::error::RecvError;
@@ -140,6 +141,35 @@ enum Command {
     },
     /// Show a notification on paired PCs as if this were a phone (use with
     /// --as-phone), then stay online to show what the PC does with it.
+    /// Control what plays on a paired device: play, pause, next, previous,
+    /// or seek with --position.
+    Media {
+        device: String,
+        #[arg(value_enum)]
+        action: MediaCommandArg,
+        /// The player (`run` prints them); default: the device's first.
+        #[arg(long)]
+        player: Option<String>,
+        /// Where to seek to, in seconds.
+        #[arg(long, required_if_eq("action", "seek"))]
+        position: Option<u64>,
+    },
+    /// Pretend to play a song and share it with paired devices, which can
+    /// control it; stays online until Ctrl+C.
+    Play {
+        title: String,
+        #[arg(long, default_value = "Test Artist")]
+        artist: String,
+        /// App name shown with it.
+        #[arg(long, default_value = "Music")]
+        app: String,
+        /// Length, in seconds.
+        #[arg(long, default_value_t = 215)]
+        length: u64,
+        /// Artwork (JPEG or PNG).
+        #[arg(long)]
+        art: Option<PathBuf>,
+    },
     Notify {
         title: String,
         text: String,
@@ -161,6 +191,31 @@ enum Power {
     Assist,
     Elevated,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum MediaCommandArg {
+    Play,
+    Pause,
+    Next,
+    Previous,
+    Seek,
+}
+
+impl From<MediaCommandArg> for MediaAction {
+    fn from(a: MediaCommandArg) -> Self {
+        match a {
+            MediaCommandArg::Play => MediaAction::Play,
+            MediaCommandArg::Pause => MediaAction::Pause,
+            MediaCommandArg::Next => MediaAction::Next,
+            MediaCommandArg::Previous => MediaAction::Previous,
+            MediaCommandArg::Seek => MediaAction::Seek,
+        }
+    }
+}
+
+/// Media commands from paired devices, for `play`.
+static MEDIA_COMMANDS: std::sync::OnceLock<tokio::sync::mpsc::UnboundedSender<(MediaAction, Option<u64>)>> =
+    std::sync::OnceLock::new();
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum OnOff {
@@ -189,6 +244,23 @@ impl Platform for TerminalPlatform {
         std::fs::write(&path, bytes).map_err(|e| e.to_string())?;
         println!("Clipboard image from a paired device ({} bytes): {}", bytes.len(), path.display());
         Ok(())
+    }
+    fn media_command(
+        &self,
+        player: &str,
+        action: MediaAction,
+        position: Option<u64>,
+    ) -> Result<(), MediaError> {
+        println!(
+            "A paired device asked {player} to {}{}",
+            action.as_str(),
+            match position {
+                Some(ms) => format!(" to {}", clock(ms)),
+                None => String::new(),
+            }
+        );
+        let sender = MEDIA_COMMANDS.get().ok_or(MediaError::NotFound)?;
+        sender.send((action, position)).map_err(|_| MediaError::NotFound)
     }
     fn dismiss_notification(&self, key: &str) -> Result<(), NotificationError> {
         println!("The PC dismissed {key}");
@@ -387,6 +459,24 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             println!("{name} is now {}", if on { "on" } else { "off" });
         }
         Command::Run => watch(node).await?,
+        Command::Media { device, action, player, position } => {
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            let player = match player {
+                Some(player) => player.clone(),
+                None => first_player(node, id).await?,
+            };
+            node.media_command(id, player.clone(), (*action).into(), position.map(|s| s * 1000))
+                .await
+                .context("media command failed")?;
+            println!("Done ({player}).");
+        }
+        Command::Play { title, artist, app, length, art } => {
+            let mut offers = cli.offers.clone();
+            offers.push("media.control".into());
+            node.update_power(node_power(cli), offers).await;
+            play(node, title, artist, app, *length, art.as_deref()).await?;
+        }
         Command::Notify { title, text, app, reply, silent } => {
             if !cli.as_phone {
                 bail!("notifications come from phones: add --as-phone");
@@ -514,6 +604,87 @@ async fn send_files(node: &Node, device: DeviceId, paths: &[PathBuf]) -> Result<
     }
 }
 
+/// "3:07".
+fn clock(ms: u64) -> String {
+    let s = ms / 1000;
+    format!("{}:{:02}", s / 60, s % 60)
+}
+
+/// The first player a device reports (it reports them when connecting).
+async fn first_player(node: &Node, device: DeviceId) -> Result<String> {
+    let mut events = node.events();
+    // Ask again in case the report came before we listened.
+    node.set_device_toggle(device, "media", true)?;
+    let wait = async {
+        loop {
+            if let Ok(NodeEvent::MediaChanged { device: d, players }) = events.recv().await
+                && d == device
+                && let Some(p) = players.first()
+            {
+                return p.id.clone();
+            }
+        }
+    };
+    tokio::time::timeout(Duration::from_secs(10), wait).await.context("nothing is playing on that device")
+}
+
+/// A pretend player that follows the commands it gets.
+async fn play(
+    node: &Node,
+    title: &str,
+    artist: &str,
+    app: &str,
+    length: u64,
+    art: Option<&std::path::Path>,
+) -> Result<()> {
+    let (sender, mut commands) = tokio::sync::mpsc::unbounded_channel();
+    let _ = MEDIA_COMMANDS.set(sender);
+    let art = art.map(std::fs::read).transpose().context("can't read the artwork")?;
+    let art_key = art.as_ref().map(|a| format!("{:x}", a.len()));
+    let length = length * 1000;
+    let mut track = 1u32;
+    let mut position = 0u64;
+    let mut playing = true;
+    let mut since = std::time::Instant::now();
+    let player = |track: u32, position: u64, playing: bool| MediaPlayer {
+        id: "cli.player".into(),
+        app: app.into(),
+        title: Some(if track == 1 { title.to_owned() } else { format!("{title} ({track})") }),
+        artist: Some(artist.into()),
+        album: Some("Nectarlink Test Album".into()),
+        playing,
+        duration: Some(length),
+        position: Some(position),
+        actions: ["play", "pause", "next", "previous", "seek"].map(String::from).to_vec(),
+        art_key: art_key.clone(),
+        art: art.clone(),
+    };
+    node.media_changed(vec![player(track, position, playing)]).await;
+    println!("Playing \"{title}\". Paired devices can control it; Ctrl+C to stop.");
+    loop {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {
+                node.media_changed(Vec::new()).await;
+                return Ok(());
+            }
+            Some((action, to)) = commands.recv() => {
+                if playing {
+                    position = (position + since.elapsed().as_millis() as u64).min(length);
+                }
+                since = std::time::Instant::now();
+                match action {
+                    MediaAction::Play => playing = true,
+                    MediaAction::Pause => playing = false,
+                    MediaAction::Next => { track += 1; position = 0; }
+                    MediaAction::Previous => { track = track.saturating_sub(1).max(1); position = 0; }
+                    MediaAction::Seek => position = to.unwrap_or(position).min(length),
+                }
+                node.media_changed(vec![player(track, position, playing)]).await;
+            }
+        }
+    }
+}
+
 async fn watch(node: &Node) -> Result<()> {
     println!("Online as {}. Press Ctrl+C to stop.", node.device_id());
     for d in node.paired_devices()? {
@@ -581,6 +752,25 @@ fn print_event(node: &Node, event: &NodeEvent) {
             println!("{}: a notification went away", name(device))
         }
         NodeEvent::ClipboardReceived { device } => println!("{}: sent its clipboard", name(device)),
+        NodeEvent::MediaChanged { device, players } if players.is_empty() => {
+            println!("{}: nothing playing", name(device));
+        }
+        NodeEvent::MediaChanged { device, players } => {
+            for p in players {
+                println!(
+                    "{}: {} {} – {} ({}, {} of {}{}) [player {}]",
+                    name(device),
+                    if p.playing { "▶" } else { "⏸" },
+                    p.title.as_deref().unwrap_or("?"),
+                    p.artist.as_deref().unwrap_or("?"),
+                    p.app,
+                    clock(p.position.unwrap_or(0)),
+                    clock(p.duration.unwrap_or(0)),
+                    if p.art.is_some() { ", with artwork" } else { "" },
+                    p.id,
+                );
+            }
+        }
         NodeEvent::Transfer(t) if t.direction == Direction::Incoming => match &t.state {
             TransferState::Done { saved } => {
                 for path in saved {

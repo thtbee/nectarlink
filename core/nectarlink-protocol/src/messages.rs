@@ -35,6 +35,9 @@ pub mod types {
     pub const CLIP_SET: &str = "clip.set";
     pub const NOTIFY_DISMISS: &str = "notify.dismiss";
     pub const NOTIFY_ACTION: &str = "notify.action";
+    pub const MEDIA_STATE: &str = "media.state";
+    pub const MEDIA_SYNC: &str = "media.sync";
+    pub const MEDIA_COMMAND: &str = "media.command";
 }
 
 /// What kind of device this is.
@@ -315,6 +318,119 @@ impl std::fmt::Debug for NotifyAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NotifyAction").field("action", &self.action).finish_non_exhaustive()
     }
+}
+
+// ---- Media (docs/protocol/media.md) ----
+
+/// Limits from docs/protocol/media.md.
+pub mod media_limits {
+    pub const PLAYERS: usize = 8;
+    pub const ID_BYTES: usize = 256;
+    pub const TEXT_CHARS: usize = 256;
+    pub const ART_KEY_BYTES: usize = 64;
+    pub const ART_BYTES: usize = 256 * 1024;
+}
+
+/// What a player can be asked to do (`MediaPlayer::actions`,
+/// `MediaCommand::action`).
+pub mod media_actions {
+    pub const PLAY: &str = "play";
+    pub const PAUSE: &str = "pause";
+    pub const NEXT: &str = "next";
+    pub const PREVIOUS: &str = "previous";
+    pub const SEEK: &str = "seek";
+    pub const ALL: &[&str] = &[PLAY, PAUSE, NEXT, PREVIOUS, SEEK];
+}
+
+/// Something playing (or paused) on a device.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MediaPlayer {
+    /// The device's ID for the player, stable while it exists (e.g. the
+    /// app's package name).
+    pub id: String,
+    /// User-visible app name.
+    pub app: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub artist: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub album: Option<String>,
+    #[serde(default)]
+    pub playing: bool,
+    /// Length, milliseconds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration: Option<u64>,
+    /// Position when this was sent, milliseconds; it moves on in real time
+    /// while `playing`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<u64>,
+    /// Commands it takes, from [`media_actions`].
+    #[serde(default)]
+    pub actions: Vec<String>,
+    /// Identifies the artwork; the same key means the same picture.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub art_key: Option<String>,
+    /// The artwork (JPEG or PNG), sent once per key and session.
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    pub art: Option<Vec<u8>>,
+}
+
+/// Never prints what's playing (protocol v0 §11).
+impl std::fmt::Debug for MediaPlayer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MediaPlayer")
+            .field("id", &self.id)
+            .field("playing", &self.playing)
+            .field("actions", &self.actions)
+            .finish_non_exhaustive()
+    }
+}
+
+impl MediaPlayer {
+    /// Applies the spec's limits. `None` if it can't be shown (no ID, or
+    /// nothing to show it by).
+    pub fn sanitized(mut self) -> Option<MediaPlayer> {
+        use media_limits::*;
+        if self.id.is_empty() || self.id.len() > ID_BYTES {
+            return None;
+        }
+        truncate_chars(&mut self.app, TEXT_CHARS);
+        self.title = clean_text(self.title, TEXT_CHARS);
+        self.artist = clean_text(self.artist, TEXT_CHARS);
+        self.album = clean_text(self.album, TEXT_CHARS);
+        if self.title.is_none() && self.app.trim().is_empty() {
+            return None;
+        }
+        self.actions.retain(|a| media_actions::ALL.contains(&a.as_str()));
+        self.actions.dedup();
+        if let (Some(position), Some(duration)) = (self.position, self.duration) {
+            self.position = Some(position.min(duration));
+        }
+        if self.art_key.as_ref().is_some_and(|k| k.is_empty() || k.len() > ART_KEY_BYTES) {
+            self.art_key = None;
+        }
+        if self.art_key.is_none() || self.art.as_ref().is_some_and(|a| a.is_empty() || a.len() > ART_BYTES) {
+            self.art = None;
+        }
+        Some(self)
+    }
+}
+
+/// Body of `media.state`: every player, most relevant first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MediaState {
+    pub players: Vec<MediaPlayer>,
+}
+
+/// Body of `media.command`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MediaCommand {
+    pub player: String,
+    pub action: String,
+    /// For `seek`: where to, milliseconds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub position: Option<u64>,
 }
 
 // ---- Files (docs/protocol/files.md) ----

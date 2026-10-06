@@ -102,6 +102,8 @@ data class CoreState(
         // Android shows its own "copied" confirmation.
         is Event.ClipboardReceived -> this
         is Event.Transfer -> copy(transfers = withTransfer(event.transfer))
+        // Shown in Android's media controls (see media/PcMedia).
+        is Event.MediaChanged -> this
     }
 
     private fun withTransfer(transfer: Transfer): List<Transfer> {

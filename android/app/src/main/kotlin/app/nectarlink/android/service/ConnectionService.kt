@@ -37,6 +37,7 @@ class ConnectionService : LifecycleService() {
         super.onCreate()
         createChannels(this)
         app.nectarlink.android.files.TransferNotifications.createChannels(this)
+        app.nectarlink.android.media.PcMedia.createChannel(this)
         val core = (application as NectarlinkApplication).core
         startInForeground(core.state.value)
         multicastLock = getSystemService(WifiManager::class.java)

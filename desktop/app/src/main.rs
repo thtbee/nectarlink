@@ -15,6 +15,7 @@ mod icons;
 mod launch;
 mod logging;
 mod mark;
+mod media;
 mod notifications;
 mod palette;
 mod qr;
@@ -35,7 +36,7 @@ use std::{
 };
 
 use cxx_qt_lib::{QGuiApplication, QQmlApplicationEngine, QString, QUrl};
-use nectarlink_core::Platform;
+use nectarlink_core::{MediaAction, MediaError, Platform};
 
 use crate::{
     launch::Request,
@@ -61,6 +62,14 @@ impl Platform for DesktopPlatform {
     }
     fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
         win::clipboard::write_image(mime, bytes)
+    }
+    fn media_command(
+        &self,
+        player: &str,
+        action: MediaAction,
+        position: Option<u64>,
+    ) -> Result<(), MediaError> {
+        win::media_sessions::command(player, action, position)
     }
 }
 
@@ -202,6 +211,8 @@ fn main() -> ExitCode {
     watch_network();
     start_toasts();
     clipboard::start();
+    win::smtc::start(media::on_flyout);
+    win::media_sessions::start(media::local_changed);
     send_to::set_enabled(settings::Settings::load(&data_dir).send_to_menu);
     // A test instance (own data folder) leaves the user's menu alone.
     if options.data_dir.is_none() {

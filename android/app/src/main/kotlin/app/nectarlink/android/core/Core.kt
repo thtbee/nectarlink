@@ -8,6 +8,8 @@ import android.util.Log
 import android.net.Uri
 import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.clipboard.PhoneClipboard
+import app.nectarlink.android.media.PcMedia
+import app.nectarlink.android.media.PhoneMedia
 import app.nectarlink.android.files.OutgoingFiles
 import app.nectarlink.android.files.ReceivedFiles
 import app.nectarlink.android.files.TransferNotifications
@@ -15,6 +17,7 @@ import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
+import app.nectarlink.core.Link
 import app.nectarlink.core.NectarlinkException
 import app.nectarlink.core.NectarlinkNode
 import app.nectarlink.core.NodeOptions
@@ -48,7 +51,16 @@ import kotlinx.coroutines.withContext
 class Core(context: Context, private val scope: CoroutineScope) : EventListener {
     private val context = context.applicationContext
     private val ringer = Ringer(this.context)
-    private val platform = PhonePlatform(this.context, ringer)
+    /** What plays on this phone, for PCs (needs notification access). */
+    private val phoneMedia = PhoneMedia(this.context) { players ->
+        notificationOps.trySend { it.mediaChanged(players) }
+    }
+    private val platform = PhonePlatform(this.context, ringer, phoneMedia)
+
+    /** What plays on the PCs, in Android's media controls. */
+    val pcMedia = PcMedia(this.context) { pc, player, action, position ->
+        command { it.mediaCommand(pc, player, action, position) }
+    }
     /**
      * Notification changes, in order: a removal must never overtake the post
      * it removes. Runs once the node is up.
@@ -128,6 +140,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      */
     fun notificationAccessChanged(granted: Boolean, showing: List<Notification>) {
         _state.update { it.copy(notificationAccess = granted) }
+        scope.launch(Dispatchers.Main) { if (granted) phoneMedia.start() else phoneMedia.stop() }
         notificationOps.trySend { node ->
             node.updatePower(PowerLevel.BASIC, capabilities(granted))
             node.notificationsReset(showing)
@@ -158,7 +171,15 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     override fun onEvent(event: Event) {
         _state.update { it.reduce(event) }
-        if (event is Event.Transfer) onTransfer(event.transfer)
+        when (event) {
+            is Event.Transfer -> onTransfer(event.transfer)
+            is Event.MediaChanged -> pcMedia.update(event.id, _state.value.nameOf(event.id).orEmpty(), event.players)
+            // A PC that's gone isn't playing for this phone anymore; it
+            // sends what plays when it's back.
+            is Event.LinkChanged -> if (event.link is Link.Offline) pcMedia.update(event.id, "", emptyList())
+            is Event.DeviceRemoved -> pcMedia.update(event.id, "", emptyList())
+            else -> {}
+        }
     }
 
     // ---- Files ----
@@ -253,7 +274,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     /** What this phone offers PCs (docs/protocol/capabilities.md). */
     private fun capabilities(notificationAccess: Boolean): List<String> =
-        CLIPBOARD_CAPABILITIES + if (notificationAccess) NOTIFICATION_CAPABILITIES else emptyList()
+        CLIPBOARD_CAPABILITIES + if (notificationAccess) NOTIFICATION_CAPABILITIES + MEDIA_CAPABILITIES else emptyList()
 
     // ---- Pairing ----
 
@@ -352,6 +373,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         const val TAG = "Nectarlink"
         /** Offered while notification access is granted (docs/protocol/capabilities.md). */
         val NOTIFICATION_CAPABILITIES = listOf("notify.mirror", "notify.reply")
+        /** Sharing this phone's players, which also needs notification access. */
+        val MEDIA_CAPABILITIES = listOf("media.control")
         /** Accepting the PC's clipboard, and sending this one when asked. */
         val CLIPBOARD_CAPABILITIES = listOf("clip.write", "clip.share")
     }
