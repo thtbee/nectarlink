@@ -11,6 +11,7 @@
 mod bridge;
 mod clipboard;
 mod core_host;
+mod doctor;
 mod icons;
 mod launch;
 mod links;

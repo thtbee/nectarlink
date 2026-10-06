@@ -60,6 +60,11 @@ pub mod qobject {
         /// Whether Windows shows this app's notifications.
         #[qproperty(bool, toasts_enabled)]
         #[qproperty(QString, version)]
+        /// The Connection Doctor's findings, as JSON: [{ id, outcome:
+        /// "ok" | "warn" | "fail", title, detail, fix? }].
+        #[qproperty(QString, doctor_checks)]
+        /// Checking, or fixing.
+        #[qproperty(bool, doctor_busy)]
         type AppController = super::AppControllerRust;
 
         /// Asks a paired device to ring (or stop).
@@ -96,6 +101,14 @@ pub mod qobject {
         #[cxx_name = "refreshToastsEnabled"]
         fn refresh_toasts_enabled(self: Pin<&mut AppController>);
 
+        /// Opens the Connection Doctor and checks the connection.
+        #[qinvokable]
+        fn run_doctor(self: Pin<&mut AppController>);
+        /// Runs one of the Doctor's fixes ("firewall", "network-settings",
+        /// "reconnect"), then checks again.
+        #[qinvokable]
+        fn doctor_fix(self: Pin<&mut AppController>, fix: &QString);
+
         /// The folder with the app's logs, as a file URL.
         #[qinvokable]
         fn logs_url(self: &AppController) -> QString;
@@ -109,6 +122,9 @@ pub mod qobject {
         /// The user chose Quit in the tray.
         #[qsignal]
         fn quit_requested(self: Pin<&mut AppController>);
+        /// Show the Connection Doctor.
+        #[qsignal]
+        fn doctor_requested(self: Pin<&mut AppController>);
     }
 
     impl cxx_qt::Threading for AppController {}
@@ -130,12 +146,45 @@ pub struct AppControllerRust {
     wallpaper_colors: QString,
     toasts_enabled: bool,
     version: QString,
+    doctor_checks: QString,
+    doctor_busy: bool,
     tray: Option<tray::Tray>,
 }
 
 /// The controller's thread handle, so other threads (second launch) can
 /// reach it.
 static CONTROLLER: OnceLock<Mutex<Option<CxxQtThread<qobject::AppController>>>> = OnceLock::new();
+
+/// Runs a Doctor fix (if any), then the checks, off the UI thread; the
+/// findings land in `doctor_checks`.
+fn diagnose_in_background(mut object: Pin<&mut qobject::AppController>, fix: Option<String>) {
+    if object.doctor_busy {
+        return;
+    }
+    object.as_mut().set_doctor_busy(true);
+    let qt = object.qt_thread();
+    let spawned = std::thread::Builder::new().name("doctor".into()).spawn(move || {
+        if let Some(fix) = fix {
+            crate::doctor::fix(&fix);
+            // A reconnect needs a moment to show.
+            if fix == "reconnect" {
+                std::thread::sleep(std::time::Duration::from_secs(3));
+            }
+        }
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_secs() as i64);
+        let checks = crate::doctor::diagnose(&crate::doctor::gather(), now);
+        let json = serde_json::to_string(&checks).unwrap_or_else(|_| "[]".into());
+        let _ = qt.queue(move |mut object| {
+            object.as_mut().set_doctor_checks(QString::from(&json));
+            object.set_doctor_busy(false);
+        });
+    });
+    if spawned.is_err() {
+        object.set_doctor_busy(false);
+    }
+}
 
 fn controller() -> Option<CxxQtThread<qobject::AppController>> {
     CONTROLLER.get()?.lock().unwrap_or_else(|e| e.into_inner()).clone()
@@ -373,6 +422,15 @@ impl qobject::AppController {
         }
         let revision = self.toggles_revision.wrapping_add(1);
         self.as_mut().set_toggles_revision(revision);
+    }
+
+    pub fn run_doctor(mut self: Pin<&mut Self>) {
+        self.as_mut().doctor_requested();
+        diagnose_in_background(self, None);
+    }
+
+    pub fn doctor_fix(self: Pin<&mut Self>, fix: &QString) {
+        diagnose_in_background(self, Some(String::from(fix)));
     }
 
     pub fn logs_url(&self) -> QString {

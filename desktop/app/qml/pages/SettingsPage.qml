@@ -191,6 +191,24 @@ Item {
                 }
             }
 
+            // ---- Connection ----
+            Txt { text: qsTr("Connection"); role: "label"; muted: true }
+            Card {
+                width: parent.width
+                ListRow {
+                    width: parent.width
+                    iconPath: Icons.wifi
+                    title: qsTr("Connection Doctor")
+                    description: qsTr("Finds what keeps your phone from reaching this PC (the firewall, the network, a VPN) and fixes what it can.")
+                    Button {
+                        variant: "tonal"
+                        size: "sm"
+                        text: qsTr("Check")
+                        onClicked: AppController.runDoctor()
+                    }
+                }
+            }
+
             // ---- Notifications ----
             Txt { text: qsTr("Notifications"); role: "label"; muted: true }
             Card {

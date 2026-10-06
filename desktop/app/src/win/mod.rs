@@ -7,6 +7,7 @@
 
 pub mod autostart;
 pub mod clipboard;
+pub mod doctor;
 pub mod icon;
 pub mod image;
 pub mod media_sessions;

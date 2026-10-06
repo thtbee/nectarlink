@@ -25,6 +25,7 @@ const QML: &[&str] = &[
     "qml/components/Chip.qml",
     "qml/components/CodeDigits.qml",
     "qml/components/Divider.qml",
+    "qml/components/DoctorSheet.qml",
     "qml/components/HistoryItem.qml",
     "qml/components/Icon.qml",
     "qml/components/IconButton.qml",

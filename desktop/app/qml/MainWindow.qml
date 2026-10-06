@@ -246,6 +246,12 @@ NativeWindow {
         anchors.right: parent.right
     }
 
+    DoctorSheet { id: doctorSheet }
+    Connections {
+        target: AppController
+        function onDoctorRequested() { doctorSheet.open() }
+    }
+
     Toast { id: toast }
     Connections {
         target: AppController

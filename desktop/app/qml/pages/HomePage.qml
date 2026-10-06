@@ -534,6 +534,13 @@ Item {
                                 : qsTr("Open Nectarlink on %1. They connect on their own when both are on the same network.")
                                       .arg(home.name)
                     }
+                    Button {
+                        visible: !home.online
+                        variant: "tonal"
+                        size: "sm"
+                        text: qsTr("Check the connection")
+                        onClicked: AppController.runDoctor()
+                    }
                 }
             }
             Card {
