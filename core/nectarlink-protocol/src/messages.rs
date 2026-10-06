@@ -50,6 +50,9 @@ pub mod types {
     pub const SMS_SEND: &str = "sms.send";
     pub const SMS_PART: &str = "sms.part";
     pub const SMS_CHANGED: &str = "sms.changed";
+    pub const MIRROR_START: &str = "mirror.start";
+    pub const MIRROR_STOP: &str = "mirror.stop";
+    pub const MIRROR_KEYFRAME: &str = "mirror.keyframe";
 }
 
 /// What kind of device this is.
@@ -462,6 +465,58 @@ pub struct PcPower {
 
 /// The longest link sent, in bytes.
 pub const LINK_MAX_BYTES: usize = 4096;
+
+// ---- Screen mirroring (docs/protocol/mirror.md) ----
+
+pub mod mirror {
+    /// Offered by phones that share their screen (with the user's consent).
+    pub const CAPTURE: &str = "mirror.capture";
+    /// Offered by PCs that show a phone's screen.
+    pub const VIEW: &str = "mirror.view";
+    pub const SERVICE: &str = "mirror";
+    pub const OP_VIDEO: &str = "video";
+    pub const VERSION: u32 = 1;
+    /// Stream reset code: mirroring stopped.
+    pub const STOPPED: u32 = 11;
+    pub const H264: &str = "h264";
+}
+
+/// Body of `mirror.start`: show me your screen.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorStart {
+    /// The longer side, in pixels, at most (the phone scales down).
+    pub max_size: u32,
+    /// Frames per second, at most.
+    pub fps: u32,
+    /// Bits per second to aim for.
+    pub bitrate: u32,
+}
+
+/// The format of a mirroring stream (a config packet's data, in CBOR).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorConfig {
+    /// `h264`.
+    pub codec: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl MirrorConfig {
+    pub fn to_cbor(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        ciborium::into_writer(self, &mut out).expect("writing to a Vec cannot fail");
+        out
+    }
+
+    pub fn from_cbor(bytes: &[u8]) -> Result<MirrorConfig, crate::ProtocolError> {
+        ciborium::from_reader(bytes).map_err(|e| crate::ProtocolError::BadMessage(e.to_string()))
+    }
+
+    /// A format this version can show: H.264, 1–8192 pixels a side.
+    pub fn is_valid(&self) -> bool {
+        self.codec == mirror::H264 && (1..=8192).contains(&self.width) && (1..=8192).contains(&self.height)
+    }
+}
 
 // ---- Messages (docs/protocol/sms.md) ----
 

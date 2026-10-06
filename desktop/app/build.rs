@@ -18,6 +18,7 @@ mod mark;
 const QML: &[&str] = &[
     "qml/App.qml",
     "qml/MainWindow.qml",
+    "qml/MirrorWindow.qml",
     "qml/components/Avatar.qml",
     "qml/components/Button.qml",
     "qml/components/CaptionButtons.qml",
@@ -185,7 +186,13 @@ fn main() {
     CxxQtBuilder::new_qml_module(module)
         .qt_module("Quick")
         .include_dir("cpp")
-        .cpp_files(["cpp/app_helpers.cpp", "cpp/native_window.h", "cpp/native_window.cpp"])
+        .cpp_files([
+            "cpp/app_helpers.cpp",
+            "cpp/native_window.h",
+            "cpp/native_window.cpp",
+            "cpp/video_view.h",
+            "cpp/video_view.cpp",
+        ])
         .qrc(fonts_qrc())
         .files([
             "src/bridge/native.rs",
@@ -194,6 +201,7 @@ fn main() {
             "src/bridge/history.rs",
             "src/bridge/media.rs",
             "src/bridge/messages.rs",
+            "src/bridge/mirror.rs",
             "src/bridge/notifications.rs",
             "src/bridge/pairing.rs",
             "src/bridge/prefs.rs",

@@ -66,6 +66,7 @@ windows = { workspace = true, features = [
     "Win32_System_Variant",
     "Win32_Networking_WinSock",
     "Win32_Media_Audio",
+    "Win32_Media_MediaFoundation",
 ] }
 
 [build-dependencies]

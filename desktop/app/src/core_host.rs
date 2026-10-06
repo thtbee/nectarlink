@@ -101,6 +101,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         nectarlink_core::PHOTOS_SHOW.into(),
         nectarlink_core::CALLS_SHOW.into(),
         nectarlink_core::SMS_SHOW.into(),
+        nectarlink_core::MIRROR_VIEW.into(),
     ];
     let node = match Node::start(config, platform).await {
         Ok(node) => node,
@@ -150,6 +151,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 crate::photos::on_event(&event);
                 crate::calls::on_event(&event);
                 crate::messages::on_event(&event);
+                crate::mirror::on_event(&event);
                 crate::transfers::on_event(&event);
                 crate::send_to::on_event(&event);
                 crate::battery::on_event(&event);

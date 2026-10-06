@@ -9,6 +9,8 @@ QtObject {
     id: app
 
     property MainWindow mainWindow: null
+    // A phone's screen; shows itself while mirroring.
+    readonly property MirrorWindow mirrorWindow: MirrorWindow {}
     readonly property Component mainComponent: Component { MainWindow {} }
     readonly property bool startMinimized: Qt.application.arguments.indexOf("--minimized") >= 0
         || Qt.application.arguments.indexOf("--send-to") >= 0

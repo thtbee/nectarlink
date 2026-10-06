@@ -8,6 +8,7 @@
 pub mod autostart;
 pub mod clipboard;
 pub mod doctor;
+pub mod h264;
 pub mod http;
 pub mod icon;
 pub mod image;

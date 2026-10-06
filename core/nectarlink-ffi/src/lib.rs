@@ -434,11 +434,68 @@ pub enum Event {
         id: String,
         call_id: String,
     },
+    /// A paired phone's screen started or stopped showing (PCs only).
+    Mirroring {
+        id: String,
+        on: bool,
+    },
     /// A paired phone's messages changed (PCs only).
     SmsChanged {
         id: String,
         thread: Option<String>,
     },
+}
+
+/// What a mirroring video packet holds (docs/protocol/mirror.md).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum VideoPacketKind {
+    /// The stream's format, from `mirror_config`.
+    Config,
+    Frame,
+    Keyframe,
+}
+
+/// What became of a video packet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum MirrorSendResult {
+    Queued,
+    /// The network is behind: request a keyframe from the encoder (frames
+    /// are dropped until one comes).
+    NeedKeyframe,
+    /// The PC stopped watching: stop sharing the screen.
+    Closed,
+}
+
+/// This phone's screen going to one PC.
+#[derive(Debug, uniffi::Object)]
+pub struct MirrorStream(core::MirrorStream);
+
+#[uniffi::export]
+impl MirrorStream {
+    /// Hands over a packet without waiting (a config packet waits for room).
+    pub fn send(&self, kind: VideoPacketKind, time_us: u64, data: Vec<u8>) -> MirrorSendResult {
+        let kind = match kind {
+            VideoPacketKind::Config => core::PacketKind::Config,
+            VideoPacketKind::Frame => core::PacketKind::Frame,
+            VideoPacketKind::Keyframe => core::PacketKind::Keyframe,
+        };
+        match self.0.send(kind, time_us, data) {
+            core::MirrorSend::Queued => MirrorSendResult::Queued,
+            core::MirrorSend::NeedKeyframe => MirrorSendResult::NeedKeyframe,
+            core::MirrorSend::Closed => MirrorSendResult::Closed,
+        }
+    }
+
+    /// Ends the stream.
+    pub fn close(&self) {
+        self.0.close();
+    }
+}
+
+/// The bytes of a config packet for an H.264 stream of this size.
+#[uniffi::export]
+pub fn mirror_config(width: u32, height: u32) -> Vec<u8> {
+    core::MirrorConfig { codec: "h264".into(), width, height }.to_cbor()
 }
 
 /// A conversation (docs/protocol/sms.md).
@@ -934,6 +991,7 @@ impl From<NodeEvent> for Event {
                 Event::CallChanged { id: device.to_string(), call_id: call.id }
             }
             NodeEvent::SmsChanged { device, thread } => Event::SmsChanged { id: device.to_string(), thread },
+            NodeEvent::Mirroring { device, on } => Event::Mirroring { id: device.to_string(), on },
         }
     }
 }
@@ -1043,6 +1101,13 @@ pub trait Platform: Send + Sync {
     /// A PC asked to answer, decline or silence call `id` (the call in
     /// progress). False if the phone couldn't.
     fn call_command(&self, id: String, command: CallCommand) -> bool;
+    /// A PC asked for this phone's screen: ask the user (then call
+    /// `mirror_open`). False if the user couldn't be asked.
+    fn mirror_requested(&self, pc_id: String, max_size: u32, fps: u32, bitrate: u32) -> bool;
+    /// The PC stopped watching: stop sharing.
+    fn mirror_stop_requested(&self, pc_id: String);
+    /// The PC needs a keyframe.
+    fn mirror_keyframe_requested(&self, pc_id: String);
     /// A PC asked for the latest conversations, newest first.
     fn sms_threads(&self, limit: u32) -> Vec<SmsThread>;
     /// A PC asked for a conversation's messages before `before` (Unix ms;
@@ -1114,6 +1179,19 @@ impl core::Platform for PlatformAdapter {
         } else {
             Err("the clipboard rejected it".into())
         }
+    }
+    fn mirror_requested(&self, peer: &DeviceId, options: &core::MirrorStart) -> Result<(), String> {
+        if self.0.mirror_requested(peer.to_string(), options.max_size, options.fps, options.bitrate) {
+            Ok(())
+        } else {
+            Err("the user couldn't be asked".into())
+        }
+    }
+    fn mirror_stop_requested(&self, peer: &DeviceId) {
+        self.0.mirror_stop_requested(peer.to_string());
+    }
+    fn mirror_keyframe_requested(&self, peer: &DeviceId) {
+        self.0.mirror_keyframe_requested(peer.to_string());
     }
     fn sms_threads(&self, limit: u32) -> Result<Vec<core::SmsThread>, String> {
         Ok(self
@@ -1469,6 +1547,14 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.open_link(id, url).await?) }).await
+    }
+
+    /// Opens this phone's screen stream to a PC that asked (after the user
+    /// agreed).
+    pub async fn mirror_open(&self, pc_id: String) -> Result<Arc<MirrorStream>> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(Arc::new(MirrorStream(node.mirror_open(id).await?))) }).await
     }
 
     /// This phone's messages changed (in `thread`, or anywhere when null):

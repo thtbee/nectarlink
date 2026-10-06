@@ -139,6 +139,11 @@ pub enum NodeEvent {
         device: DeviceId,
         call: crate::CallState,
     },
+    /// A phone's screen started or stopped showing here.
+    Mirroring {
+        device: DeviceId,
+        on: bool,
+    },
     /// A phone's messages changed: in `thread`, or anywhere when `None`.
     SmsChanged {
         device: DeviceId,

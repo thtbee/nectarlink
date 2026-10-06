@@ -15,6 +15,7 @@ mod events;
 pub mod features;
 mod identity;
 mod media;
+mod mirror;
 mod node;
 mod notifications;
 mod pairing;
@@ -34,15 +35,17 @@ pub use events::{
 pub use features::{CapabilityMatrix, FeatureState};
 pub use identity::{KeyProtector, PlainKeyProtector, default_protector};
 pub use media::{MediaAction, MediaError};
+pub use mirror::{MirrorSend, MirrorSink, MirrorStream};
 pub use nectarlink_protocol::messages::clip::{
     IMAGE_TYPES as CLIP_IMAGE_TYPES, MAX_IMAGE_BYTES as CLIP_MAX_IMAGE_BYTES,
 };
 pub use nectarlink_protocol::{
-    DeviceId,
+    DeviceId, PacketKind,
     messages::{
-        Battery, CLIP_MAX_BYTES, CallState, DeviceInfo, DeviceKind, MediaPlayer, Notification,
-        NotificationAction, PhotoNew as Photo, PowerLevel, SmsMessage, SmsPart, SmsThread,
+        Battery, CLIP_MAX_BYTES, CallState, DeviceInfo, DeviceKind, MediaPlayer, MirrorConfig, MirrorStart,
+        Notification, NotificationAction, PhotoNew as Photo, PowerLevel, SmsMessage, SmsPart, SmsThread,
         calls::{CONTROL as CALLS_CONTROL, SHOW as CALLS_SHOW, STATE as CALLS_STATE},
+        mirror::{CAPTURE as MIRROR_CAPTURE, VIEW as MIRROR_VIEW},
         photos::{MAX_THUMB_BYTES as PHOTO_MAX_THUMB_BYTES, READ as PHOTOS_READ, SHOW as PHOTOS_SHOW},
         sms::{READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW},
     },

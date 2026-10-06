@@ -16,7 +16,7 @@ use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
     messages::{
         ErrorBody, FileEntry, FilesAccept, FilesOffer, StreamHeader, clip, files, is_valid_file_name,
-        is_valid_folder, types,
+        is_valid_folder, mirror, types,
     },
     read_frame, write_frame,
 };
@@ -556,6 +556,9 @@ pub(crate) async fn accept_stream(
         }
         Some(h) if h.svc == clip::SERVICE && h.op == clip::OP_IMAGE && h.v == clip::VERSION => {
             crate::clipboard::receive_image(shared, session.peer, send, recv).await;
+        }
+        Some(h) if h.svc == mirror::SERVICE && h.op == mirror::OP_VIDEO && h.v == mirror::VERSION => {
+            crate::mirror::receive(shared, session.peer, send, recv).await;
         }
         _ => {
             let reply = Envelope::error(ErrorCode::Unsupported, "unknown stream");

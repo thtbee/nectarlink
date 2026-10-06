@@ -123,6 +123,33 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't share photos".into())
     }
 
+    /// Where a phone's screen goes on this PC, when it starts streaming
+    /// (after [`Node::mirror_start`](crate::Node::mirror_start)). `None`
+    /// refuses the stream.
+    fn mirror_sink(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+    ) -> Option<std::sync::Arc<dyn crate::MirrorSink>> {
+        None
+    }
+
+    /// A PC asked for this phone's screen: ask the user, then (if they
+    /// agree) stream it with [`Node::mirror_open`](crate::Node::mirror_open).
+    /// `Err` (a reason for logs) when the user can't be asked.
+    fn mirror_requested(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+        _options: &crate::MirrorStart,
+    ) -> Result<(), String> {
+        Err("this device doesn't share its screen".into())
+    }
+
+    /// The PC stopped watching: stop sharing the screen.
+    fn mirror_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
+
+    /// The PC's decoder needs a fresh start: encode a keyframe next.
+    fn mirror_keyframe_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
+
     /// This phone's latest conversations, newest first (a PC asked).
     fn sms_threads(&self, _limit: u32) -> Result<Vec<crate::SmsThread>, String> {
         Err("this device has no messages".into())

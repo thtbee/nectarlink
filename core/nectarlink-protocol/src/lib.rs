@@ -11,11 +11,13 @@ mod frame;
 mod id;
 pub mod messages;
 pub mod pairing;
+mod video;
 
 pub use envelope::Envelope;
 pub use error::{ErrorCode, ProtocolError};
 pub use frame::{MAX_FRAME_LEN, decode_frame, encode_frame, read_frame, write_frame};
 pub use id::{DeviceId, ParseDeviceIdError};
+pub use video::{MAX_VIDEO_PACKET, PacketKind, VideoPacket, read_video_packet, video_packet_header};
 
 /// ALPN for normal sessions between paired devices.
 pub const ALPN_SESSION: &[u8] = b"nectarlink/0";

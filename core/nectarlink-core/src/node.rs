@@ -119,6 +119,8 @@ pub(crate) struct Shared {
     pub(crate) photos: crate::photos::Recent,
     /// This phone's call in progress (docs/protocol/calls.md).
     pub(crate) calls: crate::calls::Current,
+    /// Stop signals for phone screens shown here, by phone.
+    pub(crate) mirror_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
     pub data_dir: std::path::PathBuf,
     /// Where received files go.
     pub downloads_dir: std::path::PathBuf,
@@ -610,6 +612,7 @@ impl Node {
             players: Default::default(),
             photos: Default::default(),
             calls: Default::default(),
+            mirror_stops: Mutex::new(HashMap::new()),
             data_dir: config.data_dir.clone(),
             downloads_dir: config.downloads_dir.clone().unwrap_or_else(|| config.data_dir.join("received")),
             transfers: Mutex::new(HashMap::new()),
@@ -919,6 +922,36 @@ impl Node {
     pub async fn open_link(&self, peer: DeviceId, url: String) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::actions::open_link(&self.shared, &session, url).await
+    }
+
+    // ---- Screen mirroring (docs/protocol/mirror.md) ----
+
+    /// Asks a paired phone for its screen. The phone asks its user; video
+    /// then arrives through [`Platform::mirror_sink`](crate::Platform::mirror_sink).
+    pub async fn mirror_start(&self, peer: DeviceId, options: crate::MirrorStart) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::mirror::start(&self.shared, &session, options).await
+    }
+
+    /// Stops showing a phone's screen, and tells the phone.
+    pub async fn mirror_stop(&self, peer: DeviceId) {
+        self.shared.stop_showing(&peer);
+        if let Ok(session) = self.connected(&peer) {
+            let _ = crate::mirror::stop(&session).await;
+        }
+    }
+
+    /// Asks a phone for a keyframe (the decoder lost its place).
+    pub async fn mirror_keyframe(&self, peer: DeviceId) {
+        if let Ok(session) = self.connected(&peer) {
+            crate::mirror::request_keyframe(&session).await;
+        }
+    }
+
+    /// Opens this phone's video stream to a PC that asked for the screen.
+    pub async fn mirror_open(&self, peer: DeviceId) -> Result<crate::MirrorStream> {
+        let session = self.connected(&peer)?;
+        crate::mirror::open(&self.shared, &session).await
     }
 
     // ---- Messages (docs/protocol/sms.md) ----

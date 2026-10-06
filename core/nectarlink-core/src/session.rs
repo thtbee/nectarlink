@@ -353,6 +353,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if t.starts_with("photos.") && crate::photos::handle(shared, session, &env).await? => {}
         t if t.starts_with("call.") && crate::calls::handle(shared, session, &env).await? => {}
         t if t.starts_with("sms.") && crate::sms::handle(shared, session, &env).await? => {}
+        t if t.starts_with("mirror.") && crate::mirror::handle(shared, session, &env).await? => {}
         other => {
             if env.id.is_some() {
                 let reply = Envelope::error(ErrorCode::Unsupported, format!("unknown message type {other}"));

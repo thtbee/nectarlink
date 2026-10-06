@@ -21,6 +21,7 @@ mod logging;
 mod mark;
 mod media;
 mod messages;
+mod mirror;
 mod notification_store;
 mod notifications;
 mod palette;
@@ -85,6 +86,12 @@ impl Platform for DesktopPlatform {
         position: Option<u64>,
     ) -> Result<(), MediaError> {
         win::media_sessions::command(player, action, position)
+    }
+    fn mirror_sink(
+        &self,
+        peer: &nectarlink_core::DeviceId,
+    ) -> Option<std::sync::Arc<dyn nectarlink_core::MirrorSink>> {
+        mirror::sink(peer)
     }
 }
 

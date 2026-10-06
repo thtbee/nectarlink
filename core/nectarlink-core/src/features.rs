@@ -333,6 +333,7 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("media", true),
     ("photos", true),
     ("pc_actions", true),
+    ("mirroring", true),
     // Browsing the PC's files from anywhere is opt-in.
     ("remote_files", false),
 ];
@@ -647,7 +648,11 @@ pub const FEATURES: &[FeatureDef] = &[
     FeatureDef {
         id: "mirroring.view",
         group: FeatureGroup::Mirroring,
-        requires: &[phone("mirror.capture", UPDATE)],
+        requires: &[
+            phone("mirror.capture", UPDATE),
+            desktop("mirror.view", UPDATE),
+            DeviceToggle("mirroring"),
+        ],
         partial: None,
     },
     FeatureDef {

@@ -274,10 +274,11 @@ Item {
                 ActionTile {
                     width: actions.tileWidth
                     title: qsTr("Mirror screen")
-                    subtitle: qsTr("View and control")
+                    subtitle: qsTr("See it on this PC")
                     iconPath: Icons.mirror
                     feature: home.feature("mirroring.view")
-                    ready: false
+                    active: Mirror.device === home.deviceId && Mirror.phase !== "" && Mirror.phase !== "ended"
+                    onClicked: Mirror.start(home.deviceId)
                 }
                 ActionTile {
                     width: actions.tileWidth

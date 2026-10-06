@@ -164,6 +164,18 @@ enum Command {
     /// Show new photos from paired phones as this PC would, and fetch each
     /// one; stays online until Ctrl+C.
     Photos,
+    /// Act as a phone sharing its screen (use with --as-phone): when a PC
+    /// asks, streams an H.264 file (Annex B, with access unit delimiters) in
+    /// a loop at `fps`. Stays online.
+    Screen {
+        video: PathBuf,
+        #[arg(long)]
+        width: u32,
+        #[arg(long)]
+        height: u32,
+        #[arg(long, default_value_t = 60)]
+        fps: u32,
+    },
     /// Act as a phone with a few sample conversations (use with --as-phone),
     /// so a PC can read them and text through this client; stays online.
     Texts,
@@ -289,6 +301,10 @@ enum OnOff {
     Off,
 }
 
+/// PCs that asked for the screen, for `screen`.
+static SCREEN_ASKS: std::sync::OnceLock<tokio::sync::mpsc::UnboundedSender<DeviceId>> =
+    std::sync::OnceLock::new();
+
 /// A sample text for `texts`: (thread, number, name, incoming, body, Unix ms).
 type SampleText = (u32, String, String, bool, String, i64);
 static TEXTS: std::sync::Mutex<Vec<SampleText>> = std::sync::Mutex::new(Vec::new());
@@ -330,6 +346,21 @@ const PHOTO_ID: &str = "cli-photo";
 struct TerminalPlatform;
 
 impl Platform for TerminalPlatform {
+    fn mirror_requested(
+        &self,
+        peer: &DeviceId,
+        options: &nectarlink_core::MirrorStart,
+    ) -> std::result::Result<(), String> {
+        let asks = SCREEN_ASKS.get().ok_or("not sharing a screen (run `screen`)")?;
+        println!("A PC asked for the screen ({}px, {} fps); sharing it.", options.max_size, options.fps);
+        asks.send(*peer).map_err(|e| e.to_string())
+    }
+    fn mirror_stop_requested(&self, _peer: &DeviceId) {
+        println!("The PC stopped watching.");
+    }
+    fn mirror_keyframe_requested(&self, _peer: &DeviceId) {
+        println!("The PC asked for a keyframe.");
+    }
     fn sms_threads(&self, limit: u32) -> std::result::Result<Vec<nectarlink_core::SmsThread>, String> {
         let texts = TEXTS.lock().unwrap();
         let mut threads: Vec<nectarlink_core::SmsThread> = Vec::new();
@@ -649,6 +680,38 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             offers.push(nectarlink_core::PHOTOS_SHOW.into());
             node.update_power(node_power(cli), offers).await;
             watch(node, true).await?;
+        }
+        Command::Screen { video, width, height, fps } => {
+            if !cli.as_phone {
+                bail!("screens are shared by phones: add --as-phone");
+            }
+            let stream = std::fs::read(video).context("can't read the video")?;
+            let units = access_units(&stream);
+            if units.is_empty() {
+                bail!("no access unit delimiters in the video");
+            }
+            let (asks, mut asked) = tokio::sync::mpsc::unbounded_channel();
+            let _ = SCREEN_ASKS.set(asks);
+            let mut offers = cli.offers.clone();
+            offers.push(nectarlink_core::MIRROR_CAPTURE.into());
+            node.update_power(node_power(cli), offers).await;
+            println!("Sharing a {width}x{height} screen ({} frames) with PCs that ask.", units.len());
+            let streamer = node.clone();
+            let (width, height, fps) = (*width, *height, *fps);
+            tokio::spawn(async move {
+                while let Some(pc) = asked.recv().await {
+                    let mirror = match streamer.mirror_open(pc).await {
+                        Ok(mirror) => std::sync::Arc::new(mirror),
+                        Err(e) => {
+                            println!("Couldn't open the stream: {e}");
+                            continue;
+                        }
+                    };
+                    let units = units.clone();
+                    std::thread::spawn(move || stream_screen(&mirror, &units, width, height, fps));
+                }
+            });
+            watch(node, false).await?;
         }
         Command::Texts => {
             if !cli.as_phone {
@@ -1271,4 +1334,53 @@ fn print_qr(data: &str) {
         }
         Err(e) => tracing::warn!(error = %e, "could not render QR code"),
     }
+}
+
+/// Splits an Annex B stream at its access unit delimiters (a 4-byte start
+/// code, then NAL type 9).
+fn access_units(stream: &[u8]) -> Vec<Vec<u8>> {
+    let starts: Vec<usize> =
+        (0..stream.len()).filter(|&i| stream[i..].starts_with(&[0, 0, 0, 1, 9])).collect();
+    starts
+        .iter()
+        .enumerate()
+        .map(|(n, &s)| stream[s..*starts.get(n + 1).unwrap_or(&stream.len())].to_vec())
+        .collect()
+}
+
+/// Whether an access unit holds an IDR picture (NAL type 5).
+fn is_keyframe(unit: &[u8]) -> bool {
+    unit.windows(4).any(|w| w[..3] == [0, 0, 1] && w[3] & 0x1f == 5)
+}
+
+/// Streams `units` in a loop at `fps` until the PC stops watching.
+fn stream_screen(
+    mirror: &nectarlink_core::MirrorStream,
+    units: &[Vec<u8>],
+    width: u32,
+    height: u32,
+    fps: u32,
+) {
+    use nectarlink_core::{MirrorSend, PacketKind};
+    let config = nectarlink_core::MirrorConfig { codec: "h264".into(), width, height }.to_cbor();
+    if mirror.send(PacketKind::Config, 0, config) == MirrorSend::Closed {
+        return;
+    }
+    let frame = std::time::Duration::from_secs_f64(1.0 / f64::from(fps.max(1)));
+    let started = std::time::Instant::now();
+    let mut dropped = 0u32;
+    for (n, unit) in units.iter().cycle().enumerate() {
+        let due = started + frame * n as u32;
+        if let Some(wait) = due.checked_duration_since(std::time::Instant::now()) {
+            std::thread::sleep(wait);
+        }
+        let kind = if is_keyframe(unit) { PacketKind::Keyframe } else { PacketKind::Frame };
+        let time = started.elapsed().as_micros() as u64;
+        match mirror.send(kind, time, unit.clone()) {
+            MirrorSend::Queued => {}
+            MirrorSend::NeedKeyframe => dropped += 1,
+            MirrorSend::Closed => break,
+        }
+    }
+    println!("Stopped sharing the screen ({dropped} frames dropped to keep up).");
 }
