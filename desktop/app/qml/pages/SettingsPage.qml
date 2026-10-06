@@ -374,6 +374,42 @@ Item {
                         font.pixelSize: 12
                         Accessible.name: qsTr("Device ID")
                     }
+                    // Updates (installed copies only).
+                    Row {
+                        visible: AppController.canUpdate
+                        spacing: 10
+                        Button {
+                            size: "sm"
+                            variant: AppController.updateVersion.length > 0 ? "fill" : "tonal"
+                            iconPath: Icons.refresh
+                            enabled: !AppController.updateBusy
+                            text: AppController.updateVersion.length > 0
+                                  ? qsTr("Update to %1").arg(AppController.updateVersion)
+                                  : qsTr("Check for updates")
+                            onClicked: AppController.updateVersion.length > 0
+                                       ? AppController.installUpdate() : AppController.checkForUpdates()
+                        }
+                        Spinner { anchors.verticalCenter: parent.verticalCenter; visible: AppController.updateBusy }
+                    }
+                    Item {
+                        width: parent.width
+                        height: autoUpdate.implicitHeight
+                        visible: AppController.canUpdate
+                        Txt {
+                            anchors.left: parent.left
+                            anchors.right: autoUpdate.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("Check for updates automatically")
+                            role: "body"
+                        }
+                        Toggle {
+                            id: autoUpdate
+                            anchors.right: parent.right
+                            label: qsTr("Check for updates automatically")
+                            checked: Preferences.autoUpdate
+                            onToggled: (on) => Preferences.autoUpdate = on
+                        }
+                    }
                     Button {
                         variant: "outline"
                         size: "sm"

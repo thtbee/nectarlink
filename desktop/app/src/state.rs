@@ -34,6 +34,8 @@ impl Changes {
     pub const HISTORY: Changes = Changes(1 << 9);
     /// Apps that sent notifications, and the user's rules for them.
     pub const APPS: Changes = Changes(1 << 10);
+    /// An update was found (see crate::updater).
+    pub const UPDATE: Changes = Changes(1 << 11);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0

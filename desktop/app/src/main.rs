@@ -27,6 +27,7 @@ mod settings;
 mod startup;
 mod state;
 mod transfers;
+mod updater;
 mod win;
 
 use std::{
@@ -237,6 +238,8 @@ fn main() -> ExitCode {
     if options.data_dir.is_none() {
         send_to::start();
         startup::start(settings.start_with_windows);
+        updater::set_auto(settings.auto_update);
+        updater::start();
     }
     // Requests left while no instance was running, then this launch's own.
     for waiting in launch::drain(&data_dir) {

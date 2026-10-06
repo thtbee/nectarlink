@@ -70,12 +70,15 @@ place and tested; the user-facing features of Phase 1 come next.
   power level.
 - **Find my device** in both directions. The phone rings on the alarm stream,
   even in silent mode.
+- **Lock or sleep the PC** from the phone, and **links** both ways: share a
+  link from any phone app to open it on the PC, or send a copied link from the
+  PC's tray to the phone.
 - **Notifications** from the phone on the PC, as Windows notifications and in
   a feed in the app, with the app's icon. Reply inline, run their actions
   (such as "Mark as read") or dismiss them from the PC; what's cleared on one
-  side is cleared on the other. Per app, choose whether they pop up, show
-  only in the app, or stay hidden, and find the last day's notifications in
-  History.
+  side is cleared on the other. Photos in messages and big pictures come
+  along. Per app, choose whether they pop up, show only in the app, or stay
+  hidden, and find the last day's notifications in History.
 - **Clipboard**: text and images you copy on the PC are ready to paste on the
   phone. From the phone, send them with the Quick Settings tile, the share
   sheet or a button in the app (Android lets only the app in front read the
@@ -99,13 +102,17 @@ place and tested; the user-facing features of Phase 1 come next.
   uses about 10 MB of memory (as shown in Task Manager).
 - **Android app**: pairing, home and settings, Material You colors, a background
   connection service, and an identity key protected by the Android Keystore.
+- **Connection Doctor** on the PC: finds what keeps the phone from
+  connecting (firewall, a public network, a VPN) and fixes what it can.
 - **Windows installer**: installs for everyone on the PC, allows the app
   through Windows Firewall, starts it with Windows, and uninstalls cleanly.
-  Each `v*` tag drafts a GitHub release with the installer.
+  Each `v*` tag drafts a GitHub release with the installer. Installed copies
+  update themselves from GitHub releases (checked with SHA-256).
 - **Command-line client** for development and testing (`nectarlink`).
 
-**Next**: Phase 1 is complete. Mirroring, messages, calls and the other
-features in the plan follow in later phases.
+**Next**: the Android app updating itself (it needs signed release builds
+first). Then Phase 2: mirroring, messages, calls and the other features in
+the plan.
 
 ## Screenshots
 

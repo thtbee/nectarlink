@@ -136,6 +136,14 @@ Section "Install"
   WriteRegDWORD HKLM "${UNINSTALL_KEY}" "NoRepair" 1
   ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
   WriteRegDWORD HKLM "${UNINSTALL_KEY}" "EstimatedSize" $0
+
+  ; /RUN (the app's own updater): open the new version when done.
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/RUN" $R1
+  ${IfNot} ${Errors}
+    Call OpenApp
+  ${EndIf}
 SectionEnd
 
 Section "Uninstall"

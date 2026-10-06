@@ -45,6 +45,8 @@ pub struct Settings {
     pub auto_clipboard: bool,
     /// Paired phones in Explorer's "Send to" menu.
     pub send_to_menu: bool,
+    /// Check for updates on its own (installed copies).
+    pub auto_update: bool,
     /// Start when the user signs in. Unset until the user chooses: then an
     /// installed copy starts with Windows and a build run from its folder
     /// doesn't.
@@ -62,6 +64,7 @@ impl Default for Settings {
             close_to_tray: true,
             auto_clipboard: true,
             send_to_menu: true,
+            auto_update: true,
             start_with_windows: None,
         }
     }
@@ -124,6 +127,7 @@ mod tests {
             close_to_tray: false,
             auto_clipboard: false,
             send_to_menu: false,
+            auto_update: false,
             start_with_windows: Some(true),
         };
         settings.save(dir.path()).unwrap();

@@ -26,6 +26,7 @@ nectarlink-core.workspace = true
 qrcode.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
@@ -60,6 +61,7 @@ windows = { workspace = true, features = [
     "Win32_NetworkManagement_IpHelper",
     "Win32_NetworkManagement_WindowsFirewall",
     "Win32_Networking_NetworkListManager",
+    "Win32_Networking_WinHttp",
     "Win32_System_Ole",
     "Win32_System_Variant",
     "Win32_Networking_WinSock",

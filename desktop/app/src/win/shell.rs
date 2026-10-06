@@ -18,6 +18,23 @@ pub fn open_url(url: &str) -> Result<(), String> {
     if result.0 as isize > 32 { Ok(()) } else { Err(format!("ShellExecute returned {}", result.0 as isize)) }
 }
 
+/// Starts a program with arguments (Windows asks for permission when it
+/// needs administrator rights).
+pub fn run(program: &std::path::Path, arguments: &str) -> Result<(), String> {
+    // SAFETY: as in `open_url`.
+    let result = unsafe {
+        ShellExecuteW(
+            None,
+            w!("open"),
+            &HSTRING::from(program.as_os_str()),
+            &HSTRING::from(arguments),
+            None,
+            SW_SHOWNORMAL,
+        )
+    };
+    if result.0 as isize > 32 { Ok(()) } else { Err(format!("ShellExecute returned {}", result.0 as isize)) }
+}
+
 /// Locks the PC (shows the sign-in screen).
 pub fn lock() -> Result<(), String> {
     // SAFETY: no arguments.

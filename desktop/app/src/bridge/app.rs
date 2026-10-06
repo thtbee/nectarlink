@@ -65,6 +65,12 @@ pub mod qobject {
         #[qproperty(QString, doctor_checks)]
         /// Checking, or fixing.
         #[qproperty(bool, doctor_busy)]
+        /// This copy updates itself (it's installed).
+        #[qproperty(bool, can_update)]
+        /// A newer version that's available ("" when none).
+        #[qproperty(QString, update_version)]
+        /// Checking for or installing an update.
+        #[qproperty(bool, update_busy)]
         type AppController = super::AppControllerRust;
 
         /// Asks a paired device to ring (or stop).
@@ -109,6 +115,13 @@ pub mod qobject {
         #[qinvokable]
         fn doctor_fix(self: Pin<&mut AppController>, fix: &QString);
 
+        /// Checks for an update now and says what it found.
+        #[qinvokable]
+        fn check_for_updates(self: Pin<&mut AppController>);
+        /// Downloads and installs the update found.
+        #[qinvokable]
+        fn install_update(self: Pin<&mut AppController>);
+
         /// The folder with the app's logs, as a file URL.
         #[qinvokable]
         fn logs_url(self: &AppController) -> QString;
@@ -148,12 +161,40 @@ pub struct AppControllerRust {
     version: QString,
     doctor_checks: QString,
     doctor_busy: bool,
+    can_update: bool,
+    update_version: QString,
+    update_busy: bool,
     tray: Option<tray::Tray>,
 }
 
 /// The controller's thread handle, so other threads (second launch) can
 /// reach it.
 static CONTROLLER: OnceLock<Mutex<Option<CxxQtThread<qobject::AppController>>>> = OnceLock::new();
+
+/// Downloads and starts the update (from the app or its notification).
+pub fn install_update_in_background() {
+    let Some(qt) = controller() else { return };
+    let started = qt.queue(|mut object| {
+        if object.update_busy {
+            return;
+        }
+        object.as_mut().set_update_busy(true);
+        object.as_mut().toast(QString::from("Downloading the update…"));
+        let qt = object.qt_thread();
+        std::thread::spawn(move || {
+            let result = crate::updater::install();
+            let _ = qt.queue(move |mut object| {
+                object.as_mut().set_update_busy(false);
+                if let Err(message) = result {
+                    object.toast(QString::from(&message));
+                }
+            });
+        });
+    });
+    if started.is_err() {
+        tracing::warn!("can't start the update");
+    }
+}
 
 /// Runs a Doctor fix (if any), then the checks, off the UI thread; the
 /// findings land in `doctor_checks`.
@@ -227,6 +268,7 @@ pub(crate) fn describe(error: &Error) -> String {
 impl cxx_qt::Initialize for qobject::AppController {
     fn initialize(mut self: Pin<&mut Self>) {
         self.as_mut().set_version(QString::from(env!("CARGO_PKG_VERSION")));
+        self.as_mut().set_can_update(crate::updater::can_update());
         self.as_mut().refresh_appearance();
         let qt = self.qt_thread();
         *CONTROLLER.get_or_init(Mutex::default).lock().unwrap_or_else(|e| e.into_inner()) = Some(qt.clone());
@@ -235,6 +277,10 @@ impl cxx_qt::Initialize for qobject::AppController {
             Changes::STATUS | Changes::DEVICES | Changes::CAPABILITIES | Changes::RINGING,
             Self::refresh,
         );
+        super::subscribe(qt.clone(), Changes::UPDATE, |object| {
+            let version = crate::updater::available().map(|u| u.version).unwrap_or_default();
+            object.set_update_version(QString::from(&version));
+        });
 
         let labels = tray::MenuLabels {
             open: "Open Nectarlink".into(),
@@ -422,6 +468,27 @@ impl qobject::AppController {
         }
         let revision = self.toggles_revision.wrapping_add(1);
         self.as_mut().set_toggles_revision(revision);
+    }
+
+    pub fn check_for_updates(mut self: Pin<&mut Self>) {
+        if self.update_busy {
+            return;
+        }
+        self.as_mut().set_update_busy(true);
+        let qt = self.qt_thread();
+        std::thread::spawn(move || {
+            let message = crate::updater::check_now(true);
+            let _ = qt.queue(move |mut object| {
+                object.as_mut().set_update_busy(false);
+                if let Some(message) = message {
+                    object.toast(QString::from(&message));
+                }
+            });
+        });
+    }
+
+    pub fn install_update(self: Pin<&mut Self>) {
+        install_update_in_background();
     }
 
     pub fn run_doctor(mut self: Pin<&mut Self>) {

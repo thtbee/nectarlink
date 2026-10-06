@@ -205,6 +205,11 @@ pub fn on_toast(event: ToastEvent) {
             return;
         }
         ToastEvent::Dismissed { device, .. } if device == crate::send_to::TOAST_GROUP => return,
+        // "Update" on the update notice.
+        ToastEvent::Action { device, .. } if device == crate::updater::TOAST_GROUP => {
+            return crate::bridge::app::install_update_in_background();
+        }
+        ToastEvent::Dismissed { device, .. } if device == crate::updater::TOAST_GROUP => return,
         _ => {}
     }
     match event {
