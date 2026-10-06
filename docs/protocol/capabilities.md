@@ -45,7 +45,7 @@ capability is missing.
 | `photos.read` | Announces new photos and screenshots and sends them on request ([photos](photos.md)) | photos permission |
 | `mirror.capture` | Streams its screen (with the system's capture prompt at Basic; [mirroring](mirror.md)) | app update |
 | `mirror.input` | Accepts touch, key and scroll input while mirrored | Assist |
-| `mirror.virtual_display` | Runs apps on a separate virtual display (app windows) | Elevated |
+| `mirror.virtual_display` | Runs apps on displays of their own, shown in windows on the PC ([mirroring](mirror.md)) | Elevated, Android 11+ |
 | `mirror.audio` | Streams all audio while mirrored | Elevated |
 | `mirror.audio.playback` | Streams audio from apps that allow playback capture | app update |
 | `camera.stream` | Streams a camera for webcam use | camera permission |

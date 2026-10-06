@@ -6,7 +6,8 @@
 A PC shows a phone's screen. The phone's user agrees each time (Android
 asks); the phone then streams its screen as H.264 on a stream of its own,
 and its sound, when the PC asks, on another (§5). The PC can also use the
-phone with its mouse and keyboard (§4).
+phone with its mouse and keyboard (§4), and open the phone's apps in
+windows of their own (§6).
 
 ## 1. Capabilities
 
@@ -17,6 +18,7 @@ phone with its mouse and keyboard (§4).
 | `mirror.input` | phone | Takes the PC's mouse and keyboard while mirrored (Assist: an accessibility service the user turns on; Elevated: injected input) |
 | `mirror.audio.playback` | phone | Shares the sound of apps that allow it while mirrored (Android 10+) |
 | `mirror.audio` | phone | Shares all its sound while mirrored (planned, Elevated) |
+| `mirror.virtual_display` | phone | Runs apps on displays of their own, shown in windows on the PC (Elevated, Android 11+) |
 | `mirror.listen` | PC | Plays a mirrored phone's sound |
 
 Both devices must allow it: the `mirroring` device toggle, on by default,
@@ -27,11 +29,18 @@ on each side.
 On the control stream.
 
 ```
-t = "mirror.start"     id = n   b = { max_size: uint, fps: uint, bitrate: uint, ? audio: bool }
-t = "mirror.stop"      id = n
-t = "mirror.keyframe"
+t = "mirror.start"     id = n   b = { max_size: uint, fps: uint, bitrate: uint, ? audio: bool,
+                                     ? session: uint, ? app: text }
+t = "mirror.stop"      id = n   b = { ? session: uint }
+t = "mirror.keyframe"           b = { ? session: uint }
+t = "mirror.apps"      id = n
+t = "mirror.apps"      re = n   b = { apps: [{ pkg: text, label: text, ? icon: bytes }] }
 t = "ok"               re = n
 ```
+
+Each mirroring is a **session** the PC numbers: 0 (the default) is the
+phone's screen; any other is an app window (§6). A missing `session`
+means 0, so PCs and phones that predate sessions work as before.
 
 - `mirror.start` (PC → phone): show me your screen, its longer side at most
   `max_size` pixels, at most `fps` frames a second, aiming for `bitrate`
@@ -121,7 +130,33 @@ heard. Sharing all sound (`mirror.audio`) is planned for Elevated.
 
 The phone's own speaker keeps playing; the PC can mute its copy.
 
-## 6. Latency over completeness
+## 6. App windows
+
+With `mirror.virtual_display`, a PC can open one of the phone's apps in a
+window of its own, beside whatever the phone's screen shows:
+
+- `mirror.apps` (PC → phone) lists the apps that can open: launchable ones,
+  by name, each with its package name and a small PNG icon (at most 8 KiB;
+  at most 500 apps, and icons may be left out to keep the answer small).
+  Errors: `DENIED`, `UNSUPPORTED` (no `mirror.virtual_display`).
+- `mirror.start` with `app` (a package name) and a `session` other than 0
+  runs that app on a display of its own and streams it like the screen,
+  with no prompt (Elevated was the user's consent). Its video stream's
+  config packets carry `session` (the config's CBOR gains `? session:
+  uint`). Sound isn't sent for app windows. `BAD_MESSAGE` when `app` and
+  `session` don't go together.
+- `mirror.input` gains `? session: uint`: input for an app window goes to
+  its display. App windows take input whenever the phone offers
+  `mirror.virtual_display`; the screen still needs `mirror.input`.
+- `mirror.stop` and `mirror.keyframe` with a `session` are about that
+  window; stopping one closes the app's display (the app closes with it).
+
+On Android, the Elevated helper (running as the shell user) makes a
+virtual display for each window with an H.264 encoder drawing from it, and
+starts the app there; the phone shows a notification while any app window
+is open, with a button to close them all.
+
+## 7. Latency over completeness
 
 The stream is reliable, so a slow network would otherwise build up delay.
 Instead, the phone keeps only a few packets waiting to go out: when that's
@@ -136,7 +171,7 @@ plays silence and refills it when the network stalls, and drops the oldest
 sound when more than 200 ms piles up, so sound stays in step with the
 picture.
 
-## 7. Privacy
+## 8. Privacy
 
 The screen and sound are never recorded or logged by either side. Android shows that
 the screen is being shared (in the status bar), and the user can stop it

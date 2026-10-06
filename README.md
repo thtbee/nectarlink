@@ -100,6 +100,10 @@ tests; there are no releases yet.
   debugging** there once for real touch (live dragging) and keys, with
   nothing else to install; Nectarlink turns Wireless debugging back on by
   itself after a reboot.
+- **Phone apps in windows** on the PC: with Wireless debugging set up
+  (Android 11 and later), pick any of the phone's apps and it opens in a
+  window of its own, running on the phone beside whatever its screen
+  shows; use it with the mouse and keyboard, and open several at once.
 - **Texts** on the PC: a Messages page with the phone's conversations
   (pictures included), to reply or start a new one; texts go out through
   the phone. Search them, copy a one-time code with one click, and open
@@ -136,8 +140,7 @@ tests; there are no releases yet.
   against their SHA-256 sums.
 - **Command-line client** for development and testing (`nectarlink`).
 
-**Next**: phone apps in windows of their own on the PC, contacts and the
-call log, talking on calls through the PC (Bluetooth), and the rest of the
+**Next**: contacts and the call log, talking on calls through the PC (Bluetooth), and the rest of the
 [plan](docs/PLAN.md).
 
 ## Screenshots
