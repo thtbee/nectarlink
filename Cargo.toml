@@ -17,6 +17,11 @@ rust-version = "1.91"
 authors = ["The Nectarlink contributors"]
 repository = "https://github.com/thtbee/nectarlink"
 
+# Each release's name, from a bee's life (0.1 Pollen, …); the release
+# workflow puts it in the release's title.
+[workspace.metadata.release]
+name = "Pollen"
+
 [workspace.dependencies]
 nectarlink-protocol = { path = "core/nectarlink-protocol", version = "0.0.1" }
 nectarlink-core = { path = "core/nectarlink-core", version = "0.0.1" }

@@ -120,12 +120,19 @@ jobs:
         with:
           path: files
           merge-multiple: true
+      - uses: actions/checkout@v7
+        with:
+          path: source
+          sparse-checkout: Cargo.toml
       - name: Draft it
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # The release's name, if Cargo.toml gives one ([workspace.metadata.release]).
+          name=$(awk '/^\[workspace.metadata.release\]/{f=1;next} /^\[/{f=0} f && /^name = /{print $3}' source/Cargo.toml | tr -d '"')
+          title="Nectarlink ${GITHUB_REF_NAME#v}${name:+ $name}"
           cd files
           sha256sum *.exe *.apk > SHA256SUMS.txt
           cat SHA256SUMS.txt
           gh release create "${{ github.ref_name }}" *.exe *.apk SHA256SUMS.txt \
-            --repo "${{ github.repository }}" --draft --generate-notes --title "Nectarlink ${{ github.ref_name }}"
+            --repo "${{ github.repository }}" --draft --generate-notes --title "$title"
