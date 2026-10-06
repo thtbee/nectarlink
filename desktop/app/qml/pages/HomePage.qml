@@ -377,7 +377,10 @@ Item {
                             size: "sm"
                             iconPath: Icons.history
                             text: qsTr("History")
-                            onClicked: historySheet.open()
+                            onClicked: {
+                                historySearch.text = ""
+                                historySheet.open()
+                            }
                         }
                         Button {
                             id: clearAll
@@ -664,6 +667,56 @@ Item {
                       ? qsTr("Notifications that went away on your phone, or that you dismissed, for a day.")
                       : qsTr("Nothing here yet. Notifications that go away on your phone are kept here for a day.")
             }
+            // Search: by app, title or text, ignoring case.
+            Rectangle {
+                width: parent.width
+                height: 40
+                visible: NotificationHistory.count > 0
+                radius: Theme.graphite ? Theme.radiusSm : height / 2
+                color: Theme.graphite ? "transparent" : Theme.surfaceContainerHighest
+                border.width: historySearch.activeFocus ? 2 : 1
+                border.color: historySearch.activeFocus ? Theme.primary : Theme.outlineVariant
+                Icon {
+                    id: searchIcon
+                    anchors.left: parent.left
+                    anchors.leftMargin: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 18; height: 18
+                    path: Icons.search
+                    color: Theme.surfaceContentVariant
+                }
+                TextInput {
+                    id: historySearch
+                    readonly property string query: text.trim().toLocaleLowerCase()
+                    function matches(fields) {
+                        return query.length === 0 || fields.join(" ").toLocaleLowerCase().indexOf(query) >= 0
+                    }
+                    anchors.left: searchIcon.right
+                    anchors.leftMargin: 10
+                    anchors.right: parent.right
+                    anchors.rightMargin: 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    font.family: Theme.fontUi
+                    font.pixelSize: 14
+                    color: Theme.surfaceContent
+                    selectionColor: Theme.primaryContainer
+                    selectedTextColor: Theme.primaryContainerContent
+                    clip: true
+                    Keys.onEscapePressed: (event) => {
+                        // Clears first; a second Escape closes the sheet.
+                        event.accepted = text.length > 0
+                        text = ""
+                    }
+                    Accessible.name: qsTr("Search history")
+                    Txt {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: historySearch.text.length === 0
+                        role: "body"
+                        muted: true
+                        text: qsTr("Search history")
+                    }
+                }
+            }
             Flickable {
                 width: parent.width
                 height: Math.min(historyColumn.height, page.height - 260)
@@ -675,9 +728,20 @@ Item {
                     width: parent.width
                     Repeater {
                         model: NotificationHistory
-                        delegate: HistoryItem { width: historyColumn.width }
+                        delegate: HistoryItem {
+                            width: historyColumn.width
+                            visible: historySearch.matches([appName, title, text, sub])
+                        }
                     }
                 }
+            }
+            Txt {
+                width: parent.width
+                visible: historySearch.query.length > 0 && historyColumn.height === 0
+                horizontalAlignment: Text.AlignHCenter
+                role: "body"
+                muted: true
+                text: qsTr("Nothing matches “%1”.").arg(historySearch.text.trim())
             }
             Row {
                 anchors.right: parent.right
