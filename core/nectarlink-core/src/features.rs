@@ -780,6 +780,7 @@ mod tests {
         "media.remote",
         "input.inject",
         "deck.actions",
+        "mirror.view",
     ];
 
     fn pc() -> DeviceFacts {
