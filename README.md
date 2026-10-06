@@ -99,9 +99,12 @@ place and tested; the user-facing features of Phase 1 come next.
   uses about 10 MB of memory (as shown in Task Manager).
 - **Android app**: pairing, home and settings, Material You colors, a background
   connection service, and an identity key protected by the Android Keystore.
+- **Windows installer**: installs for everyone on the PC, allows the app
+  through Windows Firewall, starts it with Windows, and uninstalls cleanly.
+  Each `v*` tag drafts a GitHub release with the installer.
 - **Command-line client** for development and testing (`nectarlink`).
 
-**Next (Phase 1)**: a Windows installer. Mirroring, messages, calls and the other
+**Next**: Phase 1 is complete. Mirroring, messages, calls and the other
 features in the plan follow in later phases.
 
 ## Screenshots
@@ -191,6 +194,13 @@ cargo run -p nectarlink-desktop
 ```sh
 cd android
 ./gradlew assembleDebug
+```
+
+**Windows installer** (with [NSIS](https://nsis.sourceforge.io) installed)
+
+```powershell
+./scripts/package.ps1             # target\package\Nectarlink-<version>-x64-setup.exe
+./scripts/package.ps1 -StageOnly  # just the app folder, as it ships
 ```
 
 **All checks** (formatting, lints, tests, license headers, generated files,

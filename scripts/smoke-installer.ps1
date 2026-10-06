@@ -47,3 +47,5 @@ Check "the uninstall entry is gone" (-not (Test-Path $uninstallKey))
 Check "the Start menu shortcut is gone" (-not (Test-Path $shortcut))
 Check "the firewall rule is gone" (-not (FirewallRule))
 Write-Host "Installer smoke test passed."
+# netsh reports "no rules match" with a failing exit code; that was the point.
+exit 0

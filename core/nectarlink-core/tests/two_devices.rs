@@ -698,7 +698,11 @@ async fn media_is_shared_and_controlled_with_consent() {
     let players = wait_for(&mut pc, "same art", media_of(phone_id)).await;
     assert_eq!((players[0].art_key.as_deref(), players[0].art.as_ref()), (Some("a1"), None));
     phone.node.media_changed(vec![player("com.music", "Next song", Some(("a2", vec![9; 10])))]).await;
-    let players = wait_for(&mut pc, "new art", media_of(phone_id)).await;
+    // (A state sent as the session started may arrive in between.)
+    let players = wait_for(&mut pc, "new art", |e| {
+        media_of(phone_id)(e).filter(|p| p.first().is_some_and(|p| p.title.as_deref() == Some("Next song")))
+    })
+    .await;
     assert_eq!(players[0].art.as_deref(), Some(&[9; 10][..]));
 
     // The PC controls it.
