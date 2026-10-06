@@ -15,9 +15,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use nectarlink_core::{
-    DeviceId, Error, FileSource, NodeEvent, OutgoingFile, Transfer, TransferFailure, TransferState,
-};
+use nectarlink_core::{DeviceId, Error, NodeEvent, Transfer, TransferFailure, TransferState};
 
 use crate::{
     bridge::app::{describe, request_activation},
@@ -201,8 +199,6 @@ pub fn handle(request: Request) {
 #[derive(Debug)]
 struct Tracked {
     device_name: String,
-    /// Folders were in the selection; they aren't sent.
-    skipped_folders: bool,
     shown: Option<(Instant, Progress)>,
 }
 
@@ -221,24 +217,22 @@ fn send(device: String, paths: Vec<PathBuf>) {
         let Some((id, name)) = name else {
             return failed("Couldn't send", "That device isn't paired with this PC anymore.");
         };
-        let (files, folders): (Vec<PathBuf>, Vec<PathBuf>) = paths.into_iter().partition(|p| p.is_file());
-        if files.is_empty() {
-            let body = if folders.is_empty() {
-                "Those files can't be found."
-            } else {
-                "Folders can't be sent yet. Choose the files in them instead."
-            };
-            return failed(&format!("Couldn't send to {name}"), body);
-        }
-        let outgoing = files
-            .into_iter()
-            .map(|path| OutgoingFile {
-                name: path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
-                source: FileSource::Path(path),
-            })
-            .collect();
+        let outgoing = match tokio::task::spawn_blocking(move || nectarlink_core::outgoing_paths(&paths))
+            .await
+        {
+            Ok(Ok(files)) if !files.is_empty() => files,
+            Ok(Ok(_)) => {
+                return failed(&format!("Couldn't send to {name}"), "There's nothing to send in there.");
+            }
+            Ok(Err(Error::TooLarge)) => {
+                return failed(&format!("Couldn't send to {name}"), "That's too many files to send at once.");
+            }
+            Ok(Err(_)) | Err(_) => {
+                return failed(&format!("Couldn't send to {name}"), "Those files can't be read.");
+            }
+        };
         match node.send_files(id, outgoing).await {
-            Ok(transfer_id) => track(transfer_id, name, !folders.is_empty()),
+            Ok(transfer_id) => track(transfer_id, name),
             Err(Error::Denied) => failed(
                 &format!("Couldn't send to {name}"),
                 "Files are turned off for this device. Turn them on in Nectarlink.",
@@ -264,10 +258,10 @@ fn failed(title: &str, body: &str) {
     });
 }
 
-fn track(id: String, device_name: String, skipped_folders: bool) {
+fn track(id: String, device_name: String) {
     let mut tracked = lock(&TRACKED);
     let map = tracked.get_or_insert_default();
-    map.insert(id.clone(), Tracked { device_name, skipped_folders, shown: None });
+    map.insert(id.clone(), Tracked { device_name, shown: None });
     // Events before this point went to the hub only; catch up from there.
     let now = core_host::host()
         .hub
@@ -288,10 +282,7 @@ pub fn on_event(event: &NodeEvent) {
 
 fn update(map: &mut HashMap<String, Tracked>, transfer: &Transfer) {
     let Some(tracked) = map.get_mut(&transfer.id) else { return };
-    let title = match transfer.names.as_slice() {
-        [one] => one.clone(),
-        names => format!("{} files", names.len()),
-    };
+    let title = crate::transfers::title(transfer);
     let device = tracked.device_name.clone();
     let finished = |title: String, body: String| Toast {
         device: TOAST_GROUP.into(),
@@ -334,11 +325,7 @@ fn update(map: &mut HashMap<String, Tracked>, transfer: &Transfer) {
             tracked.shown = Some((Instant::now(), progress));
         }
         TransferState::Done { .. } => {
-            let mut body = format!("Sent to {device}");
-            if tracked.skipped_folders {
-                body.push_str(". Folders were left out.");
-            }
-            toast::show(finished(title, body));
+            toast::show(finished(title, format!("Sent to {device}")));
             map.remove(&transfer.id);
         }
         TransferState::Failed(failure) => {

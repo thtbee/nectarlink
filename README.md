@@ -83,10 +83,10 @@ place and tested; the user-facing features of Phase 1 come next.
   phone. From the phone, send them with the Quick Settings tile, the share
   sheet or a button in the app (Android lets only the app in front read the
   clipboard). Passwords that password managers mark private are never sent.
-- **Files** in both directions, at Wi-Fi speed. On the PC, drop files on the
-  window, pick them, or right-click them in File Explorer and choose
-  **Send to** and your phone (a notification follows the transfer); on the
-  phone, share them from any app or pick them in Nectarlink. They land in `Downloads\Nectarlink` on the PC and
+- **Files and folders** in both directions, at Wi-Fi speed. On the PC, drop
+  them on the window, pick them, or right-click them in File Explorer and
+  choose **Send to** and your phone (a notification follows the transfer);
+  on the phone, share them from any app or pick them in Nectarlink. They land in `Downloads\Nectarlink` on the PC and
   `Download/Nectarlink` on the phone, with progress, cancelling, and transfers
   that pick up where they left off after a dropped connection.
 - **Media** both ways: what plays on the phone shows on the PC, in the app and

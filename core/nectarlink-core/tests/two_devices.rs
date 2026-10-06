@@ -834,7 +834,7 @@ fn data(len: usize, seed: u64) -> Vec<u8> {
 fn outgoing(dir: &std::path::Path, name: &str, contents: &[u8]) -> OutgoingFile {
     let path = dir.join(name);
     std::fs::write(&path, contents).unwrap();
-    OutgoingFile { name: name.into(), source: FileSource::Path(path) }
+    OutgoingFile { name: name.into(), folder: None, source: FileSource::Path(path) }
 }
 
 /// Waits for a transfer to reach a state matching `pick`.
@@ -899,6 +899,38 @@ async fn files_arrive_intact_under_free_names() {
         std::fs::read_dir(phone.dir.path().join("incoming")).unwrap().next().is_none(),
         "no partial files are left"
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn folders_arrive_with_their_layout() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    let src = tempfile::tempdir().unwrap();
+    let trip = src.path().join("Trip");
+    std::fs::create_dir_all(trip.join("Day 1")).unwrap();
+    std::fs::write(trip.join("Day 1").join("beach.jpg"), b"sand").unwrap();
+    std::fs::write(trip.join("notes.txt"), b"fun").unwrap();
+    std::fs::write(src.path().join("ticket.pdf"), b"pdf").unwrap();
+
+    // The phone already has a "Trip" folder: this one becomes "Trip (2)".
+    let downloads = phone.dir.path().join("received");
+    std::fs::create_dir_all(downloads.join("Trip")).unwrap();
+
+    let files = nectarlink_core::outgoing_paths(&[trip, src.path().join("ticket.pdf")]).unwrap();
+    let id = with_timeout("send", pc.node.send_files(phone_id, files)).await.expect("send starts");
+    let received = wait_transfer(&mut phone, &id, "received", |t| {
+        assert_eq!(t.names, ["Trip", "ticket.pdf"]);
+        assert_eq!(t.files, 3);
+        saved(t)
+    })
+    .await;
+    let folder = downloads.join("Trip (2)");
+    assert_eq!(received, [folder.clone(), downloads.join("ticket.pdf")]);
+    assert_eq!(std::fs::read(folder.join("Day 1").join("beach.jpg")).unwrap(), b"sand");
+    assert_eq!(std::fs::read(folder.join("notes.txt")).unwrap(), b"fun");
+    assert!(std::fs::read_dir(downloads.join("Trip")).unwrap().next().is_none(), "the old folder is untouched");
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -4,6 +4,7 @@
 //! and resuming after a dropped connection.
 
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
     time::{Duration, Instant},
@@ -14,7 +15,8 @@ use iroh::endpoint::{ReadError, RecvStream, SendStream, VarInt, WriteError};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
     messages::{
-        ErrorBody, FileEntry, FilesAccept, FilesOffer, StreamHeader, clip, files, is_valid_file_name, types,
+        ErrorBody, FileEntry, FilesAccept, FilesOffer, StreamHeader, clip, files, is_valid_file_name,
+        is_valid_folder, types,
     },
     read_frame, write_frame,
 };
@@ -71,7 +73,8 @@ pub enum TransferState {
     /// after the connection dropped (receiving; the sender resumes it).
     Waiting,
     Running,
-    /// Received files are where `saved` says (one path per file).
+    /// Received files are where `saved` says: one path per item, each
+    /// file and each sent folder (as [`Transfer::names`] lists them).
     Done {
         saved: Vec<PathBuf>,
     },
@@ -91,8 +94,10 @@ pub struct Transfer {
     pub id: String,
     pub device: DeviceId,
     pub direction: Direction,
-    /// File names, in order.
+    /// What was sent, as the user picked it: file and folder names, in order.
     pub names: Vec<String>,
+    /// How many files that is (a folder's files included).
+    pub files: usize,
     /// Bytes in total and done so far.
     pub total: u64,
     pub done: u64,
@@ -105,7 +110,8 @@ impl std::fmt::Debug for Transfer {
         f.debug_struct("Transfer")
             .field("id", &self.id)
             .field("direction", &self.direction)
-            .field("files", &self.names.len())
+            .field("items", &self.names.len())
+            .field("files", &self.files)
             .field("done", &self.done)
             .field("total", &self.total)
             .field("state", &self.state)
@@ -118,7 +124,100 @@ impl std::fmt::Debug for Transfer {
 pub struct OutgoingFile {
     /// The name the other device sees (no path).
     pub name: String,
+    /// The folder it's in, when sending a folder: `/`-separated names,
+    /// starting with the sent folder's own.
+    pub folder: Option<String>,
     pub source: FileSource,
+}
+
+/// The files to send for paths the user picked: files as they are, and
+/// folders with everything in them (empty folders and links aside).
+pub fn outgoing_paths(paths: &[PathBuf]) -> Result<Vec<OutgoingFile>> {
+    let mut out = Vec::new();
+    for path in paths {
+        let meta = std::fs::symlink_metadata(path)?;
+        if meta.is_dir() {
+            let name =
+                path.file_name().map_or_else(|| "Folder".into(), |n| safe_file_name(&n.to_string_lossy()));
+            add_folder(path, &name, 1, &mut out)?;
+        } else if meta.is_file() {
+            let name =
+                path.file_name().map_or_else(|| "file".into(), |n| safe_file_name(&n.to_string_lossy()));
+            out.push(OutgoingFile { name, folder: None, source: FileSource::Path(path.clone()) });
+        }
+        if out.len() > files::MAX_FILES {
+            return Err(Error::TooLarge);
+        }
+    }
+    Ok(out)
+}
+
+fn add_folder(dir: &Path, folder: &str, depth: usize, out: &mut Vec<OutgoingFile>) -> Result<()> {
+    if depth > files::MAX_FOLDER_DEPTH || folder.len() > files::MAX_FOLDER_BYTES {
+        return Err(Error::TooLarge);
+    }
+    let mut entries: Vec<_> = std::fs::read_dir(dir)?.collect::<std::io::Result<_>>()?;
+    entries.sort_by_key(std::fs::DirEntry::file_name);
+    for entry in entries {
+        // Not followed: links (and junctions) could lead anywhere.
+        let kind = entry.file_type()?;
+        let name = safe_file_name(&entry.file_name().to_string_lossy());
+        if kind.is_dir() {
+            add_folder(&entry.path(), &format!("{folder}/{name}"), depth + 1, out)?;
+        } else if kind.is_file() {
+            out.push(OutgoingFile {
+                name,
+                folder: Some(folder.to_owned()),
+                source: FileSource::Path(entry.path()),
+            });
+            if out.len() > files::MAX_FILES {
+                return Err(Error::TooLarge);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// What a transfer's files are, as the user picked them: each file outside
+/// a folder, and each folder once.
+fn items(entries: &[FileEntry]) -> Vec<String> {
+    let mut items: Vec<String> = Vec::new();
+    let mut last_folder: Option<&str> = None;
+    for entry in entries {
+        match entry.folder.as_deref().map(|f| f.split('/').next().unwrap_or(f)) {
+            Some(top) if last_folder == Some(top) => {}
+            Some(top) => {
+                items.push(top.to_owned());
+                last_folder = Some(top);
+            }
+            None => {
+                items.push(entry.name.clone());
+                last_folder = None;
+            }
+        }
+    }
+    items
+}
+
+/// A name Windows can store: no reserved device names (`CON`, `COM1`…),
+/// characters it rejects, or trailing dots and spaces.
+fn storable_name(name: &str) -> String {
+    let mut clean: String = name
+        .chars()
+        .map(|c| if matches!(c, '<' | '>' | ':' | '"' | '|' | '?' | '*') { '_' } else { c })
+        .collect();
+    while clean.ends_with(['.', ' ']) {
+        clean.pop();
+    }
+    let stem = clean.split('.').next().unwrap_or("").trim_end().to_ascii_uppercase();
+    let reserved = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || (stem.len() == 4
+            && (stem.starts_with("COM") || stem.starts_with("LPT"))
+            && stem.as_bytes()[3].is_ascii_digit());
+    if reserved {
+        clean.insert(0, '_');
+    }
+    if clean.is_empty() { "file".into() } else { clean }
 }
 
 #[derive(Debug)]
@@ -190,7 +289,7 @@ impl Reporter {
 /// [`NodeEvent::Transfer`]. Returns the transfer's ID.
 pub(crate) async fn send(shared: &Arc<Shared>, peer: DeviceId, files: Vec<OutgoingFile>) -> Result<String> {
     if files.is_empty() || files.len() > files::MAX_FILES {
-        return Err(Error::Protocol("send between 1 and 1000 files".into()));
+        return Err(Error::Protocol("send between 1 and 5000 files".into()));
     }
     if !shared.store.is_paired(&peer)? {
         return Err(Error::NotPaired);
@@ -200,19 +299,35 @@ pub(crate) async fn send(shared: &Arc<Shared>, peer: DeviceId, files: Vec<Outgoi
     }
     let mut opened = Vec::with_capacity(files.len());
     for file in files {
+        if file.folder.as_deref().is_some_and(|f| !is_valid_folder(f)) {
+            return Err(Error::Protocol("invalid folder name".into()));
+        }
         let handle = match file.source {
             FileSource::Path(path) => std::fs::File::open(path)?,
             FileSource::File(handle) => handle,
         };
-        let size = handle.metadata()?.len();
-        opened.push((safe_file_name(&file.name), size, tokio::fs::File::from_std(handle)));
+        let entry = FileEntry {
+            name: safe_file_name(&file.name),
+            size: handle.metadata()?.len(),
+            folder: file.folder,
+        };
+        opened.push((entry, tokio::fs::File::from_std(handle)));
+    }
+    let entries: Vec<FileEntry> = opened.iter().map(|(entry, _)| entry.clone()).collect();
+    let id = new_id();
+    // The whole offer has to fit in one frame.
+    let offer = Envelope::new(files::OFFER, &FilesOffer { id: id.clone(), files: entries.clone() })
+        .map_err(|e| Error::Protocol(e.to_string()))?;
+    if offer.to_cbor().len() > nectarlink_protocol::MAX_FRAME_LEN {
+        return Err(Error::TooLarge);
     }
     let transfer = Transfer {
-        id: new_id(),
+        id,
         device: peer,
         direction: Direction::Outgoing,
-        names: opened.iter().map(|(name, ..)| name.clone()).collect(),
-        total: opened.iter().map(|(_, size, _)| *size).fold(0, u64::saturating_add),
+        names: items(&entries),
+        files: entries.len(),
+        total: entries.iter().map(|e| e.size).fold(0, u64::saturating_add),
         done: 0,
         state: TransferState::Waiting,
     };
@@ -241,7 +356,7 @@ enum Attempt {
 
 async fn send_until_done(
     reporter: &mut Reporter,
-    mut files: Vec<(String, u64, tokio::fs::File)>,
+    mut files: Vec<(FileEntry, tokio::fs::File)>,
     cancel: &CancellationToken,
 ) -> TransferState {
     let peer = reporter.transfer.device;
@@ -288,14 +403,14 @@ async fn send_until_done(
 async fn attempt(
     reporter: &mut Reporter,
     session: &Session,
-    files: &mut [(String, u64, tokio::fs::File)],
+    files: &mut [(FileEntry, tokio::fs::File)],
     cancel: &CancellationToken,
 ) -> Attempt {
     let Ok((mut send, mut recv)) = session.conn.open_bi().await else { return Attempt::Retry };
     let header = StreamHeader { svc: files::SERVICE.into(), op: files::OP_SEND.into(), v: files::VERSION };
     let offer = FilesOffer {
         id: reporter.transfer.id.clone(),
-        files: files.iter().map(|(name, size, _)| FileEntry { name: name.clone(), size: *size }).collect(),
+        files: files.iter().map(|(entry, _)| entry.clone()).collect(),
     };
     let (Ok(header), Ok(offer)) =
         (Envelope::new(types::STREAM, &header), Envelope::new(files::OFFER, &offer))
@@ -321,17 +436,17 @@ async fn attempt(
     };
 
     reporter.set(TransferState::Running);
-    let mut done: u64 = files.iter().zip(&have).map(|((_, size, _), have)| (*have).min(*size)).sum();
+    let mut done: u64 = files.iter().zip(&have).map(|((entry, _), have)| (*have).min(entry.size)).sum();
     reporter.progress(done);
     // What's left of each file, read on a thread of its own that keeps a
     // few blocks ready; it stops when this attempt ends and drops them.
     let mut plan = Vec::with_capacity(files.len());
-    for ((_, size, file), have) in files.iter().zip(&have) {
-        let start = (*have).min(*size);
+    for ((entry, file), have) in files.iter().zip(&have) {
+        let start = (*have).min(entry.size);
         let Ok(clone) = file.try_clone().await else {
             return Attempt::Fatal(TransferFailure::Other("can't read a file".into()));
         };
-        plan.push((clone.into_std().await, start, *size - start));
+        plan.push((clone.into_std().await, start, entry.size - start));
     }
     let (blocks, mut ready) = tokio::sync::mpsc::channel(READ_AHEAD);
     tokio::task::spawn_blocking(move || read_ahead(plan, &blocks));
@@ -490,7 +605,8 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
         id: offer.id.clone(),
         device: peer,
         direction: Direction::Incoming,
-        names: offer.files.iter().map(|f| f.name.clone()).collect(),
+        names: items(&offer.files),
+        files: offer.files.len(),
         total: offer.total_size(),
         done: have.iter().sum(),
         state: TransferState::Running,
@@ -648,20 +764,45 @@ async fn store(
     dir: &Path,
 ) -> std::io::Result<Vec<PathBuf>> {
     let target = shared.downloads_dir.clone();
-    let names: Vec<String> = offer.files.iter().map(|f| f.name.clone()).collect();
-    let parts: Vec<PathBuf> = (0..names.len()).map(part).collect();
+    let entries = offer.files.clone();
+    let parts: Vec<PathBuf> = (0..entries.len()).map(part).collect();
     let dir = dir.to_owned();
     tokio::task::spawn_blocking(move || {
         std::fs::create_dir_all(&target)?;
-        let mut saved = Vec::with_capacity(names.len());
-        for (name, part) in names.iter().zip(parts) {
-            let to = unique_path(&target, name);
+        // A sent folder lands under a name of its own: `Trip`, or
+        // `Trip (2)` when there already is one.
+        let mut folders: HashMap<String, PathBuf> = HashMap::new();
+        let mut saved = Vec::with_capacity(entries.len());
+        for (entry, part) in entries.iter().zip(parts) {
+            let at = match entry.folder.as_deref() {
+                None => target.clone(),
+                Some(folder) => {
+                    let mut names = folder.split('/').map(storable_name);
+                    let top = names.next().unwrap_or_else(|| "Folder".into());
+                    let mut at = match folders.get(&top) {
+                        Some(at) => at.clone(),
+                        None => {
+                            let at = unique_path(&target, &top);
+                            std::fs::create_dir(&at)?;
+                            folders.insert(top, at.clone());
+                            saved.push(at.clone());
+                            at
+                        }
+                    };
+                    at.extend(names);
+                    std::fs::create_dir_all(&at)?;
+                    at
+                }
+            };
+            let to = unique_path(&at, &storable_name(&entry.name));
             if std::fs::rename(&part, &to).is_err() {
                 // Another volume: copy, then drop the part file.
                 std::fs::copy(&part, &to)?;
                 std::fs::remove_file(&part)?;
             }
-            saved.push(to);
+            if entry.folder.is_none() {
+                saved.push(to);
+            }
         }
         let _ = std::fs::remove_dir_all(&dir);
         Ok(saved)
@@ -710,6 +851,49 @@ mod tests {
         assert_eq!(unique_path(dir.path(), "README"), dir.path().join("README (2)"));
         std::fs::write(dir.path().join(".env"), "x").unwrap();
         assert_eq!(unique_path(dir.path(), ".env"), dir.path().join(".env (2)"));
+    }
+
+    #[test]
+    fn names_windows_can_store() {
+        assert_eq!(storable_name("photo.jpg"), "photo.jpg");
+        assert_eq!(storable_name("CON"), "_CON");
+        assert_eq!(storable_name("nul.txt"), "_nul.txt");
+        assert_eq!(storable_name("com1"), "_com1");
+        assert_eq!(storable_name("COMPUTER"), "COMPUTER");
+        assert_eq!(storable_name("what?: \"x\"."), "what__ _x_");
+        assert_eq!(storable_name(". "), "file");
+    }
+
+    #[test]
+    fn items_are_files_and_folders() {
+        let entry = |name: &str, folder: Option<&str>| FileEntry {
+            name: name.into(),
+            size: 1,
+            folder: folder.map(Into::into),
+        };
+        let entries = [
+            entry("a.txt", None),
+            entry("1.jpg", Some("Trip")),
+            entry("2.jpg", Some("Trip/Day 2")),
+            entry("b.txt", None),
+            entry("x", Some("Other")),
+        ];
+        assert_eq!(items(&entries), ["a.txt", "Trip", "b.txt", "Other"]);
+    }
+
+    #[test]
+    fn folders_are_walked() {
+        let dir = tempfile::tempdir().unwrap();
+        let trip = dir.path().join("Trip");
+        std::fs::create_dir_all(trip.join("Day 1")).unwrap();
+        std::fs::create_dir_all(trip.join("empty")).unwrap();
+        std::fs::write(trip.join("Day 1").join("b.jpg"), "b").unwrap();
+        std::fs::write(trip.join("a.jpg"), "a").unwrap();
+        std::fs::write(dir.path().join("note.txt"), "n").unwrap();
+        let files = outgoing_paths(&[dir.path().join("note.txt"), trip]).unwrap();
+        let listed: Vec<(&str, Option<&str>)> =
+            files.iter().map(|f| (f.name.as_str(), f.folder.as_deref())).collect();
+        assert_eq!(listed, [("note.txt", None), ("b.jpg", Some("Trip/Day 1")), ("a.jpg", Some("Trip"))]);
     }
 
     #[test]

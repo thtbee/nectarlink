@@ -5,7 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
-use nectarlink_core::{DeviceId, Direction, Error, FileSource, NodeEvent, OutgoingFile, TransferState};
+use nectarlink_core::{DeviceId, Direction, Error, NodeEvent, Transfer, TransferState};
 
 use crate::{
     bridge::app::{describe, show_message},
@@ -19,22 +19,26 @@ pub const TOAST_GROUP: &str = "files";
 /// The "Show in folder" toast action.
 pub const ACTION_SHOW: &str = "show";
 
-/// Sends files to a device; the transfer list shows how it goes.
+/// What a transfer is called: its file or folder's name, or how many.
+pub fn title(t: &Transfer) -> String {
+    match t.names.as_slice() {
+        [one] => one.clone(),
+        names if names.len() == t.files => format!("{} files", names.len()),
+        names => format!("{} items", names.len()),
+    }
+}
+
+/// Sends files and folders to a device; the transfer list shows how it goes.
 pub fn send(device: DeviceId, paths: Vec<PathBuf>) {
     let Some(node) = core_host::node() else { return };
-    let files: Vec<OutgoingFile> = paths
-        .into_iter()
-        .filter(|p| p.is_file())
-        .map(|path| OutgoingFile {
-            name: path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
-            source: FileSource::Path(path),
-        })
-        .collect();
-    if files.is_empty() {
-        show_message("Folders can't be sent yet; pick files instead.");
-        return;
-    }
     core_host::spawn(async move {
+        let files = match tokio::task::spawn_blocking(move || nectarlink_core::outgoing_paths(&paths)).await {
+            Ok(Ok(files)) if !files.is_empty() => files,
+            Ok(Ok(_)) => return show_message("There's nothing to send in there."),
+            Ok(Err(Error::TooLarge)) => return show_message("That's too many files to send at once."),
+            Ok(Err(e)) => return show_message(describe(&e)),
+            Err(_) => return,
+        };
         match node.send_files(device, files).await {
             Ok(_) => {}
             Err(Error::Denied) => show_message("Files are turned off for that device."),
@@ -49,14 +53,14 @@ pub fn cancel(id: &str) {
     }
 }
 
-/// Opens a received file with its app.
+/// Opens a received file with its app (or a folder in File Explorer).
 pub fn open(path: &Path) {
     if let Err(e) = std::process::Command::new("explorer").arg(path).spawn() {
         tracing::warn!(error = %e, "can't open a received file");
     }
 }
 
-/// Shows a received file in File Explorer, selected.
+/// Shows a received file or folder in File Explorer, selected.
 pub fn show_in_folder(path: &Path) {
     let mut select = std::ffi::OsString::from("/select,");
     select.push(path);
@@ -74,10 +78,7 @@ pub fn on_event(event: &NodeEvent) {
     let TransferState::Done { saved } = &t.state else { return };
     let Some(first) = saved.first() else { return };
     let device = core_host::host().hub.read(|s| s.name_of(&t.device)).unwrap_or_else(|| "your phone".into());
-    let title = match saved.len() {
-        1 => first.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
-        n => format!("{n} files"),
-    };
+    let title = title(t);
     toast::show(Toast {
         device: TOAST_GROUP.into(),
         key: first.to_string_lossy().into_owned(),

@@ -18,6 +18,7 @@ import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
+import app.nectarlink.core.FileToSend
 import app.nectarlink.core.Link
 import app.nectarlink.core.NectarlinkException
 import app.nectarlink.core.NectarlinkNode
@@ -194,7 +195,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         if (transfer.direction != TransferDirection.INCOMING) return
         // Out of the app's cache, into Downloads, then tell the user.
         scope.launch(Dispatchers.IO) {
-            val published = done.saved.mapNotNull { ReceivedFiles.publish(context, java.io.File(it)) }
+            val published = done.saved.flatMap { ReceivedFiles.publish(context, java.io.File(it)) }
             TransferNotifications.received(context, transfer, published, pc)
         }
     }
@@ -204,8 +205,25 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * The files are opened right away: Android's permission to read a
      * shared item ends with the activity that received it.
      */
-    fun sendFiles(pcId: String, uris: List<Uri>) {
-        val files = OutgoingFiles.open(context, uris)
+    fun sendFiles(pcId: String, uris: List<Uri>) = send(pcId, OutgoingFiles.open(context, uris))
+
+    /** Sends a folder the user picked, with everything in it. */
+    fun sendFolder(pcId: String, tree: Uri) {
+        scope.launch(Dispatchers.IO) {
+            val files = try {
+                OutgoingFiles.openFolder(context, tree)
+            } catch (_: OutgoingFiles.TooManyFiles) {
+                _messages.tryEmit(context.getString(R.string.transfer_too_many))
+                return@launch
+            } catch (e: Exception) {
+                Log.w(TAG, "can't read a picked folder", e)
+                emptyList()
+            }
+            send(pcId, files)
+        }
+    }
+
+    private fun send(pcId: String, files: List<FileToSend>) {
         if (files.isEmpty()) {
             _messages.tryEmit(context.getString(R.string.transfer_nothing))
             return

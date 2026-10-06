@@ -3,8 +3,8 @@
 > Status: **draft.** Builds on [protocol v0](v0.md); breaking changes are
 > allowed until v1. License: CC BY 4.0.
 
-Sends files between paired devices, in either direction, with progress,
-cancellation and resuming after a dropped connection.
+Sends files and folders between paired devices, in either direction, with
+progress, cancellation and resuming after a dropped connection.
 
 ## 1. Capability
 
@@ -22,14 +22,27 @@ header, then an offer:
 t = "stream"        b = { svc: "files", op: "send", v: 1 }
 t = "files.offer"   b = {
   id:    text,             // Transfer ID: 16–64 bytes of [A-Za-z0-9_-], the same on every retry
-  files: [ { name: text, size: uint } ],   // 1–1,000 files, in order
+  files: [ {
+    name:    text,         // The file's name
+    size:    uint,
+    ? folder: text,        // Only for files in a sent folder (see below)
+  } ],                     // 1–5,000 files, in order
 }
 ```
 
 `name` is a file name only (no path), 1–255 bytes, without `/`, `\`, NUL
-or control characters, and not `.` or `..`. Receivers **MUST** reject an
-offer that breaks these rules with `BAD_MESSAGE`, and still pick their own
-safe name for writing (see §4).
+or control characters, and not `.` or `..`.
+
+**Folders.** A sent folder is its files, each with `folder`: where the file
+is, as names joined by `/`, starting with the sent folder's own (`Trip`,
+`Trip/Day 1`). Each name follows the rules for `name`; there are at most 32
+of them, in at most 1,024 bytes. A folder's files are listed together.
+Empty folders aren't sent.
+
+Receivers **MUST** reject an offer that breaks these rules with
+`BAD_MESSAGE`, and still pick their own safe names for writing (see §4). The
+whole offer is one frame (v0 §3), which limits how many files with long
+names fit in it.
 
 The receiver answers on the same stream:
 
@@ -67,7 +80,11 @@ else (a reset, a closed connection, a missing `done`) means it didn't.
 
 - Files are written to a private folder first and moved to where the user
   finds them (the Downloads folder) only once complete.
-- A name that already exists there gets a number: `photo (2).jpg`.
+- A name that already exists there gets a number: `photo (2).jpg`. A sent
+  folder gets a new folder of its own the same way (`Trip (2)`); nothing
+  is ever added to a folder that was already there.
+- Names the receiving system can't store (on Windows: `CON`, `NUL`, `?`,
+  trailing dots…) are changed to ones it can.
 - A device accepts files only from paired devices with the `files` toggle
   on. A receiver that runs out of space resets the stream.
 - Implementations **MUST NOT** log file names (v0 §11).

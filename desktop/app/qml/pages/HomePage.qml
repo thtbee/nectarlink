@@ -285,6 +285,9 @@ Item {
                     iconPath: Icons.send
                     feature: home.feature("files.send")
                     onClicked: filePicker.open()
+                    sideIcon: Icons.folder
+                    sideLabel: qsTr("Send a folder")
+                    onSideClicked: folderPicker.open()
                 }
             }
             FileDialog {
@@ -292,6 +295,11 @@ Item {
                 title: qsTr("Send to %1").arg(home.name)
                 fileMode: FileDialog.OpenFiles
                 onAccepted: TransferList.send(home.deviceId, selectedFiles.map(url => url.toString()))
+            }
+            FolderDialog {
+                id: folderPicker
+                title: qsTr("Send a folder to %1").arg(home.name)
+                onAccepted: TransferList.send(home.deviceId, [selectedFolder.toString()])
             }
 
             // ---- Transfers ----
@@ -688,7 +696,11 @@ Item {
         property bool active: false
         // False until this PC implements the action (shown as coming soon).
         property bool ready: true
+        // A second, smaller action in the corner (e.g. "Send a folder").
+        property string sideIcon
+        property string sideLabel
         signal clicked
+        signal sideClicked
 
         readonly property bool available: feature.state === "available" && ready
 
@@ -747,5 +759,15 @@ Item {
         }
         HoverHandler { id: hover; cursorShape: tile.available ? Qt.PointingHandCursor : Qt.ArrowCursor }
         TapHandler { id: tap; enabled: tile.available; onTapped: tile.clicked() }
+        IconButton {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 8
+            visible: tile.sideIcon.length > 0 && tile.available
+            iconPath: tile.sideIcon
+            label: tile.sideLabel
+            iconColor: tile.ink
+            onClicked: tile.sideClicked()
+        }
     }
 }

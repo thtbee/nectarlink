@@ -41,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.nectarlink.android.R
@@ -51,6 +50,7 @@ import app.nectarlink.android.clipboard.SendActivity
 import app.nectarlink.android.core.BackgroundAccess
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.Device
+import app.nectarlink.android.files.transferTitle
 import app.nectarlink.android.core.isFinished
 import app.nectarlink.core.Transfer
 import app.nectarlink.core.TransferDirection
@@ -76,6 +76,7 @@ fun HomeScreen(
     onPower: (pcId: String, sleep: Boolean) -> Unit,
     updater: AppUpdater,
     onSendFiles: (pcId: String, uris: List<Uri>) -> Unit,
+    onSendFolder: (pcId: String, tree: Uri) -> Unit,
     onCancelTransfer: (id: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -134,7 +135,7 @@ fun HomeScreen(
                 ) { context.startActivity(NotificationListener.settingsIntent(context)) }
             }
         }
-        items(state.devices, key = { it.id }) { device -> PcCard(device, onRing, onSendFiles, onPower) }
+        items(state.devices, key = { it.id }) { device -> PcCard(device, onRing, onSendFiles, onSendFolder, onPower) }
         if (state.transfers.isNotEmpty()) {
             item { TransfersCard(state, onCancelTransfer) }
         }
@@ -175,10 +176,14 @@ private fun PcCard(
     device: Device,
     onRing: (String, Boolean) -> Unit,
     onSendFiles: (String, List<Uri>) -> Unit,
+    onSendFolder: (String, Uri) -> Unit,
     onPower: (String, Boolean) -> Unit,
 ) {
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) onSendFiles(device.id, uris)
+    }
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
+        if (tree != null) onSendFolder(device.id, tree)
     }
     var ringing by remember(device.id) { mutableStateOf(false) }
     Surface(
@@ -238,6 +243,9 @@ private fun PcCard(
                 FilledTonalButton(enabled = device.online, onClick = { pickFiles.launch(arrayOf("*/*")) }) {
                     Text(stringResource(R.string.action_send_files))
                 }
+                FilledTonalButton(enabled = device.online, onClick = { pickFolder.launch(null) }) {
+                    Text(stringResource(R.string.action_send_folder))
+                }
                 if (device.has("device.pc_actions")) {
                     OutlinedButton(enabled = device.online, onClick = { onPower(device.id, false) }) {
                         Text(stringResource(R.string.action_lock_pc))
@@ -266,7 +274,7 @@ private fun TransfersCard(state: CoreState, onCancel: (String) -> Unit) {
 private fun TransferRow(transfer: Transfer, pc: String, onCancel: (String) -> Unit) {
     val incoming = transfer.direction == TransferDirection.INCOMING
     val status = transfer.status
-    val title = if (transfer.names.size == 1) transfer.names[0] else pluralStringResource(R.plurals.transfer_files, transfer.names.size, transfer.names.size)
+    val title = transferTitle(LocalContext.current.resources, transfer)
     val detail = when (status) {
         is TransferStatus.Waiting -> stringResource(R.string.transfer_waiting, pc)
         is TransferStatus.Running ->

@@ -285,7 +285,8 @@ pub enum TransferStatus {
     /// Waiting for the other device (to connect, or to continue).
     Waiting,
     Running,
-    /// `saved`: where received files are, one path per file (empty when
+    /// `saved`: where received files are, one path per item in `names`:
+    /// each file, and each sent folder (empty when
     /// sending).
     Done {
         saved: Vec<String>,
@@ -305,7 +306,10 @@ pub struct Transfer {
     /// The other device.
     pub device_id: String,
     pub direction: TransferDirection,
+    /// What was sent: file and folder names, in order.
     pub names: Vec<String>,
+    /// How many files that is (folders' files included).
+    pub files: u32,
     pub total: u64,
     pub done: u64,
     pub status: TransferStatus,
@@ -326,10 +330,14 @@ pub enum FileToSend {
     Fd {
         name: String,
         fd: i32,
+        /// The folder it's in, when sending a folder: `/`-separated names,
+        /// starting with the folder's own (`Trip/Day 1`).
+        folder: Option<String>,
     },
     Path {
         name: String,
         path: String,
+        folder: Option<String>,
     },
 }
 
@@ -663,6 +671,7 @@ impl From<core::Transfer> for Transfer {
                 core::Direction::Incoming => TransferDirection::Incoming,
             },
             names: t.names,
+            files: u32::try_from(t.files).unwrap_or(u32::MAX),
             total: t.total,
             done: t.done,
             status: match t.state {
@@ -689,11 +698,11 @@ impl From<core::Transfer> for Transfer {
 
 fn file_to_send(file: FileToSend) -> Result<core::OutgoingFile> {
     Ok(match file {
-        FileToSend::Path { name, path } => {
-            core::OutgoingFile { name, source: core::FileSource::Path(path.into()) }
+        FileToSend::Path { name, path, folder } => {
+            core::OutgoingFile { name, folder, source: core::FileSource::Path(path.into()) }
         }
         #[cfg(unix)]
-        FileToSend::Fd { name, fd } => {
+        FileToSend::Fd { name, fd, folder } => {
             use std::os::fd::FromRawFd;
             if fd < 0 {
                 return Err(NectarlinkError::Internal { reason: "invalid file descriptor".into() });
@@ -702,7 +711,7 @@ fn file_to_send(file: FileToSend) -> Result<core::OutgoingFile> {
             // uses (documented on `FileToSend::Fd`); the File closes it.
             #[allow(unsafe_code)]
             let file = unsafe { std::fs::File::from_raw_fd(fd) };
-            core::OutgoingFile { name, source: core::FileSource::File(file) }
+            core::OutgoingFile { name, folder, source: core::FileSource::File(file) }
         }
         #[cfg(not(unix))]
         FileToSend::Fd { .. } => {

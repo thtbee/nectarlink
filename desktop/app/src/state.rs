@@ -835,6 +835,7 @@ mod tests {
             device: DeviceId([1; 32]),
             direction: nectarlink_core::Direction::Outgoing,
             names: vec!["a.bin".into()],
+            files: 1,
             total: 1000,
             done,
             state,

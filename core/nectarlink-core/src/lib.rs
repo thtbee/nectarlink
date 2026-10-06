@@ -44,7 +44,8 @@ pub use nectarlink_protocol::{
 pub use node::Node;
 pub use notifications::NotificationError;
 pub use transfer::{
-    Direction, FileSource, OutgoingFile, Transfer, TransferFailure, TransferState, safe_file_name,
+    Direction, FileSource, OutgoingFile, Transfer, TransferFailure, TransferState, outgoing_paths,
+    safe_file_name,
 };
 
 pub(crate) fn device_id(key: &iroh::PublicKey) -> DeviceId {

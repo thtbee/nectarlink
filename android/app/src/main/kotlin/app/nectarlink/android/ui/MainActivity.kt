@@ -171,6 +171,7 @@ private fun App(core: Core, state: CoreState, preferences: Preferences) {
                     onPower = core::pcPower,
                     updater = (LocalContext.current.applicationContext as NectarlinkApplication).updater,
                     onSendFiles = core::sendFiles,
+                    onSendFolder = core::sendFolder,
                     onCancelTransfer = core::cancelTransfer,
                     modifier = modifier,
                 )

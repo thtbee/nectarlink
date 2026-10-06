@@ -9,10 +9,9 @@ use std::{io::Write, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use nectarlink_core::{
-    Battery, ConnectionPath, DeviceId, DeviceInfo, DeviceKind, Direction, FeatureState, FileSource,
-    LinkState, MediaAction, MediaError, MediaPlayer, Node, NodeConfig, NodeEvent, Notification,
-    NotificationAction, NotificationError, OutgoingFile, PairedDevice, PairingEvent, Platform, PowerAction,
-    PowerLevel, TransferState,
+    Battery, ConnectionPath, DeviceId, DeviceInfo, DeviceKind, Direction, FeatureState, LinkState,
+    MediaAction, MediaError, MediaPlayer, Node, NodeConfig, NodeEvent, Notification, NotificationAction,
+    NotificationError, PairedDevice, PairingEvent, Platform, PowerAction, PowerLevel, TransferState,
     features::{Effort, FEATURES, Role, UnsupportedReason, Upgrade, UpgradeAction},
 };
 use tokio::sync::broadcast::error::RecvError;
@@ -617,19 +616,13 @@ async fn confirm_code(code: String) -> Result<bool> {
 /// Sends files and shows progress until they've arrived.
 async fn send_files(node: &Node, device: DeviceId, paths: &[PathBuf]) -> Result<()> {
     let mut events = node.events();
-    let files = paths
-        .iter()
-        .map(|path| OutgoingFile {
-            name: path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
-            source: FileSource::Path(path.clone()),
-        })
-        .collect();
+    let files = nectarlink_core::outgoing_paths(paths).context("can't read what to send")?;
     let id = node.send_files(device, files).await.context("can't send")?;
     loop {
         match events.recv().await {
             Ok(NodeEvent::Transfer(t)) if t.id == id => match t.state {
                 TransferState::Done { .. } => {
-                    println!("\rSent {} file(s), {} bytes.          ", t.names.len(), t.total);
+                    println!("\rSent {} file(s), {} bytes.          ", t.files, t.total);
                     return Ok(());
                 }
                 TransferState::Failed(why) => bail!("transfer failed: {why:?}"),

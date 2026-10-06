@@ -2,6 +2,7 @@
 package app.nectarlink.android.files
 
 import android.Manifest
+import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -40,10 +41,7 @@ internal object TransferNotifications {
 
     private fun idOf(transfer: Transfer) = transfer.id.hashCode()
 
-    private fun title(context: Context, transfer: Transfer): String = when (transfer.names.size) {
-        1 -> transfer.names[0]
-        else -> context.resources.getQuantityString(R.plurals.transfer_files, transfer.names.size, transfer.names.size)
-    }
+    private fun title(context: Context, transfer: Transfer): String = transferTitle(context.resources, transfer)
 
     /** Shows or updates a running transfer, or removes it once it ended. */
     fun update(context: Context, transfer: Transfer, pcName: String) {
@@ -82,22 +80,28 @@ internal object TransferNotifications {
         post(context, idOf(transfer), notification)
     }
 
-    /** Files from a PC are saved: tap to open (the first one). */
+    /**
+     * Files from a PC are saved: tap to open the first one, or the
+     * Downloads list when a folder came.
+     */
     fun received(context: Context, transfer: Transfer, files: List<ReceivedFiles.Published>, pcName: String) {
         if (!allowed(context) || files.isEmpty()) return
         val first = files[0]
-        val open = Intent(Intent.ACTION_VIEW)
-            .setDataAndType(first.uri, first.mime)
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        val open = if (transfer.files.toInt() == transfer.names.size) {
+            Intent.createChooser(
+                Intent(Intent.ACTION_VIEW).setDataAndType(first.uri, first.mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                null,
+            )
+        } else {
+            Intent(DownloadManager.ACTION_VIEW_DOWNLOADS)
+        }
         val tap = PendingIntent.getActivity(
-            context, idOf(transfer), Intent.createChooser(open, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            context, idOf(transfer), open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_RECEIVED)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(
-                if (files.size == 1) first.name else context.resources.getQuantityString(R.plurals.transfer_files, files.size, files.size),
-            )
+            .setContentTitle(title(context, transfer))
             .setContentText(context.getString(R.string.transfer_received_from, pcName))
             .setContentIntent(tap)
             .setAutoCancel(true)

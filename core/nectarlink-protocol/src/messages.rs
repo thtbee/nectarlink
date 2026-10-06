@@ -478,8 +478,11 @@ pub mod files {
     pub const DONE: &str = "files.done";
     /// Stream reset code for a cancelled transfer.
     pub const CANCELLED: u32 = 10;
-    pub const MAX_FILES: usize = 1000;
+    pub const MAX_FILES: usize = 5000;
     pub const MAX_NAME_BYTES: usize = 255;
+    /// A file's folder: at most this many bytes and this many levels.
+    pub const MAX_FOLDER_BYTES: usize = 1024;
+    pub const MAX_FOLDER_DEPTH: usize = 32;
 }
 
 /// One file of an offer.
@@ -487,6 +490,10 @@ pub mod files {
 pub struct FileEntry {
     pub name: String,
     pub size: u64,
+    /// The folder the file is in when a folder is sent: `/`-separated
+    /// names, starting with the sent folder's own (`Trip/Day 1`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub folder: Option<String>,
 }
 
 /// Never prints the name (protocol v0 §11).
@@ -526,6 +533,14 @@ pub fn is_valid_file_name(name: &str) -> bool {
         && !name.chars().any(|c| c == '/' || c == '\\' || c.is_control())
 }
 
+/// Whether a folder is 1–32 valid names joined by `/`, in at most
+/// [`files::MAX_FOLDER_BYTES`].
+pub fn is_valid_folder(folder: &str) -> bool {
+    folder.len() <= files::MAX_FOLDER_BYTES
+        && folder.split('/').count() <= files::MAX_FOLDER_DEPTH
+        && folder.split('/').all(is_valid_file_name)
+}
+
 /// Whether a transfer ID is 16–64 of `[A-Za-z0-9_-]`.
 pub fn is_valid_transfer_id(id: &str) -> bool {
     (16..=64).contains(&id.len()) && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
@@ -535,7 +550,10 @@ impl FilesOffer {
     pub fn is_valid(&self) -> bool {
         is_valid_transfer_id(&self.id)
             && (1..=files::MAX_FILES).contains(&self.files.len())
-            && self.files.iter().all(|f| is_valid_file_name(&f.name))
+            && self
+                .files
+                .iter()
+                .all(|f| is_valid_file_name(&f.name) && f.folder.as_deref().is_none_or(is_valid_folder))
     }
 
     pub fn total_size(&self) -> u64 {
@@ -723,7 +741,7 @@ mod tests {
     fn file_offers_are_validated() {
         let offer = |id: &str, names: &[&str]| FilesOffer {
             id: id.into(),
-            files: names.iter().map(|n| FileEntry { name: (*n).into(), size: 1 }).collect(),
+            files: names.iter().map(|n| FileEntry { name: (*n).into(), size: 1, folder: None }).collect(),
         };
         assert!(offer("abcdefghijklmnop", &["photo.jpg", "Résumé (final).pdf"]).is_valid());
         for bad in ["", ".", "..", "a/b", "a\\b", "x\u{0}y", "tab\there"] {
@@ -733,6 +751,26 @@ mod tests {
         assert!(!offer("abcdefghijklmnop!", &["a"]).is_valid());
         assert!(!offer("abcdefghijklmnop", &[]).is_valid(), "at least one file");
         assert!(!format!("{:?}", offer("abcdefghijklmnop", &["secret.pdf"])).contains("secret"));
+    }
+
+    #[test]
+    fn folders_are_validated() {
+        let offer = |folder: &str| FilesOffer {
+            id: "abcdefghijklmnop".into(),
+            files: vec![FileEntry { name: "a.jpg".into(), size: 1, folder: Some(folder.into()) }],
+        };
+        for good in ["Trip", "Trip/Day 1", "Trip/Day 1/raw"] {
+            assert!(offer(good).is_valid(), "{good:?}");
+        }
+        for bad in ["", "/Trip", "Trip/", "Trip//x", "Trip/..", "./x", "a\\b", "x\u{0}"] {
+            assert!(!offer(bad).is_valid(), "{bad:?}");
+        }
+        assert!(!offer(&vec!["d"; files::MAX_FOLDER_DEPTH + 1].join("/")).is_valid());
+        // Without a folder, the field isn't sent at all.
+        let plain = FileEntry { name: "a".into(), size: 1, folder: None };
+        let env = Envelope::new("x", &plain).unwrap();
+        assert!(!format!("{:?}", env.b).contains("folder"));
+        assert!(!format!("{:?}", offer("Secret")).contains("Secret"));
     }
 
     #[test]
