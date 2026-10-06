@@ -30,6 +30,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +46,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.R
+import app.nectarlink.android.elevated.Elevated
+import app.nectarlink.android.elevated.PairingNotification
 import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.update.AppUpdater
 import app.nectarlink.android.update.CheckForUpdates
@@ -82,6 +87,7 @@ fun SettingsScreen(
 
         Section(stringResource(R.string.settings_control)) {
             ControlAccess(state.inputAccess)
+            ElevatedAccess()
         }
 
         Section(stringResource(R.string.settings_appearance)) {
@@ -244,6 +250,66 @@ private fun ControlAccess(on: Boolean) {
         } else {
             Button(onClick = open) { Text(stringResource(R.string.action_allow)) }
         }
+    }
+}
+
+/** Elevated through the phone's own wireless debugging: real touch and keys. */
+@Composable
+private fun ElevatedAccess() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val state by Elevated.state.collectAsState()
+    var steps by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(stringResource(R.string.elevated_title), style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(
+                    when (state) {
+                        Elevated.State.NotSetUp -> R.string.elevated_not_set_up
+                        Elevated.State.Waiting -> R.string.elevated_waiting
+                        Elevated.State.Starting -> R.string.elevated_starting
+                        Elevated.State.Running -> R.string.elevated_running
+                        is Elevated.State.Failed ->
+                            if ((state as Elevated.State.Failed).reason == Elevated.Reason.NotPaired) R.string.elevated_not_paired
+                            else R.string.elevated_failed
+                    },
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        when (state) {
+            Elevated.State.NotSetUp, is Elevated.State.Failed -> Button(onClick = { steps = true }) {
+                Text(stringResource(R.string.elevated_set_up))
+            }
+            Elevated.State.Waiting -> OutlinedButton(onClick = { scope.launch { Elevated.start() } }) {
+                Text(stringResource(R.string.elevated_try_again))
+            }
+            Elevated.State.Running -> OutlinedButton(onClick = { scope.launch { Elevated.forget() } }) {
+                Text(stringResource(R.string.elevated_turn_off))
+            }
+            Elevated.State.Starting -> {}
+        }
+    }
+    if (steps) {
+        AlertDialog(
+            onDismissRequest = { steps = false },
+            title = { Text(stringResource(R.string.elevated_steps_title)) },
+            text = { Text(stringResource(R.string.elevated_steps)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    steps = false
+                    PairingNotification.show(context)
+                    context.startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }) { Text(stringResource(R.string.elevated_open_developer)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { steps = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
     }
 }
 

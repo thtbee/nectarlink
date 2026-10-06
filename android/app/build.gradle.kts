@@ -183,6 +183,9 @@ dependencies {
     implementation(libs.camerax.lifecycle)
     implementation(libs.camerax.view)
     implementation(libs.zxing.core)
+    // Elevated: the phone's own wireless debugging (pairing and shell).
+    implementation(libs.libadb.android)
+    implementation(libs.conscrypt.android)
     // UniFFI's Kotlin bindings call the core through JNA.
     implementation(libs.jna) { artifact { type = "aar" } }
     testImplementation(libs.junit)

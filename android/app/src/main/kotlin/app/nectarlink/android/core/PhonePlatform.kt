@@ -12,6 +12,7 @@ import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.media.PhoneMedia
 import app.nectarlink.android.photos.RecentPhotos
+import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.mirror.MirrorRequest
 import app.nectarlink.android.mirror.MirrorRequests
@@ -74,7 +75,10 @@ internal class PhonePlatform(
 
     override fun mirrorKeyframeRequested(pcId: String) = MirrorService.keyframe(pcId)
 
-    override fun mirrorInput(pcId: String, input: MirrorInputEvent) = InputService.handle(input)
+    // Real events when Elevated runs; gestures through the accessibility service otherwise.
+    override fun mirrorInput(pcId: String, input: MirrorInputEvent) {
+        if (!Elevated.handle(input)) InputService.handle(input)
+    }
 
     override fun smsThreads(limit: UInt): List<SmsThread> = sms().threads(limit.toInt())
 

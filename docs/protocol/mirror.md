@@ -77,14 +77,18 @@ only to phones that offer `mirror.input`. Positions are fractions of the
 screen as the phone shows it now (0 at the left or top, 1 at the right or
 bottom), so they hold at any size and rotation.
 
-- `touch`: one finger. At Assist, Android plays a gesture whole, so the
-  phone turns each down–up into a tap (barely moved), a long press (held
-  450 ms or more) or a swipe along the way it went, when it comes up.
+- `touch`: one finger. At Elevated, the phone injects each down, move and
+  up as it comes, so dragging is live. At Assist, Android plays a gesture
+  whole, so the phone turns each down–up into a tap (barely moved), a long
+  press (held 450 ms or more) or a swipe along the way it went, when it
+  comes up.
 - `scroll`: the mouse wheel at a point, in notches (positive: down or
   right); the phone swipes the other way.
 - `key`: `back`, `home`, `recents`, `notifications`, `enter`, `backspace`,
   `delete`, `left`, `right`, `up`, `down` or `tab`. Others are dropped.
-- `text`: typed text (at most 4 KiB), into the focused text field.
+- `text`: typed text (at most 4 KiB), into the focused text field. At
+  Elevated it's typed as key events, so only what the keyboard map can type
+  (most Latin text) arrives.
 
 The Windows app maps the left button to a finger, right-click to Back,
 middle-click to Home and Ctrl+V to typing the PC's clipboard.

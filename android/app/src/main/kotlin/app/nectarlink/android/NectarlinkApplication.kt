@@ -3,6 +3,7 @@ package app.nectarlink.android
 
 import android.app.Application
 import app.nectarlink.android.core.Core
+import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.update.AppUpdater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +20,9 @@ class NectarlinkApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        Elevated.init(this)
+        // What the phone offers PCs follows Elevated starting and stopping.
+        Elevated.onChange = { core.refreshNotificationAccess() }
         core.start()
     }
 }

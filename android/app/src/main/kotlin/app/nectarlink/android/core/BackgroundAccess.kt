@@ -13,6 +13,20 @@ import androidx.core.net.toUri
  * Samsung's app freezer in particular) pause Nectarlink between events, so
  * a PC's requests (replies, dismissals, find my phone) time out.
  */
+/**
+ * The local network: Android 17 lets an app reach devices on it (the PC)
+ * only with the user's permission.
+ */
+object LocalNetwork {
+    /** Android 17's permission (API 37). */
+    const val PERMISSION = "android.permission.ACCESS_LOCAL_NETWORK"
+
+    fun needed(): Boolean = android.os.Build.VERSION.SDK_INT >= 37
+
+    fun granted(context: android.content.Context): Boolean =
+        !needed() || context.checkSelfPermission(PERMISSION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+}
+
 object BackgroundAccess {
     fun isUnrestricted(context: Context): Boolean =
         context.getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(context.packageName) ?: true

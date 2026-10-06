@@ -17,6 +17,7 @@ import app.nectarlink.android.files.TransferNotifications
 import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.calls.PhoneCalls
+import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.mirror.MirrorRequests
 import app.nectarlink.android.photos.RecentPhotos
@@ -112,6 +113,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         networkChange = scope.launch {
             delay(1_000)
             node?.networkChanged()
+            // A new network turns wireless debugging off; Elevated turns it back on.
+            if (!Elevated.running) Elevated.start()
         }
     }
 
@@ -162,6 +165,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 )
             }
             started.updatePower(powerLevel(), capabilities(NotificationListener.hasAccess(context)))
+            // Elevated, when set up and wireless debugging is on.
+            scope.launch { Elevated.start() }
             scope.launch(Dispatchers.Main) {
                 if (_state.value.photoAccess) photos.start()
                 calls.start()
@@ -211,6 +216,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         val smsAccess = PhoneSms.hasAll(context)
         val inputAccess = InputService.running
         val inputChanged = inputAccess != _state.value.inputAccess
+        val elevated = Elevated.running
+        val elevatedChanged = elevated != _state.value.elevated
+        val localNetwork = LocalNetwork.granted(context)
+        if (localNetwork && !_state.value.localNetwork) {
+            // Just allowed: reach the PCs now rather than at the next retry.
+            scope.launch { node?.networkChanged() }
+        }
         val photosChanged = photoAccess != _state.value.photoAccess
         val callsChanged = callAccess != _state.value.callAccess
         val smsChanged = smsAccess != _state.value.smsAccess
@@ -222,12 +234,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 callAccess = callAccess,
                 smsAccess = smsAccess,
                 inputAccess = inputAccess,
+                elevated = elevated,
+                localNetwork = localNetwork,
             )
         }
         if (granted && NotificationListener.instance == null) {
             NotificationListenerService.requestRebind(NotificationListener.component(context))
         }
-        if ((photosChanged || callsChanged || smsChanged || inputChanged) && node != null) {
+        if ((photosChanged || callsChanged || smsChanged || inputChanged || elevatedChanged) && node != null) {
             if (photoAccess) photos.start() else photos.stop()
             if (PhoneCalls.canFollow(context)) calls.start() else calls.stop()
             if (PhoneSms.canRead(context)) sms.start() else sms.stop()
@@ -371,10 +385,17 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneCalls.canControl(context)) listOf("call.control") else emptyList()) +
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
-            (if (InputService.running) listOf("mirror.input") else emptyList())
+            (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList())
 
-    /** Assist when the user turned on control from the PC (docs/PLAN.md §4.6). */
-    private fun powerLevel(): PowerLevel = if (InputService.running) PowerLevel.ASSIST else PowerLevel.BASIC
+    /**
+     * Elevated while the wireless debugging helper runs, Assist when the
+     * user turned on control from the PC (docs/PLAN.md §4.6).
+     */
+    private fun powerLevel(): PowerLevel = when {
+        Elevated.running -> PowerLevel.ELEVATED
+        InputService.running -> PowerLevel.ASSIST
+        else -> PowerLevel.BASIC
+    }
 
     // ---- Pairing ----
 

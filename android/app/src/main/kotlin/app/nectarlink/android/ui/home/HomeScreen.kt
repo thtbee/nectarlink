@@ -50,6 +50,7 @@ import app.nectarlink.android.update.AppUpdater
 import app.nectarlink.android.update.UpdateCard
 import app.nectarlink.android.clipboard.SendActivity
 import app.nectarlink.android.core.BackgroundAccess
+import app.nectarlink.android.core.LocalNetwork
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.Device
 import app.nectarlink.android.files.transferTitle
@@ -123,6 +124,15 @@ fun HomeScreen(
             item { RingingBanner(from, onStopRinging) }
         }
         item { UpdateCard(updater) }
+        if (!state.localNetwork) {
+            item {
+                val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onAccessChanged() }
+                SetupCard(
+                    stringResource(R.string.local_network_title),
+                    stringResource(R.string.local_network_text),
+                ) { ask.launch(LocalNetwork.PERMISSION) }
+            }
+        }
         if (state.devices.isNotEmpty() && !state.backgroundUnrestricted) {
             item {
                 val context = LocalContext.current

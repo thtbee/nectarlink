@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Talking to paired PCs on the local network. -->
+    <!-- Talking to paired PCs on the local network. Android 17 asks the user
+         for it (the Nearby devices permission group). -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -13,6 +16,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <!-- Sharing the screen with a PC (each time, after Android's prompt). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- Elevated: turning wireless debugging back on after a reboot or a new
+         Wi-Fi network. Not grantable to apps; Nectarlink grants it to itself
+         through the shell once the user has paired it with wireless debugging. -->
+    <uses-permission
+        android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Scanning the pairing QR code. -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -176,6 +185,11 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/input_service" />
         </service>
+
+        <!-- The wireless debugging pairing code, typed into a notification. -->
+        <receiver
+            android:name=".elevated.PairingNotification$Receiver"
+            android:exported="false" />
 
         <service
             android:name=".mirror.MirrorService"

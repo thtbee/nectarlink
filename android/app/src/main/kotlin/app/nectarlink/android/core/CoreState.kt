@@ -62,6 +62,10 @@ data class CoreState(
     val ringingFrom: String? = null,
     /** Whether the user let Nectarlink read notifications (to mirror them). */
     val notificationAccess: Boolean = false,
+    /** Whether Android lets Nectarlink reach the local network (Android 17). */
+    val localNetwork: Boolean = true,
+    /** Whether the Elevated helper runs (wireless debugging). */
+    val elevated: Boolean = false,
     /** Whether the user turned on control from the PC (the accessibility service). */
     val inputAccess: Boolean = false,
     /** Whether the user let Nectarlink read and send texts (for PCs). */

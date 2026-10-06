@@ -47,13 +47,17 @@ import app.nectarlink.android.core.PairingState
 import app.nectarlink.android.service.ConnectionService
 import app.nectarlink.android.ui.home.HomeScreen
 import app.nectarlink.android.ui.pairing.PairingActions
+import app.nectarlink.android.core.LocalNetwork
 import app.nectarlink.android.ui.pairing.PairingScreen
 import app.nectarlink.android.ui.settings.SettingsScreen
 import app.nectarlink.android.ui.theme.NectarlinkTheme
 
 class MainActivity : ComponentActivity() {
-    private val notificationPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    private val permissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            // The local network may have just been allowed: reconnect now.
+            (application as NectarlinkApplication).core.refreshNotificationAccess()
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -61,9 +65,13 @@ class MainActivity : ComponentActivity() {
         val core = (application as NectarlinkApplication).core
         val preferences = Preferences(this)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        // Notifications (transfers, calls, requests from PCs) and, on Android
+        // 17, the local network, without which no PC can be reached.
+        val wanted = buildList {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) add(Manifest.permission.POST_NOTIFICATIONS)
+            if (LocalNetwork.needed()) add(LocalNetwork.PERMISSION)
+        }.filter { checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED }
+        if (wanted.isNotEmpty()) permissions.launch(wanted.toTypedArray())
         if (savedInstanceState == null) handlePairingLink(intent)
 
         setContent {
