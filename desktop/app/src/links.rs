@@ -49,6 +49,7 @@ fn notice(title: &str, body: &str) {
         body: body.into(),
         attribution: "Nectarlink".into(),
         icon: None,
+        image: None,
         actions: Vec::new(),
         reply: None,
         silent: true,

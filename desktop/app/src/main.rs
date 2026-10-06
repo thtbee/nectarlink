@@ -223,6 +223,7 @@ fn main() -> ExitCode {
         state::Changes::APPS | state::Changes::HISTORY
     });
     notification_store::start(data_dir.clone());
+    std::thread::spawn(notifications::prune_images);
     watch_network();
     start_toasts();
     clipboard::start();

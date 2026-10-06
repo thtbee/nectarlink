@@ -25,6 +25,65 @@ fn toasted<T>(f: impl FnOnce(&mut HashMap<DeviceId, HashSet<String>>) -> T) -> T
     f(TOASTED.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new))
 }
 
+/// Pictures from notifications, kept for a couple of days (history lasts one).
+const KEEP_IMAGES: std::time::Duration = std::time::Duration::from_secs(2 * 24 * 3600);
+
+fn images_dir() -> std::path::PathBuf {
+    core_host::host().data_dir.join("cache").join("images")
+}
+
+/// Saves the pictures an event's notifications carry; returns where each
+/// went, by device and key.
+fn save_images(event: &NodeEvent) -> Vec<((DeviceId, String), std::path::PathBuf)> {
+    let (device, items): (DeviceId, Vec<&Notification>) = match event {
+        NodeEvent::NotificationsReset { device, items } => (*device, items.iter().collect()),
+        NodeEvent::NotificationPosted { device, notification } => (*device, vec![notification]),
+        _ => return Vec::new(),
+    };
+    let dir = images_dir();
+    items
+        .into_iter()
+        .filter_map(|n| {
+            let image = n.image.as_ref()?;
+            // Named after the notification and the picture: an update with a
+            // new picture gets a new file (the UI caches by name).
+            let name = format!(
+                "{:016x}.jpg",
+                fnv(&[device.to_string().as_bytes(), n.key.as_bytes(), image].concat())
+            );
+            let path = dir.join(name);
+            let saved = std::fs::create_dir_all(&dir)
+                .and_then(|()| if path.exists() { Ok(()) } else { std::fs::write(&path, image) });
+            match saved {
+                Ok(()) => Some(((device, n.key.clone()), path)),
+                Err(e) => {
+                    tracing::debug!(error = %e, "can't save a notification picture");
+                    None
+                }
+            }
+        })
+        .collect()
+}
+
+/// Deletes pictures older than [`KEEP_IMAGES`].
+pub fn prune_images() {
+    let Ok(entries) = std::fs::read_dir(images_dir()) else { return };
+    let now = std::time::SystemTime::now();
+    for entry in entries.flatten() {
+        let old = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .is_ok_and(|t| now.duration_since(t).unwrap_or_default() > KEEP_IMAGES);
+        if old {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
+}
+
+fn fnv(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3))
+}
+
 /// Saves the app icons an event carries; returns where each app's went.
 fn save_icons(event: &NodeEvent) -> Vec<(String, std::path::PathBuf)> {
     let items: Vec<&Notification> = match event {
@@ -51,12 +110,17 @@ fn save_icons(event: &NodeEvent) -> Vec<(String, std::path::PathBuf)> {
 /// Folds an event into the hub, saving icons first.
 pub fn apply(event: &NodeEvent) {
     let icons = save_icons(event);
+    let images = save_images(event);
     core_host::host().hub.update(|s| {
         let mut changes = Changes::NONE;
         for (app, path) in icons {
             changes |= s.set_app_icon(&app, path);
         }
-        changes | s.apply(event)
+        changes |= s.apply(event);
+        for (key, path) in images {
+            changes |= s.set_notification_image(key, path);
+        }
+        changes
     });
 }
 
@@ -89,9 +153,14 @@ pub fn update_toasts(event: &NodeEvent) {
 }
 
 fn show(device: DeviceId, n: &Notification) {
-    let (device_name, icon, rule) = core_host::host()
-        .hub
-        .read(|s| (s.name_of(&device), s.app_icons.get(&n.app).cloned(), s.app_rule(&n.app)));
+    let (device_name, icon, rule, image) = core_host::host().hub.read(|s| {
+        (
+            s.name_of(&device),
+            s.app_icons.get(&n.app).cloned(),
+            s.app_rule(&n.app),
+            s.notification_images.get(&(device, n.key.clone())).cloned(),
+        )
+    });
     // The user chose no pop-ups (or nothing at all) for this app.
     if rule != AppRule::Show {
         return;
@@ -107,6 +176,7 @@ fn show(device: DeviceId, n: &Notification) {
             None => n.app_name.clone(),
         },
         icon,
+        image,
         actions: n.actions.iter().filter(|a| !a.reply).map(|a| (a.id.clone(), a.title.clone())).collect(),
         reply: reply.map(|a| (a.id.clone(), a.title.clone())),
         silent: n.silent,

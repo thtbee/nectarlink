@@ -141,6 +141,8 @@ struct Row {
     device_name: String,
     /// A file URL, or "" (the UI then shows the app's initial).
     icon_url: String,
+    /// The notification's picture as a file URL, or "".
+    image_url: String,
     /// Replies sent from this PC.
     replies: Vec<SentReply>,
 }
@@ -165,6 +167,7 @@ const ROLES: &[&str] = &[
     "sub",
     "when",
     "iconUrl",
+    "imageUrl",
     "actions",
     "replyAction",
     "replyLabel",
@@ -188,6 +191,7 @@ fn role_value(row: &Row, role: &str) -> QVariant {
         "sub" => text(n.sub.as_deref().unwrap_or_default()),
         "when" => QVariant::from(&(n.when as f64)),
         "iconUrl" => text(&row.icon_url),
+        "imageUrl" => text(&row.image_url),
         // Buttons other than the reply, as JSON: [{ "id", "title" }].
         "actions" => text(
             &serde_json::Value::from(
@@ -269,6 +273,11 @@ impl qobject::NotificationList {
                     icon_url: s
                         .app_icons
                         .get(&view.notification.app)
+                        .map(|p| icons::file_url(p))
+                        .unwrap_or_default(),
+                    image_url: s
+                        .notification_images
+                        .get(&(view.device, view.notification.key.clone()))
                         .map(|p| icons::file_url(p))
                         .unwrap_or_default(),
                     replies: s
@@ -436,10 +445,12 @@ mod tests {
                     ],
                     silent: false,
                     icon: None,
+                    image: None,
                 },
             },
             device_name: "Pixel".into(),
             icon_url: String::new(),
+            image_url: "file:///C:/data/cache/images/1.jpg".into(),
             replies: vec![SentReply { text: "On my way".into(), pending: true }],
         };
         let text = |role| role_value(&row, role).value::<QString>().map(String::from).unwrap_or_default();

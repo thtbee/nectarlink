@@ -190,6 +190,9 @@ enum Command {
         /// Don't alert (like a silent notification on the phone).
         #[arg(long)]
         silent: bool,
+        /// A picture it shows (JPEG, at most 160 KiB).
+        #[arg(long)]
+        image: Option<PathBuf>,
     },
 }
 
@@ -515,7 +518,8 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             node.update_power(node_power(cli), offers).await;
             play(node, title, artist, app, *length, art.as_deref()).await?;
         }
-        Command::Notify { title, text, app, reply, silent } => {
+        Command::Notify { title, text, app, reply, silent, image } => {
+            let image = image.as_deref().map(std::fs::read).transpose().context("can't read the picture")?;
             if !cli.as_phone {
                 bail!("notifications come from phones: add --as-phone");
             }
@@ -540,6 +544,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 actions,
                 silent: *silent,
                 icon: None,
+                image,
             })
             .await;
             println!("Notification sent to connected PCs (and to others when they connect).");
@@ -776,10 +781,11 @@ fn print_event(node: &Node, event: &NodeEvent) {
         }
         NodeEvent::NotificationPosted { device, notification: n } => {
             println!(
-                "{}: {} · {}  [key {}]",
+                "{}: {} · {}{}  [key {}]",
                 name(device),
                 n.app_name,
                 n.title.as_deref().or(n.text.as_deref()).unwrap_or_default(),
+                n.image.as_ref().map(|i| format!(" (with a picture, {} bytes)", i.len())).unwrap_or_default(),
                 n.key
             );
             for a in &n.actions {

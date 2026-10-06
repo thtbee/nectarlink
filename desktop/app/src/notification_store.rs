@@ -174,6 +174,7 @@ mod tests {
             actions: Vec::new(),
             silent: false,
             icon: None,
+            image: None,
         }
     }
 

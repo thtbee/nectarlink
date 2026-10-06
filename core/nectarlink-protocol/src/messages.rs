@@ -200,6 +200,7 @@ pub mod notify_limits {
     pub const ACTION_TITLE_CHARS: usize = 64;
     pub const ACTIONS: usize = 5;
     pub const ICON_BYTES: usize = 64 * 1024;
+    pub const IMAGE_BYTES: usize = 160 * 1024;
     pub const SNAPSHOT_ITEMS: usize = 100;
 }
 
@@ -241,6 +242,9 @@ pub struct Notification {
     /// session.
     #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
     pub icon: Option<Vec<u8>>,
+    /// A picture it shows (a photo in a message, a big picture), JPEG.
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    pub image: Option<Vec<u8>>,
 }
 
 /// Never prints content: notification text must not reach logs (protocol
@@ -291,6 +295,9 @@ impl Notification {
         self.actions.truncate(ACTIONS);
         if self.icon.as_ref().is_some_and(|i| i.is_empty() || i.len() > ICON_BYTES) {
             self.icon = None;
+        }
+        if self.image.as_ref().is_some_and(|i| i.is_empty() || i.len() > IMAGE_BYTES) {
+            self.image = None;
         }
         Some(self)
     }
@@ -656,6 +663,7 @@ mod tests {
             actions: vec![NotificationAction { id: "0".into(), title: "Reply".into(), reply: true }],
             silent: false,
             icon: Some(vec![0x89, b'P', b'N', b'G']),
+            image: None,
         }
     }
 
@@ -683,11 +691,13 @@ mod tests {
             .collect();
         n.actions.push(NotificationAction { id: String::new(), title: "No id".into(), reply: false });
         n.icon = Some(vec![0; notify_limits::ICON_BYTES + 1]);
+        n.image = Some(vec![0; notify_limits::IMAGE_BYTES + 1]);
         let n = n.sanitized().unwrap();
         assert_eq!(n.title.unwrap().chars().count(), notify_limits::TITLE_CHARS);
         assert_eq!(n.text, None, "blank text is dropped");
         assert_eq!(n.actions.len(), notify_limits::ACTIONS);
         assert_eq!(n.icon, None);
+        assert_eq!(n.image, None);
     }
 
     #[test]

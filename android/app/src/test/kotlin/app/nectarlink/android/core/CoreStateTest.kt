@@ -77,7 +77,7 @@ class CoreStateTest {
     @Test
     fun notificationEventsLeaveThePhoneStateAlone() {
         val state = CoreState().reduce(Event.DeviceAdded(pc("a", "Desk", 10)))
-        val note = Notification("k", "com.chat", "Chat", "Sam", "Hi", null, 0L, emptyList(), false, null)
+        val note = Notification("k", "com.chat", "Chat", "Sam", "Hi", null, 0L, emptyList(), false, null, null)
         assertEquals(state, state.reduce(Event.NotificationPosted("a", note)))
         assertEquals(state, state.reduce(Event.NotificationRemoved("a", "k")))
         assertEquals(state, state.reduce(Event.NotificationsReset("a", listOf(note))))

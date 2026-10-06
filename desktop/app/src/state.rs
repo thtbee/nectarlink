@@ -212,6 +212,8 @@ pub struct AppState {
     pub notifications: Vec<NotificationView>,
     /// App icon files by package name.
     pub app_icons: HashMap<String, PathBuf>,
+    /// Picture files of notifications that have one, by device and key.
+    pub notification_images: HashMap<(DeviceId, String), PathBuf>,
     /// Replies sent from this PC, per notification, oldest first.
     pub replies: HashMap<(DeviceId, String), Vec<SentReply>>,
     /// File transfers, newest first.
@@ -464,7 +466,9 @@ impl AppState {
 
     /// Adds a notification in time order (newest first), without its icon.
     fn insert_notification(&mut self, device: DeviceId, mut notification: Notification) -> Changes {
+        // Icons and pictures live on disk (see crate::notifications).
         notification.icon = None;
+        notification.image = None;
         let mut changes = Changes::NONE;
         if self.app_names.get(&notification.app) != Some(&notification.app_name) {
             self.app_names.insert(notification.app.clone(), notification.app_name.clone());
@@ -532,6 +536,15 @@ impl AppState {
         }
         self.history.clear();
         Changes::HISTORY
+    }
+
+    /// Records where a notification's picture is stored.
+    pub fn set_notification_image(&mut self, key: (DeviceId, String), path: PathBuf) -> Changes {
+        if self.notification_images.get(&key) == Some(&path) {
+            return Changes::NONE;
+        }
+        self.notification_images.insert(key, path);
+        Changes::NOTIFICATIONS
     }
 
     /// Records where an app's icon is stored.
@@ -749,6 +762,7 @@ mod tests {
             actions: Vec::new(),
             silent: false,
             icon: Some(vec![1, 2, 3]),
+            image: None,
         }
     }
 

@@ -163,6 +163,9 @@ pub struct Notification {
     /// The app icon as PNG; pass it every time, the core sends it once per
     /// device and connection.
     pub icon: Option<Vec<u8>>,
+    /// A picture it shows (a photo in a message, a big picture): JPEG, at
+    /// most 160 KiB.
+    pub image: Option<Vec<u8>>,
 }
 
 /// Something playing (or paused) on a device (docs/protocol/media.md).
@@ -623,6 +626,7 @@ impl From<core::Notification> for Notification {
                 .collect(),
             silent: n.silent,
             icon: n.icon,
+            image: n.image,
         }
     }
 }
@@ -644,6 +648,7 @@ impl From<Notification> for core::Notification {
                 .collect(),
             silent: n.silent,
             icon: n.icon,
+            image: n.image,
         }
     }
 }

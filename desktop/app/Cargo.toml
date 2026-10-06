@@ -58,6 +58,10 @@ windows = { workspace = true, features = [
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
     "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_WindowsFirewall",
+    "Win32_Networking_NetworkListManager",
+    "Win32_System_Ole",
+    "Win32_System_Variant",
     "Win32_Networking_WinSock",
     "Win32_Media_Audio",
 ] }

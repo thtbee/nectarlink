@@ -483,6 +483,7 @@ fn note(key: &str, app: &str, title: &str, icon: bool) -> Notification {
         ],
         silent: false,
         icon: icon.then(|| vec![0x89, b'P', b'N', b'G', 1, 2, 3]),
+        image: None,
     }
 }
 

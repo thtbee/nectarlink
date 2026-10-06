@@ -109,12 +109,16 @@ impl Feed {
         let mut budget = SNAPSHOT_BUDGET;
         let mut out = Vec::new();
         for n in items.into_iter().take(SNAPSHOT_ITEMS) {
-            let size = approx_size(n);
+            let mut n = n.clone();
+            // Pictures go while there's room; the rest go without.
+            if n.image.is_some() && approx_size(&n) > budget {
+                n.image = None;
+            }
+            let size = approx_size(&n);
             if size > budget {
                 break;
             }
             budget -= size;
-            let mut n = n.clone();
             if !sent.contains(&n.app)
                 && let Some(icon) = state.icons.get(&n.app)
                 && icon.len() <= budget
@@ -146,7 +150,7 @@ impl Feed {
 fn approx_size(n: &Notification) -> usize {
     let text = [&n.title, &n.text, &n.sub].iter().map(|s| s.as_ref().map_or(0, String::len)).sum::<usize>();
     let actions = n.actions.iter().map(|a| a.id.len() + a.title.len() + 16).sum::<usize>();
-    n.key.len() + n.app.len() + n.app_name.len() + text + actions + 64
+    n.key.len() + n.app.len() + n.app_name.len() + text + actions + n.image.as_ref().map_or(0, Vec::len) + 64
 }
 
 impl Shared {

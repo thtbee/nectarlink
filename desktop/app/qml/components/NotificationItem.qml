@@ -16,6 +16,7 @@ Item {
     required property string sub
     required property real when
     required property string iconUrl
+    required property string imageUrl
     required property string actions
     required property string replyAction
     required property string replyLabel
@@ -116,6 +117,17 @@ Item {
             text: item.text
             wrapMode: Text.Wrap
             maximumLineCount: 4
+        }
+
+        // The picture it shows (a photo in a message), up to a modest size.
+        RoundedImage {
+            id: picture
+            width: Math.min(parent.width, 320)
+            height: status === Image.Ready
+                    ? Math.min(220, width * implicitImageHeight / Math.max(1, implicitImageWidth)) : 0
+            visible: item.imageUrl.length > 0 && status === Image.Ready
+            source: item.imageUrl
+            sourceSize.width: 640
         }
 
         // Replies sent from this PC.

@@ -34,6 +34,7 @@ const QML: &[&str] = &[
     "qml/components/NotificationItem.qml",
     "qml/components/NowPlaying.qml",
     "qml/components/QrCode.qml",
+    "qml/components/RoundedImage.qml",
     "qml/components/Segmented.qml",
     "qml/components/Sheet.qml",
     "qml/components/Spinner.qml",

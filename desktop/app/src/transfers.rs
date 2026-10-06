@@ -85,6 +85,7 @@ pub fn on_event(event: &NodeEvent) {
         body: format!("From {device}, saved in Downloads\\Nectarlink"),
         attribution: "Nectarlink".into(),
         icon: None,
+        image: None,
         actions: vec![(ACTION_SHOW.into(), "Show in folder".into())],
         reply: None,
         silent: false,

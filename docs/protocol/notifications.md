@@ -35,6 +35,7 @@ Notification = {
   actions:  [Action],    // In display order, at most 5
   silent:   bool,        // Arrived without sound or pop-up on the phone; don't alert either
   icon:     bytes?,      // The app's icon, PNG, at most 64 KiB (see §2.1)
+  image:    bytes?,      // The picture it shows (a photo in a message, a big picture), JPEG, at most 160 KiB
 }
 
 Action = {
@@ -48,6 +49,11 @@ Text fields are plain text. Senders **MUST** truncate `title` and `sub` to 256
 characters, `text` to 4,096 and action titles to 64; receivers **MUST**
 enforce the same limits. A notification with neither `title` nor `text` is
 not sent.
+
+`image` is sent with every post of a notification that shows a picture,
+scaled so its longest side is at most 512 pixels. Receivers drop an image
+over the limit. A snapshot carries pictures only while they fit its size
+budget; the rest arrive without one.
 
 ### 2.1 App icons
 

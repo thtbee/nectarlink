@@ -63,6 +63,8 @@ pub struct Toast {
     /// "WhatsApp · Pixel 9".
     pub attribution: String,
     pub icon: Option<PathBuf>,
+    /// A picture shown under the text (a photo in a message).
+    pub image: Option<PathBuf>,
     /// `(action id, label)`.
     pub actions: Vec<(String, String)>,
     /// `(action id, placeholder)` for an inline reply.
@@ -385,6 +387,9 @@ fn toast_xml(toast: &Toast) -> String {
         xml.push_str(&format!("<text>{}</text>", escape(&toast.body)));
     }
     xml.push_str(&format!(r#"<text placement="attribution">{}</text>"#, escape(&toast.attribution)));
+    if let Some(image) = &toast.image {
+        xml.push_str(&format!(r#"<image src="{}"/>"#, escape(&crate::icons::file_url(image))));
+    }
     if toast.progress.is_some() {
         xml.push_str(&format!(
             r#"<progress value="{{{PROGRESS_VALUE}}}" status="{{{PROGRESS_STATUS}}}" valueStringOverride="{{{PROGRESS_LABEL}}}"/>"#
@@ -435,6 +440,7 @@ mod tests {
             body: "Lunch \"today\"?\u{7}".into(),
             attribution: "Chat · Pixel".into(),
             icon: Some(PathBuf::from(r"C:\data\cache\icons\com.chat.png")),
+            image: Some(PathBuf::from(r"C:\data\cache\images\1.jpg")),
             actions: (0..6).map(|i| (i.to_string(), format!("Action {i}"))).collect(),
             reply: Some(("r".into(), "Reply".into())),
             silent: true,
@@ -448,6 +454,7 @@ mod tests {
         assert!(xml.contains("Sam &amp; &lt;Alex&gt;"), "{xml}");
         assert!(xml.contains("Lunch &quot;today&quot;?</text>"), "control characters are dropped: {xml}");
         assert!(xml.contains(r#"src="file:///C:/data/cache/icons/com.chat.png""#));
+        assert!(xml.contains(r#"<image src="file:///C:/data/cache/images/1.jpg"/>"#), "{xml}");
         assert!(xml.contains(r#"arguments="a:r" hint-inputId="reply""#));
         assert_eq!(xml.matches("<action ").count(), 5, "five buttons at most");
         assert!(xml.ends_with(r#"<audio silent="true"/></toast>"#));

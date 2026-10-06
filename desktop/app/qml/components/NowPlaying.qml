@@ -71,15 +71,12 @@ Card {
                     path: Icons.music
                     color: Theme.secondaryContainerContent
                 }
-                Image {
+                RoundedImage {
                     id: artwork
                     anchors.fill: parent
+                    radius: cover.radius
                     source: card.art
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
                     sourceSize: Qt.size(144, 144)
-                    opacity: status === Image.Ready ? 1 : 0
-                    Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
                 }
             }
             Column {
