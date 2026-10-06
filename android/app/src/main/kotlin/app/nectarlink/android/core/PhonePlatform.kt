@@ -65,8 +65,8 @@ internal class PhonePlatform(
 
     override fun callCommand(id: String, command: CallCommand): Boolean = onCall(id, command)
 
-    override fun mirrorRequested(pcId: String, maxSize: UInt, fps: UInt, bitrate: UInt): Boolean =
-        onMirror(pcId, MirrorRequest(pcId, maxSize.toInt(), fps.toInt(), bitrate.toInt()))
+    override fun mirrorRequested(pcId: String, maxSize: UInt, fps: UInt, bitrate: UInt, audio: Boolean): Boolean =
+        onMirror(pcId, MirrorRequest(pcId, maxSize.toInt(), fps.toInt(), bitrate.toInt(), audio))
 
     override fun mirrorStopRequested(pcId: String) {
         MirrorRequests.dismiss(context, pcId)

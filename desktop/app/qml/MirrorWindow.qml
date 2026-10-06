@@ -123,6 +123,28 @@ Window {
         }
     }
 
+    // The phone's sound on this PC: on or off, shown while the mouse is
+    // over the window (and while it's off).
+    HoverHandler { id: hovering }
+    Rectangle {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: 12
+        width: 40; height: 40
+        radius: 20
+        color: Qt.rgba(0, 0, 0, 0.6)
+        visible: Mirror.sound && Mirror.phase === "showing"
+        opacity: hovering.hovered || Mirror.muted ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
+        IconButton {
+            anchors.centerIn: parent
+            iconPath: Mirror.muted ? Icons.soundOff : Icons.speaker
+            iconColor: "white"
+            label: Mirror.muted ? qsTr("Play the phone's sound here") : qsTr("Mute the phone's sound here")
+            onClicked: Mirror.toggleSound()
+        }
+    }
+
     // How to control it, until the phone allows it.
     Rectangle {
         anchors.left: parent.left

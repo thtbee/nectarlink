@@ -59,6 +59,7 @@ capability is missing.
 | `call.show` | Shows a phone's calls ([calls](calls.md)) | app update |
 | `sms.show` | Shows a phone's text messages ([messages](sms.md)) | app update |
 | `mirror.view` | Shows a phone's screen ([mirroring](mirror.md)) | app update |
+| `mirror.listen` | Plays a mirrored phone's sound ([mirroring](mirror.md)) | app update |
 | `files.browse` | Lets a paired phone browse and fetch its files | app update |
 | `input.inject` | Accepts pointer and keyboard input (touchpad, air mouse, voice typing) | app update |
 | `deck.actions` | Runs Deck actions | app update |

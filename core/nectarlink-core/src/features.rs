@@ -679,9 +679,17 @@ pub const FEATURES: &[FeatureDef] = &[
     FeatureDef {
         id: "mirroring.audio",
         group: FeatureGroup::Mirroring,
-        requires: &[phone("mirror.audio", ELEVATED)],
+        requires: &[
+            phone("mirror.audio", ELEVATED),
+            desktop("mirror.listen", UPDATE),
+            DeviceToggle("mirroring"),
+        ],
         partial: Some(PartialDef {
-            requires: &[phone("mirror.audio.playback", UPDATE)],
+            requires: &[
+                phone("mirror.audio.playback", UPDATE),
+                desktop("mirror.listen", UPDATE),
+                DeviceToggle("mirroring"),
+            ],
             limit: "mirroring.limit.audio_some_apps",
         }),
     },
@@ -781,6 +789,7 @@ mod tests {
         "input.inject",
         "deck.actions",
         "mirror.view",
+        "mirror.listen",
     ];
 
     fn pc() -> DeviceFacts {

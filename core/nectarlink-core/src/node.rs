@@ -120,7 +120,7 @@ pub(crate) struct Shared {
     /// This phone's call in progress (docs/protocol/calls.md).
     pub(crate) calls: crate::calls::Current,
     /// Stop signals for phone screens shown here, by phone.
-    pub(crate) mirror_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
+    pub(crate) mirror_stops: Mutex<HashMap<(DeviceId, &'static str), Arc<tokio::sync::Notify>>>,
     pub data_dir: std::path::PathBuf,
     /// Where received files go.
     pub downloads_dir: std::path::PathBuf,
@@ -957,7 +957,14 @@ impl Node {
     /// Opens this phone's video stream to a PC that asked for the screen.
     pub async fn mirror_open(&self, peer: DeviceId) -> Result<crate::MirrorStream> {
         let session = self.connected(&peer)?;
-        crate::mirror::open(&self.shared, &session).await
+        crate::mirror::open(&self.shared, &session, false).await
+    }
+
+    /// Opens this phone's sound stream to a PC that asked for the screen
+    /// with its sound.
+    pub async fn mirror_open_audio(&self, peer: DeviceId) -> Result<crate::MirrorStream> {
+        let session = self.connected(&peer)?;
+        crate::mirror::open(&self.shared, &session, true).await
     }
 
     // ---- Messages (docs/protocol/sms.md) ----

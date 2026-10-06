@@ -6,6 +6,9 @@
 //! The phone side keeps latency low over throughput: when the network
 //! can't keep up, frames are dropped (never queued for long) and the
 //! encoder is asked for a keyframe to start clean from.
+//!
+//! When the PC asks for it and the phone can, the phone's sound comes on a
+//! second stream (PCM), dropped rather than delayed in the same way.
 
 use std::sync::{
     Arc, Mutex,
@@ -15,7 +18,7 @@ use std::sync::{
 use iroh::endpoint::{RecvStream, SendStream, VarInt};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, PacketKind,
-    messages::{MirrorConfig, MirrorInput, MirrorStart, StreamHeader, mirror, types},
+    messages::{MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorStart, StreamHeader, mirror, types},
     read_video_packet, video_packet_header, write_frame,
 };
 use tokio::sync::mpsc;
@@ -27,6 +30,8 @@ pub(crate) const TOGGLE: &str = "mirroring";
 /// Packets waiting to go out, at most. Beyond this the network is behind:
 /// sending more would only add delay.
 const QUEUE: usize = 4;
+/// Sound packets waiting to go out, at most (each is a few milliseconds).
+const AUDIO_QUEUE: usize = 24;
 
 /// What the PC's app gets of a mirroring stream. Called from the core's
 /// threads; must return quickly (hand the work to a thread of its own).
@@ -37,6 +42,12 @@ pub trait MirrorSink: Send + Sync {
     fn packet(&self, keyframe: bool, time_us: u64, data: Vec<u8>);
     /// The stream ended (the phone stopped, or the connection dropped).
     fn ended(&self);
+    /// The sound's format: first on the sound stream, and when it changes.
+    fn audio_config(&self, _config: MirrorAudioConfig) {}
+    /// Sound, in that format.
+    fn audio(&self, _time_us: u64, _data: Vec<u8>) {}
+    /// The sound stream ended.
+    fn audio_ended(&self) {}
 }
 
 impl std::fmt::Debug for dyn MirrorSink {
@@ -90,7 +101,7 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
         return;
     };
     shared.emit(NodeEvent::Mirroring { device: peer, on: true });
-    let stopped = shared.new_mirror_stop(&peer);
+    let stopped = shared.new_mirror_stop(&peer, mirror::OP_VIDEO);
     loop {
         let packet = tokio::select! {
             _ = stopped.notified() => break,
@@ -116,6 +127,47 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
     let _ = send.finish();
     sink.ended();
     shared.emit(NodeEvent::Mirroring { device: peer, on: false });
+}
+
+/// A phone opened a sound stream (its header already read).
+pub(crate) async fn receive_audio(
+    shared: Arc<Shared>,
+    peer: DeviceId,
+    mut send: SendStream,
+    mut recv: RecvStream,
+) {
+    let listens = shared.local_capabilities().iter().any(|c| c == mirror::LISTEN);
+    let sink = listens.then(|| shared.platform.mirror_sink(&peer)).flatten();
+    let Some(sink) = sink.filter(|_| shared.toggle_on(&peer, TOGGLE)) else {
+        let _ = send.reset(VarInt::from_u32(mirror::STOPPED));
+        let _ = recv.stop(VarInt::from_u32(mirror::STOPPED));
+        return;
+    };
+    let stopped = shared.new_mirror_stop(&peer, mirror::OP_AUDIO);
+    loop {
+        let packet = tokio::select! {
+            _ = stopped.notified() => break,
+            packet = read_video_packet(&mut recv) => packet,
+        };
+        match packet {
+            Ok(Some(p)) if p.kind == PacketKind::Config => match MirrorAudioConfig::from_cbor(&p.data) {
+                Ok(config) if config.is_valid() => sink.audio_config(config),
+                _ => {
+                    tracing::warn!("a phone sent a sound format this PC can't play");
+                    break;
+                }
+            },
+            Ok(Some(p)) => sink.audio(p.time_us, p.data),
+            Ok(None) => break,
+            Err(e) => {
+                tracing::debug!(error = %e, "mirrored sound ended");
+                break;
+            }
+        }
+    }
+    let _ = recv.stop(VarInt::from_u32(mirror::STOPPED));
+    let _ = send.finish();
+    sink.audio_ended();
 }
 
 // ---- The phone ----
@@ -171,6 +223,8 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MirrorSend {
     Queued,
+    /// Sound dropped to keep the delay low (the next packet may go).
+    Dropped,
     /// Dropped to keep the delay low: send a keyframe next (frames are
     /// dropped until one comes).
     NeedKeyframe,
@@ -178,13 +232,15 @@ pub enum MirrorSend {
     Closed,
 }
 
-/// A phone's video stream to one PC.
+/// A phone's video (or sound) stream to one PC.
 #[derive(Debug)]
 pub struct MirrorStream {
     queue: mpsc::Sender<(PacketKind, u64, Vec<u8>)>,
     closed: Arc<AtomicBool>,
     /// Frames are being dropped until a keyframe.
     resyncing: Mutex<bool>,
+    /// Sound: each packet stands alone, so a dropped one needs no keyframe.
+    audio: bool,
 }
 
 impl MirrorStream {
@@ -195,7 +251,7 @@ impl MirrorStream {
             return MirrorSend::Closed;
         }
         let mut resyncing = self.resyncing.lock().unwrap_or_else(|e| e.into_inner());
-        if *resyncing && kind == PacketKind::Frame {
+        if *resyncing && kind == PacketKind::Frame && !self.audio {
             return MirrorSend::NeedKeyframe;
         }
         let sent = if kind == PacketKind::Config {
@@ -214,6 +270,7 @@ impl MirrorStream {
                 MirrorSend::Queued
             }
             Err(()) if self.closed.load(Ordering::Acquire) => MirrorSend::Closed,
+            Err(()) if self.audio => MirrorSend::Dropped,
             Err(()) => {
                 *resyncing = true;
                 MirrorSend::NeedKeyframe
@@ -231,18 +288,21 @@ impl MirrorStream {
     }
 }
 
-/// Opens a video stream to a PC that asked for the screen.
-pub(crate) async fn open(shared: &Arc<Shared>, session: &Session) -> Result<MirrorStream> {
+/// Opens a video stream to a PC that asked for the screen, or (`audio`) a
+/// sound stream to one that asked for the sound too.
+pub(crate) async fn open(shared: &Arc<Shared>, session: &Session, audio: bool) -> Result<MirrorStream> {
     if !shared.toggle_on(&session.peer, TOGGLE) {
         return Err(Error::Denied);
     }
     let (mut send, mut recv) = session.conn.open_bi().await.map_err(crate::error::net)?;
-    let header =
-        StreamHeader { svc: mirror::SERVICE.into(), op: mirror::OP_VIDEO.into(), v: mirror::VERSION };
+    let op = if audio { mirror::OP_AUDIO } else { mirror::OP_VIDEO };
+    let header = StreamHeader { svc: mirror::SERVICE.into(), op: op.into(), v: mirror::VERSION };
     write_frame(&mut send, &Envelope::new(types::STREAM, &header)?.to_cbor()).await?;
-    // Video goes out as soon as it's written.
-    let _ = send.set_priority(1);
-    let (queue, mut packets) = mpsc::channel::<(PacketKind, u64, Vec<u8>)>(QUEUE);
+    // Sound and video go out as soon as they're written; sound first, as a
+    // gap in it is the more noticeable.
+    let _ = send.set_priority(if audio { 2 } else { 1 });
+    let (queue, mut packets) =
+        mpsc::channel::<(PacketKind, u64, Vec<u8>)>(if audio { AUDIO_QUEUE } else { QUEUE });
     let closed = Arc::new(AtomicBool::new(false));
     let done = closed.clone();
     tokio::spawn(async move {
@@ -271,21 +331,26 @@ pub(crate) async fn open(shared: &Arc<Shared>, session: &Session) -> Result<Mirr
         done.store(true, Ordering::Release);
         let _ = send.finish();
     });
-    Ok(MirrorStream { queue, closed, resyncing: Mutex::new(false) })
+    Ok(MirrorStream { queue, closed, resyncing: Mutex::new(false), audio })
 }
 
 impl Shared {
-    /// A new stop signal for the PC's reader of `peer`'s stream.
-    fn new_mirror_stop(&self, peer: &DeviceId) -> Arc<tokio::sync::Notify> {
+    /// A new stop signal for the PC's reader of `peer`'s video or sound
+    /// stream (`op`).
+    fn new_mirror_stop(&self, peer: &DeviceId, op: &'static str) -> Arc<tokio::sync::Notify> {
         let signal = Arc::new(tokio::sync::Notify::new());
-        self.mirror_stops.lock().unwrap_or_else(|e| e.into_inner()).insert(*peer, signal.clone());
+        self.mirror_stops.lock().unwrap_or_else(|e| e.into_inner()).insert((*peer, op), signal.clone());
         signal
     }
 
-    /// Stops showing `peer`'s screen here (kept until the reader sees it).
+    /// Stops showing (and playing) `peer`'s screen here (kept until the
+    /// readers see it).
     pub(crate) fn stop_showing(&self, peer: &DeviceId) {
-        if let Some(signal) = self.mirror_stops.lock().unwrap_or_else(|e| e.into_inner()).remove(peer) {
-            signal.notify_one();
+        let mut stops = self.mirror_stops.lock().unwrap_or_else(|e| e.into_inner());
+        for op in [mirror::OP_VIDEO, mirror::OP_AUDIO] {
+            if let Some(signal) = stops.remove(&(*peer, op)) {
+                signal.notify_one();
+            }
         }
     }
 }
@@ -297,7 +362,8 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn a_full_queue_drops_frames_until_a_keyframe() {
         let (queue, mut packets) = mpsc::channel(2);
-        let stream = MirrorStream { queue, closed: Arc::default(), resyncing: Mutex::new(false) };
+        let stream =
+            MirrorStream { queue, closed: Arc::default(), resyncing: Mutex::new(false), audio: false };
         let send = |kind| tokio::task::block_in_place(|| stream.send(kind, 0, vec![1]));
         assert_eq!(send(PacketKind::Keyframe), MirrorSend::Queued);
         assert_eq!(send(PacketKind::Frame), MirrorSend::Queued);
@@ -310,5 +376,18 @@ mod tests {
         assert_eq!(send(PacketKind::Frame), MirrorSend::Queued);
         drop(packets);
         assert_eq!(send(PacketKind::Keyframe), MirrorSend::Closed);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn sound_drops_only_what_doesnt_fit() {
+        let (queue, mut packets) = mpsc::channel(1);
+        let stream =
+            MirrorStream { queue, closed: Arc::default(), resyncing: Mutex::new(false), audio: true };
+        let send = |kind| tokio::task::block_in_place(|| stream.send(kind, 0, vec![1]));
+        assert_eq!(send(PacketKind::Frame), MirrorSend::Queued);
+        assert_eq!(send(PacketKind::Frame), MirrorSend::Dropped, "full");
+        packets.recv().await;
+        // No keyframe to wait for: the next one goes.
+        assert_eq!(send(PacketKind::Frame), MirrorSend::Queued);
     }
 }

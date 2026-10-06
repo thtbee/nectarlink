@@ -42,15 +42,16 @@ pub use nectarlink_protocol::messages::clip::{
 pub use nectarlink_protocol::{
     DeviceId, PacketKind,
     messages::{
-        Battery, CLIP_MAX_BYTES, CallControls, CallState, DeviceInfo, DeviceKind, MediaPlayer, MirrorConfig,
-        MirrorInput, MirrorStart, Notification, NotificationAction, PhotoNew as Photo, PowerLevel,
-        SmsMessage, SmsPart, SmsThread, TouchAction,
+        Battery, CLIP_MAX_BYTES, CallControls, CallState, DeviceInfo, DeviceKind, MediaPlayer,
+        MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorStart, Notification, NotificationAction,
+        PhotoNew as Photo, PowerLevel, SmsMessage, SmsPart, SmsThread, TouchAction,
         calls::{
             CONTROL as CALLS_CONTROL, IN_CALL as CALLS_IN_CALL, SHOW as CALLS_SHOW, STATE as CALLS_STATE,
         },
         mirror::{
-            CAPTURE as MIRROR_CAPTURE, INPUT as MIRROR_INPUT, MAX_TEXT_BYTES as MIRROR_MAX_TEXT_BYTES,
-            VIEW as MIRROR_VIEW,
+            AUDIO as MIRROR_AUDIO, AUDIO_PLAYBACK as MIRROR_AUDIO_PLAYBACK, CAPTURE as MIRROR_CAPTURE,
+            INPUT as MIRROR_INPUT, LISTEN as MIRROR_LISTEN, MAX_TEXT_BYTES as MIRROR_MAX_TEXT_BYTES,
+            PCM as MIRROR_PCM, VIEW as MIRROR_VIEW,
         },
         mirror_keys,
         photos::{MAX_THUMB_BYTES as PHOTO_MAX_THUMB_BYTES, READ as PHOTOS_READ, SHOW as PHOTOS_SHOW},

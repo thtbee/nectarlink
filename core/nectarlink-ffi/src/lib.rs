@@ -519,10 +519,12 @@ impl From<core::MirrorInput> for MirrorInputEvent {
     }
 }
 
-/// What became of a video packet.
+/// What became of a video (or sound) packet.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum MirrorSendResult {
     Queued,
+    /// Sound dropped: the network is behind (the next packet may go).
+    Dropped,
     /// The network is behind: request a keyframe from the encoder (frames
     /// are dropped until one comes).
     NeedKeyframe,
@@ -530,7 +532,7 @@ pub enum MirrorSendResult {
     Closed,
 }
 
-/// This phone's screen going to one PC.
+/// This phone's screen (or its sound) going to one PC.
 #[derive(Debug, uniffi::Object)]
 pub struct MirrorStream(core::MirrorStream);
 
@@ -545,6 +547,7 @@ impl MirrorStream {
         };
         match self.0.send(kind, time_us, data) {
             core::MirrorSend::Queued => MirrorSendResult::Queued,
+            core::MirrorSend::Dropped => MirrorSendResult::Dropped,
             core::MirrorSend::NeedKeyframe => MirrorSendResult::NeedKeyframe,
             core::MirrorSend::Closed => MirrorSendResult::Closed,
         }
@@ -560,6 +563,12 @@ impl MirrorStream {
 #[uniffi::export]
 pub fn mirror_config(width: u32, height: u32) -> Vec<u8> {
     core::MirrorConfig { codec: "h264".into(), width, height }.to_cbor()
+}
+
+/// The bytes of a config packet for 16-bit PCM sound.
+#[uniffi::export]
+pub fn mirror_audio_config(rate: u32, channels: u8) -> Vec<u8> {
+    core::MirrorAudioConfig { codec: core::MIRROR_PCM.into(), rate, channels }.to_cbor()
 }
 
 /// A conversation (docs/protocol/sms.md).
@@ -1198,9 +1207,10 @@ pub trait Platform: Send + Sync {
     /// A PC asked to answer, decline or silence call `id` (the call in
     /// progress). False if the phone couldn't.
     fn call_command(&self, id: String, command: CallCommand) -> bool;
-    /// A PC asked for this phone's screen: ask the user (then call
-    /// `mirror_open`). False if the user couldn't be asked.
-    fn mirror_requested(&self, pc_id: String, max_size: u32, fps: u32, bitrate: u32) -> bool;
+    /// A PC asked for this phone's screen (and, with `audio`, its sound):
+    /// ask the user (then call `mirror_open`, and `mirror_open_audio` for
+    /// the sound). False if the user couldn't be asked.
+    fn mirror_requested(&self, pc_id: String, max_size: u32, fps: u32, bitrate: u32, audio: bool) -> bool;
     /// The PC stopped watching: stop sharing.
     fn mirror_stop_requested(&self, pc_id: String);
     /// The PC needs a keyframe.
@@ -1281,7 +1291,13 @@ impl core::Platform for PlatformAdapter {
         }
     }
     fn mirror_requested(&self, peer: &DeviceId, options: &core::MirrorStart) -> Result<(), String> {
-        if self.0.mirror_requested(peer.to_string(), options.max_size, options.fps, options.bitrate) {
+        if self.0.mirror_requested(
+            peer.to_string(),
+            options.max_size,
+            options.fps,
+            options.bitrate,
+            options.audio,
+        ) {
             Ok(())
         } else {
             Err("the user couldn't be asked".into())
@@ -1663,6 +1679,14 @@ impl NectarlinkNode {
         let id = parse_id(&pc_id)?;
         let node = self.node.clone();
         self.run(async move { Ok(Arc::new(MirrorStream(node.mirror_open(id).await?))) }).await
+    }
+
+    /// Opens this phone's sound stream to a PC that asked for it with the
+    /// screen.
+    pub async fn mirror_open_audio(&self, pc_id: String) -> Result<Arc<MirrorStream>> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(Arc::new(MirrorStream(node.mirror_open_audio(id).await?))) }).await
     }
 
     /// This phone's messages changed (in `thread`, or anywhere when null):

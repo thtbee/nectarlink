@@ -16,6 +16,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <!-- Sharing the screen with a PC (each time, after Android's prompt). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- The phone's sound while mirrored (playback capture, with the screen
+         share's consent). Never the microphone. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Elevated: turning wireless debugging back on after a reboot or a new
          Wi-Fi network. Not grantable to apps; Nectarlink grants it to itself
          through the shell once the user has paired it with wireless debugging. -->

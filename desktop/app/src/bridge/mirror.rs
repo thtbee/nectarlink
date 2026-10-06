@@ -33,6 +33,10 @@ pub mod qobject {
         #[qproperty(QString, reason)]
         /// The PC's mouse and keyboard work on the phone.
         #[qproperty(bool, can_control, cxx_name = "canControl")]
+        /// The phone's sound is coming in.
+        #[qproperty(bool, sound)]
+        /// The user turned the sound off on this PC.
+        #[qproperty(bool, muted)]
         type Mirror = super::MirrorRust;
     }
 
@@ -62,6 +66,10 @@ pub mod qobject {
         /// Types the PC's clipboard text on the phone.
         #[qinvokable]
         fn paste(self: &Mirror);
+        /// Turns the phone's sound off on this PC, or back on.
+        #[qinvokable]
+        #[cxx_name = "toggleSound"]
+        fn toggle_sound(self: &Mirror);
     }
 }
 
@@ -72,6 +80,8 @@ pub struct MirrorRust {
     phase: QString,
     reason: QString,
     can_control: bool,
+    sound: bool,
+    muted: bool,
     shown: Option<DeviceId>,
 }
 
@@ -92,6 +102,8 @@ impl qobject::Mirror {
                 == Some(nectarlink_core::FeatureState::Available)
         });
         self.as_mut().set_can_control(control);
+        self.as_mut().set_sound(mirror::has_sound(&device));
+        self.as_mut().set_muted(mirror::muted());
         let (phase, reason) = match mirror::phase(&device) {
             None => ("", String::new()),
             Some(Phase::Asking) => ("asking", String::new()),
@@ -166,6 +178,10 @@ impl qobject::Mirror {
                 self.send(nectarlink_core::MirrorInput::Text { text: piece });
             }
         }
+    }
+
+    pub fn toggle_sound(&self) {
+        mirror::set_muted(!mirror::muted());
     }
 
     pub fn stop(mut self: Pin<&mut Self>) {

@@ -38,6 +38,7 @@ class MirrorService : Service() {
     private val main = Handler(Looper.getMainLooper())
     private var projection: MediaProjection? = null
     private var encoder: ScreenEncoder? = null
+    private var sound: SoundCapture? = null
     private var pcId: String? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -78,6 +79,7 @@ class MirrorService : Service() {
         val maxSize = intent.getIntExtra(EXTRA_MAX_SIZE, 1920)
         val fps = intent.getIntExtra(EXTRA_FPS, 60)
         val bitrate = intent.getIntExtra(EXTRA_BITRATE, 8_000_000)
+        val audio = intent.getBooleanExtra(EXTRA_AUDIO, false)
         scope.launch {
             val stream = runCatching { core.mirrorOpen(pc) }.getOrElse {
                 Log.w(TAG, "can't stream to the PC", it)
@@ -94,8 +96,26 @@ class MirrorService : Service() {
                     main.post { stopSharing() }
                 }.also { it.start() }
             }
+            if (audio && SoundCapture.canCapture(this@MirrorService)) startSound(core, pc)
         }
         return START_NOT_STICKY
+    }
+
+    /** The sound, on a stream of its own; the screen goes on without it if it can't. */
+    private suspend fun startSound(core: app.nectarlink.android.core.Core, pc: String) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val stream = runCatching { core.mirrorOpenAudio(pc) }.getOrElse {
+            Log.w(TAG, "can't send the sound", it)
+            return
+        }
+        main.post {
+            val running = projection
+            if (running == null || pcId != pc || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                stream.end()
+                return@post
+            }
+            sound = SoundCapture(running, stream).also { it.start() }
+        }
     }
 
     private fun notification(pcName: String): Notification {
@@ -116,6 +136,8 @@ class MirrorService : Service() {
     private fun stopSharing() {
         encoder?.stop()
         encoder = null
+        sound?.stop()
+        sound = null
         projection?.let { runCatching { it.stop() } }
         projection = null
         pcId = null
@@ -141,6 +163,7 @@ class MirrorService : Service() {
         private const val EXTRA_MAX_SIZE = "maxSize"
         private const val EXTRA_FPS = "fps"
         private const val EXTRA_BITRATE = "bitrate"
+        private const val EXTRA_AUDIO = "audio"
 
         /** The service sharing the screen now, if any. */
         @Volatile private var current: MirrorService? = null
@@ -160,6 +183,7 @@ class MirrorService : Service() {
                 .putExtra(EXTRA_MAX_SIZE, request.maxSize)
                 .putExtra(EXTRA_FPS, request.fps)
                 .putExtra(EXTRA_BITRATE, request.bitrate)
+                .putExtra(EXTRA_AUDIO, request.audio)
             ContextCompat.startForegroundService(context, intent)
         }
 

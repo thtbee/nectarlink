@@ -86,7 +86,8 @@ impl Platform for RecordingPlatform {
         _peer: &nectarlink_core::DeviceId,
         options: &nectarlink_core::MirrorStart,
     ) -> Result<(), String> {
-        self.mirror_asks.lock().unwrap().push(format!("start {}", options.max_size));
+        let sound = if options.audio { " with sound" } else { "" };
+        self.mirror_asks.lock().unwrap().push(format!("start {}{sound}", options.max_size));
         Ok(())
     }
     fn mirror_stop_requested(&self, _peer: &nectarlink_core::DeviceId) {
@@ -177,6 +178,15 @@ impl nectarlink_core::MirrorSink for ScreenSink {
     }
     fn ended(&self) {
         self.got.lock().unwrap().push("ended".into());
+    }
+    fn audio_config(&self, config: nectarlink_core::MirrorAudioConfig) {
+        self.got.lock().unwrap().push(format!("sound {} Hz x{}", config.rate, config.channels));
+    }
+    fn audio(&self, time_us: u64, data: Vec<u8>) {
+        self.got.lock().unwrap().push(format!("sound {time_us} {}", data.len()));
+    }
+    fn audio_ended(&self) {
+        self.got.lock().unwrap().push("sound ended".into());
     }
 }
 
@@ -1034,19 +1044,28 @@ async fn folders_arrive_with_their_layout() {
 #[tokio::test(flavor = "multi_thread")]
 async fn the_phone_screen_streams_to_the_pc() {
     use nectarlink_core::{MirrorSend, PacketKind};
-    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::MIRROR_VIEW]).await;
+    let mut pc = device_with(
+        "Desktop",
+        DeviceKind::Desktop,
+        &[nectarlink_core::MIRROR_VIEW, nectarlink_core::MIRROR_LISTEN],
+    )
+    .await;
     let mut phone = device_with(
         "Pixel",
         DeviceKind::Phone,
-        &[nectarlink_core::MIRROR_CAPTURE, nectarlink_core::MIRROR_INPUT],
+        &[
+            nectarlink_core::MIRROR_CAPTURE,
+            nectarlink_core::MIRROR_INPUT,
+            nectarlink_core::MIRROR_AUDIO_PLAYBACK,
+        ],
     )
     .await;
     pair_qr(&mut pc, &mut phone).await;
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
 
-    let options = nectarlink_core::MirrorStart { max_size: 1920, fps: 60, bitrate: 8_000_000 };
+    let options = nectarlink_core::MirrorStart { max_size: 1920, fps: 60, bitrate: 8_000_000, audio: true };
     with_timeout("start", pc.node.mirror_start(phone_id, options)).await.unwrap();
-    assert_eq!(*phone.platform.mirror_asks.lock().unwrap(), ["start 1920"]);
+    assert_eq!(*phone.platform.mirror_asks.lock().unwrap(), ["start 1920 with sound"]);
 
     // The user agreed: the phone streams.
     let stream = Arc::new(with_timeout("open", phone.node.mirror_open(pc_id)).await.unwrap());
@@ -1070,6 +1089,29 @@ async fn the_phone_screen_streams_to_the_pc() {
     }
     assert_eq!(*screen.got.lock().unwrap(), ["config 1080x2400", "key 1 90000", "frame 16667 4000"]);
 
+    // And its sound, on a stream of its own.
+    let sound = Arc::new(with_timeout("open sound", phone.node.mirror_open_audio(pc_id)).await.unwrap());
+    let format = nectarlink_core::MirrorAudioConfig {
+        codec: nectarlink_core::MIRROR_PCM.into(),
+        rate: 48_000,
+        channels: 2,
+    };
+    let sender = sound.clone();
+    let sent = tokio::task::spawn_blocking(move || {
+        [
+            sender.send(PacketKind::Config, 0, format.to_cbor()),
+            sender.send(PacketKind::Frame, 10_000, vec![0; 1_920]),
+        ]
+    })
+    .await
+    .unwrap();
+    assert!(sent.iter().all(|s| *s == MirrorSend::Queued), "{sent:?}");
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while screen.got.lock().unwrap().len() < 5 && tokio::time::Instant::now() < deadline {
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+    assert_eq!(screen.got.lock().unwrap()[3..], ["sound 48000 Hz x2", "sound 10000 1920"]);
+
     pc.node.mirror_keyframe(phone_id).await;
     // The PC's mouse on the phone's screen; nonsense never leaves the PC.
     use nectarlink_core::{MirrorInput, TouchAction};
@@ -1082,7 +1124,14 @@ async fn the_phone_screen_streams_to_the_pc() {
     // The PC stops watching: the phone hears it, and its stream closes.
     pc.node.mirror_stop(phone_id).await;
     wait_for(&mut pc, "stopped", |e| matches!(e, NodeEvent::Mirroring { on: false, .. }).then_some(())).await;
-    assert_eq!(screen.got.lock().unwrap().last().map(String::as_str), Some("ended"));
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while !screen.got.lock().unwrap().iter().any(|g| g == "sound ended")
+        && tokio::time::Instant::now() < deadline
+    {
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+    let got = screen.got.lock().unwrap().clone();
+    assert!(got.iter().any(|g| g == "ended") && got.iter().any(|g| g == "sound ended"), "{got:?}");
     let deadline = tokio::time::Instant::now() + WAIT;
     while !stream.is_closed() && tokio::time::Instant::now() < deadline {
         let s = stream.clone();
@@ -1090,6 +1139,13 @@ async fn the_phone_screen_streams_to_the_pc() {
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
     }
     assert!(stream.is_closed(), "the phone's stream closes");
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while !sound.is_closed() && tokio::time::Instant::now() < deadline {
+        let s = sound.clone();
+        tokio::task::spawn_blocking(move || s.send(PacketKind::Frame, 0, vec![0])).await.unwrap();
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+    assert!(sound.is_closed(), "and its sound stream");
     let asks = phone.platform.mirror_asks.lock().unwrap().clone();
     for wanted in ["keyframe", "Touch(Down)", "Key(back)", "stop"] {
         assert!(asks.iter().any(|a| a == wanted), "{wanted}: {asks:?}");

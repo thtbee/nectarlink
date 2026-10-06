@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,17 +19,24 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import app.nectarlink.android.R
 
-/** A PC asking for the screen, with what it wants. */
-data class MirrorRequest(val pcId: String, val maxSize: Int, val fps: Int, val bitrate: Int) {
+/** A PC asking for the screen (and its sound), with what it wants. */
+data class MirrorRequest(val pcId: String, val maxSize: Int, val fps: Int, val bitrate: Int, val audio: Boolean) {
     fun toIntent(intent: Intent): Intent = intent
         .putExtra("pc", pcId)
         .putExtra("maxSize", maxSize)
         .putExtra("fps", fps)
         .putExtra("bitrate", bitrate)
+        .putExtra("audio", audio)
 
     companion object {
         fun of(intent: Intent): MirrorRequest? = intent.getStringExtra("pc")?.let {
-            MirrorRequest(it, intent.getIntExtra("maxSize", 1920), intent.getIntExtra("fps", 60), intent.getIntExtra("bitrate", 8_000_000))
+            MirrorRequest(
+                it,
+                intent.getIntExtra("maxSize", 1920),
+                intent.getIntExtra("fps", 60),
+                intent.getIntExtra("bitrate", 8_000_000),
+                intent.getBooleanExtra("audio", false),
+            )
         }
     }
 }
@@ -81,9 +89,15 @@ object MirrorRequests {
     private const val REQUEST_TIMEOUT_MS = 2 * 60 * 1000L
 }
 
-/** Shows Android's screen capture prompt for a PC's request, then starts sharing. */
+/**
+ * Shows Android's screen capture prompt for a PC's request, then starts
+ * sharing. A PC that wants the sound too first gets the permission asked
+ * for (once; without it, the screen is shared alone).
+ */
 class MirrorConsentActivity : ComponentActivity() {
     private var request: MirrorRequest? = null
+
+    private val sound = registerForActivityResult(ActivityResultContracts.RequestPermission()) { askForScreen() }
 
     private val prompt = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val data = result.data
@@ -99,8 +113,13 @@ class MirrorConsentActivity : ComponentActivity() {
         request = MirrorRequest.of(intent)
         val asked = request ?: return finish()
         MirrorRequests.dismiss(this, asked.pcId)
-        if (savedInstanceState == null) {
-            prompt.launch(getSystemService(MediaProjectionManager::class.java).createScreenCaptureIntent())
-        }
+        if (savedInstanceState != null) return
+        val wantsSound = asked.audio && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
+        if (wantsSound) sound.launch(Manifest.permission.RECORD_AUDIO) else askForScreen()
+    }
+
+    private fun askForScreen() {
+        prompt.launch(getSystemService(MediaProjectionManager::class.java).createScreenCaptureIntent())
     }
 }

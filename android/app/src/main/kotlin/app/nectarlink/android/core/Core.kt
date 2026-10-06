@@ -3,6 +3,7 @@ package app.nectarlink.android.core
 
 import android.content.Context
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.util.Log
 import android.net.Uri
@@ -277,11 +278,6 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
-    /**
-     * Sends picked or shared files to a PC; problems arrive as messages.
-     * The files are opened right away: Android's permission to read a
-     * shared item ends with the activity that received it.
-     */
     /** Opens this phone's screen stream to a PC (after the user agreed). */
     suspend fun mirrorOpen(pcId: String): MirrorStream {
         startJob?.join()
@@ -289,6 +285,18 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         return node.mirrorOpen(pcId)
     }
 
+    /** Opens this phone's sound stream to a PC that asked for it with the screen. */
+    suspend fun mirrorOpenAudio(pcId: String): MirrorStream {
+        startJob?.join()
+        val node = checkNotNull(node) { "the core isn't running" }
+        return node.mirrorOpenAudio(pcId)
+    }
+
+    /**
+     * Sends picked or shared files to a PC; problems arrive as messages.
+     * The files are opened right away: Android's permission to read a
+     * shared item ends with the activity that received it.
+     */
     fun sendFiles(pcId: String, uris: List<Uri>) = send(pcId, OutgoingFiles.open(context, uris))
 
     /** Sends a folder the user picked, with everything in it. */
@@ -387,7 +395,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneCalls.canControl(context) && CallCompanion.allowed(context)) listOf("call.incall") else emptyList()) +
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
-            (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList())
+            (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList()) +
+            // Asked for when a PC wants the sound.
+            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) listOf("mirror.audio.playback") else emptyList())
 
     /**
      * Elevated while the wireless debugging helper runs, Assist when the

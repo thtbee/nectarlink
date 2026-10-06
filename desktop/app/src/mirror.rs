@@ -3,29 +3,33 @@
 //! decodes its video on a thread of its own and hands each picture to the
 //! mirror window's `VideoView`. Only the newest picture is shown; when the
 //! decoder falls behind or loses its place, the phone is asked for a
-//! keyframe.
+//! keyframe. The phone's sound, when it sends it, plays on the PC's
+//! speakers.
 
 use std::{
     collections::HashMap,
     sync::{
-        Arc, Mutex,
+        Arc, Mutex, OnceLock,
         atomic::{AtomicUsize, Ordering},
         mpsc::{Receiver, SyncSender, TrySendError, sync_channel},
     },
     time::{Duration, Instant},
 };
 
-use nectarlink_core::{DeviceId, Error, MirrorConfig, MirrorSink, MirrorStart, NodeEvent};
+use nectarlink_core::{DeviceId, Error, MirrorAudioConfig, MirrorConfig, MirrorSink, MirrorStart, NodeEvent};
 
 use crate::{
     bridge::{app::describe, native::ffi},
     core_host,
     state::Changes,
-    win::h264::{Decoder, to_bgrx},
+    win::{
+        audio_out::Player,
+        h264::{Decoder, to_bgrx},
+    },
 };
 
 /// What the PC asks for: the phone scales its screen to fit.
-const OPTIONS: MirrorStart = MirrorStart { max_size: 1920, fps: 60, bitrate: 8_000_000 };
+const OPTIONS: MirrorStart = MirrorStart { max_size: 1920, fps: 60, bitrate: 8_000_000, audio: true };
 /// Packets waiting for the decoder, at most (about two seconds).
 const BACKLOG: usize = 120;
 /// How often decode times are logged.
@@ -44,6 +48,30 @@ pub enum Phase {
 #[derive(Debug, Default)]
 struct State {
     phases: HashMap<DeviceId, Phase>,
+    /// Phones whose sound is coming in.
+    sound: std::collections::HashSet<DeviceId>,
+}
+
+/// The user turned the phones' sound off on this PC (until turned on).
+static MUTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn muted() -> bool {
+    MUTED.load(Ordering::Relaxed)
+}
+
+pub fn set_muted(muted: bool) {
+    MUTED.store(muted, Ordering::Relaxed);
+    core_host::host().hub.changed(Changes::MIRROR);
+}
+
+/// Whether `device`'s sound is coming in.
+pub fn has_sound(device: &DeviceId) -> bool {
+    state(|s| s.sound.contains(device))
+}
+
+fn set_sound(device: DeviceId, on: bool) {
+    state(|s| if on { s.sound.insert(device) } else { s.sound.remove(&device) });
+    core_host::host().hub.changed(Changes::MIRROR);
 }
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
@@ -122,10 +150,11 @@ pub fn input(device: DeviceId, input: nectarlink_core::MirrorInput) {
     let _ = queue.send((device, input));
 }
 
-/// Where the core puts a phone's video: only for phones this PC asked.
+/// Where the core puts a phone's video (or sound, from a stream of its
+/// own): only for phones this PC asked.
 pub fn sink(device: &DeviceId) -> Option<Arc<dyn MirrorSink>> {
     matches!(phase(device), Some(Phase::Asking | Phase::Showing))
-        .then(|| Arc::new(Sink::start(*device)) as Arc<dyn MirrorSink>)
+        .then(|| Arc::new(Sink::new(*device)) as Arc<dyn MirrorSink>)
 }
 
 enum Item {
@@ -134,16 +163,29 @@ enum Item {
     Ended,
 }
 
-/// Hands the core's packets to the decoder thread.
+/// Hands the core's packets to the decoder thread, or its sound to the
+/// player; each starts with its stream's first packet (the format).
 struct Sink {
     device: DeviceId,
+    video: OnceLock<Video>,
+    sound: Mutex<Option<Player>>,
+}
+
+/// The decoder thread's end of a sink.
+struct Video {
     queue: SyncSender<Item>,
     /// Packets waiting for the decoder.
     waiting: Arc<AtomicUsize>,
 }
 
 impl Sink {
-    fn start(device: DeviceId) -> Sink {
+    fn new(device: DeviceId) -> Sink {
+        Sink { device, video: OnceLock::new(), sound: Mutex::new(None) }
+    }
+}
+
+impl Video {
+    fn start(device: DeviceId) -> Video {
         let (queue, items) = sync_channel(BACKLOG);
         let waiting = Arc::new(AtomicUsize::new(0));
         let counter = waiting.clone();
@@ -153,9 +195,11 @@ impl Sink {
         if let Err(e) = started {
             tracing::error!(error = %e, "can't start the video decoder");
         }
-        Sink { device, queue, waiting }
+        Video { queue, waiting }
     }
+}
 
+impl Sink {
     fn keyframe_please(&self) {
         let device = self.device;
         if let Some(node) = core_host::node() {
@@ -166,14 +210,16 @@ impl Sink {
 
 impl MirrorSink for Sink {
     fn config(&self, config: MirrorConfig) {
+        let video = self.video.get_or_init(|| Video::start(self.device));
         // The format matters: wait for room rather than drop it.
-        let _ = self.queue.send(Item::Config(config));
+        let _ = video.queue.send(Item::Config(config));
     }
 
     fn packet(&self, keyframe: bool, time_us: u64, data: Vec<u8>) {
-        match self.queue.try_send(Item::Packet { keyframe, time_us, data }) {
+        let Some(video) = self.video.get() else { return };
+        match video.queue.try_send(Item::Packet { keyframe, time_us, data }) {
             Ok(()) => {
-                self.waiting.fetch_add(1, Ordering::AcqRel);
+                video.waiting.fetch_add(1, Ordering::AcqRel);
             }
             Err(TrySendError::Disconnected(_)) => {}
             // The decoder is behind; it starts over at the next keyframe.
@@ -182,7 +228,36 @@ impl MirrorSink for Sink {
     }
 
     fn ended(&self) {
-        let _ = self.queue.send(Item::Ended);
+        if let Some(video) = self.video.get() {
+            let _ = video.queue.send(Item::Ended);
+        }
+    }
+
+    fn audio_config(&self, config: MirrorAudioConfig) {
+        let mut sound = self.sound.lock().unwrap_or_else(|e| e.into_inner());
+        // A new format: a new player (the old one ends when dropped).
+        *sound = match Player::start(config.rate, u16::from(config.channels)) {
+            Ok(player) => Some(player),
+            Err(e) => {
+                tracing::warn!(error = %e, "can't play the phone's sound");
+                None
+            }
+        };
+        set_sound(self.device, sound.is_some());
+    }
+
+    fn audio(&self, _time_us: u64, data: Vec<u8>) {
+        if muted() {
+            return;
+        }
+        if let Some(player) = self.sound.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+            player.push(data);
+        }
+    }
+
+    fn audio_ended(&self) {
+        self.sound.lock().unwrap_or_else(|e| e.into_inner()).take();
+        set_sound(self.device, false);
     }
 }
 

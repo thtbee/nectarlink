@@ -484,6 +484,15 @@ pub mod mirror {
     /// Typed text in one message: at most this many bytes.
     pub const MAX_TEXT_BYTES: usize = 4096;
     pub const H264: &str = "h264";
+    /// Offered by phones that stream all their sound while mirrored.
+    pub const AUDIO: &str = "mirror.audio";
+    /// Offered by phones that stream the sound of apps that allow it.
+    pub const AUDIO_PLAYBACK: &str = "mirror.audio.playback";
+    /// Offered by PCs that play a mirrored phone's sound.
+    pub const LISTEN: &str = "mirror.listen";
+    pub const OP_AUDIO: &str = "audio";
+    /// 16-bit little-endian PCM, channels interleaved.
+    pub const PCM: &str = "pcm_s16le";
 }
 
 /// Body of `mirror.start`: show me your screen.
@@ -495,6 +504,9 @@ pub struct MirrorStart {
     pub fps: u32,
     /// Bits per second to aim for.
     pub bitrate: u32,
+    /// Also stream the phone's sound, when it can.
+    #[serde(default)]
+    pub audio: bool,
 }
 
 /// Body of `mirror.input`: the PC's mouse and keyboard, on the mirrored
@@ -594,6 +606,39 @@ impl MirrorConfig {
     /// A format this version can show: H.264, 1–8192 pixels a side.
     pub fn is_valid(&self) -> bool {
         self.codec == mirror::H264 && (1..=8192).contains(&self.width) && (1..=8192).contains(&self.height)
+    }
+}
+
+/// The format of a mirrored phone's sound (an audio stream's config
+/// packet, in CBOR).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorAudioConfig {
+    /// `pcm_s16le`.
+    pub codec: String,
+    /// Samples per second.
+    pub rate: u32,
+    pub channels: u8,
+}
+
+impl MirrorAudioConfig {
+    pub fn to_cbor(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        ciborium::into_writer(self, &mut out).expect("writing to a Vec cannot fail");
+        out
+    }
+
+    pub fn from_cbor(bytes: &[u8]) -> Result<MirrorAudioConfig, crate::ProtocolError> {
+        ciborium::from_reader(bytes).map_err(|e| crate::ProtocolError::BadMessage(e.to_string()))
+    }
+
+    /// A format this version can play: PCM, 8–96 kHz, mono or stereo.
+    pub fn is_valid(&self) -> bool {
+        self.codec == mirror::PCM && (8_000..=96_000).contains(&self.rate) && (1..=2).contains(&self.channels)
+    }
+
+    /// Bytes in one sample frame (a sample for each channel).
+    pub fn frame_bytes(&self) -> usize {
+        2 * usize::from(self.channels)
     }
 }
 

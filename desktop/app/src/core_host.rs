@@ -102,6 +102,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         nectarlink_core::CALLS_SHOW.into(),
         nectarlink_core::SMS_SHOW.into(),
         nectarlink_core::MIRROR_VIEW.into(),
+        nectarlink_core::MIRROR_LISTEN.into(),
     ];
     let node = match Node::start(config, platform).await {
         Ok(node) => node,

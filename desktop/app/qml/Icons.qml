@@ -29,6 +29,7 @@ QtObject {
     readonly property string mic: "M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v4"
     readonly property string micOff: "M15 10V5a3 3 0 0 0-5.8-1.1M9 9v2a3 3 0 0 0 4.9 2.3M5 11a7 7 0 0 0 11.3 5.5M19 11a7 7 0 0 1-.6 2.8M12 18v4M3 3l18 18"
     readonly property string speaker: "M4 9h3.5L12 5v14l-4.5-4H4zM15.5 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"
+    readonly property string soundOff: "M4 9h3.5L12 5v14l-4.5-4H4zM16 9.5l5 5M21 9.5l-5 5"
     readonly property string volumeUp: "M4 9h3.5L12 5v14l-4.5-4H4zM16 12h5M18.5 9.5v5"
     readonly property string volumeDown: "M4 9h3.5L12 5v14l-4.5-4H4zM16 12h5"
     readonly property string dialpad: "M6 4.5h.01M12 4.5h.01M18 4.5h.01M6 10h.01M12 10h.01M18 10h.01M6 15.5h.01M12 15.5h.01M18 15.5h.01M12 21h.01"

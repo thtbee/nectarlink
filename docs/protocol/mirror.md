@@ -4,8 +4,9 @@
 > allowed until v1. License: CC BY 4.0.
 
 A PC shows a phone's screen. The phone's user agrees each time (Android
-asks); the phone then streams its screen as H.264 on a stream of its own.
-The PC can also use the phone with its mouse and keyboard (§4).
+asks); the phone then streams its screen as H.264 on a stream of its own,
+and its sound, when the PC asks, on another (§5). The PC can also use the
+phone with its mouse and keyboard (§4).
 
 ## 1. Capabilities
 
@@ -14,6 +15,9 @@ The PC can also use the phone with its mouse and keyboard (§4).
 | `mirror.capture` | phone | Shares its screen when its user agrees |
 | `mirror.view` | PC | Shows a phone's screen |
 | `mirror.input` | phone | Takes the PC's mouse and keyboard while mirrored (Assist: an accessibility service the user turns on; Elevated: injected input) |
+| `mirror.audio.playback` | phone | Shares the sound of apps that allow it while mirrored (Android 10+) |
+| `mirror.audio` | phone | Shares all its sound while mirrored (planned, Elevated) |
+| `mirror.listen` | PC | Plays a mirrored phone's sound |
 
 Both devices must allow it: the `mirroring` device toggle, on by default,
 on each side.
@@ -23,7 +27,7 @@ on each side.
 On the control stream.
 
 ```
-t = "mirror.start"     id = n   b = { max_size: uint, fps: uint, bitrate: uint }
+t = "mirror.start"     id = n   b = { max_size: uint, fps: uint, bitrate: uint, ? audio: bool }
 t = "mirror.stop"      id = n
 t = "mirror.keyframe"
 t = "ok"               re = n
@@ -31,9 +35,11 @@ t = "ok"               re = n
 
 - `mirror.start` (PC → phone): show me your screen, its longer side at most
   `max_size` pixels, at most `fps` frames a second, aiming for `bitrate`
-  bits a second. The phone answers `ok` once it has asked its user; video
-  follows only if the user agrees. Errors: `DENIED` (mirroring is off for
-  the PC), `UNSUPPORTED` (no `mirror.capture`).
+  bits a second, and with `audio` (default false), its sound too. The
+  phone answers `ok` once it has asked its user; video follows only if the
+  user agrees, and sound only if the phone can (it may share the screen
+  without it). Errors: `DENIED` (mirroring is off for the PC),
+  `UNSUPPORTED` (no `mirror.capture`).
 - `mirror.stop` (either way): stop. The PC stops reading the video stream;
   the phone stops sharing and finishes it.
 - `mirror.keyframe` (PC → phone): the decoder lost its place; send a
@@ -93,7 +99,29 @@ bottom), so they hold at any size and rotation.
 The Windows app maps the left button to a finger, right-click to Back,
 middle-click to Home and Ctrl+V to typing the PC's clipboard.
 
-## 5. Latency over completeness
+## 5. Sound
+
+When the PC asked for it, the phone opens a second stream with the header
+`{ svc: "mirror", op: "audio", v: 1 }`, with packets as in §3:
+
+- **config**: the sound's format, CBOR `{ codec: "pcm_s16le", rate: uint,
+  channels: uint }`: 16-bit little-endian PCM, channels interleaved, 8 to
+  96 kHz, mono or stereo. First, and again if it changes.
+- **frame**: a few milliseconds of sound (Android sends 10 ms of 48 kHz
+  stereo, 1,920 bytes), whole sample frames only.
+
+A PC that doesn't offer `mirror.listen` resets the stream. The stream ends
+with the video: when either side stops mirroring, or the connection drops.
+
+On Android, the sound is what apps play (media, games, and apps that don't
+say otherwise), captured with the screen share's consent and the
+permission to record audio, which the phone asks for the first time a PC
+wants the sound. Apps that don't allow playback capture, and calls, aren't
+heard. Sharing all sound (`mirror.audio`) is planned for Elevated.
+
+The phone's own speaker keeps playing; the PC can mute its copy.
+
+## 6. Latency over completeness
 
 The stream is reliable, so a slow network would otherwise build up delay.
 Instead, the phone keeps only a few packets waiting to go out: when that's
@@ -102,8 +130,14 @@ its encoder for one. The PC likewise decodes everything it gets but shows
 only the newest picture when it's behind, and asks for a keyframe when a
 picture doesn't decode.
 
-## 6. Privacy
+Sound works the same way without keyframes: a packet that doesn't fit is
+dropped on its own. The PC plays from a short buffer (about 40 ms),
+plays silence and refills it when the network stalls, and drops the oldest
+sound when more than 200 ms piles up, so sound stays in step with the
+picture.
 
-The screen is never recorded or logged by either side. Android shows that
+## 7. Privacy
+
+The screen and sound are never recorded or logged by either side. Android shows that
 the screen is being shared (in the status bar), and the user can stop it
 there, from the phone's notification, or from the PC.

@@ -143,7 +143,8 @@ internal class ScreenEncoder(
                 if (key) parameters + bytes else bytes,
             )
             when (result) {
-                MirrorSendResult.NEED_KEYFRAME -> keyframeWanted = true
+                // A video stream never drops without asking for a keyframe.
+                MirrorSendResult.NEED_KEYFRAME, MirrorSendResult.DROPPED -> keyframeWanted = true
                 MirrorSendResult.CLOSED -> return true
                 MirrorSendResult.QUEUED -> {}
             }
