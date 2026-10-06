@@ -14,6 +14,8 @@ pub mod history;
 #[allow(unsafe_code)]
 pub mod media;
 #[allow(unsafe_code)]
+pub mod messages;
+#[allow(unsafe_code)]
 pub mod native;
 #[allow(unsafe_code)]
 pub mod notifications;

@@ -31,6 +31,7 @@ struct RecordingPlatform {
     power: Mutex<Vec<PowerAction>>,
     links: Mutex<Vec<String>>,
     calls: Mutex<Vec<(String, nectarlink_core::CallCommand)>>,
+    texts: Mutex<Vec<(Vec<String>, String)>>,
     /// Photos `open_photo` finds, by ID.
     photos: Mutex<std::collections::HashMap<String, std::path::PathBuf>>,
 }
@@ -73,6 +74,44 @@ impl Platform for RecordingPlatform {
     fn open_link(&self, _from: &nectarlink_core::DeviceId, url: &str) -> Result<(), String> {
         self.links.lock().unwrap().push(url.to_owned());
         Ok(())
+    }
+    fn sms_threads(&self, limit: u32) -> Result<Vec<nectarlink_core::SmsThread>, String> {
+        let thread = |i: u32| nectarlink_core::SmsThread {
+            id: i.to_string(),
+            addresses: vec![format!("+1555010{i}")],
+            names: vec![],
+            snippet: format!("text {i}"),
+            date: 1_790_000_000_000 - i64::from(i),
+            unread: i % 2,
+            photo: None,
+        };
+        Ok((0..5).map(thread).take(limit as usize).collect())
+    }
+    fn sms_messages(
+        &self,
+        thread: &str,
+        before: Option<i64>,
+        limit: u32,
+    ) -> Result<Vec<nectarlink_core::SmsMessage>, String> {
+        let message = |date: i64| nectarlink_core::SmsMessage {
+            id: date.to_string(),
+            thread: thread.to_owned(),
+            address: "+15550100".into(),
+            body: format!("at {date}"),
+            date,
+            outgoing: date % 2 == 0,
+            status: None,
+            parts: vec![nectarlink_core::SmsPart { id: "p1".into(), mime: "image/jpeg".into(), size: 3 }],
+        };
+        let newest = before.unwrap_or(100);
+        Ok((0..newest).rev().take(limit as usize).map(message).collect())
+    }
+    fn sms_send(&self, to: &[String], body: &str) -> Result<(), String> {
+        self.texts.lock().unwrap().push((to.to_vec(), body.to_owned()));
+        Ok(())
+    }
+    fn sms_part(&self, id: &str) -> Result<(String, Vec<u8>), String> {
+        if id == "p1" { Ok(("image/jpeg".into(), vec![1, 2, 3])) } else { Err("gone".into()) }
     }
     fn call_command(&self, id: &str, command: nectarlink_core::CallCommand) -> Result<(), String> {
         self.calls.lock().unwrap().push((id.to_owned(), command));
@@ -949,6 +988,48 @@ async fn folders_arrive_with_their_layout() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn the_pc_reads_and_sends_texts_through_the_phone() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::SMS_SHOW]).await;
+    let mut phone =
+        device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::SMS_READ, nectarlink_core::SMS_SEND])
+            .await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    let threads = with_timeout("threads", pc.node.sms_threads(phone_id, 3)).await.unwrap();
+    assert_eq!(threads.iter().map(|t| t.id.as_str()).collect::<Vec<_>>(), ["0", "1", "2"]);
+
+    // Paging back through a conversation.
+    let latest = pc.node.sms_messages(phone_id, "1".into(), None, 10).await.unwrap();
+    assert_eq!((latest[0].date, latest.len()), (99, 10));
+    let older = pc.node.sms_messages(phone_id, "1".into(), Some(latest[9].date), 10).await.unwrap();
+    assert_eq!(older[0].date, 89);
+
+    let (mime, data) = pc.node.sms_part(phone_id, "p1".into()).await.unwrap();
+    assert_eq!((mime.as_str(), data.as_slice()), ("image/jpeg", [1u8, 2, 3].as_slice()));
+
+    pc.node.sms_send(phone_id, vec!["+15550100".into()], "On my way".into()).await.unwrap();
+    assert_eq!(
+        *phone.platform.texts.lock().unwrap(),
+        [(vec!["+15550100".to_owned()], "On my way".to_owned())]
+    );
+    assert!(matches!(pc.node.sms_send(phone_id, vec![], "x".into()).await, Err(Error::Protocol(_))));
+
+    // The phone says what changed.
+    phone.node.sms_changed(Some("1".into())).await;
+    let changed = wait_for(&mut pc, "a change", |e| match e {
+        NodeEvent::SmsChanged { device, thread } if *device == phone_id => Some(thread.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(changed.as_deref(), Some("1"));
+
+    // The phone's user turned messages off for this PC.
+    phone.node.set_device_toggle(pc_id, "messages", false).unwrap();
+    assert!(matches!(pc.node.sms_threads(phone_id, 3).await, Err(Error::Denied)));
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn calls_show_on_the_pc_which_can_answer_them() {
     use nectarlink_core::{CallCommand, CallState};
     let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::CALLS_SHOW]).await;
@@ -969,16 +1050,20 @@ async fn calls_show_on_the_pc_which_can_answer_them() {
         photo: Some(vec![0xff, 0xd8]),
         missed: false,
     };
-    async fn next_call(pc: &mut TestDevice, phone_id: nectarlink_core::DeviceId) -> CallState {
-        wait_for(pc, "a call", |e| match e {
-            NodeEvent::Call { device, call } if *device == phone_id => Some(call.clone()),
+    // The call in `state` (a PC that just connected may hear the earlier
+    // one again).
+    async fn next_call(pc: &mut TestDevice, phone_id: nectarlink_core::DeviceId, state: &str) -> CallState {
+        wait_for(pc, state, |e| match e {
+            NodeEvent::Call { device, call } if *device == phone_id && call.state == state => {
+                Some(call.clone())
+            }
             _ => None,
         })
         .await
     }
 
     phone.node.call_changed(ringing.clone()).await.unwrap();
-    assert_eq!(next_call(&mut pc, phone_id).await, ringing);
+    assert_eq!(next_call(&mut pc, phone_id, "ringing").await, ringing);
     with_timeout("answer", pc.node.call_command(phone_id, "c1".into(), CallCommand::Answer)).await.unwrap();
     assert_eq!(*phone.platform.calls.lock().unwrap(), [("c1".to_owned(), CallCommand::Answer)]);
     // Only the call in progress.
@@ -989,7 +1074,7 @@ async fn calls_show_on_the_pc_which_can_answer_them() {
 
     let active = CallState { state: "active".into(), photo: None, ..ringing.clone() };
     phone.node.call_changed(active.clone()).await.unwrap();
-    assert_eq!(next_call(&mut pc, phone_id).await.state, "active");
+    next_call(&mut pc, phone_id, "active").await;
     // An answered call doesn't ring anymore, but can be hung up.
     assert!(matches!(
         pc.node.call_command(phone_id, "c1".into(), CallCommand::Silence).await,
@@ -999,7 +1084,7 @@ async fn calls_show_on_the_pc_which_can_answer_them() {
 
     let ended = CallState { state: "ended".into(), ..active };
     phone.node.call_changed(ended).await.unwrap();
-    assert_eq!(next_call(&mut pc, phone_id).await.state, "ended");
+    next_call(&mut pc, phone_id, "ended").await;
     assert!(matches!(
         pc.node.call_command(phone_id, "c1".into(), CallCommand::Decline).await,
         Err(Error::NotFound)

@@ -67,6 +67,8 @@
     <string name="media_previous">Previous</string>
     <string name="action_send_files">Send files</string>
     <string name="action_send_folder">Send a folder</string>
+    <string name="sms_title">Text from your PC</string>
+    <string name="sms_off">Read your conversations and send texts from your PC. Nectarlink needs access to your messages and contacts for that.</string>
     <string name="calls_title">Show calls on your PC</string>
     <string name="calls_off">See who’s calling on your PC, and answer or decline from there. The call itself stays on your phone. Nectarlink needs access to calls and contacts for that.</string>
     <string name="photos_title">Show new photos on your PC</string>

@@ -18,6 +18,7 @@ import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.photos.RecentPhotos
+import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
 import app.nectarlink.core.FileToSend
@@ -65,7 +66,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         phoneMedia,
         onLink = { pc, url -> LinkNotifications.show(this.context, _state.value.nameOf(pc).orEmpty(), url) },
         onCall = { id, command -> calls.command(id, command) },
+        sms = { sms },
     )
+    private val sms = PhoneSms(this.context) {
+        notificationOps.trySend { it.smsChanged(null) }
+    }
     private val calls = PhoneCalls(this.context) { call ->
         notificationOps.trySend { node ->
             runCatching { node.callChanged(call) }.onFailure { Log.i(TAG, "a call wasn't reported", it) }
@@ -143,11 +148,18 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 battery.start()
                 network.start()
             }
-            _state.update { it.copy(photoAccess = RecentPhotos.hasAccess(context), callAccess = PhoneCalls.hasAll(context)) }
+            _state.update {
+                it.copy(
+                    photoAccess = RecentPhotos.hasAccess(context),
+                    callAccess = PhoneCalls.hasAll(context),
+                    smsAccess = PhoneSms.hasAll(context),
+                )
+            }
             started.updatePower(PowerLevel.BASIC, capabilities(NotificationListener.hasAccess(context)))
             scope.launch(Dispatchers.Main) {
                 if (_state.value.photoAccess) photos.start()
                 calls.start()
+                sms.start()
             }
             scope.launch {
                 for (op in notificationOps) {
@@ -190,22 +202,26 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         val unrestricted = BackgroundAccess.isUnrestricted(context)
         val photoAccess = RecentPhotos.hasAccess(context)
         val callAccess = PhoneCalls.hasAll(context)
+        val smsAccess = PhoneSms.hasAll(context)
         val photosChanged = photoAccess != _state.value.photoAccess
         val callsChanged = callAccess != _state.value.callAccess
+        val smsChanged = smsAccess != _state.value.smsAccess
         _state.update {
             it.copy(
                 notificationAccess = granted,
                 backgroundUnrestricted = unrestricted,
                 photoAccess = photoAccess,
                 callAccess = callAccess,
+                smsAccess = smsAccess,
             )
         }
         if (granted && NotificationListener.instance == null) {
             NotificationListenerService.requestRebind(NotificationListener.component(context))
         }
-        if ((photosChanged || callsChanged) && node != null) {
+        if ((photosChanged || callsChanged || smsChanged) && node != null) {
             if (photoAccess) photos.start() else photos.stop()
             if (PhoneCalls.canFollow(context)) calls.start() else calls.stop()
+            if (PhoneSms.canRead(context)) sms.start() else sms.stop()
             notificationOps.trySend { it.updatePower(PowerLevel.BASIC, capabilities(_state.value.notificationAccess)) }
         }
     }
@@ -336,7 +352,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (notificationAccess) NOTIFICATION_CAPABILITIES + MEDIA_CAPABILITIES else emptyList()) +
             (if (_state.value.photoAccess) PHOTO_CAPABILITIES else emptyList()) +
             (if (PhoneCalls.canFollow(context)) listOf("call.state") else emptyList()) +
-            (if (PhoneCalls.canControl(context)) listOf("call.control") else emptyList())
+            (if (PhoneCalls.canControl(context)) listOf("call.control") else emptyList()) +
+            (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
+            (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList())
 
     // ---- Pairing ----
 

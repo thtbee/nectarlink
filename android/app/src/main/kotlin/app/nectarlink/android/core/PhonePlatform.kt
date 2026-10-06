@@ -12,7 +12,11 @@ import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.media.PhoneMedia
 import app.nectarlink.android.photos.RecentPhotos
+import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.core.CallCommand
+import app.nectarlink.core.SmsMessage
+import app.nectarlink.core.SmsPartData
+import app.nectarlink.core.SmsThread
 import app.nectarlink.core.FileToSend
 import app.nectarlink.core.MediaAction
 import app.nectarlink.core.NotificationFailure
@@ -30,6 +34,8 @@ internal class PhonePlatform(
     private val onLink: (String, String) -> Boolean,
     /** Answers, declines or silences a call: (call ID, command) → done. */
     private val onCall: (String, CallCommand) -> Boolean,
+    /** The phone's texts (created after this). */
+    private val sms: () -> PhoneSms,
 ) : Platform {
     private val context = context.applicationContext
 
@@ -50,6 +56,15 @@ internal class PhonePlatform(
     override fun openPhoto(id: String): FileToSend? = RecentPhotos.open(context, id)
 
     override fun callCommand(id: String, command: CallCommand): Boolean = onCall(id, command)
+
+    override fun smsThreads(limit: UInt): List<SmsThread> = sms().threads(limit.toInt())
+
+    override fun smsMessages(thread: String, before: Long?, limit: UInt): List<SmsMessage> =
+        sms().messages(thread, before, limit.toInt())
+
+    override fun smsSend(to: List<String>, body: String): Boolean = sms().send(to, body)
+
+    override fun smsPart(id: String): SmsPartData? = sms().part(id)
 
     override fun dismissNotification(key: String) {
         val listener = NotificationListener.instance ?: throw NotificationFailure.Unsupported()

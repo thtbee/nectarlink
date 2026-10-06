@@ -111,6 +111,12 @@ NativeWindow {
                 onClicked: window.page = "home"
             }
             NavItem {
+                iconPath: Icons.messages
+                text: qsTr("Messages")
+                selected: window.page === "messages"
+                onClicked: window.page = "messages"
+            }
+            NavItem {
                 iconPath: Icons.settings
                 text: qsTr("Settings")
                 selected: window.page === "settings"
@@ -146,7 +152,8 @@ NativeWindow {
                 anchors.left: parent.left
                 anchors.leftMargin: Theme.contentPadding
                 anchors.verticalCenter: parent.verticalCenter
-                text: window.page === "home" ? qsTr("Home") : qsTr("Settings")
+                text: window.page === "home" ? qsTr("Home")
+                    : window.page === "messages" ? qsTr("Messages") : qsTr("Settings")
                 role: "headline"
                 size: 20
             }
@@ -184,9 +191,16 @@ NativeWindow {
             clip: true
 
             HomePage {
+                id: homePage
                 anchors.fill: parent
                 active: window.page === "home"
                 onPairRequested: window.openPairing()
+            }
+            MessagesPage {
+                anchors.fill: parent
+                active: window.page === "messages"
+                deviceId: homePage.currentDeviceId
+                deviceName: homePage.currentDeviceName
             }
             SettingsPage {
                 anchors.fill: parent

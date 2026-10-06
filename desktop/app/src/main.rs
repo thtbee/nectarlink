@@ -20,6 +20,7 @@ mod links;
 mod logging;
 mod mark;
 mod media;
+mod messages;
 mod notification_store;
 mod notifications;
 mod palette;

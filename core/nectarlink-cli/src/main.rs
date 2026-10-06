@@ -164,6 +164,15 @@ enum Command {
     /// Show new photos from paired phones as this PC would, and fetch each
     /// one; stays online until Ctrl+C.
     Photos,
+    /// Act as a phone with a few sample conversations (use with --as-phone),
+    /// so a PC can read them and text through this client; stays online.
+    Texts,
+    /// A paired phone's text messages: list conversations, show one, or send.
+    Sms {
+        device: String,
+        #[command(subcommand)]
+        action: SmsArg,
+    },
     /// Show calls on paired phones as this PC would; with --auto, answer,
     /// decline or silence each ringing call. Stays online until Ctrl+C.
     Calls {
@@ -250,6 +259,23 @@ impl From<MediaCommandArg> for MediaAction {
 static MEDIA_COMMANDS: std::sync::OnceLock<tokio::sync::mpsc::UnboundedSender<(MediaAction, Option<u64>)>> =
     std::sync::OnceLock::new();
 
+#[derive(Debug, Subcommand)]
+enum SmsArg {
+    /// The latest conversations.
+    Threads {
+        #[arg(long, default_value_t = 20)]
+        limit: u32,
+    },
+    /// A conversation's latest messages.
+    Show {
+        thread: String,
+        #[arg(long, default_value_t = 20)]
+        limit: u32,
+    },
+    /// Send a text.
+    Send { to: String, body: String },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 enum CallArg {
     Answer,
@@ -263,6 +289,38 @@ enum OnOff {
     Off,
 }
 
+/// A sample text for `texts`: (thread, number, name, incoming, body, Unix ms).
+type SampleText = (u32, String, String, bool, String, i64);
+static TEXTS: std::sync::Mutex<Vec<SampleText>> = std::sync::Mutex::new(Vec::new());
+/// Set by `texts`, to tell PCs when the samples changed.
+static TEXTS_NODE: std::sync::OnceLock<Node> = std::sync::OnceLock::new();
+
+fn sample_texts() {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as i64);
+    let min = 60_000;
+    let samples = [
+        (1, "+15550100", "Sam Rivera", true, "Are we still on for dinner tonight?", now - 50 * min),
+        (1, "+15550100", "Sam Rivera", false, "Yes! 7:30 at the usual place", now - 48 * min),
+        (1, "+15550100", "Sam Rivera", true, "Perfect. I'll book a table 🍜", now - 47 * min),
+        (
+            2,
+            "+15550123",
+            "",
+            true,
+            "Your parcel will arrive tomorrow between 9:00 and 13:00.",
+            now - 26 * 60 * min,
+        ),
+        (3, "+15550188", "Alex", false, "Can you send me the photos from Saturday?", now - 3 * 24 * 60 * min),
+        (3, "+15550188", "Alex", true, "Sure, uploading them now", now - 3 * 24 * 60 * min + 5 * min),
+    ];
+    *TEXTS.lock().unwrap() = samples
+        .into_iter()
+        .map(|(t, n, name, incoming, body, date)| (t, n.into(), name.into(), incoming, body.into(), date))
+        .collect();
+}
+
 /// The picture `photo` announced, for PCs that ask for it.
 static PHOTO: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
 const PHOTO_ID: &str = "cli-photo";
@@ -272,6 +330,72 @@ const PHOTO_ID: &str = "cli-photo";
 struct TerminalPlatform;
 
 impl Platform for TerminalPlatform {
+    fn sms_threads(&self, limit: u32) -> std::result::Result<Vec<nectarlink_core::SmsThread>, String> {
+        let texts = TEXTS.lock().unwrap();
+        let mut threads: Vec<nectarlink_core::SmsThread> = Vec::new();
+        for (thread, number, name, incoming, body, date) in texts.iter() {
+            match threads.iter_mut().find(|t| t.id == thread.to_string()) {
+                Some(t) if *date > t.date => {
+                    t.date = *date;
+                    t.snippet = body.clone();
+                    t.unread = u32::from(*incoming);
+                }
+                Some(_) => {}
+                None => threads.push(nectarlink_core::SmsThread {
+                    id: thread.to_string(),
+                    addresses: vec![number.clone()],
+                    names: vec![name.clone()],
+                    snippet: body.clone(),
+                    date: *date,
+                    unread: u32::from(*incoming),
+                    photo: None,
+                }),
+            }
+        }
+        threads.sort_by_key(|t| std::cmp::Reverse(t.date));
+        threads.truncate(limit as usize);
+        Ok(threads)
+    }
+    fn sms_messages(
+        &self,
+        thread: &str,
+        before: Option<i64>,
+        limit: u32,
+    ) -> std::result::Result<Vec<nectarlink_core::SmsMessage>, String> {
+        let texts = TEXTS.lock().unwrap();
+        let mut messages: Vec<nectarlink_core::SmsMessage> = texts
+            .iter()
+            .enumerate()
+            .filter(|(_, (t, .., date))| t.to_string() == thread && before.is_none_or(|b| *date < b))
+            .map(|(i, (t, number, _, incoming, body, date))| nectarlink_core::SmsMessage {
+                id: format!("sms:{i}"),
+                thread: t.to_string(),
+                address: number.clone(),
+                body: body.clone(),
+                date: *date,
+                outgoing: !incoming,
+                status: (!incoming).then(|| "sent".into()),
+                parts: Vec::new(),
+            })
+            .collect();
+        messages.sort_by_key(|m| std::cmp::Reverse(m.date));
+        messages.truncate(limit as usize);
+        Ok(messages)
+    }
+    fn sms_send(&self, to: &[String], body: &str) -> std::result::Result<(), String> {
+        println!("A PC sent a text to {}: {body}", to.join(", "));
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_millis() as i64);
+        let mut texts = TEXTS.lock().unwrap();
+        let thread = texts.iter().find(|(_, n, ..)| *n == to[0]).map(|(t, ..)| *t);
+        let thread = thread.unwrap_or_else(|| texts.iter().map(|(t, ..)| *t).max().unwrap_or(0) + 1);
+        texts.push((thread, to[0].clone(), String::new(), false, body.to_owned(), now));
+        if let Some(node) = TEXTS_NODE.get().cloned() {
+            tokio::runtime::Handle::current().spawn(async move { node.sms_changed(None).await });
+        }
+        Ok(())
+    }
     fn open_photo(&self, id: &str) -> std::result::Result<nectarlink_core::OutgoingFile, String> {
         let path = PHOTO.get().filter(|_| id == PHOTO_ID).ok_or("no such photo")?;
         println!("A PC asked for the photo; sending it.");
@@ -525,6 +649,67 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             offers.push(nectarlink_core::PHOTOS_SHOW.into());
             node.update_power(node_power(cli), offers).await;
             watch(node, true).await?;
+        }
+        Command::Texts => {
+            if !cli.as_phone {
+                bail!("texts are on phones: add --as-phone");
+            }
+            sample_texts();
+            let _ = TEXTS_NODE.set(node.clone());
+            let mut offers = cli.offers.clone();
+            offers.extend([nectarlink_core::SMS_READ.to_owned(), nectarlink_core::SMS_SEND.to_owned()]);
+            node.update_power(node_power(cli), offers).await;
+            println!("Sharing sample conversations with paired PCs.");
+            watch(node, false).await?;
+        }
+        Command::Sms { device, action } => {
+            let mut offers = cli.offers.clone();
+            offers.push(nectarlink_core::SMS_SHOW.into());
+            node.update_power(node_power(cli), offers).await;
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            match action {
+                SmsArg::Threads { limit } => {
+                    for t in node.sms_threads(id, *limit).await.context("can't list conversations")? {
+                        let who: Vec<String> = t
+                            .addresses
+                            .iter()
+                            .zip(t.names.iter().map(Some).chain(std::iter::repeat(None)))
+                            .map(|(a, n)| match n.filter(|n| !n.is_empty()) {
+                                Some(n) => format!("{n} ({a})"),
+                                None => a.clone(),
+                            })
+                            .collect();
+                        println!(
+                            "[{}] {}{}: {}{}",
+                            t.id,
+                            who.join(", "),
+                            if t.unread > 0 { format!(" · {} unread", t.unread) } else { String::new() },
+                            t.snippet,
+                            if t.photo.is_some() { " (photo)" } else { "" }
+                        );
+                    }
+                }
+                SmsArg::Show { thread, limit } => {
+                    let mut messages =
+                        node.sms_messages(id, thread.clone(), None, *limit).await.context("can't read it")?;
+                    messages.reverse();
+                    for m in messages {
+                        println!(
+                            "{} {}: {}{}{}",
+                            if m.outgoing { "→" } else { "←" },
+                            m.address,
+                            m.body,
+                            m.parts.iter().map(|p| format!(" [{} {}]", p.mime, p.id)).collect::<String>(),
+                            m.status.map(|s| format!(" ({s})")).unwrap_or_default()
+                        );
+                    }
+                }
+                SmsArg::Send { to, body } => {
+                    node.sms_send(id, vec![to.clone()], body.clone()).await.context("not sent")?;
+                    println!("Sent.");
+                }
+            }
         }
         Command::Calls { auto } => {
             let mut offers = cli.offers.clone();

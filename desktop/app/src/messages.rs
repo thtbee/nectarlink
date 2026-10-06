@@ -1,0 +1,500 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+//! Text messages on the PC (docs/protocol/sms.md): a phone's conversations
+//! and the open one's messages, read through the phone on demand and kept
+//! only in memory. Texts sent from here go out through the phone.
+
+use std::{collections::HashMap, path::PathBuf, sync::Mutex};
+
+use nectarlink_core::{DeviceId, Error, LinkState, NodeEvent, SmsMessage, SmsThread};
+use serde_json::{Value, json};
+
+use crate::{core_host, state::Changes};
+
+/// Conversations listed, and messages read at a time.
+const THREADS: u32 = 60;
+const PAGE: u32 = 30;
+
+/// What the Messages page can show.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Status {
+    /// No phone chosen yet.
+    #[default]
+    Idle,
+    Loading,
+    Ready,
+    /// The phone isn't connected.
+    Offline,
+    /// Messages are off for this phone (here or there).
+    Off,
+    /// The phone doesn't share messages (no permission, or an old app).
+    Unsupported,
+    Failed,
+}
+
+impl Status {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Status::Idle => "idle",
+            Status::Loading => "loading",
+            Status::Ready => "ready",
+            Status::Offline => "offline",
+            Status::Off => "off",
+            Status::Unsupported => "unsupported",
+            Status::Failed => "failed",
+        }
+    }
+
+    fn of(error: &Error) -> Status {
+        match error {
+            Error::Denied => Status::Off,
+            Error::Unsupported => Status::Unsupported,
+            Error::Offline | Error::NotPaired | Error::Timeout => Status::Offline,
+            _ => Status::Failed,
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+struct State {
+    device: Option<DeviceId>,
+    status: Status,
+    threads: Vec<SmsThread>,
+    /// The open conversation.
+    thread: Option<String>,
+    /// Its messages, newest first.
+    messages: Vec<SmsMessage>,
+    /// Older messages may exist.
+    more: bool,
+    loading_older: bool,
+    sending: bool,
+    /// Pictures fetched, by part ID.
+    pictures: HashMap<String, PathBuf>,
+    /// Contact photos saved, by thread ID.
+    photos: HashMap<String, PathBuf>,
+    /// Bumped when the phone changes, so late answers are dropped.
+    generation: u64,
+}
+
+static STATE: Mutex<Option<State>> = Mutex::new(None);
+
+fn state<T>(f: impl FnOnce(&mut State) -> T) -> T {
+    f(STATE.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_default())
+}
+
+fn changed() {
+    core_host::host().hub.changed(Changes::MESSAGES);
+}
+
+fn files_dir() -> PathBuf {
+    crate::notifications::images_dir()
+}
+
+// ---- What the page shows ----
+
+/// Everything the page shows, for QML.
+#[derive(Debug, Clone, PartialEq)]
+pub struct View {
+    pub device: Option<DeviceId>,
+    pub status: Status,
+    pub threads: Value,
+    pub thread: Option<String>,
+    pub messages: Value,
+    pub more: bool,
+    pub loading_older: bool,
+    pub sending: bool,
+}
+
+pub fn view() -> View {
+    state(|s| View {
+        device: s.device,
+        status: s.status,
+        threads: Value::Array(s.threads.iter().map(|t| thread_json(t, s.photos.get(&t.id))).collect()),
+        thread: s.thread.clone(),
+        messages: Value::Array(s.messages.iter().rev().map(|m| message_json(m, &s.pictures)).collect()),
+        more: s.more,
+        loading_older: s.loading_older,
+        sending: s.sending,
+    })
+}
+
+/// Who a conversation is with: contact names, or numbers.
+pub fn title_of(thread: &SmsThread) -> String {
+    thread
+        .addresses
+        .iter()
+        .enumerate()
+        .map(|(i, address)| thread.names.get(i).filter(|n| !n.trim().is_empty()).unwrap_or(address).clone())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn thread_json(t: &SmsThread, photo: Option<&PathBuf>) -> Value {
+    json!({
+        "id": t.id,
+        "title": title_of(t),
+        "addresses": t.addresses.join(", "),
+        "snippet": t.snippet,
+        "date": t.date,
+        "unread": t.unread,
+        "group": t.addresses.len() > 1,
+        "photo": photo.map(|p| crate::icons::file_url(p)).unwrap_or_default(),
+    })
+}
+
+fn message_json(m: &SmsMessage, pictures: &HashMap<String, PathBuf>) -> Value {
+    let images: Vec<Value> = m
+        .parts
+        .iter()
+        .filter(|p| p.mime.starts_with("image/"))
+        .map(|p| json!(pictures.get(&p.id).map(|f| crate::icons::file_url(f)).unwrap_or_default()))
+        .collect();
+    let others = m.parts.iter().filter(|p| !p.mime.starts_with("image/")).count();
+    json!({
+        "id": m.id,
+        "body": m.body,
+        "date": m.date,
+        "outgoing": m.outgoing,
+        "status": m.status.clone().unwrap_or_default(),
+        "images": images,
+        "attachments": others,
+    })
+}
+
+// ---- What the page asks ----
+
+/// Shows `device`'s messages (again: reloads).
+pub fn open_device(device: DeviceId) {
+    let same = state(|s| {
+        let same = s.device == Some(device);
+        if !same {
+            *s = State { device: Some(device), generation: s.generation + 1, ..State::default() };
+        }
+        same
+    });
+    if !same {
+        changed();
+    }
+    load_threads();
+}
+
+pub fn load_threads() {
+    let Some((device, generation)) = state(|s| {
+        if s.threads.is_empty() {
+            s.status = Status::Loading;
+        }
+        s.device.map(|d| (d, s.generation))
+    }) else {
+        return;
+    };
+    changed();
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        let result = node.sms_threads(device, THREADS).await;
+        let photos = match &result {
+            Ok(threads) => save_photos(device, threads),
+            Err(_) => HashMap::new(),
+        };
+        state(|s| {
+            if s.generation != generation {
+                return;
+            }
+            match result {
+                Ok(threads) => {
+                    s.threads = threads;
+                    s.photos.extend(photos);
+                    s.status = Status::Ready;
+                }
+                Err(e) => {
+                    tracing::debug!(error = %e, "can't list conversations");
+                    s.status = Status::of(&e);
+                }
+            }
+        });
+        changed();
+        open_pending();
+    });
+}
+
+/// Contact photos as files, for QML.
+fn save_photos(device: DeviceId, threads: &[SmsThread]) -> HashMap<String, PathBuf> {
+    let dir = files_dir();
+    if std::fs::create_dir_all(&dir).is_err() {
+        return HashMap::new();
+    }
+    threads
+        .iter()
+        .filter_map(|t| {
+            let photo = t.photo.as_ref()?;
+            let path = dir.join(format!(
+                "sms-{:016x}.jpg",
+                crate::photos::fingerprint(&format!("{device} {}", t.id))
+                    ^ crate::photos::fingerprint_bytes(photo)
+            ));
+            if !path.exists() {
+                std::fs::write(&path, photo).ok()?;
+            }
+            Some((t.id.clone(), path))
+        })
+        .collect()
+}
+
+/// Opens a conversation: its latest messages.
+pub fn open_thread(thread: String) {
+    state(|s| {
+        if s.thread.as_deref() != Some(&thread) {
+            s.thread = Some(thread);
+            s.messages.clear();
+            s.more = false;
+        }
+    });
+    changed();
+    load_messages(None);
+}
+
+/// The open conversation's older messages.
+pub fn load_older() {
+    let before = state(|s| {
+        if s.loading_older || !s.more {
+            return None;
+        }
+        s.loading_older = true;
+        s.messages.last().map(|m| m.date)
+    });
+    if before.is_some() {
+        changed();
+        load_messages(before);
+    }
+}
+
+fn load_messages(before: Option<i64>) {
+    let Some((device, thread, generation)) = state(|s| Some((s.device?, s.thread.clone()?, s.generation)))
+    else {
+        return;
+    };
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        let result = node.sms_messages(device, thread.clone(), before, PAGE).await;
+        let wanted = state(|s| {
+            s.loading_older = false;
+            if s.generation != generation || s.thread.as_deref() != Some(&thread) {
+                return Vec::new();
+            }
+            match result {
+                Ok(page) => {
+                    let full = page.len() as u32 >= PAGE;
+                    if before.is_none() {
+                        // The latest page replaces what was there, keeping
+                        // older pages already read.
+                        let oldest = page.last().map(|m| m.date).unwrap_or(i64::MAX);
+                        let older: Vec<SmsMessage> =
+                            s.messages.drain(..).filter(|m| m.date < oldest).collect();
+                        let had_older = !older.is_empty();
+                        s.messages = page;
+                        s.messages.extend(older);
+                        s.more = full || had_older && s.more;
+                    } else {
+                        s.messages.extend(page);
+                        s.more = full;
+                    }
+                    s.messages
+                        .iter()
+                        .flat_map(|m| m.parts.iter())
+                        .filter(|p| p.mime.starts_with("image/") && !s.pictures.contains_key(&p.id))
+                        .map(|p| p.id.clone())
+                        .collect()
+                }
+                Err(e) => {
+                    tracing::debug!(error = %e, "can't read a conversation");
+                    s.status = Status::of(&e);
+                    Vec::new()
+                }
+            }
+        });
+        changed();
+        fetch_pictures(device, generation, wanted).await;
+    });
+}
+
+async fn fetch_pictures(device: DeviceId, generation: u64, parts: Vec<String>) {
+    let Some(node) = core_host::node() else { return };
+    let dir = files_dir();
+    for id in parts {
+        let Ok((mime, data)) = node.sms_part(device, id.clone()).await else { continue };
+        let ext = if mime.contains("png") {
+            "png"
+        } else if mime.contains("gif") {
+            "gif"
+        } else {
+            "jpg"
+        };
+        let path = dir
+            .join(format!("sms-part-{:016x}.{ext}", crate::photos::fingerprint(&format!("{device} {id}"))));
+        if std::fs::create_dir_all(&dir).and_then(|()| std::fs::write(&path, &data)).is_err() {
+            continue;
+        }
+        let current = state(|s| {
+            let current = s.generation == generation;
+            if current {
+                s.pictures.insert(id, path);
+            }
+            current
+        });
+        if !current {
+            return;
+        }
+        changed();
+    }
+}
+
+/// Why a text wasn't sent, for the page.
+pub fn send_problem(error: &Error) -> &'static str {
+    match error {
+        Error::Denied => "Messages are turned off for this phone.",
+        Error::Unsupported => {
+            "The phone doesn't send texts for this PC. Allow it in the Nectarlink app on the phone."
+        }
+        Error::Offline | Error::NotPaired | Error::Timeout => "The phone isn't connected.",
+        Error::TooLarge => "That's too long for a text.",
+        _ => "The phone couldn't send it.",
+    }
+}
+
+/// Sends a text in the open conversation.
+pub fn send(body: String) {
+    let to = state(|s| {
+        let thread = s.thread.as_ref()?;
+        s.threads.iter().find(|t| &t.id == thread).map(|t| t.addresses.clone())
+    });
+    match to {
+        Some(to) if to.len() == 1 => send_to(to, body),
+        Some(_) => crate::bridge::app::show_message("Group texts can't be sent from the PC yet."),
+        None => {}
+    }
+}
+
+/// Sends a text to a number (a new conversation), then opens it.
+pub fn send_to(to: Vec<String>, body: String) {
+    let Some(device) = state(|s| {
+        s.sending = true;
+        s.device
+    }) else {
+        return;
+    };
+    changed();
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        let result = node.sms_send(device, to.clone(), body).await;
+        state(|s| s.sending = false);
+        changed();
+        match result {
+            Ok(()) => {
+                // The phone also says so when it has stored it; this is sooner.
+                tokio::time::sleep(std::time::Duration::from_millis(600)).await;
+                reload_after_send(&to);
+            }
+            Err(e) => crate::bridge::app::show_message(send_problem(&e)),
+        }
+    });
+}
+
+fn reload_after_send(to: &[String]) {
+    let open = state(|s| s.thread.clone());
+    if open.is_none() {
+        // A new conversation: open it once the phone lists it.
+        let wanted: Vec<String> = to.iter().map(|a| digits(a)).collect();
+        PENDING_OPEN.lock().unwrap_or_else(|e| e.into_inner()).replace(wanted);
+    }
+    load_threads();
+    if open.is_some() {
+        load_messages(None);
+    }
+}
+
+/// A new conversation to open once it shows up, by its numbers' digits.
+static PENDING_OPEN: Mutex<Option<Vec<String>>> = Mutex::new(None);
+
+/// The last digits of a number, to match "+1 555-0100" with "5550100".
+fn digits(number: &str) -> String {
+    let all: String = number.chars().filter(char::is_ascii_digit).collect();
+    all[all.len().saturating_sub(9)..].to_owned()
+}
+
+/// Closes the open conversation (for writing a new one).
+pub fn close_thread() {
+    state(|s| {
+        s.thread = None;
+        s.messages.clear();
+        s.more = false;
+    });
+    changed();
+}
+
+pub fn on_event(event: &NodeEvent) {
+    let device = state(|s| s.device);
+    match event {
+        NodeEvent::SmsChanged { device: d, .. } if Some(*d) == device => {
+            load_threads();
+            if state(|s| s.thread.is_some()) {
+                load_messages(None);
+            }
+        }
+        NodeEvent::LinkChanged { device: d, link: LinkState::Online { .. } }
+            if Some(*d) == device && state(|s| s.status != Status::Ready) =>
+        {
+            load_threads();
+        }
+        NodeEvent::LinkChanged { device: d, link: LinkState::Offline { .. } } if Some(*d) == device => {
+            state(|s| s.status = Status::Offline);
+            changed();
+        }
+        _ => {}
+    }
+}
+
+/// Opens a conversation just started from the PC, once it's listed.
+fn open_pending() {
+    let Some(wanted) = PENDING_OPEN.lock().unwrap_or_else(|e| e.into_inner()).clone() else { return };
+    let found = state(|s| {
+        s.threads
+            .iter()
+            .find(|t| {
+                let have: Vec<String> = t.addresses.iter().map(|a| digits(a)).collect();
+                have == wanted
+            })
+            .map(|t| t.id.clone())
+    });
+    if let Some(thread) = found {
+        PENDING_OPEN.lock().unwrap_or_else(|e| e.into_inner()).take();
+        open_thread(thread);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn thread(addresses: &[&str], names: &[&str]) -> SmsThread {
+        SmsThread {
+            id: "1".into(),
+            addresses: addresses.iter().map(|a| (*a).into()).collect(),
+            names: names.iter().map(|n| (*n).into()).collect(),
+            snippet: String::new(),
+            date: 0,
+            unread: 0,
+            photo: None,
+        }
+    }
+
+    #[test]
+    fn conversations_are_named_by_contact_or_number() {
+        assert_eq!(title_of(&thread(&["+1555"], &["Sam"])), "Sam");
+        assert_eq!(title_of(&thread(&["+1555", "+1666"], &["Sam", ""])), "Sam, +1666");
+        assert_eq!(title_of(&thread(&["+1555"], &[])), "+1555");
+    }
+
+    #[test]
+    fn numbers_match_however_they_are_written() {
+        assert_eq!(digits("+1 (555) 010-0100"), digits("5550100100"));
+        assert_eq!(digits("12"), "12");
+    }
+}

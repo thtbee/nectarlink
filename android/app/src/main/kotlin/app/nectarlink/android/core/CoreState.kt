@@ -62,6 +62,8 @@ data class CoreState(
     val ringingFrom: String? = null,
     /** Whether the user let Nectarlink read notifications (to mirror them). */
     val notificationAccess: Boolean = false,
+    /** Whether the user let Nectarlink read and send texts (for PCs). */
+    val smsAccess: Boolean = false,
     /** Whether the user let Nectarlink follow and answer calls (to show them on PCs). */
     val callAccess: Boolean = false,
     /** Whether the user let Nectarlink see the phone's photos (to show new ones on PCs). */
@@ -113,7 +115,7 @@ data class CoreState(
         // Shown in Android's media controls (see media/PcMedia).
         is Event.MediaChanged -> this
         // PCs only: phones announce their own photos and calls.
-        is Event.PhotoAdded, is Event.CallChanged -> this
+        is Event.PhotoAdded, is Event.CallChanged, is Event.SmsChanged -> this
     }
 
     private fun withTransfer(transfer: Transfer): List<Transfer> {

@@ -434,7 +434,72 @@ pub enum Event {
         id: String,
         call_id: String,
     },
+    /// A paired phone's messages changed (PCs only).
+    SmsChanged {
+        id: String,
+        thread: Option<String>,
+    },
 }
+
+/// A conversation (docs/protocol/sms.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct SmsThread {
+    pub id: String,
+    /// The other people's numbers (more than one: a group).
+    pub addresses: Vec<String>,
+    /// Their contact names, in the same order ("" when not a contact).
+    pub names: Vec<String>,
+    /// The latest message's text, or a description like "Photo".
+    pub snippet: String,
+    /// Unix milliseconds.
+    pub date: i64,
+    pub unread: u32,
+    /// The contact's photo (one-person conversations): a JPEG of at most 16 KB.
+    pub photo: Option<Vec<u8>>,
+}
+
+/// A message in a conversation.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct SmsMessage {
+    pub id: String,
+    pub thread: String,
+    /// Who sent it (received), or the recipient (sent).
+    pub address: String,
+    pub body: String,
+    /// Unix milliseconds.
+    pub date: i64,
+    pub outgoing: bool,
+    /// Sent messages: "sent", "pending" or "failed".
+    pub status: Option<String>,
+    /// Pictures and other attachments, fetched with `sms_part`.
+    pub parts: Vec<SmsPart>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct SmsPart {
+    pub id: String,
+    pub mime: String,
+    pub size: u64,
+}
+
+/// An attachment's bytes.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct SmsPartData {
+    pub mime: String,
+    pub data: Vec<u8>,
+}
+
+macro_rules! private_debug {
+    ($($t:ty),*) => {$(
+        /// Never prints numbers, names or text (protocol v0 §11).
+        impl std::fmt::Debug for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.debug_struct(stringify!($t)).finish_non_exhaustive()
+            }
+        }
+    )*};
+}
+private_debug!(SmsThread, SmsMessage, SmsPartData);
 
 /// A call on this phone (docs/protocol/calls.md).
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
@@ -868,6 +933,7 @@ impl From<NodeEvent> for Event {
             NodeEvent::Call { device, call } => {
                 Event::CallChanged { id: device.to_string(), call_id: call.id }
             }
+            NodeEvent::SmsChanged { device, thread } => Event::SmsChanged { id: device.to_string(), thread },
         }
     }
 }
@@ -977,6 +1043,16 @@ pub trait Platform: Send + Sync {
     /// A PC asked to answer, decline or silence call `id` (the call in
     /// progress). False if the phone couldn't.
     fn call_command(&self, id: String, command: CallCommand) -> bool;
+    /// A PC asked for the latest conversations, newest first.
+    fn sms_threads(&self, limit: u32) -> Vec<SmsThread>;
+    /// A PC asked for a conversation's messages before `before` (Unix ms;
+    /// the latest when null), newest first.
+    fn sms_messages(&self, thread: String, before: Option<i64>, limit: u32) -> Vec<SmsMessage>;
+    /// A PC asked to send a text (checked: 1–20 recipients, not empty).
+    /// False if it couldn't be sent.
+    fn sms_send(&self, to: Vec<String>, body: String) -> bool;
+    /// A PC asked for a message's attachment; null when it's gone.
+    fn sms_part(&self, id: String) -> Option<SmsPartData>;
 }
 
 /// Encrypts the device key at rest (Android: a Keystore key).
@@ -1038,6 +1114,55 @@ impl core::Platform for PlatformAdapter {
         } else {
             Err("the clipboard rejected it".into())
         }
+    }
+    fn sms_threads(&self, limit: u32) -> Result<Vec<core::SmsThread>, String> {
+        Ok(self
+            .0
+            .sms_threads(limit)
+            .into_iter()
+            .map(|t| core::SmsThread {
+                id: t.id,
+                addresses: t.addresses,
+                names: t.names,
+                snippet: t.snippet,
+                date: t.date,
+                unread: t.unread,
+                photo: t.photo,
+            })
+            .collect())
+    }
+    fn sms_messages(
+        &self,
+        thread: &str,
+        before: Option<i64>,
+        limit: u32,
+    ) -> Result<Vec<core::SmsMessage>, String> {
+        Ok(self
+            .0
+            .sms_messages(thread.to_owned(), before, limit)
+            .into_iter()
+            .map(|m| core::SmsMessage {
+                id: m.id,
+                thread: m.thread,
+                address: m.address,
+                body: m.body,
+                date: m.date,
+                outgoing: m.outgoing,
+                status: m.status,
+                parts: m
+                    .parts
+                    .into_iter()
+                    .map(|p| core::SmsPart { id: p.id, mime: p.mime, size: p.size })
+                    .collect(),
+            })
+            .collect())
+    }
+    fn sms_send(&self, to: &[String], body: &str) -> Result<(), String> {
+        if self.0.sms_send(to.to_vec(), body.to_owned()) { Ok(()) } else { Err("not sent".into()) }
+    }
+    fn sms_part(&self, id: &str) -> Result<(String, Vec<u8>), String> {
+        let part = self.0.sms_part(id.to_owned()).ok_or("it's gone")?;
+        Ok((part.mime, part.data))
     }
     fn call_command(&self, id: &str, command: core::CallCommand) -> Result<(), String> {
         let command = match command {
@@ -1344,6 +1469,13 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.open_link(id, url).await?) }).await
+    }
+
+    /// This phone's messages changed (in `thread`, or anywhere when null):
+    /// PCs that show them catch up.
+    pub async fn sms_changed(&self, thread: Option<String>) {
+        let node = self.node.clone();
+        self.run(async move { node.sms_changed(thread).await }).await;
     }
 
     /// A call on this phone rang, was answered or ended: tells the PCs that

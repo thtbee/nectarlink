@@ -53,6 +53,7 @@ import app.nectarlink.android.core.Device
 import app.nectarlink.android.files.transferTitle
 import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.photos.RecentPhotos
+import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.core.isFinished
 import app.nectarlink.core.Transfer
 import app.nectarlink.core.TransferDirection
@@ -136,6 +137,17 @@ fun HomeScreen(
                     stringResource(R.string.notifications_title),
                     stringResource(R.string.notifications_off),
                 ) { context.startActivity(NotificationListener.settingsIntent(context)) }
+            }
+        }
+        if (state.devices.isNotEmpty() && !state.smsAccess) {
+            item {
+                val askSms = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+                    onAccessChanged()
+                }
+                SetupCard(
+                    stringResource(R.string.sms_title),
+                    stringResource(R.string.sms_off),
+                ) { askSms.launch(PhoneSms.permissions) }
             }
         }
         if (state.devices.isNotEmpty() && !state.callAccess) {

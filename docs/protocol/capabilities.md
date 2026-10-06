@@ -34,8 +34,8 @@ capability is missing.
 | `notify.mirror` | Forwards notifications ([notifications service](notifications.md)) | notification access |
 | `notify.reply` | Accepts inline replies and actions on notifications | notification access |
 | `notify.sensitive` | Forwards notifications Android hides as sensitive (e.g. one-time codes) | Elevated |
-| `sms.read` | Reads SMS conversations | SMS permission |
-| `sms.send` | Sends SMS | SMS permission |
+| `sms.read` | Lists conversations and messages ([messages](sms.md)) | SMS permission |
+| `sms.send` | Sends texts when a PC asks ([messages](sms.md)) | SMS permission |
 | `call.state` | Reports incoming and ongoing calls ([calls](calls.md)) | phone permission |
 | `call.control` | Answers, declines and silences calls when a PC asks ([calls](calls.md)) | phone permission |
 | `clip.write` | Accepts clipboard content from the PC ([clipboard service](clipboard.md)) | app update |
@@ -56,6 +56,7 @@ capability is missing.
 | `pc.power` | Locks or sleeps on request ([actions](actions.md)) | app update |
 | `photos.show` | Shows a phone's new photos ([photos](photos.md)) | app update |
 | `call.show` | Shows a phone's calls ([calls](calls.md)) | app update |
+| `sms.show` | Shows a phone's text messages ([messages](sms.md)) | app update |
 | `files.browse` | Lets a paired phone browse and fetch its files | app update |
 | `input.inject` | Accepts pointer and keyboard input (touchpad, air mouse, voice typing) | app update |
 | `deck.actions` | Runs Deck actions | app update |

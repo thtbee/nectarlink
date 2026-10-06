@@ -20,6 +20,7 @@ mod notifications;
 mod pairing;
 mod photos;
 mod session;
+mod sms;
 mod store;
 mod transfer;
 
@@ -40,9 +41,10 @@ pub use nectarlink_protocol::{
     DeviceId,
     messages::{
         Battery, CLIP_MAX_BYTES, CallState, DeviceInfo, DeviceKind, MediaPlayer, Notification,
-        NotificationAction, PhotoNew as Photo, PowerLevel,
+        NotificationAction, PhotoNew as Photo, PowerLevel, SmsMessage, SmsPart, SmsThread,
         calls::{CONTROL as CALLS_CONTROL, SHOW as CALLS_SHOW, STATE as CALLS_STATE},
         photos::{MAX_THUMB_BYTES as PHOTO_MAX_THUMB_BYTES, READ as PHOTOS_READ, SHOW as PHOTOS_SHOW},
+        sms::{READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW},
     },
     pairing::PairingUri,
 };

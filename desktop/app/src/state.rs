@@ -36,6 +36,8 @@ impl Changes {
     pub const APPS: Changes = Changes(1 << 10);
     /// An update was found (see crate::updater).
     pub const UPDATE: Changes = Changes(1 << 11);
+    /// A phone's text messages (kept by crate::messages).
+    pub const MESSAGES: Changes = Changes(1 << 12);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
@@ -380,11 +382,12 @@ impl AppState {
                 let gone = self.notifications.remove(at);
                 Changes::NOTIFICATIONS | self.remember(vec![gone])
             }
-            // Feedback (crate::clipboard) and notifications (crate::photos,
-            // crate::calls) only; nothing to keep.
-            NodeEvent::ClipboardReceived { .. } | NodeEvent::PhotoAdded { .. } | NodeEvent::Call { .. } => {
-                Changes::NONE
-            }
+            // Feedback (crate::clipboard), notifications (crate::photos,
+            // crate::calls) and state kept elsewhere (crate::messages).
+            NodeEvent::ClipboardReceived { .. }
+            | NodeEvent::PhotoAdded { .. }
+            | NodeEvent::Call { .. }
+            | NodeEvent::SmsChanged { .. } => Changes::NONE,
             NodeEvent::Transfer(transfer) => self.update_transfer(transfer.clone(), Instant::now()),
             // With artwork saved first (see crate::media).
             NodeEvent::MediaChanged { .. } => Changes::NONE,
@@ -649,6 +652,11 @@ impl Hub {
         if notify() {
             lock(&self.listeners).push(Listener { interest, notify: Box::new(notify) });
         }
+    }
+
+    /// Tells listeners about changes to state kept outside the hub.
+    pub fn changed(&self, changes: Changes) {
+        self.notify(changes);
     }
 
     fn notify(&self, changes: Changes) {

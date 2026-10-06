@@ -106,7 +106,12 @@ fn save_preview(device: DeviceId, photo: &Photo) -> Option<PathBuf> {
 }
 
 pub(crate) fn fingerprint(text: &str) -> u64 {
-    text.bytes().fold(0xcbf2_9ce4_8422_2325, |hash, b| (hash ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3))
+    fingerprint_bytes(text.as_bytes())
+}
+
+/// FNV-1a: a stable name for cached files.
+pub(crate) fn fingerprint_bytes(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(0xcbf2_9ce4_8422_2325, |hash, b| (hash ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3))
 }
 
 /// The user clicked the notification (`action` None) or one of its buttons.

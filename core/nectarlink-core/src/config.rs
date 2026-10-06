@@ -123,6 +123,32 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't share photos".into())
     }
 
+    /// This phone's latest conversations, newest first (a PC asked).
+    fn sms_threads(&self, _limit: u32) -> Result<Vec<crate::SmsThread>, String> {
+        Err("this device has no messages".into())
+    }
+
+    /// A conversation's messages before `before` (Unix ms; the latest when
+    /// `None`), newest first.
+    fn sms_messages(
+        &self,
+        _thread: &str,
+        _before: Option<i64>,
+        _limit: u32,
+    ) -> Result<Vec<crate::SmsMessage>, String> {
+        Err("this device has no messages".into())
+    }
+
+    /// Send a text (checked: 1–20 recipients, not empty).
+    fn sms_send(&self, _to: &[String], _body: &str) -> Result<(), String> {
+        Err("this device doesn't send texts".into())
+    }
+
+    /// A picture in a message: its type and bytes.
+    fn sms_part(&self, _id: &str) -> Result<(String, Vec<u8>), String> {
+        Err("this device has no messages".into())
+    }
+
     /// Answer, decline or silence this phone's call `id` (a PC asked; the
     /// core checked it's the call in progress). `Err` holds a reason for logs.
     fn call_command(&self, _id: &str, _command: crate::CallCommand) -> Result<(), String> {

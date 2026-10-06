@@ -45,6 +45,11 @@ pub mod types {
     pub const PHOTOS_SENDING: &str = "photos.sending";
     pub const CALL_STATE: &str = "call.state";
     pub const CALL_ACTION: &str = "call.action";
+    pub const SMS_THREADS: &str = "sms.threads";
+    pub const SMS_MESSAGES: &str = "sms.messages";
+    pub const SMS_SEND: &str = "sms.send";
+    pub const SMS_PART: &str = "sms.part";
+    pub const SMS_CHANGED: &str = "sms.changed";
 }
 
 /// What kind of device this is.
@@ -457,6 +462,183 @@ pub struct PcPower {
 
 /// The longest link sent, in bytes.
 pub const LINK_MAX_BYTES: usize = 4096;
+
+// ---- Messages (docs/protocol/sms.md) ----
+
+pub mod sms {
+    /// Offered by phones that share their text messages.
+    pub const READ: &str = "sms.read";
+    /// Offered by phones that send texts when a PC asks.
+    pub const SEND: &str = "sms.send";
+    /// Offered by PCs that show text messages.
+    pub const SHOW: &str = "sms.show";
+    /// Most conversations or messages in one answer.
+    pub const MAX_PAGE: u32 = 100;
+    /// A text sent from a PC: at most this many bytes.
+    pub const MAX_SEND_BYTES: usize = 8 * 1024;
+    /// At most this many recipients.
+    pub const MAX_RECIPIENTS: usize = 20;
+    /// A picture in a message, fetched with `sms.part`: at most this many bytes.
+    pub const MAX_PART_BYTES: usize = 900 * 1024;
+    /// A contact's photo with a conversation: a JPEG of at most this many bytes.
+    pub const MAX_PHOTO_BYTES: usize = 16 * 1024;
+}
+
+/// A conversation, as `sms.threads` lists it.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsThread {
+    pub id: String,
+    /// The other people's numbers (more than one: a group).
+    pub addresses: Vec<String>,
+    /// Their contact names, in the same order (empty when not a contact).
+    #[serde(default)]
+    pub names: Vec<String>,
+    /// The latest message's text (or a description, like "Photo").
+    #[serde(default)]
+    pub snippet: String,
+    /// The latest message, in Unix milliseconds.
+    pub date: i64,
+    /// Unread messages.
+    #[serde(default)]
+    pub unread: u32,
+    /// The contact's photo (one-person conversations), a JPEG.
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    pub photo: Option<Vec<u8>>,
+}
+
+/// Never prints numbers, names or text (protocol v0 §11).
+impl std::fmt::Debug for SmsThread {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SmsThread")
+            .field("id", &self.id)
+            .field("people", &self.addresses.len())
+            .field("unread", &self.unread)
+            .finish_non_exhaustive()
+    }
+}
+
+/// A picture (or other attachment) in a message.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsPart {
+    /// Fetched with `sms.part`.
+    pub id: String,
+    pub mime: String,
+    #[serde(default)]
+    pub size: u64,
+}
+
+/// A message in a conversation.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsMessage {
+    pub id: String,
+    pub thread: String,
+    /// Who sent it (incoming), or the recipient (sent).
+    #[serde(default)]
+    pub address: String,
+    #[serde(default)]
+    pub body: String,
+    /// Unix milliseconds.
+    pub date: i64,
+    /// Sent from this phone (false: received).
+    #[serde(default)]
+    pub outgoing: bool,
+    /// For sent messages: `sent`, `pending` or `failed`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub parts: Vec<SmsPart>,
+}
+
+/// Never prints numbers or text (protocol v0 §11).
+impl std::fmt::Debug for SmsMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SmsMessage")
+            .field("id", &self.id)
+            .field("thread", &self.thread)
+            .field("outgoing", &self.outgoing)
+            .field("parts", &self.parts.len())
+            .finish_non_exhaustive()
+    }
+}
+
+/// Body of `sms.threads`: the latest conversations, newest first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsThreadsGet {
+    pub limit: u32,
+}
+
+/// Answer to `sms.threads`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsThreads {
+    pub threads: Vec<SmsThread>,
+}
+
+/// Body of `sms.messages`: a conversation's messages before `before`
+/// (Unix milliseconds; the latest when missing), newest first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsMessagesGet {
+    pub thread: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before: Option<i64>,
+    pub limit: u32,
+}
+
+/// Answer to `sms.messages`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsMessages {
+    pub messages: Vec<SmsMessage>,
+}
+
+/// Body of `sms.send`.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsSend {
+    pub to: Vec<String>,
+    pub body: String,
+}
+
+/// Never prints numbers or text (protocol v0 §11).
+impl std::fmt::Debug for SmsSend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SmsSend").field("to", &self.to.len()).field("bytes", &self.body.len()).finish()
+    }
+}
+
+impl SmsSend {
+    pub fn is_valid(&self) -> bool {
+        (1..=sms::MAX_RECIPIENTS).contains(&self.to.len())
+            && self.to.iter().all(|a| (1..=64).contains(&a.trim().len()))
+            && !self.body.trim().is_empty()
+            && self.body.len() <= sms::MAX_SEND_BYTES
+    }
+}
+
+/// Body of `sms.part`: send this attachment.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsPartGet {
+    pub id: String,
+}
+
+/// Answer to `sms.part`.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsPartData {
+    pub mime: String,
+    #[serde(with = "serde_bytes")]
+    pub data: Vec<u8>,
+}
+
+impl std::fmt::Debug for SmsPartData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SmsPartData").field("mime", &self.mime).field("bytes", &self.data.len()).finish()
+    }
+}
+
+/// Body of `sms.changed`: messages changed in this conversation (or in
+/// any, when missing).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsChanged {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thread: Option<String>,
+}
 
 // ---- Calls (docs/protocol/calls.md) ----
 
@@ -926,6 +1108,17 @@ mod tests {
         let env = Envelope::new("x", &plain).unwrap();
         assert!(!format!("{:?}", env.b).contains("folder"));
         assert!(!format!("{:?}", offer("Secret")).contains("Secret"));
+    }
+
+    #[test]
+    fn texts_to_send_are_checked() {
+        let send = SmsSend { to: vec!["+15550100".into()], body: "On my way".into() };
+        assert!(send.is_valid());
+        assert!(!format!("{send:?}").contains("way"));
+        assert!(!SmsSend { to: vec![], ..send.clone() }.is_valid());
+        assert!(!SmsSend { body: "  ".into(), ..send.clone() }.is_valid());
+        assert!(!SmsSend { body: "x".repeat(sms::MAX_SEND_BYTES + 1), ..send.clone() }.is_valid());
+        assert!(!SmsSend { to: vec!["1".into(); sms::MAX_RECIPIENTS + 1], ..send }.is_valid());
     }
 
     #[test]

@@ -921,6 +921,45 @@ impl Node {
         crate::actions::open_link(&self.shared, &session, url).await
     }
 
+    // ---- Messages (docs/protocol/sms.md) ----
+
+    /// This phone's messages changed (in `thread`, or anywhere): connected
+    /// PCs that show them catch up.
+    pub async fn sms_changed(&self, thread: Option<String>) {
+        self.shared.sms_changed(thread).await;
+    }
+
+    /// A paired phone's latest conversations, newest first.
+    pub async fn sms_threads(&self, peer: DeviceId, limit: u32) -> Result<Vec<crate::SmsThread>> {
+        let session = self.connected(&peer)?;
+        crate::sms::threads(&self.shared, &session, limit).await
+    }
+
+    /// A conversation's messages before `before` (Unix ms; the latest when
+    /// `None`), newest first.
+    pub async fn sms_messages(
+        &self,
+        peer: DeviceId,
+        thread: String,
+        before: Option<i64>,
+        limit: u32,
+    ) -> Result<Vec<crate::SmsMessage>> {
+        let session = self.connected(&peer)?;
+        crate::sms::messages(&self.shared, &session, thread, before, limit).await
+    }
+
+    /// Sends a text through a paired phone.
+    pub async fn sms_send(&self, peer: DeviceId, to: Vec<String>, body: String) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::sms::send(&self.shared, &session, to, body).await
+    }
+
+    /// A picture in a message: its type and bytes.
+    pub async fn sms_part(&self, peer: DeviceId, id: String) -> Result<(String, Vec<u8>)> {
+        let session = self.connected(&peer)?;
+        crate::sms::part(&self.shared, &session, id).await
+    }
+
     // ---- Calls (docs/protocol/calls.md) ----
 
     /// A call on this phone rang, was answered or ended; sent to every

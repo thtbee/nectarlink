@@ -142,9 +142,10 @@ Item {
         required property real lastSeen
         required property real pairedAt
 
-        // Dropped files go to the device on screen.
-        Binding { target: page; property: "currentDeviceId"; value: home.deviceId; when: home.visible }
-        Binding { target: page; property: "currentDeviceName"; value: home.name; when: home.visible }
+        // Dropped files go to the device on screen (and Messages shows it).
+        // Kept while the page is hidden.
+        Binding { target: page; property: "currentDeviceId"; value: home.deviceId; when: home.visible; restoreMode: Binding.RestoreNone }
+        Binding { target: page; property: "currentDeviceName"; value: home.name; when: home.visible; restoreMode: Binding.RestoreNone }
         Binding {
             target: page
             property: "currentCanReceive"

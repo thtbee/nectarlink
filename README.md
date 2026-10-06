@@ -89,6 +89,9 @@ place and tested; the user-facing features of Phase 1 come next.
   on the phone, share them from any app or pick them in Nectarlink. They land in `Downloads\Nectarlink` on the PC and
   `Download/Nectarlink` on the phone, with progress, cancelling, and transfers
   that pick up where they left off after a dropped connection.
+- **Texts** on the PC: a Messages page with the phone's conversations
+  (pictures included), to reply or start a new one; texts go out through
+  the phone.
 - **Calls**: see who's calling on the PC (with the contact's name and
   photo), and answer, decline or silence it from there; the call itself
   stays on the phone. Calls nobody answered show as missed.
