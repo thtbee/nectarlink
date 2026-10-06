@@ -341,6 +341,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     fun ring(id: String, on: Boolean) = command { it.ring(id, on) }
 
+    /** Reconnects to PCs that aren't connected and syncs connected ones. */
+    fun refresh() {
+        refreshNotificationAccess()
+        command { it.refresh() }
+    }
+
     fun unpair(id: String) = command { it.unpair(id) }
 
     /** Stops this phone ringing. */

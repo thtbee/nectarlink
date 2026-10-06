@@ -2319,6 +2319,7 @@ dependencies = [
 name = "nectarlink-core"
 version = "0.0.1"
 dependencies = [
+ "bytes",
  "iroh",
  "iroh-mdns-address-lookup",
  "n0-future",

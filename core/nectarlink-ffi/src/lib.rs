@@ -1215,6 +1215,12 @@ impl NectarlinkNode {
         self.run(async move { node.update_power(power.into(), capabilities).await }).await;
     }
 
+    /// Reconnects to PCs that aren't connected and syncs connected ones.
+    pub async fn refresh(&self) {
+        let node = self.node.clone();
+        self.run(async move { node.refresh().await }).await;
+    }
+
     /// Call when connectivity changes (Android doesn't tell native code).
     pub async fn network_changed(&self) {
         let node = self.node.clone();

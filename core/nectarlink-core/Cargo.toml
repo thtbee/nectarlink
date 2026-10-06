@@ -17,6 +17,7 @@ rand.workspace = true
 rusqlite.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+bytes.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true

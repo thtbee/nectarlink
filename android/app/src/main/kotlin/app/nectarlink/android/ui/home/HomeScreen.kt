@@ -54,6 +54,10 @@ import app.nectarlink.core.TransferDirection
 import app.nectarlink.core.TransferStatus
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.core.Link
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.launch
 
 /**
  * Home: each paired PC with its connection and quick actions. When a PC
@@ -65,6 +69,7 @@ fun HomeScreen(
     onRing: (id: String, on: Boolean) -> Unit,
     onStopRinging: () -> Unit,
     onPairNew: () -> Unit,
+    onRefresh: () -> Unit,
     onSendFiles: (pcId: String, uris: List<Uri>) -> Unit,
     onCancelTransfer: (id: String) -> Unit,
     modifier: Modifier = Modifier,
@@ -81,6 +86,22 @@ fun HomeScreen(
                     style = MaterialTheme.typography.headlineMedium,
                     modifier = Modifier.weight(1f),
                 )
+                // Reconnects and syncs with the PCs; spins once to say so.
+                val spin = remember { androidx.compose.animation.core.Animatable(0f) }
+                val scope = rememberCoroutineScope()
+                IconButton(onClick = {
+                    onRefresh()
+                    scope.launch {
+                        spin.snapTo(0f)
+                        spin.animateTo(360f, androidx.compose.animation.core.tween(700))
+                    }
+                }) {
+                    Icon(
+                        painterResource(R.drawable.ic_refresh),
+                        contentDescription = stringResource(R.string.action_refresh),
+                        modifier = Modifier.graphicsLayer { rotationZ = spin.value },
+                    )
+                }
                 FilledTonalIconButton(onClick = onPairNew) {
                     Icon(painterResource(R.drawable.ic_qr), contentDescription = stringResource(R.string.action_pair_new))
                 }

@@ -150,6 +150,29 @@ NativeWindow {
                 role: "headline"
                 size: 20
             }
+            // Reconnects and syncs with the phones (the title bar lets
+            // clicks through here).
+            IconButton {
+                id: refresh
+                anchors.right: parent.right
+                anchors.rightMargin: 8
+                anchors.verticalCenter: parent.verticalCenter
+                visible: window.page === "home" && AppController.hasDevices
+                iconPath: Icons.refresh
+                label: qsTr("Refresh")
+                onClicked: {
+                    AppController.syncNow()
+                    if (!Theme.reduceMotion) spin.restart()
+                }
+                RotationAnimation on rotation {
+                    id: spin
+                    running: false
+                    from: 0; to: 360
+                    duration: 700
+                    easing.type: Easing.OutCubic
+                }
+                Component.onCompleted: window.addCaptionHole(refresh)
+            }
         }
         Divider { anchors.top: topBar.bottom; width: parent.width }
 

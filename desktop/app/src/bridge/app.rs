@@ -68,6 +68,10 @@ pub mod qobject {
         /// Stops this PC ringing.
         #[qinvokable]
         fn stop_ringing(self: Pin<&mut AppController>);
+        /// Reconnects to phones that aren't connected and syncs connected
+        /// ones (notifications, media).
+        #[qinvokable]
+        fn sync_now(self: Pin<&mut AppController>);
         #[qinvokable]
         fn unpair(self: Pin<&mut AppController>, device: &QString);
 
@@ -315,6 +319,12 @@ impl qobject::AppController {
     pub fn ring(self: Pin<&mut Self>, device: &QString, on: bool) {
         if let Some(id) = super::parse_device(device) {
             ring_device(id, on);
+        }
+    }
+
+    pub fn sync_now(self: Pin<&mut Self>) {
+        if let Some(node) = core_host::node() {
+            core_host::spawn(async move { node.refresh().await });
         }
     }
 

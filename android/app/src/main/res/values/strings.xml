@@ -119,6 +119,7 @@
     <string name="action_stop_ringing">Stop ringing</string>
     <string name="action_unpair">Unpair</string>
     <string name="action_pair_new">Pair another PC</string>
+    <string name="action_refresh">Refresh</string>
 
     <!-- Notifications -->
     <string name="channel_connection">Connection</string>

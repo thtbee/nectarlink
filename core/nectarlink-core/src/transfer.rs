@@ -9,6 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use bytes::Bytes;
 use iroh::endpoint::{ReadError, RecvStream, SendStream, VarInt, WriteError};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
@@ -17,7 +18,7 @@ use nectarlink_protocol::{
     },
     read_frame, write_frame,
 };
-use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 use tokio_util::sync::CancellationToken;
 
 use crate::{Error, Result, events::NodeEvent, node::Shared, session::Session};
@@ -34,6 +35,13 @@ const PROGRESS_EVERY: Duration = Duration::from_millis(200);
 /// Partly received files are kept this long for resuming.
 const KEEP_PARTIAL: Duration = Duration::from_secs(60 * 60);
 const CHUNK: usize = 256 * 1024;
+/// The sender reads ahead in blocks of this size, this many at a time, so
+/// the disk is read while the network sends.
+const BLOCK: usize = 1024 * 1024;
+const READ_AHEAD: usize = 8;
+/// The receiver writes the disk in pieces this large (QUIC delivers a few
+/// kilobytes at a time).
+const WRITE_BUFFER: usize = 4 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
@@ -315,51 +323,47 @@ async fn attempt(
     reporter.set(TransferState::Running);
     let mut done: u64 = files.iter().zip(&have).map(|((_, size, _), have)| (*have).min(*size)).sum();
     reporter.progress(done);
-    let mut buf = vec![0u8; CHUNK];
-    for ((_, size, file), have) in files.iter_mut().zip(&have) {
+    // What's left of each file, read on a thread of its own that keeps a
+    // few blocks ready; it stops when this attempt ends and drops them.
+    let mut plan = Vec::with_capacity(files.len());
+    for ((_, size, file), have) in files.iter().zip(&have) {
         let start = (*have).min(*size);
-        if file.seek(std::io::SeekFrom::Start(start)).await.is_err() {
+        let Ok(clone) = file.try_clone().await else {
             return Attempt::Fatal(TransferFailure::Other("can't read a file".into()));
-        }
-        let mut left = *size - start;
-        while left > 0 {
-            let want = buf.len().min(usize::try_from(left).unwrap_or(usize::MAX));
-            let read = tokio::select! {
-                _ = cancel.cancelled() => {
-                    let _ = send.reset(VarInt::from_u32(files::CANCELLED));
-                    return Attempt::Cancelled;
-                }
-                read = file.read(&mut buf[..want]) => read,
-            };
-            let n = match read {
-                Ok(0) => {
-                    return Attempt::Fatal(TransferFailure::Other("a file got shorter while sending".into()));
-                }
-                Ok(n) => n,
-                Err(e) => {
-                    return Attempt::Fatal(TransferFailure::Other(format!(
-                        "can't read a file: {}",
-                        e.kind()
-                    )));
-                }
-            };
-            let written = tokio::select! {
-                _ = cancel.cancelled() => {
-                    let _ = send.reset(VarInt::from_u32(files::CANCELLED));
-                    return Attempt::Cancelled;
-                }
-                written = send.write_all(&buf[..n]) => written,
-            };
-            if let Err(e) = written {
-                return match e {
-                    WriteError::Stopped(code) => stopped(code),
-                    _ => Attempt::Retry,
-                };
+        };
+        plan.push((clone.into_std().await, start, *size - start));
+    }
+    let (blocks, mut ready) = tokio::sync::mpsc::channel(READ_AHEAD);
+    tokio::task::spawn_blocking(move || read_ahead(plan, &blocks));
+    loop {
+        let block = tokio::select! {
+            _ = cancel.cancelled() => {
+                let _ = send.reset(VarInt::from_u32(files::CANCELLED));
+                return Attempt::Cancelled;
             }
-            left -= n as u64;
-            done += n as u64;
-            reporter.progress(done);
+            block = ready.recv() => block,
+        };
+        let block = match block {
+            None => break,
+            Some(Ok(block)) => block,
+            Some(Err(failure)) => return Attempt::Fatal(failure),
+        };
+        let n = block.len() as u64;
+        let written = tokio::select! {
+            _ = cancel.cancelled() => {
+                let _ = send.reset(VarInt::from_u32(files::CANCELLED));
+                return Attempt::Cancelled;
+            }
+            written = send.write_chunk(block) => written,
+        };
+        if let Err(e) = written {
+            return match e {
+                WriteError::Stopped(code) => stopped(code),
+                _ => Attempt::Retry,
+            };
         }
+        done += n;
+        reporter.progress(done);
     }
     if send.finish().is_err() {
         return Attempt::Retry;
@@ -521,6 +525,38 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
 }
 
 #[allow(clippy::too_many_arguments)]
+/// Reads each file's remaining bytes, from where the receiver is, in
+/// blocks; stops early when the sending side is gone.
+fn read_ahead(
+    plan: Vec<(std::fs::File, u64, u64)>,
+    blocks: &tokio::sync::mpsc::Sender<std::result::Result<Bytes, TransferFailure>>,
+) {
+    use std::io::{Read, Seek, SeekFrom};
+    for (mut file, start, mut left) in plan {
+        if let Err(e) = file.seek(SeekFrom::Start(start)) {
+            let failure = TransferFailure::Other(format!("can't read a file: {}", e.kind()));
+            let _ = blocks.blocking_send(Err(failure));
+            return;
+        }
+        while left > 0 {
+            let mut block = vec![0u8; BLOCK.min(usize::try_from(left).unwrap_or(usize::MAX))];
+            if let Err(e) = file.read_exact(&mut block) {
+                let failure = if e.kind() == std::io::ErrorKind::UnexpectedEof {
+                    TransferFailure::Other("a file got shorter while sending".into())
+                } else {
+                    TransferFailure::Other(format!("can't read a file: {}", e.kind()))
+                };
+                let _ = blocks.blocking_send(Err(failure));
+                return;
+            }
+            left -= block.len() as u64;
+            if blocks.blocking_send(Ok(Bytes::from(block))).is_err() {
+                return;
+            }
+        }
+    }
+}
+
 async fn receive_bytes(
     reporter: &mut Reporter,
     offer: &FilesOffer,
@@ -532,7 +568,7 @@ async fn receive_bytes(
 ) -> std::result::Result<(), TransferState> {
     let mut done: u64 = have.iter().sum();
     for (i, (file, have)) in offer.files.iter().zip(have).enumerate() {
-        let mut out =
+        let out =
             tokio::fs::OpenOptions::new().create(true).append(true).open(part(i)).await.map_err(|e| {
                 TransferState::Failed(TransferFailure::Other(format!("can't write: {}", e.kind())))
             })?;
@@ -540,6 +576,7 @@ async fn receive_bytes(
         if *have < out.metadata().await.map(|m| m.len()).unwrap_or(0) {
             out.set_len(*have).await.ok();
         }
+        let mut out = tokio::io::BufWriter::with_capacity(WRITE_BUFFER, out);
         let mut left = file.size - have;
         while left > 0 {
             let max = CHUNK.min(usize::try_from(left).unwrap_or(usize::MAX));
@@ -553,12 +590,19 @@ async fn receive_bytes(
             };
             let bytes = match chunk {
                 Ok(Some(bytes)) => bytes,
-                Ok(None) => return Err(TransferState::Waiting),
+                Ok(None) => {
+                    out.flush().await.ok();
+                    return Err(TransferState::Waiting);
+                }
                 Err(ReadError::Reset(code)) if code.into_inner() == u64::from(files::CANCELLED) => {
                     return Err(TransferState::Cancelled);
                 }
-                // The connection dropped: the sender resumes when it's back.
-                Err(_) => return Err(TransferState::Waiting),
+                // The connection dropped: keep what arrived; the sender
+                // resumes from there when it's back.
+                Err(_) => {
+                    out.flush().await.ok();
+                    return Err(TransferState::Waiting);
+                }
             };
             if let Err(e) = out.write_all(&bytes).await {
                 let no_space = e.kind() == std::io::ErrorKind::StorageFull;
@@ -574,7 +618,16 @@ async fn receive_bytes(
             done += bytes.len() as u64;
             reporter.progress(done);
         }
-        out.flush().await.ok();
+        if let Err(e) = out.flush().await {
+            let no_space = e.kind() == std::io::ErrorKind::StorageFull;
+            let code = if no_space { ErrorCode::Busy } else { ErrorCode::Internal };
+            let _ = recv.stop(VarInt::from_u32(code.close_code()));
+            return Err(TransferState::Failed(if no_space {
+                TransferFailure::NoSpace
+            } else {
+                TransferFailure::Other(format!("can't write: {}", e.kind()))
+            }));
+        }
     }
     Ok(())
 }
