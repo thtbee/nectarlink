@@ -39,6 +39,7 @@ pub mod types {
     pub const MEDIA_SYNC: &str = "media.sync";
     pub const MEDIA_COMMAND: &str = "media.command";
     pub const PC_POWER: &str = "pc.power";
+    pub const PC_WAKE_INFO: &str = "pc.wake_info";
     pub const LINK_OPEN: &str = "link.open";
     pub const PHOTOS_NEW: &str = "photos.new";
     pub const PHOTOS_ALBUMS: &str = "photos.albums";
@@ -484,6 +485,175 @@ pub struct PcPower {
 
 /// The longest link sent, in bytes.
 pub const LINK_MAX_BYTES: usize = 4096;
+
+/// Constants and limits for Wake-on-LAN (`docs/protocol/actions.md` §2.3).
+pub mod wake {
+    /// Offered by PCs that share their adapter addresses (`pc.wake_info`).
+    pub const CAP: &str = "pc.wake";
+    /// Maximum hardware addresses in a `pc.wake_info` message.
+    pub const MAX_ADAPTERS: usize = 8;
+    /// Maximum directed subnet broadcast addresses in a `pc.wake_info` message.
+    pub const MAX_BROADCASTS: usize = 16;
+    /// Size of a standard Wake-on-LAN magic packet (`6 + 16 * 6`).
+    pub const MAGIC_PACKET_BYTES: usize = 102;
+    /// Standard UDP ports for Wake-on-LAN magic packets.
+    pub const DEFAULT_PORTS: &[u16] = &[9, 7];
+}
+
+/// Parses a 6-byte hardware (MAC) address written as `"aa:bb:cc:dd:ee:ff"` or
+/// `"AA-BB-CC-DD-EE-FF"`. Rejects all-zero (`00:00:00:00:00:00`) and broadcast
+/// (`ff:ff:ff:ff:ff:ff`) addresses.
+pub fn parse_mac(s: &str) -> Option<[u8; 6]> {
+    let s = s.trim();
+    let sep = if s.contains(':') { ':' } else { '-' };
+    let mut bytes = [0u8; 6];
+    let mut parts = s.split(sep);
+    for slot in &mut bytes {
+        let part = parts.next()?;
+        if part.len() != 2 || !part.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return None;
+        }
+        *slot = u8::from_str_radix(part, 16).ok()?;
+    }
+    if parts.next().is_some() || bytes == [0; 6] || bytes == [0xff; 6] {
+        return None;
+    }
+    Some(bytes)
+}
+
+/// Formats a 6-byte hardware (MAC) address as lowercase `"aa:bb:cc:dd:ee:ff"`.
+pub fn format_mac(mac: &[u8; 6]) -> String {
+    format!("{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
+}
+
+/// Builds the standard 102-byte Wake-on-LAN magic packet: 6 bytes of `0xFF`
+/// followed by `mac` repeated 16 times.
+pub fn magic_packet(mac: &[u8; 6]) -> [u8; wake::MAGIC_PACKET_BYTES] {
+    let mut pkt = [0xffu8; wake::MAGIC_PACKET_BYTES];
+    for i in 0..16 {
+        let start = 6 + i * 6;
+        pkt[start..start + 6].copy_from_slice(mac);
+    }
+    pkt
+}
+
+/// Computes the directed IPv4 subnet broadcast address (`ip | !mask`) from an
+/// adapter's IPv4 address and on-link prefix length (`1..=30`). Rejects
+/// unspecified, loopback, link-local (`169.254.0.0/16`), multicast and
+/// broadcast addresses.
+pub fn ipv4_broadcast(ip: std::net::Ipv4Addr, prefix_len: u8) -> Option<std::net::Ipv4Addr> {
+    if !(1..=30).contains(&prefix_len)
+        || ip.is_unspecified()
+        || ip.is_loopback()
+        || ip.is_link_local()
+        || ip.is_multicast()
+        || ip.is_broadcast()
+    {
+        return None;
+    }
+    let mask = u32::MAX << (32 - u32::from(prefix_len));
+    let bcast = std::net::Ipv4Addr::from(u32::from(ip) | !mask);
+    (!bcast.is_unspecified() && !bcast.is_loopback() && !bcast.is_multicast()).then_some(bcast)
+}
+
+fn parse_wake_broadcast(s: &str) -> Option<std::net::Ipv4Addr> {
+    let ip: std::net::Ipv4Addr = s.trim().parse().ok()?;
+    if ip.is_unspecified() || ip.is_loopback() || ip.is_link_local() || ip.is_multicast() {
+        return None;
+    }
+    Some(ip)
+}
+
+/// Body of `pc.wake_info` (`docs/protocol/actions.md` §2.3): the PC's
+/// wake-capable adapter MAC addresses and directed subnet broadcast addresses.
+#[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PcWakeInfo {
+    /// Hardware addresses (`"aa:bb:cc:dd:ee:ff"`), preferred adapter first.
+    /// Empty when the user turned `pc_actions` off for this phone.
+    #[serde(default)]
+    pub macs: Vec<String>,
+    /// Directed IPv4 subnet broadcast addresses (e.g. `"192.168.1.255"`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub broadcasts: Vec<String>,
+}
+
+/// Never prints hardware or IP addresses in logs (protocol v0 §11).
+impl std::fmt::Debug for PcWakeInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PcWakeInfo")
+            .field("macs", &self.macs.len())
+            .field("broadcasts", &self.broadcasts.len())
+            .finish()
+    }
+}
+
+impl PcWakeInfo {
+    pub fn is_valid(&self) -> bool {
+        self.macs.len() <= wake::MAX_ADAPTERS
+            && self.broadcasts.len() <= wake::MAX_BROADCASTS
+            && self.macs.iter().all(|m| parse_mac(m).is_some())
+            && self.broadcasts.iter().all(|b| parse_wake_broadcast(b).is_some())
+    }
+
+    /// Normalizes MAC addresses to lowercase `"aa:bb:cc:dd:ee:ff"`, filters out
+    /// invalid entries, deduplicates preserving order, and enforces protocol
+    /// bounds.
+    pub fn sanitized(self) -> Self {
+        let mut macs = Vec::new();
+        for m in self.macs {
+            if let Some(bytes) = parse_mac(&m) {
+                let norm = format_mac(&bytes);
+                if !macs.contains(&norm) {
+                    macs.push(norm);
+                    if macs.len() >= wake::MAX_ADAPTERS {
+                        break;
+                    }
+                }
+            }
+        }
+        if macs.is_empty() {
+            return Self::default();
+        }
+        let mut broadcasts = Vec::new();
+        for b in self.broadcasts {
+            if let Some(ip) = parse_wake_broadcast(&b) {
+                let norm = ip.to_string();
+                if !broadcasts.contains(&norm) {
+                    broadcasts.push(norm);
+                    if broadcasts.len() >= wake::MAX_BROADCASTS {
+                        break;
+                    }
+                }
+            }
+        }
+        Self { macs, broadcasts }
+    }
+
+    /// Encodes as `"mac1,mac2|bcast1,bcast2"` for the `peers.wake_info` column.
+    pub fn to_storage_string(&self) -> String {
+        let clean = self.clone().sanitized();
+        if clean.macs.is_empty() {
+            String::new()
+        } else {
+            format!("{}|{}", clean.macs.join(","), clean.broadcasts.join(","))
+        }
+    }
+
+    /// Decodes from the `peers.wake_info` column (`None` when empty or invalid).
+    pub fn from_storage_str(s: &str) -> Option<Self> {
+        let s = s.trim();
+        if s.is_empty() {
+            return None;
+        }
+        let (macs_part, bcasts_part) = s.split_once('|').unwrap_or((s, ""));
+        let info = Self {
+            macs: macs_part.split(',').filter(|p| !p.is_empty()).map(str::to_owned).collect(),
+            broadcasts: bcasts_part.split(',').filter(|p| !p.is_empty()).map(str::to_owned).collect(),
+        }
+        .sanitized();
+        (!info.macs.is_empty()).then_some(info)
+    }
+}
 
 // ---- Screen mirroring (docs/protocol/mirror.md) ----
 
@@ -2525,5 +2695,88 @@ mod tests {
                 .is_valid()
         );
         assert!(!PhoneToggleSet { id: "airplane".into(), value: PhoneToggleValue::Bool(true) }.is_valid());
+    }
+
+    #[test]
+    fn magic_packet_has_sync_header_and_sixteen_mac_copies() {
+        let mac = parse_mac("38-A7-46-37-2E-64").unwrap();
+        assert_eq!(mac, [0x38, 0xa7, 0x46, 0x37, 0x2e, 0x64]);
+        assert_eq!(format_mac(&mac), "38:a7:46:37:2e:64");
+        let pkt = magic_packet(&mac);
+        assert_eq!(pkt.len(), 102);
+        assert_eq!(&pkt[..6], &[0xff; 6]);
+        for i in 0..16 {
+            assert_eq!(&pkt[6 + i * 6..12 + i * 6], &mac);
+        }
+    }
+
+    #[test]
+    fn ipv4_broadcast_from_ip_and_prefix() {
+        use std::net::Ipv4Addr;
+        assert_eq!(ipv4_broadcast(Ipv4Addr::new(192, 168, 1, 42), 24), Some(Ipv4Addr::new(192, 168, 1, 255)));
+        assert_eq!(ipv4_broadcast(Ipv4Addr::new(10, 0, 12, 5), 16), Some(Ipv4Addr::new(10, 0, 255, 255)));
+        assert_eq!(ipv4_broadcast(Ipv4Addr::new(172, 16, 5, 10), 20), Some(Ipv4Addr::new(172, 16, 15, 255)));
+        assert_eq!(ipv4_broadcast(Ipv4Addr::new(192, 168, 10, 1), 30), Some(Ipv4Addr::new(192, 168, 10, 3)));
+        // Invalid prefix lengths or non-routable LAN addresses.
+        assert_eq!(ipv4_broadcast(Ipv4Addr::new(192, 168, 1, 42), 0), None);
+        assert_eq!(ipv4_broadcast(Ipv4Addr::new(192, 168, 1, 42), 31), None);
+        assert_eq!(ipv4_broadcast(Ipv4Addr::new(192, 168, 1, 42), 32), None);
+        assert_eq!(ipv4_broadcast(Ipv4Addr::UNSPECIFIED, 24), None);
+        assert_eq!(ipv4_broadcast(Ipv4Addr::LOCALHOST, 8), None);
+        assert_eq!(ipv4_broadcast(Ipv4Addr::new(169, 254, 10, 20), 16), None);
+        assert_eq!(ipv4_broadcast(Ipv4Addr::new(224, 0, 0, 1), 24), None);
+        assert_eq!(ipv4_broadcast(Ipv4Addr::BROADCAST, 24), None);
+    }
+
+    #[test]
+    fn wake_info_validates_sanitizes_and_round_trips() {
+        let info = PcWakeInfo {
+            macs: vec!["38:a7:46:37:2e:64".into(), "24:b2:b9:c6:a4:81".into()],
+            broadcasts: vec!["192.168.1.255".into()],
+        };
+        assert!(info.is_valid());
+        let debug = format!("{info:?}");
+        assert!(!debug.contains("38:a7") && !debug.contains("192.168"), "{debug}");
+
+        let env = Envelope::new(types::PC_WAKE_INFO, &info).unwrap();
+        let back: PcWakeInfo = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, info);
+
+        let stored = info.to_storage_string();
+        assert_eq!(PcWakeInfo::from_storage_str(&stored), Some(info.clone()));
+        assert_eq!(PcWakeInfo::from_storage_str(""), None);
+
+        // Empty wake_info (sent when pc_actions is turned off) is valid on the wire.
+        let empty = PcWakeInfo::default();
+        assert!(empty.is_valid());
+        assert_eq!(empty.to_storage_string(), "");
+
+        // Invalid MACs and broadcast addresses are rejected by is_valid and stripped by sanitized.
+        for bad_mac in [
+            "",
+            "00:00:00:00:00:00",
+            "ff:ff:ff:ff:ff:ff",
+            "FF-FF-FF-FF-FF-FF",
+            "38:a7:46:37:2e",
+            "38:a7:46:37:2e:64:00",
+            "38:a7:46:37:2e:zz",
+        ] {
+            assert!(!PcWakeInfo { macs: vec![bad_mac.into()], broadcasts: vec![] }.is_valid(), "{bad_mac}");
+        }
+        for bad_ip in ["", "0.0.0.0", "127.0.0.1", "169.254.1.255", "224.0.0.251", "not-an-ip"] {
+            assert!(
+                !PcWakeInfo { macs: vec!["38:a7:46:37:2e:64".into()], broadcasts: vec![bad_ip.into()] }
+                    .is_valid(),
+                "{bad_ip}"
+            );
+        }
+
+        let messy = PcWakeInfo {
+            macs: vec!["38-A7-46-37-2E-64".into(), "38:a7:46:37:2e:64".into(), "00:00:00:00:00:00".into()],
+            broadcasts: vec!["192.168.1.255".into(), "192.168.1.255".into(), "127.0.0.1".into()],
+        }
+        .sanitized();
+        assert_eq!(messy.macs, vec!["38:a7:46:37:2e:64"]);
+        assert_eq!(messy.broadcasts, vec!["192.168.1.255"]);
     }
 }

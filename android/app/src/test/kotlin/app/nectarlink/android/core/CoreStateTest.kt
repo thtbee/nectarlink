@@ -16,11 +16,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CoreStateTest {
-    private fun pc(id: String, name: String, pairedAt: Long) = PairedDevice(
+    private fun pc(id: String, name: String, pairedAt: Long, canWake: Boolean = false) = PairedDevice(
         id = id,
         info = DeviceInfo(name, DeviceKind.DESKTOP, "windows", "10.0.26200", null, null),
         pairedAt = pairedAt,
         link = Link.Offline(null),
+        canWake = canWake,
     )
 
     @Test
@@ -30,9 +31,15 @@ class CoreStateTest {
             .reduce(Event.DeviceAdded(pc("a", "Desk", 10)))
         assertEquals(listOf("Desk", "Laptop"), state.devices.map { it.name })
 
+        state = state.reduce(Event.WakeInfoChanged("a", true))
+            .withWakeState("a", WakeState.Waking)
+        assertTrue(state.device("a")!!.canWake)
+        assertEquals(WakeState.Waking, state.device("a")!!.wakeState)
+
         state = state.reduce(Event.LinkChanged("a", Link.Online(false, 5u)))
             .reduce(Event.Battery("a", Battery(42u, true, "ac")))
         assertTrue(state.device("a")!!.online)
+        assertEquals(WakeState.Idle, state.device("a")!!.wakeState)
         assertEquals(42.toUByte(), state.device("a")!!.battery!!.level)
 
         // Unknown devices are ignored; removal drops the device.

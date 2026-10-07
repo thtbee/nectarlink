@@ -147,6 +147,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private var node: NectarlinkNode? = null
     private var startJob: Job? = null
     private var networkChange: Job? = null
+    private val wakeTimers = java.util.concurrent.ConcurrentHashMap<String, Job>()
 
     private val battery = BatteryMonitor(this.context) { battery ->
         node?.let { scope.launch { it.updateBattery(battery) } }
@@ -331,11 +332,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 if (event.link is Link.Offline) {
                     pcMedia.update(event.id, "", emptyList())
                 } else if (event.link is Link.Online) {
+                    wakeTimers.remove(event.id)?.cancel()
                     retryWaitingRecordings(event.id)
                 }
             }
             is Event.DeviceAdded -> ConnectionService.start(context)
             is Event.DeviceRemoved -> {
+                wakeTimers.remove(event.id)?.cancel()
                 pcMedia.update(event.id, "", emptyList())
                 if (_state.value.devices.isEmpty()) ConnectionService.stop(context)
             }
@@ -660,6 +663,48 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 if (e is NectarlinkException.Denied) context.getString(R.string.pc_actions_off, name) else describe(e)
             }
             _messages.tryEmit(message)
+        }
+    }
+
+    /**
+     * Sends Wake-on-LAN magic packets to a sleeping or shut-down PC and waits
+     * up to ~60 s for it to connect before showing troubleshooting tips.
+     */
+    fun wake(id: String) {
+        val node = node ?: return
+        wakeTimers.remove(id)?.cancel()
+        _state.update { it.withWakeState(id, WakeState.Waking) }
+        val timer = scope.launch(Dispatchers.IO) {
+            repeat(15) {
+                delay(4_000)
+                val dev = _state.value.device(id)
+                if (dev == null || dev.online || dev.wakeState != WakeState.Waking) return@launch
+                runCatching { node.refresh() }
+            }
+            _state.update { s ->
+                val dev = s.device(id)
+                if (dev != null && !dev.online && dev.wakeState == WakeState.Waking) {
+                    s.withWakeState(id, WakeState.TimedOut)
+                } else {
+                    s
+                }
+            }
+        }
+        wakeTimers[id] = timer
+        scope.launch(Dispatchers.IO) {
+            try {
+                node.wake(id)
+                node.refresh()
+            } catch (e: NectarlinkException) {
+                wakeTimers.remove(id)?.cancel()
+                _state.update { it.withWakeState(id, WakeState.Idle) }
+                val name = _state.value.nameOf(id).orEmpty()
+                val msg = when (e) {
+                    is NectarlinkException.Unsupported -> context.getString(R.string.wake_not_ready, name)
+                    else -> describe(e)
+                }
+                _messages.tryEmit(msg)
+            }
         }
     }
 

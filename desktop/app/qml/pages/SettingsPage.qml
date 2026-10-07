@@ -29,7 +29,7 @@ Item {
         media: qsTr("Media playing on either device"),
         photos: qsTr("Photos"),
         toggles: qsTr("Phone controls"),
-        pc_actions: qsTr("Lock and sleep this PC"),
+        pc_actions: qsTr("Lock, sleep and wake this PC"),
         remote_input: qsTr("Control this PC's mouse and keyboard"),
         remote_files: qsTr("Browse this PC's files while away")
     })
@@ -276,6 +276,38 @@ Item {
                         size: "sm"
                         text: qsTr("Check")
                         onClicked: AppController.runDoctor()
+                    }
+                }
+            }
+
+            // ---- This PC ----
+            Txt { text: qsTr("This PC"); role: "label"; muted: true }
+            Card {
+                width: parent.width
+                ListRow {
+                    width: parent.width
+                    iconPath: Icons.power
+                    title: qsTr("Wake from your phone")
+                    description: {
+                        const adapter = AppController.wakeAdapter
+                        const state = AppController.wakeState
+                        const wired = AppController.wakeWired
+                        if (state === "none" || adapter.length === 0)
+                            return qsTr("No active Ethernet or Wi-Fi adapter found. Connect this PC to your network so your phone can learn how to wake it.")
+                        if (state === "enabled") {
+                            return wired
+                                ? qsTr("%1 · Wake on Magic Packet is on. If this PC still won't wake from sleep or shutdown, check that Wake-on-LAN is enabled in BIOS/UEFI.").arg(adapter)
+                                : qsTr("%1 · Wake on Magic Packet is on. Wi-Fi wake usually works from sleep, not full shutdown; use Ethernet for shutdown wake.").arg(adapter)
+                        }
+                        const wifiNote = wired ? "" : qsTr(" Wi-Fi wake rarely works from shutdown.")
+                        return qsTr("%1 · To wake this PC while it sleeps or is shut down, enable Wake on Magic Packet in Device Manager → Network adapters → %1 → Properties (Advanced tab → Wake on Magic Packet → Enabled; Power Management tab → Allow this device to wake the computer, Only allow a magic packet), and enable Wake-on-LAN in BIOS/UEFI.%2").arg(adapter).arg(wifiNote)
+                    }
+                    Chip {
+                        selected: AppController.wakeState === "enabled"
+                        text: AppController.wakeState === "enabled" ? qsTr("Ready")
+                            : AppController.wakeState === "disabled" ? qsTr("Off in Windows")
+                            : AppController.wakeState === "unknown" ? qsTr("Check settings")
+                            : qsTr("No adapter")
                     }
                 }
             }

@@ -82,6 +82,8 @@ pub struct PairedDevice {
     /// Unix seconds.
     pub paired_at: i64,
     pub link: Link,
+    /// Whether this phone has stored Wake-on-LAN addresses for this PC.
+    pub can_wake: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -478,6 +480,11 @@ pub enum Event {
     PhoneToggles {
         id: String,
         toggles: PhoneToggles,
+    },
+    /// A paired PC's stored Wake-on-LAN addresses changed (phones only).
+    WakeInfoChanged {
+        id: String,
+        can_wake: bool,
     },
 }
 
@@ -1085,6 +1092,7 @@ impl From<core::PairedDevice> for PairedDevice {
             info: d.info.into(),
             paired_at: d.paired_at,
             link: d.link.into(),
+            can_wake: d.can_wake,
         }
     }
 }
@@ -1312,6 +1320,9 @@ impl From<NodeEvent> for Event {
             }
             NodeEvent::PhoneToggles { device, toggles } => {
                 Event::PhoneToggles { id: device.to_string(), toggles: toggles.into() }
+            }
+            NodeEvent::WakeInfoChanged { device, can_wake } => {
+                Event::WakeInfoChanged { id: device.to_string(), can_wake }
             }
         }
     }
@@ -2028,6 +2039,15 @@ impl NectarlinkNode {
         let node = self.node.clone();
         let action = if sleep { core::PowerAction::Sleep } else { core::PowerAction::Lock };
         self.run(async move { Ok(node.pc_power(id, action).await?) }).await
+    }
+
+    /// Sends Wake-on-LAN magic packets for a paired PC over UDP to its stored
+    /// subnet broadcasts and `255.255.255.255` on ports 9 and 7, repeated a
+    /// few times over ~2 s.
+    pub async fn wake(&self, id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.wake(id).await?) }).await
     }
 
     /// Opens a web link on a paired PC.

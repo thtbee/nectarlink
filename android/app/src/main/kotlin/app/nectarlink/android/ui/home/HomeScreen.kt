@@ -53,6 +53,7 @@ import app.nectarlink.android.core.BackgroundAccess
 import app.nectarlink.android.core.LocalNetwork
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.Device
+import app.nectarlink.android.core.WakeState
 import app.nectarlink.android.files.transferTitle
 import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.contacts.PhoneContacts
@@ -81,6 +82,7 @@ fun HomeScreen(
     onPairNew: () -> Unit,
     onRefresh: () -> Unit,
     onPower: (pcId: String, sleep: Boolean) -> Unit,
+    onWake: (pcId: String) -> Unit,
     onRemote: (pcId: String) -> Unit,
     onRecord: (pcId: String) -> Unit,
     updater: AppUpdater,
@@ -199,7 +201,7 @@ fun HomeScreen(
             }
         }
         items(state.devices, key = { it.id }) { device ->
-            PcCard(device, onRing, onSendFiles, onSendFolder, onPower, onRemote, onRecord)
+            PcCard(device, onRing, onSendFiles, onSendFolder, onPower, onWake, onRemote, onRecord)
         }
         if (state.transfers.isNotEmpty()) {
             item { TransfersCard(state, onCancelTransfer) }
@@ -243,6 +245,7 @@ private fun PcCard(
     onSendFiles: (String, List<Uri>) -> Unit,
     onSendFolder: (String, Uri) -> Unit,
     onPower: (String, Boolean) -> Unit,
+    onWake: (String) -> Unit,
     onRemote: (String) -> Unit,
     onRecord: (String) -> Unit,
 ) {
@@ -270,7 +273,14 @@ private fun PcCard(
                     ) {}
                 }
                 Spacer(Modifier.width(8.dp))
-                Text(linkText(device.link), style = MaterialTheme.typography.labelLarge)
+                Text(
+                    if (!device.online && device.wakeState == WakeState.Waking) {
+                        stringResource(R.string.wake_waking, device.name)
+                    } else {
+                        linkText(device.link)
+                    },
+                    style = MaterialTheme.typography.labelLarge,
+                )
             }
             Spacer(Modifier.height(12.dp))
             Text(device.name, style = MaterialTheme.typography.headlineLarge)
@@ -304,6 +314,17 @@ private fun PcCard(
             val outlined = ButtonDefaults.outlinedButtonColors(contentColor = ink, disabledContentColor = ink.copy(alpha = 0.38f))
             val outline = BorderStroke(1.dp, ink.copy(alpha = if (device.online) 0.45f else 0.15f))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (!device.online && device.canWake) {
+                    Button(
+                        enabled = device.wakeState != WakeState.Waking,
+                        onClick = { onWake(device.id) },
+                    ) {
+                        Text(
+                            if (device.wakeState == WakeState.Waking) stringResource(R.string.wake_waking, device.name)
+                            else stringResource(R.string.action_wake_pc),
+                        )
+                    }
+                }
                 Button(
                     enabled = device.online,
                     onClick = {
@@ -344,6 +365,29 @@ private fun PcCard(
                     }
                     OutlinedButton(enabled = device.online, colors = outlined, border = outline, onClick = { onPower(device.id, true) }) {
                         Text(stringResource(R.string.action_sleep_pc))
+                    }
+                }
+            }
+            if (!device.online && device.wakeState == WakeState.Waking) {
+                Spacer(Modifier.height(14.dp))
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            } else if (!device.online && device.wakeState == WakeState.TimedOut) {
+                Spacer(Modifier.height(16.dp))
+                Surface(
+                    shape = MaterialTheme.shapes.large,
+                    color = ink.copy(alpha = 0.08f),
+                    contentColor = ink,
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        Text(
+                            stringResource(R.string.wake_timeout_title, device.name),
+                            style = MaterialTheme.typography.titleSmall,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            stringResource(R.string.wake_timeout_text, device.name),
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                     }
                 }
             }

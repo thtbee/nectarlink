@@ -32,6 +32,15 @@ sealed interface PairingState {
     data class Failed(val failure: PairingFailure) : PairingState
 }
 
+/** Wake-on-LAN progress for an offline PC. */
+enum class WakeState {
+    Idle,
+    /** Magic packets sent; waiting up to ~60 s for the PC to connect. */
+    Waking,
+    /** ~60 s passed without the PC connecting; show what to check. */
+    TimedOut,
+}
+
 /** A paired device as the UI shows it. */
 data class Device(
     val id: String,
@@ -40,6 +49,8 @@ data class Device(
     val model: String?,
     val pairedAt: Long,
     val link: Link,
+    val canWake: Boolean = false,
+    val wakeState: WakeState = WakeState.Idle,
     val battery: app.nectarlink.core.Battery? = null,
     val power: PowerLevel = PowerLevel.NOT_APPLICABLE,
     val features: List<Feature> = emptyList(),
@@ -95,6 +106,9 @@ data class CoreState(
     fun withDevices(paired: List<PairedDevice>): CoreState =
         copy(devices = paired.map { it.toDevice() }.sortedBy { it.pairedAt })
 
+    fun withWakeState(id: String, state: WakeState): CoreState =
+        update(id) { it.copy(wakeState = state) }
+
     /** Folds one core event into the state. */
     fun reduce(event: Event): CoreState = when (event) {
         is Event.DeviceAdded -> {
@@ -105,11 +119,22 @@ data class CoreState(
             devices = devices.filterNot { it.id == event.id },
             ringingFrom = if (ringingFrom == nameOf(event.id)) null else ringingFrom,
         )
-        is Event.LinkChanged -> update(event.id) { it.copy(link = event.link) }
+        is Event.LinkChanged -> update(event.id) {
+            it.copy(
+                link = event.link,
+                wakeState = if (event.link is Link.Online) WakeState.Idle else it.wakeState,
+            )
+        }
         is Event.PeerInfoChanged -> update(event.id) {
             it.copy(name = event.info.name, kind = event.info.kind, model = event.info.model)
         }
         is Event.PeerPowerChanged -> update(event.id) { it.copy(power = event.power) }
+        is Event.WakeInfoChanged -> update(event.id) {
+            it.copy(
+                canWake = event.canWake,
+                wakeState = if (!event.canWake) WakeState.Idle else it.wakeState,
+            )
+        }
         is Event.Battery -> update(event.id) { it.copy(battery = event.battery) }
         is Event.Capabilities -> update(event.id) { it.copy(features = event.features) }
         is Event.Ring -> copy(ringingFrom = if (event.on) nameOf(event.id) ?: "" else null)
@@ -168,4 +193,5 @@ internal fun PairedDevice.toDevice() = Device(
     model = info.model,
     pairedAt = pairedAt,
     link = link,
+    canWake = canWake,
 )

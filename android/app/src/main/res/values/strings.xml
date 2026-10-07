@@ -200,6 +200,11 @@
     <string name="update_check_failed">Couldn’t check for updates. Check your internet connection.</string>
     <string name="action_lock_pc">Lock PC</string>
     <string name="action_sleep_pc">Sleep</string>
+    <string name="action_wake_pc">Wake</string>
+    <string name="wake_waking">Waking %1$s…</string>
+    <string name="wake_timeout_title">%1$s hasn\'t woken up yet</string>
+    <string name="wake_timeout_text">Check that:\n• Wake-on-LAN is enabled in BIOS/UEFI and in the network adapter\'s settings in Windows (Power Management and Wake on Magic Packet).\n• %1$s is on Ethernet if it was shut down (Wi-Fi wake rarely works from shutdown).\n• This phone is on the same network as %1$s.</string>
+    <string name="wake_not_ready">Connect to %1$s once so this phone learns its network address.</string>
     <string name="pc_locked">%1$s is locked.</string>
     <string name="pc_sleeping">%1$s is going to sleep.</string>
     <string name="pc_actions_off">Locking and sleep are turned off for this phone on %1$s.</string>

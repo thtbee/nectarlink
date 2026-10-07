@@ -43,6 +43,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -82,6 +83,7 @@ import androidx.core.content.ContextCompat
 import app.nectarlink.android.R
 import app.nectarlink.android.core.Core
 import app.nectarlink.android.core.Device
+import app.nectarlink.android.core.WakeState
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -191,9 +193,9 @@ fun RemoteScreen(
 
         // Status banner when offline, denied, or unsupported
         when {
-            !device.online || access == Core.RemoteAccess.Offline -> StatusBanner(
-                title = null,
-                text = stringResource(R.string.remote_offline_text, device.name),
+            !device.online || access == Core.RemoteAccess.Offline -> OfflineWakeBanner(
+                device = device,
+                onWake = { core.wake(device.id) },
             )
             access == Core.RemoteAccess.Denied -> StatusBanner(
                 title = stringResource(R.string.remote_denied_title, device.name),
@@ -231,6 +233,65 @@ fun RemoteScreen(
                 onStatus = onStatus,
                 modifier = Modifier.weight(1f),
             )
+        }
+    }
+}
+
+@Composable
+private fun OfflineWakeBanner(device: Device, onWake: () -> Unit) {
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+            when {
+                !device.canWake -> {
+                    Text(
+                        stringResource(R.string.remote_offline_text, device.name),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                device.wakeState == WakeState.Waking -> {
+                    Text(
+                        stringResource(R.string.wake_waking, device.name),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                device.wakeState == WakeState.TimedOut -> {
+                    Text(
+                        stringResource(R.string.wake_timeout_title, device.name),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(R.string.wake_timeout_text, device.name),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Button(onClick = onWake) {
+                        Text(stringResource(R.string.action_wake_pc))
+                    }
+                }
+                else -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(R.string.remote_offline_text, device.name),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Button(onClick = onWake) {
+                            Text(stringResource(R.string.action_wake_pc))
+                        }
+                    }
+                }
+            }
         }
     }
 }

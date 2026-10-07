@@ -181,6 +181,8 @@ enum Command {
         #[arg(value_enum)]
         action: PowerArg,
     },
+    /// Wake a paired PC using its stored Wake-on-LAN addresses.
+    Wake { device: String },
     /// Open a web link on a paired device.
     Open { device: String, url: String },
     /// Browse a paired phone's gallery (albums, photos, thumbnails, download),
@@ -1778,12 +1780,19 @@ async fn start_node(cli: &Cli) -> Result<Node> {
     if !cli.as_phone {
         config.capabilities.push(nectarlink_core::RECORDER.into());
         config.capabilities.push(nectarlink_core::TOGGLES_SHOW.into());
+        config.capabilities.push(nectarlink_core::PC_WAKE.into());
     }
     let extra_caps = config.capabilities.clone();
     let node = Node::start(config, Arc::new(TerminalPlatform)).await.context("failed to start")?;
     if cli.as_phone {
         let _ = TOGGLES_NODE.set(node.clone());
         let _ = node.toggles_changed(sample_toggles()).await;
+    } else {
+        node.set_wake_info(nectarlink_core::PcWakeInfo {
+            macs: vec!["02:42:ac:11:00:02".into()],
+            broadcasts: vec!["192.168.31.255".into()],
+        })
+        .await;
     }
     if !cli.offers.is_empty() {
         let mut offers = extra_caps;
@@ -2709,6 +2718,39 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             node.pc_power(id, action).await.context("the PC didn't do it")?;
             println!("Done.");
         }
+        Command::Wake { device } => {
+            let id = resolve(node, device)?;
+            if node.wake_info(id)?.is_none() {
+                let mut events = node.events();
+                let _ = tokio::time::timeout(Duration::from_secs(3), async {
+                    loop {
+                        if let Ok(NodeEvent::WakeInfoChanged { device: d, can_wake: true }) =
+                            events.recv().await
+                            && d == id
+                        {
+                            break;
+                        }
+                    }
+                })
+                .await;
+            }
+            let info = node.wake_info(id)?.context(
+                "no Wake-on-LAN addresses stored for this PC (connect to it once with `pc_actions` on)",
+            )?;
+            node.wake(id).await.context("wake failed")?;
+            let bcasts = if info.broadcasts.is_empty() {
+                "255.255.255.255".to_owned()
+            } else {
+                format!("{}, 255.255.255.255", info.broadcasts.join(", "))
+            };
+            println!(
+                "Sent Wake-on-LAN magic packets for {} ({} adapter{} -> {}).",
+                device,
+                info.macs.len(),
+                if info.macs.len() == 1 { "" } else { "s" },
+                bcasts,
+            );
+        }
         Command::Open { device, url } => {
             let id = resolve(node, device)?;
             wait_until_online(node, id).await?;
@@ -3339,6 +3381,22 @@ fn print_event(node: &Node, event: &NodeEvent) {
         NodeEvent::PhoneToggles { device, toggles } => {
             println!("{}: toggles {}", name(device), summarize_toggles(toggles));
         }
+        NodeEvent::WakeInfoChanged { device, can_wake } => {
+            let detail = node
+                .wake_info(*device)
+                .ok()
+                .flatten()
+                .map(|w| {
+                    let b = if w.broadcasts.is_empty() {
+                        "255.255.255.255".to_owned()
+                    } else {
+                        w.broadcasts.join(", ")
+                    };
+                    format!(" ({} adapter(s), broadcasts: {b})", w.macs.len())
+                })
+                .unwrap_or_default();
+            println!("{}: Wake-on-LAN {}{detail}", name(device), if *can_wake { "ready" } else { "cleared" });
+        }
         NodeEvent::RemoteInputRequested { device } => println!(
             "{}: asked to control mouse and keyboard (allow with: nectarlink toggle {} remote_input on)",
             name(device),
@@ -3565,7 +3623,14 @@ fn power_name(level: PowerLevel) -> &'static str {
 }
 
 fn print_device(d: &PairedDevice) {
-    println!("{:<24} {:<10} {}  {}", d.info.name, format!("{:?}", d.info.kind), describe_link(&d.link), d.id);
+    let wake = if d.can_wake { "  [wake]" } else { "" };
+    println!(
+        "{:<24} {:<10} {}  {}{wake}",
+        d.info.name,
+        format!("{:?}", d.info.kind),
+        describe_link(&d.link),
+        d.id
+    );
 }
 
 fn describe_link(link: &LinkState) -> String {

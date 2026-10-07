@@ -164,6 +164,7 @@ fn watch_network() {
         core_host::spawn(async {
             tokio::time::sleep(Duration::from_secs(1)).await;
             PENDING.store(false, Ordering::Release);
+            core_host::refresh_wake().await;
             if let Some(node) = core_host::node() {
                 tracing::debug!("network changed");
                 node.network_changed().await;

@@ -207,7 +207,7 @@ current Android. Talking through the PC comes with the HFP item above.
 | **Flow**: move the PC mouse off the screen edge onto the phone/tablet and back, with clipboard following | P2 🟣 |
 | Phone toggles from PC: Wi-Fi, BT, DND, ringer, flashlight, volume, brightness ✅ (the hotspot has no shell command to switch it; see Instant Hotspot) | P1 (partly 🟣) |
 | PC actions from phone: lock, sleep, shutdown, mute, custom commands/scripts | P0 (lock/sleep), P1 (custom, off by default) |
-| Wake-on-LAN | P1 |
+| Wake-on-LAN ✅ | P1 |
 | **Unlock PC with phone fingerprint**: the PC lock screen offers "Unlock with phone" → the phone shows a biometric prompt → a signed challenge unlocks Windows. Built as a Windows credential provider. Keys live in Android Keystore (StrongBox where available) and are bound to biometrics. Works only when paired and nearby (BLE proximity + LAN). Rate-limited, revocable, and **external security review before release** | P2 (dedicated workstream) |
 
 ### 3.11 Ambient & signature experiences (what makes Nectarlink special)

@@ -2,21 +2,120 @@
 //! One-shot actions on a paired device (docs/protocol/actions.md): lock or
 //! sleep a PC, and open a link on the other device.
 
-use std::sync::Arc;
+use std::{
+    net::{Ipv4Addr, SocketAddrV4},
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
-    messages::{LinkOpen, PcPower, types},
+    messages::{LinkOpen, PcPower, PcWakeInfo, magic_packet, parse_mac, types, wake},
 };
 
-use crate::{Error, Result, node::Shared, session::Session};
+use crate::{Error, NodeEvent, Result, node::Shared, session::Session};
 
-/// The device toggle that lets a phone lock or sleep this PC.
+/// The device toggle that lets a phone lock, sleep or wake this PC.
 pub(crate) const POWER_TOGGLE: &str = "pc_actions";
 /// Offered by PCs that lock and sleep on request.
 pub(crate) const POWER: &str = "pc.power";
+/// Offered by PCs that share their Wake-on-LAN adapter addresses.
+pub const PC_WAKE: &str = wake::CAP;
 /// Offered by devices that open links sent to them.
 pub(crate) const LINKS: &str = "link.open";
+
+/// This PC's current Wake-on-LAN adapter addresses, sent to paired phones on
+/// connect and whenever network adapters change.
+#[derive(Debug, Default)]
+pub(crate) struct CurrentWakeInfo(Mutex<Option<PcWakeInfo>>);
+
+impl CurrentWakeInfo {
+    pub(crate) fn set(&self, info: PcWakeInfo) -> PcWakeInfo {
+        let clean = info.sanitized();
+        *self.0.lock().unwrap() = Some(clean.clone());
+        clean
+    }
+
+    pub(crate) fn get(&self) -> Option<PcWakeInfo> {
+        self.0.lock().unwrap().clone()
+    }
+}
+
+/// Sends this PC's `pc.wake_info` to a connected phone session. When the user
+/// turned `pc_actions` off for that phone, sends an empty `PcWakeInfo` so the
+/// phone clears any stored wake addresses for this PC.
+pub(crate) async fn send_wake_info(shared: &Arc<Shared>, session: &Session) {
+    let Some(info) = shared.wake_info.get() else {
+        return;
+    };
+    let payload = if shared.toggle_on(&session.peer, POWER_TOGGLE) { info } else { PcWakeInfo::default() };
+    if let Ok(env) = Envelope::new(types::PC_WAKE_INFO, &payload) {
+        let _ = session.send(env).await;
+    }
+}
+
+/// Sends Wake-on-LAN magic packets (`6 × 0xFF` + 16 × MAC) over UDP to the
+/// stored subnet broadcasts and `255.255.255.255` on `ports`, repeated `bursts`
+/// times separated by `interval`.
+pub(crate) async fn wake(
+    shared: &Arc<Shared>,
+    peer: &DeviceId,
+    ports: &[u16],
+    extra_targets: &[Ipv4Addr],
+    bursts: usize,
+    interval: Duration,
+) -> Result<()> {
+    let record = shared.store.get_peer(peer)?.ok_or(Error::NotPaired)?;
+    let Some(info) = record.wake_info.filter(|w| !w.macs.is_empty()) else {
+        return Err(Error::Unsupported);
+    };
+    let packets: Vec<[u8; wake::MAGIC_PACKET_BYTES]> =
+        info.macs.iter().filter_map(|m| parse_mac(m)).map(|m| magic_packet(&m)).collect();
+    if packets.is_empty() {
+        return Err(Error::Unsupported);
+    }
+
+    let mut targets: Vec<Ipv4Addr> = Vec::new();
+    for b in &info.broadcasts {
+        if let Ok(ip) = b.parse::<Ipv4Addr>()
+            && !targets.contains(&ip)
+        {
+            targets.push(ip);
+        }
+    }
+    if !targets.contains(&Ipv4Addr::BROADCAST) {
+        targets.push(Ipv4Addr::BROADCAST);
+    }
+    for &ip in extra_targets {
+        if !targets.contains(&ip) {
+            targets.push(ip);
+        }
+    }
+
+    let sock = tokio::net::UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))
+        .await
+        .map_err(|e| Error::Internal(format!("can't bind Wake-on-LAN UDP socket: {e}")))?;
+    let _ = sock.set_broadcast(true);
+
+    shared.nudge_reconnect();
+    let bursts = bursts.max(1);
+    for burst in 0..bursts {
+        if burst > 0 {
+            tokio::time::sleep(interval).await;
+        }
+        for pkt in &packets {
+            for &ip in &targets {
+                for &port in ports {
+                    if let Err(e) = sock.send_to(pkt, SocketAddrV4::new(ip, port)).await {
+                        tracing::debug!(%ip, port, error = %e, "Wake-on-LAN UDP send failed");
+                    }
+                }
+            }
+        }
+    }
+    shared.nudge_reconnect();
+    Ok(())
+}
 
 /// What a phone can ask a PC to do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,10 +177,25 @@ pub(crate) async fn open_link(shared: &Arc<Shared>, session: &Session, url: Stri
     Ok(())
 }
 
-/// Handles `pc.power` and `link.open`. Returns false for other types.
+/// Handles `pc.power`, `pc.wake_info` and `link.open`. Returns false for other types.
 pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &Envelope) -> Result<bool> {
     let peer = session.peer;
     let reply = match env.t.as_str() {
+        types::PC_WAKE_INFO => {
+            let info: PcWakeInfo = env.body()?;
+            if !info.is_valid() {
+                tracing::debug!(%peer, "ignoring invalid pc.wake_info");
+                return Ok(true);
+            }
+            let info = info.sanitized();
+            let stored = (!info.macs.is_empty()).then_some(info);
+            let can_wake = stored.is_some();
+            if let Err(e) = shared.store.update_wake_info(&peer, stored.as_ref()) {
+                tracing::warn!(%peer, error = %e, "couldn't store wake info");
+            }
+            shared.emit(NodeEvent::WakeInfoChanged { device: peer, can_wake });
+            return Ok(true);
+        }
         types::PC_POWER => {
             let PcPower { action } = env.body()?;
             if !shared.local_capabilities().iter().any(|c| c == POWER) {

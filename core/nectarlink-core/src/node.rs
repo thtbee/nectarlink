@@ -122,6 +122,8 @@ pub(crate) struct Shared {
     pub(crate) calls: crate::calls::Current,
     /// This phone's quick settings state (docs/protocol/toggles.md).
     pub(crate) toggles: crate::toggles::Current,
+    /// This PC's Wake-on-LAN adapter addresses (docs/protocol/actions.md).
+    pub(crate) wake_info: crate::actions::CurrentWakeInfo,
     /// Stop signals for phone screens shown here, by phone.
     pub(crate) mirror_stops: Mutex<HashMap<MirrorStop, Arc<tokio::sync::Notify>>>,
     /// Per-peer rate limiters and prompt state for remote input.
@@ -149,6 +151,12 @@ impl Shared {
     pub fn emit(&self, event: NodeEvent) {
         // No subscribers is fine; events are a UI convenience.
         let _ = self.events.send(event);
+    }
+
+    pub(crate) fn nudge_reconnect(&self) {
+        for supervisor in lock(&self.supervisors).values() {
+            supervisor.wake.notify_one();
+        }
     }
 
     /// Where partly received files wait until complete.
@@ -279,7 +287,13 @@ impl Shared {
         let paired_at = crate::now_unix();
         self.store.upsert_peer(&peer, &info, paired_at)?;
         tracing::info!(peer = %peer.short(), "paired");
-        let device = PairedDevice { id: peer, info, paired_at, link: LinkState::Offline { last_seen: None } };
+        let device = PairedDevice {
+            id: peer,
+            info,
+            paired_at,
+            link: LinkState::Offline { last_seen: None },
+            can_wake: false,
+        };
         self.emit(NodeEvent::DeviceAdded(device.clone()));
         self.emit(NodeEvent::Pairing(PairingEvent::Paired(device)));
         lock(&self.discovered).remove(&peer);
@@ -369,6 +383,7 @@ impl Shared {
             shared.send_media_state(&s).await;
             shared.send_call_state(&s).await;
             shared.send_toggles_state(&s).await;
+            crate::actions::send_wake_info(&shared, &s).await;
         });
         Some(session)
     }
@@ -627,6 +642,7 @@ impl Node {
             players: Default::default(),
             calls: Default::default(),
             toggles: Default::default(),
+            wake_info: Default::default(),
             mirror_stops: Mutex::new(HashMap::new()),
             remote: Mutex::new(Default::default()),
             data_dir: config.data_dir.clone(),
@@ -733,9 +749,7 @@ impl Node {
     /// away instead of after their backoff. Harmless when nothing changed.
     pub async fn network_changed(&self) {
         self.shared.endpoint.network_change().await;
-        for supervisor in lock(&self.shared.supervisors).values() {
-            supervisor.wake.notify_one();
-        }
+        self.shared.nudge_reconnect();
     }
 
     /// What a "refresh" button does: reconnects to devices that aren't
@@ -750,6 +764,7 @@ impl Node {
             self.shared.send_notification_snapshot(&session).await;
             self.shared.send_media_state(&session).await;
             self.shared.send_toggles_state(&session).await;
+            crate::actions::send_wake_info(&self.shared, &session).await;
         }
     }
 
@@ -768,6 +783,7 @@ impl Node {
             .into_iter()
             .map(|p| PairedDevice {
                 link: self.shared.link(&p.id, p.last_seen),
+                can_wake: p.wake_info.as_ref().is_some_and(|w| !w.macs.is_empty()),
                 id: p.id,
                 info: p.info,
                 paired_at: p.paired_at,
@@ -857,6 +873,14 @@ impl Node {
         }
         if toggle == crate::toggles::TOGGLE {
             self.shared.toggles_toggled(peer, enabled);
+        }
+        if toggle == crate::actions::POWER_TOGGLE
+            && let Some(session) = self.shared.session(&peer)
+        {
+            let shared = self.shared.clone();
+            self.shared.runtime.spawn(async move {
+                crate::actions::send_wake_info(&shared, &session).await;
+            });
         }
         Ok(())
     }
@@ -949,6 +973,49 @@ impl Node {
     pub async fn pc_power(&self, peer: DeviceId, action: crate::PowerAction) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::actions::pc_power(&self.shared, &session, action).await
+    }
+
+    /// Sets this PC's Wake-on-LAN adapter addresses (`pc.wake_info`) and sends
+    /// them to every connected phone when they changed.
+    pub async fn set_wake_info(&self, info: nectarlink_protocol::messages::PcWakeInfo) {
+        let prev = self.shared.wake_info.get();
+        let clean = self.shared.wake_info.set(info);
+        if prev.as_ref() != Some(&clean) {
+            for session in self.shared.live_sessions() {
+                crate::actions::send_wake_info(&self.shared, &session).await;
+            }
+        }
+    }
+
+    /// Returns the stored Wake-on-LAN addresses for a paired PC, if any.
+    pub fn wake_info(&self, peer: DeviceId) -> Result<Option<nectarlink_protocol::messages::PcWakeInfo>> {
+        Ok(self.shared.store.get_peer(&peer)?.ok_or(Error::NotPaired)?.wake_info)
+    }
+
+    /// Sends Wake-on-LAN magic packets for a paired PC over UDP to its stored
+    /// subnet broadcasts and `255.255.255.255` on ports 9 and 7, repeated a
+    /// few times over ~2 s.
+    pub async fn wake(&self, peer: DeviceId) -> Result<()> {
+        crate::actions::wake(
+            &self.shared,
+            &peer,
+            nectarlink_protocol::messages::wake::DEFAULT_PORTS,
+            &[],
+            4,
+            Duration::from_millis(650),
+        )
+        .await
+    }
+
+    /// Sends Wake-on-LAN magic packets for a paired PC on custom UDP ports and
+    /// additional target IPv4 addresses (used by tests).
+    pub async fn wake_on_ports(
+        &self,
+        peer: DeviceId,
+        ports: &[u16],
+        extra_targets: &[std::net::Ipv4Addr],
+    ) -> Result<()> {
+        crate::actions::wake(&self.shared, &peer, ports, extra_targets, 2, Duration::from_millis(40)).await
     }
 
     /// Opens a web link on a paired device.

@@ -250,6 +250,8 @@ pub struct AppState {
     pub remote_prompt: Option<DeviceId>,
     /// Active laser pointer overlay (`(device, x, y)` in `0.0..=1.0`).
     pub laser: Option<(DeviceId, f32, f32)>,
+    /// This PC's physical adapters and Wake-on-LAN readiness.
+    pub wake: crate::win::wol::WakeStatus,
 }
 
 impl AppState {
@@ -432,7 +434,8 @@ impl AppState {
             | NodeEvent::CallLogChanged { .. }
             | NodeEvent::ContactsChanged { .. }
             | NodeEvent::SmsChanged { .. }
-            | NodeEvent::Mirroring { .. } => Changes::NONE,
+            | NodeEvent::Mirroring { .. }
+            | NodeEvent::WakeInfoChanged { .. } => Changes::NONE,
             // The gallery's own downloads (for its viewer, or the clipboard)
             // aren't files the user keeps.
             NodeEvent::Transfer(transfer) if crate::photos::is_private(&transfer.id) => {
@@ -678,6 +681,14 @@ impl AppState {
         self.pairing = next;
         Changes::PAIRING
     }
+
+    pub fn set_wake(&mut self, next: crate::win::wol::WakeStatus) -> Changes {
+        if self.wake == next {
+            return Changes::NONE;
+        }
+        self.wake = next;
+        Changes::STATUS
+    }
 }
 
 /// A Qt object interested in some parts of the state. `notify` schedules a
@@ -759,6 +770,7 @@ mod tests {
             },
             paired_at: at,
             link: LinkState::Offline { last_seen: None },
+            can_wake: false,
         }
     }
 

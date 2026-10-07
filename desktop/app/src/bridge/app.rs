@@ -82,6 +82,12 @@ pub mod qobject {
         #[qproperty(bool, laser_active)]
         #[qproperty(f32, laser_x)]
         #[qproperty(f32, laser_y)]
+        /// Primary physical adapter used for Wake-on-LAN ("" when none).
+        #[qproperty(QString, wake_adapter)]
+        /// `"enabled"`, `"disabled"`, `"unknown"`, or `"none"`.
+        #[qproperty(QString, wake_state)]
+        /// True when `wake_adapter` is wired Ethernet, false for Wi-Fi or none.
+        #[qproperty(bool, wake_wired)]
         type AppController = super::AppControllerRust;
 
         /// Asks a paired device to ring (or stop).
@@ -196,6 +202,9 @@ pub struct AppControllerRust {
     laser_active: bool,
     laser_x: f32,
     laser_y: f32,
+    wake_adapter: QString,
+    wake_state: QString,
+    wake_wired: bool,
     tray: Option<tray::Tray>,
 }
 
@@ -401,35 +410,53 @@ fn ring_device(device: DeviceId, on: bool) {
 impl qobject::AppController {
     fn refresh(mut self: Pin<&mut Self>) {
         let hub = &core_host::host().hub;
-        let (status, devices, ringing, online, caps_version, toggles_version, battery, remote_prompt, laser) =
-            hub.read(|s| {
-                let ringing = s.ringing_from.and_then(|id| s.name_of(&id)).unwrap_or_default();
-                let remote_prompt = s.remote_prompt.map(|id| {
-                    let name = s.name_of(&id).unwrap_or_else(|| id.short());
-                    (id.to_string(), name)
-                });
-                let connected: Vec<_> =
-                    s.devices.iter().filter(|d| matches!(d.link, LinkState::Online { .. })).collect();
-                // With one phone connected, the tray shows its battery.
-                let battery = match connected.as_slice() {
-                    [one] => one.battery.as_ref().map(|b| {
-                        let charging = if b.charging { ", charging" } else { "" };
-                        format!("{} · {}%{charging}", one.info.name, b.level)
-                    }),
-                    _ => None,
-                };
-                (
-                    s.core_status(),
-                    s.devices.len(),
-                    ringing,
-                    connected.len(),
-                    s.matrices_version,
-                    s.toggles_version,
-                    battery,
-                    remote_prompt,
-                    s.laser,
-                )
+        let (
+            status,
+            devices,
+            ringing,
+            online,
+            caps_version,
+            toggles_version,
+            battery,
+            remote_prompt,
+            laser,
+            wake_adapter,
+            wake_state,
+            wake_wired,
+        ) = hub.read(|s| {
+            let ringing = s.ringing_from.and_then(|id| s.name_of(&id)).unwrap_or_default();
+            let remote_prompt = s.remote_prompt.map(|id| {
+                let name = s.name_of(&id).unwrap_or_else(|| id.short());
+                (id.to_string(), name)
             });
+            let connected: Vec<_> =
+                s.devices.iter().filter(|d| matches!(d.link, LinkState::Online { .. })).collect();
+            // With one phone connected, the tray shows its battery.
+            let battery = match connected.as_slice() {
+                [one] => one.battery.as_ref().map(|b| {
+                    let charging = if b.charging { ", charging" } else { "" };
+                    format!("{} · {}%{charging}", one.info.name, b.level)
+                }),
+                _ => None,
+            };
+            let wake_adapter = s.wake.primary().map(|a| a.label.clone()).unwrap_or_default();
+            let wake_state = s.wake.state_str();
+            let wake_wired = s.wake.primary().is_some_and(|a| a.wired);
+            (
+                s.core_status(),
+                s.devices.len(),
+                ringing,
+                connected.len(),
+                s.matrices_version,
+                s.toggles_version,
+                battery,
+                remote_prompt,
+                s.laser,
+                wake_adapter,
+                wake_state,
+                wake_wired,
+            )
+        });
         let (status_text, error) = match &status {
             CoreStatus::Starting => ("starting", String::new()),
             CoreStatus::Ready { device_id, name } => {
@@ -456,6 +483,9 @@ impl qobject::AppController {
                 self.as_mut().set_laser_active(false);
             }
         }
+        self.as_mut().set_wake_adapter(QString::from(&wake_adapter));
+        self.as_mut().set_wake_state(QString::from(wake_state));
+        self.as_mut().set_wake_wired(wake_wired);
         // Truncation is fine: QML only compares revisions for equality.
         self.as_mut().set_caps_revision(caps_version as i32);
         self.as_mut().set_phone_toggles_revision(toggles_version as i32);
@@ -489,6 +519,7 @@ impl qobject::AppController {
 
     pub fn refresh_toasts_enabled(self: Pin<&mut Self>) {
         self.set_toasts_enabled(win::toast::enabled());
+        core_host::spawn(core_host::refresh_wake());
     }
 
     pub fn ring(self: Pin<&mut Self>, device: &QString, on: bool) {

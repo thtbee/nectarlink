@@ -33,6 +33,9 @@ pub struct PairedDevice {
     /// Unix seconds.
     pub paired_at: i64,
     pub link: LinkState,
+    /// Whether a stored Wake-on-LAN address (`pc.wake_info`) is available
+    /// for this device.
+    pub can_wake: bool,
 }
 
 /// A device found on the local network that could be paired with.
@@ -173,5 +176,10 @@ pub enum NodeEvent {
     PhoneToggles {
         device: DeviceId,
         toggles: crate::PhoneToggles,
+    },
+    /// A paired PC's stored Wake-on-LAN info arrived, changed, or was cleared.
+    WakeInfoChanged {
+        device: DeviceId,
+        can_wake: bool,
     },
 }

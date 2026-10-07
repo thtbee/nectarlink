@@ -24,6 +24,7 @@ pub mod sound;
 pub mod toast;
 pub mod tray;
 pub mod wallpaper;
+pub mod wol;
 
 use windows::{
     Win32::{

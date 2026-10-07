@@ -28,7 +28,7 @@ mod store;
 pub mod toggles;
 mod transfer;
 
-pub use actions::PowerAction;
+pub use actions::{PC_WAKE, PowerAction};
 pub use calls::CallCommand;
 pub use config::{NodeConfig, NoopPlatform, Platform};
 pub use error::{Error, Result, Side};
@@ -47,22 +47,22 @@ pub use nectarlink_protocol::{
     messages::{
         Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallState, Contact, ContactNumber, DeviceInfo,
         DeviceKind, MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorResize, MirrorStart,
-        Notification, NotificationAction, PhoneApp, PhoneToggleSet, PhoneToggleValue, PhoneToggles,
-        PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PowerLevel, SmsMessage, SmsPart, SmsThread,
-        TouchAction,
+        Notification, NotificationAction, PcWakeInfo, PhoneApp, PhoneToggleSet, PhoneToggleValue,
+        PhoneToggles, PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PowerLevel, SmsMessage, SmsPart,
+        SmsThread, TouchAction,
         calls::{
             CONTROL as CALLS_CONTROL, DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG,
             SHOW as CALLS_SHOW, STATE as CALLS_STATE,
         },
         contacts::{READ as CONTACTS_READ, SHOW as CONTACTS_SHOW},
-        is_package_name,
+        format_mac, ipv4_broadcast, is_package_name, magic_packet,
         mirror::{
             AUDIO as MIRROR_AUDIO, AUDIO_PLAYBACK as MIRROR_AUDIO_PLAYBACK, CAPTURE as MIRROR_CAPTURE,
             INPUT as MIRROR_INPUT, LISTEN as MIRROR_LISTEN, MAX_TEXT_BYTES as MIRROR_MAX_TEXT_BYTES,
             PCM as MIRROR_PCM, SCREEN as MIRROR_SCREEN, VIEW as MIRROR_VIEW,
             VIRTUAL_DISPLAY as MIRROR_VIRTUAL_DISPLAY,
         },
-        mirror_keys,
+        mirror_keys, parse_mac,
         photos::{
             MAX_GET_ITEMS as PHOTO_MAX_GET_ITEMS, MAX_PAGE as PHOTO_MAX_PAGE,
             MAX_THUMB_BATCH as PHOTO_MAX_THUMB_BATCH, MAX_THUMB_BYTES as PHOTO_MAX_THUMB_BYTES,

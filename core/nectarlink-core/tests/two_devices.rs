@@ -2457,3 +2457,93 @@ async fn phone_toggles_arrive_on_connect_change_and_respect_capabilities_and_tog
         Err(Error::Denied)
     ));
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn wake_info_syncs_persists_respects_toggle_and_sends_magic_packet() {
+    use nectarlink_core::{PC_WAKE, PcWakeInfo, magic_packet};
+    use std::net::Ipv4Addr;
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[PC_WAKE]).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+
+    pc.node
+        .set_wake_info(PcWakeInfo {
+            macs: vec!["38:A7:46:37:2E:64".into()],
+            broadcasts: vec!["192.168.1.255".into()],
+        })
+        .await;
+
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Initial wake info arrives on connect and is stored on the phone.
+    wait_for(&mut phone, "initial wake info", |e| match e {
+        NodeEvent::WakeInfoChanged { device, can_wake: true } if *device == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(
+        phone.node.wake_info(pc_id).unwrap(),
+        Some(PcWakeInfo { macs: vec!["38:a7:46:37:2e:64".into()], broadcasts: vec!["192.168.1.255".into()] })
+    );
+    assert!(phone.node.paired_devices().unwrap().iter().any(|d| d.id == pc_id && d.can_wake));
+
+    // Adapter change on the PC updates connected phones immediately.
+    pc.node
+        .set_wake_info(PcWakeInfo {
+            macs: vec!["38:A7:46:37:2E:64".into(), "aa-bb-cc-dd-ee-ff".into()],
+            broadcasts: vec!["192.168.1.255".into(), "10.0.0.255".into()],
+        })
+        .await;
+    let phone_node = phone.node.clone();
+    wait_for(&mut phone, "updated wake info", |e| match e {
+        NodeEvent::WakeInfoChanged { device, can_wake: true }
+            if *device == pc_id
+                && phone_node
+                    .wake_info(pc_id)
+                    .ok()
+                    .flatten()
+                    .is_some_and(|w| w.macs.len() == 2 && w.broadcasts.len() == 2) =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    // Turning `pc_actions` off on the PC clears the phone's stored wake info; turning it back on restores it.
+    pc.node.set_device_toggle(phone_id, "pc_actions", false).unwrap();
+    wait_for(&mut phone, "wake info cleared", |e| match e {
+        NodeEvent::WakeInfoChanged { device, can_wake: false } if *device == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(phone.node.wake_info(pc_id).unwrap(), None);
+    assert!(matches!(phone.node.wake(pc_id).await, Err(Error::Unsupported)));
+
+    pc.node.set_device_toggle(phone_id, "pc_actions", true).unwrap();
+    wait_for(&mut phone, "wake info restored", |e| match e {
+        NodeEvent::WakeInfoChanged { device, can_wake: true } if *device == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    // The PC goes offline and the phone restarts: stored wake info survives across restarts.
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+    let TestDevice { node, dir, .. } = phone;
+    drop(node);
+    let phone = start_in(dir, "Pixel", DeviceKind::Phone).await;
+    assert!(phone.node.paired_devices().unwrap().iter().any(|d| d.id == pc_id && d.can_wake));
+
+    // Waking the offline PC sends the 102-byte magic packet over UDP.
+    let listener = tokio::net::UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    phone.node.wake_on_ports(pc_id, &[port], &[Ipv4Addr::LOCALHOST]).await.unwrap();
+
+    let mut buf = [0u8; 256];
+    let (n, _) = with_timeout("receive magic packet", listener.recv_from(&mut buf)).await.unwrap();
+    assert_eq!(n, 102);
+    assert_eq!(&buf[..102], &magic_packet(&[0x38, 0xA7, 0x46, 0x37, 0x2E, 0x64])[..]);
+    phone.node.shutdown().await;
+}

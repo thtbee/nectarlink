@@ -71,9 +71,11 @@ tests; there are no releases yet.
   power level.
 - **Find my device** in both directions. The phone rings on the alarm stream,
   even in silent mode.
-- **Lock or sleep the PC** from the phone, and **links** both ways: share a
-  link from any phone app to open it on the PC, or send a copied link from the
-  PC's tray to the phone.
+- **Lock, sleep or wake the PC** from the phone (when the PC is offline, Wake
+  sends Wake-on-LAN magic packets to its stored network addresses, and the PC's
+  Settings shows whether its adapter has Wake on Magic Packet turned on), and
+  **links** both ways: share a link from any phone app to open it on the PC, or
+  send a copied link from the PC's tray to the phone.
 - **Notifications** from the phone on the PC, as Windows notifications and in
   a feed in the app, with the app's icon. Reply inline, run their actions
   (such as "Mark as read") or dismiss them from the PC; what's cleared on one

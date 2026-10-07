@@ -11,7 +11,7 @@ use std::{
 
 use nectarlink_protocol::{
     DeviceId,
-    messages::{DeviceInfo, DeviceKind, PowerLevel},
+    messages::{DeviceInfo, DeviceKind, PcWakeInfo, PowerLevel},
 };
 use rusqlite::{Connection, OptionalExtension, params};
 
@@ -44,6 +44,8 @@ const MIGRATIONS: &[&str] = &[
         enabled     INTEGER NOT NULL CHECK (enabled IN (0, 1)),
         PRIMARY KEY (peer, toggle)
      ) STRICT;",
+    // v3: Wake-on-LAN adapter MAC and subnet broadcast addresses per paired PC.
+    "ALTER TABLE peers ADD COLUMN wake_info TEXT NOT NULL DEFAULT '';",
 ];
 
 /// A paired device as stored on disk.
@@ -57,6 +59,8 @@ pub(crate) struct PeerRecord {
     /// Capabilities from the device's last `hello`.
     pub caps: BTreeSet<String>,
     pub power: PowerLevel,
+    /// Wake-on-LAN addresses from a paired PC's last `pc.wake_info`.
+    pub wake_info: Option<PcWakeInfo>,
 }
 
 #[derive(Debug)]
@@ -161,6 +165,18 @@ impl Store {
         })
     }
 
+    /// Records or clears the Wake-on-LAN addresses reported by a paired PC.
+    pub fn update_wake_info(&self, id: &DeviceId, info: Option<&PcWakeInfo>) -> Result<()> {
+        let encoded = info.map(PcWakeInfo::to_storage_string).unwrap_or_default();
+        self.with(|c| {
+            c.execute(
+                "UPDATE peers SET wake_info = ?2 WHERE id = ?1",
+                params![id.as_bytes().as_slice(), encoded],
+            )
+            .map(drop)
+        })
+    }
+
     /// The per-device toggles the user has set. Unset toggles are absent;
     /// callers apply the defaults.
     pub fn toggles(&self, id: &DeviceId) -> Result<HashMap<String, bool>> {
@@ -209,7 +225,7 @@ impl Store {
 }
 
 const SELECT: &str = "SELECT id, name, kind, os, os_ver, model, accent, paired_at, last_seen, last_addrs, \
-     caps, power FROM peers";
+     caps, power, wake_info FROM peers";
 
 fn row_to_peer(row: &rusqlite::Row<'_>) -> rusqlite::Result<PeerRecord> {
     let id: Vec<u8> = row.get(0)?;
@@ -221,6 +237,7 @@ fn row_to_peer(row: &rusqlite::Row<'_>) -> rusqlite::Result<PeerRecord> {
     let addrs: String = row.get(9)?;
     let caps: String = row.get(10)?;
     let power: String = row.get(11)?;
+    let wake_info: String = row.get(12)?;
     Ok(PeerRecord {
         id: DeviceId(id),
         info: DeviceInfo {
@@ -237,6 +254,7 @@ fn row_to_peer(row: &rusqlite::Row<'_>) -> rusqlite::Result<PeerRecord> {
         last_addrs: addrs.split(',').filter_map(|a| a.parse().ok()).collect(),
         caps: caps.split(',').filter(|c| !c.is_empty()).map(str::to_owned).collect(),
         power: power_from_str(&power),
+        wake_info: PcWakeInfo::from_storage_str(&wake_info),
     })
 }
 
@@ -407,5 +425,25 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         conn.pragma_update(None, "user_version", 99).unwrap();
         assert!(matches!(Store::init(conn), Err(Error::Storage(_))));
+    }
+
+    #[test]
+    fn wake_info_persists_across_reopen() {
+        let dir = tempfile::tempdir().unwrap();
+        let id = DeviceId([7; 32]);
+        let wake =
+            PcWakeInfo { macs: vec!["38:a7:46:37:2e:64".into()], broadcasts: vec!["192.168.1.255".into()] };
+        {
+            let store = Store::open(dir.path()).unwrap();
+            store.upsert_peer(&id, &info("Studio"), 42).unwrap();
+            assert_eq!(store.get_peer(&id).unwrap().unwrap().wake_info, None);
+            store.update_wake_info(&id, Some(&wake)).unwrap();
+        }
+        {
+            let store = Store::open(dir.path()).unwrap();
+            assert_eq!(store.get_peer(&id).unwrap().unwrap().wake_info, Some(wake));
+            store.update_wake_info(&id, None).unwrap();
+            assert_eq!(store.get_peer(&id).unwrap().unwrap().wake_info, None);
+        }
     }
 }

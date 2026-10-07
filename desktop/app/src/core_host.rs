@@ -92,12 +92,14 @@ pub fn start(data_dir: PathBuf, platform: Arc<dyn Platform>) -> std::io::Result<
 
 async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     let host = host();
+    let wake = crate::win::wol::query_wake_status();
     let mut config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
     config.downloads_dir = Some(downloads_dir());
     // This PC's own players, for phones (crate::win::media_sessions).
     config.capabilities = vec![
         "media.control".into(),
         "pc.power".into(),
+        nectarlink_core::PC_WAKE.into(),
         nectarlink_core::PHOTOS_SHOW.into(),
         nectarlink_core::CALLS_SHOW.into(),
         nectarlink_core::CONTACTS_SHOW.into(),
@@ -120,6 +122,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
             return;
         }
     };
+    node.set_wake_info(wake.info.clone()).await;
     // Subscribe before reading the initial state so no event is missed.
     let mut events = node.events();
     let devices = node.paired_devices().unwrap_or_else(|e| {
@@ -146,6 +149,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
             changes |= s.set_toggles(id, Some(t));
         }
         s.status = Some(status);
+        s.wake = wake;
         changes |= Changes::STATUS | Changes::CAPABILITIES;
         changes
     });
@@ -207,6 +211,17 @@ fn this_device() -> DeviceInfo {
         os_ver: crate::win::os_version(),
         model: None,
         accent: None,
+    }
+}
+
+/// Re-reads physical network adapters and their Wake-on-LAN settings, updates
+/// the UI state, and sends updated `pc.wake_info` to connected phones if changed.
+pub async fn refresh_wake() {
+    let wake = crate::win::wol::query_wake_status();
+    let info = wake.info.clone();
+    host().hub.update(|s| s.set_wake(wake));
+    if let Some(node) = node() {
+        node.set_wake_info(info).await;
     }
 }
 
