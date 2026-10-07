@@ -158,6 +158,13 @@ pub mod qobject {
         #[qinvokable]
         fn logs_url(self: &AppController) -> QString;
 
+        /// Opens a paired phone's storage sync root in File Explorer.
+        #[qinvokable]
+        fn open_phone_storage(self: &AppController, device: &QString);
+        /// The local sync root folder path for a paired phone.
+        #[qinvokable]
+        fn phone_storage_path(self: &AppController, device: &QString) -> QString;
+
         /// A short message for the user (e.g. a command failed).
         #[qsignal]
         fn toast(self: Pin<&mut AppController>, message: QString);
@@ -602,6 +609,9 @@ impl qobject::AppController {
                 }
             });
         }
+        if name_str == "storage" {
+            crate::storage::sync();
+        }
         let revision = self.toggles_revision.wrapping_add(1);
         self.as_mut().set_toggles_revision(revision);
     }
@@ -684,6 +694,20 @@ impl qobject::AppController {
     pub fn logs_url(&self) -> QString {
         let dir = crate::logging::logs_dir(&core_host::host().data_dir);
         QString::from(&format!("file:///{}", dir.to_string_lossy().replace('\\', "/")))
+    }
+
+    pub fn open_phone_storage(&self, device: &QString) {
+        let Some(id) = super::parse_device(device) else { return };
+        if let Err(e) = crate::storage::open_in_explorer(id) {
+            show_message(e);
+        }
+    }
+
+    pub fn phone_storage_path(&self, device: &QString) -> QString {
+        let Some(id) = super::parse_device(device) else { return QString::default() };
+        let path =
+            crate::storage::sync_root_path_for(id).map(|p| p.display().to_string()).unwrap_or_default();
+        QString::from(&path)
     }
 }
 

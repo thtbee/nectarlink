@@ -315,4 +315,19 @@
     <string name="deck_commands_denied_title">Allow commands on %1$s</string>
     <string name="deck_commands_denied_text">To run shell commands from this phone, turn on “Run Deck commands” for this phone in Nectarlink › Settings › Devices on %1$s.</string>
     <string name="deck_hint">Configure pages and tiles in Nectarlink › Deck on %1$s.</string>
+
+    <!-- Phone storage in File Explorer -->
+    <string name="settings_storage">Storage in File Explorer</string>
+    <string name="storage_all_files_title">All files access</string>
+    <string name="storage_all_files_on">On. Paired PCs you allow can browse this phone’s shared storage in File Explorer, open files on demand, and copy files in or out.</string>
+    <string name="storage_all_files_off">Browse this phone’s folders in File Explorer on your PC, open files on demand, and copy files in or out. Because Google Play restricts full storage access, Nectarlink is distributed directly and asks for All files access only when you turn this on — or you can pick specific folders below instead.</string>
+    <string name="storage_saf_title">Selected folders only</string>
+    <string name="storage_saf_hint">Share only folders you pick with Android’s folder picker instead of your whole storage.</string>
+    <string name="storage_add_folder">Add folder</string>
+    <string name="storage_remove_folder">Remove</string>
+    <string name="storage_pc_toggle">Browse this phone’s storage in File Explorer</string>
+    <string name="storage_pc_toggle_hint">Off by default. Lets this PC list, open, upload, rename and delete files in your shared storage.</string>
+    <string name="storage_request_title">%1$s wants to browse this phone’s storage</string>
+    <string name="storage_request_text">Allow %1$s to browse your shared storage (or selected folders) in File Explorer?</string>
+    <string name="action_not_now">Not now</string>
 </resources>

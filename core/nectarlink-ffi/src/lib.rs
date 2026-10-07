@@ -496,6 +496,16 @@ pub enum Event {
         id: String,
         state: DeckState,
     },
+    /// A paired PC asked to browse this phone's storage while `storage` is off
+    /// (phones only).
+    StorageRequested {
+        id: String,
+    },
+    /// A folder on a paired phone changed (PCs only).
+    StorageChanged {
+        id: String,
+        path: String,
+    },
 }
 
 /// One tile on a PC's Deck (`docs/protocol/deck.md`).
@@ -1008,7 +1018,34 @@ pub struct PhotoThumb {
     pub data: Vec<u8>,
 }
 
-private_debug!(PhotoAlbum, PhotoItem, PhotoThumb);
+/// One file or folder in a phone directory listing (`docs/protocol/storage.md`).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct StorageEntry {
+    pub name: String,
+    pub size: u64,
+    /// Unix milliseconds.
+    pub modified: i64,
+    pub is_dir: bool,
+}
+
+/// An opened file on this phone ready for ranged reading (`storage.read`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct StorageReadFile {
+    pub source: FileToSend,
+    pub size: u64,
+    /// Unix milliseconds.
+    pub modified: i64,
+}
+
+/// Result of writing a file into this phone's storage (`storage.write`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct StorageWriteDone {
+    pub size: u64,
+    /// Unix milliseconds.
+    pub modified: i64,
+}
+
+private_debug!(PhotoAlbum, PhotoItem, PhotoThumb, StorageEntry);
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum NectarlinkError {
@@ -1417,6 +1454,10 @@ impl From<NodeEvent> for Event {
             NodeEvent::DeckState { device, state } => {
                 Event::DeckState { id: device.to_string(), state: state.into() }
             }
+            NodeEvent::StorageRequested { device } => Event::StorageRequested { id: device.to_string() },
+            NodeEvent::StorageChanged { device, path } => {
+                Event::StorageChanged { id: device.to_string(), path }
+            }
         }
     }
 }
@@ -1483,6 +1524,42 @@ impl From<MediaFailure> for core::MediaError {
             MediaFailure::NotFound => core::MediaError::NotFound,
             MediaFailure::Unsupported => core::MediaError::Unsupported,
             MediaFailure::Failed { reason } => core::MediaError::Failed(reason),
+        }
+    }
+}
+
+/// Why a phone storage operation failed (`docs/protocol/storage.md`).
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum StorageFailure {
+    #[error("no longer exists")]
+    NotFound,
+    #[error("access denied")]
+    Denied,
+    #[error("invalid path: {reason}")]
+    Invalid { reason: String },
+    #[error("not enough space")]
+    NoSpace,
+    #[error("not available")]
+    Unsupported,
+    #[error("failed: {reason}")]
+    Failed { reason: String },
+}
+
+impl From<uniffi::UnexpectedUniFFICallbackError> for StorageFailure {
+    fn from(e: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        StorageFailure::Failed { reason: e.reason }
+    }
+}
+
+impl From<StorageFailure> for core::StorageError {
+    fn from(f: StorageFailure) -> Self {
+        match f {
+            StorageFailure::NotFound => core::StorageError::NotFound,
+            StorageFailure::Denied => core::StorageError::Denied,
+            StorageFailure::Invalid { reason } => core::StorageError::Invalid(reason),
+            StorageFailure::NoSpace => core::StorageError::NoSpace,
+            StorageFailure::Unsupported => core::StorageError::Unsupported,
+            StorageFailure::Failed { reason } => core::StorageError::Failed(reason),
         }
     }
 }
@@ -1584,6 +1661,25 @@ pub trait Platform: Send + Sync {
     /// `"ringer"`, `"flashlight"`, `"volume"`, `"brightness"`, `"wifi"`,
     /// `"bluetooth"`). False if the phone couldn't.
     fn set_phone_toggle(&self, id: String, value: PhoneToggleValue) -> bool;
+    /// A PC asked to list a folder in this phone's storage (`""` is root).
+    fn storage_list(&self, path: String) -> Result<Vec<StorageEntry>, StorageFailure>;
+    /// A PC asked to open a file in this phone's storage for ranged reading.
+    fn storage_open_read(&self, path: String) -> Result<StorageReadFile, StorageFailure>;
+    /// A PC finished uploading a file to `staged_path`: move/copy it into
+    /// `path` in this phone's storage.
+    fn storage_write(
+        &self,
+        path: String,
+        staged_path: String,
+        modified: Option<i64>,
+    ) -> Result<StorageWriteDone, StorageFailure>;
+    /// A PC asked to create a folder at `path` in this phone's storage.
+    fn storage_mkdir(&self, path: String) -> Result<(), StorageFailure>;
+    /// A PC asked to rename or move `from` to `to` in this phone's storage.
+    fn storage_rename(&self, from: String, to: String) -> Result<(), StorageFailure>;
+    /// A PC asked to delete `path` in this phone's storage (`confirmed`: the
+    /// PC user confirmed permanent deletion if trash isn't available).
+    fn storage_delete(&self, path: String, confirmed: bool) -> Result<(), StorageFailure>;
 }
 
 /// Encrypts the device key at rest (Android: a Keystore key).
@@ -1830,6 +1926,42 @@ impl core::Platform for PlatformAdapter {
             core::PhoneToggleValue::Mode(mode) => PhoneToggleValue::Mode { mode: mode.clone() },
         };
         if self.0.set_phone_toggle(id.to_owned(), value) { Ok(()) } else { Err("the phone couldn't".into()) }
+    }
+    fn storage_list(&self, path: &str) -> Result<Vec<core::StorageEntry>, core::StorageError> {
+        let items = self.0.storage_list(path.to_owned())?;
+        Ok(items
+            .into_iter()
+            .map(|e| core::StorageEntry {
+                name: e.name,
+                size: e.size,
+                modified: e.modified,
+                is_dir: e.is_dir,
+            })
+            .collect())
+    }
+    fn storage_open_read(&self, path: &str) -> Result<core::StorageReadFile, core::StorageError> {
+        let file = self.0.storage_open_read(path.to_owned())?;
+        let outgoing = file_to_send(file.source).map_err(|e| core::StorageError::Failed(e.to_string()))?;
+        Ok(core::StorageReadFile { source: outgoing.source, size: file.size, modified: file.modified })
+    }
+    fn storage_write(
+        &self,
+        path: &str,
+        staged: &std::path::Path,
+        modified: Option<i64>,
+    ) -> Result<core::StorageWriteDone, core::StorageError> {
+        let staged_str = staged.to_string_lossy().into_owned();
+        let done = self.0.storage_write(path.to_owned(), staged_str, modified)?;
+        Ok(core::StorageWriteDone { size: done.size, modified: done.modified })
+    }
+    fn storage_mkdir(&self, path: &str) -> Result<(), core::StorageError> {
+        Ok(self.0.storage_mkdir(path.to_owned())?)
+    }
+    fn storage_rename(&self, from: &str, to: &str) -> Result<(), core::StorageError> {
+        Ok(self.0.storage_rename(from.to_owned(), to.to_owned())?)
+    }
+    fn storage_delete(&self, path: &str, confirmed: bool) -> Result<(), core::StorageError> {
+        Ok(self.0.storage_delete(path.to_owned(), confirmed)?)
     }
 }
 
@@ -2322,6 +2454,19 @@ impl NectarlinkNode {
     pub async fn photos_changed(&self) {
         let node = self.node.clone();
         self.run(async move { node.photos_changed().await }).await;
+    }
+
+    /// A folder on this phone changed (`""` for root): PCs that have it open
+    /// in File Explorer refresh it (`storage.changed`, debounced).
+    pub async fn storage_changed(&self, path: String) {
+        let node = self.node.clone();
+        self.run(async move { node.storage_changed(path).await }).await;
+    }
+
+    /// Directory paths currently watched by any connected PC (most recently
+    /// listed folders).
+    pub fn storage_open_folders(&self) -> Vec<String> {
+        self.node.storage_open_folders()
     }
 
     /// A call on this phone rang, was answered or ended: tells the PCs that

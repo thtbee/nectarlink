@@ -293,6 +293,45 @@ pub trait Platform: Send + Sync + 'static {
     fn deck_press(&self, _from: &nectarlink_protocol::DeviceId, _tile: &str) -> Result<(), String> {
         Err("this device has no deck actions".into())
     }
+
+    /// List immediate children of `path` (`""` for the shared storage root) on
+    /// this phone (`storage.list`, `docs/protocol/storage.md`).
+    fn storage_list(&self, _path: &str) -> Result<Vec<crate::StorageEntry>, crate::StorageError> {
+        Err(crate::StorageError::Unsupported)
+    }
+
+    /// Open a file in this phone's shared storage for ranged reading (`storage.read`).
+    fn storage_open_read(&self, _path: &str) -> Result<crate::StorageReadFile, crate::StorageError> {
+        Err(crate::StorageError::Unsupported)
+    }
+
+    /// Commit a fully staged upload (`staged`) to `path` in this phone's shared
+    /// storage (`storage.write`).
+    fn storage_write(
+        &self,
+        _path: &str,
+        _staged: &std::path::Path,
+        _modified: Option<i64>,
+    ) -> Result<crate::StorageWriteDone, crate::StorageError> {
+        Err(crate::StorageError::Unsupported)
+    }
+
+    /// Create directory `path` in this phone's shared storage (`storage.mkdir`).
+    fn storage_mkdir(&self, _path: &str) -> Result<(), crate::StorageError> {
+        Err(crate::StorageError::Unsupported)
+    }
+
+    /// Rename or move `from` to `to` in this phone's shared storage (`storage.rename`).
+    fn storage_rename(&self, _from: &str, _to: &str) -> Result<(), crate::StorageError> {
+        Err(crate::StorageError::Unsupported)
+    }
+
+    /// Delete `path` in this phone's shared storage (`storage.delete`). Media
+    /// items move to the phone's trash where supported; otherwise deletion
+    /// requires `confirmed == true`.
+    fn storage_delete(&self, _path: &str, _confirmed: bool) -> Result<(), crate::StorageError> {
+        Err(crate::StorageError::Unsupported)
+    }
 }
 
 /// A platform that does nothing; useful for tests and headless tools.

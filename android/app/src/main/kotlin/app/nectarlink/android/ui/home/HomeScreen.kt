@@ -91,6 +91,8 @@ fun HomeScreen(
     onSendFolder: (pcId: String, tree: Uri) -> Unit,
     onAccessChanged: () -> Unit,
     onCancelTransfer: (id: String) -> Unit,
+    onAllowStorage: (pcId: String) -> Unit = {},
+    onDismissStorageRequest: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -128,6 +130,41 @@ fun HomeScreen(
         }
         state.ringingFrom?.let { from ->
             item { RingingBanner(from, onStopRinging) }
+        }
+        state.storageRequestedFrom?.let { pcId ->
+            item {
+                val pcName = state.nameOf(pcId) ?: stringResource(R.string.your_pc)
+                val context = LocalContext.current
+                Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.secondaryContainer) {
+                    Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                        Text(
+                            stringResource(R.string.storage_request_title, pcName),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            stringResource(R.string.storage_request_text, pcName),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = {
+                                onAllowStorage(pcId)
+                                if (!state.storageAllFilesAccess && state.storageSafFolders.isEmpty()) {
+                                    context.startActivity(
+                                        app.nectarlink.android.storage.PhoneStorage.allFilesAccessIntent(context),
+                                    )
+                                }
+                            }) { Text(stringResource(R.string.action_allow)) }
+                            OutlinedButton(onClick = onDismissStorageRequest) {
+                                Text(stringResource(R.string.action_not_now))
+                            }
+                        }
+                    }
+                }
+            }
         }
         item { UpdateCard(updater) }
         if (!state.localNetwork) {

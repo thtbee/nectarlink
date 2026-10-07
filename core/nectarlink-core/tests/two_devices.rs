@@ -43,6 +43,7 @@ struct RecordingPlatform {
     remote_inputs: Mutex<Vec<nectarlink_core::RemoteInput>>,
     phone_toggles: Mutex<Vec<(String, nectarlink_core::PhoneToggleValue)>>,
     deck_presses: Mutex<Vec<String>>,
+    storage: Mutex<Option<nectarlink_core::FolderStorage>>,
 }
 
 impl Platform for RecordingPlatform {
@@ -399,6 +400,47 @@ impl Platform for RecordingPlatform {
     fn deck_press(&self, _from: &nectarlink_core::DeviceId, tile: &str) -> Result<(), String> {
         self.deck_presses.lock().unwrap().push(tile.to_owned());
         Ok(())
+    }
+    fn storage_list(
+        &self,
+        path: &str,
+    ) -> Result<Vec<nectarlink_core::StorageEntry>, nectarlink_core::StorageError> {
+        let guard = self.storage.lock().unwrap();
+        let storage = guard.as_ref().ok_or(nectarlink_core::StorageError::Unsupported)?;
+        storage.list(path)
+    }
+    fn storage_open_read(
+        &self,
+        path: &str,
+    ) -> Result<nectarlink_core::StorageReadFile, nectarlink_core::StorageError> {
+        let guard = self.storage.lock().unwrap();
+        let storage = guard.as_ref().ok_or(nectarlink_core::StorageError::Unsupported)?;
+        storage.open_read(path)
+    }
+    fn storage_write(
+        &self,
+        path: &str,
+        staged: &std::path::Path,
+        modified: Option<i64>,
+    ) -> Result<nectarlink_core::StorageWriteDone, nectarlink_core::StorageError> {
+        let guard = self.storage.lock().unwrap();
+        let storage = guard.as_ref().ok_or(nectarlink_core::StorageError::Unsupported)?;
+        storage.write(path, staged, modified)
+    }
+    fn storage_mkdir(&self, path: &str) -> Result<(), nectarlink_core::StorageError> {
+        let guard = self.storage.lock().unwrap();
+        let storage = guard.as_ref().ok_or(nectarlink_core::StorageError::Unsupported)?;
+        storage.mkdir(path)
+    }
+    fn storage_rename(&self, from: &str, to: &str) -> Result<(), nectarlink_core::StorageError> {
+        let guard = self.storage.lock().unwrap();
+        let storage = guard.as_ref().ok_or(nectarlink_core::StorageError::Unsupported)?;
+        storage.rename(from, to)
+    }
+    fn storage_delete(&self, path: &str, confirmed: bool) -> Result<(), nectarlink_core::StorageError> {
+        let guard = self.storage.lock().unwrap();
+        let storage = guard.as_ref().ok_or(nectarlink_core::StorageError::Unsupported)?;
+        storage.delete(path, confirmed)
     }
 }
 
@@ -2650,4 +2692,192 @@ async fn deck_layout_and_state_arrive_press_runs_action_and_respects_toggles_and
     })
     .await;
     assert!(matches!(phone.node.deck_press(pc_id, "run_build".into()).await, Err(Error::NotFound)));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn phone_storage_lists_reads_ranges_writes_resumes_mutates_and_enforces_security() {
+    use nectarlink_core::{FolderStorage, STORAGE_MOUNT, STORAGE_READ, STORAGE_WRITE};
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[STORAGE_MOUNT]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[STORAGE_READ, STORAGE_WRITE]).await;
+
+    let storage_root = tempfile::tempdir().unwrap();
+    let trash_root = tempfile::tempdir().unwrap();
+    let outside_root = tempfile::tempdir().unwrap();
+    std::fs::write(outside_root.path().join("outside.txt"), b"do not expose").unwrap();
+
+    std::fs::create_dir_all(storage_root.path().join("Documents")).unwrap();
+    std::fs::create_dir_all(storage_root.path().join("DCIM")).unwrap();
+    std::fs::write(storage_root.path().join("Documents/readme.txt"), b"0123456789abcdef").unwrap();
+    std::fs::write(storage_root.path().join("DCIM/photo.jpg"), b"fake-jpeg-bytes").unwrap();
+
+    // Create a directory link inside storage_root pointing to outside_root to verify symlink/junction rejection.
+    #[cfg(windows)]
+    {
+        let link = storage_root.path().join("escape_link");
+        let _ = std::process::Command::new("cmd")
+            .args(["/C", "mklink", "/J"])
+            .arg(&link)
+            .arg(outside_root.path())
+            .output();
+    }
+    #[cfg(unix)]
+    {
+        let _ = std::os::unix::fs::symlink(outside_root.path(), storage_root.path().join("escape_link"));
+    }
+
+    *phone.platform.storage.lock().unwrap() =
+        Some(FolderStorage::new(storage_root.path()).with_trash_dir(trash_root.path()));
+
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // `storage` toggle is OFF by default on the phone.
+    let toggles = phone.node.device_toggles(pc_id).unwrap();
+    assert!(toggles.contains(&("storage", false)));
+
+    // Requests while `storage` is off are denied and emit `StorageRequested` once on the phone.
+    assert!(matches!(pc.node.storage_list(phone_id, "").await, Err(Error::Denied)));
+    wait_for(&mut phone, "storage requested prompt", |e| match e {
+        NodeEvent::StorageRequested { device } if *device == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(matches!(
+        pc.node.storage_read(phone_id, "Documents/readme.txt", 0, None).await,
+        Err(Error::Denied)
+    ));
+    assert!(matches!(pc.node.storage_mkdir(phone_id, "NewFolder").await, Err(Error::Denied)));
+
+    // Enable `storage` on the phone for this PC.
+    phone.node.set_device_toggle(pc_id, "storage", true).unwrap();
+
+    // Root listing returns DCIM and Documents (sorted), and omits `escape_link` pointing outside root.
+    let root_entries = with_timeout("list root", pc.node.storage_list(phone_id, "")).await.unwrap();
+    let names: Vec<&str> = root_entries.iter().map(|e| e.name.as_str()).collect();
+    assert_eq!(names, vec!["DCIM", "Documents"]);
+    assert!(root_entries.iter().all(|e| e.is_dir));
+    assert!(phone.node.storage_open_folders().contains(&String::new()));
+
+    // Listing `Documents` returns `readme.txt` with its size.
+    let doc_entries =
+        with_timeout("list Documents", pc.node.storage_list(phone_id, "Documents")).await.unwrap();
+    assert_eq!(doc_entries.len(), 1);
+    assert_eq!(doc_entries[0].name, "readme.txt");
+    assert_eq!(doc_entries[0].size, 16);
+    assert!(!doc_entries[0].is_dir);
+
+    // Full read and ranged read (`offset` + `length`).
+    let (meta_full, bytes_full) =
+        with_timeout("read full", pc.node.storage_read(phone_id, "Documents/readme.txt", 0, None))
+            .await
+            .unwrap();
+    assert_eq!(meta_full.size, 16);
+    assert_eq!(meta_full.length, 16);
+    assert_eq!(bytes_full, b"0123456789abcdef");
+
+    let (meta_range, bytes_range) =
+        with_timeout("read range", pc.node.storage_read(phone_id, "Documents/readme.txt", 6, Some(5)))
+            .await
+            .unwrap();
+    assert_eq!(meta_range.size, 16);
+    assert_eq!(meta_range.length, 5);
+    assert_eq!(bytes_range, b"6789a");
+
+    let (meta_eof, bytes_eof) =
+        with_timeout("read past eof", pc.node.storage_read(phone_id, "Documents/readme.txt", 100, Some(10)))
+            .await
+            .unwrap();
+    assert_eq!(meta_eof.size, 16);
+    assert_eq!(meta_eof.length, 0);
+    assert!(bytes_eof.is_empty());
+
+    // `mkdir` creates a directory and triggers `storage.changed` for watched parent `""`.
+    with_timeout("mkdir Projects", pc.node.storage_mkdir(phone_id, "Projects")).await.unwrap();
+    assert!(storage_root.path().join("Projects").is_dir());
+    let changed_dir = wait_for(&mut pc, "storage changed on root", |e| match e {
+        NodeEvent::StorageChanged { device, path } if *device == phone_id => Some(path.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(changed_dir, "");
+
+    // `write` with interruption and resume using the same upload ID.
+    let upload_src = tempfile::tempdir().unwrap();
+    let payload = data(250 * 1024, 9);
+    let local_file = upload_src.path().join("upload.bin");
+    std::fs::write(&local_file, &payload).unwrap();
+
+    // First attempt stops after 100 KiB.
+    let interrupted = pc
+        .node
+        .storage_write_with_id(
+            phone_id,
+            "Documents/upload.bin",
+            &local_file,
+            Some("resume-upload-01".into()),
+            Some(100 * 1024),
+        )
+        .await;
+    assert!(interrupted.is_err());
+    assert!(!storage_root.path().join("Documents/upload.bin").exists());
+
+    // Wait briefly for the phone to flush the partial staging file, then resume with the same ID.
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    let done = with_timeout(
+        "resumed write",
+        pc.node.storage_write_with_id(
+            phone_id,
+            "Documents/upload.bin",
+            &local_file,
+            Some("resume-upload-01".into()),
+            None,
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(done.size, payload.len() as u64);
+    assert_eq!(std::fs::read(storage_root.path().join("Documents/upload.bin")).unwrap(), payload);
+
+    // `rename` moves the uploaded file into `Projects/renamed.bin`.
+    with_timeout(
+        "rename file",
+        pc.node.storage_rename(phone_id, "Documents/upload.bin", "Projects/renamed.bin"),
+    )
+    .await
+    .unwrap();
+    assert!(!storage_root.path().join("Documents/upload.bin").exists());
+    assert_eq!(std::fs::read(storage_root.path().join("Projects/renamed.bin")).unwrap(), payload);
+
+    // `delete`: media file moves to trash even with `confirmed = false`; non-media requires `confirmed = true`.
+    with_timeout("trash photo", pc.node.storage_delete(phone_id, "DCIM/photo.jpg", false)).await.unwrap();
+    assert!(!storage_root.path().join("DCIM/photo.jpg").exists());
+    assert_eq!(std::fs::read(trash_root.path().join("photo.jpg")).unwrap(), b"fake-jpeg-bytes");
+
+    assert!(matches!(
+        pc.node.storage_delete(phone_id, "Projects/renamed.bin", false).await,
+        Err(Error::Denied)
+    ));
+    with_timeout("confirmed delete", pc.node.storage_delete(phone_id, "Projects/renamed.bin", true))
+        .await
+        .unwrap();
+    assert!(!storage_root.path().join("Projects/renamed.bin").exists());
+
+    // Path traversal, absolute paths, `/data`, and symlinks/junctions outside root are refused.
+    for bad in ["..", "../outside.txt", "Documents/../../outside.txt", "/etc/passwd", "/data/data"] {
+        assert!(pc.node.storage_list(phone_id, bad).await.is_err(), "list {bad}");
+        assert!(pc.node.storage_read(phone_id, bad, 0, None).await.is_err(), "read {bad}");
+        assert!(pc.node.storage_mkdir(phone_id, bad).await.is_err(), "mkdir {bad}");
+        assert!(pc.node.storage_delete(phone_id, bad, true).await.is_err(), "delete {bad}");
+    }
+    if storage_root.path().join("escape_link").exists() {
+        assert!(matches!(
+            pc.node.storage_list(phone_id, "escape_link").await,
+            Err(Error::Denied | Error::NotFound)
+        ));
+        assert!(matches!(
+            pc.node.storage_read(phone_id, "escape_link/outside.txt", 0, None).await,
+            Err(Error::Denied | Error::NotFound)
+        ));
+    }
 }

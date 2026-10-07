@@ -335,6 +335,10 @@ fn is_background_rpc(t: &str) -> bool {
             | types::PHOTOS_GET
             | types::MIRROR_START
             | types::MIRROR_APPS
+            | types::STORAGE_LIST
+            | types::STORAGE_MKDIR
+            | types::STORAGE_RENAME
+            | types::STORAGE_DELETE
     )
 }
 
@@ -407,6 +411,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if t.starts_with("remote.") && crate::remote::handle(shared, session, &env).await? => {}
         t if t.starts_with("phone.toggle") && crate::toggles::handle(shared, session, &env).await? => {}
         t if t.starts_with("deck.") && crate::deck::handle(shared, session, &env).await? => {}
+        t if t.starts_with("storage.") && crate::storage::handle(shared, session, &env).await? => {}
         other => {
             if env.id.is_some() {
                 let reply = Envelope::error(ErrorCode::Unsupported, format!("unknown message type {other}"));

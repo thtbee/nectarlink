@@ -130,6 +130,8 @@ pub(crate) struct Shared {
     pub(crate) mirror_stops: Mutex<HashMap<MirrorStop, Arc<tokio::sync::Notify>>>,
     /// Per-peer rate limiters and prompt state for remote input.
     pub(crate) remote: Mutex<crate::remote::RemoteState>,
+    /// Per-peer prompt state and open folders for the storage service.
+    pub(crate) storage: Mutex<crate::storage::StorageState>,
     pub data_dir: std::path::PathBuf,
     /// Where received files go.
     pub downloads_dir: std::path::PathBuf,
@@ -315,6 +317,7 @@ impl Shared {
         lock(&self.links).remove(peer);
         lock(&self.matrices).remove(peer);
         lock(&self.remote).remove_peer(peer);
+        lock(&self.storage).remove_peer(peer);
         self.toggles.remove_peer(peer);
         self.deck.remove_peer(peer);
         if existed {
@@ -398,6 +401,7 @@ impl Shared {
         let current = sessions.get(&ended.peer).is_some_and(|current| Arc::ptr_eq(current, ended));
         if current {
             sessions.remove(&ended.peer);
+            lock(&self.storage).remove_peer(&ended.peer);
             self.toggles.remove_peer(&ended.peer);
             self.deck.remove_peer(&ended.peer);
             if paired {
@@ -651,6 +655,7 @@ impl Node {
             deck: Default::default(),
             mirror_stops: Mutex::new(HashMap::new()),
             remote: Mutex::new(Default::default()),
+            storage: Mutex::new(Default::default()),
             data_dir: config.data_dir.clone(),
             downloads_dir: config.downloads_dir.clone().unwrap_or_else(|| config.data_dir.join("received")),
             transfers: Mutex::new(HashMap::new()),
@@ -888,6 +893,14 @@ impl Node {
             self.shared.runtime.spawn(async move {
                 crate::actions::send_wake_info(&shared, &session).await;
             });
+        }
+        if toggle == crate::storage::TOGGLE {
+            let mut st = self.shared.storage.lock().unwrap_or_else(|e| e.into_inner());
+            if enabled {
+                st.clear_prompted(&peer);
+            } else {
+                st.remove_peer(&peer);
+            }
         }
         Ok(())
     }
@@ -1400,6 +1413,128 @@ impl Node {
     pub async fn deck_press(&self, peer: DeviceId, tile: String) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::deck::press(&self.shared, &session, tile).await
+    }
+
+    // ---- Phone storage (PC File Explorer) ----
+
+    /// Lists a directory on a connected phone (`storage.list`).
+    pub async fn storage_list(
+        &self,
+        peer: DeviceId,
+        path: impl Into<String>,
+    ) -> Result<Vec<crate::StorageEntry>> {
+        let session = self.connected(&peer)?;
+        crate::storage::list(&self.shared, &session, path.into()).await
+    }
+
+    /// Reads a byte range `[offset, offset + length)` (or to end of file if
+    /// `length` is `None`) from `path` on a connected phone (`storage.read`).
+    pub async fn storage_read(
+        &self,
+        peer: DeviceId,
+        path: impl Into<String>,
+        offset: u64,
+        length: Option<u64>,
+    ) -> Result<(crate::StorageReadMeta, Vec<u8>)> {
+        let (meta, mut recv) = self.storage_read_stream(peer, path, offset, length).await?;
+        let mut buf = Vec::with_capacity((meta.length.min(16 * 1024 * 1024)) as usize);
+        while let Some(chunk) = recv.read_chunk(64 * 1024).await.map_err(|_| crate::Error::Offline)? {
+            if (buf.len() + chunk.len()) as u64 > meta.length {
+                return Err(crate::Error::Protocol("phone sent more bytes than length".into()));
+            }
+            buf.extend_from_slice(&chunk);
+        }
+        if buf.len() as u64 != meta.length {
+            return Err(crate::Error::Offline);
+        }
+        Ok((meta, buf))
+    }
+
+    /// Opens a ranged read stream from `path` on a connected phone
+    /// (`storage.read`), returning the metadata and raw QUIC receive stream.
+    pub async fn storage_read_stream(
+        &self,
+        peer: DeviceId,
+        path: impl Into<String>,
+        offset: u64,
+        length: Option<u64>,
+    ) -> Result<(crate::StorageReadMeta, iroh::endpoint::RecvStream)> {
+        let session = self.connected(&peer)?;
+        crate::storage::open_read_stream(&self.shared, &session, path.into(), offset, length).await
+    }
+
+    /// Uploads a local file to `path` on a connected phone (`storage.write`).
+    pub async fn storage_write(
+        &self,
+        peer: DeviceId,
+        path: impl Into<String>,
+        source: &std::path::Path,
+    ) -> Result<crate::StorageWriteDone> {
+        self.storage_write_with_id(peer, path, source, None, None).await
+    }
+
+    /// Uploads a local file to `path` on a connected phone (`storage.write`),
+    /// reusing `id` when resuming an interrupted upload.
+    pub async fn storage_write_with_id(
+        &self,
+        peer: DeviceId,
+        path: impl Into<String>,
+        source: &std::path::Path,
+        id: Option<String>,
+        stop_after: Option<u64>,
+    ) -> Result<crate::StorageWriteDone> {
+        let session = self.connected(&peer)?;
+        let id = id.unwrap_or_else(crate::storage::new_upload_id);
+        crate::storage::write_with_id(
+            &self.shared,
+            &session,
+            id,
+            path.into(),
+            crate::FileSource::Path(source.to_path_buf()),
+            None,
+            stop_after,
+        )
+        .await
+    }
+
+    /// Creates a directory at `path` on a connected phone (`storage.mkdir`).
+    pub async fn storage_mkdir(&self, peer: DeviceId, path: impl Into<String>) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::storage::mkdir(&self.shared, &session, path.into()).await
+    }
+
+    /// Renames or moves `from` to `to` on a connected phone (`storage.rename`).
+    pub async fn storage_rename(
+        &self,
+        peer: DeviceId,
+        from: impl Into<String>,
+        to: impl Into<String>,
+    ) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::storage::rename(&self.shared, &session, from.into(), to.into()).await
+    }
+
+    /// Deletes `path` on a connected phone (`storage.delete`).
+    pub async fn storage_delete(
+        &self,
+        peer: DeviceId,
+        path: impl Into<String>,
+        confirmed: bool,
+    ) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::storage::delete(&self.shared, &session, path.into(), confirmed).await
+    }
+
+    /// Notifies connected PCs that have `path` open in File Explorer that its
+    /// contents changed (`storage.changed`, debounced to at most once per second).
+    pub async fn storage_changed(&self, path: impl Into<String>) {
+        crate::storage::notify_changed(&self.shared, path.into()).await;
+    }
+
+    /// Directory paths currently watched by any connected PC (most recently
+    /// listed folders).
+    pub fn storage_open_folders(&self) -> Vec<String> {
+        self.shared.storage.lock().unwrap_or_else(|e| e.into_inner()).open_folders_all()
     }
 
     // ---- Local state reported by the app ----

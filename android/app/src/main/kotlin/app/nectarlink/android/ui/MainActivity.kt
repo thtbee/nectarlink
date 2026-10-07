@@ -382,6 +382,8 @@ private fun App(
                     onSendFolder = core::sendFolder,
                     onAccessChanged = core::refreshNotificationAccess,
                     onCancelTransfer = core::cancelTransfer,
+                    onAllowStorage = { pcId -> core.setStorageEnabled(pcId, true) },
+                    onDismissStorageRequest = core::dismissStorageRequest,
                     modifier = modifier,
                 )
                 Tab.Settings -> SettingsScreen(
@@ -394,6 +396,9 @@ private fun App(
                     onPairNew = { pairing = true },
                     onAccessChanged = core::refreshNotificationAccess,
                     updater = (LocalContext.current.applicationContext as NectarlinkApplication).updater,
+                    onSetStorageEnabled = core::setStorageEnabled,
+                    onAddSafFolder = core::addSafFolder,
+                    onRemoveSafFolder = core::removeSafFolder,
                     modifier = modifier,
                 )
             }

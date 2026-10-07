@@ -165,7 +165,7 @@ current Android. Talking through the PC comes with the HFP item above.
 | **Flick to send**: flick a photo/file upward on the phone and it lands on the PC. Drag a file to the screen edge on the PC and it flies to the phone. Physics-based animation on both ends | P1 |
 | **LocalSend protocol interop**: send to and receive from any LocalSend device (iOS, Mac, Linux). We implement its open protocol in Rust; we don't reuse its (Dart) code | P1 |
 | **Coexistence**: runs side by side with KDE Connect (ports 1714–1764) and LocalSend (53317) on the same PC without conflicts. If LocalSend's port is taken, Nectarlink still sends but leaves receiving to the LocalSend app | P0 |
-| **Phone storage in Explorer** (Cloud Files API: placeholders, on-demand download, native sync icons) | P1 |
+| **Phone storage in Explorer** (Cloud Files API: placeholders, on-demand download, native sync icons) ✅ | P1 |
 | **Photos**: gallery with thumbnails, recent screenshots/photos pop up on PC, drag out to the desktop | P0 (recent), P1 (gallery) |
 | Folder sync (Syncthing-style two-way folders, e.g. Camera → PC) | P2 |
 

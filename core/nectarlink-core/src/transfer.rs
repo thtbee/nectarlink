@@ -633,6 +633,20 @@ pub(crate) async fn accept_stream(
         {
             crate::remote::receive_motion(shared, session.peer, send, recv).await;
         }
+        Some(h)
+            if h.svc == nectarlink_protocol::messages::storage::SERVICE
+                && h.op == nectarlink_protocol::messages::storage::OP_READ
+                && h.v == nectarlink_protocol::messages::storage::VERSION =>
+        {
+            crate::storage::serve_read(shared, session.peer, send, recv).await;
+        }
+        Some(h)
+            if h.svc == nectarlink_protocol::messages::storage::SERVICE
+                && h.op == nectarlink_protocol::messages::storage::OP_WRITE
+                && h.v == nectarlink_protocol::messages::storage::VERSION =>
+        {
+            crate::storage::serve_write(shared, session.peer, send, recv).await;
+        }
         _ => {
             let reply = Envelope::error(ErrorCode::Unsupported, "unknown stream");
             let _ = write_frame(&mut send, &reply.to_cbor()).await;

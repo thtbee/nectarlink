@@ -21,6 +21,7 @@ import app.nectarlink.android.mirror.MirrorRequest
 import app.nectarlink.android.mirror.MirrorRequests
 import app.nectarlink.android.mirror.MirrorService
 import app.nectarlink.android.sms.PhoneSms
+import app.nectarlink.android.storage.PhoneStorage
 import app.nectarlink.android.toggles.PhoneToggles
 import app.nectarlink.core.CallCommand
 import app.nectarlink.core.CallLogEntry
@@ -39,6 +40,9 @@ import app.nectarlink.core.PhotoItem
 import app.nectarlink.core.PhotoThumb
 import app.nectarlink.core.NotificationFailure
 import app.nectarlink.core.Platform
+import app.nectarlink.core.StorageEntry
+import app.nectarlink.core.StorageReadFile
+import app.nectarlink.core.StorageWriteDone
 
 /**
  * What the core asks of the phone: ring it, and act on its notifications
@@ -58,6 +62,8 @@ internal class PhonePlatform(
     private val sms: () -> PhoneSms,
     /** The phone's quick settings (created after this). */
     private val toggles: () -> PhoneToggles,
+    /** The phone's shared storage (created after this). */
+    private val storage: () -> PhoneStorage,
     /** Asks the user to share the screen with a PC: (PC's ID, request) → asked. */
     private val onMirror: (String, MirrorRequest) -> Boolean,
     /** Apps in windows of their own on PCs (Elevated). */
@@ -138,6 +144,19 @@ internal class PhonePlatform(
 
     override fun setPhoneToggle(id: String, value: PhoneToggleValue): Boolean =
         toggles().set(id, value)
+
+    override fun storageList(path: String): List<StorageEntry> = storage().list(path)
+
+    override fun storageOpenRead(path: String): StorageReadFile = storage().openRead(path)
+
+    override fun storageWrite(path: String, stagedPath: String, modified: Long?): StorageWriteDone =
+        storage().write(path, stagedPath, modified)
+
+    override fun storageMkdir(path: String) = storage().mkdir(path)
+
+    override fun storageRename(from: String, to: String) = storage().rename(from, to)
+
+    override fun storageDelete(path: String, confirmed: Boolean) = storage().delete(path, confirmed)
 
     override fun dismissNotification(key: String) {
         val listener = NotificationListener.instance ?: throw NotificationFailure.Unsupported()

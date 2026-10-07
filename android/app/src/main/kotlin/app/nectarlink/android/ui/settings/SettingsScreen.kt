@@ -56,6 +56,7 @@ import app.nectarlink.android.elevated.PairingNotification
 import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
+import app.nectarlink.android.storage.PhoneStorage
 import app.nectarlink.android.toggles.PhoneToggles
 import app.nectarlink.android.update.AppUpdater
 import app.nectarlink.android.update.CheckForUpdates
@@ -78,6 +79,9 @@ fun SettingsScreen(
     onPairNew: () -> Unit,
     onAccessChanged: () -> Unit,
     updater: AppUpdater,
+    onSetStorageEnabled: (pcId: String, enabled: Boolean) -> Unit = { _, _ -> },
+    onAddSafFolder: (Uri) -> Unit = {},
+    onRemoveSafFolder: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var confirmUnpair by remember { mutableStateOf<Device?>(null) }
@@ -128,6 +132,15 @@ fun SettingsScreen(
                 granted = state.photoAccess,
                 partial = state.photoPartialAccess,
                 onAccessChanged = onAccessChanged,
+            )
+        }
+
+        Section(stringResource(R.string.settings_storage)) {
+            StorageAccess(
+                allFiles = state.storageAllFilesAccess,
+                safFolders = state.storageSafFolders,
+                onAddSafFolder = onAddSafFolder,
+                onRemoveSafFolder = onRemoveSafFolder,
             )
         }
 
@@ -210,17 +223,39 @@ fun SettingsScreen(
         }
 
         Section(stringResource(R.string.settings_devices)) {
+            val context = LocalContext.current
             state.devices.forEach { device ->
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.weight(1f)) {
-                        Text(device.name, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            stringResource(if (device.online) R.string.connected else R.string.not_connected),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f)) {
+                            Text(device.name, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                stringResource(if (device.online) R.string.connected else R.string.not_connected),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        OutlinedButton(onClick = { confirmUnpair = device }) { Text(stringResource(R.string.action_unpair)) }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(stringResource(R.string.storage_pc_toggle), style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                stringResource(R.string.storage_pc_toggle_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = device.storageEnabled,
+                            onCheckedChange = { enabled ->
+                                onSetStorageEnabled(device.id, enabled)
+                                if (enabled && !state.storageAllFilesAccess && state.storageSafFolders.isEmpty()) {
+                                    context.startActivity(PhoneStorage.allFilesAccessIntent(context))
+                                }
+                            },
                         )
                     }
-                    OutlinedButton(onClick = { confirmUnpair = device }) { Text(stringResource(R.string.action_unpair)) }
                 }
             }
             FilledTonalButton(onClick = onPairNew) { Text(stringResource(R.string.action_pair_new)) }
@@ -497,6 +532,58 @@ private fun PhotosAccess(
             }) { Text(stringResource(R.string.action_manage)) }
             else -> Button(onClick = { ask.launch(RecentPhotos.permissions) }) {
                 Text(stringResource(R.string.action_allow))
+            }
+        }
+    }
+}
+
+@Composable
+private fun StorageAccess(
+    allFiles: Boolean,
+    safFolders: List<String>,
+    onAddSafFolder: (Uri) -> Unit,
+    onRemoveSafFolder: (String) -> Unit,
+) {
+    val context = LocalContext.current
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) onAddSafFolder(uri)
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(stringResource(R.string.storage_all_files_title), style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(if (allFiles) R.string.storage_all_files_on else R.string.storage_all_files_off),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        val open = { context.startActivity(PhoneStorage.allFilesAccessIntent(context)) }
+        if (allFiles) {
+            OutlinedButton(onClick = open) { Text(stringResource(R.string.action_manage)) }
+        } else {
+            Button(onClick = open) { Text(stringResource(R.string.action_allow)) }
+        }
+    }
+    if (!allFiles) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(stringResource(R.string.storage_saf_title), style = MaterialTheme.typography.titleSmall)
+                Text(
+                    stringResource(R.string.storage_saf_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            OutlinedButton(onClick = { pickFolder.launch(null) }) {
+                Text(stringResource(R.string.storage_add_folder))
+            }
+        }
+        safFolders.forEach { name ->
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text(name, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                TextButton(onClick = { onRemoveSafFolder(name) }) {
+                    Text(stringResource(R.string.storage_remove_folder))
+                }
             }
         }
     }

@@ -192,4 +192,14 @@ pub enum NodeEvent {
         device: DeviceId,
         state: crate::DeckState,
     },
+    /// A paired PC asked to access this phone's storage while its `storage`
+    /// toggle is off (emitted once per PC so the phone UI can prompt the user).
+    StorageRequested {
+        device: DeviceId,
+    },
+    /// A folder in a paired phone's shared storage changed (`docs/protocol/storage.md`).
+    StorageChanged {
+        device: DeviceId,
+        path: String,
+    },
 }

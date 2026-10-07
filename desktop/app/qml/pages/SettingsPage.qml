@@ -30,12 +30,15 @@ Item {
         photos: qsTr("Photos"),
         toggles: qsTr("Phone controls"),
         pc_actions: qsTr("Lock, sleep and wake this PC"),
+        mirroring: qsTr("Screen mirroring"),
+        storage: qsTr("Phone storage in File Explorer"),
         remote_input: qsTr("Control this PC's mouse, keyboard and Deck"),
         commands: qsTr("Allow running Deck commands"),
         remote_files: qsTr("Browse this PC's files while away")
     })
 
     readonly property var toggleDescriptions: ({
+        storage: qsTr("Show this phone's storage in File Explorer so you can browse, open and drop in files."),
         commands: qsTr("Lets this phone trigger Deck tiles that run shell commands configured on this PC. Off by default — only enable for a phone you control.")
     })
 
@@ -460,10 +463,23 @@ Item {
                                 width: parent.width
                                 title: page.toggleNames[modelData.name] || modelData.name
                                 description: page.toggleDescriptions[modelData.name] || ""
-                                Toggle {
-                                    label: page.toggleNames[modelData.name] || modelData.name
-                                    checked: modelData.on
-                                    onToggled: (on) => AppController.setDeviceToggle(deviceCard.deviceId, modelData.name, on)
+                                Row {
+                                    spacing: 10
+                                    Button {
+                                        visible: modelData.name === "storage" && modelData.on
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        variant: "tonal"
+                                        size: "sm"
+                                        iconPath: Icons.folder
+                                        text: qsTr("Open in File Explorer")
+                                        onClicked: AppController.openPhoneStorage(deviceCard.deviceId)
+                                    }
+                                    Toggle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        label: page.toggleNames[modelData.name] || modelData.name
+                                        checked: modelData.on
+                                        onToggled: (on) => AppController.setDeviceToggle(deviceCard.deviceId, modelData.name, on)
+                                    }
                                 }
                             }
                         }

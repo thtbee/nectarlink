@@ -110,6 +110,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         nectarlink_core::DECK_ACTIONS.into(),
         nectarlink_core::RECORDER.into(),
         nectarlink_core::TOGGLES_SHOW.into(),
+        nectarlink_core::STORAGE_MOUNT.into(),
     ];
     let node = match Node::start(config, platform).await {
         Ok(node) => node,
@@ -171,6 +172,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 crate::transfers::on_event(&event);
                 crate::send_to::on_event(&event);
                 crate::battery::on_event(&event);
+                crate::storage::on_event(&event);
             }
             Err(RecvError::Lagged(missed)) => {
                 // Resynchronize what can be re-read; transient events are lost.

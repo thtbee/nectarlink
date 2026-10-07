@@ -130,6 +130,14 @@ tests; there are no releases yet.
   clipboard, or save one or many to a folder you pick (`Downloads\Nectarlink`
   by default). New photos and screenshots from the phone also pop up on the PC
   with a preview, ready to save or copy.
+- **Phone storage in File Explorer**: mount the phone's storage under
+  `%USERPROFILE%\Nectarlink\<Phone name>` using the Windows Cloud Files API
+  (placeholders, on-demand download with progress when a file is opened, native
+  sync icons). Browse folders, open files, drop new files in to upload them to
+  the phone, rename, create folders, and delete (media files move to the
+  phone's trash on Android 11+). Works with All files access or only the
+  folders you pick on the phone, and is off by default on both sides with a
+  clear prompt on the phone.
 - **Touchpad, air mouse, keyboard, voice typing and presentation remote**:
   control the PC from the phone — a touchpad with one-finger move, tap to
   click, two-finger tap for right-click, two-finger scroll,

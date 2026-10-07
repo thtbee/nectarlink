@@ -52,6 +52,10 @@ struct Cli {
     /// Extra capability to announce, e.g. clip.read.auto (repeatable).
     #[arg(long = "offer", global = true, value_name = "CAPABILITY")]
     offers: Vec<String>,
+    /// Directory to serve as phone storage with --as-phone (defaults to a
+    /// generated sample folder tree in the data directory).
+    #[arg(long, global = true)]
+    storage_root: Option<PathBuf>,
     /// Log verbosity (error, warn, info, debug, trace).
     #[arg(long, global = true, default_value = "warn")]
     log: String,
@@ -248,6 +252,16 @@ enum Command {
         device: String,
         #[command(subcommand)]
         action: Option<DeckArg>,
+    },
+    /// Browse and edit a paired phone's shared storage (`ls`, `get`, `put`,
+    /// `mkdir`, `rm`, `mv`).
+    Storage {
+        device: String,
+        /// Where to reach the phone, when discovery can't.
+        #[arg(long, global = true)]
+        at: Vec<std::net::SocketAddr>,
+        #[command(subcommand)]
+        action: StorageArg,
     },
     /// Act as a phone sharing its screen (use with --as-phone): when a PC
     /// asks, streams an H.264 file (Annex B, with access unit delimiters) in
@@ -589,6 +603,57 @@ enum TogglesArg {
 enum DeckArg {
     /// Press a tile on the PC's deck by its ID.
     Press { tile: String },
+}
+
+#[derive(Debug, Subcommand)]
+enum StorageArg {
+    /// List a folder on the phone's shared storage (omit `path` for the root).
+    Ls {
+        #[arg(default_value = "")]
+        path: String,
+    },
+    /// Download a file (or a byte range of a file) from the phone's storage.
+    Get {
+        /// Relative path on the phone (e.g. `Documents/notes.txt`).
+        remote: String,
+        /// Local file to write (defaults to the file's name in the current directory).
+        local: Option<PathBuf>,
+        /// Start byte offset (0-based).
+        #[arg(long, default_value_t = 0)]
+        offset: u64,
+        /// Number of bytes to read (omit for until end of file).
+        #[arg(long)]
+        length: Option<u64>,
+    },
+    /// Upload a local file into the phone's shared storage.
+    Put {
+        /// Local file to upload.
+        local: PathBuf,
+        /// Destination relative path on the phone (e.g. `Download/hello.txt`).
+        remote: String,
+    },
+    /// Create a folder (and any missing parents) on the phone's storage.
+    Mkdir {
+        /// Relative folder path to create.
+        path: String,
+    },
+    /// Delete a file or folder on the phone's storage.
+    Rm {
+        /// Relative path to delete.
+        path: String,
+        /// Ask the phone to use its trash without PC confirmation (fails with
+        /// `confirm_required` for non-trashed items).
+        #[arg(long)]
+        unconfirmed: bool,
+    },
+    /// Rename or move a file or folder on the phone's storage.
+    #[command(visible_alias = "rename")]
+    Mv {
+        /// Existing relative path on the phone.
+        from: String,
+        /// New relative path on the phone.
+        to: String,
+    },
 }
 
 /// Where `mirror` saves the video, and what arrived.
@@ -1301,6 +1366,38 @@ fn sample_photos() {
     ];
 }
 
+static PHONE_STORAGE: std::sync::OnceLock<nectarlink_core::FolderStorage> = std::sync::OnceLock::new();
+
+fn sample_storage_tree(root: &std::path::Path) {
+    let is_empty = std::fs::read_dir(root).map(|mut d| d.next().is_none()).unwrap_or(true);
+    if !is_empty {
+        return;
+    }
+    let files: &[(&str, &[u8])] = &[
+        ("Documents/notes.txt", b"Shopping list:\n- Coffee beans\n- Oats\n- Sparkling water\n"),
+        (
+            "Documents/project-plan.md",
+            b"# Nectarlink Storage\n\nBrowse phone files directly in File Explorer.\n",
+        ),
+        (
+            "Download/guide.txt",
+            b"Welcome to Nectarlink Phone Storage.\nOpen any file to stream it on demand.\n",
+        ),
+        (
+            "DCIM/Camera/IMG_20260406_184210.jpg",
+            &sample_jpeg(640, 480, (58, 124, 165), (22, 48, 72), (242, 193, 78)),
+        ),
+        ("Music/README.txt", b"Drop audio tracks here to copy them to the phone.\n"),
+    ];
+    for (rel, data) in files {
+        let path = root.join(rel);
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let _ = std::fs::write(path, data);
+    }
+}
+
 /// Rings by printing to the terminal (the CLI has no speaker access).
 #[derive(Debug)]
 struct TerminalPlatform;
@@ -1747,6 +1844,53 @@ impl Platform for TerminalPlatform {
         println!("A paired device pressed deck tile {tile}");
         Ok(())
     }
+    fn storage_list(
+        &self,
+        path: &str,
+    ) -> std::result::Result<Vec<nectarlink_core::StorageEntry>, nectarlink_core::StorageError> {
+        let s = PHONE_STORAGE.get().ok_or(nectarlink_core::StorageError::Unsupported)?;
+        s.list(path)
+    }
+    fn storage_open_read(
+        &self,
+        path: &str,
+    ) -> std::result::Result<nectarlink_core::StorageReadFile, nectarlink_core::StorageError> {
+        let s = PHONE_STORAGE.get().ok_or(nectarlink_core::StorageError::Unsupported)?;
+        s.open_read(path)
+    }
+    fn storage_write(
+        &self,
+        path: &str,
+        staged: &std::path::Path,
+        modified: Option<i64>,
+    ) -> std::result::Result<nectarlink_core::StorageWriteDone, nectarlink_core::StorageError> {
+        let s = PHONE_STORAGE.get().ok_or(nectarlink_core::StorageError::Unsupported)?;
+        let done = s.write(path, staged, modified)?;
+        println!("Saved {path} ({} bytes) to phone storage.", done.size);
+        Ok(done)
+    }
+    fn storage_mkdir(&self, path: &str) -> std::result::Result<(), nectarlink_core::StorageError> {
+        let s = PHONE_STORAGE.get().ok_or(nectarlink_core::StorageError::Unsupported)?;
+        s.mkdir(path)?;
+        println!("Created folder {path} in phone storage.");
+        Ok(())
+    }
+    fn storage_rename(&self, from: &str, to: &str) -> std::result::Result<(), nectarlink_core::StorageError> {
+        let s = PHONE_STORAGE.get().ok_or(nectarlink_core::StorageError::Unsupported)?;
+        s.rename(from, to)?;
+        println!("Renamed {from} -> {to} in phone storage.");
+        Ok(())
+    }
+    fn storage_delete(
+        &self,
+        path: &str,
+        confirmed: bool,
+    ) -> std::result::Result<(), nectarlink_core::StorageError> {
+        let s = PHONE_STORAGE.get().ok_or(nectarlink_core::StorageError::Unsupported)?;
+        s.delete(path, confirmed)?;
+        println!("Deleted {path} from phone storage.");
+        Ok(())
+    }
 }
 
 fn main() -> Result<()> {
@@ -1788,17 +1932,27 @@ async fn start_node(cli: &Cli) -> Result<Node> {
     };
     let device = DeviceInfo { name, kind, os, os_ver, model: None, accent: None };
     let power = node_power(cli);
-    let mut config = NodeConfig::new(data_dir, device, env!("CARGO_PKG_VERSION"));
+    let mut config = NodeConfig::new(data_dir.clone(), device, env!("CARGO_PKG_VERSION"));
     config.downloads_dir = cli.downloads_dir.clone();
     config.port = cli.port;
     config.lan_discovery = !cli.no_lan;
     config.away_mode = cli.away;
     config.power = power;
-    if !cli.as_phone {
+    if cli.as_phone {
+        let storage_root = cli.storage_root.clone().unwrap_or_else(|| data_dir.join("sample-storage"));
+        let _ = std::fs::create_dir_all(&storage_root);
+        sample_storage_tree(&storage_root);
+        let trash_dir = data_dir.join("storage-trash");
+        let _ =
+            PHONE_STORAGE.set(nectarlink_core::FolderStorage::new(storage_root).with_trash_dir(trash_dir));
+        config.capabilities.push(nectarlink_core::STORAGE_READ.into());
+        config.capabilities.push(nectarlink_core::STORAGE_WRITE.into());
+    } else {
         config.capabilities.push(nectarlink_core::RECORDER.into());
         config.capabilities.push(nectarlink_core::TOGGLES_SHOW.into());
         config.capabilities.push(nectarlink_core::PC_WAKE.into());
         config.capabilities.push(nectarlink_core::DECK_ACTIONS.into());
+        config.capabilities.push(nectarlink_core::STORAGE_MOUNT.into());
     }
     let extra_caps = config.capabilities.clone();
     let node = Node::start(config, Arc::new(TerminalPlatform)).await.context("failed to start")?;
@@ -2258,6 +2412,75 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 .with_context(|| format!("the PC refused deck tile {tile:?}"))?;
             println!("Pressed {tile}.");
         }
+        Command::Storage { device, at, action } => {
+            let id = resolve(node, device)?;
+            if !at.is_empty() {
+                node.add_known_addrs(id, at);
+            }
+            wait_until_online(node, id).await?;
+            match action {
+                StorageArg::Ls { path } => {
+                    let entries = node
+                        .storage_list(id, path.clone())
+                        .await
+                        .with_context(|| format!("failed to list {path:?}"))?;
+                    if entries.is_empty() {
+                        println!("(empty)");
+                    }
+                    for e in entries {
+                        if e.is_dir {
+                            println!("dir        {:>10}  {}/", "-", e.name);
+                        } else {
+                            println!("file  {:>10} B  {}", e.size, e.name);
+                        }
+                    }
+                }
+                StorageArg::Get { remote, local, offset, length } => {
+                    let out = match local {
+                        Some(p) => p.clone(),
+                        None => {
+                            let file_name = remote.rsplit('/').next().unwrap_or(remote.as_str());
+                            if file_name.is_empty() {
+                                bail!("specify a file path on the phone");
+                            }
+                            PathBuf::from(file_name)
+                        }
+                    };
+                    let (_meta, bytes) = node
+                        .storage_read(id, remote.clone(), *offset, *length)
+                        .await
+                        .with_context(|| format!("failed to read {remote:?}"))?;
+                    std::fs::write(&out, &bytes)
+                        .with_context(|| format!("failed to write {}", out.display()))?;
+                    println!("Saved {} ({} bytes).", out.display(), bytes.len());
+                }
+                StorageArg::Put { local, remote } => {
+                    let done = node
+                        .storage_write(id, remote.clone(), local)
+                        .await
+                        .with_context(|| format!("failed to upload {} -> {remote}", local.display()))?;
+                    println!("Uploaded {remote} ({} bytes).", done.size);
+                }
+                StorageArg::Mkdir { path } => {
+                    node.storage_mkdir(id, path.clone())
+                        .await
+                        .with_context(|| format!("failed to create folder {path:?}"))?;
+                    println!("Created {path}/");
+                }
+                StorageArg::Rm { path, unconfirmed } => {
+                    node.storage_delete(id, path.clone(), !*unconfirmed)
+                        .await
+                        .with_context(|| format!("failed to delete {path:?}"))?;
+                    println!("Deleted {path}");
+                }
+                StorageArg::Mv { from, to } => {
+                    node.storage_rename(id, from.clone(), to.clone())
+                        .await
+                        .with_context(|| format!("failed to rename {from:?} -> {to:?}"))?;
+                    println!("Renamed {from} -> {to}");
+                }
+            }
+        }
         Command::Apps { device, at } => {
             let id = resolve(node, device)?;
             if !at.is_empty() {
@@ -2534,6 +2757,8 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     nectarlink_core::TOGGLES_FLASHLIGHT,
                     nectarlink_core::TOGGLES_DND,
                     nectarlink_core::TOGGLES_BRIGHTNESS,
+                    nectarlink_core::STORAGE_READ,
+                    nectarlink_core::STORAGE_WRITE,
                 ]
                 .map(str::to_owned),
             );
@@ -3476,6 +3701,16 @@ fn print_event(node: &Node, event: &NodeEvent) {
             "{}: asked to control mouse and keyboard (allow with: nectarlink toggle {} remote_input on)",
             name(device),
             device.short()
+        ),
+        NodeEvent::StorageRequested { device } => println!(
+            "{}: asked to browse phone storage (allow with: nectarlink toggle {} storage on)",
+            name(device),
+            device.short()
+        ),
+        NodeEvent::StorageChanged { device, path } => println!(
+            "{}: storage folder {} changed",
+            name(device),
+            if path.is_empty() { "/" } else { path.as_str() }
         ),
         NodeEvent::PhotoAdded { device, photo } => println!(
             "{}: new {} {} ({} bytes, preview {} bytes)",

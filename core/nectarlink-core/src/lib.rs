@@ -25,6 +25,7 @@ mod photos;
 pub mod remote;
 mod session;
 mod sms;
+pub mod storage;
 mod store;
 pub mod toggles;
 mod transfer;
@@ -57,13 +58,16 @@ pub use nectarlink_protocol::{
         DeviceKind, MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorResize, MirrorStart,
         Notification, NotificationAction, PcWakeInfo, PhoneApp, PhoneToggleSet, PhoneToggleValue,
         PhoneToggles, PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PowerLevel, SmsMessage, SmsPart,
-        SmsThread, TouchAction,
+        SmsThread, StorageChanged, StorageDelete, StorageEntries, StorageEntry, StorageList, StorageMkdir,
+        StorageRead, StorageReadMeta, StorageRename, StorageWriteAccept, StorageWriteDone, StorageWriteOffer,
+        TouchAction,
         calls::{
             CONTROL as CALLS_CONTROL, DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG,
             SHOW as CALLS_SHOW, STATE as CALLS_STATE,
         },
         contacts::{READ as CONTACTS_READ, SHOW as CONTACTS_SHOW},
-        format_mac, ipv4_broadcast, is_package_name, magic_packet,
+        format_mac, ipv4_broadcast, is_package_name, is_valid_storage_dir_path, is_valid_storage_id,
+        is_valid_storage_name, is_valid_storage_path, magic_packet,
         mirror::{
             AUDIO as MIRROR_AUDIO, AUDIO_PLAYBACK as MIRROR_AUDIO_PLAYBACK, CAPTURE as MIRROR_CAPTURE,
             INPUT as MIRROR_INPUT, LISTEN as MIRROR_LISTEN, MAX_TEXT_BYTES as MIRROR_MAX_TEXT_BYTES,
@@ -78,6 +82,7 @@ pub use nectarlink_protocol::{
         },
         ringer_modes,
         sms::{READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW},
+        storage::{MOUNT as STORAGE_MOUNT, READ as STORAGE_READ, WRITE as STORAGE_WRITE},
         toggle_ids,
         toggles::{
             BLUETOOTH as TOGGLES_BLUETOOTH, BRIGHTNESS as TOGGLES_BRIGHTNESS, DND as TOGGLES_DND,
@@ -90,6 +95,7 @@ pub use nectarlink_protocol::{
 pub use node::Node;
 pub use notifications::NotificationError;
 pub use remote::{ButtonAction, INPUT_INJECT, KeyMod, MouseButton, RemoteInput, SlideAction, remote_keys};
+pub use storage::{FolderStorage, StorageError, StorageReadFile, TOGGLE as STORAGE_TOGGLE};
 pub use transfer::{
     Direction, FileSource, OutgoingFile, RECORDER, RecordingMarker, Transfer, TransferFailure, TransferState,
     outgoing_paths, safe_file_name,

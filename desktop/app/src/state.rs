@@ -439,7 +439,9 @@ impl AppState {
             | NodeEvent::Mirroring { .. }
             | NodeEvent::WakeInfoChanged { .. }
             | NodeEvent::DeckLayout { .. }
-            | NodeEvent::DeckState { .. } => Changes::NONE,
+            | NodeEvent::DeckState { .. }
+            | NodeEvent::StorageRequested { .. }
+            | NodeEvent::StorageChanged { .. } => Changes::NONE,
             // The gallery's own downloads (for its viewer, or the clipboard)
             // aren't files the user keeps.
             NodeEvent::Transfer(transfer) if crate::photos::is_private(&transfer.id) => {

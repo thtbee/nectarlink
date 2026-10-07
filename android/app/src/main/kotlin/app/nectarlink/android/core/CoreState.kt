@@ -56,6 +56,8 @@ data class Device(
     val features: List<Feature> = emptyList(),
     val deckLayout: app.nectarlink.core.DeckLayout? = null,
     val deckState: app.nectarlink.core.DeckState? = null,
+    /** Whether this PC is allowed to browse this phone's storage in File Explorer (off by default). */
+    val storageEnabled: Boolean = false,
 ) {
     val online: Boolean get() = link is Link.Online
 
@@ -97,6 +99,12 @@ data class CoreState(
     val dndAccess: Boolean = false,
     /** Whether the user allowed screen brightness changes from a PC. */
     val writeSettingsAccess: Boolean = false,
+    /** Whether Android "All files access" (`MANAGE_EXTERNAL_STORAGE`) is granted. */
+    val storageAllFilesAccess: Boolean = false,
+    /** Names of folders picked with the Storage Access Framework (when All files access is off). */
+    val storageSafFolders: List<String> = emptyList(),
+    /** ID of a paired PC that asked to browse this phone's storage while `storage` is off. */
+    val storageRequestedFrom: String? = null,
     /** File transfers, newest first (running ones and the latest finished). */
     val transfers: List<Transfer> = emptyList(),
 ) {
@@ -105,7 +113,7 @@ data class CoreState(
     fun nameOf(id: String): String? =
         device(id)?.name ?: discovered.firstOrNull { it.id == id }?.name
 
-    fun withDevices(paired: List<PairedDevice>): CoreState {
+    fun withDevices(paired: List<PairedDevice>, storageAllowed: Set<String> = emptySet()): CoreState {
         val prevById = devices.associateBy { it.id }
         return copy(
             devices = paired.map { p ->
@@ -113,6 +121,7 @@ data class CoreState(
                 p.toDevice().copy(
                     deckLayout = prev?.deckLayout,
                     deckState = prev?.deckState,
+                    storageEnabled = if (p.id in storageAllowed) true else prev?.storageEnabled ?: false,
                 )
             }.sortedBy { it.pairedAt },
         )
@@ -120,6 +129,11 @@ data class CoreState(
 
     fun withWakeState(id: String, state: WakeState): CoreState =
         update(id) { it.copy(wakeState = state) }
+
+    fun withStorageEnabled(id: String, enabled: Boolean): CoreState =
+        update(id) { it.copy(storageEnabled = enabled) }.copy(
+            storageRequestedFrom = if (enabled && storageRequestedFrom == id) null else storageRequestedFrom,
+        )
 
     /** Folds one core event into the state. */
     fun reduce(event: Event): CoreState = when (event) {
@@ -130,6 +144,7 @@ data class CoreState(
         is Event.DeviceRemoved -> copy(
             devices = devices.filterNot { it.id == event.id },
             ringingFrom = if (ringingFrom == nameOf(event.id)) null else ringingFrom,
+            storageRequestedFrom = if (storageRequestedFrom == event.id) null else storageRequestedFrom,
         )
         is Event.LinkChanged -> update(event.id) {
             it.copy(
@@ -167,7 +182,8 @@ data class CoreState(
         is Event.Transfer -> copy(transfers = withTransfer(event.transfer))
         // Shown in Android's media controls (see media/PcMedia).
         is Event.MediaChanged -> this
-        // PCs only: phones announce their own photos, calls, contacts, texts, toggles and screen.
+        is Event.StorageRequested -> copy(storageRequestedFrom = event.id)
+        // PCs only: phones announce their own photos, calls, contacts, texts, toggles, storage and screen.
         is Event.PhotoAdded,
         is Event.PhotosChanged,
         is Event.CallChanged,
@@ -177,6 +193,7 @@ data class CoreState(
         is Event.PhoneToggles,
         is Event.Mirroring,
         is Event.RemoteInputRequested,
+        is Event.StorageChanged,
         -> this
     }
 

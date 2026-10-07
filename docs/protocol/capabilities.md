@@ -59,6 +59,8 @@ capability is missing.
 | `toggles.brightness` | Changes the screen brightness ([toggles](toggles.md)) | Modify system settings or Elevated |
 | `toggles.wifi` | Turns Wi-Fi on or off ([toggles](toggles.md)) | Elevated |
 | `toggles.bluetooth` | Turns Bluetooth on or off ([toggles](toggles.md)) | Elevated |
+| `storage.read` | Lists folders and reads files in shared storage or picked SAF folders ([storage](storage.md)) | All files access or picked SAF folder |
+| `storage.write` | Creates folders, writes/uploads files, renames and deletes entries in shared storage or picked SAF folders ([storage](storage.md)) | All files access or picked SAF folder |
 | `camera.stream` | Streams a camera for webcam use | camera permission |
 
 ## Desktop
@@ -75,6 +77,7 @@ capability is missing.
 | `mirror.view` | Shows a phone's screen ([mirroring](mirror.md)) | app update |
 | `mirror.listen` | Plays a mirrored phone's sound ([mirroring](mirror.md)) | app update |
 | `files.browse` | Lets a paired phone browse and fetch its files | app update |
+| `storage.mount` | Mounts a paired phone's shared storage in File Explorer ([storage](storage.md)) | app update |
 | `input.inject` | Accepts pointer, keyboard and presentation input ([remote input](remote.md)) | app update |
 | `recorder` | Saves and converts voice recordings from a phone ([recorder](recorder.md)) | app update |
 | `deck.actions` | Shares its Deck layout and live tile state and runs Deck actions ([deck](deck.md)) | app update |

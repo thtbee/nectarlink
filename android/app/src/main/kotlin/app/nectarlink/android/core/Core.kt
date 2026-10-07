@@ -30,6 +30,7 @@ import app.nectarlink.android.recorder.RecordingsStore
 import app.nectarlink.android.recorder.SavedRecording
 import app.nectarlink.android.service.ConnectionService
 import app.nectarlink.android.sms.PhoneSms
+import app.nectarlink.android.storage.PhoneStorage
 import app.nectarlink.android.toggles.PhoneToggles
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
@@ -83,11 +84,15 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         contacts = { contacts },
         sms = { sms },
         toggles = { toggles },
+        storage = { storage },
         onMirror = { pc, request ->
             MirrorRequests.show(this.context, request, _state.value.nameOf(pc).orEmpty())
         },
         appWindows = AppWindows(this.context, scope, open = { pc -> mirrorOpen(pc) }, nameOf = { pc -> _state.value.nameOf(pc).orEmpty() }),
     )
+    private val storage = PhoneStorage(this.context) { path ->
+        notificationOps.trySend { it.storageChanged(path) }
+    }
     private val toggles = PhoneToggles(
         this.context,
         onChanged = { state ->
@@ -197,7 +202,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             }
             node = started
             val devices = runCatching { started.pairedDevices() }.getOrDefault(emptyList())
-            _state.update { it.withDevices(devices).copy(status = CoreStatus.Ready(started.deviceId())) }
+            val storageAllowed = devices.mapNotNull { dev ->
+                val toggles = runCatching { started.deviceToggles(dev.id) }.getOrDefault(emptyList())
+                if (toggles.any { it.name == PhoneStorage.TOGGLE_NAME && it.enabled }) dev.id else null
+            }.toSet()
+            _state.update {
+                it.withDevices(devices, storageAllowed).copy(status = CoreStatus.Ready(started.deviceId()))
+            }
             if (devices.isNotEmpty()) ConnectionService.start(context)
             scope.launch(Dispatchers.Main) {
                 battery.start()
@@ -212,6 +223,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     smsAccess = PhoneSms.hasAll(context),
                     dndAccess = PhoneToggles.hasDndAccess(context),
                     writeSettingsAccess = PhoneToggles.hasWriteSettings(context),
+                    storageAllFilesAccess = PhoneStorage.hasAllFilesAccess(context),
+                    storageSafFolders = PhoneStorage.safFolders(context).map { f -> f.name },
                 )
             }
             started.updatePower(powerLevel(), capabilities(NotificationListener.hasAccess(context)))
@@ -278,12 +291,24 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         val elevated = Elevated.running
         val dndAccess = PhoneToggles.hasDndAccess(context)
         val writeSettingsAccess = PhoneToggles.hasWriteSettings(context)
+        val storageAllFilesAccess = PhoneStorage.hasAllFilesAccess(context)
+        val storageSafFolders = PhoneStorage.safFolders(context).map { it.name }
+        if (!storageAllFilesAccess) storage.stopWatching()
         val localNetwork = LocalNetwork.granted(context)
         if (localNetwork && !_state.value.localNetwork) {
             // Just allowed: reach the PCs now rather than at the next retry.
             scope.launch { node?.networkChanged() }
         }
         val prevPhotos = _state.value.photoAccess
+        val currentNode = node
+        val storageAllowed = if (currentNode != null) {
+            _state.value.devices.mapNotNull { dev ->
+                val devToggles = runCatching { currentNode.deviceToggles(dev.id) }.getOrDefault(emptyList())
+                if (devToggles.any { it.name == PhoneStorage.TOGGLE_NAME && it.enabled }) dev.id else null
+            }.toSet()
+        } else {
+            emptySet()
+        }
         _state.update {
             it.copy(
                 notificationAccess = granted,
@@ -297,7 +322,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 elevated = elevated,
                 dndAccess = dndAccess,
                 writeSettingsAccess = writeSettingsAccess,
+                storageAllFilesAccess = storageAllFilesAccess,
+                storageSafFolders = storageSafFolders,
                 localNetwork = localNetwork,
+                devices = if (currentNode != null) {
+                    it.devices.map { d -> d.copy(storageEnabled = d.id in storageAllowed) }
+                } else {
+                    it.devices
+                },
             )
         }
         if (granted && NotificationListener.instance == null) {
@@ -570,6 +602,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneContacts.canRead(context)) listOf("contacts.read") else emptyList()) +
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
+            PhoneStorage.capabilities(context) +
             (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList()) +
             // Apps in windows of their own run on displays the Elevated helper makes.
             (if (Elevated.running && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) listOf("mirror.virtual_display") else emptyList()) +
@@ -812,6 +845,32 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 }
             }
         }
+    }
+
+    // ---- Phone storage (File Explorer on PC) ----
+
+    /** Turns phone storage access in File Explorer on or off for `pcId` (off by default). */
+    fun setStorageEnabled(pcId: String, enabled: Boolean) {
+        val currentNode = node ?: return
+        runCatching { currentNode.setDeviceToggle(pcId, PhoneStorage.TOGGLE_NAME, enabled) }
+        _state.update { it.withStorageEnabled(pcId, enabled) }
+        notificationOps.trySend {
+            it.updatePower(powerLevel(), capabilities(_state.value.notificationAccess))
+        }
+    }
+
+    fun dismissStorageRequest() {
+        _state.update { it.copy(storageRequestedFrom = null) }
+    }
+
+    fun addSafFolder(treeUri: Uri) {
+        PhoneStorage.addSafFolder(context, treeUri)
+        refreshNotificationAccess()
+    }
+
+    fun removeSafFolder(name: String) {
+        PhoneStorage.removeSafFolder(context, name)
+        refreshNotificationAccess()
     }
 
     /** Reconnects to PCs that aren't connected and syncs connected ones. */

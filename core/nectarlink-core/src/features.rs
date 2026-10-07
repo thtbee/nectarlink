@@ -34,6 +34,7 @@ pub enum Permission {
     Phone,
     Contacts,
     Photos,
+    Storage,
     Camera,
     Microphone,
 }
@@ -48,6 +49,7 @@ impl Permission {
             Permission::Phone => "phone",
             Permission::Contacts => "contacts",
             Permission::Photos => "photos",
+            Permission::Storage => "storage",
             Permission::Camera => "camera",
             Permission::Microphone => "microphone",
         }
@@ -341,6 +343,8 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("toggles", true),
     ("pc_actions", true),
     ("mirroring", true),
+    // Browsing the phone's storage on a PC is opt-in.
+    ("storage", false),
     // Controlling this PC's mouse and keyboard is opt-in.
     ("remote_input", false),
     // Running custom Deck commands on this PC is opt-in.
@@ -758,6 +762,17 @@ pub const FEATURES: &[FeatureDef] = &[
         id: "files.recordings",
         group: FeatureGroup::Files,
         requires: &[phone("files.transfer", UPDATE), desktop("recorder", UPDATE), DeviceToggle("recordings")],
+        partial: None,
+    },
+    FeatureDef {
+        id: "files.storage",
+        group: FeatureGroup::Files,
+        requires: &[
+            phone("storage.read", Unlock::Permission(Permission::Storage)),
+            phone("storage.write", Unlock::Permission(Permission::Storage)),
+            desktop("storage.mount", UPDATE),
+            DeviceToggle("storage"),
+        ],
         partial: None,
     },
     // Mirroring

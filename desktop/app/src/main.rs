@@ -34,6 +34,7 @@ mod send_to;
 mod settings;
 mod startup;
 mod state;
+mod storage;
 mod transfers;
 mod updater;
 mod win;
@@ -191,6 +192,7 @@ fn uninstall() {
     if let Err(e) = send_to::remove_all() {
         tracing::warn!(error = %e, "can't remove the Send to entries");
     }
+    storage::unregister_all();
     win::toast::unregister();
     startup::remove();
 }
@@ -263,6 +265,7 @@ fn main() -> ExitCode {
     recordings::init(&settings);
     send_to::set_enabled(settings.send_to_menu);
     battery::set_enabled(settings.battery_alerts);
+    storage::start();
     // A test instance (own data folder) leaves the user's menu and sign-in
     // alone.
     if options.data_dir.is_none() {
@@ -318,6 +321,7 @@ fn main() -> ExitCode {
     tracing::info!(code, "shutting down");
     // QML first (it holds references into Qt), then the core.
     drop(engine);
+    storage::shutdown();
     win::net::stop();
     core_host::shutdown();
     drop(app);

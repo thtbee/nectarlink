@@ -76,6 +76,17 @@ pub mod types {
     pub const DECK_LAYOUT: &str = "deck.layout";
     pub const DECK_STATE: &str = "deck.state";
     pub const DECK_PRESS: &str = "deck.press";
+    pub const STORAGE_LIST: &str = "storage.list";
+    pub const STORAGE_ENTRIES: &str = "storage.entries";
+    pub const STORAGE_READ: &str = "storage.read";
+    pub const STORAGE_READ_META: &str = "storage.read.meta";
+    pub const STORAGE_WRITE: &str = "storage.write";
+    pub const STORAGE_WRITE_ACCEPT: &str = "storage.write.accept";
+    pub const STORAGE_WRITE_DONE: &str = "storage.write.done";
+    pub const STORAGE_MKDIR: &str = "storage.mkdir";
+    pub const STORAGE_RENAME: &str = "storage.rename";
+    pub const STORAGE_DELETE: &str = "storage.delete";
+    pub const STORAGE_CHANGED: &str = "storage.changed";
 }
 
 /// What kind of device this is.
@@ -2651,6 +2662,280 @@ impl DeckPress {
     }
 }
 
+// ---- Storage (docs/protocol/storage.md) ----
+
+pub mod storage {
+    /// Offered by phones that list folders and read files in shared storage.
+    pub const READ: &str = "storage.read";
+    /// Offered by phones that create folders, write/upload files, rename and delete entries.
+    pub const WRITE: &str = "storage.write";
+    /// Offered by PCs that mount phone storage in File Explorer.
+    pub const MOUNT: &str = "storage.mount";
+    pub const SERVICE: &str = "storage";
+    pub const OP_READ: &str = "read";
+    pub const OP_WRITE: &str = "write";
+    pub const VERSION: u32 = 1;
+    /// Maximum UTF-8 bytes in a relative storage path.
+    pub const MAX_PATH_BYTES: usize = 1024;
+    /// Maximum `/`-separated path segments.
+    pub const MAX_SEGMENTS: usize = 32;
+    /// Maximum UTF-8 bytes in a single entry name.
+    pub const MAX_NAME_BYTES: usize = 255;
+    /// Maximum bytes in a write upload ID.
+    pub const MAX_ID_BYTES: usize = 64;
+}
+
+/// Whether `name` is a valid single storage entry name (`1..=255` UTF-8 bytes,
+/// not `"."` or `".."`, no `/`, `\`, NUL, or control characters).
+pub fn is_valid_storage_name(name: &str) -> bool {
+    (1..=storage::MAX_NAME_BYTES).contains(&name.len())
+        && name != "."
+        && name != ".."
+        && !name.chars().any(|c| c == '/' || c == '\\' || c.is_control())
+}
+
+/// Whether `path` is a valid non-empty relative storage path (`"DCIM/Camera"`,
+/// `"report.pdf"`): `1..=32` `/`-separated segments, at most 1 024 bytes, no
+/// leading or trailing `/`, no `.` or `..` segments, no `\` or control chars.
+pub fn is_valid_storage_path(path: &str) -> bool {
+    if path.is_empty() || path.len() > storage::MAX_PATH_BYTES || path.starts_with('/') || path.ends_with('/')
+    {
+        return false;
+    }
+    let mut count = 0usize;
+    for seg in path.split('/') {
+        count += 1;
+        if count > storage::MAX_SEGMENTS || !is_valid_storage_name(seg) {
+            return false;
+        }
+    }
+    count >= 1
+}
+
+/// Whether `path` is a valid storage directory path (`""` for the shared root,
+/// or a valid relative path).
+pub fn is_valid_storage_dir_path(path: &str) -> bool {
+    path.is_empty() || is_valid_storage_path(path)
+}
+
+/// Whether `id` is a valid upload ID (`1..=64` printable ASCII characters
+/// without `/` or `\`).
+pub fn is_valid_storage_id(id: &str) -> bool {
+    (1..=storage::MAX_ID_BYTES).contains(&id.len())
+        && id.bytes().all(|b| (0x21..=0x7e).contains(&b) && b != b'/' && b != b'\\')
+}
+
+/// Body of `storage.list` (`docs/protocol/storage.md` §3.1).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageList {
+    pub path: String,
+}
+
+impl std::fmt::Debug for StorageList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StorageList").finish_non_exhaustive()
+    }
+}
+
+impl StorageList {
+    pub fn is_valid(&self) -> bool {
+        is_valid_storage_dir_path(&self.path)
+    }
+}
+
+/// One directory entry in `storage.entries` (`docs/protocol/storage.md` §3).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageEntry {
+    pub name: String,
+    pub size: u64,
+    /// Last-modified time in Unix milliseconds.
+    pub modified: i64,
+    pub is_dir: bool,
+}
+
+/// Never prints entry names in logs (protocol v0 §11).
+impl std::fmt::Debug for StorageEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StorageEntry")
+            .field("size", &self.size)
+            .field("modified", &self.modified)
+            .field("is_dir", &self.is_dir)
+            .finish_non_exhaustive()
+    }
+}
+
+impl StorageEntry {
+    pub fn is_valid(&self) -> bool {
+        is_valid_storage_name(&self.name) && self.modified >= 0
+    }
+
+    pub fn sanitized(mut self) -> Option<Self> {
+        if !is_valid_storage_name(&self.name) {
+            return None;
+        }
+        self.modified = self.modified.max(0);
+        if self.is_dir {
+            self.size = 0;
+        }
+        Some(self)
+    }
+}
+
+/// Body of `storage.entries`: immediate children of a listed folder.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageEntries {
+    #[serde(default)]
+    pub entries: Vec<StorageEntry>,
+}
+
+/// Body of `storage.read` on a `storage/read` stream (`docs/protocol/storage.md` §4.1).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageRead {
+    pub path: String,
+    #[serde(default)]
+    pub offset: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub length: Option<u64>,
+}
+
+impl std::fmt::Debug for StorageRead {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StorageRead")
+            .field("offset", &self.offset)
+            .field("length", &self.length)
+            .finish_non_exhaustive()
+    }
+}
+
+impl StorageRead {
+    pub fn is_valid(&self) -> bool {
+        is_valid_storage_path(&self.path)
+    }
+}
+
+/// Body of `storage.read.meta`: precedes the raw file bytes on a `storage/read` stream.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageReadMeta {
+    pub size: u64,
+    pub modified: i64,
+    pub length: u64,
+}
+
+/// Body of `storage.write` on a `storage/write` stream (`docs/protocol/storage.md` §4.2).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageWriteOffer {
+    pub id: String,
+    pub path: String,
+    pub size: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub modified: Option<i64>,
+}
+
+impl std::fmt::Debug for StorageWriteOffer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StorageWriteOffer")
+            .field("id", &self.id)
+            .field("size", &self.size)
+            .finish_non_exhaustive()
+    }
+}
+
+impl StorageWriteOffer {
+    pub fn is_valid(&self) -> bool {
+        is_valid_storage_id(&self.id)
+            && is_valid_storage_path(&self.path)
+            && self.modified.is_none_or(|m| m >= 0)
+    }
+}
+
+/// Body of `storage.write.accept`: how many bytes the phone already has for this upload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageWriteAccept {
+    pub have: u64,
+}
+
+/// Body of `storage.write.done`: sent by the phone after committing the uploaded file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageWriteDone {
+    pub size: u64,
+    pub modified: i64,
+}
+
+/// Body of `storage.mkdir` (`docs/protocol/storage.md` §3.2).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageMkdir {
+    pub path: String,
+}
+
+impl std::fmt::Debug for StorageMkdir {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StorageMkdir").finish_non_exhaustive()
+    }
+}
+
+impl StorageMkdir {
+    pub fn is_valid(&self) -> bool {
+        is_valid_storage_path(&self.path)
+    }
+}
+
+/// Body of `storage.rename` (`docs/protocol/storage.md` §3.3).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageRename {
+    pub from: String,
+    pub to: String,
+}
+
+impl std::fmt::Debug for StorageRename {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StorageRename").finish_non_exhaustive()
+    }
+}
+
+impl StorageRename {
+    pub fn is_valid(&self) -> bool {
+        is_valid_storage_path(&self.from) && is_valid_storage_path(&self.to) && self.from != self.to
+    }
+}
+
+/// Body of `storage.delete` (`docs/protocol/storage.md` §3.4).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageDelete {
+    pub path: String,
+    #[serde(default)]
+    pub confirmed: bool,
+}
+
+impl std::fmt::Debug for StorageDelete {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StorageDelete").field("confirmed", &self.confirmed).finish_non_exhaustive()
+    }
+}
+
+impl StorageDelete {
+    pub fn is_valid(&self) -> bool {
+        is_valid_storage_path(&self.path)
+    }
+}
+
+/// Body of `storage.changed` (`docs/protocol/storage.md` §3.5).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorageChanged {
+    pub path: String,
+}
+
+impl std::fmt::Debug for StorageChanged {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StorageChanged").finish_non_exhaustive()
+    }
+}
+
+impl StorageChanged {
+    pub fn is_valid(&self) -> bool {
+        is_valid_storage_dir_path(&self.path)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3288,5 +3573,77 @@ mod tests {
         assert_eq!(Envelope::from_cbor(&env.to_cbor()).unwrap().body::<DeckPress>().unwrap(), press);
         assert!(!DeckPress { tile: String::new() }.is_valid());
         assert!(!DeckPress { tile: "bad tile!".into() }.is_valid());
+    }
+
+    #[test]
+    fn storage_paths_and_messages_validate_and_round_trip() {
+        assert!(is_valid_storage_dir_path(""));
+        assert!(!is_valid_storage_path(""));
+        for good in ["DCIM", "DCIM/Camera/IMG_001.jpg", "Download/Report (2026) ✓.pdf", ".hidden/file.txt"]
+        {
+            assert!(is_valid_storage_path(good), "{good}");
+            assert!(is_valid_storage_dir_path(good), "{good}");
+        }
+        for bad in [
+            "/",
+            "/DCIM",
+            "DCIM/",
+            "DCIM//Camera",
+            ".",
+            "..",
+            "../etc/passwd",
+            "DCIM/../secret",
+            "DCIM/.",
+            "DCIM\\Camera",
+            "C:\\Windows",
+            "bad\0name",
+            "bad\nname",
+        ] {
+            assert!(!is_valid_storage_path(bad), "{bad}");
+            assert!(!is_valid_storage_dir_path(bad), "{bad}");
+        }
+        let deep = vec!["a"; storage::MAX_SEGMENTS + 1].join("/");
+        assert!(!is_valid_storage_path(&deep));
+        let long_seg = "x".repeat(storage::MAX_NAME_BYTES + 1);
+        assert!(!is_valid_storage_path(&long_seg));
+
+        let entry = StorageEntry {
+            name: "photo.jpg".into(),
+            size: 123_456,
+            modified: 1_750_000_000_000,
+            is_dir: false,
+        };
+        assert!(entry.is_valid());
+        assert!(!format!("{entry:?}").contains("photo.jpg"));
+        let dir_entry =
+            StorageEntry { name: "DCIM".into(), size: 999, modified: -5, is_dir: true }.sanitized().unwrap();
+        assert_eq!(dir_entry.size, 0);
+        assert_eq!(dir_entry.modified, 0);
+
+        let entries = StorageEntries { entries: vec![entry, dir_entry] };
+        let env = Envelope::new(types::STORAGE_ENTRIES, &entries).unwrap();
+        let back: StorageEntries = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, entries);
+
+        let read = StorageRead { path: "DCIM/photo.jpg".into(), offset: 4096, length: Some(65536) };
+        assert!(read.is_valid());
+        assert!(!format!("{read:?}").contains("photo.jpg"));
+        let env = Envelope::new(types::STORAGE_READ, &read).unwrap();
+        assert_eq!(Envelope::from_cbor(&env.to_cbor()).unwrap().body::<StorageRead>().unwrap(), read);
+
+        let write = StorageWriteOffer {
+            id: "up-1".into(),
+            path: "Download/notes.txt".into(),
+            size: 512,
+            modified: Some(1_750_000_000_000),
+        };
+        assert!(write.is_valid());
+        assert!(!format!("{write:?}").contains("notes.txt"));
+        let env = Envelope::new(types::STORAGE_WRITE, &write).unwrap();
+        assert_eq!(Envelope::from_cbor(&env.to_cbor()).unwrap().body::<StorageWriteOffer>().unwrap(), write);
+
+        let rename = StorageRename { from: "a.txt".into(), to: "b.txt".into() };
+        assert!(rename.is_valid());
+        assert!(!StorageRename { from: "a.txt".into(), to: "a.txt".into() }.is_valid());
     }
 }

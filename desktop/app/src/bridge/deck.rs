@@ -47,7 +47,7 @@ struct UiPage {
 
 fn action_fields(action: &DeckAction) -> (String, bool, bool, bool, bool, String) {
     match action {
-        DeckAction::MediaPlayPause => (String::new(), false, false, false, false, "Play / Pause".into()),
+        DeckAction::MediaPlayPause => (String::new(), false, false, false, false, "Media key".into()),
         DeckAction::MediaNext => (String::new(), false, false, false, false, "Next track".into()),
         DeckAction::MediaPrevious => (String::new(), false, false, false, false, "Previous track".into()),
         DeckAction::VolumeUp => (String::new(), false, false, false, false, "Volume +2%".into()),
@@ -118,7 +118,12 @@ impl qobject::DeckController {
                     .iter()
                     .map(|t| {
                         let kind = t.action.kind().to_owned();
-                        let (param, ctrl, alt, shift, win, subtitle) = action_fields(&t.action);
+                        let (param, ctrl, alt, shift, win, raw_subtitle) = action_fields(&t.action);
+                        let subtitle = if raw_subtitle.eq_ignore_ascii_case(t.label.trim()) {
+                            String::new()
+                        } else {
+                            raw_subtitle
+                        };
                         let status = st.tile_status(&kind).unwrap_or_default();
                         UiTile {
                             id: t.id.clone(),
