@@ -343,6 +343,8 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("mirroring", true),
     // Controlling this PC's mouse and keyboard is opt-in.
     ("remote_input", false),
+    // Running custom Deck commands on this PC is opt-in.
+    ("commands", false),
     // Browsing the PC's files from anywhere is opt-in.
     ("remote_files", false),
 ];

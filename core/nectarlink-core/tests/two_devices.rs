@@ -42,6 +42,7 @@ struct RecordingPlatform {
     photo_barrier: Mutex<Option<Arc<std::sync::Barrier>>>,
     remote_inputs: Mutex<Vec<nectarlink_core::RemoteInput>>,
     phone_toggles: Mutex<Vec<(String, nectarlink_core::PhoneToggleValue)>>,
+    deck_presses: Mutex<Vec<String>>,
 }
 
 impl Platform for RecordingPlatform {
@@ -393,6 +394,10 @@ impl Platform for RecordingPlatform {
     }
     fn set_phone_toggle(&self, id: &str, value: &nectarlink_core::PhoneToggleValue) -> Result<(), String> {
         self.phone_toggles.lock().unwrap().push((id.to_owned(), value.clone()));
+        Ok(())
+    }
+    fn deck_press(&self, _from: &nectarlink_core::DeviceId, tile: &str) -> Result<(), String> {
+        self.deck_presses.lock().unwrap().push(tile.to_owned());
         Ok(())
     }
 }
@@ -2546,4 +2551,103 @@ async fn wake_info_syncs_persists_respects_toggle_and_sends_magic_packet() {
     assert_eq!(n, 102);
     assert_eq!(&buf[..102], &magic_packet(&[0x38, 0xA7, 0x46, 0x37, 0x2E, 0x64])[..]);
     phone.node.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn deck_layout_and_state_arrive_press_runs_action_and_respects_toggles_and_unknown_tile() {
+    use nectarlink_core::{
+        DECK_ACTIONS, DeckAction, DeckConfig, DeckLayout, DeckState, DeckTileConfig, deck_colors, deck_icons,
+    };
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[DECK_ACTIONS]).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+
+    let mut cfg = DeckConfig::default_deck();
+    cfg.pages[0].tiles.push(DeckTileConfig {
+        id: "run_build".into(),
+        label: "Build".into(),
+        icon: deck_icons::TERMINAL.into(),
+        color: deck_colors::CORAL.into(),
+        action: DeckAction::RunCommand { command: "cargo check".into() },
+    });
+    let expected_layout = cfg.to_wire_layout();
+    pc.node.set_deck_layout(expected_layout.clone()).await.unwrap();
+    let initial_state = DeckState { playing: true, volume: 60, muted: false, mic_muted: Some(false) };
+    pc.node.set_deck_state(initial_state.clone()).await.unwrap();
+
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Initial layout and live state arrive on connect.
+    let got_layout = wait_for(&mut phone, "initial deck layout", |e| match e {
+        NodeEvent::DeckLayout { device, layout } if *device == pc_id => Some(layout.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(got_layout, expected_layout);
+    assert_eq!(phone.node.deck_layout(pc_id), Some(expected_layout));
+
+    let got_state = wait_for(&mut phone, "initial deck state", |e| match e {
+        NodeEvent::DeckState { device, state } if *device == pc_id && *state == initial_state => {
+            Some(state.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(got_state, initial_state);
+    assert_eq!(phone.node.deck_state(pc_id), Some(initial_state));
+
+    // Both `remote_input` and `commands` are off by default on the PC.
+    let toggles = pc.node.device_toggles(phone_id).unwrap();
+    assert!(toggles.contains(&("remote_input", false)));
+    assert!(toggles.contains(&("commands", false)));
+
+    // Pressing any tile while `remote_input` is off is denied and emits the one-time prompt.
+    assert!(matches!(phone.node.deck_press(pc_id, "play_pause".into()).await, Err(Error::Denied)));
+    wait_for(&mut pc, "remote input prompt from deck", |e| match e {
+        NodeEvent::RemoteInputRequested { device } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(pc.platform.deck_presses.lock().unwrap().is_empty());
+
+    // Enable `remote_input`: built-in tiles work, unknown tiles return NotFound,
+    // and `run_command` tiles are still denied while `commands` is off.
+    pc.node.set_device_toggle(phone_id, "remote_input", true).unwrap();
+    with_timeout("press play_pause", phone.node.deck_press(pc_id, "play_pause".into())).await.unwrap();
+    with_timeout("press mic_mute", phone.node.deck_press(pc_id, "mic_mute".into())).await.unwrap();
+    assert!(matches!(phone.node.deck_press(pc_id, "no_such_tile".into()).await, Err(Error::NotFound)));
+    assert!(matches!(phone.node.deck_press(pc_id, "bad tile!".into()).await, Err(Error::Protocol(_))));
+    assert!(matches!(phone.node.deck_press(pc_id, "run_build".into()).await, Err(Error::Denied)));
+
+    // Enable `commands`: the `run_command` tile now runs.
+    pc.node.set_device_toggle(phone_id, "commands", true).unwrap();
+    with_timeout("press run_build", phone.node.deck_press(pc_id, "run_build".into())).await.unwrap();
+
+    assert_eq!(
+        *pc.platform.deck_presses.lock().unwrap(),
+        vec!["play_pause".to_owned(), "mic_mute".to_owned(), "run_build".to_owned()]
+    );
+
+    // Live state updates push to the phone.
+    let updated_state = DeckState { playing: false, volume: 45, muted: true, mic_muted: Some(true) };
+    pc.node.set_deck_state(updated_state.clone()).await.unwrap();
+    let got_updated = wait_for(&mut phone, "updated deck state", |e| match e {
+        NodeEvent::DeckState { device, state } if *device == pc_id && *state == updated_state => {
+            Some(state.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(got_updated, updated_state);
+
+    // Layout edits push to the phone; removed tiles can no longer be pressed.
+    let default_only = DeckLayout::default_layout();
+    pc.node.set_deck_layout(default_only.clone()).await.unwrap();
+    wait_for(&mut phone, "updated deck layout", |e| match e {
+        NodeEvent::DeckLayout { device, layout } if *device == pc_id && *layout == default_only => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(matches!(phone.node.deck_press(pc_id, "run_build".into()).await, Err(Error::NotFound)));
 }

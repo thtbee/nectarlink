@@ -790,6 +790,30 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
+    // ---- Deck (phone -> PC) ----
+
+    enum class DeckPressResult { Ok, Denied, Offline, NotFound, Failed }
+
+    /** Presses a Deck tile on a paired PC (`deck.press`). */
+    suspend fun deckPress(id: String, tile: String): DeckPressResult {
+        startJob?.join()
+        val node = node ?: return DeckPressResult.Offline
+        return try {
+            node.deckPress(id, tile)
+            DeckPressResult.Ok
+        } catch (e: NectarlinkException) {
+            when (e) {
+                is NectarlinkException.Denied -> DeckPressResult.Denied
+                is NectarlinkException.Offline -> DeckPressResult.Offline
+                is NectarlinkException.NotFound -> DeckPressResult.NotFound
+                else -> {
+                    _messages.tryEmit(describe(e))
+                    DeckPressResult.Failed
+                }
+            }
+        }
+    }
+
     /** Reconnects to PCs that aren't connected and syncs connected ones. */
     fun refresh() {
         refreshNotificationAccess()

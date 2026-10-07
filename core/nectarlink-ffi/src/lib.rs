@@ -486,6 +486,93 @@ pub enum Event {
         id: String,
         can_wake: bool,
     },
+    /// A paired PC's Deck layout arrived or changed (phones only).
+    DeckLayout {
+        id: String,
+        layout: DeckLayout,
+    },
+    /// A paired PC's live Deck state arrived or changed (phones only).
+    DeckState {
+        id: String,
+        state: DeckState,
+    },
+}
+
+/// One tile on a PC's Deck (`docs/protocol/deck.md`).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct DeckTile {
+    pub id: String,
+    pub label: String,
+    pub icon: String,
+    pub color: String,
+    pub kind: String,
+}
+
+impl std::fmt::Debug for DeckTile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DeckTile")
+            .field("id", &self.id)
+            .field("icon", &self.icon)
+            .field("color", &self.color)
+            .field("kind", &self.kind)
+            .finish_non_exhaustive()
+    }
+}
+
+impl From<core::DeckTile> for DeckTile {
+    fn from(t: core::DeckTile) -> Self {
+        DeckTile { id: t.id, label: t.label, icon: t.icon, color: t.color, kind: t.kind }
+    }
+}
+
+/// One page of tiles on a PC's Deck (`docs/protocol/deck.md`).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct DeckPage {
+    pub id: String,
+    pub name: String,
+    pub tiles: Vec<DeckTile>,
+}
+
+impl std::fmt::Debug for DeckPage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DeckPage")
+            .field("id", &self.id)
+            .field("tiles", &self.tiles.len())
+            .finish_non_exhaustive()
+    }
+}
+
+impl From<core::DeckPage> for DeckPage {
+    fn from(p: core::DeckPage) -> Self {
+        DeckPage { id: p.id, name: p.name, tiles: p.tiles.into_iter().map(Into::into).collect() }
+    }
+}
+
+/// A PC's Deck layout (`docs/protocol/deck.md`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct DeckLayout {
+    pub pages: Vec<DeckPage>,
+}
+
+impl From<core::DeckLayout> for DeckLayout {
+    fn from(l: core::DeckLayout) -> Self {
+        DeckLayout { pages: l.pages.into_iter().map(Into::into).collect() }
+    }
+}
+
+/// Live PC state reflected on Deck tiles (`docs/protocol/deck.md`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct DeckState {
+    pub playing: bool,
+    pub volume: u8,
+    pub muted: bool,
+    pub mic_muted: Option<bool>,
+}
+
+impl From<core::DeckState> for DeckState {
+    fn from(s: core::DeckState) -> Self {
+        DeckState { playing: s.playing, volume: s.volume, muted: s.muted, mic_muted: s.mic_muted }
+    }
 }
 
 /// This phone's quick settings state (docs/protocol/toggles.md).
@@ -1323,6 +1410,12 @@ impl From<NodeEvent> for Event {
             }
             NodeEvent::WakeInfoChanged { device, can_wake } => {
                 Event::WakeInfoChanged { id: device.to_string(), can_wake }
+            }
+            NodeEvent::DeckLayout { device, layout } => {
+                Event::DeckLayout { id: device.to_string(), layout: layout.into() }
+            }
+            NodeEvent::DeckState { device, state } => {
+                Event::DeckState { id: device.to_string(), state: state.into() }
             }
         }
     }
@@ -2167,6 +2260,27 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.remote_laser(id, on, x, y).await?) }).await
+    }
+
+    // ---- Deck (macro pad) ----
+
+    /// The latest Deck layout reported by a connected PC, if any.
+    pub fn deck_layout(&self, id: String) -> Result<Option<DeckLayout>> {
+        let id = parse_id(&id)?;
+        Ok(self.node.deck_layout(id).map(Into::into))
+    }
+
+    /// The latest live Deck state reported by a connected PC, if any.
+    pub fn deck_state(&self, id: String) -> Result<Option<DeckState>> {
+        let id = parse_id(&id)?;
+        Ok(self.node.deck_state(id).map(Into::into))
+    }
+
+    /// Asks a paired PC to run the action bound to `tile` (`deck.press`).
+    pub async fn deck_press(&self, id: String, tile: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.deck_press(id, tile).await?) }).await
     }
 
     /// Opens this phone's screen stream to a PC that asked (after the user

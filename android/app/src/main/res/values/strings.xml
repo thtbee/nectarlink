@@ -299,4 +299,20 @@
         <item quantity="one">%1$d marker</item>
         <item quantity="other">%1$d markers</item>
     </plurals>
+
+    <!-- Deck (macro pad -> PC) -->
+    <string name="action_deck_pc">Deck</string>
+    <string name="deck_title">Deck</string>
+    <string name="deck_fullscreen">Full screen</string>
+    <string name="deck_exit_fullscreen">Exit full screen</string>
+    <string name="deck_playing">Playing</string>
+    <string name="deck_paused">Paused</string>
+    <string name="deck_muted">Muted</string>
+    <string name="deck_live">Live</string>
+    <string name="deck_volume_percent">%1$d%%</string>
+    <string name="deck_waiting">Loading %1$s\'s Deck…</string>
+    <string name="deck_empty_page">No tiles on this page yet. Add tiles in Nectarlink on %1$s.</string>
+    <string name="deck_commands_denied_title">Allow commands on %1$s</string>
+    <string name="deck_commands_denied_text">To run shell commands from this phone, turn on “Run Deck commands” for this phone in Nectarlink › Settings › Devices on %1$s.</string>
+    <string name="deck_hint">Configure pages and tiles in Nectarlink › Deck on %1$s.</string>
 </resources>

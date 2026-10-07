@@ -285,6 +285,14 @@ pub trait Platform: Send + Sync + 'static {
     fn set_phone_toggle(&self, _id: &str, _value: &crate::PhoneToggleValue) -> Result<(), String> {
         Err("this device has no phone toggles".into())
     }
+
+    /// Run a Deck tile's action on this PC (`deck.press`, `docs/protocol/deck.md`).
+    /// `tile` has been validated against the current Deck layout and the
+    /// required per-device toggles (`remote_input`, plus `commands` for
+    /// `run_command` tiles). `Err` holds a reason for logs.
+    fn deck_press(&self, _from: &nectarlink_protocol::DeviceId, _tile: &str) -> Result<(), String> {
+        Err("this device has no deck actions".into())
+    }
 }
 
 /// A platform that does nothing; useful for tests and headless tools.

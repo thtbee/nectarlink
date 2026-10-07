@@ -203,10 +203,10 @@ current Android. Talking through the PC comes with the HFP item above.
 | **Air mouse**: point the phone and its gyroscope moves the PC cursor, for presentations and couch use ✅ | P1 🟢 |
 | **Voice typing into PC**: hold a button on the phone, speak, and the text (from the phone's own speech engine) is typed into the PC's focused field ✅ | P1 🟢 |
 | Type on the phone with the PC keyboard (without mirroring) | P1 🟣 |
-| **Deck**: the phone becomes a Stream-Deck-style macro pad for the PC with live tiles: mic mute, media, app launchers, scripts, OBS scenes, window switching, multiple pages, haptic feedback | P1 🟢 |
+| **Deck**: the phone becomes a Stream-Deck-style macro pad for the PC with live tiles: mic mute, media, app launchers, scripts, OBS scenes, window switching, multiple pages, haptic feedback ✅ | P1 🟢 |
 | **Flow**: move the PC mouse off the screen edge onto the phone/tablet and back, with clipboard following | P2 🟣 |
 | Phone toggles from PC: Wi-Fi, BT, DND, ringer, flashlight, volume, brightness ✅ (the hotspot has no shell command to switch it; see Instant Hotspot) | P1 (partly 🟣) |
-| PC actions from phone: lock, sleep, shutdown, mute, custom commands/scripts | P0 (lock/sleep), P1 (custom, off by default) |
+| PC actions from phone: lock, sleep, shutdown, mute, custom commands/scripts ✅ | P0 (lock/sleep), P1 (custom, off by default) |
 | Wake-on-LAN ✅ | P1 |
 | **Unlock PC with phone fingerprint**: the PC lock screen offers "Unlock with phone" → the phone shows a biometric prompt → a signed challenge unlocks Windows. Built as a Windows credential provider. Keys live in Android Keystore (StrongBox where available) and are bound to biometrics. Works only when paired and nearby (BLE proximity + LAN). Rate-limited, revocable, and **external security review before release** | P2 (dedicated workstream) |
 

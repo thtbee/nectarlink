@@ -77,5 +77,5 @@ capability is missing.
 | `files.browse` | Lets a paired phone browse and fetch its files | app update |
 | `input.inject` | Accepts pointer, keyboard and presentation input ([remote input](remote.md)) | app update |
 | `recorder` | Saves and converts voice recordings from a phone ([recorder](recorder.md)) | app update |
-| `deck.actions` | Runs Deck actions | app update |
+| `deck.actions` | Shares its Deck layout and live tile state and runs Deck actions ([deck](deck.md)) | app update |
 | `addon.vcam` | The virtual camera add-on is installed | installing the add-on |

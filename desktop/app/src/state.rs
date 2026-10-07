@@ -49,6 +49,8 @@ impl Changes {
     pub const REMOTE: Changes = Changes(1 << 16);
     /// A phone's quick settings toggles.
     pub const TOGGLES: Changes = Changes(1 << 17);
+    /// This PC's Deck layout or live state (kept by crate::deck).
+    pub const DECK: Changes = Changes(1 << 18);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
@@ -435,7 +437,9 @@ impl AppState {
             | NodeEvent::ContactsChanged { .. }
             | NodeEvent::SmsChanged { .. }
             | NodeEvent::Mirroring { .. }
-            | NodeEvent::WakeInfoChanged { .. } => Changes::NONE,
+            | NodeEvent::WakeInfoChanged { .. }
+            | NodeEvent::DeckLayout { .. }
+            | NodeEvent::DeckState { .. } => Changes::NONE,
             // The gallery's own downloads (for its viewer, or the clipboard)
             // aren't files the user keeps.
             NodeEvent::Transfer(transfer) if crate::photos::is_private(&transfer.id) => {

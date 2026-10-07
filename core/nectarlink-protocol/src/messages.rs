@@ -73,6 +73,9 @@ pub mod types {
     pub const REMOTE_INPUT: &str = "remote.input";
     pub const PHONE_TOGGLES: &str = "phone.toggles";
     pub const PHONE_TOGGLE_SET: &str = "phone.toggle.set";
+    pub const DECK_LAYOUT: &str = "deck.layout";
+    pub const DECK_STATE: &str = "deck.state";
+    pub const DECK_PRESS: &str = "deck.press";
 }
 
 /// What kind of device this is.
@@ -2211,6 +2214,443 @@ impl PhoneToggleSet {
     }
 }
 
+// ---- Deck (docs/protocol/deck.md) ----
+
+pub mod deck {
+    /// Offered by PCs that share their Deck layout and live state and run Deck actions.
+    pub const ACTIONS: &str = "deck.actions";
+    /// Maximum pages in a `DeckLayout`.
+    pub const MAX_PAGES: usize = 8;
+    /// Maximum tiles on a single `DeckPage`.
+    pub const MAX_TILES_PER_PAGE: usize = 24;
+    /// Maximum bytes in a page or tile ID.
+    pub const MAX_ID_BYTES: usize = 64;
+    /// Maximum UTF-8 bytes in a page name or tile label.
+    pub const MAX_LABEL_BYTES: usize = 64;
+}
+
+/// Action kinds for [`DeckTile::kind`] (`docs/protocol/deck.md` §2.4).
+pub mod deck_kinds {
+    pub const MEDIA_PLAY_PAUSE: &str = "media_play_pause";
+    pub const MEDIA_NEXT: &str = "media_next";
+    pub const MEDIA_PREVIOUS: &str = "media_previous";
+    pub const VOLUME_UP: &str = "volume_up";
+    pub const VOLUME_DOWN: &str = "volume_down";
+    pub const VOLUME_MUTE: &str = "volume_mute";
+    pub const MIC_MUTE: &str = "mic_mute";
+    pub const LOCK_PC: &str = "lock_pc";
+    pub const SHOW_DESKTOP: &str = "show_desktop";
+    pub const SWITCH_WINDOW: &str = "switch_window";
+    pub const SCREENSHOT: &str = "screenshot";
+    pub const SHORTCUT: &str = "shortcut";
+    pub const OPEN_URL: &str = "open_url";
+    pub const TYPE_TEXT: &str = "type_text";
+    pub const LAUNCH_APP: &str = "launch_app";
+    pub const RUN_COMMAND: &str = "run_command";
+
+    pub const ALL: &[&str] = &[
+        MEDIA_PLAY_PAUSE,
+        MEDIA_NEXT,
+        MEDIA_PREVIOUS,
+        VOLUME_UP,
+        VOLUME_DOWN,
+        VOLUME_MUTE,
+        MIC_MUTE,
+        LOCK_PC,
+        SHOW_DESKTOP,
+        SWITCH_WINDOW,
+        SCREENSHOT,
+        SHORTCUT,
+        OPEN_URL,
+        TYPE_TEXT,
+        LAUNCH_APP,
+        RUN_COMMAND,
+    ];
+
+    /// Default icon for an action kind.
+    pub fn default_icon(kind: &str) -> &'static str {
+        use super::deck_icons::*;
+        match kind {
+            MEDIA_PLAY_PAUSE => PLAY,
+            MEDIA_NEXT => SKIP_NEXT,
+            MEDIA_PREVIOUS => SKIP_PREVIOUS,
+            VOLUME_UP => VOLUME_UP,
+            VOLUME_DOWN => VOLUME_DOWN,
+            VOLUME_MUTE => VOLUME_OFF,
+            MIC_MUTE => MIC,
+            LOCK_PC => LOCK,
+            SHOW_DESKTOP => DESKTOP,
+            SWITCH_WINDOW => SWITCH_WINDOW,
+            SCREENSHOT => SCREENSHOT,
+            SHORTCUT => SHORTCUT,
+            OPEN_URL => GLOBE,
+            TYPE_TEXT => TEXT,
+            LAUNCH_APP => APP,
+            RUN_COMMAND => TERMINAL,
+            _ => SPARKLE,
+        }
+    }
+
+    /// Default color for an action kind.
+    pub fn default_color(kind: &str) -> &'static str {
+        use super::deck_colors::*;
+        match kind {
+            MEDIA_PLAY_PAUSE => AMBER,
+            MEDIA_NEXT | MEDIA_PREVIOUS => SLATE,
+            VOLUME_UP | VOLUME_DOWN | VOLUME_MUTE => TEAL,
+            MIC_MUTE => CORAL,
+            LOCK_PC => RED,
+            SHOW_DESKTOP | SWITCH_WINDOW => BLUE,
+            SCREENSHOT => VIOLET,
+            SHORTCUT => AMBER,
+            OPEN_URL => BLUE,
+            TYPE_TEXT => GREEN,
+            LAUNCH_APP => TEAL,
+            RUN_COMMAND => CORAL,
+            _ => AMBER,
+        }
+    }
+
+    /// Default label for an action kind.
+    pub fn default_label(kind: &str) -> &'static str {
+        match kind {
+            MEDIA_PLAY_PAUSE => "Play / Pause",
+            MEDIA_NEXT => "Next",
+            MEDIA_PREVIOUS => "Previous",
+            VOLUME_UP => "Volume Up",
+            VOLUME_DOWN => "Volume Down",
+            VOLUME_MUTE => "Mute Audio",
+            MIC_MUTE => "Mic Mute",
+            LOCK_PC => "Lock PC",
+            SHOW_DESKTOP => "Show Desktop",
+            SWITCH_WINDOW => "Switch Window",
+            SCREENSHOT => "Screenshot",
+            SHORTCUT => "Shortcut",
+            OPEN_URL => "Open Website",
+            TYPE_TEXT => "Type Text",
+            LAUNCH_APP => "Launch App",
+            RUN_COMMAND => "Run Command",
+            _ => "Action",
+        }
+    }
+}
+
+/// Fixed icon identifiers for [`DeckTile::icon`] (`docs/protocol/deck.md` §2.4).
+pub mod deck_icons {
+    pub const PLAY: &str = "play";
+    pub const PAUSE: &str = "pause";
+    pub const SKIP_NEXT: &str = "skip_next";
+    pub const SKIP_PREVIOUS: &str = "skip_previous";
+    pub const VOLUME_UP: &str = "volume_up";
+    pub const VOLUME_DOWN: &str = "volume_down";
+    pub const VOLUME_OFF: &str = "volume_off";
+    pub const MIC: &str = "mic";
+    pub const MIC_OFF: &str = "mic_off";
+    pub const LOCK: &str = "lock";
+    pub const DESKTOP: &str = "desktop";
+    pub const SWITCH_WINDOW: &str = "switch_window";
+    pub const SCREENSHOT: &str = "screenshot";
+    pub const SHORTCUT: &str = "shortcut";
+    pub const GLOBE: &str = "globe";
+    pub const TEXT: &str = "text";
+    pub const APP: &str = "app";
+    pub const TERMINAL: &str = "terminal";
+    pub const SPARKLE: &str = "sparkle";
+    pub const STAR: &str = "star";
+
+    pub const ALL: &[&str] = &[
+        PLAY,
+        PAUSE,
+        SKIP_NEXT,
+        SKIP_PREVIOUS,
+        VOLUME_UP,
+        VOLUME_DOWN,
+        VOLUME_OFF,
+        MIC,
+        MIC_OFF,
+        LOCK,
+        DESKTOP,
+        SWITCH_WINDOW,
+        SCREENSHOT,
+        SHORTCUT,
+        GLOBE,
+        TEXT,
+        APP,
+        TERMINAL,
+        SPARKLE,
+        STAR,
+    ];
+}
+
+/// Fixed color identifiers for [`DeckTile::color`] (`docs/protocol/deck.md` §2.4).
+pub mod deck_colors {
+    pub const AMBER: &str = "amber";
+    pub const CORAL: &str = "coral";
+    pub const RED: &str = "red";
+    pub const TEAL: &str = "teal";
+    pub const GREEN: &str = "green";
+    pub const BLUE: &str = "blue";
+    pub const VIOLET: &str = "violet";
+    pub const SLATE: &str = "slate";
+
+    pub const ALL: &[&str] = &[AMBER, CORAL, RED, TEAL, GREEN, BLUE, VIOLET, SLATE];
+}
+
+/// Whether a Deck page or tile ID is 1..=64 ASCII alphanumeric, `_`, `-`, or `.` characters.
+pub fn is_valid_deck_id(id: &str) -> bool {
+    (1..=deck::MAX_ID_BYTES).contains(&id.len())
+        && id.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
+}
+
+fn is_valid_deck_label(s: &str) -> bool {
+    let trimmed = s.trim();
+    !trimmed.is_empty() && s.len() <= deck::MAX_LABEL_BYTES && !s.chars().any(char::is_control)
+}
+
+fn sanitize_deck_label(s: &str) -> Option<String> {
+    let filtered: String = s.chars().filter(|c| !c.is_control()).collect();
+    let trimmed = filtered.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let mut end = trimmed.len().min(deck::MAX_LABEL_BYTES);
+    while end > 0 && !trimmed.is_char_boundary(end) {
+        end -= 1;
+    }
+    let out = trimmed[..end].trim().to_owned();
+    (!out.is_empty()).then_some(out)
+}
+
+/// One tile in a [`DeckPage`] (`docs/protocol/deck.md` §2.1).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeckTile {
+    pub id: String,
+    pub label: String,
+    pub icon: String,
+    pub color: String,
+    pub kind: String,
+}
+
+/// Never prints the user label (protocol v0 §11).
+impl std::fmt::Debug for DeckTile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DeckTile")
+            .field("id", &self.id)
+            .field("icon", &self.icon)
+            .field("color", &self.color)
+            .field("kind", &self.kind)
+            .finish_non_exhaustive()
+    }
+}
+
+impl DeckTile {
+    pub fn is_valid(&self) -> bool {
+        is_valid_deck_id(&self.id)
+            && is_valid_deck_label(&self.label)
+            && deck_icons::ALL.contains(&self.icon.as_str())
+            && deck_colors::ALL.contains(&self.color.as_str())
+            && deck_kinds::ALL.contains(&self.kind.as_str())
+    }
+
+    pub fn sanitized(self) -> Option<Self> {
+        if !is_valid_deck_id(&self.id) || !deck_kinds::ALL.contains(&self.kind.as_str()) {
+            return None;
+        }
+        let label = sanitize_deck_label(&self.label)?;
+        let icon = if deck_icons::ALL.contains(&self.icon.as_str()) {
+            self.icon
+        } else {
+            deck_kinds::default_icon(&self.kind).into()
+        };
+        let color = if deck_colors::ALL.contains(&self.color.as_str()) {
+            self.color
+        } else {
+            deck_kinds::default_color(&self.kind).into()
+        };
+        Some(DeckTile { id: self.id, label, icon, color, kind: self.kind })
+    }
+}
+
+/// One page of tiles in [`DeckLayout`] (`docs/protocol/deck.md` §2.1).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeckPage {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub tiles: Vec<DeckTile>,
+}
+
+/// Never prints the page name (protocol v0 §11).
+impl std::fmt::Debug for DeckPage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DeckPage")
+            .field("id", &self.id)
+            .field("tiles", &self.tiles.len())
+            .finish_non_exhaustive()
+    }
+}
+
+/// Body of `deck.layout`: pages and tiles configured on the PC (`docs/protocol/deck.md` §2.1).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeckLayout {
+    pub pages: Vec<DeckPage>,
+}
+
+impl DeckLayout {
+    pub fn is_valid(&self) -> bool {
+        if !(1..=deck::MAX_PAGES).contains(&self.pages.len()) {
+            return false;
+        }
+        let mut page_ids = std::collections::BTreeSet::new();
+        let mut tile_ids = std::collections::BTreeSet::new();
+        for page in &self.pages {
+            if !is_valid_deck_id(&page.id)
+                || !is_valid_deck_label(&page.name)
+                || page.tiles.len() > deck::MAX_TILES_PER_PAGE
+                || !page_ids.insert(page.id.as_str())
+            {
+                return false;
+            }
+            for tile in &page.tiles {
+                if !tile.is_valid() || !tile_ids.insert(tile.id.as_str()) {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    pub fn sanitized(self) -> Option<Self> {
+        let mut page_ids = std::collections::BTreeSet::new();
+        let mut tile_ids = std::collections::BTreeSet::new();
+        let mut pages = Vec::new();
+        for page in self.pages {
+            if pages.len() >= deck::MAX_PAGES {
+                break;
+            }
+            if !is_valid_deck_id(&page.id) || !page_ids.insert(page.id.clone()) {
+                continue;
+            }
+            let Some(name) = sanitize_deck_label(&page.name) else {
+                continue;
+            };
+            let mut tiles = Vec::new();
+            for tile in page.tiles {
+                if tiles.len() >= deck::MAX_TILES_PER_PAGE {
+                    break;
+                }
+                if let Some(clean) = tile.sanitized()
+                    && tile_ids.insert(clean.id.clone())
+                {
+                    tiles.push(clean);
+                }
+            }
+            pages.push(DeckPage { id: page.id, name, tiles });
+        }
+        (!pages.is_empty()).then_some(DeckLayout { pages })
+    }
+
+    /// Finds a tile by ID across all pages.
+    pub fn tile(&self, id: &str) -> Option<&DeckTile> {
+        self.pages.iter().flat_map(|p| p.tiles.iter()).find(|t| t.id == id)
+    }
+
+    /// The default single-page Deck layout (`docs/protocol/deck.md`).
+    pub fn default_layout() -> Self {
+        let tile = |id: &str, kind: &str| DeckTile {
+            id: id.into(),
+            label: deck_kinds::default_label(kind).into(),
+            icon: deck_kinds::default_icon(kind).into(),
+            color: deck_kinds::default_color(kind).into(),
+            kind: kind.into(),
+        };
+        DeckLayout {
+            pages: vec![DeckPage {
+                id: "main".into(),
+                name: "Main".into(),
+                tiles: vec![
+                    tile("play_pause", deck_kinds::MEDIA_PLAY_PAUSE),
+                    tile("prev_track", deck_kinds::MEDIA_PREVIOUS),
+                    tile("next_track", deck_kinds::MEDIA_NEXT),
+                    tile("vol_down", deck_kinds::VOLUME_DOWN),
+                    tile("vol_up", deck_kinds::VOLUME_UP),
+                    tile("vol_mute", deck_kinds::VOLUME_MUTE),
+                    tile("mic_mute", deck_kinds::MIC_MUTE),
+                    tile("show_desktop", deck_kinds::SHOW_DESKTOP),
+                    tile("switch_window", deck_kinds::SWITCH_WINDOW),
+                    tile("screenshot", deck_kinds::SCREENSHOT),
+                    tile("lock_pc", deck_kinds::LOCK_PC),
+                ],
+            }],
+        }
+    }
+}
+
+impl Default for DeckLayout {
+    fn default() -> Self {
+        Self::default_layout()
+    }
+}
+
+/// Body of `deck.state`: live PC state reflected on Deck tiles (`docs/protocol/deck.md` §2.2).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeckState {
+    #[serde(default)]
+    pub playing: bool,
+    #[serde(default)]
+    pub volume: u8,
+    #[serde(default)]
+    pub muted: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mic_muted: Option<bool>,
+}
+
+impl DeckState {
+    pub fn is_valid(&self) -> bool {
+        self.volume <= 100
+    }
+
+    pub fn sanitized(mut self) -> Option<Self> {
+        self.volume = self.volume.min(100);
+        Some(self)
+    }
+
+    /// Short live status text for a tile of `kind`, if `kind` is a live tile.
+    pub fn tile_status(&self, kind: &str) -> Option<String> {
+        match kind {
+            deck_kinds::MEDIA_PLAY_PAUSE => {
+                Some(if self.playing { "Playing".into() } else { "Paused".into() })
+            }
+            deck_kinds::VOLUME_UP | deck_kinds::VOLUME_DOWN => Some(if self.muted {
+                format!("Muted · {}%", self.volume)
+            } else {
+                format!("{}%", self.volume)
+            }),
+            deck_kinds::VOLUME_MUTE => {
+                Some(if self.muted { "Muted".into() } else { format!("{}%", self.volume) })
+            }
+            deck_kinds::MIC_MUTE => match self.mic_muted {
+                Some(true) => Some("Muted".into()),
+                Some(false) => Some("Live".into()),
+                None => Some("No mic".into()),
+            },
+            _ => None,
+        }
+    }
+}
+
+/// Body of `deck.press`: asks the PC to run a tile's action (`docs/protocol/deck.md` §2.3).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeckPress {
+    pub tile: String,
+}
+
+impl DeckPress {
+    pub fn is_valid(&self) -> bool {
+        is_valid_deck_id(&self.tile)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2778,5 +3218,75 @@ mod tests {
         .sanitized();
         assert_eq!(messy.macs, vec!["38:a7:46:37:2e:64"]);
         assert_eq!(messy.broadcasts, vec!["192.168.1.255"]);
+    }
+
+    #[test]
+    fn deck_layout_state_and_press_validate_sanitize_and_round_trip() {
+        let layout = DeckLayout::default_layout();
+        assert!(layout.is_valid());
+        assert_eq!(layout.pages.len(), 1);
+        assert!(layout.tile("play_pause").is_some());
+        assert!(layout.tile("mic_mute").is_some());
+        assert!(layout.tile("lock_pc").is_some());
+        assert!(layout.tile("screenshot").is_some());
+        assert!(layout.tile("show_desktop").is_some());
+
+        // Debug output hides user labels and page names.
+        let dbg = format!("{layout:?}");
+        assert!(!dbg.contains("Play / Pause") && !dbg.contains("Main"), "{dbg}");
+
+        let env = Envelope::new(types::DECK_LAYOUT, &layout).unwrap();
+        let back: DeckLayout = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, layout);
+
+        // Duplicate tile IDs across pages are invalid and deduplicated by sanitized().
+        let dup_tile = layout.pages[0].tiles[0].clone();
+        let with_dup = DeckLayout {
+            pages: vec![
+                layout.pages[0].clone(),
+                DeckPage { id: "page2".into(), name: "Second".into(), tiles: vec![dup_tile] },
+            ],
+        };
+        assert!(!with_dup.is_valid());
+        let clean = with_dup.sanitized().unwrap();
+        assert!(clean.is_valid());
+        assert!(clean.pages[1].tiles.is_empty());
+
+        // Unknown icon/color fall back to the action kind's default in sanitized().
+        let fallback = DeckTile {
+            id: "cmd1".into(),
+            label: "  Build\nnow  ".into(),
+            icon: "unknown_icon".into(),
+            color: "unknown_color".into(),
+            kind: deck_kinds::RUN_COMMAND.into(),
+        }
+        .sanitized()
+        .unwrap();
+        assert_eq!(fallback.label, "Buildnow");
+        assert_eq!(fallback.icon, deck_icons::TERMINAL);
+        assert_eq!(fallback.color, deck_colors::CORAL);
+
+        // Empty pages list is rejected.
+        assert!(!DeckLayout { pages: vec![] }.is_valid());
+        assert_eq!(DeckLayout { pages: vec![] }.sanitized(), None);
+
+        // Live state round-trip and status formatting.
+        let state = DeckState { playing: true, volume: 72, muted: false, mic_muted: Some(true) };
+        assert!(state.is_valid());
+        assert_eq!(state.tile_status(deck_kinds::MEDIA_PLAY_PAUSE).as_deref(), Some("Playing"));
+        assert_eq!(state.tile_status(deck_kinds::VOLUME_UP).as_deref(), Some("72%"));
+        assert_eq!(state.tile_status(deck_kinds::MIC_MUTE).as_deref(), Some("Muted"));
+        assert_eq!(state.tile_status(deck_kinds::LOCK_PC), None);
+        let env = Envelope::new(types::DECK_STATE, &state).unwrap();
+        let back: DeckState = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, state);
+
+        // Press validation.
+        let press = DeckPress { tile: "play_pause".into() };
+        assert!(press.is_valid());
+        let env = Envelope::new(types::DECK_PRESS, &press).unwrap();
+        assert_eq!(Envelope::from_cbor(&env.to_cbor()).unwrap().body::<DeckPress>().unwrap(), press);
+        assert!(!DeckPress { tile: String::new() }.is_valid());
+        assert!(!DeckPress { tile: "bad tile!".into() }.is_valid());
     }
 }

@@ -49,6 +49,7 @@ import app.nectarlink.android.ui.home.HomeScreen
 import app.nectarlink.android.ui.pairing.PairingActions
 import android.view.KeyEvent
 import app.nectarlink.android.core.LocalNetwork
+import app.nectarlink.android.ui.deck.DeckScreen
 import app.nectarlink.android.ui.pairing.PairingScreen
 import app.nectarlink.android.ui.recorder.RecorderScreen
 import app.nectarlink.android.ui.remote.RemoteMode
@@ -61,6 +62,7 @@ class MainActivity : ComponentActivity() {
     private var activeRemotePcId: String? = null
     private var requestedRemotePc by mutableStateOf<String?>(null)
     private var requestedRemoteMode by mutableStateOf(RemoteMode.Touchpad)
+    private var requestedDeckPc by mutableStateOf<String?>(null)
     private var requestedRecordPc by mutableStateOf<String?>(null)
 
     private val permissions =
@@ -85,6 +87,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) {
             handlePairingLink(intent)
             handleRemoteIntent(intent)
+            handleDeckIntent(intent)
             handleRecordIntent(intent)
         }
 
@@ -110,6 +113,8 @@ class MainActivity : ComponentActivity() {
                         requestedRemotePc = requestedRemotePc,
                         requestedRemoteMode = requestedRemoteMode,
                         onRemoteConsumed = { requestedRemotePc = null },
+                        requestedDeckPc = requestedDeckPc,
+                        onDeckConsumed = { requestedDeckPc = null },
                         requestedRecordPc = requestedRecordPc,
                         onRecordConsumed = { requestedRecordPc = null },
                         onActiveRemoteChanged = { activeRemotePcId = it },
@@ -131,6 +136,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         handlePairingLink(intent)
         handleRemoteIntent(intent)
+        handleDeckIntent(intent)
         handleRecordIntent(intent)
     }
 
@@ -177,6 +183,11 @@ class MainActivity : ComponentActivity() {
         requestedRemotePc = pc
     }
 
+    private fun handleDeckIntent(intent: Intent?) {
+        val pc = intent?.getStringExtra("deck_pc") ?: return
+        requestedDeckPc = pc
+    }
+
     private fun handleRecordIntent(intent: Intent?) {
         val pc = intent?.getStringExtra("record_pc") ?: return
         requestedRecordPc = pc
@@ -207,6 +218,8 @@ private fun App(
     requestedRemotePc: String?,
     requestedRemoteMode: RemoteMode,
     onRemoteConsumed: () -> Unit,
+    requestedDeckPc: String?,
+    onDeckConsumed: () -> Unit,
     requestedRecordPc: String?,
     onRecordConsumed: () -> Unit,
     onActiveRemoteChanged: (String?) -> Unit,
@@ -215,6 +228,7 @@ private fun App(
     var pairing by rememberSaveable { mutableStateOf(false) }
     var remotePcId by rememberSaveable { mutableStateOf<String?>(null) }
     var remoteInitialMode by rememberSaveable { mutableStateOf(RemoteMode.Touchpad) }
+    var deckPcId by rememberSaveable { mutableStateOf<String?>(null) }
     var recordPcId by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { core.messages.collect { snackbar.showSnackbar(it) } }
@@ -224,9 +238,21 @@ private fun App(
         val target = if (req == "first") state.devices.firstOrNull()?.id else state.device(req)?.id
         if (target != null) {
             recordPcId = null
+            deckPcId = null
             remoteInitialMode = requestedRemoteMode
             remotePcId = target
             onRemoteConsumed()
+        }
+    }
+
+    LaunchedEffect(requestedDeckPc, state.devices) {
+        val req = requestedDeckPc ?: return@LaunchedEffect
+        val target = if (req == "first") state.devices.firstOrNull()?.id else state.device(req)?.id
+        if (target != null) {
+            remotePcId = null
+            recordPcId = null
+            deckPcId = target
+            onDeckConsumed()
         }
     }
 
@@ -235,12 +261,14 @@ private fun App(
         val target = if (req == "first") state.devices.firstOrNull()?.id else state.device(req)?.id
         if (target != null) {
             remotePcId = null
+            deckPcId = null
             recordPcId = target
             onRecordConsumed()
         }
     }
 
     val remoteDevice = remotePcId?.let { state.device(it) }
+    val deckDevice = deckPcId?.let { state.device(it) }
     val recordDevice = recordPcId?.let { state.device(it) }
     LaunchedEffect(remoteDevice?.id) {
         onActiveRemoteChanged(remoteDevice?.id)
@@ -277,6 +305,19 @@ private fun App(
                     state = state,
                     core = core,
                     onBack = { recordPcId = null },
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                )
+            }
+        }
+        deckDevice != null -> {
+            BackHandler { deckPcId = null }
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackbar) },
+            ) { padding ->
+                DeckScreen(
+                    device = deckDevice,
+                    core = core,
+                    onBack = { deckPcId = null },
                     modifier = Modifier.fillMaxSize().padding(padding),
                 )
             }
@@ -329,6 +370,9 @@ private fun App(
                     onRemote = { id ->
                         remoteInitialMode = RemoteMode.Touchpad
                         remotePcId = id
+                    },
+                    onDeck = { id ->
+                        deckPcId = id
                     },
                     onRecord = { id ->
                         recordPcId = id

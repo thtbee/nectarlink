@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! `Preferences`: the app's look and behavior, saved whenever it changes.
+//! `Preferences` and `DeckController`: the app's look, behavior and PC-owned Deck.
+
+#![allow(clippy::too_many_arguments)]
 
 use std::{
     path::PathBuf,
@@ -17,6 +19,8 @@ use crate::{
     core_host,
     settings::{ColorMode, RecordingFormat, Settings, Theme},
 };
+
+pub use super::deck::DeckControllerRust;
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -64,9 +68,60 @@ pub mod qobject {
         /// Resets the recordings folder to `Documents\Nectarlink Recordings`.
         #[qinvokable]
         fn reset_recordings_folder(self: Pin<&mut Preferences>);
+
+        #[qobject]
+        #[qml_element]
+        #[qml_singleton]
+        #[qproperty(QString, pages_json)]
+        #[qproperty(i32, volume)]
+        #[qproperty(bool, muted)]
+        /// `-1`: no mic, `0`: live, `1`: muted.
+        #[qproperty(i32, mic_state)]
+        #[qproperty(bool, playing)]
+        type DeckController = super::DeckControllerRust;
+
+        #[qinvokable]
+        fn default_label_for(self: &DeckController, kind: &QString) -> QString;
+        #[qinvokable]
+        fn default_icon_for(self: &DeckController, kind: &QString) -> QString;
+        #[qinvokable]
+        fn default_color_for(self: &DeckController, kind: &QString) -> QString;
+        #[qinvokable]
+        fn add_page(self: Pin<&mut DeckController>, name: &QString) -> QString;
+        #[qinvokable]
+        fn rename_page(self: Pin<&mut DeckController>, page_id: &QString, name: &QString);
+        #[qinvokable]
+        fn remove_page(self: Pin<&mut DeckController>, page_id: &QString);
+        #[qinvokable]
+        fn reset_default(self: Pin<&mut DeckController>);
+        #[qinvokable]
+        fn move_tile(self: Pin<&mut DeckController>, page_id: &QString, from_index: i32, to_index: i32);
+        #[qinvokable]
+        fn remove_tile(self: Pin<&mut DeckController>, page_id: &QString, tile_id: &QString);
+        #[qinvokable]
+        fn save_tile(
+            self: Pin<&mut DeckController>,
+            page_id: &QString,
+            tile_id: &QString,
+            label: &QString,
+            icon: &QString,
+            color: &QString,
+            kind: &QString,
+            param: &QString,
+            ctrl: bool,
+            alt: bool,
+            shift: bool,
+            win_mod: bool,
+        ) -> QString;
+        #[qinvokable]
+        fn test_tile(self: Pin<&mut DeckController>, tile_id: &QString);
+        #[qinvokable]
+        fn url_to_local_path(self: &DeckController, url: &QString) -> QString;
     }
 
     impl cxx_qt::Initialize for Preferences {}
+    impl cxx_qt::Threading for DeckController {}
+    impl cxx_qt::Initialize for DeckController {}
 }
 
 #[derive(Default)]

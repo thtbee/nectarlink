@@ -84,6 +84,7 @@ fun HomeScreen(
     onPower: (pcId: String, sleep: Boolean) -> Unit,
     onWake: (pcId: String) -> Unit,
     onRemote: (pcId: String) -> Unit,
+    onDeck: (pcId: String) -> Unit,
     onRecord: (pcId: String) -> Unit,
     updater: AppUpdater,
     onSendFiles: (pcId: String, uris: List<Uri>) -> Unit,
@@ -201,7 +202,7 @@ fun HomeScreen(
             }
         }
         items(state.devices, key = { it.id }) { device ->
-            PcCard(device, onRing, onSendFiles, onSendFolder, onPower, onWake, onRemote, onRecord)
+            PcCard(device, onRing, onSendFiles, onSendFolder, onPower, onWake, onRemote, onDeck, onRecord)
         }
         if (state.transfers.isNotEmpty()) {
             item { TransfersCard(state, onCancelTransfer) }
@@ -247,6 +248,7 @@ private fun PcCard(
     onPower: (String, Boolean) -> Unit,
     onWake: (String) -> Unit,
     onRemote: (String) -> Unit,
+    onDeck: (String) -> Unit,
     onRecord: (String) -> Unit,
 ) {
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -339,6 +341,12 @@ private fun PcCard(
                     onClick = { onRemote(device.id) },
                 ) {
                     Text(stringResource(R.string.action_remote_pc))
+                }
+                FilledTonalButton(
+                    colors = tonal,
+                    onClick = { onDeck(device.id) },
+                ) {
+                    Text(stringResource(R.string.action_deck_pc))
                 }
                 FilledTonalButton(
                     colors = tonal,

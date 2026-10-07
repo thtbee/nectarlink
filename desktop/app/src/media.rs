@@ -148,6 +148,7 @@ pub fn on_event(event: &NodeEvent) {
 
 /// What plays on this PC changed: tell the phones.
 pub fn local_changed(players: Vec<nectarlink_core::MediaPlayer>) {
+    crate::deck::on_local_media_changed(&players);
     core_host::spawn(async move {
         if let Some(node) = core_host::wait_for_node().await {
             node.media_changed(players).await;

@@ -146,6 +146,16 @@ tests; there are no releases yet.
   accent-colored dot on the PC screen following the phone's gyroscope or
   finger. Off by default on the PC, with a one-time prompt the first time a
   phone asks and a per-phone toggle in Settings.
+- **Deck (macro pad)**: turn the phone into a Stream-Deck-style button grid for
+  the PC, with multiple swipable pages, full-screen portrait and landscape
+  layouts, haptic feedback, and live tiles that show whether PC media is playing,
+  the speaker volume level, and whether the microphone is muted. Tiles are
+  configured on the PC (in Nectarlink's **Deck** page, with drag-and-drop
+  reordering, icons and colors): media controls, speaker volume and mute,
+  microphone mute, Lock PC, Show desktop, Switch window, Screenshot, custom
+  keyboard shortcuts, web links, text snippets, launching `.exe`/`.lnk` apps, and
+  PC shell commands (gated behind a separate per-phone **Run Deck commands**
+  permission that is off by default).
 - **Voice recorder**: record with the phone's microphone (with a live level
   meter, pause and resume, timestamped markers, and recording that keeps going
   when the screen turns off) and send it straight to the PC. On the PC it lands
@@ -171,7 +181,7 @@ tests; there are no releases yet.
 - **Capability matrix**: both apps compute which features work for a pair of
   devices and what would enable the rest, so the interface never offers
   something that can't work.
-- **Windows app**: home, messages, calls, photos and settings, two themes in light and dark (Bloom,
+- **Windows app**: home, messages, calls, photos, deck and settings, two themes in light and dark (Bloom,
   which takes its colors from the desktop wallpaper, and Graphite), Mica, a
   custom title bar with Snap Layouts, and a tray icon. In the background it
   uses about 10 MB of memory (as shown in Task Manager).

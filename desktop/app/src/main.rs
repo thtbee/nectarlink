@@ -13,6 +13,7 @@ mod bridge;
 mod calls;
 mod clipboard;
 mod core_host;
+mod deck;
 mod doctor;
 mod icons;
 mod launch;
@@ -103,6 +104,9 @@ impl Platform for DesktopPlatform {
     ) -> Result<(), String> {
         remote::handle_input(peer, input);
         Ok(())
+    }
+    fn deck_press(&self, peer: &nectarlink_core::DeviceId, tile: &str) -> Result<(), String> {
+        deck::handle_press(peer, tile)
     }
 }
 
@@ -254,6 +258,7 @@ fn main() -> ExitCode {
     clipboard::start();
     win::smtc::start(media::on_flyout);
     win::media_sessions::start(media::local_changed);
+    deck::init(&data_dir);
     let settings = settings::Settings::load(&data_dir);
     recordings::init(&settings);
     send_to::set_enabled(settings.send_to_menu);

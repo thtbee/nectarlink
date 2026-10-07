@@ -129,6 +129,12 @@ NativeWindow {
                 onClicked: window.page = "photos"
             }
             NavItem {
+                iconPath: Icons.deck
+                text: qsTr("Deck")
+                selected: window.page === "deck"
+                onClicked: window.page = "deck"
+            }
+            NavItem {
                 iconPath: Icons.settings
                 text: qsTr("Settings")
                 selected: window.page === "settings"
@@ -168,6 +174,7 @@ NativeWindow {
                     : window.page === "messages" ? qsTr("Messages")
                     : window.page === "calls" ? qsTr("Calls")
                     : window.page === "photos" ? qsTr("Photos")
+                    : window.page === "deck" ? qsTr("Deck")
                     : qsTr("Settings")
                 role: "headline"
                 size: 20
@@ -232,6 +239,10 @@ NativeWindow {
                 active: window.page === "photos"
                 deviceId: homePage.currentDeviceId
                 deviceName: homePage.currentDeviceName
+            }
+            DeckPage {
+                anchors.fill: parent
+                active: window.page === "deck"
             }
             SettingsPage {
                 anchors.fill: parent

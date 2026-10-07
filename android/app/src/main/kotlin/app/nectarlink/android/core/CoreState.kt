@@ -54,6 +54,8 @@ data class Device(
     val battery: app.nectarlink.core.Battery? = null,
     val power: PowerLevel = PowerLevel.NOT_APPLICABLE,
     val features: List<Feature> = emptyList(),
+    val deckLayout: app.nectarlink.core.DeckLayout? = null,
+    val deckState: app.nectarlink.core.DeckState? = null,
 ) {
     val online: Boolean get() = link is Link.Online
 
@@ -103,8 +105,18 @@ data class CoreState(
     fun nameOf(id: String): String? =
         device(id)?.name ?: discovered.firstOrNull { it.id == id }?.name
 
-    fun withDevices(paired: List<PairedDevice>): CoreState =
-        copy(devices = paired.map { it.toDevice() }.sortedBy { it.pairedAt })
+    fun withDevices(paired: List<PairedDevice>): CoreState {
+        val prevById = devices.associateBy { it.id }
+        return copy(
+            devices = paired.map { p ->
+                val prev = prevById[p.id]
+                p.toDevice().copy(
+                    deckLayout = prev?.deckLayout,
+                    deckState = prev?.deckState,
+                )
+            }.sortedBy { it.pairedAt },
+        )
+    }
 
     fun withWakeState(id: String, state: WakeState): CoreState =
         update(id) { it.copy(wakeState = state) }
@@ -137,6 +149,8 @@ data class CoreState(
         }
         is Event.Battery -> update(event.id) { it.copy(battery = event.battery) }
         is Event.Capabilities -> update(event.id) { it.copy(features = event.features) }
+        is Event.DeckLayout -> update(event.id) { it.copy(deckLayout = event.layout) }
+        is Event.DeckState -> update(event.id) { it.copy(deckState = event.state) }
         is Event.Ring -> copy(ringingFrom = if (event.on) nameOf(event.id) ?: "" else null)
         is Event.Discovered -> copy(discovered = discovered.filterNot { it.id == event.device.id } + event.device)
         is Event.DiscoveryExpired -> copy(discovered = discovered.filterNot { it.id == event.id })

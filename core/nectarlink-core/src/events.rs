@@ -182,4 +182,14 @@ pub enum NodeEvent {
         device: DeviceId,
         can_wake: bool,
     },
+    /// A paired PC's Deck layout arrived or changed (`docs/protocol/deck.md`).
+    DeckLayout {
+        device: DeviceId,
+        layout: crate::DeckLayout,
+    },
+    /// A paired PC's live Deck state arrived or changed (`docs/protocol/deck.md`).
+    DeckState {
+        device: DeviceId,
+        state: crate::DeckState,
+    },
 }

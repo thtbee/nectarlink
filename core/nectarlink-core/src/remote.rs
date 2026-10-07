@@ -117,8 +117,14 @@ fn we_offer(shared: &Shared, cap: &str) -> bool {
     shared.local_capabilities().iter().any(|c| c == cap)
 }
 
-fn check_allowed(shared: &Shared, peer: &DeviceId) -> std::result::Result<(), (ErrorCode, &'static str)> {
-    if !we_offer(shared, INPUT_INJECT) {
+fn check_allowed_with(
+    shared: &Shared,
+    peer: &DeviceId,
+    allow_deck: bool,
+) -> std::result::Result<(), (ErrorCode, &'static str)> {
+    let supported =
+        we_offer(shared, INPUT_INJECT) || (allow_deck && we_offer(shared, crate::deck::DECK_ACTIONS));
+    if !supported {
         return Err((ErrorCode::Unsupported, "remote input is not supported here"));
     }
     if !shared.toggle_on(peer, TOGGLE) {
@@ -131,9 +137,15 @@ fn check_allowed(shared: &Shared, peer: &DeviceId) -> std::result::Result<(), (E
     Ok(())
 }
 
+fn check_allowed(shared: &Shared, peer: &DeviceId) -> std::result::Result<(), (ErrorCode, &'static str)> {
+    check_allowed_with(shared, peer, false)
+}
+
 /// Checks whether `peer` (a PC) currently accepts remote input from this phone.
 pub(crate) async fn check(shared: &Arc<Shared>, session: &Arc<Session>) -> Result<()> {
-    if !peer_offers(shared, &session.peer, INPUT_INJECT)? {
+    if !peer_offers(shared, &session.peer, INPUT_INJECT)?
+        && !peer_offers(shared, &session.peer, crate::deck::DECK_ACTIONS)?
+    {
         return Err(Error::Unsupported);
     }
     session.request(Envelope::empty(types::REMOTE_CHECK), TIMEOUT).await?.expect(types::OK)?;
@@ -237,7 +249,7 @@ async fn send_datagram(shared: &Arc<Shared>, session: &Arc<Session>, event: &Rem
 /// Handles incoming `remote.*` requests on the control stream.
 pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &Envelope) -> Result<bool> {
     let reply = match env.t.as_str() {
-        types::REMOTE_CHECK => match check_allowed(shared, &session.peer) {
+        types::REMOTE_CHECK => match check_allowed_with(shared, &session.peer, true) {
             Ok(()) => Envelope::empty(types::OK),
             Err((code, msg)) => Envelope::error(code, msg),
         },

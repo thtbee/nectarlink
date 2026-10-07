@@ -67,4 +67,13 @@ QtObject {
     readonly property string flashlight: "M8 3h8l-2 5v11a2 2 0 0 1-4 0V8zM8 5.5h8M12 11v2"
     readonly property string bluetooth: "M6.5 6.5l11 11L12 22V2l5.5 5.5-11 11"
     readonly property string brightness: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+    readonly property string window: "M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5zM3 9h18M7 6h.01M10 6h.01"
+    readonly property string camera: "M4 8a2 2 0 0 1 2-2h2.5l1.5-2h4l1.5 2H18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8zM12 10a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"
+    readonly property string keyboard: "M4 6h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"
+    readonly property string globe: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"
+    readonly property string text: "M4 6V4h16v2M12 4v16M9 20h6"
+    readonly property string terminal: "M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6zM7 9l3 3-3 3M12 15h5"
+    readonly property string bolt: "M13 2L4 14h7l-1 8 9-12h-7l1-8z"
+    readonly property string trash: "M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"
+    readonly property string edit: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
 }

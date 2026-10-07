@@ -5,6 +5,7 @@
 
 #![allow(unsafe_code)]
 
+pub mod audio;
 pub mod audio_out;
 pub mod autostart;
 pub mod clipboard;

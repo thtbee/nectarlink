@@ -242,6 +242,13 @@ enum Command {
         #[command(subcommand)]
         action: RemoteArg,
     },
+    /// Show a paired PC's deck pages and tiles (with live states), or press a
+    /// tile with `deck <device> press <tile>`.
+    Deck {
+        device: String,
+        #[command(subcommand)]
+        action: Option<DeckArg>,
+    },
     /// Act as a phone sharing its screen (use with --as-phone): when a PC
     /// asks, streams an H.264 file (Annex B, with access unit delimiters) in
     /// a loop at `fps`. Stays online.
@@ -576,6 +583,12 @@ enum TogglesArg {
     /// Change one of the phone's quick settings (`dnd`, `ringer`, `flashlight`,
     /// `volume`, `brightness`, `wifi`, `bluetooth`).
     Set { id: String, value: String },
+}
+
+#[derive(Debug, Subcommand)]
+enum DeckArg {
+    /// Press a tile on the PC's deck by its ID.
+    Press { tile: String },
 }
 
 /// Where `mirror` saves the video, and what arrived.
@@ -1730,6 +1743,10 @@ impl Platform for TerminalPlatform {
         }
         Ok(())
     }
+    fn deck_press(&self, _peer: &DeviceId, tile: &str) -> Result<(), String> {
+        println!("A paired device pressed deck tile {tile}");
+        Ok(())
+    }
 }
 
 fn main() -> Result<()> {
@@ -1781,6 +1798,7 @@ async fn start_node(cli: &Cli) -> Result<Node> {
         config.capabilities.push(nectarlink_core::RECORDER.into());
         config.capabilities.push(nectarlink_core::TOGGLES_SHOW.into());
         config.capabilities.push(nectarlink_core::PC_WAKE.into());
+        config.capabilities.push(nectarlink_core::DECK_ACTIONS.into());
     }
     let extra_caps = config.capabilities.clone();
     let node = Node::start(config, Arc::new(TerminalPlatform)).await.context("failed to start")?;
@@ -2189,6 +2207,56 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 }
             }
             println!("Sent.");
+        }
+        Command::Deck { device, action: None } => {
+            let mut events = node.events();
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            let layout = match node.deck_layout(id) {
+                Some(l) => l,
+                None => {
+                    let wait = async {
+                        loop {
+                            if let Ok(NodeEvent::DeckLayout { device: d, layout }) = events.recv().await
+                                && d == id
+                            {
+                                return layout;
+                            }
+                        }
+                    };
+                    tokio::time::timeout(Duration::from_secs(5), wait)
+                        .await
+                        .context("the PC didn't report its deck layout")?
+                }
+            };
+            let state = match node.deck_state(id) {
+                Some(s) => s,
+                None => {
+                    let wait = async {
+                        loop {
+                            if let Ok(NodeEvent::DeckState { device: d, state }) = events.recv().await
+                                && d == id
+                            {
+                                return state;
+                            }
+                        }
+                    };
+                    tokio::time::timeout(Duration::from_millis(500), wait)
+                        .await
+                        .ok()
+                        .or_else(|| node.deck_state(id))
+                        .unwrap_or_default()
+                }
+            };
+            print_deck(&layout, &state);
+        }
+        Command::Deck { device, action: Some(DeckArg::Press { tile }) } => {
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            node.deck_press(id, tile.clone())
+                .await
+                .with_context(|| format!("the PC refused deck tile {tile:?}"))?;
+            println!("Pressed {tile}.");
         }
         Command::Apps { device, at } => {
             let id = resolve(node, device)?;
@@ -3381,6 +3449,13 @@ fn print_event(node: &Node, event: &NodeEvent) {
         NodeEvent::PhoneToggles { device, toggles } => {
             println!("{}: toggles {}", name(device), summarize_toggles(toggles));
         }
+        NodeEvent::DeckLayout { device, layout } => {
+            let tiles: usize = layout.pages.iter().map(|p| p.tiles.len()).sum();
+            println!("{}: deck layout ({} page(s), {tiles} tile(s))", name(device), layout.pages.len());
+        }
+        NodeEvent::DeckState { device, state } => {
+            println!("{}: deck state {}", name(device), summarize_deck_state(state));
+        }
         NodeEvent::WakeInfoChanged { device, can_wake } => {
             let detail = node
                 .wake_info(*device)
@@ -3502,6 +3577,34 @@ fn summarize_toggles(t: &nectarlink_core::PhoneToggles) -> String {
         yn(t.wifi),
         yn(t.bluetooth),
     )
+}
+
+fn summarize_deck_state(state: &nectarlink_core::DeckState) -> String {
+    let vol = if state.muted { "muted".to_owned() } else { format!("{}%", state.volume) };
+    let mic = match state.mic_muted {
+        Some(true) => "muted",
+        Some(false) => "live",
+        None => "—",
+    };
+    let media = if state.playing { "playing" } else { "paused" };
+    format!("vol={vol} mic={mic} media={media}")
+}
+
+fn print_deck(layout: &nectarlink_core::DeckLayout, state: &nectarlink_core::DeckState) {
+    println!("State: {}", summarize_deck_state(state));
+    for (idx, page) in layout.pages.iter().enumerate() {
+        if idx > 0 {
+            println!();
+        }
+        println!("Page {}: {} [{}]", idx + 1, page.name, page.id);
+        for tile in &page.tiles {
+            let status = state.tile_status(&tile.kind).map(|s| format!("  ({s})")).unwrap_or_default();
+            println!(
+                "  {:<18} {:<22} [{}, {}, {}]{status}",
+                tile.id, tile.label, tile.kind, tile.icon, tile.color
+            );
+        }
+    }
 }
 
 fn parse_phone_toggle_value(id: &str, raw: &str) -> Result<nectarlink_core::PhoneToggleValue> {

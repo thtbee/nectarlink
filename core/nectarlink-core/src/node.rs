@@ -124,6 +124,8 @@ pub(crate) struct Shared {
     pub(crate) toggles: crate::toggles::Current,
     /// This PC's Wake-on-LAN adapter addresses (docs/protocol/actions.md).
     pub(crate) wake_info: crate::actions::CurrentWakeInfo,
+    /// This PC's Deck layout and live state, and connected PCs' Decks (docs/protocol/deck.md).
+    pub(crate) deck: crate::deck::Current,
     /// Stop signals for phone screens shown here, by phone.
     pub(crate) mirror_stops: Mutex<HashMap<MirrorStop, Arc<tokio::sync::Notify>>>,
     /// Per-peer rate limiters and prompt state for remote input.
@@ -314,6 +316,7 @@ impl Shared {
         lock(&self.matrices).remove(peer);
         lock(&self.remote).remove_peer(peer);
         self.toggles.remove_peer(peer);
+        self.deck.remove_peer(peer);
         if existed {
             self.emit(NodeEvent::DeviceRemoved(*peer));
         }
@@ -384,6 +387,7 @@ impl Shared {
             shared.send_call_state(&s).await;
             shared.send_toggles_state(&s).await;
             crate::actions::send_wake_info(&shared, &s).await;
+            shared.send_deck(&s).await;
         });
         Some(session)
     }
@@ -395,6 +399,7 @@ impl Shared {
         if current {
             sessions.remove(&ended.peer);
             self.toggles.remove_peer(&ended.peer);
+            self.deck.remove_peer(&ended.peer);
             if paired {
                 tracing::info!(peer = %ended.peer.short(), "disconnected");
                 // Still under the lock: a new session for the peer can't
@@ -643,6 +648,7 @@ impl Node {
             calls: Default::default(),
             toggles: Default::default(),
             wake_info: Default::default(),
+            deck: Default::default(),
             mirror_stops: Mutex::new(HashMap::new()),
             remote: Mutex::new(Default::default()),
             data_dir: config.data_dir.clone(),
@@ -765,6 +771,7 @@ impl Node {
             self.shared.send_media_state(&session).await;
             self.shared.send_toggles_state(&session).await;
             crate::actions::send_wake_info(&self.shared, &session).await;
+            self.shared.send_deck(&session).await;
         }
     }
 
@@ -1365,6 +1372,36 @@ impl Node {
         crate::toggles::set(&self.shared, &session, id, value).await
     }
 
+    // ---- Deck (docs/protocol/deck.md) ----
+
+    /// The latest Deck layout reported by a connected PC, if any.
+    pub fn deck_layout(&self, peer: DeviceId) -> Option<crate::DeckLayout> {
+        self.shared.deck.peer_layout(&peer)
+    }
+
+    /// The latest live Deck state reported by a connected PC, if any.
+    pub fn deck_state(&self, peer: DeviceId) -> Option<crate::DeckState> {
+        self.shared.deck.peer_state(&peer)
+    }
+
+    /// Updates this PC's Deck layout and sends it to every connected phone
+    /// when this device offers `deck.actions`.
+    pub async fn set_deck_layout(&self, layout: crate::DeckLayout) -> Result<()> {
+        self.shared.set_deck_layout(layout).await
+    }
+
+    /// Updates this PC's live Deck state and sends it to every connected phone
+    /// when it changed and this device offers `deck.actions`.
+    pub async fn set_deck_state(&self, state: crate::DeckState) -> Result<()> {
+        self.shared.set_deck_state(state).await
+    }
+
+    /// Asks a paired PC to run the action bound to `tile` (`deck.press`).
+    pub async fn deck_press(&self, peer: DeviceId, tile: String) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::deck::press(&self.shared, &session, tile).await
+    }
+
     // ---- Local state reported by the app ----
 
     /// Reports this device's battery; forwarded to connected devices.
@@ -1399,6 +1436,9 @@ impl Node {
             self.shared.broadcast(env).await;
         }
         self.shared.refresh_all_capabilities();
+        for session in self.shared.live_sessions() {
+            self.shared.send_deck(&session).await;
+        }
     }
 }
 
