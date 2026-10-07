@@ -32,6 +32,7 @@ class AppDisplay(
     private val fps: Int,
 ) {
     @Volatile private var running = true
+    @Volatile private var nextSize: Triple<Int, Int, Int>? = null
     private var display: VirtualDisplay? = null
 
     /** The display's ID, once made. */
@@ -40,39 +41,61 @@ class AppDisplay(
 
     /** Streams until [stop] or until [out] fails; starts [pkg] on the display first. */
     fun run(pkg: String, out: OutputStream) {
-        val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
-            setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
-            setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
-            setInteger(MediaFormat.KEY_FRAME_RATE, fps)
-            setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 10)
-            // Frames only when the picture changes; repeat now and then so a
-            // still app still reaches a PC that just joined.
-            setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, 100_000)
-            setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT709)
-            setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_LIMITED)
-            setInteger(MediaFormat.KEY_PRIORITY, 0)
-        }
-        val codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+        var curW = width
+        var curH = height
+        var curDpi = dpi
+        var codec: MediaCodec? = null
+        var surface: Surface? = null
         val data = DataOutputStream(out.buffered(1 shl 16))
         try {
-            codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-            val surface = codec.createInputSurface()
-            val made = createDisplay(surface)
+            val (firstCodec, firstSurface) = createEncoder(curW, curH)
+            codec = firstCodec
+            surface = firstSurface
+            val made = createDisplay(curW, curH, curDpi, firstSurface)
             display = made
             displayId = made.display.displayId
-            codec.start()
-            codecForKeyframes = codec
+            hideIme(displayId)
+            firstCodec.start()
+            codecForKeyframes = firstCodec
             write(data, KIND_CONFIG, 0, ByteArray(12).also {
-                java.nio.ByteBuffer.wrap(it).putInt(width).putInt(height).putInt(displayId)
+                java.nio.ByteBuffer.wrap(it).putInt(curW).putInt(curH).putInt(displayId)
             })
             data.flush()
             launch(pkg, displayId)
-            drain(codec, data)
+            watchActivities(displayId)
+            while (running) {
+                drain(codec!!, data)
+                if (!running) break
+                val (newW, newH, newDpi) = nextSize ?: continue
+                nextSize = null
+                if (newW == curW && newH == curH && newDpi == curDpi) continue
+                codecForKeyframes = null
+                runCatching { codec.stop() }
+                runCatching { codec.release() }
+                codec = null
+                runCatching { surface?.release() }
+                surface = null
+                val (nextCodec, nextSurface) = createEncoder(newW, newH)
+                codec = nextCodec
+                surface = nextSurface
+                nextCodec.start()
+                codecForKeyframes = nextCodec
+                made.resize(newW, newH, newDpi)
+                made.surface = nextSurface
+                curW = newW
+                curH = newH
+                curDpi = newDpi
+                write(data, KIND_CONFIG, 0, ByteArray(12).also {
+                    java.nio.ByteBuffer.wrap(it).putInt(curW).putInt(curH).putInt(displayId)
+                })
+                data.flush()
+            }
         } finally {
             running = false
             codecForKeyframes = null
-            runCatching { codec.stop() }
-            codec.release()
+            runCatching { codec?.stop() }
+            runCatching { codec?.release() }
+            runCatching { surface?.release() }
             display?.release()
             display = null
         }
@@ -80,6 +103,10 @@ class AppDisplay(
 
     fun stop() {
         running = false
+    }
+
+    fun resize(w: Int, h: Int, newDpi: Int) {
+        nextSize = Triple(w, h, newDpi)
     }
 
     @Volatile private var codecForKeyframes: MediaCodec? = null
@@ -92,11 +119,33 @@ class AppDisplay(
         }
     }
 
+    private fun createEncoder(w: Int, h: Int): Pair<MediaCodec, Surface> {
+        val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, w, h).apply {
+            setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+            setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
+            setInteger(MediaFormat.KEY_FRAME_RATE, fps)
+            setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 10)
+            // Frames only when the picture changes; repeat now and then so a
+            // still app still reaches a PC that just joined.
+            setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER, 100_000)
+            setInteger(MediaFormat.KEY_COLOR_STANDARD, MediaFormat.COLOR_STANDARD_BT709)
+            setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_LIMITED)
+            setInteger(MediaFormat.KEY_PRIORITY, 0)
+            setInteger(MediaFormat.KEY_MAX_B_FRAMES, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                setInteger(MediaFormat.KEY_LATENCY, 1)
+            }
+        }
+        val codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+        codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+        return codec to codec.createInputSurface()
+    }
+
     private fun drain(codec: MediaCodec, out: DataOutputStream) {
         val info = MediaCodec.BufferInfo()
         var parameters = ByteArray(0)
-        while (running) {
-            val index = codec.dequeueOutputBuffer(info, 100_000)
+        while (running && nextSize == null) {
+            val index = codec.dequeueOutputBuffer(info, 50_000)
             if (index < 0) continue
             val buffer = codec.getOutputBuffer(index)
             if (buffer != null && info.size > 0) {
@@ -127,7 +176,7 @@ class AppDisplay(
         out.write(bytes)
     }
 
-    private fun createDisplay(surface: Surface): VirtualDisplay {
+    private fun createDisplay(w: Int, h: Int, d: Int, surface: Surface): VirtualDisplay {
         var flags = PUBLIC or OWN_CONTENT_ONLY or SUPPORTS_TOUCH or ROTATES_WITH_CONTENT or DESTROY_CONTENT_ON_REMOVAL
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             flags = flags or TRUSTED or OWN_DISPLAY_GROUP or ALWAYS_UNLOCKED or TOUCH_FEEDBACK_DISABLED
@@ -141,7 +190,24 @@ class AppDisplay(
         // Some of the flags are hidden ones (TRUSTED, OWN_FOCUS...), which
         // the shell may use.
         @SuppressLint("WrongConstant")
-        return manager.createVirtualDisplay("Nectarlink", width, height, dpi, surface, flags)
+        return manager.createVirtualDisplay("Nectarlink", w, h, d, surface, flags)
+    }
+
+    /** Hides the soft keyboard on this virtual display so typing from the PC never pops it up on the phone. */
+    private fun hideIme(display: Int) {
+        val hidden = runCatching {
+            val wmg = Class.forName("android.view.WindowManagerGlobal")
+            val wm = wmg.getMethod("getWindowManagerService").invoke(null) ?: return@runCatching false
+            wm.javaClass
+                .getMethod("setDisplayImePolicy", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+                .invoke(wm, display, DISPLAY_IME_POLICY_HIDE)
+            true
+        }.getOrDefault(false)
+        if (!hidden) {
+            runCatching {
+                Runtime.getRuntime().exec(arrayOf("wm", "set-display-ime-policy", display.toString(), "hide")).waitFor()
+            }
+        }
     }
 
     private fun launch(pkg: String, display: Int) {
@@ -153,10 +219,62 @@ class AppDisplay(
         Runtime.getRuntime().exec(command).waitFor()
     }
 
+    /** Stops the stream when the app on [display] finishes its last activity. */
+    private fun watchActivities(display: Int) {
+        Thread({
+            try {
+                Thread.sleep(1_500)
+                var seen = false
+                var emptyCount = 0
+                var ticks = 0
+                while (running) {
+                    if (hasActivityOnDisplay(display)) {
+                        seen = true
+                        emptyCount = 0
+                    } else if (seen || ticks >= 15) {
+                        emptyCount++
+                        if (emptyCount >= 2) {
+                            System.err.println("the app on display $display closed")
+                            running = false
+                            break
+                        }
+                    }
+                    ticks++
+                    Thread.sleep(1_000)
+                }
+            } catch (_: InterruptedException) {
+            }
+        }, "app-display-watch").apply {
+            isDaemon = true
+            start()
+        }
+    }
+
+    /**
+     * Whether the display still has a visible task, asked of the activity
+     * manager (Android 12+). When it can't tell, the window stays open:
+     * closing someone's window by mistake is worse than a stale picture.
+     */
+    @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
+    private fun hasActivityOnDisplay(display: Int): Boolean = runCatching {
+        val service = Class.forName("android.app.ActivityTaskManager").getMethod("getService").invoke(null)!!
+        val tasks = service.javaClass
+            .getMethod("getAllRootTaskInfosOnDisplay", Int::class.javaPrimitiveType)
+            .invoke(service, display) as List<*>
+        tasks.any { task ->
+            val visible = runCatching { task!!.javaClass.getField("visible").getBoolean(task) }.getOrDefault(true)
+            val children = runCatching { (task!!.javaClass.getField("childTaskIds").get(task) as IntArray).size }.getOrDefault(1)
+            visible && children > 0
+        }
+    }.getOrDefault(true)
+
     companion object {
         const val KIND_CONFIG = 0
         const val KIND_FRAME = 1
         const val KIND_KEYFRAME = 2
+
+        /** WindowManager.DISPLAY_IME_POLICY_HIDE. */
+        private const val DISPLAY_IME_POLICY_HIDE = 2
 
         // DisplayManager.VIRTUAL_DISPLAY_FLAG_* (some hidden).
         private const val PUBLIC = 1

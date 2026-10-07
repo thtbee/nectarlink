@@ -46,6 +46,12 @@ pub fn file_url(path: &Path) -> String {
     format!("file:///{}", path.to_string_lossy().replace('\\', "/"))
 }
 
+/// Returns the cached PNG icon path for `app` if it exists on disk.
+pub fn existing(data_dir: &Path, app: &str) -> Option<PathBuf> {
+    let path = icons_dir(data_dir).join(file_name(app));
+    path.is_file().then_some(path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

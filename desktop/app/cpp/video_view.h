@@ -24,6 +24,10 @@ class VideoView : public QQuickItem
     Q_PROPERTY(QSize frameSize READ frameSize NOTIFY frameSizeChanged)
     // Pictures shown so far, for a frame rate readout.
     Q_PROPERTY(quint64 frames READ frames NOTIFY framesChanged)
+    // Optional PNG icon file URL/path for the containing window and taskbar button.
+    Q_PROPERTY(QString windowIcon READ windowIcon WRITE setWindowIcon NOTIFY windowIconChanged)
+    // Optional Windows AppUserModelID so each app window gets its own taskbar identity.
+    Q_PROPERTY(QString windowAppId READ windowAppId WRITE setWindowAppId NOTIFY windowAppIdChanged)
 
 public:
     explicit VideoView(QQuickItem *parent = nullptr);
@@ -33,6 +37,10 @@ public:
     void setStream(const QString &stream);
     QSize frameSize() const { return m_frameSize; }
     quint64 frames() const { return m_frames; }
+    QString windowIcon() const { return m_windowIcon; }
+    void setWindowIcon(const QString &icon);
+    QString windowAppId() const { return m_windowAppId; }
+    void setWindowAppId(const QString &appId);
 
     // Where the picture is drawn in the item (letterboxed).
     Q_INVOKABLE QRectF pictureRect() const;
@@ -41,18 +49,24 @@ signals:
     void streamChanged();
     void frameSizeChanged();
     void framesChanged();
+    void windowIconChanged();
+    void windowAppIdChanged();
 
 protected:
     QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *) override;
+    void itemChange(ItemChange change, const ItemChangeData &value) override;
 
 private:
     Q_INVOKABLE void frameArrived();
+    void applyWindowChrome();
 
     QString m_stream;
     QSize m_frameSize;
     quint64 m_frames = 0;
     // The serial of the picture on screen.
     quint64 m_shown = 0;
+    QString m_windowIcon;
+    QString m_windowAppId;
 };
 
 // The latest picture of `stream`: `width` x `height`, 32-bit BGRX rows.

@@ -44,9 +44,9 @@ pub use nectarlink_protocol::{
     DeviceId, PacketKind,
     messages::{
         Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallState, Contact, ContactNumber, DeviceInfo,
-        DeviceKind, MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorStart, Notification,
-        NotificationAction, PhoneApp, PhotoNew as Photo, PowerLevel, SmsMessage, SmsPart, SmsThread,
-        TouchAction,
+        DeviceKind, MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorResize, MirrorStart,
+        Notification, NotificationAction, PhoneApp, PhotoNew as Photo, PowerLevel, SmsMessage, SmsPart,
+        SmsThread, TouchAction,
         calls::{
             CONTROL as CALLS_CONTROL, DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG,
             SHOW as CALLS_SHOW, STATE as CALLS_STATE,

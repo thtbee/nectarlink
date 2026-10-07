@@ -58,6 +58,7 @@ pub mod types {
     pub const MIRROR_START: &str = "mirror.start";
     pub const MIRROR_STOP: &str = "mirror.stop";
     pub const MIRROR_KEYFRAME: &str = "mirror.keyframe";
+    pub const MIRROR_RESIZE: &str = "mirror.resize";
     pub const MIRROR_INPUT: &str = "mirror.input";
     pub const MIRROR_APPS: &str = "mirror.apps";
 }
@@ -559,6 +560,22 @@ impl MirrorStart {
 pub struct MirrorSession {
     #[serde(default)]
     pub session: u32,
+}
+
+/// Body of `mirror.resize`: resize an app window's display (`session != 0`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorResize {
+    pub session: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl MirrorResize {
+    pub fn is_valid(&self) -> bool {
+        self.session != mirror::SCREEN
+            && (64..=4096).contains(&self.width)
+            && (64..=4096).contains(&self.height)
+    }
 }
 
 /// An app a PC can open in a window (in a `mirror.apps` answer).

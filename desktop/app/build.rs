@@ -213,7 +213,9 @@ fn main() {
         ])
         .build();
 
-    // The C++ window code calls DWM and user32 directly.
+    // The C++ window code calls DWM, Shell property store, and user32 directly.
     println!("cargo:rustc-link-lib=dwmapi");
+    println!("cargo:rustc-link-lib=ole32");
+    println!("cargo:rustc-link-lib=shell32");
     println!("cargo:rustc-link-lib=user32");
 }

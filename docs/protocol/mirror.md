@@ -33,6 +33,7 @@ t = "mirror.start"     id = n   b = { max_size: uint, fps: uint, bitrate: uint, 
                                      ? session: uint, ? app: text }
 t = "mirror.stop"      id = n   b = { ? session: uint }
 t = "mirror.keyframe"           b = { ? session: uint }
+t = "mirror.resize"             b = { session: uint, width: uint, height: uint }
 t = "mirror.apps"      id = n
 t = "mirror.apps"      re = n   b = { apps: [{ pkg: text, label: text, ? icon: bytes }] }
 t = "ok"               re = n
@@ -53,6 +54,9 @@ means 0, so PCs and phones that predate sessions work as before.
   the phone stops sharing and finishes it.
 - `mirror.keyframe` (PC → phone): the decoder lost its place; send a
   keyframe next. Not answered.
+- `mirror.resize` (PC → phone): resize an app window's display (`session != 0`)
+  to `width × height` pixels. Not answered; the phone sends a new `config`
+  packet on the video stream once its encoder restarts at the new size.
 
 ## 3. The video stream
 
@@ -148,13 +152,20 @@ window of its own, beside whatever the phone's screen shows:
 - `mirror.input` gains `? session: uint`: input for an app window goes to
   its display. App windows take input whenever the phone offers
   `mirror.virtual_display`; the screen still needs `mirror.input`.
+- `mirror.resize` with `session`, `width` and `height` resizes that window's
+  virtual display (clamped to even dimensions within encoder limits, keeping
+  density sensible) and restarts its H.264 encoder, sending a new `config`
+  packet and keyframe so the app re-lays out at the new aspect ratio.
 - `mirror.stop` and `mirror.keyframe` with a `session` are about that
   window; stopping one closes the app's display (the app closes with it).
+  When the app closes its last activity on the phone, the phone finishes
+  that session's video stream.
 
 On Android, the Elevated helper (running as the shell user) makes a
-virtual display for each window with an H.264 encoder drawing from it, and
-starts the app there; the phone shows a notification while any app window
-is open, with a button to close them all.
+virtual display for each window with its display IME policy set to hide the
+soft keyboard, attaches an H.264 encoder drawing from it, and starts the app
+there; the phone shows a notification while any app window is open, with a
+button to close them all.
 
 ## 7. Latency over completeness
 

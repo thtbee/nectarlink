@@ -113,12 +113,25 @@ object InputServer {
         if (width !in 16..4096 || height !in 16..4096 || dpi !in 72..1000) return
         val window = AppDisplay(width, height, dpi, bitrate.coerceIn(500_000, 40_000_000), fps.coerceIn(1, 120))
         windows.add(window)
-        // Further lines: keyframe requests; the end of them closes the window.
+        // Further lines: keyframe or resize requests; the end of them closes the window.
         Thread {
             try {
                 while (true) {
                     val line = reader.nextLine() ?: break
-                    if (line == "K") window.requestKeyframe()
+                    when {
+                        line == "K" -> window.requestKeyframe()
+                        line.startsWith("R ") -> {
+                            val r = line.split(' ')
+                            val rw = r.getOrNull(1)?.toIntOrNull()
+                            val rh = r.getOrNull(2)?.toIntOrNull()
+                            val rdpi = r.getOrNull(3)?.toIntOrNull()
+                            if (rw != null && rh != null && rdpi != null &&
+                                rw in 16..4096 && rh in 16..4096 && rdpi in 72..1000
+                            ) {
+                                window.resize(rw, rh, rdpi)
+                            }
+                        }
+                    }
                 }
             } catch (_: java.io.IOException) {
             }

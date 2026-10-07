@@ -101,9 +101,13 @@ tests; there are no releases yet.
   nothing else to install; Nectarlink turns Wireless debugging back on by
   itself after a reboot.
 - **Phone apps in windows** on the PC: with Wireless debugging set up
-  (Android 11 and later), pick any of the phone's apps and it opens in a
-  window of its own, running on the phone beside whatever its screen
-  shows; use it with the mouse and keyboard, and open several at once.
+  (Android 11 and later), pick any of the phone's apps (with a Recent row
+  for the ones opened most recently) and it opens in a window of its own with
+  its own taskbar icon, running on the phone beside whatever its screen shows
+  and without popping the phone's keyboard up on its screen; resize the
+  window and the app re-lays out to fit, its size and position are remembered
+  for next time, and if it closes on the phone the window offers to open it
+  again.
 - **Texts** on the PC: a Messages page with the phone's conversations
   (pictures included), to reply or start a new one (searching contacts as
   you type); texts go out through the phone. Search them, copy a one-time

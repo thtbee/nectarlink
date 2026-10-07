@@ -2,10 +2,20 @@
 #include "video_view.h"
 
 #include <QtCore/QHash>
+#include <QtCore/QUrl>
+#include <QtGui/QIcon>
 #include <QtGui/QImage>
+#include <QtGui/QPixmap>
 #include <QtQuick/QQuickWindow>
 #include <QtQuick/QSGSimpleTextureNode>
 #include <QtQuick/QSGTexture>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <propkey.h>
+#include <propsys.h>
+#include <shobjidl.h>
+#endif
 
 #include <algorithm>
 #include <mutex>
@@ -76,6 +86,67 @@ void VideoView::setStream(const QString &stream)
     m_shown = 0;
     emit streamChanged();
     frameArrived();
+}
+
+void VideoView::setWindowIcon(const QString &icon)
+{
+    if (icon == m_windowIcon)
+        return;
+    m_windowIcon = icon;
+    emit windowIconChanged();
+    applyWindowChrome();
+}
+
+void VideoView::setWindowAppId(const QString &appId)
+{
+    if (appId == m_windowAppId)
+        return;
+    m_windowAppId = appId;
+    emit windowAppIdChanged();
+    applyWindowChrome();
+}
+
+void VideoView::itemChange(ItemChange change, const ItemChangeData &value)
+{
+    QQuickItem::itemChange(change, value);
+    if (change == ItemSceneChange && value.window) {
+        connect(value.window, &QWindow::visibleChanged, this, [this](bool) { applyWindowChrome(); });
+        applyWindowChrome();
+    }
+}
+
+void VideoView::applyWindowChrome()
+{
+    QQuickWindow *win = window();
+    if (!win)
+        return;
+#ifdef _WIN32
+    if (!m_windowAppId.isEmpty()) {
+        if (HWND hwnd = reinterpret_cast<HWND>(win->winId())) {
+            IPropertyStore *store = nullptr;
+            if (SUCCEEDED(SHGetPropertyStoreForWindow(hwnd, IID_PPV_ARGS(&store))) && store) {
+                PROPVARIANT pv{};
+                pv.vt = VT_LPWSTR;
+                pv.pwszVal = const_cast<LPWSTR>(reinterpret_cast<LPCWSTR>(m_windowAppId.utf16()));
+                store->SetValue(PKEY_AppUserModel_ID, pv);
+                store->Commit();
+                store->Release();
+            }
+        }
+    }
+#endif
+    if (!m_windowIcon.isEmpty()) {
+        const QUrl url(m_windowIcon);
+        const QString path = url.isLocalFile() ? url.toLocalFile() : m_windowIcon;
+        const QImage img(path);
+        if (!img.isNull()) {
+            QIcon icon;
+            for (int sz : {16, 20, 24, 32, 40, 48, 64, 256}) {
+                icon.addPixmap(QPixmap::fromImage(img.scaled(sz, sz, Qt::KeepAspectRatio, Qt::SmoothTransformation)));
+            }
+            win->setIcon(icon);
+        }
+    }
 }
 
 QRectF VideoView::pictureRect() const

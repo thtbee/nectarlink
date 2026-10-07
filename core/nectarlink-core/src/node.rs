@@ -198,9 +198,13 @@ impl Shared {
         lock(&self.links).get(peer).cloned().unwrap_or(LinkState::Offline { last_seen })
     }
 
-    /// Publishes the session's current path and round-trip time.
+    /// Publishes the session's current path and round-trip time, if it's
+    /// still the peer's session (a replaced one has nothing to say).
     pub fn publish_online(&self, session: &Session) {
-        self.set_link(session.peer, LinkState::Online { path: session.path(), rtt_ms: session.rtt_ms() });
+        let sessions = lock(&self.sessions);
+        if sessions.get(&session.peer).is_some_and(|current| std::ptr::eq(current.as_ref(), session)) {
+            self.set_link(session.peer, LinkState::Online { path: session.path(), rtt_ms: session.rtt_ms() });
+        }
     }
 
     /// Our direct addresses, for pairing links. Waits briefly for the
@@ -365,16 +369,18 @@ impl Shared {
     }
 
     fn on_session_end(&self, ended: &Arc<Session>) {
-        let removed = {
-            let mut sessions = lock(&self.sessions);
-            match sessions.get(&ended.peer) {
-                Some(current) if Arc::ptr_eq(current, ended) => sessions.remove(&ended.peer).is_some(),
-                _ => false,
+        let paired = self.store.is_paired(&ended.peer).unwrap_or(false);
+        let mut sessions = lock(&self.sessions);
+        let current = sessions.get(&ended.peer).is_some_and(|current| Arc::ptr_eq(current, ended));
+        if current {
+            sessions.remove(&ended.peer);
+            if paired {
+                tracing::info!(peer = %ended.peer.short(), "disconnected");
+                // Still under the lock: a new session for the peer can't
+                // register (and say it's online) until this is said, so a
+                // stale "offline" never lands after a fresh "online".
+                self.set_link(ended.peer, LinkState::Offline { last_seen: Some(crate::now_unix()) });
             }
-        };
-        if removed && self.store.is_paired(&ended.peer).unwrap_or(false) {
-            tracing::info!(peer = %ended.peer.short(), "disconnected");
-            self.set_link(ended.peer, LinkState::Offline { last_seen: Some(crate::now_unix()) });
         }
     }
 
@@ -950,6 +956,12 @@ impl Node {
         if let Ok(session) = self.connected(&peer) {
             crate::mirror::request_keyframe(&session, mirroring).await;
         }
+    }
+
+    /// Resizes an app window's display (`mirroring` != 0) on a phone.
+    pub async fn mirror_resize(&self, peer: DeviceId, mirroring: u32, width: u32, height: u32) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::mirror::resize(&self.shared, &session, mirroring, width, height).await
     }
 
     /// The PC's mouse and keyboard on a phone's mirrored screen or app window.

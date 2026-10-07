@@ -25,6 +25,11 @@ Sheet {
             return []
         try { return JSON.parse(Mirror.apps) } catch (e) { return [] }
     }
+    readonly property var recent: {
+        if (Mirror.appsDevice !== deviceId)
+            return []
+        try { return JSON.parse(Mirror.recentApps) } catch (e) { return [] }
+    }
     readonly property string query: search.text.trim().toLocaleLowerCase()
     readonly property var shown: query.length === 0 ? apps
         : apps.filter(a => a.label.toLocaleLowerCase().indexOf(query) >= 0 || a.pkg.indexOf(query) >= 0)
@@ -135,10 +140,90 @@ Sheet {
             }
         }
 
+        // Recently opened on this PC.
+        Column {
+            id: recentSection
+            width: parent.width
+            visible: sheet.loadState === "ready" && sheet.query.length === 0 && sheet.recent.length > 0
+            spacing: 8
+
+            Txt {
+                role: "label"
+                muted: true
+                text: qsTr("Recent")
+            }
+
+            Row {
+                width: parent.width
+                spacing: 4
+                Repeater {
+                    model: sheet.recent
+                    delegate: Item {
+                        id: recentCell
+                        required property var modelData
+                        width: Math.min(96, Math.floor((recentSection.width - 20) / Math.max(1, sheet.recent.length)))
+                        height: 82
+                        Accessible.role: Accessible.Button
+                        Accessible.name: modelData.label
+                        Accessible.onPressAction: sheet.launch(modelData)
+
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            radius: Theme.radiusMd
+                            color: Theme.surfaceContent
+                            opacity: recentTap.pressed ? 0.12 : (recentHover.hovered ? 0.06 : 0)
+                        }
+                        Column {
+                            anchors.centerIn: parent
+                            width: parent.width - 8
+                            spacing: 6
+                            Item {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: 38; height: 38
+                                Image {
+                                    id: recentIcon
+                                    anchors.fill: parent
+                                    source: recentCell.modelData.icon
+                                    sourceSize: Qt.size(76, 76)
+                                    smooth: true
+                                    mipmap: true
+                                    visible: status === Image.Ready
+                                }
+                                Avatar {
+                                    anchors.fill: parent
+                                    visible: recentIcon.status !== Image.Ready
+                                    name: recentCell.modelData.label
+                                }
+                            }
+                            Txt {
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                role: "bodySmall"
+                                text: recentCell.modelData.label
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                            }
+                        }
+                        HoverHandler { id: recentHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler { id: recentTap; onTapped: sheet.launch(recentCell.modelData) }
+                    }
+                }
+            }
+
+            Divider {}
+
+            Txt {
+                role: "label"
+                muted: true
+                text: qsTr("All apps")
+            }
+        }
+
         GridView {
             id: grid
             width: parent.width
-            height: Math.min(contentHeight, 420)
+            height: Math.min(contentHeight, recentSection.visible ? 300 : 420)
             visible: sheet.loadState === "ready" && sheet.shown.length > 0
             clip: true
             model: sheet.shown

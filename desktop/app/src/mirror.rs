@@ -105,12 +105,66 @@ pub struct App {
     pub icon: Option<PathBuf>,
 }
 
-#[derive(Debug, Default)]
+/// Remembered window position and size on this PC for an app window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct WindowGeometry {
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+struct SavedWindows {
+    /// Keyed by `<device>/<pkg>`.
+    #[serde(default)]
+    geometry: HashMap<String, WindowGeometry>,
+    /// Keyed by `<device>`, most recently opened `pkg` first.
+    #[serde(default)]
+    recent: HashMap<String, Vec<String>>,
+}
+
+impl SavedWindows {
+    fn path() -> PathBuf {
+        core_host::host().data_dir.join("app-windows.json")
+    }
+
+    fn load() -> Self {
+        std::fs::read_to_string(Self::path())
+            .ok()
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default()
+    }
+
+    fn save(&self) {
+        let path = Self::path();
+        if let Ok(json) = serde_json::to_string_pretty(self) {
+            let tmp = path.with_extension("json.tmp");
+            if std::fs::write(&tmp, json).is_ok() {
+                let _ = std::fs::rename(&tmp, &path);
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
 struct State {
     windows: HashMap<Window, Shown>,
     /// Phones whose sound is coming in.
     sound: HashSet<DeviceId>,
     apps: HashMap<DeviceId, Apps>,
+    saved: SavedWindows,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            windows: HashMap::new(),
+            sound: HashSet::new(),
+            apps: HashMap::new(),
+            saved: SavedWindows::load(),
+        }
+    }
 }
 
 /// The user turned the phones' sound off on this PC (until turned on).
@@ -164,6 +218,39 @@ pub fn windows() -> Vec<(Window, Shown)> {
     all
 }
 
+/// Remembered window position and size for `(device, pkg)`.
+pub fn geometry(device: &DeviceId, pkg: &str) -> Option<WindowGeometry> {
+    state(|s| s.saved.geometry.get(&format!("{device}/{pkg}")).copied())
+}
+
+/// Saves an app window's position and size on this PC.
+pub fn save_geometry(window: Window, x: i32, y: i32, width: u32, height: u32) {
+    if window.session == MIRROR_SCREEN || width < 200 || height < 200 {
+        return;
+    }
+    state(|s| {
+        let Some(pkg) = s.windows.get(&window).and_then(|w| w.pkg.clone()) else { return };
+        let key = format!("{}/{pkg}", window.device);
+        let geom = WindowGeometry { x, y, width, height };
+        if s.saved.geometry.insert(key, geom) != Some(geom) {
+            s.saved.save();
+        }
+    });
+}
+
+/// Package names of apps opened on `device` from this PC, most recent first.
+pub fn recent_apps(device: &DeviceId) -> Vec<String> {
+    state(|s| s.saved.recent.get(&device.to_string()).cloned().unwrap_or_default())
+}
+
+fn record_recent(s: &mut State, device: &DeviceId, pkg: &str) {
+    let list = s.saved.recent.entry(device.to_string()).or_default();
+    list.retain(|p| p != pkg);
+    list.insert(0, pkg.to_owned());
+    list.truncate(12);
+    s.saved.save();
+}
+
 /// Asks the phone for its screen.
 pub fn start(device: DeviceId) {
     let window = Window::screen(device);
@@ -173,24 +260,70 @@ pub fn start(device: DeviceId) {
 }
 
 /// Opens one of the phone's apps in a window of its own (or does nothing
-/// when it's already open).
+/// when it's already open; reuses an ended window for that app).
 pub fn start_app(device: DeviceId, pkg: String, label: String) {
-    let open = state(|s| {
-        s.windows.iter().any(|(w, shown)| {
+    let window = state(|s| {
+        if s.windows.iter().any(|(w, shown)| {
             w.device == device
                 && shown.pkg.as_deref() == Some(pkg.as_str())
                 && matches!(shown.phase, Phase::Asking | Phase::Showing)
-        })
+        }) {
+            return None;
+        }
+        record_recent(s, &device, &pkg);
+        let ended = s
+            .windows
+            .iter()
+            .find(|(w, shown)| w.device == device && shown.pkg.as_deref() == Some(pkg.as_str()))
+            .map(|(w, _)| *w);
+        let window =
+            ended.unwrap_or_else(|| Window { device, session: NEXT_SESSION.fetch_add(1, Ordering::Relaxed) });
+        s.windows.insert(window, Shown { phase: Phase::Asking, app: Some(label), pkg: Some(pkg.clone()) });
+        Some(window)
     });
-    if open {
+    let Some(window) = window else { return };
+    ffi::video_clear(&window.key());
+    request(window, MirrorStart { audio: false, session: window.session, app: Some(pkg), ..OPTIONS });
+}
+
+/// Reopens a mirroring window that ended (the screen or an app window).
+pub fn reopen(window: Window) {
+    if window.session == MIRROR_SCREEN {
+        start(window.device);
         return;
     }
-    let session = NEXT_SESSION.fetch_add(1, Ordering::Relaxed);
-    let window = Window { device, session };
-    state(|s| {
-        s.windows.insert(window, Shown { phase: Phase::Asking, app: Some(label), pkg: Some(pkg.clone()) })
+    let pkg = state(|s| {
+        let shown = s.windows.get_mut(&window)?;
+        let pkg = shown.pkg.clone()?;
+        shown.phase = Phase::Asking;
+        record_recent(s, &window.device, &pkg);
+        Some(pkg)
     });
-    request(window, MirrorStart { audio: false, session, app: Some(pkg), ..OPTIONS });
+    let Some(pkg) = pkg else { return };
+    ffi::video_clear(&window.key());
+    request(window, MirrorStart { audio: false, session: window.session, app: Some(pkg), ..OPTIONS });
+}
+
+/// Resizes an app window's display on the phone (`width` and `height` are the
+/// window's logical dimensions on the PC).
+pub fn resize(window: Window, width: u32, height: u32) {
+    if window.session == MIRROR_SCREEN || width < 120 || height < 120 {
+        return;
+    }
+    let (mut w, mut h) = (width.saturating_mul(2), height.saturating_mul(2));
+    let longest = w.max(h);
+    if longest > OPTIONS.max_size {
+        w = (u64::from(w) * u64::from(OPTIONS.max_size) / u64::from(longest)) as u32;
+        h = (u64::from(h) * u64::from(OPTIONS.max_size) / u64::from(longest)) as u32;
+    }
+    let w = (w & !1).clamp(240, 4096);
+    let h = (h & !1).clamp(240, 4096);
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        if let Err(e) = node.mirror_resize(window.device, window.session, w, h).await {
+            tracing::debug!(error = %e, "resize didn't reach the phone");
+        }
+    });
 }
 
 fn request(window: Window, options: MirrorStart) {
@@ -227,7 +360,17 @@ pub fn stop(window: Window) {
 pub fn on_event(event: &NodeEvent) {
     match event {
         NodeEvent::Mirroring { device, session, on: true } => {
-            set_phase(Window { device: *device, session: *session }, Phase::Showing);
+            let window = Window { device: *device, session: *session };
+            set_phase(window, Phase::Showing);
+            if *session != MIRROR_SCREEN {
+                let saved = state(|s| {
+                    let pkg = s.windows.get(&window).and_then(|w| w.pkg.as_deref())?;
+                    s.saved.geometry.get(&format!("{device}/{pkg}")).copied()
+                });
+                if let Some(geom) = saved {
+                    resize(window, geom.width, geom.height);
+                }
+            }
         }
         // Closed here: nothing to say. Stopped on the phone: say so.
         NodeEvent::Mirroring { device, session, on: false } => {
@@ -440,6 +583,9 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
     while let Ok(item) = items.recv() {
         match item {
             Item::Config(config) => {
+                if size != (0, 0) && size != (config.width, config.height) {
+                    decoder.flush();
+                }
                 size = (config.width, config.height);
                 need_keyframe = true;
             }
@@ -465,8 +611,14 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
                 if let (Some(picture), false) = (pictures.last(), behind) {
                     let converted = Instant::now();
                     let (w, h) = if size.0 > 0 { size } else { (picture.width, picture.height) };
+                    let (src_w, src_h) = (w.min(picture.width), h.min(picture.height));
                     let bgrx = to_bgrx(picture, w, h);
-                    ffi::video_frame(&stream, w.min(picture.width), h.min(picture.height), &bgrx);
+                    if (src_w, src_h) == (w, h) || src_w == 0 || src_h == 0 {
+                        ffi::video_frame(&stream, src_w, src_h, &bgrx);
+                    } else {
+                        let scaled = scale_bgrx(&bgrx, src_w, src_h, w, h);
+                        ffi::video_frame(&stream, w, h, &scaled);
+                    }
                     stats.shown(decoded, converted.elapsed());
                 } else {
                     stats.skipped();
@@ -476,6 +628,20 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
         }
     }
     ffi::video_clear(&stream);
+}
+
+fn scale_bgrx(src: &[u8], src_w: u32, src_h: u32, dst_w: u32, dst_h: u32) -> Vec<u8> {
+    let mut dst = vec![0u8; (dst_w * dst_h * 4) as usize];
+    for y in 0..dst_h {
+        let sy = ((u64::from(y) * u64::from(src_h)) / u64::from(dst_h)) as usize;
+        let src_row = &src[sy * (src_w as usize * 4)..(sy + 1) * (src_w as usize * 4)];
+        let dst_row = &mut dst[(y as usize) * (dst_w as usize * 4)..(y as usize + 1) * (dst_w as usize * 4)];
+        for x in 0..dst_w as usize {
+            let sx = ((x as u64 * u64::from(src_w)) / u64::from(dst_w)) as usize;
+            dst_row[x * 4..x * 4 + 4].copy_from_slice(&src_row[sx * 4..sx * 4 + 4]);
+        }
+    }
+    dst
 }
 
 /// Decode and conversion times, logged now and then.

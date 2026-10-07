@@ -101,6 +101,10 @@ internal class PhonePlatform(
     override fun mirrorKeyframeRequested(pcId: String, session: UInt) =
         if (session == SCREEN) MirrorService.keyframe(pcId) else appWindows.keyframe(pcId, session)
 
+    override fun mirrorResizeRequested(pcId: String, session: UInt, width: UInt, height: UInt) {
+        if (session != SCREEN) appWindows.resize(pcId, session, width.toInt(), height.toInt())
+    }
+
     // Real events when Elevated runs; gestures through the accessibility service otherwise.
     override fun mirrorInput(pcId: String, session: UInt, input: MirrorInputEvent) {
         if (session != SCREEN) return appWindows.input(pcId, session, input)

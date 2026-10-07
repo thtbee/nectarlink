@@ -35,6 +35,9 @@ pub mod qobject {
         #[qproperty(QString, apps_device, cxx_name = "appsDevice")]
         /// Its apps, as JSON: `[{ pkg, label, icon }]` (icon: a file URL or "").
         #[qproperty(QString, apps)]
+        /// The apps opened from this PC most recently on `appsDevice`, as JSON:
+        /// `[{ pkg, label, icon }]` (up to 6).
+        #[qproperty(QString, recent_apps, cxx_name = "recentApps")]
         /// "", "loading", "ready" or "failed".
         #[qproperty(QString, apps_state, cxx_name = "appsState")]
         /// Why they couldn't be loaded.
@@ -53,9 +56,19 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "startApp"]
         fn start_app(self: &Mirror, device: &QString, pkg: &QString, label: &QString);
+        /// Reopens an ended window (the screen or an app window).
+        #[qinvokable]
+        fn reopen(self: &Mirror, key: &QString);
         /// Closes a window, ending its mirroring.
         #[qinvokable]
         fn stop(self: &Mirror, key: &QString);
+        /// Resizes an app window's display on the phone.
+        #[qinvokable]
+        fn resize(self: &Mirror, key: &QString, width: u32, height: u32);
+        /// Saves an app window's position and size on this PC.
+        #[qinvokable]
+        #[cxx_name = "saveGeometry"]
+        fn save_geometry(self: &Mirror, key: &QString, x: i32, y: i32, width: u32, height: u32);
         /// Loads a phone's apps (into `apps`).
         #[qinvokable]
         #[cxx_name = "loadApps"]
@@ -89,6 +102,7 @@ pub struct MirrorRust {
     muted: bool,
     apps_device: QString,
     apps: QString,
+    recent_apps: QString,
     apps_state: QString,
     apps_error: QString,
 }
@@ -105,7 +119,9 @@ impl cxx_qt::Initialize for qobject::Mirror {
 
 impl qobject::Mirror {
     fn refresh(mut self: Pin<&mut Self>) {
-        let hub = &crate::core_host::host().hub;
+        let host = crate::core_host::host();
+        let hub = &host.hub;
+        let data_dir = &host.data_dir;
         let windows: Vec<serde_json::Value> = mirror::windows()
             .into_iter()
             .map(|(window, shown)| {
@@ -125,17 +141,31 @@ impl qobject::Mirror {
                     Phase::Showing => ("showing", String::new()),
                     Phase::Ended(reason) => ("ended", reason.unwrap_or_default()),
                 };
+                let pkg = shown.pkg.clone().unwrap_or_default();
+                let icon = (!pkg.is_empty())
+                    .then(|| crate::icons::existing(data_dir, &pkg))
+                    .flatten()
+                    .as_deref()
+                    .map(crate::icons::file_url)
+                    .unwrap_or_default();
+                let geom = (!pkg.is_empty()).then(|| mirror::geometry(&window.device, &pkg)).flatten();
                 serde_json::json!({
                     "key": window.key(),
                     "device": window.device.to_string(),
                     "session": window.session,
                     "name": name,
                     "title": shown.app.clone().unwrap_or_else(|| name.clone()),
+                    "pkg": pkg,
+                    "icon": icon,
                     "app": shown.app.is_some(),
                     "phase": phase,
                     "reason": reason,
                     "canControl": control,
                     "sound": window.session == MIRROR_SCREEN && mirror::has_sound(&window.device),
+                    "savedX": geom.map(|g| g.x),
+                    "savedY": geom.map(|g| g.y),
+                    "savedWidth": geom.map(|g| g.width).unwrap_or(0),
+                    "savedHeight": geom.map(|g| g.height).unwrap_or(0),
                 })
             })
             .collect();
@@ -152,6 +182,19 @@ impl qobject::Mirror {
             Some(Apps::Failed(why)) => ("failed", Vec::new(), why),
             Some(Apps::Ready(apps)) => ("ready", apps, String::new()),
         };
+        let recent_pkgs = mirror::recent_apps(&device);
+        let recent: Vec<serde_json::Value> = recent_pkgs
+            .iter()
+            .filter_map(|pkg| apps.iter().find(|a| &a.pkg == pkg))
+            .take(6)
+            .map(|a| {
+                serde_json::json!({
+                    "pkg": a.pkg,
+                    "label": a.label,
+                    "icon": a.icon.as_deref().map(crate::icons::file_url).unwrap_or_default(),
+                })
+            })
+            .collect();
         let apps: Vec<serde_json::Value> = apps
             .into_iter()
             .map(|a| {
@@ -162,6 +205,7 @@ impl qobject::Mirror {
                 })
             })
             .collect();
+        self.as_mut().set_recent_apps(QString::from(&serde_json::Value::Array(recent).to_string()));
         self.as_mut().set_apps(QString::from(&serde_json::Value::Array(apps).to_string()));
         self.as_mut().set_apps_error(QString::from(&error));
         self.as_mut().set_apps_state(QString::from(state));
@@ -180,9 +224,27 @@ impl qobject::Mirror {
         }
     }
 
+    pub fn reopen(&self, key: &QString) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::reopen(window);
+        }
+    }
+
     pub fn stop(&self, key: &QString) {
         if let Some(window) = Window::parse(&String::from(key)) {
             mirror::stop(window);
+        }
+    }
+
+    pub fn resize(&self, key: &QString, width: u32, height: u32) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::resize(window, width, height);
+        }
+    }
+
+    pub fn save_geometry(&self, key: &QString, x: i32, y: i32, width: u32, height: u32) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::save_geometry(window, x, y, width, height);
         }
     }
 

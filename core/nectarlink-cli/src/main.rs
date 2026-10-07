@@ -184,6 +184,9 @@ enum Command {
         /// "x,y" in fractions of the screen (repeatable).
         #[arg(long)]
         tap: Vec<String>,
+        /// Resize the app window ("WxH", with --app) 2 s after the first frame.
+        #[arg(long)]
+        resize: Option<String>,
     },
     /// List the apps a paired phone can open in windows of their own.
     Apps {
@@ -541,6 +544,13 @@ static SCREEN_ASKS: std::sync::OnceLock<tokio::sync::mpsc::UnboundedSender<(Devi
     std::sync::OnceLock::new();
 /// Whether `screen` offers apps in windows.
 static SCREEN_APPS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// Active `screen` sessions: (session, pending resize (width, height), stream).
+type ScreenSession = (
+    u32,
+    std::sync::Arc<std::sync::Mutex<Option<(u32, u32)>>>,
+    std::sync::Arc<nectarlink_core::MirrorStream>,
+);
+static SCREEN_SESSIONS: std::sync::Mutex<Vec<ScreenSession>> = std::sync::Mutex::new(Vec::new());
 /// The apps `screen --apps` offers.
 const SAMPLE_APPS: &[(&str, &str)] = &[
     ("com.example.calendar", "Calendar"),
@@ -791,9 +801,38 @@ impl Platform for TerminalPlatform {
     }
     fn mirror_stop_requested(&self, _peer: &DeviceId, session: u32) {
         println!("The PC stopped watching (session {session}).");
+        let mut sessions = SCREEN_SESSIONS.lock().unwrap();
+        sessions.retain(|(s, _, stream)| {
+            if *s == session {
+                stream.close();
+                false
+            } else {
+                true
+            }
+        });
+    }
+    fn mirror_resize_requested(&self, _peer: &DeviceId, session: u32, width: u32, height: u32) {
+        let (w, h) = ((width & !1).max(64), (height & !1).max(64));
+        println!("The PC resized session {session} to {w}x{h}.");
+        for (s, pending, _) in SCREEN_SESSIONS.lock().unwrap().iter() {
+            if *s == session {
+                *pending.lock().unwrap() = Some((w, h));
+            }
+        }
     }
     fn mirror_input(&self, _peer: &DeviceId, session: u32, input: nectarlink_core::MirrorInput) {
         println!("Input on session {session}: {input:?}");
+        if session != 0 && matches!(&input, nectarlink_core::MirrorInput::Key { key } if key == "home") {
+            let mut sessions = SCREEN_SESSIONS.lock().unwrap();
+            sessions.retain(|(s, _, stream)| {
+                if *s == session {
+                    stream.close();
+                    false
+                } else {
+                    true
+                }
+            });
+        }
     }
     fn phone_apps(&self) -> std::result::Result<Vec<nectarlink_core::PhoneApp>, String> {
         if !SCREEN_APPS.load(std::sync::atomic::Ordering::Relaxed) {
@@ -1312,7 +1351,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 );
             }
         }
-        Command::Mirror { device, out, seconds, at, sound, app, tap } => {
+        Command::Mirror { device, out, seconds, at, sound, app, tap, resize } => {
             let recording = std::sync::Arc::new(Recording::default());
             *recording.file.lock().unwrap() =
                 Some(std::fs::File::create(out).context("can't create the file")?);
@@ -1349,6 +1388,13 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 }
             }
             let started = std::time::Instant::now();
+            if let Some(dim) = resize {
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                let (w, h) = dim.split_once('x').context("--resize takes WxH")?;
+                let (w, h): (u32, u32) = (w.trim().parse()?, h.trim().parse()?);
+                node.mirror_resize(id, session, w, h).await.context("resize not sent")?;
+                println!("Resized to {w}x{h}.");
+            }
             for at in tap {
                 tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                 let (x, y) = at.split_once(',').context("--tap takes x,y")?;
@@ -1362,7 +1408,16 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 println!("Tapped {x},{y}.");
             }
             let left = std::time::Duration::from_secs(*seconds).saturating_sub(started.elapsed());
-            tokio::time::sleep(left).await;
+            let _ = tokio::time::timeout(left, async {
+                loop {
+                    if let Ok(NodeEvent::Mirroring { session: s, on: false, .. }) = events.recv().await
+                        && s == session
+                    {
+                        break;
+                    }
+                }
+            })
+            .await;
             node.mirror_stop(id, session).await;
             let RecordingStats { frames, keyframes, bytes, size } = *recording.stats.lock().unwrap();
             let secs = started.elapsed().as_secs_f64();
@@ -1434,8 +1489,23 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                             continue;
                         }
                     };
+                    let pending = std::sync::Arc::new(std::sync::Mutex::new(None));
+                    {
+                        let mut sessions = SCREEN_SESSIONS.lock().unwrap();
+                        sessions.retain(|(s, _, old)| {
+                            if *s == session {
+                                old.close();
+                                false
+                            } else {
+                                true
+                            }
+                        });
+                        sessions.push((session, pending.clone(), mirror.clone()));
+                    }
                     let units = units.clone();
-                    std::thread::spawn(move || stream_screen(&mirror, &units, width, height, fps, session));
+                    std::thread::spawn(move || {
+                        stream_screen(&mirror, &units, width, height, fps, session, &pending)
+                    });
                     if let (true, Some((rate, channels, samples))) = (wants_sound, sound.clone()) {
                         match streamer.mirror_open_audio(pc).await {
                             Ok(stream) => {
@@ -2355,12 +2425,14 @@ fn stream_screen(
     height: u32,
     fps: u32,
     session: u32,
+    pending: &std::sync::Mutex<Option<(u32, u32)>>,
 ) {
     use nectarlink_core::{MirrorSend, PacketKind};
     let config = nectarlink_core::MirrorConfig { codec: "h264".into(), width, height, session }.to_cbor();
     if mirror.send(PacketKind::Config, 0, config) == MirrorSend::Closed {
         return;
     }
+    let keyframe = units.iter().find(|u| is_keyframe(u));
     let frame = std::time::Duration::from_secs_f64(1.0 / f64::from(fps.max(1)));
     let started = std::time::Instant::now();
     let mut dropped = 0u32;
@@ -2369,8 +2441,20 @@ fn stream_screen(
         if let Some(wait) = due.checked_duration_since(std::time::Instant::now()) {
             std::thread::sleep(wait);
         }
-        let kind = if is_keyframe(unit) { PacketKind::Keyframe } else { PacketKind::Frame };
         let time = started.elapsed().as_micros() as u64;
+        if let Some((w, h)) = pending.lock().unwrap().take() {
+            let cfg = nectarlink_core::MirrorConfig { codec: "h264".into(), width: w, height: h, session }
+                .to_cbor();
+            if mirror.send(PacketKind::Config, time, cfg) == MirrorSend::Closed {
+                break;
+            }
+            if let Some(kf) = keyframe
+                && mirror.send(PacketKind::Keyframe, time, kf.clone()) == MirrorSend::Closed
+            {
+                break;
+            }
+        }
+        let kind = if is_keyframe(unit) { PacketKind::Keyframe } else { PacketKind::Frame };
         match mirror.send(kind, time, unit.clone()) {
             MirrorSend::Queued => {}
             MirrorSend::NeedKeyframe | MirrorSend::Dropped => dropped += 1,

@@ -23,8 +23,8 @@ use iroh::endpoint::{RecvStream, SendStream, VarInt};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, PacketKind,
     messages::{
-        MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorSession, MirrorStart, PhoneApp, PhoneApps,
-        StreamHeader, mirror, types,
+        MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorResize, MirrorSession, MirrorStart, PhoneApp,
+        PhoneApps, StreamHeader, mirror, types,
     },
     read_video_packet, video_packet_header, write_frame,
 };
@@ -111,6 +111,24 @@ pub(crate) async fn request_keyframe(session: &Session, mirroring: u32) {
     if let Ok(env) = Envelope::new(types::MIRROR_KEYFRAME, &MirrorSession { session: mirroring }) {
         let _ = session.send(env).await;
     }
+}
+
+/// Resize an app window's display (`mirroring` != 0) on a phone.
+pub(crate) async fn resize(
+    shared: &Shared,
+    session: &Session,
+    mirroring: u32,
+    width: u32,
+    height: u32,
+) -> Result<()> {
+    if !shared.toggle_on(&session.peer, TOGGLE) {
+        return Err(Error::Denied);
+    }
+    let msg = MirrorResize { session: mirroring, width, height };
+    if !msg.is_valid() {
+        return Err(Error::Protocol("invalid resize".into()));
+    }
+    session.send(Envelope::new(types::MIRROR_RESIZE, &msg)?).await
 }
 
 /// The apps a phone can open in windows of their own, by name.
@@ -271,6 +289,16 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let MirrorSession { session: mirroring } = env.body()?;
             tokio::task::spawn_blocking(move || platform.mirror_keyframe_requested(&peer, mirroring));
         }
+        types::MIRROR_RESIZE => {
+            let resize: MirrorResize = env.body()?;
+            let allowed = shared.toggle_on(&peer, TOGGLE)
+                && shared.local_capabilities().iter().any(|c| c == mirror::VIRTUAL_DISPLAY);
+            if allowed && resize.is_valid() {
+                tokio::task::spawn_blocking(move || {
+                    platform.mirror_resize_requested(&peer, resize.session, resize.width, resize.height);
+                });
+            }
+        }
         types::MIRROR_INPUT => {
             let input: MirrorInput = env.body()?;
             let MirrorSession { session: mirroring } = env.body()?;
@@ -340,6 +368,9 @@ pub enum MirrorSend {
 pub struct MirrorStream {
     queue: mpsc::Sender<(PacketKind, u64, Vec<u8>)>,
     closed: Arc<AtomicBool>,
+    /// Wakes the sending task when the stream is closed, so it finishes the
+    /// stream even if no more packets come.
+    stop: Arc<tokio::sync::Notify>,
     /// Frames are being dropped until a keyframe.
     resyncing: Mutex<bool>,
     /// Sound: each packet stands alone, so a dropped one needs no keyframe.
@@ -384,6 +415,7 @@ impl MirrorStream {
     /// Ends the stream (the phone stopped sharing).
     pub fn close(&self) {
         self.closed.store(true, Ordering::Release);
+        self.stop.notify_one();
     }
 
     pub fn is_closed(&self) -> bool {
@@ -408,6 +440,8 @@ pub(crate) async fn open(shared: &Arc<Shared>, session: &Session, audio: bool) -
         mpsc::channel::<(PacketKind, u64, Vec<u8>)>(if audio { AUDIO_QUEUE } else { QUEUE });
     let closed = Arc::new(AtomicBool::new(false));
     let done = closed.clone();
+    let stop = Arc::new(tokio::sync::Notify::new());
+    let stopped = stop.clone();
     tokio::spawn(async move {
         let mut ended = Box::pin(async move {
             // The PC stops reading (STOP_SENDING) when it's done watching.
@@ -416,6 +450,7 @@ pub(crate) async fn open(shared: &Arc<Shared>, session: &Session, audio: bool) -
         loop {
             let next = tokio::select! {
                 _ = &mut ended => break,
+                _ = stopped.notified() => break,
                 next = packets.recv() => next,
             };
             let Some((kind, time, data)) = next else { break };
@@ -434,7 +469,7 @@ pub(crate) async fn open(shared: &Arc<Shared>, session: &Session, audio: bool) -
         done.store(true, Ordering::Release);
         let _ = send.finish();
     });
-    Ok(MirrorStream { queue, closed, resyncing: Mutex::new(false), audio })
+    Ok(MirrorStream { queue, closed, stop, resyncing: Mutex::new(false), audio })
 }
 
 impl Shared {
@@ -468,8 +503,13 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn a_full_queue_drops_frames_until_a_keyframe() {
         let (queue, mut packets) = mpsc::channel(2);
-        let stream =
-            MirrorStream { queue, closed: Arc::default(), resyncing: Mutex::new(false), audio: false };
+        let stream = MirrorStream {
+            queue,
+            closed: Arc::default(),
+            stop: Arc::default(),
+            resyncing: Mutex::new(false),
+            audio: false,
+        };
         let send = |kind| tokio::task::block_in_place(|| stream.send(kind, 0, vec![1]));
         assert_eq!(send(PacketKind::Keyframe), MirrorSend::Queued);
         assert_eq!(send(PacketKind::Frame), MirrorSend::Queued);
@@ -487,8 +527,13 @@ mod tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn sound_drops_only_what_doesnt_fit() {
         let (queue, mut packets) = mpsc::channel(1);
-        let stream =
-            MirrorStream { queue, closed: Arc::default(), resyncing: Mutex::new(false), audio: true };
+        let stream = MirrorStream {
+            queue,
+            closed: Arc::default(),
+            stop: Arc::default(),
+            resyncing: Mutex::new(false),
+            audio: true,
+        };
         let send = |kind| tokio::task::block_in_place(|| stream.send(kind, 0, vec![1]));
         assert_eq!(send(PacketKind::Frame), MirrorSend::Queued);
         assert_eq!(send(PacketKind::Frame), MirrorSend::Dropped, "full");

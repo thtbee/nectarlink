@@ -54,8 +54,10 @@ class AppWindows(
         val pc: String,
         val session: UInt,
         val socket: Socket,
-        val width: Int,
-        val height: Int,
+        @Volatile var width: Int,
+        @Volatile var height: Int,
+        val dpi: Int,
+        val maxSize: Int,
     ) {
         @Volatile var display: Int = -1
     }
@@ -70,9 +72,10 @@ class AppWindows(
     fun open(pc: String, options: MirrorOptions): Boolean {
         val pkg = options.app ?: return false
         if (pkg == context.packageName) return false
-        val (width, height, dpi) = size(options.maxSize.toInt())
+        val maxSize = options.maxSize.toInt().coerceIn(320, 1920)
+        val (width, height, dpi) = size(maxSize)
         val socket = Elevated.openApp(pkg, width, height, dpi, options.bitrate.toInt(), options.fps.toInt()) ?: return false
-        val window = Window(pc, options.session, socket, width, height)
+        val window = Window(pc, options.session, socket, width, height, dpi, maxSize)
         windows.put(pc to options.session, window)?.let { runCatching { it.socket.close() } }
         changed()
         scope.launch(Dispatchers.IO) {
@@ -100,6 +103,8 @@ class AppWindows(
                     AppDisplay.KIND_CONFIG -> {
                         val fields = java.nio.ByteBuffer.wrap(data)
                         val (w, h) = fields.int to fields.int
+                        window.width = w
+                        window.height = h
                         window.display = fields.int
                         stream.send(VideoPacketKind.CONFIG, 0u, mirrorConfig(w.toUInt(), h.toUInt(), window.session))
                     }
@@ -144,6 +149,27 @@ class AppWindows(
             synchronized(window) {
                 window.socket.getOutputStream().apply {
                     write("K\n".toByteArray())
+                    flush()
+                }
+            }
+        }
+    }
+
+    /** The PC resized an app window: fit to encoder limits and tell the helper. */
+    fun resize(pc: String, session: UInt, width: Int, height: Int) {
+        val window = windows[pc to session] ?: return
+        val w = width.coerceAtLeast(240)
+        val h = height.coerceAtLeast(240)
+        val scale = minOf(1f, window.maxSize.toFloat() / max(w, h))
+        fun fit(v: Int) = max(240, ((v * scale) / 16).roundToInt() * 16)
+        val (newW, newH) = fit(w) to fit(h)
+        if (newW == window.width && newH == window.height) return
+        window.width = newW
+        window.height = newH
+        runCatching {
+            synchronized(window) {
+                window.socket.getOutputStream().apply {
+                    write("R $newW $newH ${window.dpi}\n".toByteArray())
                     flush()
                 }
             }

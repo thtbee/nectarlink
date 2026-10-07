@@ -161,6 +161,17 @@ pub trait Platform: Send + Sync + 'static {
     /// The PC's decoder needs a fresh start: encode a keyframe next.
     fn mirror_keyframe_requested(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32) {}
 
+    /// The PC resized an app window (`session` != 0): resize its display and
+    /// restart its encoder at `width × height` pixels.
+    fn mirror_resize_requested(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+        _session: u32,
+        _width: u32,
+        _height: u32,
+    ) {
+    }
+
     /// The apps a PC may open in windows of their own (launchable ones),
     /// with small PNG icons (a PC asked).
     fn phone_apps(&self) -> Result<Vec<crate::PhoneApp>, String> {

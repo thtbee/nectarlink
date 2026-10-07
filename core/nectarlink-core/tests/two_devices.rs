@@ -105,6 +105,15 @@ impl Platform for RecordingPlatform {
     fn mirror_keyframe_requested(&self, _peer: &nectarlink_core::DeviceId, session: u32) {
         self.mirror_asks.lock().unwrap().push(format!("keyframe {session}"));
     }
+    fn mirror_resize_requested(
+        &self,
+        _peer: &nectarlink_core::DeviceId,
+        session: u32,
+        width: u32,
+        height: u32,
+    ) {
+        self.mirror_asks.lock().unwrap().push(format!("resize {session} {width}x{height}"));
+    }
     fn mirror_input(
         &self,
         _peer: &nectarlink_core::DeviceId,
@@ -1386,6 +1395,9 @@ async fn phone_apps_open_in_windows_of_their_own() {
     })
     .await;
     assert_eq!(session, 7);
+    assert!(matches!(pc.node.mirror_resize(phone_id, 0, 800, 600).await, Err(Error::Protocol(_))));
+    assert!(matches!(pc.node.mirror_resize(phone_id, 7, 10, 600).await, Err(Error::Protocol(_))));
+    pc.node.mirror_resize(phone_id, 7, 1024, 768).await.unwrap();
     pc.node.mirror_input(phone_id, 7, MirrorInput::Key { key: "back".into() }).await.unwrap();
     pc.node.mirror_keyframe(phone_id, 7).await;
     pc.node.mirror_stop(phone_id, 7).await;
@@ -1396,10 +1408,29 @@ async fn phone_apps_open_in_windows_of_their_own() {
     .await;
     assert_eq!(ended, 7);
     let asks = phone.platform.mirror_asks.lock().unwrap().clone();
-    for wanted in ["start 1280 com.example.chat as 7", "Key(back) on 7", "keyframe 7", "stop 7"] {
+    for wanted in
+        ["start 1280 com.example.chat as 7", "resize 7 1024x768", "Key(back) on 7", "keyframe 7", "stop 7"]
+    {
         assert!(asks.iter().any(|a| a == wanted), "{wanted}: {asks:?}");
     }
     assert_eq!(*pc.platform.mirror_asks.lock().unwrap(), ["sink 7"]);
+
+    // The app closes on the phone: its window's stream ends at once, even
+    // with no more pictures to send.
+    with_timeout("start again", pc.node.mirror_start(phone_id, app(8))).await.unwrap();
+    let stream = Arc::new(with_timeout("open again", phone.node.mirror_open(pc_id)).await.unwrap());
+    let config = nectarlink_core::MirrorConfig { codec: "h264".into(), width: 720, height: 1280, session: 8 };
+    let sender = stream.clone();
+    tokio::task::spawn_blocking(move || sender.send(PacketKind::Config, 0, config.to_cbor())).await.unwrap();
+    wait_for(&mut pc, "showing 8", |e| {
+        matches!(e, NodeEvent::Mirroring { session: 8, on: true, .. }).then_some(())
+    })
+    .await;
+    stream.close();
+    wait_for(&mut pc, "ended 8", |e| {
+        matches!(e, NodeEvent::Mirroring { session: 8, on: false, .. }).then_some(())
+    })
+    .await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
