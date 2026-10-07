@@ -1035,6 +1035,50 @@ impl Node {
         crate::calls::command(&self.shared, &session, id, command).await
     }
 
+    /// This phone's call history changed: connected PCs that show it catch up.
+    pub async fn call_log_changed(&self) {
+        self.shared.call_log_changed().await;
+    }
+
+    /// A paired phone's recent calls before `before` (Unix ms; the latest
+    /// when `None`), newest first.
+    pub async fn call_log(
+        &self,
+        peer: DeviceId,
+        before: Option<i64>,
+        limit: u32,
+    ) -> Result<Vec<crate::CallLogEntry>> {
+        let session = self.connected(&peer)?;
+        crate::calls::log(&self.shared, &session, before, limit).await
+    }
+
+    /// Asks a paired phone to place a call to `number` (or open the dialer
+    /// with it filled in).
+    pub async fn call_dial(&self, peer: DeviceId, number: String) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::calls::dial(&self.shared, &session, number).await
+    }
+
+    // ---- Contacts (docs/protocol/contacts.md) ----
+
+    /// This phone's contacts changed: connected PCs that show them catch up.
+    pub async fn contacts_changed(&self) {
+        self.shared.contacts_changed().await;
+    }
+
+    /// Lists or searches a paired phone's contacts (favorites first, then
+    /// alphabetical), skipping `offset`.
+    pub async fn contacts(
+        &self,
+        peer: DeviceId,
+        query: Option<String>,
+        offset: u32,
+        limit: u32,
+    ) -> Result<Vec<crate::Contact>> {
+        let session = self.connected(&peer)?;
+        crate::contacts::list(&self.shared, &session, query, offset, limit).await
+    }
+
     // ---- Photos (docs/protocol/photos.md) ----
 
     /// A photo or screenshot just appeared on this phone; announced to every

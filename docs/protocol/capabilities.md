@@ -39,6 +39,9 @@ capability is missing.
 | `call.state` | Reports incoming and ongoing calls ([calls](calls.md)) | phone permission |
 | `call.control` | Answers, declines and silences calls when a PC asks ([calls](calls.md)) | phone permission |
 | `call.incall` | Mutes, holds and presses keys on the call in progress ([calls](calls.md)) | Elevated, Android 12+ |
+| `call.log` | Lists recent calls ([calls](calls.md)) | phone permission |
+| `call.dial` | Places a call or opens the dialer when a PC asks ([calls](calls.md)) | phone permission |
+| `contacts.read` | Lists and searches contacts ([contacts](contacts.md)) | contacts permission |
 | `clip.write` | Accepts clipboard content from the PC ([clipboard service](clipboard.md)) | app update |
 | `clip.share` | Sends the clipboard when the user taps "Send" | app update |
 | `clip.read.auto` | Sends clipboard changes automatically, in the background | Elevated |
@@ -56,7 +59,8 @@ capability is missing.
 |---|---|---|
 | `pc.power` | Locks or sleeps on request ([actions](actions.md)) | app update |
 | `photos.show` | Shows a phone's new photos ([photos](photos.md)) | app update |
-| `call.show` | Shows a phone's calls ([calls](calls.md)) | app update |
+| `call.show` | Shows a phone's calls, recent calls and dialer ([calls](calls.md)) | app update |
+| `contacts.show` | Shows a phone's contacts ([contacts](contacts.md)) | app update |
 | `sms.show` | Shows a phone's text messages ([messages](sms.md)) | app update |
 | `mirror.view` | Shows a phone's screen ([mirroring](mirror.md)) | app update |
 | `mirror.listen` | Plays a mirrored phone's sound ([mirroring](mirror.md)) | app update |

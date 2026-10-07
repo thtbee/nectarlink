@@ -392,6 +392,8 @@ impl AppState {
             NodeEvent::ClipboardReceived { .. }
             | NodeEvent::PhotoAdded { .. }
             | NodeEvent::Call { .. }
+            | NodeEvent::CallLogChanged { .. }
+            | NodeEvent::ContactsChanged { .. }
             | NodeEvent::SmsChanged { .. }
             | NodeEvent::Mirroring { .. } => Changes::NONE,
             NodeEvent::Transfer(transfer) => self.update_transfer(transfer.clone(), Instant::now()),

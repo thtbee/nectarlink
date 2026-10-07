@@ -45,6 +45,11 @@ pub mod types {
     pub const PHOTOS_SENDING: &str = "photos.sending";
     pub const CALL_STATE: &str = "call.state";
     pub const CALL_ACTION: &str = "call.action";
+    pub const CALL_LOG: &str = "call.log";
+    pub const CALL_LOG_CHANGED: &str = "call.log.changed";
+    pub const CALL_DIAL: &str = "call.dial";
+    pub const CONTACTS_LIST: &str = "contacts.list";
+    pub const CONTACTS_CHANGED: &str = "contacts.changed";
     pub const SMS_THREADS: &str = "sms.threads";
     pub const SMS_MESSAGES: &str = "sms.messages";
     pub const SMS_SEND: &str = "sms.send";
@@ -922,14 +927,27 @@ pub mod calls {
     /// Offered by phones that control a call in progress (mute, speaker,
     /// hold, keypad) when a PC asks.
     pub const IN_CALL: &str = "call.incall";
+    /// Offered by phones that list recent calls from the call log.
+    pub const LOG: &str = "call.log";
+    /// Offered by phones that place calls (or open the dialer) when a PC asks.
+    pub const DIAL: &str = "call.dial";
     /// A caller's photo: a JPEG of at most this many bytes.
     pub const MAX_PHOTO_BYTES: usize = 64 * 1024;
+    /// A contact's photo on a call log entry: a JPEG of at most this many bytes.
+    pub const MAX_LOG_PHOTO_BYTES: usize = 16 * 1024;
+    /// Most call log entries in one answer.
+    pub const MAX_LOG_PAGE: u32 = 100;
     pub const MAX_ID_BYTES: usize = 64;
     pub const MAX_TEXT_BYTES: usize = 256;
 
     pub const RINGING: &str = "ringing";
     pub const ACTIVE: &str = "active";
     pub const ENDED: &str = "ended";
+
+    pub const DIR_INCOMING: &str = "incoming";
+    pub const DIR_OUTGOING: &str = "outgoing";
+    pub const DIR_MISSED: &str = "missed";
+    pub const DIR_REJECTED: &str = "rejected";
 
     pub const ANSWER: &str = "answer";
     pub const DECLINE: &str = "decline";
@@ -1033,6 +1051,170 @@ pub struct CallAction {
 pub fn is_dtmf_digit(digit: &str) -> bool {
     digit.len() == 1 && digit.chars().all(|c| c.is_ascii_digit() || c == '*' || c == '#')
 }
+
+/// One call in the phone's call history (`call.log`).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallLogEntry {
+    pub id: String,
+    /// Who called, or who was called (empty when withheld).
+    #[serde(default)]
+    pub number: String,
+    /// The contact's name, when the number is a contact.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// `incoming`, `outgoing`, `missed` or `rejected`.
+    pub direction: String,
+    /// When the call started, in Unix milliseconds.
+    pub date: i64,
+    /// Seconds on the call (`0` when missed or not answered).
+    #[serde(default)]
+    pub duration: u32,
+    /// The contact's photo (JPEG, at most 16 KiB).
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    pub photo: Option<Vec<u8>>,
+}
+
+/// Never prints the number, name or photo (protocol v0 §11).
+impl std::fmt::Debug for CallLogEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CallLogEntry")
+            .field("id", &self.id)
+            .field("direction", &self.direction)
+            .field("duration", &self.duration)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Body of `call.log`: recent calls before `before` (Unix milliseconds; the
+/// latest when missing), newest first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallLogGet {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before: Option<i64>,
+    pub limit: u32,
+}
+
+/// Answer to `call.log`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallLog {
+    pub entries: Vec<CallLogEntry>,
+}
+
+/// Body of `call.log.changed`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallLogChanged {}
+
+/// Body of `call.dial`: ask the phone to call `number`.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallDial {
+    pub number: String,
+}
+
+/// Never prints the number (protocol v0 §11).
+impl std::fmt::Debug for CallDial {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CallDial").field("bytes", &self.number.len()).finish()
+    }
+}
+
+impl CallDial {
+    pub fn is_valid(&self) -> bool {
+        !self.number.trim().is_empty() && self.number.len() <= calls::MAX_TEXT_BYTES
+    }
+}
+
+// ---- Contacts (docs/protocol/contacts.md) ----
+
+pub mod contacts {
+    /// Offered by phones that share their contacts.
+    pub const READ: &str = "contacts.read";
+    /// Offered by PCs that show contacts.
+    pub const SHOW: &str = "contacts.show";
+    /// Most contacts in one answer.
+    pub const MAX_PAGE: u32 = 200;
+    /// A search query: at most this many bytes.
+    pub const MAX_QUERY_BYTES: usize = 256;
+    /// Most phone numbers on one contact.
+    pub const MAX_NUMBERS: usize = 16;
+    /// A contact's photo: a JPEG of at most this many bytes.
+    pub const MAX_PHOTO_BYTES: usize = 16 * 1024;
+}
+
+/// One phone number on a contact.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContactNumber {
+    pub number: String,
+    /// Optional type/label, e.g. `"mobile"`, `"home"`, `"work"`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+}
+
+/// Never prints the number or label (protocol v0 §11).
+impl std::fmt::Debug for ContactNumber {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ContactNumber").finish_non_exhaustive()
+    }
+}
+
+/// A contact on the phone (`contacts.list`).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Contact {
+    pub id: String,
+    pub name: String,
+    pub numbers: Vec<ContactNumber>,
+    /// Favorite / starred on the phone.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub starred: bool,
+    /// Small JPEG thumbnail (at most 16 KiB).
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    pub photo: Option<Vec<u8>>,
+}
+
+/// Never prints the name, numbers or photo (protocol v0 §11).
+impl std::fmt::Debug for Contact {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Contact")
+            .field("id", &self.id)
+            .field("numbers", &self.numbers.len())
+            .field("starred", &self.starred)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Body of `contacts.list` request.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContactsListGet {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub query: Option<String>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub offset: u32,
+    pub limit: u32,
+}
+
+fn is_zero(n: &u32) -> bool {
+    *n == 0
+}
+
+/// Never prints the search query (protocol v0 §11).
+impl std::fmt::Debug for ContactsListGet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ContactsListGet")
+            .field("has_query", &self.query.is_some())
+            .field("offset", &self.offset)
+            .field("limit", &self.limit)
+            .finish()
+    }
+}
+
+/// Answer to `contacts.list`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContactsList {
+    pub contacts: Vec<Contact>,
+}
+
+/// Body of `contacts.changed`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContactsChanged {}
 
 // ---- Photos (docs/protocol/photos.md) ----
 
@@ -1494,5 +1676,43 @@ mod tests {
     fn power_level_wire_names() {
         let env = Envelope::new("x", &PowerLevel::NotApplicable).unwrap();
         assert_eq!(env.b, Some(ciborium::Value::Text("n/a".into())));
+    }
+
+    #[test]
+    fn call_log_dial_and_contacts_round_trip_and_hide_private_fields() {
+        let dial = CallDial { number: "+1 555 0100".into() };
+        assert!(dial.is_valid());
+        assert!(!format!("{dial:?}").contains("555"));
+        assert!(!CallDial { number: "   ".into() }.is_valid());
+        assert!(!CallDial { number: "1".repeat(calls::MAX_TEXT_BYTES + 1) }.is_valid());
+
+        let entry = CallLogEntry {
+            id: "10".into(),
+            number: "+15550100".into(),
+            name: Some("Ada Lovelace".into()),
+            direction: calls::DIR_MISSED.into(),
+            date: 1_760_000_000_000,
+            duration: 0,
+            photo: Some(vec![0xff, 0xd8]),
+        };
+        assert!(!format!("{entry:?}").contains("555") && !format!("{entry:?}").contains("Ada"));
+        let env = Envelope::new(types::CALL_LOG, &CallLog { entries: vec![entry.clone()] }).unwrap();
+        let back: CallLog = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back.entries, vec![entry]);
+
+        let contact = Contact {
+            id: "42".into(),
+            name: "Ada Lovelace".into(),
+            numbers: vec![ContactNumber { number: "+15550100".into(), label: Some("mobile".into()) }],
+            starred: true,
+            photo: Some(vec![0xff, 0xd8]),
+        };
+        assert!(!format!("{contact:?}").contains("Ada") && !format!("{contact:?}").contains("555"));
+        let get = ContactsListGet { query: Some("Ada".into()), offset: 0, limit: 50 };
+        assert!(!format!("{get:?}").contains("Ada"));
+        let env =
+            Envelope::new(types::CONTACTS_LIST, &ContactsList { contacts: vec![contact.clone()] }).unwrap();
+        let back: ContactsList = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back.contacts, vec![contact]);
     }
 }

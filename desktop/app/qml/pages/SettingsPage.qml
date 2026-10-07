@@ -21,6 +21,7 @@ Item {
         notifications: qsTr("Notifications"),
         messages: qsTr("Messages"),
         calls: qsTr("Calls"),
+        contacts: qsTr("Contacts"),
         clipboard: qsTr("Clipboard"),
         files: qsTr("Files"),
         media: qsTr("Media playing on either device"),

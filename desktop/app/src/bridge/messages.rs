@@ -34,6 +34,9 @@ pub mod qobject {
         #[qproperty(bool, more)]
         #[qproperty(bool, loading_older, cxx_name = "loadingOlder")]
         #[qproperty(bool, sending)]
+        /// A number pre-filled in the new-message box ("" for none).
+        #[qproperty(QString, compose_to, cxx_name = "composeTo")]
+        #[qproperty(QString, compose_name, cxx_name = "composeName")]
         type Messages = super::MessagesRust;
     }
 
@@ -47,6 +50,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "openThread"]
         fn open_thread(self: &Messages, thread: &QString);
+        /// Opens an existing conversation with `number`, or starts a new one.
+        #[qinvokable]
+        #[cxx_name = "startChat"]
+        fn start_chat(self: &Messages, device: &QString, number: &QString, name: &QString);
         #[qinvokable]
         #[cxx_name = "closeThread"]
         fn close_thread(self: &Messages);
@@ -79,6 +86,8 @@ pub struct MessagesRust {
     more: bool,
     loading_older: bool,
     sending: bool,
+    compose_to: QString,
+    compose_name: QString,
     /// What was last shown, to skip refreshes that change nothing.
     last: Option<messages::View>,
 }
@@ -113,6 +122,8 @@ impl qobject::Messages {
         self.as_mut().set_more(view.more);
         self.as_mut().set_loading_older(view.loading_older);
         self.as_mut().set_sending(view.sending);
+        self.as_mut().set_compose_to(QString::from(view.compose_to.as_deref().unwrap_or_default()));
+        self.as_mut().set_compose_name(QString::from(view.compose_name.as_deref().unwrap_or_default()));
         self.as_mut().rust_mut().last = Some(view);
     }
 
@@ -124,6 +135,12 @@ impl qobject::Messages {
 
     pub fn open_thread(&self, thread: &QString) {
         messages::open_thread(String::from(thread));
+    }
+
+    pub fn start_chat(&self, device: &QString, number: &QString, name: &QString) {
+        if let Some(device) = super::parse_device(device) {
+            messages::start_chat(device, String::from(number), String::from(name));
+        }
     }
 
     pub fn close_thread(&self) {

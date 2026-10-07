@@ -31,6 +31,7 @@ struct RecordingPlatform {
     power: Mutex<Vec<PowerAction>>,
     links: Mutex<Vec<String>>,
     calls: Mutex<Vec<(String, nectarlink_core::CallCommand)>>,
+    dialed: Mutex<Vec<String>>,
     texts: Mutex<Vec<(Vec<String>, String)>>,
     mirror_asks: Mutex<Vec<String>>,
     /// What a PC got of a phone's screen.
@@ -168,6 +169,90 @@ impl Platform for RecordingPlatform {
     fn call_command(&self, id: &str, command: nectarlink_core::CallCommand) -> Result<(), String> {
         self.calls.lock().unwrap().push((id.to_owned(), command));
         Ok(())
+    }
+    fn call_log(
+        &self,
+        before: Option<i64>,
+        limit: u32,
+    ) -> Result<Vec<nectarlink_core::CallLogEntry>, String> {
+        let entry = |date: i64| nectarlink_core::CallLogEntry {
+            id: format!("log:{date}"),
+            number: format!("+1555010{date}"),
+            name: (date % 2 == 0).then(|| format!("Caller {date}")),
+            direction: match date % 4 {
+                0 => "incoming",
+                1 => "outgoing",
+                2 => "missed",
+                _ => "rejected",
+            }
+            .into(),
+            date,
+            duration: if date % 2 == 0 { 42 } else { 0 },
+            // Entry 3 has an oversized photo that the core should drop.
+            photo: match date {
+                4 => Some(vec![0xff, 0xd8]),
+                3 => Some(vec![0; 20 * 1024]),
+                _ => None,
+            },
+        };
+        let newest = before.unwrap_or(5);
+        Ok((0..newest).rev().take(limit as usize).map(entry).collect())
+    }
+    fn call_dial(&self, number: &str) -> Result<(), String> {
+        self.dialed.lock().unwrap().push(number.to_owned());
+        Ok(())
+    }
+    fn contacts(
+        &self,
+        query: Option<&str>,
+        offset: u32,
+        limit: u32,
+    ) -> Result<Vec<nectarlink_core::Contact>, String> {
+        use nectarlink_core::{Contact, ContactNumber};
+        let all = vec![
+            Contact {
+                id: "c1".into(),
+                name: "Sam Rivera".into(),
+                numbers: vec![ContactNumber { number: "+15550100".into(), label: Some("Mobile".into()) }],
+                starred: true,
+                photo: Some(vec![0xff, 0xd8]),
+            },
+            Contact {
+                id: "c2".into(),
+                name: "Alex Chen".into(),
+                numbers: vec![ContactNumber { number: "+15550188".into(), label: Some("Mobile".into()) }],
+                starred: true,
+                // Oversized photo: should be dropped by core rather than dropping the contact.
+                photo: Some(vec![0; 20 * 1024]),
+            },
+            Contact {
+                id: "c3".into(),
+                name: "Jordan Patel".into(),
+                numbers: vec![ContactNumber { number: "+15550155".into(), label: Some("Work".into()) }],
+                starred: false,
+                photo: None,
+            },
+            Contact {
+                id: "c4".into(),
+                name: "Priya Nair".into(),
+                numbers: vec![ContactNumber { number: "+15550172".into(), label: None }],
+                starred: false,
+                photo: None,
+            },
+        ];
+        let q = query.map(str::to_lowercase);
+        Ok(all
+            .into_iter()
+            .filter(|c| match &q {
+                None => true,
+                Some(q) => {
+                    c.name.to_lowercase().contains(q)
+                        || c.numbers.iter().any(|n| n.number.to_lowercase().contains(q))
+                }
+            })
+            .skip(offset as usize)
+            .take(limit as usize)
+            .collect())
     }
     fn open_photo(&self, id: &str) -> Result<OutgoingFile, String> {
         let barrier = self.photo_barrier.lock().unwrap().clone();
@@ -1622,4 +1707,117 @@ async fn slow_rpc_does_not_block_control_stream() {
     tokio::task::spawn_blocking(move || barrier.wait()).await.unwrap();
     let transfer_id = with_timeout("photos.get finishes", get_task).await.unwrap().expect("photo sent");
     wait_transfer(&mut pc, &transfer_id, "photo received", saved).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn call_log_and_dial_work_and_respect_permissions_and_toggles() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::CALLS_SHOW]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::CALLS_LOG]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    let page1 = with_timeout("call log page 1", pc.node.call_log(phone_id, None, 3)).await.unwrap();
+    assert_eq!(page1.len(), 3);
+    assert_eq!((&*page1[0].id, &*page1[0].direction, page1[0].date), ("log:4", "incoming", 4));
+    assert_eq!(page1[0].photo.as_deref(), Some(&[0xff, 0xd8][..]));
+    // Entry 3 had an oversized photo: kept without its photo.
+    assert_eq!((&*page1[1].id, &*page1[1].direction, page1[1].photo.as_ref()), ("log:3", "rejected", None));
+    assert_eq!((&*page1[2].id, &*page1[2].direction), ("log:2", "missed"));
+
+    let page2 = with_timeout("call log page 2", pc.node.call_log(phone_id, Some(2), 3)).await.unwrap();
+    assert_eq!(page2.iter().map(|e| e.date).collect::<Vec<_>>(), [1, 0]);
+
+    phone.node.call_log_changed().await;
+    wait_for(&mut pc, "call log changed", |e| match e {
+        NodeEvent::CallLogChanged { device } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    // Without `call.dial` on the phone, dialing from the PC is refused as unsupported.
+    assert!(matches!(pc.node.call_dial(phone_id, "+15550100".into()).await, Err(Error::Unsupported)));
+
+    phone
+        .node
+        .update_power(
+            PowerLevel::NotApplicable,
+            vec![
+                "media.control".into(),
+                nectarlink_core::CALLS_LOG.into(),
+                nectarlink_core::CALLS_DIAL.into(),
+            ],
+        )
+        .await;
+    wait_for(&mut pc, "call.dial unlocked", |e| match e {
+        NodeEvent::Capabilities(m)
+            if m.device == phone_id && m.state("calls.dial") == Some(FeatureState::Available) =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    with_timeout("dial", pc.node.call_dial(phone_id, "+15550100".into())).await.unwrap();
+    assert_eq!(*phone.platform.dialed.lock().unwrap(), ["+15550100"]);
+
+    // Turning `calls` off for this PC blocks both call log and dialing.
+    phone.node.set_device_toggle(pc_id, "calls", false).unwrap();
+    assert!(matches!(pc.node.call_log(phone_id, None, 3).await, Err(Error::Denied)));
+    assert!(matches!(pc.node.call_dial(phone_id, "+15550100".into()).await, Err(Error::Denied)));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn contacts_list_search_page_and_respect_permissions_and_toggles() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::CONTACTS_SHOW]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Without `contacts.read` on the phone, listing contacts is unsupported.
+    assert!(matches!(pc.node.contacts(phone_id, None, 0, 10).await, Err(Error::Unsupported)));
+
+    phone
+        .node
+        .update_power(
+            PowerLevel::NotApplicable,
+            vec!["media.control".into(), nectarlink_core::CONTACTS_READ.into()],
+        )
+        .await;
+    wait_for(&mut pc, "contacts.read unlocked", |e| match e {
+        NodeEvent::Capabilities(m)
+            if m.device == phone_id && m.state("contacts.read") == Some(FeatureState::Available) =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    let first_two = with_timeout("contacts page 1", pc.node.contacts(phone_id, None, 0, 2)).await.unwrap();
+    assert_eq!(first_two.len(), 2);
+    assert_eq!((&*first_two[0].name, first_two[0].starred), ("Sam Rivera", true));
+    assert_eq!(first_two[0].photo.as_deref(), Some(&[0xff, 0xd8][..]));
+    // Oversized photo on c2 was stripped rather than dropping the contact.
+    assert_eq!((&*first_two[1].name, first_two[1].photo.as_ref()), ("Alex Chen", None));
+
+    let rest = with_timeout("contacts page 2", pc.node.contacts(phone_id, None, 2, 10)).await.unwrap();
+    assert_eq!(rest.iter().map(|c| c.name.as_str()).collect::<Vec<_>>(), ["Jordan Patel", "Priya Nair"]);
+
+    let searched = with_timeout("contacts search", pc.node.contacts(phone_id, Some("patel".into()), 0, 10))
+        .await
+        .unwrap();
+    assert_eq!(searched.len(), 1);
+    assert_eq!(searched[0].name, "Jordan Patel");
+
+    phone.node.contacts_changed().await;
+    wait_for(&mut pc, "contacts changed", |e| match e {
+        NodeEvent::ContactsChanged { device } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    // Turning `contacts` off for this PC refuses contact queries.
+    phone.node.set_device_toggle(pc_id, "contacts", false).unwrap();
+    assert!(matches!(pc.node.contacts(phone_id, None, 0, 10).await, Err(Error::Denied)));
 }

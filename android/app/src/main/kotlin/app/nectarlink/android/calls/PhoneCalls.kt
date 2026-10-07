@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.database.ContentObserver
+import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.AudioManager
@@ -21,27 +23,40 @@ import android.telecom.TelecomManager
 import android.telephony.TelephonyManager
 import android.util.Log
 import androidx.core.content.ContextCompat
+import app.nectarlink.android.contacts.PhoneContacts
 import app.nectarlink.core.Call
 import app.nectarlink.core.CallCommand
+import app.nectarlink.core.CallLogEntry
 import app.nectarlink.core.CallPhase
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 
 /**
  * The phone's calls, for PCs (docs/protocol/calls.md): follows the call
- * state while the app runs, and answers, declines or silences a ringing
- * call when a PC asks. The call's audio stays on the phone.
+ * state while the app runs, answers, declines or silences a ringing
+ * call when a PC asks, lists recent calls (`call.log`), and places calls
+ * (`call.dial`). The call's audio stays on the phone.
  */
-internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit) {
+internal class PhoneCalls(
+    context: Context,
+    private val onChange: (Call) -> Unit,
+    private val onLogChanged: () -> Unit = {},
+) {
     private val context = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
     /** Contact lookups and reports, in order, off the main thread. */
     private val worker = Executors.newSingleThreadExecutor()
     private var receiver: BroadcastReceiver? = null
+    private var logObserver: ContentObserver? = null
+    private val notifyLog = Runnable { onLogChanged() }
 
     /** The call in progress (changed on the main thread, read by PCs' requests). */
     @Volatile
     private var current: Tracked? = null
+
+    /** Number dialed from a PC, used when Android's OFFHOOK broadcast omits the number. */
+    @Volatile
+    private var lastDialed: Pair<String, Long>? = null
 
     private data class Tracked(
         val id: String,
@@ -56,30 +71,46 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
 
     fun start() {
         instance = this
-        if (receiver != null || !canFollow(context)) return
-        receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE) ?: return
-                // Only sent with the call log permission; a second broadcast
-                // carries it when there is one.
-                @Suppress("DEPRECATION")
-                val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
-                stateChanged(state, number?.takeIf { it.isNotBlank() })
+        if (receiver == null && canFollow(context)) {
+            receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE) ?: return
+                    // Only sent with the call log permission; a second broadcast
+                    // carries it when there is one.
+                    @Suppress("DEPRECATION")
+                    val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
+                    stateChanged(state, number?.takeIf { it.isNotBlank() })
+                }
+            }.also {
+                ContextCompat.registerReceiver(
+                    context,
+                    it,
+                    IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED),
+                    // A system broadcast: other apps can't send it here.
+                    ContextCompat.RECEIVER_NOT_EXPORTED,
+                )
             }
-        }.also {
-            ContextCompat.registerReceiver(
-                context,
-                it,
-                IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED),
-                // A system broadcast: other apps can't send it here.
-                ContextCompat.RECEIVER_NOT_EXPORTED,
-            )
+        }
+        if (logObserver == null && canReadLog(context)) {
+            runCatching {
+                logObserver = object : ContentObserver(main) {
+                    override fun onChange(selfChange: Boolean) {
+                        main.removeCallbacks(notifyLog)
+                        main.postDelayed(notifyLog, LOG_SETTLE_MS)
+                    }
+                }.also {
+                    context.contentResolver.registerContentObserver(CallLog.Calls.CONTENT_URI, true, it)
+                }
+            }.onFailure { Log.w(TAG, "couldn't watch call log", it) }
         }
     }
 
     fun stop() {
         receiver?.let { runCatching { context.unregisterReceiver(it) } }
         receiver = null
+        logObserver?.let { runCatching { context.contentResolver.unregisterContentObserver(it) } }
+        logObserver = null
+        main.removeCallbacks(notifyLog)
         current = null
     }
 
@@ -102,11 +133,16 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
                 call == null -> {
                     // Calling out.
                     val now = System.currentTimeMillis()
-                    val tracked = Tracked(id = now.toString(), incoming = false, number = number, answered = true, since = now)
+                    val dialed = lastDialed?.takeIf { now - it.second < 15_000L }?.first
+                    val outNumber = number ?: dialed
+                    val tracked = Tracked(id = now.toString(), incoming = false, number = outNumber, answered = true, since = now)
                     current = tracked
-                    report(tracked, CallPhase.ACTIVE, withContact = false)
+                    report(tracked, CallPhase.ACTIVE, withContact = true)
                 }
                 !call.answered -> {
+                    if (call.number == null && number != null) {
+                        call.number = number
+                    }
                     call.answered = true
                     call.since = System.currentTimeMillis()
                     report(call, CallPhase.ACTIVE, withContact = false)
@@ -114,6 +150,7 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
             }
             TelephonyManager.EXTRA_STATE_IDLE -> if (call != null) {
                 current = null
+                lastDialed = null
                 restoreRinger()
                 if (call.incoming && !call.answered && !call.declined) {
                     // Missed, or turned down on the phone: the call log knows,
@@ -152,7 +189,7 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
                 incoming = incoming,
                 number = number,
                 name = name,
-                photo = photo.takeIf { phase == CallPhase.RINGING },
+                photo = photo.takeIf { phase == CallPhase.RINGING || (!incoming && phase == CallPhase.ACTIVE) },
                 missed = missed,
                 since = since.takeIf { phase == CallPhase.ACTIVE },
                 controls = if (phase == CallPhase.ACTIVE) CallCompanion.controls() else null,
@@ -213,12 +250,18 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
                 val date = cursor.getLong(1)
                 val loggedNumber = cursor.getString(2)
                 if (started > 0L && date < started - 10_000L) return@use true
-                if (number != null && !loggedNumber.isNullOrBlank() && !android.telephony.PhoneNumberUtils.compare(context, number, loggedNumber)) {
+                if (number != null && !loggedNumber.isNullOrBlank() && !sameNumber(number, loggedNumber)) {
                     return@use true
                 }
                 cursor.getInt(0) == CallLog.Calls.MISSED_TYPE
             } ?: true
         }.getOrDefault(true)
+    }
+
+    private fun sameNumber(a: String, b: String): Boolean {
+        val da = a.filter { it.isDigit() }.takeLast(9)
+        val db = b.filter { it.isDigit() }.takeLast(9)
+        return da.isNotEmpty() && da == db
     }
 
     /**
@@ -258,6 +301,121 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
             }
         }.getOrElse {
             Log.w(TAG, "a call action failed", it)
+            false
+        }
+    }
+
+    /** Recent calls from the phone's call history (`call.log`). */
+    @SuppressLint("MissingPermission")
+    fun callLog(before: Long?, limit: Int): List<CallLogEntry> {
+        check(canReadLog(context)) { "Call log permission not granted" }
+        return try {
+            val resolver = context.contentResolver
+            val contactsAllowed = granted(context, Manifest.permission.READ_CONTACTS)
+            val contactCache = HashMap<String, Pair<String?, ByteArray?>>()
+            fun lookupContact(number: String, cachedName: String?, cachedPhotoUri: String?): Pair<String?, ByteArray?> =
+                contactCache.getOrPut(number) {
+                    var name = cachedName?.trim()?.takeIf { it.isNotEmpty() }
+                    var photoUri = cachedPhotoUri?.trim()?.takeIf { it.isNotEmpty() }
+                    if ((name == null || photoUri == null) && contactsAllowed) {
+                        runCatching {
+                            val uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number))
+                            val cols = arrayOf(
+                                ContactsContract.PhoneLookup.DISPLAY_NAME,
+                                ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI,
+                            )
+                            resolver.query(uri, cols, null, null, null)?.use { c: Cursor ->
+                                if (c.moveToFirst()) {
+                                    if (name == null) name = c.getString(0)?.trim()?.takeIf { it.isNotEmpty() }
+                                    if (photoUri == null) photoUri = c.getString(1)?.trim()?.takeIf { it.isNotEmpty() }
+                                }
+                            }
+                        }
+                    }
+                    val photo = photoUri?.let(Uri::parse)?.let { PhoneContacts.smallPhoto(resolver, it) }
+                    name to photo
+                }
+
+            val columns = arrayOf(
+                CallLog.Calls._ID,
+                CallLog.Calls.NUMBER,
+                CallLog.Calls.CACHED_NAME,
+                CallLog.Calls.TYPE,
+                CallLog.Calls.DATE,
+                CallLog.Calls.DURATION,
+                CallLog.Calls.CACHED_PHOTO_URI,
+            )
+            val (selection, args) = if (before == null) {
+                null to null
+            } else {
+                "${CallLog.Calls.DATE} < ?" to arrayOf(before.toString())
+            }
+            val max = limit.coerceIn(1, MAX_LOG_PAGE)
+            resolver.query(CallLog.Calls.CONTENT_URI, columns, selection, args, "${CallLog.Calls.DATE} DESC")?.use { c ->
+                buildList {
+                    while (size < max && c.moveToNext()) {
+                        val number = c.getString(1)?.trim().orEmpty()
+                        if (number.isEmpty()) continue
+                        val direction = when (c.getInt(3)) {
+                            CallLog.Calls.OUTGOING_TYPE -> "outgoing"
+                            CallLog.Calls.MISSED_TYPE -> "missed"
+                            CallLog.Calls.REJECTED_TYPE, CallLog.Calls.BLOCKED_TYPE -> "rejected"
+                            else -> "incoming"
+                        }
+                        val (name, photo) = lookupContact(number, c.getString(2), c.getString(6))
+                        add(
+                            CallLogEntry(
+                                id = c.getLong(0).toString(),
+                                number = number,
+                                name = name,
+                                direction = direction,
+                                date = c.getLong(4),
+                                duration = c.getLong(5).coerceIn(0L, UInt.MAX_VALUE.toLong()).toUInt(),
+                                photo = photo,
+                            ),
+                        )
+                    }
+                }
+            }.orEmpty()
+        } catch (e: Exception) {
+            Log.w(TAG, "can't read call log", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Places a call (`TelecomManager.placeCall` / `Intent.ACTION_CALL` when
+     * `CALL_PHONE` is granted), or falls back to opening the dialer with the
+     * number pre-filled (`Intent.ACTION_DIAL`).
+     */
+    @SuppressLint("MissingPermission")
+    fun dial(number: String): Boolean {
+        val trimmed = number.trim()
+        if (trimmed.isEmpty()) return false
+        lastDialed = trimmed to System.currentTimeMillis()
+        val uri = Uri.fromParts("tel", trimmed, null)
+        return runCatching {
+            if (granted(context, Manifest.permission.CALL_PHONE)) {
+                val tm = context.getSystemService(TelecomManager::class.java)
+                if (tm != null) {
+                    try {
+                        tm.placeCall(uri, android.os.Bundle.EMPTY)
+                        return@runCatching true
+                    } catch (_: SecurityException) {
+                        // Fall back to the intents below if Telecom refused.
+                    }
+                }
+                try {
+                    context.startActivity(Intent(Intent.ACTION_CALL, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    return@runCatching true
+                } catch (_: SecurityException) {
+                    // Fall back to the dialer below if the OS blocked direct calling.
+                }
+            }
+            context.startActivity(Intent(Intent.ACTION_DIAL, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            true
+        }.getOrElse {
+            Log.w(TAG, "couldn't dial a call", it)
             false
         }
     }
@@ -306,14 +464,17 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
             instance?.resendActive()
         }
         private const val MAX_PHOTO_BYTES = 64 * 1024
+        private const val MAX_LOG_PAGE = 100
         /** How long the call log takes to have the call that just ended. */
         private const val LOG_DELAY_MS = 1500L
+        private const val LOG_SETTLE_MS = 500L
 
-        /** Following calls, with numbers, contact names, and answering. */
+        /** Following calls, with numbers, contact names, answering, and calling. */
         val permissions: Array<String> = arrayOf(
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.READ_CALL_LOG,
             Manifest.permission.ANSWER_PHONE_CALLS,
+            Manifest.permission.CALL_PHONE,
             Manifest.permission.READ_CONTACTS,
         )
 
@@ -326,6 +487,14 @@ internal class PhoneCalls(context: Context, private val onChange: (Call) -> Unit
         /** Whether it can answer and decline them (declining needs Android 9). */
         fun canControl(context: Context) =
             canFollow(context) && granted(context, Manifest.permission.ANSWER_PHONE_CALLS)
+
+        /** Whether it can read the phone's call history (`call.log`). */
+        fun canReadLog(context: Context) = granted(context, Manifest.permission.READ_CALL_LOG)
+
+        /** Whether it can place calls from a PC (`call.dial`). */
+        fun canDial(context: Context) =
+            context.packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY) &&
+                (granted(context, Manifest.permission.CALL_PHONE) || canFollow(context))
 
         /** Whether everything the card asks for is granted. */
         fun hasAll(context: Context) = permissions.all { granted(context, it) }

@@ -183,7 +183,7 @@ async fn answer(shared: &Arc<Shared>, session: &Session, env: &Envelope) -> Resu
 }
 
 /// The envelope for as many of `items` (newest first) as fit in a frame.
-fn fit<T: Clone>(
+pub(crate) fn fit<T: Clone>(
     mut items: Vec<T>,
     wrap: impl Fn(Vec<T>) -> std::result::Result<Envelope, nectarlink_protocol::ProtocolError>,
 ) -> std::result::Result<Envelope, String> {

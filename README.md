@@ -105,15 +105,19 @@ tests; there are no releases yet.
   window of its own, running on the phone beside whatever its screen
   shows; use it with the mouse and keyboard, and open several at once.
 - **Texts** on the PC: a Messages page with the phone's conversations
-  (pictures included), to reply or start a new one; texts go out through
-  the phone. Search them, copy a one-time code with one click, and open
-  links.
-- **Calls**: see who's calling on the PC (with the contact's name and
-  photo), and answer, decline or silence it from there. During the call,
-  the PC shows how long it has been going and can hang up and change the
-  volume; with Wireless debugging set up (Android 12 and later), also mute,
-  switch to the speaker, hold and use the keypad. The call itself stays
-  on the phone. Calls nobody answered show as missed.
+  (pictures included), to reply or start a new one (searching contacts as
+  you type); texts go out through the phone. Search them, copy a one-time
+  code with one click, and open links.
+- **Calls and contacts**: a Calls page with the phone's recent calls
+  (grouped by day, missed calls marked, tap to call back or text), its
+  contacts (favorites first, with photos and search), and a keypad to call
+  any number from the PC through the phone. When the phone rings, see who's
+  calling on the PC (with the contact's name and photo), and answer, decline
+  or silence it from there. During the call, the PC shows how long it has
+  been going and can hang up and change the volume; with Wireless debugging
+  set up (Android 12 and later), also mute, switch to the speaker, hold and
+  use the keypad. The call's audio stays on the phone. Calls nobody answered
+  show as missed.
 - **New photos and screenshots** from the phone pop up on the PC with a
   preview: save them to Downloads or copy them, ready to paste.
 - **Media** both ways: what plays on the phone shows on the PC, in the app and
@@ -125,7 +129,7 @@ tests; there are no releases yet.
 - **Capability matrix**: both apps compute which features work for a pair of
   devices and what would enable the rest, so the interface never offers
   something that can't work.
-- **Windows app**: home, messages and settings, two themes in light and dark (Bloom,
+- **Windows app**: home, messages, calls and settings, two themes in light and dark (Bloom,
   which takes its colors from the desktop wallpaper, and Graphite), Mica, a
   custom title bar with Snap Layouts, and a tray icon. In the background it
   uses about 10 MB of memory (as shown in Task Manager).
@@ -140,7 +144,7 @@ tests; there are no releases yet.
   against their SHA-256 sums.
 - **Command-line client** for development and testing (`nectarlink`).
 
-**Next**: contacts and the call log, talking on calls through the PC (Bluetooth), and the rest of the
+**Next**: talking on calls through the PC (Bluetooth), and the rest of the
 [plan](docs/PLAN.md).
 
 ## Screenshots

@@ -19,6 +19,7 @@ import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.calls.CallCompanion
 import app.nectarlink.android.calls.PhoneCalls
+import app.nectarlink.android.contacts.PhoneContacts
 import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.mirror.AppWindows
 import app.nectarlink.android.mirror.InputService
@@ -73,7 +74,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         ringer,
         phoneMedia,
         onLink = { pc, url -> LinkNotifications.show(this.context, _state.value.nameOf(pc).orEmpty(), url) },
-        onCall = { id, command -> calls.command(id, command) },
+        calls = { calls },
+        contacts = { contacts },
         sms = { sms },
         onMirror = { pc, request ->
             MirrorRequests.show(this.context, request, _state.value.nameOf(pc).orEmpty())
@@ -83,10 +85,19 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val sms = PhoneSms(this.context) {
         notificationOps.trySend { it.smsChanged(null) }
     }
-    private val calls = PhoneCalls(this.context) { call ->
-        notificationOps.trySend { node ->
-            runCatching { node.callChanged(call) }.onFailure { Log.i(TAG, "a call wasn't reported", it) }
-        }
+    private val calls = PhoneCalls(
+        this.context,
+        onChange = { call ->
+            notificationOps.trySend { node ->
+                runCatching { node.callChanged(call) }.onFailure { Log.i(TAG, "a call wasn't reported", it) }
+            }
+        },
+        onLogChanged = {
+            notificationOps.trySend { it.callLogChanged() }
+        },
+    )
+    private val contacts = PhoneContacts(this.context) {
+        notificationOps.trySend { it.contactsChanged() }
     }
     private val photos = RecentPhotos(this.context) { photo ->
         notificationOps.trySend { node ->
@@ -167,6 +178,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 it.copy(
                     photoAccess = RecentPhotos.hasAccess(context),
                     callAccess = PhoneCalls.hasAll(context),
+                    contactsAccess = PhoneContacts.canRead(context),
                     smsAccess = PhoneSms.hasAll(context),
                 )
             }
@@ -175,7 +187,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             scope.launch { Elevated.start() }
             scope.launch(Dispatchers.Main) {
                 if (_state.value.photoAccess) photos.start()
-                if (PhoneCalls.canFollow(context)) calls.start()
+                if (PhoneCalls.canFollow(context) || PhoneCalls.canReadLog(context)) calls.start()
+                if (PhoneContacts.canRead(context)) contacts.start()
                 if (PhoneSms.canRead(context)) sms.start()
             }
             scope.launch {
@@ -220,6 +233,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         val unrestricted = BackgroundAccess.isUnrestricted(context)
         val photoAccess = RecentPhotos.hasAccess(context)
         val callAccess = PhoneCalls.hasAll(context)
+        val contactsAccess = PhoneContacts.canRead(context)
         val smsAccess = PhoneSms.hasAll(context)
         val inputAccess = InputService.running
         val elevated = Elevated.running
@@ -234,6 +248,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 backgroundUnrestricted = unrestricted,
                 photoAccess = photoAccess,
                 callAccess = callAccess,
+                contactsAccess = contactsAccess,
                 smsAccess = smsAccess,
                 inputAccess = inputAccess,
                 elevated = elevated,
@@ -246,7 +261,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         if (node != null) {
             scope.launch(Dispatchers.Main) {
                 if (photoAccess) photos.start() else photos.stop()
-                if (PhoneCalls.canFollow(context)) calls.start() else calls.stop()
+                if (PhoneCalls.canFollow(context) || PhoneCalls.canReadLog(context)) calls.start() else calls.stop()
+                if (contactsAccess) contacts.start() else contacts.stop()
                 if (PhoneSms.canRead(context)) sms.start() else sms.stop()
             }
             notificationOps.trySend { it.updatePower(powerLevel(), capabilities(_state.value.notificationAccess)) }
@@ -400,6 +416,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneCalls.canFollow(context)) listOf("call.state") else emptyList()) +
             (if (PhoneCalls.canControl(context)) listOf("call.control") else emptyList()) +
             (if (PhoneCalls.canControl(context) && CallCompanion.allowed(context)) listOf("call.incall") else emptyList()) +
+            (if (PhoneCalls.canReadLog(context)) listOf("call.log") else emptyList()) +
+            (if (PhoneCalls.canDial(context)) listOf("call.dial") else emptyList()) +
+            (if (PhoneContacts.canRead(context)) listOf("contacts.read") else emptyList()) +
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
             (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList()) +

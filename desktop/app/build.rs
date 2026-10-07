@@ -47,6 +47,7 @@ const QML: &[&str] = &[
     "qml/components/Toggle.qml",
     "qml/components/TransferItem.qml",
     "qml/components/Txt.qml",
+    "qml/pages/CallsPage.qml",
     "qml/pages/HomePage.qml",
     "qml/pages/MessagesPage.qml",
     "qml/pages/PairingPanel.qml",

@@ -328,6 +328,7 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("notifications", true),
     ("messages", true),
     ("calls", true),
+    ("contacts", true),
     ("clipboard", true),
     ("files", true),
     ("media", true),
@@ -611,6 +612,27 @@ pub const FEATURES: &[FeatureDef] = &[
         ],
         partial: None,
     },
+    FeatureDef {
+        id: "calls.log",
+        group: FeatureGroup::Calls,
+        requires: &[phone("call.log", Unlock::Permission(Permission::Phone)), DeviceToggle("calls")],
+        partial: None,
+    },
+    FeatureDef {
+        id: "calls.dial",
+        group: FeatureGroup::Calls,
+        requires: &[phone("call.dial", Unlock::Permission(Permission::Phone)), DeviceToggle("calls")],
+        partial: None,
+    },
+    FeatureDef {
+        id: "contacts.read",
+        group: FeatureGroup::Calls,
+        requires: &[
+            phone("contacts.read", Unlock::Permission(Permission::Contacts)),
+            DeviceToggle("contacts"),
+        ],
+        partial: None,
+    },
     // Clipboard
     FeatureDef {
         id: "clipboard.pc_to_phone",
@@ -772,6 +794,9 @@ mod tests {
         "sms.read",
         "sms.send",
         "call.state",
+        "call.log",
+        "call.dial",
+        "contacts.read",
         "clip.write",
         "clip.share",
         "files.transfer",

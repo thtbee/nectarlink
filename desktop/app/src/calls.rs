@@ -7,14 +7,23 @@
 
 use std::{collections::HashMap, path::PathBuf, sync::Mutex};
 
-use nectarlink_core::{CallCommand, CallState, DeviceId, Error, FeatureState, LinkState, NodeEvent};
+use nectarlink_core::{
+    CallCommand, CallLogEntry, CallState, Contact, DeviceId, Error, FeatureState, LinkState, NodeEvent,
+};
+use serde_json::{Value, json};
 
 use crate::{
     bridge::app::{describe, show_message},
     core_host,
+    messages::{Status, digits},
     state::Changes,
     win::toast::{self, CALL_ANSWER, CALL_DECLINE, CALL_END, Toast},
 };
+
+/// Call log entries read at a time, and contacts per page.
+const LOG_PAGE: u32 = 50;
+const CONTACTS_PAGE: u32 = 200;
+const MAX_CONTACT_PAGES: u32 = 3;
 
 /// The toast "device" for calls; their key is `<device ID> <call ID>`.
 pub const TOAST_GROUP: &str = "calls";
@@ -60,25 +69,75 @@ pub fn can_control(device: DeviceId) -> bool {
     })
 }
 
+/// Whether the PC can ask a phone to dial a number.
+pub fn can_dial(device: DeviceId) -> bool {
+    core_host::host().hub.read(|s| {
+        s.matrices.get(&device).and_then(|m| m.state("calls.dial")) == Some(FeatureState::Available)
+    })
+}
+
 fn key(device: DeviceId, call: &str) -> String {
     format!("{device} {call}")
 }
 
 pub fn on_event(event: &NodeEvent) {
+    let page_device = page_state(|s| s.device);
     match event {
-        NodeEvent::Call { device, call } => changed(*device, call),
+        NodeEvent::Call { device, call } => {
+            changed(*device, call);
+            if Some(*device) == page_device && call.state == "ended" {
+                core_host::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(600)).await;
+                    load_call_log(None);
+                });
+            }
+        }
+        NodeEvent::CallLogChanged { device } if Some(*device) == page_device => {
+            load_call_log(None);
+        }
+        NodeEvent::ContactsChanged { device } if Some(*device) == page_device => {
+            load_contacts();
+        }
+        NodeEvent::LinkChanged { device, link: LinkState::Online { .. } } if Some(*device) == page_device => {
+            if page_state(|s| s.log_status != Status::Ready) {
+                load_call_log(None);
+            }
+            if page_state(|s| s.contacts_status != Status::Ready) {
+                load_contacts();
+            }
+        }
         // A phone that's gone can't be answered (or hung up) from here.
         NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } => {
             stop_ringing(*device);
             finish(*device);
+            if Some(*device) == page_device {
+                page_state(|s| {
+                    s.log_status = Status::Offline;
+                    s.contacts_status = Status::Offline;
+                });
+                core_host::host().hub.changed(Changes::CALLS);
+            }
         }
         // A call can arrive before what the phone can do with it: once the
         // PC may end it, its notification shows.
-        NodeEvent::Capabilities(matrix) if matrix.state("calls.control") == Some(FeatureState::Available) => {
-            if let Some(call) = active(matrix.device)
+        NodeEvent::Capabilities(matrix) => {
+            if matrix.state("calls.control") == Some(FeatureState::Available)
+                && let Some(call) = active(matrix.device)
                 && notified(|n| n.get(&matrix.device) != Some(&call.id))
             {
                 show_in_progress(matrix.device, &call);
+            }
+            if Some(matrix.device) == page_device {
+                if matrix.state("calls.log") == Some(FeatureState::Available)
+                    && page_state(|s| !matches!(s.log_status, Status::Ready | Status::Loading))
+                {
+                    load_call_log(None);
+                }
+                if matrix.state("contacts.read") == Some(FeatureState::Available)
+                    && page_state(|s| !matches!(s.contacts_status, Status::Ready | Status::Loading))
+                {
+                    load_contacts();
+                }
             }
         }
         _ => {}
@@ -315,6 +374,358 @@ pub fn on_toast(key: &str, action: &str) {
     });
 }
 
+// ---- Calls page: call log, contacts and dialing ----
+
+#[derive(Debug, Default)]
+struct PageState {
+    device: Option<DeviceId>,
+    log_status: Status,
+    log: Vec<CallLogEntry>,
+    more_log: bool,
+    loading_older: bool,
+    contacts_status: Status,
+    contacts: Vec<Contact>,
+    dialing: bool,
+    /// Caller photos saved, by call log entry ID.
+    log_photos: HashMap<String, PathBuf>,
+    /// Contact photos saved, by contact ID.
+    contact_photos: HashMap<String, PathBuf>,
+    /// Bumped when the phone changes, so late answers are dropped.
+    generation: u64,
+}
+
+static PAGE: Mutex<Option<PageState>> = Mutex::new(None);
+
+fn page_state<T>(f: impl FnOnce(&mut PageState) -> T) -> T {
+    f(PAGE.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_default())
+}
+
+fn page_changed() {
+    core_host::host().hub.changed(Changes::CALLS);
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct View {
+    pub device: Option<DeviceId>,
+    pub log_status: Status,
+    pub call_log: Value,
+    pub more_log: bool,
+    pub loading_older: bool,
+    pub contacts_status: Status,
+    pub contacts: Value,
+    pub dialing: bool,
+}
+
+pub fn view() -> View {
+    page_state(|s| {
+        // Match call log numbers to contacts for photos and fallback names.
+        let mut by_digits: HashMap<String, (&str, Option<&PathBuf>)> = HashMap::new();
+        for c in &s.contacts {
+            let photo = s.contact_photos.get(&c.id);
+            for n in &c.numbers {
+                let d = digits(&n.number);
+                if !d.is_empty() {
+                    by_digits.entry(d).or_insert((c.name.as_str(), photo));
+                }
+            }
+        }
+        View {
+            device: s.device,
+            log_status: s.log_status,
+            call_log: Value::Array(
+                s.log
+                    .iter()
+                    .map(|e| {
+                        let matched = digits(&e.number);
+                        let from_contact =
+                            (!matched.is_empty()).then(|| by_digits.get(&matched).copied()).flatten();
+                        let photo = s
+                            .log_photos
+                            .get(&e.id)
+                            .or_else(|| from_contact.and_then(|(_, p)| p))
+                            .map(|p| crate::icons::file_url(p))
+                            .unwrap_or_default();
+                        let name = e
+                            .name
+                            .as_deref()
+                            .filter(|n| !n.trim().is_empty())
+                            .or_else(|| from_contact.map(|(n, _)| n).filter(|n| !n.trim().is_empty()))
+                            .unwrap_or_default();
+                        log_entry_json(e, name, photo)
+                    })
+                    .collect(),
+            ),
+            more_log: s.more_log,
+            loading_older: s.loading_older,
+            contacts_status: s.contacts_status,
+            contacts: Value::Array(
+                s.contacts.iter().map(|c| contact_json(c, s.contact_photos.get(&c.id))).collect(),
+            ),
+            dialing: s.dialing,
+        }
+    })
+}
+
+fn log_entry_json(e: &CallLogEntry, name: &str, photo: String) -> Value {
+    json!({
+        "id": e.id,
+        "number": e.number,
+        "name": name,
+        "photo": photo,
+        "direction": e.direction,
+        "date": e.date,
+        "duration": e.duration,
+    })
+}
+
+fn contact_json(c: &Contact, photo: Option<&PathBuf>) -> Value {
+    let numbers: Vec<Value> = c
+        .numbers
+        .iter()
+        .map(|n| {
+            json!({
+                "number": n.number,
+                "label": n.label.clone().unwrap_or_default(),
+            })
+        })
+        .collect();
+    json!({
+        "id": c.id,
+        "name": c.name,
+        "numbers": numbers,
+        "starred": c.starred,
+        "photo": photo.map(|p| crate::icons::file_url(p)).unwrap_or_default(),
+    })
+}
+
+/// Shows `device`'s call log and contacts (again: reloads).
+pub fn open_device(device: DeviceId) {
+    let same = page_state(|s| {
+        let same = s.device == Some(device);
+        if !same {
+            *s = PageState { device: Some(device), generation: s.generation + 1, ..PageState::default() };
+        }
+        same
+    });
+    if !same {
+        page_changed();
+    }
+    load_call_log(None);
+    load_contacts();
+}
+
+/// Loads `device`'s contacts in the background if not already loaded for it
+/// (used by Messages' recipient autocomplete).
+pub fn ensure_contacts(device: DeviceId) {
+    let should_load = page_state(|s| {
+        if s.device != Some(device) {
+            *s = PageState { device: Some(device), generation: s.generation + 1, ..PageState::default() };
+            true
+        } else {
+            s.contacts.is_empty() && s.contacts_status != Status::Loading
+        }
+    });
+    if should_load {
+        load_contacts();
+    }
+}
+
+pub fn reload() {
+    load_call_log(None);
+    load_contacts();
+}
+
+pub fn load_older() {
+    let before = page_state(|s| {
+        if s.loading_older || !s.more_log {
+            return None;
+        }
+        s.loading_older = true;
+        s.log.last().map(|e| e.date)
+    });
+    if before.is_some() {
+        page_changed();
+        load_call_log(before);
+    }
+}
+
+fn load_call_log(before: Option<i64>) {
+    let Some((device, generation)) = page_state(|s| {
+        if before.is_none() && s.log.is_empty() {
+            s.log_status = Status::Loading;
+        }
+        s.device.map(|d| (d, s.generation))
+    }) else {
+        return;
+    };
+    page_changed();
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        let result = node.call_log(device, before, LOG_PAGE).await;
+        let photos = match &result {
+            Ok(entries) => save_log_photos(device, entries),
+            Err(_) => HashMap::new(),
+        };
+        page_state(|s| {
+            s.loading_older = false;
+            if s.generation != generation {
+                return;
+            }
+            match result {
+                Ok(page) => {
+                    let full = page.len() as u32 >= LOG_PAGE;
+                    if before.is_none() {
+                        let oldest = page.last().map(|e| e.date).unwrap_or(i64::MAX);
+                        let older: Vec<CallLogEntry> = s.log.drain(..).filter(|e| e.date < oldest).collect();
+                        let had_older = !older.is_empty();
+                        s.log = page;
+                        s.log.extend(older);
+                        s.more_log = full || (had_older && s.more_log);
+                    } else {
+                        s.log.extend(page);
+                        s.more_log = full;
+                    }
+                    s.log_photos.extend(photos);
+                    s.log_status = Status::Ready;
+                }
+                Err(e) => {
+                    tracing::debug!(error = %e, "can't read call log");
+                    s.log_status = Status::of(&e);
+                }
+            }
+        });
+        page_changed();
+    });
+}
+
+fn load_contacts() {
+    let Some((device, generation)) = page_state(|s| {
+        if s.contacts.is_empty() {
+            s.contacts_status = Status::Loading;
+        }
+        s.device.map(|d| (d, s.generation))
+    }) else {
+        return;
+    };
+    page_changed();
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        let mut all = Vec::new();
+        let mut err = None;
+        for page in 0..MAX_CONTACT_PAGES {
+            let offset = page * CONTACTS_PAGE;
+            match node.contacts(device, None, offset, CONTACTS_PAGE).await {
+                Ok(items) => {
+                    let full = items.len() as u32 >= CONTACTS_PAGE;
+                    all.extend(items);
+                    if !full {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    if page == 0 {
+                        err = Some(e);
+                    }
+                    break;
+                }
+            }
+        }
+        let photos = if err.is_none() { save_contact_photos(device, &all) } else { HashMap::new() };
+        page_state(|s| {
+            if s.generation != generation {
+                return;
+            }
+            match err {
+                None => {
+                    s.contacts = all;
+                    s.contact_photos.extend(photos);
+                    s.contacts_status = Status::Ready;
+                }
+                Some(e) => {
+                    tracing::debug!(error = %e, "can't list contacts");
+                    s.contacts_status = Status::of(&e);
+                }
+            }
+        });
+        page_changed();
+    });
+}
+
+fn save_log_photos(device: DeviceId, entries: &[CallLogEntry]) -> HashMap<String, PathBuf> {
+    let dir = crate::notifications::images_dir();
+    if std::fs::create_dir_all(&dir).is_err() {
+        return HashMap::new();
+    }
+    entries
+        .iter()
+        .filter_map(|e| {
+            let photo = e.photo.as_ref()?;
+            let path = dir.join(format!(
+                "call-log-{:016x}.jpg",
+                crate::photos::fingerprint(&format!("{device} {}", e.id))
+                    ^ crate::photos::fingerprint_bytes(photo)
+            ));
+            if !path.exists() {
+                std::fs::write(&path, photo).ok()?;
+            }
+            Some((e.id.clone(), path))
+        })
+        .collect()
+}
+
+fn save_contact_photos(device: DeviceId, contacts: &[Contact]) -> HashMap<String, PathBuf> {
+    let dir = crate::notifications::images_dir();
+    if std::fs::create_dir_all(&dir).is_err() {
+        return HashMap::new();
+    }
+    contacts
+        .iter()
+        .filter_map(|c| {
+            let photo = c.photo.as_ref()?;
+            let path = dir.join(format!(
+                "contact-{:016x}.jpg",
+                crate::photos::fingerprint(&format!("{device} {}", c.id))
+                    ^ crate::photos::fingerprint_bytes(photo)
+            ));
+            if !path.exists() {
+                std::fs::write(&path, photo).ok()?;
+            }
+            Some((c.id.clone(), path))
+        })
+        .collect()
+}
+
+/// Why a call couldn't be placed, for the user.
+pub fn dial_problem(error: &Error) -> &'static str {
+    match error {
+        Error::Denied => "Calls are turned off for this phone.",
+        Error::Unsupported => {
+            "The phone doesn't place calls for this PC. Allow it in the Nectarlink app on the phone."
+        }
+        Error::Offline | Error::NotPaired | Error::Timeout => "The phone isn't connected.",
+        _ => "The phone couldn't place that call.",
+    }
+}
+
+/// Asks `device` to dial `number`.
+pub fn dial(device: DeviceId, number: String) {
+    let number = number.trim().to_owned();
+    if number.is_empty() {
+        return;
+    }
+    page_state(|s| s.dialing = true);
+    page_changed();
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        let result = node.call_dial(device, number).await;
+        page_state(|s| s.dialing = false);
+        page_changed();
+        if let Err(e) = result {
+            show_message(dial_problem(&e));
+        }
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -338,5 +749,68 @@ mod tests {
         assert_eq!(caller(&call(Some("Sam"), Some("+1555"))), "Sam");
         assert_eq!(caller(&call(Some(" "), Some("+1555"))), "+1555");
         assert_eq!(caller(&call(None, None)), "Unknown caller");
+    }
+
+    #[test]
+    fn call_log_and_contacts_view_matches_numbers_and_formats_json() {
+        use nectarlink_core::ContactNumber;
+
+        page_state(|s| {
+            *s = PageState {
+                log_status: Status::Ready,
+                contacts_status: Status::Ready,
+                log: vec![
+                    CallLogEntry {
+                        id: "10".into(),
+                        number: "+1 (555) 010-1001".into(),
+                        name: None,
+                        photo: None,
+                        direction: "missed".into(),
+                        date: 1700000000000,
+                        duration: 0,
+                    },
+                    CallLogEntry {
+                        id: "9".into(),
+                        number: "+15550109999".into(),
+                        name: Some("Explicit Name".into()),
+                        photo: None,
+                        direction: "outgoing".into(),
+                        date: 1699990000000,
+                        duration: 95,
+                    },
+                ],
+                contacts: vec![Contact {
+                    id: "c1".into(),
+                    name: "Alice Rivera".into(),
+                    numbers: vec![ContactNumber {
+                        number: "555-010-1001".into(),
+                        label: Some("Mobile".into()),
+                    }],
+                    starred: true,
+                    photo: None,
+                }],
+                ..PageState::default()
+            };
+        });
+
+        let v = view();
+        assert_eq!(v.log_status, Status::Ready);
+        assert_eq!(v.contacts_status, Status::Ready);
+        let log = v.call_log.as_array().unwrap();
+        assert_eq!(log.len(), 2);
+        // Matched to Alice Rivera by trailing digits!
+        assert_eq!(log[0]["name"], "Alice Rivera");
+        assert_eq!(log[0]["direction"], "missed");
+        assert_eq!(log[1]["name"], "Explicit Name");
+        assert_eq!(log[1]["duration"], 95);
+
+        let contacts = v.contacts.as_array().unwrap();
+        assert_eq!(contacts.len(), 1);
+        assert_eq!(contacts[0]["name"], "Alice Rivera");
+        assert_eq!(contacts[0]["starred"], true);
+        assert_eq!(contacts[0]["numbers"][0]["label"], "Mobile");
+
+        assert_eq!(dial_problem(&Error::Denied), "Calls are turned off for this phone.");
+        assert_eq!(dial_problem(&Error::Offline), "The phone isn't connected.");
     }
 }

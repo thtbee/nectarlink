@@ -117,6 +117,12 @@ NativeWindow {
                 onClicked: window.page = "messages"
             }
             NavItem {
+                iconPath: Icons.call
+                text: qsTr("Calls")
+                selected: window.page === "calls"
+                onClicked: window.page = "calls"
+            }
+            NavItem {
                 iconPath: Icons.settings
                 text: qsTr("Settings")
                 selected: window.page === "settings"
@@ -153,7 +159,9 @@ NativeWindow {
                 anchors.leftMargin: Theme.contentPadding
                 anchors.verticalCenter: parent.verticalCenter
                 text: window.page === "home" ? qsTr("Home")
-                    : window.page === "messages" ? qsTr("Messages") : qsTr("Settings")
+                    : window.page === "messages" ? qsTr("Messages")
+                    : window.page === "calls" ? qsTr("Calls")
+                    : qsTr("Settings")
                 role: "headline"
                 size: 20
             }
@@ -201,6 +209,16 @@ NativeWindow {
                 active: window.page === "messages"
                 deviceId: homePage.currentDeviceId
                 deviceName: homePage.currentDeviceName
+            }
+            CallsPage {
+                anchors.fill: parent
+                active: window.page === "calls"
+                deviceId: homePage.currentDeviceId
+                deviceName: homePage.currentDeviceName
+                onTextRequested: (number, name) => {
+                    Messages.startChat(homePage.currentDeviceId, number, name)
+                    window.page = "messages"
+                }
             }
             SettingsPage {
                 anchors.fill: parent

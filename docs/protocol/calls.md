@@ -4,10 +4,11 @@
 > allowed until v1. License: CC BY 4.0.
 
 A phone tells its PCs about its calls: who's calling, when it's answered,
-and when it ends. A PC can answer, decline or silence a ringing call, and
+and when it ends. A PC can answer, decline or silence a ringing call,
 hang up, mute, switch to the speaker, hold, press keypad keys and change
-the volume of the call in progress. The call's audio stays on the phone;
-this service carries no sound.
+the volume of the call in progress, browse recent calls, and ask the phone
+to call a number. The call's audio stays on the phone; this service
+carries no sound.
 
 ## 1. Capabilities
 
@@ -16,11 +17,13 @@ this service carries no sound.
 | `call.state` | phone | Reports its calls (needs the phone permission) |
 | `call.control` | phone | Answers, declines, silences and hangs up calls, and changes their volume, when a PC asks |
 | `call.incall` | phone | Also mutes, switches to the speaker, holds and presses keys on the call in progress, and reports those `controls` |
-| `call.show` | PC | Shows calls |
+| `call.log` | phone | Lists recent calls (needs the call log permission) |
+| `call.dial` | phone | Places a call (or opens the dialer with the number filled in) when a PC asks |
+| `call.show` | PC | Shows calls, recent calls and the dialer, and wants `call.log.changed` |
 
-A phone reports calls only to PCs that offer `call.show`, and only while
-both devices allow it (the `calls` device toggle, on by default, on each
-side).
+A phone reports calls and answers call requests only for PCs that offer
+`call.show`, and only while both devices allow it (the `calls` device
+toggle, on by default, on each side).
 
 ## 2. Messages
 
@@ -51,6 +54,24 @@ t = "call.action"  id = n   b = {
   ? digit: text,        // With "dtmf": one of 0–9, * and #
 }
 t = "ok"           re = n
+
+t = "call.log"          id = n   b = { ? before: int, limit: uint }          // 1–100
+t = "call.log"          re = n   b = { entries: [ call_entry ] }             // newest first
+
+t = "call.log.changed"           b = {}                                      // phone → PC
+
+t = "call.dial"         id = n   b = { number: text }
+t = "ok"                re = n
+
+call_entry = {
+  id:        text,
+  number:    text,      // Who called, or who was called ("" when withheld)
+  ? name:    text,      // The contact's name, when the number is a contact
+  direction: "incoming" | "outgoing" | "missed" | "rejected",
+  date:      int,       // When the call started, in Unix milliseconds
+  duration:  uint,      // Seconds on the call (0 when missed or not answered)
+  ? photo:   bytes,     // The contact's photo, a JPEG of at most 16 KiB
+}
 ```
 
 ### 2.1 `call.state`
@@ -83,11 +104,40 @@ except `decline`, need it active); `DENIED` when calls are off for the PC;
 `UNSUPPORTED` for an unknown action, a `dtmf` without a valid `digit`, or
 when the phone doesn't offer the capability the action needs.
 
-### 2.3 On Android
+### 2.3 `call.log` and `call.log.changed`
+
+`call.log` pages back through the phone's recent calls, newest first:
+`before` is the oldest `date` already shown. A phone answers with fewer
+items than `limit` when the answer wouldn't fit in a frame (v0 §3),
+dropping the oldest.
+
+The phone sends `call.log.changed` to connected PCs that offer `call.show`
+when its call log changes (debounced). PCs then ask again for what they
+show.
+
+Errors: `DENIED` when calls are off for the PC, `UNSUPPORTED` when the
+phone doesn't offer `call.log`.
+
+### 2.4 `call.dial`
+
+`call.dial` asks the phone to call `number` (1–256 bytes, not blank). With
+`CALL_PHONE` permission the phone places the call directly
+(`Intent.ACTION_CALL`); if that permission isn't granted, it opens the
+dialer (`Intent.ACTION_DIAL`) with the number filled in. Once the call
+starts, the phone reports it through `call.state`, so the PC's call card
+and in-call controls work as for any call.
+
+Errors: `DENIED` when calls are off for the PC, `UNSUPPORTED` when the
+phone doesn't offer `call.dial`, `INTERNAL` when the phone couldn't start
+the call.
+
+### 2.5 On Android
 
 `call.control` needs the phone permission and the permission to answer
-calls. `call.incall` needs Android 12 or later and the
-`MANAGE_ONGOING_CALLS` app-op, which lets Telecom bind Nectarlink's
+calls. `call.log` needs the call log permission. `call.dial` uses
+`CALL_PHONE` to place the call directly, or opens the dialer when
+`CALL_PHONE` isn't granted. `call.incall` needs Android 12 or later and
+the `MANAGE_ONGOING_CALLS` app-op, which lets Telecom bind Nectarlink's
 in-call service as a calling companion without it being the phone app.
 Apps can't grant that app-op to themselves; Nectarlink's Elevated mode
 (Wireless debugging) grants it through the shell when it starts.

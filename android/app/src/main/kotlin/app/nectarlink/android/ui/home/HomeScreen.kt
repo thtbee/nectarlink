@@ -55,6 +55,7 @@ import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.Device
 import app.nectarlink.android.files.transferTitle
 import app.nectarlink.android.calls.PhoneCalls
+import app.nectarlink.android.contacts.PhoneContacts
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.core.isFinished
@@ -171,6 +172,17 @@ fun HomeScreen(
                     stringResource(R.string.calls_title),
                     stringResource(R.string.calls_off),
                 ) { askCalls.launch(PhoneCalls.permissions) }
+            }
+        }
+        if (state.devices.isNotEmpty() && !state.contactsAccess) {
+            item {
+                val askContacts = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+                    onAccessChanged()
+                }
+                SetupCard(
+                    stringResource(R.string.contacts_title),
+                    stringResource(R.string.contacts_off),
+                ) { askContacts.launch(PhoneContacts.permissions) }
             }
         }
         if (state.devices.isNotEmpty() && !state.photoAccess) {

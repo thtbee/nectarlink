@@ -272,6 +272,25 @@ enum Command {
         #[arg(long)]
         script: Option<String>,
     },
+    /// List a paired phone's recent calls, or call a number with `call <device> <number>`.
+    Call {
+        device: String,
+        /// Number to call (omit to list recent calls).
+        number: Option<String>,
+        /// Max recent calls to list when no number is given.
+        #[arg(long, default_value_t = 30)]
+        limit: u32,
+    },
+    /// List or search a paired phone's contacts.
+    Contacts {
+        device: String,
+        /// Search by name or number.
+        query: Option<String>,
+        #[arg(long, default_value_t = 0)]
+        offset: u32,
+        #[arg(long, default_value_t = 50)]
+        limit: u32,
+    },
     /// Announce a picture as a photo just taken on this phone (use with
     /// --as-phone), then stay online to send it to PCs that ask.
     Photo {
@@ -628,6 +647,103 @@ fn sample_texts() {
         .collect();
 }
 
+static CONTACTS: std::sync::Mutex<Vec<nectarlink_core::Contact>> = std::sync::Mutex::new(Vec::new());
+static CALL_LOG: std::sync::Mutex<Vec<nectarlink_core::CallLogEntry>> = std::sync::Mutex::new(Vec::new());
+
+fn sample_contacts() {
+    use nectarlink_core::{Contact, ContactNumber};
+    let num = |number: &str, label: &str| ContactNumber {
+        number: number.into(),
+        label: (!label.is_empty()).then(|| label.into()),
+    };
+    *CONTACTS.lock().unwrap() = vec![
+        Contact {
+            id: "1".into(),
+            name: "Sam Rivera".into(),
+            numbers: vec![num("+15550100", "Mobile"), num("+15550144", "Work")],
+            starred: true,
+            photo: None,
+        },
+        Contact {
+            id: "2".into(),
+            name: "Alex Chen".into(),
+            numbers: vec![num("+15550188", "Mobile")],
+            starred: true,
+            photo: None,
+        },
+        Contact {
+            id: "3".into(),
+            name: "Mom".into(),
+            numbers: vec![num("+15550199", "Mobile")],
+            starred: true,
+            photo: None,
+        },
+        Contact {
+            id: "4".into(),
+            name: "City Bakery".into(),
+            numbers: vec![num("+15550130", "Work")],
+            starred: false,
+            photo: None,
+        },
+        Contact {
+            id: "5".into(),
+            name: "Jordan Patel".into(),
+            numbers: vec![num("+15550155", "Mobile"), num("+15550156", "Home")],
+            starred: false,
+            photo: None,
+        },
+        Contact {
+            id: "6".into(),
+            name: "Priya Nair".into(),
+            numbers: vec![num("+15550172", "Mobile")],
+            starred: false,
+            photo: None,
+        },
+    ];
+}
+
+fn sample_call_log() {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as i64);
+    let min = 60_000;
+    let entry = |id: &str, number: &str, name: Option<&str>, direction: &str, date: i64, duration: u32| {
+        nectarlink_core::CallLogEntry {
+            id: id.into(),
+            number: number.into(),
+            name: name.map(Into::into),
+            direction: direction.into(),
+            date,
+            duration,
+            photo: None,
+        }
+    };
+    *CALL_LOG.lock().unwrap() = vec![
+        entry("call:1", "+15550100", Some("Sam Rivera"), "missed", now - 18 * min, 0),
+        entry("call:2", "+15550188", Some("Alex Chen"), "incoming", now - 2 * 60 * min, 254),
+        entry("call:3", "+15550199", Some("Mom"), "outgoing", now - 4 * 60 * min, 612),
+        entry("call:4", "+15550123", None, "missed", now - 25 * 60 * min, 0),
+        entry("call:5", "+15550155", Some("Jordan Patel"), "outgoing", now - 28 * 60 * min, 95),
+        entry("call:6", "+15550190", None, "rejected", now - 30 * 60 * min, 0),
+        entry("call:7", "+15550172", Some("Priya Nair"), "incoming", now - 3 * 24 * 60 * min, 180),
+    ];
+}
+
+fn contact_name_for(number: &str) -> Option<String> {
+    let digits: String = number.chars().filter(char::is_ascii_digit).collect();
+    CONTACTS.lock().unwrap().iter().find_map(|c| {
+        c.numbers
+            .iter()
+            .any(|n| {
+                n.number == number || {
+                    let nd: String = n.number.chars().filter(char::is_ascii_digit).collect();
+                    !digits.is_empty() && nd == digits
+                }
+            })
+            .then(|| c.name.clone())
+    })
+}
+
 /// The call `incoming-call` pretends to have, and how to tell PCs it changed.
 static CALL: std::sync::Mutex<Option<nectarlink_core::CallState>> = std::sync::Mutex::new(None);
 static CALL_NODE: std::sync::OnceLock<Node> = std::sync::OnceLock::new();
@@ -753,10 +869,11 @@ impl Platform for TerminalPlatform {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(0, |d| d.as_millis() as i64);
+        let name = contact_name_for(&to[0]).unwrap_or_default();
         let mut texts = TEXTS.lock().unwrap();
         let thread = texts.iter().find(|(_, n, ..)| *n == to[0]).map(|(t, ..)| *t);
         let thread = thread.unwrap_or_else(|| texts.iter().map(|(t, ..)| *t).max().unwrap_or(0) + 1);
-        texts.push((thread, to[0].clone(), String::new(), false, body.to_owned(), now));
+        texts.push((thread, to[0].clone(), name, false, body.to_owned(), now));
         if let Some(node) = TEXTS_NODE.get().cloned() {
             tokio::runtime::Handle::current().spawn(async move { node.sms_changed(None).await });
         }
@@ -807,6 +924,87 @@ impl Platform for TerminalPlatform {
             });
         }
         Ok(())
+    }
+    fn call_log(
+        &self,
+        before: Option<i64>,
+        limit: u32,
+    ) -> std::result::Result<Vec<nectarlink_core::CallLogEntry>, String> {
+        let mut entries: Vec<nectarlink_core::CallLogEntry> =
+            CALL_LOG.lock().unwrap().iter().filter(|e| before.is_none_or(|b| e.date < b)).cloned().collect();
+        entries.sort_by_key(|e| std::cmp::Reverse(e.date));
+        entries.truncate(limit as usize);
+        Ok(entries)
+    }
+    fn call_dial(&self, number: &str) -> std::result::Result<(), String> {
+        println!("A PC started a call to {number}.");
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_millis() as i64);
+        let name = contact_name_for(number);
+        let call = nectarlink_core::CallState {
+            id: now.to_string(),
+            state: "active".into(),
+            incoming: false,
+            number: Some(number.into()),
+            name: name.clone(),
+            photo: None,
+            missed: false,
+            since: Some(now),
+            controls: CALL_CONTROLS
+                .load(std::sync::atomic::Ordering::Relaxed)
+                .then(|| nectarlink_core::CallControls { can_hold: true, ..Default::default() }),
+        };
+        *CALL.lock().unwrap() = Some(call.clone());
+        CALL_LOG.lock().unwrap().push(nectarlink_core::CallLogEntry {
+            id: format!("call:{now}"),
+            number: number.into(),
+            name,
+            direction: "outgoing".into(),
+            date: now,
+            duration: 0,
+            photo: None,
+        });
+        if let Some(node) = CALL_NODE.get().cloned() {
+            tokio::runtime::Handle::current().spawn(async move {
+                let _ = node.call_changed(call).await;
+                node.call_log_changed().await;
+            });
+        }
+        Ok(())
+    }
+    fn contacts(
+        &self,
+        query: Option<&str>,
+        offset: u32,
+        limit: u32,
+    ) -> std::result::Result<Vec<nectarlink_core::Contact>, String> {
+        let q = query.map(str::trim).filter(|q| !q.is_empty()).map(str::to_lowercase);
+        let q_digits: String =
+            q.as_deref().map(|s| s.chars().filter(char::is_ascii_digit).collect()).unwrap_or_default();
+        let mut items: Vec<nectarlink_core::Contact> = CONTACTS
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|c| match &q {
+                None => true,
+                Some(q) => {
+                    c.name.to_lowercase().contains(q)
+                        || c.numbers.iter().any(|n| {
+                            n.number.to_lowercase().contains(q)
+                                || (!q_digits.is_empty()
+                                    && n.number
+                                        .chars()
+                                        .filter(char::is_ascii_digit)
+                                        .collect::<String>()
+                                        .contains(&q_digits))
+                        })
+                }
+            })
+            .cloned()
+            .collect();
+        items.sort_by_key(|a| (!a.starred, a.name.to_lowercase()));
+        Ok(items.into_iter().skip(offset as usize).take(limit as usize).collect())
     }
     fn open_photo(&self, id: &str) -> std::result::Result<nectarlink_core::OutgoingFile, String> {
         let path = PHOTO.get().filter(|_| id == PHOTO_ID).ok_or("no such photo")?;
@@ -885,8 +1083,8 @@ async fn main() -> Result<()> {
         .with_writer(std::io::stderr)
         .init();
 
-    let node = start_node(&cli).await?;
-    let result = run(&cli, &node).await;
+    let node = Box::pin(start_node(&cli)).await?;
+    let result = Box::pin(run(&cli, &node)).await;
     node.shutdown().await;
     result
 }
@@ -1255,11 +1453,27 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 bail!("texts are on phones: add --as-phone");
             }
             sample_texts();
+            sample_contacts();
+            sample_call_log();
             let _ = TEXTS_NODE.set(node.clone());
+            let _ = CALL_NODE.set(node.clone());
+            CALL_CONTROLS.store(true, std::sync::atomic::Ordering::Relaxed);
             let mut offers = cli.offers.clone();
-            offers.extend([nectarlink_core::SMS_READ.to_owned(), nectarlink_core::SMS_SEND.to_owned()]);
+            offers.extend(
+                [
+                    nectarlink_core::SMS_READ,
+                    nectarlink_core::SMS_SEND,
+                    nectarlink_core::CALLS_STATE,
+                    nectarlink_core::CALLS_CONTROL,
+                    nectarlink_core::CALLS_IN_CALL,
+                    nectarlink_core::CALLS_LOG,
+                    nectarlink_core::CALLS_DIAL,
+                    nectarlink_core::CONTACTS_READ,
+                ]
+                .map(str::to_owned),
+            );
             node.update_power(node_power(cli), offers).await;
-            println!("Sharing sample conversations with paired PCs.");
+            println!("Sharing sample conversations, contacts, and calls with paired PCs.");
             watch(node, false).await?;
         }
         Command::IncomingCall { number, caller, basic, answered } => {
@@ -1298,6 +1512,8 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 bail!("the demo is a phone: add --as-phone");
             }
             sample_texts();
+            sample_contacts();
+            sample_call_log();
             let _ = TEXTS_NODE.set(node.clone());
             let _ = CALL_NODE.set(node.clone());
             CALL_CONTROLS.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -1314,6 +1530,9 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     nectarlink_core::CALLS_STATE,
                     nectarlink_core::CALLS_CONTROL,
                     nectarlink_core::CALLS_IN_CALL,
+                    nectarlink_core::CALLS_LOG,
+                    nectarlink_core::CALLS_DIAL,
+                    nectarlink_core::CONTACTS_READ,
                 ]
                 .map(str::to_owned),
             );
@@ -1421,6 +1640,68 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     node.sms_send(id, vec![to.clone()], body.clone()).await.context("not sent")?;
                     println!("Sent.");
                 }
+            }
+        }
+        Command::Call { device, number, limit } => {
+            let mut offers = cli.offers.clone();
+            offers.push(nectarlink_core::CALLS_SHOW.into());
+            node.update_power(node_power(cli), offers).await;
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            match number {
+                Some(number) => {
+                    node.call_dial(id, number.clone()).await.context("couldn't start the call")?;
+                    println!("Calling {number}…");
+                }
+                None => {
+                    for e in node.call_log(id, None, *limit).await.context("can't read recent calls")? {
+                        let arrow = match e.direction.as_str() {
+                            "incoming" => "↙",
+                            "outgoing" => "↗",
+                            "missed" => "✕",
+                            "rejected" => "⊘",
+                            _ => "•",
+                        };
+                        let who = match &e.name {
+                            Some(n) if !n.is_empty() => format!("{n} ({})", e.number),
+                            _ => e.number.clone(),
+                        };
+                        let dur = if e.duration > 0 {
+                            format!(" · {}", clock(u64::from(e.duration) * 1000))
+                        } else {
+                            String::new()
+                        };
+                        println!(
+                            "{arrow} {} {who}{dur}{}",
+                            e.direction,
+                            if e.photo.is_some() { " (photo)" } else { "" }
+                        );
+                    }
+                }
+            }
+        }
+        Command::Contacts { device, query, offset, limit } => {
+            let mut offers = cli.offers.clone();
+            offers.push(nectarlink_core::CONTACTS_SHOW.into());
+            node.update_power(node_power(cli), offers).await;
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            for c in node.contacts(id, query.clone(), *offset, *limit).await.context("can't list contacts")? {
+                let nums: Vec<String> = c
+                    .numbers
+                    .iter()
+                    .map(|n| match &n.label {
+                        Some(l) if !l.is_empty() => format!("{} ({l})", n.number),
+                        _ => n.number.clone(),
+                    })
+                    .collect();
+                println!(
+                    "{}{} · {}{}",
+                    if c.starred { "★ " } else { "  " },
+                    c.name,
+                    nums.join(", "),
+                    if c.photo.is_some() { " (photo)" } else { "" }
+                );
             }
         }
         Command::Calls { auto, script } => {
@@ -1618,6 +1899,9 @@ async fn pair(node: &Node) -> Result<()> {
     loop {
         match events.recv().await {
             Ok(NodeEvent::Pairing(PairingEvent::Paired(d))) => {
+                // Let the pairing close frame flush and the first session
+                // connect so both sides record addresses and capabilities.
+                let _ = tokio::time::timeout(Duration::from_secs(3), wait_until_online(node, d.id)).await;
                 println!("✓ Paired with {}.", d.info.name);
                 return Ok(());
             }
@@ -1875,6 +2159,8 @@ fn print_event(node: &Node, event: &NodeEvent) {
                 _ => String::new(),
             },
         ),
+        NodeEvent::CallLogChanged { device } => println!("{}: call log changed", name(device)),
+        NodeEvent::ContactsChanged { device } => println!("{}: contacts changed", name(device)),
         NodeEvent::PhotoAdded { device, photo } => println!(
             "{}: new {} {} ({} bytes, preview {} bytes)",
             name(device),

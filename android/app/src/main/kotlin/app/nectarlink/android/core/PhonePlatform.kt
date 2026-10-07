@@ -8,7 +8,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.clipboard.PhoneClipboard
+import app.nectarlink.android.contacts.PhoneContacts
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.media.PhoneMedia
 import app.nectarlink.android.photos.RecentPhotos
@@ -20,6 +22,8 @@ import app.nectarlink.android.mirror.MirrorRequests
 import app.nectarlink.android.mirror.MirrorService
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.core.CallCommand
+import app.nectarlink.core.CallLogEntry
+import app.nectarlink.core.Contact
 import app.nectarlink.core.SmsMessage
 import app.nectarlink.core.SmsPartData
 import app.nectarlink.core.SmsThread
@@ -41,8 +45,10 @@ internal class PhonePlatform(
     private val media: PhoneMedia,
     /** Shows a link a PC sent: (PC's ID, link) → shown. */
     private val onLink: (String, String) -> Boolean,
-    /** Answers, declines or silences a call: (call ID, command) → done. */
-    private val onCall: (String, CallCommand) -> Boolean,
+    /** The phone's calls (created after this). */
+    private val calls: () -> PhoneCalls,
+    /** The phone's contacts (created after this). */
+    private val contacts: () -> PhoneContacts,
     /** The phone's texts (created after this). */
     private val sms: () -> PhoneSms,
     /** Asks the user to share the screen with a PC: (PC's ID, request) → asked. */
@@ -68,7 +74,15 @@ internal class PhonePlatform(
 
     override fun openPhoto(id: String): FileToSend? = RecentPhotos.open(context, id)
 
-    override fun callCommand(id: String, command: CallCommand): Boolean = onCall(id, command)
+    override fun callCommand(id: String, command: CallCommand): Boolean = calls().command(id, command)
+
+    override fun callLog(before: Long?, limit: UInt): List<CallLogEntry> =
+        calls().callLog(before, limit.toInt())
+
+    override fun callDial(number: String): Boolean = calls().dial(number)
+
+    override fun contacts(query: String?, offset: UInt, limit: UInt): List<Contact> =
+        contacts().list(query, offset.toInt(), limit.toInt())
 
     override fun mirrorRequested(pcId: String, options: MirrorOptions): Boolean =
         if (options.app != null) {

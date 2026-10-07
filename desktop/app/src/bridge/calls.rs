@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! `PhoneCall`: the call in progress on the phone Home shows, and the
-//! controls QML sends to it.
+//! `PhoneCall`: the call in progress on the phone Home and Calls show, the
+//! controls QML sends to it, the phone's call log and contacts, and dialing
+//! a number from the PC.
 
 use std::pin::Pin;
 
@@ -39,6 +40,21 @@ pub mod qobject {
         #[qproperty(bool, speaker)]
         #[qproperty(bool, held)]
         #[qproperty(bool, can_hold, cxx_name = "canHold")]
+        /// Call log status: "idle", "loading", "ready", "offline", "off", "unsupported" or "failed".
+        #[qproperty(QString, log_status, cxx_name = "logStatus")]
+        /// Recent calls, newest first (JSON).
+        #[qproperty(QString, call_log, cxx_name = "callLog")]
+        /// Older call log entries can be loaded.
+        #[qproperty(bool, more_log, cxx_name = "moreLog")]
+        #[qproperty(bool, loading_older, cxx_name = "loadingOlder")]
+        /// Contacts status: "idle", "loading", "ready", "offline", "off", "unsupported" or "failed".
+        #[qproperty(QString, contacts_status, cxx_name = "contactsStatus")]
+        /// Contacts, favorites first (JSON).
+        #[qproperty(QString, contacts)]
+        /// The PC can ask the phone to dial a number.
+        #[qproperty(bool, can_dial, cxx_name = "canDial")]
+        /// A dial request is on its way to the phone.
+        #[qproperty(bool, dialing)]
         type PhoneCall = super::PhoneCallRust;
     }
 
@@ -48,6 +64,25 @@ pub mod qobject {
     unsafe extern "RustQt" {
         #[cxx_name = "setDevice"]
         fn set_device(self: Pin<&mut PhoneCall>, device: QString);
+        /// Opens a phone's call log and contacts (reloads when it's the one shown).
+        #[qinvokable]
+        fn open(self: Pin<&mut PhoneCall>, device: &QString);
+        /// Loads a phone's contacts in the background if not yet loaded.
+        #[qinvokable]
+        #[cxx_name = "ensureContacts"]
+        fn ensure_contacts(self: &PhoneCall, device: &QString);
+        /// Reads the call log and contacts again.
+        #[qinvokable]
+        fn refresh(self: &PhoneCall);
+        #[qinvokable]
+        #[cxx_name = "loadOlder"]
+        fn load_older(self: &PhoneCall);
+        /// Asks the phone to dial `number`.
+        #[qinvokable]
+        fn dial(self: &PhoneCall, number: &QString);
+        /// Puts text on this PC's clipboard (it isn't sent back to the phone).
+        #[qinvokable]
+        fn copy(self: &PhoneCall, text: &QString);
         /// Hangs up.
         #[qinvokable]
         fn end(self: &PhoneCall);
@@ -82,13 +117,27 @@ pub struct PhoneCallRust {
     speaker: bool,
     held: bool,
     can_hold: bool,
+    log_status: QString,
+    call_log: QString,
+    more_log: bool,
+    loading_older: bool,
+    contacts_status: QString,
+    contacts: QString,
+    can_dial: bool,
+    dialing: bool,
     /// The call's ID on the phone, for its commands.
     call: Option<(DeviceId, String)>,
+    /// What the Calls page last showed, to skip JSON updates that changed nothing.
+    last_view: Option<calls::View>,
 }
 
 impl cxx_qt::Initialize for qobject::PhoneCall {
-    fn initialize(self: Pin<&mut Self>) {
-        super::subscribe(self.qt_thread(), Changes::CALLS | Changes::CAPABILITIES, Self::refresh);
+    fn initialize(mut self: Pin<&mut Self>) {
+        self.as_mut().set_log_status(QString::from("idle"));
+        self.as_mut().set_call_log(QString::from("[]"));
+        self.as_mut().set_contacts_status(QString::from("idle"));
+        self.as_mut().set_contacts(QString::from("[]"));
+        super::subscribe(self.qt_thread(), Changes::CALLS | Changes::CAPABILITIES, Self::refresh_state);
     }
 }
 
@@ -99,10 +148,47 @@ impl qobject::PhoneCall {
         }
         self.as_mut().rust_mut().device = device;
         self.as_mut().device_changed();
-        self.refresh();
+        self.refresh_state();
     }
 
-    fn refresh(mut self: Pin<&mut Self>) {
+    pub fn open(mut self: Pin<&mut Self>, device: &QString) {
+        if self.rust().device != *device {
+            self.as_mut().rust_mut().device = device.clone();
+            self.as_mut().device_changed();
+        }
+        if let Some(id) = super::parse_device(device) {
+            calls::open_device(id);
+        }
+        self.refresh_state();
+    }
+
+    pub fn ensure_contacts(&self, device: &QString) {
+        if let Some(id) = super::parse_device(device) {
+            calls::ensure_contacts(id);
+        }
+    }
+
+    pub fn refresh(&self) {
+        calls::reload();
+    }
+
+    pub fn load_older(&self) {
+        calls::load_older();
+    }
+
+    pub fn dial(&self, number: &QString) {
+        if let Some(device) = super::parse_device(&self.rust().device) {
+            calls::dial(device, String::from(number));
+        }
+    }
+
+    pub fn copy(&self, text: &QString) {
+        if let Err(reason) = crate::win::clipboard::write(&String::from(text)) {
+            tracing::warn!(reason, "can't copy");
+        }
+    }
+
+    fn refresh_state(mut self: Pin<&mut Self>) {
         let device = super::parse_device(&self.rust().device);
         let call = device.and_then(calls::active);
         let controls = call.as_ref().and_then(|c| c.controls);
@@ -122,6 +208,7 @@ impl qobject::PhoneCall {
         self.as_mut().set_number(QString::from(&number));
         self.as_mut().set_since(call.as_ref().and_then(|c| c.since).unwrap_or(0) as f64);
         self.as_mut().set_can_end(device.is_some_and(calls::can_control));
+        self.as_mut().set_can_dial(device.is_some_and(calls::can_dial));
         self.as_mut().set_controls(controls.is_some());
         let controls = controls.unwrap_or_default();
         self.as_mut().set_muted(controls.muted);
@@ -129,6 +216,24 @@ impl qobject::PhoneCall {
         self.as_mut().set_held(controls.held);
         self.as_mut().set_can_hold(controls.can_hold);
         self.as_mut().set_active(call.is_some());
+
+        let view = calls::view();
+        if self.rust().last_view.as_ref() != Some(&view) {
+            let last = self.rust().last_view.clone();
+            let differs = |f: fn(&calls::View) -> String| last.as_ref().is_none_or(|l| f(l) != f(&view));
+            self.as_mut().set_log_status(QString::from(view.log_status.as_str()));
+            if differs(|v| v.call_log.to_string()) {
+                self.as_mut().set_call_log(QString::from(&view.call_log.to_string()));
+            }
+            self.as_mut().set_more_log(view.more_log);
+            self.as_mut().set_loading_older(view.loading_older);
+            self.as_mut().set_contacts_status(QString::from(view.contacts_status.as_str()));
+            if differs(|v| v.contacts.to_string()) {
+                self.as_mut().set_contacts(QString::from(&view.contacts.to_string()));
+            }
+            self.as_mut().set_dialing(view.dialing);
+            self.as_mut().rust_mut().last_view = Some(view);
+        }
     }
 
     fn send(&self, command: CallCommand) {

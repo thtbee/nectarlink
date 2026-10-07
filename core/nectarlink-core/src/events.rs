@@ -139,6 +139,14 @@ pub enum NodeEvent {
         device: DeviceId,
         call: crate::CallState,
     },
+    /// A phone's call history changed.
+    CallLogChanged {
+        device: DeviceId,
+    },
+    /// A phone's contacts changed.
+    ContactsChanged {
+        device: DeviceId,
+    },
     /// A phone's screen started or stopped showing here.
     Mirroring {
         device: DeviceId,

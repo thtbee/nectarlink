@@ -72,6 +72,8 @@ data class CoreState(
     val smsAccess: Boolean = false,
     /** Whether the user let Nectarlink follow and answer calls (to show them on PCs). */
     val callAccess: Boolean = false,
+    /** Whether the user let Nectarlink read contacts (for PCs). */
+    val contactsAccess: Boolean = false,
     /** Whether the user let Nectarlink see the phone's photos (to show new ones on PCs). */
     val photoAccess: Boolean = false,
     /** Whether Android lets Nectarlink run unrestricted in the background. */
@@ -120,8 +122,14 @@ data class CoreState(
         is Event.Transfer -> copy(transfers = withTransfer(event.transfer))
         // Shown in Android's media controls (see media/PcMedia).
         is Event.MediaChanged -> this
-        // PCs only: phones announce their own photos, calls, texts and screen.
-        is Event.PhotoAdded, is Event.CallChanged, is Event.SmsChanged, is Event.Mirroring -> this
+        // PCs only: phones announce their own photos, calls, contacts, texts and screen.
+        is Event.PhotoAdded,
+        is Event.CallChanged,
+        is Event.CallLogChanged,
+        is Event.ContactsChanged,
+        is Event.SmsChanged,
+        is Event.Mirroring,
+        -> this
     }
 
     private fun withTransfer(transfer: Transfer): List<Transfer> {

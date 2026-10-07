@@ -434,6 +434,14 @@ pub enum Event {
         id: String,
         call_id: String,
     },
+    /// A paired phone's call history changed (PCs only).
+    CallLogChanged {
+        id: String,
+    },
+    /// A paired phone's contacts changed (PCs only).
+    ContactsChanged {
+        id: String,
+    },
     /// A paired phone's screen (session 0) or app window started or
     /// stopped showing (PCs only).
     Mirroring {
@@ -663,7 +671,43 @@ macro_rules! private_debug {
         }
     )*};
 }
-private_debug!(SmsThread, SmsMessage, SmsPartData);
+private_debug!(SmsThread, SmsMessage, SmsPartData, CallLogEntry, ContactNumber, Contact);
+
+/// One call in this phone's call history (docs/protocol/calls.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CallLogEntry {
+    pub id: String,
+    /// Who called, or who was called ("" when withheld).
+    pub number: String,
+    /// The contact's name, when the number is a contact.
+    pub name: Option<String>,
+    /// "incoming", "outgoing", "missed" or "rejected".
+    pub direction: String,
+    /// Unix milliseconds.
+    pub date: i64,
+    /// Seconds on the call (0 when missed or not answered).
+    pub duration: u32,
+    /// The contact's photo: a JPEG of at most 16 KB.
+    pub photo: Option<Vec<u8>>,
+}
+
+/// One phone number on a contact (docs/protocol/contacts.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ContactNumber {
+    pub number: String,
+    pub label: Option<String>,
+}
+
+/// A contact on this phone (docs/protocol/contacts.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct Contact {
+    pub id: String,
+    pub name: String,
+    pub numbers: Vec<ContactNumber>,
+    pub starred: bool,
+    /// A JPEG of at most 16 KB.
+    pub photo: Option<Vec<u8>>,
+}
 
 /// A call on this phone (docs/protocol/calls.md).
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
@@ -1130,6 +1174,8 @@ impl From<NodeEvent> for Event {
             NodeEvent::Call { device, call } => {
                 Event::CallChanged { id: device.to_string(), call_id: call.id }
             }
+            NodeEvent::CallLogChanged { device } => Event::CallLogChanged { id: device.to_string() },
+            NodeEvent::ContactsChanged { device } => Event::ContactsChanged { id: device.to_string() },
             NodeEvent::SmsChanged { device, thread } => Event::SmsChanged { id: device.to_string(), thread },
             NodeEvent::Mirroring { device, session, on } => {
                 Event::Mirroring { id: device.to_string(), session, on }
@@ -1243,6 +1289,15 @@ pub trait Platform: Send + Sync {
     /// A PC asked to answer, decline or silence call `id` (the call in
     /// progress). False if the phone couldn't.
     fn call_command(&self, id: String, command: CallCommand) -> bool;
+    /// A PC asked for recent calls before `before` (Unix ms; the latest when
+    /// null), newest first.
+    fn call_log(&self, before: Option<i64>, limit: u32) -> Vec<CallLogEntry>;
+    /// A PC asked to call `number` (or open the dialer with it filled in).
+    /// False if the phone couldn't.
+    fn call_dial(&self, number: String) -> bool;
+    /// A PC asked for contacts matching `query` (or all with phone numbers
+    /// when null), favorites first then alphabetical, skipping `offset`.
+    fn contacts(&self, query: Option<String>, offset: u32, limit: u32) -> Vec<Contact>;
     /// A PC asked for this phone's screen (and, with `audio`, its sound):
     /// ask the user (then call `mirror_open`, and `mirror_open_audio` for
     /// the sound). With `app` (and a `session` other than 0): run that app
@@ -1423,6 +1478,43 @@ impl core::Platform for PlatformAdapter {
             core::CallCommand::Volume(up) => CallCommand::Volume { up },
         };
         if self.0.call_command(id.to_owned(), command) { Ok(()) } else { Err("the phone couldn't".into()) }
+    }
+    fn call_log(&self, before: Option<i64>, limit: u32) -> Result<Vec<core::CallLogEntry>, String> {
+        Ok(self
+            .0
+            .call_log(before, limit)
+            .into_iter()
+            .map(|e| core::CallLogEntry {
+                id: e.id,
+                number: e.number,
+                name: e.name,
+                direction: e.direction,
+                date: e.date,
+                duration: e.duration,
+                photo: e.photo,
+            })
+            .collect())
+    }
+    fn call_dial(&self, number: &str) -> Result<(), String> {
+        if self.0.call_dial(number.to_owned()) { Ok(()) } else { Err("the phone couldn't".into()) }
+    }
+    fn contacts(&self, query: Option<&str>, offset: u32, limit: u32) -> Result<Vec<core::Contact>, String> {
+        Ok(self
+            .0
+            .contacts(query.map(str::to_owned), offset, limit)
+            .into_iter()
+            .map(|c| core::Contact {
+                id: c.id,
+                name: c.name,
+                numbers: c
+                    .numbers
+                    .into_iter()
+                    .map(|n| core::ContactNumber { number: n.number, label: n.label })
+                    .collect(),
+                starred: c.starred,
+                photo: c.photo,
+            })
+            .collect())
     }
     fn open_photo(&self, id: &str) -> Result<core::OutgoingFile, String> {
         let file = self.0.open_photo(id.to_owned()).ok_or("it's gone")?;
@@ -1744,6 +1836,18 @@ impl NectarlinkNode {
     pub async fn sms_changed(&self, thread: Option<String>) {
         let node = self.node.clone();
         self.run(async move { node.sms_changed(thread).await }).await;
+    }
+
+    /// This phone's call history changed: PCs that show it catch up.
+    pub async fn call_log_changed(&self) {
+        let node = self.node.clone();
+        self.run(async move { node.call_log_changed().await }).await;
+    }
+
+    /// This phone's contacts changed: PCs that show them catch up.
+    pub async fn contacts_changed(&self) {
+        let node = self.node.clone();
+        self.run(async move { node.contacts_changed().await }).await;
     }
 
     /// A call on this phone rang, was answered or ended: tells the PCs that

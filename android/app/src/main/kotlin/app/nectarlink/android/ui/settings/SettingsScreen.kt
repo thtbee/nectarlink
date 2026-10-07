@@ -44,11 +44,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.R
+import app.nectarlink.android.calls.PhoneCalls
+import app.nectarlink.android.contacts.PhoneContacts
 import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.elevated.PairingNotification
 import app.nectarlink.android.mirror.InputService
+import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.update.AppUpdater
 import app.nectarlink.android.update.CheckForUpdates
 import app.nectarlink.android.core.CoreState
@@ -66,6 +71,7 @@ fun SettingsScreen(
     onAppearance: ((Appearance) -> Appearance) -> Unit,
     onUnpair: (String) -> Unit,
     onPairNew: () -> Unit,
+    onAccessChanged: () -> Unit,
     updater: AppUpdater,
     modifier: Modifier = Modifier,
 ) {
@@ -83,6 +89,33 @@ fun SettingsScreen(
 
         Section(stringResource(R.string.settings_notifications)) {
             NotificationAccess(state.notificationAccess)
+        }
+
+        Section(stringResource(R.string.settings_calls_and_contacts)) {
+            RuntimePermissionAccess(
+                title = stringResource(R.string.calls_title),
+                textOn = stringResource(R.string.calls_on),
+                textOff = stringResource(R.string.calls_off),
+                granted = state.callAccess,
+                permissions = PhoneCalls.permissions,
+                onAccessChanged = onAccessChanged,
+            )
+            RuntimePermissionAccess(
+                title = stringResource(R.string.contacts_title),
+                textOn = stringResource(R.string.contacts_on),
+                textOff = stringResource(R.string.contacts_off),
+                granted = state.contactsAccess,
+                permissions = PhoneContacts.permissions,
+                onAccessChanged = onAccessChanged,
+            )
+            RuntimePermissionAccess(
+                title = stringResource(R.string.sms_title),
+                textOn = stringResource(R.string.sms_on),
+                textOff = stringResource(R.string.sms_off),
+                granted = state.smsAccess,
+                permissions = PhoneSms.permissions,
+                onAccessChanged = onAccessChanged,
+            )
         }
 
         Section(stringResource(R.string.settings_control)) {
@@ -310,6 +343,41 @@ private fun ElevatedAccess() {
                 TextButton(onClick = { steps = false }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
+    }
+}
+
+@Composable
+private fun RuntimePermissionAccess(
+    title: String,
+    textOn: String,
+    textOff: String,
+    granted: Boolean,
+    permissions: Array<String>,
+    onAccessChanged: () -> Unit,
+) {
+    val context = LocalContext.current
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        onAccessChanged()
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                if (granted) textOn else textOff,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (granted) {
+            OutlinedButton(onClick = {
+                context.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }) { Text(stringResource(R.string.action_manage)) }
+        } else {
+            Button(onClick = { ask.launch(permissions) }) { Text(stringResource(R.string.action_allow)) }
+        }
     }
 }
 

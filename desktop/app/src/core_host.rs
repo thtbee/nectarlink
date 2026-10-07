@@ -100,6 +100,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         "pc.power".into(),
         nectarlink_core::PHOTOS_SHOW.into(),
         nectarlink_core::CALLS_SHOW.into(),
+        nectarlink_core::CONTACTS_SHOW.into(),
         nectarlink_core::SMS_SHOW.into(),
         nectarlink_core::MIRROR_VIEW.into(),
         nectarlink_core::MIRROR_LISTEN.into(),

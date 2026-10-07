@@ -7,7 +7,10 @@ use std::sync::{Arc, Mutex};
 
 use nectarlink_protocol::{
     Envelope, ErrorCode,
-    messages::{CallAction, CallState, calls, is_dtmf_digit, types},
+    messages::{
+        CallAction, CallDial, CallLog, CallLogChanged, CallLogEntry, CallLogGet, CallState, calls,
+        is_dtmf_digit, types,
+    },
 };
 
 use crate::{Error, Result, events::NodeEvent, node::Shared, session::Session};
@@ -138,6 +141,13 @@ impl Shared {
         Ok(())
     }
 
+    pub(crate) async fn call_log_changed(&self) {
+        let Ok(env) = Envelope::new(types::CALL_LOG_CHANGED, &CallLogChanged {}) else { return };
+        for session in self.live_sessions().into_iter().filter(|s| self.call_target(s)) {
+            let _ = session.send(env.clone()).await;
+        }
+    }
+
     /// Tells a PC that just connected about the call going on, if any.
     pub(crate) async fn send_call_state(&self, session: &Arc<Session>) {
         let Some(call) = self.calls.get() else { return };
@@ -164,6 +174,39 @@ pub(crate) async fn command(
     Ok(())
 }
 
+pub(crate) async fn log(
+    shared: &Shared,
+    session: &Session,
+    before: Option<i64>,
+    limit: u32,
+) -> Result<Vec<CallLogEntry>> {
+    if !shared.toggle_on(&session.peer, TOGGLE) {
+        return Err(Error::Denied);
+    }
+    let env =
+        Envelope::new(types::CALL_LOG, &CallLogGet { before, limit: limit.clamp(1, calls::MAX_LOG_PAGE) })?;
+    let CallLog { entries } =
+        session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect_body(types::CALL_LOG)?;
+    Ok(entries)
+}
+
+pub(crate) async fn dial(shared: &Shared, session: &Session, number: String) -> Result<()> {
+    if !shared.toggle_on(&session.peer, TOGGLE) {
+        return Err(Error::Denied);
+    }
+    let dial = CallDial { number: number.trim().to_owned() };
+    if !dial.is_valid() {
+        return Err(if dial.number.len() > calls::MAX_TEXT_BYTES {
+            Error::TooLarge
+        } else {
+            Error::Protocol("invalid phone number".into())
+        });
+    }
+    let env = Envelope::new(types::CALL_DIAL, &dial)?;
+    session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect(types::OK)?;
+    Ok(())
+}
+
 /// Handles `call.*`. Returns false for other types.
 pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &Envelope) -> Result<bool> {
     let peer = session.peer;
@@ -173,6 +216,14 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let shows = shared.local_capabilities().iter().any(|c| c == calls::SHOW);
             if shows && call.is_valid() && shared.toggle_on(&peer, TOGGLE) {
                 shared.emit(NodeEvent::Call { device: peer, call });
+            }
+            Ok(true)
+        }
+        types::CALL_LOG_CHANGED => {
+            let CallLogChanged {} = env.body()?;
+            let shows = shared.local_capabilities().iter().any(|c| c == calls::SHOW);
+            if shows && shared.toggle_on(&peer, TOGGLE) {
+                shared.emit(NodeEvent::CallLogChanged { device: peer });
             }
             Ok(true)
         }
@@ -209,8 +260,68 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             session.send(reply.reply_to(env.id)).await?;
             Ok(true)
         }
+        types::CALL_LOG | types::CALL_DIAL => {
+            // Reading the call log or starting a call takes a moment: run off the session's loop,
+            // while keeping `call.state` and `call.action` in order on the stream.
+            let (shared, session, env) = (shared.clone(), session.clone(), env.clone());
+            tokio::spawn(async move {
+                let reply = answer_log_or_dial(&shared, &session, &env).await.unwrap_or_else(|e| {
+                    tracing::debug!(error = %e, "bad call request");
+                    Envelope::error(ErrorCode::BadMessage, "invalid request")
+                });
+                let _ = session.send(reply.reply_to(env.id)).await;
+            });
+            Ok(true)
+        }
         _ => Ok(false),
     }
+}
+
+async fn answer_log_or_dial(shared: &Arc<Shared>, session: &Session, env: &Envelope) -> Result<Envelope> {
+    if !shared.toggle_on(&session.peer, TOGGLE) {
+        return Ok(Envelope::error(ErrorCode::Denied, "calls are off for this device"));
+    }
+    let offers = |cap: &str| shared.local_capabilities().iter().any(|c| c == cap);
+    let platform = shared.platform.clone();
+    let result = match env.t.as_str() {
+        types::CALL_LOG => {
+            if !offers(calls::LOG) {
+                return Ok(Envelope::error(ErrorCode::Unsupported, "this phone doesn't share recent calls"));
+            }
+            let CallLogGet { before, limit } = env.body()?;
+            let limit = limit.clamp(1, calls::MAX_LOG_PAGE);
+            tokio::task::spawn_blocking(move || {
+                let mut entries = platform.call_log(before, limit)?;
+                for e in &mut entries {
+                    if e.photo.as_ref().is_some_and(|p| p.len() > calls::MAX_LOG_PHOTO_BYTES) {
+                        e.photo = None;
+                    }
+                }
+                crate::sms::fit(entries, |entries| Envelope::new(types::CALL_LOG, &CallLog { entries }))
+            })
+            .await
+            .unwrap_or_else(|e| Err(e.to_string()))
+        }
+        _ => {
+            if !offers(calls::DIAL) {
+                return Ok(Envelope::error(ErrorCode::Unsupported, "this phone doesn't place calls"));
+            }
+            let dial: CallDial = env.body()?;
+            if !dial.is_valid() {
+                return Ok(Envelope::error(ErrorCode::BadMessage, "invalid number"));
+            }
+            let number = dial.number.trim().to_owned();
+            tokio::task::spawn_blocking(move || {
+                platform.call_dial(&number).map(|()| Envelope::empty(types::OK))
+            })
+            .await
+            .unwrap_or_else(|e| Err(e.to_string()))
+        }
+    };
+    Ok(result.unwrap_or_else(|reason| {
+        tracing::warn!(reason, t = env.t, "a call request failed");
+        Envelope::error(ErrorCode::Internal, "the phone couldn't do it")
+    }))
 }
 
 #[cfg(test)]

@@ -199,6 +199,30 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't take calls".into())
     }
 
+    /// This phone's recent calls before `before` (Unix ms; the latest when
+    /// `None`), newest first (a PC asked).
+    fn call_log(&self, _before: Option<i64>, _limit: u32) -> Result<Vec<crate::CallLogEntry>, String> {
+        Err("this device has no call history".into())
+    }
+
+    /// Place a call to `number` (or open the dialer with it filled in) on
+    /// this phone (a PC asked; checked not blank).
+    fn call_dial(&self, _number: &str) -> Result<(), String> {
+        Err("this device doesn't place calls".into())
+    }
+
+    /// This phone's contacts matching `query` (or all with phone numbers
+    /// when `None`), favorites first then alphabetical, skipping `offset`
+    /// (a PC asked).
+    fn contacts(
+        &self,
+        _query: Option<&str>,
+        _offset: u32,
+        _limit: u32,
+    ) -> Result<Vec<crate::Contact>, String> {
+        Err("this device has no contacts".into())
+    }
+
     /// Run a command on one of this device's media players (a paired device
     /// asked); `position` is set for [`MediaAction::Seek`].
     fn media_command(

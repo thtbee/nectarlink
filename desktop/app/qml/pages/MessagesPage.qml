@@ -15,12 +15,39 @@ Item {
 
     readonly property var threads: { try { return JSON.parse(Messages.threads) } catch (e) { return [] } }
     readonly property var messages: { try { return JSON.parse(Messages.messages) } catch (e) { return [] } }
+    readonly property var contacts: { try { return JSON.parse(PhoneCall.contacts) } catch (e) { return [] } }
     readonly property var openThread: threads.find(t => t.id === Messages.thread) || null
     readonly property bool ready: Messages.status === "ready"
     // Conversations matching the search box.
     readonly property string query: search.text.trim().toLocaleLowerCase()
     readonly property var shownThreads: query.length === 0 ? threads
         : threads.filter(t => (t.title + " " + t.addresses + " " + t.snippet).toLocaleLowerCase().indexOf(query) >= 0)
+
+    // Contacts matching the "To" field when starting a new message.
+    readonly property string recipientQuery: toField.text.trim().toLocaleLowerCase()
+    readonly property var recipientMatches: {
+        if (!composing || recipientQuery.length === 0) return []
+        const out = []
+        for (let i = 0; i < contacts.length && out.length < 6; i++) {
+            const c = contacts[i]
+            const nums = c.numbers || []
+            for (let j = 0; j < nums.length && out.length < 6; j++) {
+                const num = nums[j].number || ""
+                const label = nums[j].label || ""
+                // Don't show a suggestion if its number is already selected verbatim.
+                if (num === toField.text.trim()) continue
+                if ((c.name + " " + num + " " + label).toLocaleLowerCase().indexOf(recipientQuery) >= 0) {
+                    out.push({
+                        name: c.name,
+                        number: num,
+                        label: label,
+                        photo: c.photo || ""
+                    })
+                }
+            }
+        }
+        return out
+    }
 
     // Back to the list: nothing open.
     function closeChat() {
@@ -70,9 +97,28 @@ Item {
         Behavior on y { SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
     }
 
+    function applyComposeTarget() {
+        if (Messages.composeTo.length > 0) {
+            composing = true
+            toField.text = Messages.composeTo
+            Qt.callLater(() => composer.focusText())
+        } else if (Messages.thread.length > 0) {
+            composing = false
+        }
+    }
+
+    Connections {
+        target: Messages
+        function onComposeToChanged() { page.applyComposeTarget() }
+        function onThreadChanged() { if (Messages.thread.length > 0) page.composing = false }
+    }
+
     function load() {
-        if (active && deviceId.length > 0)
+        if (active && deviceId.length > 0) {
             Messages.open(deviceId)
+            PhoneCall.ensureContacts(deviceId)
+            applyComposeTarget()
+        }
     }
     // Leaving the page closes the open conversation.
     onActiveChanged: active ? load() : closeChat()
@@ -95,6 +141,7 @@ Item {
     function startNew() {
         Messages.closeThread()
         composing = true
+        toField.text = ""
         toField.forceActiveFocus()
     }
     onDeviceIdChanged: { composing = false; load() }
@@ -318,8 +365,8 @@ Item {
             Column {
                 anchors.left: backButton.right
                 anchors.leftMargin: 8
-                anchors.right: parent.right
-                anchors.rightMargin: 24
+                anchors.right: callThreadButton.visible ? callThreadButton.left : parent.right
+                anchors.rightMargin: callThreadButton.visible ? 8 : 24
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 2
                 visible: !page.composing
@@ -337,6 +384,18 @@ Item {
                     muted: true
                     elide: Text.ElideRight
                 }
+            }
+            IconButton {
+                id: callThreadButton
+                anchors.right: parent.right
+                anchors.rightMargin: 14
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !page.composing && !!page.openThread && !page.openThread.group
+                    && page.openThread.addresses.length > 0 && PhoneCall.canDial
+                enabled: !PhoneCall.dialing
+                iconPath: Icons.call
+                label: page.openThread ? qsTr("Call %1").arg(page.openThread.title) : qsTr("Call")
+                onClicked: if (page.openThread) PhoneCall.dial(page.openThread.addresses)
             }
             // New message: who to.
             Row {
@@ -357,20 +416,118 @@ Item {
                     color: Theme.surfaceContent
                     selectionColor: Theme.primaryContainer
                     selectedTextColor: Theme.primaryContainerContent
-                    inputMethodHints: Qt.ImhDialableCharactersOnly
                     clip: true
-                    Accessible.name: qsTr("Phone number")
-                    Keys.onReturnPressed: composer.focusText()
+                    Accessible.name: qsTr("Name or phone number")
+                    Keys.onReturnPressed: {
+                        if (page.recipientMatches.length > 0 && !/\d/.test(toField.text)) {
+                            toField.text = page.recipientMatches[0].number
+                        }
+                        composer.focusText()
+                    }
                     Txt {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: toField.text.length === 0
                         role: "body"
                         muted: true
-                        text: qsTr("Phone number")
+                        text: qsTr("Name or phone number")
                     }
                 }
             }
             Divider { anchors.bottom: parent.bottom; width: parent.width }
+        }
+
+        // Contact suggestions when typing a name or number in "To".
+        Rectangle {
+            id: contactSuggestions
+            z: 2
+            anchors.top: chatHeader.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 24
+            anchors.rightMargin: 24
+            anchors.topMargin: 6
+            visible: page.composing && page.recipientMatches.length > 0
+            height: suggestionColumn.height + 12
+            radius: Theme.radiusLg
+            color: Theme.surfaceContainerHigh
+            border.width: 1
+            border.color: Theme.outlineVariant
+
+            Column {
+                id: suggestionColumn
+                y: 6
+                width: parent.width
+                Repeater {
+                    model: page.recipientMatches
+                    delegate: Item {
+                        id: srow
+                        required property var modelData
+                        width: suggestionColumn.width
+                        height: 52
+                        Accessible.role: Accessible.ListItem
+                        Accessible.name: modelData.name + ", " + modelData.number
+                        Accessible.onPressAction: choose()
+                        function choose() {
+                            toField.text = modelData.number
+                            composer.focusText()
+                        }
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.leftMargin: 6
+                            anchors.rightMargin: 6
+                            radius: Theme.radiusMd
+                            color: sHover.hovered
+                                ? Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, 0.08)
+                                : "transparent"
+                        }
+                        Item {
+                            id: sFace
+                            x: 16
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 34; height: 34
+                            RoundedImage {
+                                anchors.fill: parent
+                                radius: width / 2
+                                visible: srow.modelData.photo.length > 0 && status === Image.Ready
+                                source: srow.modelData.photo
+                                sourceSize: Qt.size(68, 68)
+                                fillMode: Image.PreserveAspectCrop
+                            }
+                            Avatar {
+                                anchors.fill: parent
+                                visible: srow.modelData.photo.length === 0
+                                name: srow.modelData.name
+                                hue: page.hueOf(srow.modelData.name)
+                            }
+                        }
+                        Column {
+                            anchors.left: sFace.right
+                            anchors.leftMargin: 12
+                            anchors.right: parent.right
+                            anchors.rightMargin: 16
+                            anchors.verticalCenter: parent.verticalCenter
+                            Txt {
+                                width: parent.width
+                                text: srow.modelData.name
+                                role: "body"
+                                weight: 500
+                                elide: Text.ElideRight
+                            }
+                            Txt {
+                                width: parent.width
+                                text: srow.modelData.label.length > 0
+                                    ? srow.modelData.label + " · " + srow.modelData.number
+                                    : srow.modelData.number
+                                role: "bodySmall"
+                                muted: true
+                                elide: Text.ElideRight
+                            }
+                        }
+                        HoverHandler { id: sHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: srow.choose() }
+                    }
+                }
+            }
         }
 
         ListView {

@@ -194,6 +194,7 @@ private fun App(core: Core, state: CoreState, preferences: Preferences) {
                     onAppearance = preferences::update,
                     onUnpair = core::unpair,
                     onPairNew = { pairing = true },
+                    onAccessChanged = core::refreshNotificationAccess,
                     updater = (LocalContext.current.applicationContext as NectarlinkApplication).updater,
                     modifier = modifier,
                 )

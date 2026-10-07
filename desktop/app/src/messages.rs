@@ -44,7 +44,7 @@ impl Status {
         }
     }
 
-    fn of(error: &Error) -> Status {
+    pub(crate) fn of(error: &Error) -> Status {
         match error {
             Error::Denied => Status::Off,
             Error::Unsupported => Status::Unsupported,
@@ -71,6 +71,9 @@ struct State {
     pictures: HashMap<String, PathBuf>,
     /// Contact photos saved, by thread ID.
     photos: HashMap<String, PathBuf>,
+    /// A number pre-filled in the new-message box (from Calls / Contacts).
+    compose_to: Option<String>,
+    compose_name: Option<String>,
     /// Bumped when the phone changes, so late answers are dropped.
     generation: u64,
 }
@@ -102,6 +105,8 @@ pub struct View {
     pub more: bool,
     pub loading_older: bool,
     pub sending: bool,
+    pub compose_to: Option<String>,
+    pub compose_name: Option<String>,
 }
 
 pub fn view() -> View {
@@ -125,6 +130,8 @@ pub fn view() -> View {
         more: s.more,
         loading_older: s.loading_older,
         sending: s.sending,
+        compose_to: s.compose_to.clone(),
+        compose_name: s.compose_name.clone(),
     })
 }
 
@@ -307,6 +314,8 @@ fn save_photos(device: DeviceId, threads: &[SmsThread]) -> HashMap<String, PathB
 /// Opens a conversation: its latest messages.
 pub fn open_thread(thread: String) {
     state(|s| {
+        s.compose_to = None;
+        s.compose_name = None;
         if s.thread.as_deref() != Some(&thread) {
             s.thread = Some(thread);
             s.messages.clear();
@@ -315,6 +324,50 @@ pub fn open_thread(thread: String) {
     });
     changed();
     load_messages(None);
+}
+
+/// Opens an existing 1-on-1 conversation with `number` on `device`, or starts
+/// a new one with `number` pre-filled.
+pub fn start_chat(device: DeviceId, number: String, name: String) {
+    let number = number.trim().to_owned();
+    if number.is_empty() {
+        return;
+    }
+    let name = name.trim().to_owned();
+    let wanted = digits(&number);
+    let existing = state(|s| {
+        if s.device != Some(device) {
+            *s = State { device: Some(device), generation: s.generation + 1, ..State::default() };
+        }
+        let found = (!wanted.is_empty()).then(|| {
+            s.threads
+                .iter()
+                .find(|t| t.addresses.len() == 1 && digits(&t.addresses[0]) == wanted)
+                .map(|t| t.id.clone())
+        })?;
+        if found.is_none() {
+            s.thread = None;
+            s.messages.clear();
+            s.more = false;
+            s.compose_to = Some(number.clone());
+            s.compose_name = (!name.is_empty() && name != number).then_some(name);
+        } else {
+            s.compose_to = None;
+            s.compose_name = None;
+        }
+        found
+    });
+    if let Some(thread) = existing {
+        PENDING_OPEN.lock().unwrap_or_else(|e| e.into_inner()).take();
+        open_thread(thread);
+        load_threads();
+    } else {
+        if !wanted.is_empty() {
+            PENDING_OPEN.lock().unwrap_or_else(|e| e.into_inner()).replace(vec![wanted]);
+        }
+        changed();
+        load_threads();
+    }
 }
 
 /// The open conversation's older messages.
@@ -445,6 +498,8 @@ pub fn send_to(to: Vec<String>, body: String) {
     let local_id = format!("local:{now}:{}", NEXT_LOCAL.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
     let Some(device) = state(|s| {
         s.sending = true;
+        s.compose_to = None;
+        s.compose_name = None;
         // Shown at once as "Sending…"; the phone's copy replaces it.
         if let Some(thread) = s.thread.clone() {
             s.messages.insert(
@@ -507,7 +562,7 @@ fn reload_after_send(to: &[String]) {
 static PENDING_OPEN: Mutex<Option<Vec<String>>> = Mutex::new(None);
 
 /// The last digits of a number, to match "+1 555-0100" with "5550100".
-fn digits(number: &str) -> String {
+pub(crate) fn digits(number: &str) -> String {
     let all: String = number.chars().filter(char::is_ascii_digit).collect();
     all[all.len().saturating_sub(9)..].to_owned()
 }
@@ -522,8 +577,11 @@ pub fn reload() {
 
 /// Closes the open conversation (for writing a new one).
 pub fn close_thread() {
+    PENDING_OPEN.lock().unwrap_or_else(|e| e.into_inner()).take();
     state(|s| {
         s.thread = None;
+        s.compose_to = None;
+        s.compose_name = None;
         s.messages.clear();
         s.more = false;
     });

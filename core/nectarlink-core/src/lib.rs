@@ -10,6 +10,7 @@ mod actions;
 mod calls;
 mod clipboard;
 mod config;
+mod contacts;
 mod error;
 mod events;
 pub mod features;
@@ -42,12 +43,15 @@ pub use nectarlink_protocol::messages::clip::{
 pub use nectarlink_protocol::{
     DeviceId, PacketKind,
     messages::{
-        Battery, CLIP_MAX_BYTES, CallControls, CallState, DeviceInfo, DeviceKind, MediaPlayer,
-        MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorStart, Notification, NotificationAction,
-        PhoneApp, PhotoNew as Photo, PowerLevel, SmsMessage, SmsPart, SmsThread, TouchAction,
+        Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallState, Contact, ContactNumber, DeviceInfo,
+        DeviceKind, MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorStart, Notification,
+        NotificationAction, PhoneApp, PhotoNew as Photo, PowerLevel, SmsMessage, SmsPart, SmsThread,
+        TouchAction,
         calls::{
-            CONTROL as CALLS_CONTROL, IN_CALL as CALLS_IN_CALL, SHOW as CALLS_SHOW, STATE as CALLS_STATE,
+            CONTROL as CALLS_CONTROL, DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG,
+            SHOW as CALLS_SHOW, STATE as CALLS_STATE,
         },
+        contacts::{READ as CONTACTS_READ, SHOW as CONTACTS_SHOW},
         is_package_name,
         mirror::{
             AUDIO as MIRROR_AUDIO, AUDIO_PLAYBACK as MIRROR_AUDIO_PLAYBACK, CAPTURE as MIRROR_CAPTURE,
