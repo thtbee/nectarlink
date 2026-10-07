@@ -1,13 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.ui.remote
 
+import android.Manifest
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.view.WindowManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -50,6 +60,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,14 +76,17 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import app.nectarlink.android.R
 import app.nectarlink.android.core.Core
 import app.nectarlink.android.core.Device
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 import kotlin.math.hypot
 
-enum class RemoteMode { Touchpad, Presentation }
+enum class RemoteMode { Touchpad, AirMouse, Presentation }
 
 @Composable
 fun RemoteScreen(
@@ -102,6 +116,7 @@ fun RemoteScreen(
 
     var mode by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
     var access by remember(device.id) { mutableStateOf(Core.RemoteAccess.Allowed) }
+    val utteranceJoiner = remember(device.id) { UtteranceJoiner() }
 
     // Check access on entry and poll while denied so the prompt banner clears
     // as soon as the user clicks Allow on the PC.
@@ -149,21 +164,28 @@ fun RemoteScreen(
             ) {}
         }
 
-        // Mode switcher: Touchpad | Presentation
+        // Mode switcher: Touchpad | Air mouse | Presentation
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             SegmentedButton(
                 selected = mode == RemoteMode.Touchpad,
                 onClick = { mode = RemoteMode.Touchpad },
-                shape = SegmentedButtonDefaults.itemShape(0, 2),
+                shape = SegmentedButtonDefaults.itemShape(0, 3),
             ) {
-                Text(stringResource(R.string.remote_mode_touchpad))
+                Text(stringResource(R.string.remote_mode_touchpad), maxLines = 1)
+            }
+            SegmentedButton(
+                selected = mode == RemoteMode.AirMouse,
+                onClick = { mode = RemoteMode.AirMouse },
+                shape = SegmentedButtonDefaults.itemShape(1, 3),
+            ) {
+                Text(stringResource(R.string.remote_mode_air), maxLines = 1)
             }
             SegmentedButton(
                 selected = mode == RemoteMode.Presentation,
                 onClick = { mode = RemoteMode.Presentation },
-                shape = SegmentedButtonDefaults.itemShape(1, 2),
+                shape = SegmentedButtonDefaults.itemShape(2, 3),
             ) {
-                Text(stringResource(R.string.remote_mode_presentation))
+                Text(stringResource(R.string.remote_mode_presentation), maxLines = 1)
             }
         }
 
@@ -189,6 +211,16 @@ fun RemoteScreen(
                 pcName = device.name,
                 core = core,
                 sensitivity = sensitivity,
+                utteranceJoiner = utteranceJoiner,
+                onStatus = onStatus,
+                modifier = Modifier.weight(1f),
+            )
+            RemoteMode.AirMouse -> AirMouseView(
+                pcId = device.id,
+                pcName = device.name,
+                core = core,
+                sensitivity = sensitivity,
+                utteranceJoiner = utteranceJoiner,
                 onStatus = onStatus,
                 modifier = Modifier.weight(1f),
             )
@@ -226,6 +258,7 @@ private fun TouchpadView(
     pcName: String,
     core: Core,
     sensitivity: Float,
+    utteranceJoiner: UtteranceJoiner,
     onStatus: (Core.RemoteAccess) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -333,7 +366,7 @@ private fun TouchpadView(
                                 scrollAccumX += avgDx
                                 scrollAccumY += avgDy
                                 val stepPx = 18f
-                                if (kotlin.math.abs(scrollAccumX) >= stepPx || kotlin.math.abs(scrollAccumY) >= stepPx) {
+                                if (abs(scrollAccumX) >= stepPx || abs(scrollAccumY) >= stepPx) {
                                     val notchesX = -(scrollAccumX / 48f)
                                     val notchesY = -(scrollAccumY / 36f)
                                     scrollAccumX = 0f
@@ -425,6 +458,15 @@ private fun TouchpadView(
             }
         }
 
+        // Voice typing bar (Dictate button: hold to talk, or tap to start/stop)
+        VoiceTypingBar(
+            pcId = pcId,
+            pcName = pcName,
+            core = core,
+            utteranceJoiner = utteranceJoiner,
+            onStatus = onStatus,
+        )
+
         // Special keys & modifiers bar (always accessible in Touchpad mode)
         SpecialKeysBar(
             activeMods = activeMods,
@@ -470,6 +512,559 @@ private fun TouchpadView(
                     .fillMaxWidth()
                     .focusRequester(focusRequester),
             )
+        }
+    }
+}
+
+@Composable
+private fun AirMouseView(
+    pcId: String,
+    pcName: String,
+    core: Core,
+    sensitivity: Float,
+    utteranceJoiner: UtteranceJoiner,
+    onStatus: (Core.RemoteAccess) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val sensorManager = remember(context) {
+        context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+    }
+    val gyroSensor = remember(sensorManager) {
+        sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+    }
+    val hasGyro = gyroSensor != null
+
+    var padHeld by remember { mutableStateOf(false) }
+    var aimOffset by remember { mutableStateOf(Offset.Zero) }
+    val filter = remember { AirMouseFilter() }
+    val currentSensitivity by rememberUpdatedState(sensitivity)
+
+    DisposableEffect(padHeld, pcId, hasGyro) {
+        if (!padHeld || gyroSensor == null || sensorManager == null) {
+            filter.reset()
+            aimOffset = Offset.Zero
+            return@DisposableEffect onDispose {}
+        }
+
+        filter.reset()
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                if (!padHeld || event.sensor.type != Sensor.TYPE_GYROSCOPE || event.values.size < 3) return
+                val (dx, dy) = filter.onSample(
+                    wx = event.values[0],
+                    wy = event.values[1],
+                    wz = event.values[2],
+                    timestampNs = event.timestamp,
+                    sensitivity = currentSensitivity,
+                )
+                if (abs(dx) >= 0.05f || abs(dy) >= 0.05f) {
+                    core.remoteMove(pcId, dx, dy)
+                    val nextX = (aimOffset.x + dx * 0.35f).coerceIn(-120f, 120f)
+                    val nextY = (aimOffset.y + dy * 0.35f).coerceIn(-120f, 120f)
+                    aimOffset = Offset(nextX, nextY)
+                }
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+        }
+
+        sensorManager.registerListener(listener, gyroSensor, SensorManager.SENSOR_DELAY_GAME)
+        onDispose {
+            sensorManager.unregisterListener(listener)
+            filter.reset()
+            aimOffset = Offset.Zero
+        }
+    }
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (!hasGyro) {
+            StatusBanner(
+                title = stringResource(R.string.remote_air_no_gyro_title),
+                text = stringResource(R.string.remote_air_no_gyro_text),
+            )
+        }
+
+        val primaryColor = MaterialTheme.colorScheme.primary
+        val outlineColor = MaterialTheme.colorScheme.outlineVariant
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = if (padHeld) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = if (padHeld) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+            border = BorderStroke(
+                width = if (padHeld) 2.dp else 1.dp,
+                color = if (padHeld) primaryColor else outlineColor,
+            ),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .pointerInput(pcId, hasGyro) {
+                    val tapSlop = viewConfiguration.touchSlop
+                    val tapTimeoutMs = 240L
+
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        val downTime = System.currentTimeMillis()
+                        var maxPointers = 1
+                        var totalMoved = 0f
+
+                        filter.reset()
+                        aimOffset = Offset.Zero
+                        padHeld = hasGyro
+
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val pressed = event.changes.filter { it.pressed }
+                            if (pressed.isEmpty()) break
+                            if (pressed.size > maxPointers) maxPointers = pressed.size
+                            for (c in pressed) {
+                                val d = c.positionChange()
+                                totalMoved += hypot(d.x, d.y)
+                            }
+                        }
+
+                        padHeld = false
+                        filter.reset()
+                        aimOffset = Offset.Zero
+
+                        val elapsed = System.currentTimeMillis() - downTime
+                        if (elapsed <= tapTimeoutMs && totalMoved <= tapSlop * 1.5f) {
+                            if (maxPointers == 1) {
+                                core.remoteButton(pcId, "left", "click", onStatus)
+                            } else if (maxPointers == 2) {
+                                core.remoteButton(pcId, "right", "click", onStatus)
+                            }
+                        }
+                    }
+                },
+        ) {
+            Box(Modifier.fillMaxSize()) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    val ringColor = if (padHeld) primaryColor.copy(alpha = 0.35f) else outlineColor.copy(alpha = 0.5f)
+                    drawCircle(
+                        color = ringColor,
+                        radius = 44.dp.toPx(),
+                        center = center,
+                    )
+                    val dotCenter = Offset(
+                        x = (center.x + aimOffset.x.dp.toPx() * 0.4f).coerceIn(24.dp.toPx(), size.width - 24.dp.toPx()),
+                        y = (center.y + aimOffset.y.dp.toPx() * 0.4f).coerceIn(24.dp.toPx(), size.height - 24.dp.toPx()),
+                    )
+                    drawCircle(
+                        color = if (padHeld) primaryColor else primaryColor.copy(alpha = 0.45f),
+                        radius = if (padHeld) 10.dp.toPx() else 6.dp.toPx(),
+                        center = dotCenter,
+                    )
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                ) {
+                    Text(
+                        text = if (!hasGyro) {
+                            stringResource(R.string.remote_air_no_gyro_title)
+                        } else if (padHeld) {
+                            stringResource(R.string.remote_air_active, pcName)
+                        } else {
+                            stringResource(R.string.remote_air_hold, pcName)
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
+                Text(
+                    stringResource(R.string.remote_air_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (padHeld) {
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                )
+            }
+        }
+
+        // Left / Right click buttons under the air mouse pad
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilledTonalButton(
+                onClick = { core.remoteButton(pcId, "left", "click", onStatus) },
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.weight(1f).height(48.dp),
+            ) {
+                Text(stringResource(R.string.remote_left_click), maxLines = 1)
+            }
+            FilledTonalButton(
+                onClick = { core.remoteButton(pcId, "right", "click", onStatus) },
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.weight(1f).height(48.dp),
+            ) {
+                Text(stringResource(R.string.remote_right_click), maxLines = 1)
+            }
+        }
+
+        // Voice typing bar (Dictate button: hold to talk, or tap to start/stop)
+        VoiceTypingBar(
+            pcId = pcId,
+            pcName = pcName,
+            core = core,
+            utteranceJoiner = utteranceJoiner,
+            onStatus = onStatus,
+        )
+    }
+}
+
+private enum class DictateError {
+    NoRecognizer,
+    PermissionNeeded,
+    NoSpeech,
+    Failed,
+}
+
+private sealed interface DictateState {
+    data class Idle(val lastTyped: String? = null) : DictateState
+    data class Listening(val partial: String = "") : DictateState
+    data class Typing(val text: String) : DictateState
+    data class Error(val kind: DictateError) : DictateState
+}
+
+@Composable
+private fun VoiceTypingBar(
+    pcId: String,
+    pcName: String,
+    core: Core,
+    utteranceJoiner: UtteranceJoiner,
+    onStatus: (Core.RemoteAccess) -> Unit,
+) {
+    val context = LocalContext.current
+    var state by remember(pcId) { mutableStateOf<DictateState>(DictateState.Idle()) }
+    var recognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
+    var preferOnDevice by remember { mutableStateOf(true) }
+
+    fun destroyRecognizer() {
+        runCatching {
+            recognizer?.cancel()
+            recognizer?.destroy()
+        }
+        recognizer = null
+    }
+
+    DisposableEffect(pcId) {
+        onDispose {
+            destroyRecognizer()
+        }
+    }
+
+    fun startRecognition(allowOnDevice: Boolean = preferOnDevice) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            state = DictateState.Error(DictateError.PermissionNeeded)
+            return
+        }
+
+        destroyRecognizer()
+
+        val useOnDevice = allowOnDevice &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            runCatching { SpeechRecognizer.isOnDeviceRecognitionAvailable(context) }.getOrDefault(false)
+
+        val defaultAvailable = runCatching { SpeechRecognizer.isRecognitionAvailable(context) }.getOrDefault(false)
+        if (!useOnDevice && !defaultAvailable) {
+            state = DictateState.Error(DictateError.NoRecognizer)
+            return
+        }
+
+        val sr = runCatching {
+            if (useOnDevice && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+            } else {
+                SpeechRecognizer.createSpeechRecognizer(context)
+            }
+        }.getOrNull()
+
+        if (sr == null) {
+            state = DictateState.Error(DictateError.NoRecognizer)
+            return
+        }
+
+        var readyForSpeech = false
+        var latestPartial = ""
+
+        sr.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {
+                readyForSpeech = true
+                state = DictateState.Listening(partial = latestPartial)
+            }
+
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onBufferReceived(buffer: ByteArray?) {}
+            override fun onEndOfSpeech() {}
+
+            override fun onPartialResults(partialResults: Bundle?) {
+                val partial = partialResults
+                    ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull()
+                    ?.let { UtteranceJoiner.sanitizeUtterance(it) }
+                    .orEmpty()
+                if (partial.isNotEmpty()) {
+                    latestPartial = partial
+                    state = DictateState.Listening(partial = partial)
+                }
+            }
+
+            override fun onResults(results: Bundle?) {
+                val raw = results
+                    ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull()
+                    ?.takeIf { it.isNotBlank() }
+                    ?: latestPartial
+                val joined = utteranceJoiner.next(raw)
+                if (joined.isEmpty()) {
+                    state = DictateState.Error(DictateError.NoSpeech)
+                    return
+                }
+                val preview = joined.trimStart()
+                state = DictateState.Typing(preview)
+                core.remoteText(pcId, joined) { access ->
+                    onStatus(access)
+                    state = DictateState.Idle(lastTyped = preview)
+                }
+            }
+
+            override fun onError(error: Int) {
+                // If the on-device recognizer fails before speech begins (e.g. its
+                // offline model isn't downloaded), fall back to the default service.
+                if (useOnDevice && !readyForSpeech) {
+                    preferOnDevice = false
+                    if (defaultAvailable) {
+                        startRecognition(allowOnDevice = false)
+                        return
+                    }
+                }
+                if (latestPartial.isNotBlank() &&
+                    (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT)
+                ) {
+                    val joined = utteranceJoiner.next(latestPartial)
+                    if (joined.isNotEmpty()) {
+                        val preview = joined.trimStart()
+                        state = DictateState.Typing(preview)
+                        core.remoteText(pcId, joined) { access ->
+                            onStatus(access)
+                            state = DictateState.Idle(lastTyped = preview)
+                        }
+                        return
+                    }
+                }
+                state = when (error) {
+                    SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
+                        DictateState.Error(DictateError.PermissionNeeded)
+                    SpeechRecognizer.ERROR_NO_MATCH,
+                    SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
+                        DictateState.Error(DictateError.NoSpeech)
+                    SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED,
+                    SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE,
+                    SpeechRecognizer.ERROR_CANNOT_CHECK_SUPPORT ->
+                        DictateState.Error(DictateError.NoRecognizer)
+                    else ->
+                        if (!readyForSpeech && error != SpeechRecognizer.ERROR_RECOGNIZER_BUSY) {
+                            DictateState.Error(DictateError.NoRecognizer)
+                        } else {
+                            DictateState.Error(DictateError.Failed)
+                        }
+                }
+            }
+
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        })
+
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        }
+
+        recognizer = sr
+        state = DictateState.Listening(partial = "")
+        runCatching {
+            sr.startListening(intent)
+        }.onFailure {
+            destroyRecognizer()
+            state = DictateState.Error(DictateError.NoRecognizer)
+        }
+    }
+
+    fun stopRecognition() {
+        val sr = recognizer
+        if (sr != null) {
+            runCatching { sr.stopListening() }
+        } else if (state is DictateState.Listening) {
+            state = DictateState.Idle()
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            startRecognition()
+        } else {
+            state = DictateState.Error(DictateError.PermissionNeeded)
+        }
+    }
+
+    val isListening = state is DictateState.Listening
+    val isError = state is DictateState.Error
+
+    val containerColor = when {
+        isListening -> MaterialTheme.colorScheme.primaryContainer
+        isError -> MaterialTheme.colorScheme.errorContainer
+        else -> MaterialTheme.colorScheme.surfaceContainer
+    }
+    val contentColor = when {
+        isListening -> MaterialTheme.colorScheme.onPrimaryContainer
+        isError -> MaterialTheme.colorScheme.onErrorContainer
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = containerColor,
+        contentColor = contentColor,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                val statusText = when (val s = state) {
+                    is DictateState.Idle -> if (s.lastTyped != null) {
+                        stringResource(R.string.remote_dictate_typed, pcName, s.lastTyped)
+                    } else {
+                        stringResource(R.string.remote_dictate_hint, pcName)
+                    }
+                    is DictateState.Listening -> stringResource(R.string.remote_dictate_listening, pcName)
+                    is DictateState.Typing -> stringResource(R.string.remote_dictate_typing, pcName)
+                    is DictateState.Error -> when (s.kind) {
+                        DictateError.NoRecognizer -> stringResource(R.string.remote_dictate_no_recognizer)
+                        DictateError.PermissionNeeded -> stringResource(R.string.remote_dictate_permission_needed, pcName)
+                        DictateError.NoSpeech -> stringResource(R.string.remote_dictate_no_speech)
+                        DictateError.Failed -> stringResource(R.string.remote_dictate_error)
+                    }
+                }
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
+                val partialOrTyping = when (val s = state) {
+                    is DictateState.Listening -> s.partial
+                    is DictateState.Typing -> s.text
+                    else -> ""
+                }
+                if (partialOrTyping.isNotEmpty()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = partialOrTyping,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            // Dictate button: supports both tap to start/stop and hold to talk.
+            val currentIsListening by rememberUpdatedState(isListening)
+            val buttonBg = if (isListening) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.secondaryContainer
+            }
+            val buttonFg = if (isListening) {
+                MaterialTheme.colorScheme.onPrimary
+            } else {
+                MaterialTheme.colorScheme.onSecondaryContainer
+            }
+
+            Surface(
+                shape = CircleShape,
+                color = buttonBg,
+                contentColor = buttonFg,
+                modifier = Modifier
+                    .height(40.dp)
+                    .pointerInput(pcId) {
+                        val holdThresholdMs = 350L
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            val downTime = System.currentTimeMillis()
+                            val wasListening = currentIsListening
+
+                            if (wasListening) {
+                                while (true) {
+                                    val ev = awaitPointerEvent()
+                                    if (ev.changes.none { it.pressed }) break
+                                }
+                                stopRecognition()
+                            } else {
+                                val hasPerm = ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.RECORD_AUDIO,
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                                if (!hasPerm) {
+                                    while (true) {
+                                        val ev = awaitPointerEvent()
+                                        if (ev.changes.none { it.pressed }) break
+                                    }
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                } else {
+                                    startRecognition()
+                                    while (true) {
+                                        val ev = awaitPointerEvent()
+                                        if (ev.changes.none { it.pressed }) break
+                                    }
+                                    val heldMs = System.currentTimeMillis() - downTime
+                                    if (heldMs >= holdThresholdMs) {
+                                        stopRecognition()
+                                    }
+                                }
+                            }
+                        }
+                    },
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (isListening) R.string.remote_dictate_stop else R.string.remote_dictate,
+                        ),
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
     }
 }

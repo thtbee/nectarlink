@@ -167,10 +167,12 @@ class MainActivity : ComponentActivity() {
     private fun handleRemoteIntent(intent: Intent?) {
         val pc = intent?.getStringExtra("remote_pc") ?: return
         val mode = intent.getStringExtra("remote_mode")
-        requestedRemoteMode = if (mode.equals("presentation", ignoreCase = true)) {
-            RemoteMode.Presentation
-        } else {
-            RemoteMode.Touchpad
+        requestedRemoteMode = when {
+            mode.equals("presentation", ignoreCase = true) -> RemoteMode.Presentation
+            mode.equals("air", ignoreCase = true) ||
+                mode.equals("air_mouse", ignoreCase = true) ||
+                mode.equals("airmouse", ignoreCase = true) -> RemoteMode.AirMouse
+            else -> RemoteMode.Touchpad
         }
         requestedRemotePc = pc
     }

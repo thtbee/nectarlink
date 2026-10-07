@@ -200,8 +200,8 @@ current Android. Talking through the PC comes with the HFP item above.
 | Feature | Tier |
 |---|---|
 | Phone as **touchpad + keyboard** for PC, presentation remote (with laser pointer) ✅ | P1 🟢 |
-| **Air mouse**: point the phone and its gyroscope moves the PC cursor, for presentations and couch use | P1 🟢 |
-| **Voice typing into PC**: hold a button on the phone, speak, and the text (from the phone's own speech engine) is typed into the PC's focused field | P1 🟢 |
+| **Air mouse**: point the phone and its gyroscope moves the PC cursor, for presentations and couch use ✅ | P1 🟢 |
+| **Voice typing into PC**: hold a button on the phone, speak, and the text (from the phone's own speech engine) is typed into the PC's focused field ✅ | P1 🟢 |
 | Type on the phone with the PC keyboard (without mirroring) | P1 🟣 |
 | **Deck**: the phone becomes a Stream-Deck-style macro pad for the PC with live tiles: mic mute, media, app launchers, scripts, OBS scenes, window switching, multiple pages, haptic feedback | P1 🟢 |
 | **Flow**: move the PC mouse off the screen edge onto the phone/tablet and back, with clipboard following | P2 🟣 |

@@ -224,20 +224,36 @@
         <item quantity="other">%1$d items</item>
     </plurals>
 
-    <!-- Remote input (touchpad, keyboard & presentation) -->
+    <!-- Remote input (touchpad, air mouse, keyboard, voice typing & presentation) -->
     <string name="action_remote_pc">Control PC</string>
     <string name="action_back">Back</string>
     <string name="settings_remote">Control your PC</string>
     <string name="settings_touchpad_sensitivity">Touchpad speed</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Touchpad</string>
+    <string name="remote_mode_air">Air mouse</string>
     <string name="remote_mode_presentation">Presentation</string>
     <string name="remote_touchpad_hint">Drag to move · Tap to click · Two fingers to right-click or scroll · Double-tap and hold to drag</string>
+    <string name="remote_air_hold">Hold to aim at %1$s</string>
+    <string name="remote_air_active">Moving on %1$s — tilt phone or tap to click</string>
+    <string name="remote_air_hint">Hold the pad and tilt your phone to move the pointer · Tap the pad to click · Release to stop</string>
+    <string name="remote_air_no_gyro_title">No gyroscope on this phone</string>
+    <string name="remote_air_no_gyro_text">Air mouse uses a gyroscope to follow how you tilt the phone. Use Touchpad mode instead.</string>
     <string name="remote_left_click">Left</string>
     <string name="remote_right_click">Right</string>
     <string name="remote_middle_click">Middle</string>
     <string name="remote_keyboard">Keyboard</string>
     <string name="remote_type_placeholder">Type on %1$s…</string>
+    <string name="remote_dictate">Dictate</string>
+    <string name="remote_dictate_stop">Stop</string>
+    <string name="remote_dictate_hint">Tap or hold Dictate to speak into %1$s</string>
+    <string name="remote_dictate_listening">Listening for %1$s…</string>
+    <string name="remote_dictate_typing">Typing on %1$s…</string>
+    <string name="remote_dictate_typed">Typed on %1$s: “%2$s”</string>
+    <string name="remote_dictate_no_recognizer">This phone doesn\'t have speech recognition installed.</string>
+    <string name="remote_dictate_no_speech">Didn\'t catch anything. Tap or hold Dictate to try again.</string>
+    <string name="remote_dictate_error">Speech recognition couldn\'t finish. Tap or hold Dictate to try again.</string>
+    <string name="remote_dictate_permission_needed">Nectarlink needs microphone access to dictate into %1$s.</string>
     <string name="remote_denied_title">Allow control on %1$s</string>
     <string name="remote_denied_text">On %1$s, allow control from this phone in Nectarlink\'s prompt or in Settings › Devices.</string>
     <string name="remote_offline_text">%1$s isn\'t connected right now.</string>

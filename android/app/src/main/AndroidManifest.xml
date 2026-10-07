@@ -18,7 +18,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <!-- Voice recorder to PC while the screen is off or the app is in the background. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-    <!-- Voice recordings for a PC (asked for on the Record screen) and the
+    <!-- Voice recordings and voice typing for a PC (asked in context) and the
          phone's sound while mirrored (playback capture, with the screen share's consent). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Elevated: turning wireless debugging back on after a reboot or a new
@@ -74,16 +74,24 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
-    <!-- Names and icons of the apps whose notifications are mirrored: Android
-         hides other apps unless they're declared here. -->
+    <!-- Names and icons of the apps whose notifications are mirrored, and the
+         phone's speech recognizer for voice typing: Android hides other apps
+         unless they're declared here. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
     </queries>
 
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="false" />
 
     <application
         android:name=".NectarlinkApplication"

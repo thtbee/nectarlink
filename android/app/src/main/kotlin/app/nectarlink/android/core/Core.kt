@@ -708,9 +708,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     fun remoteButton(id: String, button: String, action: String, onStatus: ((RemoteAccess) -> Unit)? = null) =
         remoteCommand(onStatus) { it.remoteButton(id, button, action) }
 
-    /** Types Unicode text on a PC. */
+    /** Types Unicode text on a PC, splitting long strings into 256-byte chunks. */
     fun remoteText(id: String, text: String, onStatus: ((RemoteAccess) -> Unit)? = null) =
-        remoteCommand(onStatus) { it.remoteText(id, text) }
+        remoteCommand(onStatus) { node ->
+            for (chunk in app.nectarlink.android.ui.remote.UtteranceJoiner.chunkUtf8(text)) {
+                node.remoteText(id, chunk)
+            }
+        }
 
     /** Presses a named key or shortcut with optional modifiers on a PC. */
     fun remoteKey(id: String, key: String, mods: List<String> = emptyList(), onStatus: ((RemoteAccess) -> Unit)? = null) =

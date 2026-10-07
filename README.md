@@ -128,17 +128,22 @@ tests; there are no releases yet.
   clipboard, or save one or many to a folder you pick (`Downloads\Nectarlink`
   by default). New photos and screenshots from the phone also pop up on the PC
   with a preview, ready to save or copy.
-- **Touchpad, keyboard and presentation remote**: control the PC from the
-  phone — a touchpad with one-finger move, tap to click, two-finger tap for
-  right-click, two-finger scroll, double-tap-and-hold drag and adjustable
-  speed; soft-keyboard typing with a bar of modifier and special keys (`Ctrl`,
-  `Alt`, `Shift`, `Win`, `Esc`, `Tab`, arrows, `Home`/`End`, `PgUp`/`PgDn`,
-  `Del` and shortcuts); and a presentation mode with Next/Previous slide (plus
-  the phone's volume buttons while open), Start/End show, Black screen, and a
-  hold-for-laser pointer that draws an accent-colored dot on the PC screen
-  following the phone's gyroscope or finger. Off by default on the PC, with a
-  one-time prompt the first time a phone asks and a per-phone toggle in
-  Settings.
+- **Touchpad, air mouse, keyboard, voice typing and presentation remote**:
+  control the PC from the phone — a touchpad with one-finger move, tap to
+  click, two-finger tap for right-click, two-finger scroll,
+  double-tap-and-hold drag and adjustable speed; an **air mouse** where holding
+  the pad and tilting the phone moves the PC cursor with its gyroscope (with
+  hand-tremor filtering, smoothing and tap-to-click); **voice typing** with a
+  **Dictate** button (tap or hold to talk) that uses the phone's speech
+  recognizer (on-device where available) with live partial results and types
+  into the PC's focused field; soft-keyboard typing with a bar of modifier and
+  special keys (`Ctrl`, `Alt`, `Shift`, `Win`, `Esc`, `Tab`, arrows,
+  `Home`/`End`, `PgUp`/`PgDn`, `Del` and shortcuts); and a presentation mode
+  with Next/Previous slide (plus the phone's volume buttons while open),
+  Start/End show, Black screen, and a hold-for-laser pointer that draws an
+  accent-colored dot on the PC screen following the phone's gyroscope or
+  finger. Off by default on the PC, with a one-time prompt the first time a
+  phone asks and a per-phone toggle in Settings.
 - **Voice recorder**: record with the phone's microphone (with a live level
   meter, pause and resume, timestamped markers, and recording that keeps going
   when the screen turns off) and send it straight to the PC. On the PC it lands
