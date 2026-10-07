@@ -45,8 +45,8 @@ pub use nectarlink_protocol::{
     messages::{
         Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallState, Contact, ContactNumber, DeviceInfo,
         DeviceKind, MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorResize, MirrorStart,
-        Notification, NotificationAction, PhoneApp, PhotoNew as Photo, PowerLevel, SmsMessage, SmsPart,
-        SmsThread, TouchAction,
+        Notification, NotificationAction, PhoneApp, PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb,
+        PowerLevel, SmsMessage, SmsPart, SmsThread, TouchAction,
         calls::{
             CONTROL as CALLS_CONTROL, DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG,
             SHOW as CALLS_SHOW, STATE as CALLS_STATE,
@@ -60,7 +60,11 @@ pub use nectarlink_protocol::{
             VIRTUAL_DISPLAY as MIRROR_VIRTUAL_DISPLAY,
         },
         mirror_keys,
-        photos::{MAX_THUMB_BYTES as PHOTO_MAX_THUMB_BYTES, READ as PHOTOS_READ, SHOW as PHOTOS_SHOW},
+        photos::{
+            MAX_GET_ITEMS as PHOTO_MAX_GET_ITEMS, MAX_PAGE as PHOTO_MAX_PAGE,
+            MAX_THUMB_BATCH as PHOTO_MAX_THUMB_BATCH, MAX_THUMB_BYTES as PHOTO_MAX_THUMB_BYTES,
+            READ as PHOTOS_READ, SHOW as PHOTOS_SHOW,
+        },
         sms::{READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW},
     },
     pairing::PairingUri,

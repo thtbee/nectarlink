@@ -42,6 +42,8 @@ impl Changes {
     pub const MIRROR: Changes = Changes(1 << 13);
     /// A call in progress on a phone (kept by crate::calls).
     pub const CALLS: Changes = Changes(1 << 14);
+    /// A phone's photo gallery (kept by crate::photos).
+    pub const PHOTOS: Changes = Changes(1 << 15);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
@@ -391,11 +393,17 @@ impl AppState {
             // crate::mirror).
             NodeEvent::ClipboardReceived { .. }
             | NodeEvent::PhotoAdded { .. }
+            | NodeEvent::PhotosChanged { .. }
             | NodeEvent::Call { .. }
             | NodeEvent::CallLogChanged { .. }
             | NodeEvent::ContactsChanged { .. }
             | NodeEvent::SmsChanged { .. }
             | NodeEvent::Mirroring { .. } => Changes::NONE,
+            // The gallery's own downloads (for its viewer, or the clipboard)
+            // aren't files the user keeps.
+            NodeEvent::Transfer(transfer) if crate::photos::is_private(&transfer.id) => {
+                self.forget_transfer(&transfer.id)
+            }
             NodeEvent::Transfer(transfer) => self.update_transfer(transfer.clone(), Instant::now()),
             // With artwork saved first (see crate::media).
             NodeEvent::MediaChanged { .. } => Changes::NONE,
@@ -443,6 +451,13 @@ impl AppState {
             finished <= MAX_FINISHED_TRANSFERS
         });
         Changes::TRANSFERS
+    }
+
+    /// Forgets a transfer, finished or not.
+    pub fn forget_transfer(&mut self, id: &str) -> Changes {
+        let before = self.transfers.len();
+        self.transfers.retain(|t| t.transfer.id != id);
+        if self.transfers.len() == before { Changes::NONE } else { Changes::TRANSFERS }
     }
 
     /// Forgets finished transfers.

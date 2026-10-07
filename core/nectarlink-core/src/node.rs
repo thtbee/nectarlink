@@ -118,8 +118,6 @@ pub(crate) struct Shared {
     pub notifications: Feed,
     /// This device's media players (docs/protocol/media.md).
     pub players: crate::media::Players,
-    /// Photos this phone announced lately (docs/protocol/photos.md).
-    pub(crate) photos: crate::photos::Recent,
     /// This phone's call in progress (docs/protocol/calls.md).
     pub(crate) calls: crate::calls::Current,
     /// Stop signals for phone screens shown here, by phone.
@@ -619,7 +617,6 @@ impl Node {
             memory,
             notifications: Feed::default(),
             players: Default::default(),
-            photos: Default::default(),
             calls: Default::default(),
             mirror_stops: Mutex::new(HashMap::new()),
             data_dir: config.data_dir.clone(),
@@ -1100,11 +1097,50 @@ impl Node {
         self.shared.photo_taken(photo).await
     }
 
-    /// Asks a phone for a photo it announced; returns the ID of the
-    /// transfer that brings it (reported like any other).
+    /// This phone's photo or video library changed: connected PCs that show
+    /// photos catch up.
+    pub async fn photos_changed(&self) {
+        self.shared.photos_changed().await;
+    }
+
+    /// Lists a paired phone's photo and video albums.
+    pub async fn photo_albums(&self, peer: DeviceId) -> Result<Vec<crate::PhotoAlbum>> {
+        let session = self.connected(&peer)?;
+        crate::photos::albums(&self.shared, &session).await
+    }
+
+    /// Lists a paired phone's photos and videos (in `album`, or all when
+    /// `None`), newest first: from the latest, or after `before`, the
+    /// previous page's last item (its date and ID).
+    pub async fn photo_list(
+        &self,
+        peer: DeviceId,
+        album: Option<String>,
+        before: Option<(i64, String)>,
+        limit: u32,
+    ) -> Result<Vec<crate::PhotoItem>> {
+        let session = self.connected(&peer)?;
+        crate::photos::list(&self.shared, &session, album, before, limit).await
+    }
+
+    /// Fetches small JPEG thumbnails for a batch of item IDs on a paired phone.
+    pub async fn photo_thumbs(&self, peer: DeviceId, ids: Vec<String>) -> Result<Vec<crate::PhotoThumb>> {
+        let session = self.connected(&peer)?;
+        crate::photos::thumbs(&self.shared, &session, ids).await
+    }
+
+    /// Asks a phone for a photo or video; returns the ID of the transfer
+    /// that brings it (reported like any other).
     pub async fn fetch_photo(&self, peer: DeviceId, id: String) -> Result<String> {
         let session = self.connected(&peer)?;
         crate::photos::fetch(&self.shared, &session, id).await
+    }
+
+    /// Asks a phone for one or more photos or videos in a single transfer;
+    /// returns the transfer ID.
+    pub async fn fetch_photos(&self, peer: DeviceId, ids: Vec<String>) -> Result<String> {
+        let session = self.connected(&peer)?;
+        crate::photos::fetch_many(&self.shared, &session, ids).await
     }
 
     // ---- Media (docs/protocol/media.md) ----

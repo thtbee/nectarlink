@@ -273,6 +273,102 @@ impl Platform for RecordingPlatform {
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
         Ok(OutgoingFile { name, folder: None, source: FileSource::Path(path) })
     }
+    fn photo_albums(&self) -> Result<Vec<nectarlink_core::PhotoAlbum>, String> {
+        use nectarlink_core::PhotoAlbum;
+        Ok(vec![
+            PhotoAlbum { id: "cam".into(), name: "Camera".into(), count: 3, cover: Some("media:4".into()) },
+            PhotoAlbum {
+                id: "shots".into(),
+                name: "Screenshots".into(),
+                count: 2,
+                cover: Some("media:3".into()),
+            },
+        ])
+    }
+    fn photo_list(
+        &self,
+        album: Option<&str>,
+        before: Option<(i64, &str)>,
+        limit: u32,
+    ) -> Result<Vec<nectarlink_core::PhotoItem>, String> {
+        use nectarlink_core::PhotoItem;
+        let all = vec![
+            PhotoItem {
+                id: "media:4".into(),
+                name: "IMG_4.jpg".into(),
+                date: 4_000,
+                size: 100,
+                width: 1920,
+                height: 1080,
+                duration: None,
+                album: Some("cam".into()),
+            },
+            PhotoItem {
+                id: "media:3".into(),
+                name: "Screenshot_3.png".into(),
+                date: 3_000,
+                size: 80,
+                width: 1080,
+                height: 2400,
+                duration: None,
+                album: Some("shots".into()),
+            },
+            PhotoItem {
+                id: "media:2".into(),
+                name: "VID_2.mp4".into(),
+                // Taken the same millisecond as media:3, across a page break.
+                date: 3_000,
+                size: 5_000,
+                width: 1920,
+                height: 1080,
+                duration: Some(14),
+                album: Some("cam".into()),
+            },
+            PhotoItem {
+                id: "media:1".into(),
+                name: "IMG_1.jpg".into(),
+                date: 1_000,
+                size: 90,
+                width: 1920,
+                height: 1080,
+                duration: None,
+                album: Some("cam".into()),
+            },
+            PhotoItem {
+                id: "media:0".into(),
+                name: "Screenshot_0.png".into(),
+                date: 500,
+                size: 70,
+                width: 1080,
+                height: 2400,
+                duration: None,
+                album: Some("shots".into()),
+            },
+        ];
+        Ok(all
+            .into_iter()
+            .filter(|i| album.is_none_or(|a| i.album.as_deref() == Some(a)))
+            .filter(|i| before.is_none_or(|(date, id)| i.date < date || (i.date == date && *i.id < *id)))
+            .take(limit as usize)
+            .collect())
+    }
+    fn photo_thumbs(&self, ids: &[String]) -> Result<Vec<nectarlink_core::PhotoThumb>, String> {
+        use nectarlink_core::PhotoThumb;
+        Ok(ids
+            .iter()
+            .filter_map(|id| match id.as_str() {
+                "media:4" | "media:3" | "media:2" | "media:1" | "media:0" => Some(PhotoThumb {
+                    id: id.clone(),
+                    data: vec![0xff, 0xd8, id.as_bytes().last().copied().unwrap()],
+                }),
+                "oversized" => Some(PhotoThumb {
+                    id: id.clone(),
+                    data: vec![0; nectarlink_core::PHOTO_MAX_THUMB_BYTES + 1],
+                }),
+                _ => None,
+            })
+            .collect())
+    }
     fn media_command(
         &self,
         player: &str,
@@ -1407,11 +1503,17 @@ async fn phone_apps_open_in_windows_of_their_own() {
     })
     .await;
     assert_eq!(ended, 7);
-    let asks = phone.platform.mirror_asks.lock().unwrap().clone();
+    // The phone handles some of these off the control stream, so give it a
+    // moment to get to all of them.
     for wanted in
         ["start 1280 com.example.chat as 7", "resize 7 1024x768", "Key(back) on 7", "keyframe 7", "stop 7"]
     {
-        assert!(asks.iter().any(|a| a == wanted), "{wanted}: {asks:?}");
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while !phone.platform.mirror_asks.lock().unwrap().iter().any(|a| a == wanted) {
+            let asks = phone.platform.mirror_asks.lock().unwrap().clone();
+            assert!(std::time::Instant::now() < deadline, "{wanted}: {asks:?}");
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
     }
     assert_eq!(*pc.platform.mirror_asks.lock().unwrap(), ["sink 7"]);
 
@@ -1851,4 +1953,108 @@ async fn contacts_list_search_page_and_respect_permissions_and_toggles() {
     // Turning `contacts` off for this PC refuses contact queries.
     phone.node.set_device_toggle(pc_id, "contacts", false).unwrap();
     assert!(matches!(pc.node.contacts(phone_id, None, 0, 10).await, Err(Error::Denied)));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn gallery_albums_paging_thumbs_download_and_toggles() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::PHOTOS_SHOW]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Without `photos.read` on the phone, gallery queries are unsupported.
+    assert!(matches!(pc.node.photo_albums(phone_id).await, Err(Error::Unsupported)));
+    assert!(matches!(pc.node.photo_list(phone_id, None, None, 10).await, Err(Error::Unsupported)));
+    assert!(matches!(pc.node.photo_thumbs(phone_id, vec!["media:4".into()]).await, Err(Error::Unsupported)));
+
+    phone
+        .node
+        .update_power(
+            PowerLevel::NotApplicable,
+            vec!["media.control".into(), nectarlink_core::PHOTOS_READ.into()],
+        )
+        .await;
+    wait_for(&mut pc, "photos.read unlocked", |e| match e {
+        NodeEvent::Capabilities(m)
+            if m.device == phone_id && m.state("files.recent_photos") == Some(FeatureState::Available) =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    // Albums list.
+    let albums = with_timeout("albums", pc.node.photo_albums(phone_id)).await.unwrap();
+    assert_eq!(albums.len(), 2);
+    assert_eq!((&*albums[0].id, &*albums[0].name, albums[0].count), ("cam", "Camera", 3));
+    assert_eq!(albums[0].cover.as_deref(), Some("media:4"));
+    assert_eq!((&*albums[1].id, &*albums[1].name, albums[1].count), ("shots", "Screenshots", 2));
+
+    // Paging all items newest-first; an item sharing the last one's date
+    // still comes on the next page.
+    let page1 = with_timeout("list page 1", pc.node.photo_list(phone_id, None, None, 2)).await.unwrap();
+    assert_eq!(page1.iter().map(|i| i.id.as_str()).collect::<Vec<_>>(), ["media:4", "media:3"]);
+    let last = Some((page1[1].date, page1[1].id.clone()));
+    let page2 = with_timeout("list page 2", pc.node.photo_list(phone_id, None, last, 2)).await.unwrap();
+    assert_eq!(page2.iter().map(|i| i.id.as_str()).collect::<Vec<_>>(), ["media:2", "media:1"]);
+    assert_eq!(page2[0].duration, Some(14));
+
+    // Filtering by album.
+    let shots = with_timeout("list album", pc.node.photo_list(phone_id, Some("shots".into()), None, 10))
+        .await
+        .unwrap();
+    assert_eq!(shots.iter().map(|i| i.id.as_str()).collect::<Vec<_>>(), ["media:3", "media:0"]);
+
+    // Batch thumbnails (oversized or missing ones are skipped without failing the batch).
+    let thumbs = with_timeout(
+        "thumbs",
+        pc.node.photo_thumbs(
+            phone_id,
+            vec!["media:4".into(), "oversized".into(), "gone".into(), "media:2".into()],
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(thumbs.iter().map(|t| t.id.as_str()).collect::<Vec<_>>(), ["media:4", "media:2"]);
+    assert_eq!(thumbs[0].data, vec![0xff, 0xd8, b'4']);
+    assert_eq!(thumbs[1].data, vec![0xff, 0xd8, b'2']);
+
+    // Multi-file download via `fetch_photos`.
+    let img4 = phone.dir.path().join("IMG_4.jpg");
+    let vid2 = phone.dir.path().join("VID_2.mp4");
+    let bytes4 = data(50_000, 11);
+    let bytes2 = data(120_000, 12);
+    std::fs::write(&img4, &bytes4).unwrap();
+    std::fs::write(&vid2, &bytes2).unwrap();
+    {
+        let mut map = phone.platform.photos.lock().unwrap();
+        map.insert("media:4".into(), img4);
+        map.insert("media:2".into(), vid2);
+    }
+    let tid = with_timeout(
+        "fetch_photos",
+        pc.node.fetch_photos(phone_id, vec!["media:4".into(), "media:2".into()]),
+    )
+    .await
+    .unwrap();
+    let files = wait_transfer(&mut pc, &tid, "gallery files", saved).await;
+    assert_eq!(files.len(), 2);
+    assert_eq!(std::fs::read(&files[0]).unwrap(), bytes4);
+    assert_eq!(std::fs::read(&files[1]).unwrap(), bytes2);
+
+    // `photos.changed` notification.
+    phone.node.photos_changed().await;
+    wait_for(&mut pc, "photos changed", |e| match e {
+        NodeEvent::PhotosChanged { device } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    // Turning `photos` toggle off on the phone blocks albums, list, thumbs, and download.
+    phone.node.set_device_toggle(pc_id, "photos", false).unwrap();
+    assert!(matches!(pc.node.photo_albums(phone_id).await, Err(Error::Denied)));
+    assert!(matches!(pc.node.photo_list(phone_id, None, None, 10).await, Err(Error::Denied)));
+    assert!(matches!(pc.node.photo_thumbs(phone_id, vec!["media:4".into()]).await, Err(Error::Denied)));
+    assert!(matches!(pc.node.fetch_photos(phone_id, vec!["media:4".into()]).await, Err(Error::Denied)));
 }

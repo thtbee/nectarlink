@@ -32,6 +32,9 @@ import app.nectarlink.core.MediaAction
 import app.nectarlink.core.MirrorInputEvent
 import app.nectarlink.core.MirrorOptions
 import app.nectarlink.core.PhoneApp
+import app.nectarlink.core.PhotoAlbum
+import app.nectarlink.core.PhotoItem
+import app.nectarlink.core.PhotoThumb
 import app.nectarlink.core.NotificationFailure
 import app.nectarlink.core.Platform
 
@@ -73,6 +76,13 @@ internal class PhonePlatform(
     override fun openLink(fromId: String, url: String): Boolean = onLink(fromId, url)
 
     override fun openPhoto(id: String): FileToSend? = RecentPhotos.open(context, id)
+
+    override fun photoAlbums(): List<PhotoAlbum> = RecentPhotos.albums(context)
+
+    override fun photoList(album: String?, before: Long?, beforeId: String, limit: UInt): List<PhotoItem> =
+        RecentPhotos.list(context, album, before, beforeId, limit.toInt())
+
+    override fun photoThumbs(ids: List<String>): List<PhotoThumb> = RecentPhotos.thumbs(context, ids)
 
     override fun callCommand(id: String, command: CallCommand): Boolean = calls().command(id, command)
 

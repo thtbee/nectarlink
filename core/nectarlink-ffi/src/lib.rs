@@ -454,6 +454,10 @@ pub enum Event {
         id: String,
         thread: Option<String>,
     },
+    /// A paired phone's photo library changed (PCs only).
+    PhotosChanged {
+        id: String,
+    },
 }
 
 /// What a mirroring video packet holds (docs/protocol/mirror.md).
@@ -803,6 +807,41 @@ impl std::fmt::Debug for Photo {
         f.debug_struct("Photo").field("id", &self.id).finish_non_exhaustive()
     }
 }
+
+/// An album (folder) in this phone's gallery (docs/protocol/photos.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PhotoAlbum {
+    pub id: String,
+    pub name: String,
+    pub count: u32,
+    /// Newest item's ID in the album, for its cover thumbnail.
+    pub cover: Option<String>,
+}
+
+/// A photo or video in this phone's gallery (docs/protocol/photos.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PhotoItem {
+    pub id: String,
+    pub name: String,
+    /// Unix milliseconds.
+    pub date: i64,
+    pub size: u64,
+    pub width: u32,
+    pub height: u32,
+    /// Video duration in milliseconds; `None` for still photos.
+    pub duration: Option<u32>,
+    pub album: Option<String>,
+}
+
+/// A JPEG thumbnail for a gallery item (docs/protocol/photos.md).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PhotoThumb {
+    pub id: String,
+    /// JPEG of at most 32 KiB, ~256 px on the longer side.
+    pub data: Vec<u8>,
+}
+
+private_debug!(PhotoAlbum, PhotoItem, PhotoThumb);
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum NectarlinkError {
@@ -1177,6 +1216,7 @@ impl From<NodeEvent> for Event {
             NodeEvent::CallLogChanged { device } => Event::CallLogChanged { id: device.to_string() },
             NodeEvent::ContactsChanged { device } => Event::ContactsChanged { id: device.to_string() },
             NodeEvent::SmsChanged { device, thread } => Event::SmsChanged { id: device.to_string(), thread },
+            NodeEvent::PhotosChanged { device } => Event::PhotosChanged { id: device.to_string() },
             NodeEvent::Mirroring { device, session, on } => {
                 Event::Mirroring { id: device.to_string(), session, on }
             }
@@ -1283,9 +1323,27 @@ pub trait Platform: Send + Sync {
     /// A paired PC sent a web link (http or https, checked) to open.
     /// False if it couldn't be shown.
     fn open_link(&self, from_id: String, url: String) -> bool;
-    /// A PC asked for a photo announced with `photo_taken`: open it, or
+    /// A PC asked for a photo or video from the gallery: open it, or
     /// `null` when it's gone.
     fn open_photo(&self, id: String) -> Option<FileToSend>;
+    /// A PC asked for this phone's photo albums (folders), Camera and
+    /// Screenshots first, then by count.
+    fn photo_albums(&self) -> Vec<PhotoAlbum>;
+    /// A PC asked for photos and videos in `album` (or all when null),
+    /// newest first by date, then by media ID (highest first). When
+    /// `before` is set, only items after the previous page's last one:
+    /// older than `before`, or of that date with an ID below `before_id`
+    /// (none of that date when `before_id` is empty).
+    fn photo_list(
+        &self,
+        album: Option<String>,
+        before: Option<i64>,
+        before_id: String,
+        limit: u32,
+    ) -> Vec<PhotoItem>;
+    /// A PC asked for small JPEG thumbnails (at most 32 KiB each) for
+    /// these gallery item IDs.
+    fn photo_thumbs(&self, ids: Vec<String>) -> Vec<PhotoThumb>;
     /// A PC asked to answer, decline or silence call `id` (the call in
     /// progress). False if the phone couldn't.
     fn call_command(&self, id: String, command: CallCommand) -> bool;
@@ -1524,6 +1582,45 @@ impl core::Platform for PlatformAdapter {
     fn open_photo(&self, id: &str) -> Result<core::OutgoingFile, String> {
         let file = self.0.open_photo(id.to_owned()).ok_or("it's gone")?;
         file_to_send(file).map_err(|e| e.to_string())
+    }
+    fn photo_albums(&self) -> Result<Vec<core::PhotoAlbum>, String> {
+        Ok(self
+            .0
+            .photo_albums()
+            .into_iter()
+            .map(|a| core::PhotoAlbum { id: a.id, name: a.name, count: a.count, cover: a.cover })
+            .collect())
+    }
+    fn photo_list(
+        &self,
+        album: Option<&str>,
+        before: Option<(i64, &str)>,
+        limit: u32,
+    ) -> Result<Vec<core::PhotoItem>, String> {
+        let (date, id) = before.map_or((None, String::new()), |(date, id)| (Some(date), id.to_owned()));
+        Ok(self
+            .0
+            .photo_list(album.map(str::to_owned), date, id, limit)
+            .into_iter()
+            .map(|i| core::PhotoItem {
+                id: i.id,
+                name: i.name,
+                date: i.date,
+                size: i.size,
+                width: i.width,
+                height: i.height,
+                duration: i.duration,
+                album: i.album,
+            })
+            .collect())
+    }
+    fn photo_thumbs(&self, ids: &[String]) -> Result<Vec<core::PhotoThumb>, String> {
+        Ok(self
+            .0
+            .photo_thumbs(ids.to_vec())
+            .into_iter()
+            .map(|t| core::PhotoThumb { id: t.id, data: t.data })
+            .collect())
     }
 }
 
@@ -1853,6 +1950,12 @@ impl NectarlinkNode {
     pub async fn contacts_changed(&self) {
         let node = self.node.clone();
         self.run(async move { node.contacts_changed().await }).await;
+    }
+
+    /// This phone's photo library changed: PCs that show it catch up.
+    pub async fn photos_changed(&self) {
+        let node = self.node.clone();
+        self.run(async move { node.photos_changed().await }).await;
     }
 
     /// A call on this phone rang, was answered or ended: tells the PCs that

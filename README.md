@@ -122,8 +122,12 @@ tests; there are no releases yet.
   set up (Android 12 and later), also mute, switch to the speaker, hold and
   use the keypad. The call's audio stays on the phone. Calls nobody answered
   show as missed.
-- **New photos and screenshots** from the phone pop up on the PC with a
-  preview: save them to Downloads or copy them, ready to paste.
+- **Photos and videos**: a Photos page on the PC with the phone's camera roll,
+  screenshots and albums, grouped by day. View photos in the app (with arrow
+  keys between them), open them in Windows Photos, copy a photo to the
+  clipboard, or save one or many to a folder you pick (`Downloads\Nectarlink`
+  by default). New photos and screenshots from the phone also pop up on the PC
+  with a preview, ready to save or copy.
 - **Media** both ways: what plays on the phone shows on the PC, in the app and
   in Windows' own media flyout (so the keyboard's media keys work too), and
   what plays on the PC shows in the phone's media controls, with artwork and
@@ -133,7 +137,7 @@ tests; there are no releases yet.
 - **Capability matrix**: both apps compute which features work for a pair of
   devices and what would enable the rest, so the interface never offers
   something that can't work.
-- **Windows app**: home, messages, calls and settings, two themes in light and dark (Bloom,
+- **Windows app**: home, messages, calls, photos and settings, two themes in light and dark (Bloom,
   which takes its colors from the desktop wallpaper, and Graphite), Mica, a
   custom title bar with Snap Layouts, and a tray icon. In the background it
   uses about 10 MB of memory (as shown in Task Manager).

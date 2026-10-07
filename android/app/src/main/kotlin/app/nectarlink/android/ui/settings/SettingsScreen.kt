@@ -53,6 +53,7 @@ import app.nectarlink.android.contacts.PhoneContacts
 import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.elevated.PairingNotification
 import app.nectarlink.android.mirror.InputService
+import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.update.AppUpdater
 import app.nectarlink.android.update.CheckForUpdates
@@ -114,6 +115,14 @@ fun SettingsScreen(
                 textOff = stringResource(R.string.sms_off),
                 granted = state.smsAccess,
                 permissions = PhoneSms.permissions,
+                onAccessChanged = onAccessChanged,
+            )
+        }
+
+        Section(stringResource(R.string.settings_photos)) {
+            PhotosAccess(
+                granted = state.photoAccess,
+                partial = state.photoPartialAccess,
                 onAccessChanged = onAccessChanged,
             )
         }
@@ -377,6 +386,48 @@ private fun RuntimePermissionAccess(
             }) { Text(stringResource(R.string.action_manage)) }
         } else {
             Button(onClick = { ask.launch(permissions) }) { Text(stringResource(R.string.action_allow)) }
+        }
+    }
+}
+
+@Composable
+private fun PhotosAccess(
+    granted: Boolean,
+    partial: Boolean,
+    onAccessChanged: () -> Unit,
+) {
+    val context = LocalContext.current
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        onAccessChanged()
+    }
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(stringResource(R.string.photos_title), style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(
+                    when {
+                        partial -> R.string.photos_partial
+                        granted -> R.string.photos_on
+                        else -> R.string.photos_off
+                    },
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        when {
+            partial -> OutlinedButton(onClick = { ask.launch(RecentPhotos.permissions) }) {
+                Text(stringResource(R.string.action_select_photos))
+            }
+            granted -> OutlinedButton(onClick = {
+                context.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }) { Text(stringResource(R.string.action_manage)) }
+            else -> Button(onClick = { ask.launch(RecentPhotos.permissions) }) {
+                Text(stringResource(R.string.action_allow))
+            }
         }
     }
 }

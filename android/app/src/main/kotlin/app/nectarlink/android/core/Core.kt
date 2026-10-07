@@ -99,11 +99,17 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val contacts = PhoneContacts(this.context) {
         notificationOps.trySend { it.contactsChanged() }
     }
-    private val photos = RecentPhotos(this.context) { photo ->
-        notificationOps.trySend { node ->
-            runCatching { node.photoTaken(photo) }.onFailure { Log.i(TAG, "a new photo wasn't announced", it) }
-        }
-    }
+    private val photos = RecentPhotos(
+        this.context,
+        onPhoto = { photo ->
+            notificationOps.trySend { node ->
+                runCatching { node.photoTaken(photo) }.onFailure { Log.i(TAG, "a new photo wasn't announced", it) }
+            }
+        },
+        onChanged = {
+            notificationOps.trySend { it.photosChanged() }
+        },
+    )
 
     /** What plays on the PCs, in Android's media controls. */
     val pcMedia = PcMedia(this.context) { pc, player, action, position ->
@@ -177,6 +183,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             _state.update {
                 it.copy(
                     photoAccess = RecentPhotos.hasAccess(context),
+                    photoPartialAccess = RecentPhotos.hasPartialAccess(context),
                     callAccess = PhoneCalls.hasAll(context),
                     contactsAccess = PhoneContacts.canRead(context),
                     smsAccess = PhoneSms.hasAll(context),
@@ -232,6 +239,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         val granted = NotificationListener.hasAccess(context)
         val unrestricted = BackgroundAccess.isUnrestricted(context)
         val photoAccess = RecentPhotos.hasAccess(context)
+        val photoPartialAccess = RecentPhotos.hasPartialAccess(context)
         val callAccess = PhoneCalls.hasAll(context)
         val contactsAccess = PhoneContacts.canRead(context)
         val smsAccess = PhoneSms.hasAll(context)
@@ -242,11 +250,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             // Just allowed: reach the PCs now rather than at the next retry.
             scope.launch { node?.networkChanged() }
         }
+        val prevPhotos = _state.value.photoAccess
         _state.update {
             it.copy(
                 notificationAccess = granted,
                 backgroundUnrestricted = unrestricted,
                 photoAccess = photoAccess,
+                photoPartialAccess = photoPartialAccess,
                 callAccess = callAccess,
                 contactsAccess = contactsAccess,
                 smsAccess = smsAccess,
@@ -265,7 +275,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 if (contactsAccess) contacts.start() else contacts.stop()
                 if (PhoneSms.canRead(context)) sms.start() else sms.stop()
             }
-            notificationOps.trySend { it.updatePower(powerLevel(), capabilities(_state.value.notificationAccess)) }
+            notificationOps.trySend {
+                it.updatePower(powerLevel(), capabilities(_state.value.notificationAccess))
+                if (photoAccess && (!prevPhotos || photoPartialAccess)) it.photosChanged()
+            }
         }
     }
 

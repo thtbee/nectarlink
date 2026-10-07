@@ -61,4 +61,7 @@ QtObject {
     readonly property string power: "M12 2v10M5.6 5.6a9 9 0 1 0 12.8 0"
     readonly property string folder: "M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
     readonly property string sparkle: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"
+    readonly property string download: "M12 3v12M7 10l5 5 5-5M5 20h14"
+    readonly property string openExternal: "M14 4h6v6M20 4l-9 9M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"
+    readonly property string video: "M4 6h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM17 10l5-3v10l-5-3"
 }

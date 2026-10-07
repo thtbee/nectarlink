@@ -116,9 +116,33 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't open links".into())
     }
 
-    /// Open a photo this phone announced (with
-    /// [`Node::photo_taken`](crate::Node::photo_taken)), for sending it to a
-    /// PC that asked. `Err` (a reason for logs) when it's gone.
+    /// List photo and video albums on this phone (`photos.albums`).
+    fn photo_albums(&self) -> Result<Vec<crate::PhotoAlbum>, String> {
+        Err("this device doesn't share photos".into())
+    }
+
+    /// List photos and videos on this phone (or in `album`), newest first by
+    /// date and then by a stable order of its own (`photos.list`). `before`
+    /// is the previous page's last item (date and ID): list only what comes
+    /// after it in that order; from the latest when `None`.
+    fn photo_list(
+        &self,
+        _album: Option<&str>,
+        _before: Option<(i64, &str)>,
+        _limit: u32,
+    ) -> Result<Vec<crate::PhotoItem>, String> {
+        Err("this device doesn't share photos".into())
+    }
+
+    /// Small JPEG thumbnails for the requested item IDs (`photos.thumbs`).
+    /// Items whose thumbnail can't be generated are omitted rather than
+    /// failing the batch.
+    fn photo_thumbs(&self, _ids: &[String]) -> Result<Vec<crate::PhotoThumb>, String> {
+        Err("this device doesn't share photos".into())
+    }
+
+    /// Open a photo or video on this phone for sending it to a PC that asked
+    /// (`photos.get`). `Err` (a reason for logs) when it's gone.
     fn open_photo(&self, _id: &str) -> Result<crate::OutgoingFile, String> {
         Err("this device doesn't share photos".into())
     }

@@ -45,7 +45,7 @@ capability is missing.
 | `clip.write` | Accepts clipboard content from the PC ([clipboard service](clipboard.md)) | app update |
 | `clip.share` | Sends the clipboard when the user taps "Send" | app update |
 | `clip.read.auto` | Sends clipboard changes automatically, in the background | Elevated |
-| `photos.read` | Announces new photos and screenshots and sends them on request ([photos](photos.md)) | photos permission |
+| `photos.read` | Announces new photos and screenshots, lists albums and items, serves thumbnails, and sends files on request ([photos](photos.md)) | photos permission |
 | `mirror.capture` | Streams its screen (with the system's capture prompt at Basic; [mirroring](mirror.md)) | app update |
 | `mirror.input` | Accepts touch, key and scroll input while mirrored | Assist |
 | `mirror.virtual_display` | Runs apps on displays of their own, shown in windows on the PC ([mirroring](mirror.md)) | Elevated, Android 11+ |
@@ -58,7 +58,7 @@ capability is missing.
 | ID | Meaning | Unlocked by |
 |---|---|---|
 | `pc.power` | Locks or sleeps on request ([actions](actions.md)) | app update |
-| `photos.show` | Shows a phone's new photos ([photos](photos.md)) | app update |
+| `photos.show` | Shows a phone's new photos and gallery ([photos](photos.md)) | app update |
 | `call.show` | Shows a phone's calls, recent calls and dialer ([calls](calls.md)) | app update |
 | `contacts.show` | Shows a phone's contacts ([contacts](contacts.md)) | app update |
 | `sms.show` | Shows a phone's text messages ([messages](sms.md)) | app update |

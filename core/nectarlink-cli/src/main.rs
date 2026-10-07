@@ -159,9 +159,14 @@ enum Command {
     },
     /// Open a web link on a paired device.
     Open { device: String, url: String },
-    /// Show new photos from paired phones as this PC would, and fetch each
-    /// one; stays online until Ctrl+C.
-    Photos,
+    /// Browse a paired phone's gallery (albums, photos, thumbnails, download),
+    /// or with no arguments watch for new photos from paired phones until Ctrl+C.
+    Photos {
+        /// Paired phone (omit to watch for new photos from any phone).
+        device: Option<String>,
+        #[command(subcommand)]
+        action: Option<PhotosArg>,
+    },
     /// Ask a paired phone for its screen and save the video (H.264, Annex B)
     /// for `seconds`; prints what arrived.
     Mirror {
@@ -404,6 +409,45 @@ enum SmsArg {
     },
     /// Send a text.
     Send { to: String, body: String },
+}
+
+#[derive(Debug, Subcommand)]
+enum PhotosArg {
+    /// List photo and video albums on the phone.
+    Albums,
+    /// List photos and videos on the phone (newest first).
+    List {
+        /// Only items in this album ID.
+        #[arg(long, allow_hyphen_values = true)]
+        album: Option<String>,
+        /// Only items after this one (the previous page's last), given as
+        /// `<date ms>:<id>`, or `<date ms>` for items older than that.
+        #[arg(long, value_parser = parse_photo_cursor)]
+        before: Option<(i64, String)>,
+        /// Maximum number of items to list.
+        #[arg(long, default_value_t = 30)]
+        limit: u32,
+    },
+    /// Fetch thumbnails for one or more item IDs.
+    Thumbs {
+        #[arg(required = true)]
+        ids: Vec<String>,
+        /// Directory to save `<id>.jpg` files into (default: current directory).
+        #[arg(long)]
+        out: Option<PathBuf>,
+    },
+    /// Download one or more full-size photos or videos into Downloads\Nectarlink.
+    Get {
+        #[arg(required = true)]
+        ids: Vec<String>,
+    },
+}
+
+/// `--before <date ms>[:<id>]` for `photos list`.
+fn parse_photo_cursor(s: &str) -> std::result::Result<(i64, String), String> {
+    let (date, id) = s.split_once(':').unwrap_or((s, ""));
+    let date = date.parse().map_err(|_| format!("not a date in ms: {date}"))?;
+    Ok((date, id.to_owned()))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -764,6 +808,353 @@ static CALL_CONTROLS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicB
 static PHOTO: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
 const PHOTO_ID: &str = "cli-photo";
 
+struct SampleGalleryItem {
+    item: nectarlink_core::PhotoItem,
+    thumb_jpeg: Vec<u8>,
+    full_path: PathBuf,
+}
+
+static GALLERY_ALBUMS: std::sync::Mutex<Vec<nectarlink_core::PhotoAlbum>> = std::sync::Mutex::new(Vec::new());
+static GALLERY_ITEMS: std::sync::Mutex<Vec<SampleGalleryItem>> = std::sync::Mutex::new(Vec::new());
+
+/// Encodes a baseline JFIF JPEG (width and height rounded to multiples of 8)
+/// with a smooth vertical gradient between `top` and `bottom` RGB and a bright
+/// accent circle.
+fn sample_jpeg(
+    width: u16,
+    height: u16,
+    top: (u8, u8, u8),
+    bottom: (u8, u8, u8),
+    sun: (u8, u8, u8),
+) -> Vec<u8> {
+    let bw = (width.max(8) / 8) as usize;
+    let bh = (height.max(8) / 8) as usize;
+    let (w, h) = ((bw * 8) as u16, (bh * 8) as u16);
+
+    let mut out = Vec::with_capacity(4096);
+    // SOI + APP0 (JFIF 1.01)
+    out.extend_from_slice(&[
+        0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, b'J', b'F', b'I', b'F', 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00,
+        0x01, 0x00, 0x00,
+    ]);
+    // DQT: table 0, 8-bit precision, all 64 entries = 8 so quantized DC == (level - 128).
+    out.extend_from_slice(&[0xFF, 0xDB, 0x00, 0x43, 0x00]);
+    out.extend_from_slice(&[8u8; 64]);
+    // SOF0: baseline DCT, 8-bit, 3 components (Y=1, Cb=2, Cr=3) at 1x1 sampling.
+    out.extend_from_slice(&[
+        0xFF,
+        0xC0,
+        0x00,
+        0x11,
+        0x08,
+        (h >> 8) as u8,
+        (h & 0xFF) as u8,
+        (w >> 8) as u8,
+        (w & 0xFF) as u8,
+        0x03,
+        0x01,
+        0x11,
+        0x00,
+        0x02,
+        0x11,
+        0x00,
+        0x03,
+        0x11,
+        0x00,
+    ]);
+    // DHT DC table 0: 12 symbols (0..=11), each 4 bits long (codes 0000..=1011).
+    out.extend_from_slice(&[0xFF, 0xC4, 0x00, 0x1F, 0x00]);
+    out.extend_from_slice(&[0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    out.extend_from_slice(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    // DHT AC table 0: 1 symbol (0x00 = EOB), 1 bit long (code 0).
+    out.extend_from_slice(&[0xFF, 0xC4, 0x00, 0x14, 0x10]);
+    out.extend_from_slice(&[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    out.push(0x00);
+    // SOS: 3 components, all using DC table 0 / AC table 0.
+    out.extend_from_slice(&[
+        0xFF, 0xDA, 0x00, 0x0C, 0x03, 0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x3F, 0x00,
+    ]);
+
+    let mut bit_buf = 0u32;
+    let mut bit_count = 0u32;
+    fn push_bits(bit_buf: &mut u32, bit_count: &mut u32, bits: u16, len: u32, out: &mut Vec<u8>) {
+        *bit_buf = (*bit_buf << len) | u32::from(bits & ((1 << len) - 1));
+        *bit_count += len;
+        while *bit_count >= 8 {
+            *bit_count -= 8;
+            let byte = ((*bit_buf >> *bit_count) & 0xFF) as u8;
+            out.push(byte);
+            if byte == 0xFF {
+                out.push(0x00);
+            }
+        }
+    }
+
+    let mut prev_dc = [0i32; 3];
+    let sun_x = (bw as f32) * 0.68;
+    let sun_y = (bh as f32) * 0.30;
+    let sun_r2 = ((bh.min(bw) as f32) * 0.18).powi(2).max(1.0);
+
+    for by in 0..bh {
+        let t = (by as f32) / ((bh.max(2) - 1) as f32);
+        let horizon = t > 0.62;
+        for bx in 0..bw {
+            let dx = (bx as f32) - sun_x;
+            let dy = (by as f32) - sun_y;
+            let in_sun = dx * dx + dy * dy <= sun_r2;
+            let (r, g, b) = if in_sun {
+                sun
+            } else if horizon {
+                let ht = (t - 0.62) / 0.38;
+                (
+                    (f32::from(bottom.0) * (1.0 - 0.25 * ht)) as u8,
+                    (f32::from(bottom.1) * (1.0 - 0.25 * ht)) as u8,
+                    (f32::from(bottom.2) * (1.0 - 0.25 * ht)) as u8,
+                )
+            } else {
+                let st = t / 0.62;
+                (
+                    (f32::from(top.0) * (1.0 - st) + f32::from(bottom.0) * st) as u8,
+                    (f32::from(top.1) * (1.0 - st) + f32::from(bottom.1) * st) as u8,
+                    (f32::from(top.2) * (1.0 - st) + f32::from(bottom.2) * st) as u8,
+                )
+            };
+            let (rf, gf, bf) = (f32::from(r), f32::from(g), f32::from(b));
+            let y = (0.299 * rf + 0.587 * gf + 0.114 * bf).round().clamp(0.0, 255.0) as i32 - 128;
+            let cb =
+                (128.0 - 0.168736 * rf - 0.331264 * gf + 0.5 * bf).round().clamp(0.0, 255.0) as i32 - 128;
+            let cr =
+                (128.0 + 0.5 * rf - 0.418688 * gf - 0.081312 * bf).round().clamp(0.0, 255.0) as i32 - 128;
+
+            for (comp, dc) in [y, cb, cr].into_iter().enumerate() {
+                let diff = dc - prev_dc[comp];
+                prev_dc[comp] = dc;
+                if diff == 0 {
+                    // DC category 0 (4 bits: 0000) + AC EOB (1 bit: 0)
+                    push_bits(&mut bit_buf, &mut bit_count, 0, 5, &mut out);
+                } else {
+                    let abs = diff.unsigned_abs();
+                    let cat = 32 - abs.leading_zeros();
+                    let mag = if diff > 0 { diff as u16 } else { ((1u32 << cat) - 1 - abs) as u16 };
+                    push_bits(&mut bit_buf, &mut bit_count, cat as u16, 4, &mut out);
+                    push_bits(&mut bit_buf, &mut bit_count, mag, cat, &mut out);
+                    // AC EOB (1 bit: 0)
+                    push_bits(&mut bit_buf, &mut bit_count, 0, 1, &mut out);
+                }
+            }
+        }
+    }
+    if bit_count > 0 {
+        let pad = 8 - bit_count;
+        push_bits(&mut bit_buf, &mut bit_count, (1u16 << pad) - 1, pad, &mut out);
+    }
+    // EOI
+    out.extend_from_slice(&[0xFF, 0xD9]);
+    out
+}
+
+fn sample_photos() {
+    use nectarlink_core::{PhotoAlbum, PhotoItem};
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as i64);
+    let min = 60_000i64;
+    let hour = 60 * min;
+
+    let specs = [
+        (
+            "media:demo-1",
+            "IMG_20260406_184210.jpg",
+            now - 25 * min,
+            1920,
+            1440,
+            None,
+            "bucket:camera",
+            (255, 140, 82),
+            (180, 62, 92),
+            (255, 232, 160),
+        ),
+        (
+            "media:demo-2",
+            "IMG_20260406_161504.jpg",
+            now - 2 * hour,
+            1920,
+            1440,
+            None,
+            "bucket:camera",
+            (72, 158, 235),
+            (26, 94, 150),
+            (255, 246, 210),
+        ),
+        (
+            "media:demo-5",
+            "Screenshot_20260406_142011.jpg",
+            now - 3 * hour,
+            1080,
+            2400,
+            None,
+            "bucket:screenshots",
+            (46, 64, 87),
+            (28, 40, 56),
+            (110, 212, 196),
+        ),
+        (
+            "video:demo-1",
+            "VID_20260406_123000.mp4",
+            now - 4 * hour,
+            1920,
+            1080,
+            Some(18_000),
+            "bucket:camera",
+            (88, 178, 128),
+            (38, 102, 68),
+            (242, 248, 185),
+        ),
+        (
+            "media:demo-3",
+            "IMG_20260405_191200.jpg",
+            now - 26 * hour,
+            1920,
+            1440,
+            None,
+            "bucket:camera",
+            (118, 92, 196),
+            (218, 112, 118),
+            (255, 224, 152),
+        ),
+        (
+            "media:demo-4",
+            "IMG_20260405_154022.jpg",
+            now - 29 * hour,
+            1920,
+            1440,
+            None,
+            "bucket:camera",
+            (64, 188, 206),
+            (28, 106, 128),
+            (240, 250, 255),
+        ),
+        (
+            "media:demo-6",
+            "Screenshot_20260405_110509.jpg",
+            now - 32 * hour,
+            1080,
+            2400,
+            None,
+            "bucket:screenshots",
+            (238, 228, 212),
+            (196, 180, 158),
+            (226, 118, 76),
+        ),
+        (
+            "media:demo-7",
+            "IMG_20260405_093015.jpg",
+            now - 35 * hour,
+            1920,
+            1440,
+            None,
+            "bucket:trips",
+            (142, 182, 214),
+            (76, 118, 104),
+            (255, 240, 198),
+        ),
+        (
+            "media:demo-8",
+            "IMG_20260403_174500.jpg",
+            now - 74 * hour,
+            1920,
+            1440,
+            None,
+            "bucket:trips",
+            (232, 146, 102),
+            (164, 74, 48),
+            (255, 228, 168),
+        ),
+        (
+            "media:demo-9",
+            "IMG_20260403_141130.jpg",
+            now - 77 * hour,
+            1920,
+            1440,
+            None,
+            "bucket:trips",
+            (94, 186, 148),
+            (36, 114, 82),
+            (232, 250, 200),
+        ),
+        (
+            "media:demo-10",
+            "IMG_20260403_112045.jpg",
+            now - 80 * hour,
+            1920,
+            1440,
+            None,
+            "bucket:trips",
+            (102, 152, 224),
+            (54, 88, 156),
+            (255, 236, 184),
+        ),
+        (
+            "media:demo-11",
+            "IMG_20260403_085012.jpg",
+            now - 82 * hour,
+            1920,
+            1440,
+            None,
+            "bucket:camera",
+            (198, 148, 108),
+            (116, 74, 48),
+            (250, 222, 182),
+        ),
+    ];
+
+    let temp_dir = std::env::temp_dir().join("nectarlink-demo-photos");
+    let _ = std::fs::create_dir_all(&temp_dir);
+    let mut items = Vec::with_capacity(specs.len());
+    for (id, name, date, w, h, duration, album, top, bottom, sun) in specs {
+        let thumb_jpeg = sample_jpeg(240, 180, top, bottom, sun);
+        let full_bytes = sample_jpeg(640, 480, top, bottom, sun);
+        let size = full_bytes.len() as u64;
+        let full_path = temp_dir.join(name);
+        let _ = std::fs::write(&full_path, &full_bytes);
+        items.push(SampleGalleryItem {
+            item: PhotoItem {
+                id: id.into(),
+                name: name.into(),
+                date,
+                size,
+                width: w,
+                height: h,
+                duration,
+                album: Some(album.into()),
+            },
+            thumb_jpeg,
+            full_path,
+        });
+    }
+    *GALLERY_ITEMS.lock().unwrap() = items;
+    *GALLERY_ALBUMS.lock().unwrap() = vec![
+        PhotoAlbum {
+            id: "bucket:camera".into(),
+            name: "Camera".into(),
+            count: 6,
+            cover: Some("media:demo-1".into()),
+        },
+        PhotoAlbum {
+            id: "bucket:screenshots".into(),
+            name: "Screenshots".into(),
+            count: 2,
+            cover: Some("media:demo-5".into()),
+        },
+        PhotoAlbum {
+            id: "bucket:trips".into(),
+            name: "Weekend Trip".into(),
+            count: 4,
+            cover: Some("media:demo-7".into()),
+        },
+    ];
+}
+
 /// Rings by printing to the terminal (the CLI has no speaker access).
 #[derive(Debug)]
 struct TerminalPlatform;
@@ -1045,13 +1436,57 @@ impl Platform for TerminalPlatform {
         items.sort_by_key(|a| (!a.starred, a.name.to_lowercase()));
         Ok(items.into_iter().skip(offset as usize).take(limit as usize).collect())
     }
+    fn photo_albums(&self) -> std::result::Result<Vec<nectarlink_core::PhotoAlbum>, String> {
+        Ok(GALLERY_ALBUMS.lock().unwrap().clone())
+    }
+    fn photo_list(
+        &self,
+        album: Option<&str>,
+        before: Option<(i64, &str)>,
+        limit: u32,
+    ) -> std::result::Result<Vec<nectarlink_core::PhotoItem>, String> {
+        let mut items: Vec<nectarlink_core::PhotoItem> = GALLERY_ITEMS
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|entry| {
+                album.is_none_or(|a| entry.item.album.as_deref() == Some(a))
+                    && before.is_none_or(|(date, id)| (entry.item.date, entry.item.id.as_str()) < (date, id))
+            })
+            .map(|entry| entry.item.clone())
+            .collect();
+        items.sort_by(|a, b| (b.date, &b.id).cmp(&(a.date, &a.id)));
+        items.truncate(limit as usize);
+        Ok(items)
+    }
+    fn photo_thumbs(&self, ids: &[String]) -> std::result::Result<Vec<nectarlink_core::PhotoThumb>, String> {
+        let items = GALLERY_ITEMS.lock().unwrap();
+        Ok(ids
+            .iter()
+            .filter_map(|id| {
+                let entry = items.iter().find(|e| e.item.id == *id)?;
+                Some(nectarlink_core::PhotoThumb { id: id.clone(), data: entry.thumb_jpeg.clone() })
+            })
+            .collect())
+    }
     fn open_photo(&self, id: &str) -> std::result::Result<nectarlink_core::OutgoingFile, String> {
-        let path = PHOTO.get().filter(|_| id == PHOTO_ID).ok_or("no such photo")?;
-        println!("A PC asked for the photo; sending it.");
+        if id == PHOTO_ID
+            && let Some(path) = PHOTO.get()
+        {
+            println!("A PC asked for the photo; sending it.");
+            return Ok(nectarlink_core::OutgoingFile {
+                name: nectarlink_core::safe_file_name(&path.to_string_lossy()),
+                folder: None,
+                source: nectarlink_core::FileSource::Path(path.clone()),
+            });
+        }
+        let items = GALLERY_ITEMS.lock().unwrap();
+        let entry = items.iter().find(|e| e.item.id == id).ok_or("no such photo")?;
+        println!("A PC asked for gallery item {id}; sending it.");
         Ok(nectarlink_core::OutgoingFile {
-            name: nectarlink_core::safe_file_name(&path.to_string_lossy()),
+            name: entry.item.name.clone(),
             folder: None,
-            source: nectarlink_core::FileSource::Path(path.clone()),
+            source: nectarlink_core::FileSource::Path(entry.full_path.clone()),
         })
     }
     fn start_ringing(&self) {
@@ -1293,11 +1728,87 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             println!("{name} is now {}", if on { "on" } else { "off" });
         }
         Command::Run => watch(node, false).await?,
-        Command::Photos => {
+        Command::Photos { device: None, .. } => {
             let mut offers = cli.offers.clone();
             offers.push(nectarlink_core::PHOTOS_SHOW.into());
             node.update_power(node_power(cli), offers).await;
             watch(node, true).await?;
+        }
+        Command::Photos { device: Some(device), action } => {
+            let mut offers = cli.offers.clone();
+            offers.push(nectarlink_core::PHOTOS_SHOW.into());
+            node.update_power(node_power(cli), offers).await;
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            match action.as_ref().unwrap_or(&PhotosArg::List { album: None, before: None, limit: 30 }) {
+                PhotosArg::Albums => {
+                    for a in node.photo_albums(id).await.context("can't list albums")? {
+                        println!(
+                            "{:<24} {:>5}  {} (cover {})",
+                            a.id,
+                            a.count,
+                            a.name,
+                            a.cover.as_deref().unwrap_or("-")
+                        );
+                    }
+                }
+                PhotosArg::List { album, before, limit } => {
+                    for item in node
+                        .photo_list(id, album.clone(), before.clone(), *limit)
+                        .await
+                        .context("can't list photos")?
+                    {
+                        let dim = if item.width > 0 && item.height > 0 {
+                            format!(" {}x{}", item.width, item.height)
+                        } else {
+                            String::new()
+                        };
+                        let dur = item
+                            .duration
+                            .map(|ms| format!(" video {}", clock(u64::from(ms))))
+                            .unwrap_or_default();
+                        let alb = item.album.map(|a| format!(" [{a}]")).unwrap_or_default();
+                        println!(
+                            "{:<18} {:>9} B  {}  {}{}{}{}",
+                            item.id, item.size, item.date, item.name, dim, dur, alb
+                        );
+                    }
+                }
+                PhotosArg::Thumbs { ids, out } => {
+                    let dir = out.clone().unwrap_or_else(|| PathBuf::from("."));
+                    std::fs::create_dir_all(&dir).context("can't create output directory")?;
+                    let thumbs =
+                        node.photo_thumbs(id, ids.clone()).await.context("can't fetch thumbnails")?;
+                    for t in thumbs {
+                        let safe = t.id.replace(':', "-");
+                        let path = dir.join(format!("{safe}.jpg"));
+                        std::fs::write(&path, &t.data).context("can't write thumbnail")?;
+                        println!("{} ({} B) -> {}", t.id, t.data.len(), path.display());
+                    }
+                }
+                PhotosArg::Get { ids } => {
+                    let mut events = node.events();
+                    let transfer_id =
+                        node.fetch_photos(id, ids.clone()).await.context("can't download photos")?;
+                    loop {
+                        match events.recv().await {
+                            Ok(NodeEvent::Transfer(t)) if t.id == transfer_id => match t.state {
+                                TransferState::Done { saved } => {
+                                    for path in saved {
+                                        println!("{}", path.display());
+                                    }
+                                    break;
+                                }
+                                TransferState::Failed(why) => bail!("download failed: {why:?}"),
+                                TransferState::Cancelled => bail!("download cancelled"),
+                                _ => {}
+                            },
+                            Ok(_) | Err(RecvError::Lagged(_)) => {}
+                            Err(RecvError::Closed) => bail!("node stopped"),
+                        }
+                    }
+                }
+            }
         }
         Command::Input { device, session, action } => {
             use nectarlink_core::{MirrorInput, TouchAction};
@@ -1584,6 +2095,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             sample_texts();
             sample_contacts();
             sample_call_log();
+            sample_photos();
             let _ = TEXTS_NODE.set(node.clone());
             let _ = CALL_NODE.set(node.clone());
             CALL_CONTROLS.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -1603,6 +2115,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     nectarlink_core::CALLS_LOG,
                     nectarlink_core::CALLS_DIAL,
                     nectarlink_core::CONTACTS_READ,
+                    nectarlink_core::PHOTOS_READ,
                 ]
                 .map(str::to_owned),
             );
@@ -2231,6 +2744,7 @@ fn print_event(node: &Node, event: &NodeEvent) {
         ),
         NodeEvent::CallLogChanged { device } => println!("{}: call log changed", name(device)),
         NodeEvent::ContactsChanged { device } => println!("{}: contacts changed", name(device)),
+        NodeEvent::PhotosChanged { device } => println!("{}: photo library changed", name(device)),
         NodeEvent::PhotoAdded { device, photo } => println!(
             "{}: new {} {} ({} bytes, preview {} bytes)",
             name(device),

@@ -51,6 +51,7 @@ const QML: &[&str] = &[
     "qml/pages/HomePage.qml",
     "qml/pages/MessagesPage.qml",
     "qml/pages/PairingPanel.qml",
+    "qml/pages/PhotosPage.qml",
     "qml/pages/SettingsPage.qml",
     "qml/pages/WelcomePage.qml",
 ];
@@ -208,6 +209,7 @@ fn main() {
             "src/bridge/mirror.rs",
             "src/bridge/notifications.rs",
             "src/bridge/pairing.rs",
+            "src/bridge/photos.rs",
             "src/bridge/prefs.rs",
             "src/bridge/transfers.rs",
         ])

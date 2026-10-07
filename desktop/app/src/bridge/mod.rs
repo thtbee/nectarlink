@@ -26,6 +26,8 @@ pub mod notifications;
 #[allow(unsafe_code)]
 pub mod pairing;
 #[allow(unsafe_code)]
+pub mod photos;
+#[allow(unsafe_code)]
 pub mod prefs;
 #[allow(unsafe_code)]
 pub mod transfers;

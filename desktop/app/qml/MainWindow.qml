@@ -123,6 +123,12 @@ NativeWindow {
                 onClicked: window.page = "calls"
             }
             NavItem {
+                iconPath: Icons.photo
+                text: qsTr("Photos")
+                selected: window.page === "photos"
+                onClicked: window.page = "photos"
+            }
+            NavItem {
                 iconPath: Icons.settings
                 text: qsTr("Settings")
                 selected: window.page === "settings"
@@ -161,6 +167,7 @@ NativeWindow {
                 text: window.page === "home" ? qsTr("Home")
                     : window.page === "messages" ? qsTr("Messages")
                     : window.page === "calls" ? qsTr("Calls")
+                    : window.page === "photos" ? qsTr("Photos")
                     : qsTr("Settings")
                 role: "headline"
                 size: 20
@@ -219,6 +226,12 @@ NativeWindow {
                     Messages.startChat(homePage.currentDeviceId, number, name)
                     window.page = "messages"
                 }
+            }
+            PhotosPage {
+                anchors.fill: parent
+                active: window.page === "photos"
+                deviceId: homePage.currentDeviceId
+                deviceName: homePage.currentDeviceName
             }
             SettingsPage {
                 anchors.fill: parent

@@ -58,8 +58,10 @@
     <!-- Texts, read and sent from paired PCs (asked for in the app). -->
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.SEND_SMS" />
-    <!-- New photos and screenshots, shown on paired PCs (asked for in the app). -->
+    <!-- Photos, screenshots and videos, shown on paired PCs (asked for in the app). -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />

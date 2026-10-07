@@ -134,6 +134,10 @@ pub enum NodeEvent {
         device: DeviceId,
         photo: crate::Photo,
     },
+    /// A phone's photo or video library changed.
+    PhotosChanged {
+        device: DeviceId,
+    },
     /// A call on a phone rang, was answered or ended.
     Call {
         device: DeviceId,

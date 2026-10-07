@@ -41,8 +41,15 @@ pub mod types {
     pub const PC_POWER: &str = "pc.power";
     pub const LINK_OPEN: &str = "link.open";
     pub const PHOTOS_NEW: &str = "photos.new";
+    pub const PHOTOS_ALBUMS: &str = "photos.albums";
+    pub const PHOTOS_ALBUMS_LIST: &str = "photos.albums.list";
+    pub const PHOTOS_LIST: &str = "photos.list";
+    pub const PHOTOS_ITEMS: &str = "photos.items";
+    pub const PHOTOS_THUMBS: &str = "photos.thumbs";
+    pub const PHOTOS_THUMBS_LIST: &str = "photos.thumbs.list";
     pub const PHOTOS_GET: &str = "photos.get";
     pub const PHOTOS_SENDING: &str = "photos.sending";
+    pub const PHOTOS_CHANGED: &str = "photos.changed";
     pub const CALL_STATE: &str = "call.state";
     pub const CALL_ACTION: &str = "call.action";
     pub const CALL_LOG: &str = "call.log";
@@ -1238,12 +1245,18 @@ pub struct ContactsChanged {}
 pub mod photos {
     /// Offered by phones that announce new photos (and can read them).
     pub const READ: &str = "photos.read";
-    /// Offered by PCs that show announced photos.
+    /// Offered by PCs that show announced photos and the phone's gallery.
     pub const SHOW: &str = "photos.show";
     /// A photo's ID: at most this many bytes.
     pub const MAX_ID_BYTES: usize = 64;
-    /// A preview: a JPEG of at most this many bytes.
+    /// A preview or thumbnail: a JPEG of at most this many bytes.
     pub const MAX_THUMB_BYTES: usize = 96 * 1024;
+    /// Most items in one `photos.list` answer.
+    pub const MAX_PAGE: u32 = 200;
+    /// Most thumbnails requested in one `photos.thumbs` batch.
+    pub const MAX_THUMB_BATCH: usize = 24;
+    /// Most full items requested in one `photos.get` transfer.
+    pub const MAX_GET_ITEMS: usize = 200;
 }
 
 /// Body of `photos.new`: a photo or screenshot just appeared on the phone.
@@ -1288,10 +1301,153 @@ pub fn is_valid_photo_id(id: &str) -> bool {
     (1..=photos::MAX_ID_BYTES).contains(&id.len()) && id.bytes().all(|b| b.is_ascii_graphic())
 }
 
-/// Body of `photos.get`: send this photo.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PhotoGet {
+/// One album on the phone (`photos.albums.list`).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoAlbum {
+    /// Album bucket identifier on the phone.
     pub id: String,
+    /// Display name, e.g. `"Camera"`, `"Screenshots"`.
+    pub name: String,
+    /// Number of photos and videos in the album.
+    pub count: u32,
+    /// Newest item's ID, for its cover thumbnail.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cover: Option<String>,
+}
+
+/// Never prints the album's name (protocol v0 §11).
+impl std::fmt::Debug for PhotoAlbum {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PhotoAlbum").field("id", &self.id).field("count", &self.count).finish_non_exhaustive()
+    }
+}
+
+/// Body of `photos.albums` request.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoAlbumsGet {}
+
+/// Answer to `photos.albums` (`photos.albums.list`).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoAlbumsList {
+    #[serde(default)]
+    pub albums: Vec<PhotoAlbum>,
+}
+
+/// Body of `photos.list`: photos and videos on the phone (or in `album`),
+/// newest first, after the item at (`before`, `before_id`) when given (the
+/// last item of the previous page), else from the latest.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoListGet {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub album: Option<String>,
+    /// The previous page's last `date` (Unix milliseconds).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before: Option<i64>,
+    /// The previous page's last `id`, so items sharing its date aren't
+    /// skipped or repeated.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before_id: Option<String>,
+    pub limit: u32,
+}
+
+impl std::fmt::Debug for PhotoListGet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PhotoListGet")
+            .field("has_album", &self.album.is_some())
+            .field("before", &self.before)
+            .field("before_id", &self.before_id)
+            .field("limit", &self.limit)
+            .finish()
+    }
+}
+
+/// One photo or video in `photos.items`.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoItem {
+    pub id: String,
+    pub name: String,
+    /// When it was taken (Unix milliseconds), or else when it was saved.
+    pub date: i64,
+    pub size: u64,
+    #[serde(default)]
+    pub width: u32,
+    #[serde(default)]
+    pub height: u32,
+    /// Video duration in milliseconds (`None` for photos).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub duration: Option<u32>,
+    /// Album bucket identifier.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub album: Option<String>,
+}
+
+/// Never prints the file name (protocol v0 §11).
+impl std::fmt::Debug for PhotoItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PhotoItem")
+            .field("id", &self.id)
+            .field("date", &self.date)
+            .field("size", &self.size)
+            .field("video", &self.duration.is_some())
+            .finish_non_exhaustive()
+    }
+}
+
+/// Answer to `photos.list` (`photos.items`).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoItems {
+    #[serde(default)]
+    pub items: Vec<PhotoItem>,
+}
+
+/// Body of `photos.thumbs`: ask for small JPEG thumbnails for these IDs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoThumbsGet {
+    pub ids: Vec<String>,
+}
+
+/// One thumbnail in `photos.thumbs.list`.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoThumb {
+    pub id: String,
+    #[serde(with = "serde_bytes")]
+    pub data: Vec<u8>,
+}
+
+/// Never prints thumbnail bytes (protocol v0 §11).
+impl std::fmt::Debug for PhotoThumb {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PhotoThumb").field("id", &self.id).field("bytes", &self.data.len()).finish()
+    }
+}
+
+/// Answer to `photos.thumbs` (`photos.thumbs.list`).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoThumbsList {
+    #[serde(default)]
+    pub thumbs: Vec<PhotoThumb>,
+}
+
+/// Body of `photos.get`: send one (`id`) or several (`ids`) photos or videos.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoGet {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub id: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ids: Vec<String>,
+}
+
+impl PhotoGet {
+    /// Requested item IDs in order (`ids` when non-empty, otherwise `[id]`).
+    pub fn requested_ids(&self) -> Vec<String> {
+        if !self.ids.is_empty() {
+            self.ids.clone()
+        } else if !self.id.is_empty() {
+            vec![self.id.clone()]
+        } else {
+            Vec::new()
+        }
+    }
 }
 
 /// Body of `photos.sending`, the answer to `photos.get`: the files
@@ -1300,6 +1456,10 @@ pub struct PhotoGet {
 pub struct PhotoSending {
     pub transfer: String,
 }
+
+/// Body of `photos.changed`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotosChanged {}
 
 /// Body of `link.open`.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1731,5 +1891,46 @@ mod tests {
             Envelope::new(types::CONTACTS_LIST, &ContactsList { contacts: vec![contact.clone()] }).unwrap();
         let back: ContactsList = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
         assert_eq!(back.contacts, vec![contact]);
+    }
+
+    #[test]
+    fn gallery_messages_round_trip_and_hide_private_fields() {
+        let album = PhotoAlbum {
+            id: "b1".into(),
+            name: "Private Vacation".into(),
+            count: 12,
+            cover: Some("p1".into()),
+        };
+        assert!(!format!("{album:?}").contains("Vacation"));
+        let env = Envelope::new(types::PHOTOS_ALBUMS_LIST, &PhotoAlbumsList { albums: vec![album.clone()] })
+            .unwrap();
+        let back: PhotoAlbumsList = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back.albums, vec![album]);
+
+        let item = PhotoItem {
+            id: "p1".into(),
+            name: "secret_photo.jpg".into(),
+            date: 1_790_000_000_000,
+            size: 2048,
+            width: 1920,
+            height: 1080,
+            duration: Some(5000),
+            album: Some("b1".into()),
+        };
+        assert!(!format!("{item:?}").contains("secret_photo"));
+        let env = Envelope::new(types::PHOTOS_ITEMS, &PhotoItems { items: vec![item.clone()] }).unwrap();
+        let back: PhotoItems = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back.items, vec![item]);
+
+        let thumb = PhotoThumb { id: "p1".into(), data: vec![0xff, 0xd8, 0xff] };
+        let env = Envelope::new(types::PHOTOS_THUMBS_LIST, &PhotoThumbsList { thumbs: vec![thumb.clone()] })
+            .unwrap();
+        let back: PhotoThumbsList = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back.thumbs, vec![thumb]);
+
+        let single = PhotoGet { id: "p1".into(), ids: Vec::new() };
+        assert_eq!(single.requested_ids(), vec!["p1".to_owned()]);
+        let multi = PhotoGet { id: String::new(), ids: vec!["p1".into(), "p2".into()] };
+        assert_eq!(multi.requested_ids(), vec!["p1".to_owned(), "p2".to_owned()]);
     }
 }

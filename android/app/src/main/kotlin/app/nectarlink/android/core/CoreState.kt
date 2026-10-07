@@ -74,8 +74,10 @@ data class CoreState(
     val callAccess: Boolean = false,
     /** Whether the user let Nectarlink read contacts (for PCs). */
     val contactsAccess: Boolean = false,
-    /** Whether the user let Nectarlink see the phone's photos (to show new ones on PCs). */
+    /** Whether the user let Nectarlink see the phone's photos (to show them on PCs). */
     val photoAccess: Boolean = false,
+    /** Whether Android 14+ "Select photos and videos" partial access is active. */
+    val photoPartialAccess: Boolean = false,
     /** Whether Android lets Nectarlink run unrestricted in the background. */
     val backgroundUnrestricted: Boolean = true,
     /** File transfers, newest first (running ones and the latest finished). */
@@ -124,6 +126,7 @@ data class CoreState(
         is Event.MediaChanged -> this
         // PCs only: phones announce their own photos, calls, contacts, texts and screen.
         is Event.PhotoAdded,
+        is Event.PhotosChanged,
         is Event.CallChanged,
         is Event.CallLogChanged,
         is Event.ContactsChanged,
