@@ -244,4 +244,32 @@
     <string name="remote_laser_hold">Hold for laser pointer</string>
     <string name="remote_laser_active">Laser on %1$s — tilt phone or drag here</string>
     <string name="remote_volume_hint">Volume buttons also change slides while this screen is open.</string>
+
+    <!-- Voice recorder -> PC -->
+    <string name="action_record_pc">Record</string>
+    <string name="channel_recorder">Voice recorder</string>
+    <string name="recorder_notification_recording">Recording for %1$s</string>
+    <string name="recorder_notification_paused">Recording paused (%1$s)</string>
+    <string name="recorder_permission_title">Allow microphone access</string>
+    <string name="recorder_permission_text">Nectarlink uses the microphone only while you record a voice note to send to %1$s.</string>
+    <string name="recorder_allow_mic">Allow microphone</string>
+    <string name="recorder_offline_hint">Recordings are saved on this phone and sent automatically when %1$s connects.</string>
+    <string name="recorder_status_ready">Ready to record for %1$s</string>
+    <string name="recorder_status_recording">Recording for %1$s</string>
+    <string name="recorder_status_paused">Paused</string>
+    <string name="recorder_start">Start recording</string>
+    <string name="recorder_pause">Pause</string>
+    <string name="recorder_resume">Resume</string>
+    <string name="recorder_marker_hint">Marker label (optional)</string>
+    <string name="recorder_add_marker">Add marker</string>
+    <string name="recorder_marker_default">Marker %1$d</string>
+    <string name="recorder_saved_title">Recordings</string>
+    <string name="recorder_send_now">Send</string>
+    <string name="recorder_send_again">Send again</string>
+    <string name="recorder_delete">Delete</string>
+    <string name="recorder_denied_text">Voice recordings are turned off for this phone on %1$s.</string>
+    <plurals name="recorder_markers_count">
+        <item quantity="one">%1$d marker</item>
+        <item quantity="other">%1$d markers</item>
+    </plurals>
 </resources>

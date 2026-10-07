@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Dialogs
 import app.nectarlink
 
 // Settings: appearance, behavior, paired devices and what they may do, and
@@ -24,12 +25,19 @@ Item {
         contacts: qsTr("Contacts"),
         clipboard: qsTr("Clipboard"),
         files: qsTr("Files"),
+        recordings: qsTr("Voice recordings"),
         media: qsTr("Media playing on either device"),
         photos: qsTr("Photos"),
         pc_actions: qsTr("Lock and sleep this PC"),
         remote_input: qsTr("Control this PC's mouse and keyboard"),
         remote_files: qsTr("Browse this PC's files while away")
     })
+
+    FolderDialog {
+        id: recordingsFolderPicker
+        title: qsTr("Save recordings in")
+        onAccepted: Preferences.chooseRecordingsFolder(selectedFolder.toString())
+    }
 
     Flickable {
         anchors.fill: parent
@@ -200,6 +208,54 @@ Item {
                             label: qsTr("Battery alerts")
                             checked: Preferences.batteryAlerts
                             onToggled: (on) => Preferences.batteryAlerts = on
+                        }
+                    }
+                }
+            }
+
+            // ---- Recordings ----
+            Txt { text: qsTr("Recordings"); role: "label"; muted: true }
+            Card {
+                width: parent.width
+                Column {
+                    width: parent.width
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.folder
+                        title: qsTr("Save recordings in")
+                        description: Preferences.recordingsFolder
+                        Row {
+                            spacing: 8
+                            Button {
+                                visible: !Preferences.recordingsFolderIsDefault
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Reset")
+                                onClicked: Preferences.resetRecordingsFolder()
+                            }
+                            Button {
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Choose folder")
+                                onClicked: recordingsFolderPicker.open()
+                            }
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.mic
+                        title: qsTr("Format")
+                        description: qsTr("Keep M4A as recorded, or convert on this PC.")
+                        Segmented {
+                            options: [
+                                { value: "m4a", label: "M4A" },
+                                { value: "mp3", label: "MP3" },
+                                { value: "wav", label: "WAV" },
+                                { value: "flac", label: "FLAC" }
+                            ]
+                            value: Preferences.recordingsFormat
+                            onPicked: (value) => Preferences.recordingsFormat = value
                         }
                     }
                 }

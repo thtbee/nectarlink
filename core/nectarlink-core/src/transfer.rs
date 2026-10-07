@@ -12,6 +12,7 @@ use std::{
 
 use bytes::Bytes;
 use iroh::endpoint::{ReadError, RecvStream, SendStream, VarInt, WriteError};
+pub use nectarlink_protocol::messages::{RecordingMarker, files::RECORDER};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
     messages::{
@@ -27,6 +28,8 @@ use crate::{Error, Result, events::NodeEvent, node::Shared, session::Session};
 
 /// The device toggle that allows files for a device.
 pub(crate) const TOGGLE: &str = "files";
+/// The device toggle that allows voice recordings for a device.
+pub(crate) const RECORDINGS_TOGGLE: &str = "recordings";
 
 /// How long a sender keeps trying to reach the device before giving up.
 const RETRY_FOR: Duration = Duration::from_secs(10 * 60);
@@ -102,6 +105,10 @@ pub struct Transfer {
     pub total: u64,
     pub done: u64,
     pub state: TransferState,
+    /// True when this transfer is a voice recording (`docs/protocol/recorder.md`).
+    pub recording: bool,
+    /// Timestamped markers placed during the recording.
+    pub markers: Vec<RecordingMarker>,
 }
 
 /// Never prints file names (protocol v0 §11).
@@ -115,6 +122,8 @@ impl std::fmt::Debug for Transfer {
             .field("done", &self.done)
             .field("total", &self.total)
             .field("state", &self.state)
+            .field("recording", &self.recording)
+            .field("markers", &self.markers.len())
             .finish()
     }
 }
@@ -288,13 +297,60 @@ impl Reporter {
 /// Starts sending files; progress and the outcome arrive as
 /// [`NodeEvent::Transfer`]. Returns the transfer's ID.
 pub(crate) async fn send(shared: &Arc<Shared>, peer: DeviceId, files: Vec<OutgoingFile>) -> Result<String> {
-    if files.is_empty() || files.len() > files::MAX_FILES {
+    send_inner(shared, peer, files, false, Vec::new()).await
+}
+
+/// Starts sending a voice recording and its markers (`docs/protocol/recorder.md`);
+/// progress and the outcome arrive as [`NodeEvent::Transfer`]. Returns the transfer's ID.
+pub(crate) async fn send_recording(
+    shared: &Arc<Shared>,
+    peer: DeviceId,
+    mut file: OutgoingFile,
+    markers: Vec<RecordingMarker>,
+) -> Result<String> {
+    file.folder = None;
+    let clean_markers = sanitize_markers(markers);
+    send_inner(shared, peer, vec![file], true, clean_markers).await
+}
+
+fn sanitize_markers(markers: Vec<RecordingMarker>) -> Vec<RecordingMarker> {
+    markers
+        .into_iter()
+        .take(files::MAX_MARKERS)
+        .map(|m| {
+            let label = m.label.and_then(|raw| {
+                let mut clean: String = raw
+                    .chars()
+                    .map(|c| if c.is_control() { ' ' } else { c })
+                    .collect::<String>()
+                    .trim()
+                    .to_owned();
+                while clean.len() > files::MAX_MARKER_LABEL_BYTES {
+                    clean.pop();
+                }
+                let trimmed = clean.trim();
+                (!trimmed.is_empty()).then(|| trimmed.to_owned())
+            });
+            RecordingMarker { at_ms: m.at_ms, label }
+        })
+        .collect()
+}
+
+async fn send_inner(
+    shared: &Arc<Shared>,
+    peer: DeviceId,
+    files: Vec<OutgoingFile>,
+    recording: bool,
+    markers: Vec<RecordingMarker>,
+) -> Result<String> {
+    if files.is_empty() || files.len() > files::MAX_FILES || (recording && files.len() != 1) {
         return Err(Error::Protocol("send between 1 and 5000 files".into()));
     }
     if !shared.store.is_paired(&peer)? {
         return Err(Error::NotPaired);
     }
-    if !shared.toggle_on(&peer, TOGGLE) {
+    let toggle = if recording { RECORDINGS_TOGGLE } else { TOGGLE };
+    if !shared.toggle_on(&peer, toggle) {
         return Err(Error::Denied);
     }
     let mut opened = Vec::with_capacity(files.len());
@@ -316,8 +372,11 @@ pub(crate) async fn send(shared: &Arc<Shared>, peer: DeviceId, files: Vec<Outgoi
     let entries: Vec<FileEntry> = opened.iter().map(|(entry, _)| entry.clone()).collect();
     let id = new_id();
     // The whole offer has to fit in one frame.
-    let offer = Envelope::new(files::OFFER, &FilesOffer { id: id.clone(), files: entries.clone() })
-        .map_err(|e| Error::Protocol(e.to_string()))?;
+    let offer = Envelope::new(
+        files::OFFER,
+        &FilesOffer { id: id.clone(), files: entries.clone(), recording, markers: markers.clone() },
+    )
+    .map_err(|e| Error::Protocol(e.to_string()))?;
     if offer.to_cbor().len() > nectarlink_protocol::MAX_FRAME_LEN {
         return Err(Error::TooLarge);
     }
@@ -330,6 +389,8 @@ pub(crate) async fn send(shared: &Arc<Shared>, peer: DeviceId, files: Vec<Outgoi
         total: entries.iter().map(|e| e.size).fold(0, u64::saturating_add),
         done: 0,
         state: TransferState::Waiting,
+        recording,
+        markers,
     };
     let id = transfer.id.clone();
     // The user's cancel only: shutting down interrupts a transfer (so it
@@ -411,6 +472,8 @@ async fn attempt(
     let offer = FilesOffer {
         id: reporter.transfer.id.clone(),
         files: files.iter().map(|(entry, _)| entry.clone()).collect(),
+        recording: reporter.transfer.recording,
+        markers: reporter.transfer.markers.clone(),
     };
     let (Ok(header), Ok(offer)) =
         (Envelope::new(types::STREAM, &header), Envelope::new(files::OFFER, &offer))
@@ -593,7 +656,14 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
     let Some(offer) = offer.filter(FilesOffer::is_valid) else {
         return refuse(&mut send, ErrorCode::BadMessage, "invalid offer").await;
     };
-    if !shared.toggle_on(&peer, TOGGLE) {
+    if offer.recording {
+        if !shared.local_capabilities().iter().any(|c| c == RECORDER) {
+            return refuse(&mut send, ErrorCode::Unsupported, "recordings aren't supported").await;
+        }
+        if !shared.toggle_on(&peer, RECORDINGS_TOGGLE) {
+            return refuse(&mut send, ErrorCode::Denied, "recordings are off for this device").await;
+        }
+    } else if !shared.toggle_on(&peer, TOGGLE) {
         return refuse(&mut send, ErrorCode::Denied, "files are off for this device").await;
     }
     let dir = shared.incoming_dir().join(peer.to_string()).join(&offer.id);
@@ -623,6 +693,8 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
         total: offer.total_size(),
         done: have.iter().sum(),
         state: TransferState::Running,
+        recording: offer.recording,
+        markers: offer.markers.clone(),
     };
     let mut reporter = Reporter::new(shared.clone(), transfer);
     reporter.set(TransferState::Running);

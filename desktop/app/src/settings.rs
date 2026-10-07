@@ -29,6 +29,36 @@ pub enum ColorMode {
     Dark,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum RecordingFormat {
+    #[default]
+    M4a,
+    Mp3,
+    Wav,
+    Flac,
+}
+
+impl RecordingFormat {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            RecordingFormat::M4a => "m4a",
+            RecordingFormat::Mp3 => "mp3",
+            RecordingFormat::Wav => "wav",
+            RecordingFormat::Flac => "flac",
+        }
+    }
+
+    pub fn from_str_lossy(s: &str) -> RecordingFormat {
+        match s.trim().to_ascii_lowercase().as_str() {
+            "mp3" => RecordingFormat::Mp3,
+            "wav" => RecordingFormat::Wav,
+            "flac" => RecordingFormat::Flac,
+            _ => RecordingFormat::M4a,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
@@ -54,6 +84,11 @@ pub struct Settings {
     /// doesn't.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub start_with_windows: Option<bool>,
+    /// Where voice recordings from phones are saved (`None` = `Documents\Nectarlink Recordings`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recordings_folder: Option<PathBuf>,
+    /// Output format for saved voice recordings (`m4a`, `mp3`, `wav`, or `flac`).
+    pub recordings_format: RecordingFormat,
 }
 
 impl Default for Settings {
@@ -69,6 +104,8 @@ impl Default for Settings {
             auto_update: true,
             battery_alerts: true,
             start_with_windows: None,
+            recordings_folder: None,
+            recordings_format: RecordingFormat::default(),
         }
     }
 }
@@ -133,6 +170,8 @@ mod tests {
             auto_update: false,
             battery_alerts: false,
             start_with_windows: Some(true),
+            recordings_folder: Some(PathBuf::from(r"C:\Recordings")),
+            recordings_format: RecordingFormat::Flac,
         };
         settings.save(dir.path()).unwrap();
         assert_eq!(Settings::load(dir.path()), settings);

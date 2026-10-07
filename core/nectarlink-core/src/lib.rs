@@ -74,8 +74,8 @@ pub use node::Node;
 pub use notifications::NotificationError;
 pub use remote::{ButtonAction, INPUT_INJECT, KeyMod, MouseButton, RemoteInput, SlideAction, remote_keys};
 pub use transfer::{
-    Direction, FileSource, OutgoingFile, Transfer, TransferFailure, TransferState, outgoing_paths,
-    safe_file_name,
+    Direction, FileSource, OutgoingFile, RECORDER, RecordingMarker, Transfer, TransferFailure, TransferState,
+    outgoing_paths, safe_file_name,
 };
 
 pub(crate) fn device_id(key: &iroh::PublicKey) -> DeviceId {

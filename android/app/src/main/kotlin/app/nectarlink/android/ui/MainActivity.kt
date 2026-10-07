@@ -50,6 +50,7 @@ import app.nectarlink.android.ui.pairing.PairingActions
 import android.view.KeyEvent
 import app.nectarlink.android.core.LocalNetwork
 import app.nectarlink.android.ui.pairing.PairingScreen
+import app.nectarlink.android.ui.recorder.RecorderScreen
 import app.nectarlink.android.ui.remote.RemoteMode
 import app.nectarlink.android.ui.remote.RemoteScreen
 import app.nectarlink.android.ui.settings.SettingsScreen
@@ -60,6 +61,7 @@ class MainActivity : ComponentActivity() {
     private var activeRemotePcId: String? = null
     private var requestedRemotePc by mutableStateOf<String?>(null)
     private var requestedRemoteMode by mutableStateOf(RemoteMode.Touchpad)
+    private var requestedRecordPc by mutableStateOf<String?>(null)
 
     private val permissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -83,6 +85,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) {
             handlePairingLink(intent)
             handleRemoteIntent(intent)
+            handleRecordIntent(intent)
         }
 
         setContent {
@@ -107,6 +110,8 @@ class MainActivity : ComponentActivity() {
                         requestedRemotePc = requestedRemotePc,
                         requestedRemoteMode = requestedRemoteMode,
                         onRemoteConsumed = { requestedRemotePc = null },
+                        requestedRecordPc = requestedRecordPc,
+                        onRecordConsumed = { requestedRecordPc = null },
                         onActiveRemoteChanged = { activeRemotePcId = it },
                     )
                 }
@@ -126,6 +131,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         handlePairingLink(intent)
         handleRemoteIntent(intent)
+        handleRecordIntent(intent)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -169,6 +175,11 @@ class MainActivity : ComponentActivity() {
         requestedRemotePc = pc
     }
 
+    private fun handleRecordIntent(intent: Intent?) {
+        val pc = intent?.getStringExtra("record_pc") ?: return
+        requestedRecordPc = pc
+    }
+
     /**
      * A PC's pairing QR code opened from another app (e.g. the camera).
      * Each link holds a one-time secret, so a link is used once: Android
@@ -194,12 +205,15 @@ private fun App(
     requestedRemotePc: String?,
     requestedRemoteMode: RemoteMode,
     onRemoteConsumed: () -> Unit,
+    requestedRecordPc: String?,
+    onRecordConsumed: () -> Unit,
     onActiveRemoteChanged: (String?) -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
     var pairing by rememberSaveable { mutableStateOf(false) }
     var remotePcId by rememberSaveable { mutableStateOf<String?>(null) }
     var remoteInitialMode by rememberSaveable { mutableStateOf(RemoteMode.Touchpad) }
+    var recordPcId by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { core.messages.collect { snackbar.showSnackbar(it) } }
 
@@ -207,13 +221,25 @@ private fun App(
         val req = requestedRemotePc ?: return@LaunchedEffect
         val target = if (req == "first") state.devices.firstOrNull()?.id else state.device(req)?.id
         if (target != null) {
+            recordPcId = null
             remoteInitialMode = requestedRemoteMode
             remotePcId = target
             onRemoteConsumed()
         }
     }
 
+    LaunchedEffect(requestedRecordPc, state.devices) {
+        val req = requestedRecordPc ?: return@LaunchedEffect
+        val target = if (req == "first") state.devices.firstOrNull()?.id else state.device(req)?.id
+        if (target != null) {
+            remotePcId = null
+            recordPcId = target
+            onRecordConsumed()
+        }
+    }
+
     val remoteDevice = remotePcId?.let { state.device(it) }
+    val recordDevice = recordPcId?.let { state.device(it) }
     LaunchedEffect(remoteDevice?.id) {
         onActiveRemoteChanged(remoteDevice?.id)
     }
@@ -238,6 +264,20 @@ private fun App(
         state.devices.isEmpty() || pairing || state.pairing != PairingState.Idle -> {
             BackHandler(enabled = pairing && state.devices.isNotEmpty()) { core.resetPairing(); pairing = false }
             PairingScreen(state, actions, cancellable = state.devices.isNotEmpty()) { pairing = false }
+        }
+        recordDevice != null -> {
+            BackHandler { recordPcId = null }
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackbar) },
+            ) { padding ->
+                RecorderScreen(
+                    device = recordDevice,
+                    state = state,
+                    core = core,
+                    onBack = { recordPcId = null },
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                )
+            }
         }
         remoteDevice != null -> {
             BackHandler { remotePcId = null }
@@ -286,6 +326,9 @@ private fun App(
                     onRemote = { id ->
                         remoteInitialMode = RemoteMode.Touchpad
                         remotePcId = id
+                    },
+                    onRecord = { id ->
+                        recordPcId = id
                     },
                     updater = (LocalContext.current.applicationContext as NectarlinkApplication).updater,
                     onSendFiles = core::sendFiles,

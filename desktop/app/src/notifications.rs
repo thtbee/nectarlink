@@ -194,7 +194,10 @@ pub fn on_toast(event: ToastEvent) {
         ToastEvent::Opened { device, key } if device == crate::transfers::TOAST_GROUP => {
             return crate::transfers::open(std::path::Path::new(key));
         }
-        ToastEvent::Action { device, key, .. } if device == crate::transfers::TOAST_GROUP => {
+        ToastEvent::Action { device, key, action } if device == crate::transfers::TOAST_GROUP => {
+            if action == crate::transfers::ACTION_OPEN {
+                return crate::transfers::open(std::path::Path::new(key));
+            }
             return crate::transfers::show_in_folder(std::path::Path::new(key));
         }
         ToastEvent::Dismissed { device, .. } if device == crate::transfers::TOAST_GROUP => return,

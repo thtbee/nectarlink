@@ -27,6 +27,7 @@ mod notifications;
 mod palette;
 mod photos;
 mod qr;
+mod recordings;
 mod remote;
 mod send_to;
 mod settings;
@@ -253,6 +254,7 @@ fn main() -> ExitCode {
     win::smtc::start(media::on_flyout);
     win::media_sessions::start(media::local_changed);
     let settings = settings::Settings::load(&data_dir);
+    recordings::init(&settings);
     send_to::set_enabled(settings.send_to_menu);
     battery::set_enabled(settings.battery_alerts);
     // A test instance (own data folder) leaves the user's menu and sign-in

@@ -2,6 +2,7 @@
 //! `Preferences`: the app's look and behavior, saved whenever it changes.
 
 use std::{
+    path::PathBuf,
     pin::Pin,
     sync::{
         Mutex,
@@ -10,11 +11,11 @@ use std::{
 };
 
 use cxx_qt::CxxQtType;
-use cxx_qt_lib::QString;
+use cxx_qt_lib::{QString, QUrl};
 
 use crate::{
     core_host,
-    settings::{ColorMode, Settings, Theme},
+    settings::{ColorMode, RecordingFormat, Settings, Theme},
 };
 
 #[cxx_qt::bridge]
@@ -49,7 +50,20 @@ pub mod qobject {
         #[qproperty(bool, auto_update)]
         /// Tell when a phone's battery is low, or full.
         #[qproperty(bool, battery_alerts)]
+        /// Folder where voice recordings from phones are saved.
+        #[qproperty(QString, recordings_folder)]
+        /// Whether `recordings_folder` is the default (`Documents\Nectarlink Recordings`).
+        #[qproperty(bool, recordings_folder_is_default)]
+        /// "m4a", "mp3", "wav" or "flac".
+        #[qproperty(QString, recordings_format)]
         type Preferences = super::PreferencesRust;
+
+        /// Sets the folder where voice recordings are saved (from a `file:` URL or path).
+        #[qinvokable]
+        fn choose_recordings_folder(self: Pin<&mut Preferences>, url: &QString);
+        /// Resets the recordings folder to `Documents\Nectarlink Recordings`.
+        #[qinvokable]
+        fn reset_recordings_folder(self: Pin<&mut Preferences>);
     }
 
     impl cxx_qt::Initialize for Preferences {}
@@ -67,8 +81,13 @@ pub struct PreferencesRust {
     start_with_windows: bool,
     auto_update: bool,
     battery_alerts: bool,
+    recordings_folder: QString,
+    recordings_folder_is_default: bool,
+    recordings_format: QString,
     /// What the user chose (`start_with_windows` shows the default until then).
     start_choice: Option<bool>,
+    /// Custom recordings folder if chosen (`None` means default).
+    custom_recordings_folder: Option<PathBuf>,
 }
 
 impl cxx_qt::Initialize for qobject::Preferences {
@@ -93,6 +112,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_battery_alerts(settings.battery_alerts);
         self.as_mut().set_start_with_windows(crate::startup::effective(settings.start_with_windows));
         self.as_mut().rust_mut().start_choice = settings.start_with_windows;
+        let effective_folder = crate::recordings::effective_folder(settings.recordings_folder.as_deref());
+        self.as_mut().set_recordings_folder(QString::from(&effective_folder.to_string_lossy().into_owned()));
+        self.as_mut().set_recordings_folder_is_default(settings.recordings_folder.is_none());
+        self.as_mut().rust_mut().custom_recordings_folder = settings.recordings_folder.clone();
+        self.as_mut().set_recordings_format(QString::from(settings.recordings_format.as_str()));
+        crate::recordings::init(&settings);
 
         // Save after any change (connected after loading, so loading doesn't
         // rewrite the file).
@@ -133,10 +158,44 @@ impl cxx_qt::Initialize for qobject::Preferences {
                 p.save();
             })
             .release();
+        self.as_mut()
+            .on_recordings_format_changed(|p| {
+                let fmt = RecordingFormat::from_str_lossy(&String::from(&p.recordings_format));
+                crate::recordings::set_format(fmt);
+                p.save();
+            })
+            .release();
     }
 }
 
 impl qobject::Preferences {
+    pub fn choose_recordings_folder(mut self: Pin<&mut Self>, url: &QString) {
+        let raw = QUrl::from(url)
+            .to_local_file()
+            .map(|p| String::from(&p))
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| String::from(url));
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            return;
+        }
+        let path = PathBuf::from(trimmed);
+        self.as_mut().rust_mut().custom_recordings_folder = Some(path.clone());
+        self.as_mut().set_recordings_folder(QString::from(&path.to_string_lossy().into_owned()));
+        self.as_mut().set_recordings_folder_is_default(false);
+        crate::recordings::set_folder(Some(path));
+        self.save();
+    }
+
+    pub fn reset_recordings_folder(mut self: Pin<&mut Self>) {
+        let default = crate::recordings::default_folder();
+        self.as_mut().rust_mut().custom_recordings_folder = None;
+        self.as_mut().set_recordings_folder(QString::from(&default.to_string_lossy().into_owned()));
+        self.as_mut().set_recordings_folder_is_default(true);
+        crate::recordings::set_folder(None);
+        self.save();
+    }
+
     fn save(self: Pin<&mut Self>) {
         let p = self.rust();
         let settings = Settings {
@@ -154,6 +213,8 @@ impl qobject::Preferences {
             auto_update: p.auto_update,
             battery_alerts: p.battery_alerts,
             start_with_windows: p.start_choice,
+            recordings_folder: p.custom_recordings_folder.clone(),
+            recordings_format: RecordingFormat::from_str_lossy(&String::from(&p.recordings_format)),
         };
         save_in_background(settings);
     }

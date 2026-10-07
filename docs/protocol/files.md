@@ -39,6 +39,11 @@ is, as names joined by `/`, starting with the sent folder's own (`Trip`,
 of them, in at most 1,024 bytes. A folder's files are listed together.
 Empty folders aren't sent.
 
+**Voice recordings.** When a phone sends a voice recording
+([`recorder.md`](recorder.md)), `files.offer` sets `"recording": true` on a
+single-file offer (without `folder`) and may include `"markers"`: up to 256
+entries `{ at_ms: uint, label?: text }`.
+
 Receivers **MUST** reject an offer that breaks these rules with
 `BAD_MESSAGE`, and still pick their own safe names for writing (see §4). The
 whole offer is one frame (v0 §3), which limits how many files with long
@@ -50,8 +55,10 @@ The receiver answers on the same stream:
 t = "files.accept"  b = { have: [uint] }   // bytes already received, per file
 ```
 
-or `error` (`DENIED`: the user turned files off for this device; `BUSY`:
-not enough space or too many transfers) and closes the stream.
+or `error` (`DENIED`: the user turned files or recordings off for this
+device; `UNSUPPORTED`: a recording was offered to a device without
+`recorder`; `BUSY`: not enough space or too many transfers) and closes the
+stream.
 
 The sender then writes the files' bytes, raw and back to back: for each
 file, from `have[i]` to its `size`. A file whose `have` equals its `size`

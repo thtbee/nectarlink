@@ -16,6 +16,8 @@ use crate::{
 /// The toast "device" for received-file notifications; their key is the
 /// saved file's path.
 pub const TOAST_GROUP: &str = "files";
+/// The "Open" toast action.
+pub const ACTION_OPEN: &str = "open";
 /// The "Show in folder" toast action.
 pub const ACTION_SHOW: &str = "show";
 
@@ -77,6 +79,9 @@ pub fn on_event(event: &NodeEvent) {
         return;
     }
     let TransferState::Done { saved } = &t.state else { return };
+    if t.recording {
+        return crate::recordings::on_done(t.clone());
+    }
     let Some(first) = saved.first() else { return };
     let device = core_host::host().hub.read(|s| s.name_of(&t.device)).unwrap_or_else(|| "your phone".into());
     let title = title(t);

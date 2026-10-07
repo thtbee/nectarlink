@@ -22,6 +22,9 @@ struct Cli {
     /// Where this client keeps its identity and paired devices.
     #[arg(long, global = true, env = "NECTARLINK_DATA_DIR")]
     data_dir: Option<PathBuf>,
+    /// Where received files and recordings are saved.
+    #[arg(long, global = true)]
+    downloads_dir: Option<PathBuf>,
     /// Name announced to other devices (defaults to the computer name).
     #[arg(long, global = true)]
     name: Option<String>,
@@ -116,6 +119,21 @@ enum Command {
         device: String,
         #[arg(required = true)]
         files: Vec<PathBuf>,
+    },
+    /// Send a voice recording with optional markers to a paired PC (use with
+    /// --as-phone) and wait until it has arrived.
+    Record {
+        device: String,
+        /// Duration in seconds when generating a test recording.
+        #[arg(long, default_value_t = 3)]
+        duration: u32,
+        /// Existing audio file (.m4a) to send instead of generating one.
+        #[arg(long)]
+        file: Option<PathBuf>,
+        /// Timestamped marker in milliseconds, optionally with a label:
+        /// `<ms>` or `<ms>:<label>` (repeatable, e.g. `--marker 1200:Intro`).
+        #[arg(long = "marker", value_name = "MS[:LABEL]")]
+        markers: Vec<String>,
     },
     /// Put text, or an image with --image, on a paired device's clipboard.
     Clip {
@@ -1675,13 +1693,24 @@ async fn start_node(cli: &Cli) -> Result<Node> {
     let device = DeviceInfo { name, kind, os, os_ver, model: None, accent: None };
     let power = node_power(cli);
     let mut config = NodeConfig::new(data_dir, device, env!("CARGO_PKG_VERSION"));
+    config.downloads_dir = cli.downloads_dir.clone();
     config.port = cli.port;
     config.lan_discovery = !cli.no_lan;
     config.away_mode = cli.away;
     config.power = power;
+    if !cli.as_phone {
+        config.capabilities.push(nectarlink_core::RECORDER.into());
+    }
+    let extra_caps = config.capabilities.clone();
     let node = Node::start(config, Arc::new(TerminalPlatform)).await.context("failed to start")?;
     if !cli.offers.is_empty() {
-        node.update_power(power, cli.offers.clone()).await;
+        let mut offers = extra_caps;
+        for o in &cli.offers {
+            if !offers.contains(o) {
+                offers.push(o.clone());
+            }
+        }
+        node.update_power(power, offers).await;
     }
     if let Some(level) = cli.battery {
         let plugged = cli.charging.then(|| "ac".to_owned());
@@ -1745,6 +1774,16 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             let id = resolve(node, device)?;
             wait_until_online(node, id).await?;
             send_files(node, id, files).await?;
+        }
+        Command::Record { device, duration, file, markers } => {
+            if !cli.as_phone {
+                bail!("voice recordings are sent by phones: add --as-phone");
+            }
+            let parsed_markers: Vec<nectarlink_core::RecordingMarker> =
+                markers.iter().map(|s| parse_recording_marker(s)).collect::<Result<Vec<_>>>()?;
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            send_recording(node, id, *duration, file.as_deref(), parsed_markers).await?;
         }
         Command::Clip { device, text, image } => {
             let id = resolve(node, device)?;
@@ -2720,6 +2759,59 @@ async fn send_files(node: &Node, device: DeviceId, paths: &[PathBuf]) -> Result<
     let mut events = node.events();
     let files = nectarlink_core::outgoing_paths(paths).context("can't read what to send")?;
     let id = node.send_files(device, files).await.context("can't send")?;
+    wait_for_outgoing_transfer(&mut events, &id).await
+}
+
+fn parse_recording_marker(s: &str) -> Result<nectarlink_core::RecordingMarker> {
+    let (ms_str, label) = match s.split_once(':') {
+        Some((ms, l)) => (ms, Some(l.trim()).filter(|l| !l.is_empty()).map(str::to_owned)),
+        None => (s, None),
+    };
+    let at_ms: u64 =
+        ms_str.trim().parse().with_context(|| format!("invalid marker timestamp in ms: {ms_str:?}"))?;
+    Ok(nectarlink_core::RecordingMarker { at_ms, label })
+}
+
+async fn send_recording(
+    node: &Node,
+    device: DeviceId,
+    duration_secs: u32,
+    file: Option<&std::path::Path>,
+    markers: Vec<nectarlink_core::RecordingMarker>,
+) -> Result<()> {
+    let mut events = node.events();
+    let (name, path, cleanup) = match file {
+        Some(p) => (nectarlink_core::safe_file_name(&p.to_string_lossy()), p.to_path_buf(), false),
+        None => {
+            let tmp = std::env::temp_dir().join(format!("nectarlink-recording-{}.m4a", std::process::id()));
+            std::fs::write(&tmp, sample_m4a(duration_secs)).context("can't write temporary M4A recording")?;
+            ("Recording.m4a".to_owned(), tmp, true)
+        }
+    };
+    let outgoing = nectarlink_core::OutgoingFile {
+        name,
+        folder: None,
+        source: nectarlink_core::FileSource::Path(path.clone()),
+    };
+    let marker_count = markers.len();
+    let id = node.send_recording(device, outgoing, markers).await.context("can't send recording")?;
+    let res = wait_for_outgoing_transfer(&mut events, &id).await;
+    if cleanup {
+        let _ = std::fs::remove_file(&path);
+    }
+    res?;
+    if marker_count > 0 {
+        println!("Sent voice recording with {marker_count} marker(s).");
+    } else {
+        println!("Sent voice recording.");
+    }
+    Ok(())
+}
+
+async fn wait_for_outgoing_transfer(
+    events: &mut tokio::sync::broadcast::Receiver<NodeEvent>,
+    id: &str,
+) -> Result<()> {
     loop {
         match events.recv().await {
             Ok(NodeEvent::Transfer(t)) if t.id == id => match t.state {
@@ -2740,6 +2832,189 @@ async fn send_files(node: &Node, device: DeviceId, paths: &[PathBuf]) -> Result<
         }
         std::io::stdout().flush()?;
     }
+}
+
+/// Builds a self-contained 48 kHz mono AAC-LC `.m4a` (MP4) file of `duration_secs`.
+fn sample_m4a(duration_secs: u32) -> Vec<u8> {
+    // 1024-sample 48 kHz mono AAC-LC frame (ID_SCE + HCB_1 tone + ID_END).
+    const AAC_FRAME: [u8; 6] = [0x01, 0x48, 0x00, 0x84, 0x21, 0x7E];
+    const SAMPLE_RATE: u32 = 48_000;
+    let num_frames = (duration_secs.max(1) * SAMPLE_RATE).div_ceil(1024).max(1);
+    let total_samples = num_frames * 1024;
+
+    fn mp4_box(fourcc: &[u8; 4], payload: &[u8]) -> Vec<u8> {
+        let len = (8 + payload.len()) as u32;
+        let mut out = Vec::with_capacity(len as usize);
+        out.extend_from_slice(&len.to_be_bytes());
+        out.extend_from_slice(fourcc);
+        out.extend_from_slice(payload);
+        out
+    }
+
+    fn full_box(fourcc: &[u8; 4], version: u8, flags: u32, body: &[u8]) -> Vec<u8> {
+        let mut payload = Vec::with_capacity(4 + body.len());
+        payload.push(version);
+        payload.extend_from_slice(&flags.to_be_bytes()[1..4]);
+        payload.extend_from_slice(body);
+        mp4_box(fourcc, &payload)
+    }
+
+    let mut ftyp_body = Vec::new();
+    ftyp_body.extend_from_slice(b"M4A ");
+    ftyp_body.extend_from_slice(&0u32.to_be_bytes());
+    ftyp_body.extend_from_slice(b"M4A mp42isom\0\0\0\0");
+    let ftyp = mp4_box(b"ftyp", &ftyp_body);
+
+    let build_moov = |chunk_offset: u32| -> Vec<u8> {
+        let mut mvhd = Vec::new();
+        mvhd.extend_from_slice(&0u32.to_be_bytes()); // creation_time
+        mvhd.extend_from_slice(&0u32.to_be_bytes()); // modification_time
+        mvhd.extend_from_slice(&SAMPLE_RATE.to_be_bytes()); // timescale
+        mvhd.extend_from_slice(&total_samples.to_be_bytes()); // duration
+        mvhd.extend_from_slice(&0x0001_0000u32.to_be_bytes()); // rate 1.0
+        mvhd.extend_from_slice(&0x0100u16.to_be_bytes()); // volume 1.0
+        mvhd.extend_from_slice(&[0u8; 10]); // reserved
+        for &m in &[0x0001_0000u32, 0, 0, 0, 0x0001_0000, 0, 0, 0, 0x4000_0000] {
+            mvhd.extend_from_slice(&m.to_be_bytes());
+        }
+        mvhd.extend_from_slice(&[0u8; 24]); // pre_defined
+        mvhd.extend_from_slice(&2u32.to_be_bytes()); // next_track_id
+        let mvhd_box = full_box(b"mvhd", 0, 0, &mvhd);
+
+        let mut tkhd = Vec::new();
+        tkhd.extend_from_slice(&0u32.to_be_bytes()); // creation_time
+        tkhd.extend_from_slice(&0u32.to_be_bytes()); // modification_time
+        tkhd.extend_from_slice(&1u32.to_be_bytes()); // track_id
+        tkhd.extend_from_slice(&0u32.to_be_bytes()); // reserved
+        tkhd.extend_from_slice(&total_samples.to_be_bytes()); // duration
+        tkhd.extend_from_slice(&[0u8; 8]); // reserved
+        tkhd.extend_from_slice(&0u16.to_be_bytes()); // layer
+        tkhd.extend_from_slice(&0u16.to_be_bytes()); // alternate_group
+        tkhd.extend_from_slice(&0x0100u16.to_be_bytes()); // volume 1.0
+        tkhd.extend_from_slice(&0u16.to_be_bytes()); // reserved
+        for &m in &[0x0001_0000u32, 0, 0, 0, 0x0001_0000, 0, 0, 0, 0x4000_0000] {
+            tkhd.extend_from_slice(&m.to_be_bytes());
+        }
+        tkhd.extend_from_slice(&0u32.to_be_bytes()); // width
+        tkhd.extend_from_slice(&0u32.to_be_bytes()); // height
+        let tkhd_box = full_box(b"tkhd", 0, 3, &tkhd);
+
+        let mut mdhd = Vec::new();
+        mdhd.extend_from_slice(&0u32.to_be_bytes()); // creation_time
+        mdhd.extend_from_slice(&0u32.to_be_bytes()); // modification_time
+        mdhd.extend_from_slice(&SAMPLE_RATE.to_be_bytes()); // timescale
+        mdhd.extend_from_slice(&total_samples.to_be_bytes()); // duration
+        mdhd.extend_from_slice(&0x55c4u16.to_be_bytes()); // "und"
+        mdhd.extend_from_slice(&0u16.to_be_bytes()); // pre_defined
+        let mdhd_box = full_box(b"mdhd", 0, 0, &mdhd);
+
+        let mut hdlr = Vec::new();
+        hdlr.extend_from_slice(&0u32.to_be_bytes()); // pre_defined
+        hdlr.extend_from_slice(b"soun"); // handler_type
+        hdlr.extend_from_slice(&[0u8; 12]); // reserved
+        hdlr.extend_from_slice(b"SoundHandler\0");
+        let hdlr_box = full_box(b"hdlr", 0, 0, &hdlr);
+
+        let smhd_box = full_box(b"smhd", 0, 0, &[0u8; 4]);
+        let url_box = full_box(b"url ", 0, 1, &[]);
+        let mut dref = Vec::new();
+        dref.extend_from_slice(&1u32.to_be_bytes());
+        dref.extend_from_slice(&url_box);
+        let dinf_box = mp4_box(b"dinf", &full_box(b"dref", 0, 0, &dref));
+
+        // ESDescriptor for AAC-LC, 48000 Hz, mono (AudioSpecificConfig = [0x11, 0x88]).
+        let esds_body: [u8; 27] = [
+            0x03, 25, 0x00, 0x01, 0x00, // ES_Descriptor (ES_ID=1)
+            0x04, 17, 0x40, 0x15, 0x00, 0x00, 0x00, // DecoderConfigDescriptor (AAC, audio)
+            0x00, 0x01, 0xF4, 0x00, // maxBitrate = 128000
+            0x00, 0x01, 0xF4, 0x00, // avgBitrate = 128000
+            0x05, 2, 0x11, 0x88, // DecoderSpecificInfo (AAC-LC 48kHz mono)
+            0x06, 1, 0x02, // SLConfigDescriptor
+        ];
+        let esds_box = full_box(b"esds", 0, 0, &esds_body);
+
+        let mut mp4a = Vec::new();
+        mp4a.extend_from_slice(&[0u8; 6]); // reserved
+        mp4a.extend_from_slice(&1u16.to_be_bytes()); // data_reference_index
+        mp4a.extend_from_slice(&[0u8; 8]); // reserved
+        mp4a.extend_from_slice(&1u16.to_be_bytes()); // channelcount = 1
+        mp4a.extend_from_slice(&16u16.to_be_bytes()); // samplesize = 16
+        mp4a.extend_from_slice(&0u16.to_be_bytes()); // pre_defined
+        mp4a.extend_from_slice(&0u16.to_be_bytes()); // reserved
+        mp4a.extend_from_slice(&(SAMPLE_RATE << 16).to_be_bytes()); // samplerate 16.16
+        mp4a.extend_from_slice(&esds_box);
+        let mp4a_box = mp4_box(b"mp4a", &mp4a);
+
+        let mut stsd = Vec::new();
+        stsd.extend_from_slice(&1u32.to_be_bytes());
+        stsd.extend_from_slice(&mp4a_box);
+        let stsd_box = full_box(b"stsd", 0, 0, &stsd);
+
+        let mut stts = Vec::new();
+        stts.extend_from_slice(&1u32.to_be_bytes());
+        stts.extend_from_slice(&num_frames.to_be_bytes());
+        stts.extend_from_slice(&1024u32.to_be_bytes());
+        let stts_box = full_box(b"stts", 0, 0, &stts);
+
+        let mut stsc = Vec::new();
+        stsc.extend_from_slice(&1u32.to_be_bytes());
+        stsc.extend_from_slice(&1u32.to_be_bytes()); // first_chunk
+        stsc.extend_from_slice(&num_frames.to_be_bytes()); // samples_per_chunk
+        stsc.extend_from_slice(&1u32.to_be_bytes()); // sample_description_index
+        let stsc_box = full_box(b"stsc", 0, 0, &stsc);
+
+        let mut stsz = Vec::new();
+        stsz.extend_from_slice(&(AAC_FRAME.len() as u32).to_be_bytes()); // constant sample_size
+        stsz.extend_from_slice(&num_frames.to_be_bytes());
+        let stsz_box = full_box(b"stsz", 0, 0, &stsz);
+
+        let mut stco = Vec::new();
+        stco.extend_from_slice(&1u32.to_be_bytes());
+        stco.extend_from_slice(&chunk_offset.to_be_bytes());
+        let stco_box = full_box(b"stco", 0, 0, &stco);
+
+        let mut stbl_body = Vec::new();
+        stbl_body.extend_from_slice(&stsd_box);
+        stbl_body.extend_from_slice(&stts_box);
+        stbl_body.extend_from_slice(&stsc_box);
+        stbl_body.extend_from_slice(&stsz_box);
+        stbl_body.extend_from_slice(&stco_box);
+        let stbl_box = mp4_box(b"stbl", &stbl_body);
+
+        let mut minf_body = Vec::new();
+        minf_body.extend_from_slice(&smhd_box);
+        minf_body.extend_from_slice(&dinf_box);
+        minf_body.extend_from_slice(&stbl_box);
+        let minf_box = mp4_box(b"minf", &minf_body);
+
+        let mut mdia_body = Vec::new();
+        mdia_body.extend_from_slice(&mdhd_box);
+        mdia_body.extend_from_slice(&hdlr_box);
+        mdia_body.extend_from_slice(&minf_box);
+        let mdia_box = mp4_box(b"mdia", &mdia_body);
+
+        let mut trak_body = Vec::new();
+        trak_body.extend_from_slice(&tkhd_box);
+        trak_body.extend_from_slice(&mdia_box);
+        let trak_box = mp4_box(b"trak", &trak_body);
+
+        let mut moov_body = Vec::new();
+        moov_body.extend_from_slice(&mvhd_box);
+        moov_body.extend_from_slice(&trak_box);
+        mp4_box(b"moov", &moov_body)
+    };
+
+    let moov_len = build_moov(0).len();
+    let chunk_offset = (ftyp.len() + moov_len + 8) as u32;
+    let moov = build_moov(chunk_offset);
+    let mdat_payload = AAC_FRAME.repeat(num_frames as usize);
+    let mdat = mp4_box(b"mdat", &mdat_payload);
+
+    let mut out = Vec::with_capacity(ftyp.len() + moov.len() + mdat.len());
+    out.extend_from_slice(&ftyp);
+    out.extend_from_slice(&moov);
+    out.extend_from_slice(&mdat);
+    out
 }
 
 /// "3:07".
@@ -2852,6 +3127,14 @@ async fn watch(node: &Node, fetch_photos: bool) -> Result<()> {
     }
 }
 
+fn format_marker_time(ms: u64) -> String {
+    let total_secs = ms / 1000;
+    let millis = ms % 1000;
+    let mins = total_secs / 60;
+    let secs = total_secs % 60;
+    format!("{mins:02}:{secs:02}.{millis:03}")
+}
+
 fn print_event(node: &Node, event: &NodeEvent) {
     let name = |id: &DeviceId| {
         node.paired_devices()
@@ -2961,7 +3244,49 @@ fn print_event(node: &Node, event: &NodeEvent) {
         NodeEvent::Transfer(t) if t.direction == Direction::Incoming => match &t.state {
             TransferState::Done { saved } => {
                 for path in saved {
-                    println!("{}: received {}", name(&t.device), path.display());
+                    if t.recording {
+                        if !t.markers.is_empty() {
+                            let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("Recording");
+                            let markers_path = path.with_file_name(format!("{stem}.markers.txt"));
+                            let mut text = String::new();
+                            for (i, m) in t.markers.iter().enumerate() {
+                                let label = m.label.as_deref().unwrap_or_default();
+                                if label.is_empty() {
+                                    text.push_str(&format!(
+                                        "{}  Marker {}\n",
+                                        format_marker_time(m.at_ms),
+                                        i + 1
+                                    ));
+                                } else {
+                                    text.push_str(&format!("{}  {label}\n", format_marker_time(m.at_ms)));
+                                }
+                            }
+                            let _ = std::fs::write(&markers_path, text);
+                        }
+                        let markers_summary = if t.markers.is_empty() {
+                            String::new()
+                        } else {
+                            let list: Vec<String> = t
+                                .markers
+                                .iter()
+                                .enumerate()
+                                .map(|(i, m)| match &m.label {
+                                    Some(l) if !l.is_empty() => {
+                                        format!("{} ({l})", format_marker_time(m.at_ms))
+                                    }
+                                    _ => format!("{} (Marker {})", format_marker_time(m.at_ms), i + 1),
+                                })
+                                .collect();
+                            format!(" [markers: {}]", list.join(", "))
+                        };
+                        println!(
+                            "{}: received recording {}{markers_summary}",
+                            name(&t.device),
+                            path.display()
+                        );
+                    } else {
+                        println!("{}: received {}", name(&t.device), path.display());
+                    }
                 }
             }
             TransferState::Failed(why) => println!("{}: a transfer failed ({why:?})", name(&t.device)),

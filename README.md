@@ -139,6 +139,14 @@ tests; there are no releases yet.
   following the phone's gyroscope or finger. Off by default on the PC, with a
   one-time prompt the first time a phone asks and a per-phone toggle in
   Settings.
+- **Voice recorder**: record with the phone's microphone (with a live level
+  meter, pause and resume, timestamped markers, and recording that keeps going
+  when the screen turns off) and send it straight to the PC. On the PC it lands
+  in the folder and format you choose (`Downloads\Nectarlink` and M4A by
+  default, or MP3, WAV or FLAC converted on the PC), with a `.markers.txt`
+  file beside it when you add markers and a notification to open the recording
+  or its folder. If the PC is offline, the recording waits on the phone and
+  goes out as soon as it reconnects.
 - **Media** both ways: what plays on the phone shows on the PC, in the app and
   in Windows' own media flyout (so the keyboard's media keys work too), and
   what plays on the PC shows in the phone's media controls, with artwork and

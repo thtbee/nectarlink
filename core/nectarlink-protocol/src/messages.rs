@@ -1493,6 +1493,42 @@ pub mod files {
     /// A file's folder: at most this many bytes and this many levels.
     pub const MAX_FOLDER_BYTES: usize = 1024;
     pub const MAX_FOLDER_DEPTH: usize = 32;
+    /// Offered by PCs that save and convert voice recordings (`docs/protocol/recorder.md`).
+    pub const RECORDER: &str = "recorder";
+    /// Most markers on one voice recording.
+    pub const MAX_MARKERS: usize = 256;
+    /// Most UTF-8 bytes in a marker's label.
+    pub const MAX_MARKER_LABEL_BYTES: usize = 256;
+}
+
+/// A timestamped marker placed during a voice recording (`docs/protocol/recorder.md`).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecordingMarker {
+    /// Elapsed milliseconds from the start of the recording (excluding pauses).
+    pub at_ms: u64,
+    /// Optional user label for the marker.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+}
+
+/// Never prints the marker's label (protocol v0 §11).
+impl std::fmt::Debug for RecordingMarker {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RecordingMarker")
+            .field("at_ms", &self.at_ms)
+            .field("has_label", &self.label.is_some())
+            .finish()
+    }
+}
+
+impl RecordingMarker {
+    pub fn is_valid(&self) -> bool {
+        self.label.as_ref().is_none_or(|l| {
+            !l.trim().is_empty()
+                && l.len() <= files::MAX_MARKER_LABEL_BYTES
+                && !l.chars().any(char::is_control)
+        })
+    }
 }
 
 /// One file of an offer.
@@ -1518,12 +1554,23 @@ impl std::fmt::Debug for FileEntry {
 pub struct FilesOffer {
     pub id: String,
     pub files: Vec<FileEntry>,
+    /// True when this transfer is a voice recording (`docs/protocol/recorder.md`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub recording: bool,
+    /// Timestamped markers placed during the recording.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub markers: Vec<RecordingMarker>,
 }
 
 /// Never prints file names (protocol v0 §11).
 impl std::fmt::Debug for FilesOffer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FilesOffer").field("id", &self.id).field("files", &self.files.len()).finish()
+        f.debug_struct("FilesOffer")
+            .field("id", &self.id)
+            .field("files", &self.files.len())
+            .field("recording", &self.recording)
+            .field("markers", &self.markers.len())
+            .finish()
     }
 }
 
@@ -1558,8 +1605,16 @@ pub fn is_valid_transfer_id(id: &str) -> bool {
 
 impl FilesOffer {
     pub fn is_valid(&self) -> bool {
+        let files_ok = if self.recording {
+            self.files.len() == 1
+                && self.files[0].folder.is_none()
+                && self.markers.len() <= files::MAX_MARKERS
+                && self.markers.iter().all(RecordingMarker::is_valid)
+        } else {
+            (1..=files::MAX_FILES).contains(&self.files.len()) && self.markers.is_empty()
+        };
         is_valid_transfer_id(&self.id)
-            && (1..=files::MAX_FILES).contains(&self.files.len())
+            && files_ok
             && self
                 .files
                 .iter()
@@ -2001,6 +2056,8 @@ mod tests {
         let offer = |id: &str, names: &[&str]| FilesOffer {
             id: id.into(),
             files: names.iter().map(|n| FileEntry { name: (*n).into(), size: 1, folder: None }).collect(),
+            recording: false,
+            markers: Vec::new(),
         };
         assert!(offer("abcdefghijklmnop", &["photo.jpg", "Résumé (final).pdf"]).is_valid());
         for bad in ["", ".", "..", "a/b", "a\\b", "x\u{0}y", "tab\there"] {
@@ -2017,6 +2074,8 @@ mod tests {
         let offer = |folder: &str| FilesOffer {
             id: "abcdefghijklmnop".into(),
             files: vec![FileEntry { name: "a.jpg".into(), size: 1, folder: Some(folder.into()) }],
+            recording: false,
+            markers: Vec::new(),
         };
         for good in ["Trip", "Trip/Day 1", "Trip/Day 1/raw"] {
             assert!(offer(good).is_valid(), "{good:?}");
@@ -2030,6 +2089,60 @@ mod tests {
         let env = Envelope::new("x", &plain).unwrap();
         assert!(!format!("{:?}", env.b).contains("folder"));
         assert!(!format!("{:?}", offer("Secret")).contains("Secret"));
+    }
+
+    #[test]
+    fn recording_offers_and_markers_are_validated() {
+        let rec = FilesOffer {
+            id: "abcdefghijklmnop".into(),
+            files: vec![FileEntry { name: "Recording.m4a".into(), size: 4096, folder: None }],
+            recording: true,
+            markers: vec![
+                RecordingMarker { at_ms: 1200, label: None },
+                RecordingMarker { at_ms: 5400, label: Some("Action item".into()) },
+            ],
+        };
+        assert!(rec.is_valid());
+        assert!(!format!("{:?}", rec.markers[1]).contains("Action item"));
+        let env = Envelope::new(files::OFFER, &rec).unwrap();
+        let back: FilesOffer = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, rec);
+
+        // Recordings must be a single file without a folder.
+        assert!(
+            !FilesOffer {
+                files: vec![
+                    FileEntry { name: "a.m4a".into(), size: 1, folder: None },
+                    FileEntry { name: "b.m4a".into(), size: 1, folder: None },
+                ],
+                ..rec.clone()
+            }
+            .is_valid()
+        );
+        assert!(
+            !FilesOffer {
+                files: vec![FileEntry { name: "a.m4a".into(), size: 1, folder: Some("dir".into()) }],
+                ..rec.clone()
+            }
+            .is_valid()
+        );
+        // Non-recordings cannot carry markers.
+        assert!(!FilesOffer { recording: false, ..rec.clone() }.is_valid());
+        // Blank or control-character marker labels are rejected.
+        assert!(
+            !FilesOffer {
+                markers: vec![RecordingMarker { at_ms: 0, label: Some("   ".into()) }],
+                ..rec.clone()
+            }
+            .is_valid()
+        );
+        assert!(
+            !FilesOffer {
+                markers: vec![RecordingMarker { at_ms: 0, label: Some("bad\nlabel".into()) }],
+                ..rec
+            }
+            .is_valid()
+        );
     }
 
     #[test]

@@ -333,6 +333,7 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("files", true),
     ("media", true),
     ("photos", true),
+    ("recordings", true),
     ("pc_actions", true),
     ("mirroring", true),
     // Controlling this PC's mouse and keyboard is opt-in.
@@ -668,6 +669,12 @@ pub const FEATURES: &[FeatureDef] = &[
         requires: &[phone("photos.read", Unlock::Permission(Permission::Photos)), DeviceToggle("photos")],
         partial: None,
     },
+    FeatureDef {
+        id: "files.recordings",
+        group: FeatureGroup::Files,
+        requires: &[phone("files.transfer", UPDATE), desktop("recorder", UPDATE), DeviceToggle("recordings")],
+        partial: None,
+    },
     // Mirroring
     FeatureDef {
         id: "mirroring.view",
@@ -813,6 +820,7 @@ mod tests {
         "pc.power",
         "files.transfer",
         "files.browse",
+        "recorder",
         "media.control",
         "media.remote",
         "input.inject",

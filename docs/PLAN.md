@@ -186,7 +186,7 @@ current Android. Talking through the PC comes with the HFP item above.
 | Control phone media from PC. Phone media appears **in Windows' own media flyout** with artwork | P0 🟢 |
 | Control PC media from phone (media notification with artwork, seek, volume) | P0 🟢 |
 | PC volume and output device switch from phone | P1 |
-| **Voice Recorder → PC**: record with the phone's (better) mic, hit send, and the file lands on the PC in your chosen format (Opus/M4A/MP3/WAV/FLAC) and folder. Optional: record *straight into* the PC (live stream, appears when you stop), noise suppression, markers | P1 🟢 |
+| **Voice Recorder → PC**: record with the phone's (better) mic, hit send, and the file lands on the PC in your chosen format (Opus/M4A/MP3/WAV/FLAC) and folder. Optional: record *straight into* the PC (live stream, appears when you stop), noise suppression, markers ✅ | P1 🟢 |
 | Phone as speaker / headphones for PC audio | P2 |
 | Phone as live microphone for PC apps | P2 (needs a virtual audio driver, evaluate) |
 

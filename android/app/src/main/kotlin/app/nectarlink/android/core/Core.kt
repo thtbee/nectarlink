@@ -25,6 +25,9 @@ import app.nectarlink.android.mirror.AppWindows
 import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.mirror.MirrorRequests
 import app.nectarlink.android.photos.RecentPhotos
+import app.nectarlink.android.recorder.DeliveryState
+import app.nectarlink.android.recorder.RecordingsStore
+import app.nectarlink.android.recorder.SavedRecording
 import app.nectarlink.android.service.ConnectionService
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.core.Event
@@ -38,6 +41,7 @@ import app.nectarlink.core.NodeOptions
 import app.nectarlink.core.Notification
 import app.nectarlink.core.PairingFailure
 import app.nectarlink.core.PowerLevel
+import app.nectarlink.core.RecordingMarker
 import app.nectarlink.core.Transfer
 import app.nectarlink.core.TransferDirection
 import app.nectarlink.core.TransferStatus
@@ -294,6 +298,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
+    /** Voice recordings stored on this phone and their delivery status to PCs. */
+    val recordings = RecordingsStore(this.context)
+
     override fun onEvent(event: Event) {
         _state.update { it.reduce(event) }
         when (event) {
@@ -301,7 +308,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             is Event.MediaChanged -> pcMedia.update(event.id, _state.value.nameOf(event.id).orEmpty(), event.players)
             // A PC that's gone isn't playing for this phone anymore; it
             // sends what plays when it's back.
-            is Event.LinkChanged -> if (event.link is Link.Offline) pcMedia.update(event.id, "", emptyList())
+            is Event.LinkChanged -> {
+                if (event.link is Link.Offline) {
+                    pcMedia.update(event.id, "", emptyList())
+                } else if (event.link is Link.Online) {
+                    retryWaitingRecordings(event.id)
+                }
+            }
             is Event.DeviceAdded -> ConnectionService.start(context)
             is Event.DeviceRemoved -> {
                 pcMedia.update(event.id, "", emptyList())
@@ -312,10 +325,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
-    // ---- Files ----
+    // ---- Files & Recordings ----
 
     private fun onTransfer(transfer: Transfer) {
         val pc = _state.value.nameOf(transfer.deviceId).orEmpty()
+        val pcOnline = _state.value.device(transfer.deviceId)?.online == true
+        recordings.onTransferEvent(transfer, pcOnline)
         TransferNotifications.update(context, transfer, pc)
         val done = transfer.status as? TransferStatus.Done ?: return
         if (transfer.direction != TransferDirection.INCOMING) return
@@ -323,6 +338,92 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         scope.launch(Dispatchers.IO) {
             val published = done.saved.flatMap { ReceivedFiles.publish(context, java.io.File(it)) }
             TransferNotifications.received(context, transfer, published, pc)
+        }
+    }
+
+    /** Saves a finished voice recording and sends it to the chosen PC. */
+    fun onRecordingFinished(
+        pcId: String,
+        file: java.io.File,
+        durationMs: Long,
+        markers: List<RecordingMarker>,
+    ): SavedRecording {
+        val online = _state.value.device(pcId)?.online == true
+        val saved = recordings.add(
+            file = file,
+            durationMs = durationMs,
+            markers = markers,
+            targetPcId = pcId,
+            waiting = !online,
+        )
+        sendSavedRecording(pcId, saved.id)
+        return saved
+    }
+
+    /** Sends (or re-sends) a saved voice recording and its markers to `pcId`. */
+    fun sendSavedRecording(pcId: String, recordingId: String) {
+        val rec = recordings.get(recordingId) ?: return
+        val file = recordings.fileFor(rec)
+        if (!file.exists()) return
+        val online = _state.value.device(pcId)?.online == true
+        recordings.updateDelivery(
+            id = recordingId,
+            pcId = pcId,
+            transferId = rec.transferId,
+            delivery = if (online) DeliveryState.Sending else DeliveryState.Waiting,
+        )
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val node = node ?: return@launch
+            try {
+                val tid = node.sendRecording(
+                    pcId,
+                    FileToSend.Path(
+                        path = file.absolutePath,
+                        name = file.name,
+                        folder = null,
+                    ),
+                    rec.markers,
+                )
+                val nowOnline = _state.value.device(pcId)?.online == true
+                val existing = _state.value.transfers.firstOrNull { it.id == tid }
+                val delivery = when (existing?.status) {
+                    is TransferStatus.Done -> DeliveryState.Sent
+                    is TransferStatus.Running -> DeliveryState.Sending
+                    is TransferStatus.Waiting -> DeliveryState.Waiting
+                    else -> if (nowOnline) DeliveryState.Sending else DeliveryState.Waiting
+                }
+                recordings.updateDelivery(
+                    id = recordingId,
+                    pcId = pcId,
+                    transferId = tid,
+                    delivery = delivery,
+                )
+            } catch (e: NectarlinkException) {
+                val name = _state.value.nameOf(pcId).orEmpty()
+                when (e) {
+                    is NectarlinkException.Denied -> {
+                        recordings.updateDelivery(recordingId, pcId, null, DeliveryState.Denied)
+                        _messages.tryEmit(context.getString(R.string.recorder_denied_text, name))
+                    }
+                    is NectarlinkException.Offline -> {
+                        recordings.updateDelivery(recordingId, pcId, null, DeliveryState.Waiting)
+                    }
+                    else -> {
+                        recordings.updateDelivery(recordingId, pcId, null, DeliveryState.Failed)
+                        _messages.tryEmit(describe(e))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun retryWaitingRecordings(pcId: String) {
+        val activeIds = _state.value.transfers.filterNot { it.isFinished() }.map { it.id }.toSet()
+        for (rec in recordings.waitingForPc(pcId)) {
+            if (rec.transferId == null || rec.transferId !in activeIds) {
+                sendSavedRecording(pcId, rec.id)
+            }
         }
     }
 

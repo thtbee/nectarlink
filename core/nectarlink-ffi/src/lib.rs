@@ -299,6 +299,13 @@ pub enum TransferStatus {
     Cancelled,
 }
 
+/// A timestamped marker within a voice recording (docs/protocol/recorder.md).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct RecordingMarker {
+    pub at_ms: u64,
+    pub label: Option<String>,
+}
+
 /// A file transfer (docs/protocol/files.md).
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
 pub struct Transfer {
@@ -313,6 +320,10 @@ pub struct Transfer {
     pub total: u64,
     pub done: u64,
     pub status: TransferStatus,
+    /// True when this transfer is a voice recording from the phone's recorder.
+    pub recording: bool,
+    /// Markers captured during the recording.
+    pub markers: Vec<RecordingMarker>,
 }
 
 /// Never prints file names (protocol v0 §11).
@@ -1083,6 +1094,18 @@ impl From<Notification> for core::Notification {
     }
 }
 
+impl From<core::RecordingMarker> for RecordingMarker {
+    fn from(m: core::RecordingMarker) -> Self {
+        RecordingMarker { at_ms: m.at_ms, label: m.label }
+    }
+}
+
+impl From<RecordingMarker> for core::RecordingMarker {
+    fn from(m: RecordingMarker) -> Self {
+        core::RecordingMarker { at_ms: m.at_ms, label: m.label }
+    }
+}
+
 impl From<core::Transfer> for Transfer {
     fn from(t: core::Transfer) -> Self {
         Transfer {
@@ -1114,6 +1137,8 @@ impl From<core::Transfer> for Transfer {
                 },
                 core::TransferState::Cancelled => TransferStatus::Cancelled,
             },
+            recording: t.recording,
+            markers: t.markers.into_iter().map(Into::into).collect(),
         }
     }
 }
@@ -1823,6 +1848,21 @@ impl NectarlinkNode {
         let files = files.into_iter().map(file_to_send).collect::<Result<Vec<_>>>()?;
         let node = self.node.clone();
         self.run(async move { Ok(node.send_files(id, files).await?) }).await
+    }
+
+    /// Sends a voice recording and its markers to a paired PC; returns the
+    /// transfer's ID. Progress arrives as `Event::Transfer`.
+    pub async fn send_recording(
+        &self,
+        id: String,
+        file: FileToSend,
+        markers: Vec<RecordingMarker>,
+    ) -> Result<String> {
+        let id = parse_id(&id)?;
+        let file = file_to_send(file)?;
+        let markers = markers.into_iter().map(Into::into).collect();
+        let node = self.node.clone();
+        self.run(async move { Ok(node.send_recording(id, file, markers).await?) }).await
     }
 
     /// Cancels a transfer in either direction.

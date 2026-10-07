@@ -894,6 +894,8 @@ mod tests {
             total: 1000,
             done,
             state,
+            recording: false,
+            markers: Vec::new(),
         }
     }
 

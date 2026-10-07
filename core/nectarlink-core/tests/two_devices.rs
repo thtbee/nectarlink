@@ -2184,3 +2184,75 @@ async fn remote_input_needs_toggle_and_delivers_motion_keys_and_slides() {
     );
     assert!(phone.node.remote_move(pc_id, 99999.0, 0.0).await.is_err());
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn voice_recordings_arrive_with_markers_and_respect_capability_and_toggle() {
+    use nectarlink_core::{RECORDER, RecordingMarker, TransferFailure};
+
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let src = tempfile::tempdir().unwrap();
+    let audio = data(64 * 1024 + 31, 42);
+    let markers = vec![
+        RecordingMarker { at_ms: 1_250, label: Some("Intro".into()) },
+        RecordingMarker { at_ms: 4_800, label: None },
+    ];
+
+    // Without the `recorder` capability on the PC, a recording transfer is refused as unsupported.
+    let tid = phone
+        .node
+        .send_recording(pc_id, outgoing(src.path(), "rec1.m4a", &audio), markers.clone())
+        .await
+        .unwrap();
+    let failure = wait_transfer(&mut phone, &tid, "refused without capability", |t| match &t.state {
+        TransferState::Failed(f) => Some(f.clone()),
+        _ => None,
+    })
+    .await;
+    assert!(
+        matches!(failure, TransferFailure::Other(ref s) if s.to_ascii_lowercase().contains("unsupported")),
+        "{failure:?}"
+    );
+
+    // The PC announces `recorder`.
+    pc.node.update_power(PowerLevel::NotApplicable, vec![RECORDER.into()]).await;
+    wait_for(&mut phone, "files.recordings available", |e| match e {
+        NodeEvent::Capabilities(m)
+            if m.device == pc_id && m.state("files.recordings") == Some(FeatureState::Available) =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    // The recording arrives on the PC and is reported with `recording == true` and its markers.
+    let tid = phone
+        .node
+        .send_recording(pc_id, outgoing(src.path(), "Recording.m4a", &audio), markers.clone())
+        .await
+        .unwrap();
+    let (received_paths, got_recording, got_markers) =
+        wait_transfer(&mut pc, &tid, "recording received", |t| {
+            saved(t).map(|paths| (paths, t.recording, t.markers.clone()))
+        })
+        .await;
+    assert!(got_recording);
+    assert_eq!(got_markers, markers);
+    assert_eq!(received_paths.len(), 1);
+    assert_eq!(std::fs::read(&received_paths[0]).unwrap(), audio);
+    wait_transfer(&mut phone, &tid, "recording sent", saved).await;
+
+    // Turning off the `recordings` toggle on the PC denies incoming recordings while regular files still work.
+    pc.node.set_device_toggle(phone_id, "recordings", false).unwrap();
+    let tid =
+        phone.node.send_recording(pc_id, outgoing(src.path(), "rec2.m4a", &audio), Vec::new()).await.unwrap();
+    let denied = wait_transfer(&mut phone, &tid, "denied by toggle", |t| match &t.state {
+        TransferState::Failed(f) => Some(f.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(denied, TransferFailure::Denied);
+}

@@ -9,6 +9,7 @@ Item {
     required property string transferId
     required property string deviceName
     required property bool incoming
+    required property bool recording
     required property string title
     required property real total
     required property real done
@@ -69,7 +70,7 @@ Item {
             Icon {
                 anchors.centerIn: parent
                 width: 18; height: 18
-                path: item.incoming ? Icons.folder : Icons.send
+                path: item.incoming ? (item.recording ? Icons.mic : Icons.folder) : Icons.send
                 color: Theme.graphite ? Theme.surfaceContent : Theme.secondaryContainerContent
             }
         }

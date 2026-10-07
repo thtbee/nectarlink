@@ -882,6 +882,19 @@ impl Node {
         transfer::send(&self.shared, peer, files).await
     }
 
+    /// Sends a voice recording and its markers to a paired PC; returns the
+    /// transfer's ID. Progress and the outcome arrive as
+    /// [`NodeEvent::Transfer`]; the transfer waits for the PC to connect and
+    /// resumes after interruptions.
+    pub async fn send_recording(
+        &self,
+        peer: DeviceId,
+        file: transfer::OutgoingFile,
+        markers: Vec<transfer::RecordingMarker>,
+    ) -> Result<String> {
+        transfer::send_recording(&self.shared, peer, file, markers).await
+    }
+
     /// Cancels a transfer in either direction. Unknown IDs are ignored.
     pub fn cancel_transfer(&self, id: &str) {
         if let Some(cancel) = lock(&self.shared.transfers).get(id) {
