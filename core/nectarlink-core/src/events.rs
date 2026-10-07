@@ -169,4 +169,9 @@ pub enum NodeEvent {
     RemoteInputRequested {
         device: DeviceId,
     },
+    /// A paired phone's quick settings state (on connect and on change).
+    PhoneToggles {
+        device: DeviceId,
+        toggles: crate::PhoneToggles,
+    },
 }

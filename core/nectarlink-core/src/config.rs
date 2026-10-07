@@ -278,6 +278,13 @@ pub trait Platform: Send + Sync + 'static {
     ) -> Result<(), String> {
         Err("this device doesn't take remote input".into())
     }
+
+    /// Change one of this phone's quick settings (`phone.toggle.set`,
+    /// `docs/protocol/toggles.md`). `id` and `value` have been validated and
+    /// checked against this phone's capabilities. `Err` holds a reason for logs.
+    fn set_phone_toggle(&self, _id: &str, _value: &crate::PhoneToggleValue) -> Result<(), String> {
+        Err("this device has no phone toggles".into())
+    }
 }
 
 /// A platform that does nothing; useful for tests and headless tools.

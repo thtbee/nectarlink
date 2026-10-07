@@ -14,7 +14,7 @@ use cxx_qt::{CxxQtThread, CxxQtType, Threading};
 use cxx_qt_lib::{
     QHash, QHashPair_QString_QVariant, QList, QMap, QMapPair_QString_QVariant, QString, QVariant,
 };
-use nectarlink_core::{DeviceId, Error, FeatureState, LinkState, features::Upgrade};
+use nectarlink_core::{DeviceId, Error, FeatureState, LinkState, PhoneToggleValue, features::Upgrade};
 
 use crate::{
     core_host,
@@ -50,6 +50,8 @@ pub mod qobject {
         #[qproperty(i32, caps_revision)]
         /// Bumped when a device toggle is changed from this PC.
         #[qproperty(i32, toggles_revision)]
+        /// Bumped whenever a phone's quick settings toggles change.
+        #[qproperty(i32, phone_toggles_revision)]
         /// Name of the device making this PC ring ("" when not ringing).
         #[qproperty(QString, ringing_from)]
         #[qproperty(bool, system_dark)]
@@ -111,6 +113,14 @@ pub mod qobject {
         fn device_toggles(self: &AppController, device: &QString) -> QList_QVariant;
         #[qinvokable]
         fn set_device_toggle(self: Pin<&mut AppController>, device: &QString, name: &QString, on: bool);
+        /// Latest quick settings toggles for a phone as JSON (`""` when unknown).
+        #[qinvokable]
+        fn phone_toggles(self: &AppController, device: &QString) -> QString;
+        /// Changes one quick settings toggle on a phone (`id`: `"dnd"`,
+        /// `"ringer"`, `"flashlight"`, `"volume"`, `"brightness"`, `"wifi"`,
+        /// `"bluetooth"`).
+        #[qinvokable]
+        fn set_phone_toggle(self: Pin<&mut AppController>, device: &QString, id: &QString, value: &QString);
 
         /// Sends what's copied on this PC to a device.
         #[qinvokable]
@@ -169,6 +179,7 @@ pub struct AppControllerRust {
     has_devices: bool,
     caps_revision: i32,
     toggles_revision: i32,
+    phone_toggles_revision: i32,
     ringing_from: QString,
     system_dark: bool,
     reduce_motion: bool,
@@ -295,7 +306,12 @@ impl cxx_qt::Initialize for qobject::AppController {
         *CONTROLLER.get_or_init(Mutex::default).lock().unwrap_or_else(|e| e.into_inner()) = Some(qt.clone());
         super::subscribe(
             qt.clone(),
-            Changes::STATUS | Changes::DEVICES | Changes::CAPABILITIES | Changes::RINGING | Changes::REMOTE,
+            Changes::STATUS
+                | Changes::DEVICES
+                | Changes::CAPABILITIES
+                | Changes::RINGING
+                | Changes::REMOTE
+                | Changes::TOGGLES,
             Self::refresh,
         );
         super::subscribe(qt.clone(), Changes::UPDATE, |object| {
@@ -385,33 +401,35 @@ fn ring_device(device: DeviceId, on: bool) {
 impl qobject::AppController {
     fn refresh(mut self: Pin<&mut Self>) {
         let hub = &core_host::host().hub;
-        let (status, devices, ringing, online, caps_version, battery, remote_prompt, laser) = hub.read(|s| {
-            let ringing = s.ringing_from.and_then(|id| s.name_of(&id)).unwrap_or_default();
-            let remote_prompt = s.remote_prompt.map(|id| {
-                let name = s.name_of(&id).unwrap_or_else(|| id.short());
-                (id.to_string(), name)
+        let (status, devices, ringing, online, caps_version, toggles_version, battery, remote_prompt, laser) =
+            hub.read(|s| {
+                let ringing = s.ringing_from.and_then(|id| s.name_of(&id)).unwrap_or_default();
+                let remote_prompt = s.remote_prompt.map(|id| {
+                    let name = s.name_of(&id).unwrap_or_else(|| id.short());
+                    (id.to_string(), name)
+                });
+                let connected: Vec<_> =
+                    s.devices.iter().filter(|d| matches!(d.link, LinkState::Online { .. })).collect();
+                // With one phone connected, the tray shows its battery.
+                let battery = match connected.as_slice() {
+                    [one] => one.battery.as_ref().map(|b| {
+                        let charging = if b.charging { ", charging" } else { "" };
+                        format!("{} · {}%{charging}", one.info.name, b.level)
+                    }),
+                    _ => None,
+                };
+                (
+                    s.core_status(),
+                    s.devices.len(),
+                    ringing,
+                    connected.len(),
+                    s.matrices_version,
+                    s.toggles_version,
+                    battery,
+                    remote_prompt,
+                    s.laser,
+                )
             });
-            let connected: Vec<_> =
-                s.devices.iter().filter(|d| matches!(d.link, LinkState::Online { .. })).collect();
-            // With one phone connected, the tray shows its battery.
-            let battery = match connected.as_slice() {
-                [one] => one.battery.as_ref().map(|b| {
-                    let charging = if b.charging { ", charging" } else { "" };
-                    format!("{} · {}%{charging}", one.info.name, b.level)
-                }),
-                _ => None,
-            };
-            (
-                s.core_status(),
-                s.devices.len(),
-                ringing,
-                connected.len(),
-                s.matrices_version,
-                battery,
-                remote_prompt,
-                s.laser,
-            )
-        });
         let (status_text, error) = match &status {
             CoreStatus::Starting => ("starting", String::new()),
             CoreStatus::Ready { device_id, name } => {
@@ -440,6 +458,7 @@ impl qobject::AppController {
         }
         // Truncation is fine: QML only compares revisions for equality.
         self.as_mut().set_caps_revision(caps_version as i32);
+        self.as_mut().set_phone_toggles_revision(toggles_version as i32);
 
         if let Some(tray) = self.rust().tray.as_ref() {
             tray.set_find_phone_enabled(devices > 0);
@@ -554,6 +573,51 @@ impl qobject::AppController {
         }
         let revision = self.toggles_revision.wrapping_add(1);
         self.as_mut().set_toggles_revision(revision);
+    }
+
+    pub fn phone_toggles(&self, device: &QString) -> QString {
+        let Some(id) = super::parse_device(device) else { return QString::default() };
+        let json = core_host::host()
+            .hub
+            .read(|s| s.toggles.get(&id).and_then(|t| serde_json::to_string(t).ok()))
+            .unwrap_or_default();
+        QString::from(&json)
+    }
+
+    pub fn set_phone_toggle(self: Pin<&mut Self>, device: &QString, id: &QString, value: &QString) {
+        let (Some(device), Some(node)) = (super::parse_device(device), core_host::node()) else { return };
+        let id = String::from(id);
+        let raw = String::from(value);
+        let parsed = match id.as_str() {
+            "dnd" | "flashlight" | "wifi" | "bluetooth" => Some(PhoneToggleValue::Bool(raw == "true")),
+            "volume" | "brightness" => raw.parse::<u8>().ok().map(|v| PhoneToggleValue::Level(v.min(100))),
+            "ringer" => Some(PhoneToggleValue::Mode(raw)),
+            _ => None,
+        };
+        let Some(val) = parsed else { return };
+        // Optimistically update local state so buttons and sliders don't snap back while the RPC runs.
+        core_host::host().hub.update(|s| {
+            let Some(t) = s.toggles.get(&device).cloned() else { return Changes::NONE };
+            let mut next = t;
+            match (id.as_str(), &val) {
+                ("dnd", PhoneToggleValue::Bool(on)) => next.dnd = *on,
+                ("flashlight", PhoneToggleValue::Bool(on)) => next.flashlight = Some(*on),
+                ("wifi", PhoneToggleValue::Bool(on)) => next.wifi = *on,
+                ("bluetooth", PhoneToggleValue::Bool(on)) => next.bluetooth = *on,
+                ("volume", PhoneToggleValue::Level(v)) => next.volume = *v,
+                ("brightness", PhoneToggleValue::Level(v)) => next.brightness = *v,
+                ("ringer", PhoneToggleValue::Mode(m)) => next.ringer.clone_from(m),
+                _ => {}
+            }
+            s.set_toggles(device, Some(next))
+        });
+        core_host::spawn(async move {
+            if let Err(e) = node.set_phone_toggle(device, id, val).await {
+                let latest = node.phone_toggles(device);
+                core_host::host().hub.update(|s| s.set_toggles(device, latest));
+                show_message(describe(&e));
+            }
+        });
     }
 
     pub fn check_for_updates(mut self: Pin<&mut Self>) {

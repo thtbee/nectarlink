@@ -73,6 +73,12 @@
     <string name="control_title">Use your PC\'s mouse and keyboard</string>
     <string name="control_on">On: while your screen is shown on your PC, you can tap, swipe and type from there.</string>
     <string name="control_off">While your screen is shown on your PC, tap, swipe and type from there. Turn on Nectarlink in Accessibility.</string>
+    <string name="dnd_access_title">Do Not Disturb and silent mode</string>
+    <string name="dnd_access_on">On: your PC can turn Do Not Disturb on or off and set the ringer to silent.</string>
+    <string name="dnd_access_off">Let your PC turn Do Not Disturb on or off and set the ringer to silent.</string>
+    <string name="write_settings_title">Screen brightness</string>
+    <string name="write_settings_on">On: your PC can adjust this phone\'s screen brightness.</string>
+    <string name="write_settings_off">Let your PC adjust this phone\'s screen brightness.</string>
     <string name="local_network_title">Reach your PC on this network</string>
     <string name="local_network_text">Android asks before an app talks to devices on your network. Nectarlink needs it to reach your PC.</string>
     <string name="channel_elevated">Wireless debugging setup</string>

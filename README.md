@@ -147,6 +147,14 @@ tests; there are no releases yet.
   file beside it when you add markers and a notification to open the recording
   or its folder. If the PC is offline, the recording waits on the phone and
   goes out as soon as it reconnects.
+- **Phone controls on the PC**: see and change the phone's Do Not Disturb,
+  ringer mode (Ring, Vibrate, Silent), flashlight, media volume, screen
+  brightness, Wi‑Fi (with a confirmation before turning it off) and Bluetooth
+  from the PC's Home screen. Volume, Ring/Vibrate and the
+  flashlight work out of the box; Do Not Disturb and silent mode use
+  Notification Policy Access; screen brightness uses Modify system settings;
+  and Wi‑Fi and Bluetooth unlock with Wireless debugging (which also
+  grants the Do Not Disturb and brightness permissions automatically).
 - **Media** both ways: what plays on the phone shows on the PC, in the app and
   in Windows' own media flyout (so the keyboard's media keys work too), and
   what plays on the PC shows in the phone's media controls, with artwork and

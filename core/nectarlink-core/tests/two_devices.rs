@@ -41,6 +41,7 @@ struct RecordingPlatform {
     /// Optional barrier `open_photo` waits on to simulate a slow platform call.
     photo_barrier: Mutex<Option<Arc<std::sync::Barrier>>>,
     remote_inputs: Mutex<Vec<nectarlink_core::RemoteInput>>,
+    phone_toggles: Mutex<Vec<(String, nectarlink_core::PhoneToggleValue)>>,
 }
 
 impl Platform for RecordingPlatform {
@@ -388,6 +389,10 @@ impl Platform for RecordingPlatform {
         input: nectarlink_core::RemoteInput,
     ) -> Result<(), String> {
         self.remote_inputs.lock().unwrap().push(input);
+        Ok(())
+    }
+    fn set_phone_toggle(&self, id: &str, value: &nectarlink_core::PhoneToggleValue) -> Result<(), String> {
+        self.phone_toggles.lock().unwrap().push((id.to_owned(), value.clone()));
         Ok(())
     }
 }
@@ -2255,4 +2260,200 @@ async fn voice_recordings_arrive_with_markers_and_respect_capability_and_toggle(
     })
     .await;
     assert_eq!(denied, TransferFailure::Denied);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn phone_toggles_arrive_on_connect_change_and_respect_capabilities_and_toggle() {
+    use nectarlink_core::{
+        PhoneToggleValue, PhoneToggles, TOGGLES_BLUETOOTH, TOGGLES_BRIGHTNESS, TOGGLES_DND,
+        TOGGLES_FLASHLIGHT, TOGGLES_READ, TOGGLES_RINGER, TOGGLES_SHOW, TOGGLES_VOLUME, TOGGLES_WIFI,
+        ringer_modes, toggle_ids,
+    };
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[TOGGLES_SHOW]).await;
+    let mut phone = device_with(
+        "Pixel",
+        DeviceKind::Phone,
+        &[TOGGLES_READ, TOGGLES_RINGER, TOGGLES_VOLUME, TOGGLES_FLASHLIGHT],
+    )
+    .await;
+
+    let initial = PhoneToggles {
+        dnd: false,
+        ringer: ringer_modes::RING.into(),
+        flashlight: Some(false),
+        volume: 65,
+        brightness: 40,
+        wifi: true,
+        bluetooth: true,
+    };
+    phone.node.toggles_changed(initial.clone()).await.unwrap();
+
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Initial state arrives on connect.
+    let got = wait_for(&mut pc, "initial toggles", |e| match e {
+        NodeEvent::PhoneToggles { device, toggles } if *device == phone_id => Some(toggles.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(got, initial);
+
+    // Volume, ringer (vibrate), and flashlight work at Basic without extra permissions.
+    with_timeout(
+        "set volume",
+        pc.node.set_phone_toggle(phone_id, toggle_ids::VOLUME.into(), PhoneToggleValue::Level(80)),
+    )
+    .await
+    .unwrap();
+    with_timeout(
+        "set ringer vibrate",
+        pc.node.set_phone_toggle(
+            phone_id,
+            toggle_ids::RINGER.into(),
+            PhoneToggleValue::Mode(ringer_modes::VIBRATE.into()),
+        ),
+    )
+    .await
+    .unwrap();
+    with_timeout(
+        "set flashlight on",
+        pc.node.set_phone_toggle(phone_id, toggle_ids::FLASHLIGHT.into(), PhoneToggleValue::Bool(true)),
+    )
+    .await
+    .unwrap();
+
+    // Silent ringer and DND require `toggles.dnd`; brightness requires `toggles.brightness`;
+    // Wi-Fi requires `toggles.wifi` (Elevated).
+    assert!(matches!(
+        pc.node
+            .set_phone_toggle(
+                phone_id,
+                toggle_ids::RINGER.into(),
+                PhoneToggleValue::Mode(ringer_modes::SILENT.into()),
+            )
+            .await,
+        Err(Error::Unsupported)
+    ));
+    assert!(matches!(
+        pc.node.set_phone_toggle(phone_id, toggle_ids::DND.into(), PhoneToggleValue::Bool(true)).await,
+        Err(Error::Unsupported)
+    ));
+    assert!(matches!(
+        pc.node.set_phone_toggle(phone_id, toggle_ids::BRIGHTNESS.into(), PhoneToggleValue::Level(50)).await,
+        Err(Error::Unsupported)
+    ));
+    assert!(matches!(
+        pc.node.set_phone_toggle(phone_id, toggle_ids::WIFI.into(), PhoneToggleValue::Bool(false)).await,
+        Err(Error::Unsupported)
+    ));
+
+    // Invalid IDs or out-of-range values are rejected as protocol errors.
+    assert!(matches!(
+        pc.node.set_phone_toggle(phone_id, "unknown".into(), PhoneToggleValue::Bool(true)).await,
+        Err(Error::Protocol(_))
+    ));
+    assert!(matches!(
+        pc.node.set_phone_toggle(phone_id, toggle_ids::VOLUME.into(), PhoneToggleValue::Level(101)).await,
+        Err(Error::Protocol(_))
+    ));
+
+    // Phone unlocks DND, brightness, and Elevated toggles.
+    phone
+        .node
+        .update_power(
+            PowerLevel::Elevated,
+            vec![
+                "media.control".into(),
+                TOGGLES_READ.into(),
+                TOGGLES_RINGER.into(),
+                TOGGLES_VOLUME.into(),
+                TOGGLES_FLASHLIGHT.into(),
+                TOGGLES_DND.into(),
+                TOGGLES_BRIGHTNESS.into(),
+                TOGGLES_WIFI.into(),
+                TOGGLES_BLUETOOTH.into(),
+            ],
+        )
+        .await;
+    wait_for(&mut pc, "toggles.wifi available", |e| match e {
+        NodeEvent::Capabilities(m)
+            if m.device == phone_id && m.state("toggles.wifi") == Some(FeatureState::Available) =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    with_timeout(
+        "set ringer silent",
+        pc.node.set_phone_toggle(
+            phone_id,
+            toggle_ids::RINGER.into(),
+            PhoneToggleValue::Mode(ringer_modes::SILENT.into()),
+        ),
+    )
+    .await
+    .unwrap();
+    with_timeout(
+        "set dnd on",
+        pc.node.set_phone_toggle(phone_id, toggle_ids::DND.into(), PhoneToggleValue::Bool(true)),
+    )
+    .await
+    .unwrap();
+    with_timeout(
+        "set brightness",
+        pc.node.set_phone_toggle(phone_id, toggle_ids::BRIGHTNESS.into(), PhoneToggleValue::Level(90)),
+    )
+    .await
+    .unwrap();
+    with_timeout(
+        "set wifi off",
+        pc.node.set_phone_toggle(phone_id, toggle_ids::WIFI.into(), PhoneToggleValue::Bool(false)),
+    )
+    .await
+    .unwrap();
+
+    let recorded = phone.platform.phone_toggles.lock().unwrap().clone();
+    assert_eq!(
+        recorded,
+        vec![
+            (toggle_ids::VOLUME.into(), PhoneToggleValue::Level(80)),
+            (toggle_ids::RINGER.into(), PhoneToggleValue::Mode(ringer_modes::VIBRATE.into())),
+            (toggle_ids::FLASHLIGHT.into(), PhoneToggleValue::Bool(true)),
+            (toggle_ids::RINGER.into(), PhoneToggleValue::Mode(ringer_modes::SILENT.into())),
+            (toggle_ids::DND.into(), PhoneToggleValue::Bool(true)),
+            (toggle_ids::BRIGHTNESS.into(), PhoneToggleValue::Level(90)),
+            (toggle_ids::WIFI.into(), PhoneToggleValue::Bool(false)),
+        ]
+    );
+
+    // Phone pushes updated toggles state; PC receives it.
+    let updated = PhoneToggles {
+        dnd: true,
+        ringer: ringer_modes::SILENT.into(),
+        flashlight: Some(true),
+        volume: 80,
+        brightness: 90,
+        wifi: false,
+        bluetooth: true,
+    };
+    phone.node.toggles_changed(updated.clone()).await.unwrap();
+    let got_updated = wait_for(&mut pc, "updated toggles", |e| match e {
+        NodeEvent::PhoneToggles { device, toggles } if *device == phone_id && *toggles == updated => {
+            Some(toggles.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(got_updated, updated);
+
+    // Turning off the `toggles` device toggle on the phone refuses `phone.toggle.set`.
+    phone.node.set_device_toggle(pc_id, "toggles", false).unwrap();
+    assert!(matches!(
+        pc.node.set_phone_toggle(phone_id, toggle_ids::VOLUME.into(), PhoneToggleValue::Level(50)).await,
+        Err(Error::Denied)
+    ));
 }

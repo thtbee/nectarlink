@@ -28,6 +28,8 @@ pub enum Role {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Permission {
     NotificationAccess,
+    DoNotDisturb,
+    WriteSettings,
     Sms,
     Phone,
     Contacts,
@@ -40,6 +42,8 @@ impl Permission {
     pub const fn as_str(self) -> &'static str {
         match self {
             Permission::NotificationAccess => "notification_access",
+            Permission::DoNotDisturb => "dnd_access",
+            Permission::WriteSettings => "write_settings",
             Permission::Sms => "sms",
             Permission::Phone => "phone",
             Permission::Contacts => "contacts",
@@ -334,6 +338,7 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("media", true),
     ("photos", true),
     ("recordings", true),
+    ("toggles", true),
     ("pc_actions", true),
     ("mirroring", true),
     // Controlling this PC's mouse and keyboard is opt-in.
@@ -561,6 +566,84 @@ pub const FEATURES: &[FeatureDef] = &[
         id: "device.links_to_phone",
         group: FeatureGroup::Device,
         requires: &[phone("link.open", UPDATE)],
+        partial: None,
+    },
+    FeatureDef {
+        id: "toggles.dnd",
+        group: FeatureGroup::Device,
+        requires: &[
+            phone("toggles.dnd", Unlock::Permission(Permission::DoNotDisturb)),
+            desktop("toggles.show", UPDATE),
+            DeviceToggle("toggles"),
+        ],
+        partial: None,
+    },
+    FeatureDef {
+        id: "toggles.ringer",
+        group: FeatureGroup::Device,
+        requires: &[
+            phone("toggles.ringer", UPDATE),
+            phone("toggles.dnd", Unlock::Permission(Permission::DoNotDisturb)),
+            desktop("toggles.show", UPDATE),
+            DeviceToggle("toggles"),
+        ],
+        partial: Some(PartialDef {
+            requires: &[
+                phone("toggles.ringer", UPDATE),
+                desktop("toggles.show", UPDATE),
+                DeviceToggle("toggles"),
+            ],
+            limit: "toggles.limit.silent",
+        }),
+    },
+    FeatureDef {
+        id: "toggles.flashlight",
+        group: FeatureGroup::Device,
+        requires: &[
+            phone("toggles.flashlight", Unlock::Power(PowerLevel::Basic)),
+            desktop("toggles.show", UPDATE),
+            DeviceToggle("toggles"),
+        ],
+        partial: None,
+    },
+    FeatureDef {
+        id: "toggles.volume",
+        group: FeatureGroup::Device,
+        requires: &[
+            phone("toggles.volume", UPDATE),
+            desktop("toggles.show", UPDATE),
+            DeviceToggle("toggles"),
+        ],
+        partial: None,
+    },
+    FeatureDef {
+        id: "toggles.brightness",
+        group: FeatureGroup::Device,
+        requires: &[
+            phone("toggles.brightness", Unlock::Permission(Permission::WriteSettings)),
+            desktop("toggles.show", UPDATE),
+            DeviceToggle("toggles"),
+        ],
+        partial: None,
+    },
+    FeatureDef {
+        id: "toggles.wifi",
+        group: FeatureGroup::Device,
+        requires: &[
+            phone("toggles.wifi", ELEVATED),
+            desktop("toggles.show", UPDATE),
+            DeviceToggle("toggles"),
+        ],
+        partial: None,
+    },
+    FeatureDef {
+        id: "toggles.bluetooth",
+        group: FeatureGroup::Device,
+        requires: &[
+            phone("toggles.bluetooth", ELEVATED),
+            desktop("toggles.show", UPDATE),
+            DeviceToggle("toggles"),
+        ],
         partial: None,
     },
     // Notifications
@@ -815,12 +898,19 @@ mod tests {
         "media.control",
         "media.remote",
         "camera.stream",
+        "toggles.read",
+        "toggles.ringer",
+        "toggles.volume",
+        "toggles.flashlight",
+        "toggles.dnd",
+        "toggles.brightness",
     ];
     const PC: &[&str] = &[
         "pc.power",
         "files.transfer",
         "files.browse",
         "recorder",
+        "toggles.show",
         "media.control",
         "media.remote",
         "input.inject",
@@ -893,6 +983,8 @@ mod tests {
             "mirror.input",
             "mirror.virtual_display",
             "mirror.audio",
+            "toggles.wifi",
+            "toggles.bluetooth",
         ]);
         let m = matrix(&facts(DeviceKind::Phone, "android", "16", PowerLevel::Elevated, &caps));
         for id in [
@@ -901,9 +993,66 @@ mod tests {
             "mirroring.control",
             "mirroring.app_windows",
             "mirroring.audio",
+            "toggles.wifi",
+            "toggles.bluetooth",
         ] {
             assert_eq!(m.state(id), Some(FeatureState::Available), "{id}");
         }
+    }
+
+    #[test]
+    fn phone_toggles_reflect_permissions_hardware_and_power() {
+        // Basic phone without DND access, WriteSettings, or flash hardware (e.g. emulator).
+        let minimal = facts(
+            DeviceKind::Phone,
+            "android",
+            "16",
+            PowerLevel::Basic,
+            &["toggles.read", "toggles.ringer", "toggles.volume"],
+        );
+        let m = matrix(&minimal);
+        assert_eq!(m.state("toggles.volume"), Some(FeatureState::Available));
+        assert_eq!(
+            m.state("toggles.ringer"),
+            Some(FeatureState::Partial {
+                limit: "toggles.limit.silent",
+                upgrade: Some(Upgrade {
+                    action: UpgradeAction::GrantPermission(Permission::DoNotDisturb),
+                    effort: Effort::Instant,
+                }),
+            })
+        );
+        assert_eq!(
+            m.state("toggles.dnd"),
+            Some(locked(UpgradeAction::GrantPermission(Permission::DoNotDisturb), Effort::Instant))
+        );
+        assert_eq!(
+            m.state("toggles.brightness"),
+            Some(locked(UpgradeAction::GrantPermission(Permission::WriteSettings), Effort::Instant))
+        );
+        assert_eq!(
+            m.state("toggles.flashlight"),
+            Some(FeatureState::Unsupported { reason: UnsupportedReason::NotOnThisDevice })
+        );
+        for id in ["toggles.wifi", "toggles.bluetooth"] {
+            assert_eq!(
+                m.state(id),
+                Some(locked(UpgradeAction::RaisePower(PowerLevel::Elevated), Effort::Minutes(2))),
+                "{id}"
+            );
+        }
+
+        // Turning off the `toggles` device toggle locks them behind the toggle.
+        let toggles = HashMap::from([("toggles".to_owned(), false)]);
+        let m_off = matrix_with(
+            &facts(DeviceKind::Phone, "android", "16", PowerLevel::Basic, BASIC_PHONE),
+            &pc(),
+            &toggles,
+        );
+        assert_eq!(
+            m_off.state("toggles.volume"),
+            Some(locked(UpgradeAction::EnableDeviceToggle("toggles"), Effort::Instant))
+        );
     }
 
     #[test]

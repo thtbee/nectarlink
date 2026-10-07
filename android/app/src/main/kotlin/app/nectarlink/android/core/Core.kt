@@ -30,6 +30,7 @@ import app.nectarlink.android.recorder.RecordingsStore
 import app.nectarlink.android.recorder.SavedRecording
 import app.nectarlink.android.service.ConnectionService
 import app.nectarlink.android.sms.PhoneSms
+import app.nectarlink.android.toggles.PhoneToggles
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
 import app.nectarlink.core.FileToSend
@@ -81,10 +82,20 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         calls = { calls },
         contacts = { contacts },
         sms = { sms },
+        toggles = { toggles },
         onMirror = { pc, request ->
             MirrorRequests.show(this.context, request, _state.value.nameOf(pc).orEmpty())
         },
         appWindows = AppWindows(this.context, scope, open = { pc -> mirrorOpen(pc) }, nameOf = { pc -> _state.value.nameOf(pc).orEmpty() }),
+    )
+    private val toggles = PhoneToggles(
+        this.context,
+        onChanged = { state ->
+            notificationOps.trySend { node ->
+                runCatching { node.togglesChanged(state) }.onFailure { Log.i(TAG, "toggles weren't reported", it) }
+            }
+        },
+        onCapabilitiesChanged = { refreshNotificationAccess() },
     )
     private val sms = PhoneSms(this.context) {
         notificationOps.trySend { it.smsChanged(null) }
@@ -198,12 +209,15 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     callAccess = PhoneCalls.hasAll(context),
                     contactsAccess = PhoneContacts.canRead(context),
                     smsAccess = PhoneSms.hasAll(context),
+                    dndAccess = PhoneToggles.hasDndAccess(context),
+                    writeSettingsAccess = PhoneToggles.hasWriteSettings(context),
                 )
             }
             started.updatePower(powerLevel(), capabilities(NotificationListener.hasAccess(context)))
             // Elevated, when set up and wireless debugging is on.
             scope.launch { Elevated.start() }
             scope.launch(Dispatchers.Main) {
+                toggles.start()
                 if (_state.value.photoAccess) photos.start()
                 if (PhoneCalls.canFollow(context) || PhoneCalls.canReadLog(context)) calls.start()
                 if (PhoneContacts.canRead(context)) contacts.start()
@@ -261,6 +275,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         val smsAccess = PhoneSms.hasAll(context)
         val inputAccess = InputService.running
         val elevated = Elevated.running
+        val dndAccess = PhoneToggles.hasDndAccess(context)
+        val writeSettingsAccess = PhoneToggles.hasWriteSettings(context)
         val localNetwork = LocalNetwork.granted(context)
         if (localNetwork && !_state.value.localNetwork) {
             // Just allowed: reach the PCs now rather than at the next retry.
@@ -278,6 +294,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 smsAccess = smsAccess,
                 inputAccess = inputAccess,
                 elevated = elevated,
+                dndAccess = dndAccess,
+                writeSettingsAccess = writeSettingsAccess,
                 localNetwork = localNetwork,
             )
         }
@@ -286,6 +304,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
         if (node != null) {
             scope.launch(Dispatchers.Main) {
+                toggles.start()
                 if (photoAccess) photos.start() else photos.stop()
                 if (PhoneCalls.canFollow(context) || PhoneCalls.canReadLog(context)) calls.start() else calls.stop()
                 if (contactsAccess) contacts.start() else contacts.stop()
@@ -537,6 +556,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     /** What this phone offers PCs (docs/protocol/capabilities.md). */
     private fun capabilities(notificationAccess: Boolean): List<String> =
         CLIPBOARD_CAPABILITIES +
+            toggles.capabilities() +
             (if (notificationAccess) NOTIFICATION_CAPABILITIES + MEDIA_CAPABILITIES else emptyList()) +
             (if (_state.value.photoAccess) PHOTO_CAPABILITIES else emptyList()) +
             (if (PhoneCalls.canFollow(context)) listOf("call.state") else emptyList()) +

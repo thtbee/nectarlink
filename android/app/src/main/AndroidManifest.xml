@@ -27,6 +27,12 @@
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
+    <!-- Quick settings from a PC: Do Not Disturb / silent mode, and screen
+         brightness (asked for in Settings, or granted at Elevated). -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission
+        android:name="android.permission.WRITE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Scanning the pairing QR code. -->
     <uses-permission android:name="android.permission.CAMERA" />

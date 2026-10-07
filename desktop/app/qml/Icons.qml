@@ -64,4 +64,7 @@ QtObject {
     readonly property string download: "M12 3v12M7 10l5 5 5-5M5 20h14"
     readonly property string openExternal: "M14 4h6v6M20 4l-9 9M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"
     readonly property string video: "M4 6h11a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM17 10l5-3v10l-5-3"
+    readonly property string flashlight: "M8 3h8l-2 5v11a2 2 0 0 1-4 0V8zM8 5.5h8M12 11v2"
+    readonly property string bluetooth: "M6.5 6.5l11 11L12 22V2l5.5 5.5-11 11"
+    readonly property string brightness: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
 }

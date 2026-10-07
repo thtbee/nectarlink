@@ -120,6 +120,8 @@ pub(crate) struct Shared {
     pub players: crate::media::Players,
     /// This phone's call in progress (docs/protocol/calls.md).
     pub(crate) calls: crate::calls::Current,
+    /// This phone's quick settings state (docs/protocol/toggles.md).
+    pub(crate) toggles: crate::toggles::Current,
     /// Stop signals for phone screens shown here, by phone.
     pub(crate) mirror_stops: Mutex<HashMap<MirrorStop, Arc<tokio::sync::Notify>>>,
     /// Per-peer rate limiters and prompt state for remote input.
@@ -297,6 +299,7 @@ impl Shared {
         lock(&self.links).remove(peer);
         lock(&self.matrices).remove(peer);
         lock(&self.remote).remove_peer(peer);
+        self.toggles.remove_peer(peer);
         if existed {
             self.emit(NodeEvent::DeviceRemoved(*peer));
         }
@@ -365,6 +368,7 @@ impl Shared {
             shared.send_notification_snapshot(&s).await;
             shared.send_media_state(&s).await;
             shared.send_call_state(&s).await;
+            shared.send_toggles_state(&s).await;
         });
         Some(session)
     }
@@ -375,6 +379,7 @@ impl Shared {
         let current = sessions.get(&ended.peer).is_some_and(|current| Arc::ptr_eq(current, ended));
         if current {
             sessions.remove(&ended.peer);
+            self.toggles.remove_peer(&ended.peer);
             if paired {
                 tracing::info!(peer = %ended.peer.short(), "disconnected");
                 // Still under the lock: a new session for the peer can't
@@ -621,6 +626,7 @@ impl Node {
             notifications: Feed::default(),
             players: Default::default(),
             calls: Default::default(),
+            toggles: Default::default(),
             mirror_stops: Mutex::new(HashMap::new()),
             remote: Mutex::new(Default::default()),
             data_dir: config.data_dir.clone(),
@@ -743,6 +749,7 @@ impl Node {
             let _ = session.send(Envelope::empty(types::MEDIA_SYNC)).await;
             self.shared.send_notification_snapshot(&session).await;
             self.shared.send_media_state(&session).await;
+            self.shared.send_toggles_state(&session).await;
         }
     }
 
@@ -847,6 +854,9 @@ impl Node {
         }
         if toggle == crate::media::TOGGLE {
             self.shared.media_toggled(peer, enabled);
+        }
+        if toggle == crate::toggles::TOGGLE {
+            self.shared.toggles_toggled(peer, enabled);
         }
         Ok(())
     }
@@ -1260,6 +1270,32 @@ impl Node {
         let env = Envelope::new(types::NOTIFY_ACTION, &NotifyAction { key, action, reply })?;
         self.request(peer, env).await?.expect(types::OK)?;
         Ok(())
+    }
+
+    // ---- Phone toggles (docs/protocol/toggles.md) ----
+
+    /// The latest quick settings reported by a connected phone, if any.
+    pub fn phone_toggles(&self, peer: DeviceId) -> Option<crate::PhoneToggles> {
+        self.shared.toggles.peer(&peer)
+    }
+
+    /// This phone's quick settings state (on startup and whenever any toggle
+    /// changes); sent to every connected PC the user allows (and to PCs that
+    /// connect later).
+    pub async fn toggles_changed(&self, toggles: crate::PhoneToggles) -> Result<()> {
+        self.shared.toggles_changed(toggles).await
+    }
+
+    /// Asks a paired phone to change one quick setting (`id`: `dnd`, `ringer`,
+    /// `flashlight`, `volume`, `brightness`, `wifi`, `bluetooth`).
+    pub async fn set_phone_toggle(
+        &self,
+        peer: DeviceId,
+        id: String,
+        value: crate::PhoneToggleValue,
+    ) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::toggles::set(&self.shared, &session, id, value).await
     }
 
     // ---- Local state reported by the app ----

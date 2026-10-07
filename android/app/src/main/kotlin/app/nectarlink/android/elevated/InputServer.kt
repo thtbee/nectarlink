@@ -186,7 +186,9 @@ object InputServer {
                 }
                 "K" -> key(rest.toInt())
                 "T" -> type(rest)
-                "C" -> if (rest in allowed && display < 0) Runtime.getRuntime().exec(rest.split(' ').toTypedArray()).waitFor()
+                "C" -> if (allowedCommand(rest) && display < 0) {
+                    Runtime.getRuntime().exec(rest.split(' ').toTypedArray()).waitFor()
+                }
             }
         }
 
@@ -243,7 +245,26 @@ object InputServer {
             }
         }
 
+        private fun allowedCommand(cmd: String): Boolean {
+            if (cmd in allowed) return true
+            if (cmd.startsWith(BRIGHTNESS_PREFIX)) {
+                val v = cmd.removePrefix(BRIGHTNESS_PREFIX).toIntOrNull()
+                return v != null && v in 0..255
+            }
+            return false
+        }
+
         /** The only shell commands the app may run through this. */
-        private val allowed = setOf("cmd statusbar expand-notifications")
+        private val allowed = setOf(
+            "cmd statusbar expand-notifications",
+            "svc wifi enable",
+            "svc wifi disable",
+            "svc bluetooth enable",
+            "svc bluetooth disable",
+        )
+
+        private companion object {
+            const val BRIGHTNESS_PREFIX = "settings put system screen_brightness "
+        }
     }
 }

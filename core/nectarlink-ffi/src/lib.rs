@@ -474,6 +474,63 @@ pub enum Event {
     RemoteInputRequested {
         id: String,
     },
+    /// A paired phone's quick settings state (PCs only).
+    PhoneToggles {
+        id: String,
+        toggles: PhoneToggles,
+    },
+}
+
+/// This phone's quick settings state (docs/protocol/toggles.md).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PhoneToggles {
+    pub dnd: bool,
+    /// `"ring"`, `"vibrate"` or `"silent"`.
+    pub ringer: String,
+    /// `None` when the phone has no camera flash.
+    pub flashlight: Option<bool>,
+    /// Media volume, `0..=100`.
+    pub volume: u8,
+    /// Screen brightness, `0..=100`.
+    pub brightness: u8,
+    pub wifi: bool,
+    pub bluetooth: bool,
+}
+
+impl From<core::PhoneToggles> for PhoneToggles {
+    fn from(t: core::PhoneToggles) -> Self {
+        PhoneToggles {
+            dnd: t.dnd,
+            ringer: t.ringer,
+            flashlight: t.flashlight,
+            volume: t.volume,
+            brightness: t.brightness,
+            wifi: t.wifi,
+            bluetooth: t.bluetooth,
+        }
+    }
+}
+
+impl From<PhoneToggles> for core::PhoneToggles {
+    fn from(t: PhoneToggles) -> Self {
+        core::PhoneToggles {
+            dnd: t.dnd,
+            ringer: t.ringer,
+            flashlight: t.flashlight,
+            volume: t.volume,
+            brightness: t.brightness,
+            wifi: t.wifi,
+            bluetooth: t.bluetooth,
+        }
+    }
+}
+
+/// The value to set for a phone quick setting (`phone.toggle.set`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum PhoneToggleValue {
+    Bool { on: bool },
+    Level { level: u8 },
+    Mode { mode: String },
 }
 
 /// What a mirroring video packet holds (docs/protocol/mirror.md).
@@ -1253,6 +1310,9 @@ impl From<NodeEvent> for Event {
             NodeEvent::RemoteInputRequested { device } => {
                 Event::RemoteInputRequested { id: device.to_string() }
             }
+            NodeEvent::PhoneToggles { device, toggles } => {
+                Event::PhoneToggles { id: device.to_string(), toggles: toggles.into() }
+            }
         }
     }
 }
@@ -1416,6 +1476,10 @@ pub trait Platform: Send + Sync {
     fn sms_send(&self, to: Vec<String>, body: String) -> bool;
     /// A PC asked for a message's attachment; null when it's gone.
     fn sms_part(&self, id: String) -> Option<SmsPartData>;
+    /// A PC asked to change one of this phone's quick settings (`id`: `"dnd"`,
+    /// `"ringer"`, `"flashlight"`, `"volume"`, `"brightness"`, `"wifi"`,
+    /// `"bluetooth"`). False if the phone couldn't.
+    fn set_phone_toggle(&self, id: String, value: PhoneToggleValue) -> bool;
 }
 
 /// Encrypts the device key at rest (Android: a Keystore key).
@@ -1654,6 +1718,14 @@ impl core::Platform for PlatformAdapter {
             .into_iter()
             .map(|t| core::PhotoThumb { id: t.id, data: t.data })
             .collect())
+    }
+    fn set_phone_toggle(&self, id: &str, value: &core::PhoneToggleValue) -> Result<(), String> {
+        let value = match value {
+            core::PhoneToggleValue::Bool(on) => PhoneToggleValue::Bool { on: *on },
+            core::PhoneToggleValue::Level(level) => PhoneToggleValue::Level { level: *level },
+            core::PhoneToggleValue::Mode(mode) => PhoneToggleValue::Mode { mode: mode.clone() },
+        };
+        if self.0.set_phone_toggle(id.to_owned(), value) { Ok(()) } else { Err("the phone couldn't".into()) }
     }
 }
 
@@ -2159,6 +2231,14 @@ impl NectarlinkNode {
             thumb: photo.thumb,
         };
         self.run(async move { Ok(node.photo_taken(photo).await?) }).await
+    }
+
+    /// This phone's quick settings state (on startup and whenever any toggle
+    /// changes): tells the PCs that show toggles (and are allowed them).
+    pub async fn toggles_changed(&self, toggles: PhoneToggles) -> Result<()> {
+        let node = self.node.clone();
+        let toggles: core::PhoneToggles = toggles.into();
+        self.run(async move { Ok(node.toggles_changed(toggles).await?) }).await
     }
 
     /// Reconnects to PCs that aren't connected and syncs connected ones.

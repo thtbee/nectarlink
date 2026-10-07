@@ -574,6 +574,205 @@ Item {
                     }
                 }
             }
+
+            // Quick settings on the phone (toggles, ringer, volume, brightness).
+            Card {
+                id: phoneControls
+                width: parent.width
+                visible: home.online && state !== null
+                property bool confirmWifiOff: false
+                property var hoveredLockedFeature: null
+                readonly property var state: {
+                    if (AppController.phoneTogglesRevision < 0)
+                        return null
+                    const raw = AppController.phoneToggles(home.deviceId)
+                    if (!raw || raw.length === 0)
+                        return null
+                    try {
+                        return JSON.parse(raw)
+                    } catch (e) {
+                        return null
+                    }
+                }
+                readonly property bool hasFlashlight: state !== null
+                    && state.flashlight !== undefined && state.flashlight !== null
+                readonly property var dndFeature: home.feature("toggles.dnd")
+                readonly property var flashlightFeature: home.feature("toggles.flashlight")
+                readonly property var ringerFeature: home.feature("toggles.ringer")
+                readonly property var volumeFeature: home.feature("toggles.volume")
+                readonly property var brightnessFeature: home.feature("toggles.brightness")
+                readonly property var wifiFeature: home.feature("toggles.wifi")
+                readonly property var bluetoothFeature: home.feature("toggles.bluetooth")
+                readonly property var activeLockFeature: {
+                    if (hoveredLockedFeature && hoveredLockedFeature.state === "locked")
+                        return hoveredLockedFeature
+                    if (wifiFeature.state === "locked")
+                        return wifiFeature
+                    if (dndFeature.state === "locked")
+                        return dndFeature
+                    return ({})
+                }
+                onVisibleChanged: if (!visible) confirmWifiOff = false
+
+                Column {
+                    width: parent.width
+                    spacing: 12
+
+                    Txt { text: qsTr("Phone controls"); role: "label"; muted: true }
+
+                    Row {
+                        id: toggleRow
+                        width: parent.width
+                        spacing: 6
+                        readonly property int buttonCount: phoneControls.hasFlashlight ? 5 : 4
+                        readonly property real buttonWidth: (width - spacing * (buttonCount - 1)) / buttonCount
+
+                        QuickToggleButton {
+                            width: toggleRow.buttonWidth
+                            iconPath: Icons.moon
+                            shortTitle: qsTr("DND")
+                            label: qsTr("Do Not Disturb")
+                            active: phoneControls.state ? Boolean(phoneControls.state.dnd) : false
+                            feature: phoneControls.dndFeature
+                            onHoveredChanged: if (hovered && !available) phoneControls.hoveredLockedFeature = feature
+                            onClicked: AppController.setPhoneToggle(home.deviceId, "dnd", String(!active))
+                        }
+                        QuickToggleButton {
+                            visible: phoneControls.hasFlashlight
+                            width: toggleRow.buttonWidth
+                            iconPath: Icons.flashlight
+                            shortTitle: qsTr("Torch")
+                            label: qsTr("Flashlight")
+                            active: phoneControls.state !== null && phoneControls.state.flashlight === true
+                            feature: phoneControls.flashlightFeature
+                            onHoveredChanged: if (hovered && !available) phoneControls.hoveredLockedFeature = feature
+                            onClicked: AppController.setPhoneToggle(home.deviceId, "flashlight", String(!active))
+                        }
+                        QuickToggleButton {
+                            width: toggleRow.buttonWidth
+                            iconPath: Icons.wifi
+                            shortTitle: qsTr("Wi‑Fi")
+                            label: qsTr("Wi‑Fi")
+                            active: phoneControls.state ? Boolean(phoneControls.state.wifi) : false
+                            feature: phoneControls.wifiFeature
+                            onHoveredChanged: if (hovered && !available) phoneControls.hoveredLockedFeature = feature
+                            onClicked: {
+                                if (active)
+                                    phoneControls.confirmWifiOff = true
+                                else
+                                    AppController.setPhoneToggle(home.deviceId, "wifi", "true")
+                            }
+                        }
+                        QuickToggleButton {
+                            width: toggleRow.buttonWidth
+                            iconPath: Icons.bluetooth
+                            shortTitle: qsTr("BT")
+                            label: qsTr("Bluetooth")
+                            active: phoneControls.state ? Boolean(phoneControls.state.bluetooth) : false
+                            feature: phoneControls.bluetoothFeature
+                            onHoveredChanged: if (hovered && !available) phoneControls.hoveredLockedFeature = feature
+                            onClicked: AppController.setPhoneToggle(home.deviceId, "bluetooth", String(!active))
+                        }
+                    }
+
+                    LockChip {
+                        visible: label.length > 0
+                        feature: phoneControls.activeLockFeature
+                        maxWidth: parent.width
+                    }
+
+                    // Confirm before turning Wi-Fi off, since that can sever the link.
+                    Rectangle {
+                        width: parent.width
+                        height: wifiConfirmCol.height + 20
+                        visible: phoneControls.confirmWifiOff && phoneControls.state !== null && Boolean(phoneControls.state.wifi)
+                        radius: Theme.radiusMd
+                        color: Theme.graphite ? "transparent" : Theme.surfaceContainerHigh
+                        border.width: 1
+                        border.color: Theme.outlineVariant
+                        Column {
+                            id: wifiConfirmCol
+                            x: 12
+                            y: 10
+                            width: parent.width - 24
+                            spacing: 8
+                            Txt {
+                                width: parent.width
+                                role: "bodySmall"
+                                wrapMode: Text.WordWrap
+                                text: qsTr("Turning Wi‑Fi off on %1 will disconnect it if Wi‑Fi is how it reaches this PC.")
+                                      .arg(home.name)
+                            }
+                            Row {
+                                anchors.right: parent.right
+                                spacing: 8
+                                Button {
+                                    variant: "text"
+                                    size: "sm"
+                                    text: qsTr("Cancel")
+                                    onClicked: phoneControls.confirmWifiOff = false
+                                }
+                                Button {
+                                    variant: "tonal"
+                                    size: "sm"
+                                    text: qsTr("Turn off")
+                                    onClicked: {
+                                        phoneControls.confirmWifiOff = false
+                                        AppController.setPhoneToggle(home.deviceId, "wifi", "false")
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Ringer mode segmented control.
+                    Column {
+                        width: parent.width
+                        spacing: 6
+                        Segmented {
+                            width: parent.width
+                            enabled: phoneControls.ringerFeature.state === "available"
+                                     || phoneControls.ringerFeature.state === "partial"
+                            opacity: enabled ? 1 : 0.5
+                            options: [
+                                { value: "ring", label: qsTr("Ring") },
+                                { value: "vibrate", label: qsTr("Vibrate") },
+                                { value: "silent", label: qsTr("Silent") }
+                            ]
+                            value: phoneControls.state ? phoneControls.state.ringer : "ring"
+                            onPicked: (mode) => AppController.setPhoneToggle(home.deviceId, "ringer", mode)
+                        }
+                        LockChip {
+                            visible: phoneControls.ringerFeature.state === "locked" && label.length > 0
+                            feature: phoneControls.ringerFeature
+                            maxWidth: parent.width
+                        }
+                    }
+
+                    // Media volume slider.
+                    ToggleSlider {
+                        width: parent.width
+                        deviceId: home.deviceId
+                        toggleId: "volume"
+                        title: qsTr("Volume")
+                        iconPath: shownValue === 0 ? Icons.soundOff : Icons.speaker
+                        phoneValue: phoneControls.state ? phoneControls.state.volume : 0
+                        feature: phoneControls.volumeFeature
+                    }
+
+                    // Screen brightness slider.
+                    ToggleSlider {
+                        width: parent.width
+                        deviceId: home.deviceId
+                        toggleId: "brightness"
+                        title: qsTr("Brightness")
+                        iconPath: Icons.brightness
+                        phoneValue: phoneControls.state ? phoneControls.state.brightness : 0
+                        feature: phoneControls.brightnessFeature
+                    }
+                }
+            }
+
             Card {
                 width: parent.width
                 Column {
@@ -856,6 +1055,257 @@ Item {
             label: tile.sideLabel
             iconColor: tile.ink
             onClicked: tile.sideClicked()
+        }
+    }
+
+    // Compact icon button for a phone quick toggle (DND, Flashlight, Wi-Fi, Bluetooth).
+    component QuickToggleButton: FocusScope {
+        id: qbtn
+        property string iconPath
+        property string shortTitle
+        property string label
+        property bool active: false
+        property var feature: ({})
+        readonly property bool available: feature.state === "available"
+        readonly property alias hovered: qhover.hovered
+        signal clicked
+
+        height: 52
+        activeFocusOnTab: available
+
+        Accessible.role: Accessible.CheckBox
+        Accessible.name: label
+        Accessible.checked: active
+        Accessible.onPressAction: if (qbtn.available) qbtn.clicked()
+        Keys.onPressed: (event) => {
+            if (qbtn.available && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
+                qbtn.clicked()
+                event.accepted = true
+            }
+        }
+
+        readonly property color fillColor: {
+            if (active && available)
+                return Theme.graphite ? Theme.surfaceContent : Theme.primary
+            if (active && !available)
+                return Theme.graphite ? Theme.surfaceContainerHigh : Theme.secondaryContainer
+            return Theme.graphite ? "transparent" : Theme.surfaceContainerHigh
+        }
+        readonly property color contentColor: {
+            if (active && available)
+                return Theme.graphite ? Theme.surface : Theme.primaryContent
+            if (active && !available)
+                return Theme.graphite ? Theme.surfaceContent : Theme.secondaryContainerContent
+            return available ? Theme.surfaceContent : Theme.surfaceContentVariant
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: Theme.radiusMd
+            color: qbtn.fillColor
+            border.width: Theme.focusVisible(qbtn) ? 2 : (Theme.graphite || (qbtn.active && !qbtn.available) ? 1 : 0)
+            border.color: Theme.focusVisible(qbtn) ? Theme.primary : Theme.outlineVariant
+            opacity: qbtn.available || qbtn.active ? 1 : 0.55
+            scale: qtap.pressed && qbtn.available ? Theme.pressScale : 1
+            Behavior on scale { SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
+            Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
+
+            Column {
+                anchors.centerIn: parent
+                width: parent.width - 4
+                spacing: 3
+                Icon {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: 17; height: 17
+                    path: qbtn.iconPath
+                    color: qbtn.contentColor
+                }
+                Txt {
+                    width: parent.width
+                    horizontalAlignment: Text.AlignHCenter
+                    role: "caption"
+                    size: Theme.graphite ? 9 : 11
+                    font.letterSpacing: Theme.graphite ? 0 : (graphiteLabel ? Theme.labelStyle.tracking : spec.tracking) * size
+                    color: qbtn.contentColor
+                    text: qbtn.shortTitle
+                    elide: Text.ElideRight
+                }
+            }
+
+            Icon {
+                visible: !qbtn.available
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.margins: 4
+                width: 10; height: 10
+                path: Icons.lock
+                color: qbtn.contentColor
+                opacity: 0.7
+            }
+        }
+
+        HoverHandler { id: qhover; cursorShape: qbtn.available ? Qt.PointingHandCursor : Qt.ArrowCursor }
+        TapHandler { id: qtap; enabled: qbtn.available; onTapped: qbtn.clicked() }
+    }
+
+    // Debounced 0..=100 slider for a phone setting (media volume, screen brightness).
+    component ToggleSlider: Column {
+        id: slider
+        property string deviceId
+        property string toggleId
+        property string title
+        property string iconPath
+        property int phoneValue: 0
+        property var feature: ({})
+        readonly property bool available: feature.state === "available"
+        property int dragValue: -1
+        readonly property int shownValue: dragValue >= 0 ? dragValue : Math.max(0, Math.min(100, phoneValue))
+
+        spacing: 4
+
+        Timer {
+            id: sendDebounce
+            interval: 100
+            onTriggered: if (slider.dragValue >= 0) {
+                AppController.setPhoneToggle(slider.deviceId, slider.toggleId, String(slider.dragValue))
+            }
+        }
+        Timer {
+            id: settle
+            interval: 400
+            onTriggered: if (!dragArea.pressed) slider.dragValue = -1
+        }
+
+        Item {
+            width: parent.width
+            height: 20
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 6
+                Icon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 15; height: 15
+                    path: slider.iconPath
+                    color: slider.available ? Theme.surfaceContent : Theme.surfaceContentVariant
+                }
+                Txt {
+                    anchors.verticalCenter: parent.verticalCenter
+                    role: "bodySmall"
+                    muted: !slider.available
+                    text: slider.title
+                }
+            }
+            Txt {
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                role: "caption"
+                muted: true
+                text: qsTr("%1%").arg(slider.shownValue)
+            }
+        }
+
+        FocusScope {
+            id: barScope
+            width: parent.width
+            height: 18
+            activeFocusOnTab: slider.available
+            Accessible.role: Accessible.Slider
+            Accessible.name: slider.title
+            Accessible.description: qsTr("%1%").arg(slider.shownValue)
+            Accessible.onPressAction: if (slider.available) {
+                const next = slider.shownValue >= 80 ? 25 : slider.shownValue + 20
+                slider.dragValue = next
+                settle.restart()
+                AppController.setPhoneToggle(slider.deviceId, slider.toggleId, String(next))
+            }
+            Keys.onPressed: (event) => {
+                if (!slider.available) return
+                if (event.key === Qt.Key_Left || event.key === Qt.Key_Down) {
+                    const next = Math.max(0, slider.shownValue - 5)
+                    slider.dragValue = next
+                    settle.restart()
+                    AppController.setPhoneToggle(slider.deviceId, slider.toggleId, String(next))
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Right || event.key === Qt.Key_Up) {
+                    const next = Math.min(100, slider.shownValue + 5)
+                    slider.dragValue = next
+                    settle.restart()
+                    AppController.setPhoneToggle(slider.deviceId, slider.toggleId, String(next))
+                    event.accepted = true
+                }
+            }
+
+            readonly property real fraction: slider.shownValue / 100.0
+
+            Rectangle {
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width
+                height: 6
+                radius: 3
+                color: Theme.surfaceContainerHighest
+                border.width: Theme.graphite ? 1 : 0
+                border.color: Theme.outlineVariant
+                opacity: slider.available ? 1 : 0.45
+
+                Rectangle {
+                    width: parent.width * barScope.fraction
+                    height: parent.height
+                    radius: parent.radius
+                    color: slider.available
+                           ? (Theme.graphite ? Theme.surfaceContent : Theme.primary)
+                           : Theme.surfaceContentVariant
+                }
+            }
+
+            Rectangle {
+                visible: slider.available
+                x: Math.max(0, Math.min(barScope.width - width, barScope.width * barScope.fraction - width / 2))
+                anchors.verticalCenter: parent.verticalCenter
+                width: 14; height: 14; radius: 7
+                color: Theme.graphite ? Theme.surfaceContent : Theme.primary
+                border.width: Theme.focusVisible(barScope) ? 2 : 0
+                border.color: Theme.surface
+            }
+
+            MouseArea {
+                id: dragArea
+                anchors.fill: parent
+                anchors.margins: -4
+                enabled: slider.available
+                hoverEnabled: true
+                cursorShape: slider.available ? Qt.PointingHandCursor : Qt.ArrowCursor
+                function levelAt(x) {
+                    return Math.round(Math.max(0, Math.min(1, (x - 4) / barScope.width)) * 100)
+                }
+                onPressed: (mouse) => {
+                    settle.stop()
+                    slider.dragValue = levelAt(mouse.x)
+                    if (!sendDebounce.running) sendDebounce.start()
+                }
+                onPositionChanged: (mouse) => {
+                    if (pressed) {
+                        slider.dragValue = levelAt(mouse.x)
+                        if (!sendDebounce.running) sendDebounce.start()
+                    }
+                }
+                onReleased: (mouse) => {
+                    sendDebounce.stop()
+                    const finalVal = levelAt(mouse.x)
+                    slider.dragValue = finalVal
+                    AppController.setPhoneToggle(slider.deviceId, slider.toggleId, String(finalVal))
+                    settle.restart()
+                }
+                onCanceled: {
+                    sendDebounce.stop()
+                    slider.dragValue = -1
+                }
+            }
+        }
+
+        LockChip {
+            visible: !slider.available && label.length > 0 && slider.feature.action !== "enableToggle"
+            feature: slider.feature
+            maxWidth: parent.width
         }
     }
 }

@@ -28,6 +28,7 @@ Item {
         recordings: qsTr("Voice recordings"),
         media: qsTr("Media playing on either device"),
         photos: qsTr("Photos"),
+        toggles: qsTr("Phone controls"),
         pc_actions: qsTr("Lock and sleep this PC"),
         remote_input: qsTr("Control this PC's mouse and keyboard"),
         remote_files: qsTr("Browse this PC's files while away")

@@ -12,7 +12,8 @@ use std::{
 
 use nectarlink_core::{
     Battery, CapabilityMatrix, DeviceId, DeviceInfo, DiscoveredDevice, LinkState, MediaPlayer, NodeEvent,
-    Notification, PairedDevice, PairingEvent, PairingFailure, PowerLevel, Transfer, TransferState,
+    Notification, PairedDevice, PairingEvent, PairingFailure, PhoneToggles, PowerLevel, Transfer,
+    TransferState,
 };
 
 /// Which parts of the state changed, so listeners refresh only what they show.
@@ -46,6 +47,8 @@ impl Changes {
     pub const PHOTOS: Changes = Changes(1 << 15);
     /// Remote input prompt or laser pointer overlay state.
     pub const REMOTE: Changes = Changes(1 << 16);
+    /// A phone's quick settings toggles.
+    pub const TOGGLES: Changes = Changes(1 << 17);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
@@ -218,6 +221,10 @@ pub struct AppState {
     pub matrices: HashMap<DeviceId, CapabilityMatrix>,
     /// Bumped whenever `matrices` changes.
     pub matrices_version: u32,
+    /// Latest quick settings toggles per paired phone.
+    pub toggles: HashMap<DeviceId, PhoneToggles>,
+    /// Bumped whenever `toggles` changes.
+    pub toggles_version: u32,
     /// The device that asked this PC to ring, while it rings.
     pub ringing_from: Option<DeviceId>,
     /// Phone notifications, newest first.
@@ -307,6 +314,10 @@ impl AppState {
                     self.matrices_version = self.matrices_version.wrapping_add(1);
                     changes |= Changes::CAPABILITIES;
                 }
+                if self.toggles.remove(id).is_some() {
+                    self.toggles_version = self.toggles_version.wrapping_add(1);
+                    changes |= Changes::TOGGLES;
+                }
                 if self.ringing_from == Some(*id) {
                     self.ringing_from = None;
                     changes |= Changes::RINGING;
@@ -328,8 +339,9 @@ impl AppState {
             }
             NodeEvent::LinkChanged { device, link } => {
                 let mut changes = self.update_device(device, |d| d.link = link.clone());
-                // A device that comes back sends what plays then.
+                // A device that comes back sends what plays and its toggles then.
                 if matches!(link, LinkState::Offline { .. }) {
+                    changes |= self.set_toggles(*device, None);
                     changes |= self.set_media(*device, Vec::new());
                 }
                 changes
@@ -341,6 +353,7 @@ impl AppState {
             NodeEvent::Battery { device, battery } => {
                 self.update_device(device, |d| d.battery = Some(battery.clone()))
             }
+            NodeEvent::PhoneToggles { device, toggles } => self.set_toggles(*device, Some(toggles.clone())),
             NodeEvent::Capabilities(matrix) => {
                 if self.matrices.get(&matrix.device) == Some(matrix) {
                     return Changes::NONE;
@@ -639,6 +652,23 @@ impl AppState {
         self.matrices.insert(matrix.device, matrix);
         self.matrices_version = self.matrices_version.wrapping_add(1);
         Changes::CAPABILITIES
+    }
+
+    pub fn set_toggles(&mut self, device: DeviceId, toggles: Option<PhoneToggles>) -> Changes {
+        let changed = match toggles {
+            Some(t) if self.toggles.get(&device) == Some(&t) => false,
+            Some(t) => {
+                self.toggles.insert(device, t);
+                true
+            }
+            None => self.toggles.remove(&device).is_some(),
+        };
+        if changed {
+            self.toggles_version = self.toggles_version.wrapping_add(1);
+            Changes::TOGGLES
+        } else {
+            Changes::NONE
+        }
     }
 
     pub fn set_pairing(&mut self, next: PairingView) -> Changes {
@@ -1005,5 +1035,42 @@ mod tests {
         assert_eq!(s.set_app_rule(&app, AppRule::Hidden), Changes::NONE);
         s.set_app_rule(&app, AppRule::Show);
         assert!(s.app_rules.is_empty(), "the default isn't stored");
+    }
+
+    #[test]
+    fn phone_toggles_follow_events_and_clear_on_offline_or_unpair() {
+        let mut s = AppState::default();
+        let phone = DeviceId([1; 32]);
+        s.apply(&NodeEvent::DeviceAdded(paired(1, 10)));
+        let online = LinkState::Online { path: ConnectionPath::Lan, rtt_ms: 4 };
+        s.apply(&NodeEvent::LinkChanged { device: phone, link: online });
+
+        let toggles = PhoneToggles {
+            dnd: false,
+            ringer: "ring".into(),
+            flashlight: Some(false),
+            volume: 60,
+            brightness: 70,
+            wifi: true,
+            bluetooth: true,
+        };
+        assert_eq!(
+            s.apply(&NodeEvent::PhoneToggles { device: phone, toggles: toggles.clone() }),
+            Changes::TOGGLES
+        );
+        assert_eq!(s.toggles.get(&phone), Some(&toggles));
+        assert_eq!(
+            s.apply(&NodeEvent::PhoneToggles { device: phone, toggles: toggles.clone() }),
+            Changes::NONE
+        );
+
+        let offline = LinkState::Offline { last_seen: Some(100) };
+        let changes = s.apply(&NodeEvent::LinkChanged { device: phone, link: offline });
+        assert!(changes.intersects(Changes::TOGGLES));
+        assert!(!s.toggles.contains_key(&phone));
+
+        s.apply(&NodeEvent::PhoneToggles { device: phone, toggles });
+        assert!(s.apply(&NodeEvent::DeviceRemoved(phone)).intersects(Changes::TOGGLES));
+        assert!(s.toggles.is_empty());
     }
 }

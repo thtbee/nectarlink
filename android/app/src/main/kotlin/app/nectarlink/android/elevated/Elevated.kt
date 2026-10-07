@@ -190,6 +190,13 @@ object Elevated {
         if (!CallCompanion.allowed(context) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             run(adb, "appops set ${context.packageName} ${CallCompanion.OP_NAME} allow")
         }
+        // Lets PCs toggle Do Not Disturb / silent mode and screen brightness without extra prompts.
+        if (context.getSystemService(android.app.NotificationManager::class.java)?.isNotificationPolicyAccessGranted == false) {
+            run(adb, "cmd notification allow_dnd ${context.packageName}")
+        }
+        if (!Settings.System.canWrite(context)) {
+            run(adb, "appops set ${context.packageName} WRITE_SETTINGS allow")
+        }
         val token = ByteArray(24).also(SecureRandom()::nextBytes).joinToString("") { "%02x".format(it) }
         val apk = context.applicationInfo.sourceDir
         val command = "CLASSPATH=$apk app_process /system/bin ${InputServer::class.java.name} $token"
@@ -300,6 +307,12 @@ object Elevated {
             }
         }
         return send(writer, line)
+    }
+
+    /** Runs an allowed shell command through the Elevated helper. */
+    fun runCommand(command: String): Boolean {
+        val writer = input ?: return false
+        return send(writer, "C $command")
     }
 
     /**

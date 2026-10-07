@@ -70,6 +70,8 @@ pub mod types {
     pub const MIRROR_APPS: &str = "mirror.apps";
     pub const REMOTE_CHECK: &str = "remote.check";
     pub const REMOTE_INPUT: &str = "remote.input";
+    pub const PHONE_TOGGLES: &str = "phone.toggles";
+    pub const PHONE_TOGGLE_SET: &str = "phone.toggle.set";
 }
 
 /// What kind of device this is.
@@ -1934,6 +1936,111 @@ impl RemoteInput {
     }
 }
 
+// ---- Phone toggles (docs/protocol/toggles.md) ----
+
+/// Capability IDs for `phone.toggles` and `phone.toggle.set`.
+pub mod toggles {
+    pub const READ: &str = "toggles.read";
+    pub const RINGER: &str = "toggles.ringer";
+    pub const VOLUME: &str = "toggles.volume";
+    pub const FLASHLIGHT: &str = "toggles.flashlight";
+    pub const DND: &str = "toggles.dnd";
+    pub const BRIGHTNESS: &str = "toggles.brightness";
+    pub const WIFI: &str = "toggles.wifi";
+    pub const BLUETOOTH: &str = "toggles.bluetooth";
+    pub const SHOW: &str = "toggles.show";
+}
+
+/// Toggle IDs in `phone.toggle.set`.
+pub mod toggle_ids {
+    pub const DND: &str = "dnd";
+    pub const RINGER: &str = "ringer";
+    pub const FLASHLIGHT: &str = "flashlight";
+    pub const VOLUME: &str = "volume";
+    pub const BRIGHTNESS: &str = "brightness";
+    pub const WIFI: &str = "wifi";
+    pub const BLUETOOTH: &str = "bluetooth";
+    pub const ALL: &[&str] = &[DND, RINGER, FLASHLIGHT, VOLUME, BRIGHTNESS, WIFI, BLUETOOTH];
+}
+
+/// Ringer modes for [`PhoneToggles::ringer`] and `phone.toggle.set` (`id = "ringer"`).
+pub mod ringer_modes {
+    pub const RING: &str = "ring";
+    pub const VIBRATE: &str = "vibrate";
+    pub const SILENT: &str = "silent";
+}
+
+/// Body of `phone.toggles` (`docs/protocol/toggles.md` §2.1): a phone's
+/// current quick settings state.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhoneToggles {
+    pub dnd: bool,
+    /// `"ring"`, `"vibrate"` or `"silent"`.
+    pub ringer: String,
+    /// `None` when the phone has no flash unit.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub flashlight: Option<bool>,
+    /// Media volume, `0..=100`.
+    pub volume: u8,
+    /// Screen brightness, `0..=100`.
+    pub brightness: u8,
+    pub wifi: bool,
+    pub bluetooth: bool,
+}
+
+impl PhoneToggles {
+    pub fn is_valid(&self) -> bool {
+        matches!(self.ringer.as_str(), ringer_modes::RING | ringer_modes::VIBRATE | ringer_modes::SILENT)
+            && self.volume <= 100
+            && self.brightness <= 100
+    }
+
+    /// Validates `ringer` and clamps `volume` and `brightness` to `0..=100`.
+    pub fn sanitized(mut self) -> Option<Self> {
+        if !matches!(self.ringer.as_str(), ringer_modes::RING | ringer_modes::VIBRATE | ringer_modes::SILENT)
+        {
+            return None;
+        }
+        self.volume = self.volume.min(100);
+        self.brightness = self.brightness.min(100);
+        Some(self)
+    }
+}
+
+/// A toggle value in [`PhoneToggleSet`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum PhoneToggleValue {
+    Bool(bool),
+    Level(u8),
+    Mode(String),
+}
+
+/// Body of `phone.toggle.set` (`docs/protocol/toggles.md` §2.2).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhoneToggleSet {
+    pub id: String,
+    pub value: PhoneToggleValue,
+}
+
+impl PhoneToggleSet {
+    /// Checks that `id` is a known toggle and `value` has the type and range
+    /// that toggle accepts.
+    pub fn is_valid(&self) -> bool {
+        match (self.id.as_str(), &self.value) {
+            (
+                toggle_ids::DND | toggle_ids::FLASHLIGHT | toggle_ids::WIFI | toggle_ids::BLUETOOTH,
+                PhoneToggleValue::Bool(_),
+            ) => true,
+            (toggle_ids::VOLUME | toggle_ids::BRIGHTNESS, PhoneToggleValue::Level(n)) => *n <= 100,
+            (toggle_ids::RINGER, PhoneToggleValue::Mode(m)) => {
+                matches!(m.as_str(), ringer_modes::RING | ringer_modes::VIBRATE | ringer_modes::SILENT)
+            }
+            _ => false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2353,5 +2460,70 @@ mod tests {
         let slide = RemoteInput::Slide { action: SlideAction::Next };
         let env = Envelope::new(types::REMOTE_INPUT, &slide).unwrap();
         assert_eq!(env.body::<RemoteInput>().unwrap(), slide);
+    }
+
+    #[test]
+    fn phone_toggles_validate_and_round_trip() {
+        let state = PhoneToggles {
+            dnd: false,
+            ringer: ringer_modes::RING.into(),
+            flashlight: Some(true),
+            volume: 65,
+            brightness: 50,
+            wifi: true,
+            bluetooth: true,
+        };
+        assert!(state.is_valid());
+        let env = Envelope::new(types::PHONE_TOGGLES, &state).unwrap();
+        let back: PhoneToggles = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, state);
+
+        // Without flash hardware, `flashlight` is omitted on the wire.
+        let no_flash = PhoneToggles { flashlight: None, ..state.clone() };
+        let env = Envelope::new(types::PHONE_TOGGLES, &no_flash).unwrap();
+        assert!(!format!("{:?}", env.b).contains("flashlight"));
+        let back: PhoneToggles = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, no_flash);
+
+        // Invalid ringer mode is rejected; out-of-range volume/brightness clamp in sanitized().
+        assert!(!PhoneToggles { ringer: "loud".into(), ..state.clone() }.is_valid());
+        assert_eq!(PhoneToggles { ringer: "loud".into(), ..state.clone() }.sanitized(), None);
+        assert!(!PhoneToggles { volume: 120, ..state.clone() }.is_valid());
+        assert_eq!(PhoneToggles { volume: 120, brightness: 200, ..state }.sanitized().unwrap().volume, 100);
+
+        // `phone.toggle.set` validation for every toggle ID and value kind.
+        for id in [toggle_ids::DND, toggle_ids::FLASHLIGHT, toggle_ids::WIFI, toggle_ids::BLUETOOTH] {
+            let set = PhoneToggleSet { id: id.into(), value: PhoneToggleValue::Bool(true) };
+            assert!(set.is_valid(), "{id}");
+            let env = Envelope::new(types::PHONE_TOGGLE_SET, &set).unwrap();
+            assert_eq!(Envelope::from_cbor(&env.to_cbor()).unwrap().body::<PhoneToggleSet>().unwrap(), set);
+            assert!(!PhoneToggleSet { id: id.into(), value: PhoneToggleValue::Level(1) }.is_valid());
+            assert!(!PhoneToggleSet { id: id.into(), value: PhoneToggleValue::Mode("on".into()) }.is_valid());
+        }
+        for id in [toggle_ids::VOLUME, toggle_ids::BRIGHTNESS] {
+            for level in [0, 50, 100] {
+                let set = PhoneToggleSet { id: id.into(), value: PhoneToggleValue::Level(level) };
+                assert!(set.is_valid());
+                let env = Envelope::new(types::PHONE_TOGGLE_SET, &set).unwrap();
+                assert_eq!(
+                    Envelope::from_cbor(&env.to_cbor()).unwrap().body::<PhoneToggleSet>().unwrap(),
+                    set
+                );
+            }
+            assert!(!PhoneToggleSet { id: id.into(), value: PhoneToggleValue::Level(101) }.is_valid());
+            assert!(!PhoneToggleSet { id: id.into(), value: PhoneToggleValue::Bool(true) }.is_valid());
+        }
+        for mode in [ringer_modes::RING, ringer_modes::VIBRATE, ringer_modes::SILENT] {
+            let set =
+                PhoneToggleSet { id: toggle_ids::RINGER.into(), value: PhoneToggleValue::Mode(mode.into()) };
+            assert!(set.is_valid());
+            let env = Envelope::new(types::PHONE_TOGGLE_SET, &set).unwrap();
+            assert_eq!(Envelope::from_cbor(&env.to_cbor()).unwrap().body::<PhoneToggleSet>().unwrap(), set);
+        }
+        assert!(
+            !PhoneToggleSet { id: toggle_ids::RINGER.into(), value: PhoneToggleValue::Mode("mute".into()) }
+                .is_valid()
+        );
+        assert!(!PhoneToggleSet { id: "airplane".into(), value: PhoneToggleValue::Bool(true) }.is_valid());
     }
 }

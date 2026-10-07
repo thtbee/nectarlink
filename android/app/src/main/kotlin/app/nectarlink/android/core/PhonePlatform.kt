@@ -21,6 +21,7 @@ import app.nectarlink.android.mirror.MirrorRequest
 import app.nectarlink.android.mirror.MirrorRequests
 import app.nectarlink.android.mirror.MirrorService
 import app.nectarlink.android.sms.PhoneSms
+import app.nectarlink.android.toggles.PhoneToggles
 import app.nectarlink.core.CallCommand
 import app.nectarlink.core.CallLogEntry
 import app.nectarlink.core.Contact
@@ -32,6 +33,7 @@ import app.nectarlink.core.MediaAction
 import app.nectarlink.core.MirrorInputEvent
 import app.nectarlink.core.MirrorOptions
 import app.nectarlink.core.PhoneApp
+import app.nectarlink.core.PhoneToggleValue
 import app.nectarlink.core.PhotoAlbum
 import app.nectarlink.core.PhotoItem
 import app.nectarlink.core.PhotoThumb
@@ -54,6 +56,8 @@ internal class PhonePlatform(
     private val contacts: () -> PhoneContacts,
     /** The phone's texts (created after this). */
     private val sms: () -> PhoneSms,
+    /** The phone's quick settings (created after this). */
+    private val toggles: () -> PhoneToggles,
     /** Asks the user to share the screen with a PC: (PC's ID, request) → asked. */
     private val onMirror: (String, MirrorRequest) -> Boolean,
     /** Apps in windows of their own on PCs (Elevated). */
@@ -131,6 +135,9 @@ internal class PhonePlatform(
     override fun smsSend(to: List<String>, body: String): Boolean = sms().send(to, body)
 
     override fun smsPart(id: String): SmsPartData? = sms().part(id)
+
+    override fun setPhoneToggle(id: String, value: PhoneToggleValue): Boolean =
+        toggles().set(id, value)
 
     override fun dismissNotification(key: String) {
         val listener = NotificationListener.instance ?: throw NotificationFailure.Unsupported()

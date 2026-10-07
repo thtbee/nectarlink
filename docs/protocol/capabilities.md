@@ -51,6 +51,14 @@ capability is missing.
 | `mirror.virtual_display` | Runs apps on displays of their own, shown in windows on the PC ([mirroring](mirror.md)) | Elevated, Android 11+ |
 | `mirror.audio` | Streams all audio while mirrored | Elevated |
 | `mirror.audio.playback` | Streams audio from apps that allow playback capture | app update |
+| `toggles.read` | Shares quick settings state ([toggles](toggles.md)) | app update |
+| `toggles.ringer` | Changes the ringer mode between `ring` and `vibrate` ([toggles](toggles.md)) | app update |
+| `toggles.volume` | Changes the media volume ([toggles](toggles.md)) | app update |
+| `toggles.flashlight` | Turns the flashlight on or off ([toggles](toggles.md)) | hardware flash unit |
+| `toggles.dnd` | Turns Do Not Disturb on or off and sets the ringer to `silent` ([toggles](toggles.md)) | Do Not Disturb access or Elevated |
+| `toggles.brightness` | Changes the screen brightness ([toggles](toggles.md)) | Modify system settings or Elevated |
+| `toggles.wifi` | Turns Wi-Fi on or off ([toggles](toggles.md)) | Elevated |
+| `toggles.bluetooth` | Turns Bluetooth on or off ([toggles](toggles.md)) | Elevated |
 | `camera.stream` | Streams a camera for webcam use | camera permission |
 
 ## Desktop
@@ -62,6 +70,7 @@ capability is missing.
 | `call.show` | Shows a phone's calls, recent calls and dialer ([calls](calls.md)) | app update |
 | `contacts.show` | Shows a phone's contacts ([contacts](contacts.md)) | app update |
 | `sms.show` | Shows a phone's text messages ([messages](sms.md)) | app update |
+| `toggles.show` | Shows a phone's quick settings and sends toggle changes ([toggles](toggles.md)) | app update |
 | `mirror.view` | Shows a phone's screen ([mirroring](mirror.md)) | app update |
 | `mirror.listen` | Plays a mirrored phone's sound ([mirroring](mirror.md)) | app update |
 | `files.browse` | Lets a paired phone browse and fetch its files | app update |

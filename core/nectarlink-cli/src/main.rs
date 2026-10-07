@@ -112,6 +112,12 @@ enum Command {
         #[arg(requires = "name")]
         state: Option<OnOff>,
     },
+    /// Show a paired phone's quick settings, or change one with `toggles <device> set <id> <value>`.
+    Toggles {
+        device: String,
+        #[command(subcommand)]
+        action: Option<TogglesArg>,
+    },
     /// Stay online and print events until Ctrl+C.
     Run,
     /// Send files to a paired device and wait until they've arrived.
@@ -563,6 +569,13 @@ enum OnOff {
     Off,
 }
 
+#[derive(Debug, Subcommand)]
+enum TogglesArg {
+    /// Change one of the phone's quick settings (`dnd`, `ringer`, `flashlight`,
+    /// `volume`, `brightness`, `wifi`, `bluetooth`).
+    Set { id: String, value: String },
+}
+
 /// Where `mirror` saves the video, and what arrived.
 static RECORDING: std::sync::OnceLock<std::sync::Arc<Recording>> = std::sync::OnceLock::new();
 
@@ -903,6 +916,24 @@ static CALL: std::sync::Mutex<Option<nectarlink_core::CallState>> = std::sync::M
 static CALL_NODE: std::sync::OnceLock<Node> = std::sync::OnceLock::new();
 /// Whether `incoming-call` offers in-call controls (without --basic).
 static CALL_CONTROLS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Sample quick settings for a test phone (`demo` or `--as-phone`).
+static TOGGLES: std::sync::Mutex<Option<nectarlink_core::PhoneToggles>> = std::sync::Mutex::new(None);
+static TOGGLES_NODE: std::sync::OnceLock<Node> = std::sync::OnceLock::new();
+
+fn sample_toggles() -> nectarlink_core::PhoneToggles {
+    let mut lock = TOGGLES.lock().unwrap();
+    lock.get_or_insert_with(|| nectarlink_core::PhoneToggles {
+        dnd: false,
+        ringer: "ring".into(),
+        flashlight: Some(false),
+        volume: 60,
+        brightness: 70,
+        wifi: true,
+        bluetooth: true,
+    })
+    .clone()
+}
 
 /// The picture `photo` announced, for PCs that ask for it.
 static PHOTO: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
@@ -1651,6 +1682,52 @@ impl Platform for TerminalPlatform {
         println!("Remote input: {input:?}");
         Ok(())
     }
+    fn set_phone_toggle(
+        &self,
+        id: &str,
+        value: &nectarlink_core::PhoneToggleValue,
+    ) -> std::result::Result<(), String> {
+        use nectarlink_core::PhoneToggleValue as V;
+        let mut t = sample_toggles();
+        match (id, value) {
+            ("dnd", V::Bool(on)) => {
+                t.dnd = *on;
+                println!("Phone DND is now {}.", if *on { "on" } else { "off" });
+            }
+            ("ringer", V::Mode(mode)) => {
+                t.ringer = mode.clone();
+                println!("Phone ringer is now {mode}.");
+            }
+            ("flashlight", V::Bool(on)) => {
+                t.flashlight = Some(*on);
+                println!("Phone flashlight is now {}.", if *on { "on" } else { "off" });
+            }
+            ("volume", V::Level(level)) => {
+                t.volume = *level;
+                println!("Phone volume is now {level}%.");
+            }
+            ("brightness", V::Level(level)) => {
+                t.brightness = *level;
+                println!("Phone brightness is now {level}%.");
+            }
+            ("wifi", V::Bool(on)) => {
+                t.wifi = *on;
+                println!("Phone Wi-Fi is now {}.", if *on { "on" } else { "off" });
+            }
+            ("bluetooth", V::Bool(on)) => {
+                t.bluetooth = *on;
+                println!("Phone Bluetooth is now {}.", if *on { "on" } else { "off" });
+            }
+            _ => return Err("invalid toggle".into()),
+        }
+        *TOGGLES.lock().unwrap() = Some(t.clone());
+        if let Some(node) = TOGGLES_NODE.get().cloned() {
+            tokio::runtime::Handle::current().spawn(async move {
+                let _ = node.toggles_changed(t).await;
+            });
+        }
+        Ok(())
+    }
 }
 
 fn main() -> Result<()> {
@@ -1700,9 +1777,14 @@ async fn start_node(cli: &Cli) -> Result<Node> {
     config.power = power;
     if !cli.as_phone {
         config.capabilities.push(nectarlink_core::RECORDER.into());
+        config.capabilities.push(nectarlink_core::TOGGLES_SHOW.into());
     }
     let extra_caps = config.capabilities.clone();
     let node = Node::start(config, Arc::new(TerminalPlatform)).await.context("failed to start")?;
+    if cli.as_phone {
+        let _ = TOGGLES_NODE.set(node.clone());
+        let _ = node.toggles_changed(sample_toggles()).await;
+    }
     if !cli.offers.is_empty() {
         let mut offers = extra_caps;
         for o in &cli.offers {
@@ -1861,6 +1943,38 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             };
             node.set_device_toggle(id, name, on)?;
             println!("{name} is now {}", if on { "on" } else { "off" });
+        }
+        Command::Toggles { device, action: None } => {
+            let mut events = node.events();
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            let toggles = match node.phone_toggles(id) {
+                Some(t) => t,
+                None => {
+                    let wait = async {
+                        loop {
+                            if let Ok(NodeEvent::PhoneToggles { device: d, toggles }) = events.recv().await
+                                && d == id
+                            {
+                                return toggles;
+                            }
+                        }
+                    };
+                    tokio::time::timeout(Duration::from_secs(5), wait)
+                        .await
+                        .context("the phone didn't report its quick settings")?
+                }
+            };
+            print_phone_toggles(node, id, &toggles)?;
+        }
+        Command::Toggles { device, action: Some(TogglesArg::Set { id: toggle_id, value }) } => {
+            let parsed = parse_phone_toggle_value(toggle_id, value)?;
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            node.set_phone_toggle(id, toggle_id.clone(), parsed)
+                .await
+                .with_context(|| format!("couldn't set {toggle_id}"))?;
+            println!("{toggle_id} set to {value}.");
         }
         Command::Run => watch(node, false).await?,
         Command::Photos { device: None, .. } => {
@@ -2318,6 +2432,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             sample_photos();
             let _ = TEXTS_NODE.set(node.clone());
             let _ = CALL_NODE.set(node.clone());
+            let _ = TOGGLES_NODE.set(node.clone());
             CALL_CONTROLS.store(true, std::sync::atomic::Ordering::Relaxed);
             let mut offers = cli.offers.clone();
             offers.extend(
@@ -2336,10 +2451,22 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     nectarlink_core::CALLS_DIAL,
                     nectarlink_core::CONTACTS_READ,
                     nectarlink_core::PHOTOS_READ,
+                    nectarlink_core::TOGGLES_READ,
+                    nectarlink_core::TOGGLES_RINGER,
+                    nectarlink_core::TOGGLES_VOLUME,
+                    nectarlink_core::TOGGLES_FLASHLIGHT,
+                    nectarlink_core::TOGGLES_DND,
+                    nectarlink_core::TOGGLES_BRIGHTNESS,
                 ]
                 .map(str::to_owned),
             );
+            if node_power(cli) == PowerLevel::Elevated {
+                offers.extend(
+                    [nectarlink_core::TOGGLES_WIFI, nectarlink_core::TOGGLES_BLUETOOTH].map(str::to_owned),
+                );
+            }
             node.update_power(node_power(cli), offers).await;
+            let _ = node.toggles_changed(sample_toggles()).await;
             let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis() as i64;
             let samples = [
                 ("Messages", "Sam Rivera", "Are we still on for dinner tonight?", true),
@@ -3209,6 +3336,9 @@ fn print_event(node: &Node, event: &NodeEvent) {
         NodeEvent::CallLogChanged { device } => println!("{}: call log changed", name(device)),
         NodeEvent::ContactsChanged { device } => println!("{}: contacts changed", name(device)),
         NodeEvent::PhotosChanged { device } => println!("{}: photo library changed", name(device)),
+        NodeEvent::PhoneToggles { device, toggles } => {
+            println!("{}: toggles {}", name(device), summarize_toggles(toggles));
+        }
         NodeEvent::RemoteInputRequested { device } => println!(
             "{}: asked to control mouse and keyboard (allow with: nectarlink toggle {} remote_input on)",
             name(device),
@@ -3295,6 +3425,81 @@ fn print_event(node: &Node, event: &NodeEvent) {
         },
         _ => {}
     }
+}
+
+fn summarize_toggles(t: &nectarlink_core::PhoneToggles) -> String {
+    let yn = |b: bool| if b { "on" } else { "off" };
+    let yn_opt = |b: Option<bool>| match b {
+        Some(true) => "on",
+        Some(false) => "off",
+        None => "—",
+    };
+    format!(
+        "dnd={} ringer={} flash={} vol={}% bright={}% wifi={} bt={}",
+        yn(t.dnd),
+        t.ringer,
+        yn_opt(t.flashlight),
+        t.volume,
+        t.brightness,
+        yn(t.wifi),
+        yn(t.bluetooth),
+    )
+}
+
+fn parse_phone_toggle_value(id: &str, raw: &str) -> Result<nectarlink_core::PhoneToggleValue> {
+    use nectarlink_core::PhoneToggleValue as V;
+    let s = raw.trim().to_ascii_lowercase();
+    match id {
+        "dnd" | "flashlight" | "wifi" | "bluetooth" => match s.as_str() {
+            "on" | "true" | "1" => Ok(V::Bool(true)),
+            "off" | "false" | "0" => Ok(V::Bool(false)),
+            _ => bail!("{id} takes `on` or `off`"),
+        },
+        "ringer" => match s.as_str() {
+            "ring" | "vibrate" | "silent" => Ok(V::Mode(s)),
+            _ => bail!("ringer takes `ring`, `vibrate`, or `silent`"),
+        },
+        "volume" | "brightness" => {
+            let level: u8 = s
+                .trim_end_matches('%')
+                .parse()
+                .ok()
+                .filter(|&v| v <= 100)
+                .with_context(|| format!("{id} takes 0..=100"))?;
+            Ok(V::Level(level))
+        }
+        _ => bail!(
+            "unknown toggle {id:?}; expected dnd, ringer, flashlight, volume, brightness, wifi or bluetooth"
+        ),
+    }
+}
+
+fn print_phone_toggles(node: &Node, id: DeviceId, t: &nectarlink_core::PhoneToggles) -> Result<()> {
+    let matrix = node.capabilities(id)?;
+    let yn = |b: bool| if b { "on" } else { "off" }.to_owned();
+    let yn_opt = |b: Option<bool>| match b {
+        Some(true) => "on".to_owned(),
+        Some(false) => "off".to_owned(),
+        None => "—".to_owned(),
+    };
+    let rows = [
+        ("dnd", yn(t.dnd), "toggles.dnd"),
+        ("ringer", t.ringer.clone(), "toggles.ringer"),
+        ("flashlight", yn_opt(t.flashlight), "toggles.flashlight"),
+        ("volume", format!("{}%", t.volume), "toggles.volume"),
+        ("brightness", format!("{}%", t.brightness), "toggles.brightness"),
+        ("wifi", yn(t.wifi), "toggles.wifi"),
+        ("bluetooth", yn(t.bluetooth), "toggles.bluetooth"),
+    ];
+    for (name, val, feat) in rows {
+        let note = match matrix.state(feat) {
+            Some(FeatureState::Available) => String::new(),
+            Some(state) => format!("  ({})", describe_state(&state)),
+            None => String::new(),
+        };
+        println!("{name:<12} {val:<10}{note}");
+    }
+    Ok(())
 }
 
 fn print_capabilities(node: &Node, id: DeviceId) -> Result<()> {

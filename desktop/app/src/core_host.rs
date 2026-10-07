@@ -106,6 +106,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         nectarlink_core::MIRROR_LISTEN.into(),
         nectarlink_core::INPUT_INJECT.into(),
         nectarlink_core::RECORDER.into(),
+        nectarlink_core::TOGGLES_SHOW.into(),
     ];
     let node = match Node::start(config, platform).await {
         Ok(node) => node,
@@ -132,12 +133,17 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         .filter(|d| !matches!(d.link, LinkState::Offline { last_seen: None }))
         .filter_map(|d| node.capabilities(d.id).ok())
         .collect();
+    let toggles: Vec<_> =
+        devices.iter().filter_map(|d| node.phone_toggles(d.id).map(|t| (d.id, t))).collect();
     let status = CoreStatus::Ready { device_id: node.device_id(), name: this_device().name };
     let _ = host.node.set(node);
     host.hub.update(|s| {
         let mut changes = s.set_devices(devices);
         for m in matrices {
             changes |= s.set_matrix(m);
+        }
+        for (id, t) in toggles {
+            changes |= s.set_toggles(id, Some(t));
         }
         s.status = Some(status);
         changes |= Changes::STATUS | Changes::CAPABILITIES;
@@ -166,7 +172,20 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 tracing::warn!(missed, "UI fell behind core events; resyncing");
                 let devices =
                     host.node.get().map(|n| n.paired_devices().unwrap_or_default()).unwrap_or_default();
-                host.hub.update(|s| s.set_devices(devices));
+                let toggles: Vec<_> = host
+                    .node
+                    .get()
+                    .map(|n| {
+                        devices.iter().filter_map(|d| n.phone_toggles(d.id).map(|t| (d.id, t))).collect()
+                    })
+                    .unwrap_or_default();
+                host.hub.update(|s| {
+                    let mut changes = s.set_devices(devices);
+                    for (id, t) in toggles {
+                        changes |= s.set_toggles(id, Some(t));
+                    }
+                    changes
+                });
             }
             Err(RecvError::Closed) => return,
         }

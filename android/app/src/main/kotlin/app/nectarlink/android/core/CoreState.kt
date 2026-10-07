@@ -80,6 +80,10 @@ data class CoreState(
     val photoPartialAccess: Boolean = false,
     /** Whether Android lets Nectarlink run unrestricted in the background. */
     val backgroundUnrestricted: Boolean = true,
+    /** Whether the user allowed Do Not Disturb / silent mode control from a PC. */
+    val dndAccess: Boolean = false,
+    /** Whether the user allowed screen brightness changes from a PC. */
+    val writeSettingsAccess: Boolean = false,
     /** File transfers, newest first (running ones and the latest finished). */
     val transfers: List<Transfer> = emptyList(),
 ) {
@@ -124,13 +128,14 @@ data class CoreState(
         is Event.Transfer -> copy(transfers = withTransfer(event.transfer))
         // Shown in Android's media controls (see media/PcMedia).
         is Event.MediaChanged -> this
-        // PCs only: phones announce their own photos, calls, contacts, texts and screen.
+        // PCs only: phones announce their own photos, calls, contacts, texts, toggles and screen.
         is Event.PhotoAdded,
         is Event.PhotosChanged,
         is Event.CallChanged,
         is Event.CallLogChanged,
         is Event.ContactsChanged,
         is Event.SmsChanged,
+        is Event.PhoneToggles,
         is Event.Mirroring,
         is Event.RemoteInputRequested,
         -> this

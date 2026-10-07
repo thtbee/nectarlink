@@ -56,6 +56,7 @@ import app.nectarlink.android.elevated.PairingNotification
 import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
+import app.nectarlink.android.toggles.PhoneToggles
 import app.nectarlink.android.update.AppUpdater
 import app.nectarlink.android.update.CheckForUpdates
 import app.nectarlink.android.core.CoreState
@@ -131,6 +132,8 @@ fun SettingsScreen(
         }
 
         Section(stringResource(R.string.settings_control)) {
+            DndAccess(state.dndAccess)
+            WriteSettingsAccess(state.writeSettingsAccess || state.elevated)
             ControlAccess(state.inputAccess)
             ElevatedAccess()
         }
@@ -292,6 +295,50 @@ private fun NotificationAccess(granted: Boolean) {
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 )
             }) { Text(stringResource(R.string.action_app_info)) }
+        }
+    }
+}
+
+/** Do Not Disturb and silent ringer control from a PC. */
+@Composable
+private fun DndAccess(granted: Boolean) {
+    val context = LocalContext.current
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(stringResource(R.string.dnd_access_title), style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(if (granted) R.string.dnd_access_on else R.string.dnd_access_off),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        val open = { context.startActivity(PhoneToggles.dndSettingsIntent()) }
+        if (granted) {
+            OutlinedButton(onClick = open) { Text(stringResource(R.string.action_manage)) }
+        } else {
+            Button(onClick = open) { Text(stringResource(R.string.action_allow)) }
+        }
+    }
+}
+
+/** Screen brightness control from a PC (Modify system settings, or Elevated). */
+@Composable
+private fun WriteSettingsAccess(granted: Boolean) {
+    val context = LocalContext.current
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(stringResource(R.string.write_settings_title), style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(if (granted) R.string.write_settings_on else R.string.write_settings_off),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        val open = { context.startActivity(PhoneToggles.writeSettingsIntent(context)) }
+        if (granted) {
+            OutlinedButton(onClick = open) { Text(stringResource(R.string.action_manage)) }
+        } else {
+            Button(onClick = open) { Text(stringResource(R.string.action_allow)) }
         }
     }
 }

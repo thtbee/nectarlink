@@ -363,6 +363,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
             }
             let caps = update.caps.map(crate::features::sanitize_capabilities);
             let power = update.power.map(PowerLevel::effective);
+            let had_caps = caps.is_some();
             if caps.is_some() || power.is_some() {
                 shared.store.update_capabilities(&peer, caps.as_ref(), power)?;
             }
@@ -370,6 +371,9 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
                 shared.emit(NodeEvent::PeerPowerChanged { device: peer, power });
             }
             shared.refresh_capabilities(&peer);
+            if had_caps {
+                shared.send_toggles_state(session).await;
+            }
         }
         types::DEVICE_RING => {
             let ring: Ring = env.body()?;
@@ -401,6 +405,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if t.starts_with("sms.") && crate::sms::handle(shared, session, &env).await? => {}
         t if t.starts_with("mirror.") && crate::mirror::handle(shared, session, &env).await? => {}
         t if t.starts_with("remote.") && crate::remote::handle(shared, session, &env).await? => {}
+        t if t.starts_with("phone.toggle") && crate::toggles::handle(shared, session, &env).await? => {}
         other => {
             if env.id.is_some() {
                 let reply = Envelope::error(ErrorCode::Unsupported, format!("unknown message type {other}"));

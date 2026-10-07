@@ -15,6 +15,8 @@ Rectangle {
         case "raisePower": return s.target === "elevated" ? qsTr("Elevated") : qsTr("Assist")
         case "grantPermission":
             return s.target === "notification_access" ? qsTr("Allow notification access on the phone")
+                 : s.target === "dnd_access" ? qsTr("Allow Do Not Disturb on the phone")
+                 : s.target === "write_settings" ? qsTr("Allow system settings on the phone")
                                                       : qsTr("Allow it on the phone")
         case "enableAddon": return qsTr("Add-on")
         case "enablePath": return qsTr("Away mode")
