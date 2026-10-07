@@ -616,7 +616,7 @@ impl AppState {
 /// refresh on the Qt thread and returns false once the object is gone.
 struct Listener {
     interest: Changes,
-    notify: Arc<dyn Fn() -> bool + Send + Sync>,
+    notify: Box<dyn Fn() -> bool + Send + Sync>,
 }
 
 /// The shared state plus the listeners to tell about changes.
@@ -656,7 +656,7 @@ impl Hub {
     /// Registers a listener; it is called right away so it starts in sync.
     pub fn subscribe(&self, interest: Changes, notify: impl Fn() -> bool + Send + Sync + 'static) {
         if notify() {
-            lock(&self.listeners).push(Listener { interest, notify: Arc::new(notify) });
+            lock(&self.listeners).push(Listener { interest, notify: Box::new(notify) });
         }
     }
 
@@ -666,20 +666,7 @@ impl Hub {
     }
 
     fn notify(&self, changes: Changes) {
-        let active: Vec<_> = lock(&self.listeners)
-            .iter()
-            .filter(|l| l.interest.intersects(changes))
-            .map(|l| l.notify.clone())
-            .collect();
-        let mut gone = Vec::new();
-        for f in active {
-            if !f() {
-                gone.push(Arc::as_ptr(&f) as *const () as usize);
-            }
-        }
-        if !gone.is_empty() {
-            lock(&self.listeners).retain(|l| !gone.contains(&(Arc::as_ptr(&l.notify) as *const () as usize)));
-        }
+        lock(&self.listeners).retain(|l| !l.interest.intersects(changes) || (l.notify)());
     }
 }
 
