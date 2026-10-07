@@ -40,6 +40,7 @@ struct RecordingPlatform {
     photos: Mutex<std::collections::HashMap<String, std::path::PathBuf>>,
     /// Optional barrier `open_photo` waits on to simulate a slow platform call.
     photo_barrier: Mutex<Option<Arc<std::sync::Barrier>>>,
+    remote_inputs: Mutex<Vec<nectarlink_core::RemoteInput>>,
 }
 
 impl Platform for RecordingPlatform {
@@ -379,6 +380,14 @@ impl Platform for RecordingPlatform {
             return Err(MediaError::NotFound);
         }
         self.media.lock().unwrap().push((player.to_owned(), action, position));
+        Ok(())
+    }
+    fn remote_input(
+        &self,
+        _peer: &nectarlink_core::DeviceId,
+        input: nectarlink_core::RemoteInput,
+    ) -> Result<(), String> {
+        self.remote_inputs.lock().unwrap().push(input);
         Ok(())
     }
 }
@@ -2057,4 +2066,121 @@ async fn gallery_albums_paging_thumbs_download_and_toggles() {
     assert!(matches!(pc.node.photo_list(phone_id, None, None, 10).await, Err(Error::Denied)));
     assert!(matches!(pc.node.photo_thumbs(phone_id, vec!["media:4".into()]).await, Err(Error::Denied)));
     assert!(matches!(pc.node.fetch_photos(phone_id, vec!["media:4".into()]).await, Err(Error::Denied)));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn remote_input_needs_toggle_and_delivers_motion_keys_and_slides() {
+    use nectarlink_core::{
+        ButtonAction, INPUT_INJECT, KeyMod, MouseButton, RemoteInput, SlideAction, remote_keys,
+    };
+
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Without `input.inject` on the PC, remote input is unsupported.
+    assert!(matches!(phone.node.remote_check(pc_id).await, Err(Error::Unsupported)));
+    assert!(matches!(
+        phone
+            .node
+            .remote_input(
+                pc_id,
+                RemoteInput::Button { button: MouseButton::Left, action: ButtonAction::Click }
+            )
+            .await,
+        Err(Error::Unsupported)
+    ));
+
+    // The PC announces `input.inject`.
+    pc.node.update_power(PowerLevel::NotApplicable, vec!["media.control".into(), INPUT_INJECT.into()]).await;
+    wait_for(&mut phone, "input.remote available on phone", |e| match e {
+        NodeEvent::Capabilities(m)
+            if m.device == pc_id && m.state("input.remote") == Some(FeatureState::Available) =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    // On the PC, `remote_input` is off by default: the first ask is refused and
+    // triggers the one-time prompt event on the PC.
+    let toggles = pc.node.device_toggles(phone_id).unwrap();
+    assert!(toggles.contains(&("remote_input", false)));
+    assert!(matches!(phone.node.remote_check(pc_id).await, Err(Error::Denied)));
+    wait_for(&mut pc, "remote input prompt", |e| match e {
+        NodeEvent::RemoteInputRequested { device } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    // While the toggle is off, discrete and datagram inputs are both refused.
+    assert!(matches!(
+        phone
+            .node
+            .remote_input(
+                pc_id,
+                RemoteInput::Button { button: MouseButton::Left, action: ButtonAction::Click }
+            )
+            .await,
+        Err(Error::Denied)
+    ));
+    assert!(matches!(
+        phone.node.remote_input(pc_id, RemoteInput::Move { dx: 10.0, dy: 20.0 }).await,
+        Err(Error::Denied)
+    ));
+    phone.node.remote_move(pc_id, 10.0, 20.0).await.unwrap();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    assert!(pc.platform.remote_inputs.lock().unwrap().is_empty(), "nothing injected while toggle is off");
+
+    // The PC user enables `remote_input` for this phone.
+    pc.node.set_device_toggle(phone_id, "remote_input", true).unwrap();
+    with_timeout("remote_check allowed", phone.node.remote_check(pc_id)).await.unwrap();
+
+    // Pointer motion (datagram), buttons, drag, scroll, text, keys, slides, and laser.
+    phone.node.remote_move(pc_id, 18.5, -12.0).await.unwrap();
+    let deadline = tokio::time::Instant::now() + WAIT;
+    loop {
+        if pc.platform.remote_inputs.lock().unwrap().contains(&RemoteInput::Move { dx: 18.5, dy: -12.0 }) {
+            break;
+        }
+        assert!(tokio::time::Instant::now() < deadline, "timed out waiting for move datagram");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+
+    let events = vec![
+        RemoteInput::Button { button: MouseButton::Left, action: ButtonAction::Click },
+        RemoteInput::Button { button: MouseButton::Right, action: ButtonAction::Click },
+        RemoteInput::Button { button: MouseButton::Left, action: ButtonAction::Down },
+        RemoteInput::Button { button: MouseButton::Left, action: ButtonAction::Up },
+        RemoteInput::Scroll { dx: 0.0, dy: -3.0 },
+        RemoteInput::Text { text: "Hello Nectarlink 🐝".into() },
+        RemoteInput::Key { key: remote_keys::ENTER.into(), mods: vec![] },
+        RemoteInput::Key { key: "c".into(), mods: vec![KeyMod::Ctrl] },
+        RemoteInput::Key { key: remote_keys::COPY.into(), mods: vec![] },
+        RemoteInput::Slide { action: SlideAction::Next },
+        RemoteInput::Slide { action: SlideAction::Previous },
+        RemoteInput::Slide { action: SlideAction::Black },
+    ];
+    for ev in &events {
+        with_timeout("remote_input", phone.node.remote_input(pc_id, ev.clone())).await.unwrap();
+    }
+    with_timeout("laser off", phone.node.remote_laser(pc_id, false, 0.0, 0.0)).await.unwrap();
+
+    let recorded = pc.platform.remote_inputs.lock().unwrap().clone();
+    for ev in &events {
+        assert!(recorded.contains(ev), "missing {ev:?} in {recorded:?}");
+    }
+    assert!(recorded.contains(&RemoteInput::Laser { on: false, x: 0.0, y: 0.0 }));
+
+    // Invalid inputs are rejected.
+    assert!(
+        phone
+            .node
+            .remote_input(pc_id, RemoteInput::Key { key: "unknown_key".into(), mods: vec![] })
+            .await
+            .is_err()
+    );
+    assert!(phone.node.remote_move(pc_id, 99999.0, 0.0).await.is_err());
 }

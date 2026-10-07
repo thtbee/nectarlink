@@ -563,6 +563,13 @@ pub(crate) async fn accept_stream(
         Some(h) if h.svc == mirror::SERVICE && h.op == mirror::OP_AUDIO && h.v == mirror::VERSION => {
             crate::mirror::receive_audio(shared, session.peer, send, recv).await;
         }
+        Some(h)
+            if h.svc == nectarlink_protocol::messages::remote::SERVICE
+                && h.op == nectarlink_protocol::messages::remote::OP_MOTION
+                && h.v == 1 =>
+        {
+            crate::remote::receive_motion(shared, session.peer, send, recv).await;
+        }
         _ => {
             let reply = Envelope::error(ErrorCode::Unsupported, "unknown stream");
             let _ = write_frame(&mut send, &reply.to_cbor()).await;

@@ -17,7 +17,7 @@ use nectarlink_core::{
 
 /// Which parts of the state changed, so listeners refresh only what they show.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Changes(u16);
+pub struct Changes(u32);
 
 impl Changes {
     pub const NONE: Changes = Changes(0);
@@ -44,6 +44,8 @@ impl Changes {
     pub const CALLS: Changes = Changes(1 << 14);
     /// A phone's photo gallery (kept by crate::photos).
     pub const PHOTOS: Changes = Changes(1 << 15);
+    /// Remote input prompt or laser pointer overlay state.
+    pub const REMOTE: Changes = Changes(1 << 16);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
@@ -237,6 +239,10 @@ pub struct AppState {
     /// Notifications that went away, newest first, while history is kept.
     pub history: Vec<HistoryEntry>,
     pub history_enabled: bool,
+    /// Phone asking to control this PC for the first time while `remote_input` is off.
+    pub remote_prompt: Option<DeviceId>,
+    /// Active laser pointer overlay (`(device, x, y)` in `0.0..=1.0`).
+    pub laser: Option<(DeviceId, f32, f32)>,
 }
 
 impl AppState {
@@ -305,6 +311,14 @@ impl AppState {
                     self.ringing_from = None;
                     changes |= Changes::RINGING;
                 }
+                if self.remote_prompt == Some(*id) {
+                    self.remote_prompt = None;
+                    changes |= Changes::REMOTE;
+                }
+                if self.laser.is_some_and(|(d, _, _)| d == *id) {
+                    self.laser = None;
+                    changes |= Changes::REMOTE;
+                }
                 let notifications = self.notifications.len();
                 self.notifications.retain(|n| n.device != *id);
                 if self.notifications.len() != notifications {
@@ -340,6 +354,13 @@ impl AppState {
                 }
                 self.ringing_from = next;
                 Changes::RINGING
+            }
+            NodeEvent::RemoteInputRequested { device } => {
+                if self.remote_prompt == Some(*device) {
+                    return Changes::NONE;
+                }
+                self.remote_prompt = Some(*device);
+                Changes::REMOTE
             }
             NodeEvent::Discovered(found) => {
                 match self.discovered.iter_mut().find(|d| d.id == found.id) {

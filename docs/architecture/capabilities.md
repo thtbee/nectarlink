@@ -120,8 +120,9 @@ the OS (`android` → phone, `windows`/`macos` → desktop).
 
 ## Per-device toggles
 
-`notifications`, `messages`, `calls`, `clipboard`, `photos`, `pc_actions`
-(on by default) and `remote_files` (off by default). Toggles are this
+`notifications`, `messages`, `calls`, `contacts`, `clipboard`, `files`,
+`media`, `photos`, `pc_actions`, `mirroring` (on by default) and
+`remote_input`, `remote_files` (off by default). Toggles are this
 device's policy for that peer and are stored locally, so a feature the PC
 user switched off is Locked on the PC while the phone may still show it as
 Available. Everything else in the matrix is identical on both devices.

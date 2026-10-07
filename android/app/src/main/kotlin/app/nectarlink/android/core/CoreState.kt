@@ -132,6 +132,7 @@ data class CoreState(
         is Event.ContactsChanged,
         is Event.SmsChanged,
         is Event.Mirroring,
+        is Event.RemoteInputRequested,
         -> this
     }
 

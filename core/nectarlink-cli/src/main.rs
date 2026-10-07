@@ -210,6 +210,12 @@ enum Command {
         #[command(subcommand)]
         action: InputArg,
     },
+    /// Control a paired PC's mouse, keyboard or presentation (use with --as-phone).
+    Remote {
+        device: String,
+        #[command(subcommand)]
+        action: RemoteArg,
+    },
     /// Act as a phone sharing its screen (use with --as-phone): when a PC
     /// asks, streams an H.264 file (Annex B, with access unit delimiters) in
     /// a loop at `fps`. Stays online.
@@ -392,6 +398,82 @@ enum InputArg {
     Scroll { x: f32, y: f32, notches: f32 },
     Key { key: String },
     Type { text: String },
+}
+
+#[derive(Debug, Subcommand)]
+enum RemoteArg {
+    /// Move the PC's mouse cursor by (dx, dy) pixels.
+    Move {
+        #[arg(allow_hyphen_values = true)]
+        dx: f32,
+        #[arg(allow_hyphen_values = true)]
+        dy: f32,
+    },
+    /// Click, press (--down) or release (--up) a mouse button.
+    Click {
+        #[arg(value_enum, default_value_t = MouseButtonArg::Left)]
+        button: MouseButtonArg,
+        /// Press and hold the button down.
+        #[arg(long, conflicts_with = "up")]
+        down: bool,
+        /// Release the button.
+        #[arg(long, conflicts_with = "down")]
+        up: bool,
+    },
+    /// Scroll the mouse wheel by (dx, dy) notches (positive dy scrolls down).
+    Scroll {
+        #[arg(allow_hyphen_values = true)]
+        dx: f32,
+        #[arg(allow_hyphen_values = true)]
+        dy: f32,
+    },
+    /// Type Unicode text on the PC.
+    Type { text: String },
+    /// Press a named key or shortcut (enter, backspace, tab, escape, space,
+    /// up, down, left, right, copy, paste, undo, ...) with optional modifiers.
+    Key {
+        key: String,
+        #[arg(long)]
+        ctrl: bool,
+        #[arg(long)]
+        alt: bool,
+        #[arg(long)]
+        shift: bool,
+        #[arg(long)]
+        win: bool,
+    },
+    /// Control a presentation on the PC (next, previous, start, stop, black).
+    Slide {
+        #[arg(value_enum)]
+        action: SlideArg,
+    },
+    /// Show the laser pointer at normalized (x, y) in 0..=1, or hide it with --off.
+    Laser {
+        #[arg(required_unless_present = "off")]
+        x: Option<f32>,
+        #[arg(required_unless_present = "off")]
+        y: Option<f32>,
+        /// Hide the laser pointer overlay.
+        #[arg(long)]
+        off: bool,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum MouseButtonArg {
+    Left,
+    Right,
+    Middle,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum SlideArg {
+    Next,
+    #[value(alias = "prev")]
+    Previous,
+    Start,
+    Stop,
+    Black,
 }
 
 #[derive(Debug, Subcommand)]
@@ -1547,20 +1629,34 @@ impl Platform for TerminalPlatform {
         }
         Ok(())
     }
+    fn remote_input(&self, _peer: &DeviceId, input: nectarlink_core::RemoteInput) -> Result<(), String> {
+        println!("Remote input: {input:?}");
+        Ok(())
+    }
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    let cli = Cli::parse();
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::try_new(&cli.log).unwrap_or_else(|_| "warn".into()))
-        .with_writer(std::io::stderr)
-        .init();
+fn main() -> Result<()> {
+    std::thread::Builder::new()
+        .name("main".into())
+        .stack_size(8 * 1024 * 1024)
+        .spawn(|| {
+            tokio::runtime::Builder::new_multi_thread().enable_all().build()?.block_on(async {
+                let cli = Cli::parse();
+                tracing_subscriber::fmt()
+                    .with_env_filter(
+                        tracing_subscriber::EnvFilter::try_new(&cli.log).unwrap_or_else(|_| "warn".into()),
+                    )
+                    .with_writer(std::io::stderr)
+                    .init();
 
-    let node = Box::pin(start_node(&cli)).await?;
-    let result = Box::pin(run(&cli, &node)).await;
-    node.shutdown().await;
-    result
+                let node = Box::pin(start_node(&cli)).await?;
+                let result = Box::pin(run(&cli, &node)).await;
+                node.shutdown().await;
+                result
+            })
+        })?
+        .join()
+        .unwrap_or_else(|_| bail!("main thread panicked"))
 }
 
 async fn start_node(cli: &Cli) -> Result<Node> {
@@ -1845,6 +1941,91 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             }
             // Let it leave before this client goes.
             tokio::time::sleep(Duration::from_millis(500)).await;
+            println!("Sent.");
+        }
+        Command::Remote { device, action } => {
+            use nectarlink_core::{ButtonAction, KeyMod, MouseButton, RemoteInput, SlideAction};
+            if !cli.as_phone {
+                bail!("remote input is sent by phones: add --as-phone");
+            }
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            match action {
+                RemoteArg::Move { dx, dy } => {
+                    node.remote_check(id).await.context("the PC refused remote input")?;
+                    node.remote_move(id, *dx, *dy).await.context("move not sent")?;
+                    tokio::time::sleep(Duration::from_millis(200)).await;
+                }
+                RemoteArg::Click { button, down, up } => {
+                    let button = match button {
+                        MouseButtonArg::Left => MouseButton::Left,
+                        MouseButtonArg::Right => MouseButton::Right,
+                        MouseButtonArg::Middle => MouseButton::Middle,
+                    };
+                    let action = if *down {
+                        ButtonAction::Down
+                    } else if *up {
+                        ButtonAction::Up
+                    } else {
+                        ButtonAction::Click
+                    };
+                    node.remote_input(id, RemoteInput::Button { button, action })
+                        .await
+                        .context("the PC refused remote input")?;
+                }
+                RemoteArg::Scroll { dx, dy } => {
+                    node.remote_input(id, RemoteInput::Scroll { dx: *dx, dy: *dy })
+                        .await
+                        .context("the PC refused remote input")?;
+                }
+                RemoteArg::Type { text } => {
+                    node.remote_input(id, RemoteInput::Text { text: text.clone() })
+                        .await
+                        .context("the PC refused remote input")?;
+                }
+                RemoteArg::Key { key, ctrl, alt, shift, win } => {
+                    let mut mods = Vec::new();
+                    if *ctrl {
+                        mods.push(KeyMod::Ctrl);
+                    }
+                    if *alt {
+                        mods.push(KeyMod::Alt);
+                    }
+                    if *shift {
+                        mods.push(KeyMod::Shift);
+                    }
+                    if *win {
+                        mods.push(KeyMod::Win);
+                    }
+                    node.remote_input(id, RemoteInput::Key { key: key.clone(), mods })
+                        .await
+                        .context("the PC refused remote input")?;
+                }
+                RemoteArg::Slide { action } => {
+                    let action = match action {
+                        SlideArg::Next => SlideAction::Next,
+                        SlideArg::Previous => SlideAction::Previous,
+                        SlideArg::Start => SlideAction::Start,
+                        SlideArg::Stop => SlideAction::Stop,
+                        SlideArg::Black => SlideAction::Black,
+                    };
+                    node.remote_input(id, RemoteInput::Slide { action })
+                        .await
+                        .context("the PC refused remote input")?;
+                }
+                RemoteArg::Laser { x, y, off } => {
+                    if *off {
+                        node.remote_laser(id, false, 0.0, 0.0)
+                            .await
+                            .context("the PC refused remote input")?;
+                    } else {
+                        let (x, y) = (x.unwrap_or(0.5), y.unwrap_or(0.5));
+                        node.remote_check(id).await.context("the PC refused remote input")?;
+                        node.remote_laser(id, true, x, y).await.context("laser not sent")?;
+                        tokio::time::sleep(Duration::from_millis(200)).await;
+                    }
+                }
+            }
             println!("Sent.");
         }
         Command::Apps { device, at } => {
@@ -2745,6 +2926,11 @@ fn print_event(node: &Node, event: &NodeEvent) {
         NodeEvent::CallLogChanged { device } => println!("{}: call log changed", name(device)),
         NodeEvent::ContactsChanged { device } => println!("{}: contacts changed", name(device)),
         NodeEvent::PhotosChanged { device } => println!("{}: photo library changed", name(device)),
+        NodeEvent::RemoteInputRequested { device } => println!(
+            "{}: asked to control mouse and keyboard (allow with: nectarlink toggle {} remote_input on)",
+            name(device),
+            device.short()
+        ),
         NodeEvent::PhotoAdded { device, photo } => println!(
             "{}: new {} {} ({} bytes, preview {} bytes)",
             name(device),

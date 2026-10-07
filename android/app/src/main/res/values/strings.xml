@@ -217,4 +217,31 @@
         <item quantity="one">%1$d item</item>
         <item quantity="other">%1$d items</item>
     </plurals>
+
+    <!-- Remote input (touchpad, keyboard & presentation) -->
+    <string name="action_remote_pc">Control PC</string>
+    <string name="action_back">Back</string>
+    <string name="settings_remote">Control your PC</string>
+    <string name="settings_touchpad_sensitivity">Touchpad speed</string>
+    <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
+    <string name="remote_mode_touchpad">Touchpad</string>
+    <string name="remote_mode_presentation">Presentation</string>
+    <string name="remote_touchpad_hint">Drag to move · Tap to click · Two fingers to right-click or scroll · Double-tap and hold to drag</string>
+    <string name="remote_left_click">Left</string>
+    <string name="remote_right_click">Right</string>
+    <string name="remote_middle_click">Middle</string>
+    <string name="remote_keyboard">Keyboard</string>
+    <string name="remote_type_placeholder">Type on %1$s…</string>
+    <string name="remote_denied_title">Allow control on %1$s</string>
+    <string name="remote_denied_text">On %1$s, allow control from this phone in Nectarlink\'s prompt or in Settings › Devices.</string>
+    <string name="remote_offline_text">%1$s isn\'t connected right now.</string>
+    <string name="remote_unsupported_text">Update Nectarlink on %1$s to control it from this phone.</string>
+    <string name="remote_slide_next">Next slide</string>
+    <string name="remote_slide_prev">Previous</string>
+    <string name="remote_slide_start">Start show</string>
+    <string name="remote_slide_stop">End show</string>
+    <string name="remote_slide_black">Black screen</string>
+    <string name="remote_laser_hold">Hold for laser pointer</string>
+    <string name="remote_laser_active">Laser on %1$s — tilt phone or drag here</string>
+    <string name="remote_volume_hint">Volume buttons also change slides while this screen is open.</string>
 </resources>

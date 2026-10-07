@@ -21,6 +21,7 @@ mod node;
 mod notifications;
 mod pairing;
 mod photos;
+pub mod remote;
 mod session;
 mod sms;
 mod store;
@@ -71,6 +72,7 @@ pub use nectarlink_protocol::{
 };
 pub use node::Node;
 pub use notifications::NotificationError;
+pub use remote::{ButtonAction, INPUT_INJECT, KeyMod, MouseButton, RemoteInput, SlideAction, remote_keys};
 pub use transfer::{
     Direction, FileSource, OutgoingFile, Transfer, TransferFailure, TransferState, outgoing_paths,
     safe_file_name,

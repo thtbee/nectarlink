@@ -68,6 +68,8 @@ pub mod types {
     pub const MIRROR_RESIZE: &str = "mirror.resize";
     pub const MIRROR_INPUT: &str = "mirror.input";
     pub const MIRROR_APPS: &str = "mirror.apps";
+    pub const REMOTE_CHECK: &str = "remote.check";
+    pub const REMOTE_INPUT: &str = "remote.input";
 }
 
 /// What kind of device this is.
@@ -1628,6 +1630,255 @@ pub struct PeerIdentity {
     pub device: DeviceInfo,
 }
 
+/// Limits and wire constants for `remote.*` (`docs/protocol/remote.md`).
+pub mod remote {
+    /// One-byte QUIC datagram channel tag (`docs/protocol/v0.md` §4).
+    pub const DATAGRAM_TAG: u8 = 0x01;
+    /// Largest datagram body accepted after [`DATAGRAM_TAG`].
+    pub const MAX_DATAGRAM_BYTES: usize = 256;
+    /// Largest relative pointer step (`dx` or `dy`), in logical pixels.
+    pub const MAX_MOVE_DELTA: f32 = 4000.0;
+    /// Largest scroll step (`dx` or `dy`), in wheel notches.
+    pub const MAX_SCROLL_DELTA: f32 = 200.0;
+    /// Most UTF-8 bytes in one `Text` event.
+    pub const MAX_TEXT_BYTES: usize = 256;
+    /// Most modifiers on a key press.
+    pub const MAX_MODS: usize = 4;
+    /// Stream service and operation when falling back from datagrams.
+    pub const SERVICE: &str = "remote";
+    pub const OP_MOTION: &str = "motion";
+    pub const VERSION: u32 = 1;
+}
+
+/// A mouse button on the PC (`docs/protocol/remote.md` §3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MouseButton {
+    Left,
+    Right,
+    Middle,
+}
+
+/// What to do with a [`MouseButton`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ButtonAction {
+    Down,
+    Up,
+    Click,
+}
+
+/// A modifier held during a [`RemoteInput::Key`] press.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum KeyMod {
+    Ctrl,
+    Alt,
+    Shift,
+    Win,
+}
+
+/// A presentation remote action (`docs/protocol/remote.md` §3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SlideAction {
+    Next,
+    Previous,
+    Start,
+    Stop,
+    Black,
+}
+
+/// Keys and shortcuts accepted by [`RemoteInput::Key`].
+pub mod remote_keys {
+    use super::KeyMod;
+
+    pub const ENTER: &str = "enter";
+    pub const BACKSPACE: &str = "backspace";
+    pub const TAB: &str = "tab";
+    pub const ESCAPE: &str = "escape";
+    pub const SPACE: &str = "space";
+    pub const LEFT: &str = "left";
+    pub const RIGHT: &str = "right";
+    pub const UP: &str = "up";
+    pub const DOWN: &str = "down";
+    pub const HOME: &str = "home";
+    pub const END: &str = "end";
+    pub const PAGE_UP: &str = "page_up";
+    pub const PAGE_DOWN: &str = "page_down";
+    pub const DELETE: &str = "delete";
+    pub const F1: &str = "f1";
+    pub const F2: &str = "f2";
+    pub const F3: &str = "f3";
+    pub const F4: &str = "f4";
+    pub const F5: &str = "f5";
+    pub const F6: &str = "f6";
+    pub const F7: &str = "f7";
+    pub const F8: &str = "f8";
+    pub const F9: &str = "f9";
+    pub const F10: &str = "f10";
+    pub const F11: &str = "f11";
+    pub const F12: &str = "f12";
+    pub const WIN: &str = "win";
+
+    pub const NAMED: &[&str] = &[
+        ENTER, BACKSPACE, TAB, ESCAPE, SPACE, LEFT, RIGHT, UP, DOWN, HOME, END, PAGE_UP, PAGE_DOWN, DELETE,
+        F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, WIN,
+    ];
+
+    /// Common shortcut aliases (`mods` must be empty when using an alias).
+    pub const COPY: &str = "copy";
+    pub const PASTE: &str = "paste";
+    pub const CUT: &str = "cut";
+    pub const UNDO: &str = "undo";
+    pub const SELECT_ALL: &str = "select_all";
+    pub const TASK_VIEW: &str = "task_view";
+    pub const LOCK: &str = "lock";
+
+    pub const SHORTCUTS: &[&str] = &[COPY, PASTE, CUT, UNDO, SELECT_ALL, TASK_VIEW, LOCK];
+
+    /// Whether `key` and `mods` form a valid [`super::RemoteInput::Key`].
+    pub fn is_valid(key: &str, mods: &[KeyMod]) -> bool {
+        if mods.len() > super::remote::MAX_MODS {
+            return false;
+        }
+        // Reject duplicate modifiers.
+        for (i, m) in mods.iter().enumerate() {
+            if mods[i + 1..].contains(m) {
+                return false;
+            }
+        }
+        if NAMED.contains(&key) {
+            return true;
+        }
+        if SHORTCUTS.contains(&key) {
+            return mods.is_empty();
+        }
+        // Single ASCII lowercase letter or digit is valid when combined with at
+        // least one modifier (e.g. Ctrl+C, Win+L, Alt+1).
+        if let [b] = key.as_bytes() {
+            return !mods.is_empty() && (b.is_ascii_lowercase() || b.is_ascii_digit());
+        }
+        false
+    }
+}
+
+/// An input event sent from a phone to a PC (`docs/protocol/remote.md`).
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum RemoteInput {
+    /// Relative pointer motion in logical pixels (`dx` right, `dy` down).
+    /// Travels in QUIC datagrams (or the `remote/motion` stream), never on the
+    /// control stream.
+    Move { dx: f32, dy: f32 },
+    /// Mouse button press, release or click.
+    Button { button: MouseButton, action: ButtonAction },
+    /// Smooth or stepped scroll in wheel notches (`dx` right, `dy` vertical).
+    Scroll { dx: f32, dy: f32 },
+    /// Typed Unicode text.
+    Text { text: String },
+    /// A named key, modified key, or shortcut.
+    Key {
+        key: String,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        mods: Vec<KeyMod>,
+    },
+    /// A presentation remote action.
+    Slide { action: SlideAction },
+    /// Laser pointer position on the PC's primary screen (`0.0..=1.0`).
+    Laser {
+        on: bool,
+        #[serde(default)]
+        x: f32,
+        #[serde(default)]
+        y: f32,
+    },
+}
+
+/// Never prints typed text (protocol v0 §11).
+impl std::fmt::Debug for RemoteInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RemoteInput::Move { dx, dy } => write!(f, "Move({dx}, {dy})"),
+            RemoteInput::Button { button, action } => write!(f, "Button({button:?}, {action:?})"),
+            RemoteInput::Scroll { dx, dy } => write!(f, "Scroll({dx}, {dy})"),
+            RemoteInput::Text { text } => write!(f, "Text({} bytes)", text.len()),
+            RemoteInput::Key { key, mods } if mods.is_empty() => write!(f, "Key({key})"),
+            RemoteInput::Key { key, mods } => write!(f, "Key({mods:?}+{key})"),
+            RemoteInput::Slide { action } => write!(f, "Slide({action:?})"),
+            RemoteInput::Laser { on: false, .. } => f.write_str("Laser(off)"),
+            RemoteInput::Laser { on: true, x, y } => write!(f, "Laser({x}, {y})"),
+        }
+    }
+}
+
+impl RemoteInput {
+    pub fn is_valid(&self) -> bool {
+        match self {
+            RemoteInput::Move { dx, dy } => {
+                dx.is_finite()
+                    && dy.is_finite()
+                    && dx.abs() <= remote::MAX_MOVE_DELTA
+                    && dy.abs() <= remote::MAX_MOVE_DELTA
+            }
+            RemoteInput::Button { .. } => true,
+            RemoteInput::Scroll { dx, dy } => {
+                dx.is_finite()
+                    && dy.is_finite()
+                    && dx.abs() <= remote::MAX_SCROLL_DELTA
+                    && dy.abs() <= remote::MAX_SCROLL_DELTA
+            }
+            RemoteInput::Text { text } => {
+                !text.is_empty()
+                    && text.len() <= remote::MAX_TEXT_BYTES
+                    && !text.chars().any(char::is_control)
+            }
+            RemoteInput::Key { key, mods } => remote_keys::is_valid(key, mods),
+            RemoteInput::Slide { .. } => true,
+            RemoteInput::Laser { on, x, y } => {
+                x.is_finite()
+                    && y.is_finite()
+                    && (!*on || ((0.0..=1.0).contains(x) && (0.0..=1.0).contains(y)))
+            }
+        }
+    }
+
+    /// Whether this event may travel in a lossy QUIC datagram.
+    pub fn is_datagram_allowed(&self) -> bool {
+        matches!(self, RemoteInput::Move { .. } | RemoteInput::Scroll { .. } | RemoteInput::Laser { .. })
+    }
+
+    /// Whether this event may travel in a `remote.input` control request.
+    /// Pointer motion (`Move`) never uses the control stream.
+    pub fn is_control_allowed(&self) -> bool {
+        !matches!(self, RemoteInput::Move { .. })
+    }
+
+    /// Encodes a datagram prefixed with [`remote::DATAGRAM_TAG`].
+    pub fn to_datagram(&self) -> Vec<u8> {
+        let mut out = vec![remote::DATAGRAM_TAG];
+        ciborium::into_writer(self, &mut out).expect("writing to a Vec cannot fail");
+        out
+    }
+
+    /// Decodes and validates a datagram prefixed with [`remote::DATAGRAM_TAG`].
+    pub fn from_datagram(bytes: &[u8]) -> Result<Self, crate::ProtocolError> {
+        if bytes.first().copied() != Some(remote::DATAGRAM_TAG) {
+            return Err(crate::ProtocolError::BadMessage("unknown datagram channel tag".into()));
+        }
+        let body = &bytes[1..];
+        if body.is_empty() || body.len() > remote::MAX_DATAGRAM_BYTES {
+            return Err(crate::ProtocolError::FrameTooLarge(body.len()));
+        }
+        let input: Self =
+            ciborium::from_reader(body).map_err(|e| crate::ProtocolError::BadMessage(e.to_string()))?;
+        if !input.is_valid() || !input.is_datagram_allowed() {
+            return Err(crate::ProtocolError::BadMessage("invalid remote input datagram".into()));
+        }
+        Ok(input)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1932,5 +2183,62 @@ mod tests {
         assert_eq!(single.requested_ids(), vec!["p1".to_owned()]);
         let multi = PhotoGet { id: String::new(), ids: vec!["p1".into(), "p2".into()] };
         assert_eq!(multi.requested_ids(), vec!["p1".to_owned(), "p2".to_owned()]);
+    }
+
+    #[test]
+    fn remote_input_validates_and_round_trips() {
+        // Datagram round-trip for move, scroll, and laser.
+        let mv = RemoteInput::Move { dx: 12.5, dy: -8.0 };
+        assert!(mv.is_valid() && mv.is_datagram_allowed() && !mv.is_control_allowed());
+        let dgram = mv.to_datagram();
+        assert_eq!(dgram[0], remote::DATAGRAM_TAG);
+        assert_eq!(RemoteInput::from_datagram(&dgram).unwrap(), mv);
+
+        let laser = RemoteInput::Laser { on: true, x: 0.25, y: 0.75 };
+        assert_eq!(RemoteInput::from_datagram(&laser.to_datagram()).unwrap(), laser);
+        let laser_off = RemoteInput::Laser { on: false, x: 0.0, y: 0.0 };
+        assert_eq!(RemoteInput::from_datagram(&laser_off.to_datagram()).unwrap(), laser_off);
+
+        // Button or key in a datagram is rejected.
+        let click = RemoteInput::Button { button: MouseButton::Left, action: ButtonAction::Click };
+        assert!(click.is_valid() && click.is_control_allowed() && !click.is_datagram_allowed());
+        assert!(RemoteInput::from_datagram(&click.to_datagram()).is_err());
+
+        // Bounds checks.
+        assert!(!RemoteInput::Move { dx: 5000.0, dy: 0.0 }.is_valid());
+        assert!(!RemoteInput::Move { dx: f32::NAN, dy: 0.0 }.is_valid());
+        assert!(!RemoteInput::Scroll { dx: 0.0, dy: 250.0 }.is_valid());
+        assert!(!RemoteInput::Laser { on: true, x: 1.2, y: 0.5 }.is_valid());
+        assert!(!RemoteInput::Laser { on: true, x: -0.1, y: 0.5 }.is_valid());
+
+        // Text and keys.
+        let text = RemoteInput::Text { text: "Hello 🐝 नमस्ते".into() };
+        assert!(text.is_valid());
+        assert!(!format!("{text:?}").contains("Hello"));
+        assert!(!RemoteInput::Text { text: String::new() }.is_valid());
+        assert!(!RemoteInput::Text { text: "bad\nnewline".into() }.is_valid());
+        assert!(!RemoteInput::Text { text: "x".repeat(remote::MAX_TEXT_BYTES + 1) }.is_valid());
+
+        for k in remote_keys::NAMED {
+            assert!(RemoteInput::Key { key: (*k).into(), mods: vec![] }.is_valid(), "{k}");
+        }
+        for s in remote_keys::SHORTCUTS {
+            assert!(RemoteInput::Key { key: (*s).into(), mods: vec![] }.is_valid(), "{s}");
+            assert!(!RemoteInput::Key { key: (*s).into(), mods: vec![KeyMod::Ctrl] }.is_valid(), "{s}");
+        }
+        assert!(RemoteInput::Key { key: "c".into(), mods: vec![KeyMod::Ctrl] }.is_valid());
+        assert!(RemoteInput::Key { key: "z".into(), mods: vec![KeyMod::Ctrl, KeyMod::Shift] }.is_valid());
+        assert!(
+            !RemoteInput::Key { key: "c".into(), mods: vec![] }.is_valid(),
+            "unmodified letter uses Text"
+        );
+        assert!(!RemoteInput::Key { key: "c".into(), mods: vec![KeyMod::Ctrl, KeyMod::Ctrl] }.is_valid());
+        assert!(!RemoteInput::Key { key: "f13".into(), mods: vec![] }.is_valid());
+        assert!(!RemoteInput::Key { key: "power".into(), mods: vec![] }.is_valid());
+
+        // Slide round-trip on the control stream.
+        let slide = RemoteInput::Slide { action: SlideAction::Next };
+        let env = Envelope::new(types::REMOTE_INPUT, &slide).unwrap();
+        assert_eq!(env.body::<RemoteInput>().unwrap(), slide);
     }
 }

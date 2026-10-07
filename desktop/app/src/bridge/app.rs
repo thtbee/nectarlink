@@ -71,6 +71,15 @@ pub mod qobject {
         #[qproperty(QString, update_version)]
         /// Checking for or installing an update.
         #[qproperty(bool, update_busy)]
+        /// Device ID and name of a phone asking to control this PC for the
+        /// first time while `remote_input` is off ("" when none).
+        #[qproperty(QString, remote_prompt_device_id)]
+        #[qproperty(QString, remote_prompt_device_name)]
+        /// Whether the presentation laser pointer overlay is showing, and its
+        /// normalized position on the primary screen (`0.0..=1.0`).
+        #[qproperty(bool, laser_active)]
+        #[qproperty(f32, laser_x)]
+        #[qproperty(f32, laser_y)]
         type AppController = super::AppControllerRust;
 
         /// Asks a paired device to ring (or stop).
@@ -79,6 +88,13 @@ pub mod qobject {
         /// Stops this PC ringing.
         #[qinvokable]
         fn stop_ringing(self: Pin<&mut AppController>);
+        /// Allows a paired phone to control this PC's mouse and keyboard (from
+        /// the one-time prompt sheet).
+        #[qinvokable]
+        fn allow_remote_input(self: Pin<&mut AppController>, device: &QString);
+        /// Dismisses the one-time remote input prompt without enabling the toggle.
+        #[qinvokable]
+        fn dismiss_remote_prompt(self: Pin<&mut AppController>);
         /// Reconnects to phones that aren't connected and syncs connected
         /// ones (notifications, media).
         #[qinvokable]
@@ -164,6 +180,11 @@ pub struct AppControllerRust {
     can_update: bool,
     update_version: QString,
     update_busy: bool,
+    remote_prompt_device_id: QString,
+    remote_prompt_device_name: QString,
+    laser_active: bool,
+    laser_x: f32,
+    laser_y: f32,
     tray: Option<tray::Tray>,
 }
 
@@ -274,7 +295,7 @@ impl cxx_qt::Initialize for qobject::AppController {
         *CONTROLLER.get_or_init(Mutex::default).lock().unwrap_or_else(|e| e.into_inner()) = Some(qt.clone());
         super::subscribe(
             qt.clone(),
-            Changes::STATUS | Changes::DEVICES | Changes::CAPABILITIES | Changes::RINGING,
+            Changes::STATUS | Changes::DEVICES | Changes::CAPABILITIES | Changes::RINGING | Changes::REMOTE,
             Self::refresh,
         );
         super::subscribe(qt.clone(), Changes::UPDATE, |object| {
@@ -364,8 +385,12 @@ fn ring_device(device: DeviceId, on: bool) {
 impl qobject::AppController {
     fn refresh(mut self: Pin<&mut Self>) {
         let hub = &core_host::host().hub;
-        let (status, devices, ringing, online, caps_version, battery) = hub.read(|s| {
+        let (status, devices, ringing, online, caps_version, battery, remote_prompt, laser) = hub.read(|s| {
             let ringing = s.ringing_from.and_then(|id| s.name_of(&id)).unwrap_or_default();
+            let remote_prompt = s.remote_prompt.map(|id| {
+                let name = s.name_of(&id).unwrap_or_else(|| id.short());
+                (id.to_string(), name)
+            });
             let connected: Vec<_> =
                 s.devices.iter().filter(|d| matches!(d.link, LinkState::Online { .. })).collect();
             // With one phone connected, the tray shows its battery.
@@ -376,7 +401,16 @@ impl qobject::AppController {
                 }),
                 _ => None,
             };
-            (s.core_status(), s.devices.len(), ringing, connected.len(), s.matrices_version, battery)
+            (
+                s.core_status(),
+                s.devices.len(),
+                ringing,
+                connected.len(),
+                s.matrices_version,
+                battery,
+                remote_prompt,
+                s.laser,
+            )
         });
         let (status_text, error) = match &status {
             CoreStatus::Starting => ("starting", String::new()),
@@ -391,6 +425,19 @@ impl qobject::AppController {
         self.as_mut().set_error(QString::from(&error));
         self.as_mut().set_has_devices(devices > 0);
         self.as_mut().set_ringing_from(QString::from(&ringing));
+        let (prompt_id, prompt_name) = remote_prompt.unwrap_or_default();
+        self.as_mut().set_remote_prompt_device_id(QString::from(&prompt_id));
+        self.as_mut().set_remote_prompt_device_name(QString::from(&prompt_name));
+        match laser {
+            Some((_, x, y)) => {
+                self.as_mut().set_laser_x(x);
+                self.as_mut().set_laser_y(y);
+                self.as_mut().set_laser_active(true);
+            }
+            None => {
+                self.as_mut().set_laser_active(false);
+            }
+        }
         // Truncation is fine: QML only compares revisions for equality.
         self.as_mut().set_caps_revision(caps_version as i32);
 
@@ -444,6 +491,19 @@ impl qobject::AppController {
             .update(|s| if s.ringing_from.take().is_some() { Changes::RINGING } else { Changes::NONE });
     }
 
+    pub fn allow_remote_input(mut self: Pin<&mut Self>, device: &QString) {
+        self.as_mut().set_device_toggle(device, &QString::from("remote_input"), true);
+        core_host::host()
+            .hub
+            .update(|s| if s.remote_prompt.take().is_some() { Changes::REMOTE } else { Changes::NONE });
+    }
+
+    pub fn dismiss_remote_prompt(self: Pin<&mut Self>) {
+        core_host::host()
+            .hub
+            .update(|s| if s.remote_prompt.take().is_some() { Changes::REMOTE } else { Changes::NONE });
+    }
+
     pub fn unpair(self: Pin<&mut Self>, device: &QString) {
         let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return };
         core_host::spawn(async move {
@@ -475,8 +535,22 @@ impl qobject::AppController {
 
     pub fn set_device_toggle(mut self: Pin<&mut Self>, device: &QString, name: &QString, on: bool) {
         let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return };
-        if let Err(e) = node.set_device_toggle(id, &String::from(name), on) {
+        let name_str = String::from(name);
+        if let Err(e) = node.set_device_toggle(id, &name_str, on) {
             show_message(describe(&e));
+        }
+        if name_str == "remote_input" {
+            if !on {
+                crate::remote::stop_all();
+            }
+            core_host::host().hub.update(|s| {
+                if s.remote_prompt == Some(id) {
+                    s.remote_prompt = None;
+                    Changes::REMOTE
+                } else {
+                    Changes::NONE
+                }
+            });
         }
         let revision = self.toggles_revision.wrapping_add(1);
         self.as_mut().set_toggles_revision(revision);

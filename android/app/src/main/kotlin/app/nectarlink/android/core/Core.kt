@@ -120,6 +120,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * it removes. Runs once the node is up.
      */
     private val notificationOps = Channel<suspend (NectarlinkNode) -> Unit>(Channel.UNLIMITED)
+
+    /**
+     * Remote input for PCs, sent one after another: a button's release must
+     * never overtake its press (or the PC's button would stay down), nor a
+     * laser update its "off".
+     */
+    private val remoteOps = Channel<suspend (NectarlinkNode) -> Unit>(Channel.UNLIMITED)
     private val _state = MutableStateFlow(CoreState())
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
     private var node: NectarlinkNode? = null
@@ -201,6 +208,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             scope.launch {
                 for (op in notificationOps) {
                     runCatching { op(started) }.onFailure { Log.w(TAG, "notification update failed", it) }
+                }
+            }
+            scope.launch {
+                for (op in remoteOps) {
+                    runCatching { op(started) }.onFailure { Log.w(TAG, "remote input failed", it) }
                 }
             }
         }
@@ -543,6 +555,71 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
+    // ---- Remote input (phone -> PC) ----
+
+    /** Checks whether a PC accepts mouse, keyboard and presentation input from this phone. */
+    suspend fun remoteCheck(id: String): RemoteAccess {
+        startJob?.join()
+        val node = node ?: return RemoteAccess.Offline
+        return try {
+            node.remoteCheck(id)
+            RemoteAccess.Allowed
+        } catch (e: NectarlinkException) {
+            when (e) {
+                is NectarlinkException.Denied -> RemoteAccess.Denied
+                is NectarlinkException.Unsupported -> RemoteAccess.Unsupported
+                else -> RemoteAccess.Offline
+            }
+        }
+    }
+
+    /** Moves a PC's cursor by `(dx, dy)` logical pixels over QUIC datagrams. */
+    fun remoteMove(id: String, dx: Float, dy: Float) {
+        remoteOps.trySend { runCatching { it.remoteMove(id, dx, dy) } }
+    }
+
+    /** Scrolls on a PC (`dy` > 0 scrolls down, `dx` > 0 scrolls right, in wheel notches). */
+    fun remoteScroll(id: String, dx: Float, dy: Float, fast: Boolean = true) {
+        remoteOps.trySend { runCatching { it.remoteScroll(id, dx, dy, fast) } }
+    }
+
+    /** Presses, releases or clicks a mouse button (`"left"`, `"right"` or `"middle"`). */
+    fun remoteButton(id: String, button: String, action: String, onStatus: ((RemoteAccess) -> Unit)? = null) =
+        remoteCommand(onStatus) { it.remoteButton(id, button, action) }
+
+    /** Types Unicode text on a PC. */
+    fun remoteText(id: String, text: String, onStatus: ((RemoteAccess) -> Unit)? = null) =
+        remoteCommand(onStatus) { it.remoteText(id, text) }
+
+    /** Presses a named key or shortcut with optional modifiers on a PC. */
+    fun remoteKey(id: String, key: String, mods: List<String> = emptyList(), onStatus: ((RemoteAccess) -> Unit)? = null) =
+        remoteCommand(onStatus) { it.remoteKey(id, key, mods) }
+
+    /** Sends a presentation slide command (`"next"`, `"previous"`, `"start"`, `"stop"`, `"black"`). */
+    fun remoteSlide(id: String, action: String, onStatus: ((RemoteAccess) -> Unit)? = null) =
+        remoteCommand(onStatus) { it.remoteSlide(id, action) }
+
+    /** Moves or hides the laser pointer on a PC (`x`, `y` in `0..1`). */
+    fun remoteLaser(id: String, on: Boolean, x: Float = 0.5f, y: Float = 0.5f) {
+        remoteOps.trySend { runCatching { it.remoteLaser(id, on, x, y) } }
+    }
+
+    private fun remoteCommand(onStatus: ((RemoteAccess) -> Unit)?, block: suspend (NectarlinkNode) -> Unit) {
+        remoteOps.trySend { node ->
+            try {
+                block(node)
+                onStatus?.invoke(RemoteAccess.Allowed)
+            } catch (e: NectarlinkException) {
+                val status = when (e) {
+                    is NectarlinkException.Denied -> RemoteAccess.Denied
+                    is NectarlinkException.Unsupported -> RemoteAccess.Unsupported
+                    else -> RemoteAccess.Offline
+                }
+                onStatus?.invoke(status)
+            }
+        }
+    }
+
     /** Reconnects to PCs that aren't connected and syncs connected ones. */
     fun refresh() {
         refreshNotificationAccess()
@@ -576,6 +653,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         is NectarlinkException.Unsupported -> "The PC's app doesn't support that yet."
         else -> "Something went wrong."
     }
+
+    enum class RemoteAccess { Allowed, Denied, Offline, Unsupported }
 
     private companion object {
         const val TAG = "Nectarlink"

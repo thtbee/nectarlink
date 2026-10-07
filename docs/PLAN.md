@@ -199,7 +199,7 @@ current Android. Talking through the PC comes with the HFP item above.
 ### 3.10 Remote input & control
 | Feature | Tier |
 |---|---|
-| Phone as **touchpad + keyboard** for PC, presentation remote (with laser pointer) | P1 🟢 |
+| Phone as **touchpad + keyboard** for PC, presentation remote (with laser pointer) ✅ | P1 🟢 |
 | **Air mouse**: point the phone and its gyroscope moves the PC cursor, for presentations and couch use | P1 🟢 |
 | **Voice typing into PC**: hold a button on the phone, speak, and the text (from the phone's own speech engine) is typed into the PC's focused field | P1 🟢 |
 | Type on the phone with the PC keyboard (without mirroring) | P1 🟣 |

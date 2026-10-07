@@ -65,6 +65,6 @@ capability is missing.
 | `mirror.view` | Shows a phone's screen ([mirroring](mirror.md)) | app update |
 | `mirror.listen` | Plays a mirrored phone's sound ([mirroring](mirror.md)) | app update |
 | `files.browse` | Lets a paired phone browse and fetch its files | app update |
-| `input.inject` | Accepts pointer and keyboard input (touchpad, air mouse, voice typing) | app update |
+| `input.inject` | Accepts pointer, keyboard and presentation input ([remote input](remote.md)) | app update |
 | `deck.actions` | Runs Deck actions | app update |
 | `addon.vcam` | The virtual camera add-on is installed | installing the add-on |

@@ -268,6 +268,16 @@ pub trait Platform: Send + Sync + 'static {
     ) -> Result<(), MediaError> {
         Err(MediaError::Unsupported)
     }
+
+    /// Inject pointer, keyboard or presentation input from a paired phone
+    /// (`docs/protocol/remote.md`).
+    fn remote_input(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+        _input: crate::RemoteInput,
+    ) -> Result<(), String> {
+        Err("this device doesn't take remote input".into())
+    }
 }
 
 /// A platform that does nothing; useful for tests and headless tools.

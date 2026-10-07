@@ -13,6 +13,7 @@ pub mod h264;
 pub mod http;
 pub mod icon;
 pub mod image;
+pub mod input;
 pub mod media_sessions;
 pub mod net;
 pub mod shell;

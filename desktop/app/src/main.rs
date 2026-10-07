@@ -27,6 +27,7 @@ mod notifications;
 mod palette;
 mod photos;
 mod qr;
+mod remote;
 mod send_to;
 mod settings;
 mod startup;
@@ -93,6 +94,14 @@ impl Platform for DesktopPlatform {
         session: u32,
     ) -> Option<std::sync::Arc<dyn nectarlink_core::MirrorSink>> {
         mirror::sink(peer, session)
+    }
+    fn remote_input(
+        &self,
+        peer: &nectarlink_core::DeviceId,
+        input: nectarlink_core::RemoteInput,
+    ) -> Result<(), String> {
+        remote::handle_input(peer, input);
+        Ok(())
     }
 }
 

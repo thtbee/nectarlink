@@ -284,6 +284,54 @@ NativeWindow {
         }
     }
 
+    Sheet {
+        id: remotePromptSheet
+        opened: AppController.remotePromptDeviceId.length > 0
+        cardWidth: 420
+        onOpenedChanged: {
+            if (!opened && AppController.remotePromptDeviceId.length > 0)
+                AppController.dismissRemotePrompt()
+        }
+        Column {
+            width: parent.width
+            spacing: 16
+            Avatar {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 56; height: 56
+                iconPath: Icons.phone
+                emphasized: true
+            }
+            Txt {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: qsTr("Allow %1 to control this PC?").arg(AppController.remotePromptDeviceName)
+                role: "headline"
+                wrapMode: Text.WordWrap
+            }
+            Txt {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: qsTr("%1 wants to move the mouse, type, and control presentations on this PC. You can change this anytime in Settings.").arg(AppController.remotePromptDeviceName)
+                role: "body"
+                muted: true
+                wrapMode: Text.WordWrap
+            }
+            Row {
+                anchors.right: parent.right
+                spacing: 10
+                Button {
+                    variant: "text"
+                    text: qsTr("Not now")
+                    onClicked: AppController.dismissRemotePrompt()
+                }
+                Button {
+                    text: qsTr("Allow")
+                    onClicked: AppController.allowRemoteInput(AppController.remotePromptDeviceId)
+                }
+            }
+        }
+    }
+
     CaptionButtons {
         id: captionButtons
         window: window

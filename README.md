@@ -128,6 +128,17 @@ tests; there are no releases yet.
   clipboard, or save one or many to a folder you pick (`Downloads\Nectarlink`
   by default). New photos and screenshots from the phone also pop up on the PC
   with a preview, ready to save or copy.
+- **Touchpad, keyboard and presentation remote**: control the PC from the
+  phone — a touchpad with one-finger move, tap to click, two-finger tap for
+  right-click, two-finger scroll, double-tap-and-hold drag and adjustable
+  speed; soft-keyboard typing with a bar of modifier and special keys (`Ctrl`,
+  `Alt`, `Shift`, `Win`, `Esc`, `Tab`, arrows, `Home`/`End`, `PgUp`/`PgDn`,
+  `Del` and shortcuts); and a presentation mode with Next/Previous slide (plus
+  the phone's volume buttons while open), Start/End show, Black screen, and a
+  hold-for-laser pointer that draws an accent-colored dot on the PC screen
+  following the phone's gyroscope or finger. Off by default on the PC, with a
+  one-time prompt the first time a phone asks and a per-phone toggle in
+  Settings.
 - **Media** both ways: what plays on the phone shows on the PC, in the app and
   in Windows' own media flyout (so the keyboard's media keys work too), and
   what plays on the PC shows in the phone's media controls, with artwork and

@@ -163,4 +163,10 @@ pub enum NodeEvent {
         device: DeviceId,
         thread: Option<String>,
     },
+    /// A paired phone asked to control this PC's mouse and keyboard while its
+    /// `remote_input` toggle is off (emitted once per phone so the UI can show
+    /// a one-time prompt).
+    RemoteInputRequested {
+        device: DeviceId,
+    },
 }

@@ -25,6 +25,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -70,6 +71,8 @@ fun SettingsScreen(
     state: CoreState,
     appearance: Appearance,
     onAppearance: ((Appearance) -> Appearance) -> Unit,
+    touchpadSensitivity: Float,
+    onTouchpadSensitivity: (Float) -> Unit,
     onUnpair: (String) -> Unit,
     onPairNew: () -> Unit,
     onAccessChanged: () -> Unit,
@@ -130,6 +133,26 @@ fun SettingsScreen(
         Section(stringResource(R.string.settings_control)) {
             ControlAccess(state.inputAccess)
             ElevatedAccess()
+        }
+
+        Section(stringResource(R.string.settings_remote)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    stringResource(R.string.settings_touchpad_sensitivity),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    stringResource(R.string.settings_touchpad_sensitivity_value, touchpadSensitivity),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Slider(
+                value = touchpadSensitivity,
+                onValueChange = onTouchpadSensitivity,
+                valueRange = 0.5f..2.5f,
+            )
         }
 
         Section(stringResource(R.string.settings_appearance)) {

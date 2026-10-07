@@ -47,12 +47,20 @@ import app.nectarlink.android.core.PairingState
 import app.nectarlink.android.service.ConnectionService
 import app.nectarlink.android.ui.home.HomeScreen
 import app.nectarlink.android.ui.pairing.PairingActions
+import android.view.KeyEvent
 import app.nectarlink.android.core.LocalNetwork
 import app.nectarlink.android.ui.pairing.PairingScreen
+import app.nectarlink.android.ui.remote.RemoteMode
+import app.nectarlink.android.ui.remote.RemoteScreen
 import app.nectarlink.android.ui.settings.SettingsScreen
 import app.nectarlink.android.ui.theme.NectarlinkTheme
 
 class MainActivity : ComponentActivity() {
+    @Volatile
+    private var activeRemotePcId: String? = null
+    private var requestedRemotePc by mutableStateOf<String?>(null)
+    private var requestedRemoteMode by mutableStateOf(RemoteMode.Touchpad)
+
     private val permissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             // The local network may have just been allowed: reconnect now.
@@ -72,7 +80,10 @@ class MainActivity : ComponentActivity() {
             if (LocalNetwork.needed()) add(LocalNetwork.PERMISSION)
         }.filter { checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED }
         if (wanted.isNotEmpty()) permissions.launch(wanted.toTypedArray())
-        if (savedInstanceState == null) handlePairingLink(intent)
+        if (savedInstanceState == null) {
+            handlePairingLink(intent)
+            handleRemoteIntent(intent)
+        }
 
         setContent {
             val appearance by preferences.appearance.collectAsStateWithLifecycle()
@@ -89,7 +100,15 @@ class MainActivity : ComponentActivity() {
                 // Every screen sits on the theme's background, not the
                 // window's (which can't follow the app's own light/dark choice).
                 Surface(color = MaterialTheme.colorScheme.background) {
-                    App(core, state, preferences)
+                    App(
+                        core = core,
+                        state = state,
+                        preferences = preferences,
+                        requestedRemotePc = requestedRemotePc,
+                        requestedRemoteMode = requestedRemoteMode,
+                        onRemoteConsumed = { requestedRemotePc = null },
+                        onActiveRemoteChanged = { activeRemotePcId = it },
+                    )
                 }
             }
         }
@@ -106,6 +125,48 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handlePairingLink(intent)
+        handleRemoteIntent(intent)
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        val pcId = activeRemotePcId
+        if (pcId != null) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                    if (event?.repeatCount == 0) {
+                        (application as NectarlinkApplication).core.remoteSlide(pcId, "next")
+                    }
+                    return true
+                }
+                KeyEvent.KEYCODE_VOLUME_UP -> {
+                    if (event?.repeatCount == 0) {
+                        (application as NectarlinkApplication).core.remoteSlide(pcId, "previous")
+                    }
+                    return true
+                }
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (activeRemotePcId != null &&
+            (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP)
+        ) {
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
+    private fun handleRemoteIntent(intent: Intent?) {
+        val pc = intent?.getStringExtra("remote_pc") ?: return
+        val mode = intent.getStringExtra("remote_mode")
+        requestedRemoteMode = if (mode.equals("presentation", ignoreCase = true)) {
+            RemoteMode.Presentation
+        } else {
+            RemoteMode.Touchpad
+        }
+        requestedRemotePc = pc
     }
 
     /**
@@ -126,11 +187,36 @@ class MainActivity : ComponentActivity() {
 private enum class Tab { Home, Settings }
 
 @Composable
-private fun App(core: Core, state: CoreState, preferences: Preferences) {
+private fun App(
+    core: Core,
+    state: CoreState,
+    preferences: Preferences,
+    requestedRemotePc: String?,
+    requestedRemoteMode: RemoteMode,
+    onRemoteConsumed: () -> Unit,
+    onActiveRemoteChanged: (String?) -> Unit,
+) {
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
     var pairing by rememberSaveable { mutableStateOf(false) }
+    var remotePcId by rememberSaveable { mutableStateOf<String?>(null) }
+    var remoteInitialMode by rememberSaveable { mutableStateOf(RemoteMode.Touchpad) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { core.messages.collect { snackbar.showSnackbar(it) } }
+
+    LaunchedEffect(requestedRemotePc, state.devices) {
+        val req = requestedRemotePc ?: return@LaunchedEffect
+        val target = if (req == "first") state.devices.firstOrNull()?.id else state.device(req)?.id
+        if (target != null) {
+            remoteInitialMode = requestedRemoteMode
+            remotePcId = target
+            onRemoteConsumed()
+        }
+    }
+
+    val remoteDevice = remotePcId?.let { state.device(it) }
+    LaunchedEffect(remoteDevice?.id) {
+        onActiveRemoteChanged(remoteDevice?.id)
+    }
 
     val actions = remember(core) {
         object : PairingActions {
@@ -152,6 +238,22 @@ private fun App(core: Core, state: CoreState, preferences: Preferences) {
         state.devices.isEmpty() || pairing || state.pairing != PairingState.Idle -> {
             BackHandler(enabled = pairing && state.devices.isNotEmpty()) { core.resetPairing(); pairing = false }
             PairingScreen(state, actions, cancellable = state.devices.isNotEmpty()) { pairing = false }
+        }
+        remoteDevice != null -> {
+            BackHandler { remotePcId = null }
+            val sensitivity by preferences.touchpadSensitivity.collectAsStateWithLifecycle()
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackbar) },
+            ) { padding ->
+                RemoteScreen(
+                    device = remoteDevice,
+                    core = core,
+                    sensitivity = sensitivity,
+                    initialMode = remoteInitialMode,
+                    onBack = { remotePcId = null },
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                )
+            }
         }
         else -> Scaffold(
             snackbarHost = { SnackbarHost(snackbar) },
@@ -181,6 +283,10 @@ private fun App(core: Core, state: CoreState, preferences: Preferences) {
                     onPairNew = { pairing = true },
                     onRefresh = core::refresh,
                     onPower = core::pcPower,
+                    onRemote = { id ->
+                        remoteInitialMode = RemoteMode.Touchpad
+                        remotePcId = id
+                    },
                     updater = (LocalContext.current.applicationContext as NectarlinkApplication).updater,
                     onSendFiles = core::sendFiles,
                     onSendFolder = core::sendFolder,
@@ -192,6 +298,8 @@ private fun App(core: Core, state: CoreState, preferences: Preferences) {
                     state = state,
                     appearance = preferences.appearance.collectAsStateWithLifecycle().value,
                     onAppearance = preferences::update,
+                    touchpadSensitivity = preferences.touchpadSensitivity.collectAsStateWithLifecycle().value,
+                    onTouchpadSensitivity = preferences::updateTouchpadSensitivity,
                     onUnpair = core::unpair,
                     onPairNew = { pairing = true },
                     onAccessChanged = core::refreshNotificationAccess,

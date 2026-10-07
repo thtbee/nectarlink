@@ -122,6 +122,8 @@ pub(crate) struct Shared {
     pub(crate) calls: crate::calls::Current,
     /// Stop signals for phone screens shown here, by phone.
     pub(crate) mirror_stops: Mutex<HashMap<MirrorStop, Arc<tokio::sync::Notify>>>,
+    /// Per-peer rate limiters and prompt state for remote input.
+    pub(crate) remote: Mutex<crate::remote::RemoteState>,
     pub data_dir: std::path::PathBuf,
     /// Where received files go.
     pub downloads_dir: std::path::PathBuf,
@@ -294,6 +296,7 @@ impl Shared {
         }
         lock(&self.links).remove(peer);
         lock(&self.matrices).remove(peer);
+        lock(&self.remote).remove_peer(peer);
         if existed {
             self.emit(NodeEvent::DeviceRemoved(*peer));
         }
@@ -619,6 +622,7 @@ impl Node {
             players: Default::default(),
             calls: Default::default(),
             mirror_stops: Mutex::new(HashMap::new()),
+            remote: Mutex::new(Default::default()),
             data_dir: config.data_dir.clone(),
             downloads_dir: config.downloads_dir.clone().unwrap_or_else(|| config.data_dir.join("received")),
             transfers: Mutex::new(HashMap::new()),
@@ -1141,6 +1145,41 @@ impl Node {
     pub async fn fetch_photos(&self, peer: DeviceId, ids: Vec<String>) -> Result<String> {
         let session = self.connected(&peer)?;
         crate::photos::fetch_many(&self.shared, &session, ids).await
+    }
+
+    // ---- Remote input (docs/protocol/remote.md) ----
+
+    /// Checks whether a paired PC currently accepts remote input from this
+    /// phone. If `remote_input` is off on the PC, returns [`Error::Denied`]
+    /// and triggers the PC's one-time prompt the first time.
+    pub async fn remote_check(&self, peer: DeviceId) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::remote::check(&self.shared, &session).await
+    }
+
+    /// Sends a remote input event to a paired PC.
+    pub async fn remote_input(&self, peer: DeviceId, input: crate::RemoteInput) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::remote::input(&self.shared, &session, input).await
+    }
+
+    /// Sends relative pointer motion `(dx, dy)` in a QUIC datagram (never on
+    /// the control stream).
+    pub async fn remote_move(&self, peer: DeviceId, dx: f32, dy: f32) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::remote::move_pointer(&self.shared, &session, dx, dy).await
+    }
+
+    /// Sends smooth scroll `(dx, dy)` in a QUIC datagram.
+    pub async fn remote_scroll_fast(&self, peer: DeviceId, dx: f32, dy: f32) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::remote::scroll_fast(&self.shared, &session, dx, dy).await
+    }
+
+    /// Sends a laser pointer update to a paired PC (`x`, `y` in `0.0..=1.0`).
+    pub async fn remote_laser(&self, peer: DeviceId, on: bool, x: f32, y: f32) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::remote::laser(&self.shared, &session, on, x, y).await
     }
 
     // ---- Media (docs/protocol/media.md) ----

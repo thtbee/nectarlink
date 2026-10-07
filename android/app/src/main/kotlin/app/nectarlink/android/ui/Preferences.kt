@@ -14,6 +14,9 @@ class Preferences(context: Context) {
     private val _appearance = MutableStateFlow(load())
     val appearance: StateFlow<Appearance> = _appearance.asStateFlow()
 
+    private val _touchpadSensitivity = MutableStateFlow(prefs.getFloat(TOUCHPAD_SENSITIVITY, 1.0f).coerceIn(0.4f, 3.0f))
+    val touchpadSensitivity: StateFlow<Float> = _touchpadSensitivity.asStateFlow()
+
     private fun load(): Appearance {
         val defaults = Appearance()
         return Appearance(
@@ -35,10 +38,17 @@ class Preferences(context: Context) {
         _appearance.value = next
     }
 
+    fun updateTouchpadSensitivity(sensitivity: Float) {
+        val clamped = sensitivity.coerceIn(0.4f, 3.0f)
+        prefs.edit { putFloat(TOUCHPAD_SENSITIVITY, clamped) }
+        _touchpadSensitivity.value = clamped
+    }
+
     private companion object {
         const val THEME = "theme"
         const val MODE = "mode"
         const val SEED = "seed"
         const val DYNAMIC = "dynamic_color"
+        const val TOUCHPAD_SENSITIVITY = "touchpad_sensitivity"
     }
 }

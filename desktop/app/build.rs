@@ -17,6 +17,7 @@ mod mark;
 
 const QML: &[&str] = &[
     "qml/App.qml",
+    "qml/LaserOverlay.qml",
     "qml/MainWindow.qml",
     "qml/MirrorWindow.qml",
     "qml/components/AppsSheet.qml",

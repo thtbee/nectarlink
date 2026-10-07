@@ -458,6 +458,11 @@ pub enum Event {
     PhotosChanged {
         id: String,
     },
+    /// A paired phone asked to control this PC while `remote_input` is off
+    /// (PCs only).
+    RemoteInputRequested {
+        id: String,
+    },
 }
 
 /// What a mirroring video packet holds (docs/protocol/mirror.md).
@@ -1220,6 +1225,9 @@ impl From<NodeEvent> for Event {
             NodeEvent::Mirroring { device, session, on } => {
                 Event::Mirroring { id: device.to_string(), session, on }
             }
+            NodeEvent::RemoteInputRequested { device } => {
+                Event::RemoteInputRequested { id: device.to_string() }
+            }
         }
     }
 }
@@ -1915,6 +1923,118 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.open_link(id, url).await?) }).await
+    }
+
+    // ---- Remote input (touchpad, keyboard, presentation) ----
+
+    /// Checks whether a paired PC allows remote mouse/keyboard input from this
+    /// phone (`NectarlinkError::Denied` when `remote_input` is off on the PC,
+    /// which also triggers a one-time confirmation prompt there).
+    pub async fn remote_check(&self, id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_check(id).await?) }).await
+    }
+
+    /// Moves a paired PC's mouse cursor by `(dx, dy)` logical pixels over
+    /// QUIC datagrams (or the `remote/motion` stream fallback).
+    pub async fn remote_move(&self, id: String, dx: f32, dy: f32) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_move(id, dx, dy).await?) }).await
+    }
+
+    /// Scrolls on a paired PC (`dy` > 0 scrolls down, `dx` > 0 scrolls right,
+    /// in wheel notches). When `fast` is true, sends over QUIC datagrams.
+    pub async fn remote_scroll(&self, id: String, dx: f32, dy: f32, fast: bool) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move {
+            if fast {
+                Ok(node.remote_scroll_fast(id, dx, dy).await?)
+            } else {
+                Ok(node.remote_input(id, core::RemoteInput::Scroll { dx, dy }).await?)
+            }
+        })
+        .await
+    }
+
+    /// Presses, releases or clicks a mouse button (`"left"`, `"right"` or
+    /// `"middle"`; `action`: `"down"`, `"up"` or `"click"`) on a paired PC.
+    pub async fn remote_button(&self, id: String, button: String, action: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let button = match button.as_str() {
+            "left" => core::MouseButton::Left,
+            "right" => core::MouseButton::Right,
+            "middle" => core::MouseButton::Middle,
+            _ => return Err(NectarlinkError::Internal { reason: format!("invalid mouse button: {button}") }),
+        };
+        let action = match action.as_str() {
+            "down" => core::ButtonAction::Down,
+            "up" => core::ButtonAction::Up,
+            "click" => core::ButtonAction::Click,
+            _ => {
+                return Err(NectarlinkError::Internal { reason: format!("invalid button action: {action}") });
+            }
+        };
+        let node = self.node.clone();
+        self.run(
+            async move { Ok(node.remote_input(id, core::RemoteInput::Button { button, action }).await?) },
+        )
+        .await
+    }
+
+    /// Types Unicode text on a paired PC.
+    pub async fn remote_text(&self, id: String, text: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_input(id, core::RemoteInput::Text { text }).await?) }).await
+    }
+
+    /// Presses a named key or shortcut (`key`) with optional modifiers
+    /// (`"ctrl"`, `"alt"`, `"shift"`, `"win"`) on a paired PC.
+    pub async fn remote_key(&self, id: String, key: String, mods: Vec<String>) -> Result<()> {
+        let id = parse_id(&id)?;
+        let mut parsed_mods = Vec::with_capacity(mods.len());
+        for m in mods {
+            let km = match m.as_str() {
+                "ctrl" => core::KeyMod::Ctrl,
+                "alt" => core::KeyMod::Alt,
+                "shift" => core::KeyMod::Shift,
+                "win" => core::KeyMod::Win,
+                _ => return Err(NectarlinkError::Internal { reason: format!("invalid key modifier: {m}") }),
+            };
+            parsed_mods.push(km);
+        }
+        let node = self.node.clone();
+        self.run(async move {
+            Ok(node.remote_input(id, core::RemoteInput::Key { key, mods: parsed_mods }).await?)
+        })
+        .await
+    }
+
+    /// Sends a presentation slide command (`"next"`, `"previous"`, `"start"`,
+    /// `"stop"` or `"black"`) to a paired PC.
+    pub async fn remote_slide(&self, id: String, action: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let action = match action.as_str() {
+            "next" => core::SlideAction::Next,
+            "previous" | "prev" => core::SlideAction::Previous,
+            "start" => core::SlideAction::Start,
+            "stop" => core::SlideAction::Stop,
+            "black" => core::SlideAction::Black,
+            _ => return Err(NectarlinkError::Internal { reason: format!("invalid slide action: {action}") }),
+        };
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_input(id, core::RemoteInput::Slide { action }).await?) }).await
+    }
+
+    /// Moves or hides the laser pointer overlay on a paired PC (`x`, `y` in
+    /// `0.0..=1.0`).
+    pub async fn remote_laser(&self, id: String, on: bool, x: f32, y: f32) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_laser(id, on, x, y).await?) }).await
     }
 
     /// Opens this phone's screen stream to a PC that asked (after the user

@@ -11,6 +11,7 @@ QtObject {
     id: app
 
     property MainWindow mainWindow: null
+    readonly property LaserOverlay laserOverlay: LaserOverlay {}
     // A window for each phone screen or app being mirrored. The model
     // keeps a row per window (by key), so a window lives as long as its
     // mirroring, whatever else changes.
@@ -83,6 +84,12 @@ QtObject {
         function onQuitRequested() { Qt.quit() }
         function onRingingFromChanged() {
             if (AppController.ringingFrom.length > 0) {
+                app.showMain()
+                app.mainWindow.flash()
+            }
+        }
+        function onRemotePromptDeviceIdChanged() {
+            if (AppController.remotePromptDeviceId.length > 0) {
                 app.showMain()
                 app.mainWindow.flash()
             }

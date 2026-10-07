@@ -335,6 +335,8 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("photos", true),
     ("pc_actions", true),
     ("mirroring", true),
+    // Controlling this PC's mouse and keyboard is opt-in.
+    ("remote_input", false),
     // Browsing the PC's files from anywhere is opt-in.
     ("remote_files", false),
 ];

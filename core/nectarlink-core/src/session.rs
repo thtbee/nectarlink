@@ -170,6 +170,7 @@ impl Session {
                 _ = reader(&s, recv, &weak) => {}
                 _ = heartbeat(&s, &weak) => {}
                 _ = streams(&s, &weak) => {}
+                _ = datagrams(&s, &weak) => {}
                 _ = s.conn.closed() => {}
             }
             cancel.cancel();
@@ -213,6 +214,16 @@ impl Session {
 
     pub fn is_alive(&self) -> bool {
         !self.cancel.is_cancelled() && self.conn.close_reason().is_none()
+    }
+
+    /// Sends a QUIC datagram (protocol v0 §4).
+    pub fn send_datagram(&self, data: bytes::Bytes) -> Result<()> {
+        self.conn.send_datagram(data).map_err(crate::error::net)
+    }
+
+    /// Opens a bidirectional stream on the session connection.
+    pub async fn open_bi(&self) -> Result<(SendStream, RecvStream)> {
+        self.conn.open_bi().await.map_err(crate::error::net)
     }
 
     /// Queues a one-way message.
@@ -389,6 +400,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if t.starts_with("contacts.") && crate::contacts::handle(shared, session, &env).await? => {}
         t if t.starts_with("sms.") && crate::sms::handle(shared, session, &env).await? => {}
         t if t.starts_with("mirror.") && crate::mirror::handle(shared, session, &env).await? => {}
+        t if t.starts_with("remote.") && crate::remote::handle(shared, session, &env).await? => {}
         other => {
             if env.id.is_some() {
                 let reply = Envelope::error(ErrorCode::Unsupported, format!("unknown message type {other}"));
@@ -414,6 +426,22 @@ async fn streams(session: &Arc<Session>, shared: &Weak<Shared>) {
             crate::transfer::accept_stream(shared, session, send, recv).await;
             drop(permit);
         });
+    }
+}
+
+async fn datagrams(session: &Arc<Session>, shared: &Weak<Shared>) {
+    loop {
+        match session.conn.read_datagram().await {
+            Ok(bytes) => {
+                let Some(shared) = shared.upgrade() else { return };
+                crate::remote::handle_datagram(&shared, session.peer, &bytes);
+            }
+            Err(_) => {
+                // If datagrams aren't available on this connection, stay parked
+                // until the session ends rather than tearing it down.
+                std::future::pending::<()>().await;
+            }
+        }
     }
 }
 

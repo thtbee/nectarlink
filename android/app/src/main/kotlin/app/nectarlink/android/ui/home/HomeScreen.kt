@@ -81,6 +81,7 @@ fun HomeScreen(
     onPairNew: () -> Unit,
     onRefresh: () -> Unit,
     onPower: (pcId: String, sleep: Boolean) -> Unit,
+    onRemote: (pcId: String) -> Unit,
     updater: AppUpdater,
     onSendFiles: (pcId: String, uris: List<Uri>) -> Unit,
     onSendFolder: (pcId: String, tree: Uri) -> Unit,
@@ -196,7 +197,7 @@ fun HomeScreen(
                 ) { askPhotos.launch(RecentPhotos.permissions) }
             }
         }
-        items(state.devices, key = { it.id }) { device -> PcCard(device, onRing, onSendFiles, onSendFolder, onPower) }
+        items(state.devices, key = { it.id }) { device -> PcCard(device, onRing, onSendFiles, onSendFolder, onPower, onRemote) }
         if (state.transfers.isNotEmpty()) {
             item { TransfersCard(state, onCancelTransfer) }
         }
@@ -239,6 +240,7 @@ private fun PcCard(
     onSendFiles: (String, List<Uri>) -> Unit,
     onSendFolder: (String, Uri) -> Unit,
     onPower: (String, Boolean) -> Unit,
+    onRemote: (String) -> Unit,
 ) {
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) onSendFiles(device.id, uris)
@@ -306,6 +308,12 @@ private fun PcCard(
                     },
                 ) {
                     Text(stringResource(if (ringing) R.string.action_stop_ringing else R.string.action_ring_pc))
+                }
+                FilledTonalButton(
+                    colors = tonal,
+                    onClick = { onRemote(device.id) },
+                ) {
+                    Text(stringResource(R.string.action_remote_pc))
                 }
                 FilledTonalButton(
                     enabled = device.online,
