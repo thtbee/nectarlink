@@ -73,6 +73,14 @@ pub struct Settings {
     pub close_to_tray: bool,
     /// Send what's copied on this PC to connected phones.
     pub auto_clipboard: bool,
+    /// Keep the last 50 synced clips in encrypted local clipboard history.
+    pub clipboard_history: bool,
+    /// Copy one-time codes from phone notifications and SMS automatically.
+    pub auto_copy_otp: bool,
+    /// Pause PC media playback while a phone call is ringing or active.
+    pub pause_media_on_call: bool,
+    /// Quiet phone notification pop-ups on the PC while the phone is in Do Not Disturb.
+    pub sync_dnd: bool,
     /// Paired phones in Explorer's "Send to" menu.
     pub send_to_menu: bool,
     /// Check for updates on its own (installed copies).
@@ -107,6 +115,10 @@ impl Default for Settings {
             backdrop: true,
             close_to_tray: true,
             auto_clipboard: true,
+            clipboard_history: true,
+            auto_copy_otp: false,
+            pause_media_on_call: true,
+            sync_dnd: false,
             send_to_menu: true,
             auto_update: true,
             battery_alerts: true,
@@ -176,6 +188,10 @@ mod tests {
             backdrop: false,
             close_to_tray: false,
             auto_clipboard: false,
+            clipboard_history: false,
+            auto_copy_otp: true,
+            pause_media_on_call: false,
+            sync_dnd: true,
             send_to_menu: false,
             auto_update: false,
             battery_alerts: false,

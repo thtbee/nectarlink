@@ -219,8 +219,18 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 val toggles = runCatching { started.deviceToggles(dev.id) }.getOrDefault(emptyList())
                 if (toggles.any { it.name == PhoneStorage.TOGGLE_NAME && it.enabled }) dev.id else null
             }.toSet()
+            val clipHistEnabled = runCatching { started.clipboardHistoryEnabled() }.getOrDefault(true)
+            val clipHist = if (clipHistEnabled) {
+                runCatching { started.clipboardHistory(null) }.getOrDefault(emptyList())
+            } else {
+                emptyList()
+            }
             _state.update {
-                it.withDevices(devices, storageAllowed).copy(status = CoreStatus.Ready(started.deviceId()))
+                it.withDevices(devices, storageAllowed).copy(
+                    status = CoreStatus.Ready(started.deviceId()),
+                    clipboardHistoryEnabled = clipHistEnabled,
+                    clipboardHistory = clipHist,
+                )
             }
             if (devices.isNotEmpty()) ConnectionService.start(context)
             scope.launch(Dispatchers.Main) {
@@ -388,6 +398,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 if (_state.value.devices.isEmpty()) ConnectionService.stop(context)
             }
             is Event.Paired -> ConnectionService.start(context)
+            is Event.ClipboardHistoryChanged -> refreshClipboardHistory()
             else -> {}
         }
     }
@@ -623,6 +634,71 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             }
         }
         return if (sentTo.isNotEmpty()) context.getString(R.string.clip_sent_to, sentTo.joinToString()) else failure.orEmpty()
+    }
+
+    private fun refreshClipboardHistory() {
+        val currentNode = node ?: return
+        val enabled = runCatching { currentNode.clipboardHistoryEnabled() }.getOrDefault(true)
+        val items = if (enabled) {
+            runCatching { currentNode.clipboardHistory(null) }.getOrDefault(emptyList())
+        } else {
+            emptyList()
+        }
+        _state.update { it.copy(clipboardHistoryEnabled = enabled, clipboardHistory = items) }
+    }
+
+    fun setClipboardHistoryEnabled(enabled: Boolean) {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@launch
+            runCatching { currentNode.setClipboardHistoryEnabled(enabled) }
+            refreshClipboardHistory()
+        }
+    }
+
+    fun copyClipboardHistory(id: String) {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@launch
+            try {
+                currentNode.copyClipboardHistory(id)
+                // Android 13 and later confirm copies themselves.
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                    _messages.tryEmit(context.getString(R.string.clipboard_history_copied))
+                }
+            } catch (e: NectarlinkException) {
+                _messages.tryEmit(describe(e))
+            }
+        }
+    }
+
+    fun pinClipboardHistory(id: String, pinned: Boolean) {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            node?.pinClipboardHistory(id, pinned)
+            refreshClipboardHistory()
+        }
+    }
+
+    fun deleteClipboardHistory(id: String) {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            node?.deleteClipboardHistory(id)
+            refreshClipboardHistory()
+        }
+    }
+
+    fun clearClipboardHistory() {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            runCatching { node?.clearClipboardHistory() }
+            refreshClipboardHistory()
+        }
+    }
+
+    suspend fun clipboardHistoryImage(id: String): ByteArray? = withContext(Dispatchers.IO) {
+        startJob?.join()
+        node?.clipboardHistoryImage(id)
     }
 
     /** What this phone offers PCs (docs/protocol/capabilities.md). */

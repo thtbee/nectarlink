@@ -2362,6 +2362,7 @@ dependencies = [
  "cxx-qt",
  "cxx-qt-build",
  "cxx-qt-lib",
+ "data-encoding",
  "dirs",
  "embed-resource",
  "hostname",

@@ -46,6 +46,14 @@ pub mod qobject {
         #[qproperty(bool, close_to_tray)]
         /// Send what's copied on this PC to connected phones.
         #[qproperty(bool, auto_clipboard)]
+        /// Keep the last 50 synced clips in encrypted local history.
+        #[qproperty(bool, clipboard_history)]
+        /// Copy one-time codes from phone notifications and SMS automatically.
+        #[qproperty(bool, auto_copy_otp)]
+        /// Pause PC media playback while a phone call is ringing or active.
+        #[qproperty(bool, pause_media_on_call)]
+        /// Quiet phone notification pop-ups on the PC while the phone is in Do Not Disturb.
+        #[qproperty(bool, sync_dnd)]
         /// Paired phones in Explorer's "Send to" menu.
         #[qproperty(bool, send_to_menu)]
         /// Start when the user signs in.
@@ -134,6 +142,10 @@ pub struct PreferencesRust {
     backdrop: bool,
     close_to_tray: bool,
     auto_clipboard: bool,
+    clipboard_history: bool,
+    auto_copy_otp: bool,
+    pause_media_on_call: bool,
+    sync_dnd: bool,
     send_to_menu: bool,
     start_with_windows: bool,
     auto_update: bool,
@@ -164,6 +176,14 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_close_to_tray(settings.close_to_tray);
         self.as_mut().set_auto_clipboard(settings.auto_clipboard);
         crate::clipboard::set_auto_send(settings.auto_clipboard);
+        self.as_mut().set_clipboard_history(settings.clipboard_history);
+        crate::clipboard::set_history_enabled(settings.clipboard_history);
+        self.as_mut().set_auto_copy_otp(settings.auto_copy_otp);
+        crate::notifications::set_auto_copy_otp(settings.auto_copy_otp);
+        self.as_mut().set_pause_media_on_call(settings.pause_media_on_call);
+        crate::calls::set_pause_media_on_call(settings.pause_media_on_call);
+        self.as_mut().set_sync_dnd(settings.sync_dnd);
+        crate::notifications::set_sync_dnd(settings.sync_dnd);
         self.as_mut().set_send_to_menu(settings.send_to_menu);
         self.as_mut().set_auto_update(settings.auto_update);
         self.as_mut().set_battery_alerts(settings.battery_alerts);
@@ -186,6 +206,30 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_auto_clipboard_changed(|p| {
                 crate::clipboard::set_auto_send(p.auto_clipboard);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_clipboard_history_changed(|p| {
+                crate::clipboard::set_history_enabled(p.clipboard_history);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_auto_copy_otp_changed(|p| {
+                crate::notifications::set_auto_copy_otp(p.auto_copy_otp);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_pause_media_on_call_changed(|p| {
+                crate::calls::set_pause_media_on_call(p.pause_media_on_call);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_sync_dnd_changed(|p| {
+                crate::notifications::set_sync_dnd(p.sync_dnd);
                 p.save();
             })
             .release();
@@ -266,6 +310,10 @@ impl qobject::Preferences {
             backdrop: p.backdrop,
             close_to_tray: p.close_to_tray,
             auto_clipboard: p.auto_clipboard,
+            clipboard_history: p.clipboard_history,
+            auto_copy_otp: p.auto_copy_otp,
+            pause_media_on_call: p.pause_media_on_call,
+            sync_dnd: p.sync_dnd,
             send_to_menu: p.send_to_menu,
             auto_update: p.auto_update,
             battery_alerts: p.battery_alerts,

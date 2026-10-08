@@ -275,6 +275,54 @@ Item {
                     Divider { width: parent.width }
                     ListRow {
                         width: parent.width
+                        iconPath: Icons.history
+                        title: qsTr("Keep clipboard history")
+                        description: qsTr("Keep the last 50 text and image clips shared between your devices, encrypted on this PC. Passwords and one-time codes are never saved.")
+                        Row {
+                            spacing: 10
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: Preferences.clipboardHistory && AppController.clipboardHistory.length > 2
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Clear")
+                                onClicked: AppController.clearClipboardHistory()
+                            }
+                            Toggle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                label: qsTr("Keep clipboard history")
+                                checked: Preferences.clipboardHistory
+                                onToggled: (on) => Preferences.clipboardHistory = on
+                            }
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.copy
+                        title: qsTr("Copy one-time codes automatically")
+                        description: qsTr("Copy verification codes from your phone's notifications and texts as they arrive. They're never sent back or saved.")
+                        Toggle {
+                            label: qsTr("Copy one-time codes automatically")
+                            checked: Preferences.autoCopyOtp
+                            onToggled: (on) => Preferences.autoCopyOtp = on
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.pause
+                        title: qsTr("Pause media during phone calls")
+                        description: qsTr("Pause what's playing on this PC when your phone rings, and resume it after the call.")
+                        Toggle {
+                            label: qsTr("Pause media during phone calls")
+                            checked: Preferences.pauseMediaOnCall
+                            onToggled: (on) => Preferences.pauseMediaOnCall = on
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
                         iconPath: Icons.send
                         title: qsTr("Show your phones in File Explorer")
                         description: qsTr("Right-click files, choose Send to, then your phone.")
@@ -571,6 +619,18 @@ Item {
                             label: qsTr("Keep a day of history")
                             checked: NotificationList.historyEnabled
                             onToggled: (on) => NotificationList.setHistoryEnabled(on)
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.moon
+                        title: qsTr("Follow your phone's Do not disturb")
+                        description: qsTr("No pop-ups or sounds for phone notifications while your phone is on Do not disturb. They still show in the app.")
+                        Toggle {
+                            label: qsTr("Follow your phone's Do not disturb")
+                            checked: Preferences.syncDnd
+                            onToggled: (on) => Preferences.syncDnd = on
                         }
                     }
                     Divider { width: parent.width }

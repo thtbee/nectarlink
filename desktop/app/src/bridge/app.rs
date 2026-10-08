@@ -92,6 +92,9 @@ pub mod qobject {
         /// unloads so the window can be destroyed in the background.
         #[qproperty(QString, current_page)]
         #[qproperty(i32, current_device)]
+        /// Encrypted local clipboard history as JSON:
+        /// `[{ id, kind, text, imageDataUrl, deviceName, incoming, timestamp, pinned }]`.
+        #[qproperty(QString, clipboard_history)]
         type AppController = super::AppControllerRust;
 
         /// Asks a paired device to ring (or stop).
@@ -136,6 +139,18 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "sendClipboard"]
         fn send_clipboard(self: &AppController, device: &QString);
+        /// Copies an item from local clipboard history back to the PC clipboard.
+        #[qinvokable]
+        fn copy_clipboard_history(self: &AppController, id: &QString);
+        /// Pins or unpins an item in local clipboard history.
+        #[qinvokable]
+        fn pin_clipboard_history(self: &AppController, id: &QString, pinned: bool);
+        /// Deletes one item from local clipboard history.
+        #[qinvokable]
+        fn delete_clipboard_history(self: &AppController, id: &QString);
+        /// Clears all items from local clipboard history.
+        #[qinvokable]
+        fn clear_clipboard_history(self: &AppController);
 
         /// Re-reads whether Windows shows this app's notifications (the user
         /// may have changed it in Settings).
@@ -221,6 +236,7 @@ pub struct AppControllerRust {
     wake_wired: bool,
     current_page: QString,
     current_device: i32,
+    clipboard_history: QString,
     tray: Option<tray::Tray>,
 }
 
@@ -327,6 +343,7 @@ impl cxx_qt::Initialize for qobject::AppController {
         self.as_mut().set_version(QString::from(env!("CARGO_PKG_VERSION")));
         self.as_mut().set_current_page(QString::from("home"));
         self.as_mut().set_can_update(crate::updater::can_update());
+        self.as_mut().set_clipboard_history(QString::from(&crate::clipboard::history_json()));
         self.as_mut().refresh_appearance();
         let qt = self.qt_thread();
         *CONTROLLER.get_or_init(Mutex::default).lock().unwrap_or_else(|e| e.into_inner()) = Some(qt.clone());
@@ -343,6 +360,10 @@ impl cxx_qt::Initialize for qobject::AppController {
         super::subscribe(qt.clone(), Changes::UPDATE, |object| {
             let version = crate::updater::available().map(|u| u.version).unwrap_or_default();
             object.set_update_version(QString::from(&version));
+        });
+        super::subscribe(qt.clone(), Changes::CLIPBOARD, |object| {
+            let json = crate::clipboard::history_json();
+            object.set_clipboard_history(QString::from(&json));
         });
 
         let labels = tray::MenuLabels {
@@ -532,6 +553,22 @@ impl qobject::AppController {
         if let Some(id) = super::parse_device(device) {
             crate::clipboard::send_now(id);
         }
+    }
+
+    pub fn copy_clipboard_history(&self, id: &QString) {
+        crate::clipboard::copy_history_item(&String::from(id));
+    }
+
+    pub fn pin_clipboard_history(&self, id: &QString, pinned: bool) {
+        crate::clipboard::pin_history_item(&String::from(id), pinned);
+    }
+
+    pub fn delete_clipboard_history(&self, id: &QString) {
+        crate::clipboard::delete_history_item(&String::from(id));
+    }
+
+    pub fn clear_clipboard_history(&self) {
+        crate::clipboard::clear_history();
     }
 
     pub fn refresh_toasts_enabled(self: Pin<&mut Self>) {

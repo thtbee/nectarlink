@@ -470,6 +470,11 @@ private fun App(
                         webcamPcId = req.pcId
                     },
                     onDismissWebcamRequest = { core.clearWebcamRequest() },
+                    onCopyClipboardHistory = core::copyClipboardHistory,
+                    onPinClipboardHistory = core::pinClipboardHistory,
+                    onDeleteClipboardHistory = core::deleteClipboardHistory,
+                    onClearClipboardHistory = core::clearClipboardHistory,
+                    loadClipboardHistoryImage = core::clipboardHistoryImage,
                     modifier = modifier,
                 )
                 Tab.Settings -> SettingsScreen(
@@ -485,6 +490,8 @@ private fun App(
                     onSetStorageEnabled = core::setStorageEnabled,
                     onAddSafFolder = core::addSafFolder,
                     onRemoveSafFolder = core::removeSafFolder,
+                    onSetClipboardHistoryEnabled = core::setClipboardHistoryEnabled,
+                    onClearClipboardHistory = core::clearClipboardHistory,
                     modifier = modifier,
                 )
             }

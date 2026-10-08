@@ -5,7 +5,14 @@
 //! notification to mute or end it), and a notification for calls nobody
 //! answered.
 
-use std::{collections::HashMap, path::PathBuf, sync::Mutex};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+    sync::{
+        Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 
 use nectarlink_core::{
     CallCommand, CallLogEntry, CallState, Contact, DeviceId, Error, FeatureState, LinkState, NodeEvent,
@@ -19,6 +26,36 @@ use crate::{
     state::Changes,
     win::toast::{self, CALL_ANSWER, CALL_DECLINE, CALL_END, Toast},
 };
+
+/// Whether PC media playback is automatically paused during phone calls.
+static PAUSE_MEDIA_ON_CALL: AtomicBool = AtomicBool::new(true);
+
+pub fn set_pause_media_on_call(on: bool) {
+    PAUSE_MEDIA_ON_CALL.store(on, Ordering::Relaxed);
+}
+
+/// Phones that currently have a ringing or active call, for media auto-pause/resume.
+static ONGOING_CALLS: Mutex<Option<HashSet<DeviceId>>> = Mutex::new(None);
+
+fn ongoing_calls<T>(f: impl FnOnce(&mut HashSet<DeviceId>) -> T) -> T {
+    f(ONGOING_CALLS.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_default())
+}
+
+fn note_call_ongoing(device: DeviceId) {
+    // Only when the call starts: a later update (answered, muted) mustn't
+    // pause music the user started again during the call.
+    let started = ongoing_calls(|c| c.insert(device));
+    if started && PAUSE_MEDIA_ON_CALL.load(Ordering::Relaxed) {
+        crate::win::media_sessions::pause_for_call();
+    }
+}
+
+fn note_call_ended(device: DeviceId) {
+    let all_done = ongoing_calls(|c| c.remove(&device) && c.is_empty());
+    if all_done {
+        crate::win::media_sessions::resume_after_call();
+    }
+}
 
 /// Call log entries read at a time, and contacts per page.
 const LOG_PAGE: u32 = 50;
@@ -110,6 +147,7 @@ pub fn on_event(event: &NodeEvent) {
         NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } => {
             stop_ringing(*device);
             finish(*device);
+            note_call_ended(*device);
             if Some(*device) == page_device {
                 page_state(|s| {
                     s.log_status = Status::Offline;
@@ -117,6 +155,11 @@ pub fn on_event(event: &NodeEvent) {
                 });
                 core_host::host().hub.changed(Changes::CALLS);
             }
+        }
+        NodeEvent::DeviceRemoved(device) => {
+            stop_ringing(*device);
+            finish(*device);
+            note_call_ended(*device);
         }
         // A call can arrive before what the phone can do with it: once the
         // PC may end it, its notification shows.
@@ -145,6 +188,11 @@ pub fn on_event(event: &NodeEvent) {
 }
 
 fn changed(device: DeviceId, call: &CallState) {
+    match call.state.as_str() {
+        "ringing" | "active" => note_call_ongoing(device),
+        "ended" => note_call_ended(device),
+        _ => {}
+    }
     if call.state == "active" {
         match in_progress(|c| c.insert(device, call.clone())) {
             Some(previous) if previous.id == call.id => {}

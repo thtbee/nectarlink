@@ -35,9 +35,17 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         match env.body::<ClipSet>() {
             Ok(clip) if clip.is_valid() => {
                 let platform = shared.platform.clone();
-                let written = tokio::task::spawn_blocking(move || platform.set_clipboard(&clip.text)).await;
+                let text = clip.text;
+                let written = {
+                    let text = text.clone();
+                    tokio::task::spawn_blocking(move || platform.set_clipboard(&text)).await
+                };
                 match written {
                     Ok(Ok(())) => {
+                        let peer_name = shared.peer_name(&peer);
+                        if shared.clipboard_history.record_text(&text, &peer_name, true) {
+                            shared.emit(NodeEvent::ClipboardHistoryChanged);
+                        }
                         shared.emit(NodeEvent::ClipboardReceived { device: peer });
                         Envelope::empty(types::OK)
                     }
@@ -91,9 +99,14 @@ pub(crate) async fn send_image(
         let reply = read_frame(&mut recv).await?.ok_or(Error::Offline)?;
         Envelope::from_cbor(&reply)?.expect(types::OK)?;
         written.map_err(net)?;
-        Ok(())
+        Ok::<(), Error>(())
     };
-    tokio::time::timeout(IMAGE_TIMEOUT, exchange).await.map_err(|_| Error::Timeout)?
+    tokio::time::timeout(IMAGE_TIMEOUT, exchange).await.map_err(|_| Error::Timeout)??;
+    let peer_name = shared.peer_name(&peer);
+    if shared.clipboard_history.record_image(&image.mime, &bytes, &peer_name, false) {
+        shared.emit(NodeEvent::ClipboardHistoryChanged);
+    }
+    Ok(())
 }
 
 /// Receives an image (the stream header was read) and puts it on the
@@ -145,8 +158,17 @@ async fn take_image(
     }
     let platform = shared.platform.clone();
     let mime = image.mime;
-    match tokio::task::spawn_blocking(move || platform.set_clipboard_image(&mime, &bytes)).await {
+    let written = {
+        let mime = mime.clone();
+        let bytes = bytes.clone();
+        tokio::task::spawn_blocking(move || platform.set_clipboard_image(&mime, &bytes)).await
+    };
+    match written {
         Ok(Ok(())) => {
+            let peer_name = shared.peer_name(&peer);
+            if shared.clipboard_history.record_image(&mime, &bytes, &peer_name, true) {
+                shared.emit(NodeEvent::ClipboardHistoryChanged);
+            }
             shared.emit(NodeEvent::ClipboardReceived { device: peer });
             Ok(())
         }

@@ -1156,6 +1156,79 @@ async fn clipboard_images_go_both_ways_with_consent() {
         .expect_err("still off");
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn clipboard_history_tracks_text_and_images_and_excludes_otps() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Text clip sent PC -> phone is recorded on both sides (outgoing on PC, incoming on phone).
+    with_timeout("pc to phone text", pc.node.send_clipboard(phone_id, "https://nectarlink.dev/docs".into()))
+        .await
+        .expect("sent");
+    wait_for(&mut phone, "clipboard received", |e| match e {
+        NodeEvent::ClipboardReceived { device } if *device == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    // OTP clip is never recorded in clipboard history on either side.
+    with_timeout("otp clip", phone.node.send_clipboard(pc_id, "482913".into())).await.expect("sent");
+    wait_for(&mut pc, "otp received", |e| match e {
+        NodeEvent::ClipboardReceived { device } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    // Image clip sent phone -> PC is recorded on both sides.
+    let img = vec![0x89, b'P', b'N', b'G', 1, 2, 3, 4];
+    with_timeout(
+        "phone to pc image",
+        phone.node.send_clipboard_image(pc_id, "image/png".into(), img.clone()),
+    )
+    .await
+    .expect("sent");
+    wait_for(&mut pc, "image received", |e| match e {
+        NodeEvent::ClipboardReceived { device } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    let pc_hist = pc.node.clipboard_history(None);
+    assert_eq!(pc_hist.len(), 2, "OTP clip was excluded from PC history");
+    assert_eq!(pc_hist[0].kind, nectarlink_core::ClipboardItemKind::Image);
+    assert!(pc_hist[0].incoming);
+    assert_eq!(pc_hist[0].device_name, "Pixel");
+    assert_eq!(pc.node.clipboard_history_image(&pc_hist[0].id), Some(("image/png".to_owned(), img.clone())));
+    assert_eq!(pc_hist[1].kind, nectarlink_core::ClipboardItemKind::Text);
+    assert_eq!(pc_hist[1].text, "https://nectarlink.dev/docs");
+    assert!(!pc_hist[1].incoming);
+
+    let phone_hist = phone.node.clipboard_history(None);
+    assert_eq!(phone_hist.len(), 2, "OTP clip was excluded from phone history");
+    assert!(!phone_hist[0].incoming);
+    assert!(phone_hist[1].incoming);
+
+    // Search, pin, copy again, delete, and clear all.
+    assert_eq!(pc.node.clipboard_history(Some("nectarlink")).len(), 1);
+    let text_id = pc_hist[1].id.clone();
+    let img_id = pc_hist[0].id.clone();
+    assert!(pc.node.pin_clipboard_history(&text_id, true));
+    assert_eq!(pc.node.clipboard_history(None)[0].id, text_id);
+
+    pc.node.copy_clipboard_history(&text_id).unwrap();
+    assert_eq!(
+        pc.platform.clipboard.lock().unwrap().last().map(String::as_str),
+        Some("https://nectarlink.dev/docs")
+    );
+
+    assert!(pc.node.delete_clipboard_history(&img_id));
+    assert_eq!(pc.node.clipboard_history_image(&img_id), None);
+    pc.node.clear_clipboard_history().unwrap();
+    assert!(pc.node.clipboard_history(None).is_empty());
+}
+
 fn player(id: &str, title: &str, art: Option<(&str, Vec<u8>)>) -> MediaPlayer {
     MediaPlayer {
         id: id.into(),

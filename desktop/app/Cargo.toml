@@ -19,6 +19,7 @@ anyhow.workspace = true
 cxx.workspace = true
 cxx-qt.workspace = true
 cxx-qt-lib.workspace = true
+data-encoding.workspace = true
 dirs.workspace = true
 hostname.workspace = true
 material-colors.workspace = true

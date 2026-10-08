@@ -6,7 +6,11 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    sync::Mutex,
+    sync::{
+        Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::{Duration, Instant},
 };
 
 use nectarlink_core::{DeviceId, Error, NodeEvent, Notification};
@@ -17,12 +21,120 @@ use crate::{
     win::toast::{self, Toast, ToastEvent},
 };
 
+/// Local toast action ID for copying a detected one-time code.
+pub const ACTION_COPY_OTP: &str = "copy_otp";
+
+/// Whether incoming one-time codes are copied to the PC clipboard automatically.
+static AUTO_COPY_OTP: AtomicBool = AtomicBool::new(false);
+
+/// Whether phone Do Not Disturb quiets phone notification pop-ups on the PC.
+static SYNC_DND: AtomicBool = AtomicBool::new(false);
+
 /// Keys that have a toast, per device, so a snapshot can remove the toasts
 /// of notifications that went away meanwhile.
 static TOASTED: Mutex<Option<HashMap<DeviceId, HashSet<String>>>> = Mutex::new(None);
 
+/// Detected OTP codes by `(device, notification_key)` for active toasts, so
+/// the code never needs to be placed in Windows toast XML action arguments.
+static OTP_CODES: Mutex<Option<HashMap<(DeviceId, String), String>>> = Mutex::new(None);
+
+/// Last auto-copied OTP and when it was copied, to avoid copying the same code
+/// twice when both a notification and an SMS sync event arrive for one text.
+static LAST_AUTO_OTP: Mutex<Option<(String, Instant)>> = Mutex::new(None);
+
 fn toasted<T>(f: impl FnOnce(&mut HashMap<DeviceId, HashSet<String>>) -> T) -> T {
     f(TOASTED.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new))
+}
+
+fn otp_codes<T>(f: impl FnOnce(&mut HashMap<(DeviceId, String), String>) -> T) -> T {
+    f(OTP_CODES.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new))
+}
+
+pub fn set_auto_copy_otp(on: bool) {
+    AUTO_COPY_OTP.store(on, Ordering::Relaxed);
+}
+
+pub fn auto_copy_otp_enabled() -> bool {
+    AUTO_COPY_OTP.load(Ordering::Relaxed)
+}
+
+pub fn set_sync_dnd(on: bool) {
+    SYNC_DND.store(on, Ordering::Relaxed);
+    if on {
+        let dnd_devices: Vec<DeviceId> = core_host::host()
+            .hub
+            .read(|s| s.toggles.iter().filter(|(_, t)| t.dnd).map(|(id, _)| *id).collect());
+        for device in dnd_devices {
+            quiet_device_toasts(device);
+        }
+    }
+}
+
+fn quiet_device_toasts(device: DeviceId) {
+    toasted(|t| t.remove(&device));
+    toast::remove_device(&device.to_string());
+}
+
+/// Extracts a one-time code from a phone notification, if present.
+///
+/// Checks the notification body first. If the keyword is in the title and the
+/// code is in the body (e.g. title `"Verification code"`, body `"482913"`),
+/// matches the combined text only when the extracted digits come from the body
+/// (so a phone number in the title is never mistaken for a code).
+pub fn notification_otp(n: &Notification) -> Option<String> {
+    let text = n.text.as_deref().unwrap_or_default();
+    if let Some(code) = nectarlink_core::otp::one_time_code(text) {
+        return Some(code);
+    }
+    if let Some(title) = n.title.as_deref().filter(|t| !t.trim().is_empty())
+        && !text.trim().is_empty()
+    {
+        let combined = format!("{title}: {text}");
+        if let Some(code) = nectarlink_core::otp::one_time_code(&combined)
+            && (text.contains(&code)
+                || (code.len() == 6 && text.contains(&format!("{}-{}", &code[..3], &code[3..]))))
+        {
+            return Some(code);
+        }
+    }
+    None
+}
+
+/// Copies a one-time code to the PC clipboard without syncing it back to any
+/// phone or keeping it in any clipboard history (ours or Windows'). Never
+/// logs the code.
+pub fn copy_otp(code: &str) {
+    let trimmed = code.trim();
+    if trimmed.is_empty() {
+        return;
+    }
+    if crate::win::clipboard::write_private(trimmed).is_ok() {
+        crate::bridge::app::show_message("Code copied");
+    }
+}
+
+/// Automatically copies `code` when the "Copy codes automatically" setting is
+/// enabled, deduplicating identical codes within 10 seconds.
+pub fn maybe_auto_copy_otp(code: &str) {
+    if !AUTO_COPY_OTP.load(Ordering::Relaxed) {
+        return;
+    }
+    let trimmed = code.trim();
+    if trimmed.is_empty() {
+        return;
+    }
+    let now = Instant::now();
+    {
+        let mut last = LAST_AUTO_OTP.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some((prev, when)) = last.as_ref()
+            && prev == trimmed
+            && now.duration_since(*when) < Duration::from_secs(10)
+        {
+            return;
+        }
+        *last = Some((trimmed.to_owned(), now));
+    }
+    copy_otp(trimmed);
 }
 
 /// Pictures from notifications, kept for a couple of days (history lasts one).
@@ -130,9 +242,15 @@ pub fn update_toasts(event: &NodeEvent) {
         NodeEvent::NotificationPosted { device, notification } => show(*device, notification),
         NodeEvent::NotificationRemoved { device, key } => {
             toasted(|t| t.get_mut(device).map(|keys| keys.remove(key)));
+            otp_codes(|c| c.remove(&(*device, key.clone())));
             toast::remove(&device.to_string(), key);
         }
         NodeEvent::NotificationsReset { device, items } => {
+            for n in items {
+                if let Some(code) = notification_otp(n) {
+                    otp_codes(|c| c.insert((*device, n.key.clone()), code));
+                }
+            }
             let keep: HashSet<&str> = items.iter().map(|n| n.key.as_str()).collect();
             let gone: Vec<String> = toasted(|t| {
                 let keys = t.entry(*device).or_default();
@@ -140,12 +258,19 @@ pub fn update_toasts(event: &NodeEvent) {
                 keys.retain(|k| keep.contains(k.as_str()));
                 gone
             });
+            otp_codes(|c| c.retain(|(d, k), _| d != device || keep.contains(k.as_str())));
             for key in gone {
                 toast::remove(&device.to_string(), &key);
             }
         }
+        NodeEvent::PhoneToggles { device, toggles } => {
+            if SYNC_DND.load(Ordering::Relaxed) && toggles.dnd {
+                quiet_device_toasts(*device);
+            }
+        }
         NodeEvent::DeviceRemoved(device) => {
             toasted(|t| t.remove(device));
+            otp_codes(|c| c.retain(|(d, _), _| d != device));
             toast::remove_device(&device.to_string());
         }
         _ => {}
@@ -153,18 +278,31 @@ pub fn update_toasts(event: &NodeEvent) {
 }
 
 fn show(device: DeviceId, n: &Notification) {
-    let (device_name, icon, rule, image) = core_host::host().hub.read(|s| {
+    let otp = notification_otp(n);
+    if let Some(code) = &otp {
+        otp_codes(|c| c.insert((device, n.key.clone()), code.clone()));
+        maybe_auto_copy_otp(code);
+    }
+    let (device_name, icon, rule, image, phone_dnd) = core_host::host().hub.read(|s| {
+        let dnd = s.toggles.get(&device).is_some_and(|t| t.dnd);
         (
             s.name_of(&device),
             s.app_icons.get(&n.app).cloned(),
             s.app_rule(&n.app),
             s.notification_images.get(&(device, n.key.clone())).cloned(),
+            dnd,
         )
     });
-    // The user chose no pop-ups (or nothing at all) for this app.
-    if rule != AppRule::Show {
+    // The user chose no pop-ups (or nothing at all) for this app, or the phone
+    // is in Do Not Disturb while DND quieting is turned on.
+    if rule != AppRule::Show || (SYNC_DND.load(Ordering::Relaxed) && phone_dnd) {
         return;
     }
+    let mut actions: Vec<(String, String)> = Vec::new();
+    if otp.is_some() {
+        actions.push((ACTION_COPY_OTP.to_owned(), "Copy code".to_owned()));
+    }
+    actions.extend(n.actions.iter().filter(|a| !a.reply).map(|a| (a.id.clone(), a.title.clone())));
     let reply = n.actions.iter().find(|a| a.reply);
     let toast = Toast {
         device: device.to_string(),
@@ -177,7 +315,7 @@ fn show(device: DeviceId, n: &Notification) {
         },
         icon,
         image,
-        actions: n.actions.iter().filter(|a| !a.reply).map(|a| (a.id.clone(), a.title.clone())).collect(),
+        actions,
         reply: reply.map(|a| (a.id.clone(), a.title.clone())),
         silent: n.silent,
         progress: None,
@@ -236,6 +374,21 @@ pub fn on_toast(event: ToastEvent) {
     }
     match event {
         ToastEvent::Opened { .. } => crate::bridge::app::request_activation(),
+        ToastEvent::Action { device, key, action } if action == ACTION_COPY_OTP => {
+            if let Ok(dev) = device.parse::<DeviceId>() {
+                let code = otp_codes(|c| c.get(&(dev, key.clone())).cloned()).or_else(|| {
+                    core_host::host().hub.read(|s| {
+                        s.notifications
+                            .iter()
+                            .find(|n| n.device == dev && n.notification.key == key)
+                            .and_then(|n| notification_otp(&n.notification))
+                    })
+                });
+                if let Some(code) = code {
+                    copy_otp(&code);
+                }
+            }
+        }
         ToastEvent::Action { device, key, action } => run_action(&device, key, action, None),
         ToastEvent::Reply { device, key, action, text } => run_action(&device, key, action, Some(text)),
         ToastEvent::Dismissed { device, key } => dismiss(&device, key),
@@ -267,6 +420,7 @@ pub fn set_app_rule(app: &str, rule: AppRule) {
 pub fn dismiss(device: &str, key: String) {
     let (Ok(device), Some(node)) = (device.parse::<DeviceId>(), core_host::node()) else { return };
     core_host::host().hub.update(|s| s.apply(&NodeEvent::NotificationRemoved { device, key: key.clone() }));
+    otp_codes(|c| c.remove(&(device, key.clone())));
     toast::remove(&device.to_string(), &key);
     core_host::spawn(async move {
         if let Err(e) = node.dismiss_notification(device, key).await {
@@ -301,4 +455,42 @@ fn report(error: &Error) {
         other => crate::bridge::app::describe(other),
     };
     crate::bridge::app::show_message(message);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_note(title: Option<&str>, text: Option<&str>) -> Notification {
+        Notification {
+            key: "k1".into(),
+            app: "com.google.android.apps.messaging".into(),
+            app_name: "Messages".into(),
+            title: title.map(Into::into),
+            text: text.map(Into::into),
+            sub: None,
+            when: 1_760_000_000_000,
+            actions: Vec::new(),
+            silent: false,
+            icon: None,
+            image: None,
+        }
+    }
+
+    #[test]
+    fn extracts_otp_from_body_or_title_plus_body_without_confusing_sender_number() {
+        assert_eq!(
+            notification_otp(&make_note(Some("5550100"), Some("Your verification code is 482913"))),
+            Some("482913".into())
+        );
+        assert_eq!(
+            notification_otp(&make_note(Some("Verification code"), Some("482913"))),
+            Some("482913".into())
+        );
+        assert_eq!(
+            notification_otp(&make_note(Some("5550100"), Some("Please enter your login code"))),
+            None,
+            "sender phone number in title must not be extracted as an OTP"
+        );
+    }
 }

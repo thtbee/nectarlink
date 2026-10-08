@@ -122,6 +122,8 @@ pub enum NodeEvent {
     ClipboardReceived {
         device: DeviceId,
     },
+    /// The local clipboard history changed (a clip was added, pinned, deleted, or cleared).
+    ClipboardHistoryChanged,
     /// A file transfer started, progressed or finished.
     Transfer(Transfer),
     /// A device's media players changed (all of them; empty when nothing

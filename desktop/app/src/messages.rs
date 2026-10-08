@@ -192,40 +192,10 @@ fn sender_of(thread: &SmsThread, address: &str) -> String {
         .unwrap_or_else(|| address.to_owned())
 }
 
-/// A one-time code in a text ("243928 is your OTP"): 4 to 8 digits on
-/// their own, in a text that says it's a code.
+/// A one-time code in a text ("243928 is your OTP"): 4 to 8 digits (or
+/// common alphanumeric formats like "G-123456") near an OTP keyword.
 pub fn one_time_code(body: &str) -> Option<String> {
-    let lower = body.to_lowercase();
-    const WORDS: [&str; 7] = ["otp", "code", "password", "passcode", "verification", "pin", "one time"];
-    if !WORDS.iter().any(|w| lower.contains(w)) {
-        return None;
-    }
-    let chars: Vec<char> = body.chars().collect();
-    let mut i = 0;
-    while i < chars.len() {
-        if !chars[i].is_ascii_digit() {
-            i += 1;
-            continue;
-        }
-        let start = i;
-        while i < chars.len() && chars[i].is_ascii_digit() {
-            i += 1;
-        }
-        // On its own: not part of a word ("XX3465"), an amount ("Rs.500",
-        // "1,000") or a longer number.
-        let before = start.checked_sub(1).map(|b| chars[b]);
-        let after = chars.get(i).copied();
-        let alone = before
-            .is_none_or(|c| !c.is_alphanumeric() && !matches!(c, '.' | ',' | '₹' | '$' | '€' | '£'))
-            && after.is_none_or(|c| {
-                !c.is_alphanumeric()
-                    && !(matches!(c, '.' | ',') && chars.get(i + 1).is_some_and(char::is_ascii_digit))
-            });
-        if alone && (4..=8).contains(&(i - start)) {
-            return Some(chars[start..i].iter().collect());
-        }
-    }
-    None
+    nectarlink_core::otp::one_time_code(body)
 }
 
 fn message_json(m: &SmsMessage, pictures: &HashMap<String, PathBuf>, sender: Option<String>) -> Value {
@@ -607,10 +577,27 @@ pub fn close_thread() {
 pub fn on_event(event: &NodeEvent) {
     let device = state(|s| s.device);
     match event {
-        NodeEvent::SmsChanged { device: d, .. } if Some(*d) == device => {
-            load_threads();
-            if state(|s| s.thread.is_some()) {
-                load_messages(None);
+        NodeEvent::SmsChanged { device: d, .. } => {
+            if Some(*d) == device {
+                load_threads();
+                if state(|s| s.thread.is_some()) {
+                    load_messages(None);
+                }
+            }
+            if crate::notifications::auto_copy_otp_enabled()
+                && let Some(node) = core_host::node()
+            {
+                let dev = *d;
+                core_host::spawn(async move {
+                    if let Ok(threads) = node.sms_threads(dev, 1).await
+                        && let Some(top) = threads.first()
+                        && top.unread > 0
+                        && now_ms().saturating_sub(top.date) < 60_000
+                        && let Some(code) = one_time_code(&top.snippet)
+                    {
+                        crate::notifications::maybe_auto_copy_otp(&code);
+                    }
+                });
             }
         }
         NodeEvent::LinkChanged { device: d, link: LinkState::Online { .. } }
@@ -682,7 +669,7 @@ mod tests {
         // Google's "G-482193" is typed without the "G-".
         assert_eq!(found("G-482193 is your Google verification code."), Some("482193".into()));
         assert_eq!(found("Your code is AB4821CD"), None, "letters stuck to it");
-        assert_eq!(found("Use code 1234-5678"), Some("1234".into()));
+        assert_eq!(found("Use code 1234-5678"), Some("12345678".into()));
         assert_eq!(found("Payment received for Rs. 2000 - thanks"), None, "no code words");
         assert_eq!(found("Your code is ready. Pay Rs.5000 at the counter"), None, "an amount");
         assert_eq!(found("OTP 12"), None, "too short");

@@ -427,6 +427,8 @@ pub enum Event {
     ClipboardReceived {
         id: String,
     },
+    /// The local clipboard history changed.
+    ClipboardHistoryChanged,
     /// A file transfer started, progressed or finished.
     Transfer {
         transfer: Transfer,
@@ -1068,7 +1070,51 @@ pub struct StorageWriteDone {
     pub modified: i64,
 }
 
-private_debug!(PhotoAlbum, PhotoItem, PhotoThumb, StorageEntry);
+/// Whether a clipboard history item is text or an image.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ClipboardItemKind {
+    Text,
+    Image,
+}
+
+impl From<core::ClipboardItemKind> for ClipboardItemKind {
+    fn from(k: core::ClipboardItemKind) -> Self {
+        match k {
+            core::ClipboardItemKind::Text => ClipboardItemKind::Text,
+            core::ClipboardItemKind::Image => ClipboardItemKind::Image,
+        }
+    }
+}
+
+/// One clip in the local clipboard history.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ClipboardHistoryEntry {
+    pub id: String,
+    pub kind: ClipboardItemKind,
+    pub text: String,
+    pub mime: Option<String>,
+    pub device_name: String,
+    pub incoming: bool,
+    pub timestamp: i64,
+    pub pinned: bool,
+}
+
+impl From<core::ClipboardHistoryEntry> for ClipboardHistoryEntry {
+    fn from(e: core::ClipboardHistoryEntry) -> Self {
+        ClipboardHistoryEntry {
+            id: e.id,
+            kind: e.kind.into(),
+            text: e.text,
+            mime: e.mime,
+            device_name: e.device_name,
+            incoming: e.incoming,
+            timestamp: e.timestamp,
+            pinned: e.pinned,
+        }
+    }
+}
+
+private_debug!(PhotoAlbum, PhotoItem, PhotoThumb, StorageEntry, ClipboardHistoryEntry);
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum NectarlinkError {
@@ -1444,6 +1490,7 @@ impl From<NodeEvent> for Event {
                 Event::NotificationRemoved { id: device.to_string(), key }
             }
             NodeEvent::ClipboardReceived { device } => Event::ClipboardReceived { id: device.to_string() },
+            NodeEvent::ClipboardHistoryChanged => Event::ClipboardHistoryChanged,
             NodeEvent::Transfer(t) => Event::Transfer { transfer: t.into() },
             NodeEvent::MediaChanged { device, players } => Event::MediaChanged {
                 id: device.to_string(),
@@ -2245,6 +2292,48 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.send_clipboard_image(id, mime, bytes).await?) }).await
+    }
+
+    /// Whether the local clipboard history is enabled.
+    pub fn clipboard_history_enabled(&self) -> bool {
+        self.node.clipboard_history_enabled()
+    }
+
+    /// Turns the local clipboard history on or off.
+    pub fn set_clipboard_history_enabled(&self, enabled: bool) -> Result<()> {
+        Ok(self.node.set_clipboard_history_enabled(enabled)?)
+    }
+
+    /// Lists the local clipboard history (pinned first, then newest first),
+    /// optionally filtered by `query`.
+    pub fn clipboard_history(&self, query: Option<String>) -> Vec<ClipboardHistoryEntry> {
+        self.node.clipboard_history(query.as_deref()).into_iter().map(Into::into).collect()
+    }
+
+    /// Decrypts and returns the image bytes for an image entry in the
+    /// clipboard history, or `None` if not found.
+    pub fn clipboard_history_image(&self, id: String) -> Option<Vec<u8>> {
+        self.node.clipboard_history_image(&id).map(|(_, bytes)| bytes)
+    }
+
+    /// Pins or unpins an entry in the clipboard history.
+    pub fn pin_clipboard_history(&self, id: String, pinned: bool) -> bool {
+        self.node.pin_clipboard_history(&id, pinned)
+    }
+
+    /// Deletes one entry from the clipboard history.
+    pub fn delete_clipboard_history(&self, id: String) -> bool {
+        self.node.delete_clipboard_history(&id)
+    }
+
+    /// Clears the entire clipboard history and deletes its encrypted files from disk.
+    pub fn clear_clipboard_history(&self) -> Result<()> {
+        Ok(self.node.clear_clipboard_history()?)
+    }
+
+    /// Copies a clipboard history entry back onto this device's OS clipboard.
+    pub fn copy_clipboard_history(&self, id: String) -> Result<()> {
+        Ok(self.node.copy_clipboard_history(&id)?)
     }
 
     // ---- Media ----

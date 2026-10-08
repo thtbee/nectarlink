@@ -128,6 +128,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "clearHistory"]
         fn clear_history(self: &NotificationList);
+        /// Copies a detected one-time code to the PC clipboard without syncing it back.
+        #[qinvokable]
+        #[cxx_name = "copyCode"]
+        fn copy_code(self: &NotificationList, code: &QString);
     }
 
     impl cxx_qt::Threading for NotificationList {}
@@ -173,6 +177,7 @@ const ROLES: &[&str] = &[
     "replyLabel",
     "silent",
     "replies",
+    "otpCode",
 ];
 const USER_ROLE: i32 = 0x0100;
 
@@ -216,6 +221,7 @@ fn role_value(row: &Row, role: &str) -> QVariant {
             )
             .to_string(),
         ),
+        "otpCode" => text(&crate::notifications::notification_otp(n).unwrap_or_default()),
         _ => QVariant::default(),
     }
 }
@@ -394,6 +400,10 @@ impl qobject::NotificationList {
         core_host::host().hub.update(AppState::clear_history);
     }
 
+    pub fn copy_code(&self, code: &QString) {
+        crate::notifications::copy_otp(&String::from(code));
+    }
+
     fn set_history_enabled(mut self: Pin<&mut Self>, on: bool) {
         if self.history_enabled != on {
             self.as_mut().rust_mut().history_enabled = on;
@@ -436,7 +446,7 @@ mod tests {
                     app: "com.chat".into(),
                     app_name: "Chat".into(),
                     title: Some("Sam".into()),
-                    text: None,
+                    text: Some("Your verification code is 482913".into()),
                     sub: None,
                     when: 1_760_000_000_000,
                     actions: vec![
@@ -455,7 +465,8 @@ mod tests {
         };
         let text = |role| role_value(&row, role).value::<QString>().map(String::from).unwrap_or_default();
         assert_eq!(text("title"), "Sam");
-        assert_eq!(text("text"), "");
+        assert_eq!(text("text"), "Your verification code is 482913");
+        assert_eq!(text("otpCode"), "482913");
         assert_eq!(text("replyAction"), "r");
         assert_eq!(text("actions"), r#"[{"id":"m","title":"Mute"}]"#);
         assert_eq!(role_value(&row, "when").value::<f64>(), Some(1_760_000_000_000.0));

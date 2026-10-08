@@ -9,6 +9,7 @@
 mod actions;
 mod calls;
 mod clipboard;
+pub mod clipboard_history;
 mod config;
 mod contacts;
 pub mod deck;
@@ -20,6 +21,7 @@ mod media;
 mod mirror;
 mod node;
 mod notifications;
+pub mod otp;
 mod pairing;
 mod photos;
 pub mod remote;
@@ -33,6 +35,7 @@ pub mod webcam;
 
 pub use actions::{PC_WAKE, PowerAction};
 pub use calls::CallCommand;
+pub use clipboard_history::{ClipboardHistoryEntry, ClipboardItemKind, MAX_CLIPBOARD_HISTORY};
 pub use config::{NodeConfig, NoopPlatform, Platform};
 pub use deck::{
     COMMANDS_TOGGLE as DECK_COMMANDS_TOGGLE, DECK_ACTIONS, DeckAction, DeckConfig, DeckLayout, DeckPage,

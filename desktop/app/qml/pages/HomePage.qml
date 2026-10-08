@@ -277,6 +277,13 @@ Item {
                     iconPath: Icons.clipboard
                     feature: home.feature("clipboard.pc_to_phone")
                     onClicked: AppController.sendClipboard(home.deviceId)
+                    sideIcon: Preferences.clipboardHistory ? Icons.history : ""
+                    sideLabel: qsTr("Clipboard history")
+                    sideAlwaysAvailable: true
+                    onSideClicked: {
+                        clipboardSearch.text = ""
+                        clipboardSheet.open()
+                    }
                 }
                 ActionTile {
                     width: actions.tileWidth
@@ -1066,6 +1073,226 @@ Item {
         }
     }
 
+    Sheet {
+        id: clipboardSheet
+        cardWidth: 560
+        readonly property var items: {
+            try {
+                return JSON.parse(AppController.clipboardHistory)
+            } catch (e) {
+                return []
+            }
+        }
+        Column {
+            width: parent.width
+            spacing: 12
+            Item {
+                width: parent.width
+                height: Math.max(clipboardTitle.height, clearClipboard.height)
+                Txt { id: clipboardTitle; anchors.verticalCenter: parent.verticalCenter; text: qsTr("Clipboard history"); role: "headline" }
+                Button {
+                    id: clearClipboard
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: clipboardSheet.items.length > 0
+                    variant: "text"
+                    size: "sm"
+                    text: qsTr("Clear history")
+                    onClicked: AppController.clearClipboardHistory()
+                }
+            }
+            Txt {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                role: "bodySmall"
+                muted: true
+                text: clipboardSheet.items.length > 0
+                      ? qsTr("Your last 50 clips with your phone, kept encrypted on this PC.")
+                      : qsTr("Nothing here yet. Text and images copied between this PC and your phone show up here.")
+            }
+            Rectangle {
+                width: parent.width
+                height: 40
+                visible: clipboardSheet.items.length > 0
+                radius: Theme.graphite ? Theme.radiusSm : height / 2
+                color: Theme.graphite ? "transparent" : Theme.surfaceContainerHighest
+                border.width: clipboardSearch.activeFocus ? 2 : 1
+                border.color: clipboardSearch.activeFocus ? Theme.primary : Theme.outlineVariant
+                Icon {
+                    id: clipSearchIcon
+                    anchors.left: parent.left
+                    anchors.leftMargin: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 18; height: 18
+                    path: Icons.search
+                    color: Theme.surfaceContentVariant
+                }
+                TextInput {
+                    id: clipboardSearch
+                    readonly property string query: text.trim().toLocaleLowerCase()
+                    function matches(fields) {
+                        return query.length === 0 || fields.join(" ").toLocaleLowerCase().indexOf(query) >= 0
+                    }
+                    anchors.left: clipSearchIcon.right
+                    anchors.leftMargin: 10
+                    anchors.right: parent.right
+                    anchors.rightMargin: 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    font.family: Theme.fontUi
+                    font.pixelSize: 14
+                    color: Theme.surfaceContent
+                    selectionColor: Theme.primaryContainer
+                    selectedTextColor: Theme.primaryContainerContent
+                    clip: true
+                    Keys.onEscapePressed: (event) => {
+                        event.accepted = text.length > 0
+                        text = ""
+                    }
+                    Accessible.name: qsTr("Search clipboard history")
+                    Txt {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: clipboardSearch.text.length === 0
+                        role: "body"
+                        muted: true
+                        text: qsTr("Search clipboard history")
+                    }
+                }
+            }
+            Flickable {
+                width: parent.width
+                height: Math.min(clipboardColumn.height, page.height - 260)
+                contentHeight: clipboardColumn.height
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                Column {
+                    id: clipboardColumn
+                    width: parent.width
+                    Repeater {
+                        model: clipboardSheet.items
+                        delegate: Item {
+                            id: clipRow
+                            required property var modelData
+                            required property int index
+                            readonly property string sourceLabel: modelData.incoming
+                                ? (modelData.deviceName ? qsTr("From %1").arg(modelData.deviceName) : qsTr("From phone"))
+                                : (modelData.deviceName ? qsTr("Sent to %1").arg(modelData.deviceName) : qsTr("From this PC"))
+                            readonly property string timeLabel: page.relativeTime(modelData.timestamp || 0)
+                            width: clipboardColumn.width
+                            visible: clipboardSearch.matches([
+                                modelData.text || "",
+                                sourceLabel,
+                                modelData.kind === "image" ? qsTr("Image") : ""
+                            ])
+                            height: visible ? Math.max(clipIconBox.height, clipContent.height, clipActions.height) + 20 : 0
+
+                            Divider {
+                                width: parent.width
+                                visible: clipRow.index > 0
+                            }
+
+                            Item {
+                                id: clipIconBox
+                                x: 4; y: 12
+                                width: 28; height: 28
+                                Icon {
+                                    anchors.centerIn: parent
+                                    width: 18; height: 18
+                                    path: clipRow.modelData.pinned
+                                          ? Icons.pin
+                                          : (clipRow.modelData.incoming ? Icons.phone : Icons.laptop)
+                                    color: clipRow.modelData.pinned ? Theme.primary : Theme.surfaceContentVariant
+                                }
+                            }
+
+                            Column {
+                                id: clipContent
+                                anchors.left: clipIconBox.right
+                                anchors.leftMargin: 12
+                                anchors.right: clipActions.left
+                                anchors.rightMargin: 8
+                                y: 10
+                                spacing: 4
+                                Txt {
+                                    width: parent.width
+                                    role: "caption"
+                                    muted: true
+                                    text: [
+                                        clipRow.sourceLabel,
+                                        clipRow.timeLabel,
+                                        clipRow.modelData.pinned ? qsTr("Pinned") : ""
+                                    ].filter(s => s.length > 0).join(" · ")
+                                    elide: Text.ElideRight
+                                }
+                                Txt {
+                                    width: parent.width
+                                    visible: clipRow.modelData.kind === "text" && Boolean(clipRow.modelData.text)
+                                    role: "bodySmall"
+                                    text: clipRow.modelData.text || ""
+                                    wrapMode: Text.Wrap
+                                    maximumLineCount: 3
+                                    elide: Text.ElideRight
+                                }
+                                Rectangle {
+                                    visible: clipRow.modelData.kind === "image"
+                                    width: Math.min(parent.width, 180)
+                                    height: 88
+                                    radius: Theme.radiusSm
+                                    color: Theme.surfaceContainerLow
+                                    border.width: 1
+                                    border.color: Theme.outlineVariant
+                                    clip: true
+                                    Image {
+                                        anchors.fill: parent
+                                        anchors.margins: 4
+                                        source: clipRow.modelData.imageDataUrl || ""
+                                        fillMode: Image.PreserveAspectFit
+                                        asynchronous: true
+                                        mipmap: true
+                                    }
+                                }
+                            }
+
+                            Row {
+                                id: clipActions
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 4
+                                IconButton {
+                                    iconPath: Icons.copy
+                                    label: qsTr("Copy")
+                                    onClicked: AppController.copyClipboardHistory(clipRow.modelData.id)
+                                }
+                                IconButton {
+                                    iconPath: Icons.pin
+                                    iconColor: clipRow.modelData.pinned ? Theme.primary : Theme.surfaceContentVariant
+                                    label: clipRow.modelData.pinned ? qsTr("Unpin") : qsTr("Pin")
+                                    onClicked: AppController.pinClipboardHistory(clipRow.modelData.id, !clipRow.modelData.pinned)
+                                }
+                                IconButton {
+                                    iconPath: Icons.trash
+                                    label: qsTr("Delete")
+                                    onClicked: AppController.deleteClipboardHistory(clipRow.modelData.id)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Txt {
+                width: parent.width
+                visible: clipboardSearch.query.length > 0 && clipboardColumn.height === 0
+                horizontalAlignment: Text.AlignHCenter
+                role: "body"
+                muted: true
+                text: qsTr("Nothing matches “%1”.").arg(clipboardSearch.text.trim())
+            }
+            Row {
+                anchors.right: parent.right
+                Button { text: qsTr("Done"); onClicked: clipboardSheet.close() }
+            }
+        }
+    }
+
     // A quick action. Unavailable actions are dimmed and say what unlocks them.
     component ActionTile: Rectangle {
         id: tile
@@ -1079,6 +1306,7 @@ Item {
         // A second, smaller action in the corner (e.g. "Send a folder").
         property string sideIcon
         property string sideLabel
+        property bool sideAlwaysAvailable: false
         signal clicked
         signal sideClicked
 
@@ -1150,7 +1378,7 @@ Item {
             anchors.right: parent.right
             anchors.top: parent.top
             anchors.margins: 8
-            visible: tile.sideIcon.length > 0 && tile.available
+            visible: tile.sideIcon.length > 0 && (tile.available || tile.sideAlwaysAvailable)
             iconPath: tile.sideIcon
             label: tile.sideLabel
             iconColor: tile.ink

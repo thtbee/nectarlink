@@ -81,6 +81,8 @@ fun SettingsScreen(
     onSetStorageEnabled: (pcId: String, enabled: Boolean) -> Unit = { _, _ -> },
     onAddSafFolder: (Uri) -> Unit = {},
     onRemoveSafFolder: (String) -> Unit = {},
+    onSetClipboardHistoryEnabled: (Boolean) -> Unit = {},
+    onClearClipboardHistory: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var confirmUnpair by remember { mutableStateOf<Device?>(null) }
@@ -97,6 +99,28 @@ fun SettingsScreen(
 
         Section(stringResource(R.string.settings_notifications)) {
             NotificationAccess(state.notificationAccess)
+        }
+
+        Section(stringResource(R.string.settings_clipboard_title)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text(stringResource(R.string.settings_clipboard_history), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.settings_clipboard_history_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = state.clipboardHistoryEnabled,
+                    onCheckedChange = onSetClipboardHistoryEnabled,
+                )
+            }
+            if (state.clipboardHistoryEnabled && state.clipboardHistory.isNotEmpty()) {
+                OutlinedButton(onClick = onClearClipboardHistory) {
+                    Text(stringResource(R.string.clipboard_history_clear))
+                }
+            }
         }
 
         Section(stringResource(R.string.settings_calls_and_contacts)) {

@@ -121,9 +121,9 @@ Power: 🟢 Basic · 🔵 Assist · 🟣 Elevated (see §4.6).
 | Dismiss sync (clear on one side → cleared on the other), per-app allow/block, quiet hours | P0 🟢 |
 | Notification feed in the app: history, search, grouping by app/conversation | P0 🟢 |
 | **Sensitive notifications / OTPs** | P0 🟣 |
-| **Smart OTP**: detect codes and offer a "Copy code" toast; auto-copy optional | P1 |
+| **Smart OTP**: detect codes and offer a "Copy code" toast; auto-copy optional ✅ | P1 |
 | **Live Updates** (Android 16 progress notifications: rides, deliveries, timers) shown live on PC | P1 |
-| DND sync both ways (Focus on PC ↔ DND on phone) | P1 🟢/🟣 |
+| DND sync: quiet PC notifications when phone is in DND, plus toggle phone DND from PC (Windows has no public API to read or set Focus/DND) ✅ | P1 🟢/🟣 |
 | PC notifications → phone (optional) | P2 |
 
 ### 3.3 Messages (SMS/MMS + chat apps)
@@ -141,7 +141,7 @@ Power: 🟢 Basic · 🔵 Assist · 🟣 Elevated (see §4.6).
 | Call in progress on PC: timer, hang up, volume; with Elevated (Android 12+), mute, speaker, hold and keypad through a calling-companion `InCallService` | P0 🟢 |
 | Call log, dialer, call from contacts | P1 🟢 |
 | **Call audio on PC via Bluetooth HFP** (PC mic/speakers) | P1 (after spike) |
-| Auto-pause PC media during calls | P1 |
+| Auto-pause PC media during calls ✅ | P1 |
 
 Not planned: **recording calls.** Android keeps call audio (`VOICE_CALL`
 capture) to privileged apps, so a third-party app can't record calls on
@@ -152,7 +152,7 @@ current Android. Talking through the PC comes with the HFP item above.
 |---|---|
 | Text + images + rich text, bidirectional, auto | P0 (PC→phone 🟢, phone→PC auto 🟣) |
 | Fallbacks without Elevated: "Send clipboard" QS tile, share target, notification button | P0 🟢 |
-| Clipboard history (both devices, local, encrypted), pin items | P1 |
+| Clipboard history (both devices, local, encrypted), pin items ✅ | P1 |
 | **Smart clipboard (context chips)**: copy an address → "Open in Maps"; a phone number → "Call"; a tracking code → "Track"; a link → "Open on phone"; an OTP → "Paste on PC" | P1 |
 | Respect password managers' "exclude from clipboard history" flags on both sides; never sync sensitive clips | P0 |
 | Copy files on PC → paste on phone (and the reverse) | P2 |

@@ -134,6 +134,8 @@ pub(crate) struct Shared {
     pub(crate) remote: Mutex<crate::remote::RemoteState>,
     /// Per-peer prompt state and open folders for the storage service.
     pub(crate) storage: Mutex<crate::storage::StorageState>,
+    /// Encrypted-at-rest history of the last 50 clips exchanged with peers.
+    pub(crate) clipboard_history: crate::clipboard_history::ClipboardHistoryStore,
     pub data_dir: std::path::PathBuf,
     /// Where received files go.
     pub downloads_dir: std::path::PathBuf,
@@ -157,6 +159,10 @@ impl Shared {
     pub fn emit(&self, event: NodeEvent) {
         // No subscribers is fine; events are a UI convenience.
         let _ = self.events.send(event);
+    }
+
+    pub(crate) fn peer_name(&self, peer: &DeviceId) -> String {
+        self.store.get_peer(peer).ok().flatten().map(|p| p.info.name).unwrap_or_else(|| peer.short())
     }
 
     pub(crate) fn nudge_reconnect(&self) {
@@ -589,6 +595,8 @@ impl Node {
         let protector = config.key_protector.clone().unwrap_or_else(identity::default_protector);
         let secret = identity::load_or_create(&config.data_dir, protector.as_ref())?;
         let store = Store::open(&config.data_dir)?;
+        let clipboard_history =
+            crate::clipboard_history::ClipboardHistoryStore::open(&config.data_dir, protector);
 
         // A stable port lets paired devices reconnect to the addresses they
         // remember even where local discovery is blocked (guest Wi-Fi, some
@@ -660,6 +668,7 @@ impl Node {
             webcam_stops: Mutex::new(HashMap::new()),
             remote: Mutex::new(Default::default()),
             storage: Mutex::new(Default::default()),
+            clipboard_history,
             data_dir: config.data_dir.clone(),
             downloads_dir: config.downloads_dir.clone().unwrap_or_else(|| config.data_dir.join("received")),
             transfers: Mutex::new(HashMap::new()),
@@ -986,8 +995,12 @@ impl Node {
         if !self.shared.toggle_on(&peer, crate::clipboard::TOGGLE) {
             return Err(Error::Denied);
         }
-        let env = Envelope::new(types::CLIP_SET, &ClipSet { text })?;
+        let env = Envelope::new(types::CLIP_SET, &ClipSet { text: text.clone() })?;
         self.request(peer, env).await?.expect(types::OK)?;
+        let peer_name = self.shared.peer_name(&peer);
+        if self.shared.clipboard_history.record_text(&text, &peer_name, false) {
+            self.shared.emit(NodeEvent::ClipboardHistoryChanged);
+        }
         Ok(())
     }
 
@@ -999,6 +1012,70 @@ impl Node {
     pub async fn send_clipboard_image(&self, peer: DeviceId, mime: String, bytes: Vec<u8>) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::clipboard::send_image(&self.shared, &session, mime, bytes).await
+    }
+
+    /// Whether the local clipboard history is enabled.
+    pub fn clipboard_history_enabled(&self) -> bool {
+        self.shared.clipboard_history.enabled()
+    }
+
+    /// Turns the local clipboard history on or off.
+    pub fn set_clipboard_history_enabled(&self, enabled: bool) -> Result<()> {
+        self.shared.clipboard_history.set_enabled(enabled)
+    }
+
+    /// Lists the local clipboard history (pinned first, then newest first),
+    /// optionally filtered by `query`.
+    pub fn clipboard_history(&self, query: Option<&str>) -> Vec<crate::ClipboardHistoryEntry> {
+        self.shared.clipboard_history.list(query)
+    }
+
+    /// Decrypts and returns `(mime, bytes)` for an image entry in the
+    /// clipboard history.
+    pub fn clipboard_history_image(&self, id: &str) -> Option<(String, Vec<u8>)> {
+        self.shared.clipboard_history.image_bytes(id)
+    }
+
+    /// Pins or unpins an entry in the clipboard history.
+    pub fn pin_clipboard_history(&self, id: &str, pinned: bool) -> bool {
+        let changed = self.shared.clipboard_history.set_pinned(id, pinned);
+        if changed {
+            self.shared.emit(NodeEvent::ClipboardHistoryChanged);
+        }
+        changed
+    }
+
+    /// Deletes one entry from the clipboard history.
+    pub fn delete_clipboard_history(&self, id: &str) -> bool {
+        let deleted = self.shared.clipboard_history.delete(id);
+        if deleted {
+            self.shared.emit(NodeEvent::ClipboardHistoryChanged);
+        }
+        deleted
+    }
+
+    /// Clears the entire clipboard history and deletes its encrypted files from disk.
+    pub fn clear_clipboard_history(&self) -> Result<()> {
+        self.shared.clipboard_history.clear()?;
+        self.shared.emit(NodeEvent::ClipboardHistoryChanged);
+        Ok(())
+    }
+
+    /// Copies a clipboard history entry back onto this device's OS clipboard.
+    pub fn copy_clipboard_history(&self, id: &str) -> Result<()> {
+        let entry = self.shared.clipboard_history.entry(id).ok_or(Error::NotFound)?;
+        match entry.kind {
+            crate::ClipboardItemKind::Text => {
+                self.shared.platform.set_clipboard(&entry.text).map_err(|e| Error::Internal(e.to_string()))
+            }
+            crate::ClipboardItemKind::Image => {
+                let (mime, bytes) = self.shared.clipboard_history.image_bytes(id).ok_or(Error::NotFound)?;
+                self.shared
+                    .platform
+                    .set_clipboard_image(&mime, &bytes)
+                    .map_err(|e| Error::Internal(e.to_string()))
+            }
+        }
     }
 
     // ---- Actions (docs/protocol/actions.md) ----

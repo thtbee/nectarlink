@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.ui.home
 
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.text.format.DateUtils
 import android.text.format.Formatter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.TextButton
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,58 +17,71 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.nectarlink.android.R
-import app.nectarlink.android.update.AppUpdater
-import app.nectarlink.android.update.UpdateCard
+import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.clipboard.SendActivity
+import app.nectarlink.android.contacts.PhoneContacts
 import app.nectarlink.android.core.BackgroundAccess
-import app.nectarlink.android.core.LocalNetwork
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.Device
+import app.nectarlink.android.core.LocalNetwork
 import app.nectarlink.android.core.WakeState
+import app.nectarlink.android.core.isFinished
 import app.nectarlink.android.files.transferTitle
-import app.nectarlink.android.calls.PhoneCalls
-import app.nectarlink.android.contacts.PhoneContacts
+import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
-import app.nectarlink.android.core.isFinished
+import app.nectarlink.android.update.AppUpdater
+import app.nectarlink.android.update.UpdateCard
+import app.nectarlink.core.ClipboardHistoryEntry
+import app.nectarlink.core.ClipboardItemKind
+import app.nectarlink.core.Link
 import app.nectarlink.core.Transfer
 import app.nectarlink.core.TransferDirection
 import app.nectarlink.core.TransferStatus
-import app.nectarlink.android.notifications.NotificationListener
-import app.nectarlink.core.Link
-import androidx.compose.material3.IconButton
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Home: each paired PC with its connection and quick actions. When a PC
@@ -95,8 +109,14 @@ fun HomeScreen(
     onDismissStorageRequest: () -> Unit = {},
     onAcceptWebcamRequest: (app.nectarlink.android.webcam.WebcamRequest) -> Unit = {},
     onDismissWebcamRequest: () -> Unit = {},
+    onCopyClipboardHistory: (id: String) -> Unit = {},
+    onPinClipboardHistory: (id: String, pinned: Boolean) -> Unit = { _, _ -> },
+    onDeleteClipboardHistory: (id: String) -> Unit = {},
+    onClearClipboardHistory: () -> Unit = {},
+    loadClipboardHistoryImage: suspend (id: String) -> ByteArray? = { null },
     modifier: Modifier = Modifier,
 ) {
+    var showClipboardHistory by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = modifier,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
@@ -270,11 +290,42 @@ fun HomeScreen(
             }
         }
         items(state.devices, key = { it.id }) { device ->
-            PcCard(device, onRing, onSendFiles, onSendFolder, onPower, onWake, onRemote, onDeck, onRecord, onWebcam)
+            PcCard(
+                device = device,
+                onRing = onRing,
+                onSendFiles = onSendFiles,
+                onSendFolder = onSendFolder,
+                onPower = onPower,
+                onWake = onWake,
+                onRemote = onRemote,
+                onDeck = onDeck,
+                onRecord = onRecord,
+                onWebcam = onWebcam,
+            )
+        }
+        if (state.clipboardHistoryEnabled && state.clipboardHistory.isNotEmpty()) {
+            item {
+                ClipboardHistoryCard(
+                    entries = state.clipboardHistory,
+                    onOpen = { showClipboardHistory = true },
+                )
+            }
         }
         if (state.transfers.isNotEmpty()) {
             item { TransfersCard(state, onCancelTransfer) }
         }
+    }
+
+    if (showClipboardHistory && state.clipboardHistoryEnabled) {
+        ClipboardHistoryDialog(
+            entries = state.clipboardHistory,
+            onCopy = onCopyClipboardHistory,
+            onPin = onPinClipboardHistory,
+            onDelete = onDeleteClipboardHistory,
+            onClearAll = onClearClipboardHistory,
+            loadImage = loadClipboardHistoryImage,
+            onDismiss = { showClipboardHistory = false },
+        )
     }
 }
 
@@ -579,6 +630,232 @@ private fun PcCard(
         }
     }
 }
+
+@Composable
+private fun ClipboardHistoryCard(
+    entries: List<ClipboardHistoryEntry>,
+    onOpen: () -> Unit,
+) {
+    val latest = entries.firstOrNull() ?: return
+    val preview = when (latest.kind) {
+        ClipboardItemKind.TEXT -> latest.text
+        ClipboardItemKind.IMAGE -> stringResource(R.string.clipboard_history_image)
+    }
+    Surface(
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(20.dp)) {
+            Text(stringResource(R.string.clipboard_history_title), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                preview,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ClipboardHistoryDialog(
+    entries: List<ClipboardHistoryEntry>,
+    onCopy: (String) -> Unit,
+    onPin: (String, Boolean) -> Unit,
+    onDelete: (String) -> Unit,
+    onClearAll: () -> Unit,
+    loadImage: suspend (String) -> ByteArray?,
+    onDismiss: () -> Unit,
+) {
+    var query by remember { mutableStateOf("") }
+    val trimmed = query.trim().lowercase()
+    val filtered = remember(entries, trimmed) {
+        if (trimmed.isEmpty()) {
+            entries
+        } else {
+            entries.filter { entry ->
+                entry.text.lowercase().contains(trimmed) ||
+                    entry.deviceName.lowercase().contains(trimmed) ||
+                    (entry.kind == ClipboardItemKind.IMAGE && "image".contains(trimmed))
+            }
+        }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(stringResource(R.string.clipboard_history_title))
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.clipboard_history_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (entries.isNotEmpty()) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text(stringResource(R.string.clipboard_history_search)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                when {
+                    entries.isEmpty() -> Text(
+                        stringResource(R.string.clipboard_history_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    filtered.isEmpty() -> Text(
+                        stringResource(R.string.clipboard_history_no_match, query.trim()),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    else -> LazyColumn(
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        items(filtered, key = { it.id }) { entry ->
+                            ClipboardHistoryRow(
+                                entry = entry,
+                                onCopy = { onCopy(entry.id) },
+                                onTogglePin = { onPin(entry.id, !entry.pinned) },
+                                onDelete = { onDelete(entry.id) },
+                                loadImage = loadImage,
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            if (entries.isNotEmpty()) {
+                TextButton(onClick = onClearAll) {
+                    Text(stringResource(R.string.clipboard_history_clear))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.clipboard_history_done))
+            }
+        },
+    )
+}
+
+@Composable
+private fun ClipboardHistoryRow(
+    entry: ClipboardHistoryEntry,
+    onCopy: () -> Unit,
+    onTogglePin: () -> Unit,
+    onDelete: () -> Unit,
+    loadImage: suspend (String) -> ByteArray?,
+) {
+    val direction = if (entry.incoming) {
+        stringResource(R.string.clipboard_history_from, entry.deviceName)
+    } else {
+        stringResource(R.string.clipboard_history_sent_to, entry.deviceName)
+    }
+    val now = System.currentTimeMillis()
+    val whenText = if (now - entry.timestamp * 1000L < DateUtils.MINUTE_IN_MILLIS) {
+        stringResource(R.string.clipboard_history_just_now)
+    } else {
+        DateUtils.getRelativeTimeSpanString(entry.timestamp * 1000L, now, DateUtils.MINUTE_IN_MILLIS).toString()
+    }
+    val header = buildString {
+        append(direction)
+        append(" · ")
+        append(whenText)
+        if (entry.pinned) {
+            append(" · ")
+            append(stringResource(R.string.clipboard_history_pinned))
+        }
+    }
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                header,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            when (entry.kind) {
+                ClipboardItemKind.TEXT -> Text(
+                    entry.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                ClipboardItemKind.IMAGE -> {
+                    val bitmap by produceState<ImageBitmap?>(initialValue = null, entry.id) {
+                        val bytes = loadImage(entry.id) ?: return@produceState
+                        value = withContext(Dispatchers.Default) { previewBitmap(bytes)?.asImageBitmap() }
+                    }
+                    val image = bitmap
+                    if (image != null) {
+                        Image(
+                            bitmap = image,
+                            contentDescription = stringResource(R.string.clipboard_history_image),
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 120.dp),
+                            contentScale = ContentScale.Fit,
+                        )
+                    } else {
+                        Text(
+                            stringResource(R.string.clipboard_history_image),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FilledTonalButton(onClick = onCopy) {
+                    Text(stringResource(R.string.clipboard_history_copy))
+                }
+                TextButton(onClick = onTogglePin) {
+                    Text(
+                        stringResource(
+                            if (entry.pinned) R.string.clipboard_history_unpin else R.string.clipboard_history_pin,
+                        ),
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onDelete) {
+                    Text(stringResource(R.string.clipboard_history_delete))
+                }
+            }
+        }
+    }
+}
+
+/** A history image decoded small enough for its row (a clip can be a large photo). */
+private fun previewBitmap(bytes: ByteArray): android.graphics.Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= PREVIEW_PX) sample *= 2
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+}
+
+private const val PREVIEW_PX = 720
 
 /** Running transfers and the latest finished ones. */
 @Composable

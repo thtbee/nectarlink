@@ -25,8 +25,14 @@ Item {
         color: Theme.scrim
         opacity: sheet.opened ? 1 : 0
         Behavior on opacity { NumberAnimation { id: fade; duration: Theme.fadeNormal } }
+        // Only taps outside the card: a tap on the card (or a button in it)
+        // reaches this handler too.
         TapHandler {
-            onTapped: if (sheet.dismissable) { sheet.close(); sheet.dismissed() }
+            onTapped: (eventPoint) => {
+                const p = card.mapFromItem(scrim, eventPoint.position)
+                const inside = p.x >= 0 && p.y >= 0 && p.x <= card.width && p.y <= card.height
+                if (!inside && sheet.dismissable) { sheet.close(); sheet.dismissed() }
+            }
         }
     }
 
@@ -45,8 +51,6 @@ Item {
         Behavior on scale { SpringAnimation { spring: Theme.springStandard; damping: Theme.dampingStandard } }
         clip: true
 
-        // Swallow clicks so they don't reach the scrim.
-        TapHandler {}
         Flickable {
             anchors.fill: parent
             anchors.margins: 24

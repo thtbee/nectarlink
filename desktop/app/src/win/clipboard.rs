@@ -208,6 +208,17 @@ pub fn read() -> Clip {
 /// Puts text on the clipboard (owned by the watcher window, so it isn't
 /// reported as a new copy).
 pub fn write(text: &str) -> Result<(), String> {
+    write_text(text, false)
+}
+
+/// Puts a secret (a one-time code) on the clipboard, marked the way password
+/// managers mark theirs, so Windows' clipboard history, cloud clipboard and
+/// other clipboard tools leave it alone.
+pub fn write_private(text: &str) -> Result<(), String> {
+    write_text(text, true)
+}
+
+fn write_text(text: &str, private: bool) -> Result<(), String> {
     let owner = window().ok_or("the clipboard watcher isn't running")?;
     let wide: Vec<u16> = text.encode_utf16().chain(std::iter::once(0)).collect();
     let _open = Opened::open(Some(owner)).ok_or("the clipboard is busy")?;
@@ -228,6 +239,11 @@ pub fn write(text: &str) -> Result<(), String> {
             let _ = GlobalFree(Some(block));
             return Err(e.to_string());
         }
+    }
+    if private {
+        set_block(format("ExcludeClipboardContentFromMonitorProcessing"), &[0])?;
+        set_block(format("CanIncludeInClipboardHistory"), &0u32.to_le_bytes())?;
+        set_block(format("CanUploadToCloudClipboard"), &0u32.to_le_bytes())?;
     }
     *LAST_REPORTED.lock().unwrap_or_else(|e| e.into_inner()) = fingerprint(&Clip::Text(text.to_owned()));
     Ok(())

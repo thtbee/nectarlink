@@ -5,21 +5,157 @@
 //! clipboard" sends it on demand, and what a phone sends lands on the
 //! Windows clipboard.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{
+    collections::HashMap,
+    sync::{
+        Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
+};
 
-use nectarlink_core::{CLIP_MAX_IMAGE_BYTES, DeviceId, Error, FeatureState, LinkState, Node, NodeEvent};
+use data_encoding::BASE64;
+use nectarlink_core::{
+    CLIP_MAX_IMAGE_BYTES, ClipboardItemKind, DeviceId, Error, FeatureState, LinkState, Node, NodeEvent,
+};
+use serde_json::json;
 
 use crate::{
     bridge::app::{describe, show_message},
     core_host,
+    state::Changes,
     win::clipboard::{self, Clip},
 };
 
 /// The "Send what you copy to your phone" preference.
 static AUTO_SEND: AtomicBool = AtomicBool::new(true);
 
+/// The "Keep clipboard history" preference.
+static HISTORY_ENABLED: AtomicBool = AtomicBool::new(true);
+
+/// Small PNG previews of history images as data URLs, by entry ID. Made
+/// off the UI thread and kept only in memory, so nothing decrypted is
+/// written to disk.
+static THUMBS: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
+static MAKING_THUMBS: AtomicBool = AtomicBool::new(false);
+/// The longest side of a preview, in pixels (the sheet shows them at most
+/// 180 × 80, so this stays sharp at 150% scaling).
+const THUMB_SIZE: u32 = 240;
+
+fn thumbs<T>(f: impl FnOnce(&mut HashMap<String, String>) -> T) -> T {
+    f(THUMBS.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new))
+}
+
 pub fn set_auto_send(on: bool) {
     AUTO_SEND.store(on, Ordering::Relaxed);
+}
+
+pub fn set_history_enabled(on: bool) {
+    HISTORY_ENABLED.store(on, Ordering::Relaxed);
+    if let Some(node) = core_host::node() {
+        let _ = node.set_clipboard_history_enabled(on);
+    }
+    core_host::host().hub.changed(Changes::CLIPBOARD);
+}
+
+pub fn apply_history_setting(node: &Node) {
+    let _ = node.set_clipboard_history_enabled(HISTORY_ENABLED.load(Ordering::Relaxed));
+    core_host::host().hub.changed(Changes::CLIPBOARD);
+}
+
+/// Encrypted local clipboard history serialized as a JSON array for QML.
+/// Cheap enough for the UI thread: image previews come from memory, and
+/// missing ones are made in the background (which refreshes the list).
+pub fn history_json() -> String {
+    if !HISTORY_ENABLED.load(Ordering::Relaxed) {
+        thumbs(HashMap::clear);
+        return "[]".into();
+    }
+    let Some(node) = core_host::node() else {
+        return "[]".into();
+    };
+    let entries = node.clipboard_history(None);
+    let (cached, missing) = thumbs(|t| {
+        t.retain(|id, _| entries.iter().any(|e| &e.id == id));
+        let missing: Vec<String> = entries
+            .iter()
+            .filter(|e| e.kind == ClipboardItemKind::Image && !t.contains_key(&e.id))
+            .map(|e| e.id.clone())
+            .collect();
+        (t.clone(), missing)
+    });
+    if !missing.is_empty() {
+        make_thumbs(node, missing);
+    }
+    let items: Vec<serde_json::Value> = entries
+        .into_iter()
+        .map(|entry| {
+            let kind = match entry.kind {
+                ClipboardItemKind::Text => "text",
+                ClipboardItemKind::Image => "image",
+            };
+            json!({
+                "id": entry.id,
+                "kind": kind,
+                "text": entry.text,
+                "imageDataUrl": cached.get(&entry.id).cloned().unwrap_or_default(),
+                "deviceName": entry.device_name,
+                "incoming": entry.incoming,
+                "timestamp": entry.timestamp,
+                "pinned": entry.pinned,
+            })
+        })
+        .collect();
+    serde_json::Value::Array(items).to_string()
+}
+
+/// Decrypts and shrinks the given history images on a worker thread, then
+/// refreshes the list. An image that can't be read gets an empty preview
+/// (the sheet shows a plain image tile) so it isn't retried every refresh.
+fn make_thumbs(node: Node, ids: Vec<String>) {
+    if MAKING_THUMBS.swap(true, Ordering::AcqRel) {
+        return; // the running worker refreshes the list, which retries the rest
+    }
+    std::thread::spawn(move || {
+        for id in ids {
+            let url = node
+                .clipboard_history_image(&id)
+                .and_then(|(_, bytes)| crate::win::image::decode(&bytes).ok())
+                .and_then(|bitmap| {
+                    crate::win::image::encode_png(&crate::win::image::scale_to(&bitmap, THUMB_SIZE)).ok()
+                })
+                .map(|png| format!("data:image/png;base64,{}", BASE64.encode(&png)))
+                .unwrap_or_default();
+            thumbs(|t| t.insert(id, url));
+        }
+        MAKING_THUMBS.store(false, Ordering::Release);
+        core_host::host().hub.changed(Changes::CLIPBOARD);
+    });
+}
+
+pub fn copy_history_item(id: &str) {
+    let Some(node) = core_host::node() else { return };
+    match node.copy_clipboard_history(id) {
+        Ok(()) => show_message("Copied to clipboard"),
+        Err(e) => show_message(describe(&e)),
+    }
+}
+
+pub fn pin_history_item(id: &str, pinned: bool) {
+    if let Some(node) = core_host::node() {
+        let _ = node.pin_clipboard_history(id, pinned);
+    }
+}
+
+pub fn delete_history_item(id: &str) {
+    if let Some(node) = core_host::node() {
+        let _ = node.delete_clipboard_history(id);
+    }
+}
+
+pub fn clear_history() {
+    if let Some(node) = core_host::node() {
+        let _ = node.clear_clipboard_history();
+    }
 }
 
 /// Starts watching the Windows clipboard.

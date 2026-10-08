@@ -7,9 +7,9 @@
 //! a phone never gets its own music back.
 
 use std::{
-    collections::HashMap,
-    sync::{OnceLock, mpsc},
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    collections::{HashMap, HashSet},
+    sync::{Mutex, OnceLock, mpsc},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use nectarlink_core::{MediaAction, MediaError, MediaPlayer};
@@ -140,6 +140,12 @@ fn snapshot(
             }
         })
         .collect();
+    let now = Instant::now();
+    for p in &players {
+        if p.playing {
+            paused_for_call(|s| s.observe_playing(&p.id, now));
+        }
+    }
     players.sort_by_key(|p| (Some(&p.id) != current.as_ref(), !p.playing));
     players
 }
@@ -310,6 +316,105 @@ pub fn command(player: &str, action: MediaAction, position: Option<u64>) -> Resu
     if done { Ok(()) } else { Err(MediaError::Unsupported) }
 }
 
+/// Tracks which PC media sessions were actively playing when a phone call
+/// started and were paused by Nectarlink, so only those sessions are resumed
+/// when the call ends.
+#[derive(Debug, Default)]
+pub(crate) struct PausedForCall {
+    sessions: HashSet<String>,
+    paused_at: Option<Instant>,
+}
+
+impl PausedForCall {
+    pub fn record_paused(&mut self, id: String, now: Instant) {
+        self.sessions.insert(id);
+        self.paused_at = Some(now);
+    }
+
+    /// If a session we paused was manually resumed by the user during the call
+    /// (after the initial pause settled), drop it so a subsequent manual pause
+    /// during the call won't be overridden when the call ends.
+    pub fn observe_playing(&mut self, id: &str, now: Instant) {
+        if self.paused_at.is_some_and(|t| now.duration_since(t) >= Duration::from_millis(600)) {
+            self.sessions.remove(id);
+        }
+    }
+
+    pub fn take_to_resume(&mut self) -> HashSet<String> {
+        self.paused_at = None;
+        std::mem::take(&mut self.sessions)
+    }
+}
+
+static PAUSED_FOR_CALL: Mutex<Option<PausedForCall>> = Mutex::new(None);
+
+/// Held while pausing or resuming for a call, so the two never interleave
+/// (a call that rings only briefly resumes what its pause recorded).
+static CALL_MEDIA: Mutex<()> = Mutex::new(());
+
+fn paused_for_call<T>(f: impl FnOnce(&mut PausedForCall) -> T) -> T {
+    f(PAUSED_FOR_CALL.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_default())
+}
+
+/// Pauses any PC media sessions that are currently playing (excluding
+/// Nectarlink's own SMTC session) and remembers them so [`resume_after_call`]
+/// can resume only what Nectarlink paused.
+pub fn pause_for_call() {
+    let Some(manager) = MANAGER.get().cloned() else { return };
+    std::thread::spawn(move || {
+        let _serial = CALL_MEDIA.lock().unwrap_or_else(|e| e.into_inner());
+        let Ok(sessions) = manager.GetSessions() else { return };
+        let now = Instant::now();
+        for session in sessions {
+            let Ok(id_h) = session.SourceAppUserModelId() else { continue };
+            let id = id_h.to_string();
+            if id == AUMID {
+                continue;
+            }
+            let is_playing = session
+                .GetPlaybackInfo()
+                .and_then(|info| info.PlaybackStatus())
+                .is_ok_and(|s| s == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing);
+            if !is_playing {
+                continue;
+            }
+            if session.TryPauseAsync().and_then(|op| op.join()).unwrap_or(false) {
+                tracing::debug!(session = %id, "paused PC media for phone call");
+                paused_for_call(|p| p.record_paused(id, now));
+            }
+        }
+    });
+}
+
+/// Resumes only the PC media sessions that [`pause_for_call`] paused and that
+/// are still paused.
+pub fn resume_after_call() {
+    let Some(manager) = MANAGER.get().cloned() else { return };
+    std::thread::spawn(move || {
+        let _serial = CALL_MEDIA.lock().unwrap_or_else(|e| e.into_inner());
+        let ids = paused_for_call(PausedForCall::take_to_resume);
+        if ids.is_empty() {
+            return;
+        }
+        let Ok(sessions) = manager.GetSessions() else { return };
+        for session in sessions {
+            let Ok(id_h) = session.SourceAppUserModelId() else { continue };
+            let id = id_h.to_string();
+            if !ids.contains(&id) {
+                continue;
+            }
+            let is_paused = session
+                .GetPlaybackInfo()
+                .and_then(|info| info.PlaybackStatus())
+                .is_ok_and(|s| s == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Paused);
+            if is_paused {
+                let _ = session.TryPlayAsync().and_then(|op| op.join());
+                tracing::debug!(session = %id, "resumed PC media after phone call");
+            }
+        }
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -340,5 +445,26 @@ mod tests {
         }
         assert_eq!(reads, 1);
         assert!(cache.get("app", &Some("Other".into()), &None, &None, || None).is_none());
+    }
+
+    #[test]
+    fn paused_for_call_resumes_only_what_we_paused_and_drops_user_resumed() {
+        let mut state = PausedForCall::default();
+        let t0 = Instant::now();
+        state.record_paused("Spotify.exe".into(), t0);
+        state.record_paused("vlc.exe".into(), t0);
+
+        // Immediate settle notification right after pause does not drop the session.
+        state.observe_playing("Spotify.exe", t0 + Duration::from_millis(100));
+        assert!(state.sessions.contains("Spotify.exe"));
+
+        // User manually resumes Spotify during the call (after settle window).
+        state.observe_playing("Spotify.exe", t0 + Duration::from_secs(2));
+        assert!(!state.sessions.contains("Spotify.exe"));
+
+        // When the call ends, only VLC is resumed, and only once.
+        let resumed = state.take_to_resume();
+        assert_eq!(resumed, HashSet::from(["vlc.exe".to_owned()]));
+        assert!(state.take_to_resume().is_empty());
     }
 }

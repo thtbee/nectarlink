@@ -21,6 +21,7 @@ Item {
     required property string replyAction
     required property string replyLabel
     required property string replies
+    required property string otpCode
     // Bumped by the feed every minute, so relative times stay right.
     property int clock: 0
 
@@ -160,7 +161,15 @@ Item {
             width: parent.width
             spacing: 6
             topPadding: 4
-            visible: !item.replying && (item.replyAction.length > 0 || item.buttons.length > 0)
+            visible: !item.replying && (item.otpCode.length > 0 || item.replyAction.length > 0 || item.buttons.length > 0)
+            Button {
+                visible: item.otpCode.length > 0
+                variant: "tonal"
+                size: "sm"
+                iconPath: Icons.copy
+                text: qsTr("Copy code")
+                onClicked: NotificationList.copyCode(item.otpCode)
+            }
             Button {
                 visible: item.replyAction.length > 0
                 variant: "tonal"

@@ -2,6 +2,7 @@
 package app.nectarlink.android.core
 
 import app.nectarlink.android.webcam.WebcamRequest
+import app.nectarlink.core.ClipboardHistoryEntry
 import app.nectarlink.core.DiscoveredDevice
 import app.nectarlink.core.Event
 import app.nectarlink.core.Feature
@@ -110,6 +111,10 @@ data class CoreState(
     val webcamRequest: WebcamRequest? = null,
     /** File transfers, newest first (running ones and the latest finished). */
     val transfers: List<Transfer> = emptyList(),
+    /** Whether the encrypted local clipboard history is enabled. */
+    val clipboardHistoryEnabled: Boolean = true,
+    /** The last 50 clips exchanged with paired PCs (pinned first, then newest first). */
+    val clipboardHistory: List<ClipboardHistoryEntry> = emptyList(),
 ) {
     fun device(id: String): Device? = devices.firstOrNull { it.id == id }
 
@@ -181,8 +186,8 @@ data class CoreState(
             if (pairing == PairingState.Idle) this else copy(pairing = PairingState.Failed(event.failure))
         // PCs don't send notifications; nothing for the phone to show.
         is Event.NotificationsReset, is Event.NotificationPosted, is Event.NotificationRemoved -> this
-        // Android shows its own "copied" confirmation.
-        is Event.ClipboardReceived -> this
+        // Android shows its own "copied" confirmation; Core refreshes clipboardHistory on ClipboardHistoryChanged.
+        is Event.ClipboardReceived, is Event.ClipboardHistoryChanged -> this
         is Event.Transfer -> copy(transfers = withTransfer(event.transfer))
         // Shown in Android's media controls (see media/PcMedia).
         is Event.MediaChanged -> this

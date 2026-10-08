@@ -294,6 +294,11 @@ fn main() -> ExitCode {
     win::media_sessions::start(media::local_changed);
     deck::init(&data_dir);
     let settings = settings::Settings::load(&data_dir);
+    clipboard::set_auto_send(settings.auto_clipboard);
+    clipboard::set_history_enabled(settings.clipboard_history);
+    notifications::set_auto_copy_otp(settings.auto_copy_otp);
+    notifications::set_sync_dnd(settings.sync_dnd);
+    calls::set_pause_media_on_call(settings.pause_media_on_call);
     recordings::init(&settings);
     send_to::set_enabled(settings.send_to_menu);
     battery::set_enabled(settings.battery_alerts);

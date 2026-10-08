@@ -79,13 +79,21 @@ tests; there are no releases yet.
 - **Notifications** from the phone on the PC, as Windows notifications and in
   a feed in the app, with the app's icon. Reply inline, run their actions
   (such as "Mark as read") or dismiss them from the PC; what's cleared on one
-  side is cleared on the other. Photos in messages and big pictures come
+  side is cleared on the other. When a notification or text has a one-time
+  verification code, both the Windows notification and the card in the app get
+  a **Copy code** button (or copy it to the PC clipboard automatically if you
+  turn that on in Settings; one-time codes are never sent back or saved in
+  history). Photos in messages and big pictures come
   along. Per app, choose whether they pop up, show only in the app, or stay
-  hidden, and find the last day's notifications in History.
+  hidden, optionally silence popups while the phone is in Do Not Disturb, and
+  find the last day's notifications in History.
 - **Clipboard**: text and images you copy on the PC are ready to paste on the
   phone. From the phone, send them with the Quick Settings tile, the share
   sheet or a button in the app (Android lets only the app in front read the
-  clipboard). Passwords that password managers mark private are never sent.
+  clipboard). Both apps keep an optional encrypted **Clipboard history** of the
+  last 50 text and image clips shared between your devices (with search, copy
+  again, pin, delete and clear all). Passwords that password managers mark
+  private and one-time codes are never sent or saved in history.
 - **Files and folders** in both directions, at Wi-Fi speed. On the PC, drop
   them on the window, pick them, or right-click them in File Explorer and
   choose **Send to** and your phone (a notification follows the transfer);
@@ -119,7 +127,9 @@ tests; there are no releases yet.
   contacts (favorites first, with photos and search), and a keypad to call
   any number from the PC through the phone. When the phone rings, see who's
   calling on the PC (with the contact's name and photo), and answer, decline
-  or silence it from there. During the call, the PC shows how long it has
+  or silence it from there; media playing on the PC pauses automatically when
+  a call rings or is answered and resumes when the call ends. During the call,
+  the PC shows how long it has
   been going and can hang up and change the volume; with Wireless debugging
   set up (Android 12 and later), also mute, switch to the speaker, hold and
   use the keypad. The call's audio stays on the phone. Calls nobody answered
