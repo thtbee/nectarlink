@@ -87,12 +87,12 @@ fun SettingsScreen(
 
     Column(
         modifier.verticalScroll(rememberScrollState()).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
             stringResource(R.string.settings_title),
             style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+            modifier = Modifier.padding(top = 8.dp),
         )
 
         Section(stringResource(R.string.settings_notifications)) {
@@ -108,6 +108,7 @@ fun SettingsScreen(
                 permissions = PhoneCalls.permissions,
                 onAccessChanged = onAccessChanged,
             )
+            SettingRowDivider()
             RuntimePermissionAccess(
                 title = stringResource(R.string.contacts_title),
                 textOn = stringResource(R.string.contacts_on),
@@ -116,6 +117,7 @@ fun SettingsScreen(
                 permissions = PhoneContacts.permissions,
                 onAccessChanged = onAccessChanged,
             )
+            SettingRowDivider()
             RuntimePermissionAccess(
                 title = stringResource(R.string.sms_title),
                 textOn = stringResource(R.string.sms_on),
@@ -132,9 +134,7 @@ fun SettingsScreen(
                 partial = state.photoPartialAccess,
                 onAccessChanged = onAccessChanged,
             )
-        }
-
-        Section(stringResource(R.string.settings_storage)) {
+            SettingRowDivider()
             StorageAccess(
                 allFiles = state.storageAllFilesAccess,
                 safFolders = state.storageSafFolders,
@@ -145,8 +145,11 @@ fun SettingsScreen(
 
         Section(stringResource(R.string.settings_control)) {
             DndAccess(state.dndAccess)
+            SettingRowDivider()
             WriteSettingsAccess(state.writeSettingsAccess || state.elevated)
+            SettingRowDivider()
             ControlAccess(state.inputAccess)
+            SettingRowDivider()
             ElevatedAccess()
         }
 
@@ -186,9 +189,10 @@ fun SettingsScreen(
                 appearance.mode,
             ) { value -> onAppearance { it.copy(mode = value) } }
             if (appearance.theme == "bloom") {
+                SettingRowDivider()
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f)) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
                             Text(stringResource(R.string.settings_dynamic_color), style = MaterialTheme.typography.titleSmall)
                             Text(
                                 stringResource(R.string.settings_dynamic_color_hint),
@@ -210,8 +214,14 @@ fun SettingsScreen(
                                 shape = CircleShape,
                                 color = seed.color,
                                 modifier = Modifier
-                                    .size(32.dp)
-                                    .then(if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
+                                    .size(38.dp)
+                                    .then(
+                                        if (selected) {
+                                            Modifier.border(2.5.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                        } else {
+                                            Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                                        },
+                                    )
                                     .clickable { onAppearance { it.copy(seed = name) } }
                                     .semantics { contentDescription = name },
                             ) {}
@@ -225,17 +235,27 @@ fun SettingsScreen(
             val context = LocalContext.current
             state.devices.forEachIndexed { index, device ->
                 if (index > 0) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    SettingRowDivider()
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f)) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
                             Text(device.name, style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                stringResource(if (device.online) R.string.connected else R.string.not_connected),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (device.online) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.size(8.dp),
+                                ) {}
+                                Text(
+                                    stringResource(if (device.online) R.string.connected else R.string.not_connected),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                         OutlinedButton(onClick = { confirmUnpair = device }) { Text(stringResource(R.string.action_unpair)) }
                     }
@@ -584,15 +604,22 @@ private fun StorageAccess(
 }
 
 @Composable
+private fun SettingRowDivider() {
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+}
+
+@Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
-    Text(
-        title,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 8.dp),
-    )
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 4.dp),
+        )
+        Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+        }
     }
 }
 

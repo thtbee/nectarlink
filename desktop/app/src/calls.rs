@@ -404,6 +404,22 @@ fn page_changed() {
     core_host::host().hub.changed(Changes::CALLS);
 }
 
+/// Drops in-memory call logs and contacts while the window is closed to the
+/// tray; active calls (`IN_PROGRESS`) are kept for notifications.
+pub fn release_idle_resources() {
+    let mut released = false;
+    page_state(|s| {
+        if !s.dialing && (s.device.is_some() || !s.log.is_empty() || !s.contacts.is_empty()) {
+            let generation = s.generation.wrapping_add(1);
+            *s = PageState { generation, ..PageState::default() };
+            released = true;
+        }
+    });
+    if released {
+        page_changed();
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct View {
     pub device: Option<DeviceId>,

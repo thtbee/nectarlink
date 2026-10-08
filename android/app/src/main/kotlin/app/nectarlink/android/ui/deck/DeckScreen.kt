@@ -197,7 +197,7 @@ fun DeckScreen(
                         stringResource(R.string.deck_hint, device.name),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
@@ -278,7 +278,12 @@ fun DeckScreen(
                     )
                 }
             } else {
-                val columns = if (isLandscape) 4 else 3
+                val largeFont = LocalConfiguration.current.fontScale >= 1.2f
+                val columns = when {
+                    isLandscape -> if (largeFont) 3 else 4
+                    largeFont -> 2
+                    else -> 3
+                }
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(columns),
                     modifier = Modifier.fillMaxSize(),
@@ -443,6 +448,8 @@ private fun DeckTileButton(
     )
 
     val a11yDescription = if (badge != null) "${tile.label}, $badge" else tile.label
+    val fontScale = LocalConfiguration.current.fontScale.coerceIn(1f, 1.35f)
+    val tileHeight = ((if (compact) 98 else 118) * fontScale).dp
 
     Surface(
         shape = MaterialTheme.shapes.large,
@@ -454,7 +461,7 @@ private fun DeckTileButton(
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .height(if (compact) 98.dp else 118.dp)
+            .height(tileHeight)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -505,6 +512,7 @@ private fun DeckTileButton(
                 }
 
                 if (badge != null) {
+                    Spacer(Modifier.width(6.dp))
                     Surface(
                         shape = CircleShape,
                         color = if (highlighted) palette.accent else palette.iconWell,

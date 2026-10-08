@@ -42,11 +42,75 @@ Item {
         remote_files: qsTr("Browse this PC's files while away")
     })
 
+    readonly property var toggleIcons: ({
+        notifications: Icons.bell,
+        messages: Icons.messages,
+        calls: Icons.call,
+        contacts: Icons.person,
+        clipboard: Icons.clipboard,
+        files: Icons.send,
+        recordings: Icons.mic,
+        media: Icons.music,
+        photos: Icons.photo,
+        toggles: Icons.phone,
+        pc_actions: Icons.lock,
+        mirroring: Icons.mirror,
+        webcam: Icons.video,
+        storage: Icons.folder,
+        remote_input: Icons.deck,
+        commands: Icons.terminal,
+        remote_files: Icons.globe
+    })
+
     readonly property var toggleDescriptions: ({
         webcam: qsTr("Use this phone's camera as a webcam on this PC."),
         storage: qsTr("Show this phone's storage in File Explorer so you can browse, open and drop in files."),
         commands: qsTr("Lets this phone trigger Deck tiles that run shell commands configured on this PC. Off by default — only enable for a phone you control.")
     })
+
+    readonly property var toggleGroups: [
+        {
+            title: qsTr("Calls, messages & notifications"),
+            keys: ["notifications", "messages", "calls", "contacts"]
+        },
+        {
+            title: qsTr("Files, photos & clipboard"),
+            keys: ["clipboard", "files", "photos", "recordings", "storage", "remote_files"]
+        },
+        {
+            title: qsTr("Screen, camera & control"),
+            keys: ["media", "toggles", "mirroring", "webcam", "pc_actions", "remote_input", "commands"]
+        }
+    ]
+
+    function groupTogglesFor(allToggles, groupKeys, isLastGroup, allGroupKeys) {
+        if (!allToggles || allToggles.length === 0)
+            return []
+        const res = []
+        for (let i = 0; i < groupKeys.length; i++) {
+            const k = groupKeys[i]
+            for (let j = 0; j < allToggles.length; j++) {
+                if (allToggles[j].name === k) {
+                    res.push(allToggles[j])
+                    break
+                }
+            }
+        }
+        if (isLastGroup) {
+            for (let j = 0; j < allToggles.length; j++) {
+                const name = allToggles[j].name
+                if (allGroupKeys.indexOf(name) === -1)
+                    res.push(allToggles[j])
+            }
+        }
+        return res
+    }
+
+    readonly property var allGroupedKeys: [
+        "notifications", "messages", "calls", "contacts",
+        "clipboard", "files", "photos", "recordings", "storage", "remote_files",
+        "media", "toggles", "mirroring", "webcam", "pc_actions", "remote_input", "commands"
+    ]
 
     FolderDialog {
         id: recordingsFolderPicker
@@ -88,7 +152,7 @@ Item {
                     Divider { width: parent.width }
                     ListRow {
                         width: parent.width
-                        iconPath: Icons.info
+                        iconPath: Icons.moon
                         title: qsTr("Mode")
                         Segmented {
                             options: [
@@ -435,60 +499,58 @@ Item {
                 }
             }
 
-            // ---- Connection ----
-            Txt { text: qsTr("Connection"); role: "label"; muted: true }
+            // ---- Connection & this PC ----
+            Txt { text: qsTr("Connection & this PC"); role: "label"; muted: true }
             Card {
                 width: parent.width
-                ListRow {
+                Column {
                     width: parent.width
-                    iconPath: Icons.wifi
-                    title: qsTr("Connection Doctor")
-                    description: qsTr("Finds what keeps your phone from reaching this PC (the firewall, the network, a VPN) and fixes what it can.")
-                    Button {
-                        variant: "tonal"
-                        size: "sm"
-                        text: qsTr("Check")
-                        onClicked: AppController.runDoctor()
-                    }
-                }
-            }
-
-            // ---- This PC ----
-            Txt { text: qsTr("This PC"); role: "label"; muted: true }
-            Card {
-                width: parent.width
-                ListRow {
-                    width: parent.width
-                    iconPath: Icons.power
-                    title: qsTr("Wake from your phone")
-                    description: {
-                        const adapter = AppController.wakeAdapter
-                        const state = AppController.wakeState
-                        const wired = AppController.wakeWired
-                        if (state === "none" || adapter.length === 0)
-                            return qsTr("No active Ethernet or Wi-Fi adapter found. Connect this PC to your network so your phone can learn how to wake it.")
-                        if (state === "enabled") {
-                            return wired
-                                ? qsTr("%1 · Wake on Magic Packet is on. If this PC still won't wake from sleep or shutdown, check that Wake-on-LAN is enabled in BIOS/UEFI.").arg(adapter)
-                                : qsTr("%1 · Wake on Magic Packet is on. Wi-Fi wake usually works from sleep, not full shutdown; use Ethernet for shutdown wake.").arg(adapter)
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.wifi
+                        title: qsTr("Connection Doctor")
+                        description: qsTr("Finds what keeps your phone from reaching this PC (the firewall, the network, a VPN) and fixes what it can.")
+                        Button {
+                            variant: "tonal"
+                            size: "sm"
+                            text: qsTr("Check")
+                            onClicked: AppController.runDoctor()
                         }
-                        const wifiNote = wired ? "" : qsTr(" Wi-Fi wake rarely works from shutdown.")
-                        return qsTr("%1 · To wake this PC while it sleeps or is shut down, enable Wake on Magic Packet in Device Manager → Network adapters → %1 → Properties (Advanced tab → Wake on Magic Packet → Enabled; Power Management tab → Allow this device to wake the computer, Only allow a magic packet), and enable Wake-on-LAN in BIOS/UEFI.%2").arg(adapter).arg(wifiNote)
                     }
-                    Row {
-                        spacing: 6
-                        StatusDot {
-                            anchors.verticalCenter: parent.verticalCenter
-                            online: AppController.wakeState === "enabled"
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.power
+                        title: qsTr("Wake from your phone")
+                        description: {
+                            const adapter = AppController.wakeAdapter
+                            const state = AppController.wakeState
+                            const wired = AppController.wakeWired
+                            if (state === "none" || adapter.length === 0)
+                                return qsTr("No active Ethernet or Wi-Fi adapter found. Connect this PC to your network so your phone can learn how to wake it.")
+                            if (state === "enabled") {
+                                return wired
+                                    ? qsTr("%1 · Wake on Magic Packet is on. If this PC still won't wake from sleep or shutdown, check that Wake-on-LAN is enabled in BIOS/UEFI.").arg(adapter)
+                                    : qsTr("%1 · Wake on Magic Packet is on. Wi-Fi wake usually works from sleep, not full shutdown; use Ethernet for shutdown wake.").arg(adapter)
+                            }
+                            const wifiNote = wired ? "" : qsTr(" Wi-Fi wake rarely works from shutdown.")
+                            return qsTr("%1 · To wake this PC while it sleeps or is shut down, enable Wake on Magic Packet in Device Manager → Network adapters → %1 → Properties (Advanced tab → Wake on Magic Packet → Enabled; Power Management tab → Allow this device to wake the computer, Only allow a magic packet), and enable Wake-on-LAN in BIOS/UEFI.%2").arg(adapter).arg(wifiNote)
                         }
-                        Txt {
-                            anchors.verticalCenter: parent.verticalCenter
-                            role: "bodySmall"
-                            muted: true
-                            text: AppController.wakeState === "enabled" ? qsTr("Ready")
-                                : AppController.wakeState === "disabled" ? qsTr("Off in Windows")
-                                : AppController.wakeState === "unknown" ? qsTr("Check settings")
-                                : qsTr("No adapter")
+                        Row {
+                            spacing: 6
+                            StatusDot {
+                                anchors.verticalCenter: parent.verticalCenter
+                                online: AppController.wakeState === "enabled"
+                            }
+                            Txt {
+                                anchors.verticalCenter: parent.verticalCenter
+                                role: "bodySmall"
+                                muted: true
+                                text: AppController.wakeState === "enabled" ? qsTr("Ready")
+                                    : AppController.wakeState === "disabled" ? qsTr("Off in Windows")
+                                    : AppController.wakeState === "unknown" ? qsTr("Check settings")
+                                    : qsTr("No adapter")
+                            }
                         }
                     }
                 }
@@ -600,7 +662,7 @@ Item {
 
                     Column {
                         width: parent.width
-                        spacing: 4
+                        spacing: 14
                         Row {
                             width: parent.width
                             spacing: 12
@@ -608,11 +670,19 @@ Item {
                             Column {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: parent.width - 36 - 12 - unpair.width - 12
-                                Txt { width: parent.width; text: deviceCard.name; role: "title" }
-                                Txt {
-                                    text: deviceCard.online ? qsTr("Connected") : qsTr("Not connected")
-                                    role: "bodySmall"
-                                    muted: true
+                                Txt { width: parent.width; text: deviceCard.name; role: "title"; elide: Text.ElideRight }
+                                Row {
+                                    spacing: 6
+                                    StatusDot {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        online: deviceCard.online
+                                    }
+                                    Txt {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: deviceCard.online ? qsTr("Connected") : qsTr("Not connected")
+                                        role: "bodySmall"
+                                        muted: true
+                                    }
                                 }
                             }
                             Button {
@@ -629,30 +699,74 @@ Item {
                                 }
                             }
                         }
-                        Item { width: 1; height: 8 }
                         Repeater {
-                            model: deviceCard.toggles
-                            delegate: ListRow {
+                            model: page.toggleGroups
+                            delegate: Column {
+                                id: groupCol
                                 required property var modelData
+                                required property int index
+                                readonly property var groupItems: page.groupTogglesFor(
+                                    deviceCard.toggles,
+                                    modelData.keys,
+                                    index === page.toggleGroups.length - 1,
+                                    page.allGroupedKeys
+                                )
+                                visible: groupItems.length > 0
                                 width: parent.width
-                                title: page.toggleNames[modelData.name] || modelData.name
-                                description: page.toggleDescriptions[modelData.name] || ""
-                                Row {
-                                    spacing: 10
-                                    Button {
-                                        visible: modelData.name === "storage" && modelData.on
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        variant: "tonal"
-                                        size: "sm"
-                                        iconPath: Icons.folder
-                                        text: qsTr("Open in File Explorer")
-                                        onClicked: AppController.openPhoneStorage(deviceCard.deviceId)
-                                    }
-                                    Toggle {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        label: page.toggleNames[modelData.name] || modelData.name
-                                        checked: modelData.on
-                                        onToggled: (on) => AppController.setDeviceToggle(deviceCard.deviceId, modelData.name, on)
+                                spacing: 6
+                                Txt {
+                                    text: groupCol.modelData.title
+                                    role: "label"
+                                    muted: true
+                                }
+                                Rectangle {
+                                    width: parent.width
+                                    height: groupInnerCol.height + 8
+                                    radius: Theme.radiusMd
+                                    color: Theme.surfaceContainerLow
+                                    border.width: 1
+                                    border.color: Theme.outlineVariant
+                                    Column {
+                                        id: groupInnerCol
+                                        x: 14
+                                        y: 4
+                                        width: parent.width - 28
+                                        Repeater {
+                                            model: groupCol.groupItems
+                                            delegate: Column {
+                                                required property var modelData
+                                                required property int index
+                                                width: parent.width
+                                                Divider {
+                                                    width: parent.width
+                                                    visible: index > 0
+                                                }
+                                                ListRow {
+                                                    width: parent.width
+                                                    iconPath: page.toggleIcons[modelData.name] || ""
+                                                    title: page.toggleNames[modelData.name] || modelData.name
+                                                    description: page.toggleDescriptions[modelData.name] || ""
+                                                    Row {
+                                                        spacing: 10
+                                                        Button {
+                                                            visible: modelData.name === "storage" && modelData.on
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            variant: "tonal"
+                                                            size: "sm"
+                                                            iconPath: Icons.folder
+                                                            text: qsTr("Open in File Explorer")
+                                                            onClicked: AppController.openPhoneStorage(deviceCard.deviceId)
+                                                        }
+                                                        Toggle {
+                                                            anchors.verticalCenter: parent.verticalCenter
+                                                            label: page.toggleNames[modelData.name] || modelData.name
+                                                            checked: modelData.on
+                                                            onToggled: (on) => AppController.setDeviceToggle(deviceCard.deviceId, modelData.name, on)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

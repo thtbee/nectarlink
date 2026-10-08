@@ -502,6 +502,23 @@ fn gallery_changed() {
     core_host::host().hub.changed(Changes::PHOTOS);
 }
 
+/// Drops in-memory gallery items, album lists, and thumbnail path maps while
+/// the window is closed to the tray; reopening the Photos page reloads them.
+pub fn release_idle_resources() {
+    let mut released = false;
+    gallery_state(|g| {
+        if !g.saving && (g.device.is_some() || !g.items.is_empty() || !g.albums.is_empty()) {
+            let save_folder = g.save_folder.take();
+            let generation = g.generation.wrapping_add(1);
+            *g = GalleryState { save_folder, generation, ..GalleryState::default() };
+            released = true;
+        }
+    });
+    if released {
+        gallery_changed();
+    }
+}
+
 fn thumbs_dir(device: DeviceId) -> PathBuf {
     core_host::host().data_dir.join("cache").join("photos-thumbs").join(device.to_string())
 }

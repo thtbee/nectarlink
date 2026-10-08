@@ -200,7 +200,8 @@ tests; there are no releases yet.
 - **Windows app**: home, messages, calls, photos, deck and settings, two themes in light and dark (Bloom,
   which takes its colors from the desktop wallpaper, and Graphite), Mica, a
   custom title bar with Snap Layouts, and a tray icon. In the background it
-  uses about 10 MB of memory (as shown in Task Manager).
+  unloads its window and caches (~27 MB private commit when started in the tray
+  or ~60 MB after closing the window, with a ~5–10 MB active working set).
 - **Android app**: pairing, home and settings, Material You colors, a background
   connection service, and an identity key protected by the Android Keystore.
 - **Connection Doctor** on the PC: finds what keeps the phone from

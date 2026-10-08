@@ -47,10 +47,19 @@ Item {
 
         // Swallow clicks so they don't reach the scrim.
         TapHandler {}
-        Item {
-            id: body
+        Flickable {
             anchors.fill: parent
             anchors.margins: 24
+            contentWidth: width
+            contentHeight: body.childrenRect.height
+            interactive: contentHeight > height
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
+            Item {
+                id: body
+                width: parent.width
+                height: childrenRect.height
+            }
         }
     }
 

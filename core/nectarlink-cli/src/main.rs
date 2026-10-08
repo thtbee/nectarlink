@@ -315,6 +315,12 @@ enum Command {
         /// Artwork for the song (JPEG or PNG).
         #[arg(long)]
         art: Option<PathBuf>,
+        /// Number of sample gallery items to generate.
+        #[arg(long, default_value_t = 12)]
+        photos: usize,
+        /// Number of sample messages in the main conversation.
+        #[arg(long, default_value_t = 3)]
+        messages: usize,
     },
     /// Act as a phone with an incoming call (use with --as-phone): PCs can
     /// answer it, then mute, use the speaker, hold, press keys or hang up,
@@ -888,11 +894,31 @@ static TEXTS: std::sync::Mutex<Vec<SampleText>> = std::sync::Mutex::new(Vec::new
 /// Set by `texts`, to tell PCs when the samples changed.
 static TEXTS_NODE: std::sync::OnceLock<Node> = std::sync::OnceLock::new();
 
-fn sample_texts() {
+fn sample_texts(main_thread_count: usize) {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_millis() as i64);
     let min = 60_000;
+    let mut rows: Vec<SampleText> = Vec::with_capacity(main_thread_count + 8);
+    if main_thread_count > 3 {
+        let extra = main_thread_count - 3;
+        let phrases = [
+            "Here are the notes from the design sync earlier today.",
+            "Looks good! Did you check the layout at 760x540 too?",
+            "Yes, everything fits cleanly without clipping.",
+            "Nice, how about dark mode and Bloom theme?",
+            "Tested both — contrast on the cards and headers is solid.",
+            "Can we also test scrolling through a long thread?",
+            "On it right now, generating 500 messages to check frame pacing.",
+            "Awesome, let me know when you're ready for dinner.",
+        ];
+        for i in 0..extra {
+            let incoming = i % 2 == 0;
+            let body = format!("{} (#{})", phrases[i % phrases.len()], i + 1);
+            let date = now - (55 + ((extra - i) as i64) * 12) * min;
+            rows.push((1, "+15550100".into(), "Sam Rivera".into(), incoming, body, date));
+        }
+    }
     let samples = [
         (1, "+15550100", "Sam Rivera", true, "Are we still on for dinner tonight?", now - 50 * min),
         (1, "+15550100", "Sam Rivera", false, "Yes! 7:30 at the usual place", now - 48 * min),
@@ -910,10 +936,12 @@ fn sample_texts() {
         (3, "+15550188", "Alex", false, "Can you send me the photos from Saturday?", now - 3 * 24 * 60 * min),
         (3, "+15550188", "Alex", true, "Sure, uploading them now", now - 3 * 24 * 60 * min + 5 * min),
     ];
-    *TEXTS.lock().unwrap() = samples
-        .into_iter()
-        .map(|(t, n, name, incoming, body, date)| (t, n.into(), name.into(), incoming, body.into(), date))
-        .collect();
+    rows.extend(
+        samples.into_iter().map(|(t, n, name, incoming, body, date)| {
+            (t, n.into(), name.into(), incoming, body.into(), date)
+        }),
+    );
+    *TEXTS.lock().unwrap() = rows;
 }
 
 static CONTACTS: std::sync::Mutex<Vec<nectarlink_core::Contact>> = std::sync::Mutex::new(Vec::new());
@@ -1186,7 +1214,7 @@ fn sample_jpeg(
     out
 }
 
-fn sample_photos() {
+fn sample_photos(total_count: usize) {
     use nectarlink_core::{PhotoAlbum, PhotoItem};
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -1343,14 +1371,14 @@ fn sample_photos() {
 
     let temp_dir = std::env::temp_dir().join("nectarlink-demo-photos");
     let _ = std::fs::create_dir_all(&temp_dir);
-    let mut items = Vec::with_capacity(specs.len());
+    let mut base_items = Vec::with_capacity(specs.len());
     for (id, name, date, w, h, duration, album, top, bottom, sun) in specs {
         let thumb_jpeg = sample_jpeg(240, 180, top, bottom, sun);
         let full_bytes = sample_jpeg(640, 480, top, bottom, sun);
         let size = full_bytes.len() as u64;
         let full_path = temp_dir.join(name);
         let _ = std::fs::write(&full_path, &full_bytes);
-        items.push(SampleGalleryItem {
+        base_items.push(SampleGalleryItem {
             item: PhotoItem {
                 id: id.into(),
                 name: name.into(),
@@ -1365,24 +1393,62 @@ fn sample_photos() {
             full_path,
         });
     }
+
+    let mut items = Vec::with_capacity(total_count);
+    for idx in 0..total_count {
+        if idx < base_items.len() {
+            let b = &base_items[idx];
+            items.push(SampleGalleryItem {
+                item: b.item.clone(),
+                thumb_jpeg: b.thumb_jpeg.clone(),
+                full_path: b.full_path.clone(),
+            });
+        } else {
+            let b = &base_items[idx % base_items.len()];
+            let id = format!("media:demo-{}", idx + 1);
+            let name = format!("IMG_202603{:02}_{:06}.jpg", 31 - ((idx / 70) % 28), idx + 1);
+            let date = now - (84 + (idx as i64) * 2) * hour;
+            items.push(SampleGalleryItem {
+                item: PhotoItem {
+                    id,
+                    name,
+                    date,
+                    size: b.item.size,
+                    width: b.item.width,
+                    height: b.item.height,
+                    duration: b.item.duration,
+                    album: b.item.album.clone(),
+                },
+                thumb_jpeg: b.thumb_jpeg.clone(),
+                full_path: b.full_path.clone(),
+            });
+        }
+    }
+
+    let count_album =
+        |alb: &str| items.iter().filter(|e| e.item.album.as_deref() == Some(alb)).count() as u32;
+    let cam_cnt = count_album("bucket:camera");
+    let scr_cnt = count_album("bucket:screenshots");
+    let trp_cnt = count_album("bucket:trips");
+
     *GALLERY_ITEMS.lock().unwrap() = items;
     *GALLERY_ALBUMS.lock().unwrap() = vec![
         PhotoAlbum {
             id: "bucket:camera".into(),
             name: "Camera".into(),
-            count: 6,
+            count: cam_cnt,
             cover: Some("media:demo-1".into()),
         },
         PhotoAlbum {
             id: "bucket:screenshots".into(),
             name: "Screenshots".into(),
-            count: 2,
+            count: scr_cnt,
             cover: Some("media:demo-5".into()),
         },
         PhotoAlbum {
             id: "bucket:trips".into(),
             name: "Weekend Trip".into(),
-            count: 4,
+            count: trp_cnt,
             cover: Some("media:demo-7".into()),
         },
     ];
@@ -2805,7 +2871,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             if !cli.as_phone {
                 bail!("texts are on phones: add --as-phone");
             }
-            sample_texts();
+            sample_texts(3);
             sample_contacts();
             sample_call_log();
             let _ = TEXTS_NODE.set(node.clone());
@@ -2860,14 +2926,14 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             println!("Ringing on connected PCs (and on others when they connect).");
             watch(node, false).await?;
         }
-        Command::Demo { call, art } => {
+        Command::Demo { call, art, photos, messages } => {
             if !cli.as_phone {
                 bail!("the demo is a phone: add --as-phone");
             }
-            sample_texts();
+            sample_texts(*messages);
             sample_contacts();
             sample_call_log();
-            sample_photos();
+            sample_photos(*photos);
             let _ = TEXTS_NODE.set(node.clone());
             let _ = CALL_NODE.set(node.clone());
             let _ = TOGGLES_NODE.set(node.clone());

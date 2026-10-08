@@ -219,3 +219,13 @@ void video_clear(rust::Str stream)
     latest.remove(key);
     wakeViews(key);
 }
+
+void clear_idle_video_frames()
+{
+    std::lock_guard guard(lock);
+    if (views.empty()) {
+        latest.clear();
+        latest.squeeze();
+    }
+}
+

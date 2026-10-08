@@ -89,32 +89,40 @@ pub(crate) enum Edit {
 /// so QML delegates keep their state and animate. A row that moved (e.g. an
 /// updated notification going to the top) is removed and inserted again;
 /// the model is never reset.
-pub(crate) fn diff<T: PartialEq, K: PartialEq>(old: &[T], new: &[T], key: impl Fn(&T) -> K) -> Vec<Edit> {
+pub(crate) fn diff<T: PartialEq, K: Eq + std::hash::Hash>(
+    old: &[T],
+    new: &[T],
+    key: impl Fn(&T) -> K,
+) -> Vec<Edit> {
     let mut edits = Vec::new();
+    if old.is_empty() && new.is_empty() {
+        return edits;
+    }
+    let new_keys: Vec<K> = new.iter().map(&key).collect();
+    let new_set: std::collections::HashSet<&K> = new_keys.iter().collect();
     // Rows as they are after each edit so far.
-    let mut rows: Vec<&T> = old.iter().collect();
+    let mut rows: Vec<(K, &T)> = old.iter().map(|r| (key(r), r)).collect();
     // Removals first, from the end so earlier indices stay valid.
     for row in (0..rows.len()).rev() {
-        if !new.iter().any(|n| key(n) == key(rows[row])) {
+        if !new_set.contains(&rows[row].0) {
             rows.remove(row);
             edits.push(Edit::Remove(row));
         }
     }
-    for (row, item) in new.iter().enumerate() {
-        let k = key(item);
-        if rows.get(row).is_some_and(|r| key(r) == k) {
-            if *rows[row] != *item {
-                rows[row] = item;
+    for (row, (item, k)) in new.iter().zip(new_keys).enumerate() {
+        if rows.get(row).is_some_and(|(rk, _)| *rk == k) {
+            if *rows[row].1 != *item {
+                rows[row].1 = item;
                 edits.push(Edit::Change(row));
             }
             continue;
         }
         // Moved here from further down: take it out there first.
-        if let Some(from) = rows.iter().skip(row).position(|r| key(r) == k).map(|i| i + row) {
+        if let Some(from) = rows.iter().skip(row).position(|(rk, _)| *rk == k).map(|i| i + row) {
             rows.remove(from);
             edits.push(Edit::Remove(from));
         }
-        rows.insert(row, item);
+        rows.insert(row, (k, item));
         edits.push(Edit::Insert(row));
     }
     edits

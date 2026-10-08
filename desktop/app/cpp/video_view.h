@@ -75,3 +75,7 @@ void video_frame(rust::Str stream, uint32_t width, uint32_t height, rust::Slice<
 
 // The stream ended: views of it go blank. Any thread.
 void video_clear(rust::Str stream);
+
+// Drops cached video frames for streams that have no live VideoView.
+void clear_idle_video_frames();
+

@@ -134,6 +134,12 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "itemAt"]
         fn item_at(self: &Photos, row: i32) -> QString;
+        #[qinvokable]
+        #[cxx_name = "idAt"]
+        fn id_at(self: &Photos, row: i32) -> QString;
+        #[qinvokable]
+        #[cxx_name = "dateAt"]
+        fn date_at(self: &Photos, row: i32) -> f64;
     }
 
     impl cxx_qt::Threading for Photos {}
@@ -234,30 +240,71 @@ impl qobject::Photos {
         self.as_mut().set_save_folder(QString::from(&view.save_folder));
 
         let root = QModelIndex::default();
-        for edit in diff(&self.rows, &view.rows, |r| r.id.clone()) {
-            match edit {
-                Edit::Remove(row) => {
-                    let r = row as i32;
-                    // SAFETY: row exists; begin/end are balanced.
-                    unsafe {
-                        self.as_mut().begin_remove_rows(&root, r, r);
-                        self.as_mut().rust_mut().rows.remove(row);
-                        self.as_mut().end_remove_rows();
-                    }
+        if view.rows.is_empty() {
+            if !self.rows.is_empty() {
+                let last = (self.rows.len() - 1) as i32;
+                // SAFETY: 0..=last exists; begin/end are balanced.
+                unsafe {
+                    self.as_mut().begin_remove_rows(&root, 0, last);
+                    self.as_mut().rust_mut().rows = Vec::new();
+                    self.as_mut().end_remove_rows();
                 }
-                Edit::Insert(row) => {
-                    let r = row as i32;
-                    // SAFETY: row <= len; begin/end are balanced.
-                    unsafe {
-                        self.as_mut().begin_insert_rows(&root, r, r);
-                        self.as_mut().rust_mut().rows.insert(row, view.rows[row].clone());
-                        self.as_mut().end_insert_rows();
-                    }
-                }
-                Edit::Change(row) => {
+            }
+        } else if self.rows.is_empty() {
+            let last = (view.rows.len() - 1) as i32;
+            // SAFETY: 0..=last is valid for empty model; begin/end are balanced.
+            unsafe {
+                self.as_mut().begin_insert_rows(&root, 0, last);
+                self.as_mut().rust_mut().rows = view.rows;
+                self.as_mut().end_insert_rows();
+            }
+        } else if view.rows.len() >= self.rows.len()
+            && self.rows.iter().zip(&view.rows).all(|(a, b)| a.id == b.id)
+        {
+            let old_len = self.rows.len();
+            for row in 0..old_len {
+                if self.rows[row] != view.rows[row] {
                     self.as_mut().rust_mut().rows[row] = view.rows[row].clone();
                     let index = self.index(row as i32, 0, &root);
                     self.as_mut().data_changed(&index, &index, &QList::default());
+                }
+            }
+            if view.rows.len() > old_len {
+                let first = old_len as i32;
+                let last = (view.rows.len() - 1) as i32;
+                // SAFETY: first..=last appends to end; begin/end are balanced.
+                unsafe {
+                    self.as_mut().begin_insert_rows(&root, first, last);
+                    self.as_mut().rust_mut().rows.extend_from_slice(&view.rows[old_len..]);
+                    self.as_mut().end_insert_rows();
+                }
+            }
+        } else {
+            for edit in diff(&self.rows, &view.rows, |r| r.id.clone()) {
+                match edit {
+                    Edit::Remove(row) => {
+                        let r = row as i32;
+                        // SAFETY: row exists; begin/end are balanced.
+                        unsafe {
+                            self.as_mut().begin_remove_rows(&root, r, r);
+                            self.as_mut().rust_mut().rows.remove(row);
+                            self.as_mut().end_remove_rows();
+                        }
+                    }
+                    Edit::Insert(row) => {
+                        let r = row as i32;
+                        // SAFETY: row <= len; begin/end are balanced.
+                        unsafe {
+                            self.as_mut().begin_insert_rows(&root, r, r);
+                            self.as_mut().rust_mut().rows.insert(row, view.rows[row].clone());
+                            self.as_mut().end_insert_rows();
+                        }
+                    }
+                    Edit::Change(row) => {
+                        self.as_mut().rust_mut().rows[row] = view.rows[row].clone();
+                        let index = self.index(row as i32, 0, &root);
+                        self.as_mut().data_changed(&index, &index, &QList::default());
+                    }
                 }
             }
         }
@@ -358,6 +405,18 @@ impl qobject::Photos {
             })
             .to_string(),
         )
+    }
+
+    pub fn id_at(&self, row: i32) -> QString {
+        usize::try_from(row)
+            .ok()
+            .and_then(|i| self.rows.get(i))
+            .map(|r| QString::from(&r.id))
+            .unwrap_or_default()
+    }
+
+    pub fn date_at(&self, row: i32) -> f64 {
+        usize::try_from(row).ok().and_then(|i| self.rows.get(i)).map_or(0.0, |r| r.date as f64)
     }
 }
 

@@ -57,7 +57,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
+import app.nectarlink.android.ui.theme.LocalAppFonts
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -253,7 +253,11 @@ fun RecorderScreen(
                     Spacer(Modifier.height(12.dp))
                     Text(
                         text = RecorderService.formatDuration(session.elapsedMs),
-                        style = MaterialTheme.typography.displayLarge.copy(fontFamily = FontFamily.Monospace),
+                        style = MaterialTheme.typography.displayMedium.copy(
+                            fontFamily = LocalAppFonts.current.mono,
+                        ),
+                        maxLines = 1,
+                        softWrap = false,
                     )
                     Spacer(Modifier.height(16.dp))
 

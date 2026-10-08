@@ -54,10 +54,13 @@ Item {
         return sum > 0 ? sum : Photos.count
     }
 
-    function dayKey(ms) {
-        if (!ms || ms <= 0) return ""
-        const d = new Date(ms)
-        return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate()
+    function sameDay(a, b) {
+        if (!a || !b || Math.abs(a - b) >= 86400000) return false
+        const da = new Date(a)
+        const db = new Date(b)
+        return da.getDate() === db.getDate()
+            && da.getMonth() === db.getMonth()
+            && da.getFullYear() === db.getFullYear()
     }
 
     function dayLabel(ms) {
@@ -114,10 +117,8 @@ Item {
             const from = Math.min(lastClickedIndex, index)
             const to = Math.max(lastClickedIndex, index)
             for (let r = from; r <= to; r++) {
-                try {
-                    const item = JSON.parse(Photos.itemAt(r))
-                    if (item && item.id) next[item.id] = true
-                } catch (e) {}
+                const rowId = Photos.idAt(r)
+                if (rowId.length > 0) next[rowId] = true
             }
         } else if (next[id]) {
             delete next[id]
@@ -133,10 +134,8 @@ Item {
         const next = {}
         const n = Math.min(Photos.count, 500)
         for (let r = 0; r < n; r++) {
-            try {
-                const item = JSON.parse(Photos.itemAt(r))
-                if (item && item.id) next[item.id] = true
-            } catch (e) {}
+            const rowId = Photos.idAt(r)
+            if (rowId.length > 0) next[rowId] = true
         }
         selectedMap = next
         selectedIds = Object.keys(next)
@@ -177,6 +176,7 @@ Item {
     }
 
     onActiveChanged: if (active) load()
+    Component.onCompleted: load()
     onDeviceIdChanged: {
         clearSelection()
         viewerIndex = -1
@@ -284,7 +284,7 @@ Item {
     Item {
         id: albumPane
         visible: !page.phoneOffline
-        width: 248
+        width: page.width < 760 ? 200 : 248
         height: parent.height
 
         Item {
@@ -367,6 +367,7 @@ Item {
         anchors.left: albumPane.right
         anchors.right: parent.right
         height: parent.height
+        readonly property bool compactBar: width < 540
 
         // Top toolbar: album info OR multi-select actions.
         Item {
@@ -376,16 +377,21 @@ Item {
 
             // Normal mode header (no selection active).
             Row {
+                id: normalLeftRow
                 anchors.left: parent.left
                 anchors.leftMargin: 20
+                anchors.right: normalRightRow.visible ? normalRightRow.left : parent.right
+                anchors.rightMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 10
                 visible: page.selectedCount === 0 && !page.selectMode
+                clip: true
 
                 Txt {
                     anchors.verticalCenter: parent.verticalCenter
                     role: "title"
                     size: 16
+                    elide: Text.ElideRight
                     text: page.currentAlbumName
                 }
                 Txt {
@@ -398,6 +404,7 @@ Item {
             }
 
             Row {
+                id: normalRightRow
                 anchors.right: parent.right
                 anchors.rightMargin: 16
                 anchors.verticalCenter: parent.verticalCenter
@@ -407,7 +414,13 @@ Item {
                 Chip {
                     anchors.verticalCenter: parent.verticalCenter
                     iconPath: Icons.folder
-                    text: Photos.saveFolder
+                    text: {
+                        const f = Photos.saveFolder || ""
+                        if (!gridPane.compactBar) return f
+                        const parts = f.split(/[\\/]/)
+                        return parts.length > 0 && parts[parts.length - 1].length > 0
+                            ? parts[parts.length - 1] : f
+                    }
                     TapHandler { onTapped: defaultFolderPicker.open() }
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                 }
@@ -442,10 +455,11 @@ Item {
                     size: 15
                     text: page.selectedCount > 0
                         ? qsTr("%1 selected").arg(page.selectedCount)
-                        : qsTr("Click items to select")
+                        : (gridPane.compactBar ? qsTr("Select items") : qsTr("Click items to select"))
                 }
                 Button {
                     anchors.verticalCenter: parent.verticalCenter
+                    visible: !gridPane.compactBar || page.selectedCount === 0
                     variant: "text"
                     size: "sm"
                     text: qsTr("Select all")
@@ -632,16 +646,15 @@ Item {
                 }
 
                 // Current top-visible item's day label, shown in the sticky day banner.
+                readonly property int topVisibleRow: Math.max(
+                    0,
+                    Math.floor(Math.max(0, contentY + 20) / Math.max(1, cellHeight)) * columns
+                )
                 readonly property string stickyDay: {
                     if (Photos.revision < 0 || Photos.count === 0) return ""
-                    const idx = indexAt(20, Math.max(0, contentY + 20))
-                    const row = idx >= 0 ? idx : 0
-                    try {
-                        const item = JSON.parse(Photos.itemAt(row))
-                        return item ? page.dayLabel(item.date) : ""
-                    } catch (e) {
-                        return ""
-                    }
+                    const row = Math.min(topVisibleRow, Photos.count - 1)
+                    const ms = Photos.dateAt(row)
+                    return ms > 0 ? page.dayLabel(ms) : ""
                 }
 
                 delegate: PhotoTile {
@@ -916,9 +929,13 @@ Item {
         signal clicked
 
         height: 54
+        activeFocusOnTab: true
         Accessible.role: Accessible.Button
         Accessible.name: albumRow.title
         Accessible.onPressAction: albumRow.clicked()
+        Keys.onReturnPressed: albumRow.clicked()
+        Keys.onEnterPressed: albumRow.clicked()
+        Keys.onSpacePressed: albumRow.clicked()
 
         Rectangle {
             anchors.fill: parent
@@ -932,8 +949,8 @@ Item {
                 : albumHover.hovered
                   ? Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, 0.06)
                   : "transparent"
-            border.width: Theme.graphite && albumRow.selected ? 1 : 0
-            border.color: Theme.surfaceContent
+            border.width: albumRow.activeFocus ? 2 : (Theme.graphite && albumRow.selected ? 1 : 0)
+            border.color: albumRow.activeFocus ? Theme.primary : Theme.surfaceContent
 
             Item {
                 id: coverBox
@@ -1010,16 +1027,22 @@ Item {
 
         property string requestedThumbId: ""
         readonly property bool selected: page.selectedCount >= 0 && page.isSelected(itemId)
-        readonly property bool firstOfDay: index === 0 || page.dayKey(date) !== page.dayKey(prevDate)
+        readonly property bool firstOfDay: index === 0 || !page.sameDay(date, prevDate)
 
-        Accessible.role: Accessible.Button
-        Accessible.name: tile.name
-        Accessible.onPressAction: {
+        function activateTile() {
             if (page.selectMode || page.selectedCount > 0)
                 page.toggleSelect(tile.itemId, tile.index, false)
             else
                 page.openViewer(tile.index)
         }
+
+        activeFocusOnTab: true
+        Accessible.role: Accessible.Button
+        Accessible.name: tile.name
+        Accessible.onPressAction: tile.activateTile()
+        Keys.onReturnPressed: tile.activateTile()
+        Keys.onEnterPressed: tile.activateTile()
+        Keys.onSpacePressed: page.toggleSelect(tile.itemId, tile.index, false)
 
         function checkThumb() {
             if (thumb.length === 0 && itemId.length > 0) {
@@ -1048,8 +1071,8 @@ Item {
             anchors.margins: 4
             radius: Theme.radiusSm
             color: Theme.surfaceContainerHigh
-            border.width: tile.selected ? 3 : (Theme.graphite ? 1 : 0)
-            border.color: tile.selected ? Theme.primary : Theme.outlineVariant
+            border.width: tile.selected ? 3 : (tile.activeFocus ? 2 : (Theme.graphite ? 1 : 0))
+            border.color: (tile.selected || tile.activeFocus) ? Theme.primary : Theme.outlineVariant
             clip: true
 
             Icon {
@@ -1100,7 +1123,8 @@ Item {
                     role: "caption"
                     size: 11
                     color: "#ffffff"
-                    text: page.shortDayLabel(tile.date)
+                    text: (tile.firstOfDay && tile.index > 0 && tile.date > 0)
+                        ? page.shortDayLabel(tile.date) : ""
                 }
             }
 
@@ -1138,7 +1162,7 @@ Item {
                     role: "caption"
                     size: 11
                     color: "#ffffff"
-                    text: page.formatVideoDuration(tile.duration)
+                    text: tile.isVideo ? page.formatVideoDuration(tile.duration) : ""
                 }
             }
 

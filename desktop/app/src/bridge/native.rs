@@ -6,6 +6,8 @@ pub mod ffi {
     unsafe extern "C++" {
         include!("app_helpers.h");
         include!("video_view.h");
+        include!("cxx-qt-lib/qqmlapplicationengine.h");
+        type QQmlApplicationEngine = cxx_qt_lib::QQmlApplicationEngine;
 
         /// The latest picture of a video stream (32-bit BGRX rows), for
         /// `VideoView`s showing it. Any thread.
@@ -23,5 +25,8 @@ pub mod ffi {
         fn load_bundled_fonts() -> i32;
         /// Clears Qt pixmap caches and trims the process working set.
         fn trim_memory_caches();
+        /// Records the active QML engine so `trim_memory_caches` can run GC and
+        /// clear component caches.
+        fn register_qml_app_engine(engine: Pin<&mut QQmlApplicationEngine>);
     }
 }

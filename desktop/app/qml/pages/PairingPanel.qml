@@ -45,14 +45,14 @@ Item {
     Column {
         id: content
         width: parent.width
-        spacing: 18
+        spacing: 14
 
         // ---- Header ----
         Txt {
             width: parent.width
             horizontalAlignment: Text.AlignHCenter
             role: "displaySmall"
-            size: 26
+            size: 24
             wrapMode: Text.WordWrap
             text: {
                 switch (panel.state_) {
@@ -67,12 +67,12 @@ Item {
         // ---- QR code ----
         Column {
             width: parent.width
-            spacing: 14
+            spacing: 12
             visible: (panel.state_ === "hosting" || panel.state_ === "starting" || panel.state_ === "idle") && !panel.showNearby
 
             Item {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width: 236; height: 236
+                width: 216; height: 216
                 QrCode {
                     anchors.fill: parent
                     visible: panel.state_ === "hosting"

@@ -122,6 +122,8 @@ Item {
     }
     // Leaving the page closes the open conversation.
     onActiveChanged: active ? load() : closeChat()
+    Component.onCompleted: load()
+    Component.onDestruction: Messages.closeThread()
 
     Shortcut {
         sequence: "Esc"
@@ -539,6 +541,7 @@ Item {
             visible: !!page.openThread
             clip: true
             spacing: 6
+            cacheBuffer: 960
             // A short conversation sits at the bottom, by the box.
             topMargin: Math.max(16, height - contentHeight - bottomMargin)
             bottomMargin: 8
@@ -546,13 +549,31 @@ Item {
             model: page.messages
             // The latest at the bottom; scrolling up loads older ones.
             property int lastCount: 0
+            property string lastThreadId: ""
+            property real savedBottomOffset: -1
             onCountChanged: {
-                const grewAtTop = count > lastCount && lastCount > 0 && Messages.loadingOlder === false && atYBeginning
-                if (!grewAtTop)
+                const threadSwitched = Messages.thread !== lastThreadId
+                lastThreadId = Messages.thread
+                if (threadSwitched || lastCount === 0) {
+                    savedBottomOffset = -1
                     Qt.callLater(positionViewAtEnd)
+                } else if (savedBottomOffset >= 0 && count > lastCount) {
+                    const off = savedBottomOffset
+                    savedBottomOffset = -1
+                    Qt.callLater(() => {
+                        contentY = Math.max(originY, contentHeight - off)
+                    })
+                } else if (count > lastCount) {
+                    Qt.callLater(positionViewAtEnd)
+                }
                 lastCount = count
             }
-            onAtYBeginningChanged: if (atYBeginning && Messages.more && count > 0) Messages.loadOlder()
+            onAtYBeginningChanged: {
+                if (atYBeginning && Messages.more && count > 0 && !Messages.loadingOlder) {
+                    savedBottomOffset = contentHeight - contentY
+                    Messages.loadOlder()
+                }
+            }
             header: Item {
                 width: messageList.width
                 height: Messages.loadingOlder ? 40 : 0
@@ -686,12 +707,19 @@ Item {
         property var thread
         readonly property bool selected: thread.id === Messages.thread
         height: 72
+        activeFocusOnTab: true
         Accessible.role: Accessible.ListItem
         Accessible.name: thread.title + ". " + thread.snippet
         Accessible.onPressAction: open()
         function open() {
             page.composing = false
             Messages.openThread(thread.id)
+        }
+        Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                open()
+                event.accepted = true
+            }
         }
 
         Rectangle {
@@ -702,6 +730,8 @@ Item {
             color: row.selected ? Theme.secondaryContainer
                  : rowHover.hovered ? Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, 0.06)
                  : "transparent"
+            border.width: Theme.focusVisible(row) ? 2 : 0
+            border.color: Theme.primary
             Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
         }
         Item {
@@ -802,7 +832,16 @@ Item {
         property var previous: null
         readonly property bool mine: message.outgoing
         readonly property real maxWidth: Math.min(width * 0.72, 520)
-        readonly property bool newDay: !previous || new Date(previous.date).toDateString() !== new Date(message.date).toDateString()
+        readonly property bool hasUrl: message.body.indexOf("http://") >= 0 || message.body.indexOf("https://") >= 0
+        readonly property bool newDay: {
+            if (!previous)
+                return true
+            if (Math.abs(message.date - previous.date) < 600000)
+                return false
+            const d1 = new Date(previous.date)
+            const d2 = new Date(message.date)
+            return d1.getFullYear() !== d2.getFullYear() || d1.getMonth() !== d2.getMonth() || d1.getDate() !== d2.getDate()
+        }
         readonly property bool showSender: !!message.sender && (!previous || previous.sender !== message.sender || newDay)
         height: day.height + sender.height + content.height + meta.height + codeRow.height + 4
 
@@ -818,7 +857,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             role: "label"
             muted: true
-            text: page.dayLabel(bubble.message.date)
+            text: bubble.newDay ? page.dayLabel(bubble.message.date) : ""
         }
         // Who wrote it, in a group.
         Txt {
@@ -877,12 +916,13 @@ Item {
                 x: 14
                 width: Math.min(implicitWidth, bubble.maxWidth - 28)
                 visible: bubble.message.body.length > 0 || bubble.message.attachments > 0
-                text: bubble.message.body.length > 0 ? page.linkified(bubble.message.body)
+                text: bubble.message.body.length > 0
+                    ? (bubble.hasUrl ? page.linkified(bubble.message.body) : bubble.message.body)
                     : qsTr("Attachment (open it on the phone)")
                 readOnly: true
                 selectByMouse: true
                 wrapMode: TextEdit.Wrap
-                textFormat: bubble.message.body.length > 0 ? TextEdit.RichText : TextEdit.PlainText
+                textFormat: bubble.hasUrl ? TextEdit.RichText : TextEdit.PlainText
                 onLinkActivated: (link) => Qt.openUrlExternally(link)
                 HoverHandler { cursorShape: text.hoveredLink.length > 0 ? Qt.PointingHandCursor : Qt.IBeamCursor }
                 font.family: Theme.fontUi

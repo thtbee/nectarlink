@@ -83,6 +83,12 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "rowOf"]
         fn row_of(self: &DeviceList, device_id: &QString) -> i32;
+        #[qinvokable]
+        #[cxx_name = "deviceIdAt"]
+        fn device_id_at(self: &DeviceList, row: i32) -> QString;
+        #[qinvokable]
+        #[cxx_name = "deviceNameAt"]
+        fn device_name_at(self: &DeviceList, row: i32) -> QString;
     }
 
     unsafe extern "C++" {
@@ -231,6 +237,22 @@ impl qobject::DeviceList {
     pub fn row_of(&self, device_id: &QString) -> i32 {
         let id = String::from(device_id);
         self.rows.iter().position(|d| d.id.to_string() == id).map_or(-1, |r| r as i32)
+    }
+
+    pub fn device_id_at(&self, row: i32) -> QString {
+        usize::try_from(row)
+            .ok()
+            .and_then(|i| self.rows.get(i))
+            .map(|d| QString::from(&d.id.to_string()))
+            .unwrap_or_default()
+    }
+
+    pub fn device_name_at(&self, row: i32) -> QString {
+        usize::try_from(row)
+            .ok()
+            .and_then(|i| self.rows.get(i))
+            .map(|d| QString::from(&d.info.name))
+            .unwrap_or_default()
     }
 }
 

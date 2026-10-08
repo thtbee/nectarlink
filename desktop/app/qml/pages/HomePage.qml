@@ -9,7 +9,7 @@ import app.nectarlink
 Item {
     id: page
     property bool active: true
-    property int current: 0
+    property int current: AppController.currentDevice
     // The device shown, for dropped files.
     property string currentDeviceId
     property string currentDeviceName
@@ -24,10 +24,17 @@ Item {
         Behavior on y { SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
     }
 
-    onCurrentChanged: if (current >= DeviceList.count) current = 0
+    onCurrentChanged: {
+        if (current >= DeviceList.count) current = 0
+        if (AppController.currentDevice !== current)
+            AppController.currentDevice = current
+    }
     Connections {
         target: DeviceList
-        function onCountChanged() { if (page.current >= DeviceList.count) page.current = Math.max(0, DeviceList.count - 1) }
+        function onCountChanged() {
+            if (page.current >= DeviceList.count)
+                page.current = Math.max(0, DeviceList.count - 1)
+        }
     }
 
     function relativeTime(unixSeconds) {

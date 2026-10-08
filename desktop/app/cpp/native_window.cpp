@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "native_window.h"
+#include "app_helpers.h"
 
 #include <QtGui/QPlatformSurfaceEvent>
+#include <QtQml/QtQml>
+#include <QtQuick/QSGRendererInterface>
 
 #include <algorithm>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <d3d11.h>
 #include <dwmapi.h>
+#include <dxgi1_3.h>
 #include <windowsx.h>
 
 namespace {
@@ -25,6 +30,31 @@ HWND hwndOf(const QWindow *window)
     return reinterpret_cast<HWND>(window->winId());
 }
 
+void trimD3DResources(QQuickWindow *window)
+{
+    if (!window)
+        return;
+    QSGRendererInterface *rif = window->rendererInterface();
+    if (!rif)
+        return;
+    auto *device = static_cast<ID3D11Device *>(
+        rif->getResource(window, QSGRendererInterface::DeviceResource));
+    if (!device)
+        return;
+    ID3D11DeviceContext *ctx = nullptr;
+    device->GetImmediateContext(&ctx);
+    if (ctx) {
+        ctx->ClearState();
+        ctx->Flush();
+        ctx->Release();
+    }
+    IDXGIDevice3 *dxgi3 = nullptr;
+    if (SUCCEEDED(device->QueryInterface(__uuidof(IDXGIDevice3), reinterpret_cast<void **>(&dxgi3))) && dxgi3) {
+        dxgi3->Trim();
+        dxgi3->Release();
+    }
+}
+
 } // namespace
 
 NativeWindow::NativeWindow(QWindow *parent)
@@ -33,6 +63,10 @@ NativeWindow::NativeWindow(QWindow *parent)
     // Qt removes the system title bar and lets content fill the window.
     setFlags(flags() | Qt::ExpandedClientAreaHint);
     setColor(Qt::transparent);
+    // Drop the scene graph and D3D/RHI resources when the window is hidden or
+    // closed to the tray instead of keeping GPU buffers in private commit.
+    setPersistentSceneGraph(false);
+    setPersistentGraphics(false);
 }
 
 void NativeWindow::setBackdrop(bool on)
@@ -117,8 +151,32 @@ void NativeWindow::flash()
     FlashWindowEx(&info);
 }
 
+void NativeWindow::releaseAndTeardown()
+{
+    if (QQmlEngine *engine = qmlEngine(this))
+        register_qml_engine(engine);
+    m_holes.clear();
+    m_maximizeButton = nullptr;
+    trimD3DResources(this);
+    releaseResources();
+    hide();
+    trimD3DResources(this);
+    destroy();
+}
+
 bool NativeWindow::event(QEvent *event)
 {
+    if (QQmlEngine *engine = qmlEngine(this))
+        register_qml_engine(engine);
+    if (event->type() == QEvent::Close) {
+        trimD3DResources(this);
+        event->accept();
+        emit closeRequested();
+        return true;
+    }
+    if (event->type() == QEvent::Hide) {
+        trimD3DResources(this);
+    }
     if (event->type() == QEvent::PlatformSurface
         && static_cast<QPlatformSurfaceEvent *>(event)->surfaceEventType()
             == QPlatformSurfaceEvent::SurfaceCreated) {

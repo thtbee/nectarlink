@@ -5,6 +5,8 @@
 
 use std::sync::atomic::{AtomicU8, AtomicU32, AtomicU64, Ordering};
 
+use ab_glyph::{Font, FontRef, GlyphId, PxScale, ScaleFont, point};
+
 use windows::{
     Win32::{
         Foundation::{CloseHandle, HANDLE, HLOCAL, INVALID_HANDLE_VALUE, LocalFree},
@@ -419,149 +421,316 @@ pub fn bgrx_to_nv12(bgrx: &[u8], width: u32, height: u32, nv12: &mut [u8]) {
     }
 }
 
-/// Renders a clean placeholder frame ("NECTARLINK WEBCAM" / "START THE WEBCAM ON <PHONE>")
-/// into `bgrx` (`width * height * 4`).
+const FIGTREE_TTF: &[u8] = include_bytes!("../../../assets/fonts/Figtree.ttf");
+
+/// Honey primary (`docs/design/tokens.json`) and white ink for the Nectarlink mark.
+const MARK_BG_BGR: [u8; 3] = [0x00, 0x51, 0x8A];
+const MARK_INK_BGR: [u8; 3] = [0xFF, 0xFF, 0xFF];
+const MARK_HEXAGON: [(f32, f32); 6] =
+    [(12.0, 2.5), (20.2, 7.25), (20.2, 16.75), (12.0, 21.5), (3.8, 16.75), (3.8, 7.25)];
+const MARK_BAR: ((f32, f32), (f32, f32)) = ((9.0, 12.0), (15.0, 12.0));
+
+struct CachedPlaceholderCard {
+    width: u32,
+    height: u32,
+    phone_name: String,
+    card_x: usize,
+    card_y: usize,
+    card_w: usize,
+    card_h: usize,
+    card_bgrx: Vec<u8>,
+}
+
+static PLACEHOLDER_CACHE: std::sync::Mutex<Option<CachedPlaceholderCard>> = std::sync::Mutex::new(None);
+
+/// Renders a clean, calm placeholder frame with the Nectarlink mark and
+/// `"Start the webcam on <phone>"` in anti-aliased Figtree into `bgrx` (`width * height * 4`).
 pub fn render_placeholder_bgrx(bgrx: &mut [u8], width: u32, height: u32, phone_name: &str) {
     let w = width as usize;
     let h = height as usize;
     if bgrx.len() < w * h * 4 || w == 0 || h == 0 {
         return;
     }
-    // Dark slate background (#14171F)
+    // Theme-neutral dark background (#111318 -> BGR 0x18, 0x13, 0x11)
+    let bg_px = [0x18u8, 0x13, 0x11, 0xFF];
     for px in bgrx[..w * h * 4].as_chunks_mut::<4>().0 {
-        px.copy_from_slice(&[0x1F, 0x17, 0x14, 0xFF]);
+        px.copy_from_slice(&bg_px);
     }
 
-    // Center card (#1D222E) with subtle amber top accent bar (#F59E0B -> BGR 0x0B, 0x9E, 0xF5)
-    let card_w = (w * 3 / 5).clamp(320.min(w), w);
-    let card_h = (h * 2 / 5).clamp(180.min(h), h);
-    let cx0 = (w - card_w) / 2;
-    let cy0 = (h - card_h) / 2;
-    fill_rect(bgrx, w, h, cx0, cy0, card_w, card_h, [0x2E, 0x22, 0x1D, 0xFF]);
-    fill_rect(bgrx, w, h, cx0, cy0, card_w, 4.min(card_h), [0x0B, 0x9E, 0xF5, 0xFF]);
+    let trimmed = phone_name.trim();
+    if let Ok(mut guard) = PLACEHOLDER_CACHE.lock() {
+        let hit =
+            guard.as_ref().is_some_and(|c| c.width == width && c.height == height && c.phone_name == trimmed);
+        if !hit {
+            *guard = Some(build_placeholder_card(width, height, trimmed));
+        }
+        if let Some(cached) = guard.as_ref() {
+            blit_card(bgrx, w, h, cached);
+            return;
+        }
+    }
 
-    // Camera icon in the middle-top of the card
-    let scale = (h / 360).clamp(2, 4);
-    let icon_w = 18 * scale;
-    let icon_h = 12 * scale;
-    let ix = w / 2 - icon_w / 2;
-    let iy = cy0 + card_h / 4;
-    fill_rect(bgrx, w, h, ix, iy, icon_w * 3 / 4, icon_h, [0x0B, 0x9E, 0xF5, 0xFF]);
-    fill_rect(
-        bgrx,
-        w,
-        h,
-        ix + icon_w * 3 / 4 + scale,
-        iy + icon_h / 4,
-        icon_w / 4,
-        icon_h / 2,
-        [0x0B, 0x9E, 0xF5, 0xFF],
-    );
-
-    let title = "NECTARLINK WEBCAM";
-    let subtitle = if phone_name.trim().is_empty() {
-        "START THE WEBCAM ON YOUR PHONE".to_owned()
-    } else {
-        format!("START THE WEBCAM ON {}", phone_name.trim().to_ascii_uppercase())
-    };
-    draw_text_centered(bgrx, w, h, iy + icon_h + 8 * scale, scale, title, [0xF4, 0xF0, 0xEC, 0xFF]);
-    draw_text_centered(
-        bgrx,
-        w,
-        h,
-        iy + icon_h + 20 * scale,
-        (scale - 1).max(1),
-        &subtitle,
-        [0xB8, 0xA8, 0x9C, 0xFF],
-    );
+    let card = build_placeholder_card(width, height, trimmed);
+    blit_card(bgrx, w, h, &card);
 }
 
-#[allow(clippy::too_many_arguments)]
-fn fill_rect(
+fn blit_card(bgrx: &mut [u8], w: usize, h: usize, card: &CachedPlaceholderCard) {
+    let max_rows = card.card_h.min(h.saturating_sub(card.card_y));
+    let max_cols = card.card_w.min(w.saturating_sub(card.card_x));
+    for row in 0..max_rows {
+        let dst_off = ((card.card_y + row) * w + card.card_x) * 4;
+        let src_off = row * card.card_w * 4;
+        bgrx[dst_off..dst_off + max_cols * 4]
+            .copy_from_slice(&card.card_bgrx[src_off..src_off + max_cols * 4]);
+    }
+}
+
+fn build_placeholder_card(width: u32, height: u32, phone_name: &str) -> CachedPlaceholderCard {
+    let w = width as usize;
+    let h = height as usize;
+    let scale = (h as f32 / 720.0).clamp(0.45, 1.6);
+
+    let headline = if phone_name.is_empty() {
+        "Start the webcam on your phone".to_owned()
+    } else {
+        format!("Start the webcam on {phone_name}")
+    };
+    let caption = "Nectarlink Camera";
+
+    let font = TrueTypeFont::parse(FIGTREE_TTF);
+    let head_px = (22.0 * scale).clamp(12.0, 38.0);
+    let cap_px = (14.0 * scale).clamp(10.0, 24.0);
+    let head_w = font.as_ref().map_or(260, |f| f.measure_text(&headline, head_px));
+    let cap_w = font.as_ref().map_or(140, |f| f.measure_text(caption, cap_px));
+
+    let pad_x = (44.0 * scale).round() as usize;
+    let min_card_w = (360.0 * scale).round() as usize;
+    let card_w = (head_w.max(cap_w) + pad_x * 2).max(min_card_w).min(w.saturating_sub(16).max(1));
+    let card_h = ((208.0 * scale).round() as usize).clamp(96.min(h), h.saturating_sub(16).max(1));
+    let card_x = (w - card_w) / 2;
+    let card_y = (h - card_h) / 2;
+
+    let mut card_bgrx = vec![0u8; card_w * card_h * 4];
+    let bg_bgr = [0x18u8, 0x13, 0x11];
+    let surface_bgr = [0x23u8, 0x1C, 0x19]; // #191C23
+    let border_bgr = [0x36u8, 0x2C, 0x27]; // #272C36
+    let radius = (20.0 * scale).clamp(8.0, 32.0);
+
+    draw_rounded_card(&mut card_bgrx, card_w, card_h, radius, bg_bgr, surface_bgr, border_bgr);
+
+    let mark_size = ((52.0 * scale).round() as usize).clamp(24, 88).min(card_h / 2);
+    let mark_x = card_w.saturating_sub(mark_size) / 2;
+    let total_content_h = mark_size
+        + (18.0 * scale).round() as usize
+        + head_px.round() as usize
+        + (8.0 * scale).round() as usize
+        + cap_px.round() as usize;
+    let mark_y = card_h.saturating_sub(total_content_h) / 2;
+    blend_mark(&mut card_bgrx, card_w, card_h, mark_x, mark_y, mark_size);
+
+    if let Some(font) = font.as_ref() {
+        let head_baseline =
+            mark_y + mark_size + (16.0 * scale).round() as usize + (head_px * 0.82).round() as usize;
+        // Primary ink (#F2F0EC -> BGR 0xEC, 0xF0, 0xF2)
+        font.draw_text_centered(
+            &mut card_bgrx,
+            card_w,
+            card_h,
+            head_baseline as f32,
+            head_px,
+            &headline,
+            [0xEC, 0xF0, 0xF2],
+        );
+
+        let cap_baseline = head_baseline + (10.0 * scale).round() as usize + (cap_px * 0.85).round() as usize;
+        // Secondary muted ink (#9399A6 -> BGR 0xA6, 0x99, 0x93)
+        font.draw_text_centered(
+            &mut card_bgrx,
+            card_w,
+            card_h,
+            cap_baseline as f32,
+            cap_px,
+            caption,
+            [0xA6, 0x99, 0x93],
+        );
+    }
+
+    CachedPlaceholderCard {
+        width,
+        height,
+        phone_name: phone_name.to_owned(),
+        card_x,
+        card_y,
+        card_w,
+        card_h,
+        card_bgrx,
+    }
+}
+
+fn draw_rounded_card(
     bgrx: &mut [u8],
     w: usize,
     h: usize,
-    x0: usize,
-    y0: usize,
-    rw: usize,
-    rh: usize,
-    color: [u8; 4],
+    radius: f32,
+    outside_bgr: [u8; 3],
+    fill_bgr: [u8; 3],
+    border_bgr: [u8; 3],
 ) {
-    let x1 = (x0 + rw).min(w);
-    let y1 = (y0 + rh).min(h);
-    for y in y0.min(h)..y1 {
-        let row = &mut bgrx[y * w * 4..(y + 1) * w * 4];
-        for x in x0.min(w)..x1 {
-            row[x * 4..x * 4 + 4].copy_from_slice(&color);
+    let wf = w as f32;
+    let hf = h as f32;
+    let r = radius.min(wf * 0.5).min(hf * 0.5);
+    for py in 0..h {
+        for px in 0..w {
+            let x = px as f32 + 0.5;
+            let y = py as f32 + 0.5;
+            let cx = x.clamp(r, wf - r);
+            let cy = y.clamp(r, hf - r);
+            let dist = ((x - cx).powi(2) + (y - cy).powi(2)).sqrt() - r;
+            let fill_alpha = (0.5 - dist).clamp(0.0, 1.0);
+            let inner_alpha = (-0.6 - dist).clamp(0.0, 1.0);
+            let mut rgb = [0f32; 3];
+            for c in 0..3 {
+                let card_c = border_bgr[c] as f32 * (1.0 - inner_alpha) + fill_bgr[c] as f32 * inner_alpha;
+                rgb[c] = outside_bgr[c] as f32 * (1.0 - fill_alpha) + card_c * fill_alpha;
+            }
+            let idx = (py * w + px) * 4;
+            bgrx[idx] = rgb[0].round() as u8;
+            bgrx[idx + 1] = rgb[1].round() as u8;
+            bgrx[idx + 2] = rgb[2].round() as u8;
+            bgrx[idx + 3] = 0xFF;
         }
     }
 }
 
-fn draw_text_centered(
-    bgrx: &mut [u8],
-    w: usize,
-    h: usize,
-    y: usize,
-    scale: usize,
-    text: &str,
-    color: [u8; 4],
-) {
-    let char_adv = 6 * scale;
-    let total_w = text.chars().count().saturating_mul(char_adv);
-    let start_x = w.saturating_sub(total_w) / 2;
-    for (i, ch) in text.chars().enumerate() {
-        let glyph = glyph_5x7(ch);
-        let gx = start_x + i * char_adv;
-        for (row_idx, &bits) in glyph.iter().enumerate() {
-            for col_idx in 0..5 {
-                if (bits >> (4 - col_idx)) & 1 != 0 {
-                    fill_rect(bgrx, w, h, gx + col_idx * scale, y + row_idx * scale, scale, scale, color);
+fn blend_mark(bgrx: &mut [u8], w: usize, h: usize, ox: usize, oy: usize, size: usize) {
+    const SS: usize = 4;
+    let s = size as f32;
+    let radius = s * 0.28;
+    let glyph = s * 0.62;
+    let scale = glyph / 24.0;
+    let offset = (s - glyph) / 2.0;
+    let stroke = (1.8 * scale).max(1.4);
+    let hex: Vec<(f32, f32)> =
+        MARK_HEXAGON.iter().map(|&(x, y)| (offset + x * scale, offset + y * scale)).collect();
+    let bar = (
+        (offset + MARK_BAR.0.0 * scale, offset + MARK_BAR.0.1 * scale),
+        (offset + MARK_BAR.1.0 * scale, offset + MARK_BAR.1.1 * scale),
+    );
+
+    for py in 0..size {
+        let dy = oy + py;
+        if dy >= h {
+            break;
+        }
+        for px in 0..size {
+            let dx = ox + px;
+            if dx >= w {
+                break;
+            }
+            let (mut tile, mut ink) = (0usize, 0usize);
+            for sy in 0..SS {
+                for sx in 0..SS {
+                    let x = px as f32 + (sx as f32 + 0.5) / SS as f32;
+                    let y = py as f32 + (sy as f32 + 0.5) / SS as f32;
+                    let cx = x.clamp(radius, s - radius);
+                    let cy = y.clamp(radius, s - radius);
+                    if (x - cx).powi(2) + (y - cy).powi(2) > radius * radius {
+                        continue;
+                    }
+                    tile += 1;
+                    let on_hex = (0..hex.len())
+                        .any(|i| dist_to_segment((x, y), hex[i], hex[(i + 1) % hex.len()]) <= stroke / 2.0);
+                    if on_hex || dist_to_segment((x, y), bar.0, bar.1) <= stroke / 2.0 {
+                        ink += 1;
+                    }
                 }
+            }
+            if tile == 0 {
+                continue;
+            }
+            let t = ink as f32 / tile as f32;
+            let alpha = tile as f32 / (SS * SS) as f32;
+            let idx = (dy * w + dx) * 4;
+            for c in 0..3 {
+                let mark_c = MARK_BG_BGR[c] as f32 * (1.0 - t) + MARK_INK_BGR[c] as f32 * t;
+                bgrx[idx + c] = (bgrx[idx + c] as f32 * (1.0 - alpha) + mark_c * alpha).round() as u8;
             }
         }
     }
 }
 
-fn glyph_5x7(ch: char) -> [u8; 7] {
-    match ch.to_ascii_uppercase() {
-        'A' => [0b01110, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001],
-        'B' => [0b11110, 0b10001, 0b10001, 0b11110, 0b10001, 0b10001, 0b11110],
-        'C' => [0b01110, 0b10001, 0b10000, 0b10000, 0b10000, 0b10001, 0b01110],
-        'D' => [0b11100, 0b10010, 0b10001, 0b10001, 0b10001, 0b10010, 0b11100],
-        'E' => [0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b11111],
-        'F' => [0b11111, 0b10000, 0b10000, 0b11110, 0b10000, 0b10000, 0b10000],
-        'G' => [0b01110, 0b10001, 0b10000, 0b10111, 0b10001, 0b10001, 0b01110],
-        'H' => [0b10001, 0b10001, 0b10001, 0b11111, 0b10001, 0b10001, 0b10001],
-        'I' => [0b01110, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110],
-        'J' => [0b00111, 0b00010, 0b00010, 0b00010, 0b10010, 0b10010, 0b01100],
-        'K' => [0b10001, 0b10010, 0b10100, 0b11000, 0b10100, 0b10010, 0b10001],
-        'L' => [0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b10000, 0b11111],
-        'M' => [0b10001, 0b11011, 0b10101, 0b10101, 0b10001, 0b10001, 0b10001],
-        'N' => [0b10001, 0b11001, 0b10101, 0b10011, 0b10001, 0b10001, 0b10001],
-        'O' => [0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110],
-        'P' => [0b11110, 0b10001, 0b10001, 0b11110, 0b10000, 0b10000, 0b10000],
-        'Q' => [0b01110, 0b10001, 0b10001, 0b10001, 0b10101, 0b10010, 0b01101],
-        'R' => [0b11110, 0b10001, 0b10001, 0b11110, 0b10100, 0b10010, 0b10001],
-        'S' => [0b01111, 0b10000, 0b10000, 0b01110, 0b00001, 0b00001, 0b11110],
-        'T' => [0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100, 0b00100],
-        'U' => [0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110],
-        'V' => [0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01010, 0b00100],
-        'W' => [0b10001, 0b10001, 0b10001, 0b10101, 0b10101, 0b11011, 0b10001],
-        'X' => [0b10001, 0b10001, 0b01010, 0b00100, 0b01010, 0b10001, 0b10001],
-        'Y' => [0b10001, 0b10001, 0b01010, 0b00100, 0b00100, 0b00100, 0b00100],
-        'Z' => [0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b10000, 0b11111],
-        '0' => [0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110],
-        '1' => [0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110],
-        '2' => [0b01110, 0b10001, 0b00001, 0b00010, 0b00100, 0b01000, 0b11111],
-        '3' => [0b11110, 0b00001, 0b00001, 0b01110, 0b00001, 0b00001, 0b11110],
-        '4' => [0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010],
-        '5' => [0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110],
-        '6' => [0b01110, 0b10000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110],
-        '7' => [0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000],
-        '8' => [0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110],
-        '9' => [0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00001, 0b01110],
-        '-' => [0b00000, 0b00000, 0b00000, 0b11111, 0b00000, 0b00000, 0b00000],
-        _ => [0; 7],
+fn dist_to_segment(p: (f32, f32), a: (f32, f32), b: (f32, f32)) -> f32 {
+    let (dx, dy) = (b.0 - a.0, b.1 - a.1);
+    let len2 = dx * dx + dy * dy;
+    let t = if len2 == 0.0 { 0.0 } else { (((p.0 - a.0) * dx + (p.1 - a.1) * dy) / len2).clamp(0.0, 1.0) };
+    let (qx, qy) = (a.0 + t * dx, a.1 + t * dy);
+    ((p.0 - qx).powi(2) + (p.1 - qy).powi(2)).sqrt()
+}
+
+/// The bundled Figtree font, laid out and drawn with `ab_glyph`.
+struct TrueTypeFont {
+    font: FontRef<'static>,
+}
+
+impl TrueTypeFont {
+    fn parse(data: &'static [u8]) -> Option<Self> {
+        FontRef::try_from_slice(data).ok().map(|font| Self { font })
+    }
+
+    /// Each glyph of `text` at `px_size` with its pen position (no wrapping),
+    /// and the line's width.
+    fn layout(&self, text: &str, px_size: f32) -> (Vec<(GlyphId, f32)>, f32) {
+        let font = self.font.as_scaled(PxScale::from(px_size));
+        let mut pen = 0.0;
+        let mut previous = None;
+        let mut glyphs = Vec::with_capacity(text.len());
+        for ch in text.chars() {
+            let id = font.glyph_id(ch);
+            if let Some(previous) = previous {
+                pen += font.kern(previous, id);
+            }
+            glyphs.push((id, pen));
+            pen += font.h_advance(id);
+            previous = Some(id);
+        }
+        (glyphs, pen)
+    }
+
+    fn measure_text(&self, text: &str, px_size: f32) -> usize {
+        self.layout(text, px_size).1.ceil() as usize
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn draw_text_centered(
+        &self,
+        bgrx: &mut [u8],
+        w: usize,
+        h: usize,
+        baseline_y: f32,
+        px_size: f32,
+        text: &str,
+        ink_bgr: [u8; 3],
+    ) {
+        let (glyphs, width) = self.layout(text, px_size);
+        let left = ((w as f32 - width) * 0.5).max(0.0);
+        for (id, x) in glyphs {
+            let glyph = id.with_scale_and_position(PxScale::from(px_size), point(left + x, baseline_y));
+            let Some(outlined) = self.font.outline_glyph(glyph) else { continue };
+            let bounds = outlined.px_bounds();
+            outlined.draw(|gx, gy, coverage| {
+                let px = bounds.min.x as i64 + i64::from(gx);
+                let py = bounds.min.y as i64 + i64::from(gy);
+                if px < 0 || py < 0 || px as usize >= w || py as usize >= h {
+                    return;
+                }
+                let alpha = coverage.clamp(0.0, 1.0);
+                let idx = (py as usize * w + px as usize) * 4;
+                for c in 0..3 {
+                    bgrx[idx + c] = (f32::from(bgrx[idx + c]) * (1.0 - alpha) + f32::from(ink_bgr[c]) * alpha)
+                        .round() as u8;
+                }
+            });
+        }
     }
 }
 
@@ -585,5 +754,24 @@ mod tests {
     fn opening_a_missing_mapping_fails() {
         let name = format!(r"Local\NectarlinkVcamMissing_{}", std::process::id());
         assert!(SharedFrameMapping::open_existing(&name).is_err());
+    }
+
+    #[test]
+    fn placeholder_renders_mark_and_antialiased_figtree_text() {
+        let (w, h) = (1280u32, 720u32);
+        let mut frame = vec![0u8; (w * h * 4) as usize];
+        render_placeholder_bgrx(&mut frame, w, h, "Pixel 9");
+        // Corner pixel is dark neutral background (#111318 -> BGR 0x18, 0x13, 0x11).
+        assert_eq!(&frame[0..4], &[0x18, 0x13, 0x11, 0xFF]);
+        // Center card contains the honey mark (#8A5100 -> BGR 0x00, 0x51, 0x8A) and anti-aliased text.
+        let has_honey_mark = frame
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|px| px[0] == 0x00 && px[1] == 0x51 && px[2] == 0x8A && px[3] == 0xFF);
+        assert!(has_honey_mark, "placeholder should include the Nectarlink honey mark");
+        let has_text_ink =
+            frame.as_chunks::<4>().0.iter().any(|px| px[0] > 0xD0 && px[1] > 0xD0 && px[2] > 0xD0);
+        assert!(has_text_ink, "placeholder should include bright headline text ink");
     }
 }

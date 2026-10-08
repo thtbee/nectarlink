@@ -72,6 +72,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
@@ -169,27 +170,46 @@ fun RemoteScreen(
         }
 
         // Mode switcher: Touchpad | Air mouse | Presentation
+        val largeFont = LocalConfiguration.current.fontScale >= 1.15f
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             SegmentedButton(
                 selected = mode == RemoteMode.Touchpad,
                 onClick = { mode = RemoteMode.Touchpad },
                 shape = SegmentedButtonDefaults.itemShape(0, 3),
+                icon = { if (!largeFont) SegmentedButtonDefaults.Icon(mode == RemoteMode.Touchpad) },
+                modifier = Modifier.weight(0.95f),
             ) {
-                Text(stringResource(R.string.remote_mode_touchpad), maxLines = 1)
+                Text(
+                    stringResource(R.string.remote_mode_touchpad),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             SegmentedButton(
                 selected = mode == RemoteMode.AirMouse,
                 onClick = { mode = RemoteMode.AirMouse },
                 shape = SegmentedButtonDefaults.itemShape(1, 3),
+                icon = { if (!largeFont) SegmentedButtonDefaults.Icon(mode == RemoteMode.AirMouse) },
+                modifier = Modifier.weight(0.95f),
             ) {
-                Text(stringResource(R.string.remote_mode_air), maxLines = 1)
+                Text(
+                    stringResource(R.string.remote_mode_air),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             SegmentedButton(
                 selected = mode == RemoteMode.Presentation,
                 onClick = { mode = RemoteMode.Presentation },
                 shape = SegmentedButtonDefaults.itemShape(2, 3),
+                icon = { if (!largeFont) SegmentedButtonDefaults.Icon(mode == RemoteMode.Presentation) },
+                modifier = Modifier.weight(1.2f),
             ) {
-                Text(stringResource(R.string.remote_mode_presentation), maxLines = 1)
+                Text(
+                    stringResource(R.string.remote_mode_presentation),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
 
@@ -493,31 +513,47 @@ private fun TouchpadView(
         ) {
             FilledTonalButton(
                 onClick = { core.remoteButton(pcId, "left", "click", onStatus) },
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                 modifier = Modifier.weight(1f).height(48.dp),
             ) {
-                Text(stringResource(R.string.remote_left_click), maxLines = 1)
+                Text(
+                    stringResource(R.string.remote_left_click),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             OutlinedButton(
                 onClick = { core.remoteButton(pcId, "middle", "click", onStatus) },
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                 modifier = Modifier.weight(1f).height(48.dp),
             ) {
-                Text(stringResource(R.string.remote_middle_click), maxLines = 1)
+                Text(
+                    stringResource(R.string.remote_middle_click),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             FilledTonalButton(
                 onClick = { core.remoteButton(pcId, "right", "click", onStatus) },
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                 modifier = Modifier.weight(1f).height(48.dp),
             ) {
-                Text(stringResource(R.string.remote_right_click), maxLines = 1)
+                Text(
+                    stringResource(R.string.remote_right_click),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Button(
                 onClick = { showKeyboard = !showKeyboard },
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                 modifier = Modifier.height(48.dp),
             ) {
-                Text(stringResource(R.string.remote_keyboard), maxLines = 1)
+                Text(
+                    stringResource(R.string.remote_keyboard),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
 
@@ -1265,7 +1301,7 @@ private fun PresentationView(
 
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         // Huge Next Slide button (easy to hit without looking)
         Button(
@@ -1273,11 +1309,13 @@ private fun PresentationView(
             shape = MaterialTheme.shapes.extraLarge,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(116.dp),
+                .height(96.dp),
         ) {
             Text(
                 stringResource(R.string.remote_slide_next),
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
 
@@ -1287,11 +1325,13 @@ private fun PresentationView(
             shape = MaterialTheme.shapes.extraLarge,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp),
+                .height(64.dp),
         ) {
             Text(
                 stringResource(R.string.remote_slide_prev),
                 style = MaterialTheme.typography.titleLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
 
@@ -1302,24 +1342,36 @@ private fun PresentationView(
         ) {
             OutlinedButton(
                 onClick = { core.remoteSlide(pcId, "start", onStatus) },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                modifier = Modifier.weight(1f).height(48.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                modifier = Modifier.weight(0.98f).height(48.dp),
             ) {
-                Text(stringResource(R.string.remote_slide_start), maxLines = 1)
+                Text(
+                    stringResource(R.string.remote_slide_start),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             OutlinedButton(
                 onClick = { core.remoteSlide(pcId, "stop", onStatus) },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                modifier = Modifier.weight(1f).height(48.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                modifier = Modifier.weight(0.88f).height(48.dp),
             ) {
-                Text(stringResource(R.string.remote_slide_stop), maxLines = 1)
+                Text(
+                    stringResource(R.string.remote_slide_stop),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             OutlinedButton(
                 onClick = { core.remoteSlide(pcId, "black", onStatus) },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                modifier = Modifier.weight(1f).height(48.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                modifier = Modifier.weight(1.22f).height(48.dp),
             ) {
-                Text(stringResource(R.string.remote_slide_black), maxLines = 1)
+                Text(
+                    stringResource(R.string.remote_slide_black),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
 
@@ -1395,7 +1447,11 @@ private fun PresentationView(
                     Text(
                         stringResource(R.string.remote_volume_hint),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (laserHeld) {
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                         textAlign = TextAlign.Center,
                     )
                 }

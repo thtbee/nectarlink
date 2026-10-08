@@ -163,9 +163,13 @@ Sheet {
                         required property var modelData
                         width: Math.min(96, Math.floor((recentSection.width - 20) / Math.max(1, sheet.recent.length)))
                         height: 82
+                        activeFocusOnTab: true
                         Accessible.role: Accessible.Button
                         Accessible.name: modelData.label
                         Accessible.onPressAction: sheet.launch(modelData)
+                        Keys.onReturnPressed: sheet.launch(modelData)
+                        Keys.onEnterPressed: sheet.launch(modelData)
+                        Keys.onSpacePressed: sheet.launch(modelData)
 
                         Rectangle {
                             anchors.fill: parent
@@ -173,6 +177,14 @@ Sheet {
                             radius: Theme.radiusMd
                             color: Theme.surfaceContent
                             opacity: recentTap.pressed ? 0.12 : (recentHover.hovered ? 0.06 : 0)
+                        }
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            radius: Theme.radiusMd
+                            color: "transparent"
+                            border.width: recentCell.activeFocus ? 2 : 0
+                            border.color: Theme.primary
                         }
                         Column {
                             anchors.centerIn: parent
@@ -223,7 +235,12 @@ Sheet {
         GridView {
             id: grid
             width: parent.width
-            height: Math.min(contentHeight, recentSection.visible ? 300 : 420)
+            height: Math.min(
+                contentHeight,
+                recentSection.visible
+                    ? Math.max(160, Math.min(300, sheet.height - 340))
+                    : Math.max(200, Math.min(420, sheet.height - 210))
+            )
             visible: sheet.loadState === "ready" && sheet.shown.length > 0
             clip: true
             model: sheet.shown
@@ -235,9 +252,13 @@ Sheet {
                 required property var modelData
                 width: grid.cellWidth
                 height: grid.cellHeight
+                activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 Accessible.name: modelData.label
                 Accessible.onPressAction: sheet.launch(modelData)
+                Keys.onReturnPressed: sheet.launch(modelData)
+                Keys.onEnterPressed: sheet.launch(modelData)
+                Keys.onSpacePressed: sheet.launch(modelData)
 
                 Rectangle {
                     anchors.fill: parent
@@ -245,6 +266,14 @@ Sheet {
                     radius: Theme.radiusMd
                     color: Theme.surfaceContent
                     opacity: tap.pressed ? 0.12 : (hover.hovered ? 0.06 : 0)
+                }
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    radius: Theme.radiusMd
+                    color: "transparent"
+                    border.width: cell.activeFocus ? 2 : 0
+                    border.color: Theme.primary
                 }
                 Column {
                     anchors.centerIn: parent

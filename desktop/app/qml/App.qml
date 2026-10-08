@@ -10,18 +10,26 @@ import app.nectarlink
 QtObject {
     id: app
 
-    property MainWindow mainWindow: null
-    property LaserOverlay laserOverlay: null
-    readonly property Component laserComponent: Component { LaserOverlay {} }
+    readonly property var mainWindow: mainLoader.item
+    readonly property Loader mainLoader: Loader {
+        onLoaded: {
+            item.closeRequested.connect(app.onMainClosed)
+            item.bringToFront()
+        }
+    }
+    readonly property Loader laserLoader: Loader {
+        active: AppController.laserActive
+        source: active ? "qrc:/qt/qml/app/nectarlink/qml/LaserOverlay.qml" : ""
+    }
     // A window for each phone screen or app being mirrored. The model
     // keeps a row per window (by key), so a window lives as long as its
     // mirroring, whatever else changes.
     readonly property ListModel mirrorWindows: ListModel {}
     readonly property Instantiator mirrorInstantiator: Instantiator {
         model: app.mirrorWindows
-        delegate: MirrorWindow {
+        delegate: Loader {
             required property string key
-            mirrorKey: key
+            Component.onCompleted: setSource("qrc:/qt/qml/app/nectarlink/qml/MirrorWindow.qml", { mirrorKey: key })
         }
     }
     readonly property Connections mirrorSync: Connections {
@@ -48,7 +56,6 @@ QtObject {
         if (!app.mainWindow && mirrorWindows.count === 0)
             trayTrimTimer.restart()
     }
-    readonly property Component mainComponent: Component { MainWindow {} }
     readonly property bool startMinimized: Qt.application.arguments.indexOf("--minimized") >= 0
         || Qt.application.arguments.indexOf("--send-to") >= 0
 
@@ -64,11 +71,11 @@ QtObject {
 
     function showMain() {
         trayTrimTimer.stop()
-        if (!mainWindow) {
-            mainWindow = mainComponent.createObject(null)
-            mainWindow.closeRequested.connect(app.onMainClosed)
+        if (!mainLoader.item) {
+            mainLoader.setSource("qrc:/qt/qml/app/nectarlink/qml/MainWindow.qml")
+        } else {
+            mainLoader.item.bringToFront()
         }
-        mainWindow.bringToFront()
     }
 
     function onMainClosed() {
@@ -76,11 +83,11 @@ QtObject {
             Qt.quit()
             return
         }
-        // Destroy after the close event has finished.
-        const window = mainWindow
-        mainWindow = null
+        // Unload after the close event has finished.
         Qt.callLater(() => {
-            window.destroy()
+            if (mainLoader.item)
+                mainLoader.item.releaseAndTeardown()
+            mainLoader.setSource("")
             trayTrimTimer.restart()
         })
     }
@@ -104,25 +111,18 @@ QtObject {
         target: AppController
         function onActivateRequested() { app.showMain() }
         function onQuitRequested() { Qt.quit() }
-        function onLaserActiveChanged() {
-            if (AppController.laserActive && !app.laserOverlay) {
-                app.laserOverlay = app.laserComponent.createObject(null)
-            } else if (!AppController.laserActive && app.laserOverlay) {
-                const overlay = app.laserOverlay
-                app.laserOverlay = null
-                Qt.callLater(() => overlay.destroy())
-            }
-        }
         function onRingingFromChanged() {
             if (AppController.ringingFrom.length > 0) {
                 app.showMain()
-                app.mainWindow.flash()
+                if (app.mainWindow)
+                    app.mainWindow.flash()
             }
         }
         function onRemotePromptDeviceIdChanged() {
             if (AppController.remotePromptDeviceId.length > 0) {
                 app.showMain()
-                app.mainWindow.flash()
+                if (app.mainWindow)
+                    app.mainWindow.flash()
             }
         }
     }

@@ -6,10 +6,16 @@ import app.nectarlink
 // is paired it shows the welcome (pairing) screen instead.
 NativeWindow {
     id: window
-    signal closeRequested
 
     readonly property bool welcome: AppController.status === "ready" && !AppController.hasDevices
-    property string page: "home"
+    property string page: AppController.currentPage.length > 0 ? AppController.currentPage : "home"
+    onPageChanged: if (AppController.currentPage !== page) AppController.currentPage = page
+    readonly property int currentDeviceIndex: DeviceList.count > 0
+        ? Math.min(Math.max(0, AppController.currentDevice), DeviceList.count - 1) : 0
+    readonly property string currentDeviceId: DeviceList.count > 0
+        ? DeviceList.deviceIdAt(currentDeviceIndex) : ""
+    readonly property string currentDeviceName: DeviceList.count > 0
+        ? DeviceList.deviceNameAt(currentDeviceIndex) : ""
 
     width: 1100
     height: 720
@@ -52,14 +58,8 @@ NativeWindow {
     darkFrame: Theme.dark
     captionHeight: Theme.topBarHeight
 
-    // QQuickWindow's `closing` is a revisioned member, hidden on subclasses
-    // in a 1.0 module; Connections reaches it through the meta-object.
     Connections {
         target: window
-        function onClosing(close) {
-            close.accepted = true
-            window.closeRequested()
-        }
         // Back from Settings, maybe with Windows notifications turned on.
         function onActiveChanged() {
             if (window.active)
@@ -212,50 +212,45 @@ NativeWindow {
             width: parent.width
             clip: true
 
-            HomePage {
-                id: homePage
+            Loader {
+                id: pageLoader
                 anchors.fill: parent
-                active: window.page === "home"
-                onPairRequested: window.openPairing()
-            }
-            MessagesPage {
-                anchors.fill: parent
-                active: window.page === "messages"
-                deviceId: homePage.currentDeviceId
-                deviceName: homePage.currentDeviceName
-            }
-            CallsPage {
-                anchors.fill: parent
-                active: window.page === "calls"
-                deviceId: homePage.currentDeviceId
-                deviceName: homePage.currentDeviceName
-                onTextRequested: (number, name) => {
-                    Messages.startChat(homePage.currentDeviceId, number, name)
-                    window.page = "messages"
+                active: !window.welcome && AppController.status === "ready"
+                source: {
+                    if (!active) return ""
+                    switch (window.page) {
+                    case "messages": return "qrc:/qt/qml/app/nectarlink/qml/pages/MessagesPage.qml"
+                    case "calls": return "qrc:/qt/qml/app/nectarlink/qml/pages/CallsPage.qml"
+                    case "photos": return "qrc:/qt/qml/app/nectarlink/qml/pages/PhotosPage.qml"
+                    case "deck": return "qrc:/qt/qml/app/nectarlink/qml/pages/DeckPage.qml"
+                    case "settings": return "qrc:/qt/qml/app/nectarlink/qml/pages/SettingsPage.qml"
+                    default: return "qrc:/qt/qml/app/nectarlink/qml/pages/HomePage.qml"
+                    }
                 }
-            }
-            PhotosPage {
-                anchors.fill: parent
-                active: window.page === "photos"
-                deviceId: homePage.currentDeviceId
-                deviceName: homePage.currentDeviceName
-            }
-            DeckPage {
-                anchors.fill: parent
-                active: window.page === "deck"
-            }
-            SettingsPage {
-                anchors.fill: parent
-                active: window.page === "settings"
-                onPairRequested: window.openPairing()
+                onLoaded: {
+                    if ("deviceId" in item)
+                        item.deviceId = Qt.binding(() => window.currentDeviceId)
+                    if ("deviceName" in item)
+                        item.deviceName = Qt.binding(() => window.currentDeviceName)
+                    item.active = true
+                    if (item.pairRequested)
+                        item.pairRequested.connect(window.openPairing)
+                    if (item.textRequested) {
+                        item.textRequested.connect((number, name) => {
+                            Messages.startChat(window.currentDeviceId, number, name)
+                            window.page = "messages"
+                        })
+                    }
+                }
             }
         }
     }
 
     // ---- First run ----
-    WelcomePage {
+    Loader {
         anchors.fill: parent
-        visible: window.welcome || AppController.status !== "ready"
+        active: window.welcome || AppController.status !== "ready"
+        source: active ? "qrc:/qt/qml/app/nectarlink/qml/pages/WelcomePage.qml" : ""
     }
 
     // ---- Overlays ----
@@ -263,11 +258,17 @@ NativeWindow {
         id: pairingSheet
         cardWidth: 480
         onOpenedChanged: if (!opened) Pairing.cancel()
-        PairingPanel {
+        Loader {
+            id: pairingLoader
             width: parent.width
-            running: pairingSheet.opened
-            onFinished: pairingSheet.close()
-            onCancelled: pairingSheet.close()
+            active: pairingSheet.opened
+            source: active ? "qrc:/qt/qml/app/nectarlink/qml/pages/PairingPanel.qml" : ""
+            onLoaded: {
+                item.width = Qt.binding(() => pairingLoader.width)
+                item.running = Qt.binding(() => pairingSheet.opened)
+                item.finished.connect(() => pairingSheet.close())
+                item.cancelled.connect(() => pairingSheet.close())
+            }
         }
     }
 
@@ -350,10 +351,21 @@ NativeWindow {
         anchors.right: parent.right
     }
 
-    DoctorSheet { id: doctorSheet }
+    Loader {
+        id: doctorLoader
+        anchors.fill: parent
+        active: false
+        source: active ? "qrc:/qt/qml/app/nectarlink/qml/components/DoctorSheet.qml" : ""
+        onLoaded: item.open()
+    }
     Connections {
         target: AppController
-        function onDoctorRequested() { doctorSheet.open() }
+        function onDoctorRequested() {
+            if (doctorLoader.active && doctorLoader.item)
+                doctorLoader.item.open()
+            else
+                doctorLoader.active = true
+        }
     }
 
     Toast { id: toast }

@@ -117,6 +117,7 @@ Item {
     }
 
     onActiveChanged: if (active) load()
+    Component.onCompleted: load()
     onDeviceIdChanged: {
         selectedContact = null
         load()
@@ -699,13 +700,14 @@ Item {
                                 required property var modelData
                                 width: 84; height: 50
                                 radius: Theme.pill(height)
+                                activeFocusOnTab: true
                                 color: padTap.pressed
                                     ? Theme.secondaryContainer
                                     : padHover.hovered
                                       ? Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, 0.08)
                                       : (Theme.graphite ? "transparent" : Theme.surfaceContainerHigh)
-                                border.width: Theme.graphite ? 1 : 0
-                                border.color: Theme.outlineVariant
+                                border.width: Theme.focusVisible(padKey) ? 2 : (Theme.graphite ? 1 : 0)
+                                border.color: Theme.focusVisible(padKey) ? Theme.primary : Theme.outlineVariant
                                 scale: padTap.pressed ? Theme.pressScale : 1
                                 Behavior on scale { SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
 
@@ -713,6 +715,13 @@ Item {
                                     dialInput.text = dialInput.text + ch
                                     if (PhoneCall.active && PhoneCall.controls)
                                         PhoneCall.press(ch)
+                                }
+
+                                Keys.onPressed: (event) => {
+                                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                        tapDigit(modelData.digit)
+                                        event.accepted = true
+                                    }
                                 }
 
                                 Accessible.role: Accessible.Button
@@ -811,12 +820,20 @@ Item {
             : qsTr("Incoming")
 
         height: dayHeader.height + 68
+        activeFocusOnTab: true
         Accessible.role: Accessible.ListItem
         Accessible.name: displayName + ", " + dirLabel + ", " + page.shortTime(entry.date)
         Accessible.onPressAction: selectCall()
 
         function selectCall() {
             dialInput.text = entry.number
+        }
+
+        Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                selectCall()
+                event.accepted = true
+            }
         }
 
         // Day separator ("Today", "Yesterday", date).
@@ -829,7 +846,7 @@ Item {
             leftPadding: 20
             role: "label"
             muted: true
-            text: page.dayLabel(row.entry.date)
+            text: row.newDay ? page.dayLabel(row.entry.date) : ""
         }
 
         Item {
@@ -845,6 +862,8 @@ Item {
                 color: callHover.hovered
                     ? Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, 0.06)
                     : "transparent"
+                border.width: Theme.focusVisible(row) ? 2 : 0
+                border.color: Theme.primary
                 Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
             }
 
@@ -960,6 +979,7 @@ Item {
             && (!previous || previous.starred !== contact.starred)
 
         height: sectionLabel.height + 68
+        activeFocusOnTab: true
         Accessible.role: Accessible.ListItem
         Accessible.name: contact.name + (primaryNumber.length > 0 ? ", " + primaryNumber : "")
         Accessible.onPressAction: pickContact()
@@ -968,6 +988,13 @@ Item {
             page.selectedContact = contact
             if (primaryNumber.length > 0)
                 dialInput.text = primaryNumber
+        }
+
+        Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                pickContact()
+                event.accepted = true
+            }
         }
 
         Row {
@@ -1004,6 +1031,8 @@ Item {
                 color: crow.selected ? Theme.secondaryContainer
                     : contactHover.hovered ? Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, 0.06)
                     : "transparent"
+                border.width: Theme.focusVisible(crow) ? 2 : 0
+                border.color: Theme.primary
                 Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
             }
 

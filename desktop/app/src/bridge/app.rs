@@ -88,6 +88,10 @@ pub mod qobject {
         #[qproperty(QString, wake_state)]
         /// True when `wake_adapter` is wired Ethernet, false for Wi-Fi or none.
         #[qproperty(bool, wake_wired)]
+        /// Selected navigation page and device index, kept in Rust across tray
+        /// unloads so the window can be destroyed in the background.
+        #[qproperty(QString, current_page)]
+        #[qproperty(i32, current_device)]
         type AppController = super::AppControllerRust;
 
         /// Asks a paired device to ring (or stop).
@@ -215,6 +219,8 @@ pub struct AppControllerRust {
     wake_adapter: QString,
     wake_state: QString,
     wake_wired: bool,
+    current_page: QString,
+    current_device: i32,
     tray: Option<tray::Tray>,
 }
 
@@ -319,6 +325,7 @@ pub(crate) fn describe(error: &Error) -> String {
 impl cxx_qt::Initialize for qobject::AppController {
     fn initialize(mut self: Pin<&mut Self>) {
         self.as_mut().set_version(QString::from(env!("CARGO_PKG_VERSION")));
+        self.as_mut().set_current_page(QString::from("home"));
         self.as_mut().set_can_update(crate::updater::can_update());
         self.as_mut().refresh_appearance();
         let qt = self.qt_thread();
@@ -715,6 +722,9 @@ impl qobject::AppController {
 
     pub fn trim_working_set(&self) {
         crate::webcam::release_idle_resources();
+        crate::photos::release_idle_resources();
+        crate::messages::release_idle_resources();
+        crate::calls::release_idle_resources();
         super::native::ffi::trim_memory_caches();
     }
 }

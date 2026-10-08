@@ -56,6 +56,10 @@ public:
     Q_INVOKABLE void bringToFront();
     // Flashes the taskbar button until the window is activated.
     Q_INVOKABLE void flash();
+    // Releases scene-graph/D3D resources, destroys the native HWND, and
+    // schedules deletion when closing to the tray.
+    Q_INVOKABLE void releaseAndTeardown();
+
 
 signals:
     void backdropChanged();
@@ -63,6 +67,7 @@ signals:
     void captionHeightChanged();
     void maximizeButtonChanged();
     void maximizeStateChanged();
+    void closeRequested();
 
 protected:
     bool event(QEvent *event) override;

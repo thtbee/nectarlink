@@ -12,7 +12,7 @@ use crate::{core_host, state::Changes};
 
 /// Conversations listed, and messages read at a time.
 const THREADS: u32 = 60;
-const PAGE: u32 = 30;
+const PAGE: u32 = 100;
 
 /// What the Messages page can show.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -86,6 +86,22 @@ fn state<T>(f: impl FnOnce(&mut State) -> T) -> T {
 
 fn changed() {
     core_host::host().hub.changed(Changes::MESSAGES);
+}
+
+/// Drops in-memory SMS threads and messages while the window is closed to the
+/// tray; reopening the Messages page reloads them.
+pub fn release_idle_resources() {
+    let mut released = false;
+    state(|s| {
+        if !s.sending && (s.device.is_some() || !s.threads.is_empty() || !s.messages.is_empty()) {
+            let generation = s.generation.wrapping_add(1);
+            *s = State { generation, ..State::default() };
+            released = true;
+        }
+    });
+    if released {
+        changed();
+    }
 }
 
 fn files_dir() -> PathBuf {

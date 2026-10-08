@@ -346,7 +346,8 @@ fn main() -> ExitCode {
     }
 
     let mut engine = QQmlApplicationEngine::new();
-    if let Some(engine) = engine.as_mut() {
+    if let Some(mut engine) = engine.as_mut() {
+        bridge::native::ffi::register_qml_app_engine(engine.as_mut());
         engine.load(&QUrl::from("qrc:/qt/qml/app/nectarlink/qml/App.qml"));
     }
     let code = app.as_mut().map_or(1, |app| app.exec());
