@@ -35,6 +35,7 @@ confidence-threshold = 0.9
 exceptions = [
     { crate = "nectarlink-cli", allow = ["GPL-3.0-or-later"] },
     { crate = "nectarlink-desktop", allow = ["GPL-3.0-or-later"] },
+    { crate = "nectarlink-vcam", allow = ["GPL-3.0-or-later"] },
     { crate = "xtask", allow = ["GPL-3.0-or-later"] },
     { crate = "s1-qt-rust", allow = ["GPL-3.0-or-later"] },
 ]

@@ -65,11 +65,11 @@ jobs:
           # Qt 6.12's repository layout needs a current aqtinstall.
           aqtsource: git+https://github.com/miurahr/aqtinstall.git
       - name: Clippy
-        run: cargo clippy --locked -p nectarlink-desktop -p s1-qt-rust --all-targets -- -D warnings
+        run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p s1-qt-rust --all-targets -- -D warnings
       - name: Tests
-        run: cargo test --locked -p nectarlink-desktop
+        run: cargo test --locked -p nectarlink-desktop -p nectarlink-vcam
       - name: Release build
-        run: cargo build --locked --release -p nectarlink-desktop
+        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-vcam
       - name: Install NSIS
         shell: pwsh
         run: |
@@ -112,7 +112,7 @@ jobs:
         shell: pwsh
         run: |
           $env:QMAKE = ./scripts/qmake-arm64.ps1 -QtRoot (Split-Path -Parent $env:QT_ROOT_DIR)
-          cargo build --locked --release --target aarch64-pc-windows-msvc -p nectarlink-desktop
+          cargo build --locked --release --target aarch64-pc-windows-msvc -p nectarlink-desktop -p nectarlink-vcam
 
   android:
     name: Android app

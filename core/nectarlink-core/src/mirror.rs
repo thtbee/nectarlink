@@ -176,8 +176,10 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
     let Some(sink) = shared.platform.mirror_sink(&peer, mirroring) else {
         return refuse(send, recv);
     };
-    shared.emit(NodeEvent::Mirroring { device: peer, session: mirroring, on: true });
+    // Ready to be stopped before anyone hears it's showing: a stop sent the
+    // moment it appears must not be lost.
     let stopped = shared.new_mirror_stop(&peer, mirroring, mirror::OP_VIDEO);
+    shared.emit(NodeEvent::Mirroring { device: peer, session: mirroring, on: true });
     sink.config(config);
     loop {
         let packet = tokio::select! {
