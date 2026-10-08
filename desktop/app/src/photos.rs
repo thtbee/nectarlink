@@ -238,13 +238,16 @@ fn asked(transfer: String, intent: Intent) {
     if private {
         // It may have started before the phone said which transfer it was.
         core_host::host().hub.update(|s| s.forget_transfer(&id));
+        if let Some(node) = core_host::node() {
+            node.delete_timeline_by_ref(&id);
+        }
     }
     // Already here: the usual notification came first.
     if let Some(saved) = done {
         if let (true, Some(first)) = (intent != Intent::ToastSave, saved.first()) {
             toast::remove(crate::transfers::TOAST_GROUP, &first.to_string_lossy());
         }
-        deliver(intent, &saved);
+        deliver(&id, intent, &saved);
     }
 }
 
@@ -281,11 +284,11 @@ fn finished(t: &Transfer) {
         }
     });
     if let Some(intent) = intent {
-        deliver(intent, &saved);
+        deliver(&t.id, intent, &saved);
     }
 }
 
-fn deliver(intent: Intent, saved: &[PathBuf]) {
+fn deliver(transfer_id: &str, intent: Intent, saved: &[PathBuf]) {
     let Some(first) = saved.first() else {
         gallery_state(|g| {
             g.saving = false;
@@ -310,6 +313,9 @@ fn deliver(intent: Intent, saved: &[PathBuf]) {
             crate::transfers::open(first);
         }
         Intent::Copy { item_id: _, notify_ui } => {
+            if let Some(node) = core_host::node() {
+                node.delete_timeline_by_ref(transfer_id);
+            }
             gallery_state(|g| {
                 g.saving = false;
                 g.busy_item = None;
@@ -318,6 +324,9 @@ fn deliver(intent: Intent, saved: &[PathBuf]) {
             copy_file_to_clipboard(first, true, notify_ui);
         }
         Intent::View { device, item_id } => {
+            if let Some(node) = core_host::node() {
+                node.delete_timeline_by_ref(transfer_id);
+            }
             let ext = first.extension().and_then(|e| e.to_str()).filter(|e| !e.is_empty()).unwrap_or("jpg");
             let dir = thumbs_dir(device);
             let cached = dir.join(format!("full-{:016x}.{ext}", fingerprint(&item_id)));
@@ -356,6 +365,27 @@ fn deliver(intent: Intent, saved: &[PathBuf]) {
                     r"Downloads\Nectarlink".to_owned()
                 }
             };
+            if let Some(node) = core_host::node() {
+                let target = final_paths
+                    .iter()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                let title = match final_paths.as_slice() {
+                    [one] => one.file_name().and_then(|n| n.to_str()).unwrap_or("Photo").to_owned(),
+                    many => format!("{} photos", many.len()),
+                };
+                let size: u64 =
+                    final_paths.iter().filter_map(|p| std::fs::metadata(p).ok().map(|m| m.len())).sum();
+                node.update_timeline_by_ref(
+                    transfer_id,
+                    nectarlink_core::TimelineKind::Photo,
+                    &title,
+                    &dest_label,
+                    &target,
+                    size,
+                );
+            }
             gallery_state(|g| {
                 if ids.len() == final_paths.len() {
                     for (id, path) in ids.into_iter().zip(final_paths.iter().cloned()) {

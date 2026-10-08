@@ -130,29 +130,40 @@ impl ClipboardHistoryStore {
     /// Records a text clip that went between devices. Returns `false` if
     /// history is disabled, the text is empty, or the text is/contains an OTP.
     pub fn record_text(&self, text: &str, device_name: &str, incoming: bool) -> bool {
+        self.record_text_with_id(text, device_name, incoming).is_some()
+    }
+
+    /// Records a text clip and returns `(clip_id, evicted_ids)` if kept.
+    pub fn record_text_with_id(
+        &self,
+        text: &str,
+        device_name: &str,
+        incoming: bool,
+    ) -> Option<(String, Vec<String>)> {
         if text.trim().is_empty() || otp::is_otp_clip(text) {
-            return false;
+            return None;
         }
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if !s.enabled {
-            return false;
+            return None;
         }
         let now = now_unix();
         if let Some(existing) =
             s.items.iter_mut().find(|i| i.entry.kind == ClipboardItemKind::Text && i.entry.text == text)
         {
+            let id = existing.entry.id.clone();
             existing.entry.device_name = device_name.to_owned();
             existing.entry.incoming = incoming;
             existing.entry.timestamp = now;
             sort_items(&mut s.items);
             let _ = self.save_locked(&s);
-            return true;
+            return Some((id, Vec::new()));
         }
 
         let id = alloc_id(&mut s.next_id);
         s.items.push(StoredEntry {
             entry: ClipboardHistoryEntry {
-                id,
+                id: id.clone(),
                 kind: ClipboardItemKind::Text,
                 text: text.to_owned(),
                 mime: None,
@@ -165,21 +176,32 @@ impl ClipboardHistoryStore {
             size: 0,
         });
         sort_items(&mut s.items);
-        self.evict_locked(&mut s.items);
+        let evicted = self.evict_locked(&mut s.items);
         let _ = self.save_locked(&s);
-        true
+        Some((id, evicted))
     }
 
     /// Records an image clip that went between devices. Returns `false` if
     /// history is disabled, the image is too large to keep, or it cannot be
     /// encrypted to disk.
     pub fn record_image(&self, mime: &str, bytes: &[u8], device_name: &str, incoming: bool) -> bool {
+        self.record_image_with_id(mime, bytes, device_name, incoming).is_some()
+    }
+
+    /// Records an image clip and returns `(clip_id, evicted_ids)` if kept.
+    pub fn record_image_with_id(
+        &self,
+        mime: &str,
+        bytes: &[u8],
+        device_name: &str,
+        incoming: bool,
+    ) -> Option<(String, Vec<String>)> {
         if bytes.is_empty() || bytes.len() > MAX_IMAGE_BYTES {
-            return false;
+            return None;
         }
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if !s.enabled {
-            return false;
+            return None;
         }
         let hash = fnv1a(bytes);
         let now = now_unix();
@@ -195,20 +217,20 @@ impl ClipboardHistoryStore {
             if !self.image_path(&existing_id).is_file()
                 && self.write_encrypted_image(&existing_id, bytes).is_err()
             {
-                return false;
+                return None;
             }
             sort_items(&mut s.items);
             let _ = self.save_locked(&s);
-            return true;
+            return Some((existing_id, Vec::new()));
         }
 
         let id = alloc_id(&mut s.next_id);
         if self.write_encrypted_image(&id, bytes).is_err() {
-            return false;
+            return None;
         }
         s.items.push(StoredEntry {
             entry: ClipboardHistoryEntry {
-                id,
+                id: id.clone(),
                 kind: ClipboardItemKind::Image,
                 text: String::new(),
                 mime: Some(mime.to_owned()),
@@ -221,9 +243,9 @@ impl ClipboardHistoryStore {
             size: bytes.len() as u64,
         });
         sort_items(&mut s.items);
-        self.evict_locked(&mut s.items);
+        let evicted = self.evict_locked(&mut s.items);
         let _ = self.save_locked(&s);
-        true
+        Some((id, evicted))
     }
 
     /// Lists clipboard history items (pinned first, then newest first),
@@ -334,7 +356,8 @@ impl ClipboardHistoryStore {
         Ok(())
     }
 
-    fn evict_locked(&self, items: &mut Vec<StoredEntry>) {
+    fn evict_locked(&self, items: &mut Vec<StoredEntry>) -> Vec<String> {
+        let mut evicted_ids = Vec::new();
         while items.len() > MAX_CLIPBOARD_HISTORY {
             // Evict the oldest unpinned item (at the end of `items` after `sort_items`),
             // or the last item if all are pinned.
@@ -343,6 +366,7 @@ impl ClipboardHistoryStore {
             if evicted.entry.kind == ClipboardItemKind::Image {
                 let _ = fs::remove_file(self.image_path(&evicted.entry.id));
             }
+            evicted_ids.push(evicted.entry.id);
         }
         // Then the oldest unpinned images, while together they're too large.
         while items.iter().map(|i| i.size).sum::<u64>() > MAX_IMAGES_TOTAL {
@@ -353,7 +377,9 @@ impl ClipboardHistoryStore {
             };
             let evicted = items.remove(pos);
             let _ = fs::remove_file(self.image_path(&evicted.entry.id));
+            evicted_ids.push(evicted.entry.id);
         }
+        evicted_ids
     }
 
     fn save_locked(&self, state: &StoredState) -> Result<(), Error> {

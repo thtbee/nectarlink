@@ -508,7 +508,24 @@ pub fn on_done(transfer: Transfer) {
             updated.done = meta.len();
         }
         updated.state = TransferState::Done { saved: vec![final_path.clone()] };
+        let total_bytes = updated.total;
         core_host::host().hub.update(|s| s.update_transfer(updated, Instant::now()));
+        if let Some(node) = core_host::node() {
+            let final_path_str = final_path.to_string_lossy();
+            let detail = match transfer.markers.len() {
+                0 => String::new(),
+                1 => "1 marker".to_owned(),
+                n => format!("{n} markers"),
+            };
+            node.update_timeline_by_ref(
+                &transfer.id,
+                nectarlink_core::TimelineKind::Recording,
+                &file_name,
+                &detail,
+                &final_path_str,
+                total_bytes,
+            );
+        }
 
         let device = core_host::host()
             .hub

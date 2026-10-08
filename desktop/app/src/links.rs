@@ -89,6 +89,12 @@ pub fn open_copied_link_on_phone() {
     send(phone, name, url);
 }
 
+/// Opens `url` on `phone`, showing a Windows toast notification with the outcome.
+pub fn send_to(phone: DeviceId, url: String) {
+    let name = core_host::host().hub.read(|s| s.name_of(&phone)).unwrap_or_else(|| "your phone".into());
+    send(phone, name, url);
+}
+
 fn send(phone: DeviceId, name: String, url: String) {
     let Some(node) = core_host::node() else { return };
     core_host::spawn(async move {

@@ -32,6 +32,8 @@ pub mod photos;
 #[allow(unsafe_code)]
 pub mod prefs;
 #[allow(unsafe_code)]
+pub mod timeline;
+#[allow(unsafe_code)]
 pub mod transfers;
 #[allow(unsafe_code)]
 pub mod webcam;

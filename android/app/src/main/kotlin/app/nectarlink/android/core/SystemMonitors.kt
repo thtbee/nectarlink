@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.core
 
+import android.app.WallpaperColors
+import android.app.WallpaperManager
 import android.content.BroadcastReceiver
+import android.content.ComponentCallbacks
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Configuration
 import android.graphics.Path
 import android.graphics.PathMeasure
 import android.hardware.display.DisplayManager
@@ -14,6 +18,8 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.BatteryManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.util.DisplayMetrics
 import android.view.Display
@@ -29,6 +35,26 @@ import app.nectarlink.core.ScreenRect
 import app.nectarlink.core.ScreenShape
 import java.util.Locale
 
+internal fun normalizeArgbSeed(argb: Int): UInt = (argb.toUInt() or 0xFF00_0000u)
+
+/**
+ * Reads the phone's Material You seed color (`0xFFRRGGBB` ARGB) on Android 12+
+ * (`API 31+`) without requiring any runtime permission.
+ */
+fun materialYouAccent(context: Context, wallpaperColors: WallpaperColors? = null): UInt? {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
+    val sys = runCatching { context.getColor(android.R.color.system_accent1_500) }.getOrNull()
+    val wp = wallpaperColors?.primaryColor?.toArgb()
+        ?: runCatching {
+            context.getSystemService(WallpaperManager::class.java)
+                ?.getWallpaperColors(WallpaperManager.FLAG_SYSTEM)
+                ?.primaryColor
+                ?.toArgb()
+        }.getOrNull()
+    val raw = sys ?: wp ?: return null
+    return normalizeArgbSeed(raw)
+}
+
 /** How this phone presents itself to PCs. */
 fun deviceInfo(context: Context): DeviceInfo {
     val name = Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME)
@@ -40,7 +66,7 @@ fun deviceInfo(context: Context): DeviceInfo {
         os = "android",
         osVersion = Build.VERSION.RELEASE,
         model = "${Build.MANUFACTURER.replaceFirstChar(Char::uppercase)} ${Build.MODEL}",
-        accent = null,
+        accent = materialYouAccent(context),
         screen = measureScreenShape(context),
     )
 }
@@ -338,3 +364,75 @@ class NetworkMonitor(context: Context, private val onChange: () -> Unit) {
         runCatching { connectivity?.unregisterNetworkCallback(callback) }
     }
 }
+
+/**
+ * Listens for Material You wallpaper and configuration color changes on
+ * Android 12+ (`API 31+`) without polling and without any permission.
+ */
+class AccentMonitor(private val context: Context, private val onChange: (UInt?) -> Unit) {
+    private var lastSys: UInt? = null
+    private var lastReported: UInt? = null
+
+    private val colorsListener = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        WallpaperManager.OnColorsChangedListener { colors, which ->
+            if ((which and WallpaperManager.FLAG_SYSTEM) == 0) return@OnColorsChangedListener
+            val sys = runCatching { normalizeArgbSeed(context.getColor(android.R.color.system_accent1_500)) }.getOrNull()
+            val wp = colors?.primaryColor?.toArgb()?.let(::normalizeArgbSeed)
+            val next = when {
+                sys != null && sys != lastSys -> {
+                    lastSys = sys
+                    sys
+                }
+                wp != null -> wp
+                else -> sys
+            }
+            if (next != null && next != lastReported) {
+                lastReported = next
+                onChange(next)
+            }
+        }
+    } else {
+        null
+    }
+
+    private val componentCallbacks = object : ComponentCallbacks {
+        override fun onConfigurationChanged(newConfig: Configuration) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+            val sys = runCatching { normalizeArgbSeed(context.getColor(android.R.color.system_accent1_500)) }.getOrNull()
+            if (sys != null) lastSys = sys
+            val next = materialYouAccent(context)
+            if (next != null && next != lastReported) {
+                lastReported = next
+                onChange(next)
+            }
+        }
+
+        @Deprecated("Deprecated in Java")
+        override fun onLowMemory() = Unit
+    }
+
+    fun start() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        lastSys = runCatching { normalizeArgbSeed(context.getColor(android.R.color.system_accent1_500)) }.getOrNull()
+        lastReported = materialYouAccent(context)
+        colorsListener?.let { listener ->
+            runCatching {
+                context.getSystemService(WallpaperManager::class.java)
+                    ?.addOnColorsChangedListener(listener, Handler(Looper.getMainLooper()))
+            }
+        }
+        runCatching { context.registerComponentCallbacks(componentCallbacks) }
+    }
+
+    fun stop() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        colorsListener?.let { listener ->
+            runCatching {
+                context.getSystemService(WallpaperManager::class.java)
+                    ?.removeOnColorsChangedListener(listener)
+            }
+        }
+        runCatching { context.unregisterComponentCallbacks(componentCallbacks) }
+    }
+}
+

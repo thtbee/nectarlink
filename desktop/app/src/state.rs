@@ -55,6 +55,8 @@ impl Changes {
     pub const WEBCAM: Changes = Changes(1 << 19);
     /// Encrypted local clipboard history (kept by nectarlink_core).
     pub const CLIPBOARD: Changes = Changes(1 << 20);
+    /// Local cross-device timeline (kept by nectarlink_core).
+    pub const TIMELINE: Changes = Changes(1 << 21);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
@@ -445,7 +447,8 @@ impl AppState {
             | NodeEvent::StorageRequested { .. }
             | NodeEvent::StorageChanged { .. }
             | NodeEvent::Webcam { .. } => Changes::NONE,
-            NodeEvent::ClipboardHistoryChanged => Changes::CLIPBOARD,
+            NodeEvent::ClipboardHistoryChanged => Changes::CLIPBOARD | Changes::TIMELINE,
+            NodeEvent::TimelineChanged => Changes::TIMELINE,
             // The gallery's own downloads (for its viewer, or the clipboard)
             // aren't files the user keeps.
             NodeEvent::Transfer(transfer) if crate::photos::is_private(&transfer.id) => {

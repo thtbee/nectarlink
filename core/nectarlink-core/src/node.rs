@@ -170,6 +170,49 @@ impl Shared {
         self.store.get_peer(peer).ok().flatten().map(|p| p.info.name).unwrap_or_else(|| peer.short())
     }
 
+    pub(crate) fn record_timeline(&self, mut entry: crate::timeline::NewTimelineEntry) -> Option<i64> {
+        if entry.device_name.is_empty() {
+            entry.device_name = self.peer_name(&entry.device_id);
+        }
+        let id = self.store.insert_timeline(&entry, crate::now_unix()).ok()?;
+        self.emit(NodeEvent::TimelineChanged);
+        Some(id)
+    }
+
+    pub(crate) fn record_timeline_clip(
+        &self,
+        peer: DeviceId,
+        peer_name: &str,
+        incoming: bool,
+        detail: &str,
+        clip_id: String,
+        evicted_ids: Vec<String>,
+    ) {
+        for evicted in evicted_ids {
+            let _ = self.store.delete_timeline_by_ref(&evicted);
+        }
+        let _ = self.store.delete_timeline_by_ref(&clip_id);
+        let _ = self.record_timeline(crate::timeline::NewTimelineEntry {
+            kind: crate::TimelineKind::Clip,
+            device_id: peer,
+            device_name: peer_name.to_owned(),
+            incoming,
+            timestamp: crate::now_unix(),
+            title: String::new(),
+            detail: detail.to_owned(),
+            target: String::new(),
+            size_bytes: 0,
+            duration_secs: 0,
+            ref_id: Some(clip_id),
+        });
+    }
+
+    pub(crate) fn finish_timeline_session(&self, row_id: i64, duration_secs: u64) {
+        if self.store.update_timeline_duration(row_id, duration_secs.max(1)).unwrap_or(false) {
+            self.emit(NodeEvent::TimelineChanged);
+        }
+    }
+
     pub(crate) fn nudge_reconnect(&self) {
         for supervisor in lock(&self.supervisors).values() {
             supervisor.wake.notify_one();
@@ -382,11 +425,13 @@ impl Shared {
         if let Err(e) = self.store.update_info(&peer, &remote_device) {
             tracing::warn!(error = %e, "failed to update peer info");
         }
+        let effective_device =
+            self.store.get_peer(&peer).ok().flatten().map(|p| p.info).unwrap_or(remote_device);
         let caps = features::sanitize_capabilities(remote.caps);
         if let Err(e) = self.store.update_capabilities(&peer, Some(&caps), Some(remote.power.effective())) {
             tracing::warn!(error = %e, "failed to update peer capabilities");
         }
-        self.emit(NodeEvent::PeerInfoChanged { device: peer, info: remote_device });
+        self.emit(NodeEvent::PeerInfoChanged { device: peer, info: effective_device });
         self.emit(NodeEvent::PeerPowerChanged { device: peer, power: remote.power.effective() });
         self.refresh_capabilities(&peer);
         self.publish_online(&session);
@@ -1009,7 +1054,10 @@ impl Node {
         let env = Envelope::new(types::CLIP_SET, &ClipSet { text: text.clone() })?;
         self.request(peer, env).await?.expect(types::OK)?;
         let peer_name = self.shared.peer_name(&peer);
-        if self.shared.clipboard_history.record_text(&text, &peer_name, false) {
+        if let Some((clip_id, evicted)) =
+            self.shared.clipboard_history.record_text_with_id(&text, &peer_name, false)
+        {
+            self.shared.record_timeline_clip(peer, &peer_name, false, "text", clip_id, evicted);
             self.shared.emit(NodeEvent::ClipboardHistoryChanged);
         }
         Ok(())
@@ -1059,8 +1107,12 @@ impl Node {
     /// Deletes one entry from the clipboard history.
     pub fn delete_clipboard_history(&self, id: &str) -> bool {
         let deleted = self.shared.clipboard_history.delete(id);
+        let removed_tl = self.shared.store.delete_timeline_by_ref(id).unwrap_or(false);
         if deleted {
             self.shared.emit(NodeEvent::ClipboardHistoryChanged);
+        }
+        if removed_tl {
+            self.shared.emit(NodeEvent::TimelineChanged);
         }
         deleted
     }
@@ -1068,7 +1120,9 @@ impl Node {
     /// Clears the entire clipboard history and deletes its encrypted files from disk.
     pub fn clear_clipboard_history(&self) -> Result<()> {
         self.shared.clipboard_history.clear()?;
+        let _ = self.shared.store.delete_timeline_clips();
         self.shared.emit(NodeEvent::ClipboardHistoryChanged);
+        self.shared.emit(NodeEvent::TimelineChanged);
         Ok(())
     }
 
@@ -1085,6 +1139,18 @@ impl Node {
                     .platform
                     .set_clipboard_image(&mime, &bytes)
                     .map_err(|e| Error::Internal(e.to_string()))
+            }
+        }
+    }
+
+    /// Sends a clipboard history entry to `peer` again.
+    pub async fn resend_clipboard_history(&self, peer: DeviceId, id: &str) -> Result<()> {
+        let entry = self.shared.clipboard_history.entry(id).ok_or(Error::NotFound)?;
+        match entry.kind {
+            crate::ClipboardItemKind::Text => self.send_clipboard(peer, entry.text).await,
+            crate::ClipboardItemKind::Image => {
+                let (mime, bytes) = self.shared.clipboard_history.image_bytes(id).ok_or(Error::NotFound)?;
+                self.send_clipboard_image(peer, mime, bytes).await
             }
         }
     }
@@ -1711,6 +1777,23 @@ impl Node {
         self.shared.refresh_all_capabilities();
     }
 
+    /// Updates this device's Material You seed color (`accent`, ARGB) and
+    /// broadcasts it to connected peers (`hello.update`).
+    pub async fn update_accent(&self, accent: Option<u32>) {
+        let device = {
+            let mut local = self.shared.local.write().unwrap_or_else(|e| e.into_inner());
+            if local.device.accent == accent {
+                return;
+            }
+            local.device.accent = accent;
+            local.device.clone()
+        };
+        let update = HelloUpdate { device: Some(device), ..Default::default() };
+        if let Ok(env) = Envelope::new(types::HELLO_UPDATE, &update) {
+            self.shared.broadcast(env).await;
+        }
+    }
+
     /// Updates this device's power level and the capabilities it offers
     /// beyond the built-in ones (they depend on permissions and add-ons).
     pub async fn update_power(&self, power: PowerLevel, extra_capabilities: Vec<String>) {
@@ -1727,6 +1810,124 @@ impl Node {
         self.shared.refresh_all_capabilities();
         for session in self.shared.live_sessions() {
             self.shared.send_deck(&session).await;
+        }
+    }
+
+    // ---- Timeline ----
+
+    /// Returns the current retention policy for the local timeline.
+    pub fn timeline_retention(&self) -> Result<crate::TimelineRetention> {
+        self.shared.store.timeline_retention()
+    }
+
+    /// Sets the retention policy for the local timeline and runs auto-purge immediately.
+    pub fn set_timeline_retention(&self, retention: crate::TimelineRetention) -> Result<()> {
+        self.shared.store.set_timeline_retention(retention, crate::now_unix())?;
+        self.shared.emit(NodeEvent::TimelineChanged);
+        Ok(())
+    }
+
+    /// Queries one page of the local timeline, resolving linked clipboard items
+    /// in memory without duplicating clip content in SQLite.
+    pub fn timeline_page(&self, query: &crate::TimelineQuery) -> Result<crate::TimelinePage> {
+        let matching_clip_refs: Vec<String> = match query.search.as_deref().map(str::trim) {
+            Some(q) if !q.is_empty() => {
+                self.shared.clipboard_history.list(Some(q)).into_iter().map(|c| c.id).collect()
+            }
+            _ => Vec::new(),
+        };
+        let mut page = self.shared.store.query_timeline(query, &matching_clip_refs)?;
+        for entry in &mut page.entries {
+            self.resolve_timeline_clip(entry);
+        }
+        Ok(page)
+    }
+
+    /// Returns one timeline entry by ID, resolving its linked clip if any.
+    pub fn timeline_entry(&self, id: i64) -> Result<Option<crate::TimelineEntry>> {
+        let mut entry = self.shared.store.get_timeline(id)?;
+        if let Some(ref mut e) = entry {
+            self.resolve_timeline_clip(e);
+        }
+        Ok(entry)
+    }
+
+    /// Updates a timeline entry matching `ref_id` (e.g. when a photo or voice
+    /// recording finishes post-processing into its final destination).
+    pub fn update_timeline_by_ref(
+        &self,
+        ref_id: &str,
+        kind: crate::TimelineKind,
+        title: &str,
+        detail: &str,
+        target: &str,
+        size_bytes: u64,
+    ) -> bool {
+        let updated = self
+            .shared
+            .store
+            .update_timeline_by_ref(ref_id, kind, title, detail, target, size_bytes)
+            .unwrap_or(false);
+        if updated {
+            self.shared.emit(NodeEvent::TimelineChanged);
+        }
+        updated
+    }
+
+    /// Removes a timeline entry matching `ref_id` (e.g. private photo preview fetches).
+    pub fn delete_timeline_by_ref(&self, ref_id: &str) -> bool {
+        let deleted = self.shared.store.delete_timeline_by_ref(ref_id).unwrap_or(false);
+        if deleted {
+            self.shared.emit(NodeEvent::TimelineChanged);
+        }
+        deleted
+    }
+
+    /// Removes one entry from the local timeline by row ID.
+    pub fn delete_timeline_entry(&self, id: i64) -> Result<bool> {
+        let deleted = self.shared.store.delete_timeline(id)?;
+        if deleted {
+            self.shared.emit(NodeEvent::TimelineChanged);
+        }
+        Ok(deleted)
+    }
+
+    /// Clears all entries from the local timeline.
+    pub fn clear_timeline(&self) -> Result<usize> {
+        let removed = self.shared.store.clear_timeline()?;
+        if removed > 0 {
+            self.shared.emit(NodeEvent::TimelineChanged);
+        }
+        Ok(removed)
+    }
+
+    fn resolve_timeline_clip(&self, entry: &mut crate::TimelineEntry) {
+        if entry.kind != crate::TimelineKind::Clip {
+            return;
+        }
+        if let Some(ref_id) = entry.ref_id.as_deref()
+            && let Some(clip) = self.shared.clipboard_history.entry(ref_id)
+        {
+            entry.clip_available = true;
+            match clip.kind {
+                crate::ClipboardItemKind::Text => {
+                    entry.title = clip.text;
+                    entry.detail = "text".into();
+                }
+                crate::ClipboardItemKind::Image => {
+                    entry.title = "Image clip".into();
+                    entry.detail = clip.mime.unwrap_or_else(|| "image/png".into());
+                    if let Some((mime, bytes)) = self.shared.clipboard_history.image_bytes(ref_id) {
+                        entry.image_data_url = Some(crate::timeline::encode_data_url(&mime, &bytes));
+                    }
+                }
+            }
+        } else {
+            entry.clip_available = false;
+            if entry.title.is_empty() {
+                entry.title =
+                    if entry.detail.contains("image") { "Image clip".into() } else { "Text clip".into() };
+            }
         }
     }
 }

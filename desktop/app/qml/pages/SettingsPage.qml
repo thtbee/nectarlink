@@ -166,52 +166,267 @@ Item {
                     }
                     Divider { width: parent.width; visible: !Theme.graphite }
                     ListRow {
+                        id: colorRow
                         width: parent.width
                         visible: !Theme.graphite
                         iconPath: Icons.sparkle
                         title: qsTr("Color")
-                        description: qsTr("Match your wallpaper, or pick a color.")
-                        Row {
-                            spacing: 10
-                            Repeater {
-                                model: ["wallpaper"].concat(Object.keys(Tokens.data.themes.bloom.seeds))
-                                delegate: Rectangle {
-                                    id: swatch
-                                    required property string modelData
-                                    readonly property bool wallpaper: modelData === "wallpaper"
+                        description: qsTr("Match your wallpaper, your phone's colors, or pick a color.")
+                        Column {
+                            id: colorControl
+                            readonly property bool inlineSinglePhone: Theme.phoneSeeds.length === 1 && colorRow.width >= 660
+                            readonly property bool sideBySidePhones: Theme.phoneSeeds.length > 1 && colorRow.width >= 660
+                            width: Math.max(
+                                swatchesRow.implicitWidth,
+                                phonePillsRow.visible ? phonePillsRow.implicitWidth : 0,
+                                phonePillsCol.visible ? phonePillsCol.implicitWidth : 0
+                            )
+                            spacing: 8
+
+                            Row {
+                                id: swatchesRow
+                                anchors.right: parent.right
+                                spacing: 8
+
+                                // Wallpaper swatch
+                                Rectangle {
+                                    id: wallpaperSwatch
                                     readonly property bool selected: Preferences.seed === "wallpaper"
-                                        ? wallpaper : Theme.seed === modelData
-                                    // The wallpaper swatch shows the accent it gives, in the
-                                    // current mode, with a picture mark on it.
                                     readonly property var wallpaperPalette: Theme.wallpaperSeed
                                         ? Theme.wallpaperSeed[Theme.dark ? "dark" : "light"] : null
-                                    width: 26; height: 26; radius: 13
+                                    width: 28; height: 28; radius: 14
                                     activeFocusOnTab: true
-                                    color: !wallpaper ? Tokens.data.themes.bloom.seeds[modelData].seed
-                                        : wallpaperPalette ? wallpaperPalette.primary : Theme.surfaceContainerHighest
-                                    border.width: selected || Theme.focusVisible(swatch) ? 2 : 0
-                                    border.color: Theme.focusVisible(swatch) ? Theme.primary : Theme.surfaceContent
+                                    color: wallpaperPalette ? wallpaperPalette.primary : Theme.surfaceContainerHighest
+                                    border.width: selected || Theme.focusVisible(wallpaperSwatch) ? 2 : 0
+                                    border.color: Theme.focusVisible(wallpaperSwatch) ? Theme.primary : Theme.surfaceContent
                                     Accessible.role: Accessible.RadioButton
-                                    Accessible.name: wallpaper ? qsTr("Wallpaper")
-                                        : modelData.charAt(0).toUpperCase() + modelData.slice(1)
+                                    Accessible.name: qsTr("Wallpaper")
                                     Accessible.checked: selected
-                                    Accessible.onPressAction: Preferences.seed = modelData
+                                    Accessible.onPressAction: Preferences.seed = "wallpaper"
                                     Keys.onPressed: (event) => {
                                         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
-                                            Preferences.seed = swatch.modelData
+                                            Preferences.seed = "wallpaper"
                                             event.accepted = true
                                         }
                                     }
                                     Icon {
-                                        visible: swatch.wallpaper
                                         anchors.centerIn: parent
                                         width: 14; height: 14
                                         stroke: 2
                                         path: Icons.photo
-                                        color: swatch.wallpaperPalette ? swatch.wallpaperPalette.onPrimary : Theme.surfaceContent
+                                        color: wallpaperSwatch.wallpaperPalette ? wallpaperSwatch.wallpaperPalette.onPrimary : Theme.surfaceContent
                                     }
                                     HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                    TapHandler { onTapped: Preferences.seed = swatch.modelData }
+                                    TapHandler { onTapped: Preferences.seed = "wallpaper" }
+                                }
+
+                                // Single paired phone inline at standard window width
+                                Repeater {
+                                    model: colorControl.inlineSinglePhone ? Theme.phoneSeeds : []
+                                    delegate: Rectangle {
+                                        id: inlinePhoneSwatch
+                                        required property var modelData
+                                        required property int index
+                                        readonly property bool selected: Preferences.seed === modelData.key
+                                            || (Preferences.seed === "phone" && index === 0)
+                                            || (modelData.id.length > 0 && Preferences.seed === "phone:" + modelData.id)
+                                        readonly property var phonePalette: modelData.scheme
+                                            ? modelData.scheme[Theme.dark ? "dark" : "light"] : null
+                                        height: 28
+                                        width: inlinePhoneRow.implicitWidth + 14
+                                        radius: Theme.pill(height)
+                                        activeFocusOnTab: true
+                                        color: selected ? Theme.secondaryContainer : Theme.surfaceContainerHigh
+                                        border.width: selected || Theme.focusVisible(inlinePhoneSwatch) ? 2 : 0
+                                        border.color: Theme.focusVisible(inlinePhoneSwatch) ? Theme.primary : Theme.surfaceContent
+                                        Accessible.role: Accessible.RadioButton
+                                        Accessible.name: modelData.label
+                                        Accessible.checked: selected
+                                        Accessible.onPressAction: Preferences.seed = modelData.key
+                                        Keys.onPressed: (event) => {
+                                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                                Preferences.seed = inlinePhoneSwatch.modelData.key
+                                                event.accepted = true
+                                            }
+                                        }
+                                        Row {
+                                            id: inlinePhoneRow
+                                            anchors.centerIn: parent
+                                            spacing: 6
+                                            Rectangle {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: 18; height: 18; radius: 9
+                                                color: inlinePhoneSwatch.phonePalette ? inlinePhoneSwatch.phonePalette.primary : Theme.primary
+                                                Icon {
+                                                    anchors.centerIn: parent
+                                                    width: 11; height: 11
+                                                    stroke: 2
+                                                    path: Icons.phone
+                                                    color: inlinePhoneSwatch.phonePalette ? inlinePhoneSwatch.phonePalette.onPrimary : Theme.primaryContent
+                                                }
+                                            }
+                                            Txt {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                role: "label"
+                                                size: 12
+                                                text: inlinePhoneSwatch.modelData.label
+                                                color: inlinePhoneSwatch.selected ? Theme.secondaryContainerContent : Theme.surfaceContent
+                                            }
+                                        }
+                                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                        TapHandler { onTapped: Preferences.seed = inlinePhoneSwatch.modelData.key }
+                                    }
+                                }
+
+                                // Preset seeds
+                                Repeater {
+                                    model: Object.keys(Tokens.data.themes.bloom.seeds)
+                                    delegate: Rectangle {
+                                        id: swatch
+                                        required property string modelData
+                                        readonly property bool selected: Preferences.seed === modelData
+                                            || (!Theme.isPhoneSeed && Preferences.seed !== "wallpaper" && Theme.seed === modelData)
+                                        width: 28; height: 28; radius: 14
+                                        activeFocusOnTab: true
+                                        color: Tokens.data.themes.bloom.seeds[modelData].seed
+                                        border.width: selected || Theme.focusVisible(swatch) ? 2 : 0
+                                        border.color: Theme.focusVisible(swatch) ? Theme.primary : Theme.surfaceContent
+                                        Accessible.role: Accessible.RadioButton
+                                        Accessible.name: modelData.charAt(0).toUpperCase() + modelData.slice(1)
+                                        Accessible.checked: selected
+                                        Accessible.onPressAction: Preferences.seed = modelData
+                                        Keys.onPressed: (event) => {
+                                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                                Preferences.seed = swatch.modelData
+                                                event.accepted = true
+                                            }
+                                        }
+                                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                        TapHandler { onTapped: Preferences.seed = swatch.modelData }
+                                    }
+                                }
+                            }
+
+                            // Multiple phones side-by-side at standard width
+                            Row {
+                                id: phonePillsRow
+                                visible: !colorControl.inlineSinglePhone && colorControl.sideBySidePhones && Theme.phoneSeeds.length > 0
+                                anchors.right: parent.right
+                                spacing: 8
+                                Repeater {
+                                    model: phonePillsRow.visible ? Theme.phoneSeeds : []
+                                    delegate: Rectangle {
+                                        id: phoneSwatch
+                                        required property var modelData
+                                        required property int index
+                                        readonly property bool selected: Preferences.seed === modelData.key
+                                            || (Preferences.seed === "phone" && index === 0)
+                                            || (modelData.id.length > 0 && Preferences.seed === "phone:" + modelData.id)
+                                        readonly property var phonePalette: modelData.scheme
+                                            ? modelData.scheme[Theme.dark ? "dark" : "light"] : null
+                                        height: 28
+                                        width: phoneSwatchRow.implicitWidth + 14
+                                        radius: Theme.pill(height)
+                                        activeFocusOnTab: true
+                                        color: selected ? Theme.secondaryContainer : Theme.surfaceContainerHigh
+                                        border.width: selected || Theme.focusVisible(phoneSwatch) ? 2 : 0
+                                        border.color: Theme.focusVisible(phoneSwatch) ? Theme.primary : Theme.surfaceContent
+                                        Accessible.role: Accessible.RadioButton
+                                        Accessible.name: modelData.label
+                                        Accessible.checked: selected
+                                        Accessible.onPressAction: Preferences.seed = modelData.key
+                                        Keys.onPressed: (event) => {
+                                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                                Preferences.seed = phoneSwatch.modelData.key
+                                                event.accepted = true
+                                            }
+                                        }
+                                        Row {
+                                            id: phoneSwatchRow
+                                            anchors.centerIn: parent
+                                            spacing: 6
+                                            Rectangle {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: 18; height: 18; radius: 9
+                                                color: phoneSwatch.phonePalette ? phoneSwatch.phonePalette.primary : Theme.primary
+                                                Icon {
+                                                    anchors.centerIn: parent
+                                                    width: 11; height: 11
+                                                    stroke: 2
+                                                    path: Icons.phone
+                                                    color: phoneSwatch.phonePalette ? phoneSwatch.phonePalette.onPrimary : Theme.primaryContent
+                                                }
+                                            }
+                                            Txt {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                role: "label"
+                                                size: 12
+                                                text: phoneSwatch.modelData.label
+                                                color: phoneSwatch.selected ? Theme.secondaryContainerContent : Theme.surfaceContent
+                                            }
+                                        }
+                                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                        TapHandler { onTapped: Preferences.seed = phoneSwatch.modelData.key }
+                                    }
+                                }
+                            }
+
+                            // Narrow window fallback: right-aligned column of phone pills
+                            Column {
+                                id: phonePillsCol
+                                visible: !colorControl.inlineSinglePhone && !colorControl.sideBySidePhones && Theme.phoneSeeds.length > 0
+                                anchors.right: parent.right
+                                spacing: 6
+                                Repeater {
+                                    model: phonePillsCol.visible ? Theme.phoneSeeds : []
+                                    delegate: Rectangle {
+                                        id: narrowPhoneSwatch
+                                        required property var modelData
+                                        required property int index
+                                        readonly property bool selected: Preferences.seed === modelData.key
+                                            || (Preferences.seed === "phone" && index === 0)
+                                            || (modelData.id.length > 0 && Preferences.seed === "phone:" + modelData.id)
+                                        readonly property var phonePalette: modelData.scheme
+                                            ? modelData.scheme[Theme.dark ? "dark" : "light"] : null
+                                        anchors.right: parent.right
+                                        height: 28
+                                        width: narrowPhoneRow.implicitWidth + 14
+                                        radius: Theme.pill(height)
+                                        activeFocusOnTab: true
+                                        color: selected ? Theme.secondaryContainer : Theme.surfaceContainerHigh
+                                        border.width: selected || Theme.focusVisible(narrowPhoneSwatch) ? 2 : 0
+                                        border.color: Theme.focusVisible(narrowPhoneSwatch) ? Theme.primary : Theme.surfaceContent
+                                        Accessible.role: Accessible.RadioButton
+                                        Accessible.name: modelData.label
+                                        Accessible.checked: selected
+                                        Accessible.onPressAction: Preferences.seed = modelData.key
+                                        Row {
+                                            id: narrowPhoneRow
+                                            anchors.centerIn: parent
+                                            spacing: 6
+                                            Rectangle {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: 18; height: 18; radius: 9
+                                                color: narrowPhoneSwatch.phonePalette ? narrowPhoneSwatch.phonePalette.primary : Theme.primary
+                                                Icon {
+                                                    anchors.centerIn: parent
+                                                    width: 11; height: 11
+                                                    stroke: 2
+                                                    path: Icons.phone
+                                                    color: narrowPhoneSwatch.phonePalette ? narrowPhoneSwatch.phonePalette.onPrimary : Theme.primaryContent
+                                                }
+                                            }
+                                            Txt {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                role: "label"
+                                                size: 12
+                                                text: narrowPhoneSwatch.modelData.label
+                                                color: narrowPhoneSwatch.selected ? Theme.secondaryContainerContent : Theme.surfaceContent
+                                            }
+                                        }
+                                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                        TapHandler { onTapped: Preferences.seed = narrowPhoneSwatch.modelData.key }
+                                    }
                                 }
                             }
                         }
@@ -305,6 +520,34 @@ Item {
                                 label: qsTr("Keep clipboard history")
                                 checked: Preferences.clipboardHistory
                                 onToggled: (on) => Preferences.clipboardHistory = on
+                            }
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.history
+                        title: qsTr("Timeline retention")
+                        description: qsTr("Keep a searchable local history of files, clips, links, photos, recordings and sessions on this PC (up to 5,000 items).")
+                        Row {
+                            spacing: 8
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Open")
+                                onClicked: AppController.currentPage = "timeline"
+                            }
+                            Segmented {
+                                anchors.verticalCenter: parent.verticalCenter
+                                options: [
+                                    { value: "30", label: qsTr("30d") },
+                                    { value: "90", label: qsTr("90d") },
+                                    { value: "365", label: qsTr("1y") },
+                                    { value: "0", label: qsTr("All") }
+                                ]
+                                value: String(Preferences.timelineRetentionDays)
+                                onPicked: (value) => Preferences.timelineRetentionDays = Number(value)
                             }
                         }
                     }

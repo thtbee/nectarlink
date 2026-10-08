@@ -43,7 +43,10 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                 match written {
                     Ok(Ok(())) => {
                         let peer_name = shared.peer_name(&peer);
-                        if shared.clipboard_history.record_text(&text, &peer_name, true) {
+                        if let Some((clip_id, evicted)) =
+                            shared.clipboard_history.record_text_with_id(&text, &peer_name, true)
+                        {
+                            shared.record_timeline_clip(peer, &peer_name, true, "text", clip_id, evicted);
                             shared.emit(NodeEvent::ClipboardHistoryChanged);
                         }
                         let suggestion = crate::clip_kind::classify_clip(&text);
@@ -109,7 +112,10 @@ pub(crate) async fn send_image(
     };
     tokio::time::timeout(IMAGE_TIMEOUT, exchange).await.map_err(|_| Error::Timeout)??;
     let peer_name = shared.peer_name(&peer);
-    if shared.clipboard_history.record_image(&image.mime, &bytes, &peer_name, false) {
+    if let Some((clip_id, evicted)) =
+        shared.clipboard_history.record_image_with_id(&image.mime, &bytes, &peer_name, false)
+    {
+        shared.record_timeline_clip(peer, &peer_name, false, &image.mime, clip_id, evicted);
         shared.emit(NodeEvent::ClipboardHistoryChanged);
     }
     Ok(())
@@ -172,7 +178,10 @@ async fn take_image(
     match written {
         Ok(Ok(())) => {
             let peer_name = shared.peer_name(&peer);
-            if shared.clipboard_history.record_image(&mime, &bytes, &peer_name, true) {
+            if let Some((clip_id, evicted)) =
+                shared.clipboard_history.record_image_with_id(&mime, &bytes, &peer_name, true)
+            {
+                shared.record_timeline_clip(peer, &peer_name, true, &mime, clip_id, evicted);
                 shared.emit(NodeEvent::ClipboardHistoryChanged);
             }
             shared.emit(NodeEvent::ClipboardReceived { device: peer });

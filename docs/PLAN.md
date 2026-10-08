@@ -216,10 +216,10 @@ current Android. Talking through the PC comes with the HFP item above.
 | **Nectar Island** (optional extra, off by default): a small, animated pill at the top of the PC screen showing live phone activity (call, timer, music, transfer, Live Update, OTP, voice recording). Expands on hover. A nice touch, not a pillar | P2 |
 | **Shelf**: slide-out edge panel with the latest photo, screenshot, clipboard and recent files. Drag anything in to send | P1 |
 | **Command Palette** (global hotkey): "send clipboard", "find my phone", "text Mom", "open last photo", "mirror Spotify", "record voice" | P1 |
-| **Material You sync**: the PC app takes its accent and theme from the phone's wallpaper colors, so both apps look like one | P1 |
+| **Material You sync**: the PC app takes its accent and theme from the phone's wallpaper colors, so both apps look like one ✅ | P1 |
 | **Handoff**: send a link, map location, document or YouTube timestamp to open on the other device | P0 (links), P1 (rich) |
 | **"Ping me when it's done"**: `nectarlink notify-when <pid \| -- command...>` watches a running process or command on the PC, shows a live chronometer notification on the phone while it runs, and alerts the phone when it finishes or fails ✅ | P1 |
-| **Timeline**: one searchable history of everything that moved between devices (files, clips, links, photos, recordings), with "send again" | P1 |
+| **Timeline**: one searchable history of everything that moved between devices (files, clips, links, photos, recordings), with "send again" ✅ | P1 |
 | **Your PC in your pocket**: from anywhere (Away mode), browse and grab PC files, see what the PC is doing (Ping-me tasks, downloads), wake it (relayed Wake-on-LAN through another Nectarlink device left at home), and later view/control the PC screen (reverse mirroring) | P2 (files/status in P1 if Away mode lands early) |
 | **Proximity lock**: lock the PC when the phone walks away (BLE RSSI) | P2 |
 | **Automations**: triggers (connected, battery low, call started) → actions | P2 |
@@ -731,7 +731,7 @@ Each phase ends with a usable, releasable product. Phase sizes are relative; act
    - Battery soak tests on testers' phones.
    - An opt-in diagnostics bundle, since there's no telemetry.
 10. **Island etiquette.** Auto-hide during fullscreen games, videos and presentations and when Windows is in Do Not Disturb. Handle multiple monitors.
-11. **Data retention defaults** for Timeline, clipboard history, notification history and message cache: size caps, auto-purge, and one "Clear everything" button.
+11. **Data retention defaults** for Timeline (90 days or 5,000 entries, configurable, plus Clear all ✅), clipboard history (50 entries, encrypted, plus Clear history ✅), notification history (24 hours) and message cache: size caps, auto-purge, and one "Clear everything" button.
 12. **Accessibility and translations from day one.** All strings translatable (`qsTr`, Android resources), RTL layouts, screen-reader labels, keyboard focus order. Retrofitting is expensive.
 13. **Asset licenses.** The display font under OFL, an icon set under a permissive license (e.g. Material Symbols, Apache-2.0). No Microsoft or Google logos; competitor names only in plain comparison wording.
 14. **Realistic pacing.** Claude writes most of the code, but every phase needs maintainer review and tester feedback. Estimate phase durations after Phase 0 from real velocity, not before.

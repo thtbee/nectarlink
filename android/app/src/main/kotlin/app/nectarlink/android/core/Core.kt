@@ -46,10 +46,14 @@ import app.nectarlink.core.Notification
 import app.nectarlink.core.PairingFailure
 import app.nectarlink.core.PowerLevel
 import app.nectarlink.core.RecordingMarker
+import app.nectarlink.core.TimelineEntry
+import app.nectarlink.core.TimelineKind
+import app.nectarlink.core.TimelinePage
 import app.nectarlink.core.Transfer
 import app.nectarlink.core.TransferDirection
 import app.nectarlink.core.TransferStatus
 import app.nectarlink.core.initLogging
+import app.nectarlink.android.files.transferTitle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -179,6 +183,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val battery = BatteryMonitor(this.context) { battery ->
         node?.let { scope.launch { it.updateBattery(battery) } }
     }
+    private val accent = AccentMonitor(this.context) { seed ->
+        node?.let { scope.launch { runCatching { it.updateAccent(seed) } } }
+    }
     private val network = NetworkMonitor(this.context) {
         // Network callbacks come in bursts; tell the core once they settle.
         networkChange?.cancel()
@@ -243,16 +250,23 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             } else {
                 emptyList()
             }
+            val retention = runCatching { started.timelineRetention() }.getOrNull()
+            val tlPage = runCatching { started.timelinePage(null, null, null, 0u, 100u) }.getOrNull()
             _state.update {
                 it.withDevices(devices, storageAllowed).copy(
                     status = CoreStatus.Ready(started.deviceId()),
                     clipboardHistoryEnabled = clipHistEnabled,
                     clipboardHistory = clipHist,
+                    timeline = tlPage?.items ?: emptyList(),
+                    timelineTotal = tlPage?.total ?: 0u,
+                    timelineHasMore = tlPage?.hasMore ?: false,
+                    timelineRetentionDays = retention?.maxDays ?: 90u,
                 )
             }
             if (devices.isNotEmpty()) ConnectionService.start(context)
             scope.launch(Dispatchers.Main) {
                 battery.start()
+                accent.start()
                 network.start()
             }
             _state.update {
@@ -417,7 +431,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             }
             is Event.Paired -> ConnectionService.start(context)
             is Event.ClipboardReceived -> onClipboardReceived(event.id)
-            is Event.ClipboardHistoryChanged -> refreshClipboardHistory()
+            is Event.ClipboardHistoryChanged -> {
+                refreshClipboardHistory()
+                refreshTimeline()
+            }
+            is Event.TimelineChanged -> refreshTimeline()
             else -> {}
         }
     }
@@ -450,6 +468,23 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         // Out of the app's cache, into Downloads, then tell the user.
         scope.launch(Dispatchers.IO) {
             val published = done.saved.flatMap { ReceivedFiles.publish(context, java.io.File(it)) }
+            if (published.isNotEmpty()) {
+                val title = transferTitle(context.resources, transfer)
+                val detail = if (transfer.files > 1u) {
+                    context.resources.getQuantityString(R.plurals.transfer_files, transfer.files.toInt(), transfer.files.toInt())
+                } else {
+                    ""
+                }
+                node?.updateTimelineByRef(
+                    transfer.id,
+                    TimelineKind.FILE,
+                    title,
+                    detail,
+                    published.first().uri.toString(),
+                    transfer.total,
+                )
+                refreshTimeline()
+            }
             TransferNotifications.received(context, transfer, published, pc)
         }
     }
@@ -734,6 +769,115 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     suspend fun clipboardHistoryImage(id: String): ByteArray? = withContext(Dispatchers.IO) {
         startJob?.join()
         node?.clipboardHistoryImage(id)
+    }
+
+    // ---- Timeline ----
+
+    private fun refreshTimeline() {
+        val currentNode = node ?: return
+        val retention = runCatching { currentNode.timelineRetention() }.getOrNull()
+        val page = runCatching { currentNode.timelinePage(null, null, null, 0u, 100u) }.getOrNull()
+        _state.update {
+            it.copy(
+                timeline = page?.items ?: it.timeline,
+                timelineTotal = page?.total ?: it.timelineTotal,
+                timelineHasMore = page?.hasMore ?: it.timelineHasMore,
+                timelineRetentionDays = retention?.maxDays ?: it.timelineRetentionDays,
+            )
+        }
+    }
+
+    suspend fun queryTimelinePage(
+        kind: TimelineKind?,
+        deviceId: String?,
+        search: String?,
+        offset: UInt,
+        limit: UInt = 100u,
+    ): TimelinePage? = withContext(Dispatchers.IO) {
+        startJob?.join()
+        runCatching { node?.timelinePage(kind, deviceId, search, offset, limit) }.getOrNull()
+    }
+
+    fun setTimelineRetentionDays(days: UInt) {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            runCatching { node?.setTimelineRetention(days, 5_000u) }
+            refreshTimeline()
+        }
+    }
+
+    fun deleteTimelineEntry(id: Long) {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            runCatching { node?.deleteTimelineEntry(id) }
+            refreshTimeline()
+        }
+    }
+
+    fun clearTimeline() {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            runCatching { node?.clearTimeline() }
+            refreshTimeline()
+        }
+    }
+
+    fun resendTimelineEntry(entry: TimelineEntry) {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@launch
+            val pcName = _state.value.nameOf(entry.deviceId).orEmpty().ifEmpty { context.getString(R.string.your_pc) }
+            when (entry.kind) {
+                TimelineKind.CLIP -> {
+                    val clipId = entry.refId ?: return@launch
+                    try {
+                        currentNode.resendClipboardHistory(clipId, entry.deviceId)
+                        _messages.tryEmit(context.getString(R.string.clip_sent_to, pcName))
+                    } catch (e: NectarlinkException) {
+                        _messages.tryEmit(describe(e))
+                    }
+                }
+                TimelineKind.LINK -> {
+                    val url = entry.target.ifEmpty { entry.title }
+                    _messages.tryEmit(openLinkOnPc(entry.deviceId, url))
+                }
+                TimelineKind.FILE, TimelineKind.PHOTO, TimelineKind.RECORDING -> {
+                    val target = entry.target
+                    when {
+                        target.startsWith("content://") -> sendFiles(entry.deviceId, listOf(Uri.parse(target)))
+                        target.isNotEmpty() && java.io.File(target).exists() -> {
+                            val f = java.io.File(target)
+                            send(
+                                entry.deviceId,
+                                listOf(
+                                    FileToSend.Path(
+                                        path = f.absolutePath,
+                                        name = f.name,
+                                        folder = null,
+                                    ),
+                                ),
+                            )
+                        }
+                    }
+                }
+                TimelineKind.RECORDING -> {
+                    val target = entry.target
+                    if (target.isNotEmpty() && java.io.File(target).exists()) {
+                        val f = java.io.File(target)
+                        try {
+                            currentNode.sendRecording(
+                                entry.deviceId,
+                                FileToSend.Path(path = f.absolutePath, name = f.name, folder = null),
+                                emptyList(),
+                            )
+                        } catch (e: NectarlinkException) {
+                            _messages.tryEmit(describe(e))
+                        }
+                    }
+                }
+                TimelineKind.SESSION -> Unit
+            }
+        }
     }
 
     /** What this phone offers PCs (docs/protocol/capabilities.md). */

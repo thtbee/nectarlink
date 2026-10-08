@@ -150,5 +150,30 @@ class CoreStateTest {
         assertNotNull(svg)
         assertEquals("M 0.5 0.015 L 0.5333 0.03 L 0.5 0.045 L 0.4667 0.03 Z", svg)
     }
+
+    @Test
+    fun accentAndTimelineEventsReduceCleanly() {
+        assertEquals(0xFF4F7A4Eu, normalizeArgbSeed(0x004F7A4E))
+        assertEquals(0xFFFF0000u, normalizeArgbSeed(0xFFFF0000.toInt()))
+
+        val initialInfo = DeviceInfo("Pixel", DeviceKind.PHONE, "android", "16", "Pixel 9", 0xFF4F7A4Eu)
+        var state = CoreState().reduce(
+            Event.DeviceAdded(PairedDevice("p1", initialInfo, 100L, Link.Online(false, 4u), false)),
+        )
+        assertEquals(0xFF4F7A4Eu, state.device("p1")!!.accent)
+
+        // Updating peer info with a new accent updates it; None preserves the last known seed.
+        state = state.reduce(
+            Event.PeerInfoChanged("p1", initialInfo.copy(accent = 0xFF3E6A8Au)),
+        )
+        assertEquals(0xFF3E6A8Au, state.device("p1")!!.accent)
+        state = state.reduce(
+            Event.PeerInfoChanged("p1", initialInfo.copy(accent = null)),
+        )
+        assertEquals(0xFF3E6A8Au, state.device("p1")!!.accent)
+
+        assertEquals(state, state.reduce(Event.TimelineChanged))
+    }
 }
+
 

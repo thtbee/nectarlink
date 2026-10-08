@@ -106,6 +106,8 @@ pub struct Settings {
     pub webcam_height: u32,
     /// Horizontally mirror the webcam video.
     pub webcam_mirror: bool,
+    /// Days to keep timeline entries before auto-purging (`0` = keep up to max entries).
+    pub timeline_retention_days: u32,
 }
 
 impl Default for Settings {
@@ -131,6 +133,7 @@ impl Default for Settings {
             webcam_phone: None,
             webcam_height: 720,
             webcam_mirror: false,
+            timeline_retention_days: 90,
         }
     }
 }
@@ -205,6 +208,7 @@ mod tests {
             webcam_phone: Some("0101".repeat(16)),
             webcam_height: 1080,
             webcam_mirror: true,
+            timeline_retention_days: 30,
         };
         settings.save(dir.path()).unwrap();
         assert_eq!(Settings::load(dir.path()), settings);

@@ -81,6 +81,20 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
         return refuse(send, recv);
     };
     let stopped = shared.new_webcam_stop(&peer);
+    let started_at = std::time::Instant::now();
+    let tl_row = shared.record_timeline(crate::timeline::NewTimelineEntry {
+        kind: crate::TimelineKind::Session,
+        device_id: peer,
+        device_name: shared.peer_name(&peer),
+        incoming: true,
+        timestamp: crate::now_unix(),
+        title: "Phone webcam".into(),
+        detail: format!("{}×{} · {} fps", config.width, config.height, config.fps),
+        target: "webcam".into(),
+        size_bytes: 0,
+        duration_secs: 0,
+        ref_id: None,
+    });
     shared.emit(NodeEvent::Webcam { device: peer, on: true });
     sink.config(config);
     loop {
@@ -107,6 +121,9 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
     let _ = recv.stop(VarInt::from_u32(webcam::STOPPED));
     let _ = send.finish();
     sink.ended();
+    if let Some(row_id) = tl_row {
+        shared.finish_timeline_session(row_id, started_at.elapsed().as_secs().max(1));
+    }
     if shared.clear_webcam_stop(&peer, &stopped) {
         shared.emit(NodeEvent::Webcam { device: peer, on: false });
     }
@@ -164,7 +181,22 @@ pub(crate) async fn open(shared: &Arc<Shared>, session: &Session) -> Result<Mirr
     let header =
         StreamHeader { svc: webcam::SERVICE.into(), op: webcam::OP_VIDEO.into(), v: webcam::VERSION };
     write_frame(&mut send, &Envelope::new(types::STREAM, &header)?.to_cbor()).await?;
-    Ok(MirrorStream::spawn_stream(send, recv, false))
+    let on_end = shared
+        .record_timeline(crate::timeline::NewTimelineEntry {
+            kind: crate::TimelineKind::Session,
+            device_id: session.peer,
+            device_name: shared.peer_name(&session.peer),
+            incoming: false,
+            timestamp: crate::now_unix(),
+            title: "Phone webcam".into(),
+            detail: String::new(),
+            target: "webcam".into(),
+            size_bytes: 0,
+            duration_secs: 0,
+            ref_id: None,
+        })
+        .map(|id| (shared.clone(), id, std::time::Instant::now()));
+    Ok(MirrorStream::spawn_stream(send, recv, false, on_end))
 }
 
 impl Shared {

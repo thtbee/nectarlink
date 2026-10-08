@@ -10,6 +10,7 @@ import app.nectarlink.core.Link
 import app.nectarlink.core.PairedDevice
 import app.nectarlink.core.PairingFailure
 import app.nectarlink.core.PowerLevel
+import app.nectarlink.core.TimelineEntry
 import app.nectarlink.core.Transfer
 
 /** Whether the core is running. */
@@ -49,6 +50,7 @@ data class Device(
     val name: String,
     val kind: app.nectarlink.core.DeviceKind,
     val model: String?,
+    val accent: UInt? = null,
     val pairedAt: Long,
     val link: Link,
     val canWake: Boolean = false,
@@ -115,6 +117,14 @@ data class CoreState(
     val clipboardHistoryEnabled: Boolean = true,
     /** The last 50 clips exchanged with paired PCs (pinned first, then newest first). */
     val clipboardHistory: List<ClipboardHistoryEntry> = emptyList(),
+    /** Recent timeline entries (first page, newest first). */
+    val timeline: List<TimelineEntry> = emptyList(),
+    /** Total matching entries in the local timeline. */
+    val timelineTotal: UInt = 0u,
+    /** Whether more timeline pages exist beyond `timeline`. */
+    val timelineHasMore: Boolean = false,
+    /** Timeline auto-purge retention in days (`0` = keep up to the entry cap regardless of age). */
+    val timelineRetentionDays: UInt = 90u,
 ) {
     fun device(id: String): Device? = devices.firstOrNull { it.id == id }
 
@@ -162,7 +172,12 @@ data class CoreState(
             )
         }
         is Event.PeerInfoChanged -> update(event.id) {
-            it.copy(name = event.info.name, kind = event.info.kind, model = event.info.model)
+            it.copy(
+                name = event.info.name,
+                kind = event.info.kind,
+                model = event.info.model,
+                accent = event.info.accent ?: it.accent,
+            )
         }
         is Event.PeerPowerChanged -> update(event.id) { it.copy(power = event.power) }
         is Event.WakeInfoChanged -> update(event.id) {
@@ -186,8 +201,8 @@ data class CoreState(
             if (pairing == PairingState.Idle) this else copy(pairing = PairingState.Failed(event.failure))
         // PCs don't send notifications; nothing for the phone to show.
         is Event.NotificationsReset, is Event.NotificationPosted, is Event.NotificationRemoved -> this
-        // Android shows its own "copied" confirmation; Core refreshes clipboardHistory on ClipboardHistoryChanged.
-        is Event.ClipboardReceived, is Event.ClipboardHistoryChanged -> this
+        // Android shows its own "copied" confirmation; Core refreshes clipboardHistory/timeline on change.
+        is Event.ClipboardReceived, is Event.ClipboardHistoryChanged, is Event.TimelineChanged -> this
         is Event.Transfer -> copy(transfers = withTransfer(event.transfer))
         // Shown in Android's media controls (see media/PcMedia).
         is Event.MediaChanged -> this
@@ -232,6 +247,7 @@ internal fun PairedDevice.toDevice() = Device(
     name = info.name,
     kind = info.kind,
     model = info.model,
+    accent = info.accent,
     pairedAt = pairedAt,
     link = link,
     canWake = canWake,

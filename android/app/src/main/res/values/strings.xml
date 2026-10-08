@@ -398,4 +398,35 @@
     <string name="webcam_resolution_label">Resolution</string>
     <string name="webcam_denied_text">Webcam is turned off for this phone on %1$s.</string>
     <string name="webcam_offline_hint">Connect %1$s on the same network to start streaming your camera.</string>
+
+    <!-- Timeline -->
+    <string name="timeline_title">Timeline</string>
+    <string name="timeline_subtitle">Local history of files, clips, links, photos, recordings and sessions shared with your PCs.</string>
+    <string name="timeline_search">Search timeline</string>
+    <string name="timeline_empty">Nothing in your timeline yet.</string>
+    <string name="timeline_no_match">Nothing matches “%1$s”.</string>
+    <string name="timeline_filter_all">All</string>
+    <string name="timeline_filter_files">Files</string>
+    <string name="timeline_filter_clips">Clips</string>
+    <string name="timeline_filter_links">Links</string>
+    <string name="timeline_filter_photos">Photos</string>
+    <string name="timeline_filter_recordings">Recordings</string>
+    <string name="timeline_filter_sessions">Sessions</string>
+    <string name="timeline_action_open">Open</string>
+    <string name="timeline_action_folder">Show in folder</string>
+    <string name="timeline_action_copy">Copy</string>
+    <string name="timeline_action_send_again">Send again</string>
+    <string name="timeline_action_remove">Remove</string>
+    <string name="timeline_action_clear_all">Clear all</string>
+    <string name="timeline_action_load_more">Load more</string>
+    <string name="timeline_today">Today</string>
+    <string name="timeline_yesterday">Yesterday</string>
+    <string name="settings_timeline_title">Timeline</string>
+    <string name="settings_timeline_retention">Keep timeline items</string>
+    <string name="settings_timeline_retention_hint">Automatically remove older items, or keep up to 5,000 items locally on this phone.</string>
+    <string name="timeline_retention_30d">30d</string>
+    <string name="timeline_retention_90d">90d</string>
+    <string name="timeline_retention_1y">1y</string>
+    <string name="timeline_retention_all">All</string>
 </resources>
+

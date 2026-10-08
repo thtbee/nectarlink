@@ -172,4 +172,52 @@ mod tests {
         assert_eq!(seed_from_pixels(&pixels), None);
         assert_eq!(seed_from_pixels(&[]), None);
     }
+
+    #[test]
+    fn extreme_phone_seeds_keep_calm_surfaces_and_wcag_contrast() {
+        fn rel_lum(c: Rgb) -> f64 {
+            let chan = |v: u8| {
+                let s = f64::from(v) / 255.0;
+                if s <= 0.03928 { s / 12.92 } else { ((s + 0.055) / 1.055).powf(2.4) }
+            };
+            0.2126 * chan(c.red) + 0.7152 * chan(c.green) + 0.0722 * chan(c.blue)
+        }
+        fn contrast(a: Rgb, b: Rgb) -> f64 {
+            let (la, lb) = (rel_lum(a), rel_lum(b));
+            (la.max(lb) + 0.05) / (la.min(lb) + 0.05)
+        }
+
+        let extremes = [
+            ("pure_red", Rgb::new(0xFF, 0x00, 0x00)),
+            ("pure_green", Rgb::new(0x00, 0xFF, 0x00)),
+            ("pure_blue", Rgb::new(0x00, 0x00, 0xFF)),
+            ("near_grey", Rgb::new(0x7E, 0x80, 0x82)),
+            ("saturated_yellow", Rgb::new(0xFF, 0xEE, 0x00)),
+        ];
+
+        for (label, seed) in extremes {
+            let scheme = scheme_json(seed);
+            for mode in ["light", "dark"] {
+                let p = &scheme[mode];
+                let pairs = [
+                    ("onSurface", "surface", 7.0),
+                    ("onSurface", "surfaceContainer", 7.0),
+                    ("onSurfaceVariant", "surface", 4.5),
+                    ("onSurfaceVariant", "surfaceContainer", 4.5),
+                    ("onPrimary", "primary", 4.5),
+                    ("onPrimaryContainer", "primaryContainer", 7.0),
+                    ("onSecondaryContainer", "secondaryContainer", 7.0),
+                ];
+                for (fg_role, bg_role, min_ratio) in pairs {
+                    let fg = hex(p[fg_role].as_str().unwrap());
+                    let bg = hex(p[bg_role].as_str().unwrap());
+                    let ratio = contrast(fg, bg);
+                    assert!(
+                        ratio >= min_ratio,
+                        "{label} {mode} {fg_role}/{bg_role}: contrast {ratio:.2} < {min_ratio}"
+                    );
+                }
+            }
+        }
+    }
 }

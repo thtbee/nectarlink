@@ -631,6 +631,8 @@ pub enum Event {
         id: String,
         path: String,
     },
+    /// The local cross-device timeline changed.
+    TimelineChanged,
 }
 
 /// One tile on a PC's Deck (`docs/protocol/deck.md`).
@@ -1301,7 +1303,115 @@ impl From<core::ClipboardHistoryEntry> for ClipboardHistoryEntry {
     }
 }
 
-private_debug!(PhotoAlbum, PhotoItem, PhotoThumb, StorageEntry, ClipboardHistoryEntry);
+/// Kind of cross-device activity recorded in the local timeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum TimelineKind {
+    File,
+    Clip,
+    Link,
+    Photo,
+    Recording,
+    Session,
+}
+
+impl From<core::TimelineKind> for TimelineKind {
+    fn from(k: core::TimelineKind) -> Self {
+        match k {
+            core::TimelineKind::File => TimelineKind::File,
+            core::TimelineKind::Clip => TimelineKind::Clip,
+            core::TimelineKind::Link => TimelineKind::Link,
+            core::TimelineKind::Photo => TimelineKind::Photo,
+            core::TimelineKind::Recording => TimelineKind::Recording,
+            core::TimelineKind::Session => TimelineKind::Session,
+        }
+    }
+}
+
+impl From<TimelineKind> for core::TimelineKind {
+    fn from(k: TimelineKind) -> Self {
+        match k {
+            TimelineKind::File => core::TimelineKind::File,
+            TimelineKind::Clip => core::TimelineKind::Clip,
+            TimelineKind::Link => core::TimelineKind::Link,
+            TimelineKind::Photo => core::TimelineKind::Photo,
+            TimelineKind::Recording => core::TimelineKind::Recording,
+            TimelineKind::Session => core::TimelineKind::Session,
+        }
+    }
+}
+
+/// One item in the local cross-device timeline.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TimelineEntry {
+    pub id: i64,
+    pub kind: TimelineKind,
+    pub device_id: String,
+    pub device_name: String,
+    pub incoming: bool,
+    pub timestamp: i64,
+    pub title: String,
+    pub detail: String,
+    pub target: String,
+    pub size_bytes: u64,
+    pub duration_secs: u64,
+    pub ref_id: Option<String>,
+    pub clip_available: bool,
+    pub image_data_url: Option<String>,
+}
+
+impl From<core::TimelineEntry> for TimelineEntry {
+    fn from(e: core::TimelineEntry) -> Self {
+        TimelineEntry {
+            id: e.id,
+            kind: e.kind.into(),
+            device_id: e.device_id.to_string(),
+            device_name: e.device_name,
+            incoming: e.incoming,
+            timestamp: e.timestamp,
+            title: e.title,
+            detail: e.detail,
+            target: e.target,
+            size_bytes: e.size_bytes,
+            duration_secs: e.duration_secs,
+            ref_id: e.ref_id,
+            clip_available: e.clip_available,
+            image_data_url: e.image_data_url,
+        }
+    }
+}
+
+/// A paged result from the local timeline.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TimelinePage {
+    pub items: Vec<TimelineEntry>,
+    pub has_more: bool,
+    pub total: u32,
+}
+
+impl From<core::TimelinePage> for TimelinePage {
+    fn from(p: core::TimelinePage) -> Self {
+        TimelinePage {
+            items: p.entries.into_iter().map(Into::into).collect(),
+            has_more: p.has_more,
+            total: p.total,
+        }
+    }
+}
+
+/// Retention policy for the local timeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
+pub struct TimelineRetention {
+    pub max_days: u32,
+    pub max_entries: u32,
+}
+
+impl From<core::TimelineRetention> for TimelineRetention {
+    fn from(r: core::TimelineRetention) -> Self {
+        TimelineRetention { max_days: r.max_days, max_entries: r.max_entries }
+    }
+}
+
+private_debug!(PhotoAlbum, PhotoItem, PhotoThumb, StorageEntry, ClipboardHistoryEntry, TimelineEntry);
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum NectarlinkError {
@@ -1855,6 +1965,7 @@ impl From<NodeEvent> for Event {
             NodeEvent::StorageChanged { device, path } => {
                 Event::StorageChanged { id: device.to_string(), path }
             }
+            NodeEvent::TimelineChanged => Event::TimelineChanged,
         }
     }
 }
@@ -2672,6 +2783,75 @@ impl NectarlinkNode {
         Ok(self.node.copy_clipboard_history(&id)?)
     }
 
+    /// Sends a clipboard history entry (text or image) again to a paired device.
+    pub async fn resend_clipboard_history(&self, clip_id: String, device_id: String) -> Result<()> {
+        let peer = parse_id(&device_id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.resend_clipboard_history(peer, &clip_id).await?) }).await
+    }
+
+    // ---- Timeline ----
+
+    /// Returns the local timeline's retention policy.
+    pub fn timeline_retention(&self) -> Result<TimelineRetention> {
+        Ok(self.node.timeline_retention()?.into())
+    }
+
+    /// Updates the local timeline's retention policy and runs an immediate purge.
+    pub fn set_timeline_retention(&self, max_days: u32, max_entries: u32) -> Result<()> {
+        Ok(self.node.set_timeline_retention(core::TimelineRetention { max_days, max_entries })?)
+    }
+
+    /// Queries a page of the local cross-device timeline (newest first).
+    pub fn timeline_page(
+        &self,
+        kind: Option<TimelineKind>,
+        device_id: Option<String>,
+        search: Option<String>,
+        offset: u32,
+        limit: u32,
+    ) -> Result<TimelinePage> {
+        let device = match device_id {
+            Some(ref id) if !id.is_empty() => Some(parse_id(id)?),
+            _ => None,
+        };
+        Ok(self
+            .node
+            .timeline_page(&core::TimelineQuery {
+                kind: kind.map(Into::into),
+                device,
+                search,
+                offset,
+                limit,
+            })?
+            .into())
+    }
+
+    /// Deletes one timeline entry by row ID.
+    pub fn delete_timeline_entry(&self, id: i64) -> Result<bool> {
+        Ok(self.node.delete_timeline_entry(id)?)
+    }
+
+    /// Clears all timeline entries.
+    pub fn clear_timeline(&self) -> Result<()> {
+        let _ = self.node.clear_timeline()?;
+        Ok(())
+    }
+
+    /// Updates a timeline entry matching `ref_id` (e.g. after publishing an
+    /// incoming transfer to `MediaStore`).
+    pub fn update_timeline_by_ref(
+        &self,
+        ref_id: String,
+        kind: TimelineKind,
+        title: String,
+        detail: String,
+        target: String,
+        size_bytes: u64,
+    ) {
+        self.node.update_timeline_by_ref(&ref_id, kind.into(), &title, &detail, &target, size_bytes);
+    }
+
     // ---- Media ----
 
     /// This phone's media players changed (most relevant first).
@@ -2726,6 +2906,13 @@ impl NectarlinkNode {
     pub async fn update_device_info(&self, info: DeviceInfo) {
         let node = self.node.clone();
         self.run(async move { node.update_device_info(info.into()).await }).await;
+    }
+
+    /// Updates this phone's Material You seed color (`0xFFRRGGBB` ARGB) and
+    /// sends `HelloUpdate` to connected PCs if it changed.
+    pub async fn update_accent(&self, accent: Option<u32>) {
+        let node = self.node.clone();
+        self.run(async move { node.update_accent(accent).await }).await;
     }
 
     /// Updates this phone's power level and the capabilities it offers on

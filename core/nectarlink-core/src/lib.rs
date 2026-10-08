@@ -30,6 +30,7 @@ mod session;
 mod sms;
 pub mod storage;
 mod store;
+pub mod timeline;
 pub mod toggles;
 mod transfer;
 pub mod webcam;
@@ -111,6 +112,10 @@ pub use node::Node;
 pub use notifications::NotificationError;
 pub use remote::{ButtonAction, INPUT_INJECT, KeyMod, MouseButton, RemoteInput, SlideAction, remote_keys};
 pub use storage::{FolderStorage, StorageError, StorageReadFile, TOGGLE as STORAGE_TOGGLE};
+pub use timeline::{
+    DEFAULT_TIMELINE_MAX_DAYS, DEFAULT_TIMELINE_MAX_ENTRIES, DEFAULT_TIMELINE_PAGE_LIMIT,
+    MAX_TIMELINE_PAGE_LIMIT, TimelineEntry, TimelineKind, TimelinePage, TimelineQuery, TimelineRetention,
+};
 pub use transfer::{
     Direction, FileSource, OutgoingFile, RECORDER, RecordingMarker, Transfer, TransferFailure, TransferState,
     outgoing_paths, safe_file_name,

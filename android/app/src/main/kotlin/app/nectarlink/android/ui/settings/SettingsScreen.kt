@@ -85,6 +85,8 @@ fun SettingsScreen(
     onClearClipboardHistory: () -> Unit = {},
     suggestClipboardActions: Boolean = true,
     onSetSuggestClipboardActions: (Boolean) -> Unit = {},
+    onSetTimelineRetentionDays: (UInt) -> Unit = {},
+    onClearTimeline: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var confirmUnpair by remember { mutableStateOf<Device?>(null) }
@@ -136,6 +138,29 @@ fun SettingsScreen(
             if (state.clipboardHistoryEnabled && state.clipboardHistory.isNotEmpty()) {
                 OutlinedButton(onClick = onClearClipboardHistory) {
                     Text(stringResource(R.string.clipboard_history_clear))
+                }
+            }
+        }
+
+        Section(stringResource(R.string.settings_timeline_title)) {
+            Text(stringResource(R.string.settings_timeline_retention), style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(R.string.settings_timeline_retention_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Choice(
+                listOf(
+                    "30" to stringResource(R.string.timeline_retention_30d),
+                    "90" to stringResource(R.string.timeline_retention_90d),
+                    "365" to stringResource(R.string.timeline_retention_1y),
+                    "0" to stringResource(R.string.timeline_retention_all),
+                ),
+                state.timelineRetentionDays.toString(),
+            ) { value -> value.toUIntOrNull()?.let(onSetTimelineRetentionDays) }
+            if (state.timeline.isNotEmpty()) {
+                OutlinedButton(onClick = onClearTimeline) {
+                    Text(stringResource(R.string.timeline_action_clear_all))
                 }
             }
         }

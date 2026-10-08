@@ -220,12 +220,21 @@ tests; there are no releases yet.
 - **Capability matrix**: both apps compute which features work for a pair of
   devices and what would enable the rest, so the interface never offers
   something that can't work.
-- **Windows app**: home, messages, calls, photos, deck and settings, two themes in light and dark (Bloom,
-  which takes its colors from the desktop wallpaper, and Graphite), Mica, a
+- **Timeline**: one searchable local history of everything that moved between your
+  devices — files, folders, clipboard items (linked by ID to encrypted clipboard
+  history so clip content is never duplicated in SQLite), opened links, saved
+  photos, voice recordings, and screen mirroring / webcam sessions (with
+  duration) — grouped by day, with filters by kind and device, **Open**, **Show
+  in folder**, **Copy**, **Send again**, **Remove**, **Clear all**, and
+  configurable auto-purge retention (default 90 days or 5,000 items).
+- **Windows app**: home, messages, calls, photos, deck, timeline and settings, two themes in light and dark (Bloom,
+  which takes its colors from the desktop wallpaper, **My phone's colors**
+  synced live from the phone's Material You wallpaper seed, or a preset seed,
+  and Graphite), Mica, a
   custom title bar with Snap Layouts, and a tray icon. In the background it
   unloads its window and caches (~27 MB private commit when started in the tray
   or ~60 MB after closing the window, with a ~5–10 MB active working set).
-- **Android app**: pairing, home and settings, Material You colors, a background
+- **Android app**: pairing, home (with Timeline and Clipboard history) and settings, Material You colors (synced live to paired PCs), a background
   connection service, and an identity key protected by the Android Keystore.
 - **Connection Doctor** on the PC: finds what keeps the phone from
   connecting (firewall, a public network, a VPN) and fixes what it can.

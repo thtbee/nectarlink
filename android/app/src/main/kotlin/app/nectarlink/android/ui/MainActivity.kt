@@ -488,6 +488,12 @@ private fun App(
                     onDeleteClipboardHistory = core::deleteClipboardHistory,
                     onClearClipboardHistory = core::clearClipboardHistory,
                     loadClipboardHistoryImage = core::clipboardHistoryImage,
+                    queryTimelinePage = { kind, dev, search, offset ->
+                        core.queryTimelinePage(kind, dev, search, offset)
+                    },
+                    onDeleteTimelineEntry = core::deleteTimelineEntry,
+                    onClearTimeline = core::clearTimeline,
+                    onResendTimelineEntry = core::resendTimelineEntry,
                     onSetPcAudio = core::setPcAudio,
                     modifier = modifier,
                 )
@@ -508,6 +514,8 @@ private fun App(
                     onClearClipboardHistory = core::clearClipboardHistory,
                     suggestClipboardActions = preferences.suggestClipboardActions.collectAsStateWithLifecycle().value,
                     onSetSuggestClipboardActions = preferences::updateSuggestClipboardActions,
+                    onSetTimelineRetentionDays = core::setTimelineRetentionDays,
+                    onClearTimeline = core::clearTimeline,
                     modifier = modifier,
                 )
             }

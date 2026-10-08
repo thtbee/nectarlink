@@ -358,13 +358,15 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         types::EVENT_DEVICE => {
             let info = env.body::<DeviceInfo>()?.sanitized();
             shared.store.update_info(&peer, &info)?;
-            shared.emit(NodeEvent::PeerInfoChanged { device: peer, info });
+            let effective = shared.store.get_peer(&peer).ok().flatten().map(|p| p.info).unwrap_or(info);
+            shared.emit(NodeEvent::PeerInfoChanged { device: peer, info: effective });
         }
         types::HELLO_UPDATE => {
             let update: HelloUpdate = env.body()?;
             if let Some(info) = update.device.map(DeviceInfo::sanitized) {
                 shared.store.update_info(&peer, &info)?;
-                shared.emit(NodeEvent::PeerInfoChanged { device: peer, info });
+                let effective = shared.store.get_peer(&peer).ok().flatten().map(|p| p.info).unwrap_or(info);
+                shared.emit(NodeEvent::PeerInfoChanged { device: peer, info: effective });
             }
             let caps = update.caps.map(crate::features::sanitize_capabilities);
             let power = update.power.map(PowerLevel::effective);

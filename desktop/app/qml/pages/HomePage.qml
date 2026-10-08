@@ -362,8 +362,10 @@ Item {
                             ? Math.max(3, home.screenData.corners.br * width) : defaultCorner
                         readonly property real rBl: home.screenData && home.screenData.corners
                             ? Math.max(3, home.screenData.corners.bl * width) : defaultCorner
-                        readonly property color seedColor: home.accent && home.accent.length > 0
-                            ? Qt.color(home.accent) : Theme.primary
+                        readonly property var phonePalette: Theme.phonePalette(home.deviceId)
+                        readonly property color seedColor: phonePalette
+                            ? Qt.color(phonePalette.primary)
+                            : (home.accent && home.accent.length > 0 ? Qt.color(home.accent) : Theme.primary)
                         readonly property color frameFill: Theme.graphite
                             ? (Theme.dark ? "#1B1D21" : "#282B30")
                             : Qt.darker(seedColor, Theme.dark ? 2.8 : 2.3)
@@ -964,14 +966,25 @@ Item {
                             muted: true
                             text: qsTr("Transfers")
                         }
-                        Button {
-                            id: clearTransfers
+                        Row {
                             anchors.right: parent.right
-                            visible: TransferList.count > TransferList.active
-                            variant: "text"
-                            size: "sm"
-                            text: qsTr("Clear finished")
-                            onClicked: TransferList.clearFinished()
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 6
+                            Button {
+                                variant: "text"
+                                size: "sm"
+                                iconPath: Icons.history
+                                text: qsTr("Timeline")
+                                onClicked: AppController.currentPage = "timeline"
+                            }
+                            Button {
+                                id: clearTransfers
+                                visible: TransferList.count > TransferList.active
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Clear finished")
+                                onClicked: TransferList.clearFinished()
+                            }
                         }
                     }
                     ListView {
@@ -1424,6 +1437,104 @@ Item {
                             iconPath: Icons.brightness
                             phoneValue: phoneControls.state ? phoneControls.state.brightness : 0
                             feature: phoneControls.brightnessFeature
+                        }
+                    }
+                }
+            }
+
+            // Recent timeline items across devices.
+            Card {
+                id: timelineHomeCard
+                width: parent.width
+                readonly property var previewItems: {
+                    try {
+                        return AppController.timelinePreview.length > 0
+                            ? JSON.parse(AppController.timelinePreview) : []
+                    } catch (e) {
+                        return []
+                    }
+                }
+                Column {
+                    width: parent.width
+                    spacing: 8
+                    Item {
+                        width: parent.width
+                        height: 24
+                        Txt {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("Timeline")
+                            role: "label"
+                            muted: true
+                        }
+                        Button {
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            variant: "text"
+                            size: "sm"
+                            text: qsTr("View all")
+                            onClicked: AppController.currentPage = "timeline"
+                        }
+                    }
+                    Txt {
+                        width: parent.width
+                        visible: timelineHomeCard.previewItems.length === 0
+                        role: "bodySmall"
+                        muted: true
+                        wrapMode: Text.WordWrap
+                        text: qsTr("Files, clips, links, saved photos, recordings and sessions shared between your devices appear here.")
+                    }
+                    Repeater {
+                        model: timelineHomeCard.previewItems
+                        delegate: Item {
+                            id: previewRow
+                            required property var modelData
+                            width: parent.width
+                            height: 36
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: -4
+                                radius: Theme.radiusSm
+                                color: previewHover.hovered ? Theme.surfaceContainerHigh : "transparent"
+                            }
+
+                            Icon {
+                                id: previewIcon
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 16; height: 16
+                                path: modelData.kind === "file" ? Icons.folder
+                                    : modelData.kind === "clip" ? Icons.clipboard
+                                    : modelData.kind === "link" ? Icons.globe
+                                    : modelData.kind === "photo" ? Icons.photo
+                                    : modelData.kind === "recording" ? Icons.mic
+                                    : Icons.mirror
+                                color: Theme.primary
+                            }
+                            Column {
+                                anchors.left: previewIcon.right
+                                anchors.leftMargin: 10
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 1
+                                Txt {
+                                    width: parent.width
+                                    role: "bodySmall"
+                                    weight: 600
+                                    elide: Text.ElideRight
+                                    text: previewRow.modelData.title || ""
+                                }
+                                Txt {
+                                    width: parent.width
+                                    role: "caption"
+                                    muted: true
+                                    elide: Text.ElideRight
+                                    text: previewRow.modelData.subtitle || ""
+                                }
+                            }
+                            HoverHandler { id: previewHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: AppController.currentPage = "timeline" }
                         }
                     }
                 }

@@ -209,4 +209,6 @@ pub enum NodeEvent {
         device: DeviceId,
         on: bool,
     },
+    /// The local timeline of items shared with paired devices changed.
+    TimelineChanged,
 }

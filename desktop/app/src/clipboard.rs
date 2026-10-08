@@ -57,6 +57,22 @@ fn thumbs<T>(f: impl FnOnce(&mut HashMap<String, String>) -> T) -> T {
     f(THUMBS.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new))
 }
 
+/// Returns the cached scaled PNG data URL for a clipboard history image ID, or
+/// schedules background generation if not yet cached.
+pub fn thumb_for_clip(id: &str) -> Option<String> {
+    if !HISTORY_ENABLED.load(Ordering::Relaxed) {
+        return None;
+    }
+    let cached = thumbs(|t| t.get(id).cloned());
+    if let Some(url) = cached {
+        return (!url.is_empty()).then_some(url);
+    }
+    if let Some(node) = core_host::node() {
+        make_thumbs(node, vec![id.to_owned()]);
+    }
+    None
+}
+
 pub fn set_auto_send(on: bool) {
     AUTO_SEND.store(on, Ordering::Relaxed);
 }

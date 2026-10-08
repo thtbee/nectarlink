@@ -147,6 +147,11 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         devices.iter().filter_map(|d| node.phone_toggles(d.id).map(|t| (d.id, t))).collect();
     let status = CoreStatus::Ready { device_id: node.device_id(), name: this_device().name };
     crate::clipboard::apply_history_setting(&node);
+    let saved_settings = crate::settings::Settings::load(&data_dir);
+    let _ = node.set_timeline_retention(nectarlink_core::TimelineRetention {
+        max_days: saved_settings.timeline_retention_days,
+        max_entries: nectarlink_core::DEFAULT_TIMELINE_MAX_ENTRIES,
+    });
     let _ = host.node.set(node);
     host.hub.update(|s| {
         let mut changes = s.set_devices(devices);
@@ -158,7 +163,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         }
         s.status = Some(status);
         s.wake = wake;
-        changes |= Changes::STATUS | Changes::CAPABILITIES | Changes::CLIPBOARD;
+        changes |= Changes::STATUS | Changes::CAPABILITIES | Changes::CLIPBOARD | Changes::TIMELINE;
         changes
     });
     host.started.notify_waiters();

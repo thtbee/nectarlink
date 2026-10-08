@@ -3316,3 +3316,209 @@ async fn live_notifications_and_task_notify_flow_end_to_end() {
     let recorded = phone.platform.tasks.lock().unwrap().clone();
     assert_eq!(recorded, vec![running, done]);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn material_you_accent_syncs_updates_live_and_persists_offline() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+
+    // Set initial Material You seed on the phone before pairing.
+    phone.node.update_accent(Some(0xFF8A_5100)).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+
+    let paired = pc.node.paired_devices().unwrap();
+    assert_eq!(paired.len(), 1);
+    assert_eq!(paired[0].info.accent, Some(0xFF8A_5100));
+
+    // Live wallpaper change on the phone sends HelloUpdate via update_accent.
+    phone.node.update_accent(Some(0xFF00_FF00)).await;
+    let info1 = wait_for(&mut pc, "accent updated to green", |e| match e {
+        NodeEvent::PeerInfoChanged { device, info }
+            if *device == phone_id && info.accent == Some(0xFF00_FF00) =>
+        {
+            Some(info.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(info1.accent, Some(0xFF00_FF00));
+    assert_eq!(pc.node.paired_devices().unwrap()[0].info.accent, Some(0xFF00_FF00));
+
+    // When the phone later updates DeviceInfo with accent = None (e.g. name change),
+    // the PC preserves the phone's last stored seed in SQLite and in PeerInfoChanged.
+    let mut renamed = info("Pixel Pro", DeviceKind::Phone);
+    renamed.accent = None;
+    phone.node.update_device_info(renamed).await;
+    let info2 = wait_for(&mut pc, "renamed with preserved accent", |e| match e {
+        NodeEvent::PeerInfoChanged { device, info } if *device == phone_id && info.name == "Pixel Pro" => {
+            Some(info.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(info2.accent, Some(0xFF00_FF00));
+    assert_eq!(pc.node.paired_devices().unwrap()[0].info.accent, Some(0xFF00_FF00));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn timeline_records_files_clips_links_photos_recordings_and_sessions_without_duplicating_clips() {
+    use nectarlink_core::{
+        MIRROR_CAPTURE, MIRROR_VIEW, MirrorConfig, PHOTOS_READ, PHOTOS_SHOW, PacketKind, RECORDER,
+        RecordingMarker, TimelineKind, TimelineQuery, WEBCAM_STREAM, WEBCAM_VIRTUAL, WebcamConfig,
+    };
+
+    let mut pc =
+        device_with("Desktop", DeviceKind::Desktop, &[PHOTOS_SHOW, RECORDER, MIRROR_VIEW, WEBCAM_VIRTUAL])
+            .await;
+    let mut phone =
+        device_with("Pixel", DeviceKind::Phone, &[PHOTOS_READ, MIRROR_CAPTURE, WEBCAM_STREAM]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // 1. Outgoing & incoming file transfer.
+    let file_path = phone.dir.path().join("report.pdf");
+    std::fs::write(&file_path, b"quarterly report").unwrap();
+    let tid = phone
+        .node
+        .send_files(
+            pc_id,
+            vec![OutgoingFile {
+                name: "report.pdf".into(),
+                folder: None,
+                source: FileSource::Path(file_path),
+            }],
+        )
+        .await
+        .unwrap();
+    let _ = wait_transfer(&mut pc, &tid, "report.pdf", saved).await;
+
+    // 2. Text clip (stored by ref_id only, never duplicated in SQLite) + OTP clip (excluded).
+    let secret_clip = "super-unique-clipboard-payload-998877";
+    phone.node.send_clipboard(pc_id, secret_clip.into()).await.unwrap();
+    wait_for(&mut pc, "clip received", |e| match e {
+        NodeEvent::ClipboardReceived { device } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    phone
+        .node
+        .send_clipboard(pc_id, "Your verification code is 482910. Do not share this OTP.".into())
+        .await
+        .unwrap();
+    wait_for(&mut pc, "otp clip received", |e| match e {
+        NodeEvent::ClipboardReceived { device } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    // 3. Web link opened.
+    phone.node.open_link(pc_id, "https://nectarlink.app/timeline".into()).await.unwrap();
+
+    // 4. Photo saved from phone.
+    let photo_path = phone.dir.path().join("IMG_100.jpg");
+    std::fs::write(&photo_path, b"\xff\xd8\xff\xd9").unwrap();
+    phone.platform.photos.lock().unwrap().insert("media:100".into(), photo_path);
+    let ptid = pc.node.fetch_photo(phone_id, "media:100".into()).await.unwrap();
+    let _ = wait_transfer(&mut pc, &ptid, "IMG_100.jpg", saved).await;
+
+    // 5. Voice recording with markers.
+    let rec_path = phone.dir.path().join("Voice_01.m4a");
+    std::fs::write(&rec_path, b"fake-m4a-audio").unwrap();
+    let rtid = phone
+        .node
+        .send_recording(
+            pc_id,
+            OutgoingFile { name: "Voice_01.m4a".into(), folder: None, source: FileSource::Path(rec_path) },
+            vec![RecordingMarker { at_ms: 1000, label: Some("Intro".into()) }],
+        )
+        .await
+        .unwrap();
+    let _ = wait_transfer(&mut pc, &rtid, "Voice_01.m4a", saved).await;
+
+    // 6. Screen mirroring session & webcam session (start/end recorded as one line with duration).
+    let mstream = phone.node.mirror_open(pc_id).await.unwrap();
+    let mcfg = MirrorConfig { codec: "h264".into(), width: 1080, height: 2400, session: 0 }.to_cbor();
+    let _ = tokio::task::block_in_place(|| mstream.send(PacketKind::Config, 0, mcfg));
+    wait_for(&mut pc, "mirroring started", |e| match e {
+        NodeEvent::Mirroring { device, on: true, .. } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    mstream.close();
+    wait_for(&mut pc, "mirroring ended", |e| match e {
+        NodeEvent::Mirroring { device, on: false, .. } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    let wstream = phone.node.webcam_open(pc_id).await.unwrap();
+    let wcfg =
+        WebcamConfig { codec: "h264".into(), width: 1280, height: 720, camera: "back".into(), fps: 30 }
+            .to_cbor();
+    let _ = tokio::task::block_in_place(|| wstream.send(PacketKind::Config, 0, wcfg));
+    wait_for(&mut pc, "webcam started", |e| match e {
+        NodeEvent::Webcam { device, on: true } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    wstream.close();
+    wait_for(&mut pc, "webcam ended", |e| match e {
+        NodeEvent::Webcam { device, on: false } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    // Query the PC's timeline.
+    let page = pc.node.timeline_page(&TimelineQuery::default()).unwrap();
+    let kinds: Vec<TimelineKind> = page.entries.iter().map(|i| i.kind).collect();
+    assert!(kinds.contains(&TimelineKind::File), "expected File in {kinds:?}");
+    assert!(kinds.contains(&TimelineKind::Clip), "expected Clip in {kinds:?}");
+    assert!(kinds.contains(&TimelineKind::Link), "expected Link in {kinds:?}");
+    assert!(kinds.contains(&TimelineKind::Photo), "expected Photo in {kinds:?}");
+    assert!(kinds.contains(&TimelineKind::Recording), "expected Recording in {kinds:?}");
+    assert!(
+        kinds.iter().filter(|&&k| k == TimelineKind::Session).count() >= 2,
+        "expected Mirror and Webcam sessions in {kinds:?}"
+    );
+    for session_item in page.entries.iter().filter(|i| i.kind == TimelineKind::Session) {
+        assert!(session_item.duration_secs >= 1, "session must record duration >= 1s");
+    }
+
+    // Verify OTP was never recorded in the timeline.
+    let otp_search = pc
+        .node
+        .timeline_page(&TimelineQuery { search: Some("482910".into()), ..TimelineQuery::default() })
+        .unwrap();
+    assert!(otp_search.entries.is_empty(), "OTP must never appear in timeline");
+
+    // Verify clip content is resolved in memory for search and display, but NEVER stored in SQLite!
+    let clip_search = pc
+        .node
+        .timeline_page(&TimelineQuery {
+            search: Some("super-unique-clipboard".into()),
+            ..TimelineQuery::default()
+        })
+        .unwrap();
+    assert_eq!(clip_search.entries.len(), 1);
+    assert_eq!(clip_search.entries[0].kind, TimelineKind::Clip);
+    assert_eq!(clip_search.entries[0].title, secret_clip);
+    let clip_ref = clip_search.entries[0].ref_id.clone().expect("clip has ref_id");
+
+    let sqlite_bytes = std::fs::read(pc.dir.path().join("nectarlink.db")).unwrap();
+    let wal_bytes = std::fs::read(pc.dir.path().join("nectarlink.db-wal")).unwrap_or_default();
+    assert!(
+        !sqlite_bytes.windows(secret_clip.len()).any(|w| w == secret_clip.as_bytes())
+            && !wal_bytes.windows(secret_clip.len()).any(|w| w == secret_clip.as_bytes()),
+        "SQLite database must never duplicate clip content"
+    );
+
+    // Deleting the clip from clipboard history also removes its timeline entry.
+    assert!(pc.node.delete_clipboard_history(&clip_ref));
+    let after_del = pc
+        .node
+        .timeline_page(&TimelineQuery { kind: Some(TimelineKind::Clip), ..TimelineQuery::default() })
+        .unwrap();
+    assert!(after_del.entries.is_empty(), "deleting clip removes linked timeline entry");
+}

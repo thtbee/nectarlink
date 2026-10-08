@@ -179,6 +179,25 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
     // Ready to be stopped before anyone hears it's showing: a stop sent the
     // moment it appears must not be lost.
     let stopped = shared.new_mirror_stop(&peer, mirroring, mirror::OP_VIDEO);
+    let started_at = std::time::Instant::now();
+    let title = if mirroring == mirror::SCREEN {
+        "Screen mirroring".to_owned()
+    } else {
+        format!("App window #{mirroring}")
+    };
+    let tl_row = shared.record_timeline(crate::timeline::NewTimelineEntry {
+        kind: crate::TimelineKind::Session,
+        device_id: peer,
+        device_name: shared.peer_name(&peer),
+        incoming: true,
+        timestamp: crate::now_unix(),
+        title,
+        detail: format!("{}×{}", config.width, config.height),
+        target: "mirror".into(),
+        size_bytes: 0,
+        duration_secs: 0,
+        ref_id: None,
+    });
     shared.emit(NodeEvent::Mirroring { device: peer, session: mirroring, on: true });
     sink.config(config);
     loop {
@@ -205,6 +224,9 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
     let _ = recv.stop(VarInt::from_u32(mirror::STOPPED));
     let _ = send.finish();
     sink.ended();
+    if let Some(row_id) = tl_row {
+        shared.finish_timeline_session(row_id, started_at.elapsed().as_secs().max(1));
+    }
     shared.emit(NodeEvent::Mirroring { device: peer, session: mirroring, on: false });
 }
 
@@ -435,11 +457,35 @@ pub(crate) async fn open(shared: &Arc<Shared>, session: &Session, audio: bool) -
     let op = if audio { mirror::OP_AUDIO } else { mirror::OP_VIDEO };
     let header = StreamHeader { svc: mirror::SERVICE.into(), op: op.into(), v: mirror::VERSION };
     write_frame(&mut send, &Envelope::new(types::STREAM, &header)?.to_cbor()).await?;
-    Ok(MirrorStream::spawn_stream(send, recv, audio))
+    let on_end = if !audio {
+        shared
+            .record_timeline(crate::timeline::NewTimelineEntry {
+                kind: crate::TimelineKind::Session,
+                device_id: session.peer,
+                device_name: shared.peer_name(&session.peer),
+                incoming: false,
+                timestamp: crate::now_unix(),
+                title: "Screen mirroring".into(),
+                detail: String::new(),
+                target: "mirror".into(),
+                size_bytes: 0,
+                duration_secs: 0,
+                ref_id: None,
+            })
+            .map(|id| (shared.clone(), id, std::time::Instant::now()))
+    } else {
+        None
+    };
+    Ok(MirrorStream::spawn_stream(send, recv, audio, on_end))
 }
 
 impl MirrorStream {
-    pub(crate) fn spawn_stream(mut send: SendStream, mut recv: RecvStream, audio: bool) -> MirrorStream {
+    pub(crate) fn spawn_stream(
+        mut send: SendStream,
+        mut recv: RecvStream,
+        audio: bool,
+        on_end: Option<(Arc<Shared>, i64, std::time::Instant)>,
+    ) -> MirrorStream {
         // Sound and video go out as soon as they're written; sound first, as a
         // gap in it is the more noticeable.
         let _ = send.set_priority(if audio { 2 } else { 1 });
@@ -475,6 +521,9 @@ impl MirrorStream {
             }
             done.store(true, Ordering::Release);
             let _ = send.finish();
+            if let Some((shared, row_id, started_at)) = on_end {
+                shared.finish_timeline_session(row_id, started_at.elapsed().as_secs().max(1));
+            }
         });
         MirrorStream { queue, closed, stop, resyncing: Mutex::new(false), audio }
     }

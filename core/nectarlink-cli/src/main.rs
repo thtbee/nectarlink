@@ -48,6 +48,9 @@ struct Cli {
     /// Front-screen geometry to announce with --as-phone.
     #[arg(long, global = true, value_enum, requires = "as_phone")]
     screen: Option<PhoneScreen>,
+    /// Material You seed color (#RRGGBB or RRGGBB) to announce in DeviceInfo.
+    #[arg(long, global = true, value_name = "HEX")]
+    accent: Option<String>,
     /// Battery level (0–100) to report, to test a PC without a phone.
     #[arg(long, global = true, value_parser = clap::value_parser!(u8).range(0..=100))]
     battery: Option<u8>,
@@ -2237,7 +2240,12 @@ async fn start_node(cli: &Cli) -> Result<Node> {
     } else {
         None
     };
-    let device = DeviceInfo { name, kind, os, os_ver, model: None, accent: None, screen };
+    let accent = match &cli.accent {
+        Some(raw) => Some(0xFF00_0000 | parse_hex_color(raw)?),
+        None if cli.as_phone && is_demo => Some(0xFF3F_8F7B),
+        None => None,
+    };
+    let device = DeviceInfo { name, kind, os, os_ver, model: None, accent, screen };
     let power = node_power(cli);
     let mut config = NodeConfig::new(data_dir.clone(), device, env!("CARGO_PKG_VERSION"));
     config.downloads_dir = cli.downloads_dir.clone();

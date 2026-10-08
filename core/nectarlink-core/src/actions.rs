@@ -212,6 +212,10 @@ pub(crate) async fn pc_power(shared: &Arc<Shared>, session: &Session, action: Po
     Ok(())
 }
 
+fn link_host(url: &str) -> String {
+    url.split("://").nth(1).unwrap_or(url).split(['/', '?', '#']).next().unwrap_or("").to_owned()
+}
+
 pub(crate) async fn open_link(shared: &Arc<Shared>, session: &Session, url: String) -> Result<()> {
     if !valid_link(&url) {
         return Err(Error::Internal("not a web link".into()));
@@ -219,8 +223,21 @@ pub(crate) async fn open_link(shared: &Arc<Shared>, session: &Session, url: Stri
     if !shared.offers(&session.peer, LINKS)? {
         return Err(Error::Unsupported);
     }
-    let env = Envelope::new(types::LINK_OPEN, &LinkOpen { url })?;
+    let env = Envelope::new(types::LINK_OPEN, &LinkOpen { url: url.clone() })?;
     session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect(types::OK)?;
+    let _ = shared.record_timeline(crate::timeline::NewTimelineEntry {
+        kind: crate::TimelineKind::Link,
+        device_id: session.peer,
+        device_name: shared.peer_name(&session.peer),
+        incoming: false,
+        timestamp: crate::now_unix(),
+        title: url.clone(),
+        detail: link_host(&url),
+        target: url,
+        size_bytes: 0,
+        duration_secs: 0,
+        ref_id: None,
+    });
     Ok(())
 }
 
@@ -329,11 +346,27 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                 Envelope::error(ErrorCode::BadMessage, "not a web link")
             } else {
                 let platform = shared.platform.clone();
-                match tokio::task::spawn_blocking(move || platform.open_link(&peer, &url))
+                let url_for_open = url.clone();
+                match tokio::task::spawn_blocking(move || platform.open_link(&peer, &url_for_open))
                     .await
                     .unwrap_or_else(|e| Err(e.to_string()))
                 {
-                    Ok(()) => Envelope::empty(types::OK),
+                    Ok(()) => {
+                        let _ = shared.record_timeline(crate::timeline::NewTimelineEntry {
+                            kind: crate::TimelineKind::Link,
+                            device_id: peer,
+                            device_name: shared.peer_name(&peer),
+                            incoming: true,
+                            timestamp: crate::now_unix(),
+                            title: url.clone(),
+                            detail: link_host(&url),
+                            target: url,
+                            size_bytes: 0,
+                            duration_secs: 0,
+                            ref_id: None,
+                        });
+                        Envelope::empty(types::OK)
+                    }
                     Err(reason) => {
                         tracing::warn!(reason, "can't open a link");
                         Envelope::error(ErrorCode::Internal, "can't open it")

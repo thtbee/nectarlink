@@ -11,7 +11,7 @@ Item {
     property string description
     default property alias trailing: trailingSlot.data
 
-    implicitHeight: Math.max(56, texts.implicitHeight + 20)
+    implicitHeight: Math.max(56, texts.implicitHeight + 20, trailingSlot.childrenRect.height + 16)
 
     Icon {
         id: icon

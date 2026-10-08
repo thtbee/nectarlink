@@ -70,6 +70,8 @@ pub mod qobject {
         #[qproperty(bool, recordings_folder_is_default)]
         /// "m4a", "mp3", "wav" or "flac".
         #[qproperty(QString, recordings_format)]
+        /// Timeline retention in days (`0` means keep up to 5,000 entries regardless of age).
+        #[qproperty(i32, timeline_retention_days)]
         type Preferences = super::PreferencesRust;
 
         /// Sets the folder where voice recordings are saved (from a `file:` URL or path).
@@ -156,6 +158,7 @@ pub struct PreferencesRust {
     recordings_folder: QString,
     recordings_folder_is_default: bool,
     recordings_format: QString,
+    timeline_retention_days: i32,
     /// What the user chose (`start_with_windows` shows the default until then).
     start_choice: Option<bool>,
     /// Custom recordings folder if chosen (`None` means default).
@@ -199,6 +202,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_recordings_folder_is_default(settings.recordings_folder.is_none());
         self.as_mut().rust_mut().custom_recordings_folder = settings.recordings_folder.clone();
         self.as_mut().set_recordings_format(QString::from(settings.recordings_format.as_str()));
+        self.as_mut().set_timeline_retention_days(settings.timeline_retention_days as i32);
         crate::recordings::init(&settings);
 
         // Save after any change (connected after loading, so loading doesn't
@@ -277,6 +281,18 @@ impl cxx_qt::Initialize for qobject::Preferences {
                 p.save();
             })
             .release();
+        self.as_mut()
+            .on_timeline_retention_days_changed(|p| {
+                let days = p.timeline_retention_days.max(0) as u32;
+                if let Some(node) = core_host::node() {
+                    let _ = node.set_timeline_retention(nectarlink_core::TimelineRetention {
+                        max_days: days,
+                        max_entries: nectarlink_core::DEFAULT_TIMELINE_MAX_ENTRIES,
+                    });
+                }
+                p.save();
+            })
+            .release();
     }
 }
 
@@ -335,6 +351,7 @@ impl qobject::Preferences {
             webcam_phone: crate::webcam::selected_phone().map(|d| d.to_string()),
             webcam_height: crate::webcam::height(),
             webcam_mirror: crate::webcam::mirror(),
+            timeline_retention_days: p.timeline_retention_days.max(0) as u32,
         };
         save_in_background(settings);
     }

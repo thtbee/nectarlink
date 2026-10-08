@@ -107,7 +107,7 @@ NativeWindow {
             NavItem {
                 iconPath: Icons.home
                 text: qsTr("Home")
-                selected: window.page === "home"
+                selected: window.page === "home" || window.page === "timeline"
                 onClicked: window.page = "home"
             }
             NavItem {
@@ -165,12 +165,24 @@ NativeWindow {
             id: topBar
             width: parent.width - captionButtons.width
             height: Theme.topBarHeight
+            IconButton {
+                id: backToHome
+                anchors.left: parent.left
+                anchors.leftMargin: Theme.contentPadding - 6
+                anchors.verticalCenter: parent.verticalCenter
+                visible: window.page === "timeline"
+                iconPath: Icons.back
+                label: qsTr("Back to Home")
+                onClicked: window.page = "home"
+                Component.onCompleted: window.addCaptionHole(backToHome)
+            }
             Txt {
                 id: pageTitle
-                anchors.left: parent.left
-                anchors.leftMargin: Theme.contentPadding
+                anchors.left: backToHome.visible ? backToHome.right : parent.left
+                anchors.leftMargin: backToHome.visible ? 6 : Theme.contentPadding
                 anchors.verticalCenter: parent.verticalCenter
                 text: window.page === "home" ? qsTr("Home")
+                    : window.page === "timeline" ? qsTr("Timeline")
                     : window.page === "messages" ? qsTr("Messages")
                     : window.page === "calls" ? qsTr("Calls")
                     : window.page === "photos" ? qsTr("Photos")
@@ -178,6 +190,18 @@ NativeWindow {
                     : qsTr("Settings")
                 role: "headline"
                 size: 20
+            }
+            IconButton {
+                id: timelineTopBtn
+                anchors.right: refresh.visible ? refresh.left : parent.right
+                anchors.rightMargin: refresh.visible ? 4 : 8
+                anchors.verticalCenter: parent.verticalCenter
+                visible: (window.page === "home" || window.page === "timeline") && AppController.hasDevices
+                iconPath: Icons.history
+                tonal: window.page === "timeline"
+                label: qsTr("Timeline")
+                onClicked: window.page = window.page === "timeline" ? "home" : "timeline"
+                Component.onCompleted: window.addCaptionHole(timelineTopBtn)
             }
             // Reconnects and syncs with the phones (the title bar lets
             // clicks through here).
@@ -219,6 +243,7 @@ NativeWindow {
                 source: {
                     if (!active) return ""
                     switch (window.page) {
+                    case "timeline": return "qrc:/qt/qml/app/nectarlink/qml/pages/TimelinePage.qml"
                     case "messages": return "qrc:/qt/qml/app/nectarlink/qml/pages/MessagesPage.qml"
                     case "calls": return "qrc:/qt/qml/app/nectarlink/qml/pages/CallsPage.qml"
                     case "photos": return "qrc:/qt/qml/app/nectarlink/qml/pages/PhotosPage.qml"

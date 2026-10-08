@@ -292,12 +292,75 @@ impl Reporter {
     }
 }
 
+static PHOTO_TRANSFERS: std::sync::Mutex<Option<std::collections::HashSet<String>>> =
+    std::sync::Mutex::new(None);
+
+/// Marks an incoming transfer ID as a requested photo transfer (`photos.get`).
+pub(crate) fn mark_photo_transfer(shared: &Shared, transfer_id: &str) {
+    if shared.store.update_timeline_kind_by_ref(transfer_id, crate::TimelineKind::Photo).unwrap_or(false) {
+        shared.emit(NodeEvent::TimelineChanged);
+    } else {
+        PHOTO_TRANSFERS
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_or_insert_with(std::collections::HashSet::new)
+            .insert(transfer_id.to_owned());
+    }
+}
+
+fn take_photo_transfer(transfer_id: &str) -> bool {
+    PHOTO_TRANSFERS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_mut()
+        .is_some_and(|set| set.remove(transfer_id))
+}
+
+fn transfer_timeline_title(names: &[String]) -> String {
+    match names.len() {
+        0 => "Files".into(),
+        1 => names[0].clone(),
+        n => format!("{} (+{} more)", names[0], n - 1),
+    }
+}
+
+fn transfer_timeline_detail(entries: &[FileEntry], recording: bool, markers: &[RecordingMarker]) -> String {
+    if recording {
+        return match markers.len() {
+            0 => "Voice recording".into(),
+            1 => "Voice recording · 1 marker".into(),
+            n => format!("Voice recording · {n} markers"),
+        };
+    }
+    let has_folder = entries.iter().any(|e| e.folder.is_some());
+    if has_folder {
+        match entries.len() {
+            1 => "Folder · 1 file".into(),
+            n => format!("Folder · {n} files"),
+        }
+    } else {
+        match entries.len() {
+            1 => "File".into(),
+            n => format!("{n} files"),
+        }
+    }
+}
+
 // ---- Sending ----
 
 /// Starts sending files; progress and the outcome arrive as
 /// [`NodeEvent::Transfer`]. Returns the transfer's ID.
 pub(crate) async fn send(shared: &Arc<Shared>, peer: DeviceId, files: Vec<OutgoingFile>) -> Result<String> {
-    send_inner(shared, peer, files, false, Vec::new()).await
+    send_inner(shared, peer, files, false, false, Vec::new()).await
+}
+
+/// Starts sending photos requested via `photos.get`.
+pub(crate) async fn send_photos_files(
+    shared: &Arc<Shared>,
+    peer: DeviceId,
+    files: Vec<OutgoingFile>,
+) -> Result<String> {
+    send_inner(shared, peer, files, false, true, Vec::new()).await
 }
 
 /// Starts sending a voice recording and its markers (`docs/protocol/recorder.md`);
@@ -310,7 +373,7 @@ pub(crate) async fn send_recording(
 ) -> Result<String> {
     file.folder = None;
     let clean_markers = sanitize_markers(markers);
-    send_inner(shared, peer, vec![file], true, clean_markers).await
+    send_inner(shared, peer, vec![file], true, false, clean_markers).await
 }
 
 fn sanitize_markers(markers: Vec<RecordingMarker>) -> Vec<RecordingMarker> {
@@ -336,11 +399,27 @@ fn sanitize_markers(markers: Vec<RecordingMarker>) -> Vec<RecordingMarker> {
         .collect()
 }
 
+fn outgoing_target_path(path: &Path, folder: Option<&str>) -> String {
+    if let Some(f) = folder {
+        let depth = f.split('/').filter(|s| !s.is_empty()).count();
+        let mut p = path;
+        for _ in 0..depth {
+            if let Some(parent) = p.parent() {
+                p = parent;
+            }
+        }
+        p.to_string_lossy().into_owned()
+    } else {
+        path.to_string_lossy().into_owned()
+    }
+}
+
 async fn send_inner(
     shared: &Arc<Shared>,
     peer: DeviceId,
     files: Vec<OutgoingFile>,
     recording: bool,
+    is_photo: bool,
     markers: Vec<RecordingMarker>,
 ) -> Result<String> {
     if files.is_empty() || files.len() > files::MAX_FILES || (recording && files.len() != 1) {
@@ -354,12 +433,19 @@ async fn send_inner(
         return Err(Error::Denied);
     }
     let mut opened = Vec::with_capacity(files.len());
+    let mut source_targets: Vec<String> = Vec::new();
     for file in files {
         if file.folder.as_deref().is_some_and(|f| !is_valid_folder(f)) {
             return Err(Error::Protocol("invalid folder name".into()));
         }
         let handle = match file.source {
-            FileSource::Path(path) => std::fs::File::open(path)?,
+            FileSource::Path(path) => {
+                let target = outgoing_target_path(&path, file.folder.as_deref());
+                if !source_targets.contains(&target) {
+                    source_targets.push(target);
+                }
+                std::fs::File::open(path)?
+            }
             FileSource::File(handle) => handle,
         };
         let entry = FileEntry {
@@ -393,6 +479,15 @@ async fn send_inner(
         markers,
     };
     let id = transfer.id.clone();
+    let tl_detail = transfer_timeline_detail(&entries, recording, &transfer.markers);
+    let tl_target = source_targets.join("\n");
+    let tl_kind = if recording {
+        crate::TimelineKind::Recording
+    } else if is_photo {
+        crate::TimelineKind::Photo
+    } else {
+        crate::TimelineKind::File
+    };
     // The user's cancel only: shutting down interrupts a transfer (so it
     // can resume later), it doesn't cancel it.
     let cancel = CancellationToken::new();
@@ -401,6 +496,21 @@ async fn send_inner(
     reporter.set(TransferState::Waiting);
     tokio::spawn(async move {
         let state = send_until_done(&mut reporter, opened, &cancel).await;
+        if matches!(state, TransferState::Done { .. }) {
+            let _ = reporter.shared.record_timeline(crate::timeline::NewTimelineEntry {
+                kind: tl_kind,
+                device_id: peer,
+                device_name: reporter.shared.peer_name(&peer),
+                incoming: false,
+                timestamp: crate::now_unix(),
+                title: transfer_timeline_title(&reporter.transfer.names),
+                detail: tl_detail,
+                target: tl_target,
+                size_bytes: reporter.transfer.total,
+                duration_secs: 0,
+                ref_id: Some(reporter.transfer.id.clone()),
+            });
+        }
         reporter.set(state);
         reporter.shared.unregister_transfer(&reporter.transfer.id);
     });
@@ -727,6 +837,36 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
                 let _ = send.finish();
                 // Let the confirmation reach the sender before the stream goes.
                 let _ = tokio::time::timeout(Duration::from_secs(2), send.stopped()).await;
+                let kind = if offer.recording {
+                    crate::TimelineKind::Recording
+                } else if take_photo_transfer(&offer.id) {
+                    crate::TimelineKind::Photo
+                } else {
+                    crate::TimelineKind::File
+                };
+                let detail = if kind == crate::TimelineKind::Photo {
+                    match offer.files.len() {
+                        1 => "Photo".into(),
+                        n => format!("{n} photos"),
+                    }
+                } else {
+                    transfer_timeline_detail(&offer.files, offer.recording, &offer.markers)
+                };
+                let target =
+                    saved.iter().map(|p| p.to_string_lossy().into_owned()).collect::<Vec<_>>().join("\n");
+                let _ = shared.record_timeline(crate::timeline::NewTimelineEntry {
+                    kind,
+                    device_id: peer,
+                    device_name: shared.peer_name(&peer),
+                    incoming: true,
+                    timestamp: crate::now_unix(),
+                    title: transfer_timeline_title(&reporter.transfer.names),
+                    detail,
+                    target,
+                    size_bytes: reporter.transfer.total,
+                    duration_secs: 0,
+                    ref_id: Some(offer.id.clone()),
+                });
                 TransferState::Done { saved }
             }
             Err(e) => {

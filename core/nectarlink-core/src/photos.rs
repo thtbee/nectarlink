@@ -135,6 +135,7 @@ pub(crate) async fn fetch_many(shared: &Shared, session: &Session, mut ids: Vec<
     let env = Envelope::new(types::PHOTOS_GET, &PhotoGet { id, ids })?;
     let reply = session.request(env, crate::session::REQUEST_TIMEOUT).await?;
     let PhotoSending { transfer } = reply.expect_body(types::PHOTOS_SENDING)?;
+    crate::transfer::mark_photo_transfer(shared, &transfer);
     Ok(transfer)
 }
 
@@ -318,7 +319,7 @@ async fn send_photos(shared: &Arc<Shared>, peer: DeviceId, mut ids: Vec<String>)
     })
     .await
     .map_err(|e| Error::Internal(e.to_string()))??;
-    crate::transfer::send(shared, peer, files).await
+    crate::transfer::send_photos_files(shared, peer, files).await
 }
 
 #[cfg(test)]

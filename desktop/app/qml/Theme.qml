@@ -20,12 +20,43 @@ QtObject {
     // in the shape of a preset seed.
     readonly property var wallpaperSeed: AppController.wallpaperColors !== ""
         ? JSON.parse(AppController.wallpaperColors) : null
-    // "wallpaper" or a preset name; the wallpaper falls back to the default
-    // preset while its colors are being worked out.
-    readonly property string seed: Preferences.seed === "wallpaper"
-        ? (wallpaperSeed ? "wallpaper" : Tokens.data.themes.bloom.defaultSeed)
-        : (bloomSeeds[Preferences.seed] ? Preferences.seed : Tokens.data.themes.bloom.defaultSeed)
-    readonly property var seedColors: seed === "wallpaper" ? wallpaperSeed : bloomSeeds[seed]
+    // Material You color schemes from paired phones (`[{ id, key, name, label, hasAccent, scheme }]`).
+    readonly property var phoneSeeds: AppController.phoneColors !== ""
+        ? JSON.parse(AppController.phoneColors) : []
+    readonly property bool isPhoneSeed: Preferences.seed === "phone" || Preferences.seed.startsWith("phone:")
+    readonly property var activePhoneSeed: {
+        if (!isPhoneSeed)
+            return null
+        const targetId = Preferences.seed.startsWith("phone:") ? Preferences.seed.slice(6) : ""
+        for (let i = 0; i < phoneSeeds.length; i++) {
+            const p = phoneSeeds[i]
+            if (targetId !== "" && p.id === targetId && p.scheme)
+                return p.scheme
+        }
+        for (let i = 0; i < phoneSeeds.length; i++) {
+            if (phoneSeeds[i].scheme)
+                return phoneSeeds[i].scheme
+        }
+        return null
+    }
+    function phonePalette(deviceId) {
+        for (let i = 0; i < phoneSeeds.length; i++) {
+            const p = phoneSeeds[i]
+            if ((deviceId === "" || p.id === deviceId) && p.scheme)
+                return p.scheme[dark ? "dark" : "light"]
+        }
+        return null
+    }
+    // "wallpaper", "phone" / "phone:<id>", or a preset name; wallpaper and
+    // phone seeds fall back to the default preset until their colors are known.
+    readonly property string seed: isPhoneSeed
+        ? (activePhoneSeed ? Preferences.seed : (wallpaperSeed ? "wallpaper" : Tokens.data.themes.bloom.defaultSeed))
+        : Preferences.seed === "wallpaper"
+          ? (wallpaperSeed ? "wallpaper" : Tokens.data.themes.bloom.defaultSeed)
+          : (bloomSeeds[Preferences.seed] ? Preferences.seed : Tokens.data.themes.bloom.defaultSeed)
+    readonly property var seedColors: (seed === "phone" || seed.startsWith("phone:"))
+        ? activePhoneSeed
+        : (seed === "wallpaper" ? wallpaperSeed : bloomSeeds[seed])
     readonly property var palette: graphite
         ? Tokens.data.themes.graphite.variants[dark ? "slate" : "paper"]
         : seedColors[dark ? "dark" : "light"]

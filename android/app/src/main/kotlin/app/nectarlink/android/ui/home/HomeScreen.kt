@@ -13,6 +13,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -76,14 +78,29 @@ import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.update.AppUpdater
 import app.nectarlink.android.update.UpdateCard
+import android.app.DownloadManager
+import android.content.Intent
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.LaunchedEffect
+import androidx.core.content.FileProvider
+import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.core.AudioOutputDevice
 import app.nectarlink.core.ClipboardHistoryEntry
 import app.nectarlink.core.ClipboardItemKind
 import app.nectarlink.core.DeckState
 import app.nectarlink.core.Link
+import app.nectarlink.core.TimelineEntry
+import app.nectarlink.core.TimelineKind
+import app.nectarlink.core.TimelinePage
 import app.nectarlink.core.Transfer
 import app.nectarlink.core.TransferDirection
 import app.nectarlink.core.TransferStatus
+import java.io.File
+import java.text.DateFormat
+import java.util.Calendar
+import java.util.Date
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -120,10 +137,15 @@ fun HomeScreen(
     onDeleteClipboardHistory: (id: String) -> Unit = {},
     onClearClipboardHistory: () -> Unit = {},
     loadClipboardHistoryImage: suspend (id: String) -> ByteArray? = { null },
+    queryTimelinePage: suspend (kind: TimelineKind?, deviceId: String?, search: String?, offset: UInt) -> TimelinePage? = { _, _, _, _ -> null },
+    onDeleteTimelineEntry: (id: Long) -> Unit = {},
+    onClearTimeline: () -> Unit = {},
+    onResendTimelineEntry: (entry: TimelineEntry) -> Unit = {},
     onSetPcAudio: (pcId: String, volume: Int?, muted: Boolean?) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     var showClipboardHistory by remember { mutableStateOf(false) }
+    var showTimeline by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = modifier,
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
@@ -319,6 +341,15 @@ fun HomeScreen(
                 )
             }
         }
+        if (state.timeline.isNotEmpty()) {
+            item {
+                TimelineCard(
+                    entries = state.timeline,
+                    total = state.timelineTotal,
+                    onOpen = { showTimeline = true },
+                )
+            }
+        }
         if (state.transfers.isNotEmpty()) {
             item { TransfersCard(state, onCancelTransfer) }
         }
@@ -333,6 +364,19 @@ fun HomeScreen(
             onClearAll = onClearClipboardHistory,
             loadImage = loadClipboardHistoryImage,
             onDismiss = { showClipboardHistory = false },
+        )
+    }
+
+    if (showTimeline) {
+        TimelineDialog(
+            state = state,
+            queryPage = queryTimelinePage,
+            onCopyClip = onCopyClipboardHistory,
+            onResend = onResendTimelineEntry,
+            onDelete = onDeleteTimelineEntry,
+            onClearAll = onClearTimeline,
+            loadClipImage = loadClipboardHistoryImage,
+            onDismiss = { showTimeline = false },
         )
     }
 }
@@ -1131,3 +1175,413 @@ private fun linkText(link: Link): String = when (link) {
         }
     }
 }
+
+@Composable
+private fun TimelineCard(
+    entries: List<TimelineEntry>,
+    total: UInt,
+    onOpen: () -> Unit,
+) {
+    val latest = entries.firstOrNull() ?: return
+    val direction = if (latest.incoming) {
+        stringResource(R.string.clipboard_history_from, latest.deviceName)
+    } else {
+        stringResource(R.string.clipboard_history_sent_to, latest.deviceName)
+    }
+    Surface(
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    stringResource(R.string.timeline_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                if (total > 0u) {
+                    Text(
+                        total.toString(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "${latest.title} · $direction",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimelineDialog(
+    state: CoreState,
+    queryPage: suspend (TimelineKind?, String?, String?, UInt) -> TimelinePage?,
+    onCopyClip: (String) -> Unit,
+    onResend: (TimelineEntry) -> Unit,
+    onDelete: (Long) -> Unit,
+    onClearAll: () -> Unit,
+    loadClipImage: suspend (String) -> ByteArray?,
+    onDismiss: () -> Unit,
+) {
+    var search by remember { mutableStateOf("") }
+    var kindFilter by remember { mutableStateOf<TimelineKind?>(null) }
+    var deviceFilter by remember { mutableStateOf<String?>(null) }
+    var pagedEntries by remember { mutableStateOf<List<TimelineEntry>>(state.timeline) }
+    var hasMore by remember { mutableStateOf(state.timelineHasMore) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(state.timeline, search, kindFilter, deviceFilter) {
+        val trimmed = search.trim().takeIf { it.isNotEmpty() }
+        if (trimmed == null && kindFilter == null && deviceFilter == null) {
+            pagedEntries = state.timeline
+            hasMore = state.timelineHasMore
+        } else {
+            val page = queryPage(kindFilter, deviceFilter, trimmed, 0u)
+            pagedEntries = page?.items ?: emptyList()
+            hasMore = page?.hasMore ?: false
+        }
+    }
+
+    val kindChips = listOf<Pair<TimelineKind?, String>>(
+        null to stringResource(R.string.timeline_filter_all),
+        TimelineKind.FILE to stringResource(R.string.timeline_filter_files),
+        TimelineKind.CLIP to stringResource(R.string.timeline_filter_clips),
+        TimelineKind.LINK to stringResource(R.string.timeline_filter_links),
+        TimelineKind.PHOTO to stringResource(R.string.timeline_filter_photos),
+        TimelineKind.RECORDING to stringResource(R.string.timeline_filter_recordings),
+        TimelineKind.SESSION to stringResource(R.string.timeline_filter_sessions),
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(stringResource(R.string.timeline_title))
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.timeline_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    placeholder = { Text(stringResource(R.string.timeline_search)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    kindChips.forEach { (kind, label) ->
+                        FilterChip(
+                            selected = kindFilter == kind,
+                            onClick = { kindFilter = kind },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+                if (state.devices.size > 1) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        FilterChip(
+                            selected = deviceFilter == null,
+                            onClick = { deviceFilter = null },
+                            label = { Text(stringResource(R.string.timeline_filter_all)) },
+                        )
+                        state.devices.forEach { dev ->
+                            FilterChip(
+                                selected = deviceFilter == dev.id,
+                                onClick = { deviceFilter = dev.id },
+                                label = { Text(dev.name) },
+                            )
+                        }
+                    }
+                }
+                when {
+                    pagedEntries.isEmpty() && search.isBlank() && kindFilter == null && deviceFilter == null -> Text(
+                        stringResource(R.string.timeline_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    pagedEntries.isEmpty() -> Text(
+                        stringResource(R.string.timeline_no_match, search.trim().ifEmpty { "…" }),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    else -> {
+                        val todayLabel = stringResource(R.string.timeline_today)
+                        val yesterdayLabel = stringResource(R.string.timeline_yesterday)
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            pagedEntries.forEachIndexed { idx, entry ->
+                                val dayLabel = timelineDayLabel(entry.timestamp, todayLabel, yesterdayLabel)
+                                val prevDayLabel = if (idx > 0) {
+                                    timelineDayLabel(pagedEntries[idx - 1].timestamp, todayLabel, yesterdayLabel)
+                                } else {
+                                    null
+                                }
+                                if (dayLabel != prevDayLabel) {
+                                    item(key = "day_${entry.id}") {
+                                        Text(
+                                            dayLabel,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(top = if (idx > 0) 6.dp else 0.dp),
+                                        )
+                                    }
+                                }
+                                item(key = entry.id) {
+                                    TimelineRow(
+                                        entry = entry,
+                                        deviceOnline = state.device(entry.deviceId)?.online == true,
+                                        onCopyClip = onCopyClip,
+                                        onResend = { onResend(entry) },
+                                        onDelete = { onDelete(entry.id) },
+                                        loadClipImage = loadClipImage,
+                                    )
+                                }
+                            }
+                            if (hasMore) {
+                                item(key = "load_more") {
+                                    OutlinedButton(
+                                        onClick = {
+                                            scope.launch {
+                                                val trimmed = search.trim().takeIf { it.isNotEmpty() }
+                                                val next = queryPage(kindFilter, deviceFilter, trimmed, pagedEntries.size.toUInt())
+                                                if (next != null) {
+                                                    pagedEntries = pagedEntries + next.items
+                                                    hasMore = next.hasMore
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text(stringResource(R.string.timeline_action_load_more))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            if (state.timeline.isNotEmpty()) {
+                TextButton(onClick = onClearAll) {
+                    Text(stringResource(R.string.timeline_action_clear_all))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.clipboard_history_done))
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TimelineRow(
+    entry: TimelineEntry,
+    deviceOnline: Boolean,
+    onCopyClip: (String) -> Unit,
+    onResend: () -> Unit,
+    onDelete: () -> Unit,
+    loadClipImage: suspend (String) -> ByteArray?,
+) {
+    val context = LocalContext.current
+    val direction = if (entry.incoming) {
+        stringResource(R.string.clipboard_history_from, entry.deviceName)
+    } else {
+        stringResource(R.string.clipboard_history_sent_to, entry.deviceName)
+    }
+    val now = System.currentTimeMillis()
+    val whenText = if (now - entry.timestamp * 1000L < DateUtils.MINUTE_IN_MILLIS) {
+        stringResource(R.string.clipboard_history_just_now)
+    } else {
+        DateUtils.getRelativeTimeSpanString(entry.timestamp * 1000L, now, DateUtils.MINUTE_IN_MILLIS).toString()
+    }
+    val meta = buildString {
+        append(direction)
+        append(" · ")
+        append(whenText)
+        if (entry.sizeBytes > 0uL) {
+            append(" · ")
+            append(Formatter.formatShortFileSize(context, entry.sizeBytes.toLong()))
+        }
+        if (entry.durationSecs > 0uL) {
+            append(" · ")
+            append(DateUtils.formatElapsedTime(entry.durationSecs.toLong()))
+        }
+        if (entry.detail.isNotEmpty()) {
+            append(" · ")
+            append(entry.detail)
+        }
+    }
+
+    val targetExists = remember(entry.target, entry.kind) {
+        when (entry.kind) {
+            TimelineKind.LINK -> true
+            TimelineKind.FILE, TimelineKind.PHOTO, TimelineKind.RECORDING ->
+                entry.target.startsWith("content://") || (entry.target.isNotEmpty() && File(entry.target).exists())
+            else -> false
+        }
+    }
+    val canOpen = when (entry.kind) {
+        TimelineKind.LINK -> true
+        TimelineKind.FILE, TimelineKind.PHOTO, TimelineKind.RECORDING -> targetExists
+        else -> false
+    }
+    val canShowFolder = when (entry.kind) {
+        TimelineKind.FILE, TimelineKind.PHOTO, TimelineKind.RECORDING -> entry.incoming || targetExists
+        else -> false
+    }
+    val canCopy = when (entry.kind) {
+        TimelineKind.CLIP -> entry.clipAvailable && entry.refId != null
+        TimelineKind.LINK -> true
+        else -> false
+    }
+    val canSendAgain = deviceOnline && when (entry.kind) {
+        TimelineKind.CLIP -> entry.clipAvailable && entry.refId != null
+        TimelineKind.LINK -> true
+        TimelineKind.FILE, TimelineKind.PHOTO, TimelineKind.RECORDING -> targetExists
+        TimelineKind.SESSION -> false
+    }
+
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                meta,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                entry.title,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (entry.kind == TimelineKind.CLIP && entry.clipAvailable && entry.refId != null && entry.imageDataUrl != null) {
+                val clipId = entry.refId!!
+                val bitmap by produceState<ImageBitmap?>(initialValue = null, clipId) {
+                    val bytes = loadClipImage(clipId) ?: return@produceState
+                    value = withContext(Dispatchers.Default) { previewBitmap(bytes)?.asImageBitmap() }
+                }
+                bitmap?.let { img ->
+                    Image(
+                        bitmap = img,
+                        contentDescription = stringResource(R.string.clipboard_history_image),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 100.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                if (canOpen) {
+                    FilledTonalButton(onClick = { openTimelineTarget(context, entry) }) {
+                        Text(stringResource(R.string.timeline_action_open))
+                    }
+                }
+                if (canShowFolder) {
+                    TextButton(onClick = {
+                        runCatching {
+                            context.startActivity(
+                                Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    }) {
+                        Text(stringResource(R.string.timeline_action_folder))
+                    }
+                }
+                if (canCopy) {
+                    FilledTonalButton(onClick = {
+                        when (entry.kind) {
+                            TimelineKind.CLIP -> entry.refId?.let(onCopyClip)
+                            TimelineKind.LINK -> PhoneClipboard.write(context, entry.target.ifEmpty { entry.title })
+                            else -> Unit
+                        }
+                    }) {
+                        Text(stringResource(R.string.timeline_action_copy))
+                    }
+                }
+                if (canSendAgain) {
+                    TextButton(onClick = onResend) {
+                        Text(stringResource(R.string.timeline_action_send_again))
+                    }
+                }
+                TextButton(onClick = onDelete) {
+                    Text(stringResource(R.string.timeline_action_remove))
+                }
+            }
+        }
+    }
+}
+
+private fun openTimelineTarget(context: android.content.Context, entry: TimelineEntry) {
+    runCatching {
+        when (entry.kind) {
+            TimelineKind.LINK -> {
+                val url = entry.target.ifEmpty { entry.title }
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+            TimelineKind.FILE, TimelineKind.PHOTO, TimelineKind.RECORDING -> {
+                val target = entry.target
+                val uri = when {
+                    target.startsWith("content://") -> Uri.parse(target)
+                    target.isNotEmpty() && File(target).exists() ->
+                        FileProvider.getUriForFile(context, "${context.packageName}.files", File(target))
+                    else -> return
+                }
+                val view = Intent(Intent.ACTION_VIEW)
+                    .setData(uri)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(Intent.createChooser(view, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+            else -> Unit
+        }
+    }
+}
+
+internal fun timelineDayLabel(timestampSecs: Long, todayLabel: String, yesterdayLabel: String): String {
+    val nowCal = Calendar.getInstance()
+    val itemCal = Calendar.getInstance().apply { timeInMillis = timestampSecs * 1000L }
+    val sameYear = nowCal.get(Calendar.YEAR) == itemCal.get(Calendar.YEAR)
+    val dayDiff = if (sameYear) nowCal.get(Calendar.DAY_OF_YEAR) - itemCal.get(Calendar.DAY_OF_YEAR) else -1
+    return when {
+        sameYear && dayDiff == 0 -> todayLabel
+        sameYear && dayDiff == 1 -> yesterdayLabel
+        else -> DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(timestampSecs * 1000L))
+    }
+}
+

@@ -59,6 +59,8 @@ pub mod qobject {
         /// Bloom colors from the desktop wallpaper, as JSON in the shape of
         /// a tokens.json seed (`{ seed, light, dark }`); "" until known.
         #[qproperty(QString, wallpaper_colors)]
+        /// Material You color schemes for paired phones (`[{ id, key, name, label, hasAccent, scheme }]`).
+        #[qproperty(QString, phone_colors)]
         /// Whether Windows shows this app's notifications.
         #[qproperty(bool, toasts_enabled)]
         #[qproperty(QString, version)]
@@ -98,6 +100,8 @@ pub mod qobject {
         /// Encrypted local clipboard history as JSON:
         /// `[{ id, kind, text, imageDataUrl, deviceName, incoming, timestamp, pinned }]`.
         #[qproperty(QString, clipboard_history)]
+        /// Latest 4 timeline entries for the Home page card, as JSON.
+        #[qproperty(QString, timeline_preview)]
         /// Bumped whenever the Home card's summary (unread messages, missed calls,
         /// latest photo) changes for the watched phone.
         #[qproperty(i32, home_summary_revision)]
@@ -237,6 +241,7 @@ pub struct AppControllerRust {
     system_dark: bool,
     reduce_motion: bool,
     wallpaper_colors: QString,
+    phone_colors: QString,
     toasts_enabled: bool,
     version: QString,
     doctor_checks: QString,
@@ -256,6 +261,7 @@ pub struct AppControllerRust {
     current_device: i32,
     pending_dial: QString,
     clipboard_history: QString,
+    timeline_preview: QString,
     home_summary_revision: i32,
     tray: Option<tray::Tray>,
 }
@@ -400,6 +406,9 @@ impl cxx_qt::Initialize for qobject::AppController {
         self.as_mut().set_current_page(QString::from("home"));
         self.as_mut().set_can_update(crate::updater::can_update());
         self.as_mut().set_clipboard_history(QString::from(&crate::clipboard::history_json()));
+        self.as_mut().set_timeline_preview(QString::from(&super::timeline::preview_json()));
+        let initial_phone_colors = core_host::host().hub.read(|s| phone_colors_json(&s.devices));
+        self.as_mut().set_phone_colors(QString::from(&initial_phone_colors));
         self.as_mut().refresh_appearance();
         let qt = self.qt_thread();
         *CONTROLLER.get_or_init(Mutex::default).lock().unwrap_or_else(|e| e.into_inner()) = Some(qt.clone());
@@ -417,9 +426,15 @@ impl cxx_qt::Initialize for qobject::AppController {
             let version = crate::updater::available().map(|u| u.version).unwrap_or_default();
             object.set_update_version(QString::from(&version));
         });
-        super::subscribe(qt.clone(), Changes::CLIPBOARD, |object| {
+        super::subscribe(qt.clone(), Changes::CLIPBOARD, |mut object| {
             let json = crate::clipboard::history_json();
-            object.set_clipboard_history(QString::from(&json));
+            object.as_mut().set_clipboard_history(QString::from(&json));
+            let preview = super::timeline::preview_json();
+            object.set_timeline_preview(QString::from(&preview));
+        });
+        super::subscribe(qt.clone(), Changes::TIMELINE | Changes::DEVICES | Changes::STATUS, |object| {
+            let preview = super::timeline::preview_json();
+            object.set_timeline_preview(QString::from(&preview));
         });
 
         let labels = tray::MenuLabels {
@@ -492,6 +507,48 @@ fn refresh_wallpaper_colors(qt: CxxQtThread<qobject::AppController>) {
     }
 }
 
+fn phone_colors_json(devices: &[crate::state::DeviceView]) -> String {
+    if devices.is_empty() {
+        return serde_json::json!([{
+            "id": "",
+            "key": "phone",
+            "name": "",
+            "label": "My phone's colors",
+            "hasAccent": false,
+            "scheme": serde_json::Value::Null,
+        }])
+        .to_string();
+    }
+    let multiple = devices.len() > 1;
+    let entries: Vec<serde_json::Value> = devices
+        .iter()
+        .map(|d| {
+            let scheme = d.info.accent.map(|argb| {
+                let r = ((argb >> 16) & 0xFF) as u8;
+                let g = ((argb >> 8) & 0xFF) as u8;
+                let b = (argb & 0xFF) as u8;
+                crate::palette::scheme_json(material_colors::color::Rgb::new(r, g, b))
+            });
+            let id_str = d.id.to_string();
+            let key = if multiple { format!("phone:{id_str}") } else { "phone".to_owned() };
+            let label = if multiple {
+                format!("My phone's colors ({})", d.info.name)
+            } else {
+                "My phone's colors".to_owned()
+            };
+            serde_json::json!({
+                "id": id_str,
+                "key": key,
+                "name": d.info.name,
+                "label": label,
+                "hasAccent": scheme.is_some(),
+                "scheme": scheme,
+            })
+        })
+        .collect();
+    serde_json::Value::Array(entries).to_string()
+}
+
 fn ring_device(device: DeviceId, on: bool) {
     let Some(node) = core_host::node() else { return };
     core_host::spawn(async move {
@@ -507,6 +564,7 @@ impl qobject::AppController {
         let (
             status,
             devices,
+            phone_colors,
             ringing,
             online,
             caps_version,
@@ -536,9 +594,11 @@ impl qobject::AppController {
             let wake_adapter = s.wake.primary().map(|a| a.label.clone()).unwrap_or_default();
             let wake_state = s.wake.state_str();
             let wake_wired = s.wake.primary().is_some_and(|a| a.wired);
+            let phone_colors = phone_colors_json(&s.devices);
             (
                 s.core_status(),
                 s.devices.len(),
+                phone_colors,
                 ringing,
                 connected.len(),
                 s.matrices_version,
@@ -563,6 +623,7 @@ impl qobject::AppController {
         self.as_mut().set_status(QString::from(status_text));
         self.as_mut().set_error(QString::from(&error));
         self.as_mut().set_has_devices(devices > 0);
+        self.as_mut().set_phone_colors(QString::from(&phone_colors));
         self.as_mut().set_ringing_from(QString::from(&ringing));
         let (prompt_id, prompt_name) = remote_prompt.unwrap_or_default();
         self.as_mut().set_remote_prompt_device_id(QString::from(&prompt_id));
