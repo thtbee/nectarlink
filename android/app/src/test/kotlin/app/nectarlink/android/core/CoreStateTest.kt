@@ -89,4 +89,30 @@ class CoreStateTest {
         assertEquals(state, state.reduce(Event.NotificationRemoved("a", "k")))
         assertEquals(state, state.reduce(Event.NotificationsReset("a", listOf(note))))
         assertTrue("access is off until the listener connects", !state.notificationAccess)
-    }}
+    }
+
+    @Test
+    fun deckStateCarriesPcVolumeMuteAndOutputDevices() {
+        val outputs = listOf(
+            app.nectarlink.core.AudioOutputDevice("out-1", "Speakers (Realtek Audio)", true),
+            app.nectarlink.core.AudioOutputDevice("out-2", "Headphones", false),
+        )
+        val deckState = app.nectarlink.core.DeckState(
+            playing = true,
+            volume = 72u,
+            muted = false,
+            micMuted = true,
+            outputDevices = outputs,
+        )
+        val state = CoreState()
+            .reduce(Event.DeviceAdded(pc("a", "Desk", 10)))
+            .reduce(Event.DeckState("a", deckState))
+        val dev = state.device("a")!!
+        val ds = dev.deckState!!
+        assertEquals(72.toUByte(), ds.volume)
+        assertEquals(false, ds.muted)
+        assertEquals(2, ds.outputDevices.size)
+        assertEquals("Speakers (Realtek Audio)", ds.outputDevices.first { it.isDefault }.name)
+    }
+}
+

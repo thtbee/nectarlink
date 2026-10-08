@@ -844,6 +844,12 @@ pub const FEATURES: &[FeatureDef] = &[
         requires: &[desktop("media.control", UPDATE), phone("media.remote", UPDATE), DeviceToggle("media")],
         partial: None,
     },
+    FeatureDef {
+        id: "media.pc_audio",
+        group: FeatureGroup::Media,
+        requires: &[desktop("pc.audio", UPDATE), DeviceToggle("pc_actions")],
+        partial: None,
+    },
     // Camera
     FeatureDef {
         id: "camera.webcam",
@@ -927,6 +933,7 @@ mod tests {
     ];
     const PC: &[&str] = &[
         "pc.power",
+        "pc.audio",
         "files.transfer",
         "files.browse",
         "recorder",

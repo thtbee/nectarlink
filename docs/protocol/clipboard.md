@@ -73,4 +73,13 @@ PNG arrived; Android as a content URI from the app's own provider.
   Android: clips marked `ClipDescription.EXTRA_IS_SENSITIVE`.
 - **No echoes.** A device does not send text it just received with
   `clip.set`.
-- Implementations **MUST NOT** log clipboard content (v0 §11).
+- **Smart clipboard context chips (local only).** When a text clip arrives via
+  `clip.set` and is not a one-time code (`otp::is_otp_clip`), `nectarlink-core`
+  classifies it locally (`clip_kind::classify_clip`) into at most one suggestion
+  (`WebLink` → `"Open"`, `StreetAddress` → `"Open in Maps"`, `PhoneNumber` →
+  `"Call"`, `TrackingNumber` → `"Track"`, `Email` → `"Email"`). Both apps offer
+  that single chip on the received-clip confirmation when `"Suggest actions for
+  copied text"` is enabled (on by default).
+- Implementations **MUST NOT** log clipboard content (v0 §11); only the
+  classified `ClipKind` may be logged.
+

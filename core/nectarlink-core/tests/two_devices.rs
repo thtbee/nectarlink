@@ -45,6 +45,7 @@ struct RecordingPlatform {
     remote_inputs: Mutex<Vec<nectarlink_core::RemoteInput>>,
     phone_toggles: Mutex<Vec<(String, nectarlink_core::PhoneToggleValue)>>,
     deck_presses: Mutex<Vec<String>>,
+    pc_audio_changes: Mutex<Vec<(Option<u8>, Option<bool>)>>,
     storage: Mutex<Option<nectarlink_core::FolderStorage>>,
 }
 
@@ -422,6 +423,15 @@ impl Platform for RecordingPlatform {
     }
     fn deck_press(&self, _from: &nectarlink_core::DeviceId, tile: &str) -> Result<(), String> {
         self.deck_presses.lock().unwrap().push(tile.to_owned());
+        Ok(())
+    }
+    fn set_pc_audio(
+        &self,
+        _from: &nectarlink_core::DeviceId,
+        volume: Option<u8>,
+        muted: Option<bool>,
+    ) -> Result<(), String> {
+        self.pc_audio_changes.lock().unwrap().push((volume, muted));
         Ok(())
     }
     fn storage_list(
@@ -2734,7 +2744,13 @@ async fn deck_layout_and_state_arrive_press_runs_action_and_respects_toggles_and
     });
     let expected_layout = cfg.to_wire_layout();
     pc.node.set_deck_layout(expected_layout.clone()).await.unwrap();
-    let initial_state = DeckState { playing: true, volume: 60, muted: false, mic_muted: Some(false) };
+    let initial_state = DeckState {
+        playing: true,
+        volume: 60,
+        muted: false,
+        mic_muted: Some(false),
+        output_devices: Vec::new(),
+    };
     pc.node.set_deck_state(initial_state.clone()).await.unwrap();
 
     pair_qr(&mut pc, &mut phone).await;
@@ -2782,7 +2798,7 @@ async fn deck_layout_and_state_arrive_press_runs_action_and_respects_toggles_and
     assert!(matches!(phone.node.deck_press(pc_id, "bad tile!".into()).await, Err(Error::Protocol(_))));
     assert!(matches!(phone.node.deck_press(pc_id, "run_build".into()).await, Err(Error::Denied)));
 
-    // Enable `commands`: the `run_command` tile now runs.
+    // Enable `commands`: the `run_build` tile now runs.
     pc.node.set_device_toggle(phone_id, "commands", true).unwrap();
     with_timeout("press run_build", phone.node.deck_press(pc_id, "run_build".into())).await.unwrap();
 
@@ -2792,7 +2808,13 @@ async fn deck_layout_and_state_arrive_press_runs_action_and_respects_toggles_and
     );
 
     // Live state updates push to the phone.
-    let updated_state = DeckState { playing: false, volume: 45, muted: true, mic_muted: Some(true) };
+    let updated_state = DeckState {
+        playing: false,
+        volume: 45,
+        muted: true,
+        mic_muted: Some(true),
+        output_devices: Vec::new(),
+    };
     pc.node.set_deck_state(updated_state.clone()).await.unwrap();
     let got_updated = wait_for(&mut phone, "updated deck state", |e| match e {
         NodeEvent::DeckState { device, state } if *device == pc_id && *state == updated_state => {
@@ -3073,4 +3095,119 @@ async fn the_phone_camera_streams_to_the_pc_as_a_webcam() {
     phone.node.set_device_toggle(pc_id, "webcam", false).unwrap();
     let refused = pc.node.webcam_start(phone_id, options).await;
     assert!(matches!(refused, Err(Error::Denied)), "{refused:?}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn pc_audio_volume_mute_output_devices_and_smart_clipboard_context_chips_flow_end_to_end() {
+    use nectarlink_core::{AudioOutputDevice, ClipKind, DECK_ACTIONS, DeckState, PC_AUDIO};
+
+    let mut pc =
+        device_with("Desktop", DeviceKind::Desktop, &[DECK_ACTIONS, PC_AUDIO, "clipboard.sync"]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &["clipboard.sync"]).await;
+
+    let initial_state = DeckState {
+        playing: false,
+        volume: 75,
+        muted: false,
+        mic_muted: Some(false),
+        output_devices: vec![
+            AudioOutputDevice {
+                id: "{0.0.0.00000000}.{speakers-id}".into(),
+                name: "Speakers (Realtek Audio)".into(),
+                is_default: true,
+            },
+            AudioOutputDevice {
+                id: "{0.0.0.00000000}.{headphones-id}".into(),
+                name: "Headphones (USB DAC)".into(),
+                is_default: false,
+            },
+        ],
+    };
+    pc.node.set_deck_state(initial_state.clone()).await.unwrap();
+
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Initial DeckState with active output devices arrives on connect.
+    let got_state = wait_for(&mut phone, "initial deck state with output devices", |e| match e {
+        NodeEvent::DeckState { device, state } if *device == pc_id && *state == initial_state => {
+            Some(state.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(got_state.default_output_name(), Some("Speakers (Realtek Audio)"));
+    assert_eq!(got_state.output_devices.len(), 2);
+
+    // Phone sets PC volume and mute (`pc_actions` is ON by default).
+    with_timeout("set pc volume 40", phone.node.set_pc_audio(pc_id, Some(40), None)).await.unwrap();
+    let after_vol = wait_for(&mut phone, "deck state volume 40", |e| match e {
+        NodeEvent::DeckState { device, state } if *device == pc_id && state.volume == 40 => {
+            Some(state.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(after_vol.volume, 40);
+    assert!(!after_vol.muted);
+
+    with_timeout("set pc mute true", phone.node.set_pc_audio(pc_id, None, Some(true))).await.unwrap();
+    let after_mute = wait_for(&mut phone, "deck state muted true", |e| match e {
+        NodeEvent::DeckState { device, state } if *device == pc_id && state.muted => Some(state.clone()),
+        _ => None,
+    })
+    .await;
+    assert!(after_mute.muted);
+    assert_eq!(*pc.platform.pc_audio_changes.lock().unwrap(), vec![(Some(40), None), (None, Some(true))]);
+
+    // Out-of-range volume or empty request is rejected as a protocol error.
+    assert!(matches!(phone.node.set_pc_audio(pc_id, Some(101), None).await, Err(Error::Protocol(_))));
+    assert!(matches!(phone.node.set_pc_audio(pc_id, None, None).await, Err(Error::Protocol(_))));
+
+    // When both `pc_actions` and `remote_input` are off, `set_pc_audio` is denied.
+    pc.node.set_device_toggle(phone_id, "pc_actions", false).unwrap();
+    assert!(matches!(phone.node.set_pc_audio(pc_id, Some(50), None).await, Err(Error::Denied)));
+
+    // Turning `pc_actions` back on re-enables `set_pc_audio`.
+    pc.node.set_device_toggle(phone_id, "pc_actions", true).unwrap();
+    with_timeout("set pc audio unmute + 65", phone.node.set_pc_audio(pc_id, Some(65), Some(false)))
+        .await
+        .unwrap();
+
+    // Smart clipboard context chips: phone sends different text clips to PC,
+    // and PC classifies each into at most 1 context chip (and None for OTP).
+    let cases = [
+        ("https://nectarlink.app/docs?ref=clip", Some((ClipKind::WebLink, "Open"))),
+        (
+            "1600 Amphitheatre Parkway, Mountain View, CA 94043",
+            Some((ClipKind::StreetAddress, "Open in Maps")),
+        ),
+        ("+1 (415) 555-0199", Some((ClipKind::PhoneNumber, "Call"))),
+        ("1Z999AA10123456784", Some((ClipKind::TrackingNumber, "Track"))),
+        ("hello@nectarlink.app", Some((ClipKind::Email, "Email"))),
+        ("Your verification code is 482910", None),
+        ("Just a regular sentence with no special action.", None),
+    ];
+
+    for (text, expected) in cases {
+        with_timeout("send clipboard", phone.node.send_clipboard(pc_id, text.into())).await.unwrap();
+        wait_for(&mut pc, "clipboard received", |e| match e {
+            NodeEvent::ClipboardReceived { device } if *device == phone_id => Some(()),
+            _ => None,
+        })
+        .await;
+        let suggestion = pc.node.last_clip_suggestion();
+        match expected {
+            Some((kind, label)) => {
+                let (from, s) = suggestion.unwrap_or_else(|| panic!("expected chip for {text:?}"));
+                assert_eq!(from, phone_id);
+                assert_eq!(s.kind, kind, "wrong kind for {text:?}");
+                assert_eq!(s.action_label(), label, "wrong label for {text:?}");
+                assert!(!format!("{s:?}").contains(&s.target), "Debug must not leak target");
+            }
+            None => {
+                assert!(suggestion.is_none(), "expected no chip for {text:?}, got {suggestion:?}");
+            }
+        }
+    }
 }

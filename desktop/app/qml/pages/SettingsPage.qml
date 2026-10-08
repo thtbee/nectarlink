@@ -275,6 +275,18 @@ Item {
                     Divider { width: parent.width }
                     ListRow {
                         width: parent.width
+                        iconPath: Icons.sparkle
+                        title: qsTr("Suggest actions for copied text")
+                        description: qsTr("Offer to open links, look up addresses in Maps, call numbers, track parcels, or compose emails when text arrives from your phone.")
+                        Toggle {
+                            label: qsTr("Suggest actions for copied text")
+                            checked: Preferences.suggestClipboardActions
+                            onToggled: (on) => Preferences.suggestClipboardActions = on
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
                         iconPath: Icons.history
                         title: qsTr("Keep clipboard history")
                         description: qsTr("Keep the last 50 text and image clips shared between your devices, encrypted on this PC. Passwords and one-time codes are never saved.")

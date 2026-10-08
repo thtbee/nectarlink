@@ -412,7 +412,8 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if t.starts_with("webcam.") && crate::webcam::handle(shared, session, &env).await? => {}
         t if t.starts_with("remote.") && crate::remote::handle(shared, session, &env).await? => {}
         t if t.starts_with("phone.toggle") && crate::toggles::handle(shared, session, &env).await? => {}
-        t if t.starts_with("deck.") && crate::deck::handle(shared, session, &env).await? => {}
+        t if (t.starts_with("deck.") || t == types::PC_AUDIO_SET)
+            && crate::deck::handle(shared, session, &env).await? => {}
         t if t.starts_with("storage.") && crate::storage::handle(shared, session, &env).await? => {}
         other => {
             if env.id.is_some() {

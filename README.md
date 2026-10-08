@@ -90,7 +90,11 @@ tests; there are no releases yet.
 - **Clipboard**: text and images you copy on the PC are ready to paste on the
   phone. From the phone, send them with the Quick Settings tile, the share
   sheet or a button in the app (Android lets only the app in front read the
-  clipboard). Both apps keep an optional encrypted **Clipboard history** of the
+  clipboard). When a web link, street address, phone number, parcel tracking
+  number or email address arrives from a paired device, Nectarlink offers a
+  fitting context chip (**Open**, **Open in Maps**, **Call**, **Track**, or
+  **Email**) right on the confirmation (can be turned off in Settings). Both
+  apps keep an optional encrypted **Clipboard history** of the
   last 50 text and image clips shared between your devices (with search, copy
   again, pin, delete and clear all). Passwords that password managers mark
   private and one-time codes are never sent or saved in history.
@@ -164,9 +168,11 @@ tests; there are no releases yet.
   accent-colored dot on the PC screen following the phone's gyroscope or
   finger. Off by default on the PC, with a one-time prompt the first time a
   phone asks and a per-phone toggle in Settings.
-- **Deck (macro pad)**: turn the phone into a Stream-Deck-style button grid for
-  the PC, with multiple swipable pages, full-screen portrait and landscape
-  layouts, haptic feedback, and live tiles that show whether PC media is playing,
+- **Deck (macro pad) and PC audio**: turn the phone into a Stream-Deck-style
+  button grid for the PC, with multiple swipable pages, full-screen portrait
+  and landscape layouts, haptic feedback, a live PC master volume slider, mute
+  button and active audio output device indicator (both on the PC card on Home
+  and in the Deck header), and live tiles that show whether PC media is playing,
   the speaker volume level, and whether the microphone is muted. Tiles are
   configured on the PC (in Nectarlink's **Deck** page, with drag-and-drop
   reordering, icons and colors): media controls, speaker volume and mute,

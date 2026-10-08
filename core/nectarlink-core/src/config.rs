@@ -294,6 +294,18 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device has no deck actions".into())
     }
 
+    /// Change this PC's master speaker volume (`0..=100`) and/or mute state
+    /// (`pc.audio.set`, `docs/protocol/deck.md` §2.5). `volume` and `muted`
+    /// have been validated and the per-device permission checked.
+    fn set_pc_audio(
+        &self,
+        _from: &nectarlink_protocol::DeviceId,
+        _volume: Option<u8>,
+        _muted: Option<bool>,
+    ) -> Result<(), String> {
+        Err("this device has no PC audio controls".into())
+    }
+
     /// List immediate children of `path` (`""` for the shared storage root) on
     /// this phone (`storage.list`, `docs/protocol/storage.md`).
     fn storage_list(&self, _path: &str) -> Result<Vec<crate::StorageEntry>, crate::StorageError> {

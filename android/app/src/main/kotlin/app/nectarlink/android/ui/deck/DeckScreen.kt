@@ -10,6 +10,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -31,11 +32,13 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -80,10 +83,12 @@ import androidx.core.view.WindowInsetsControllerCompat
 import app.nectarlink.android.R
 import app.nectarlink.android.core.Core
 import app.nectarlink.android.core.Device
+import app.nectarlink.android.ui.home.PcAudioOutputsDialog
 import app.nectarlink.core.DeckLayout
 import app.nectarlink.core.DeckPage
 import app.nectarlink.core.DeckState
 import app.nectarlink.core.DeckTile
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -152,6 +157,7 @@ fun DeckScreen(
         volume = 50u,
         muted = false,
         micMuted = false,
+        outputDevices = emptyList(),
     )
     val pages = layout.pages.ifEmpty { fallbackDefaultLayout().pages }
     val pagerState = rememberPagerState(pageCount = { pages.size })
@@ -211,6 +217,15 @@ fun DeckScreen(
                     style = MaterialTheme.typography.labelMedium,
                 )
             }
+        }
+
+        // Compact PC audio header bar (volume, mute, and active output device)
+        if (!fullScreen && device.online) {
+            DeckAudioHeaderBar(
+                pcName = device.name,
+                liveState = liveState,
+                onSetPcAudio = { vol, muted -> core.setPcAudio(device.id, vol, muted) },
+            )
         }
 
         // Status / permission banners
@@ -330,6 +345,99 @@ fun DeckScreen(
 private object MaterialResource {
     @Composable
     fun onSurfaceVariant(): Color = MaterialTheme.colorScheme.onSurfaceVariant
+}
+
+@Composable
+private fun DeckAudioHeaderBar(
+    pcName: String,
+    liveState: DeckState,
+    onSetPcAudio: (volume: Int?, muted: Boolean?) -> Unit,
+) {
+    var draggingVolume by remember { mutableStateOf<Float?>(null) }
+    var showOutputs by remember { mutableStateOf(false) }
+    val shownVolume = draggingVolume?.roundToInt() ?: liveState.volume.toInt()
+    val defaultOutput = liveState.outputDevices.firstOrNull { it.isDefault } ?: liveState.outputDevices.firstOrNull()
+
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilledTonalButton(
+                    onClick = { onSetPcAudio(null, !liveState.muted) },
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        stringResource(if (liveState.muted) R.string.pc_audio_unmute else R.string.pc_audio_mute),
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                    )
+                }
+                Slider(
+                    value = (draggingVolume ?: liveState.volume.toFloat()).coerceIn(0f, 100f),
+                    onValueChange = { v ->
+                        draggingVolume = v
+                        onSetPcAudio(v.roundToInt(), null)
+                    },
+                    onValueChangeFinished = { draggingVolume = null },
+                    valueRange = 0f..100f,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = if (liveState.muted) {
+                        stringResource(R.string.pc_audio_muted)
+                    } else {
+                        stringResource(R.string.deck_volume_percent, shownVolume)
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+            if (defaultOutput != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showOutputs = true }
+                        .padding(horizontal = 4.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = stringResource(R.string.pc_audio_output, defaultOutput.name),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (liveState.outputDevices.size > 1) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "${liveState.outputDevices.size}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showOutputs && liveState.outputDevices.isNotEmpty()) {
+        PcAudioOutputsDialog(
+            pcName = pcName,
+            devices = liveState.outputDevices,
+            onDismiss = { showOutputs = false },
+        )
+    }
 }
 
 @Composable

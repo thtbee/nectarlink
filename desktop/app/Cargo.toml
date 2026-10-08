@@ -34,6 +34,8 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 [target.'cfg(windows)'.dependencies]
+# For the COM callbacks that `windows::core::implement` generates.
+windows-core.workspace = true
 windows = { workspace = true, features = [
     "Data_Xml_Dom",
     "Foundation",
@@ -69,6 +71,7 @@ windows = { workspace = true, features = [
     "Win32_System_WinRT",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_Shell",
+    "Win32_UI_Shell_PropertiesSystem",
     "Win32_UI_WindowsAndMessaging",
     "Win32_NetworkManagement_IpHelper",
     "Win32_NetworkManagement_WindowsFirewall",

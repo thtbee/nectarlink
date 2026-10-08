@@ -92,6 +92,9 @@ pub mod qobject {
         /// unloads so the window can be destroyed in the background.
         #[qproperty(QString, current_page)]
         #[qproperty(i32, current_device)]
+        /// Phone number to pre-fill in the Calls page dialer when opened from a
+        /// clipboard context chip ("" when none).
+        #[qproperty(QString, pending_dial)]
         /// Encrypted local clipboard history as JSON:
         /// `[{ id, kind, text, imageDataUrl, deviceName, incoming, timestamp, pinned }]`.
         #[qproperty(QString, clipboard_history)]
@@ -151,6 +154,9 @@ pub mod qobject {
         /// Clears all items from local clipboard history.
         #[qinvokable]
         fn clear_clipboard_history(self: &AppController);
+        /// Runs the suggested action for the most recently received clipboard item.
+        #[qinvokable]
+        fn run_clip_suggestion(self: &AppController);
 
         /// Re-reads whether Windows shows this app's notifications (the user
         /// may have changed it in Settings).
@@ -190,6 +196,9 @@ pub mod qobject {
         /// A short message for the user (e.g. a command failed).
         #[qsignal]
         fn toast(self: Pin<&mut AppController>, message: QString);
+        /// A short message with a context action chip (e.g. a received clip).
+        #[qsignal]
+        fn toast_with_action(self: Pin<&mut AppController>, message: QString, action_label: QString);
         /// Show the main window (tray click, second launch).
         #[qsignal]
         fn activate_requested(self: Pin<&mut AppController>);
@@ -236,6 +245,7 @@ pub struct AppControllerRust {
     wake_wired: bool,
     current_page: QString,
     current_device: i32,
+    pending_dial: QString,
     clipboard_history: QString,
     tray: Option<tray::Tray>,
 }
@@ -323,6 +333,42 @@ pub(crate) fn show_message(message: impl Into<String>) {
     let message = message.into();
     if let Some(qt) = controller() {
         let _ = qt.queue(move |object| object.toast(QString::from(&message)));
+    }
+}
+
+/// Shows a short message with a context action chip in the app (from any thread).
+pub(crate) fn show_message_with_action(message: impl Into<String>, action_label: impl Into<String>) {
+    let message = message.into();
+    let action_label = action_label.into();
+    if let Some(qt) = controller() {
+        let _ = qt.queue(move |object| {
+            object.toast_with_action(QString::from(&message), QString::from(&action_label));
+        });
+    }
+}
+
+/// Opens the Calls page dialer with `number` filled in (without placing the call).
+pub(crate) fn open_dialer(device: DeviceId, number: &str) {
+    let number = number.trim().to_owned();
+    if number.is_empty() {
+        return;
+    }
+    let idx = core_host::host().hub.read(|s| {
+        s.devices
+            .iter()
+            .position(|d| d.id == device && matches!(d.link, LinkState::Online { .. }))
+            .or_else(|| s.devices.iter().position(|d| matches!(d.link, LinkState::Online { .. })))
+            .or_else(|| s.devices.iter().position(|d| d.id == device))
+    });
+    if let Some(qt) = controller() {
+        let _ = qt.queue(move |mut object| {
+            if let Some(idx) = idx {
+                object.as_mut().set_current_device(idx as i32);
+            }
+            object.as_mut().set_pending_dial(QString::from(&number));
+            object.as_mut().set_current_page(QString::from("calls"));
+            object.activate_requested();
+        });
     }
 }
 
@@ -569,6 +615,10 @@ impl qobject::AppController {
 
     pub fn clear_clipboard_history(&self) {
         crate::clipboard::clear_history();
+    }
+
+    pub fn run_clip_suggestion(&self) {
+        crate::clipboard::run_last_suggestion();
     }
 
     pub fn refresh_toasts_enabled(self: Pin<&mut Self>) {

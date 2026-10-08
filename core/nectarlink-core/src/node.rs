@@ -136,6 +136,8 @@ pub(crate) struct Shared {
     pub(crate) storage: Mutex<crate::storage::StorageState>,
     /// Encrypted-at-rest history of the last 50 clips exchanged with peers.
     pub(crate) clipboard_history: crate::clipboard_history::ClipboardHistoryStore,
+    /// Smart suggestion for the most recently received text clip, if any.
+    pub(crate) last_clip_suggestion: Mutex<Option<(DeviceId, crate::ClipSuggestion)>>,
     pub data_dir: std::path::PathBuf,
     /// Where received files go.
     pub downloads_dir: std::path::PathBuf,
@@ -669,6 +671,7 @@ impl Node {
             remote: Mutex::new(Default::default()),
             storage: Mutex::new(Default::default()),
             clipboard_history,
+            last_clip_suggestion: Mutex::new(None),
             data_dir: config.data_dir.clone(),
             downloads_dir: config.downloads_dir.clone().unwrap_or_else(|| config.data_dir.join("received")),
             transfers: Mutex::new(HashMap::new()),
@@ -1076,6 +1079,12 @@ impl Node {
                     .map_err(|e| Error::Internal(e.to_string()))
             }
         }
+    }
+
+    /// Returns the smart suggestion classified for the most recently received
+    /// text clip (`None` when the latest clip had no suggestion or was an OTP).
+    pub fn last_clip_suggestion(&self) -> Option<(DeviceId, crate::ClipSuggestion)> {
+        self.shared.last_clip_suggestion.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     // ---- Actions (docs/protocol/actions.md) ----
@@ -1534,6 +1543,13 @@ impl Node {
     pub async fn deck_press(&self, peer: DeviceId, tile: String) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::deck::press(&self.shared, &session, tile).await
+    }
+
+    /// Asks a paired PC to change its master speaker volume (`0..=100`) and/or
+    /// mute state (`pc.audio.set`).
+    pub async fn set_pc_audio(&self, peer: DeviceId, volume: Option<u8>, muted: Option<bool>) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::deck::set_pc_audio(&self.shared, &session, volume, muted).await
     }
 
     // ---- Phone storage (PC File Explorer) ----

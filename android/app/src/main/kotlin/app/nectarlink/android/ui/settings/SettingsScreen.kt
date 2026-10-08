@@ -83,6 +83,8 @@ fun SettingsScreen(
     onRemoveSafFolder: (String) -> Unit = {},
     onSetClipboardHistoryEnabled: (Boolean) -> Unit = {},
     onClearClipboardHistory: () -> Unit = {},
+    suggestClipboardActions: Boolean = true,
+    onSetSuggestClipboardActions: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var confirmUnpair by remember { mutableStateOf<Device?>(null) }
@@ -102,6 +104,21 @@ fun SettingsScreen(
         }
 
         Section(stringResource(R.string.settings_clipboard_title)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text(stringResource(R.string.settings_clipboard_suggestions), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.settings_clipboard_suggestions_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = suggestClipboardActions,
+                    onCheckedChange = onSetSuggestClipboardActions,
+                )
+            }
+            SettingRowDivider()
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
                     Text(stringResource(R.string.settings_clipboard_history), style = MaterialTheme.typography.titleSmall)

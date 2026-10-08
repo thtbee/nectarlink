@@ -8,6 +8,7 @@
 
 mod actions;
 mod calls;
+pub mod clip_kind;
 mod clipboard;
 pub mod clipboard_history;
 mod config;
@@ -35,12 +36,15 @@ pub mod webcam;
 
 pub use actions::{PC_WAKE, PowerAction};
 pub use calls::CallCommand;
+pub use clip_kind::{
+    ClipKind, ClipSuggestion, classify_clip, maps_web_url, percent_encode, tracking_search_url,
+};
 pub use clipboard_history::{ClipboardHistoryEntry, ClipboardItemKind, MAX_CLIPBOARD_HISTORY};
 pub use config::{NodeConfig, NoopPlatform, Platform};
 pub use deck::{
     COMMANDS_TOGGLE as DECK_COMMANDS_TOGGLE, DECK_ACTIONS, DeckAction, DeckConfig, DeckLayout, DeckPage,
     DeckPageConfig, DeckPress, DeckState, DeckTile, DeckTileConfig, INPUT_TOGGLE as DECK_INPUT_TOGGLE,
-    MAX_DECK_ID_BYTES, MAX_DECK_LABEL_BYTES, MAX_DECK_PAGES, MAX_DECK_TILES_PER_PAGE, deck_colors,
+    MAX_DECK_ID_BYTES, MAX_DECK_LABEL_BYTES, MAX_DECK_PAGES, MAX_DECK_TILES_PER_PAGE, PC_AUDIO, deck_colors,
     deck_icons, deck_kinds, format_shortcut, is_valid_app_path, is_valid_command, is_valid_deck_id,
     is_valid_http_url, is_valid_shortcut, is_valid_snippet,
 };
@@ -58,13 +62,13 @@ pub use nectarlink_protocol::messages::clip::{
 pub use nectarlink_protocol::{
     DeviceId, PacketKind,
     messages::{
-        Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallState, Contact, ContactNumber, DeviceInfo,
-        DeviceKind, MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorResize, MirrorStart,
-        Notification, NotificationAction, PcWakeInfo, PhoneApp, PhoneToggleSet, PhoneToggleValue,
-        PhoneToggles, PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PowerLevel, SmsMessage, SmsPart,
-        SmsThread, StorageChanged, StorageDelete, StorageEntries, StorageEntry, StorageList, StorageMkdir,
-        StorageRead, StorageReadMeta, StorageRename, StorageWriteAccept, StorageWriteDone, StorageWriteOffer,
-        TouchAction, WebcamConfig, WebcamStart,
+        AudioOutputDevice, Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallState, Contact,
+        ContactNumber, DeviceInfo, DeviceKind, MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput,
+        MirrorResize, MirrorStart, Notification, NotificationAction, PcAudioSet, PcWakeInfo, PhoneApp,
+        PhoneToggleSet, PhoneToggleValue, PhoneToggles, PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb,
+        PowerLevel, SmsMessage, SmsPart, SmsThread, StorageChanged, StorageDelete, StorageEntries,
+        StorageEntry, StorageList, StorageMkdir, StorageRead, StorageReadMeta, StorageRename,
+        StorageWriteAccept, StorageWriteDone, StorageWriteOffer, TouchAction, WebcamConfig, WebcamStart,
         calls::{
             CONTROL as CALLS_CONTROL, DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG,
             SHOW as CALLS_SHOW, STATE as CALLS_STATE,

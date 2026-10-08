@@ -14,10 +14,10 @@ use std::{
 };
 
 pub use nectarlink_protocol::messages::{
-    DeckLayout, DeckPage, DeckPress, DeckState, DeckTile, KeyMod,
+    AudioOutputDevice, DeckLayout, DeckPage, DeckPress, DeckState, DeckTile, KeyMod, PcAudioSet,
     deck::{
         ACTIONS as DECK_ACTIONS, MAX_ID_BYTES as MAX_DECK_ID_BYTES, MAX_LABEL_BYTES as MAX_DECK_LABEL_BYTES,
-        MAX_PAGES as MAX_DECK_PAGES, MAX_TILES_PER_PAGE as MAX_DECK_TILES_PER_PAGE,
+        MAX_PAGES as MAX_DECK_PAGES, MAX_TILES_PER_PAGE as MAX_DECK_TILES_PER_PAGE, PC_AUDIO,
     },
     deck_colors, deck_icons, deck_kinds, is_valid_deck_id, remote_keys,
 };
@@ -519,19 +519,24 @@ impl Shared {
         self.local_capabilities().iter().any(|c| c == DECK_ACTIONS)
     }
 
+    fn offers_pc_audio(&self) -> bool {
+        self.local_capabilities().iter().any(|c| c == PC_AUDIO)
+    }
+
     /// Sends this PC's Deck layout and live state to `session` if this device
-    /// offers `deck.actions`.
+    /// offers `deck.actions` or `pc.audio`.
     pub(crate) async fn send_deck(&self, session: &Arc<Session>) {
-        if !self.offers_deck() {
-            return;
+        if self.offers_deck() {
+            let layout = self.deck.local_layout();
+            if let Ok(env) = Envelope::new(types::DECK_LAYOUT, &layout) {
+                let _ = session.send(env).await;
+            }
         }
-        let layout = self.deck.local_layout();
-        if let Ok(env) = Envelope::new(types::DECK_LAYOUT, &layout) {
-            let _ = session.send(env).await;
-        }
-        let state = self.deck.local_state();
-        if let Ok(env) = Envelope::new(types::DECK_STATE, &state) {
-            let _ = session.send(env).await;
+        if self.offers_deck() || self.offers_pc_audio() {
+            let state = self.deck.local_state();
+            if let Ok(env) = Envelope::new(types::DECK_STATE, &state) {
+                let _ = session.send(env).await;
+            }
         }
     }
 
@@ -555,7 +560,7 @@ impl Shared {
         let clean = state.sanitized().ok_or_else(|| Error::Protocol("invalid deck state".into()))?;
         let changed = self.deck.set_local_state(clean.clone());
         if changed
-            && self.offers_deck()
+            && (self.offers_deck() || self.offers_pc_audio())
             && let Ok(env) = Envelope::new(types::DECK_STATE, &clean)
         {
             for session in self.live_sessions() {
@@ -581,7 +586,28 @@ pub(crate) async fn press(shared: &Arc<Shared>, session: &Arc<Session>, tile: St
     Ok(())
 }
 
-/// Handles `deck.layout`, `deck.state`, and `deck.press`.
+/// Asks a paired PC to change its master speaker volume (`0..=100`) and/or mute
+/// state (`pc.audio.set`).
+pub(crate) async fn set_pc_audio(
+    shared: &Arc<Shared>,
+    session: &Arc<Session>,
+    volume: Option<u8>,
+    muted: Option<bool>,
+) -> Result<()> {
+    let req = PcAudioSet { volume, muted };
+    if !req.is_valid() {
+        return Err(Error::Protocol("invalid PC audio request".into()));
+    }
+    let peer_caps = shared.store.get_peer(&session.peer)?.map(|p| p.caps).unwrap_or_default();
+    if !peer_caps.contains(PC_AUDIO) && !peer_caps.contains(DECK_ACTIONS) {
+        return Err(Error::Unsupported);
+    }
+    let env = Envelope::new(types::PC_AUDIO_SET, &req)?;
+    session.request(env, REQUEST_TIMEOUT).await?.expect(types::OK)?;
+    Ok(())
+}
+
+/// Handles `deck.layout`, `deck.state`, `deck.press`, and `pc.audio.set`.
 pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &Envelope) -> Result<bool> {
     let peer = session.peer;
     match env.t.as_str() {
@@ -604,9 +630,52 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let reply = run_press(shared, &peer, req).await;
             session.send(reply.reply_to(env.id)).await?;
         }
+        types::PC_AUDIO_SET => {
+            let reply = match env.body::<PcAudioSet>() {
+                Ok(req) => run_pc_audio_set(shared, &peer, req).await,
+                Err(_) => Envelope::error(ErrorCode::BadMessage, "invalid pc.audio.set body"),
+            };
+            session.send(reply.reply_to(env.id)).await?;
+        }
         _ => return Ok(false),
     }
     Ok(true)
+}
+
+async fn run_pc_audio_set(shared: &Arc<Shared>, peer: &DeviceId, req: PcAudioSet) -> Envelope {
+    if !req.is_valid() {
+        return Envelope::error(ErrorCode::BadMessage, "invalid volume or mute");
+    }
+    if !shared.offers_pc_audio() && !shared.offers_deck() {
+        return Envelope::error(ErrorCode::Unsupported, "PC audio control is not supported here");
+    }
+    if !shared.toggle_on(peer, crate::actions::POWER_TOGGLE) && !shared.toggle_on(peer, INPUT_TOGGLE) {
+        return Envelope::error(ErrorCode::Denied, "PC actions are turned off for this device");
+    }
+    let platform = shared.platform.clone();
+    let from = *peer;
+    let vol = req.volume;
+    let muted = req.muted;
+    let ran = tokio::task::spawn_blocking(move || platform.set_pc_audio(&from, vol, muted))
+        .await
+        .unwrap_or_else(|e| Err(e.to_string()));
+    match ran {
+        Ok(()) => {
+            let mut state = shared.deck.local_state();
+            if let Some(v) = vol {
+                state.volume = v.min(100);
+            }
+            if let Some(m) = muted {
+                state.muted = m;
+            }
+            let _ = shared.set_deck_state(state).await;
+            Envelope::empty(types::OK)
+        }
+        Err(reason) => {
+            tracing::warn!(reason, "pc.audio.set failed");
+            Envelope::error(ErrorCode::Internal, "failed")
+        }
+    }
 }
 
 async fn run_press(shared: &Arc<Shared>, peer: &DeviceId, req: DeckPress) -> Envelope {

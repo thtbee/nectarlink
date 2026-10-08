@@ -48,6 +48,8 @@ pub mod qobject {
         #[qproperty(bool, auto_clipboard)]
         /// Keep the last 50 synced clips in encrypted local history.
         #[qproperty(bool, clipboard_history)]
+        /// Suggest context chips (Open, Open in Maps, Call, Track, Email) for copied text.
+        #[qproperty(bool, suggest_clipboard_actions)]
         /// Copy one-time codes from phone notifications and SMS automatically.
         #[qproperty(bool, auto_copy_otp)]
         /// Pause PC media playback while a phone call is ringing or active.
@@ -143,6 +145,7 @@ pub struct PreferencesRust {
     close_to_tray: bool,
     auto_clipboard: bool,
     clipboard_history: bool,
+    suggest_clipboard_actions: bool,
     auto_copy_otp: bool,
     pause_media_on_call: bool,
     sync_dnd: bool,
@@ -178,6 +181,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
         crate::clipboard::set_auto_send(settings.auto_clipboard);
         self.as_mut().set_clipboard_history(settings.clipboard_history);
         crate::clipboard::set_history_enabled(settings.clipboard_history);
+        self.as_mut().set_suggest_clipboard_actions(settings.suggest_clipboard_actions);
+        crate::clipboard::set_suggest_actions(settings.suggest_clipboard_actions);
         self.as_mut().set_auto_copy_otp(settings.auto_copy_otp);
         crate::notifications::set_auto_copy_otp(settings.auto_copy_otp);
         self.as_mut().set_pause_media_on_call(settings.pause_media_on_call);
@@ -212,6 +217,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_clipboard_history_changed(|p| {
                 crate::clipboard::set_history_enabled(p.clipboard_history);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_suggest_clipboard_actions_changed(|p| {
+                crate::clipboard::set_suggest_actions(p.suggest_clipboard_actions);
                 p.save();
             })
             .release();
@@ -311,6 +322,7 @@ impl qobject::Preferences {
             close_to_tray: p.close_to_tray,
             auto_clipboard: p.auto_clipboard,
             clipboard_history: p.clipboard_history,
+            suggest_clipboard_actions: p.suggest_clipboard_actions,
             auto_copy_otp: p.auto_copy_otp,
             pause_media_on_call: p.pause_media_on_call,
             sync_dnd: p.sync_dnd,

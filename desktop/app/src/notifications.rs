@@ -370,6 +370,13 @@ pub fn on_toast(event: ToastEvent) {
         {
             return;
         }
+        ToastEvent::Action { device, action, .. } if device == crate::clipboard::TOAST_GROUP => {
+            if action == crate::clipboard::ACTION_CLIP_SUGGESTION {
+                crate::clipboard::run_last_suggestion();
+            }
+            return;
+        }
+        ToastEvent::Dismissed { device, .. } if device == crate::clipboard::TOAST_GROUP => return,
         _ => {}
     }
     match event {

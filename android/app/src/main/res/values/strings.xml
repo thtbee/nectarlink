@@ -175,8 +175,16 @@
     <string name="clipboard_history_clear">Clear history</string>
     <string name="clipboard_history_done">Done</string>
     <string name="settings_clipboard_title">Clipboard</string>
+    <string name="settings_clipboard_suggestions">Suggest actions for copied text</string>
+    <string name="settings_clipboard_suggestions_hint">Offer to open links, look up addresses in Maps, call numbers, track parcels, or compose emails when text arrives from your PC.</string>
     <string name="settings_clipboard_history">Keep clipboard history</string>
     <string name="settings_clipboard_history_hint">Keep the last 50 text and image clips shared with your PCs, encrypted on this phone. Passwords and one-time codes are never saved.</string>
+    <string name="clip_received_from">Copied from %1$s</string>
+    <string name="clip_action_open">Open</string>
+    <string name="clip_action_maps">Open in Maps</string>
+    <string name="clip_action_call">Call</string>
+    <string name="clip_action_track">Track</string>
+    <string name="clip_action_email">Email</string>
     <string name="background_title">Stay reachable in the background</string>
     <string name="background_text">Your phone pauses Nectarlink to save battery, so your PC can’t reach it, and replies and dismissals from the PC time out. Let it run in the background.</string>
     <string name="action_manage">Manage</string>
@@ -337,6 +345,15 @@
     <string name="deck_commands_denied_title">Allow commands on %1$s</string>
     <string name="deck_commands_denied_text">To run shell commands from this phone, turn on “Run Deck commands” for this phone in Nectarlink › Settings › Devices on %1$s.</string>
     <string name="deck_hint">Customize tiles in Deck on %1$s</string>
+    <string name="pc_audio_title">PC audio</string>
+    <string name="pc_audio_volume">Volume</string>
+    <string name="pc_audio_mute">Mute</string>
+    <string name="pc_audio_unmute">Unmute</string>
+    <string name="pc_audio_muted">Muted</string>
+    <string name="pc_audio_output">Output: %1$s</string>
+    <string name="pc_audio_outputs_title">Audio outputs on %1$s</string>
+    <string name="pc_audio_default_badge">Default</string>
+    <string name="pc_audio_outputs_hint">Active playback devices on %1$s.</string>
 
     <!-- Phone storage in File Explorer -->
     <string name="settings_storage">Storage in File Explorer</string>

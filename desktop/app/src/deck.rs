@@ -44,7 +44,8 @@ fn sample_live_state() -> DeckState {
     let (volume, muted) = win::audio::speaker_state().unwrap_or((50, false));
     let mic_muted = win::audio::mic_muted();
     let playing = MEDIA_PLAYING.load(Ordering::Relaxed);
-    DeckState { volume, muted, mic_muted, playing }
+    let output_devices = win::audio::output_devices();
+    DeckState { volume, muted, mic_muted, playing, output_devices }
 }
 
 /// Marks whether the desktop Deck page is currently visible so idle background
@@ -60,7 +61,8 @@ pub fn set_page_active(active: bool) {
 }
 
 /// Loads `deck.json` from `data_dir` and starts the background poller that
-/// keeps speaker volume, microphone mute, and external `deck.json` edits in sync.
+/// keeps speaker volume, microphone mute, output devices, and external
+/// `deck.json` edits in sync.
 pub fn init(data_dir: &Path) {
     let path = data_dir.join(FILE_NAME);
     if !path.exists() {
@@ -69,7 +71,13 @@ pub fn init(data_dir: &Path) {
     }
     let config = DeckConfig::load(&path);
     let mtime = file_mtime(&path);
-    let initial_state = DeckState { volume: 50, muted: false, mic_muted: Some(false), playing: false };
+    let initial_state = DeckState {
+        volume: 50,
+        muted: false,
+        mic_muted: Some(false),
+        playing: false,
+        output_devices: Vec::new(),
+    };
     let wire_layout = config.to_wire_layout();
     {
         let mut guard = lock(&DECK);
@@ -83,6 +91,7 @@ pub fn init(data_dir: &Path) {
             muted: false,
             mic_muted: Some(false),
             playing: false,
+            output_devices: Vec::new(),
         });
         {
             let mut guard = lock(&DECK);
@@ -95,6 +104,9 @@ pub fn init(data_dir: &Path) {
             let _ = node.set_deck_layout(wire_layout).await;
             let _ = node.set_deck_state(sampled).await;
         }
+        // Windows reports audio changes as they happen; the poll only
+        // picks up edits to deck.json while the Deck page is open.
+        win::audio::watch(|| core_host::spawn(refresh_live_state()));
         let mut interval = tokio::time::interval(Duration::from_millis(1500));
         loop {
             interval.tick().await;
@@ -209,6 +221,21 @@ fn commit_config(mutate: impl FnOnce(&mut DeckConfig)) {
 /// Called when a paired phone presses a Deck tile (`Platform::deck_press`).
 pub fn handle_press(_peer: &DeviceId, tile_id: &str) -> Result<(), String> {
     execute_tile(tile_id)
+}
+
+/// Called when a paired phone changes the PC's speaker volume and/or mute state
+/// (`Platform::set_pc_audio`).
+pub fn handle_set_audio(_peer: &DeviceId, volume: Option<u8>, muted: Option<bool>) -> Result<(), String> {
+    if let Some(level) = volume {
+        win::audio::set_speaker_volume(level)?;
+    }
+    if let Some(m) = muted {
+        win::audio::set_speaker_mute(m)?;
+    }
+    core_host::spawn(async {
+        refresh_live_state().await;
+    });
+    Ok(())
 }
 
 /// Executes a tile's action by ID (used both for remote `deck.press` and the

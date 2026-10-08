@@ -36,6 +36,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,6 +50,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -73,12 +76,15 @@ import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.update.AppUpdater
 import app.nectarlink.android.update.UpdateCard
+import app.nectarlink.core.AudioOutputDevice
 import app.nectarlink.core.ClipboardHistoryEntry
 import app.nectarlink.core.ClipboardItemKind
+import app.nectarlink.core.DeckState
 import app.nectarlink.core.Link
 import app.nectarlink.core.Transfer
 import app.nectarlink.core.TransferDirection
 import app.nectarlink.core.TransferStatus
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -114,6 +120,7 @@ fun HomeScreen(
     onDeleteClipboardHistory: (id: String) -> Unit = {},
     onClearClipboardHistory: () -> Unit = {},
     loadClipboardHistoryImage: suspend (id: String) -> ByteArray? = { null },
+    onSetPcAudio: (pcId: String, volume: Int?, muted: Boolean?) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     var showClipboardHistory by remember { mutableStateOf(false) }
@@ -301,6 +308,7 @@ fun HomeScreen(
                 onDeck = onDeck,
                 onRecord = onRecord,
                 onWebcam = onWebcam,
+                onSetPcAudio = onSetPcAudio,
             )
         }
         if (state.clipboardHistoryEnabled && state.clipboardHistory.isNotEmpty()) {
@@ -370,6 +378,7 @@ private fun PcCard(
     onDeck: (String) -> Unit,
     onRecord: (String) -> Unit,
     onWebcam: (String) -> Unit,
+    onSetPcAudio: (String, Int?, Boolean?) -> Unit,
 ) {
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) onSendFiles(device.id, uris)
@@ -437,7 +446,18 @@ private fun PcCard(
             val outlined = ButtonDefaults.outlinedButtonColors(contentColor = ink, disabledContentColor = ink.copy(alpha = 0.38f))
             val outline = BorderStroke(1.dp, ink.copy(alpha = if (device.online) 0.45f else 0.15f))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (!device.online && device.canWake) {
+                if (!device.online && device.wakeState == WakeState.Idle && device.canWake) {
+                    Button(
+                        enabled = device.wakeState != WakeState.Waking,
+                        onClick = { onWake(device.id) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            if (device.wakeState == WakeState.Waking) stringResource(R.string.wake_waking, device.name)
+                            else stringResource(R.string.action_wake_pc),
+                        )
+                    }
+                } else if (!device.online && device.canWake) {
                     Button(
                         enabled = device.wakeState != WakeState.Waking,
                         onClick = { onWake(device.id) },
@@ -487,6 +507,18 @@ private fun PcCard(
                     ) {
                         Text(stringResource(R.string.action_send_files), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
+                }
+
+                // Live PC master volume, mute, and active output device bar
+                val deckState = device.deckState
+                if (device.online && deckState != null) {
+                    PcAudioCardSection(
+                        pcName = device.name,
+                        deckState = deckState,
+                        ink = ink,
+                        tonal = tonal,
+                        onSetPcAudio = { vol, muted -> onSetPcAudio(device.id, vol, muted) },
+                    )
                 }
 
                 val expanded = showMoreActions || ringing
@@ -629,6 +661,171 @@ private fun PcCard(
             }
         }
     }
+}
+
+@Composable
+private fun PcAudioCardSection(
+    pcName: String,
+    deckState: DeckState,
+    ink: Color,
+    tonal: androidx.compose.material3.ButtonColors,
+    onSetPcAudio: (volume: Int?, muted: Boolean?) -> Unit,
+) {
+    var draggingVolume by remember { mutableStateOf<Float?>(null) }
+    var showOutputs by remember { mutableStateOf(false) }
+    val shownVolume = draggingVolume?.roundToInt() ?: deckState.volume.toInt()
+    val defaultOutput = deckState.outputDevices.firstOrNull { it.isDefault } ?: deckState.outputDevices.firstOrNull()
+
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = ink.copy(alpha = 0.06f),
+        contentColor = ink,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilledTonalButton(
+                    colors = tonal,
+                    onClick = { onSetPcAudio(null, !deckState.muted) },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                ) {
+                    Text(
+                        stringResource(if (deckState.muted) R.string.pc_audio_unmute else R.string.pc_audio_mute),
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                    )
+                }
+                Slider(
+                    value = (draggingVolume ?: deckState.volume.toFloat()).coerceIn(0f, 100f),
+                    onValueChange = { v ->
+                        draggingVolume = v
+                        onSetPcAudio(v.roundToInt(), null)
+                    },
+                    onValueChangeFinished = { draggingVolume = null },
+                    valueRange = 0f..100f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = ink,
+                        activeTrackColor = ink,
+                        inactiveTrackColor = ink.copy(alpha = 0.22f),
+                    ),
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = if (deckState.muted) {
+                        stringResource(R.string.pc_audio_muted)
+                    } else {
+                        stringResource(R.string.deck_volume_percent, shownVolume)
+                    },
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+            if (defaultOutput != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showOutputs = true }
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = stringResource(R.string.pc_audio_output, defaultOutput.name),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ink.copy(alpha = 0.85f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (deckState.outputDevices.size > 1) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "${deckState.outputDevices.size}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = ink.copy(alpha = 0.7f),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (showOutputs && deckState.outputDevices.isNotEmpty()) {
+        PcAudioOutputsDialog(
+            pcName = pcName,
+            devices = deckState.outputDevices,
+            onDismiss = { showOutputs = false },
+        )
+    }
+}
+
+@Composable
+internal fun PcAudioOutputsDialog(
+    pcName: String,
+    devices: List<AudioOutputDevice>,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.pc_audio_outputs_title, pcName)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    stringResource(R.string.pc_audio_outputs_hint, pcName),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                devices.forEach { out ->
+                    Surface(
+                        shape = MaterialTheme.shapes.medium,
+                        color = if (out.isDefault) {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = out.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (out.isDefault) {
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (out.isDefault) {
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = stringResource(R.string.pc_audio_default_badge),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.clipboard_history_done))
+            }
+        },
+    )
 }
 
 @Composable

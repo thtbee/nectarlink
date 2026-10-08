@@ -17,6 +17,9 @@ class Preferences(context: Context) {
     private val _touchpadSensitivity = MutableStateFlow(prefs.getFloat(TOUCHPAD_SENSITIVITY, 1.0f).coerceIn(0.4f, 3.0f))
     val touchpadSensitivity: StateFlow<Float> = _touchpadSensitivity.asStateFlow()
 
+    private val _suggestClipboardActions = MutableStateFlow(prefs.getBoolean(SUGGEST_CLIPBOARD_ACTIONS, true))
+    val suggestClipboardActions: StateFlow<Boolean> = _suggestClipboardActions.asStateFlow()
+
     private fun load(): Appearance {
         val defaults = Appearance()
         return Appearance(
@@ -44,11 +47,28 @@ class Preferences(context: Context) {
         _touchpadSensitivity.value = clamped
     }
 
-    private companion object {
-        const val THEME = "theme"
-        const val MODE = "mode"
-        const val SEED = "seed"
-        const val DYNAMIC = "dynamic_color"
-        const val TOUCHPAD_SENSITIVITY = "touchpad_sensitivity"
+    fun updateSuggestClipboardActions(enabled: Boolean) {
+        prefs.edit { putBoolean(SUGGEST_CLIPBOARD_ACTIONS, enabled) }
+        _suggestClipboardActions.value = enabled
+        if (!enabled) {
+            app.nectarlink.android.links.LinkNotifications.dismissClipSuggestion(appContext)
+        }
+    }
+
+    private val appContext = context.applicationContext
+
+    companion object {
+        private const val THEME = "theme"
+        private const val MODE = "mode"
+        private const val SEED = "seed"
+        private const val DYNAMIC = "dynamic_color"
+        private const val TOUCHPAD_SENSITIVITY = "touchpad_sensitivity"
+        private const val SUGGEST_CLIPBOARD_ACTIONS = "suggest_clipboard_actions"
+
+        fun isSuggestClipboardActionsEnabled(context: Context): Boolean =
+            context.applicationContext
+                .getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .getBoolean(SUGGEST_CLIPBOARD_ACTIONS, true)
     }
 }
+

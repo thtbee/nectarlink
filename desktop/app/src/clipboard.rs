@@ -15,22 +15,34 @@ use std::{
 
 use data_encoding::BASE64;
 use nectarlink_core::{
-    CLIP_MAX_IMAGE_BYTES, ClipboardItemKind, DeviceId, Error, FeatureState, LinkState, Node, NodeEvent,
+    CLIP_MAX_IMAGE_BYTES, ClipKind, ClipSuggestion, ClipboardItemKind, DeviceId, Error, FeatureState,
+    LinkState, Node, NodeEvent,
 };
 use serde_json::json;
 
 use crate::{
-    bridge::app::{describe, show_message},
+    bridge::app::{describe, open_dialer, show_message, show_message_with_action},
     core_host,
     state::Changes,
     win::clipboard::{self, Clip},
 };
+
+/// Toast group and action ID for smart clipboard context chips.
+pub const TOAST_GROUP: &str = "clipboard";
+pub const ACTION_CLIP_SUGGESTION: &str = "clip_action";
 
 /// The "Send what you copy to your phone" preference.
 static AUTO_SEND: AtomicBool = AtomicBool::new(true);
 
 /// The "Keep clipboard history" preference.
 static HISTORY_ENABLED: AtomicBool = AtomicBool::new(true);
+
+/// The "Suggest actions for copied text" preference.
+static SUGGEST_ACTIONS: AtomicBool = AtomicBool::new(true);
+
+/// Most recent incoming clipboard context suggestion, kept only in memory so
+/// Windows toast XML arguments never carry the copied text.
+static LAST_SUGGESTION: Mutex<Option<(DeviceId, ClipSuggestion)>> = Mutex::new(None);
 
 /// Small PNG previews of history images as data URLs, by entry ID. Made
 /// off the UI thread and kept only in memory, so nothing decrypted is
@@ -47,6 +59,14 @@ fn thumbs<T>(f: impl FnOnce(&mut HashMap<String, String>) -> T) -> T {
 
 pub fn set_auto_send(on: bool) {
     AUTO_SEND.store(on, Ordering::Relaxed);
+}
+
+pub fn set_suggest_actions(on: bool) {
+    SUGGEST_ACTIONS.store(on, Ordering::Relaxed);
+    if !on {
+        *LAST_SUGGESTION.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        crate::win::toast::remove_device(TOAST_GROUP);
+    }
 }
 
 pub fn set_history_enabled(on: bool) {
@@ -265,6 +285,59 @@ pub fn send_now(device: DeviceId) {
 pub fn on_event(event: &NodeEvent) {
     if let NodeEvent::ClipboardReceived { device } = event {
         let name = core_host::host().hub.read(|s| s.name_of(device)).unwrap_or_else(|| "your phone".into());
-        show_message(format!("Copied from {name}."));
+        let suggestion = if SUGGEST_ACTIONS.load(Ordering::Relaxed) {
+            core_host::node()
+                .and_then(|node| node.last_clip_suggestion())
+                .filter(|(sug_dev, _)| sug_dev == device)
+                .map(|(_, sug)| sug)
+        } else {
+            None
+        };
+        if let Some(suggestion) = suggestion {
+            let label = suggestion.action_label();
+            *LAST_SUGGESTION.lock().unwrap_or_else(|e| e.into_inner()) = Some((*device, suggestion));
+            show_message_with_action(format!("Copied from {name}."), label);
+            crate::win::toast::show(crate::win::toast::Toast {
+                device: TOAST_GROUP.into(),
+                key: "clip_suggestion".into(),
+                title: format!("Copied from {name}"),
+                body: String::new(),
+                attribution: String::new(),
+                icon: None,
+                image: None,
+                actions: vec![(ACTION_CLIP_SUGGESTION.into(), label.into())],
+                reply: None,
+                silent: true,
+                progress: None,
+                call: false,
+            });
+        } else {
+            *LAST_SUGGESTION.lock().unwrap_or_else(|e| e.into_inner()) = None;
+            show_message(format!("Copied from {name}."));
+        }
+    }
+}
+
+/// Runs the action for the most recently offered clipboard suggestion (from
+/// the in-app toast chip or the Windows toast action button).
+pub fn run_last_suggestion() {
+    let Some((device, suggestion)) = LAST_SUGGESTION.lock().unwrap_or_else(|e| e.into_inner()).clone() else {
+        return;
+    };
+    crate::win::toast::remove(TOAST_GROUP, "clip_suggestion");
+    let result = match suggestion.kind {
+        ClipKind::WebLink => crate::win::shell::open_url(&suggestion.target),
+        ClipKind::StreetAddress => crate::win::shell::open_maps(&suggestion.target),
+        ClipKind::PhoneNumber => {
+            open_dialer(device, &suggestion.target);
+            Ok(())
+        }
+        ClipKind::TrackingNumber => {
+            crate::win::shell::open_url(&nectarlink_core::tracking_search_url(&suggestion.target))
+        }
+        ClipKind::Email => crate::win::shell::open_mailto(&suggestion.target),
+    };
+    if let Err(e) = result {
+        tracing::debug!(kind = ?suggestion.kind, error = %e, "clipboard suggestion action failed");
     }
 }

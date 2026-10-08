@@ -46,6 +46,12 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                         if shared.clipboard_history.record_text(&text, &peer_name, true) {
                             shared.emit(NodeEvent::ClipboardHistoryChanged);
                         }
+                        let suggestion = crate::clip_kind::classify_clip(&text);
+                        if let Some(ref s) = suggestion {
+                            tracing::debug!(from = %peer.short(), kind = ?s.kind, "classified received clipboard text");
+                        }
+                        *shared.last_clip_suggestion.lock().unwrap_or_else(|e| e.into_inner()) =
+                            suggestion.map(|s| (peer, s));
                         shared.emit(NodeEvent::ClipboardReceived { device: peer });
                         Envelope::empty(types::OK)
                     }

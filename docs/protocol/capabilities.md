@@ -81,5 +81,7 @@ capability is missing.
 | `input.inject` | Accepts pointer, keyboard and presentation input ([remote input](remote.md)) | app update |
 | `recorder` | Saves and converts voice recordings from a phone ([recorder](recorder.md)) | app update |
 | `deck.actions` | Shares its Deck layout and live tile state and runs Deck actions ([deck](deck.md)) | app update |
+| `pc.audio` | Reports active audio output devices in `deck.state` and accepts `pc.audio.set` volume/mute changes ([deck](deck.md)) | app update |
 | `camera.virtual` | Receives and decodes a phone's camera stream ([webcam](webcam.md)) | app update |
 | `addon.vcam` | The virtual camera add-on is installed ([webcam](webcam.md)) | installing the add-on |
+

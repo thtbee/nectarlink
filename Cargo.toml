@@ -61,6 +61,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = "2.5"
 windows = "0.62"
+windows-core = "0.62"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

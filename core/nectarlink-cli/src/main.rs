@@ -627,6 +627,10 @@ enum TogglesArg {
 enum DeckArg {
     /// Press a tile on the PC's deck by its ID.
     Press { tile: String },
+    /// Set the PC's master speaker volume (`0..=100`).
+    Volume { level: u8 },
+    /// Mute (`on`) or unmute (`off`) the PC's speakers.
+    Mute { state: OnOff },
 }
 
 #[derive(Debug, Subcommand)]
@@ -1959,6 +1963,10 @@ impl Platform for TerminalPlatform {
         println!("A paired device pressed deck tile {tile}");
         Ok(())
     }
+    fn set_pc_audio(&self, _peer: &DeviceId, volume: Option<u8>, muted: Option<bool>) -> Result<(), String> {
+        println!("A paired device set PC audio: volume={volume:?} muted={muted:?}");
+        Ok(())
+    }
     fn storage_list(
         &self,
         path: &str,
@@ -2105,6 +2113,7 @@ async fn start_node(cli: &Cli) -> Result<Node> {
         config.capabilities.push(nectarlink_core::TOGGLES_SHOW.into());
         config.capabilities.push(nectarlink_core::PC_WAKE.into());
         config.capabilities.push(nectarlink_core::DECK_ACTIONS.into());
+        config.capabilities.push(nectarlink_core::PC_AUDIO.into());
         config.capabilities.push(nectarlink_core::STORAGE_MOUNT.into());
         config.capabilities.push(nectarlink_core::WEBCAM_VIRTUAL.into());
         config.capabilities.push(nectarlink_core::WEBCAM_ADDON_VCAM.into());
@@ -2120,6 +2129,19 @@ async fn start_node(cli: &Cli) -> Result<Node> {
             broadcasts: vec!["192.168.31.255".into()],
         })
         .await;
+        let _ = node
+            .set_deck_state(nectarlink_core::DeckState {
+                playing: false,
+                volume: 75,
+                muted: false,
+                mic_muted: Some(false),
+                output_devices: vec![nectarlink_core::AudioOutputDevice {
+                    id: "cli:speakers".into(),
+                    name: "Speakers (CLI)".into(),
+                    is_default: true,
+                }],
+            })
+            .await;
     }
     if !cli.offers.is_empty() {
         let mut offers = extra_caps;
@@ -2566,6 +2588,21 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 .await
                 .with_context(|| format!("the PC refused deck tile {tile:?}"))?;
             println!("Pressed {tile}.");
+        }
+        Command::Deck { device, action: Some(DeckArg::Volume { level }) } => {
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            node.set_pc_audio(id, Some(*level), None)
+                .await
+                .with_context(|| format!("couldn't set PC volume to {level}%"))?;
+            println!("PC volume set to {level}%.");
+        }
+        Command::Deck { device, action: Some(DeckArg::Mute { state }) } => {
+            let muted = matches!(state, OnOff::On);
+            let id = resolve(node, device)?;
+            wait_until_online(node, id).await?;
+            node.set_pc_audio(id, None, Some(muted)).await.context("couldn't set PC mute")?;
+            println!("PC speakers {}.", if muted { "muted" } else { "unmuted" });
         }
         Command::Storage { device, at, action } => {
             let id = resolve(node, device)?;
@@ -3850,7 +3887,14 @@ fn print_event(node: &Node, event: &NodeEvent) {
         NodeEvent::NotificationRemoved { device, .. } => {
             println!("{}: a notification went away", name(device))
         }
-        NodeEvent::ClipboardReceived { device } => println!("{}: sent its clipboard", name(device)),
+        NodeEvent::ClipboardReceived { device } => {
+            let chip = node
+                .last_clip_suggestion()
+                .filter(|(from, _)| from == device)
+                .map(|(_, s)| format!(" [chip: {} ({})]", s.action_label(), s.kind.as_str()))
+                .unwrap_or_default();
+            println!("{}: sent its clipboard{chip}", name(device));
+        }
         NodeEvent::Call { device, call } => println!(
             "{}: {} call {} {}{}{}",
             name(device),
@@ -4019,18 +4063,26 @@ fn summarize_toggles(t: &nectarlink_core::PhoneToggles) -> String {
 }
 
 fn summarize_deck_state(state: &nectarlink_core::DeckState) -> String {
-    let vol = if state.muted { "muted".to_owned() } else { format!("{}%", state.volume) };
+    let vol = if state.muted { format!("muted ({}%)", state.volume) } else { format!("{}%", state.volume) };
     let mic = match state.mic_muted {
         Some(true) => "muted",
         Some(false) => "live",
         None => "—",
     };
     let media = if state.playing { "playing" } else { "paused" };
-    format!("vol={vol} mic={mic} media={media}")
+    let out = state.default_output_name().map(|n| format!(" output={n:?}")).unwrap_or_default();
+    format!("vol={vol} mic={mic} media={media}{out}")
 }
 
 fn print_deck(layout: &nectarlink_core::DeckLayout, state: &nectarlink_core::DeckState) {
     println!("State: {}", summarize_deck_state(state));
+    if !state.output_devices.is_empty() {
+        println!("Audio outputs:");
+        for d in &state.output_devices {
+            let mark = if d.is_default { "* " } else { "  " };
+            println!("  {mark}{}", d.name);
+        }
+    }
     for (idx, page) in layout.pages.iter().enumerate() {
         if idx > 0 {
             println!();

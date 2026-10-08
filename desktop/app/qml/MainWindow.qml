@@ -368,9 +368,21 @@ NativeWindow {
         }
     }
 
-    Toast { id: toast }
+    Toast {
+        id: toast
+        onActionTriggered: AppController.runClipSuggestion()
+    }
     Connections {
         target: AppController
         function onToast(message) { toast.show(message) }
+        function onToastWithAction(message, actionLabel) { toast.showWithAction(message, actionLabel) }
+        function onCurrentPageChanged() {
+            if (AppController.currentPage.length > 0 && window.page !== AppController.currentPage)
+                window.page = AppController.currentPage
+        }
+        function onPendingDialChanged() {
+            if (AppController.pendingDial.length > 0 && window.page !== "calls")
+                window.page = "calls"
+        }
     }
 }

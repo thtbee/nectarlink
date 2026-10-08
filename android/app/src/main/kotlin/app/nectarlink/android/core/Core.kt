@@ -162,6 +162,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val remoteOps = Channel<suspend (NectarlinkNode) -> Unit>(Channel.UNLIMITED)
     private val _state = MutableStateFlow(CoreState())
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    private val _clipSuggestions = MutableSharedFlow<ClipSuggestionNotice>(extraBufferCapacity = 4)
     private var node: NectarlinkNode? = null
     private var startJob: Job? = null
     private var networkChange: Job? = null
@@ -192,6 +193,15 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     /** Short messages for the user (a command failed). */
     val messages: SharedFlow<String> = _messages.asSharedFlow()
+
+    /** Context action suggestions for newly received clipboard text. */
+    val clipSuggestions: SharedFlow<ClipSuggestionNotice> = _clipSuggestions.asSharedFlow()
+
+    data class ClipSuggestionNotice(
+        val message: String,
+        val actionLabel: String,
+        val suggestion: app.nectarlink.core.ClipSuggestion,
+    )
 
     /** Starts the node (once). Safe to call repeatedly. */
     fun start() {
@@ -398,9 +408,26 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 if (_state.value.devices.isEmpty()) ConnectionService.stop(context)
             }
             is Event.Paired -> ConnectionService.start(context)
+            is Event.ClipboardReceived -> onClipboardReceived(event.id)
             is Event.ClipboardHistoryChanged -> refreshClipboardHistory()
             else -> {}
         }
+    }
+
+    private fun onClipboardReceived(pcId: String) {
+        if (!app.nectarlink.android.ui.Preferences.isSuggestClipboardActionsEnabled(context)) return
+        val suggestion = runCatching { node?.lastClipSuggestion() }.getOrNull() ?: return
+        val pcName = _state.value.nameOf(pcId).orEmpty()
+        val from = pcName.ifEmpty { context.getString(R.string.your_pc) }
+        val message = context.getString(R.string.clip_received_from, from)
+        val actionLabel = LinkNotifications.actionLabel(context, suggestion.kind)
+        _clipSuggestions.tryEmit(ClipSuggestionNotice(message, actionLabel, suggestion))
+        LinkNotifications.showClipSuggestion(context, pcName, suggestion)
+    }
+
+    /** Executes the action for a smart clipboard suggestion. */
+    fun runClipSuggestion(suggestion: app.nectarlink.core.ClipSuggestion) {
+        LinkNotifications.runSuggestion(context, suggestion)
     }
 
     // ---- Files & Recordings ----
@@ -956,6 +983,40 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 else -> {
                     _messages.tryEmit(describe(e))
                     DeckPressResult.Failed
+                }
+            }
+        }
+    }
+
+    /** Sets the PC's master volume (`0..=100`) and/or mute state (`pc.audio.set`). */
+    fun setPcAudio(id: String, volume: Int? = null, muted: Boolean? = null) {
+        val clampedVol = volume?.coerceIn(0, 100)?.toUByte()
+        // Optimistic local state update so the slider and mute button don't snap back while the RPC runs.
+        _state.update { s ->
+            val current = s.device(id)?.deckState
+            if (current != null) {
+                s.reduce(
+                    Event.DeckState(
+                        id = id,
+                        state = current.copy(
+                            volume = clampedVol ?: current.volume,
+                            muted = muted ?: current.muted,
+                        ),
+                    ),
+                )
+            } else {
+                s
+            }
+        }
+        remoteOps.trySend { node ->
+            try {
+                node.setPcAudio(id, clampedVol, muted)
+            } catch (e: NectarlinkException) {
+                if (e is NectarlinkException.Denied) {
+                    val name = _state.value.nameOf(id).orEmpty()
+                    _messages.tryEmit(context.getString(R.string.remote_denied_title, name))
+                } else if (e !is NectarlinkException.Offline) {
+                    _messages.tryEmit(describe(e))
                 }
             }
         }

@@ -76,6 +76,7 @@ pub mod types {
     pub const DECK_LAYOUT: &str = "deck.layout";
     pub const DECK_STATE: &str = "deck.state";
     pub const DECK_PRESS: &str = "deck.press";
+    pub const PC_AUDIO_SET: &str = "pc.audio.set";
     pub const STORAGE_LIST: &str = "storage.list";
     pub const STORAGE_ENTRIES: &str = "storage.entries";
     pub const STORAGE_READ: &str = "storage.read";
@@ -2341,6 +2342,8 @@ impl PhoneToggleSet {
 pub mod deck {
     /// Offered by PCs that share their Deck layout and live state and run Deck actions.
     pub const ACTIONS: &str = "deck.actions";
+    /// Offered by PCs that share their active audio output devices and accept `pc.audio.set`.
+    pub const PC_AUDIO: &str = "pc.audio";
     /// Maximum pages in a `DeckLayout`.
     pub const MAX_PAGES: usize = 8;
     /// Maximum tiles on a single `DeckPage`.
@@ -2349,6 +2352,12 @@ pub mod deck {
     pub const MAX_ID_BYTES: usize = 64;
     /// Maximum UTF-8 bytes in a page name or tile label.
     pub const MAX_LABEL_BYTES: usize = 64;
+    /// Maximum active audio output devices in a `DeckState`.
+    pub const MAX_OUTPUT_DEVICES: usize = 32;
+    /// Maximum bytes in an audio endpoint ID.
+    pub const MAX_DEVICE_ID_BYTES: usize = 256;
+    /// Maximum UTF-8 bytes in an audio endpoint friendly name.
+    pub const MAX_DEVICE_NAME_BYTES: usize = 128;
 }
 
 /// Action kinds for [`DeckTile::kind`] (`docs/protocol/deck.md` §2.4).
@@ -2728,6 +2737,57 @@ impl Default for DeckLayout {
     }
 }
 
+/// One active audio output endpoint on the PC (`docs/protocol/deck.md` §2.2).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AudioOutputDevice {
+    pub id: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub is_default: bool,
+}
+
+/// Never prints the user's audio device name or system ID in logs (protocol v0 §11).
+impl std::fmt::Debug for AudioOutputDevice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AudioOutputDevice").field("is_default", &self.is_default).finish_non_exhaustive()
+    }
+}
+
+impl AudioOutputDevice {
+    pub fn is_valid(&self) -> bool {
+        let id = self.id.trim();
+        let name = self.name.trim();
+        !id.is_empty()
+            && self.id.len() <= deck::MAX_DEVICE_ID_BYTES
+            && !self.id.chars().any(char::is_control)
+            && !name.is_empty()
+            && self.name.len() <= deck::MAX_DEVICE_NAME_BYTES
+            && !self.name.chars().any(char::is_control)
+    }
+
+    pub fn sanitized(self) -> Option<Self> {
+        let id: String = self.id.chars().filter(|c| !c.is_control()).collect();
+        let id = id.trim();
+        if id.is_empty() || id.len() > deck::MAX_DEVICE_ID_BYTES {
+            return None;
+        }
+        let name: String = self.name.chars().filter(|c| !c.is_control()).collect();
+        let name = name.trim();
+        if name.is_empty() {
+            return None;
+        }
+        let mut end = name.len().min(deck::MAX_DEVICE_NAME_BYTES);
+        while end > 0 && !name.is_char_boundary(end) {
+            end -= 1;
+        }
+        let name = name[..end].trim().to_owned();
+        if name.is_empty() {
+            return None;
+        }
+        Some(AudioOutputDevice { id: id.to_owned(), name, is_default: self.is_default })
+    }
+}
+
 /// Body of `deck.state`: live PC state reflected on Deck tiles (`docs/protocol/deck.md` §2.2).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeckState {
@@ -2739,16 +2799,35 @@ pub struct DeckState {
     pub muted: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mic_muted: Option<bool>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub output_devices: Vec<AudioOutputDevice>,
 }
 
 impl DeckState {
     pub fn is_valid(&self) -> bool {
         self.volume <= 100
+            && self.output_devices.len() <= deck::MAX_OUTPUT_DEVICES
+            && self.output_devices.iter().all(AudioOutputDevice::is_valid)
     }
 
     pub fn sanitized(mut self) -> Option<Self> {
         self.volume = self.volume.min(100);
+        self.output_devices = self
+            .output_devices
+            .into_iter()
+            .filter_map(AudioOutputDevice::sanitized)
+            .take(deck::MAX_OUTPUT_DEVICES)
+            .collect();
         Some(self)
+    }
+
+    /// Friendly name of the default audio output device, if reported.
+    pub fn default_output_name(&self) -> Option<&str> {
+        self.output_devices
+            .iter()
+            .find(|d| d.is_default)
+            .or_else(|| self.output_devices.first())
+            .map(|d| d.name.as_str())
     }
 
     /// Short live status text for a tile of `kind`, if `kind` is a live tile.
@@ -2784,6 +2863,22 @@ pub struct DeckPress {
 impl DeckPress {
     pub fn is_valid(&self) -> bool {
         is_valid_deck_id(&self.tile)
+    }
+}
+
+/// Body of `pc.audio.set`: asks the PC to change its master speaker volume
+/// (`0..=100`) and/or mute state (`docs/protocol/deck.md` §2.5).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PcAudioSet {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub volume: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub muted: Option<bool>,
+}
+
+impl PcAudioSet {
+    pub fn is_valid(&self) -> bool {
+        (self.volume.is_some() || self.muted.is_some()) && self.volume.is_none_or(|v| v <= 100)
     }
 }
 
@@ -3681,8 +3776,27 @@ mod tests {
         assert_eq!(DeckLayout { pages: vec![] }.sanitized(), None);
 
         // Live state round-trip and status formatting.
-        let state = DeckState { playing: true, volume: 72, muted: false, mic_muted: Some(true) };
+        let state = DeckState {
+            playing: true,
+            volume: 72,
+            muted: false,
+            mic_muted: Some(true),
+            output_devices: vec![
+                AudioOutputDevice {
+                    id: "out:speakers".into(),
+                    name: "Speakers (Realtek Audio)".into(),
+                    is_default: true,
+                },
+                AudioOutputDevice {
+                    id: "out:headphones".into(),
+                    name: "Headphones".into(),
+                    is_default: false,
+                },
+            ],
+        };
         assert!(state.is_valid());
+        assert_eq!(state.default_output_name(), Some("Speakers (Realtek Audio)"));
+        assert!(!format!("{:?}", state.output_devices[0]).contains("Realtek"));
         assert_eq!(state.tile_status(deck_kinds::MEDIA_PLAY_PAUSE).as_deref(), Some("Playing"));
         assert_eq!(state.tile_status(deck_kinds::VOLUME_UP).as_deref(), Some("72%"));
         assert_eq!(state.tile_status(deck_kinds::MIC_MUTE).as_deref(), Some("Muted"));
@@ -3690,6 +3804,14 @@ mod tests {
         let env = Envelope::new(types::DECK_STATE, &state).unwrap();
         let back: DeckState = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
         assert_eq!(back, state);
+
+        // PC audio set validation and round-trip.
+        let audio_set = PcAudioSet { volume: Some(65), muted: Some(false) };
+        assert!(audio_set.is_valid());
+        let env = Envelope::new(types::PC_AUDIO_SET, &audio_set).unwrap();
+        assert_eq!(Envelope::from_cbor(&env.to_cbor()).unwrap().body::<PcAudioSet>().unwrap(), audio_set);
+        assert!(!PcAudioSet { volume: None, muted: None }.is_valid());
+        assert!(!PcAudioSet { volume: Some(101), muted: None }.is_valid());
 
         // Press validation.
         let press = DeckPress { tile: "play_pause".into() };

@@ -108,6 +108,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         nectarlink_core::MIRROR_LISTEN.into(),
         nectarlink_core::INPUT_INJECT.into(),
         nectarlink_core::DECK_ACTIONS.into(),
+        nectarlink_core::PC_AUDIO.into(),
         nectarlink_core::RECORDER.into(),
         nectarlink_core::TOGGLES_SHOW.into(),
         nectarlink_core::STORAGE_MOUNT.into(),

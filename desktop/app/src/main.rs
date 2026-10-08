@@ -116,6 +116,14 @@ impl Platform for DesktopPlatform {
     fn deck_press(&self, peer: &nectarlink_core::DeviceId, tile: &str) -> Result<(), String> {
         deck::handle_press(peer, tile)
     }
+    fn set_pc_audio(
+        &self,
+        peer: &nectarlink_core::DeviceId,
+        volume: Option<u8>,
+        muted: Option<bool>,
+    ) -> Result<(), String> {
+        deck::handle_set_audio(peer, volume, muted)
+    }
 }
 
 /// Command-line options (also used by shortcuts and autostart).
@@ -296,6 +304,7 @@ fn main() -> ExitCode {
     let settings = settings::Settings::load(&data_dir);
     clipboard::set_auto_send(settings.auto_clipboard);
     clipboard::set_history_enabled(settings.clipboard_history);
+    clipboard::set_suggest_actions(settings.suggest_clipboard_actions);
     notifications::set_auto_copy_otp(settings.auto_copy_otp);
     notifications::set_sync_dnd(settings.sync_dnd);
     calls::set_pause_media_on_call(settings.pause_media_on_call);

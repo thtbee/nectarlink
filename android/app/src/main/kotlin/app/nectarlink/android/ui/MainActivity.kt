@@ -37,6 +37,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import app.nectarlink.android.NectarlinkApplication
 import app.nectarlink.android.R
@@ -266,6 +267,18 @@ private fun App(
     var webcamInitialCamera by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { core.messages.collect { snackbar.showSnackbar(it) } }
+    LaunchedEffect(Unit) {
+        core.clipSuggestions.collectLatest { notice ->
+            val result = snackbar.showSnackbar(
+                message = notice.message,
+                actionLabel = notice.actionLabel,
+                duration = androidx.compose.material3.SnackbarDuration.Short,
+            )
+            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                core.runClipSuggestion(notice.suggestion)
+            }
+        }
+    }
 
     LaunchedEffect(requestedRemotePc, state.devices) {
         val req = requestedRemotePc ?: return@LaunchedEffect
@@ -475,6 +488,7 @@ private fun App(
                     onDeleteClipboardHistory = core::deleteClipboardHistory,
                     onClearClipboardHistory = core::clearClipboardHistory,
                     loadClipboardHistoryImage = core::clipboardHistoryImage,
+                    onSetPcAudio = core::setPcAudio,
                     modifier = modifier,
                 )
                 Tab.Settings -> SettingsScreen(
@@ -492,6 +506,8 @@ private fun App(
                     onRemoveSafFolder = core::removeSafFolder,
                     onSetClipboardHistoryEnabled = core::setClipboardHistoryEnabled,
                     onClearClipboardHistory = core::clearClipboardHistory,
+                    suggestClipboardActions = preferences.suggestClipboardActions.collectAsStateWithLifecycle().value,
+                    onSetSuggestClipboardActions = preferences::updateSuggestClipboardActions,
                     modifier = modifier,
                 )
             }

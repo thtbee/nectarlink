@@ -578,6 +578,26 @@ impl From<core::DeckLayout> for DeckLayout {
     }
 }
 
+/// An active audio output device on a paired PC (`docs/protocol/deck.md`).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct AudioOutputDevice {
+    pub id: String,
+    pub name: String,
+    pub is_default: bool,
+}
+
+impl std::fmt::Debug for AudioOutputDevice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AudioOutputDevice").field("is_default", &self.is_default).finish_non_exhaustive()
+    }
+}
+
+impl From<core::AudioOutputDevice> for AudioOutputDevice {
+    fn from(d: core::AudioOutputDevice) -> Self {
+        AudioOutputDevice { id: d.id, name: d.name, is_default: d.is_default }
+    }
+}
+
 /// Live PC state reflected on Deck tiles (`docs/protocol/deck.md`).
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct DeckState {
@@ -585,11 +605,61 @@ pub struct DeckState {
     pub volume: u8,
     pub muted: bool,
     pub mic_muted: Option<bool>,
+    pub output_devices: Vec<AudioOutputDevice>,
 }
 
 impl From<core::DeckState> for DeckState {
     fn from(s: core::DeckState) -> Self {
-        DeckState { playing: s.playing, volume: s.volume, muted: s.muted, mic_muted: s.mic_muted }
+        DeckState {
+            playing: s.playing,
+            volume: s.volume,
+            muted: s.muted,
+            mic_muted: s.mic_muted,
+            output_devices: s.output_devices.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+/// The recognized kind of a text clip (`docs/protocol/clipboard.md`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ClipKind {
+    WebLink,
+    StreetAddress,
+    PhoneNumber,
+    TrackingNumber,
+    Email,
+}
+
+impl From<core::ClipKind> for ClipKind {
+    fn from(k: core::ClipKind) -> Self {
+        match k {
+            core::ClipKind::WebLink => ClipKind::WebLink,
+            core::ClipKind::StreetAddress => ClipKind::StreetAddress,
+            core::ClipKind::PhoneNumber => ClipKind::PhoneNumber,
+            core::ClipKind::TrackingNumber => ClipKind::TrackingNumber,
+            core::ClipKind::Email => ClipKind::Email,
+        }
+    }
+}
+
+/// A context chip suggestion for a received text clip.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ClipSuggestion {
+    pub kind: ClipKind,
+    pub action_label: String,
+    pub target: String,
+}
+
+/// Never prints the target text (protocol v0 §11).
+impl std::fmt::Debug for ClipSuggestion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ClipSuggestion").field("kind", &self.kind).finish_non_exhaustive()
+    }
+}
+
+impl From<core::ClipSuggestion> for ClipSuggestion {
+    fn from(s: core::ClipSuggestion) -> Self {
+        ClipSuggestion { kind: s.kind.into(), action_label: s.action_label().into(), target: s.target }
     }
 }
 
@@ -2556,6 +2626,18 @@ impl NectarlinkNode {
         self.run(async move { Ok(node.deck_press(id, tile).await?) }).await
     }
 
+    /// Asks a paired PC to set its master volume (`0..=100`) and/or mute state (`pc.audio.set`).
+    pub async fn set_pc_audio(&self, id: String, volume: Option<u8>, muted: Option<bool>) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.set_pc_audio(id, volume, muted).await?) }).await
+    }
+
+    /// The context chip suggestion for the most recently received text clip, if any.
+    pub fn last_clip_suggestion(&self) -> Option<ClipSuggestion> {
+        self.node.last_clip_suggestion().map(|(_, s)| s.into())
+    }
+
     /// Opens this phone's screen stream to a PC that asked (after the user
     /// agreed).
     pub async fn mirror_open(&self, pc_id: String) -> Result<Arc<MirrorStream>> {
@@ -2690,6 +2772,25 @@ impl NectarlinkNode {
         let node = self.node.clone();
         self.run(async move { node.network_changed().await }).await;
     }
+}
+
+/// Classifies a text clip into a single context chip suggestion (`None` for
+/// OTPs or plain text).
+#[uniffi::export]
+pub fn classify_clip(text: String) -> Option<ClipSuggestion> {
+    core::classify_clip(&text).map(Into::into)
+}
+
+/// Builds a web search URL for a parcel tracking number.
+#[uniffi::export]
+pub fn tracking_search_url(tracking_number: String) -> String {
+    core::tracking_search_url(&tracking_number)
+}
+
+/// Builds a web maps URL for a street address.
+#[uniffi::export]
+pub fn maps_web_url(address: String) -> String {
+    core::maps_web_url(&address)
 }
 
 /// Sends core logs to the platform log (logcat on Android). Call once,

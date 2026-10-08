@@ -111,9 +111,22 @@ Item {
         page.textRequested(n, name || "")
     }
 
+    function consumePendingDial() {
+        if (AppController.pendingDial.length > 0) {
+            dialInput.text = AppController.pendingDial
+            AppController.pendingDial = ""
+        }
+    }
+
     function load() {
         if (active && deviceId.length > 0)
             PhoneCall.open(deviceId)
+        consumePendingDial()
+    }
+
+    Connections {
+        target: AppController
+        function onPendingDialChanged() { page.consumePendingDial() }
     }
 
     onActiveChanged: if (active) load()

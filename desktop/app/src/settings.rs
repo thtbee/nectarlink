@@ -75,6 +75,8 @@ pub struct Settings {
     pub auto_clipboard: bool,
     /// Keep the last 50 synced clips in encrypted local clipboard history.
     pub clipboard_history: bool,
+    /// Suggest context chips (Open, Open in Maps, Call, Track, Email) for copied text.
+    pub suggest_clipboard_actions: bool,
     /// Copy one-time codes from phone notifications and SMS automatically.
     pub auto_copy_otp: bool,
     /// Pause PC media playback while a phone call is ringing or active.
@@ -116,6 +118,7 @@ impl Default for Settings {
             close_to_tray: true,
             auto_clipboard: true,
             clipboard_history: true,
+            suggest_clipboard_actions: true,
             auto_copy_otp: false,
             pause_media_on_call: true,
             sync_dnd: false,
@@ -189,6 +192,7 @@ mod tests {
             close_to_tray: false,
             auto_clipboard: false,
             clipboard_history: false,
+            suggest_clipboard_actions: false,
             auto_copy_otp: true,
             pause_media_on_call: false,
             sync_dnd: true,
