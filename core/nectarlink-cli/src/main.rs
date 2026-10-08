@@ -4806,6 +4806,9 @@ enum TaskTransport {
 
 impl TaskTransport {
     async fn send(&self, device_query: Option<&str>, task: &TaskNotify) -> Result<()> {
+        // Only the desktop app's queue (Windows) picks the phone by name here.
+        #[cfg(not(windows))]
+        let _ = device_query;
         match self {
             #[cfg(windows)]
             TaskTransport::DesktopDir(dir) => win_watch::queue_desktop_task_notify(dir, device_query, task),
@@ -4827,8 +4830,10 @@ impl TaskTransport {
     }
 
     async fn shutdown(self) {
-        if let TaskTransport::Standalone { node, .. } = self {
-            node.shutdown().await;
+        match self {
+            TaskTransport::Standalone { node, .. } => node.shutdown().await,
+            #[cfg(windows)]
+            TaskTransport::DesktopDir(_) => {}
         }
     }
 }
