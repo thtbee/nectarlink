@@ -69,13 +69,14 @@ struct State {
 static STATE: Mutex<Option<State>> = Mutex::new(None);
 static MIRROR: AtomicBool = AtomicBool::new(false);
 static HEIGHT: AtomicU32 = AtomicU32::new(720);
+static PREVIEW_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 fn state<T>(f: impl FnOnce(&mut State) -> T) -> T {
     f(STATE.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_default())
 }
 
-/// Initializes shared memory, placeholder preview, and (if registered) the
-/// Windows virtual camera session.
+/// Initializes webcam preferences and (if registered) the Windows virtual
+/// camera session.
 pub fn init(settings: &Settings) {
     MIRROR.store(settings.webcam_mirror, Ordering::Relaxed);
     let h = if settings.webcam_height == 1080 { 1080 } else { 720 };
@@ -98,7 +99,9 @@ pub fn init(settings: &Settings) {
         s.addon_registered = registered;
         s.vcam_handle = vcam_handle;
     });
-    refresh_idle_frame();
+    if registered {
+        refresh_idle_frame();
+    }
 }
 
 /// Stops the virtual camera session on app exit.
@@ -107,6 +110,7 @@ pub fn shutdown() {
         if let Some(mapping) = &s.mapping {
             mapping.set_idle("");
         }
+        s.mapping = None;
         s.vcam_handle = None;
     });
 }
@@ -251,8 +255,25 @@ fn mapping() -> Option<Arc<SharedFrameMapping>> {
     })
 }
 
-/// Updates the shared-memory header and the QML preview `VideoView` with the
-/// idle placeholder frame when no stream is active.
+/// Updates the camera's global mapping (if a camera client has opened it)
+/// without allocating the 8 MB local fallback mapping while idle.
+fn idle_mapping() -> Option<Arc<SharedFrameMapping>> {
+    state(|s| {
+        let due = s.global_tried.is_none_or(|at| at.elapsed() >= std::time::Duration::from_secs(1));
+        if !s.mapping_global && due {
+            s.global_tried = Some(std::time::Instant::now());
+            if let Ok(global) = SharedFrameMapping::open_existing(DEFAULT_MAPPING_NAME) {
+                tracing::debug!("joined the virtual camera's frame mapping");
+                s.mapping = Some(Arc::new(global));
+                s.mapping_global = true;
+            }
+        }
+        s.mapping.clone()
+    })
+}
+
+/// Updates the shared-memory header and (when Settings is visible) the QML
+/// preview `VideoView` with the idle placeholder frame when no stream is active.
 fn refresh_idle_frame() {
     let is_streaming = state(|s| matches!(s.phase, Phase::Streaming { .. }));
     if is_streaming {
@@ -260,13 +281,45 @@ fn refresh_idle_frame() {
     }
     let phone = selected_phone();
     let name = phone_name_for(phone);
-    if let Some(mapping) = mapping() {
+    if let Some(mapping) = idle_mapping() {
         mapping.set_idle(&name);
     }
-    let (w, h) = (640u32, 360u32);
-    let mut bgrx = vec![0u8; (w * h * 4) as usize];
-    render_placeholder_bgrx(&mut bgrx, w, h, &name);
-    ffi::video_frame(PREVIEW_STREAM, w, h, &bgrx);
+    if PREVIEW_ACTIVE.load(Ordering::Relaxed) {
+        let (w, h) = (640u32, 360u32);
+        let mut bgrx = vec![0u8; (w * h * 4) as usize];
+        render_placeholder_bgrx(&mut bgrx, w, h, &name);
+        ffi::video_frame(PREVIEW_STREAM, w, h, &bgrx);
+    }
+}
+
+/// Marks whether the Settings webcam preview is on screen so the idle
+/// placeholder image is only held while needed.
+pub fn set_preview_active(active: bool) {
+    let prev = PREVIEW_ACTIVE.swap(active, Ordering::AcqRel);
+    if active && !prev {
+        refresh_idle_frame();
+    } else if !active {
+        let is_streaming = state(|s| matches!(s.phase, Phase::Streaming { .. }));
+        if !is_streaming {
+            ffi::video_clear(PREVIEW_STREAM);
+        }
+    }
+}
+
+/// Releases the idle preview image and any local-only shared mapping when the
+/// main window closes to the tray.
+pub fn release_idle_resources() {
+    PREVIEW_ACTIVE.store(false, Ordering::Release);
+    let is_streaming = state(|s| {
+        let streaming = matches!(s.phase, Phase::Streaming { .. });
+        if !streaming && !s.mapping_global {
+            s.mapping = None;
+        }
+        streaming
+    });
+    if !is_streaming {
+        ffi::video_clear(PREVIEW_STREAM);
+    }
 }
 
 /// Requests a webcam stream from `device` (or the selected phone).

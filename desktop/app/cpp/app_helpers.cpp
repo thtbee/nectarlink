@@ -8,7 +8,13 @@
 #include <QtGui/QIcon>
 #include <QtGui/QImage>
 #include <QtGui/QPixmap>
+#include <QtGui/QPixmapCache>
 #include <QtQuick/QQuickWindow>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 namespace {
 QIcon &appIcon()
@@ -57,3 +63,12 @@ int32_t load_bundled_fonts()
     }
     return loaded;
 }
+
+void trim_memory_caches()
+{
+    QPixmapCache::clear();
+#ifdef _WIN32
+    SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
+#endif
+}
+

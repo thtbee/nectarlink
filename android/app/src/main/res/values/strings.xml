@@ -201,6 +201,8 @@
     <string name="action_lock_pc">Lock PC</string>
     <string name="action_sleep_pc">Sleep</string>
     <string name="action_wake_pc">Wake</string>
+    <string name="action_more">More actions</string>
+    <string name="action_less">Fewer actions</string>
     <string name="wake_waking">Waking %1$s…</string>
     <string name="wake_timeout_title">%1$s hasn\'t woken up yet</string>
     <string name="wake_timeout_text">Check that:\n• Wake-on-LAN is enabled in BIOS/UEFI and in the network adapter\'s settings in Windows (Power Management and Wake on Magic Packet).\n• %1$s is on Ethernet if it was shut down (Wi-Fi wake rarely works from shutdown).\n• This phone is on the same network as %1$s.</string>
@@ -314,7 +316,7 @@
     <string name="deck_empty_page">No tiles on this page yet. Add tiles in Nectarlink on %1$s.</string>
     <string name="deck_commands_denied_title">Allow commands on %1$s</string>
     <string name="deck_commands_denied_text">To run shell commands from this phone, turn on “Run Deck commands” for this phone in Nectarlink › Settings › Devices on %1$s.</string>
-    <string name="deck_hint">Configure pages and tiles in Nectarlink › Deck on %1$s.</string>
+    <string name="deck_hint">Customize tiles in Deck on %1$s</string>
 
     <!-- Phone storage in File Explorer -->
     <string name="settings_storage">Storage in File Explorer</string>

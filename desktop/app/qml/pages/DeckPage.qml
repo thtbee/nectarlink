@@ -8,6 +8,9 @@ import app.nectarlink
 Item {
     id: page
     property bool active: false
+    onActiveChanged: DeckController.setPageActive(active)
+    Component.onCompleted: if (active) DeckController.setPageActive(true)
+    Component.onDestruction: DeckController.setPageActive(false)
 
     opacity: active ? 1 : 0
     visible: opacity > 0
@@ -78,40 +81,12 @@ Item {
         }
     }
 
-    // Curated tile color palette for Light and Dark modes (matches deck_colors::ALL).
-    function tilePalette(colorName) {
-        const dark = Theme.dark
-        const map = {
-            amber:  dark ? { bg: "#3B2A14", fg: "#FFDDB3", accent: "#F5A623", border: "#6A4B24" }
-                         : { bg: "#FFF0D6", fg: "#4A2E00", accent: "#C97A00", border: "#F0D199" },
-            coral:  dark ? { bg: "#3E221D", fg: "#FFDAD3", accent: "#FF7E67", border: "#6E3D34" }
-                         : { bg: "#FFE6E0", fg: "#521A10", accent: "#C84B31", border: "#F4BFB3" },
-            red:    dark ? { bg: "#3D1F24", fg: "#FFD9DE", accent: "#F45B69", border: "#6D353E" }
-                         : { bg: "#FFE4E8", fg: "#51121B", accent: "#C92A37", border: "#F2B6BE" },
-            teal:   dark ? { bg: "#153230", fg: "#C4F3EE", accent: "#38CFC3", border: "#285B57" }
-                         : { bg: "#DCF7F4", fg: "#083B37", accent: "#0D9488", border: "#A3E5DF" },
-            green:  dark ? { bg: "#183324", fg: "#C9F5DA", accent: "#4ADE80", border: "#2C5C41" }
-                         : { bg: "#E0F8EA", fg: "#0C3B22", accent: "#16A34A", border: "#A9E8C2" },
-            blue:   dark ? { bg: "#172E3D", fg: "#CEE7FF", accent: "#56B4F9", border: "#2B536E" }
-                         : { bg: "#E0F2FE", fg: "#0B324D", accent: "#0284C7", border: "#AEDBFA" },
-            violet: dark ? { bg: "#2E2340", fg: "#E9DDFF", accent: "#A985FF", border: "#523F73" }
-                         : { bg: "#EFE7FF", fg: "#2E1557", accent: "#6B46C1", border: "#D3C0FA" },
-            slate:  dark ? { bg: "#222934", fg: "#DCE4F0", accent: "#8FA3BF", border: "#3E4B5E" }
-                         : { bg: "#EAEEF4", fg: "#1E293B", accent: "#475569", border: "#CBD5E1" }
-        }
-        return map[colorName] || map.amber
+    function isTileHighlighted(kind) {
+        if (kind === "media_play_pause") return DeckController.playing
+        if (kind === "volume_mute") return DeckController.muted
+        if (kind === "mic_mute") return DeckController.micState === 1
+        return false
     }
-
-    readonly property var colorChoices: [
-        { id: "amber",  label: qsTr("Amber") },
-        { id: "coral",  label: qsTr("Coral") },
-        { id: "red",    label: qsTr("Red") },
-        { id: "teal",   label: qsTr("Teal") },
-        { id: "green",  label: qsTr("Green") },
-        { id: "blue",   label: qsTr("Blue") },
-        { id: "violet", label: qsTr("Violet") },
-        { id: "slate",  label: qsTr("Slate") }
-    ]
 
     readonly property var iconChoices: [
         "play", "pause", "skip_next", "skip_previous",
@@ -122,7 +97,7 @@ Item {
     ]
 
     readonly property var actionChoices: [
-        { id: "media_play_pause", group: qsTr("Media"), label: qsTr("Play / Pause") },
+        { id: "media_play_pause", group: qsTr("Media"), label: qsTr("Play / pause") },
         { id: "media_previous",   group: qsTr("Media"), label: qsTr("Previous track") },
         { id: "media_next",       group: qsTr("Media"), label: qsTr("Next track") },
         { id: "volume_down",      group: qsTr("Audio"), label: qsTr("Volume down") },
@@ -180,7 +155,7 @@ Item {
             const localPath = DeckController.urlToLocalPath(selectedFile.toString())
             if (localPath.length > 0) {
                 editorSheet.paramValue = localPath
-                if (!editorSheet.labelCustomized || editorSheet.tileLabel.length === 0 || editorSheet.tileLabel === qsTr("Launch App")) {
+                if (!editorSheet.labelCustomized || editorSheet.tileLabel.length === 0 || editorSheet.tileLabel === qsTr("Launch app")) {
                     const parts = localPath.split(/[\\/]/)
                     const file = parts[parts.length - 1] || ""
                     const stem = file.replace(/\.(exe|lnk)$/i, "")
@@ -223,7 +198,7 @@ Item {
                                 wrapMode: Text.WordWrap
                                 role: "bodySmall"
                                 muted: true
-                                text: qsTr("Big, one-tap buttons on your phone for media, volume, mic mute, window management, shortcuts, and apps. Drag tiles to reorder them or click any tile to customize it.")
+                                text: qsTr("One-tap buttons on your phone for media, volume, mic mute, window management, shortcuts, and apps. Drag tiles to reorder them or click any tile to customize it.")
                             }
                         }
                         Row {
@@ -249,29 +224,59 @@ Item {
 
                     Divider { width: parent.width }
 
-                    // Live status pills showing what phones see right now
+                    // Live status summary showing what phones see right now
                     Flow {
                         width: parent.width
-                        spacing: 10
+                        spacing: 16
 
-                        Chip {
-                            iconPath: DeckController.muted ? Icons.soundOff : Icons.speaker
-                            selected: !DeckController.muted
-                            text: DeckController.muted
-                                ? qsTr("Speaker: Muted (%1%)").arg(DeckController.volume)
-                                : qsTr("Speaker: %1%").arg(DeckController.volume)
+                        Row {
+                            spacing: 6
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 15; height: 15
+                                path: DeckController.muted ? Icons.soundOff : Icons.speaker
+                                color: Theme.surfaceContentVariant
+                            }
+                            Txt {
+                                anchors.verticalCenter: parent.verticalCenter
+                                role: "bodySmall"
+                                muted: true
+                                text: DeckController.muted
+                                    ? qsTr("Speaker muted (%1%)").arg(DeckController.volume)
+                                    : qsTr("Speaker %1%").arg(DeckController.volume)
+                            }
                         }
-                        Chip {
-                            iconPath: DeckController.micState === 1 ? Icons.micOff : Icons.mic
-                            selected: DeckController.micState === 0
-                            text: DeckController.micState === 1 ? qsTr("Mic: Muted")
-                                : DeckController.micState === 0 ? qsTr("Mic: Live")
-                                : qsTr("Mic: None")
+                        Row {
+                            spacing: 6
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 15; height: 15
+                                path: DeckController.micState === 1 ? Icons.micOff : Icons.mic
+                                color: Theme.surfaceContentVariant
+                            }
+                            Txt {
+                                anchors.verticalCenter: parent.verticalCenter
+                                role: "bodySmall"
+                                muted: true
+                                text: DeckController.micState === 1 ? qsTr("Mic muted")
+                                    : DeckController.micState === 0 ? qsTr("Mic live")
+                                    : qsTr("No mic")
+                            }
                         }
-                        Chip {
-                            iconPath: DeckController.playing ? Icons.play : Icons.pause
-                            selected: DeckController.playing
-                            text: DeckController.playing ? qsTr("Media: Playing") : qsTr("Media: Paused")
+                        Row {
+                            spacing: 6
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 15; height: 15
+                                path: DeckController.playing ? Icons.play : Icons.pause
+                                color: Theme.surfaceContentVariant
+                            }
+                            Txt {
+                                anchors.verticalCenter: parent.verticalCenter
+                                role: "bodySmall"
+                                muted: true
+                                text: DeckController.playing ? qsTr("Media playing") : qsTr("Media paused")
+                            }
                         }
                     }
                 }
@@ -346,7 +351,7 @@ Item {
                 id: tileGrid
                 width: parent.width
                 columns: width >= 760 ? 4 : 3
-                spacing: 14
+                spacing: 12
 
                 readonly property real cellWidth: (width - spacing * (columns - 1)) / columns
 
@@ -358,32 +363,35 @@ Item {
                         required property int index
 
                         width: tileGrid.cellWidth
-                        height: 118
+                        height: 112
+                        activeFocusOnTab: true
+                        Accessible.role: Accessible.Button
+                        Accessible.name: modelData.label
+                        Accessible.onPressAction: page.openEditTile(modelData)
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                page.openEditTile(modelData)
+                                event.accepted = true
+                            }
+                        }
 
-                        readonly property var pal: page.tilePalette(modelData.color)
                         readonly property bool isBeingDragged: page.draggedTileIndex === index
+                        readonly property bool highlighted: page.isTileHighlighted(modelData.kind)
 
                         Rectangle {
                             id: tileCard
                             anchors.fill: parent
                             radius: Theme.radiusMd
-                            color: Theme.graphite ? Theme.surfaceContainer : tileSlot.pal.bg
-                            border.width: isBeingDragged ? 2 : (Theme.graphite ? 1 : 1)
-                            border.color: isBeingDragged ? Theme.primary
-                                        : Theme.graphite ? tileSlot.pal.accent : tileSlot.pal.border
-                            scale: isBeingDragged ? 0.96 : (tileHover.hovered ? 1.01 : 1.0)
+                            color: Theme.graphite
+                                ? (tileHover.hovered ? Theme.surfaceContainer : "transparent")
+                                : (tileHover.hovered ? Theme.surfaceContainerHigh : Theme.tileColor)
+                            border.width: isBeingDragged || tileSlot.activeFocus ? 2 : (Theme.graphite ? 1 : 0)
+                            border.color: isBeingDragged || tileSlot.activeFocus
+                                ? Theme.primary
+                                : (tileSlot.highlighted ? Theme.surfaceContent : Theme.outlineVariant)
+                            scale: isBeingDragged ? 0.97 : 1.0
                             Behavior on scale { NumberAnimation { duration: Theme.fadeFast } }
-
-                            // Left accent bar in Graphite so tile color is clear without heavy fill
-                            Rectangle {
-                                visible: Theme.graphite
-                                width: 4
-                                height: parent.height - 24
-                                x: 8
-                                anchors.verticalCenter: parent.verticalCenter
-                                radius: 2
-                                color: tileSlot.pal.accent
-                            }
+                            Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
 
                             // Top row: Icon badge + live status pill + quick test button
                             Item {
@@ -391,20 +399,22 @@ Item {
                                 anchors.right: parent.right
                                 anchors.top: parent.top
                                 anchors.margins: 14
-                                anchors.leftMargin: Theme.graphite ? 18 : 14
                                 height: 34
 
                                 Rectangle {
                                     id: iconBadge
                                     width: 34; height: 34
                                     radius: Theme.radiusSm
-                                    color: Theme.graphite ? Theme.surfaceContainerHigh
-                                                          : Qt.rgba(tileSlot.pal.accent.r, tileSlot.pal.accent.g, tileSlot.pal.accent.b, 0.18)
+                                    color: tileSlot.highlighted
+                                        ? Theme.primaryContainer
+                                        : (Theme.graphite ? Theme.surfaceContainerHigh : Theme.secondaryContainer)
                                     Icon {
                                         anchors.centerIn: parent
                                         width: 18; height: 18
                                         path: page.iconPathFor(tileSlot.modelData.icon, tileSlot.modelData.kind)
-                                        color: Theme.graphite ? tileSlot.pal.accent : tileSlot.pal.fg
+                                        color: tileSlot.highlighted
+                                            ? Theme.primaryContainerContent
+                                            : (Theme.graphite ? Theme.surfaceContent : Theme.secondaryContainerContent)
                                     }
                                 }
 
@@ -415,17 +425,16 @@ Item {
                                     anchors.leftMargin: 8
                                     anchors.verticalCenter: parent.verticalCenter
                                     height: 22
-                                    width: statusLabel.implicitWidth + 14
+                                    width: statusLabel.implicitWidth + 12
                                     radius: 11
-                                    color: Theme.graphite ? Theme.surfaceContainerHigh
-                                                          : Qt.rgba(0, 0, 0, Theme.dark ? 0.28 : 0.08)
+                                    color: tileSlot.highlighted ? Theme.primaryContainer : Theme.surfaceContainerHigh
                                     Txt {
                                         id: statusLabel
                                         anchors.centerIn: parent
                                         text: tileSlot.modelData.status || ""
                                         role: "mono"
                                         size: 11
-                                        color: Theme.graphite ? Theme.surfaceContent : tileSlot.pal.fg
+                                        color: tileSlot.highlighted ? Theme.primaryContainerContent : Theme.surfaceContentVariant
                                     }
                                 }
 
@@ -436,10 +445,8 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     width: 28; height: 28
                                     radius: 14
-                                    color: testHover.hovered
-                                        ? (Theme.graphite ? Theme.surfaceContainerHighest : Qt.rgba(0, 0, 0, Theme.dark ? 0.35 : 0.14))
-                                        : "transparent"
-                                    opacity: tileHover.hovered || testHover.hovered ? 1 : 0.65
+                                    color: testHover.hovered ? Theme.surfaceContainerHighest : "transparent"
+                                    opacity: tileHover.hovered || testHover.hovered ? 1 : 0.55
                                     Accessible.role: Accessible.Button
                                     Accessible.name: qsTr("Test %1").arg(tileSlot.modelData.label)
                                     Accessible.onPressAction: DeckController.testTile(tileSlot.modelData.id)
@@ -447,8 +454,8 @@ Item {
                                     Icon {
                                         anchors.centerIn: parent
                                         width: 14; height: 14
-                                        path: Icons.bolt
-                                        color: Theme.graphite ? Theme.surfaceContentVariant : tileSlot.pal.fg
+                                        path: Icons.play
+                                        color: Theme.surfaceContentVariant
                                     }
                                     HoverHandler { id: testHover; cursorShape: Qt.PointingHandCursor }
                                     TapHandler {
@@ -463,25 +470,24 @@ Item {
                                 anchors.right: parent.right
                                 anchors.bottom: parent.bottom
                                 anchors.margins: 14
-                                anchors.leftMargin: Theme.graphite ? 18 : 14
                                 spacing: 2
 
                                 Txt {
                                     width: parent.width
                                     text: tileSlot.modelData.label
-                                    role: "title"
-                                    size: 15
+                                    role: "body"
+                                    weight: Font.DemiBold
                                     elide: Text.ElideRight
-                                    color: Theme.graphite ? Theme.surfaceContent : tileSlot.pal.fg
+                                    color: Theme.surfaceContent
                                 }
                                 Txt {
+                                    visible: (tileSlot.modelData.subtitle || "").length > 0
                                     width: parent.width
                                     text: tileSlot.modelData.subtitle || ""
                                     role: "bodySmall"
                                     size: 11
                                     elide: Text.ElideRight
-                                    color: Theme.graphite ? Theme.surfaceContentVariant : tileSlot.pal.fg
-                                    opacity: Theme.graphite ? 1.0 : 0.76
+                                    muted: true
                                 }
                             }
 
@@ -541,11 +547,22 @@ Item {
                 Rectangle {
                     visible: page.currentTiles.length < 24
                     width: tileGrid.cellWidth
-                    height: 118
+                    height: 112
                     radius: Theme.radiusMd
                     color: addHover.hovered ? Theme.surfaceContainerHigh : "transparent"
-                    border.width: 1
-                    border.color: Theme.outlineVariant
+                    border.width: addTileBtn.activeFocus ? 2 : 1
+                    border.color: addTileBtn.activeFocus ? Theme.primary : Theme.outlineVariant
+                    id: addTileBtn
+                    activeFocusOnTab: true
+                    Accessible.role: Accessible.Button
+                    Accessible.name: qsTr("Add tile")
+                    Accessible.onPressAction: page.openAddTile()
+                    Keys.onPressed: (event) => {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                            page.openAddTile()
+                            event.accepted = true
+                        }
+                    }
 
                     Column {
                         anchors.centerIn: parent
@@ -587,8 +604,6 @@ Item {
         property bool modWin: false
         property string errorText: ""
 
-        readonly property var previewPal: page.tilePalette(tileColor)
-
         function selectKind(kind) {
             actionKind = kind
             if (!labelCustomized || tileLabel.trim().length === 0) {
@@ -627,24 +642,30 @@ Item {
                         wrapMode: Text.WordWrap
                         role: "bodySmall"
                         muted: true
-                        text: qsTr("Phones only receive the tile's label, icon, color, and action kind. File paths and commands stay on this PC.")
+                        text: qsTr("Phones only receive the tile's label, icon, and action kind. File paths and commands stay on this PC.")
                     }
                 }
 
                 // Live miniature tile preview
                 Rectangle {
                     id: previewBox
-                    width: 148; height: 64
+                    width: 148; height: 68
                     radius: Theme.radiusMd
-                    color: Theme.graphite ? Theme.surfaceContainer : editorSheet.previewPal.bg
-                    border.width: 1
-                    border.color: Theme.graphite ? editorSheet.previewPal.accent : editorSheet.previewPal.border
+                    color: Theme.graphite ? "transparent" : Theme.tileColor
+                    border.width: Theme.graphite ? 1 : 0
+                    border.color: Theme.outlineVariant
 
-                    Icon {
-                        x: 12; y: 10
-                        width: 16; height: 16
-                        path: page.iconPathFor(editorSheet.tileIcon, editorSheet.actionKind)
-                        color: Theme.graphite ? editorSheet.previewPal.accent : editorSheet.previewPal.fg
+                    Rectangle {
+                        x: 10; y: 10
+                        width: 24; height: 24
+                        radius: Theme.radiusSm
+                        color: Theme.graphite ? Theme.surfaceContainerHigh : Theme.secondaryContainer
+                        Icon {
+                            anchors.centerIn: parent
+                            width: 14; height: 14
+                            path: page.iconPathFor(editorSheet.tileIcon, editorSheet.actionKind)
+                            color: Theme.graphite ? Theme.surfaceContent : Theme.secondaryContainerContent
+                        }
                     }
                     Txt {
                         anchors.left: parent.left
@@ -652,10 +673,10 @@ Item {
                         anchors.bottom: parent.bottom
                         anchors.margins: 10
                         text: editorSheet.tileLabel.length > 0 ? editorSheet.tileLabel : DeckController.defaultLabelFor(editorSheet.actionKind)
-                        role: "title"
-                        size: 13
+                        role: "bodySmall"
+                        weight: Font.DemiBold
                         elide: Text.ElideRight
-                        color: Theme.graphite ? Theme.surfaceContent : editorSheet.previewPal.fg
+                        color: Theme.surfaceContent
                     }
                 }
             }
@@ -786,69 +807,35 @@ Item {
                 }
             }
 
-            // Tile Label Input + Color Swatches side-by-side
-            Row {
+            // Tile Label Input
+            Column {
                 width: parent.width
-                spacing: 16
+                spacing: 6
+                Txt { text: qsTr("Label"); role: "label"; muted: true }
+                Rectangle {
+                    width: parent.width
+                    height: 36
+                    radius: Theme.radiusSm
+                    color: Theme.surfaceContainerHigh
+                    border.width: labelInput.activeFocus ? 2 : 1
+                    border.color: labelInput.activeFocus ? Theme.primary : Theme.outlineVariant
 
-                Column {
-                    width: parent.width - colorCol.width - 16
-                    spacing: 6
-                    Txt { text: qsTr("Label"); role: "label"; muted: true }
-                    Rectangle {
-                        width: parent.width
-                        height: 36
-                        radius: Theme.radiusSm
-                        color: Theme.surfaceContainerHigh
-                        border.width: labelInput.activeFocus ? 2 : 1
-                        border.color: labelInput.activeFocus ? Theme.primary : Theme.outlineVariant
-
-                        TextInput {
-                            id: labelInput
-                            anchors.fill: parent
-                            anchors.leftMargin: 12
-                            anchors.rightMargin: 12
-                            verticalAlignment: TextInput.AlignVCenter
-                            clip: true
-                            color: Theme.surfaceContent
-                            selectionColor: Theme.primaryContainer
-                            selectedTextColor: Theme.primaryContainerContent
-                            font.family: Theme.fontUi
-                            font.pixelSize: 14
-                            text: editorSheet.tileLabel
-                            onTextEdited: {
-                                editorSheet.tileLabel = text
-                                editorSheet.labelCustomized = true
-                            }
-                        }
-                    }
-                }
-
-                Column {
-                    id: colorCol
-                    spacing: 6
-                    Txt { text: qsTr("Color"); role: "label"; muted: true }
-                    Row {
-                        height: 36
-                        spacing: 8
-                        Repeater {
-                            model: page.colorChoices
-                            delegate: Rectangle {
-                                required property var modelData
-                                readonly property var pal: page.tilePalette(modelData.id)
-                                readonly property bool chosen: editorSheet.tileColor === modelData.id
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 26; height: 26; radius: 13
-                                color: pal.accent
-                                border.width: chosen ? 3 : 1
-                                border.color: chosen ? Theme.surfaceContent : pal.border
-                                Accessible.role: Accessible.RadioButton
-                                Accessible.name: modelData.label
-                                Accessible.checked: chosen
-                                Accessible.onPressAction: editorSheet.tileColor = modelData.id
-                                HoverHandler { cursorShape: Qt.PointingHandCursor }
-                                TapHandler { onTapped: editorSheet.tileColor = modelData.id }
-                            }
+                    TextInput {
+                        id: labelInput
+                        anchors.fill: parent
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
+                        verticalAlignment: TextInput.AlignVCenter
+                        clip: true
+                        color: Theme.surfaceContent
+                        selectionColor: Theme.primaryContainer
+                        selectedTextColor: Theme.primaryContainerContent
+                        font.family: Theme.fontUi
+                        font.pixelSize: 14
+                        text: editorSheet.tileLabel
+                        onTextEdited: {
+                            editorSheet.tileLabel = text
+                            editorSheet.labelCustomized = true
                         }
                     }
                 }

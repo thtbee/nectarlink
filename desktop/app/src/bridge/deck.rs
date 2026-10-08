@@ -48,13 +48,13 @@ struct UiPage {
 fn action_fields(action: &DeckAction) -> (String, bool, bool, bool, bool, String) {
     match action {
         DeckAction::MediaPlayPause => (String::new(), false, false, false, false, "Media key".into()),
-        DeckAction::MediaNext => (String::new(), false, false, false, false, "Next track".into()),
-        DeckAction::MediaPrevious => (String::new(), false, false, false, false, "Previous track".into()),
-        DeckAction::VolumeUp => (String::new(), false, false, false, false, "Volume +2%".into()),
-        DeckAction::VolumeDown => (String::new(), false, false, false, false, "Volume -2%".into()),
-        DeckAction::VolumeMute => (String::new(), false, false, false, false, "Toggle speaker mute".into()),
-        DeckAction::MicMute => (String::new(), false, false, false, false, "Toggle mic mute".into()),
-        DeckAction::LockPc => (String::new(), false, false, false, false, "Lock workstation".into()),
+        DeckAction::MediaNext => (String::new(), false, false, false, false, "Media key".into()),
+        DeckAction::MediaPrevious => (String::new(), false, false, false, false, "Media key".into()),
+        DeckAction::VolumeUp => (String::new(), false, false, false, false, "+2%".into()),
+        DeckAction::VolumeDown => (String::new(), false, false, false, false, "−2%".into()),
+        DeckAction::VolumeMute => (String::new(), false, false, false, false, "Speaker".into()),
+        DeckAction::MicMute => (String::new(), false, false, false, false, "Microphone".into()),
+        DeckAction::LockPc => (String::new(), false, false, false, false, "Win + L".into()),
         DeckAction::ShowDesktop => (String::new(), false, false, false, false, "Win + D".into()),
         DeckAction::SwitchWindow => (String::new(), false, false, false, false, "Alt + Tab".into()),
         DeckAction::Screenshot => (String::new(), false, false, false, false, "Win + Shift + S".into()),
@@ -250,5 +250,9 @@ impl qobject::DeckController {
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| String::from(url));
         QString::from(raw.trim())
+    }
+
+    pub fn set_page_active(&self, active: bool) {
+        deck::set_page_active(active);
     }
 }

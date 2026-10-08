@@ -2436,22 +2436,22 @@ pub mod deck_kinds {
     /// Default label for an action kind.
     pub fn default_label(kind: &str) -> &'static str {
         match kind {
-            MEDIA_PLAY_PAUSE => "Play / Pause",
+            MEDIA_PLAY_PAUSE => "Play / pause",
             MEDIA_NEXT => "Next",
             MEDIA_PREVIOUS => "Previous",
-            VOLUME_UP => "Volume Up",
-            VOLUME_DOWN => "Volume Down",
-            VOLUME_MUTE => "Mute Audio",
-            MIC_MUTE => "Mic Mute",
+            VOLUME_UP => "Volume up",
+            VOLUME_DOWN => "Volume down",
+            VOLUME_MUTE => "Mute audio",
+            MIC_MUTE => "Mic mute",
             LOCK_PC => "Lock PC",
-            SHOW_DESKTOP => "Show Desktop",
-            SWITCH_WINDOW => "Switch Window",
+            SHOW_DESKTOP => "Show desktop",
+            SWITCH_WINDOW => "Switch window",
             SCREENSHOT => "Screenshot",
             SHORTCUT => "Shortcut",
-            OPEN_URL => "Open Website",
-            TYPE_TEXT => "Type Text",
-            LAUNCH_APP => "Launch App",
-            RUN_COMMAND => "Run Command",
+            OPEN_URL => "Open website",
+            TYPE_TEXT => "Type text",
+            LAUNCH_APP => "Launch app",
+            RUN_COMMAND => "Run command",
             _ => "Action",
         }
     }
@@ -2578,7 +2578,21 @@ impl DeckTile {
         if !is_valid_deck_id(&self.id) || !deck_kinds::ALL.contains(&self.kind.as_str()) {
             return None;
         }
-        let label = sanitize_deck_label(&self.label)?;
+        let raw_label = sanitize_deck_label(&self.label)?;
+        let label = match (self.kind.as_str(), raw_label.as_str()) {
+            (deck_kinds::MEDIA_PLAY_PAUSE, "Play / Pause") => "Play / pause".into(),
+            (deck_kinds::VOLUME_UP, "Volume Up") => "Volume up".into(),
+            (deck_kinds::VOLUME_DOWN, "Volume Down") => "Volume down".into(),
+            (deck_kinds::VOLUME_MUTE, "Mute Audio") => "Mute audio".into(),
+            (deck_kinds::MIC_MUTE, "Mic Mute") => "Mic mute".into(),
+            (deck_kinds::SHOW_DESKTOP, "Show Desktop") => "Show desktop".into(),
+            (deck_kinds::SWITCH_WINDOW, "Switch Window") => "Switch window".into(),
+            (deck_kinds::OPEN_URL, "Open Website") => "Open website".into(),
+            (deck_kinds::TYPE_TEXT, "Type Text") => "Type text".into(),
+            (deck_kinds::LAUNCH_APP, "Launch App") => "Launch app".into(),
+            (deck_kinds::RUN_COMMAND, "Run Command") => "Run command".into(),
+            _ => raw_label,
+        };
         let icon = if deck_icons::ALL.contains(&self.icon.as_str()) {
             self.icon
         } else {
@@ -3629,7 +3643,7 @@ mod tests {
 
         // Debug output hides user labels and page names.
         let dbg = format!("{layout:?}");
-        assert!(!dbg.contains("Play / Pause") && !dbg.contains("Main"), "{dbg}");
+        assert!(!dbg.contains("Play / pause") && !dbg.contains("Main"), "{dbg}");
 
         let env = Envelope::new(types::DECK_LAYOUT, &layout).unwrap();
         let back: DeckLayout = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();

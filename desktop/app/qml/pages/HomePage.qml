@@ -534,52 +534,55 @@ Item {
                 }
             }
 
+            // Active webcam session on this phone.
             Card {
+                id: webcamHomeCard
                 width: parent.width
+                readonly property var webcamFeature: home.feature("camera.webcam")
+                readonly property bool isThisPhone: (Webcam.phase === "streaming" || Webcam.phase === "asking")
+                                                    && Webcam.activeDevice === home.deviceId
+                visible: isThisPhone
                 Column {
                     width: parent.width
-                    spacing: 12
-                    Txt { text: qsTr("Connection"); role: "label"; muted: true }
+                    spacing: 10
                     Row {
-                        spacing: 10
-                        StatusDot { anchors.verticalCenter: parent.verticalCenter; online: home.online }
+                        spacing: 8
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            path: Icons.video
+                            color: Theme.primary
+                        }
                         Txt {
                             anchors.verticalCenter: parent.verticalCenter
-                            role: "body"
-                            text: home.online
-                                  ? (home.path === "relay" ? qsTr("Connected while away") : qsTr("Connected on this network"))
-                                  : qsTr("Not connected")
+                            text: qsTr("Webcam")
+                            role: "label"
                         }
                     }
                     Txt {
                         width: parent.width
-                        wrapMode: Text.WordWrap
                         role: "bodySmall"
                         muted: true
-                        text: home.online
-                              ? (home.rttMs >= 1 ? qsTr("Round trip %1 ms. End-to-end encrypted.").arg(home.rttMs)
-                                                 : qsTr("Round trip under 1 ms. End-to-end encrypted."))
-                              : home.lastSeen > 0
-                                ? qsTr("Last seen %1. They reconnect on their own when both are on the same network.")
-                                      .arg(page.relativeTime(home.lastSeen))
-                                : qsTr("Open Nectarlink on %1. They connect on their own when both are on the same network.")
-                                      .arg(home.name)
+                        wrapMode: Text.WordWrap
+                        text: Webcam.statusText.length > 0
+                              ? Webcam.statusText
+                              : qsTr("Using %1's camera on this PC.").arg(home.name)
                     }
                     Button {
-                        visible: !home.online
                         variant: "tonal"
                         size: "sm"
-                        text: qsTr("Check the connection")
-                        onClicked: AppController.runDoctor()
+                        iconPath: Icons.close
+                        text: qsTr("Stop webcam")
+                        onClicked: Webcam.stop()
                     }
                 }
             }
 
-            // Quick settings on the phone (toggles, ringer, volume, brightness).
+            // Quick settings on the phone (toggles, plus expandable ringer/volume/brightness).
             Card {
                 id: phoneControls
                 width: parent.width
                 visible: home.online && state !== null
+                property bool expanded: false
                 property bool confirmWifiOff: false
                 property var hoveredLockedFeature: null
                 readonly property var state: {
@@ -603,13 +606,10 @@ Item {
                 readonly property var brightnessFeature: home.feature("toggles.brightness")
                 readonly property var wifiFeature: home.feature("toggles.wifi")
                 readonly property var bluetoothFeature: home.feature("toggles.bluetooth")
+                readonly property var webcamFeature: home.feature("camera.webcam")
                 readonly property var activeLockFeature: {
                     if (hoveredLockedFeature && hoveredLockedFeature.state === "locked")
                         return hoveredLockedFeature
-                    if (wifiFeature.state === "locked")
-                        return wifiFeature
-                    if (dndFeature.state === "locked")
-                        return dndFeature
                     return ({})
                 }
                 onVisibleChanged: if (!visible) confirmWifiOff = false
@@ -618,13 +618,31 @@ Item {
                     width: parent.width
                     spacing: 12
 
-                    Txt { text: qsTr("Phone controls"); role: "label"; muted: true }
+                    Item {
+                        width: parent.width
+                        height: 24
+                        Txt {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("Phone controls")
+                            role: "label"
+                            muted: true
+                        }
+                        Button {
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            variant: "text"
+                            size: "sm"
+                            text: phoneControls.expanded ? qsTr("Less") : qsTr("Sound & display")
+                            onClicked: phoneControls.expanded = !phoneControls.expanded
+                        }
+                    }
 
                     Row {
                         id: toggleRow
                         width: parent.width
                         spacing: 6
-                        readonly property int buttonCount: phoneControls.hasFlashlight ? 5 : 4
+                        readonly property int buttonCount: phoneControls.hasFlashlight ? 4 : 3
                         readonly property real buttonWidth: (width - spacing * (buttonCount - 1)) / buttonCount
 
                         QuickToggleButton {
@@ -725,133 +743,144 @@ Item {
                         }
                     }
 
-                    // Ringer mode segmented control.
                     Column {
                         width: parent.width
-                        spacing: 6
-                        Segmented {
+                        spacing: 12
+                        visible: phoneControls.expanded
+
+                        // Ringer mode segmented control.
+                        Column {
                             width: parent.width
-                            enabled: phoneControls.ringerFeature.state === "available"
-                                     || phoneControls.ringerFeature.state === "partial"
-                            opacity: enabled ? 1 : 0.5
-                            options: [
-                                { value: "ring", label: qsTr("Ring") },
-                                { value: "vibrate", label: qsTr("Vibrate") },
-                                { value: "silent", label: qsTr("Silent") }
-                            ]
-                            value: phoneControls.state ? phoneControls.state.ringer : "ring"
-                            onPicked: (mode) => AppController.setPhoneToggle(home.deviceId, "ringer", mode)
+                            spacing: 6
+                            Segmented {
+                                width: parent.width
+                                enabled: phoneControls.ringerFeature.state === "available"
+                                         || phoneControls.ringerFeature.state === "partial"
+                                opacity: enabled ? 1 : 0.5
+                                options: [
+                                    { value: "ring", label: qsTr("Ring") },
+                                    { value: "vibrate", label: qsTr("Vibrate") },
+                                    { value: "silent", label: qsTr("Silent") }
+                                ]
+                                value: phoneControls.state ? phoneControls.state.ringer : "ring"
+                                onPicked: (mode) => AppController.setPhoneToggle(home.deviceId, "ringer", mode)
+                            }
+                            LockChip {
+                                visible: phoneControls.ringerFeature.state === "locked" && label.length > 0
+                                feature: phoneControls.ringerFeature
+                                maxWidth: parent.width
+                            }
                         }
-                        LockChip {
-                            visible: phoneControls.ringerFeature.state === "locked" && label.length > 0
-                            feature: phoneControls.ringerFeature
-                            maxWidth: parent.width
+
+                        // Media volume slider.
+                        ToggleSlider {
+                            width: parent.width
+                            deviceId: home.deviceId
+                            toggleId: "volume"
+                            title: qsTr("Volume")
+                            iconPath: shownValue === 0 ? Icons.soundOff : Icons.speaker
+                            phoneValue: phoneControls.state ? phoneControls.state.volume : 0
+                            feature: phoneControls.volumeFeature
                         }
-                    }
 
-                    // Media volume slider.
-                    ToggleSlider {
-                        width: parent.width
-                        deviceId: home.deviceId
-                        toggleId: "volume"
-                        title: qsTr("Volume")
-                        iconPath: shownValue === 0 ? Icons.soundOff : Icons.speaker
-                        phoneValue: phoneControls.state ? phoneControls.state.volume : 0
-                        feature: phoneControls.volumeFeature
-                    }
-
-                    // Screen brightness slider.
-                    ToggleSlider {
-                        width: parent.width
-                        deviceId: home.deviceId
-                        toggleId: "brightness"
-                        title: qsTr("Brightness")
-                        iconPath: Icons.brightness
-                        phoneValue: phoneControls.state ? phoneControls.state.brightness : 0
-                        feature: phoneControls.brightnessFeature
+                        // Screen brightness slider.
+                        ToggleSlider {
+                            width: parent.width
+                            deviceId: home.deviceId
+                            toggleId: "brightness"
+                            title: qsTr("Brightness")
+                            iconPath: Icons.brightness
+                            phoneValue: phoneControls.state ? phoneControls.state.brightness : 0
+                            feature: phoneControls.brightnessFeature
+                        }
                     }
                 }
             }
 
-            // Phone as a webcam on this PC.
             Card {
-                id: webcamHomeCard
                 width: parent.width
-                visible: home.online || webcamFeature.state === "locked"
-                readonly property var webcamFeature: home.feature("camera.webcam")
-                readonly property bool isThisPhone: (Webcam.phase === "streaming" || Webcam.phase === "asking")
-                                                    && Webcam.activeDevice === home.deviceId
                 Column {
                     width: parent.width
                     spacing: 10
+                    Txt { text: qsTr("Connection"); role: "label"; muted: true }
                     Row {
-                        spacing: 8
-                        Icon {
-                            anchors.verticalCenter: parent.verticalCenter
-                            path: Icons.video
-                            color: webcamHomeCard.isThisPhone ? Theme.primary : Theme.surfaceContentVariant
-                        }
+                        spacing: 10
+                        StatusDot { anchors.verticalCenter: parent.verticalCenter; online: home.online }
                         Txt {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: qsTr("Webcam")
-                            role: "label"
-                            muted: !webcamHomeCard.isThisPhone
+                            role: "body"
+                            text: home.online
+                                  ? (home.path === "relay" ? qsTr("Connected while away") : qsTr("Connected on this network"))
+                                  : qsTr("Not connected")
                         }
                     }
                     Txt {
                         width: parent.width
+                        wrapMode: Text.WordWrap
                         role: "bodySmall"
                         muted: true
-                        wrapMode: Text.WordWrap
-                        text: webcamHomeCard.isThisPhone && Webcam.statusText.length > 0
-                              ? Webcam.statusText
-                              : qsTr("Use %1's camera in video calls on this PC.").arg(home.name)
-                    }
-                    LockChip {
-                        visible: webcamHomeCard.webcamFeature.state === "locked" && label.length > 0
-                        feature: webcamHomeCard.webcamFeature
-                        maxWidth: parent.width
-                    }
-                    Button {
-                        visible: webcamHomeCard.isThisPhone
-                                 || (home.online && (webcamHomeCard.webcamFeature.state === "available"
-                                                     || webcamHomeCard.webcamFeature.action === "enableAddon"))
-                        variant: webcamHomeCard.isThisPhone ? "tonal" : "fill"
-                        size: "sm"
-                        iconPath: webcamHomeCard.isThisPhone ? Icons.close : Icons.video
-                        text: webcamHomeCard.isThisPhone ? qsTr("Stop webcam") : qsTr("Start webcam")
-                        onClicked: {
-                            if (webcamHomeCard.isThisPhone)
-                                Webcam.stop()
-                            else
-                                Webcam.start(home.deviceId)
-                        }
-                    }
-                }
-            }
-
-            Card {
-                width: parent.width
-                Column {
-                    width: parent.width
-                    spacing: 12
-                    Txt { text: qsTr("This PC"); role: "label"; muted: true }
-                    Txt { width: parent.width; text: AppController.deviceName; role: "title" }
-                    Txt {
-                        width: parent.width
-                        role: "bodySmall"
-                        muted: true
-                        text: qsTr("Paired with %1 since %2")
-                              .arg(home.name)
-                              .arg(new Date(home.pairedAt * 1000).toLocaleDateString(Qt.locale(), Locale.ShortFormat))
-                        wrapMode: Text.WordWrap
+                        text: home.online
+                              ? (home.rttMs >= 1 ? qsTr("Round trip %1 ms · End-to-end encrypted").arg(home.rttMs)
+                                                 : qsTr("Round trip under 1 ms · End-to-end encrypted"))
+                              : home.lastSeen > 0
+                                ? qsTr("Last seen %1. Reconnects automatically on the same network.")
+                                      .arg(page.relativeTime(home.lastSeen))
+                                : qsTr("Open Nectarlink on %1 to connect on this network.")
+                                      .arg(home.name)
                     }
                     Button {
+                        visible: !home.online
                         variant: "tonal"
                         size: "sm"
-                        iconPath: Icons.plus
-                        text: qsTr("Pair another device")
-                        onClicked: page.pairRequested()
+                        text: qsTr("Check the connection")
+                        onClicked: AppController.runDoctor()
+                    }
+                    Divider {
+                        width: parent.width
+                        visible: home.online && !webcamHomeCard.isThisPhone
+                                 && (webcamHomeCard.webcamFeature.state === "available"
+                                     || webcamHomeCard.webcamFeature.action === "enableAddon")
+                    }
+                    Item {
+                        width: parent.width
+                        height: 32
+                        visible: home.online && !webcamHomeCard.isThisPhone
+                                 && (webcamHomeCard.webcamFeature.state === "available"
+                                     || webcamHomeCard.webcamFeature.action === "enableAddon")
+                        Row {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 8
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 16; height: 16
+                                path: Icons.video
+                                color: Theme.surfaceContentVariant
+                            }
+                            Txt {
+                                anchors.verticalCenter: parent.verticalCenter
+                                role: "bodySmall"
+                                text: qsTr("Phone as webcam")
+                            }
+                        }
+                        Button {
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            variant: "tonal"
+                            size: "sm"
+                            text: qsTr("Start")
+                            onClicked: Webcam.start(home.deviceId)
+                        }
+                    }
+                    Divider { width: parent.width }
+                    Txt {
+                        width: parent.width
+                        role: "bodySmall"
+                        muted: true
+                        text: qsTr("This PC (%1) · Paired %2")
+                              .arg(AppController.deviceName)
+                              .arg(new Date(home.pairedAt * 1000).toLocaleDateString(Qt.locale(), Locale.ShortFormat))
+                        wrapMode: Text.WordWrap
                     }
                 }
             }
@@ -1049,10 +1078,11 @@ Item {
         readonly property bool available: feature.state === "available" && ready
 
         height: 108
+        activeFocusOnTab: available
         radius: Theme.radiusLg
         color: tile.active ? Theme.primary : Theme.tileColor
-        border.width: Theme.graphite ? 1 : 0
-        border.color: Theme.outlineVariant
+        border.width: Theme.focusVisible(tile) ? 2 : (Theme.graphite ? 1 : 0)
+        border.color: Theme.focusVisible(tile) ? Theme.primary : Theme.outlineVariant
         scale: tap.pressed && available ? Theme.pressScale : 1
         Behavior on scale { SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
         Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
@@ -1065,6 +1095,12 @@ Item {
         Accessible.name: title
         Accessible.description: available ? subtitle : lock.label
         Accessible.onPressAction: if (tile.available) tile.clicked()
+        Keys.onPressed: (event) => {
+            if (tile.available && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
+                tile.clicked()
+                event.accepted = true
+            }
+        }
 
         readonly property color ink: tile.active ? Theme.primaryContent : Theme.surfaceContent
         Column {

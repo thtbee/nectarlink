@@ -196,7 +196,7 @@ private fun NearbyList(devices: List<DiscoveredDevice>, onPair: (String) -> Unit
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        device.name ?: device.id.take(8),
+                        device.name ?: stringResource(R.string.your_pc),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f),
                     )

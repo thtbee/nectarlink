@@ -6,7 +6,6 @@ import android.text.format.DateUtils
 import android.text.format.Formatter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.style.TextOverflow
@@ -328,6 +327,7 @@ private fun PcCard(
         if (tree != null) onSendFolder(device.id, tree)
     }
     var ringing by remember(device.id) { mutableStateOf(false) }
+    var showMoreActions by remember(device.id) { mutableStateOf(false) }
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.primaryContainer,
@@ -385,11 +385,12 @@ private fun PcCard(
             )
             val outlined = ButtonDefaults.outlinedButtonColors(contentColor = ink, disabledContentColor = ink.copy(alpha = 0.38f))
             val outline = BorderStroke(1.dp, ink.copy(alpha = if (device.online) 0.45f else 0.15f))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (!device.online && device.canWake) {
                     Button(
                         enabled = device.wakeState != WakeState.Waking,
                         onClick = { onWake(device.id) },
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(
                             if (device.wakeState == WakeState.Waking) stringResource(R.string.wake_waking, device.name)
@@ -397,58 +398,158 @@ private fun PcCard(
                         )
                     }
                 }
-                Button(
-                    enabled = device.online,
-                    onClick = {
-                        ringing = !ringing
-                        onRing(device.id, ringing)
-                    },
+                // Primary 2x2 grid: Control PC, Deck, Webcam, Send files
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text(stringResource(if (ringing) R.string.action_stop_ringing else R.string.action_ring_pc))
-                }
-                FilledTonalButton(
-                    colors = tonal,
-                    onClick = { onRemote(device.id) },
-                ) {
-                    Text(stringResource(R.string.action_remote_pc))
-                }
-                FilledTonalButton(
-                    colors = tonal,
-                    onClick = { onDeck(device.id) },
-                ) {
-                    Text(stringResource(R.string.action_deck_pc))
-                }
-                FilledTonalButton(
-                    colors = tonal,
-                    onClick = { onRecord(device.id) },
-                ) {
-                    Text(stringResource(R.string.action_record_pc))
-                }
-                FilledTonalButton(
-                    colors = tonal,
-                    onClick = { onWebcam(device.id) },
-                ) {
-                    Text(stringResource(R.string.action_webcam_pc))
-                }
-                FilledTonalButton(
-                    enabled = device.online,
-                    colors = tonal,
-                    onClick = { context.startActivity(SendActivity.sendClipboardIntent(context)) },
-                ) {
-                    Text(stringResource(R.string.action_send_clipboard))
-                }
-                FilledTonalButton(enabled = device.online, colors = tonal, onClick = { pickFiles.launch(arrayOf("*/*")) }) {
-                    Text(stringResource(R.string.action_send_files))
-                }
-                FilledTonalButton(enabled = device.online, colors = tonal, onClick = { pickFolder.launch(null) }) {
-                    Text(stringResource(R.string.action_send_folder))
-                }
-                if (device.has("device.pc_actions")) {
-                    OutlinedButton(enabled = device.online, colors = outlined, border = outline, onClick = { onPower(device.id, false) }) {
-                        Text(stringResource(R.string.action_lock_pc))
+                    Button(
+                        onClick = { onRemote(device.id) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(stringResource(R.string.action_remote_pc), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    OutlinedButton(enabled = device.online, colors = outlined, border = outline, onClick = { onPower(device.id, true) }) {
-                        Text(stringResource(R.string.action_sleep_pc))
+                    FilledTonalButton(
+                        colors = tonal,
+                        onClick = { onDeck(device.id) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(stringResource(R.string.action_deck_pc), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilledTonalButton(
+                        colors = tonal,
+                        onClick = { onWebcam(device.id) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(stringResource(R.string.action_webcam_pc), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    FilledTonalButton(
+                        enabled = device.online,
+                        colors = tonal,
+                        onClick = { pickFiles.launch(arrayOf("*/*")) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(stringResource(R.string.action_send_files), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+
+                val expanded = showMoreActions || ringing
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(
+                        onClick = { showMoreActions = !expanded },
+                        colors = ButtonDefaults.textButtonColors(contentColor = ink.copy(alpha = 0.85f)),
+                    ) {
+                        Text(
+                            text = stringResource(if (expanded) R.string.action_less else R.string.action_more),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                    if (ringing && !showMoreActions) {
+                        FilledTonalButton(
+                            colors = tonal,
+                            onClick = {
+                                ringing = false
+                                onRing(device.id, false)
+                            },
+                        ) {
+                            Text(stringResource(R.string.action_stop_ringing))
+                        }
+                    }
+                }
+
+                if (expanded) {
+                    Surface(
+                        shape = MaterialTheme.shapes.large,
+                        color = ink.copy(alpha = 0.06f),
+                        contentColor = ink,
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                FilledTonalButton(
+                                    enabled = device.online,
+                                    colors = tonal,
+                                    onClick = { pickFolder.launch(null) },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(stringResource(R.string.action_send_folder), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                                FilledTonalButton(
+                                    enabled = device.online,
+                                    colors = tonal,
+                                    onClick = { context.startActivity(SendActivity.sendClipboardIntent(context)) },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(stringResource(R.string.action_send_clipboard), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                FilledTonalButton(
+                                    colors = tonal,
+                                    onClick = { onRecord(device.id) },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(stringResource(R.string.action_record_pc), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                                FilledTonalButton(
+                                    enabled = device.online,
+                                    colors = tonal,
+                                    onClick = {
+                                        ringing = !ringing
+                                        onRing(device.id, ringing)
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(
+                                        stringResource(if (ringing) R.string.action_stop_ringing else R.string.action_ring_pc),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+                            if (device.has("device.pc_actions")) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    OutlinedButton(
+                                        enabled = device.online,
+                                        colors = outlined,
+                                        border = outline,
+                                        onClick = { onPower(device.id, false) },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text(stringResource(R.string.action_lock_pc), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                    OutlinedButton(
+                                        enabled = device.online,
+                                        colors = outlined,
+                                        border = outline,
+                                        onClick = { onPower(device.id, true) },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text(stringResource(R.string.action_sleep_pc), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

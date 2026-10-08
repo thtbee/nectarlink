@@ -95,6 +95,9 @@ class WebcamService : LifecycleService() {
         val normHeight = CameraEncoder.normalizeHeight(height, supports4k)
         val normWidth = CameraEncoder.widthForHeight(normHeight)
         val normCamera = if (camera == "front") "front" else "back"
+        val hasFlash = CameraEncoder.cameraHasFlash(this, normCamera)
+        val maxZoom = CameraEncoder.cameraMaxZoom(this, normCamera)
+        val initialZoom = _session.value.zoomRatio.coerceIn(1f, maxZoom)
 
         _session.value = WebcamSession(
             active = true,
@@ -104,6 +107,9 @@ class WebcamService : LifecycleService() {
             height = normHeight,
             fps = fps,
             camera = normCamera,
+            zoomRatio = initialZoom,
+            maxZoomRatio = maxZoom,
+            hasFlash = hasFlash,
             supports4k = supports4k,
         )
 
@@ -149,6 +155,7 @@ class WebcamService : LifecycleService() {
                     initialHeight = normHeight,
                     fps = fps,
                     initialCamera = normCamera,
+                    initialZoomRatio = _session.value.zoomRatio,
                     onStateChanged = { live ->
                         _session.update { s ->
                             s.copy(
@@ -307,9 +314,33 @@ class WebcamService : LifecycleService() {
             current?.takeIf { it.pcId == pcId }?.encoder?.requestKeyframe()
         }
 
-        fun setCamera(camera: String) {
+        fun refreshCapabilities(context: Context) {
+            val cam = _session.value.camera
+            val flash = CameraEncoder.cameraHasFlash(context, cam)
+            val maxZoom = CameraEncoder.cameraMaxZoom(context, cam)
+            _session.update {
+                it.copy(
+                    hasFlash = flash,
+                    maxZoomRatio = maxZoom,
+                    zoomRatio = it.zoomRatio.coerceIn(1f, maxZoom),
+                )
+            }
+        }
+
+        fun setCamera(camera: String, context: Context? = null) {
             val norm = if (camera == "front") "front" else "back"
-            _session.update { it.copy(camera = norm, torchOn = false) }
+            val ctx = context ?: current
+            val flash = ctx?.let { CameraEncoder.cameraHasFlash(it, norm) } ?: false
+            val maxZoom = ctx?.let { CameraEncoder.cameraMaxZoom(it, norm) } ?: 4f
+            _session.update {
+                it.copy(
+                    camera = norm,
+                    hasFlash = flash,
+                    maxZoomRatio = maxZoom,
+                    zoomRatio = it.zoomRatio.coerceIn(1f, maxZoom),
+                    torchOn = false,
+                )
+            }
             current?.encoder?.setCamera(norm)
         }
 

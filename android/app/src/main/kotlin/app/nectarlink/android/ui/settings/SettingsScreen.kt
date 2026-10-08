@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
@@ -61,11 +62,9 @@ import app.nectarlink.android.toggles.PhoneToggles
 import app.nectarlink.android.update.AppUpdater
 import app.nectarlink.android.update.CheckForUpdates
 import app.nectarlink.android.core.CoreState
-import app.nectarlink.android.core.CoreStatus
 import app.nectarlink.android.core.Device
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.ui.theme.Appearance
-import app.nectarlink.android.ui.theme.LocalAppFonts
 import app.nectarlink.android.ui.theme.Tokens
 
 @Composable
@@ -224,7 +223,10 @@ fun SettingsScreen(
 
         Section(stringResource(R.string.settings_devices)) {
             val context = LocalContext.current
-            state.devices.forEach { device ->
+            state.devices.forEachIndexed { index, device ->
+                if (index > 0) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f)) {
@@ -264,14 +266,6 @@ fun SettingsScreen(
         Section(stringResource(R.string.settings_about)) {
             Text(stringResource(R.string.about_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodyMedium)
             CheckForUpdates(updater)
-            (state.status as? CoreStatus.Ready)?.let {
-                Text(
-                    it.deviceId,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = LocalAppFonts.current.mono,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
     }
 

@@ -117,6 +117,8 @@ pub mod qobject {
         fn test_tile(self: Pin<&mut DeckController>, tile_id: &QString);
         #[qinvokable]
         fn url_to_local_path(self: &DeckController, url: &QString) -> QString;
+        #[qinvokable]
+        fn set_page_active(self: &DeckController, active: bool);
     }
 
     impl cxx_qt::Initialize for Preferences {}

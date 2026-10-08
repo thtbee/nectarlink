@@ -11,7 +11,8 @@ QtObject {
     id: app
 
     property MainWindow mainWindow: null
-    readonly property LaserOverlay laserOverlay: LaserOverlay {}
+    property LaserOverlay laserOverlay: null
+    readonly property Component laserComponent: Component { LaserOverlay {} }
     // A window for each phone screen or app being mirrored. The model
     // keeps a row per window (by key), so a window lives as long as its
     // mirroring, whatever else changes.
@@ -44,12 +45,25 @@ QtObject {
             if (!known)
                 mirrorWindows.append({ key: key })
         }
+        if (!app.mainWindow && mirrorWindows.count === 0)
+            trayTrimTimer.restart()
     }
     readonly property Component mainComponent: Component { MainWindow {} }
     readonly property bool startMinimized: Qt.application.arguments.indexOf("--minimized") >= 0
         || Qt.application.arguments.indexOf("--send-to") >= 0
 
+    readonly property Timer trayTrimTimer: Timer {
+        interval: 350
+        onTriggered: {
+            if (!app.mainWindow && app.mirrorWindows.count === 0) {
+                gc()
+                AppController.trimWorkingSet()
+            }
+        }
+    }
+
     function showMain() {
+        trayTrimTimer.stop()
         if (!mainWindow) {
             mainWindow = mainComponent.createObject(null)
             mainWindow.closeRequested.connect(app.onMainClosed)
@@ -65,10 +79,18 @@ QtObject {
         // Destroy after the close event has finished.
         const window = mainWindow
         mainWindow = null
-        Qt.callLater(() => window.destroy())
+        Qt.callLater(() => {
+            window.destroy()
+            trayTrimTimer.restart()
+        })
     }
 
-    Component.onCompleted: if (!startMinimized) showMain()
+    Component.onCompleted: {
+        if (!startMinimized)
+            showMain()
+        else
+            trayTrimTimer.restart()
+    }
 
     // Qt follows the system color scheme unless told otherwise; the window
     // frame and Mica tint must follow the app's theme instead.
@@ -82,6 +104,15 @@ QtObject {
         target: AppController
         function onActivateRequested() { app.showMain() }
         function onQuitRequested() { Qt.quit() }
+        function onLaserActiveChanged() {
+            if (AppController.laserActive && !app.laserOverlay) {
+                app.laserOverlay = app.laserComponent.createObject(null)
+            } else if (!AppController.laserActive && app.laserOverlay) {
+                const overlay = app.laserOverlay
+                app.laserOverlay = null
+                Qt.callLater(() => overlay.destroy())
+            }
+        }
         function onRingingFromChanged() {
             if (AppController.ringingFrom.length > 0) {
                 app.showMain()

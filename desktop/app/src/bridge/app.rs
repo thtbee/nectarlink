@@ -164,6 +164,9 @@ pub mod qobject {
         /// The local sync root folder path for a paired phone.
         #[qinvokable]
         fn phone_storage_path(self: &AppController, device: &QString) -> QString;
+        /// Releases idle UI caches and trims the working set when closed to tray.
+        #[qinvokable]
+        fn trim_working_set(self: &AppController);
 
         /// A short message for the user (e.g. a command failed).
         #[qsignal]
@@ -708,6 +711,11 @@ impl qobject::AppController {
         let path =
             crate::storage::sync_root_path_for(id).map(|p| p.display().to_string()).unwrap_or_default();
         QString::from(&path)
+    }
+
+    pub fn trim_working_set(&self) {
+        crate::webcam::release_idle_resources();
+        super::native::ffi::trim_memory_caches();
     }
 }
 

@@ -21,5 +21,7 @@ pub mod ffi {
         /// Registers the fonts compiled in under `:/fonts/`; returns how
         /// many loaded.
         fn load_bundled_fonts() -> i32;
+        /// Clears Qt pixmap caches and trims the process working set.
+        fn trim_memory_caches();
     }
 }

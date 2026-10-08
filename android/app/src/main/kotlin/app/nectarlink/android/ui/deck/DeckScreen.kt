@@ -32,6 +32,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -58,11 +60,11 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -96,7 +98,6 @@ fun DeckScreen(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val scope = rememberCoroutineScope()
 
     var fullScreen by rememberSaveable { mutableStateOf(false) }
@@ -159,7 +160,7 @@ fun DeckScreen(
         modifier = modifier
             .fillMaxSize()
             .padding(
-                horizontal = if (isLandscape) 16.dp else 16.dp,
+                horizontal = 16.dp,
                 vertical = if (fullScreen || isLandscape) 8.dp else 12.dp,
             ),
         verticalArrangement = Arrangement.spacedBy(if (isLandscape) 8.dp else 12.dp),
@@ -169,11 +170,11 @@ fun DeckScreen(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(
-                onClick = onBack,
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-            ) {
-                Text("← " + stringResource(R.string.action_back), style = MaterialTheme.typography.labelLarge)
+            IconButton(onClick = onBack) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_back),
+                    contentDescription = stringResource(R.string.action_back),
+                )
             }
             Spacer(Modifier.width(4.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -271,7 +272,7 @@ fun DeckScreen(
                     Text(
                         stringResource(R.string.deck_empty_page, device.name),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialResource.onSurfaceVariant(),
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(24.dp),
                     )
@@ -289,7 +290,6 @@ fun DeckScreen(
                         DeckTileButton(
                             tile = tile,
                             liveState = liveState,
-                            isDark = isDark,
                             compact = isLandscape,
                             enabled = device.online,
                             onPress = {
@@ -320,6 +320,11 @@ fun DeckScreen(
             }
         }
     }
+}
+
+private object MaterialResource {
+    @Composable
+    fun onSurfaceVariant(): Color = MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 @Composable
@@ -360,57 +365,41 @@ private data class TilePalette(
     val border: Color,
     val accent: Color,
     val fg: Color,
+    val iconWell: Color,
 )
 
-private fun tilePalette(colorName: String, isDark: Boolean): TilePalette = when (colorName) {
-    "amber" -> if (isDark) {
-        TilePalette(Color(0xFF33240C), Color(0xFF6B4C1B), Color(0xFFF59E0B), Color(0xFFFDE68A))
+@Composable
+private fun tilePalette(
+    @Suppress("UNUSED_PARAMETER") colorName: String,
+    highlighted: Boolean,
+): TilePalette {
+    val scheme = MaterialTheme.colorScheme
+    return if (highlighted) {
+        TilePalette(
+            bg = scheme.primaryContainer,
+            border = scheme.primary,
+            accent = scheme.primary,
+            fg = scheme.onPrimaryContainer,
+            iconWell = scheme.surfaceContainerHigh,
+        )
     } else {
-        TilePalette(Color(0xFFFEF3C7), Color(0xFFF59E0B), Color(0xFFD97706), Color(0xFF78350F))
-    }
-    "coral" -> if (isDark) {
-        TilePalette(Color(0xFF361B12), Color(0xFF7A3720), Color(0xFFF97316), Color(0xFFFED7AA))
-    } else {
-        TilePalette(Color(0xFFFFEDD5), Color(0xFFF97316), Color(0xFFEA580C), Color(0xFF7C2D12))
-    }
-    "red", "rose" -> if (isDark) {
-        TilePalette(Color(0xFF371520), Color(0xFF7F2642), Color(0xFFF43F5E), Color(0xFFFECDD3))
-    } else {
-        TilePalette(Color(0xFFFFE4E6), Color(0xFFF43F5E), Color(0xFFE11D48), Color(0xFF881337))
-    }
-    "violet" -> if (isDark) {
-        TilePalette(Color(0xFF25173D), Color(0xFF56348E), Color(0xFF8B5CF6), Color(0xFFDDD6FE))
-    } else {
-        TilePalette(Color(0xFFEDE9FE), Color(0xFF8B5CF6), Color(0xFF7C3AED), Color(0xFF4C1D95))
-    }
-    "blue", "indigo" -> if (isDark) {
-        TilePalette(Color(0xFF14263D), Color(0xFF285185), Color(0xFF3B82F6), Color(0xFFBFDBFE))
-    } else {
-        TilePalette(Color(0xFFDBEAFE), Color(0xFF3B82F6), Color(0xFF2563EB), Color(0xFF1E3A8A))
-    }
-    "teal" -> if (isDark) {
-        TilePalette(Color(0xFF102E2C), Color(0xFF21645F), Color(0xFF14B8A6), Color(0xFF99F6E4))
-    } else {
-        TilePalette(Color(0xFFCCFBF1), Color(0xFF14B8A6), Color(0xFF0D9488), Color(0xFF134E4A))
-    }
-    "green", "emerald" -> if (isDark) {
-        TilePalette(Color(0xFF112E20), Color(0xFF226444), Color(0xFF10B981), Color(0xFFA7F3D0))
-    } else {
-        TilePalette(Color(0xFFD1FAE5), Color(0xFF10B981), Color(0xFF059669), Color(0xFF064E3B))
-    }
-    else -> if (isDark) {
-        TilePalette(Color(0xFF1E2530), Color(0xFF3D4B5F), Color(0xFF94A3B8), Color(0xFFE2E8F0))
-    } else {
-        TilePalette(Color(0xFFF1F5F9), Color(0xFF94A3B8), Color(0xFF475569), Color(0xFF1E293B))
+        TilePalette(
+            bg = scheme.surfaceContainerHigh,
+            border = scheme.outlineVariant,
+            accent = scheme.primary,
+            fg = scheme.onSurface,
+            iconWell = scheme.secondaryContainer,
+        )
     }
 }
 
 @Composable
 private fun liveBadgeText(kind: String, state: DeckState): String? = when (kind) {
     "media_play_pause" -> stringResource(if (state.playing) R.string.deck_playing else R.string.deck_paused)
-    "volume_up", "volume_down", "volume_mute" ->
+    "volume_mute" ->
         if (state.muted) stringResource(R.string.deck_muted)
-        else stringResource(R.string.deck_volume_percent, state.volume.toInt())
+        else if (state.volume > 0u) stringResource(R.string.deck_volume_percent, state.volume.toInt())
+        else null
     "mic_mute" -> when (state.micMuted) {
         true -> stringResource(R.string.deck_muted)
         false -> stringResource(R.string.deck_live)
@@ -437,19 +426,18 @@ private fun effectiveIcon(tile: DeckTile, state: DeckState): String = when {
 private fun DeckTileButton(
     tile: DeckTile,
     liveState: DeckState,
-    isDark: Boolean,
     compact: Boolean,
     enabled: Boolean,
     onPress: () -> Unit,
 ) {
-    val palette = tilePalette(tile.color, isDark)
     val badge = liveBadgeText(tile.kind, liveState)
     val highlighted = isLiveHighlighted(tile.kind, liveState)
+    val palette = tilePalette(tile.color, highlighted)
     val iconName = effectiveIcon(tile, liveState)
 
     var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.94f else 1f,
+        targetValue = if (pressed) 0.96f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessHigh),
         label = "tileScale",
     )
@@ -462,7 +450,7 @@ private fun DeckTileButton(
         contentColor = palette.fg,
         border = BorderStroke(
             width = if (highlighted) 2.dp else 1.dp,
-            color = if (highlighted) palette.accent else palette.border.copy(alpha = 0.65f),
+            color = if (highlighted) palette.accent else palette.border,
         ),
         modifier = Modifier
             .fillMaxWidth()
@@ -504,7 +492,7 @@ private fun DeckTileButton(
             ) {
                 Surface(
                     shape = MaterialTheme.shapes.medium,
-                    color = palette.accent.copy(alpha = if (isDark) 0.24f else 0.16f),
+                    color = palette.iconWell,
                     modifier = Modifier.size(if (compact) 34.dp else 36.dp),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -519,8 +507,8 @@ private fun DeckTileButton(
                 if (badge != null) {
                     Surface(
                         shape = CircleShape,
-                        color = if (highlighted) palette.accent else palette.accent.copy(alpha = if (isDark) 0.24f else 0.16f),
-                        contentColor = if (highlighted) Color.White else palette.fg,
+                        color = if (highlighted) palette.accent else palette.iconWell,
+                        contentColor = if (highlighted) MaterialTheme.colorScheme.onPrimary else palette.fg,
                     ) {
                         Text(
                             text = badge,
@@ -894,15 +882,15 @@ private fun fallbackDefaultLayout(): DeckLayout = DeckLayout(
             id = "main",
             name = "Main",
             tiles = listOf(
-                DeckTile("play_pause", "Play / Pause", "play", "amber", "media_play_pause"),
+                DeckTile("play_pause", "Play / pause", "play", "amber", "media_play_pause"),
                 DeckTile("prev_track", "Previous", "skip_previous", "slate", "media_previous"),
                 DeckTile("next_track", "Next", "skip_next", "slate", "media_next"),
-                DeckTile("vol_down", "Volume Down", "volume_down", "teal", "volume_down"),
-                DeckTile("vol_up", "Volume Up", "volume_up", "teal", "volume_up"),
-                DeckTile("vol_mute", "Mute Audio", "volume_off", "teal", "volume_mute"),
-                DeckTile("mic_mute", "Mic Mute", "mic", "coral", "mic_mute"),
-                DeckTile("show_desktop", "Show Desktop", "desktop", "blue", "show_desktop"),
-                DeckTile("switch_window", "Switch Window", "switch_window", "blue", "switch_window"),
+                DeckTile("vol_down", "Volume down", "volume_down", "teal", "volume_down"),
+                DeckTile("vol_up", "Volume up", "volume_up", "teal", "volume_up"),
+                DeckTile("vol_mute", "Mute audio", "volume_off", "teal", "volume_mute"),
+                DeckTile("mic_mute", "Mic mute", "mic", "coral", "mic_mute"),
+                DeckTile("show_desktop", "Show desktop", "desktop", "blue", "show_desktop"),
+                DeckTile("switch_window", "Switch window", "switch_window", "blue", "switch_window"),
                 DeckTile("screenshot", "Screenshot", "screenshot", "violet", "screenshot"),
                 DeckTile("lock_pc", "Lock PC", "lock", "red", "lock_pc"),
             ),

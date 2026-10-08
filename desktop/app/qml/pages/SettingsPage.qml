@@ -10,6 +10,10 @@ Item {
     property bool active: false
     signal pairRequested
 
+    onActiveChanged: Webcam.setPreviewActive(active)
+    Component.onCompleted: if (active) Webcam.setPreviewActive(true)
+    Component.onDestruction: Webcam.setPreviewActive(false)
+
     opacity: active ? 1 : 0
     visible: opacity > 0
     Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
@@ -118,15 +122,22 @@ Item {
                                     readonly property var wallpaperPalette: Theme.wallpaperSeed
                                         ? Theme.wallpaperSeed[Theme.dark ? "dark" : "light"] : null
                                     width: 26; height: 26; radius: 13
+                                    activeFocusOnTab: true
                                     color: !wallpaper ? Tokens.data.themes.bloom.seeds[modelData].seed
                                         : wallpaperPalette ? wallpaperPalette.primary : Theme.surfaceContainerHighest
-                                    border.width: selected ? 2 : 0
-                                    border.color: Theme.surfaceContent
+                                    border.width: selected || Theme.focusVisible(swatch) ? 2 : 0
+                                    border.color: Theme.focusVisible(swatch) ? Theme.primary : Theme.surfaceContent
                                     Accessible.role: Accessible.RadioButton
                                     Accessible.name: wallpaper ? qsTr("Wallpaper")
                                         : modelData.charAt(0).toUpperCase() + modelData.slice(1)
                                     Accessible.checked: selected
                                     Accessible.onPressAction: Preferences.seed = modelData
+                                    Keys.onPressed: (event) => {
+                                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                            Preferences.seed = swatch.modelData
+                                            event.accepted = true
+                                        }
+                                    }
                                     Icon {
                                         visible: swatch.wallpaper
                                         anchors.centerIn: parent
@@ -286,16 +297,25 @@ Item {
                             ? qsTr("\"Nectarlink Webcam\" is registered for Zoom, Teams, Meet and other apps.")
                             : qsTr("Set up once (needs administrator approval) so Zoom, Teams, Meet and other apps see \"Nectarlink Webcam\".")
                         Row {
-                            spacing: 8
+                            spacing: 12
                             Spinner {
                                 anchors.verticalCenter: parent.verticalCenter
                                 visible: Webcam.addonBusy
                             }
-                            Chip {
+                            Row {
                                 anchors.verticalCenter: parent.verticalCenter
                                 visible: Webcam.addonRegistered
-                                selected: true
-                                text: qsTr("Ready")
+                                spacing: 6
+                                StatusDot {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    online: true
+                                }
+                                Txt {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    role: "bodySmall"
+                                    muted: true
+                                    text: qsTr("Ready")
+                                }
                             }
                             Button {
                                 anchors.verticalCenter: parent.verticalCenter
@@ -455,12 +475,21 @@ Item {
                         const wifiNote = wired ? "" : qsTr(" Wi-Fi wake rarely works from shutdown.")
                         return qsTr("%1 · To wake this PC while it sleeps or is shut down, enable Wake on Magic Packet in Device Manager → Network adapters → %1 → Properties (Advanced tab → Wake on Magic Packet → Enabled; Power Management tab → Allow this device to wake the computer, Only allow a magic packet), and enable Wake-on-LAN in BIOS/UEFI.%2").arg(adapter).arg(wifiNote)
                     }
-                    Chip {
-                        selected: AppController.wakeState === "enabled"
-                        text: AppController.wakeState === "enabled" ? qsTr("Ready")
-                            : AppController.wakeState === "disabled" ? qsTr("Off in Windows")
-                            : AppController.wakeState === "unknown" ? qsTr("Check settings")
-                            : qsTr("No adapter")
+                    Row {
+                        spacing: 6
+                        StatusDot {
+                            anchors.verticalCenter: parent.verticalCenter
+                            online: AppController.wakeState === "enabled"
+                        }
+                        Txt {
+                            anchors.verticalCenter: parent.verticalCenter
+                            role: "bodySmall"
+                            muted: true
+                            text: AppController.wakeState === "enabled" ? qsTr("Ready")
+                                : AppController.wakeState === "disabled" ? qsTr("Off in Windows")
+                                : AppController.wakeState === "unknown" ? qsTr("Check settings")
+                                : qsTr("No adapter")
+                        }
                     }
                 }
             }
@@ -647,19 +676,6 @@ Item {
                     spacing: 8
                     Txt { text: qsTr("Nectarlink %1").arg(AppController.version); role: "title" }
                     Txt { text: qsTr("This PC: %1").arg(AppController.deviceName); role: "bodySmall"; muted: true }
-                    TextEdit {
-                        width: parent.width
-                        readOnly: true
-                        selectByMouse: true
-                        wrapMode: TextEdit.WrapAnywhere
-                        text: AppController.deviceId
-                        color: Theme.surfaceContentVariant
-                        selectionColor: Theme.primaryContainer
-                        selectedTextColor: Theme.primaryContainerContent
-                        font.family: Theme.fontMono
-                        font.pixelSize: 12
-                        Accessible.name: qsTr("Device ID")
-                    }
                     // Updates (installed copies only).
                     Row {
                         visible: AppController.canUpdate

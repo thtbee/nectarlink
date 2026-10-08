@@ -19,3 +19,8 @@ void keep_running_without_windows();
 // Registers every font compiled in under :/fonts/ and returns how many
 // loaded. Call after QGuiApplication is created.
 int32_t load_bundled_fonts();
+
+// Clears Qt pixmap caches and asks Windows to trim unused pages from the
+// process working set after windows are destroyed (tray mode).
+void trim_memory_caches();
+

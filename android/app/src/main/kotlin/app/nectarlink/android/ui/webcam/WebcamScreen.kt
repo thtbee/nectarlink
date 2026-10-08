@@ -27,12 +27,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -82,6 +86,7 @@ fun WebcamScreen(
     var startAfterGrant by remember { mutableStateOf(false) }
     val askCamera = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         hasCameraPermission = WebcamService.hasPermission(context)
+        WebcamService.refreshCapabilities(context)
         onAccessChanged()
         if (granted && startAfterGrant) {
             startAfterGrant = false
@@ -96,9 +101,13 @@ fun WebcamScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        WebcamService.refreshCapabilities(context)
+    }
+
     LaunchedEffect(initialHeight, initialCamera) {
         if (initialHeight != null) WebcamService.setResolutionHeight(initialHeight)
-        if (initialCamera != null) WebcamService.setCamera(initialCamera)
+        if (initialCamera != null) WebcamService.setCamera(initialCamera, context)
     }
 
     LaunchedEffect(autoStart, hasCameraPermission, device.online) {
@@ -120,7 +129,7 @@ fun WebcamScreen(
 
     val previewView = remember {
         PreviewView(context).apply {
-            scaleType = PreviewView.ScaleType.FIT_CENTER
+            scaleType = PreviewView.ScaleType.FILL_CENTER
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         }
     }
@@ -139,17 +148,17 @@ fun WebcamScreen(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        // Header: Back, PC name, online dot
+        // Header: Back icon button, PC name, online dot
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(
-                    onClick = onBack,
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                ) {
-                    Text("← " + stringResource(R.string.action_back), style = MaterialTheme.typography.labelLarge)
+                IconButton(onClick = onBack) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_back),
+                        contentDescription = stringResource(R.string.action_back),
+                    )
                 }
                 Spacer(Modifier.width(4.dp))
                 Text(
@@ -285,18 +294,18 @@ fun WebcamScreen(
             }
         }
 
-        // Controls Card: Start/Stop, Front/Back switch, Torch, Resolution, Zoom
+        // Controls Card: Start/Stop, Front/Back switch, Torch (when camera has flash), Resolution, Zoom
         item {
             Surface(
                 shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                contentColor = MaterialTheme.colorScheme.onSurface,
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth().padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    // Primary Start/Stop + Flip camera + Torch
+                    // Primary Start/Stop + Flip camera + Torch (only shown when camera has flash)
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -335,7 +344,7 @@ fun WebcamScreen(
                         FilledTonalButton(
                             onClick = {
                                 val next = if (session.camera == "front") "back" else "front"
-                                WebcamService.setCamera(next)
+                                WebcamService.setCamera(next, context)
                             },
                         ) {
                             val currentLabel = stringResource(
@@ -344,9 +353,9 @@ fun WebcamScreen(
                             Text(stringResource(R.string.webcam_switch_camera) + " ($currentLabel)")
                         }
 
-                        if (session.camera == "back" && (!isStreamingHere || session.hasFlash)) {
+                        if (session.hasFlash) {
                             OutlinedButton(
-                                enabled = isStreamingHere && session.hasFlash,
+                                enabled = isStreamingHere,
                                 onClick = { WebcamService.setTorch(!session.torchOn) },
                             ) {
                                 Text(
@@ -357,6 +366,8 @@ fun WebcamScreen(
                             }
                         }
                     }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                     // Resolution picker: 720p, 1080p, and 4K (when supported)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -380,31 +391,33 @@ fun WebcamScreen(
                         }
                     }
 
-                    // Zoom controls: 1x / 2x presets + smooth slider
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                stringResource(
-                                    R.string.webcam_zoom_label,
-                                    String.format(Locale.US, "%.1f", session.zoomRatio).toFloat(),
-                                ),
-                                style = MaterialTheme.typography.labelLarge,
-                                modifier = Modifier.weight(1f),
-                            )
+                    // Zoom controls: presets + smooth high-contrast slider
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            stringResource(
+                                R.string.webcam_zoom_label,
+                                String.format(Locale.US, "%.1f", session.zoomRatio).toFloat(),
+                            ),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             FilterChip(
                                 selected = kotlin.math.abs(session.zoomRatio - 1f) < 0.08f,
                                 onClick = { WebcamService.setZoomRatio(1f) },
                                 label = { Text("1×") },
                             )
-                            Spacer(Modifier.width(8.dp))
                             FilterChip(
                                 selected = kotlin.math.abs(session.zoomRatio - 2f) < 0.08f,
                                 onClick = { WebcamService.setZoomRatio(2f.coerceAtMost(session.maxZoomRatio)) },
                                 label = { Text("2×") },
                             )
+                            if (session.maxZoomRatio >= 4f) {
+                                FilterChip(
+                                    selected = kotlin.math.abs(session.zoomRatio - 4f) < 0.08f,
+                                    onClick = { WebcamService.setZoomRatio(4f.coerceAtMost(session.maxZoomRatio)) },
+                                    label = { Text("4×") },
+                                )
+                            }
                         }
                         val minZ = session.minZoomRatio
                         val maxZ = session.maxZoomRatio.coerceAtLeast(minZ + 0.1f)
@@ -412,7 +425,14 @@ fun WebcamScreen(
                             value = session.zoomRatio.coerceIn(minZ, maxZ),
                             onValueChange = { WebcamService.setZoomRatio(it) },
                             valueRange = minZ..maxZ,
-                            enabled = isStreamingHere,
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.secondaryContainer,
+                                disabledThumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                disabledActiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                                disabledInactiveTrackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
+                            ),
                         )
                     }
                 }

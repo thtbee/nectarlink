@@ -30,6 +30,7 @@ struct RuntimeState {
 static DECK: Mutex<Option<RuntimeState>> = Mutex::new(None);
 static MEDIA_PLAYING: AtomicBool = AtomicBool::new(false);
 static HAS_MEDIA_SESSION: AtomicBool = AtomicBool::new(false);
+static PAGE_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
@@ -46,6 +47,18 @@ fn sample_live_state() -> DeckState {
     DeckState { volume, muted, mic_muted, playing }
 }
 
+/// Marks whether the desktop Deck page is currently visible so idle background
+/// polling can pause when no paired device is online.
+pub fn set_page_active(active: bool) {
+    let prev = PAGE_ACTIVE.swap(active, Ordering::Relaxed);
+    if active && !prev {
+        core_host::spawn(async {
+            reload_from_disk_if_modified();
+            refresh_live_state().await;
+        });
+    }
+}
+
 /// Loads `deck.json` from `data_dir` and starts the background poller that
 /// keeps speaker volume, microphone mute, and external `deck.json` edits in sync.
 pub fn init(data_dir: &Path) {
@@ -56,23 +69,38 @@ pub fn init(data_dir: &Path) {
     }
     let config = DeckConfig::load(&path);
     let mtime = file_mtime(&path);
-    let initial_state = sample_live_state();
+    let initial_state = DeckState { volume: 50, muted: false, mic_muted: Some(false), playing: false };
     let wire_layout = config.to_wire_layout();
     {
         let mut guard = lock(&DECK);
-        *guard =
-            Some(RuntimeState { config, state: initial_state.clone(), path: Some(path), last_mtime: mtime });
+        *guard = Some(RuntimeState { config, state: initial_state, path: Some(path), last_mtime: mtime });
     }
     core_host::host().hub.update(|_| Changes::DECK);
 
     core_host::spawn(async move {
+        let sampled = tokio::task::spawn_blocking(sample_live_state).await.unwrap_or(DeckState {
+            volume: 50,
+            muted: false,
+            mic_muted: Some(false),
+            playing: false,
+        });
+        {
+            let mut guard = lock(&DECK);
+            if let Some(rt) = guard.as_mut() {
+                rt.state = sampled.clone();
+            }
+        }
+        core_host::host().hub.update(|_| Changes::DECK);
         if let Some(node) = core_host::wait_for_node().await {
             let _ = node.set_deck_layout(wire_layout).await;
-            let _ = node.set_deck_state(initial_state).await;
+            let _ = node.set_deck_state(sampled).await;
         }
-        let mut interval = tokio::time::interval(Duration::from_millis(1200));
+        let mut interval = tokio::time::interval(Duration::from_millis(1500));
         loop {
             interval.tick().await;
+            if !PAGE_ACTIVE.load(Ordering::Relaxed) {
+                continue;
+            }
             reload_from_disk_if_modified();
             refresh_live_state().await;
         }
@@ -108,7 +136,9 @@ fn reload_from_disk_if_modified() {
 
 /// Re-reads the PC's speaker and mic states and broadcasts `deck.state` if changed.
 pub async fn refresh_live_state() {
-    let next = sample_live_state();
+    let Ok(next) = tokio::task::spawn_blocking(sample_live_state).await else {
+        return;
+    };
     let changed = {
         let mut guard = lock(&DECK);
         match guard.as_mut() {
@@ -184,6 +214,7 @@ pub fn handle_press(_peer: &DeviceId, tile_id: &str) -> Result<(), String> {
 /// Executes a tile's action by ID (used both for remote `deck.press` and the
 /// desktop Deck editor's "Test" button).
 pub fn execute_tile(tile_id: &str) -> Result<(), String> {
+    reload_from_disk_if_modified();
     let action = {
         let guard = lock(&DECK);
         let rt = guard.as_ref().ok_or_else(|| "deck not initialized".to_owned())?;
