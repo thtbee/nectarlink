@@ -553,11 +553,11 @@ fn prune_cache(device: DeviceId) {
     }
 }
 
-fn thumb_path(device: DeviceId, id: &str) -> PathBuf {
+pub(crate) fn thumb_path(device: DeviceId, id: &str) -> PathBuf {
     thumbs_dir(device).join(format!("thumb-{:016x}.jpg", fingerprint(id)))
 }
 
-fn write_thumb(device: DeviceId, id: &str, jpeg: &[u8]) -> Option<PathBuf> {
+pub(crate) fn write_thumb(device: DeviceId, id: &str, jpeg: &[u8]) -> Option<PathBuf> {
     if jpeg.is_empty() {
         return None;
     }

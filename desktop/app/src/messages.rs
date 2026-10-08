@@ -259,6 +259,7 @@ pub fn load_threads() {
             }
             match result {
                 Ok(threads) => {
+                    crate::bridge::app::update_home_sms(device, &threads);
                     s.threads = threads;
                     s.photos.extend(photos);
                     s.status = Status::Ready;

@@ -130,6 +130,185 @@ impl PowerLevel {
     }
 }
 
+/// Limits for measured display geometry (`DeviceInfo.screen`, protocol §5.1).
+pub mod screen_limits {
+    pub const VERSION: u32 = 1;
+    pub const MIN_ASPECT: f32 = 0.2;
+    pub const MAX_ASPECT: f32 = 5.0;
+    pub const MAX_CORNER_RADIUS: f32 = 0.5;
+    pub const MAX_CUTOUTS: usize = 8;
+    pub const MAX_CUTOUT_PATH_BYTES: usize = 4096;
+}
+
+fn approx_eq_f32(a: f32, b: f32) -> bool {
+    a.to_bits() == b.to_bits() || (a - b).abs() <= 1e-5
+}
+
+fn round_norm(v: f32) -> f32 {
+    (v * 10000.0).round() / 10000.0
+}
+
+/// Normalized `[0.0, 1.0]` bounding rectangle on the upright portrait display.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct ScreenRect {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+impl PartialEq for ScreenRect {
+    fn eq(&self, other: &Self) -> bool {
+        approx_eq_f32(self.x, other.x)
+            && approx_eq_f32(self.y, other.y)
+            && approx_eq_f32(self.w, other.w)
+            && approx_eq_f32(self.h, other.h)
+    }
+}
+impl Eq for ScreenRect {}
+
+impl ScreenRect {
+    pub fn sanitized(self) -> Option<Self> {
+        if !self.x.is_finite()
+            || !self.y.is_finite()
+            || !self.w.is_finite()
+            || !self.h.is_finite()
+            || self.w <= 0.0
+            || self.h <= 0.0
+        {
+            return None;
+        }
+        let x = round_norm(self.x.clamp(0.0, 1.0));
+        let y = round_norm(self.y.clamp(0.0, 1.0));
+        let w = round_norm(self.w.clamp(0.0, (1.0 - x).max(0.0)));
+        let h = round_norm(self.h.clamp(0.0, (1.0 - y).max(0.0)));
+        (w > 0.0 && h > 0.0).then_some(Self { x, y, w, h })
+    }
+}
+
+/// Normalized rounded-corner radii `[tl, tr, br, bl]` as fractions of upright screen width (`0.0..=0.5`).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct ScreenCorners {
+    pub tl: f32,
+    pub tr: f32,
+    pub br: f32,
+    pub bl: f32,
+}
+
+impl PartialEq for ScreenCorners {
+    fn eq(&self, other: &Self) -> bool {
+        approx_eq_f32(self.tl, other.tl)
+            && approx_eq_f32(self.tr, other.tr)
+            && approx_eq_f32(self.br, other.br)
+            && approx_eq_f32(self.bl, other.bl)
+    }
+}
+impl Eq for ScreenCorners {}
+
+impl ScreenCorners {
+    pub fn sanitized(self) -> Option<Self> {
+        if !self.tl.is_finite() || !self.tr.is_finite() || !self.br.is_finite() || !self.bl.is_finite() {
+            return None;
+        }
+        Some(Self {
+            tl: round_norm(self.tl.clamp(0.0, screen_limits::MAX_CORNER_RADIUS)),
+            tr: round_norm(self.tr.clamp(0.0, screen_limits::MAX_CORNER_RADIUS)),
+            br: round_norm(self.br.clamp(0.0, screen_limits::MAX_CORNER_RADIUS)),
+            bl: round_norm(self.bl.clamp(0.0, screen_limits::MAX_CORNER_RADIUS)),
+        })
+    }
+}
+
+/// Measured front-display geometry of a phone or tablet (`DeviceInfo.screen`, protocol §5.1).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScreenShape {
+    /// Schema version (currently `1`).
+    pub v: u32,
+    /// Upright display aspect ratio (`width / height`, e.g. `0.45` for 9:20).
+    pub aspect: f32,
+    /// Measured corner radii as fractions of screen width (`Display.getRoundedCorner()` on API 31+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub corners: Option<ScreenCorners>,
+    /// Measured cutout bounding boxes (`DisplayCutout.getBoundingRects()`, normalized `0.0..=1.0`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cutouts: Vec<ScreenRect>,
+    /// Measured cutout vector path (`DisplayCutout.getCutoutPath()` on API 31+, normalized SVG path in `0.0..=1.0`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cutout_path: Option<String>,
+}
+
+impl PartialEq for ScreenShape {
+    fn eq(&self, other: &Self) -> bool {
+        self.v == other.v
+            && approx_eq_f32(self.aspect, other.aspect)
+            && self.corners == other.corners
+            && self.cutouts == other.cutouts
+            && self.cutout_path == other.cutout_path
+    }
+}
+impl Eq for ScreenShape {}
+
+impl ScreenShape {
+    pub fn sanitized(self) -> Option<Self> {
+        if self.v != screen_limits::VERSION
+            || !self.aspect.is_finite()
+            || !(screen_limits::MIN_ASPECT..=screen_limits::MAX_ASPECT).contains(&self.aspect)
+        {
+            return None;
+        }
+        let cutout_path = self.cutout_path.and_then(|s| {
+            let trimmed = s.trim();
+            if trimmed.is_empty() || trimmed.len() > screen_limits::MAX_CUTOUT_PATH_BYTES {
+                return None;
+            }
+            let valid_chars = trimmed.chars().all(|c| {
+                c.is_ascii_digit()
+                    || c.is_ascii_whitespace()
+                    || matches!(
+                        c,
+                        'M' | 'L'
+                            | 'H'
+                            | 'V'
+                            | 'C'
+                            | 'S'
+                            | 'Q'
+                            | 'T'
+                            | 'A'
+                            | 'Z'
+                            | 'm'
+                            | 'l'
+                            | 'h'
+                            | 'v'
+                            | 'c'
+                            | 's'
+                            | 'q'
+                            | 't'
+                            | 'a'
+                            | 'z'
+                            | '.'
+                            | '-'
+                            | '+'
+                            | ','
+                    )
+            });
+            valid_chars.then(|| trimmed.to_owned())
+        });
+        let cutouts = self
+            .cutouts
+            .into_iter()
+            .filter_map(ScreenRect::sanitized)
+            .take(screen_limits::MAX_CUTOUTS)
+            .collect();
+        Some(Self {
+            v: screen_limits::VERSION,
+            aspect: round_norm(self.aspect),
+            corners: self.corners.and_then(ScreenCorners::sanitized),
+            cutouts,
+            cutout_path,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeviceInfo {
     pub name: String,
@@ -141,6 +320,16 @@ pub struct DeviceInfo {
     /// Optional ARGB seed color for Material You sync.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub accent: Option<u32>,
+    /// Optional measured front-display geometry for phones/tablets.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub screen: Option<ScreenShape>,
+}
+
+impl DeviceInfo {
+    pub fn sanitized(mut self) -> Self {
+        self.screen = self.screen.and_then(ScreenShape::sanitized);
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -180,6 +369,23 @@ pub struct Battery {
     /// "ac", "usb" or "wireless".
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plugged: Option<String>,
+    /// Estimated minutes until full when charging (`BatteryManager.computeChargeTimeRemaining()`), if known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub full_in: Option<u16>,
+}
+
+impl Battery {
+    pub fn sanitized(mut self) -> Self {
+        self.level = self.level.min(100);
+        if !self.charging {
+            self.full_in = None;
+        } else if let Some(mins) = self.full_in
+            && (mins == 0 || mins > 24 * 60)
+        {
+            self.full_in = None;
+        }
+        self
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -3169,7 +3375,56 @@ mod tests {
             os_ver: "16".into(),
             model: Some("Google Pixel 9".into()),
             accent: None,
+            screen: None,
         }
+    }
+
+    #[test]
+    fn screen_shape_and_battery_full_in_round_trip_and_sanitize() {
+        let screen = ScreenShape {
+            v: 1,
+            aspect: 0.45,
+            corners: Some(ScreenCorners { tl: 0.088, tr: 0.088, br: 0.088, bl: 0.088 }),
+            cutouts: vec![ScreenRect { x: 0.46, y: 0.018, w: 0.08, h: 0.036 }],
+            cutout_path: Some("M 0.5 0.018 L 0.54 0.036 L 0.5 0.054 L 0.46 0.036 Z".into()),
+        };
+        let mut dev = info();
+        dev.screen = Some(screen.clone());
+        let env = Envelope::new(types::EVENT_DEVICE, &dev).unwrap();
+        let back: DeviceInfo = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back.clone().sanitized(), dev);
+
+        // Unknown schema version or out-of-range aspect drops screen cleanly.
+        assert!(ScreenShape { v: 2, ..screen.clone() }.sanitized().is_none());
+        assert!(ScreenShape { aspect: 0.05, ..screen.clone() }.sanitized().is_none());
+        assert!(ScreenShape { aspect: f32::NAN, ..screen.clone() }.sanitized().is_none());
+
+        // Malformed SVG path characters or oversized rect coordinates are sanitized.
+        let dirty = ScreenShape {
+            v: 1,
+            aspect: 0.4495,
+            corners: Some(ScreenCorners { tl: 0.9, tr: -0.1, br: 0.08, bl: 0.08 }),
+            cutouts: vec![
+                ScreenRect { x: -0.1, y: 0.02, w: 0.2, h: 0.04 },
+                ScreenRect { x: 0.5, y: 0.5, w: 0.0, h: 0.1 },
+            ],
+            cutout_path: Some("<script>alert(1)</script>".into()),
+        }
+        .sanitized()
+        .unwrap();
+        assert_eq!(dirty.corners, Some(ScreenCorners { tl: 0.5, tr: 0.0, br: 0.08, bl: 0.08 }));
+        assert_eq!(dirty.cutouts, vec![ScreenRect { x: 0.0, y: 0.02, w: 0.2, h: 0.04 }]);
+        assert!(dirty.cutout_path.is_none());
+
+        // Battery with full_in round-trips and sanitizes when not charging or out of range.
+        let b = Battery { level: 68, charging: true, plugged: Some("usb".into()), full_in: Some(34) };
+        let env = Envelope::new(types::EVENT_BATTERY, &b).unwrap();
+        let back: Battery = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back.sanitized(), b);
+        assert_eq!(
+            Battery { level: 105, charging: false, plugged: None, full_in: Some(25) }.sanitized(),
+            Battery { level: 100, charging: false, plugged: None, full_in: None }
+        );
     }
 
     #[test]

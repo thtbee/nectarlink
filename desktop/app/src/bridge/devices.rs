@@ -119,10 +119,13 @@ const ROLES: &[&str] = &[
     "rttMs",
     "battery",
     "charging",
+    "batteryPlugged",
+    "batteryFullIn",
     "power",
     "lastSeen",
     "pairedAt",
     "accent",
+    "screen",
 ];
 const USER_ROLE: i32 = 0x0100;
 
@@ -154,6 +157,12 @@ fn role_value(device: &DeviceView, role: &str) -> QVariant {
         }),
         "battery" => QVariant::from(&device.battery.as_ref().map_or(-1, |b| i32::from(b.level))),
         "charging" => QVariant::from(&device.battery.as_ref().is_some_and(|b| b.charging)),
+        "batteryPlugged" => {
+            text(device.battery.as_ref().and_then(|b| b.plugged.as_deref()).unwrap_or_default())
+        }
+        "batteryFullIn" => {
+            QVariant::from(&device.battery.as_ref().and_then(|b| b.full_in).map_or(-1, i32::from))
+        }
         "power" => text(match device.power {
             PowerLevel::Assist => "assist",
             PowerLevel::Elevated => "elevated",
@@ -167,6 +176,9 @@ fn role_value(device: &DeviceView, role: &str) -> QVariant {
         "pairedAt" => QVariant::from(&(device.paired_at as f64)),
         "accent" => {
             text(&device.info.accent.map(|argb| format!("#{:06X}", argb & 0x00FF_FFFF)).unwrap_or_default())
+        }
+        "screen" => {
+            text(&device.info.screen.as_ref().and_then(|s| serde_json::to_string(s).ok()).unwrap_or_default())
         }
         _ => QVariant::default(),
     }
@@ -272,6 +284,7 @@ mod tests {
                 os_ver: "16".into(),
                 model: None,
                 accent: None,
+                screen: None,
             },
             paired_at: i64::from(n),
             link: LinkState::Offline { last_seen: None },
@@ -284,12 +297,36 @@ mod tests {
     fn roles_cover_the_device() {
         let mut d = device(5, "Pixel");
         d.link = LinkState::Online { path: ConnectionPath::Lan, rtt_ms: 7 };
-        d.battery = Some(nectarlink_core::Battery { level: 64, charging: true, plugged: None });
+        d.battery = Some(nectarlink_core::Battery {
+            level: 64,
+            charging: true,
+            plugged: Some("usb".into()),
+            full_in: Some(42),
+        });
         d.info.accent = Some(0xFF8A5100);
+        d.info.screen = Some(nectarlink_core::ScreenShape {
+            v: 1,
+            aspect: 0.45,
+            corners: None,
+            cutouts: Vec::new(),
+            cutout_path: None,
+        });
         assert_eq!(role_value(&d, "name").value::<QString>().map(String::from).as_deref(), Some("Pixel"));
         assert_eq!(role_value(&d, "online").value::<bool>(), Some(true));
         assert_eq!(role_value(&d, "rttMs").value::<i32>(), Some(7));
         assert_eq!(role_value(&d, "battery").value::<i32>(), Some(64));
+        assert_eq!(
+            role_value(&d, "batteryPlugged").value::<QString>().map(String::from).as_deref(),
+            Some("usb")
+        );
+        assert_eq!(role_value(&d, "batteryFullIn").value::<i32>(), Some(42));
         assert_eq!(role_value(&d, "accent").value::<QString>().map(String::from).as_deref(), Some("#8A5100"));
+        assert!(
+            role_value(&d, "screen")
+                .value::<QString>()
+                .map(String::from)
+                .unwrap_or_default()
+                .contains("\"aspect\":0.45")
+        );
     }
 }

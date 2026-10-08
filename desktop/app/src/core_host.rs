@@ -180,6 +180,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 crate::battery::on_event(&event);
                 crate::storage::on_event(&event);
                 crate::webcam::on_event(&event);
+                crate::bridge::app::on_home_event(&event);
             }
             Err(RecvError::Lagged(missed)) => {
                 // Resynchronize what can be re-read; transient events are lost.
@@ -221,6 +222,7 @@ fn this_device() -> DeviceInfo {
         os_ver: crate::win::os_version(),
         model: None,
         accent: None,
+        screen: None,
     }
 }
 

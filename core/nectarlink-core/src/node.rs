@@ -298,6 +298,7 @@ impl Shared {
 
     /// Stores a newly paired device and starts keeping it connected.
     pub async fn complete_pairing(self: &Arc<Self>, peer: DeviceId, info: DeviceInfo) -> Result<()> {
+        let info = info.sanitized();
         let paired_at = crate::now_unix();
         self.store.upsert_peer(&peer, &info, paired_at)?;
         tracing::info!(peer = %peer.short(), "paired");
@@ -374,14 +375,15 @@ impl Shared {
             tracing::warn!(error = %e, "failed to record peer addresses");
         }
         self.remember_addrs(&peer, &addrs);
-        if let Err(e) = self.store.update_info(&peer, &remote.device) {
+        let remote_device = remote.device.sanitized();
+        if let Err(e) = self.store.update_info(&peer, &remote_device) {
             tracing::warn!(error = %e, "failed to update peer info");
         }
         let caps = features::sanitize_capabilities(remote.caps);
         if let Err(e) = self.store.update_capabilities(&peer, Some(&caps), Some(remote.power.effective())) {
             tracing::warn!(error = %e, "failed to update peer capabilities");
         }
-        self.emit(NodeEvent::PeerInfoChanged { device: peer, info: remote.device });
+        self.emit(NodeEvent::PeerInfoChanged { device: peer, info: remote_device });
         self.emit(NodeEvent::PeerPowerChanged { device: peer, power: remote.power.effective() });
         self.refresh_capabilities(&peer);
         self.publish_online(&session);
@@ -1678,6 +1680,7 @@ impl Node {
 
     /// Reports this device's battery; forwarded to connected devices.
     pub async fn update_battery(&self, battery: Battery) {
+        let battery = battery.sanitized();
         self.shared.local.write().unwrap_or_else(|e| e.into_inner()).battery = Some(battery.clone());
         if let Ok(env) = Envelope::new(types::EVENT_BATTERY, &battery) {
             self.shared.broadcast(env).await;
@@ -1686,6 +1689,7 @@ impl Node {
 
     /// Updates this device's description (e.g. after a rename).
     pub async fn update_device_info(&self, device: DeviceInfo) {
+        let device = device.sanitized();
         self.shared.local.write().unwrap_or_else(|e| e.into_inner()).device = device.clone();
         let update = HelloUpdate { device: Some(device), ..Default::default() };
         if let Ok(env) = Envelope::new(types::HELLO_UPDATE, &update) {

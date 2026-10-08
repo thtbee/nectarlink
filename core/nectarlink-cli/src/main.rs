@@ -11,7 +11,8 @@ use clap::{Parser, Subcommand, ValueEnum};
 use nectarlink_core::{
     Battery, ConnectionPath, DeviceId, DeviceInfo, DeviceKind, Direction, FeatureState, LinkState,
     MediaAction, MediaError, MediaPlayer, Node, NodeConfig, NodeEvent, Notification, NotificationAction,
-    NotificationError, PairedDevice, PairingEvent, Platform, PowerAction, PowerLevel, TransferState,
+    NotificationError, PairedDevice, PairingEvent, Platform, PowerAction, PowerLevel, ScreenCorners,
+    ScreenRect, ScreenShape, TransferState,
     features::{Effort, FEATURES, Role, UnsupportedReason, Upgrade, UpgradeAction},
 };
 use tokio::sync::broadcast::error::RecvError;
@@ -43,12 +44,18 @@ struct Cli {
     /// Power level to announce with --as-phone.
     #[arg(long, global = true, value_enum, default_value_t = Power::Basic, requires = "as_phone")]
     power: Power,
+    /// Front-screen geometry to announce with --as-phone.
+    #[arg(long, global = true, value_enum, requires = "as_phone")]
+    screen: Option<PhoneScreen>,
     /// Battery level (0–100) to report, to test a PC without a phone.
     #[arg(long, global = true, value_parser = clap::value_parser!(u8).range(0..=100))]
     battery: Option<u8>,
     /// Report the battery as charging (with --battery).
     #[arg(long, global = true, requires = "battery")]
     charging: bool,
+    /// Estimated minutes until full when charging (with --charging).
+    #[arg(long, global = true, requires = "charging")]
+    full_in: Option<u16>,
     /// Extra capability to announce, e.g. clip.read.auto (repeatable).
     #[arg(long = "offer", global = true, value_name = "CAPABILITY")]
     offers: Vec<String>,
@@ -429,6 +436,68 @@ enum Power {
     Basic,
     Assist,
     Elevated,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum PhoneScreen {
+    CenterHole,
+    CornerHole,
+    Notch,
+    Pill,
+    Plain,
+}
+
+impl PhoneScreen {
+    fn to_shape(self) -> ScreenShape {
+        match self {
+            PhoneScreen::CenterHole => ScreenShape {
+                v: 1,
+                aspect: 0.45,
+                corners: Some(ScreenCorners { tl: 0.088, tr: 0.088, br: 0.088, bl: 0.088 }),
+                cutouts: vec![ScreenRect { x: 0.462, y: 0.018, w: 0.076, h: 0.0342 }],
+                cutout_path: Some(
+                    "M 0.5 0.018 A 0.038 0.0171 0 1 0 0.5 0.0522 A 0.038 0.0171 0 1 0 0.5 0.018 Z".into(),
+                ),
+            },
+            PhoneScreen::CornerHole => ScreenShape {
+                v: 1,
+                aspect: 0.45,
+                corners: Some(ScreenCorners { tl: 0.082, tr: 0.082, br: 0.082, bl: 0.082 }),
+                cutouts: vec![ScreenRect { x: 0.068, y: 0.018, w: 0.076, h: 0.0342 }],
+                cutout_path: Some(
+                    "M 0.106 0.018 A 0.038 0.0171 0 1 0 0.106 0.0522 A 0.038 0.0171 0 1 0 0.106 0.018 Z"
+                        .into(),
+                ),
+            },
+            PhoneScreen::Notch => ScreenShape {
+                v: 1,
+                aspect: 0.46,
+                corners: Some(ScreenCorners { tl: 0.095, tr: 0.095, br: 0.095, bl: 0.095 }),
+                cutouts: vec![ScreenRect { x: 0.28, y: 0.0, w: 0.44, h: 0.038 }],
+                cutout_path: Some(
+                    "M 0.28 0.0 L 0.72 0.0 L 0.72 0.022 Q 0.72 0.038 0.685 0.038 L 0.315 0.038 Q 0.28 0.038 0.28 0.022 Z"
+                        .into(),
+                ),
+            },
+            PhoneScreen::Pill => ScreenShape {
+                v: 1,
+                aspect: 0.46,
+                corners: Some(ScreenCorners { tl: 0.105, tr: 0.105, br: 0.105, bl: 0.105 }),
+                cutouts: vec![ScreenRect { x: 0.36, y: 0.016, w: 0.28, h: 0.034 }],
+                cutout_path: Some(
+                    "M 0.397 0.016 L 0.603 0.016 A 0.037 0.017 0 0 1 0.603 0.05 L 0.397 0.05 A 0.037 0.017 0 0 1 0.397 0.016 Z"
+                        .into(),
+                ),
+            },
+            PhoneScreen::Plain => ScreenShape {
+                v: 1,
+                aspect: 0.45,
+                corners: Some(ScreenCorners { tl: 0.072, tr: 0.072, br: 0.072, bl: 0.072 }),
+                cutouts: Vec::new(),
+                cutout_path: None,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -2091,7 +2160,13 @@ async fn start_node(cli: &Cli) -> Result<Node> {
     } else {
         (DeviceKind::Desktop, std::env::consts::OS.into(), String::new())
     };
-    let device = DeviceInfo { name, kind, os, os_ver, model: None, accent: None };
+    let is_demo = matches!(cli.command, Command::Demo { .. });
+    let screen = if cli.as_phone {
+        cli.screen.or_else(|| is_demo.then_some(PhoneScreen::CenterHole)).map(PhoneScreen::to_shape)
+    } else {
+        None
+    };
+    let device = DeviceInfo { name, kind, os, os_ver, model: None, accent: None, screen };
     let power = node_power(cli);
     let mut config = NodeConfig::new(data_dir.clone(), device, env!("CARGO_PKG_VERSION"));
     config.downloads_dir = cli.downloads_dir.clone();
@@ -2152,9 +2227,15 @@ async fn start_node(cli: &Cli) -> Result<Node> {
         }
         node.update_power(power, offers).await;
     }
-    if let Some(level) = cli.battery {
+    if let Some(level) = cli.battery.or_else(|| is_demo.then_some(78)) {
         let plugged = cli.charging.then(|| "ac".to_owned());
-        node.update_battery(Battery { level, charging: cli.charging, plugged }).await;
+        node.update_battery(Battery {
+            level,
+            charging: cli.charging,
+            plugged,
+            full_in: cli.charging.then_some(cli.full_in).flatten(),
+        })
+        .await;
     }
     Ok(node)
 }

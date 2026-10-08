@@ -779,6 +779,7 @@ mod tests {
                 os_ver: "16".into(),
                 model: None,
                 accent: None,
+                screen: None,
             },
             paired_at: at,
             link: LinkState::Offline { last_seen: None },
@@ -805,7 +806,7 @@ mod tests {
             Changes::NONE,
             "no change, no refresh"
         );
-        let battery = Battery { level: 50, charging: false, plugged: None };
+        let battery = Battery { level: 50, charging: false, plugged: None, full_in: None };
         s.apply(&NodeEvent::Battery { device: id, battery: battery.clone() });
         assert_eq!(s.device(&id).unwrap().battery, Some(battery));
 

@@ -67,8 +67,11 @@ tests; there are no releases yet.
 - **Encrypted connections** over the local network (QUIC through
   [iroh](https://iroh.computer)), with automatic reconnection after restarts,
   sleep and network changes.
-- **Live status** of each paired device: connection, round-trip time, battery,
-  power level.
+- **Live status** of each paired device: connection, round-trip time, battery
+  (with charging source and estimated time to full when available), power level,
+  a vector preview of the phone's measured front screen shape (aspect ratio,
+  corner radii and camera cutout), and a glanceable Home summary of unread
+  messages, missed calls and the latest photo or screenshot.
 - **Find my device** in both directions. The phone rings on the alarm stream,
   even in silent mode.
 - **Lock, sleep or wake the PC** from the phone (when the PC is offline, Wake

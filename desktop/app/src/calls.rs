@@ -651,6 +651,7 @@ fn load_call_log(before: Option<i64>) {
                     }
                     s.log_photos.extend(photos);
                     s.log_status = Status::Ready;
+                    crate::bridge::app::update_home_calls(device, &s.log);
                 }
                 Err(e) => {
                     tracing::debug!(error = %e, "can't read call log");

@@ -108,7 +108,7 @@ mod tests {
     use super::*;
 
     fn at(level: u8, charging: bool) -> Battery {
-        Battery { level, charging, plugged: None }
+        Battery { level, charging, plugged: None, full_in: None }
     }
 
     #[test]

@@ -11,7 +11,7 @@ use std::{
 
 use nectarlink_protocol::{
     DeviceId,
-    messages::{DeviceInfo, DeviceKind, PcWakeInfo, PowerLevel},
+    messages::{DeviceInfo, DeviceKind, PcWakeInfo, PowerLevel, ScreenShape},
 };
 use rusqlite::{Connection, OptionalExtension, params};
 
@@ -46,6 +46,8 @@ const MIGRATIONS: &[&str] = &[
      ) STRICT;",
     // v3: Wake-on-LAN adapter MAC and subnet broadcast addresses per paired PC.
     "ALTER TABLE peers ADD COLUMN wake_info TEXT NOT NULL DEFAULT '';",
+    // v4: measured phone/tablet front-screen geometry (`DeviceInfo.screen`).
+    "ALTER TABLE peers ADD COLUMN screen TEXT NOT NULL DEFAULT '';",
 ];
 
 /// A paired device as stored on disk.
@@ -92,14 +94,16 @@ impl Store {
 
     /// Adds or replaces a paired device.
     pub fn upsert_peer(&self, id: &DeviceId, info: &DeviceInfo, paired_at: i64) -> Result<()> {
+        let screen = encode_screen(info.screen.as_ref());
         self.with(|c| {
             c.execute(
-                "INSERT INTO peers (id, name, kind, os, os_ver, model, accent, paired_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+                "INSERT INTO peers (id, name, kind, os, os_ver, model, accent, paired_at, screen)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
                  ON CONFLICT(id) DO UPDATE SET
                     name = excluded.name, kind = excluded.kind, os = excluded.os,
                     os_ver = excluded.os_ver, model = excluded.model, accent = excluded.accent,
-                    paired_at = excluded.paired_at",
+                    paired_at = excluded.paired_at,
+                    screen = CASE WHEN excluded.screen = '' THEN peers.screen ELSE excluded.screen END",
                 params![
                     id.as_bytes().as_slice(),
                     info.name,
@@ -108,7 +112,8 @@ impl Store {
                     info.os_ver,
                     info.model,
                     info.accent.map(i64::from),
-                    paired_at
+                    paired_at,
+                    screen
                 ],
             )
             .map(drop)
@@ -117,9 +122,11 @@ impl Store {
 
     /// Updates the stored description of a device (e.g. after a rename).
     pub fn update_info(&self, id: &DeviceId, info: &DeviceInfo) -> Result<()> {
+        let screen = encode_screen(info.screen.as_ref());
         self.with(|c| {
             c.execute(
-                "UPDATE peers SET name = ?2, kind = ?3, os = ?4, os_ver = ?5, model = ?6, accent = ?7
+                "UPDATE peers SET name = ?2, kind = ?3, os = ?4, os_ver = ?5, model = ?6, accent = ?7,
+                    screen = CASE WHEN ?8 = '' THEN screen ELSE ?8 END
                  WHERE id = ?1",
                 params![
                     id.as_bytes().as_slice(),
@@ -128,7 +135,8 @@ impl Store {
                     info.os,
                     info.os_ver,
                     info.model,
-                    info.accent.map(i64::from)
+                    info.accent.map(i64::from),
+                    screen
                 ],
             )
             .map(drop)
@@ -225,7 +233,22 @@ impl Store {
 }
 
 const SELECT: &str = "SELECT id, name, kind, os, os_ver, model, accent, paired_at, last_seen, last_addrs, \
-     caps, power, wake_info FROM peers";
+     caps, power, wake_info, screen FROM peers";
+
+fn encode_screen(screen: Option<&ScreenShape>) -> String {
+    screen
+        .cloned()
+        .and_then(ScreenShape::sanitized)
+        .and_then(|s| serde_json::to_string(&s).ok())
+        .unwrap_or_default()
+}
+
+fn decode_screen(s: &str) -> Option<ScreenShape> {
+    if s.is_empty() {
+        return None;
+    }
+    serde_json::from_str::<ScreenShape>(s).ok().and_then(ScreenShape::sanitized)
+}
 
 fn row_to_peer(row: &rusqlite::Row<'_>) -> rusqlite::Result<PeerRecord> {
     let id: Vec<u8> = row.get(0)?;
@@ -238,6 +261,7 @@ fn row_to_peer(row: &rusqlite::Row<'_>) -> rusqlite::Result<PeerRecord> {
     let caps: String = row.get(10)?;
     let power: String = row.get(11)?;
     let wake_info: String = row.get(12)?;
+    let screen: String = row.get(13)?;
     Ok(PeerRecord {
         id: DeviceId(id),
         info: DeviceInfo {
@@ -247,6 +271,7 @@ fn row_to_peer(row: &rusqlite::Row<'_>) -> rusqlite::Result<PeerRecord> {
             os_ver: row.get(4)?,
             model: row.get(5)?,
             accent: accent.and_then(|a| u32::try_from(a).ok()),
+            screen: decode_screen(&screen),
         },
         paired_at: row.get(7)?,
         last_seen: row.get(8)?,
@@ -318,6 +343,7 @@ fn migrate(conn: &Connection) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nectarlink_protocol::messages::{ScreenCorners, ScreenRect};
 
     fn info(name: &str) -> DeviceInfo {
         DeviceInfo {
@@ -327,6 +353,13 @@ mod tests {
             os_ver: "16".into(),
             model: None,
             accent: Some(0xFF8A5100),
+            screen: Some(ScreenShape {
+                v: 1,
+                aspect: 0.45,
+                corners: Some(ScreenCorners { tl: 0.085, tr: 0.085, br: 0.085, bl: 0.085 }),
+                cutouts: vec![ScreenRect { x: 0.46, y: 0.018, w: 0.08, h: 0.036 }],
+                cutout_path: Some("M 0.5 0.018 L 0.54 0.036 L 0.5 0.054 L 0.46 0.036 Z".into()),
+            }),
         }
     }
 
@@ -351,6 +384,7 @@ mod tests {
         assert_eq!(peer.last_seen, Some(200));
         assert_eq!(peer.last_addrs, addrs);
         assert_eq!(peer.info.name, "Pixel 9");
+        assert_eq!(peer.info.screen, info("Pixel 9").screen);
 
         assert!(store.remove_peer(&id).unwrap());
         assert!(!store.remove_peer(&id).unwrap());

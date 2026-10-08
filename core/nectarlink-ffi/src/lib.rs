@@ -31,6 +31,41 @@ pub enum DeviceKind {
     Unknown,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
+pub struct ScreenRect {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+impl Eq for ScreenRect {}
+
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
+pub struct ScreenCorners {
+    pub tl: f32,
+    pub tr: f32,
+    pub br: f32,
+    pub bl: f32,
+}
+
+impl Eq for ScreenCorners {}
+
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct ScreenShape {
+    #[uniffi(default = 1)]
+    pub v: u32,
+    pub aspect: f32,
+    #[uniffi(default = None)]
+    pub corners: Option<ScreenCorners>,
+    #[uniffi(default = [])]
+    pub cutouts: Vec<ScreenRect>,
+    #[uniffi(default = None)]
+    pub cutout_path: Option<String>,
+}
+
+impl Eq for ScreenShape {}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct DeviceInfo {
     pub name: String,
@@ -41,6 +76,8 @@ pub struct DeviceInfo {
     pub model: Option<String>,
     /// ARGB seed color for Material You sync.
     pub accent: Option<u32>,
+    #[uniffi(default = None)]
+    pub screen: Option<ScreenShape>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
@@ -59,6 +96,9 @@ pub struct Battery {
     pub charging: bool,
     /// "ac", "usb" or "wireless".
     pub plugged: Option<String>,
+    /// Estimated minutes until full when charging, if known.
+    #[uniffi(default = None)]
+    pub full_in: Option<u16>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -1276,6 +1316,54 @@ impl From<DeviceKind> for core::DeviceKind {
     }
 }
 
+impl From<core::ScreenRect> for ScreenRect {
+    fn from(r: core::ScreenRect) -> Self {
+        ScreenRect { x: r.x, y: r.y, w: r.w, h: r.h }
+    }
+}
+
+impl From<ScreenRect> for core::ScreenRect {
+    fn from(r: ScreenRect) -> Self {
+        core::ScreenRect { x: r.x, y: r.y, w: r.w, h: r.h }
+    }
+}
+
+impl From<core::ScreenCorners> for ScreenCorners {
+    fn from(c: core::ScreenCorners) -> Self {
+        ScreenCorners { tl: c.tl, tr: c.tr, br: c.br, bl: c.bl }
+    }
+}
+
+impl From<ScreenCorners> for core::ScreenCorners {
+    fn from(c: ScreenCorners) -> Self {
+        core::ScreenCorners { tl: c.tl, tr: c.tr, br: c.br, bl: c.bl }
+    }
+}
+
+impl From<core::ScreenShape> for ScreenShape {
+    fn from(s: core::ScreenShape) -> Self {
+        ScreenShape {
+            v: s.v,
+            aspect: s.aspect,
+            corners: s.corners.map(Into::into),
+            cutouts: s.cutouts.into_iter().map(Into::into).collect(),
+            cutout_path: s.cutout_path,
+        }
+    }
+}
+
+impl From<ScreenShape> for core::ScreenShape {
+    fn from(s: ScreenShape) -> Self {
+        core::ScreenShape {
+            v: s.v,
+            aspect: s.aspect,
+            corners: s.corners.map(Into::into),
+            cutouts: s.cutouts.into_iter().map(Into::into).collect(),
+            cutout_path: s.cutout_path,
+        }
+    }
+}
+
 impl From<core::DeviceInfo> for DeviceInfo {
     fn from(i: core::DeviceInfo) -> Self {
         DeviceInfo {
@@ -1285,6 +1373,7 @@ impl From<core::DeviceInfo> for DeviceInfo {
             os_version: i.os_ver,
             model: i.model,
             accent: i.accent,
+            screen: i.screen.map(Into::into),
         }
     }
 }
@@ -1298,7 +1387,9 @@ impl From<DeviceInfo> for core::DeviceInfo {
             os_ver: i.os_version,
             model: i.model,
             accent: i.accent,
+            screen: i.screen.map(Into::into),
         }
+        .sanitized()
     }
 }
 
@@ -1326,13 +1417,19 @@ impl From<PowerLevel> for core::PowerLevel {
 
 impl From<core::Battery> for Battery {
     fn from(b: core::Battery) -> Self {
-        Battery { level: b.level, charging: b.charging, plugged: b.plugged }
+        Battery { level: b.level, charging: b.charging, plugged: b.plugged, full_in: b.full_in }
     }
 }
 
 impl From<Battery> for core::Battery {
     fn from(b: Battery) -> Self {
-        core::Battery { level: b.level.min(100), charging: b.charging, plugged: b.plugged }
+        core::Battery {
+            level: b.level.min(100),
+            charging: b.charging,
+            plugged: b.plugged,
+            full_in: b.full_in,
+        }
+        .sanitized()
     }
 }
 
@@ -2832,13 +2929,22 @@ mod tests {
             os_version: "16".into(),
             model: Some("Google Pixel 9".into()),
             accent: Some(0xFF8A5100),
+            screen: Some(ScreenShape {
+                v: 1,
+                aspect: 0.45,
+                corners: Some(ScreenCorners { tl: 0.088, tr: 0.088, br: 0.088, bl: 0.088 }),
+                cutouts: vec![ScreenRect { x: 0.46, y: 0.018, w: 0.08, h: 0.036 }],
+                cutout_path: None,
+            }),
         };
         assert_eq!(DeviceInfo::from(core::DeviceInfo::from(info.clone())), info);
     }
 
     #[test]
     fn batteries_are_clamped() {
-        let b: core::Battery = Battery { level: 140, charging: true, plugged: None }.into();
+        let b: core::Battery =
+            Battery { level: 140, charging: true, plugged: None, full_in: Some(30) }.into();
         assert_eq!(b.level, 100);
+        assert_eq!(b.full_in, Some(30));
     }
 }

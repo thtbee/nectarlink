@@ -394,7 +394,28 @@ private fun PcCard(
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
     ) {
         Column(Modifier.fillMaxWidth().padding(24.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            val context = LocalContext.current
+            // Secondary buttons take their colors from the card, so they
+            // stand out on it in every theme (the theme's own tonal color
+            // can be the card's color, as in Graphite).
+            val ink = MaterialTheme.colorScheme.onPrimaryContainer
+            val primaryBtn = ButtonDefaults.buttonColors(
+                disabledContainerColor = ink.copy(alpha = 0.08f),
+                disabledContentColor = ink.copy(alpha = 0.38f),
+            )
+            val tonal = ButtonDefaults.filledTonalButtonColors(
+                containerColor = ink.copy(alpha = 0.10f),
+                contentColor = ink,
+                disabledContainerColor = ink.copy(alpha = 0.05f),
+                disabledContentColor = ink.copy(alpha = 0.38f),
+            )
+            val outlined = ButtonDefaults.outlinedButtonColors(contentColor = ink, disabledContentColor = ink.copy(alpha = 0.38f))
+            val outline = BorderStroke(1.dp, ink.copy(alpha = if (device.online) 0.45f else 0.15f))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Box(
                     Modifier.size(10.dp).padding(1.dp),
                 ) {
@@ -412,7 +433,23 @@ private fun PcCard(
                         linkText(device.link)
                     },
                     style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.weight(1f),
                 )
+                if (!device.online && device.canWake && device.wakeState != WakeState.Waking) {
+                    Spacer(Modifier.width(8.dp))
+                    FilledTonalButton(
+                        colors = tonal,
+                        onClick = { onWake(device.id) },
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+                        modifier = Modifier.heightIn(min = 32.dp),
+                    ) {
+                        Text(
+                            stringResource(R.string.action_wake_pc),
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                        )
+                    }
+                }
             }
             Spacer(Modifier.height(12.dp))
             Text(device.name, style = MaterialTheme.typography.headlineLarge)
@@ -432,55 +469,22 @@ private fun PcCard(
                 )
             }
             Spacer(Modifier.height(20.dp))
-            val context = LocalContext.current
-            // Secondary buttons take their colors from the card, so they
-            // stand out on it in every theme (the theme's own tonal color
-            // can be the card's color, as in Graphite).
-            val ink = MaterialTheme.colorScheme.onPrimaryContainer
-            val tonal = ButtonDefaults.filledTonalButtonColors(
-                containerColor = ink.copy(alpha = 0.10f),
-                contentColor = ink,
-                disabledContainerColor = ink.copy(alpha = 0.05f),
-                disabledContentColor = ink.copy(alpha = 0.38f),
-            )
-            val outlined = ButtonDefaults.outlinedButtonColors(contentColor = ink, disabledContentColor = ink.copy(alpha = 0.38f))
-            val outline = BorderStroke(1.dp, ink.copy(alpha = if (device.online) 0.45f else 0.15f))
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (!device.online && device.wakeState == WakeState.Idle && device.canWake) {
-                    Button(
-                        enabled = device.wakeState != WakeState.Waking,
-                        onClick = { onWake(device.id) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            if (device.wakeState == WakeState.Waking) stringResource(R.string.wake_waking, device.name)
-                            else stringResource(R.string.action_wake_pc),
-                        )
-                    }
-                } else if (!device.online && device.canWake) {
-                    Button(
-                        enabled = device.wakeState != WakeState.Waking,
-                        onClick = { onWake(device.id) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            if (device.wakeState == WakeState.Waking) stringResource(R.string.wake_waking, device.name)
-                            else stringResource(R.string.action_wake_pc),
-                        )
-                    }
-                }
                 // Primary 2x2 grid: Control PC, Deck, Webcam, Send files
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Button(
+                        enabled = device.online,
+                        colors = primaryBtn,
                         onClick = { onRemote(device.id) },
                         modifier = Modifier.weight(1f),
                     ) {
                         Text(stringResource(R.string.action_remote_pc), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     FilledTonalButton(
+                        enabled = device.online,
                         colors = tonal,
                         onClick = { onDeck(device.id) },
                         modifier = Modifier.weight(1f),
@@ -493,6 +497,7 @@ private fun PcCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     FilledTonalButton(
+                        enabled = device.online,
                         colors = tonal,
                         onClick = { onWebcam(device.id) },
                         modifier = Modifier.weight(1f),
@@ -516,7 +521,6 @@ private fun PcCard(
                         pcName = device.name,
                         deckState = deckState,
                         ink = ink,
-                        tonal = tonal,
                         onSetPcAudio = { vol, muted -> onSetPcAudio(device.id, vol, muted) },
                     )
                 }
@@ -668,7 +672,6 @@ private fun PcAudioCardSection(
     pcName: String,
     deckState: DeckState,
     ink: Color,
-    tonal: androidx.compose.material3.ButtonColors,
     onSetPcAudio: (volume: Int?, muted: Boolean?) -> Unit,
 ) {
     var draggingVolume by remember { mutableStateOf<Float?>(null) }
@@ -682,23 +685,25 @@ private fun PcAudioCardSection(
         contentColor = ink,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                FilledTonalButton(
-                    colors = tonal,
+                IconButton(
                     onClick = { onSetPcAudio(null, !deckState.muted) },
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.size(32.dp),
                 ) {
-                    Text(
-                        stringResource(if (deckState.muted) R.string.pc_audio_unmute else R.string.pc_audio_mute),
-                        style = MaterialTheme.typography.labelLarge,
-                        maxLines = 1,
+                    Icon(
+                        painter = painterResource(if (deckState.muted) R.drawable.ic_sound_off else R.drawable.ic_speaker),
+                        contentDescription = stringResource(
+                            if (deckState.muted) R.string.pc_audio_unmute else R.string.pc_audio_mute,
+                        ),
+                        tint = ink.copy(alpha = if (deckState.muted) 0.55f else 0.9f),
+                        modifier = Modifier.size(20.dp),
                     )
                 }
                 Slider(
@@ -714,7 +719,7 @@ private fun PcAudioCardSection(
                         activeTrackColor = ink,
                         inactiveTrackColor = ink.copy(alpha = 0.22f),
                     ),
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).height(32.dp),
                 )
                 Text(
                     text = if (deckState.muted) {
@@ -722,7 +727,7 @@ private fun PcAudioCardSection(
                     } else {
                         stringResource(R.string.deck_volume_percent, shownVolume)
                     },
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelMedium,
                 )
             }
             if (defaultOutput != null) {
@@ -730,14 +735,14 @@ private fun PcAudioCardSection(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showOutputs = true }
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                        .padding(start = 38.dp, end = 4.dp, bottom = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(
-                        text = stringResource(R.string.pc_audio_output, defaultOutput.name),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = ink.copy(alpha = 0.85f),
+                        text = defaultOutput.name,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ink.copy(alpha = 0.68f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
@@ -747,7 +752,7 @@ private fun PcAudioCardSection(
                         Text(
                             text = "${deckState.outputDevices.size}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = ink.copy(alpha = 0.7f),
+                            color = ink.copy(alpha = 0.55f),
                         )
                     }
                 }

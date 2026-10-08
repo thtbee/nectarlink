@@ -547,6 +547,7 @@ fn info(name: &str, kind: DeviceKind) -> DeviceInfo {
         os_ver: "test".into(),
         model: None,
         accent: None,
+        screen: None,
     }
 }
 
@@ -659,7 +660,7 @@ async fn ring_and_battery_flow_between_devices() {
     with_timeout("stop ring", pc.node.ring(phone_id, false)).await.expect("stop succeeds");
     assert_eq!(*phone.platform.rings.lock().unwrap(), vec![true, false]);
 
-    let battery = Battery { level: 82, charging: true, plugged: Some("usb".into()) };
+    let battery = Battery { level: 82, charging: true, plugged: Some("usb".into()), full_in: Some(28) };
     phone.node.update_battery(battery.clone()).await;
     let received = wait_for(&mut pc, "battery", |e| match e {
         NodeEvent::Battery { device, battery } if *device == phone_id => Some(battery.clone()),
@@ -670,6 +671,13 @@ async fn ring_and_battery_flow_between_devices() {
 
     let mut renamed = info("Pixel 9 Pro", DeviceKind::Phone);
     renamed.accent = Some(0xFF65558F);
+    renamed.screen = Some(nectarlink_core::ScreenShape {
+        v: 1,
+        aspect: 0.45,
+        corners: Some(nectarlink_core::ScreenCorners { tl: 0.088, tr: 0.088, br: 0.088, bl: 0.088 }),
+        cutouts: vec![nectarlink_core::ScreenRect { x: 0.46, y: 0.018, w: 0.08, h: 0.036 }],
+        cutout_path: None,
+    });
     phone.node.update_device_info(renamed.clone()).await;
     let info = wait_for(&mut pc, "rename", |e| match e {
         NodeEvent::PeerInfoChanged { device, info } if *device == phone_id && info.name == "Pixel 9 Pro" => {
@@ -679,7 +687,9 @@ async fn ring_and_battery_flow_between_devices() {
     })
     .await;
     assert_eq!(info, renamed);
-    assert_eq!(pc.node.paired_devices().unwrap()[0].info.name, "Pixel 9 Pro", "rename is persisted");
+    let stored = &pc.node.paired_devices().unwrap()[0].info;
+    assert_eq!(stored.name, "Pixel 9 Pro", "rename is persisted");
+    assert_eq!(stored.screen, renamed.screen, "screen geometry is persisted");
     let _ = pc_id;
 }
 

@@ -352,17 +352,17 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
             session.send(Envelope::new(types::PONG, &ping)?.reply_to(env.id)).await?;
         }
         types::EVENT_BATTERY => {
-            let battery: Battery = env.body()?;
+            let battery = env.body::<Battery>()?.sanitized();
             shared.emit(NodeEvent::Battery { device: peer, battery });
         }
         types::EVENT_DEVICE => {
-            let info: DeviceInfo = env.body()?;
+            let info = env.body::<DeviceInfo>()?.sanitized();
             shared.store.update_info(&peer, &info)?;
             shared.emit(NodeEvent::PeerInfoChanged { device: peer, info });
         }
         types::HELLO_UPDATE => {
             let update: HelloUpdate = env.body()?;
-            if let Some(info) = update.device {
+            if let Some(info) = update.device.map(DeviceInfo::sanitized) {
                 shared.store.update_info(&peer, &info)?;
                 shared.emit(NodeEvent::PeerInfoChanged { device: peer, info });
             }

@@ -223,7 +223,7 @@ current Android. Talking through the PC comes with the HFP item above.
 | **Your PC in your pocket**: from anywhere (Away mode), browse and grab PC files, see what the PC is doing (Ping-me tasks, downloads), wake it (relayed Wake-on-LAN through another Nectarlink device left at home), and later view/control the PC screen (reverse mirroring) | P2 (files/status in P1 if Away mode lands early) |
 | **Proximity lock**: lock the PC when the phone walks away (BLE RSSI) | P2 |
 | **Automations**: triggers (connected, battery low, call started) → actions | P2 |
-| Find my phone (ring even on silent), battery & signal in tray, low-battery alerts | P0 |
+| Find my phone (ring even on silent), battery & signal in tray, low-battery alerts, measured phone screen preview & Home summary ✅ | P0 |
 
 ### 3.12 Platform & ecosystem
 | Feature | Tier |

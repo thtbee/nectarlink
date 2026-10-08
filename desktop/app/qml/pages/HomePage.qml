@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
 import QtQuick.Dialogs
+import QtQuick.Shapes
 import app.nectarlink
 
 // Home: the paired phone at a glance (status, battery, power level) and
@@ -29,6 +30,9 @@ Item {
         if (AppController.currentDevice !== current)
             AppController.currentDevice = current
     }
+    onCurrentDeviceIdChanged: AppController.watchHomeSummary(visible ? currentDeviceId : "")
+    onVisibleChanged: AppController.watchHomeSummary(visible ? currentDeviceId : "")
+    Component.onDestruction: AppController.watchHomeSummary("")
     Connections {
         target: DeviceList
         function onCountChanged() {
@@ -46,6 +50,109 @@ Item {
         const hours = Math.round(minutes / 60)
         if (hours < 24) return qsTr("%n h ago", "", hours)
         return new Date(unixSeconds * 1000).toLocaleDateString(Qt.locale(), Locale.ShortFormat)
+    }
+
+    function formatChargeEta(minutes) {
+        if (!minutes || minutes <= 0)
+            return ""
+        if (minutes < 60)
+            return qsTr("~%1 min to full").arg(minutes)
+        const h = Math.floor(minutes / 60)
+        const m = minutes % 60
+        return m > 0 ? qsTr("~%1h %2m to full").arg(h).arg(m) : qsTr("~%1h to full").arg(h)
+    }
+
+    function roundedRectSvg(x, y, w, h, tl, tr, br, bl) {
+        if (w <= 0 || h <= 0) return ""
+        const maxR = Math.min(w, h) * 0.48
+        const rTl = Math.max(0, Math.min(tl, maxR))
+        const rTr = Math.max(0, Math.min(tr, maxR))
+        const rBr = Math.max(0, Math.min(br, maxR))
+        const rBl = Math.max(0, Math.min(bl, maxR))
+        const f = (n) => Number(n).toFixed(2)
+        return "M " + f(x + rTl) + " " + f(y)
+            + " L " + f(x + w - rTr) + " " + f(y)
+            + (rTr > 0 ? " A " + f(rTr) + " " + f(rTr) + " 0 0 1 " + f(x + w) + " " + f(y + rTr) : "")
+            + " L " + f(x + w) + " " + f(y + h - rBr)
+            + (rBr > 0 ? " A " + f(rBr) + " " + f(rBr) + " 0 0 1 " + f(x + w - rBr) + " " + f(y + h) : "")
+            + " L " + f(x + rBl) + " " + f(y + h)
+            + (rBl > 0 ? " A " + f(rBl) + " " + f(rBl) + " 0 0 1 " + f(x) + " " + f(y + h - rBl) : "")
+            + " L " + f(x) + " " + f(y + rTl)
+            + (rTl > 0 ? " A " + f(rTl) + " " + f(rTl) + " 0 0 1 " + f(x + rTl) + " " + f(y) : "")
+            + " Z"
+    }
+
+    function scaleSvgPath(d, w, h, ox, oy) {
+        if (!d || d.length === 0 || w <= 0 || h <= 0) return ""
+        const tokens = d.match(/[a-zA-Z]|[-+]?(?:\d+\.?\d*|\.\d+)/g)
+        if (!tokens) return ""
+        let out = []
+        let i = 0
+        let cmd = ""
+        const fx = (v) => (ox + parseFloat(v) * w).toFixed(2)
+        const fy = (v) => (oy + parseFloat(v) * h).toFixed(2)
+        const sw = (v) => (parseFloat(v) * w).toFixed(2)
+        const sh = (v) => (parseFloat(v) * h).toFixed(2)
+        while (i < tokens.length) {
+            const t = tokens[i]
+            if (/^[a-zA-Z]$/.test(t)) {
+                cmd = t.toUpperCase()
+                out.push(cmd)
+                i++
+                if (cmd === "Z") continue
+            }
+            if (cmd === "M" || cmd === "L" || cmd === "T") {
+                if (i + 1 >= tokens.length) break
+                out.push(fx(tokens[i]), fy(tokens[i + 1]))
+                i += 2
+            } else if (cmd === "H") {
+                out.push(fx(tokens[i]))
+                i += 1
+            } else if (cmd === "V") {
+                out.push(fy(tokens[i]))
+                i += 1
+            } else if (cmd === "Q" || cmd === "S") {
+                if (i + 3 >= tokens.length) break
+                out.push(fx(tokens[i]), fy(tokens[i + 1]), fx(tokens[i + 2]), fy(tokens[i + 3]))
+                i += 4
+            } else if (cmd === "C") {
+                if (i + 5 >= tokens.length) break
+                out.push(
+                    fx(tokens[i]), fy(tokens[i + 1]),
+                    fx(tokens[i + 2]), fy(tokens[i + 3]),
+                    fx(tokens[i + 4]), fy(tokens[i + 5])
+                )
+                i += 6
+            } else if (cmd === "A") {
+                if (i + 6 >= tokens.length) break
+                out.push(
+                    sw(tokens[i]), sh(tokens[i + 1]),
+                    tokens[i + 2], tokens[i + 3], tokens[i + 4],
+                    fx(tokens[i + 5]), fy(tokens[i + 6])
+                )
+                i += 7
+            } else {
+                i++
+            }
+        }
+        return out.join(" ")
+    }
+
+    function cutoutsToSvgPath(cutouts, w, h, ox, oy) {
+        if (!cutouts || !cutouts.length || w <= 0 || h <= 0) return ""
+        let parts = []
+        for (let i = 0; i < cutouts.length; i++) {
+            const c = cutouts[i]
+            const rx = ox + c.x * w
+            const ry = oy + c.y * h
+            const rw = c.w * w
+            const rh = c.h * h
+            if (rw <= 0.5 || rh <= 0.5) continue
+            const topFlush = c.y <= 0.006
+            const r = topFlush ? Math.min(rw * 0.35, rh * 0.55) : Math.min(rw, rh) * 0.5
+            parts.push(roundedRectSvg(rx, ry, rw, rh, topFlush ? 0 : r, topFlush ? 0 : r, r, r))
+        }
+        return parts.join(" ")
     }
 
     Flickable {
@@ -145,9 +252,13 @@ Item {
         required property int rttMs
         required property int battery
         required property bool charging
+        required property string batteryPlugged
+        required property int batteryFullIn
         required property string power
         required property real lastSeen
         required property real pairedAt
+        required property string accent
+        required property string screen
 
         // Dropped files go to the device on screen (and Messages shows it).
         // Kept while the page is hidden.
@@ -164,6 +275,29 @@ Item {
         function feature(id) {
             return AppController.capsRevision >= 0 ? AppController.featureState(deviceId, id) : ({})
         }
+        readonly property var screenData: {
+            if (!home.screen || home.screen.length === 0)
+                return null
+            try {
+                return JSON.parse(home.screen)
+            } catch (e) {
+                return null
+            }
+        }
+        readonly property var summaryData: {
+            if (AppController.homeSummaryRevision < 0)
+                return ({})
+            const raw = AppController.homeSummary(home.deviceId)
+            if (!raw || raw.length === 0)
+                return ({})
+            try {
+                return JSON.parse(raw)
+            } catch (e) {
+                return ({})
+            }
+        }
+        readonly property bool canAnimateHero: !Theme.reduceMotion && home.visible && page.visible
+                                               && page.Window.visibility !== Window.Hidden
         property bool ringing: false
         Timer { id: ringTimeout; interval: 30000; onTriggered: home.ringing = false }
 
@@ -176,75 +310,559 @@ Item {
 
             // ---- Hero ----
             Rectangle {
+                id: heroCard
                 width: parent.width
-                height: 190
+                readonly property bool wide: width >= 540
+                readonly property bool hasSms: (home.online && home.feature("messages.sms").state === "available")
+                                               || Boolean(home.summaryData.smsReady)
+                readonly property bool hasCalls: (home.online && home.feature("calls.log").state === "available")
+                                                 || Boolean(home.summaryData.callsReady)
+                readonly property bool hasPhotos: home.feature("files.recent_photos").state === "available"
+                                                  && Boolean(home.summaryData.photoReady)
+                                                  && Boolean(home.summaryData.photoId && home.summaryData.photoId.length > 0)
+                readonly property bool hasGlanceSummary: home.battery >= 0 || hasSms || hasCalls || hasPhotos
+                height: wide
+                    ? Math.max(190, Math.max(phoneArt.height, Math.max(identityCol.height, summaryPanel.height)) + 40)
+                    : topHeroRow.height + (hasGlanceSummary ? summaryDivider.height + summaryPanel.height + 24 : 0) + 40
                 radius: Theme.radiusXl
                 color: Theme.heroColor
                 border.width: Theme.graphite ? 1 : 0
                 border.color: Theme.outlineVariant
 
-                Rectangle {
-                    id: phoneArt
-                    x: 24
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 86; height: 150
-                    radius: 20
-                    border.width: 3
-                    border.color: Theme.graphite ? Theme.surfaceContent : Theme.primaryContainerContent
-                    gradient: Gradient {
-                        GradientStop { position: 0; color: Theme.graphite ? Theme.surfaceContainerHigh : Theme.primary }
-                        GradientStop { position: 1; color: Theme.graphite ? Theme.surfaceContainerHighest : Qt.darker(Theme.primary, 2.0) }
+                Item {
+                    id: topHeroRow
+                    x: 22
+                    y: heroCard.wide ? Math.round((heroCard.height - height) / 2) : 20
+                    width: heroCard.wide
+                        ? heroCard.width - 44 - (heroCard.hasGlanceSummary ? summaryPanel.width + 36 : 0)
+                        : heroCard.width - 44
+                    height: Math.max(phoneArt.height, identityCol.height)
+
+                    // Vector front-only phone preview measured on the phone (no assumed geometry).
+                    Item {
+                        id: phoneArt
+                        anchors.verticalCenter: parent.verticalCenter
+                        readonly property real aspect: {
+                            const s = home.screenData
+                            if (s && s.aspect >= 0.25 && s.aspect <= 2.5)
+                                return s.aspect
+                            return home.kind === "tablet" ? 0.70 : 0.45
+                        }
+                        height: heroCard.wide ? 148 : 132
+                        width: Math.round(height * aspect)
+                        readonly property real bezel: 3.5
+                        readonly property real innerW: Math.max(10, width - bezel * 2)
+                        readonly property real innerH: Math.max(20, height - bezel * 2)
+                        readonly property real defaultCorner: width * 0.135
+                        readonly property real rTl: home.screenData && home.screenData.corners
+                            ? Math.max(3, home.screenData.corners.tl * width) : defaultCorner
+                        readonly property real rTr: home.screenData && home.screenData.corners
+                            ? Math.max(3, home.screenData.corners.tr * width) : defaultCorner
+                        readonly property real rBr: home.screenData && home.screenData.corners
+                            ? Math.max(3, home.screenData.corners.br * width) : defaultCorner
+                        readonly property real rBl: home.screenData && home.screenData.corners
+                            ? Math.max(3, home.screenData.corners.bl * width) : defaultCorner
+                        readonly property color seedColor: home.accent && home.accent.length > 0
+                            ? Qt.color(home.accent) : Theme.primary
+                        readonly property color frameFill: Theme.graphite
+                            ? (Theme.dark ? "#1B1D21" : "#282B30")
+                            : Qt.darker(seedColor, Theme.dark ? 2.8 : 2.3)
+                        readonly property color frameStroke: Theme.graphite
+                            ? Theme.outline
+                            : Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.42)
+                        readonly property color screenTop: Theme.graphite
+                            ? (Theme.dark ? "#262930" : "#E4E7EC")
+                            : (Theme.dark ? Qt.darker(seedColor, 1.85) : Qt.lighter(seedColor, 1.35))
+                        readonly property color screenBottom: Theme.graphite
+                            ? (Theme.dark ? "#17191D" : "#CFD4DC")
+                            : (Theme.dark ? Qt.darker(seedColor, 2.55) : Qt.darker(seedColor, 1.25))
+                        readonly property string cutoutSvg: {
+                            const s = home.screenData
+                            if (!s) return ""
+                            if (s.cutout_path && s.cutout_path.length > 0)
+                                return page.scaleSvgPath(s.cutout_path, innerW, innerH, bezel, bezel)
+                            if (s.cutouts && s.cutouts.length > 0)
+                                return page.cutoutsToSvgPath(s.cutouts, innerW, innerH, bezel, bezel)
+                            return ""
+                        }
+
+                        opacity: home.online ? 1.0 : 0.56
+                        Behavior on opacity {
+                            enabled: home.canAnimateHero
+                            NumberAnimation { duration: Theme.fadeNormal; easing.type: Easing.OutCubic }
+                        }
+
+                        // Soft accent glow behind the phone front while connected.
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: parent.width + 18
+                            height: parent.height + 18
+                            radius: Math.max(phoneArt.rTl, phoneArt.rTr) + 9
+                            color: Theme.graphite ? Theme.primary : phoneArt.seedColor
+                            opacity: home.online ? (Theme.dark ? 0.22 : 0.16) : 0.0
+                            visible: opacity > 0
+                            Behavior on opacity {
+                                enabled: home.canAnimateHero
+                                NumberAnimation { duration: Theme.fadeNormal; easing.type: Easing.OutCubic }
+                            }
+                        }
+
+                        Shape {
+                            id: phoneShape
+                            anchors.fill: parent
+                            preferredRendererType: Shape.CurveRenderer
+
+                            // 1. Outer front chassis outline with measured per-corner radii.
+                            ShapePath {
+                                strokeWidth: 1.5
+                                strokeColor: phoneArt.frameStroke
+                                fillColor: phoneArt.frameFill
+                                PathSvg {
+                                    path: page.roundedRectSvg(
+                                        0.75, 0.75,
+                                        phoneArt.width - 1.5, phoneArt.height - 1.5,
+                                        phoneArt.rTl, phoneArt.rTr, phoneArt.rBr, phoneArt.rBl
+                                    )
+                                }
+                            }
+
+                            // 2. Active front display surface.
+                            ShapePath {
+                                strokeWidth: -1
+                                fillGradient: LinearGradient {
+                                    x1: phoneArt.bezel; y1: phoneArt.bezel
+                                    x2: phoneArt.width - phoneArt.bezel; y2: phoneArt.height - phoneArt.bezel
+                                    GradientStop { position: 0.0; color: phoneArt.screenTop }
+                                    GradientStop { position: 1.0; color: phoneArt.screenBottom }
+                                }
+                                PathSvg {
+                                    path: page.roundedRectSvg(
+                                        phoneArt.bezel, phoneArt.bezel,
+                                        phoneArt.innerW, phoneArt.innerH,
+                                        Math.max(2, phoneArt.rTl - phoneArt.bezel),
+                                        Math.max(2, phoneArt.rTr - phoneArt.bezel),
+                                        Math.max(2, phoneArt.rBr - phoneArt.bezel),
+                                        Math.max(2, phoneArt.rBl - phoneArt.bezel)
+                                    )
+                                }
+                            }
+
+                            // 3. Measured front camera cutout (SVG path or bounding rects; empty when plain/unknown).
+                            ShapePath {
+                                strokeWidth: phoneArt.cutoutSvg.length > 0 ? 0.8 : -1
+                                strokeColor: Qt.rgba(1, 1, 1, Theme.dark ? 0.16 : 0.22)
+                                fillColor: phoneArt.cutoutSvg.length > 0 ? phoneArt.frameFill : "transparent"
+                                PathSvg { path: phoneArt.cutoutSvg }
+                            }
+                        }
+
+                        // Subtle gesture pill at the bottom of the screen.
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: phoneArt.bezel + 4
+                            width: Math.round(phoneArt.innerW * 0.34)
+                            height: 2.5
+                            radius: 1.25
+                            color: Qt.rgba(1, 1, 1, Theme.dark ? 0.32 : 0.45)
+                            visible: !home.charging
+                        }
+
+                        // Calm charging hint at the bottom edge while the phone charges.
+                        Rectangle {
+                            id: chargingHint
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: phoneArt.bezel + 4
+                            height: 16
+                            width: chargeRow.width + 10
+                            radius: 8
+                            color: Qt.rgba(0, 0, 0, Theme.dark ? 0.48 : 0.36)
+                            border.width: 1
+                            border.color: Qt.rgba(1, 1, 1, 0.22)
+                            opacity: home.charging ? 1.0 : 0.0
+                            visible: opacity > 0
+                            Behavior on opacity {
+                                enabled: home.canAnimateHero
+                                NumberAnimation { duration: Theme.fadeNormal; easing.type: Easing.OutCubic }
+                            }
+                            Row {
+                                id: chargeRow
+                                anchors.centerIn: parent
+                                spacing: 3
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 10
+                                    height: 10
+                                    path: Icons.bolt
+                                    color: "#F8D66D"
+                                }
+                                Txt {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    size: 9
+                                    weight: Font.DemiBold
+                                    color: "#FFFFFF"
+                                    text: home.battery >= 0 ? (home.battery + "%") : ""
+                                }
+                            }
+                        }
                     }
-                    Rectangle {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        y: 8
-                        width: 22; height: 5; radius: 2.5
-                        color: phoneArt.border.color
+
+                    Column {
+                        id: identityCol
+                        anchors.left: phoneArt.right
+                        anchors.leftMargin: 20
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 6
+                        Txt {
+                            width: parent.width
+                            text: home.name
+                            role: "displaySmall"
+                            color: Theme.heroContent
+                            elide: Text.ElideRight
+                        }
+                        Txt {
+                            width: parent.width
+                            role: "body"
+                            color: Theme.heroContent
+                            opacity: 0.78
+                            elide: Text.ElideRight
+                            visible: text.length > 0
+                            // The model is often a code ("SM-A356E"), so only the version.
+                            text: home.osVersion.length > 0 ? qsTr("Android %1").arg(home.osVersion) : ""
+                        }
+                        Flow {
+                            width: parent.width
+                            spacing: 6
+                            Chip {
+                                visible: home.battery >= 0 && !heroCard.hasGlanceSummary
+                                iconPath: Icons.battery
+                                text: home.charging ? qsTr("%1% · charging").arg(home.battery) : qsTr("%1%").arg(home.battery)
+                            }
+                            Chip {
+                                iconPath: home.online ? Icons.wifi : Icons.unlink
+                                text: home.online
+                                      ? (home.rttMs >= 1
+                                         ? (home.path === "relay" ? qsTr("Away · %1 ms") : qsTr("Wi‑Fi · %1 ms")).arg(home.rttMs)
+                                         : (home.path === "relay" ? qsTr("Away") : qsTr("Wi‑Fi")))
+                                      : (home.lastSeen > 0 ? qsTr("Offline · seen %1").arg(page.relativeTime(home.lastSeen))
+                                                           : qsTr("Not connected yet"))
+                            }
+                            Chip {
+                                visible: home.power === "assist" || home.power === "elevated"
+                                iconPath: Icons.sparkle
+                                text: home.power === "elevated" ? qsTr("Elevated") : qsTr("Assist")
+                            }
+                        }
                     }
                 }
+
+                // Vertical or horizontal divider between phone identity and glanceable summary.
+                Rectangle {
+                    id: summaryDivider
+                    visible: heroCard.hasGlanceSummary
+                    x: heroCard.wide ? heroCard.width - summaryPanel.width - 36 : 22
+                    y: heroCard.wide ? 22 : topHeroRow.y + topHeroRow.height + 12
+                    width: heroCard.wide ? 1 : heroCard.width - 44
+                    height: heroCard.wide ? heroCard.height - 44 : 1
+                    color: Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.14)
+                }
+
+                // Calm, glanceable summary filling the Hero card's right half (or reflowing below on narrow windows).
                 Column {
-                    anchors.left: phoneArt.right
-                    anchors.leftMargin: 24
-                    anchors.right: parent.right
-                    anchors.rightMargin: 24
-                    anchors.verticalCenter: parent.verticalCenter
+                    id: summaryPanel
+                    visible: heroCard.hasGlanceSummary
+                    width: heroCard.wide
+                        ? Math.min(312, Math.max(228, Math.round(heroCard.width * 0.45)))
+                        : heroCard.width - 44
+                    x: heroCard.wide ? heroCard.width - width - 20 : 22
+                    y: heroCard.wide
+                        ? Math.round((heroCard.height - height) / 2)
+                        : summaryDivider.y + summaryDivider.height + 12
                     spacing: 8
-                    Txt {
+
+                    // 1. Battery progress bar + charging / time to full.
+                    Rectangle {
                         width: parent.width
-                        text: home.name
-                        role: "displaySmall"
-                        color: Theme.heroContent
+                        height: batteryCol.height + 16
+                        visible: home.battery >= 0
+                        radius: Theme.radiusMd
+                        color: Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.34 : 0.48)
+                        border.width: 1
+                        border.color: Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.10)
+
+                        Column {
+                            id: batteryCol
+                            x: 12
+                            y: 8
+                            width: parent.width - 24
+                            spacing: 6
+
+                            Item {
+                                width: parent.width
+                                height: Math.max(batteryTitleRow.height, batteryStatusTxt.height)
+                                Row {
+                                    id: batteryTitleRow
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 6
+                                    Icon {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 15
+                                        height: 15
+                                        path: Icons.battery
+                                        color: home.battery <= 15 && !home.charging ? Theme.danger : Theme.heroContent
+                                    }
+                                    Txt {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        role: "label"
+                                        color: Theme.heroContent
+                                        text: qsTr("%1%").arg(home.battery)
+                                    }
+                                }
+                                Txt {
+                                    id: batteryStatusTxt
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: Math.max(60, parent.width - batteryTitleRow.width - 8)
+                                    horizontalAlignment: Text.AlignRight
+                                    elide: Text.ElideRight
+                                    role: "caption"
+                                    color: Theme.heroContent
+                                    opacity: 0.80
+                                    text: {
+                                        if (!home.charging)
+                                            return home.battery <= 20 ? qsTr("Low battery") : qsTr("Battery")
+                                        const eta = page.formatChargeEta(home.batteryFullIn)
+                                        if (eta.length > 0)
+                                            return eta
+                                        if (home.batteryPlugged === "wireless")
+                                            return qsTr("Charging wirelessly")
+                                        if (home.batteryPlugged === "usb")
+                                            return qsTr("Charging via USB")
+                                        return qsTr("Charging")
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                width: parent.width
+                                height: 6
+                                radius: 3
+                                color: Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.16)
+                                Rectangle {
+                                    width: Math.max(6, Math.round(parent.width * Math.min(100, Math.max(0, home.battery)) / 100))
+                                    height: parent.height
+                                    radius: 3
+                                    color: home.battery <= 15 && !home.charging
+                                        ? Theme.danger
+                                        : (Theme.graphite ? Theme.heroContent : Theme.primary)
+                                }
+                            }
+                        }
                     }
-                    Txt {
-                        width: parent.width
-                        role: "body"
-                        color: Theme.heroContent
-                        opacity: 0.78
-                        text: [home.model, home.osVersion.length > 0 ? qsTr("Android %1").arg(home.osVersion) : ""]
-                              .filter(s => s.length > 0).join(" · ")
-                    }
-                    Flow {
+
+                    // 2. Unread messages & missed calls pills (clickable to open Messages / Calls).
+                    Row {
+                        id: commRow
                         width: parent.width
                         spacing: 8
-                        Chip {
-                            visible: home.battery >= 0
-                            iconPath: Icons.battery
-                            text: home.charging ? qsTr("%1% · charging").arg(home.battery) : qsTr("%1%").arg(home.battery)
+                        visible: heroCard.hasSms || heroCard.hasCalls
+                        readonly property int pillCount: (heroCard.hasSms ? 1 : 0) + (heroCard.hasCalls ? 1 : 0)
+                        readonly property real pillWidth: pillCount > 1 ? (width - spacing) / 2 : width
+
+                        Rectangle {
+                            visible: heroCard.hasSms
+                            width: commRow.pillWidth
+                            height: smsPillRow.height + 14
+                            radius: Theme.radiusMd
+                            readonly property int unread: home.summaryData.unreadMessages || 0
+                            color: smsHover.hovered
+                                ? Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.48 : 0.68)
+                                : Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.34 : 0.48)
+                            border.width: 1
+                            border.color: unread > 0
+                                ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.45)
+                                : Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.10)
+
+                            Row {
+                                id: smsPillRow
+                                x: 10
+                                y: 7
+                                width: parent.width - 20
+                                spacing: 8
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 15
+                                    height: 15
+                                    path: Icons.messages
+                                    color: (home.summaryData.unreadMessages || 0) > 0 ? Theme.primary : Theme.heroContent
+                                }
+                                Column {
+                                    width: parent.width - 23
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 1
+                                    Txt {
+                                        width: parent.width
+                                        role: "label"
+                                        color: Theme.heroContent
+                                        elide: Text.ElideRight
+                                        text: (home.summaryData.unreadMessages || 0) > 0
+                                            ? qsTr("%n unread", "", home.summaryData.unreadMessages)
+                                            : qsTr("Messages")
+                                    }
+                                    Txt {
+                                        width: parent.width
+                                        role: "caption"
+                                        color: Theme.heroContent
+                                        opacity: 0.74
+                                        elide: Text.ElideRight
+                                        text: (home.summaryData.unreadMessages || 0) > 0 && home.summaryData.unreadSender
+                                            ? home.summaryData.unreadSender
+                                            : qsTr("All read")
+                                    }
+                                }
+                            }
+                            HoverHandler { id: smsHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: AppController.currentPage = "messages" }
                         }
-                        Chip {
-                            iconPath: home.online ? Icons.wifi : Icons.unlink
-                            text: home.online
-                                  ? (home.rttMs >= 1
-                                     ? (home.path === "relay" ? qsTr("Away · %1 ms") : qsTr("Wi‑Fi · %1 ms")).arg(home.rttMs)
-                                     : (home.path === "relay" ? qsTr("Away") : qsTr("Wi‑Fi")))
-                                  : (home.lastSeen > 0 ? qsTr("Offline · seen %1").arg(page.relativeTime(home.lastSeen))
-                                                       : qsTr("Not connected yet"))
+
+                        Rectangle {
+                            visible: heroCard.hasCalls
+                            width: commRow.pillWidth
+                            height: callsPillRow.height + 14
+                            radius: Theme.radiusMd
+                            readonly property int missed: home.summaryData.missedCalls || 0
+                            color: callsHover.hovered
+                                ? Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.48 : 0.68)
+                                : Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.34 : 0.48)
+                            border.width: 1
+                            border.color: missed > 0
+                                ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.45)
+                                : Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.10)
+
+                            Row {
+                                id: callsPillRow
+                                x: 10
+                                y: 7
+                                width: parent.width - 20
+                                spacing: 8
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 15
+                                    height: 15
+                                    path: Icons.call
+                                    color: (home.summaryData.missedCalls || 0) > 0 ? Theme.primary : Theme.heroContent
+                                }
+                                Column {
+                                    width: parent.width - 23
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 1
+                                    Txt {
+                                        width: parent.width
+                                        role: "label"
+                                        color: Theme.heroContent
+                                        elide: Text.ElideRight
+                                        text: (home.summaryData.missedCalls || 0) > 0
+                                            ? qsTr("%n missed", "", home.summaryData.missedCalls)
+                                            : qsTr("Calls")
+                                    }
+                                    Txt {
+                                        width: parent.width
+                                        role: "caption"
+                                        color: Theme.heroContent
+                                        opacity: 0.74
+                                        elide: Text.ElideRight
+                                        text: (home.summaryData.missedCalls || 0) > 0 && home.summaryData.missedCaller
+                                            ? home.summaryData.missedCaller
+                                            : qsTr("Recent calls")
+                                    }
+                                }
+                            }
+                            HoverHandler { id: callsHover; cursorShape: Qt.PointingHandCursor }
+                            TapHandler { onTapped: AppController.currentPage = "calls" }
                         }
-                        Chip {
-                            visible: home.power === "assist" || home.power === "elevated"
-                            iconPath: Icons.sparkle
-                            text: home.power === "elevated" ? qsTr("Elevated") : qsTr("Assist")
+                    }
+
+                    // 3. Latest photo or screenshot (rounded thumbnail + relative time; click opens Photos).
+                    Rectangle {
+                        width: parent.width
+                        height: 52
+                        visible: heroCard.hasPhotos
+                        radius: Theme.radiusMd
+                        color: photoHover.hovered
+                            ? Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.48 : 0.68)
+                            : Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.34 : 0.48)
+                        border.width: 1
+                        border.color: Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.10)
+
+                        Row {
+                            x: 8
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 16
+                            spacing: 10
+
+                            Rectangle {
+                                width: 36
+                                height: 36
+                                radius: Theme.radiusSm
+                                color: Theme.surfaceContainerHigh
+                                clip: true
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                Image {
+                                    id: latestThumbImg
+                                    anchors.fill: parent
+                                    source: home.summaryData.photoThumb || ""
+                                    fillMode: Image.PreserveAspectCrop
+                                    asynchronous: true
+                                    cache: false
+                                    sourceSize.width: 72
+                                    sourceSize.height: 72
+                                    visible: status === Image.Ready
+                                }
+                                Icon {
+                                    anchors.centerIn: parent
+                                    width: 16
+                                    height: 16
+                                    path: Icons.photo
+                                    color: Theme.surfaceContentVariant
+                                    visible: latestThumbImg.status !== Image.Ready
+                                }
+                            }
+
+                            Column {
+                                width: parent.width - 46
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 1
+                                Txt {
+                                    width: parent.width
+                                    role: "label"
+                                    color: Theme.heroContent
+                                    elide: Text.ElideRight
+                                    text: home.summaryData.photoIsScreenshot
+                                        ? qsTr("Latest screenshot")
+                                        : (home.summaryData.photoIsVideo ? qsTr("Latest video") : qsTr("Latest photo"))
+                                }
+                                Txt {
+                                    width: parent.width
+                                    role: "caption"
+                                    color: Theme.heroContent
+                                    opacity: 0.74
+                                    elide: Text.ElideRight
+                                    text: {
+                                        const when = home.summaryData.photoDate
+                                            ? page.relativeTime(Math.round(home.summaryData.photoDate / 1000))
+                                            : ""
+                                        const name = home.summaryData.photoName || ""
+                                        return [when, name].filter(s => s.length > 0).join(" · ")
+                                    }
+                                }
+                            }
                         }
+                        HoverHandler { id: photoHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: AppController.currentPage = "photos" }
                     }
                 }
             }

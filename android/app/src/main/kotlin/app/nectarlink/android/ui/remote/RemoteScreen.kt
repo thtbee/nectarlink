@@ -20,9 +20,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,14 +35,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -509,48 +507,52 @@ private fun TouchpadView(
         // Mouse buttons + Keyboard toggle row
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             FilledTonalButton(
                 onClick = { core.remoteButton(pcId, "left", "click", onStatus) },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                modifier = Modifier.weight(1f).height(48.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                modifier = Modifier.weight(0.88f).height(46.dp),
             ) {
                 Text(
                     stringResource(R.string.remote_left_click),
+                    style = MaterialTheme.typography.labelLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             OutlinedButton(
                 onClick = { core.remoteButton(pcId, "middle", "click", onStatus) },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                modifier = Modifier.weight(1f).height(48.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                modifier = Modifier.weight(1.04f).height(46.dp),
             ) {
                 Text(
                     stringResource(R.string.remote_middle_click),
+                    style = MaterialTheme.typography.labelLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             FilledTonalButton(
                 onClick = { core.remoteButton(pcId, "right", "click", onStatus) },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                modifier = Modifier.weight(1f).height(48.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                modifier = Modifier.weight(0.94f).height(46.dp),
             ) {
                 Text(
                     stringResource(R.string.remote_right_click),
+                    style = MaterialTheme.typography.labelLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
             Button(
                 onClick = { showKeyboard = !showKeyboard },
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                modifier = Modifier.height(48.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                modifier = Modifier.weight(1.26f).height(46.dp),
             ) {
                 Text(
                     stringResource(R.string.remote_keyboard),
+                    style = MaterialTheme.typography.labelLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -569,6 +571,7 @@ private fun TouchpadView(
         // Special keys & modifiers bar (always accessible in Touchpad mode)
         SpecialKeysBar(
             activeMods = activeMods,
+            showExtraKeys = showKeyboard,
             onToggleMod = { mod ->
                 if (mod in activeMods) activeMods.remove(mod) else activeMods.add(mod)
             },
@@ -1171,25 +1174,61 @@ private fun VoiceTypingBar(
 @Composable
 private fun SpecialKeysBar(
     activeMods: List<String>,
+    showExtraKeys: Boolean,
     onToggleMod: (String) -> Unit,
     onKey: (key: String, forceMods: List<String>?) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        // Modifier keys row: 4 equal columns that fit at every font scale without overflowing
         val mods = listOf("ctrl" to "Ctrl", "alt" to "Alt", "shift" to "Shift", "win" to "Win")
-        for ((id, label) in mods) {
-            FilterChip(
-                selected = id in activeMods,
-                onClick = { onToggleMod(id) },
-                label = { Text(label) },
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            for ((id, label) in mods) {
+                val selected = id in activeMods
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = if (selected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    },
+                    contentColor = if (selected) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.outlineVariant
+                        },
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .clickable { onToggleMod(id) },
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
         }
 
+        // Navigation & special keys row: 6 equal columns across the full width
         val keys = listOf(
             "escape" to "Esc",
             "tab" to "Tab",
@@ -1197,35 +1236,69 @@ private fun SpecialKeysBar(
             "up" to "↑",
             "down" to "↓",
             "right" to "→",
-            "backspace" to "Bksp",
-            "enter" to "Enter",
-            "space" to "Space",
-            "home" to "Home",
-            "end" to "End",
-            "page_up" to "PgUp",
-            "page_down" to "PgDn",
-            "delete" to "Del",
         )
-        for ((key, label) in keys) {
-            OutlinedButton(
-                onClick = { onKey(key, null) },
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-            ) {
-                Text(label, style = MaterialTheme.typography.labelMedium)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            for ((key, label) in keys) {
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .clickable { onKey(key, null) },
+                ) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 2.dp)) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                        )
+                    }
+                }
             }
         }
 
-        val shortcuts = listOf(
-            "copy" to "Copy",
-            "paste" to "Paste",
-            "undo" to "Undo",
-        )
-        for ((shortcut, label) in shortcuts) {
-            OutlinedButton(
-                onClick = { onKey(shortcut, emptyList()) },
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+        if (showExtraKeys) {
+            val extra = listOf(
+                "home" to "Home",
+                "end" to "End",
+                "delete" to "Del",
+                "copy" to "Copy",
+                "paste" to "Paste",
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(label, style = MaterialTheme.typography.labelMedium)
+                for ((key, label) in extra) {
+                    val isShortcut = key == "copy" || key == "paste"
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(36.dp)
+                            .clickable { onKey(key, if (isShortcut) emptyList() else null) },
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 2.dp)) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
             }
         }
     }

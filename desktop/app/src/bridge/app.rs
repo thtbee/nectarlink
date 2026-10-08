@@ -98,6 +98,9 @@ pub mod qobject {
         /// Encrypted local clipboard history as JSON:
         /// `[{ id, kind, text, imageDataUrl, deviceName, incoming, timestamp, pinned }]`.
         #[qproperty(QString, clipboard_history)]
+        /// Bumped whenever the Home card's summary (unread messages, missed calls,
+        /// latest photo) changes for the watched phone.
+        #[qproperty(i32, home_summary_revision)]
         type AppController = super::AppControllerRust;
 
         /// Asks a paired device to ring (or stop).
@@ -189,6 +192,12 @@ pub mod qobject {
         /// The local sync root folder path for a paired phone.
         #[qinvokable]
         fn phone_storage_path(self: &AppController, device: &QString) -> QString;
+        /// Tells the event-driven Home summary which phone the Home page is showing (`""` when hidden).
+        #[qinvokable]
+        fn watch_home_summary(self: &AppController, device: &QString);
+        /// Glanceable Home summary for `device` as JSON.
+        #[qinvokable]
+        fn home_summary(self: &AppController, device: &QString) -> QString;
         /// Releases idle UI caches and trims the working set when closed to tray.
         #[qinvokable]
         fn trim_working_set(self: &AppController);
@@ -247,6 +256,7 @@ pub struct AppControllerRust {
     current_device: i32,
     pending_dial: QString,
     clipboard_history: QString,
+    home_summary_revision: i32,
     tray: Option<tray::Tray>,
 }
 
@@ -807,7 +817,17 @@ impl qobject::AppController {
         QString::from(&path)
     }
 
+    pub fn watch_home_summary(&self, device: &QString) {
+        watch_home(super::parse_device(device));
+    }
+
+    pub fn home_summary(&self, device: &QString) -> QString {
+        let Some(id) = super::parse_device(device) else { return QString::default() };
+        QString::from(&home_summary_json(id))
+    }
+
     pub fn trim_working_set(&self) {
+        release_home_summary();
         crate::webcam::release_idle_resources();
         crate::photos::release_idle_resources();
         crate::messages::release_idle_resources();
@@ -821,6 +841,301 @@ impl Drop for AppControllerRust {
         if let Some(cell) = CONTROLLER.get() {
             *cell.lock().unwrap_or_else(|e| e.into_inner()) = None;
         }
+    }
+}
+
+// ---- Event-driven Home card summary (never polled) ----
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct HomeDeviceSummary {
+    sms_loaded: bool,
+    sms_busy: bool,
+    unread_messages: u32,
+    unread_sender: String,
+    calls_loaded: bool,
+    calls_busy: bool,
+    missed_calls: u32,
+    missed_caller: String,
+    photo_loaded: bool,
+    photo_busy: bool,
+    photo_id: String,
+    photo_name: String,
+    photo_date: i64,
+    photo_thumb: String,
+    photo_is_video: bool,
+    photo_is_screenshot: bool,
+}
+
+#[derive(Debug, Default)]
+struct HomeSummaryStore {
+    watched: Option<DeviceId>,
+    devices: std::collections::HashMap<DeviceId, HomeDeviceSummary>,
+}
+
+static HOME_SUMMARY: Mutex<Option<HomeSummaryStore>> = Mutex::new(None);
+
+fn home_store<T>(f: impl FnOnce(&mut HomeSummaryStore) -> T) -> T {
+    f(HOME_SUMMARY.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_default())
+}
+
+fn bump_home_summary() {
+    if let Some(qt) = controller() {
+        let _ = qt.queue(|mut object| {
+            let rev = object.home_summary_revision.wrapping_add(1);
+            object.as_mut().set_home_summary_revision(rev);
+        });
+    }
+}
+
+fn release_home_summary() {
+    home_store(|s| {
+        s.watched = None;
+        s.devices.clear();
+    });
+}
+
+fn home_summary_json(device: DeviceId) -> String {
+    home_store(|s| {
+        let Some(d) = s.devices.get(&device) else { return String::new() };
+        serde_json::json!({
+            "smsReady": d.sms_loaded,
+            "unreadMessages": d.unread_messages,
+            "unreadSender": d.unread_sender,
+            "callsReady": d.calls_loaded,
+            "missedCalls": d.missed_calls,
+            "missedCaller": d.missed_caller,
+            "photoReady": d.photo_loaded,
+            "photoId": d.photo_id,
+            "photoName": d.photo_name,
+            "photoDate": d.photo_date,
+            "photoThumb": d.photo_thumb,
+            "photoIsVideo": d.photo_is_video,
+            "photoIsScreenshot": d.photo_is_screenshot,
+        })
+        .to_string()
+    })
+}
+
+fn watch_home(device: Option<DeviceId>) {
+    home_store(|s| s.watched = device);
+    if let Some(id) = device {
+        refresh_home_if_needed(id, false, false, false);
+    }
+}
+
+pub(crate) fn update_home_sms(device: DeviceId, threads: &[nectarlink_core::SmsThread]) {
+    let changed = home_store(|s| {
+        let entry = s.devices.entry(device).or_default();
+        let unread_messages: u32 = threads.iter().map(|t| t.unread).sum();
+        let unread_sender =
+            threads.iter().find(|t| t.unread > 0).map(crate::messages::title_of).unwrap_or_default();
+        let prev = (entry.sms_loaded, entry.unread_messages, entry.unread_sender.clone());
+        entry.sms_loaded = true;
+        entry.sms_busy = false;
+        entry.unread_messages = unread_messages;
+        entry.unread_sender = unread_sender;
+        prev != (entry.sms_loaded, entry.unread_messages, entry.unread_sender.clone())
+    });
+    if changed {
+        bump_home_summary();
+    }
+}
+
+pub(crate) fn update_home_calls(device: DeviceId, entries: &[nectarlink_core::CallLogEntry]) {
+    let changed = home_store(|s| {
+        let entry = s.devices.entry(device).or_default();
+        let missed_calls = entries.iter().filter(|e| e.direction == "missed").count() as u32;
+        let missed_caller = entries
+            .iter()
+            .find(|e| e.direction == "missed")
+            .map(|e| e.name.clone().filter(|n| !n.trim().is_empty()).unwrap_or_else(|| e.number.clone()))
+            .unwrap_or_default();
+        let prev = (entry.calls_loaded, entry.missed_calls, entry.missed_caller.clone());
+        entry.calls_loaded = true;
+        entry.calls_busy = false;
+        entry.missed_calls = missed_calls;
+        entry.missed_caller = missed_caller;
+        prev != (entry.calls_loaded, entry.missed_calls, entry.missed_caller.clone())
+    });
+    if changed {
+        bump_home_summary();
+    }
+}
+
+pub(crate) fn on_home_event(event: &nectarlink_core::NodeEvent) {
+    use nectarlink_core::NodeEvent;
+    let watched = home_store(|s| s.watched);
+    match event {
+        NodeEvent::LinkChanged { device, link: LinkState::Online { .. } } if watched == Some(*device) => {
+            refresh_home_if_needed(*device, true, true, true);
+        }
+        NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } => {
+            home_store(|s| {
+                if let Some(d) = s.devices.get_mut(device) {
+                    d.sms_busy = false;
+                    d.calls_busy = false;
+                    d.photo_busy = false;
+                }
+            });
+        }
+        NodeEvent::Capabilities(matrix) if watched == Some(matrix.device) => {
+            refresh_home_if_needed(matrix.device, false, false, false);
+        }
+        NodeEvent::SmsChanged { device, .. } if watched == Some(*device) => {
+            refresh_home_if_needed(*device, true, false, false);
+        }
+        NodeEvent::CallLogChanged { device } if watched == Some(*device) => {
+            refresh_home_if_needed(*device, false, true, false);
+        }
+        NodeEvent::Call { device, call } if watched == Some(*device) && call.state == "ended" => {
+            let dev = *device;
+            core_host::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(650)).await;
+                refresh_home_if_needed(dev, false, true, false);
+            });
+        }
+        NodeEvent::PhotoAdded { device, photo } if watched == Some(*device) => {
+            let thumb_url = crate::photos::write_thumb(*device, &photo.id, &photo.thumb)
+                .or_else(|| {
+                    let p = crate::photos::thumb_path(*device, &photo.id);
+                    p.exists().then_some(p)
+                })
+                .map(|p| crate::icons::file_url(&p))
+                .unwrap_or_default();
+            home_store(|s| {
+                let entry = s.devices.entry(*device).or_default();
+                entry.photo_loaded = true;
+                entry.photo_busy = false;
+                entry.photo_id.clone_from(&photo.id);
+                entry.photo_name.clone_from(&photo.name);
+                entry.photo_date = photo.taken;
+                entry.photo_thumb = thumb_url;
+                entry.photo_is_video = photo.id.starts_with("video:");
+                entry.photo_is_screenshot = photo.screenshot;
+            });
+            bump_home_summary();
+        }
+        NodeEvent::PhotosChanged { device } if watched == Some(*device) => {
+            refresh_home_if_needed(*device, false, false, true);
+        }
+        NodeEvent::DeviceRemoved(device) => {
+            home_store(|s| {
+                s.devices.remove(device);
+                if s.watched == Some(*device) {
+                    s.watched = None;
+                }
+            });
+        }
+        _ => {}
+    }
+}
+
+fn refresh_home_if_needed(device: DeviceId, force_sms: bool, force_calls: bool, force_photo: bool) {
+    let (online, sms_avail, calls_avail, photos_avail) = core_host::host().hub.read(|s| {
+        let online = s.devices.iter().any(|d| d.id == device && matches!(d.link, LinkState::Online { .. }));
+        let m = s.matrices.get(&device);
+        let avail = |f: &str| m.and_then(|m| m.state(f)) == Some(FeatureState::Available);
+        (online, avail("messages.sms"), avail("calls.log"), avail("files.recent_photos"))
+    });
+    if !online {
+        return;
+    }
+    let (do_sms, do_calls, do_photo) = home_store(|s| {
+        if s.watched != Some(device) {
+            return (false, false, false);
+        }
+        let d = s.devices.entry(device).or_default();
+        let do_sms = sms_avail && !d.sms_busy && (force_sms || !d.sms_loaded);
+        let do_calls = calls_avail && !d.calls_busy && (force_calls || !d.calls_loaded);
+        let do_photo = photos_avail && !d.photo_busy && (force_photo || !d.photo_loaded);
+        if do_sms {
+            d.sms_busy = true;
+        }
+        if do_calls {
+            d.calls_busy = true;
+        }
+        if do_photo {
+            d.photo_busy = true;
+        }
+        (do_sms, do_calls, do_photo)
+    });
+    let Some(node) = core_host::node() else { return };
+    if do_sms {
+        let node = node.clone();
+        core_host::spawn(async move {
+            match node.sms_threads(device, 40).await {
+                Ok(threads) => update_home_sms(device, &threads),
+                Err(_) => home_store(|s| {
+                    if let Some(d) = s.devices.get_mut(&device) {
+                        d.sms_busy = false;
+                    }
+                }),
+            }
+        });
+    }
+    if do_calls {
+        let node = node.clone();
+        core_host::spawn(async move {
+            match node.call_log(device, None, 25).await {
+                Ok(entries) => update_home_calls(device, &entries),
+                Err(_) => home_store(|s| {
+                    if let Some(d) = s.devices.get_mut(&device) {
+                        d.calls_busy = false;
+                    }
+                }),
+            }
+        });
+    }
+    if do_photo {
+        core_host::spawn(async move {
+            let Ok(items) = node.photo_list(device, None, None, 1).await else {
+                home_store(|s| {
+                    if let Some(d) = s.devices.get_mut(&device) {
+                        d.photo_busy = false;
+                    }
+                });
+                return;
+            };
+            let Some(item) = items.into_iter().next() else {
+                home_store(|s| {
+                    let d = s.devices.entry(device).or_default();
+                    d.photo_loaded = true;
+                    d.photo_busy = false;
+                    d.photo_id.clear();
+                    d.photo_name.clear();
+                    d.photo_date = 0;
+                    d.photo_thumb.clear();
+                });
+                bump_home_summary();
+                return;
+            };
+            let mut disk_path = crate::photos::thumb_path(device, &item.id);
+            if !disk_path.exists()
+                && let Ok(thumbs) = node.photo_thumbs(device, vec![item.id.clone()]).await
+                && let Some(first) = thumbs.into_iter().next()
+                && let Some(saved) = crate::photos::write_thumb(device, &first.id, &first.data)
+            {
+                disk_path = saved;
+            }
+            let thumb_url =
+                if disk_path.exists() { crate::icons::file_url(&disk_path) } else { String::new() };
+            let lower_name = item.name.to_ascii_lowercase();
+            let is_screenshot = lower_name.contains("screenshot")
+                || item.album.as_deref().is_some_and(|a| a.to_ascii_lowercase().contains("screenshot"));
+            let is_video = item.duration.is_some() || item.id.starts_with("video:");
+            home_store(|s| {
+                let d = s.devices.entry(device).or_default();
+                d.photo_loaded = true;
+                d.photo_busy = false;
+                d.photo_id = item.id;
+                d.photo_name = item.name;
+                d.photo_date = item.date;
+                d.photo_thumb = thumb_url;
+                d.photo_is_video = is_video;
+                d.photo_is_screenshot = is_screenshot;
+            });
+            bump_home_summary();
+        });
     }
 }
 
