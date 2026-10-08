@@ -122,7 +122,7 @@ Power: 🟢 Basic · 🔵 Assist · 🟣 Elevated (see §4.6).
 | Notification feed in the app: history, search, grouping by app/conversation | P0 🟢 |
 | **Sensitive notifications / OTPs** | P0 🟣 |
 | **Smart OTP**: detect codes and offer a "Copy code" toast; auto-copy optional ✅ | P1 |
-| **Live Updates** (Android 16 progress notifications: rides, deliveries, timers) shown live on PC | P1 |
+| **Live Updates** (Android 16 progress notifications: rides, deliveries, timers) shown live on PC ✅ | P1 |
 | DND sync: quiet PC notifications when phone is in DND, plus toggle phone DND from PC (Windows has no public API to read or set Focus/DND) ✅ | P1 🟢/🟣 |
 | PC notifications → phone (optional) | P2 |
 
@@ -218,7 +218,7 @@ current Android. Talking through the PC comes with the HFP item above.
 | **Command Palette** (global hotkey): "send clipboard", "find my phone", "text Mom", "open last photo", "mirror Spotify", "record voice" | P1 |
 | **Material You sync**: the PC app takes its accent and theme from the phone's wallpaper colors, so both apps look like one | P1 |
 | **Handoff**: send a link, map location, document or YouTube timestamp to open on the other device | P0 (links), P1 (rich) |
-| **"Ping me when it's done"**: right-click a download, a running process, a build or a render → get a phone notification (as an Android Live Update with progress) when it finishes or fails. Also `nectarlink notify-when <pid>` and a CLI hook for scripts | P1 |
+| **"Ping me when it's done"**: `nectarlink notify-when <pid \| -- command...>` watches a running process or command on the PC, shows a live chronometer notification on the phone while it runs, and alerts the phone when it finishes or fails ✅ | P1 |
 | **Timeline**: one searchable history of everything that moved between devices (files, clips, links, photos, recordings), with "send again" | P1 |
 | **Your PC in your pocket**: from anywhere (Away mode), browse and grab PC files, see what the PC is doing (Ping-me tasks, downloads), wake it (relayed Wake-on-LAN through another Nectarlink device left at home), and later view/control the PC screen (reverse mirroring) | P2 (files/status in P1 if Away mode lands early) |
 | **Proximity lock**: lock the PC when the phone walks away (BLE RSSI) | P2 |
@@ -230,7 +230,7 @@ current Android. Talking through the PC comes with the HFP item above.
 |---|---|
 | Tray app, start on login, jump list, global hotkeys, Windows Widgets board widget | P0/P1 |
 | Android Quick Settings tiles, home-screen widgets (Glance), share target, Direct Share to PC | P0/P1 |
-| **CLI** (`nectarlink send file.pdf`, `nectarlink clip`, `nectarlink notify`, `nectarlink notify-when`) and local authenticated API for scripts and PowerToys Command Palette | P1 |
+| **CLI** (`nectarlink send file.pdf`, `nectarlink clip`, `nectarlink notify`, `nectarlink notify-when`) and local authenticated API for scripts and PowerToys Command Palette ✅ | P1 |
 | Tablet as second screen (IddCx virtual monitor) | P2 |
 | macOS desktop build | P2 (future scope) |
 | Plugin/extension API over the open protocol | P2 |

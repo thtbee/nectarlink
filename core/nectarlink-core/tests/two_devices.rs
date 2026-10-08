@@ -46,6 +46,7 @@ struct RecordingPlatform {
     phone_toggles: Mutex<Vec<(String, nectarlink_core::PhoneToggleValue)>>,
     deck_presses: Mutex<Vec<String>>,
     pc_audio_changes: Mutex<Vec<(Option<u8>, Option<bool>)>>,
+    tasks: Mutex<Vec<nectarlink_core::TaskNotify>>,
     storage: Mutex<Option<nectarlink_core::FolderStorage>>,
 }
 
@@ -86,6 +87,14 @@ impl Platform for RecordingPlatform {
     }
     fn open_link(&self, _from: &nectarlink_core::DeviceId, url: &str) -> Result<(), String> {
         self.links.lock().unwrap().push(url.to_owned());
+        Ok(())
+    }
+    fn task_notify(
+        &self,
+        _from: &nectarlink_core::DeviceId,
+        task: &nectarlink_core::TaskNotify,
+    ) -> Result<(), String> {
+        self.tasks.lock().unwrap().push(task.clone());
         Ok(())
     }
     fn mirror_sink(
@@ -986,6 +995,7 @@ fn note(key: &str, app: &str, title: &str, icon: bool) -> Notification {
         silent: false,
         icon: icon.then(|| vec![0x89, b'P', b'N', b'G', 1, 2, 3]),
         image: None,
+        live: None,
     }
 }
 
@@ -3220,4 +3230,89 @@ async fn pc_audio_volume_mute_output_devices_and_smart_clipboard_context_chips_f
             }
         }
     }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn live_notifications_and_task_notify_flow_end_to_end() {
+    use nectarlink_core::{LivePoint, LiveSegment, NotificationLive, TaskNotify};
+
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    grant_notification_access(&phone).await;
+
+    // Post a regular notification and an older live notification: snapshot puts live first.
+    let mut regular = note("n-regular", "com.chat", "Sam", false);
+    regular.when = 2_000_000_000_000;
+    let mut live_note = note("n-live", "com.rides", "Driver arriving", false);
+    live_note.when = 1_500_000_000_000;
+    live_note.live = Some(NotificationLive {
+        v: 1,
+        progress: Some(40),
+        max: Some(100),
+        indeterminate: false,
+        chip: Some("4 min".into()),
+        segments: vec![
+            LiveSegment { length: 50, color: Some(0xFF4C_AF50) },
+            LiveSegment { length: 50, color: None },
+        ],
+        points: vec![LivePoint { position: 50, color: Some(0xFFFF_C107) }],
+        chronometer: false,
+        countdown: false,
+    });
+    phone.node.notifications_reset(vec![regular, live_note.clone()]).await;
+
+    let items = wait_for(&mut pc, "snapshot with live first", |e| match e {
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id && items.len() == 2 => {
+            Some(items.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(items[0].key, "n-live");
+    assert_eq!(items[0].live.as_ref().and_then(|l| l.chip.as_deref()), Some("4 min"));
+    assert_eq!(items[1].key, "n-regular");
+
+    // Updating the live notification in place delivers the updated progress and chip.
+    live_note.live.as_mut().unwrap().progress = Some(85);
+    live_note.live.as_mut().unwrap().chip = Some("1 min".into());
+    phone.node.notification_posted(live_note).await;
+    let updated = wait_for(&mut pc, "live update posted", |e| match e {
+        NodeEvent::NotificationPosted { device, notification }
+            if *device == phone_id && notification.key == "n-live" =>
+        {
+            Some(notification.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(updated.live.as_ref().and_then(|l| l.progress), Some(85));
+    assert_eq!(updated.live.as_ref().and_then(|l| l.chip.as_deref()), Some("1 min"));
+
+    // PC sends an active task notification and then a completion task notification to the phone.
+    let running = TaskNotify {
+        id: "task-build-1".into(),
+        title: "cargo build --release".into(),
+        active: true,
+        elapsed_ms: 1_500,
+        exit_code: None,
+    };
+    with_timeout("task_notify running", pc.node.task_notify(Some(phone_id), running.clone()))
+        .await
+        .expect("task_notify running succeeds");
+
+    let done = TaskNotify {
+        id: "task-build-1".into(),
+        title: "cargo build --release".into(),
+        active: false,
+        elapsed_ms: 42_000,
+        exit_code: Some(0),
+    };
+    with_timeout("task_notify done", pc.node.task_notify(None, done.clone()))
+        .await
+        .expect("task_notify done succeeds");
+
+    let recorded = phone.platform.tasks.lock().unwrap().clone();
+    assert_eq!(recorded, vec![running, done]);
 }

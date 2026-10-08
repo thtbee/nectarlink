@@ -401,7 +401,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         }
         t if t.starts_with("notify.") && crate::notifications::handle(shared, session, &env).await? => {}
         t if t.starts_with("media.") && crate::media::handle(shared, session, &env).await? => {}
-        t if (t.starts_with("pc.") || t.starts_with("link."))
+        t if (t.starts_with("pc.") || t.starts_with("link.") || t.starts_with("task."))
             && crate::actions::handle(shared, session, &env).await? => {}
         t if t.starts_with("clip.") && crate::clipboard::handle(shared, session, &env).await? => {}
         t if t.starts_with("photos.") && crate::photos::handle(shared, session, &env).await? => {}

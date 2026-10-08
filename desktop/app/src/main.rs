@@ -323,7 +323,7 @@ fn main() -> ExitCode {
     }
     // Requests left while no instance was running, then this launch's own.
     for waiting in launch::drain(&data_dir) {
-        if matches!(waiting, Request::Send { .. }) {
+        if matches!(waiting, Request::Send { .. } | Request::TaskNotify { .. }) {
             send_to::handle(waiting);
         }
     }

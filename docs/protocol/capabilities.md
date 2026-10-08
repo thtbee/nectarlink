@@ -23,6 +23,7 @@ capability is missing.
 | `device.ring` | Rings on `device.ring`, even on silent | always offered |
 | `files.transfer` | Sends and receives files ([files service](files.md)) | app update |
 | `link.open` | Opens web links sent to it ([actions](actions.md)) | app update |
+| `task.notify` | Sends or shows watched PC task notifications ([actions](actions.md)) | app update |
 | `clip.image` | Accepts images on its clipboard ([clipboard service](clipboard.md)) | app update |
 | `media.control` | Shares its media players for remote control ([media service](media.md); phone: needs notification access) | phone: notification access · desktop: app update |
 | `media.remote` | Shows and controls other devices' media players | app update |
@@ -32,6 +33,7 @@ capability is missing.
 | ID | Meaning | Unlocked by |
 |---|---|---|
 | `notify.mirror` | Forwards notifications ([notifications service](notifications.md)) | notification access |
+| `notify.live` | Includes live progress, timer, and Android 16 Live Update metadata on mirrored notifications ([notifications service](notifications.md)) | notification access |
 | `notify.reply` | Accepts inline replies and actions on notifications | notification access |
 | `notify.sensitive` | Forwards notifications Android hides as sensitive (e.g. one-time codes) | Elevated |
 | `sms.read` | Lists conversations and messages ([messages](sms.md)) | SMS permission |

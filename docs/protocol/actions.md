@@ -14,18 +14,21 @@ either device opens a web link on the other.
 | `pc.power` | PC | Locks or sleeps when a paired phone asks |
 | `pc.wake` | PC | Shares its network adapter MAC and subnet broadcast addresses (`pc.wake_info`) so a paired phone can wake it |
 | `link.open` | both | Opens web links a paired device sends |
+| `task.notify` | both | Sends or shows watched PC task notifications (`task.notify`) |
 
 Senders check the other device's capabilities first and don't send a
 request it doesn't offer.
 
 ## 2. Messages
 
-All on the control stream. `pc.power` and `link.open` are requests answered
-with `ok` or `error`; `pc.wake_info` is a one-way event (no `id`, no reply).
+All on the control stream. `pc.power`, `link.open` and `task.notify` are
+requests answered with `ok` or `error`; `pc.wake_info` is a one-way event (no
+`id`, no reply).
 
 ```
 t = "pc.power"      id = n   b = { action: "lock" | "sleep" }
 t = "link.open"     id = n   b = { url: text }
+t = "task.notify"   id = n   b = { id: text, title: text, active: bool, elapsed_ms: uint, exit_code?: int }
 t = "ok"            re = n
 t = "pc.wake_info"           b = { macs: [text, ...], broadcasts?: [text, ...] }
 ```
@@ -81,8 +84,32 @@ repeated 16 times) over UDP to ports `9` and `7`, addressed to each stored
 subnet broadcast address and `255.255.255.255`, repeated a few times over
 ~2 seconds.
 
+### 2.4 `task.notify` ("Ping me when it's done")
+
+Sent by a PC (`nectarlink notify-when <pid | -- command...>`) to report a
+watched process or command to a paired phone:
+
+- `id`: stable identifier for the task (`1..=64` ASCII graphic bytes).
+- `title`: human-readable task name (`1..=256` characters, e.g. `"cargo test"`).
+- `active`: `true` while the command is running; `false` when it has finished
+  or been cancelled.
+- `elapsed_ms`: milliseconds the command has been running (when `active` is
+  `true`, used by the phone to anchor its chronometer at `now - elapsed_ms`
+  and re-sent on reconnect) or total duration (when `active` is `false`).
+- `exit_code`: omitted while `active` is `true`; `Some(code)` when the command
+  finished (`0` for success, non-zero for failure); `None` with `active = false`
+  when watching was cancelled (dismisses the ongoing notification on the phone).
+
+While `active` is `true`, the phone posts an ongoing, silent chronometer
+notification (promoted to an Android 16+ Live Update with
+`setRequestPromotedOngoing(true)` and `setShortCriticalText`). When `active`
+becomes `false` with an `exit_code`, the phone replaces that notification in
+place with a high-importance completion alert (`"<title> finished"` or
+`"<title> failed (exit <code>)"`, body `"Took 4m 12s · <PC name>"`).
+
 ## 3. Rules
 
-- Implementations **MUST NOT** log links or hardware/IP addresses in
-  `pc.wake_info` debug output (v0 §11).
+- Implementations **MUST NOT** log links, task titles, or hardware/IP
+  addresses in `pc.wake_info` debug output (v0 §11).
+
 

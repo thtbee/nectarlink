@@ -5,12 +5,14 @@
 use std::{
     net::{Ipv4Addr, SocketAddrV4},
     sync::{Arc, Mutex},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
-    messages::{LinkOpen, PcPower, PcWakeInfo, magic_packet, parse_mac, types, wake},
+    messages::{
+        LinkOpen, PcPower, PcWakeInfo, TaskNotify, magic_packet, parse_mac, task_notify, types, wake,
+    },
 };
 
 use crate::{Error, NodeEvent, Result, node::Shared, session::Session};
@@ -23,6 +25,51 @@ pub(crate) const POWER: &str = "pc.power";
 pub const PC_WAKE: &str = wake::CAP;
 /// Offered by devices that open links sent to them.
 pub(crate) const LINKS: &str = "link.open";
+/// Offered by devices that show live and completed task notifications from a peer.
+pub(crate) const TASK_NOTIFY: &str = types::TASK_NOTIFY;
+
+/// Active long-running tasks on this device so newly connected peers receive
+/// the ongoing chronometer state immediately.
+#[derive(Debug, Default)]
+pub(crate) struct ActiveTasks(Mutex<Vec<(Instant, TaskNotify, Option<DeviceId>)>>);
+
+impl ActiveTasks {
+    fn update(&self, peer: Option<DeviceId>, task: &TaskNotify) {
+        let mut guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        guard.retain(|(_, existing, _)| existing.id != task.id);
+        if task.active {
+            if guard.len() >= task_notify::MAX_ACTIVE {
+                guard.remove(0);
+            }
+            guard.push((Instant::now(), task.clone(), peer));
+        }
+    }
+
+    fn snapshot_for(&self, peer: &DeviceId) -> Vec<TaskNotify> {
+        let guard = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        guard
+            .iter()
+            .filter(|(_, _, target)| target.is_none_or(|id| &id == peer))
+            .map(|(at, task, _)| {
+                let mut t = task.clone();
+                t.elapsed_ms = t.elapsed_ms.saturating_add(at.elapsed().as_millis() as u64);
+                t
+            })
+            .collect()
+    }
+}
+
+/// Sends any currently active tasks on this PC to a newly connected peer.
+pub(crate) async fn send_active_tasks(shared: &Arc<Shared>, session: &Session) {
+    if !shared.offers(&session.peer, TASK_NOTIFY).unwrap_or(false) {
+        return;
+    }
+    for task in shared.tasks.snapshot_for(&session.peer) {
+        if let Ok(env) = Envelope::new(types::TASK_NOTIFY, &task) {
+            let _ = session.send(env).await;
+        }
+    }
+}
 
 /// This PC's current Wake-on-LAN adapter addresses, sent to paired phones on
 /// connect and whenever network adapters change.
@@ -177,7 +224,56 @@ pub(crate) async fn open_link(shared: &Arc<Shared>, session: &Session, url: Stri
     Ok(())
 }
 
-/// Handles `pc.power`, `pc.wake_info` and `link.open`. Returns false for other types.
+pub(crate) async fn task_notify(
+    shared: &Arc<Shared>,
+    peer: Option<DeviceId>,
+    task: TaskNotify,
+) -> Result<()> {
+    let Some(clean) = task.sanitized() else {
+        return Err(Error::Internal("invalid task notification".into()));
+    };
+    shared.tasks.update(peer, &clean);
+
+    if let Some(id) = peer {
+        if shared.store.get_peer(&id)?.is_none() {
+            return Err(Error::NotPaired);
+        }
+        let Some(session) = shared.session(&id) else {
+            return if clean.active { Ok(()) } else { Err(Error::Offline) };
+        };
+        if !shared.offers(&session.peer, TASK_NOTIFY)? {
+            return Err(Error::Unsupported);
+        }
+        let env = Envelope::new(types::TASK_NOTIFY, &clean)?;
+        session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect(types::OK)?;
+        return Ok(());
+    }
+
+    let targets: Vec<Arc<Session>> = shared
+        .live_sessions()
+        .into_iter()
+        .filter(|s| shared.offers(&s.peer, TASK_NOTIFY).unwrap_or(false))
+        .collect();
+    if targets.is_empty() {
+        return if clean.active { Ok(()) } else { Err(Error::Offline) };
+    }
+    let mut last_err = None;
+    let mut any_ok = false;
+    for session in targets {
+        let env = Envelope::new(types::TASK_NOTIFY, &clean)?;
+        match session
+            .request(env, crate::session::REQUEST_TIMEOUT)
+            .await
+            .and_then(|r| Ok(r.expect(types::OK)?))
+        {
+            Ok(()) => any_ok = true,
+            Err(e) => last_err = Some(e),
+        }
+    }
+    if any_ok { Ok(()) } else { Err(last_err.unwrap_or(Error::Offline)) }
+}
+
+/// Handles `pc.power`, `pc.wake_info`, `link.open`, and `task.notify`. Returns false for other types.
 pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &Envelope) -> Result<bool> {
     let peer = session.peer;
     let reply = match env.t.as_str() {
@@ -244,6 +340,29 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                     }
                 }
             }
+        }
+        types::TASK_NOTIFY => {
+            let task: TaskNotify = env.body()?;
+            let reply = match task.sanitized() {
+                None => Envelope::error(ErrorCode::BadMessage, "invalid task notification"),
+                Some(task) => {
+                    let platform = shared.platform.clone();
+                    match tokio::task::spawn_blocking(move || platform.task_notify(&peer, &task))
+                        .await
+                        .unwrap_or_else(|e| Err(e.to_string()))
+                    {
+                        Ok(()) => Envelope::empty(types::OK),
+                        Err(reason) => {
+                            tracing::warn!(reason, "can't show task notification");
+                            Envelope::error(ErrorCode::Internal, "can't show task notification")
+                        }
+                    }
+                }
+            };
+            if env.id.is_some() {
+                session.send(reply.reply_to(env.id)).await?;
+            }
+            return Ok(true);
         }
         _ => return Ok(false),
     };

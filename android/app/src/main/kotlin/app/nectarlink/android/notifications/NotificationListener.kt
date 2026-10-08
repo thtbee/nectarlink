@@ -22,12 +22,14 @@ import app.nectarlink.android.NectarlinkApplication
 class NotificationListener : NotificationListenerService() {
     private val core get() = (application as NectarlinkApplication).core
     private val reader by lazy { NotificationReader(this) }
+    private val limiter = LiveRateLimiter { notification -> core.notificationPosted(notification) }
 
     /** Keys already sent, so an update that shouldn't alert again doesn't. */
     private val sent = mutableSetOf<String>()
 
     override fun onListenerConnected() {
         instance = this
+        limiter.clear()
         sent.clear()
         val items = activeNotifications.orEmpty().mapNotNull { reader.read(it, currentRanking, update = false) }
         sent += items.map { it.key }
@@ -35,6 +37,7 @@ class NotificationListener : NotificationListenerService() {
     }
 
     override fun onListenerDisconnected() {
+        limiter.clear()
         if (instance === this) instance = null
         core.notificationAccessChanged(false, emptyList())
     }
@@ -44,18 +47,21 @@ class NotificationListener : NotificationListenerService() {
         if (notification == null) {
             // Something we mirrored may have turned into something we don't
             // (e.g. it became ongoing); take it away on the PC.
+            limiter.cancel(sbn.key)
             if (sent.remove(sbn.key)) core.notificationRemoved(sbn.key)
             return
         }
         sent += sbn.key
-        core.notificationPosted(notification)
+        limiter.onPosted(notification)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        limiter.cancel(sbn.key)
         if (sent.remove(sbn.key)) core.notificationRemoved(sbn.key)
     }
 
     override fun onDestroy() {
+        limiter.clear()
         if (instance === this) instance = null
         super.onDestroy()
     }

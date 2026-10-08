@@ -104,7 +104,13 @@ impl Feed {
     fn snapshot(&self, session: &Session) -> NotifySnapshot {
         let state = self.lock();
         let mut items: Vec<&Notification> = state.items.values().collect();
-        items.sort_by(|a, b| b.when.cmp(&a.when).then_with(|| a.key.cmp(&b.key)));
+        items.sort_by(|a, b| {
+            b.live
+                .is_some()
+                .cmp(&a.live.is_some())
+                .then_with(|| b.when.cmp(&a.when))
+                .then_with(|| a.key.cmp(&b.key))
+        });
         let mut sent = session.sent_icons();
         let mut budget = SNAPSHOT_BUDGET;
         let mut out = Vec::new();
@@ -150,7 +156,17 @@ impl Feed {
 fn approx_size(n: &Notification) -> usize {
     let text = [&n.title, &n.text, &n.sub].iter().map(|s| s.as_ref().map_or(0, String::len)).sum::<usize>();
     let actions = n.actions.iter().map(|a| a.id.len() + a.title.len() + 16).sum::<usize>();
-    n.key.len() + n.app.len() + n.app_name.len() + text + actions + n.image.as_ref().map_or(0, Vec::len) + 64
+    let live = n.live.as_ref().map_or(0, |l| {
+        l.chip.as_ref().map_or(0, String::len) + (l.segments.len() + l.points.len()) * 16 + 32
+    });
+    n.key.len()
+        + n.app.len()
+        + n.app_name.len()
+        + text
+        + actions
+        + live
+        + n.image.as_ref().map_or(0, Vec::len)
+        + 64
 }
 
 impl Shared {

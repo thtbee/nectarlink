@@ -203,7 +203,36 @@ pub fn handle(request: Request) {
         Request::Show => request_activation(),
         Request::Quit => crate::bridge::app::request_quit(),
         Request::Send { device, paths } => send(device, paths),
+        Request::TaskNotify { device, task } => task_notify(device, task),
     }
+}
+
+fn task_notify(device: Option<String>, task: nectarlink_core::TaskNotify) {
+    core_host::spawn(async move {
+        let Ok(Some(node)) = tokio::time::timeout(START_TIMEOUT, core_host::wait_for_node()).await else {
+            tracing::warn!("task notification wasn't sent: the core didn't start");
+            return;
+        };
+        let query = device.as_deref().map(str::trim).filter(|s| !s.is_empty());
+        match query {
+            None => {
+                if let Err(e) = node.task_notify(None, task).await {
+                    tracing::debug!(error = %e, "task.notify wasn't delivered");
+                }
+            }
+            Some(q) => {
+                let Ok(devices) = node.paired_devices() else { return };
+                let lower = q.to_lowercase();
+                for d in devices.into_iter().filter(|d| {
+                    d.id.to_string().starts_with(&lower) || d.info.name.to_lowercase().contains(&lower)
+                }) {
+                    if let Err(e) = node.task_notify(Some(d.id), task.clone()).await {
+                        tracing::debug!(device = %d.id, error = %e, "task.notify wasn't delivered");
+                    }
+                }
+            }
+        }
+    });
 }
 
 /// A send from Explorer, followed in a notification.

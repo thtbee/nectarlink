@@ -178,6 +178,7 @@ const ROLES: &[&str] = &[
     "silent",
     "replies",
     "otpCode",
+    "live",
 ];
 const USER_ROLE: i32 = 0x0100;
 
@@ -222,6 +223,29 @@ fn role_value(row: &Row, role: &str) -> QVariant {
             .to_string(),
         ),
         "otpCode" => text(&crate::notifications::notification_otp(n).unwrap_or_default()),
+        "live" => match &n.live {
+            Some(live) => text(
+                &serde_json::json!({
+                    "progress": live.progress.unwrap_or(0),
+                    "max": live.max.unwrap_or(0),
+                    "indeterminate": live.indeterminate,
+                    "chip": live.chip.as_deref().unwrap_or_default(),
+                    "segments": live.segments.iter().map(|s| serde_json::json!({
+                        "length": s.length,
+                        "color": s.color.map(|c| format!("#{:06X}", c & 0x00FF_FFFF)).unwrap_or_default(),
+                    })).collect::<Vec<_>>(),
+                    "points": live.points.iter().map(|p| serde_json::json!({
+                        "position": p.position,
+                        "color": p.color.map(|c| format!("#{:06X}", c & 0x00FF_FFFF)).unwrap_or_default(),
+                    })).collect::<Vec<_>>(),
+                    "chronometer": live.chronometer,
+                    "countdown": live.countdown,
+                    "when": n.when,
+                })
+                .to_string(),
+            ),
+            None => text(""),
+        },
         _ => QVariant::default(),
     }
 }
@@ -456,6 +480,17 @@ mod tests {
                     silent: false,
                     icon: None,
                     image: None,
+                    live: Some(nectarlink_core::NotificationLive {
+                        v: 1,
+                        progress: Some(40),
+                        max: Some(100),
+                        indeterminate: false,
+                        chip: Some("5 min".into()),
+                        segments: Vec::new(),
+                        points: Vec::new(),
+                        chronometer: false,
+                        countdown: false,
+                    }),
                 },
             },
             device_name: "Pixel".into(),
@@ -471,5 +506,6 @@ mod tests {
         assert_eq!(text("actions"), r#"[{"id":"m","title":"Mute"}]"#);
         assert_eq!(role_value(&row, "when").value::<f64>(), Some(1_760_000_000_000.0));
         assert_eq!(text("replies"), r#"[{"pending":true,"text":"On my way"}]"#);
+        assert!(text("live").contains(r#""chip":"5 min""#));
     }
 }

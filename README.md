@@ -82,7 +82,11 @@ tests; there are no releases yet.
 - **Notifications** from the phone on the PC, as Windows notifications and in
   a feed in the app, with the app's icon. Reply inline, run their actions
   (such as "Mark as read") or dismiss them from the PC; what's cleared on one
-  side is cleared on the other. When a notification or text has a one-time
+  side is cleared on the other. **Live Updates** (Android 16 progress
+  notifications with segments and milestone points, ongoing progress bars, and
+  chronometer/countdown timers for rides, deliveries and timers) stay pinned at
+  the top of the feed and update in place in both the app and the Windows
+  notification without re-popping. When a notification or text has a one-time
   verification code, both the Windows notification and the card in the app get
   a **Copy code** button (or copy it to the PC clipboard automatically if you
   turn that on in Settings; one-time codes are never sent back or saved in
@@ -230,7 +234,12 @@ tests; there are no releases yet.
   Each `v*` tag drafts a GitHub release with the installer and the signed
   Android app; both apps update themselves from published releases, checked
   against their SHA-256 sums.
-- **Command-line client** for development and testing (`nectarlink`).
+- **"Ping me when it's done" & command-line client** (`nectarlink`): run
+  `nectarlink notify-when <pid>` or `nectarlink notify-when -- <command...>` on
+  the PC to watch a running process or command, show a live chronometer
+  notification on the phone while it runs, and alert the phone when it finishes
+  or fails (with its exit code and duration). Also supports scripting and
+  development (`send`, `clip`, `notify`, `pair`, and more).
 
 **Next**: talking on calls through the PC (Bluetooth), and the rest of the
 [plan](docs/PLAN.md).

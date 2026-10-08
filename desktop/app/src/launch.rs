@@ -29,6 +29,12 @@ pub enum Request {
     Show,
     /// Send files to a paired device.
     Send { device: String, paths: Vec<PathBuf> },
+    /// Show or update a watched CLI task (`nectarlink notify-when`) on a paired phone.
+    TaskNotify {
+        #[serde(default)]
+        device: Option<String>,
+        task: nectarlink_core::TaskNotify,
+    },
     /// Quit.
     Quit,
 }
@@ -103,10 +109,21 @@ mod tests {
     fn requests_come_back_once_in_order() {
         let data = tempfile::tempdir().unwrap();
         assert!(drain(data.path()).is_empty(), "nothing queued yet");
+        let task = Request::TaskNotify {
+            device: Some("Pixel".into()),
+            task: nectarlink_core::TaskNotify {
+                id: "t1".into(),
+                title: "cargo test".into(),
+                active: true,
+                elapsed_ms: 1_000,
+                exit_code: None,
+            },
+        };
         queue(data.path(), &send(1)).unwrap();
         queue(data.path(), &Request::Show).unwrap();
+        queue(data.path(), &task).unwrap();
         queue(data.path(), &send(2)).unwrap();
-        assert_eq!(drain(data.path()), vec![send(1), Request::Show, send(2)]);
+        assert_eq!(drain(data.path()), vec![send(1), Request::Show, task, send(2)]);
         assert!(drain(data.path()).is_empty(), "drained");
     }
 

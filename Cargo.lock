@@ -2326,9 +2326,13 @@ dependencies = [
  "hostname",
  "nectarlink-core",
  "qrcode",
+ "serde",
+ "serde_json",
+ "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "windows",
 ]
 
 [[package]]

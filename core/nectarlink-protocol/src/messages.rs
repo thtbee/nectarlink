@@ -41,6 +41,7 @@ pub mod types {
     pub const PC_POWER: &str = "pc.power";
     pub const PC_WAKE_INFO: &str = "pc.wake_info";
     pub const LINK_OPEN: &str = "link.open";
+    pub const TASK_NOTIFY: &str = "task.notify";
     pub const PHOTOS_NEW: &str = "photos.new";
     pub const PHOTOS_ALBUMS: &str = "photos.albums";
     pub const PHOTOS_ALBUMS_LIST: &str = "photos.albums.list";
@@ -460,6 +461,153 @@ pub mod notify_limits {
     pub const ICON_BYTES: usize = 64 * 1024;
     pub const IMAGE_BYTES: usize = 160 * 1024;
     pub const SNAPSHOT_ITEMS: usize = 100;
+    pub const LIVE_VERSION: u32 = 1;
+    pub const CHIP_CHARS: usize = 32;
+    pub const SEGMENTS: usize = 16;
+    pub const POINTS: usize = 16;
+}
+
+fn default_live_v() -> u32 {
+    notify_limits::LIVE_VERSION
+}
+
+/// One segment of a segmented progress bar (`Notification.ProgressStyle.Segment` on Android 16+).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LiveSegment {
+    /// Relative length of this segment (`> 0`).
+    pub length: u32,
+    /// Optional RGB/ARGB color; `None` when using the default theme color.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<u32>,
+}
+
+/// One milestone point along a progress bar (`Notification.ProgressStyle.Point` on Android 16+).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LivePoint {
+    /// Position along `0..=max`.
+    pub position: u32,
+    /// Optional RGB/ARGB color; `None` when using the default theme color.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<u32>,
+}
+
+/// Live Update metadata on a mirrored notification (`docs/protocol/notifications.md` §2.2).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotificationLive {
+    /// Schema version (currently `1`).
+    #[serde(default = "default_live_v")]
+    pub v: u32,
+    /// Current progress (`0..=max`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub progress: Option<u32>,
+    /// Maximum progress (`> 0` when determinate progress is present).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max: Option<u32>,
+    /// True when progress is indeterminate.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub indeterminate: bool,
+    /// Short critical status pill text (`Notification.getShortCriticalText()`, e.g. `"5 min"`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chip: Option<String>,
+    /// Optional segments of an Android 16 `ProgressStyle` bar.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub segments: Vec<LiveSegment>,
+    /// Optional milestone points along an Android 16 `ProgressStyle` bar.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub points: Vec<LivePoint>,
+    /// True when the notification shows a live elapsed/countdown timer (`EXTRA_SHOW_CHRONOMETER`)
+    /// relative to `Notification.when` (Unix milliseconds).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub chronometer: bool,
+    /// True when the chronometer counts down toward `Notification.when` (`EXTRA_CHRONOMETER_COUNT_DOWN`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub countdown: bool,
+}
+
+impl Default for NotificationLive {
+    fn default() -> Self {
+        Self {
+            v: notify_limits::LIVE_VERSION,
+            progress: None,
+            max: None,
+            indeterminate: false,
+            chip: None,
+            segments: Vec::new(),
+            points: Vec::new(),
+            chronometer: false,
+            countdown: false,
+        }
+    }
+}
+
+/// Never prints `chip` text in logs (protocol v0 §11).
+impl std::fmt::Debug for NotificationLive {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NotificationLive")
+            .field("v", &self.v)
+            .field("has_chip", &self.chip.is_some())
+            .field("progress", &self.progress)
+            .field("max", &self.max)
+            .field("indeterminate", &self.indeterminate)
+            .field("segments", &self.segments.len())
+            .field("points", &self.points.len())
+            .field("chronometer", &self.chronometer)
+            .field("countdown", &self.countdown)
+            .finish()
+    }
+}
+
+impl NotificationLive {
+    /// Applies limits and drops unknown schema versions (`v != 1`) or empty metadata.
+    pub fn sanitized(mut self) -> Option<Self> {
+        use notify_limits::*;
+        if self.v != LIVE_VERSION {
+            return None;
+        }
+        self.chip =
+            clean_text(self.chip.map(|s| s.chars().filter(|c| !c.is_control()).collect()), CHIP_CHARS);
+        self.segments.retain(|s| s.length > 0);
+        self.segments.truncate(SEGMENTS);
+        self.points.truncate(POINTS);
+        if self.indeterminate {
+            self.progress = None;
+            self.max = None;
+            self.segments.clear();
+            self.points.clear();
+        } else {
+            if !self.segments.is_empty() && self.max.unwrap_or(0) == 0 {
+                let sum = self.segments.iter().map(|s| s.length).fold(0u32, u32::saturating_add);
+                if sum > 0 {
+                    self.max = Some(sum);
+                }
+            }
+            if self.max == Some(0) {
+                self.max = None;
+                self.progress = None;
+            }
+            if let Some(max) = self.max {
+                self.progress = Some(self.progress.unwrap_or(0).min(max));
+                self.points.retain(|p| p.position <= max);
+            } else {
+                self.progress = None;
+                self.points.clear();
+            }
+        }
+        if !self.chronometer {
+            self.countdown = false;
+        }
+        if self.progress.is_none()
+            && self.max.is_none()
+            && !self.indeterminate
+            && self.chip.is_none()
+            && self.segments.is_empty()
+            && self.points.is_empty()
+            && !self.chronometer
+        {
+            return None;
+        }
+        Some(self)
+    }
 }
 
 /// A button on a notification.
@@ -503,6 +651,9 @@ pub struct Notification {
     /// A picture it shows (a photo in a message, a big picture), JPEG.
     #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
     pub image: Option<Vec<u8>>,
+    /// Live Update metadata (ongoing progress, timer, or Android 16 Live Update).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub live: Option<NotificationLive>,
 }
 
 /// Never prints content: notification text must not reach logs (protocol
@@ -513,6 +664,7 @@ impl std::fmt::Debug for Notification {
             .field("app", &self.app)
             .field("actions", &self.actions.len())
             .field("silent", &self.silent)
+            .field("live", &self.live.is_some())
             .finish_non_exhaustive()
     }
 }
@@ -541,6 +693,7 @@ impl Notification {
         self.title = clean_text(self.title, TITLE_CHARS);
         self.text = clean_text(self.text, TEXT_CHARS);
         self.sub = clean_text(self.sub, TITLE_CHARS);
+        self.live = self.live.and_then(NotificationLive::sanitized);
         if self.title.is_none() && self.text.is_none() {
             return None;
         }
@@ -1977,6 +2130,100 @@ pub struct LinkOpen {
 impl std::fmt::Debug for LinkOpen {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LinkOpen").field("bytes", &self.url.len()).finish()
+    }
+}
+
+/// Limits for `task.notify` (`docs/protocol/actions.md`).
+pub mod task_notify {
+    /// Maximum UTF-8 bytes in a task identifier.
+    pub const MAX_ID_BYTES: usize = 64;
+    /// Maximum Unicode scalar values in a task title.
+    pub const MAX_TITLE_CHARS: usize = 120;
+    /// Maximum concurrent active tasks tracked per Node.
+    pub const MAX_ACTIVE: usize = 32;
+}
+
+/// Body of `task.notify`: live or completed PC task status sent to the phone.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TaskNotify {
+    /// Stable identifier for this watched task on the sender.
+    pub id: String,
+    /// Human-readable task name (e.g. `"cargo build --release"`).
+    pub title: String,
+    /// `true` while the task is running; `false` when it has finished or been dismissed.
+    pub active: bool,
+    /// Elapsed wall-clock time in milliseconds since the task started.
+    #[serde(default)]
+    pub elapsed_ms: u64,
+    /// Process exit code when the task has finished (`active == false`).
+    /// When `active == false` and `exit_code == None`, the ongoing notification is dismissed silently.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exit_code: Option<i32>,
+}
+
+/// Never prints the task title in logs (protocol v0 §11).
+impl std::fmt::Debug for TaskNotify {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TaskNotify")
+            .field("id", &self.id)
+            .field("active", &self.active)
+            .field("elapsed_ms", &self.elapsed_ms)
+            .field("exit_code", &self.exit_code)
+            .finish_non_exhaustive()
+    }
+}
+
+impl TaskNotify {
+    /// Whether `id` and `title` satisfy protocol bounds.
+    pub fn is_valid(&self) -> bool {
+        let id_ok = (1..=task_notify::MAX_ID_BYTES).contains(&self.id.len())
+            && self.id.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.' | b':'));
+        let title_trimmed = self.title.trim();
+        let title_ok = !title_trimmed.is_empty()
+            && self.title.chars().count() <= task_notify::MAX_TITLE_CHARS
+            && !self.title.chars().any(char::is_control);
+        id_ok && title_ok && (!self.active || self.exit_code.is_none())
+    }
+
+    /// Clamps and sanitizes a [`TaskNotify`] within protocol bounds, or returns `None` if invalid.
+    pub fn sanitized(mut self) -> Option<Self> {
+        let id: String = self
+            .id
+            .bytes()
+            .filter(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.' | b':'))
+            .take(task_notify::MAX_ID_BYTES)
+            .map(char::from)
+            .collect();
+        if id.is_empty() {
+            return None;
+        }
+        let filtered_title: String = self.title.chars().filter(|c| !c.is_control()).collect();
+        let mut title = filtered_title.trim().to_owned();
+        truncate_chars(&mut title, task_notify::MAX_TITLE_CHARS);
+        if title.is_empty() {
+            return None;
+        }
+        self.id = id;
+        self.title = title;
+        if self.active {
+            self.exit_code = None;
+        }
+        Some(self)
+    }
+
+    /// Formats `elapsed_ms` as `"Took 38s"`, `"Took 4m 12s"`, or `"Took 1h 04m"`.
+    pub fn format_took(elapsed_ms: u64) -> String {
+        let total_secs = elapsed_ms / 1000;
+        let hours = total_secs / 3600;
+        let mins = (total_secs % 3600) / 60;
+        let secs = total_secs % 60;
+        if hours > 0 {
+            format!("Took {hours}h {mins:02}m")
+        } else if mins > 0 {
+            format!("Took {mins}m {secs:02}s")
+        } else {
+            format!("Took {secs}s")
+        }
     }
 }
 
@@ -3473,6 +3720,7 @@ mod tests {
             silent: false,
             icon: Some(vec![0x89, b'P', b'N', b'G']),
             image: None,
+            live: None,
         }
     }
 
@@ -4180,5 +4428,103 @@ mod tests {
         assert_eq!(WebcamConfig::from_cbor(&cfg.to_cbor()).unwrap(), cfg);
         assert!(!WebcamConfig { codec: "vp8".into(), ..cfg.clone() }.is_valid());
         assert!(!WebcamConfig { width: 0, ..cfg }.is_valid());
+    }
+
+    #[test]
+    fn live_notification_round_trips_and_sanitizes() {
+        let live = NotificationLive {
+            v: 1,
+            progress: Some(72),
+            max: Some(100),
+            indeterminate: false,
+            chip: Some("4 min".into()),
+            segments: vec![
+                LiveSegment { length: 50, color: Some(0xFF4C_AF50) },
+                LiveSegment { length: 50, color: None },
+            ],
+            points: vec![LivePoint { position: 50, color: Some(0xFFFF_C107) }],
+            chronometer: true,
+            countdown: true,
+        };
+        let mut n = notification();
+        n.live = Some(live.clone());
+        assert!(!format!("{live:?}").contains("4 min"));
+        let env = Envelope::new(types::NOTIFY_POSTED, &n).unwrap();
+        let back: Notification = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back.sanitized(), Some(n));
+
+        // Unknown schema version or empty live metadata drops cleanly.
+        assert!(NotificationLive { v: 2, ..live.clone() }.sanitized().is_none());
+        assert!(NotificationLive::default().sanitized().is_none());
+
+        // Indeterminate clears determinate progress/max; progress > max clamps to max.
+        let ind = NotificationLive {
+            v: 1,
+            progress: Some(40),
+            max: Some(100),
+            indeterminate: true,
+            ..Default::default()
+        }
+        .sanitized()
+        .unwrap();
+        assert_eq!(ind.progress, None);
+        assert_eq!(ind.max, None);
+        assert!(ind.indeterminate);
+
+        let clamped = NotificationLive {
+            v: 1,
+            progress: Some(150),
+            max: Some(100),
+            chip: Some("  Arriving\nsoon  ".into()),
+            segments: vec![LiveSegment { length: 0, color: None }, LiveSegment { length: 100, color: None }],
+            countdown: true,
+            chronometer: false,
+            ..Default::default()
+        }
+        .sanitized()
+        .unwrap();
+        assert_eq!(clamped.progress, Some(100));
+        assert_eq!(clamped.chip.as_deref(), Some("Arrivingsoon"));
+        assert_eq!(clamped.segments, vec![LiveSegment { length: 100, color: None }]);
+        assert!(!clamped.countdown);
+    }
+
+    #[test]
+    fn task_notify_validates_round_trips_and_formats_duration() {
+        let running = TaskNotify {
+            id: "task-1234".into(),
+            title: "cargo build --release".into(),
+            active: true,
+            elapsed_ms: 38_400,
+            exit_code: None,
+        };
+        assert!(running.is_valid());
+        assert!(!format!("{running:?}").contains("cargo build"));
+        let env = Envelope::new(types::TASK_NOTIFY, &running).unwrap();
+        let back: TaskNotify = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, running);
+
+        let done = TaskNotify {
+            id: "task-1234".into(),
+            title: "cargo build --release".into(),
+            active: false,
+            elapsed_ms: 252_000,
+            exit_code: Some(0),
+        };
+        assert!(done.is_valid());
+        assert_eq!(done.clone().sanitized(), Some(done));
+
+        // Active tasks cannot carry an exit code.
+        let dirty = TaskNotify { exit_code: Some(1), ..running.clone() };
+        assert!(!dirty.is_valid());
+        assert_eq!(dirty.sanitized().unwrap().exit_code, None);
+
+        // Blank title or invalid ID is rejected.
+        assert!(!TaskNotify { id: "".into(), ..running.clone() }.is_valid());
+        assert!(!TaskNotify { title: "   ".into(), ..running }.is_valid());
+
+        assert_eq!(TaskNotify::format_took(38_000), "Took 38s");
+        assert_eq!(TaskNotify::format_took(252_000), "Took 4m 12s");
+        assert_eq!(TaskNotify::format_took(3_840_000), "Took 1h 04m");
     }
 }

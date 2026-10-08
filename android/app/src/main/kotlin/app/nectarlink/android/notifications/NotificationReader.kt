@@ -18,8 +18,11 @@ import androidx.core.app.NotificationCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.scale
 import java.io.ByteArrayOutputStream
+import app.nectarlink.core.LivePoint
+import app.nectarlink.core.LiveSegment
 import app.nectarlink.core.Notification as Mirrored
 import app.nectarlink.core.NotificationAction as MirroredAction
+import app.nectarlink.core.NotificationLive
 
 /**
  * Turns Android notifications into what Nectarlink mirrors, and decides
@@ -34,10 +37,13 @@ internal class NotificationReader(private val context: Context) {
 
     /** `null` when this notification isn't mirrored. */
     fun read(sbn: StatusBarNotification, ranking: RankingMap?, update: Boolean): Mirrored? {
-        if (!shouldMirror(sbn)) return null
         val n = sbn.notification
+        val live = extractLive(n)
+        if (!shouldMirror(sbn, live)) return null
         val content = content(n) ?: return null
-        val silent = isSilent(sbn, ranking) || (update && n.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0)
+        val silent = isSilent(sbn, ranking) ||
+            (update && (n.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0 || live != null))
+        val whenMs = if (live?.chronometer == true && n.`when` > 0L) n.`when` else sbn.postTime
         return Mirrored(
             key = sbn.key,
             app = sbn.packageName,
@@ -45,25 +51,92 @@ internal class NotificationReader(private val context: Context) {
             title = content.title,
             text = content.text,
             sub = content.sub,
-            `when` = sbn.postTime,
+            `when` = whenMs,
             actions = actions(n),
             silent = silent,
             icon = icon(sbn.packageName),
             image = image(sbn.key, n),
+            live = live,
         )
     }
 
-    private fun shouldMirror(sbn: StatusBarNotification): Boolean {
+    private fun shouldMirror(sbn: StatusBarNotification, live: NotificationLive?): Boolean {
         val n = sbn.notification
-        val skipped = Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE or
-            Notification.FLAG_GROUP_SUMMARY or Notification.FLAG_LOCAL_ONLY
-        return sbn.packageName != context.packageName &&
-            sbn.isClearable &&
-            n.flags and skipped == 0 &&
-            // Media players and progress bars get their own features.
-            n.category != Notification.CATEGORY_TRANSPORT &&
-            n.category != Notification.CATEGORY_PROGRESS &&
-            !n.extras.containsKey(Notification.EXTRA_MEDIA_SESSION)
+        if (sbn.packageName == context.packageName) return false
+        val alwaysSkipped = Notification.FLAG_GROUP_SUMMARY or Notification.FLAG_LOCAL_ONLY
+        if (n.flags and alwaysSkipped != 0) return false
+        // Media players get their own feature.
+        if (n.category == Notification.CATEGORY_TRANSPORT ||
+            n.extras.containsKey(Notification.EXTRA_MEDIA_SESSION)
+        ) {
+            return false
+        }
+        if (live != null) return true
+        val ongoingSkipped = Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE
+        return sbn.isClearable &&
+            n.flags and ongoingSkipped == 0 &&
+            n.category != Notification.CATEGORY_PROGRESS
+    }
+
+    private fun extractLive(n: Notification): NotificationLive? {
+        val extras = n.extras
+        var progress = extras.getInt(Notification.EXTRA_PROGRESS, 0).coerceAtLeast(0)
+        var progressMax = extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0).coerceAtLeast(0)
+        var indeterminate = extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false)
+        val chronometer = extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) && n.`when` > 0L
+        val countdown = chronometer && extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false)
+        var chip: String? = null
+        var promoted = false
+        var segments: List<LiveSegment> = emptyList()
+        var points: List<LivePoint> = emptyList()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            chip = n.shortCriticalText
+            promoted = (n.flags and Notification.FLAG_PROMOTED_ONGOING != 0) ||
+                extras.getBoolean("android.requestPromotedOngoing", false)
+            val style = runCatching {
+                Notification.Builder.recoverBuilder(context, n).style as? Notification.ProgressStyle
+            }.getOrNull()
+            if (style != null) {
+                indeterminate = style.isProgressIndeterminate
+                segments = style.progressSegments.mapNotNull { seg ->
+                    val len = seg.length.coerceAtLeast(0)
+                    if (len > 0) {
+                        LiveSegment(
+                            length = len.toUInt(),
+                            color = seg.color.takeIf { it != 0 }?.toUInt(),
+                        )
+                    } else {
+                        null
+                    }
+                }.take(MAX_SEGMENTS)
+                points = style.progressPoints.mapNotNull { pt ->
+                    val pos = pt.position.coerceAtLeast(0)
+                    LivePoint(
+                        position = pos.toUInt(),
+                        color = pt.color.takeIf { it != 0 }?.toUInt(),
+                    )
+                }.take(MAX_POINTS)
+                val segTotal = segments.sumOf { it.length.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                val styleMax = if (segTotal > 0) segTotal else style.progressMax.coerceAtLeast(0)
+                if (styleMax > 0) {
+                    progressMax = styleMax
+                    progress = style.progress.coerceIn(0, styleMax)
+                }
+            }
+        }
+
+        return buildLive(
+            progress = progress,
+            progressMax = progressMax,
+            indeterminate = indeterminate,
+            chip = chip,
+            segments = segments,
+            points = points,
+            chronometer = chronometer,
+            countdown = countdown,
+            promoted = promoted,
+        )
     }
 
     private fun isSilent(sbn: StatusBarNotification, ranking: RankingMap?): Boolean {
@@ -200,12 +273,56 @@ internal class NotificationReader(private val context: Context) {
         }
     }.getOrNull()?.takeIf { it.size <= MAX_ICON_BYTES }?.also { icons.put(pkg, it) }
 
-    private companion object {
+    internal companion object {
         const val ICON_PX = 96
         const val MAX_ICON_BYTES = 64 * 1024
         /** Pictures' longest side, and the fallback for large ones. */
         const val IMAGE_PX = 512
         const val SMALL_IMAGE_PX = 360
         const val MAX_IMAGE_BYTES = 160 * 1024
+        const val MAX_CHIP_CHARS = 16
+        const val MAX_SEGMENTS = 16
+        const val MAX_POINTS = 16
+
+        internal fun buildLive(
+            progress: Int,
+            progressMax: Int,
+            indeterminate: Boolean,
+            chip: String?,
+            segments: List<LiveSegment>,
+            points: List<LivePoint>,
+            chronometer: Boolean,
+            countdown: Boolean,
+            promoted: Boolean,
+        ): NotificationLive? {
+            val cleanSegments = segments.filter { it.length > 0u }.take(MAX_SEGMENTS)
+            val segTotal = cleanSegments.sumOf { it.length.toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            val effectiveMax = when {
+                progressMax > 0 -> progressMax
+                segTotal > 0 -> segTotal
+                else -> 0
+            }
+            val cleanChip = chip?.trim()?.takeIf { it.isNotEmpty() }?.take(MAX_CHIP_CHARS)
+            val hasProgress = effectiveMax > 0 || indeterminate
+            val isLive = hasProgress || chronometer || cleanSegments.isNotEmpty() || cleanChip != null || promoted
+            if (!isLive) return null
+            val clampedProgress = if (effectiveMax > 0) progress.coerceIn(0, effectiveMax) else 0
+            val cleanPoints = if (effectiveMax > 0) {
+                points.filter { it.position <= effectiveMax.toUInt() }.take(MAX_POINTS)
+            } else {
+                emptyList()
+            }
+            val determinate = !indeterminate && effectiveMax > 0
+            return NotificationLive(
+                progress = if (determinate) clampedProgress.toUInt() else null,
+                max = if (determinate) effectiveMax.toUInt() else null,
+                indeterminate = indeterminate,
+                chip = cleanChip,
+                segments = cleanSegments,
+                points = cleanPoints,
+                chronometer = chronometer,
+                countdown = chronometer && countdown,
+            )
+        }
     }
 }

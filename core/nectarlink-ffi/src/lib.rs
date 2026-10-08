@@ -185,6 +185,80 @@ pub struct NotificationAction {
     pub reply: bool,
 }
 
+/// One segment in an Android 16 `Notification.ProgressStyle` progress bar.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct LiveSegment {
+    pub length: u32,
+    #[uniffi(default = None)]
+    pub color: Option<u32>,
+}
+
+/// One milestone point on an Android 16 `Notification.ProgressStyle` progress bar.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct LivePoint {
+    pub position: u32,
+    #[uniffi(default = None)]
+    pub color: Option<u32>,
+}
+
+/// Live Update and ongoing progress/timer metadata attached to a [`Notification`].
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct NotificationLive {
+    #[uniffi(default = 1)]
+    pub v: u32,
+    #[uniffi(default = None)]
+    pub progress: Option<u32>,
+    #[uniffi(default = None)]
+    pub max: Option<u32>,
+    #[uniffi(default = false)]
+    pub indeterminate: bool,
+    #[uniffi(default = None)]
+    pub chip: Option<String>,
+    #[uniffi(default = [])]
+    pub segments: Vec<LiveSegment>,
+    #[uniffi(default = [])]
+    pub points: Vec<LivePoint>,
+    #[uniffi(default = false)]
+    pub chronometer: bool,
+    #[uniffi(default = false)]
+    pub countdown: bool,
+}
+
+impl std::fmt::Debug for NotificationLive {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NotificationLive")
+            .field("v", &self.v)
+            .field("progress", &self.progress)
+            .field("max", &self.max)
+            .field("indeterminate", &self.indeterminate)
+            .field("chronometer", &self.chronometer)
+            .field("countdown", &self.countdown)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Ongoing or completed task notification sent by a paired PC (`task.notify`).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct TaskNotify {
+    pub id: String,
+    pub title: String,
+    pub active: bool,
+    pub elapsed_ms: u64,
+    #[uniffi(default = None)]
+    pub exit_code: Option<i32>,
+}
+
+impl std::fmt::Debug for TaskNotify {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TaskNotify")
+            .field("id", &self.id)
+            .field("active", &self.active)
+            .field("elapsed_ms", &self.elapsed_ms)
+            .field("exit_code", &self.exit_code)
+            .finish_non_exhaustive()
+    }
+}
+
 /// A notification, as mirrored between devices
 /// (docs/protocol/notifications.md).
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
@@ -208,6 +282,9 @@ pub struct Notification {
     /// A picture it shows (a photo in a message, a big picture): JPEG, at
     /// most 160 KiB.
     pub image: Option<Vec<u8>>,
+    /// Live Update / ongoing progress or timer metadata, when present.
+    #[uniffi(default = None)]
+    pub live: Option<NotificationLive>,
 }
 
 /// Something playing (or paused) on a device (docs/protocol/media.md).
@@ -1475,6 +1552,86 @@ impl From<core::PairingFailure> for PairingFailure {
     }
 }
 
+impl From<core::LiveSegment> for LiveSegment {
+    fn from(s: core::LiveSegment) -> Self {
+        LiveSegment { length: s.length, color: s.color }
+    }
+}
+
+impl From<LiveSegment> for core::LiveSegment {
+    fn from(s: LiveSegment) -> Self {
+        core::LiveSegment { length: s.length, color: s.color }
+    }
+}
+
+impl From<core::LivePoint> for LivePoint {
+    fn from(p: core::LivePoint) -> Self {
+        LivePoint { position: p.position, color: p.color }
+    }
+}
+
+impl From<LivePoint> for core::LivePoint {
+    fn from(p: LivePoint) -> Self {
+        core::LivePoint { position: p.position, color: p.color }
+    }
+}
+
+impl From<core::NotificationLive> for NotificationLive {
+    fn from(l: core::NotificationLive) -> Self {
+        NotificationLive {
+            v: l.v,
+            progress: l.progress,
+            max: l.max,
+            indeterminate: l.indeterminate,
+            chip: l.chip,
+            segments: l.segments.into_iter().map(Into::into).collect(),
+            points: l.points.into_iter().map(Into::into).collect(),
+            chronometer: l.chronometer,
+            countdown: l.countdown,
+        }
+    }
+}
+
+impl From<NotificationLive> for core::NotificationLive {
+    fn from(l: NotificationLive) -> Self {
+        core::NotificationLive {
+            v: l.v,
+            progress: l.progress,
+            max: l.max,
+            indeterminate: l.indeterminate,
+            chip: l.chip,
+            segments: l.segments.into_iter().map(Into::into).collect(),
+            points: l.points.into_iter().map(Into::into).collect(),
+            chronometer: l.chronometer,
+            countdown: l.countdown,
+        }
+    }
+}
+
+impl From<core::TaskNotify> for TaskNotify {
+    fn from(t: core::TaskNotify) -> Self {
+        TaskNotify {
+            id: t.id,
+            title: t.title,
+            active: t.active,
+            elapsed_ms: t.elapsed_ms,
+            exit_code: t.exit_code,
+        }
+    }
+}
+
+impl From<TaskNotify> for core::TaskNotify {
+    fn from(t: TaskNotify) -> Self {
+        core::TaskNotify {
+            id: t.id,
+            title: t.title,
+            active: t.active,
+            elapsed_ms: t.elapsed_ms,
+            exit_code: t.exit_code,
+        }
+    }
+}
+
 impl From<core::Notification> for Notification {
     fn from(n: core::Notification) -> Self {
         Notification {
@@ -1493,6 +1650,7 @@ impl From<core::Notification> for Notification {
             silent: n.silent,
             icon: n.icon,
             image: n.image,
+            live: n.live.map(Into::into),
         }
     }
 }
@@ -1515,6 +1673,7 @@ impl From<Notification> for core::Notification {
             silent: n.silent,
             icon: n.icon,
             image: n.image,
+            live: n.live.map(Into::into),
         }
     }
 }
@@ -1835,6 +1994,9 @@ pub trait Platform: Send + Sync {
     /// A paired PC sent a web link (http or https, checked) to open.
     /// False if it couldn't be shown.
     fn open_link(&self, from_id: String, url: String) -> bool;
+    /// A paired PC sent an ongoing or completed task notification (`task.notify`).
+    /// False if it couldn't be shown.
+    fn task_notify(&self, from_id: String, task: TaskNotify) -> bool;
     /// A PC asked for a photo or video from the gallery: open it, or
     /// `null` when it's gone.
     fn open_photo(&self, id: String) -> Option<FileToSend>;
@@ -1980,6 +2142,13 @@ impl core::Platform for PlatformAdapter {
     }
     fn open_link(&self, from: &DeviceId, url: &str) -> Result<(), String> {
         if self.0.open_link(from.to_string(), url.to_owned()) { Ok(()) } else { Err("not shown".into()) }
+    }
+    fn task_notify(&self, from: &DeviceId, task: &core::TaskNotify) -> Result<(), String> {
+        if self.0.task_notify(from.to_string(), task.clone().into()) {
+            Ok(())
+        } else {
+            Err("not shown".into())
+        }
     }
     fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
         if self.0.set_clipboard_image(mime.to_owned(), bytes.to_vec()) {

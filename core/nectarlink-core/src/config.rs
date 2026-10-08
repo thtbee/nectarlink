@@ -116,6 +116,16 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't open links".into())
     }
 
+    /// Show or update an ongoing or completed task notification sent by a paired
+    /// device (`task.notify`, `docs/protocol/actions.md`).
+    fn task_notify(
+        &self,
+        _from: &nectarlink_protocol::DeviceId,
+        _task: &crate::TaskNotify,
+    ) -> Result<(), String> {
+        Err("this device doesn't show task notifications".into())
+    }
+
     /// List photo and video albums on this phone (`photos.albums`).
     fn photo_albums(&self) -> Result<Vec<crate::PhotoAlbum>, String> {
         Err("this device doesn't share photos".into())

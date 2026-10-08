@@ -63,12 +63,13 @@ pub use nectarlink_protocol::{
     DeviceId, PacketKind,
     messages::{
         AudioOutputDevice, Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallState, Contact,
-        ContactNumber, DeviceInfo, DeviceKind, MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput,
-        MirrorResize, MirrorStart, Notification, NotificationAction, PcAudioSet, PcWakeInfo, PhoneApp,
-        PhoneToggleSet, PhoneToggleValue, PhoneToggles, PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb,
-        PowerLevel, ScreenCorners, ScreenRect, ScreenShape, SmsMessage, SmsPart, SmsThread, StorageChanged,
-        StorageDelete, StorageEntries, StorageEntry, StorageList, StorageMkdir, StorageRead, StorageReadMeta,
-        StorageRename, StorageWriteAccept, StorageWriteDone, StorageWriteOffer, TouchAction, WebcamConfig,
+        ContactNumber, DeviceInfo, DeviceKind, LivePoint, LiveSegment, MediaPlayer, MirrorAudioConfig,
+        MirrorConfig, MirrorInput, MirrorResize, MirrorStart, Notification, NotificationAction,
+        NotificationLive, PcAudioSet, PcWakeInfo, PhoneApp, PhoneToggleSet, PhoneToggleValue, PhoneToggles,
+        PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PowerLevel, ScreenCorners, ScreenRect,
+        ScreenShape, SmsMessage, SmsPart, SmsThread, StorageChanged, StorageDelete, StorageEntries,
+        StorageEntry, StorageList, StorageMkdir, StorageRead, StorageReadMeta, StorageRename,
+        StorageWriteAccept, StorageWriteDone, StorageWriteOffer, TaskNotify, TouchAction, WebcamConfig,
         WebcamStart,
         calls::{
             CONTROL as CALLS_CONTROL, DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG,
@@ -83,7 +84,7 @@ pub use nectarlink_protocol::{
             PCM as MIRROR_PCM, SCREEN as MIRROR_SCREEN, VIEW as MIRROR_VIEW,
             VIRTUAL_DISPLAY as MIRROR_VIRTUAL_DISPLAY,
         },
-        mirror_keys, parse_mac,
+        mirror_keys, notify_limits, parse_mac,
         photos::{
             MAX_GET_ITEMS as PHOTO_MAX_GET_ITEMS, MAX_PAGE as PHOTO_MAX_PAGE,
             MAX_THUMB_BATCH as PHOTO_MAX_THUMB_BATCH, MAX_THUMB_BYTES as PHOTO_MAX_THUMB_BYTES,
@@ -92,7 +93,7 @@ pub use nectarlink_protocol::{
         ringer_modes, screen_limits,
         sms::{READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW},
         storage::{MOUNT as STORAGE_MOUNT, READ as STORAGE_READ, WRITE as STORAGE_WRITE},
-        toggle_ids,
+        task_notify, toggle_ids,
         toggles::{
             BLUETOOTH as TOGGLES_BLUETOOTH, BRIGHTNESS as TOGGLES_BRIGHTNESS, DND as TOGGLES_DND,
             FLASHLIGHT as TOGGLES_FLASHLIGHT, READ as TOGGLES_READ, RINGER as TOGGLES_RINGER,

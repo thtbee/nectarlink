@@ -15,6 +15,7 @@ a `notify.removed` must never overtake the `notify.posted` it removes.
 | ID | Offered by | Meaning |
 |---|---|---|
 | `notify.mirror` | phone | Sends `notify.*` events. Offered once the user granted notification access |
+| `notify.live` | phone | Includes `live` metadata on ongoing progress, timer, and Android 16 Live Update notifications |
 | `notify.reply` | phone | Handles `notify.dismiss` and `notify.action` |
 | `notify.sensitive` | phone | Includes notifications Android hides from apps as sensitive (one-time codes) |
 
@@ -36,6 +37,7 @@ Notification = {
   silent:   bool,        // Arrived without sound or pop-up on the phone; don't alert either
   icon:     bytes?,      // The app's icon, PNG, at most 64 KiB (see §2.1)
   image:    bytes?,      // The picture it shows (a photo in a message, a big picture), JPEG, at most 160 KiB
+  live:     Live?,       // Ongoing progress, timer, or Android 16 Live Update metadata (see §2.2)
 }
 
 Action = {
@@ -61,6 +63,41 @@ The icon of an app is sent with the **first** notification of that app in a
 session (in `notify.posted` or `notify.snapshot`) and omitted afterwards.
 Receivers keep the icons they got for the session's lifetime and may cache
 them longer, keyed by package name.
+
+### 2.2 Live Updates (`live`)
+
+Ongoing progress bars, timers, and Android 16 Live Updates (rides, deliveries,
+navigation, active builds) carry an optional `live` map:
+
+```
+Live = {
+  v:             uint,         // Schema version (currently 1)
+  progress:      uint?,        // Current progress, 0..=max
+  max:           uint?,        // Maximum progress (> 0 when determinate)
+  indeterminate: bool?,        // True when progress is indeterminate
+  chip:          text?,        // Short status pill text (Notification.getShortCriticalText), at most 16 chars
+  segments:      [Segment]?,   // Android 16 ProgressStyle segments, at most 16
+  points:        [Point]?,     // Android 16 ProgressStyle milestone points, at most 16
+  chronometer:   bool?,        // Live elapsed or countdown timer relative to Notification.when
+  countdown:     bool?,        // True when the chronometer counts down toward Notification.when
+}
+
+Segment = {
+  length: uint,                // Relative segment length (> 0)
+  color:  uint?,               // Optional 24-bit RGB / 32-bit ARGB color
+}
+
+Point = {
+  position: uint,              // Position along 0..=max
+  color:    uint?,             // Optional 24-bit RGB / 32-bit ARGB color
+}
+```
+
+Senders coalesce rapid `notify.posted` updates for the same `key` to at most
+one update per second while always delivering the final update (`progress >= max`
+or `notify.removed`). Receivers pin live notifications above regular
+notifications in the feed and update both the feed card and the native toast in
+place without re-alerting.
 
 ## 3. Events (phone → PC)
 

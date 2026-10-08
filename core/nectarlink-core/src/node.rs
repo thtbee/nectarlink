@@ -64,6 +64,7 @@ const BASE_CAPABILITIES: &[&str] = &[
     "clip.image",
     "media.remote",
     "link.open",
+    "task.notify",
 ];
 
 /// This device's mutable description, sent to peers.
@@ -124,6 +125,8 @@ pub(crate) struct Shared {
     pub(crate) toggles: crate::toggles::Current,
     /// This PC's Wake-on-LAN adapter addresses (docs/protocol/actions.md).
     pub(crate) wake_info: crate::actions::CurrentWakeInfo,
+    /// Active watched tasks on this PC (`task.notify`, `docs/protocol/actions.md`).
+    pub(crate) tasks: crate::actions::ActiveTasks,
     /// This PC's Deck layout and live state, and connected PCs' Decks (docs/protocol/deck.md).
     pub(crate) deck: crate::deck::Current,
     /// Stop signals for phone screens shown here, by phone.
@@ -403,6 +406,7 @@ impl Shared {
             shared.send_call_state(&s).await;
             shared.send_toggles_state(&s).await;
             crate::actions::send_wake_info(&shared, &s).await;
+            crate::actions::send_active_tasks(&shared, &s).await;
             shared.send_deck(&s).await;
         });
         Some(session)
@@ -667,6 +671,7 @@ impl Node {
             calls: Default::default(),
             toggles: Default::default(),
             wake_info: Default::default(),
+            tasks: Default::default(),
             deck: Default::default(),
             mirror_stops: Mutex::new(HashMap::new()),
             webcam_stops: Mutex::new(HashMap::new()),
@@ -794,6 +799,7 @@ impl Node {
             self.shared.send_media_state(&session).await;
             self.shared.send_toggles_state(&session).await;
             crate::actions::send_wake_info(&self.shared, &session).await;
+            crate::actions::send_active_tasks(&self.shared, &session).await;
             self.shared.send_deck(&session).await;
         }
     }
@@ -1144,6 +1150,13 @@ impl Node {
     pub async fn open_link(&self, peer: DeviceId, url: String) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::actions::open_link(&self.shared, &session, url).await
+    }
+
+    /// Sends an ongoing or completed task notification (`task.notify`) to a
+    /// paired device (or to all connected devices that offer `task.notify`
+    /// when `peer` is `None`).
+    pub async fn task_notify(&self, peer: Option<DeviceId>, task: crate::TaskNotify) -> Result<()> {
+        crate::actions::task_notify(&self.shared, peer, task).await
     }
 
     // ---- Screen mirroring (docs/protocol/mirror.md) ----

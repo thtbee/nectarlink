@@ -34,6 +34,11 @@ static SYNC_DND: AtomicBool = AtomicBool::new(false);
 /// of notifications that went away meanwhile.
 static TOASTED: Mutex<Option<HashMap<DeviceId, HashSet<String>>>> = Mutex::new(None);
 
+/// Keys of live notifications that already have a toast with a `<progress>` bar,
+/// so subsequent updates call [`toast::update_progress`] in place instead of
+/// popping up a new toast.
+static LIVE_TOASTS: Mutex<Option<HashSet<(DeviceId, String)>>> = Mutex::new(None);
+
 /// Detected OTP codes by `(device, notification_key)` for active toasts, so
 /// the code never needs to be placed in Windows toast XML action arguments.
 static OTP_CODES: Mutex<Option<HashMap<(DeviceId, String), String>>> = Mutex::new(None);
@@ -44,6 +49,10 @@ static LAST_AUTO_OTP: Mutex<Option<(String, Instant)>> = Mutex::new(None);
 
 fn toasted<T>(f: impl FnOnce(&mut HashMap<DeviceId, HashSet<String>>) -> T) -> T {
     f(TOASTED.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new))
+}
+
+fn live_toasts<T>(f: impl FnOnce(&mut HashSet<(DeviceId, String)>) -> T) -> T {
+    f(LIVE_TOASTS.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashSet::new))
 }
 
 fn otp_codes<T>(f: impl FnOnce(&mut HashMap<(DeviceId, String), String>) -> T) -> T {
@@ -72,6 +81,7 @@ pub fn set_sync_dnd(on: bool) {
 
 fn quiet_device_toasts(device: DeviceId) {
     toasted(|t| t.remove(&device));
+    live_toasts(|l| l.retain(|(d, _)| *d != device));
     toast::remove_device(&device.to_string());
 }
 
@@ -242,6 +252,7 @@ pub fn update_toasts(event: &NodeEvent) {
         NodeEvent::NotificationPosted { device, notification } => show(*device, notification),
         NodeEvent::NotificationRemoved { device, key } => {
             toasted(|t| t.get_mut(device).map(|keys| keys.remove(key)));
+            live_toasts(|l| l.remove(&(*device, key.clone())));
             otp_codes(|c| c.remove(&(*device, key.clone())));
             toast::remove(&device.to_string(), key);
         }
@@ -258,6 +269,7 @@ pub fn update_toasts(event: &NodeEvent) {
                 keys.retain(|k| keep.contains(k.as_str()));
                 gone
             });
+            live_toasts(|l| l.retain(|(d, k)| d != device || keep.contains(k.as_str())));
             otp_codes(|c| c.retain(|(d, k), _| d != device || keep.contains(k.as_str())));
             for key in gone {
                 toast::remove(&device.to_string(), &key);
@@ -270,11 +282,35 @@ pub fn update_toasts(event: &NodeEvent) {
         }
         NodeEvent::DeviceRemoved(device) => {
             toasted(|t| t.remove(device));
+            live_toasts(|l| l.retain(|(d, _)| d != device));
             otp_codes(|c| c.retain(|(d, _), _| d != device));
             toast::remove_device(&device.to_string());
         }
         _ => {}
     }
+}
+
+fn live_toast_progress(n: &Notification) -> Option<toast::Progress> {
+    let live = n.live.as_ref()?;
+    let status = live
+        .chip
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .or(n.text.as_deref().filter(|s| !s.is_empty()))
+        .unwrap_or("Live")
+        .to_owned();
+    let (value, label) = if live.indeterminate {
+        (None, String::new())
+    } else if let (Some(progress), Some(max)) = (live.progress, live.max)
+        && max > 0
+    {
+        let ratio = (f64::from(progress) / f64::from(max)).clamp(0.0, 1.0);
+        let pct = ((ratio * 100.0).round() as u32).min(100);
+        (Some(ratio), format!("{pct}%"))
+    } else {
+        (None, live.chip.clone().unwrap_or_default())
+    };
+    Some(toast::Progress { status, value, label })
 }
 
 fn show(device: DeviceId, n: &Notification) {
@@ -298,6 +334,17 @@ fn show(device: DeviceId, n: &Notification) {
     if rule != AppRule::Show || (SYNC_DND.load(Ordering::Relaxed) && phone_dnd) {
         return;
     }
+    let progress = live_toast_progress(n);
+    let id = (device, n.key.clone());
+    if let Some(prog) = &progress {
+        let already_shown = live_toasts(|l| l.contains(&id));
+        if already_shown {
+            toast::update_progress(&device.to_string(), &n.key, prog.clone());
+            return;
+        }
+    } else {
+        live_toasts(|l| l.remove(&id));
+    }
     let mut actions: Vec<(String, String)> = Vec::new();
     if otp.is_some() {
         actions.push((ACTION_COPY_OTP.to_owned(), "Copy code".to_owned()));
@@ -318,10 +365,13 @@ fn show(device: DeviceId, n: &Notification) {
         actions,
         reply: reply.map(|a| (a.id.clone(), a.title.clone())),
         silent: n.silent,
-        progress: None,
+        progress: progress.clone(),
         call: false,
     };
     toasted(|t| t.entry(device).or_default().insert(n.key.clone()));
+    if progress.is_some() {
+        live_toasts(|l| l.insert(id));
+    }
     toast::show(toast);
 }
 
@@ -419,6 +469,7 @@ pub fn set_app_rule(app: &str, rule: AppRule) {
     });
     for (device, key) in shown {
         toasted(|t| t.get_mut(&device).map(|keys| keys.remove(&key)));
+        live_toasts(|l| l.remove(&(device, key.clone())));
         toast::remove(&device.to_string(), &key);
     }
 }
@@ -427,6 +478,8 @@ pub fn set_app_rule(app: &str, rule: AppRule) {
 pub fn dismiss(device: &str, key: String) {
     let (Ok(device), Some(node)) = (device.parse::<DeviceId>(), core_host::node()) else { return };
     core_host::host().hub.update(|s| s.apply(&NodeEvent::NotificationRemoved { device, key: key.clone() }));
+    toasted(|t| t.get_mut(&device).map(|keys| keys.remove(&key)));
+    live_toasts(|l| l.remove(&(device, key.clone())));
     otp_codes(|c| c.remove(&(device, key.clone())));
     toast::remove(&device.to_string(), &key);
     core_host::spawn(async move {
@@ -466,6 +519,8 @@ fn report(error: &Error) {
 
 #[cfg(test)]
 mod tests {
+    use nectarlink_core::NotificationLive;
+
     use super::*;
 
     fn make_note(title: Option<&str>, text: Option<&str>) -> Notification {
@@ -481,6 +536,7 @@ mod tests {
             silent: false,
             icon: None,
             image: None,
+            live: None,
         }
     }
 
@@ -499,5 +555,27 @@ mod tests {
             None,
             "sender phone number in title must not be extracted as an OTP"
         );
+    }
+
+    #[test]
+    fn builds_toast_progress_for_live_notifications() {
+        let mut n = make_note(Some("Ride"), Some("Arriving in 4 min"));
+        assert!(live_toast_progress(&n).is_none());
+
+        n.live = Some(NotificationLive {
+            v: 1,
+            progress: Some(45),
+            max: Some(100),
+            indeterminate: false,
+            chip: Some("4 min".into()),
+            segments: Vec::new(),
+            points: Vec::new(),
+            chronometer: false,
+            countdown: false,
+        });
+        let p = live_toast_progress(&n).unwrap();
+        assert_eq!(p.status, "4 min");
+        assert_eq!(p.value, Some(0.45));
+        assert_eq!(p.label, "45%");
     }
 }

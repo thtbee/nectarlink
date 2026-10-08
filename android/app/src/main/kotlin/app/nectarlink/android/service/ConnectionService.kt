@@ -39,6 +39,7 @@ class ConnectionService : LifecycleService() {
         app.nectarlink.android.files.TransferNotifications.createChannels(this)
         app.nectarlink.android.media.PcMedia.createChannel(this)
         app.nectarlink.android.links.LinkNotifications.createChannel(this)
+        app.nectarlink.android.notifications.TaskNotifications.createChannels(this)
         app.nectarlink.android.webcam.WebcamService.createChannel(this)
         app.nectarlink.android.webcam.WebcamRequests.createChannel(this)
         val core = (application as NectarlinkApplication).core

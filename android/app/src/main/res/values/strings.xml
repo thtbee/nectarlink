@@ -242,6 +242,9 @@
     <string name="link_from">Link from %1$s</string>
     <string name="link_opened_on">Opened on %1$s</string>
     <string name="link_pick_pc">Open on which PC?</string>
+    <string name="channel_pc_tasks">Tasks on your PC</string>
+    <string name="channel_pc_tasks_running">Running tasks on your PC</string>
+    <string name="task_running_on">Running on %1$s</string>
 
     <!-- Notifications -->
     <string name="channel_connection">Connection</string>

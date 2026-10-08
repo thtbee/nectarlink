@@ -417,9 +417,7 @@ impl AppState {
                 changes | self.remember(gone)
             }
             NodeEvent::NotificationPosted { device, notification } => {
-                self.notifications
-                    .retain(|n| !(n.device == *device && n.notification.key == notification.key));
-                Changes::NOTIFICATIONS | self.insert_notification(*device, notification.clone())
+                Changes::NOTIFICATIONS | self.upsert_notification(*device, notification.clone())
             }
             NodeEvent::NotificationRemoved { device, key } => {
                 let Some(at) =
@@ -544,7 +542,29 @@ impl AppState {
         });
     }
 
-    /// Adds a notification in time order (newest first), without its icon.
+    /// Updates an existing live notification in place (so `ListView.add` animations
+    /// don't re-run on progress updates) or inserts at its sorted position.
+    fn upsert_notification(&mut self, device: DeviceId, mut notification: Notification) -> Changes {
+        notification.icon = None;
+        notification.image = None;
+        let mut changes = Changes::NONE;
+        if self.app_names.get(&notification.app) != Some(&notification.app_name) {
+            self.app_names.insert(notification.app.clone(), notification.app_name.clone());
+            changes |= Changes::APPS;
+        }
+        if notification.live.is_some()
+            && let Some(existing) = self.notifications.iter_mut().find(|n| {
+                n.device == device && n.notification.key == notification.key && n.notification.live.is_some()
+            })
+        {
+            existing.notification = notification;
+            return changes;
+        }
+        self.notifications.retain(|n| !(n.device == device && n.notification.key == notification.key));
+        changes | self.insert_notification(device, notification)
+    }
+
+    /// Adds a notification (live items first, then newest first), without its icon.
     fn insert_notification(&mut self, device: DeviceId, mut notification: Notification) -> Changes {
         // Icons and pictures live on disk (see crate::notifications).
         notification.icon = None;
@@ -554,7 +574,15 @@ impl AppState {
             self.app_names.insert(notification.app.clone(), notification.app_name.clone());
             changes |= Changes::APPS;
         }
-        let at = self.notifications.partition_point(|n| n.notification.when >= notification.when);
+        let is_live = notification.live.is_some();
+        let at = self.notifications.partition_point(|n| {
+            let existing_live = n.notification.live.is_some();
+            match (existing_live, is_live) {
+                (true, false) => true,
+                (false, true) => false,
+                _ => n.notification.when >= notification.when,
+            }
+        });
         self.notifications.insert(at, NotificationView { device, notification });
         self.notifications.truncate(MAX_NOTIFICATIONS);
         changes
@@ -875,11 +903,45 @@ mod tests {
             silent: false,
             icon: Some(vec![1, 2, 3]),
             image: None,
+            live: None,
         }
     }
 
     fn keys(s: &AppState) -> Vec<&str> {
         s.notifications.iter().map(|n| n.notification.key.as_str()).collect()
+    }
+
+    #[test]
+    fn live_notifications_stay_at_top_and_update_in_place() {
+        let mut s = AppState::default();
+        let phone = DeviceId([1; 32]);
+        s.apply(&NodeEvent::NotificationPosted { device: phone, notification: note("msg1", 100) });
+
+        let mut live1 = note("ride", 50);
+        live1.live = Some(nectarlink_core::NotificationLive {
+            v: 1,
+            progress: Some(20),
+            max: Some(100),
+            indeterminate: false,
+            chip: Some("8 min".into()),
+            segments: Vec::new(),
+            points: Vec::new(),
+            chronometer: false,
+            countdown: false,
+        });
+        s.apply(&NodeEvent::NotificationPosted { device: phone, notification: live1.clone() });
+        assert_eq!(keys(&s), ["ride", "msg1"], "live notification sits above newer regular notification");
+
+        // Even when a newer regular notification arrives, live stays at the top.
+        s.apply(&NodeEvent::NotificationPosted { device: phone, notification: note("msg2", 200) });
+        assert_eq!(keys(&s), ["ride", "msg2", "msg1"]);
+
+        // Updating live progress keeps it in place at index 0.
+        let mut live2 = live1;
+        live2.live.as_mut().unwrap().progress = Some(65);
+        s.apply(&NodeEvent::NotificationPosted { device: phone, notification: live2 });
+        assert_eq!(keys(&s), ["ride", "msg2", "msg1"]);
+        assert_eq!(s.notifications[0].notification.live.as_ref().unwrap().progress, Some(65));
     }
 
     #[test]

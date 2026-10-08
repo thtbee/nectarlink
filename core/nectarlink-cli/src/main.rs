@@ -9,11 +9,12 @@ use std::{io::Write, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};
 use nectarlink_core::{
-    Battery, ConnectionPath, DeviceId, DeviceInfo, DeviceKind, Direction, FeatureState, LinkState,
-    MediaAction, MediaError, MediaPlayer, Node, NodeConfig, NodeEvent, Notification, NotificationAction,
-    NotificationError, PairedDevice, PairingEvent, Platform, PowerAction, PowerLevel, ScreenCorners,
-    ScreenRect, ScreenShape, TransferState,
+    Battery, ConnectionPath, DeviceId, DeviceInfo, DeviceKind, Direction, FeatureState, LinkState, LivePoint,
+    LiveSegment, MediaAction, MediaError, MediaPlayer, Node, NodeConfig, NodeEvent, Notification,
+    NotificationAction, NotificationError, NotificationLive, PairedDevice, PairingEvent, Platform,
+    PowerAction, PowerLevel, ScreenCorners, ScreenRect, ScreenShape, TaskNotify, TransferState,
     features::{Effort, FEATURES, Role, UnsupportedReason, Upgrade, UpgradeAction},
+    notify_limits,
 };
 use tokio::sync::broadcast::error::RecvError;
 
@@ -410,11 +411,16 @@ enum Command {
     /// Show a notification on paired PCs as if this were a phone (use with
     /// --as-phone), then stay online to show what the PC does with it.
     Notify {
-        title: String,
-        text: String,
+        #[arg(required_unless_present = "remove")]
+        title: Option<String>,
+        #[arg(required_unless_present = "remove")]
+        text: Option<String>,
         /// App name shown with it.
         #[arg(long, default_value = "Messages")]
         app: String,
+        /// Notification key (defaults to `cli|<when>`, or `cli|live` when live flags are set).
+        #[arg(long)]
+        key: Option<String>,
         /// Offer an inline reply.
         #[arg(long)]
         reply: bool,
@@ -428,6 +434,47 @@ enum Command {
         /// (repeatable).
         #[arg(long)]
         also: Vec<String>,
+        /// Determinate progress as `<cur>/<max>` (e.g. `42/100`).
+        #[arg(long)]
+        progress: Option<String>,
+        /// Indeterminate progress bar.
+        #[arg(long)]
+        indeterminate: bool,
+        /// Short status chip (up to 14 characters, e.g. `4 min`).
+        #[arg(long)]
+        chip: Option<String>,
+        /// Multi-segment progress bar: `<l1[:#RRGGBB],l2,...>`.
+        #[arg(long)]
+        segments: Option<String>,
+        /// Milestone points along the progress bar: `<p1[:#RRGGBB],p2,...>`.
+        #[arg(long)]
+        points: Option<String>,
+        /// Show a live elapsed or countdown chronometer timer.
+        #[arg(long)]
+        chronometer: bool,
+        /// Count down for `<seconds>` (sets `when = now + seconds * 1000`, `chronometer = true`, `countdown = true`).
+        #[arg(long)]
+        countdown: Option<u64>,
+        /// Schedule in-place progress updates: `<delay-ms>:<progress>` (repeatable or comma-separated).
+        #[arg(long = "update", value_delimiter = ',')]
+        updates: Vec<String>,
+        /// Remove the notification by `--key`, or after the last `--update`.
+        #[arg(long)]
+        remove: bool,
+    },
+    /// Watch a process by PID or run a command after `--`, show an ongoing
+    /// timer on the paired phone while it runs, and alert the phone when it
+    /// finishes.
+    NotifyWhen {
+        /// Title shown on the phone (defaults to the executable or command name).
+        #[arg(long)]
+        title: Option<String>,
+        /// Paired phone to notify (omit to notify all paired phones).
+        #[arg(long)]
+        device: Option<String>,
+        /// Process ID to watch, or command and arguments after `--`.
+        #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
+        target: Vec<String>,
     },
 }
 
@@ -2086,6 +2133,21 @@ impl Platform for TerminalPlatform {
     fn webcam_sink(&self, peer: &DeviceId) -> Option<Arc<dyn nectarlink_core::WebcamSink>> {
         Some(Arc::new(CliWebcamSink { peer: *peer, frames: std::sync::atomic::AtomicU64::new(0) }))
     }
+    fn task_notify(&self, _peer: &DeviceId, task: &TaskNotify) -> Result<(), String> {
+        if task.active {
+            println!("PC task running [{}]: {}", task.id, task.title);
+        } else if let Some(code) = task.exit_code {
+            let took = TaskNotify::format_took(task.elapsed_ms);
+            if code == 0 {
+                println!("PC task finished [{}]: {} ({took})", task.id, task.title);
+            } else {
+                println!("PC task failed [{}]: {} (exit {code}, {took})", task.id, task.title);
+            }
+        } else {
+            println!("PC task dismissed [{}]", task.id);
+        }
+        Ok(())
+    }
 }
 
 struct CliWebcamSink {
@@ -2124,10 +2186,10 @@ impl nectarlink_core::WebcamSink for CliWebcamSink {
 }
 
 fn main() -> Result<()> {
-    std::thread::Builder::new()
+    let code = std::thread::Builder::new()
         .name("main".into())
         .stack_size(8 * 1024 * 1024)
-        .spawn(|| {
+        .spawn(|| -> Result<i32> {
             tokio::runtime::Builder::new_multi_thread().enable_all().build()?.block_on(async {
                 let cli = Cli::parse();
                 tracing_subscriber::fmt()
@@ -2137,14 +2199,23 @@ fn main() -> Result<()> {
                     .with_writer(std::io::stderr)
                     .init();
 
+                if let Command::NotifyWhen { title, device, target } = &cli.command {
+                    return Box::pin(run_notify_when(&cli, title.as_deref(), device.as_deref(), target))
+                        .await;
+                }
+
                 let node = Box::pin(start_node(&cli)).await?;
                 let result = Box::pin(run(&cli, &node)).await;
                 node.shutdown().await;
-                result
+                result.map(|()| 0)
             })
         })?
         .join()
-        .unwrap_or_else(|_| bail!("main thread panicked"))
+        .unwrap_or_else(|_| bail!("main thread panicked"))?;
+    if code != 0 {
+        std::process::exit(code);
+    }
+    Ok(())
 }
 
 async fn start_node(cli: &Cli) -> Result<Node> {
@@ -3061,6 +3132,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 [
                     "notify.mirror",
                     "notify.reply",
+                    "notify.live",
                     "media.control",
                     "clip.write",
                     "clip.share",
@@ -3126,6 +3198,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     silent: true,
                     icon: None,
                     image: None,
+                    live: None,
                 })
                 .await;
             }
@@ -3419,58 +3492,146 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             println!("Announced to connected PCs that show photos.");
             watch(node, false).await?;
         }
-        Command::Notify { title, text, app, reply, silent, image, also } => {
+        Command::Notify {
+            title,
+            text,
+            app,
+            key,
+            reply,
+            silent,
+            image,
+            also,
+            progress,
+            indeterminate,
+            chip,
+            segments,
+            points,
+            chronometer,
+            countdown,
+            updates,
+            remove,
+        } => {
             let image = image.as_deref().map(std::fs::read).transpose().context("can't read the picture")?;
             if !cli.as_phone {
                 bail!("notifications come from phones: add --as-phone");
             }
+            let live = build_cli_live(
+                progress.as_deref(),
+                *indeterminate,
+                chip.as_deref(),
+                segments.as_deref(),
+                points.as_deref(),
+                *chronometer,
+                *countdown,
+                updates,
+            )?;
+            let update_steps: Vec<(u64, u32)> =
+                updates.iter().map(|s| parse_update_step(s)).collect::<Result<_>>()?;
             let mut offers = cli.offers.clone();
-            offers.extend(["notify.mirror".to_owned(), "notify.reply".to_owned()]);
+            offers.extend(["notify.mirror".to_owned(), "notify.reply".to_owned(), "notify.live".to_owned()]);
             node.update_power(node_power(cli), offers).await;
-            let when = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis() as i64;
+            let now_ms =
+                std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis() as i64;
+            let when = match countdown {
+                Some(secs) => now_ms + (*secs as i64) * 1000,
+                None => now_ms,
+            };
+            let note_key = key.clone().unwrap_or_else(|| {
+                if live.is_some() || *remove { "cli|live".to_owned() } else { format!("cli|{now_ms}") }
+            });
+            if let Some(first) = node.paired_devices()?.first() {
+                let _ = tokio::time::timeout(Duration::from_secs(3), wait_until_online(node, first.id)).await;
+            }
+            if *remove && title.is_none() && text.is_none() && update_steps.is_empty() {
+                node.notification_removed(note_key.clone()).await;
+                tokio::time::sleep(Duration::from_millis(300)).await;
+                println!("Removed notification {note_key}.");
+                return Ok(());
+            }
             let mut actions =
                 vec![NotificationAction { id: "read".into(), title: "Mark as read".into(), reply: false }];
             if *reply {
                 actions
                     .insert(0, NotificationAction { id: "reply".into(), title: "Reply".into(), reply: true });
             }
-            node.notification_posted(Notification {
-                key: format!("cli|{when}"),
+            let base_note = Notification {
+                key: note_key.clone(),
                 app: "dev.nectarlink.cli".into(),
                 app_name: app.clone(),
-                title: Some(title.clone()),
-                text: Some(text.clone()),
+                title: title.clone(),
+                text: text.clone(),
                 sub: None,
                 when,
                 actions,
                 silent: *silent,
                 icon: None,
                 image,
-            })
-            .await;
+                live: live.clone(),
+            };
+            node.notification_posted(base_note.clone()).await;
             for (i, extra) in also.iter().enumerate() {
                 let mut parts = extra.splitn(3, '|');
                 let (Some(app), Some(title), Some(text)) = (parts.next(), parts.next(), parts.next()) else {
                     bail!("--also takes \"App|Title|Text\"");
                 };
                 node.notification_posted(Notification {
-                    key: format!("cli|{when}|{i}"),
+                    key: format!("cli|{now_ms}|{i}"),
                     app: format!("dev.nectarlink.cli.{i}"),
                     app_name: app.into(),
                     title: Some(title.into()),
                     text: Some(text.into()),
                     sub: None,
-                    when: when - 60_000 * (i as i64 + 1),
+                    when: now_ms - 60_000 * (i as i64 + 1),
                     actions: Vec::new(),
                     silent: true,
                     icon: None,
                     image: None,
+                    live: None,
                 })
                 .await;
+            }
+            if !update_steps.is_empty() || *remove {
+                let updater = node.clone();
+                let remove_after = *remove;
+                let base_live = live.unwrap_or_else(|| NotificationLive {
+                    v: notify_limits::LIVE_VERSION,
+                    progress: Some(0),
+                    max: Some(100),
+                    indeterminate: false,
+                    chip: None,
+                    segments: Vec::new(),
+                    points: Vec::new(),
+                    chronometer: false,
+                    countdown: false,
+                });
+                tokio::spawn(async move {
+                    let mut prev_ms = 0u64;
+                    for (delay_ms, prog) in update_steps {
+                        let wait_ms = if delay_ms > prev_ms { delay_ms - prev_ms } else { delay_ms };
+                        prev_ms = delay_ms;
+                        tokio::time::sleep(Duration::from_millis(wait_ms)).await;
+                        let mut next_note = base_note.clone();
+                        let mut next_live = base_live.clone();
+                        next_live.progress = Some(prog);
+                        if next_live.max.is_none() {
+                            next_live.max = Some(100);
+                        }
+                        next_live.indeterminate = false;
+                        next_note.live = next_live.sanitized();
+                        updater.notification_posted(next_note).await;
+                    }
+                    if remove_after {
+                        if prev_ms > 0 {
+                            tokio::time::sleep(Duration::from_millis(500)).await;
+                        }
+                        updater.notification_removed(note_key).await;
+                    }
+                });
             }
             println!("Notification sent to connected PCs (and to others when they connect).");
             watch(node, false).await?;
         }
+        Command::NotifyWhen { .. } => unreachable!("handled in main"),
     }
     Ok(())
 }
@@ -3953,12 +4114,38 @@ fn print_event(node: &Node, event: &NodeEvent) {
             println!("{}: {} notifications showing", name(device), items.len())
         }
         NodeEvent::NotificationPosted { device, notification: n } => {
+            let live = n
+                .live
+                .as_ref()
+                .map(|l| {
+                    let mut parts = Vec::new();
+                    if let Some(chip) = &l.chip {
+                        parts.push(format!("chip={chip:?}"));
+                    }
+                    if l.indeterminate {
+                        parts.push("indeterminate".into());
+                    } else if let (Some(p), Some(m)) = (l.progress, l.max) {
+                        parts.push(format!("{p}/{m}"));
+                    }
+                    if !l.segments.is_empty() {
+                        parts.push(format!("{} segs", l.segments.len()));
+                    }
+                    if !l.points.is_empty() {
+                        parts.push(format!("{} pts", l.points.len()));
+                    }
+                    if l.chronometer {
+                        parts.push(if l.countdown { "countdown".into() } else { "chrono".into() });
+                    }
+                    format!(" [live: {}]", parts.join(", "))
+                })
+                .unwrap_or_default();
             println!(
-                "{}: {} · {}{}  [key {}]",
+                "{}: {} · {}{}{}  [key {}]",
                 name(device),
                 n.app_name,
                 n.title.as_deref().or(n.text.as_deref()).unwrap_or_default(),
                 n.image.as_ref().map(|i| format!(" (with a picture, {} bytes)", i.len())).unwrap_or_default(),
+                live,
                 n.key
             );
             for a in &n.actions {
@@ -4471,4 +4658,681 @@ fn stream_webcam(
         }
     }
     println!("Stopped sharing the webcam ({dropped} frames dropped to keep up).");
+}
+
+fn parse_progress(s: &str) -> Result<(u32, u32)> {
+    let (cur, max) = s.split_once('/').with_context(|| format!("--progress takes <cur>/<max>, got {s:?}"))?;
+    let cur: u32 = cur.trim().parse().with_context(|| format!("invalid progress value: {cur:?}"))?;
+    let max: u32 = max.trim().parse().with_context(|| format!("invalid progress max: {max:?}"))?;
+    if max == 0 {
+        bail!("--progress max must be at least 1");
+    }
+    Ok((cur.min(max), max))
+}
+
+fn parse_hex_color(s: &str) -> Result<u32> {
+    let hex = s.trim().strip_prefix('#').unwrap_or(s.trim());
+    if hex.len() != 6 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        bail!("color must be #RRGGBB (6 hex digits), got {s:?}");
+    }
+    Ok(u32::from_str_radix(hex, 16)?)
+}
+
+fn parse_segments(s: &str) -> Result<Vec<LiveSegment>> {
+    let mut out = Vec::new();
+    for part in s.split(',').map(str::trim).filter(|p| !p.is_empty()) {
+        let (len_str, color) = match part.split_once(':') {
+            Some((l, c)) => (l, Some(parse_hex_color(c)?)),
+            None => (part, None),
+        };
+        let length: u32 =
+            len_str.trim().parse().with_context(|| format!("invalid segment length: {len_str:?}"))?;
+        if length == 0 {
+            bail!("segment length must be greater than 0");
+        }
+        out.push(LiveSegment { length, color });
+    }
+    if out.is_empty() {
+        bail!("--segments requires at least one segment");
+    }
+    Ok(out)
+}
+
+fn parse_points(s: &str) -> Result<Vec<LivePoint>> {
+    let mut out = Vec::new();
+    for part in s.split(',').map(str::trim).filter(|p| !p.is_empty()) {
+        let (pos_str, color) = match part.split_once(':') {
+            Some((p, c)) => (p, Some(parse_hex_color(c)?)),
+            None => (part, None),
+        };
+        let position: u32 =
+            pos_str.trim().parse().with_context(|| format!("invalid point position: {pos_str:?}"))?;
+        out.push(LivePoint { position, color });
+    }
+    if out.is_empty() {
+        bail!("--points requires at least one point");
+    }
+    Ok(out)
+}
+
+fn parse_update_step(s: &str) -> Result<(u64, u32)> {
+    let (delay_str, prog_str) =
+        s.split_once(':').with_context(|| format!("--update takes <delay-ms>:<progress>, got {s:?}"))?;
+    let delay_ms: u64 =
+        delay_str.trim().parse().with_context(|| format!("invalid update delay in ms: {delay_str:?}"))?;
+    let progress: u32 =
+        prog_str.trim().parse().with_context(|| format!("invalid update progress: {prog_str:?}"))?;
+    Ok((delay_ms, progress))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_cli_live(
+    progress: Option<&str>,
+    indeterminate: bool,
+    chip: Option<&str>,
+    segments: Option<&str>,
+    points: Option<&str>,
+    chronometer: bool,
+    countdown: Option<u64>,
+    updates: &[String],
+) -> Result<Option<NotificationLive>> {
+    let has_any = progress.is_some()
+        || indeterminate
+        || chip.is_some()
+        || segments.is_some()
+        || points.is_some()
+        || chronometer
+        || countdown.is_some()
+        || !updates.is_empty();
+    if !has_any {
+        return Ok(None);
+    }
+    let segments = match segments {
+        Some(s) => parse_segments(s)?,
+        None => Vec::new(),
+    };
+    let points = match points {
+        Some(p) => parse_points(p)?,
+        None => Vec::new(),
+    };
+    let seg_total: u32 = segments.iter().map(|s| s.length).sum();
+    let (prog, max) = if let Some(p) = progress {
+        let (c, m) = parse_progress(p)?;
+        (Some(c), Some(if seg_total > 0 { seg_total } else { m }))
+    } else if seg_total > 0 {
+        (Some(0), Some(seg_total))
+    } else if !updates.is_empty() && !indeterminate {
+        (Some(0), Some(100))
+    } else {
+        (None, None)
+    };
+    let chrono = chronometer || countdown.is_some();
+    let cd = countdown.is_some();
+    Ok(NotificationLive {
+        v: notify_limits::LIVE_VERSION,
+        progress: prog,
+        max,
+        indeterminate,
+        chip: chip.map(str::to_owned),
+        segments,
+        points,
+        chronometer: chrono,
+        countdown: cd,
+    }
+    .sanitized())
+}
+
+fn now_unix_ms() -> i64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis() as i64)
+}
+
+fn default_command_title(first_token: &str) -> String {
+    std::path::Path::new(first_token)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .filter(|s| !s.is_empty())
+        .unwrap_or(first_token)
+        .to_owned()
+}
+
+enum TaskTransport {
+    #[cfg(windows)]
+    DesktopDir(PathBuf),
+    Standalone {
+        node: Node,
+        targets: Vec<DeviceId>,
+    },
+}
+
+impl TaskTransport {
+    async fn send(&self, device_query: Option<&str>, task: &TaskNotify) -> Result<()> {
+        match self {
+            #[cfg(windows)]
+            TaskTransport::DesktopDir(dir) => win_watch::queue_desktop_task_notify(dir, device_query, task),
+            TaskTransport::Standalone { node, targets } => {
+                let mut sent_any = false;
+                let mut last_err = None;
+                for &id in targets {
+                    match node.task_notify(Some(id), task.clone()).await {
+                        Ok(()) => sent_any = true,
+                        Err(e) => last_err = Some(e),
+                    }
+                }
+                if !sent_any && let Some(e) = last_err {
+                    bail!("couldn't notify phone: {e}");
+                }
+                Ok(())
+            }
+        }
+    }
+
+    async fn shutdown(self) {
+        if let TaskTransport::Standalone { node, .. } = self {
+            node.shutdown().await;
+        }
+    }
+}
+
+async fn connect_task_transport(cli: &Cli, device_query: Option<&str>) -> Result<TaskTransport> {
+    #[cfg(windows)]
+    {
+        let desktop_dir = match &cli.data_dir {
+            Some(dir) => Some(dir.clone()),
+            None => dirs::data_local_dir().map(|d| d.join("Nectarlink")),
+        };
+        if let Some(dir) = desktop_dir
+            && win_watch::is_desktop_running(&dir)
+        {
+            return Ok(TaskTransport::DesktopDir(dir));
+        }
+    }
+    let node = Box::pin(start_node(cli)).await?;
+    let targets = match device_query {
+        Some(q) => {
+            let id = resolve(&node, q)?;
+            wait_until_online(&node, id).await?;
+            vec![id]
+        }
+        None => {
+            let paired = node.paired_devices()?;
+            let mut phones: Vec<DeviceId> =
+                paired.iter().filter(|d| d.info.kind == DeviceKind::Phone).map(|d| d.id).collect();
+            if phones.is_empty() {
+                phones = paired.iter().map(|d| d.id).collect();
+            }
+            if phones.is_empty() {
+                node.shutdown().await;
+                bail!("no paired phone; run `nectarlink pair` first");
+            }
+            let mut events = node.events();
+            let any_online = |node: &Node, ids: &[DeviceId]| {
+                node.paired_devices()
+                    .map(|ds| {
+                        ds.iter().any(|d| ids.contains(&d.id) && matches!(d.link, LinkState::Online { .. }))
+                    })
+                    .unwrap_or(false)
+            };
+            let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
+            while !any_online(&node, &phones) {
+                if tokio::time::timeout_at(deadline, events.recv()).await.is_err() {
+                    node.shutdown().await;
+                    bail!("the paired phone didn't come online within 20 seconds");
+                }
+            }
+            phones
+        }
+    };
+    Ok(TaskTransport::Standalone { node, targets })
+}
+
+async fn run_notify_when(
+    cli: &Cli,
+    title_override: Option<&str>,
+    device: Option<&str>,
+    target: &[String],
+) -> Result<i32> {
+    if cli.as_phone {
+        bail!("notify-when runs on the PC: omit --as-phone");
+    }
+    if target.is_empty() {
+        bail!("specify a process ID or `-- <command> [args...]`");
+    }
+
+    let is_pid = target.len() == 1 && target[0].parse::<u32>().is_ok();
+    if is_pid {
+        #[cfg(windows)]
+        {
+            let pid: u32 = target[0].parse()?;
+            let watched = win_watch::open_process(pid)?;
+            let title = title_override
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_owned)
+                .unwrap_or_else(|| watched.title.clone());
+            let started = watched.started_ms;
+            let initial_elapsed = now_unix_ms().saturating_sub(started) as u64;
+            let task_id = format!("pid-{pid}-{started}");
+            let transport = connect_task_transport(cli, device).await?;
+            let running = TaskNotify {
+                id: task_id.clone(),
+                title: title.clone(),
+                active: true,
+                elapsed_ms: initial_elapsed,
+                exit_code: None,
+            };
+            transport.send(device, &running).await?;
+            let mut wait_handle = tokio::task::spawn_blocking(move || win_watch::wait_process(watched));
+            let exit_code = tokio::select! {
+                res = &mut wait_handle => res.context("process watch task panicked")??,
+                _ = tokio::signal::ctrl_c() => {
+                    let dismissed = TaskNotify {
+                        id: task_id,
+                        title,
+                        active: false,
+                        elapsed_ms: 0,
+                        exit_code: None,
+                    };
+                    let _ = transport.send(device, &dismissed).await;
+                    transport.shutdown().await;
+                    return Ok(130);
+                }
+            };
+            let total_elapsed = now_unix_ms().saturating_sub(started) as u64;
+            let finished = TaskNotify {
+                id: task_id,
+                title: title.clone(),
+                active: false,
+                elapsed_ms: total_elapsed,
+                exit_code: Some(exit_code),
+            };
+            let took = TaskNotify::format_took(total_elapsed);
+            let send_res = transport.send(device, &finished).await;
+            transport.shutdown().await;
+            send_res?;
+            println!(
+                "{} (exit {exit_code}, {took}).",
+                if exit_code == 0 { format!("{title} finished") } else { format!("{title} failed") },
+            );
+            return Ok(0);
+        }
+        #[cfg(not(windows))]
+        {
+            bail!("watching a process by PID is only supported on Windows");
+        }
+    }
+
+    let title = title_override
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_owned)
+        .unwrap_or_else(|| default_command_title(&target[0]));
+    let started = now_unix_ms();
+    let started_instant = std::time::Instant::now();
+    let task_id = format!("cmd-{}-{started}", std::process::id());
+    let mut child = tokio::process::Command::new(&target[0])
+        .args(&target[1..])
+        .stdin(std::process::Stdio::inherit())
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .spawn()
+        .with_context(|| format!("can't start {:?}", target[0]))?;
+
+    let transport = connect_task_transport(cli, device).await?;
+    let running = TaskNotify {
+        id: task_id.clone(),
+        title: title.clone(),
+        active: true,
+        elapsed_ms: started_instant.elapsed().as_millis() as u64,
+        exit_code: None,
+    };
+    let _ = transport.send(device, &running).await;
+
+    let status = tokio::select! {
+        res = child.wait() => res.context("failed while waiting for command")?,
+        _ = tokio::signal::ctrl_c() => {
+            let _ = child.kill().await;
+            let dismissed = TaskNotify {
+                id: task_id,
+                title,
+                active: false,
+                elapsed_ms: 0,
+                exit_code: None,
+            };
+            let _ = transport.send(device, &dismissed).await;
+            transport.shutdown().await;
+            return Ok(130);
+        }
+    };
+    let elapsed_ms = started_instant.elapsed().as_millis() as u64;
+    let exit_code = status.code().unwrap_or(1);
+    let finished = TaskNotify { id: task_id, title, active: false, elapsed_ms, exit_code: Some(exit_code) };
+    let send_res = transport.send(device, &finished).await;
+    transport.shutdown().await;
+    send_res?;
+    Ok(exit_code)
+}
+
+#[cfg(windows)]
+#[allow(unsafe_code)]
+mod win_watch {
+    use std::{
+        fs,
+        hash::{DefaultHasher, Hash, Hasher},
+        io::Write,
+        path::Path,
+        sync::atomic::{AtomicU64, Ordering},
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    use anyhow::{Context, Result, bail};
+    use nectarlink_core::TaskNotify;
+    use serde::Serialize;
+    use windows::{
+        Win32::{
+            Foundation::{CloseHandle, FILETIME, HANDLE, WAIT_OBJECT_0},
+            System::Threading::{
+                EVENT_MODIFY_STATE, GetExitCodeProcess, GetProcessTimes, INFINITE, OpenEventW, OpenProcess,
+                PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE,
+                QueryFullProcessImageNameW, SetEvent, WaitForSingleObject,
+            },
+        },
+        core::{HSTRING, PWSTR},
+    };
+
+    static REQUEST_SEQ: AtomicU64 = AtomicU64::new(0);
+    const WINDOWS_TO_UNIX_EPOCH_TICKS: u64 = 116_444_736_000_000_000;
+
+    #[derive(Serialize)]
+    #[serde(tag = "kind", rename_all = "camelCase")]
+    enum DesktopRequest<'a> {
+        TaskNotify {
+            #[serde(skip_serializing_if = "Option::is_none")]
+            device: Option<&'a str>,
+            task: &'a TaskNotify,
+        },
+    }
+
+    pub fn desktop_activate_event_name(data_dir: &Path) -> HSTRING {
+        let mut hasher = DefaultHasher::new();
+        data_dir.to_string_lossy().to_lowercase().hash(&mut hasher);
+        let tag = format!("{:016x}", hasher.finish());
+        HSTRING::from(format!(r"Local\Nectarlink.Desktop.Activate.{tag}"))
+    }
+
+    pub fn is_desktop_running(data_dir: &Path) -> bool {
+        let event_name = desktop_activate_event_name(data_dir);
+        // SAFETY: Opening a named event in the local session and immediately closing the handle.
+        unsafe {
+            if let Ok(event) = OpenEventW(EVENT_MODIFY_STATE, false, &event_name) {
+                let _ = CloseHandle(event);
+                true
+            } else {
+                false
+            }
+        }
+    }
+
+    pub fn queue_desktop_task_notify(data_dir: &Path, device: Option<&str>, task: &TaskNotify) -> Result<()> {
+        let dir = data_dir.join("requests");
+        fs::create_dir_all(&dir).context("can't create desktop requests directory")?;
+        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_nanos());
+        let seq = REQUEST_SEQ.fetch_add(1, Ordering::Relaxed);
+        let name = format!("{nanos:024}-{}-{seq:04}", std::process::id());
+        let partial = dir.join(format!("{name}.tmp"));
+        let payload = serde_json::to_vec(&DesktopRequest::TaskNotify { device, task })?;
+        let mut file = fs::File::create(&partial)?;
+        file.write_all(&payload)?;
+        file.sync_all()?;
+        drop(file);
+        fs::rename(&partial, dir.join(format!("{name}.json")))?;
+
+        let event_name = desktop_activate_event_name(data_dir);
+        // SAFETY: Signaling the running desktop instance's auto-reset event handle.
+        unsafe {
+            let event = OpenEventW(EVENT_MODIFY_STATE, false, &event_name)
+                .context("the desktop app is no longer running")?;
+            let _ = SetEvent(event);
+            let _ = CloseHandle(event);
+        }
+        Ok(())
+    }
+
+    pub struct WatchedProcess {
+        handle: HANDLE,
+        pub title: String,
+        pub started_ms: i64,
+    }
+
+    // SAFETY: Win32 process kernel handles can be transferred across threads for WaitForSingleObject.
+    unsafe impl Send for WatchedProcess {}
+
+    impl Drop for WatchedProcess {
+        fn drop(&mut self) {
+            // SAFETY: `self.handle` is owned by `WatchedProcess` and closed once on drop.
+            unsafe {
+                let _ = CloseHandle(self.handle);
+            }
+        }
+    }
+
+    fn filetime_to_unix_ms(ft: FILETIME) -> Option<i64> {
+        let ticks = (u64::from(ft.dwHighDateTime) << 32) | u64::from(ft.dwLowDateTime);
+        let unix_ticks = ticks.checked_sub(WINDOWS_TO_UNIX_EPOCH_TICKS)?;
+        Some((unix_ticks / 10_000) as i64)
+    }
+
+    pub fn open_process(pid: u32) -> Result<WatchedProcess> {
+        // SAFETY: Opening the target process with SYNCHRONIZE | QUERY_LIMITED_INFORMATION.
+        let handle = unsafe {
+            OpenProcess(PROCESS_SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+                .with_context(|| format!("can't open process {pid}"))?
+        };
+        let mut buf = [0u16; 1024];
+        let mut len = buf.len() as u32;
+        // SAFETY: `buf` is a writable UTF-16 buffer of `len` elements.
+        let image_ok = unsafe {
+            QueryFullProcessImageNameW(handle, PROCESS_NAME_WIN32, PWSTR(buf.as_mut_ptr()), &mut len).is_ok()
+        };
+        let title = if image_ok && len > 0 {
+            let full = String::from_utf16_lossy(&buf[..len as usize]);
+            Path::new(&full)
+                .file_name()
+                .and_then(|s| s.to_str())
+                .filter(|s| !s.is_empty())
+                .unwrap_or(&full)
+                .to_owned()
+        } else {
+            format!("PID {pid}")
+        };
+
+        let mut creation = FILETIME::default();
+        let mut exit = FILETIME::default();
+        let mut kernel = FILETIME::default();
+        let mut user = FILETIME::default();
+        // SAFETY: All four FILETIME pointers are valid writable stack locals.
+        let times_ok =
+            unsafe { GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user).is_ok() };
+        let started_ms =
+            if times_ok { filetime_to_unix_ms(creation) } else { None }.unwrap_or_else(super::now_unix_ms);
+
+        Ok(WatchedProcess { handle, title, started_ms })
+    }
+
+    pub fn wait_process(proc: WatchedProcess) -> Result<i32> {
+        // SAFETY: Waiting on the valid process handle until it terminates, then querying its exit code.
+        unsafe {
+            let waited = WaitForSingleObject(proc.handle, INFINITE);
+            if waited != WAIT_OBJECT_0 {
+                bail!("failed waiting for process to exit ({waited:?})");
+            }
+            let mut code = 0u32;
+            GetExitCodeProcess(proc.handle, &mut code).context("can't read process exit code")?;
+            Ok(code as i32)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_live_notification_flags() {
+        assert_eq!(parse_progress("42/100").unwrap(), (42, 100));
+        assert_eq!(parse_progress("150/100").unwrap(), (100, 100));
+        assert!(parse_progress("10/0").is_err());
+
+        let segs = parse_segments("30:#4CAF50,40:#FFC107,30").unwrap();
+        assert_eq!(
+            segs,
+            vec![
+                LiveSegment { length: 30, color: Some(0x4CAF50) },
+                LiveSegment { length: 40, color: Some(0xFFC107) },
+                LiveSegment { length: 30, color: None },
+            ]
+        );
+
+        let pts = parse_points("30,70:#FF5722").unwrap();
+        assert_eq!(
+            pts,
+            vec![LivePoint { position: 30, color: None }, LivePoint { position: 70, color: Some(0xFF5722) },]
+        );
+
+        assert_eq!(parse_update_step("1000:25").unwrap(), (1000, 25));
+
+        let live = build_cli_live(
+            Some("25/100"),
+            false,
+            Some("4 min"),
+            Some("30:#4CAF50,40:#FFC107,30:#9E9E9E"),
+            Some("30,70"),
+            false,
+            Some(90),
+            &["1000:50".into()],
+        )
+        .unwrap()
+        .expect("live metadata");
+        assert_eq!(live.progress, Some(25));
+        assert_eq!(live.max, Some(100));
+        assert_eq!(live.chip.as_deref(), Some("4 min"));
+        assert_eq!(live.segments.len(), 3);
+        assert_eq!(live.points.len(), 2);
+        assert!(live.chronometer);
+        assert!(live.countdown);
+
+        let cli = Cli::try_parse_from([
+            "nectarlink",
+            "--as-phone",
+            "notify",
+            "Ride arriving",
+            "4 min away",
+            "--progress",
+            "25/100",
+            "--chip",
+            "4 min",
+            "--update",
+            "1000:50,2000:100",
+            "--remove",
+        ])
+        .unwrap();
+        match cli.command {
+            Command::Notify { updates, remove, .. } => {
+                assert_eq!(updates, vec!["1000:50", "2000:100"]);
+                assert!(remove);
+            }
+            other => panic!("unexpected command: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parses_notify_when_pid_and_command_args() {
+        let by_pid = Cli::try_parse_from(["nectarlink", "notify-when", "--title", "Backup", "4242"]).unwrap();
+        match by_pid.command {
+            Command::NotifyWhen { title, device, target } => {
+                assert_eq!(title.as_deref(), Some("Backup"));
+                assert_eq!(device, None);
+                assert_eq!(target, vec!["4242"]);
+            }
+            other => panic!("unexpected command: {other:?}"),
+        }
+
+        let by_cmd = Cli::try_parse_from([
+            "nectarlink",
+            "notify-when",
+            "--device",
+            "pixel",
+            "--",
+            "cargo",
+            "test",
+            "--workspace",
+        ])
+        .unwrap();
+        match by_cmd.command {
+            Command::NotifyWhen { title, device, target } => {
+                assert_eq!(title, None);
+                assert_eq!(device.as_deref(), Some("pixel"));
+                assert_eq!(target, vec!["cargo", "test", "--workspace"]);
+            }
+            other => panic!("unexpected command: {other:?}"),
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn watches_spawned_process_by_pid_and_reads_exit_code() {
+        let mut child = std::process::Command::new("cmd")
+            .args(["/c", "ping -n 2 127.0.0.1 >nul & exit /b 7"])
+            .spawn()
+            .unwrap();
+        let pid = child.id();
+        let watched = win_watch::open_process(pid).unwrap();
+        assert!(watched.title.to_ascii_lowercase().contains("cmd"));
+        assert!(watched.started_ms > 1_700_000_000_000);
+        let code = win_watch::wait_process(watched).unwrap();
+        let _ = child.wait();
+        assert_eq!(code, 7);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    #[allow(unsafe_code)]
+    fn queues_task_notify_request_when_desktop_event_is_present() {
+        use windows::Win32::{
+            Foundation::{CloseHandle, WAIT_OBJECT_0},
+            System::Threading::{CreateEventW, WaitForSingleObject},
+        };
+
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!win_watch::is_desktop_running(dir.path()));
+
+        let event_name = win_watch::desktop_activate_event_name(dir.path());
+        // SAFETY: Creating a local auto-reset event for the test temp dir.
+        let event = unsafe { CreateEventW(None, false, false, &event_name).unwrap() };
+        assert!(win_watch::is_desktop_running(dir.path()));
+
+        let task = TaskNotify {
+            id: "test-1".into(),
+            title: "cargo build".into(),
+            active: true,
+            elapsed_ms: 0,
+            exit_code: None,
+        };
+        win_watch::queue_desktop_task_notify(dir.path(), Some("pixel"), &task).unwrap();
+
+        // SAFETY: Checking that `queue_desktop_task_notify` signaled the event.
+        assert_eq!(unsafe { WaitForSingleObject(event, 0) }, WAIT_OBJECT_0);
+        unsafe {
+            let _ = CloseHandle(event);
+        }
+
+        let entries: Vec<_> = std::fs::read_dir(dir.path().join("requests"))
+            .unwrap()
+            .filter_map(|e| e.ok().map(|e| e.path()))
+            .collect();
+        assert_eq!(entries.len(), 1);
+        let json: serde_json::Value = serde_json::from_slice(&std::fs::read(&entries[0]).unwrap()).unwrap();
+        assert_eq!(json["kind"], "taskNotify");
+        assert_eq!(json["device"], "pixel");
+        assert_eq!(json["task"]["id"], "test-1");
+    }
 }

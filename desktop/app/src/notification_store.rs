@@ -175,6 +175,7 @@ mod tests {
             silent: false,
             icon: None,
             image: None,
+            live: None,
         }
     }
 

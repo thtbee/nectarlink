@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Window
 import app.nectarlink
 
 // One phone notification in the feed: app, title and text, its actions,
@@ -22,15 +23,88 @@ Item {
     required property string replyLabel
     required property string replies
     required property string otpCode
+    required property string live
     // Bumped by the feed every minute, so relative times stay right.
     property int clock: 0
+    property int chronoTick: 0
 
     readonly property var buttons: { try { return JSON.parse(actions) } catch (e) { return [] } }
     readonly property var sent: { try { return JSON.parse(replies) } catch (e) { return [] } }
+    readonly property var liveData: {
+        if (!live || live.length === 0)
+            return null
+        try {
+            return JSON.parse(live)
+        } catch (e) {
+            return null
+        }
+    }
+    readonly property bool isLive: liveData !== null
+    readonly property bool hasProgress: isLive && (Boolean(liveData.indeterminate) || Number(liveData.max) > 0)
+    readonly property var liveSegments: isLive && liveData.segments ? liveData.segments : []
+    readonly property var livePoints: isLive && liveData.points ? liveData.points : []
+    readonly property string liveBadgeText: {
+        if (!isLive)
+            return ""
+        const c = (liveData.chip || "").trim()
+        return c.length > 0 ? c : qsTr("LIVE")
+    }
+    readonly property string liveRightLabel: {
+        if (!isLive)
+            return ""
+        if (liveData.chronometer)
+            return chronoText()
+        if (!liveData.indeterminate && Number(liveData.max) > 0) {
+            const pct = Math.min(100, Math.max(0, Math.round(Number(liveData.progress) * 100 / Number(liveData.max))))
+            return pct + "%"
+        }
+        return ""
+    }
     property bool replying: false
     signal optionsRequested
 
     implicitHeight: content.height + 24
+
+    // Ticks once per second only for visible chronometer notifications while the window is shown.
+    Timer {
+        id: chronoTimer
+        interval: 1000
+        repeat: true
+        running: item.isLive && Boolean(item.liveData.chronometer)
+                 && item.visible && Window.window
+                 && Window.window.visibility !== Window.Hidden
+                 && Window.window.visibility !== Window.Minimized
+        onTriggered: item.chronoTick++
+    }
+
+    function chronoText() {
+        if (!isLive || !liveData.chronometer)
+            return ""
+        chronoTick
+        const target = Number(liveData.when || when)
+        const diffMs = liveData.countdown
+            ? Math.max(0, target - Date.now())
+            : Math.max(0, Date.now() - target)
+        const totalSecs = Math.floor(diffMs / 1000)
+        const hrs = Math.floor(totalSecs / 3600)
+        const mins = Math.floor((totalSecs % 3600) / 60)
+        const secs = totalSecs % 60
+        const pad = (n) => (n < 10 ? "0" + n : String(n))
+        if (hrs > 0)
+            return hrs + ":" + pad(mins) + ":" + pad(secs)
+        return mins + ":" + pad(secs)
+    }
+
+    function segmentFillFraction(index) {
+        if (!isLive || liveSegments.length === 0)
+            return 0
+        const prog = Number(liveData.progress || 0)
+        let start = 0
+        for (let i = 0; i < index; i++)
+            start += Number(liveSegments[i].length || 0)
+        const len = Math.max(1, Number(liveSegments[index].length || 1))
+        return Math.min(1, Math.max(0, (prog - start) / len))
+    }
 
     function timeText() {
         clock // re-evaluated each minute
@@ -59,12 +133,21 @@ Item {
         readonly property bool hovered: containsMouse
     }
 
-    // A light wash of the text color, so hovering never looks like selection.
+    // A light wash of the text color, or a calm highlighted container for Live Updates.
     Rectangle {
         anchors.fill: parent
         radius: Theme.radiusMd
-        color: Theme.surfaceContent
-        opacity: hover.hovered ? 0.045 : 0
+        color: item.isLive
+            ? (Theme.graphite
+               ? Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, hover.hovered ? 0.065 : 0.03)
+               : Qt.rgba(Theme.primaryContainer.r, Theme.primaryContainer.g, Theme.primaryContainer.b,
+                         hover.hovered ? (Theme.dark ? 0.36 : 0.52) : (Theme.dark ? 0.24 : 0.36)))
+            : Theme.surfaceContent
+        opacity: item.isLive ? 1 : (hover.hovered ? 0.045 : 0)
+        border.width: item.isLive ? 1 : 0
+        border.color: Theme.graphite
+            ? Theme.outlineVariant
+            : Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, Theme.dark ? 0.34 : 0.24)
         Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
     }
 
@@ -98,11 +181,74 @@ Item {
         y: 12
         spacing: 4
 
-        Txt {
+        Item {
             width: parent.width
-            role: "caption"
-            muted: true
-            text: [item.appName, item.sub, item.timeText()].filter(s => s.length > 0).join(" · ")
+            height: Math.max(metaRow.height, liveReadout.height)
+
+            Row {
+                id: metaRow
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 6
+
+                // Live chip pill (shortCriticalText or "LIVE").
+                Rectangle {
+                    id: livePill
+                    visible: item.isLive
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 18
+                    width: livePillRow.width + 12
+                    radius: Theme.graphite ? Theme.radiusSm : 9
+                    color: Theme.graphite ? "transparent" : Theme.primaryContainer
+                    border.width: Theme.graphite ? 1 : 0
+                    border.color: Theme.primary
+
+                    Row {
+                        id: livePillRow
+                        anchors.centerIn: parent
+                        spacing: 4
+                        Rectangle {
+                            width: 5
+                            height: 5
+                            radius: 2.5
+                            anchors.verticalCenter: parent.verticalCenter
+                            color: Theme.graphite ? Theme.primary : Theme.primaryContainerContent
+                        }
+                        Txt {
+                            anchors.verticalCenter: parent.verticalCenter
+                            role: "mono"
+                            size: 10
+                            weight: Font.Bold
+                            color: Theme.graphite ? Theme.primary : Theme.primaryContainerContent
+                            text: item.liveBadgeText
+                        }
+                    }
+                }
+
+                Txt {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(40, content.width - (livePill.visible ? livePill.width + 6 : 0)
+                                        - (liveReadout.visible ? liveReadout.width + 8 : 0))
+                    role: "caption"
+                    muted: true
+                    elide: Text.ElideRight
+                    text: (item.isLive
+                           ? [item.appName, item.sub]
+                           : [item.appName, item.sub, item.timeText()]).filter(s => s.length > 0).join(" · ")
+                }
+            }
+
+            Txt {
+                id: liveReadout
+                visible: item.liveRightLabel.length > 0
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                role: "mono"
+                size: 11
+                weight: Font.DemiBold
+                color: Theme.primary
+                text: item.liveRightLabel
+            }
         }
         Txt {
             width: parent.width
@@ -118,6 +264,108 @@ Item {
             text: item.text
             wrapMode: Text.Wrap
             maximumLineCount: 4
+        }
+
+        // Live progress bar (smooth, indeterminate, or multi-segment with milestone points).
+        Item {
+            id: liveBarBox
+            width: parent.width
+            height: 12
+            visible: item.hasProgress
+
+            // Smooth single-track bar when no segments are defined.
+            Rectangle {
+                id: smoothTrack
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width
+                height: 6
+                radius: 3
+                visible: item.liveSegments.length === 0
+                color: Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b,
+                               Theme.dark ? 0.16 : 0.12)
+
+                Rectangle {
+                    height: parent.height
+                    radius: 3
+                    x: item.isLive && item.liveData.indeterminate ? Math.round(parent.width * 0.15) : 0
+                    width: {
+                        if (!item.isLive)
+                            return 0
+                        if (item.liveData.indeterminate)
+                            return Math.max(24, Math.round(parent.width * 0.35))
+                        const maxVal = Math.max(1, Number(item.liveData.max || 1))
+                        const ratio = Math.min(1, Math.max(0, Number(item.liveData.progress || 0) / maxVal))
+                        return ratio > 0 ? Math.max(6, Math.round(parent.width * ratio)) : 0
+                    }
+                    color: Theme.primary
+                    Behavior on width {
+                        enabled: !Theme.reduceMotion
+                        NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                    }
+                }
+            }
+
+            // Multi-segment progress bar (Android 16 ProgressStyle.Segment).
+            Row {
+                id: segRow
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width
+                height: 6
+                spacing: 3
+                visible: item.liveSegments.length > 0
+                readonly property real totalLen: {
+                    let s = 0
+                    for (let i = 0; i < item.liveSegments.length; i++)
+                        s += Math.max(1, Number(item.liveSegments[i].length || 1))
+                    return Math.max(1, s)
+                }
+                readonly property real availW: Math.max(10, width - spacing * Math.max(0, item.liveSegments.length - 1))
+
+                Repeater {
+                    model: item.liveSegments
+                    delegate: Rectangle {
+                        required property var modelData
+                        required property int index
+                        height: 6
+                        radius: 3
+                        width: Math.max(6, Math.floor(segRow.availW * Math.max(1, Number(modelData.length || 1)) / segRow.totalLen))
+                        color: Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b,
+                                       Theme.dark ? 0.16 : 0.12)
+
+                        Rectangle {
+                            height: parent.height
+                            radius: 3
+                            width: Math.round(parent.width * item.segmentFillFraction(index))
+                            color: modelData.color && modelData.color.length > 0 ? modelData.color : Theme.primary
+                            Behavior on width {
+                                enabled: !Theme.reduceMotion
+                                NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Milestone points (Android 16 ProgressStyle.Point).
+            Repeater {
+                model: item.livePoints
+                delegate: Rectangle {
+                    required property var modelData
+                    readonly property real maxVal: Math.max(1, Number(item.isLive ? item.liveData.max : 1))
+                    readonly property real posRatio: Math.min(1, Math.max(0, Number(modelData.position || 0) / maxVal))
+                    readonly property bool reached: item.isLive && Number(item.liveData.progress || 0) >= Number(modelData.position || 0)
+                    width: 8
+                    height: 8
+                    radius: 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: Math.round((liveBarBox.width - width) * posRatio)
+                    color: reached
+                        ? (modelData.color && modelData.color.length > 0 ? modelData.color : Theme.primary)
+                        : Theme.surfaceContainerHighest
+                    border.width: 1.5
+                    border.color: modelData.color && modelData.color.length > 0 ? modelData.color : Theme.primary
+                }
+            }
         }
 
         // The picture it shows (a photo in a message), up to a modest size.

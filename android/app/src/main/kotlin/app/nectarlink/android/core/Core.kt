@@ -82,6 +82,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         ringer,
         phoneMedia,
         onLink = { pc, url -> LinkNotifications.show(this.context, _state.value.nameOf(pc).orEmpty(), url) },
+        onTask = { pc, task ->
+            app.nectarlink.android.notifications.TaskNotifications.show(
+                this.context,
+                pc,
+                _state.value.nameOf(pc).orEmpty(),
+                task,
+            )
+        },
         calls = { calls },
         contacts = { contacts },
         sms = { sms },
@@ -1087,7 +1095,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private companion object {
         const val TAG = "Nectarlink"
         /** Offered while notification access is granted (docs/protocol/capabilities.md). */
-        val NOTIFICATION_CAPABILITIES = listOf("notify.mirror", "notify.reply")
+        val NOTIFICATION_CAPABILITIES = listOf("notify.mirror", "notify.reply", "notify.live")
         /** Sharing this phone's players, which also needs notification access. */
         val MEDIA_CAPABILITIES = listOf("media.control")
         /** Accepting the PC's clipboard, and sending this one when asked. */

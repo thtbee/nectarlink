@@ -46,6 +46,7 @@ import app.nectarlink.core.Platform
 import app.nectarlink.core.StorageEntry
 import app.nectarlink.core.StorageReadFile
 import app.nectarlink.core.StorageWriteDone
+import app.nectarlink.core.TaskNotify
 import app.nectarlink.core.WebcamOptions
 
 /**
@@ -58,6 +59,8 @@ internal class PhonePlatform(
     private val media: PhoneMedia,
     /** Shows a link a PC sent: (PC's ID, link) → shown. */
     private val onLink: (String, String) -> Boolean,
+    /** Shows or updates a watched task from a PC: (PC's ID, task) → shown. */
+    private val onTask: (String, TaskNotify) -> Boolean,
     /** The phone's calls (created after this). */
     private val calls: () -> PhoneCalls,
     /** The phone's contacts (created after this). */
@@ -90,6 +93,8 @@ internal class PhonePlatform(
         media.command(player, action, position)
 
     override fun openLink(fromId: String, url: String): Boolean = onLink(fromId, url)
+
+    override fun taskNotify(fromId: String, task: TaskNotify): Boolean = onTask(fromId, task)
 
     override fun openPhoto(id: String): FileToSend? = RecentPhotos.open(context, id)
 
