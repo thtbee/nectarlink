@@ -29,6 +29,7 @@ pub mod storage;
 mod store;
 pub mod toggles;
 mod transfer;
+pub mod webcam;
 
 pub use actions::{PC_WAKE, PowerAction};
 pub use calls::CallCommand;
@@ -60,7 +61,7 @@ pub use nectarlink_protocol::{
         PhoneToggles, PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PowerLevel, SmsMessage, SmsPart,
         SmsThread, StorageChanged, StorageDelete, StorageEntries, StorageEntry, StorageList, StorageMkdir,
         StorageRead, StorageReadMeta, StorageRename, StorageWriteAccept, StorageWriteDone, StorageWriteOffer,
-        TouchAction,
+        TouchAction, WebcamConfig, WebcamStart,
         calls::{
             CONTROL as CALLS_CONTROL, DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG,
             SHOW as CALLS_SHOW, STATE as CALLS_STATE,
@@ -89,6 +90,11 @@ pub use nectarlink_protocol::{
             FLASHLIGHT as TOGGLES_FLASHLIGHT, READ as TOGGLES_READ, RINGER as TOGGLES_RINGER,
             SHOW as TOGGLES_SHOW, VOLUME as TOGGLES_VOLUME, WIFI as TOGGLES_WIFI,
         },
+        webcam::{
+            ADDON_VCAM as WEBCAM_ADDON_VCAM, CAMERA_BACK as WEBCAM_CAMERA_BACK,
+            CAMERA_FRONT as WEBCAM_CAMERA_FRONT, H264 as WEBCAM_H264, STREAM as WEBCAM_STREAM,
+            VIRTUAL as WEBCAM_VIRTUAL,
+        },
     },
     pairing::PairingUri,
 };
@@ -100,6 +106,7 @@ pub use transfer::{
     Direction, FileSource, OutgoingFile, RECORDER, RecordingMarker, Transfer, TransferFailure, TransferState,
     outgoing_paths, safe_file_name,
 };
+pub use webcam::{TOGGLE as WEBCAM_TOGGLE, WebcamSink};
 
 pub(crate) fn device_id(key: &iroh::PublicKey) -> DeviceId {
     DeviceId(*key.as_bytes())

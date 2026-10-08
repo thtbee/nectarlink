@@ -24,6 +24,7 @@ pub mod smtc;
 pub mod sound;
 pub mod toast;
 pub mod tray;
+pub mod vcam;
 pub mod wallpaper;
 pub mod wol;
 

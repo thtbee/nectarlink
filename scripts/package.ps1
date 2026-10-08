@@ -59,10 +59,12 @@ if (-not (Test-Path $windeployqt)) { throw "windeployqt not found under $QtRoot;
 if (-not $SkipBuild) {
     Step "Build"
     $env:PATH = "$(Join-Path $QtRoot 'bin');$env:PATH"
-    Invoke-Native "the build" { cargo build --locked --release -p nectarlink-desktop }
+    Invoke-Native "the build" { cargo build --locked --release -p nectarlink-desktop -p nectarlink-vcam }
 }
 $exe = Join-Path $root 'target\release\nectarlink-desktop.exe'
 if (-not (Test-Path $exe)) { throw "no release build at $exe" }
+$vcamDll = Join-Path $root 'target\release\nectarlink_vcam.dll'
+if (-not (Test-Path $vcamDll)) { throw "no release build at $vcamDll" }
 
 # ---- Stage ----
 Step "Stage"
@@ -71,6 +73,7 @@ $stage = Join-Path $package 'Nectarlink'
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force $stage | Out-Null
 Copy-Item $exe $stage
+Copy-Item $vcamDll $stage
 
 Invoke-Native "windeployqt" {
     & $windeployqt --verbose 0 --release --qmldir (Join-Path $root 'desktop\app\qml') --no-translations `

@@ -183,6 +183,9 @@ END
 
 fn main() {
     println!("cargo:rerun-if-changed=src/mark.rs");
+    for qml in QML.iter().chain(QML_SINGLETONS.iter()) {
+        println!("cargo:rerun-if-changed={qml}");
+    }
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
         windows_resources();
     }
@@ -214,6 +217,7 @@ fn main() {
             "src/bridge/photos.rs",
             "src/bridge/prefs.rs",
             "src/bridge/transfers.rs",
+            "src/bridge/webcam.rs",
         ])
         .build();
 

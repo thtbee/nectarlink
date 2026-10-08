@@ -6,6 +6,7 @@ members = [
     "core/nectarlink-cli",
     "core/nectarlink-ffi",
     "desktop/app",
+    "desktop/vcam",
     "tools/xtask",
     "spikes/s1-qt-rust",
 ]
@@ -25,6 +26,7 @@ name = "Pollen"
 [workspace.dependencies]
 nectarlink-protocol = { path = "core/nectarlink-protocol", version = "0.0.1" }
 nectarlink-core = { path = "core/nectarlink-core", version = "0.0.1" }
+nectarlink-vcam = { path = "desktop/vcam", version = "0.0.1" }
 
 anyhow = "1"
 ciborium = "0.2"

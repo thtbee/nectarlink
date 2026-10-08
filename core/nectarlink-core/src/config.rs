@@ -332,6 +332,32 @@ pub trait Platform: Send + Sync + 'static {
     fn storage_delete(&self, _path: &str, _confirmed: bool) -> Result<(), crate::StorageError> {
         Err(crate::StorageError::Unsupported)
     }
+
+    /// Where a phone's webcam video stream goes on this PC when it starts
+    /// streaming (`docs/protocol/webcam.md`). `None` refuses the stream.
+    fn webcam_sink(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+    ) -> Option<std::sync::Arc<dyn crate::WebcamSink>> {
+        None
+    }
+
+    /// A PC asked this phone to start streaming its camera (or updated camera /
+    /// resolution while already streaming): prompt the user for consent (or
+    /// update the running stream) and stream with [`Node::webcam_open`](crate::Node::webcam_open).
+    fn webcam_requested(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+        _options: &crate::WebcamStart,
+    ) -> Result<(), String> {
+        Err("this device doesn't stream a camera".into())
+    }
+
+    /// The PC stopped using this phone's webcam: stop streaming.
+    fn webcam_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
+
+    /// The PC's webcam decoder needs a fresh keyframe (`webcam.keyframe`).
+    fn webcam_keyframe_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
 }
 
 /// A platform that does nothing; useful for tests and headless tools.

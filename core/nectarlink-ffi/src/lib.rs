@@ -496,6 +496,12 @@ pub enum Event {
         id: String,
         state: DeckState,
     },
+    /// A paired phone's camera started or stopped streaming as a webcam
+    /// (PCs only).
+    Webcam {
+        id: String,
+        on: bool,
+    },
     /// A paired PC asked to browse this phone's storage while `storage` is off
     /// (phones only).
     StorageRequested {
@@ -792,6 +798,23 @@ impl std::fmt::Debug for PhoneApp {
 #[uniffi::export]
 pub fn mirror_audio_config(rate: u32, channels: u8) -> Vec<u8> {
     core::MirrorAudioConfig { codec: core::MIRROR_PCM.into(), rate, channels }.to_cbor()
+}
+
+/// The bytes of a config packet for an H.264 webcam stream (`docs/protocol/webcam.md`).
+#[uniffi::export]
+pub fn webcam_config(width: u32, height: u32, camera: String, fps: u32) -> Vec<u8> {
+    core::WebcamConfig { codec: core::WEBCAM_H264.into(), width, height, camera, fps }.to_cbor()
+}
+
+/// What a PC asked the phone's camera to stream (`docs/protocol/webcam.md`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct WebcamOptions {
+    /// `"back"` or `"front"`.
+    pub camera: String,
+    pub width: u32,
+    pub height: u32,
+    pub fps: u32,
+    pub bitrate: u32,
 }
 
 /// A conversation (docs/protocol/sms.md).
@@ -1439,6 +1462,7 @@ impl From<NodeEvent> for Event {
             NodeEvent::Mirroring { device, session, on } => {
                 Event::Mirroring { id: device.to_string(), session, on }
             }
+            NodeEvent::Webcam { device, on } => Event::Webcam { id: device.to_string(), on },
             NodeEvent::RemoteInputRequested { device } => {
                 Event::RemoteInputRequested { id: device.to_string() }
             }
@@ -1645,6 +1669,14 @@ pub trait Platform: Send + Sync {
     /// The PC's mouse or keyboard on the mirrored screen (only while this
     /// phone offers `mirror.input`) or an app window. Return quickly.
     fn mirror_input(&self, pc_id: String, session: u32, input: MirrorInputEvent);
+    /// A PC asked for this phone's camera as a webcam: start streaming (or
+    /// ask the user) and call `webcam_open`. False if it can't or the user
+    /// declined.
+    fn webcam_requested(&self, pc_id: String, options: WebcamOptions) -> bool;
+    /// The PC stopped watching the webcam stream.
+    fn webcam_stop_requested(&self, pc_id: String);
+    /// The PC needs a fresh H.264 keyframe on the webcam stream.
+    fn webcam_keyframe_requested(&self, pc_id: String);
     /// A PC asked for the apps it may open in windows (launchable ones).
     fn phone_apps(&self) -> Vec<PhoneApp>;
     /// A PC asked for the latest conversations, newest first.
@@ -1768,6 +1800,26 @@ impl core::Platform for PlatformAdapter {
     }
     fn mirror_input(&self, peer: &DeviceId, session: u32, input: core::MirrorInput) {
         self.0.mirror_input(peer.to_string(), session, input.into());
+    }
+    fn webcam_requested(&self, peer: &DeviceId, options: &core::WebcamStart) -> Result<(), String> {
+        let options = WebcamOptions {
+            camera: options.camera.clone(),
+            width: options.width,
+            height: options.height,
+            fps: options.fps,
+            bitrate: options.bitrate,
+        };
+        if self.0.webcam_requested(peer.to_string(), options) {
+            Ok(())
+        } else {
+            Err("the phone couldn't".into())
+        }
+    }
+    fn webcam_stop_requested(&self, peer: &DeviceId) {
+        self.0.webcam_stop_requested(peer.to_string());
+    }
+    fn webcam_keyframe_requested(&self, peer: &DeviceId) {
+        self.0.webcam_keyframe_requested(peer.to_string());
     }
     fn phone_apps(&self) -> Result<Vec<core::PhoneApp>, String> {
         Ok(self
@@ -2429,6 +2481,24 @@ impl NectarlinkNode {
         let id = parse_id(&pc_id)?;
         let node = self.node.clone();
         self.run(async move { Ok(Arc::new(MirrorStream(node.mirror_open_audio(id).await?))) }).await
+    }
+
+    /// Opens this phone's camera stream to a paired PC (`docs/protocol/webcam.md`).
+    pub async fn webcam_open(&self, pc_id: String) -> Result<Arc<MirrorStream>> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(Arc::new(MirrorStream(node.webcam_open(id).await?))) }).await
+    }
+
+    /// Stops this phone's webcam stream to a paired PC and tells the PC.
+    pub async fn webcam_stop(&self, pc_id: String) -> Result<()> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move {
+            node.webcam_stop(id).await;
+            Ok(())
+        })
+        .await
     }
 
     /// This phone's messages changed (in `thread`, or anywhere when null):

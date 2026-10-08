@@ -172,6 +172,14 @@ tests; there are no releases yet.
   file beside it when you add markers and a notification to open the recording
   or its folder. If the PC is offline, the recording waits on the phone and
   goes out as soon as it reconnects.
+- **Phone as a webcam**: use the phone's camera in video calls on the PC (Zoom,
+  Teams, Meet, OBS and the Windows Camera app) as **Nectarlink Webcam**. Start
+  it from the phone or ask from the PC (the phone always confirms before the
+  camera opens), switch between back and front cameras, toggle the flashlight,
+  zoom (`1×`/`2×` or continuous slider), choose 720p or 1080p at 30 fps, and
+  horizontally mirror the image on the PC. Includes a live preview in Settings
+  even before the Windows 11 virtual camera add-on (`MFCreateVirtualCamera`
+  media source) is set up.
 - **Phone controls on the PC**: see and change the phone's Do Not Disturb,
   ringer mode (Ring, Vibrate, Silent), flashlight, media volume, screen
   brightness, Wi‑Fi (with a confirmation before turning it off) and Bluetooth
@@ -262,7 +270,9 @@ core/
   nectarlink-core/       Identity, trust store, pairing, sessions, features (MPL-2.0)
   nectarlink-ffi/        UniFFI bindings used by the Android app          (MPL-2.0)
   nectarlink-cli/        Command-line client for development and testing   (GPL)
-desktop/app/             Windows app: Rust host, cxx-qt bridge, QML UI     (GPL)
+desktop/
+  app/                   Windows app: Rust host, cxx-qt bridge, QML UI     (GPL)
+  vcam/                  Windows 11 virtual camera Media Foundation DLL    (GPL)
 android/                 Android app: Kotlin and Jetpack Compose           (GPL)
 assets/fonts/            Fonts both apps ship with                         (OFL-1.1)
 tools/xtask/             Code generation (theme tokens) and checks

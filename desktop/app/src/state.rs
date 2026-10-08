@@ -51,6 +51,8 @@ impl Changes {
     pub const TOGGLES: Changes = Changes(1 << 17);
     /// This PC's Deck layout or live state (kept by crate::deck).
     pub const DECK: Changes = Changes(1 << 18);
+    /// Phone as a webcam state or preferences (kept by crate::webcam).
+    pub const WEBCAM: Changes = Changes(1 << 19);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
@@ -441,7 +443,8 @@ impl AppState {
             | NodeEvent::DeckLayout { .. }
             | NodeEvent::DeckState { .. }
             | NodeEvent::StorageRequested { .. }
-            | NodeEvent::StorageChanged { .. } => Changes::NONE,
+            | NodeEvent::StorageChanged { .. }
+            | NodeEvent::Webcam { .. } => Changes::NONE,
             // The gallery's own downloads (for its viewer, or the clipboard)
             // aren't files the user keeps.
             NodeEvent::Transfer(transfer) if crate::photos::is_private(&transfer.id) => {

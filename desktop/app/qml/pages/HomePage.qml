@@ -773,6 +773,63 @@ Item {
                 }
             }
 
+            // Phone as a webcam on this PC.
+            Card {
+                id: webcamHomeCard
+                width: parent.width
+                visible: home.online || webcamFeature.state === "locked"
+                readonly property var webcamFeature: home.feature("camera.webcam")
+                readonly property bool isThisPhone: (Webcam.phase === "streaming" || Webcam.phase === "asking")
+                                                    && Webcam.activeDevice === home.deviceId
+                Column {
+                    width: parent.width
+                    spacing: 10
+                    Row {
+                        spacing: 8
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            path: Icons.video
+                            color: webcamHomeCard.isThisPhone ? Theme.primary : Theme.surfaceContentVariant
+                        }
+                        Txt {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("Webcam")
+                            role: "label"
+                            muted: !webcamHomeCard.isThisPhone
+                        }
+                    }
+                    Txt {
+                        width: parent.width
+                        role: "bodySmall"
+                        muted: true
+                        wrapMode: Text.WordWrap
+                        text: webcamHomeCard.isThisPhone && Webcam.statusText.length > 0
+                              ? Webcam.statusText
+                              : qsTr("Use %1's camera in video calls on this PC.").arg(home.name)
+                    }
+                    LockChip {
+                        visible: webcamHomeCard.webcamFeature.state === "locked" && label.length > 0
+                        feature: webcamHomeCard.webcamFeature
+                        maxWidth: parent.width
+                    }
+                    Button {
+                        visible: webcamHomeCard.isThisPhone
+                                 || (home.online && (webcamHomeCard.webcamFeature.state === "available"
+                                                     || webcamHomeCard.webcamFeature.action === "enableAddon"))
+                        variant: webcamHomeCard.isThisPhone ? "tonal" : "fill"
+                        size: "sm"
+                        iconPath: webcamHomeCard.isThisPhone ? Icons.close : Icons.video
+                        text: webcamHomeCard.isThisPhone ? qsTr("Stop webcam") : qsTr("Start webcam")
+                        onClicked: {
+                            if (webcamHomeCard.isThisPhone)
+                                Webcam.stop()
+                            else
+                                Webcam.start(home.deviceId)
+                        }
+                    }
+                }
+            }
+
             Card {
                 width: parent.width
                 Column {

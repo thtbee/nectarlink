@@ -2351,6 +2351,7 @@ dependencies = [
  "hostname",
  "material-colors",
  "nectarlink-core",
+ "nectarlink-vcam",
  "qrcode",
  "serde",
  "serde_json",
@@ -2388,6 +2389,14 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "url",
+]
+
+[[package]]
+name = "nectarlink-vcam"
+version = "0.0.1"
+dependencies = [
+ "windows",
+ "windows-core",
 ]
 
 [[package]]

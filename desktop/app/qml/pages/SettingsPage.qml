@@ -31,6 +31,7 @@ Item {
         toggles: qsTr("Phone controls"),
         pc_actions: qsTr("Lock, sleep and wake this PC"),
         mirroring: qsTr("Screen mirroring"),
+        webcam: qsTr("Webcam"),
         storage: qsTr("Phone storage in File Explorer"),
         remote_input: qsTr("Control this PC's mouse, keyboard and Deck"),
         commands: qsTr("Allow running Deck commands"),
@@ -38,6 +39,7 @@ Item {
     })
 
     readonly property var toggleDescriptions: ({
+        webcam: qsTr("Use this phone's camera as a webcam on this PC."),
         storage: qsTr("Show this phone's storage in File Explorer so you can browse, open and drop in files."),
         commands: qsTr("Lets this phone trigger Deck tiles that run shell commands configured on this PC. Off by default — only enable for a phone you control.")
     })
@@ -265,6 +267,149 @@ Item {
                             ]
                             value: Preferences.recordingsFormat
                             onPicked: (value) => Preferences.recordingsFormat = value
+                        }
+                    }
+                }
+            }
+
+            // ---- Webcam ----
+            Txt { text: qsTr("Webcam"); role: "label"; muted: true }
+            Card {
+                width: parent.width
+                Column {
+                    width: parent.width
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.video
+                        title: qsTr("Virtual camera add-on")
+                        description: Webcam.addonRegistered
+                            ? qsTr("\"Nectarlink Webcam\" is registered for Zoom, Teams, Meet and other apps.")
+                            : qsTr("Set up once (needs administrator approval) so Zoom, Teams, Meet and other apps see \"Nectarlink Webcam\".")
+                        Row {
+                            spacing: 8
+                            Spinner {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: Webcam.addonBusy
+                            }
+                            Chip {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: Webcam.addonRegistered
+                                selected: true
+                                text: qsTr("Ready")
+                            }
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                variant: Webcam.addonRegistered ? "outline" : "tonal"
+                                size: "sm"
+                                enabled: !Webcam.addonBusy
+                                text: Webcam.addonRegistered ? qsTr("Remove") : qsTr("Set up")
+                                onClicked: Webcam.addonRegistered ? Webcam.removeAddon() : Webcam.setupAddon()
+                            }
+                        }
+                    }
+                    Divider { width: parent.width; visible: DeviceList.count > 1 }
+                    ListRow {
+                        width: parent.width
+                        visible: DeviceList.count > 1
+                        iconPath: Icons.phone
+                        title: qsTr("Phone")
+                        description: qsTr("Which phone's camera to use on this PC.")
+                        Row {
+                            spacing: 8
+                            Repeater {
+                                model: DeviceList
+                                delegate: Chip {
+                                    required property string deviceId
+                                    required property string name
+                                    text: name
+                                    selected: Webcam.selectedPhone === deviceId
+                                    TapHandler { onTapped: Webcam.selectPhone(deviceId) }
+                                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                }
+                            }
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.camera
+                        title: qsTr("Resolution")
+                        description: qsTr("720p uses less battery; 1080p is sharper.")
+                        Segmented {
+                            options: [
+                                { value: "720", label: "720p" },
+                                { value: "1080", label: "1080p" }
+                            ]
+                            value: String(Webcam.height)
+                            onPicked: (value) => Webcam.setResolution(Number(value))
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.mirror
+                        title: qsTr("Mirror image")
+                        description: qsTr("Flip the camera picture horizontally.")
+                        Toggle {
+                            label: qsTr("Mirror image")
+                            checked: Webcam.mirror
+                            onToggled: (on) => Webcam.setMirrorImage(on)
+                        }
+                    }
+                    Divider { width: parent.width }
+                    Column {
+                        width: parent.width
+                        spacing: 10
+                        topPadding: 8
+                        Item {
+                            width: parent.width
+                            height: Math.max(webcamStatusLabel.height, webcamStartBtn.height)
+                            Txt {
+                                id: webcamStatusLabel
+                                anchors.left: parent.left
+                                anchors.right: webcamStartBtn.left
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                role: "bodySmall"
+                                muted: Webcam.phase !== "streaming"
+                                elide: Text.ElideRight
+                                text: Webcam.statusText.length > 0
+                                    ? Webcam.statusText
+                                    : (Webcam.selectedPhoneName.length > 0
+                                       ? qsTr("Preview · %1").arg(Webcam.selectedPhoneName)
+                                       : qsTr("Pair a phone to use its camera as a webcam"))
+                            }
+                            Button {
+                                id: webcamStartBtn
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                enabled: DeviceList.count > 0
+                                variant: Webcam.phase === "streaming" || Webcam.phase === "asking" ? "outline" : "tonal"
+                                size: "sm"
+                                iconPath: Webcam.phase === "streaming" || Webcam.phase === "asking" ? Icons.close : Icons.video
+                                text: Webcam.phase === "streaming" || Webcam.phase === "asking"
+                                    ? qsTr("Stop webcam")
+                                    : qsTr("Start webcam")
+                                onClicked: {
+                                    if (Webcam.phase === "streaming" || Webcam.phase === "asking")
+                                        Webcam.stop()
+                                    else
+                                        Webcam.start("")
+                                }
+                            }
+                        }
+                        Rectangle {
+                            width: parent.width
+                            height: Math.round(width * 9 / 16)
+                            radius: Theme.radiusMd
+                            color: "#121318"
+                            border.width: 1
+                            border.color: Theme.outlineVariant
+                            clip: true
+                            VideoView {
+                                anchors.fill: parent
+                                stream: "webcam"
+                            }
                         }
                     }
                 }

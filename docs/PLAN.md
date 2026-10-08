@@ -193,7 +193,7 @@ current Android. Talking through the PC comes with the HFP item above.
 ### 3.9 Camera
 | Feature | Tier |
 |---|---|
-| **Phone as webcam** (Windows 11 virtual camera, shows up in Teams/Zoom/OBS/Camera app). Front/back, zoom, torch, HDR, 1080p/4K | P1 🟢 (CameraX) |
+| **Phone as webcam** (Windows 11 virtual camera, shows up in Teams/Zoom/OBS/Camera app). Front/back, zoom, torch, HDR, 1080p/4K ✅ | P1 🟢 (Camera2) |
 | **Continuity Camera**: right-click in any PC app → "Take photo / Scan document with phone" → the phone opens the camera (with document edge detection) → the result is pasted at the cursor | P1 🟢 |
 
 ### 3.10 Remote input & control

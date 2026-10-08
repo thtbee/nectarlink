@@ -87,6 +87,10 @@ pub mod types {
     pub const STORAGE_RENAME: &str = "storage.rename";
     pub const STORAGE_DELETE: &str = "storage.delete";
     pub const STORAGE_CHANGED: &str = "storage.changed";
+    pub const WEBCAM_START: &str = "webcam.start";
+    pub const WEBCAM_STOP: &str = "webcam.stop";
+    pub const WEBCAM_KEYFRAME: &str = "webcam.keyframe";
+    pub const WEBCAM_OK: &str = "webcam.ok";
 }
 
 /// What kind of device this is.
@@ -947,6 +951,113 @@ impl MirrorAudioConfig {
     /// Bytes in one sample frame (a sample for each channel).
     pub fn frame_bytes(&self) -> usize {
         2 * usize::from(self.channels)
+    }
+}
+
+// ---- Phone as webcam (docs/protocol/webcam.md) ----
+
+pub mod webcam {
+    /// Offered by phones that stream their camera as a webcam.
+    pub const STREAM: &str = "camera.stream";
+    /// Offered by PCs that receive and decode a phone's webcam stream.
+    pub const VIRTUAL: &str = "camera.virtual";
+    /// Offered by PCs where the Windows virtual camera COM add-on is registered.
+    pub const ADDON_VCAM: &str = "addon.vcam";
+    pub const SERVICE: &str = "webcam";
+    pub const OP_VIDEO: &str = "video";
+    pub const VERSION: u32 = 1;
+    /// Stream reset code: webcam stopped.
+    pub const STOPPED: u32 = 12;
+    pub const H264: &str = "h264";
+    pub const CAMERA_BACK: &str = "back";
+    pub const CAMERA_FRONT: &str = "front";
+}
+
+fn default_webcam_camera() -> String {
+    webcam::CAMERA_BACK.to_owned()
+}
+
+fn default_webcam_fps() -> u32 {
+    30
+}
+
+fn default_webcam_bitrate() -> u32 {
+    6_000_000
+}
+
+/// Body of `webcam.start`: ask a paired phone to stream its camera (or update
+/// camera/resolution while already streaming).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WebcamStart {
+    /// `"back"` or `"front"`.
+    #[serde(default = "default_webcam_camera")]
+    pub camera: String,
+    /// Requested frame width in pixels (e.g. 1280, 1920, 3840).
+    pub width: u32,
+    /// Requested frame height in pixels (e.g. 720, 1080, 2160).
+    pub height: u32,
+    /// Target frames per second (`1..=60`).
+    #[serde(default = "default_webcam_fps")]
+    pub fps: u32,
+    /// Target bitrate in bits per second (`100_000..=50_000_000`).
+    #[serde(default = "default_webcam_bitrate")]
+    pub bitrate: u32,
+}
+
+impl Default for WebcamStart {
+    fn default() -> Self {
+        Self {
+            camera: default_webcam_camera(),
+            width: 1280,
+            height: 720,
+            fps: default_webcam_fps(),
+            bitrate: default_webcam_bitrate(),
+        }
+    }
+}
+
+impl WebcamStart {
+    pub fn is_valid(&self) -> bool {
+        (self.camera == webcam::CAMERA_BACK || self.camera == webcam::CAMERA_FRONT)
+            && (320..=3840).contains(&self.width)
+            && (240..=2160).contains(&self.height)
+            && (1..=60).contains(&self.fps)
+            && (100_000..=50_000_000).contains(&self.bitrate)
+    }
+}
+
+/// The format of a webcam stream (a `PacketKind::Config` packet's payload, in CBOR).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WebcamConfig {
+    /// `"h264"`.
+    pub codec: String,
+    pub width: u32,
+    pub height: u32,
+    /// `"back"` or `"front"`.
+    #[serde(default = "default_webcam_camera")]
+    pub camera: String,
+    /// Frames per second.
+    #[serde(default = "default_webcam_fps")]
+    pub fps: u32,
+}
+
+impl WebcamConfig {
+    pub fn to_cbor(&self) -> Vec<u8> {
+        let mut out = Vec::new();
+        ciborium::into_writer(self, &mut out).expect("writing to a Vec cannot fail");
+        out
+    }
+
+    pub fn from_cbor(bytes: &[u8]) -> Result<WebcamConfig, crate::ProtocolError> {
+        ciborium::from_reader(bytes).map_err(|e| crate::ProtocolError::BadMessage(e.to_string()))
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.codec == webcam::H264
+            && (1..=8192).contains(&self.width)
+            && (1..=8192).contains(&self.height)
+            && (self.camera == webcam::CAMERA_BACK || self.camera == webcam::CAMERA_FRONT)
+            && (1..=120).contains(&self.fps)
     }
 }
 
@@ -3645,5 +3756,38 @@ mod tests {
         let rename = StorageRename { from: "a.txt".into(), to: "b.txt".into() };
         assert!(rename.is_valid());
         assert!(!StorageRename { from: "a.txt".into(), to: "a.txt".into() }.is_valid());
+    }
+
+    #[test]
+    fn webcam_messages_validate_and_round_trip() {
+        let start = WebcamStart::default();
+        assert!(start.is_valid());
+        let env = Envelope::new(types::WEBCAM_START, &start).unwrap();
+        let back: WebcamStart = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, start);
+
+        let front_1080 = WebcamStart {
+            camera: webcam::CAMERA_FRONT.into(),
+            width: 1920,
+            height: 1080,
+            fps: 30,
+            bitrate: 8_000_000,
+        };
+        assert!(front_1080.is_valid());
+        assert!(!WebcamStart { camera: "telephoto".into(), ..start.clone() }.is_valid());
+        assert!(!WebcamStart { width: 100, ..start.clone() }.is_valid());
+        assert!(!WebcamStart { fps: 0, ..start }.is_valid());
+
+        let cfg = WebcamConfig {
+            codec: webcam::H264.into(),
+            width: 1280,
+            height: 720,
+            camera: webcam::CAMERA_BACK.into(),
+            fps: 30,
+        };
+        assert!(cfg.is_valid());
+        assert_eq!(WebcamConfig::from_cbor(&cfg.to_cbor()).unwrap(), cfg);
+        assert!(!WebcamConfig { codec: "vp8".into(), ..cfg.clone() }.is_valid());
+        assert!(!WebcamConfig { width: 0, ..cfg }.is_valid());
     }
 }

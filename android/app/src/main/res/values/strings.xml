@@ -330,4 +330,30 @@
     <string name="storage_request_title">%1$s wants to browse this phone’s storage</string>
     <string name="storage_request_text">Allow %1$s to browse your shared storage (or selected folders) in File Explorer?</string>
     <string name="action_not_now">Not now</string>
+
+    <!-- Phone as webcam -> PC -->
+    <string name="action_webcam_pc">Webcam</string>
+    <string name="channel_webcam">Webcam</string>
+    <string name="channel_webcam_requests">Webcam requests</string>
+    <string name="webcam_notification_streaming">Streaming camera to %1$s</string>
+    <string name="webcam_notification_detail">%1$d × %2$d · %3$s camera</string>
+    <string name="webcam_request_title">%1$s wants to use your camera</string>
+    <string name="webcam_request_text">Tap to open the webcam controls and start streaming.</string>
+    <string name="webcam_permission_title">Allow camera access</string>
+    <string name="webcam_permission_text">Nectarlink uses the camera only while you stream video to %1$s as a webcam.</string>
+    <string name="webcam_allow_camera">Allow camera</string>
+    <string name="webcam_status_streaming">Streaming %1$d × %2$d to %3$s</string>
+    <string name="webcam_status_connecting">Connecting camera to %1$s…</string>
+    <string name="webcam_status_ready">Ready to stream to %1$s</string>
+    <string name="webcam_start">Start webcam</string>
+    <string name="webcam_stop">Stop webcam</string>
+    <string name="webcam_camera_back">Back</string>
+    <string name="webcam_camera_front">Front</string>
+    <string name="webcam_switch_camera">Flip camera</string>
+    <string name="webcam_torch_on">Torch on</string>
+    <string name="webcam_torch_off">Torch off</string>
+    <string name="webcam_zoom_label">Zoom %1$.1f×</string>
+    <string name="webcam_resolution_label">Resolution</string>
+    <string name="webcam_denied_text">Webcam is turned off for this phone on %1$s.</string>
+    <string name="webcam_offline_hint">Connect %1$s on the same network to start streaming your camera.</string>
 </resources>

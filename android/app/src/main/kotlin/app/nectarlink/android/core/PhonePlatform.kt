@@ -23,6 +23,9 @@ import app.nectarlink.android.mirror.MirrorService
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.storage.PhoneStorage
 import app.nectarlink.android.toggles.PhoneToggles
+import app.nectarlink.android.webcam.WebcamRequest
+import app.nectarlink.android.webcam.WebcamRequests
+import app.nectarlink.android.webcam.WebcamService
 import app.nectarlink.core.CallCommand
 import app.nectarlink.core.CallLogEntry
 import app.nectarlink.core.Contact
@@ -43,6 +46,7 @@ import app.nectarlink.core.Platform
 import app.nectarlink.core.StorageEntry
 import app.nectarlink.core.StorageReadFile
 import app.nectarlink.core.StorageWriteDone
+import app.nectarlink.core.WebcamOptions
 
 /**
  * What the core asks of the phone: ring it, and act on its notifications
@@ -66,6 +70,8 @@ internal class PhonePlatform(
     private val storage: () -> PhoneStorage,
     /** Asks the user to share the screen with a PC: (PC's ID, request) → asked. */
     private val onMirror: (String, MirrorRequest) -> Boolean,
+    /** Asks the user to stream the camera as a webcam to a PC: (PC's ID, request) → asked. */
+    private val onWebcam: (String, WebcamRequest) -> Boolean,
     /** Apps in windows of their own on PCs (Elevated). */
     private val appWindows: AppWindows,
 ) : Platform {
@@ -130,6 +136,26 @@ internal class PhonePlatform(
         if (session != SCREEN) return appWindows.input(pcId, session, input)
         if (!Elevated.handle(input)) InputService.handle(input)
     }
+
+    override fun webcamRequested(pcId: String, options: WebcamOptions): Boolean {
+        val request = WebcamRequest(
+            pcId = pcId,
+            width = options.width.toInt(),
+            height = options.height.toInt(),
+            fps = options.fps.toInt(),
+            bitrate = options.bitrate.toInt(),
+            camera = options.camera,
+        )
+        return onWebcam(pcId, request)
+    }
+
+    override fun webcamStopRequested(pcId: String) {
+        WebcamRequests.dismiss(context, pcId)
+        WebcamService.stopForPc(context, pcId)
+    }
+
+    override fun webcamKeyframeRequested(pcId: String) =
+        WebcamService.keyframe(pcId)
 
     override fun phoneApps(): List<PhoneApp> = AppWindows.list(context)
 

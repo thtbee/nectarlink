@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.core
 
+import app.nectarlink.android.webcam.WebcamRequest
 import app.nectarlink.core.DiscoveredDevice
 import app.nectarlink.core.Event
 import app.nectarlink.core.Feature
@@ -105,6 +106,8 @@ data class CoreState(
     val storageSafFolders: List<String> = emptyList(),
     /** ID of a paired PC that asked to browse this phone's storage while `storage` is off. */
     val storageRequestedFrom: String? = null,
+    /** Pending request from a paired PC asking to use this phone's camera as a webcam. */
+    val webcamRequest: WebcamRequest? = null,
     /** File transfers, newest first (running ones and the latest finished). */
     val transfers: List<Transfer> = emptyList(),
 ) {
@@ -145,6 +148,7 @@ data class CoreState(
             devices = devices.filterNot { it.id == event.id },
             ringingFrom = if (ringingFrom == nameOf(event.id)) null else ringingFrom,
             storageRequestedFrom = if (storageRequestedFrom == event.id) null else storageRequestedFrom,
+            webcamRequest = if (webcamRequest?.pcId == event.id) null else webcamRequest,
         )
         is Event.LinkChanged -> update(event.id) {
             it.copy(
@@ -183,7 +187,7 @@ data class CoreState(
         // Shown in Android's media controls (see media/PcMedia).
         is Event.MediaChanged -> this
         is Event.StorageRequested -> copy(storageRequestedFrom = event.id)
-        // PCs only: phones announce their own photos, calls, contacts, texts, toggles, storage and screen.
+        // PCs only: phones announce their own photos, calls, contacts, texts, toggles, storage, screen and webcam.
         is Event.PhotoAdded,
         is Event.PhotosChanged,
         is Event.CallChanged,
@@ -194,6 +198,7 @@ data class CoreState(
         is Event.Mirroring,
         is Event.RemoteInputRequested,
         is Event.StorageChanged,
+        is Event.Webcam,
         -> this
     }
 

@@ -163,6 +163,7 @@ Section "Uninstall"
     RMDir /r "$INSTDIR"
   ${Else}
     Delete "$INSTDIR\${EXE}"
+    Delete "$INSTDIR\nectarlink_vcam.dll"
     Delete "$INSTDIR\uninstall.exe"
   ${EndIf}
 

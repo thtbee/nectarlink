@@ -270,6 +270,9 @@ impl qobject::Preferences {
             start_with_windows: p.start_choice,
             recordings_folder: p.custom_recordings_folder.clone(),
             recordings_format: RecordingFormat::from_str_lossy(&String::from(&p.recordings_format)),
+            webcam_phone: crate::webcam::selected_phone().map(|d| d.to_string()),
+            webcam_height: crate::webcam::height(),
+            webcam_mirror: crate::webcam::mirror(),
         };
         save_in_background(settings);
     }

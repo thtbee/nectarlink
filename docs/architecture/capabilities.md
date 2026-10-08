@@ -121,8 +121,8 @@ the OS (`android` → phone, `windows`/`macos` → desktop).
 ## Per-device toggles
 
 `notifications`, `messages`, `calls`, `contacts`, `clipboard`, `files`,
-`media`, `photos`, `recordings`, `toggles`, `pc_actions`, `mirroring` (on by
-default) and `storage`, `remote_input`, `commands`, `remote_files` (off by default). Toggles are this
+`media`, `photos`, `recordings`, `toggles`, `pc_actions`, `mirroring`,
+`webcam` (on by default) and `storage`, `remote_input`, `commands`, `remote_files` (off by default). Toggles are this
 device's policy for that peer and are stored locally, so a feature the PC
 user switched off is Locked on the PC while the phone may still show it as
 Available. Everything else in the matrix is identical on both devices.
@@ -136,7 +136,7 @@ Available. Everything else in the matrix is identical on both devices.
 | `notifications.sensitive` | phone `notify.sensitive` (Elevated), toggle | – | Locked → Elevated · ~2 min |
 | `mirroring.control` | phone `mirror.capture`, `mirror.input` (Assist) | – | Locked → Assist · ~1 min |
 | `mirroring.app_windows` | phone `mirror.virtual_display` (Elevated), Elevated, Android ≥ 11 | – | Locked → Elevated |
-| `camera.webcam` | phone `camera.stream` (camera permission), desktop `addon.vcam`, Windows build ≥ 22000 | – | Locked → install virtual camera · ~1 min |
+| `camera.webcam` | phone `camera.stream` (camera permission), desktop `camera.virtual`, desktop `addon.vcam`, Windows build ≥ 22000, toggle `webcam` | – | Locked → install virtual camera · ~1 min |
 
 The full registry is `FEATURES` in `core/nectarlink-core/src/features.rs`.
 

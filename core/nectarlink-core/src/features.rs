@@ -343,6 +343,7 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("toggles", true),
     ("pc_actions", true),
     ("mirroring", true),
+    ("webcam", true),
     // Browsing the phone's storage on a PC is opt-in.
     ("storage", false),
     // Controlling this PC's mouse and keyboard is opt-in.
@@ -849,8 +850,10 @@ pub const FEATURES: &[FeatureDef] = &[
         group: FeatureGroup::Camera,
         requires: &[
             phone("camera.stream", Unlock::Permission(Permission::Camera)),
+            desktop("camera.virtual", UPDATE),
             desktop("addon.vcam", Unlock::Addon("vcam")),
             WindowsBuildAtLeast(22000),
+            DeviceToggle("webcam"),
         ],
         partial: None,
     },
@@ -934,6 +937,7 @@ mod tests {
         "deck.actions",
         "mirror.view",
         "mirror.listen",
+        "camera.virtual",
     ];
 
     fn pc() -> DeviceFacts {
@@ -1123,8 +1127,13 @@ mod tests {
     fn old_systems_are_unsupported() {
         let phone =
             facts(DeviceKind::Phone, "android", "10", PowerLevel::Elevated, &["mirror.virtual_display"]);
-        let win10 =
-            facts(DeviceKind::Desktop, "windows", "10.0.19045", PowerLevel::NotApplicable, &["addon.vcam"]);
+        let win10 = facts(
+            DeviceKind::Desktop,
+            "windows",
+            "10.0.19045",
+            PowerLevel::NotApplicable,
+            &["camera.virtual", "addon.vcam"],
+        );
         let m = matrix_with(&phone, &win10, &HashMap::new());
         assert_eq!(
             m.state("mirroring.app_windows"),

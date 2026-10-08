@@ -23,6 +23,7 @@ dirs.workspace = true
 hostname.workspace = true
 material-colors.workspace = true
 nectarlink-core.workspace = true
+nectarlink-vcam.workspace = true
 qrcode.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -77,6 +78,7 @@ windows = { workspace = true, features = [
     "Win32_Networking_WinSock",
     "Win32_Media_Audio",
     "Win32_Media_Audio_Endpoints",
+    "Win32_Media_KernelStreaming",
     "Win32_Media_MediaFoundation",
 ] }
 

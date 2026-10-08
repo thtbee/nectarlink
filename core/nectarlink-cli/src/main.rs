@@ -283,6 +283,24 @@ enum Command {
         #[arg(long)]
         apps: bool,
     },
+    /// Act as a phone streaming its camera as a webcam (use with --as-phone):
+    /// streams an H.264 file (Annex B, with access unit delimiters) in a loop
+    /// at `fps` when a PC asks (or right away with `--to <device>`). Stays online.
+    Webcam {
+        video: PathBuf,
+        #[arg(long, default_value_t = 1280)]
+        width: u32,
+        #[arg(long, default_value_t = 720)]
+        height: u32,
+        #[arg(long, default_value_t = 30)]
+        fps: u32,
+        #[arg(long, default_value = "back")]
+        camera: String,
+        /// Start streaming to this paired PC immediately (without waiting for
+        /// the PC to request it).
+        #[arg(long)]
+        to: Option<String>,
+    },
     /// Act as a phone with a few sample conversations (use with --as-phone),
     /// so a PC can read them and text through this client; stays online.
     Texts,
@@ -788,6 +806,10 @@ type ScreenSession = (
     std::sync::Arc<nectarlink_core::MirrorStream>,
 );
 static SCREEN_SESSIONS: std::sync::Mutex<Vec<ScreenSession>> = std::sync::Mutex::new(Vec::new());
+static WEBCAM_ASKS: std::sync::OnceLock<tokio::sync::mpsc::UnboundedSender<(DeviceId, String)>> =
+    std::sync::OnceLock::new();
+static WEBCAM_SESSIONS: std::sync::Mutex<Vec<(DeviceId, std::sync::Arc<nectarlink_core::MirrorStream>)>> =
+    std::sync::Mutex::new(Vec::new());
 /// The apps `screen --apps` offers.
 const SAMPLE_APPS: &[(&str, &str)] = &[
     ("com.example.calendar", "Calendar"),
@@ -1485,6 +1507,33 @@ impl Platform for TerminalPlatform {
     fn mirror_keyframe_requested(&self, _peer: &DeviceId, _session: u32) {
         println!("The PC asked for a keyframe.");
     }
+    fn webcam_requested(
+        &self,
+        peer: &DeviceId,
+        options: &nectarlink_core::WebcamStart,
+    ) -> std::result::Result<(), String> {
+        let asks = WEBCAM_ASKS.get().ok_or("not sharing a webcam (run `webcam`)")?;
+        println!(
+            "A PC asked for the {} camera ({}x{} @ {} fps); sharing it.",
+            options.camera, options.width, options.height, options.fps
+        );
+        asks.send((*peer, options.camera.clone())).map_err(|e| e.to_string())
+    }
+    fn webcam_stop_requested(&self, peer: &DeviceId) {
+        println!("The PC stopped the webcam.");
+        let mut sessions = WEBCAM_SESSIONS.lock().unwrap();
+        sessions.retain(|(p, stream)| {
+            if p == peer {
+                stream.close();
+                false
+            } else {
+                true
+            }
+        });
+    }
+    fn webcam_keyframe_requested(&self, _peer: &DeviceId) {
+        println!("The PC asked for a webcam keyframe.");
+    }
     fn sms_threads(&self, limit: u32) -> std::result::Result<Vec<nectarlink_core::SmsThread>, String> {
         let texts = TEXTS.lock().unwrap();
         let mut threads: Vec<nectarlink_core::SmsThread> = Vec::new();
@@ -1891,6 +1940,44 @@ impl Platform for TerminalPlatform {
         println!("Deleted {path} from phone storage.");
         Ok(())
     }
+    fn webcam_sink(&self, peer: &DeviceId) -> Option<Arc<dyn nectarlink_core::WebcamSink>> {
+        Some(Arc::new(CliWebcamSink { peer: *peer, frames: std::sync::atomic::AtomicU64::new(0) }))
+    }
+}
+
+struct CliWebcamSink {
+    peer: DeviceId,
+    frames: std::sync::atomic::AtomicU64,
+}
+
+impl nectarlink_core::WebcamSink for CliWebcamSink {
+    fn config(&self, config: nectarlink_core::WebcamConfig) {
+        println!(
+            "Webcam stream from {}: {}x{} @ {} fps ({}, {})",
+            self.peer.short(),
+            config.width,
+            config.height,
+            config.fps,
+            config.camera,
+            config.codec
+        );
+    }
+    fn packet(&self, keyframe: bool, time_us: u64, data: Vec<u8>) {
+        let n = self.frames.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+        if keyframe || n <= 5 || n.is_multiple_of(30) {
+            println!(
+                "Webcam frame #{n} from {}: {} ({} B, pts {} us)",
+                self.peer.short(),
+                if keyframe { "keyframe" } else { "frame" },
+                data.len(),
+                time_us
+            );
+        }
+    }
+    fn ended(&self) {
+        let total = self.frames.load(std::sync::atomic::Ordering::Relaxed);
+        println!("Webcam stream from {} ended ({total} frames received).", self.peer.short());
+    }
 }
 
 fn main() -> Result<()> {
@@ -1953,6 +2040,8 @@ async fn start_node(cli: &Cli) -> Result<Node> {
         config.capabilities.push(nectarlink_core::PC_WAKE.into());
         config.capabilities.push(nectarlink_core::DECK_ACTIONS.into());
         config.capabilities.push(nectarlink_core::STORAGE_MOUNT.into());
+        config.capabilities.push(nectarlink_core::WEBCAM_VIRTUAL.into());
+        config.capabilities.push(nectarlink_core::WEBCAM_ADDON_VCAM.into());
     }
     let extra_caps = config.capabilities.clone();
     let node = Node::start(config, Arc::new(TerminalPlatform)).await.context("failed to start")?;
@@ -2659,6 +2748,55 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                             Err(e) => println!("Couldn't open the sound stream: {e}"),
                         }
                     }
+                }
+            });
+            watch(node, false).await?;
+        }
+        Command::Webcam { video, width, height, fps, camera, to } => {
+            if !cli.as_phone {
+                bail!("webcams are shared by phones: add --as-phone");
+            }
+            let stream = std::fs::read(video).context("can't read the video")?;
+            let units = std::sync::Arc::new(access_units(&stream));
+            if units.is_empty() {
+                bail!("no access unit delimiters in the video");
+            }
+            let (asks, mut asked) = tokio::sync::mpsc::unbounded_channel();
+            let _ = WEBCAM_ASKS.set(asks.clone());
+            let mut offers = cli.offers.clone();
+            offers.push(nectarlink_core::WEBCAM_STREAM.into());
+            node.update_power(node_power(cli), offers).await;
+            println!("Sharing a {width}x{height} webcam ({} frames) with PCs.", units.len());
+            if let Some(target) = to {
+                let pc = resolve(node, target)?;
+                wait_until_online(node, pc).await?;
+                let _ = asks.send((pc, camera.clone()));
+            }
+            let streamer = node.clone();
+            let (width, height, fps) = (*width, *height, *fps);
+            tokio::spawn(async move {
+                while let Some((pc, cam)) = asked.recv().await {
+                    let webcam = match streamer.webcam_open(pc).await {
+                        Ok(s) => std::sync::Arc::new(s),
+                        Err(e) => {
+                            println!("Couldn't open the webcam stream: {e}");
+                            continue;
+                        }
+                    };
+                    {
+                        let mut sessions = WEBCAM_SESSIONS.lock().unwrap();
+                        sessions.retain(|(p, old)| {
+                            if *p == pc {
+                                old.close();
+                                false
+                            } else {
+                                true
+                            }
+                        });
+                        sessions.push((pc, webcam.clone()));
+                    }
+                    let units = units.clone();
+                    std::thread::spawn(move || stream_webcam(&webcam, &units, width, height, fps, &cam));
                 }
             });
             watch(node, false).await?;
@@ -4095,4 +4233,43 @@ fn stream_screen(
         }
     }
     println!("Stopped sharing the screen ({dropped} frames dropped to keep up).");
+}
+
+fn stream_webcam(
+    webcam: &nectarlink_core::MirrorStream,
+    units: &[Vec<u8>],
+    width: u32,
+    height: u32,
+    fps: u32,
+    camera: &str,
+) {
+    use nectarlink_core::{MirrorSend, PacketKind};
+    let config = nectarlink_core::WebcamConfig {
+        codec: nectarlink_core::WEBCAM_H264.into(),
+        width,
+        height,
+        camera: camera.into(),
+        fps,
+    }
+    .to_cbor();
+    if webcam.send(PacketKind::Config, 0, config) == MirrorSend::Closed {
+        return;
+    }
+    let frame = std::time::Duration::from_secs_f64(1.0 / f64::from(fps.max(1)));
+    let started = std::time::Instant::now();
+    let mut dropped = 0u32;
+    for (n, unit) in units.iter().cycle().enumerate() {
+        let due = started + frame * n as u32;
+        if let Some(wait) = due.checked_duration_since(std::time::Instant::now()) {
+            std::thread::sleep(wait);
+        }
+        let time = started.elapsed().as_micros() as u64;
+        let kind = if is_keyframe(unit) { PacketKind::Keyframe } else { PacketKind::Frame };
+        match webcam.send(kind, time, unit.clone()) {
+            MirrorSend::Queued => {}
+            MirrorSend::NeedKeyframe | MirrorSend::Dropped => dropped += 1,
+            MirrorSend::Closed => break,
+        }
+    }
+    println!("Stopped sharing the webcam ({dropped} frames dropped to keep up).");
 }

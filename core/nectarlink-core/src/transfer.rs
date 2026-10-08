@@ -627,6 +627,13 @@ pub(crate) async fn accept_stream(
             crate::mirror::receive_audio(shared, session.peer, send, recv).await;
         }
         Some(h)
+            if h.svc == nectarlink_protocol::messages::webcam::SERVICE
+                && h.op == nectarlink_protocol::messages::webcam::OP_VIDEO
+                && h.v == nectarlink_protocol::messages::webcam::VERSION =>
+        {
+            crate::webcam::receive(shared, session.peer, send, recv).await;
+        }
+        Some(h)
             if h.svc == nectarlink_protocol::messages::remote::SERVICE
                 && h.op == nectarlink_protocol::messages::remote::OP_MOTION
                 && h.v == 1 =>

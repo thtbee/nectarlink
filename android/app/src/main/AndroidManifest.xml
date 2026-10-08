@@ -18,6 +18,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <!-- Voice recorder to PC while the screen is off or the app is in the background. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- Streaming the camera to a PC as a webcam while the app is in the background. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <!-- Voice recordings and voice typing for a PC (asked in context) and the
          phone's sound while mirrored (playback capture, with the screen share's consent). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -253,6 +255,11 @@
             android:name=".recorder.RecorderService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <service
+            android:name=".webcam.WebcamService"
+            android:exported="false"
+            android:foregroundServiceType="camera" />
 
         <service
             android:name=".service.ConnectionService"

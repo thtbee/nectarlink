@@ -37,6 +37,7 @@ mod state;
 mod storage;
 mod transfers;
 mod updater;
+mod webcam;
 mod win;
 
 use std::{
@@ -98,6 +99,12 @@ impl Platform for DesktopPlatform {
     ) -> Option<std::sync::Arc<dyn nectarlink_core::MirrorSink>> {
         mirror::sink(peer, session)
     }
+    fn webcam_sink(
+        &self,
+        peer: &nectarlink_core::DeviceId,
+    ) -> Option<std::sync::Arc<dyn nectarlink_core::WebcamSink>> {
+        webcam::sink(peer)
+    }
     fn remote_input(
         &self,
         peer: &nectarlink_core::DeviceId,
@@ -125,6 +132,10 @@ struct Options {
     /// Quit the running app and undo what it set up in Windows (the
     /// uninstaller). Data is kept.
     uninstall: bool,
+    /// Elevated helper: register `nectarlink_vcam.dll` in `HKLM` and exit.
+    register_vcam: bool,
+    /// Elevated helper: unregister `nectarlink_vcam.dll` from `HKLM` and exit.
+    unregister_vcam: bool,
 }
 
 fn parse_options() -> Options {
@@ -137,6 +148,8 @@ fn parse_options() -> Options {
             Some("--minimized") => options.minimized = true,
             Some("--quit") => options.quit = true,
             Some("--uninstall") => options.uninstall = true,
+            Some(win::vcam::REGISTER_ARG) => options.register_vcam = true,
+            Some(win::vcam::UNREGISTER_ARG) => options.unregister_vcam = true,
             Some(send_to::ARG) => {
                 let device = args.next().map(|d| d.to_string_lossy().into_owned()).unwrap_or_default();
                 options.send_to = Some((device, Vec::new()));
@@ -193,6 +206,7 @@ fn uninstall() {
         tracing::warn!(error = %e, "can't remove the Send to entries");
     }
     storage::unregister_all();
+    let _ = win::vcam::unregister_hklm();
     win::toast::unregister();
     startup::remove();
 }
@@ -207,6 +221,24 @@ fn install_panic_logging() {
 
 fn main() -> ExitCode {
     let options = parse_options();
+    if options.register_vcam {
+        return match win::vcam::register_hklm() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("nectarlink: register-vcam failed: {e}");
+                ExitCode::FAILURE
+            }
+        };
+    }
+    if options.unregister_vcam {
+        return match win::vcam::unregister_hklm() {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("nectarlink: unregister-vcam failed: {e}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     let data_dir = options.data_dir.clone().unwrap_or_else(default_data_dir);
     if let Err(e) = std::fs::create_dir_all(&data_dir) {
         eprintln!("nectarlink: can't create {}: {e}", data_dir.display());
@@ -266,6 +298,7 @@ fn main() -> ExitCode {
     send_to::set_enabled(settings.send_to_menu);
     battery::set_enabled(settings.battery_alerts);
     storage::start();
+    webcam::init(&settings);
     // A test instance (own data folder) leaves the user's menu and sign-in
     // alone.
     if options.data_dir.is_none() {
@@ -321,6 +354,7 @@ fn main() -> ExitCode {
     tracing::info!(code, "shutting down");
     // QML first (it holds references into Qt), then the core.
     drop(engine);
+    webcam::shutdown();
     storage::shutdown();
     win::net::stop();
     core_host::shutdown();

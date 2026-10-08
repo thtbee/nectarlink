@@ -202,4 +202,9 @@ pub enum NodeEvent {
         device: DeviceId,
         path: String,
     },
+    /// A paired phone's webcam stream started or stopped arriving on this PC.
+    Webcam {
+        device: DeviceId,
+        on: bool,
+    },
 }

@@ -56,6 +56,7 @@ import app.nectarlink.android.ui.remote.RemoteMode
 import app.nectarlink.android.ui.remote.RemoteScreen
 import app.nectarlink.android.ui.settings.SettingsScreen
 import app.nectarlink.android.ui.theme.NectarlinkTheme
+import app.nectarlink.android.ui.webcam.WebcamScreen
 
 class MainActivity : ComponentActivity() {
     @Volatile
@@ -64,6 +65,10 @@ class MainActivity : ComponentActivity() {
     private var requestedRemoteMode by mutableStateOf(RemoteMode.Touchpad)
     private var requestedDeckPc by mutableStateOf<String?>(null)
     private var requestedRecordPc by mutableStateOf<String?>(null)
+    private var requestedWebcamPc by mutableStateOf<String?>(null)
+    private var requestedWebcamAutoStart by mutableStateOf(false)
+    private var requestedWebcamHeight by mutableStateOf<Int?>(null)
+    private var requestedWebcamCamera by mutableStateOf<String?>(null)
 
     private val permissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
@@ -89,6 +94,7 @@ class MainActivity : ComponentActivity() {
             handleRemoteIntent(intent)
             handleDeckIntent(intent)
             handleRecordIntent(intent)
+            handleWebcamIntent(intent)
         }
 
         setContent {
@@ -117,6 +123,16 @@ class MainActivity : ComponentActivity() {
                         onDeckConsumed = { requestedDeckPc = null },
                         requestedRecordPc = requestedRecordPc,
                         onRecordConsumed = { requestedRecordPc = null },
+                        requestedWebcamPc = requestedWebcamPc,
+                        requestedWebcamAutoStart = requestedWebcamAutoStart,
+                        requestedWebcamHeight = requestedWebcamHeight,
+                        requestedWebcamCamera = requestedWebcamCamera,
+                        onWebcamConsumed = {
+                            requestedWebcamPc = null
+                            requestedWebcamAutoStart = false
+                            requestedWebcamHeight = null
+                            requestedWebcamCamera = null
+                        },
                         onActiveRemoteChanged = { activeRemotePcId = it },
                     )
                 }
@@ -138,6 +154,7 @@ class MainActivity : ComponentActivity() {
         handleRemoteIntent(intent)
         handleDeckIntent(intent)
         handleRecordIntent(intent)
+        handleWebcamIntent(intent)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -193,6 +210,14 @@ class MainActivity : ComponentActivity() {
         requestedRecordPc = pc
     }
 
+    private fun handleWebcamIntent(intent: Intent?) {
+        val pc = intent?.getStringExtra("webcam_pc") ?: return
+        requestedWebcamAutoStart = intent.getBooleanExtra("webcam_auto_start", false)
+        requestedWebcamHeight = intent.getIntExtra("webcam_height", 0).takeIf { it > 0 }
+        requestedWebcamCamera = intent.getStringExtra("webcam_camera")
+        requestedWebcamPc = pc
+    }
+
     /**
      * A PC's pairing QR code opened from another app (e.g. the camera).
      * Each link holds a one-time secret, so a link is used once: Android
@@ -222,6 +247,11 @@ private fun App(
     onDeckConsumed: () -> Unit,
     requestedRecordPc: String?,
     onRecordConsumed: () -> Unit,
+    requestedWebcamPc: String?,
+    requestedWebcamAutoStart: Boolean,
+    requestedWebcamHeight: Int?,
+    requestedWebcamCamera: String?,
+    onWebcamConsumed: () -> Unit,
     onActiveRemoteChanged: (String?) -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
@@ -230,6 +260,10 @@ private fun App(
     var remoteInitialMode by rememberSaveable { mutableStateOf(RemoteMode.Touchpad) }
     var deckPcId by rememberSaveable { mutableStateOf<String?>(null) }
     var recordPcId by rememberSaveable { mutableStateOf<String?>(null) }
+    var webcamPcId by rememberSaveable { mutableStateOf<String?>(null) }
+    var webcamAutoStart by rememberSaveable { mutableStateOf(false) }
+    var webcamInitialHeight by rememberSaveable { mutableStateOf<Int?>(null) }
+    var webcamInitialCamera by rememberSaveable { mutableStateOf<String?>(null) }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(Unit) { core.messages.collect { snackbar.showSnackbar(it) } }
 
@@ -239,6 +273,7 @@ private fun App(
         if (target != null) {
             recordPcId = null
             deckPcId = null
+            webcamPcId = null
             remoteInitialMode = requestedRemoteMode
             remotePcId = target
             onRemoteConsumed()
@@ -251,6 +286,7 @@ private fun App(
         if (target != null) {
             remotePcId = null
             recordPcId = null
+            webcamPcId = null
             deckPcId = target
             onDeckConsumed()
         }
@@ -262,14 +298,31 @@ private fun App(
         if (target != null) {
             remotePcId = null
             deckPcId = null
+            webcamPcId = null
             recordPcId = target
             onRecordConsumed()
+        }
+    }
+
+    LaunchedEffect(requestedWebcamPc, state.devices) {
+        val req = requestedWebcamPc ?: return@LaunchedEffect
+        val target = if (req == "first") state.devices.firstOrNull()?.id else state.device(req)?.id
+        if (target != null) {
+            remotePcId = null
+            deckPcId = null
+            recordPcId = null
+            webcamAutoStart = requestedWebcamAutoStart
+            webcamInitialHeight = requestedWebcamHeight
+            webcamInitialCamera = requestedWebcamCamera
+            webcamPcId = target
+            onWebcamConsumed()
         }
     }
 
     val remoteDevice = remotePcId?.let { state.device(it) }
     val deckDevice = deckPcId?.let { state.device(it) }
     val recordDevice = recordPcId?.let { state.device(it) }
+    val webcamDevice = webcamPcId?.let { state.device(it) }
     LaunchedEffect(remoteDevice?.id) {
         onActiveRemoteChanged(remoteDevice?.id)
     }
@@ -294,6 +347,27 @@ private fun App(
         state.devices.isEmpty() || pairing || state.pairing != PairingState.Idle -> {
             BackHandler(enabled = pairing && state.devices.isNotEmpty()) { core.resetPairing(); pairing = false }
             PairingScreen(state, actions, cancellable = state.devices.isNotEmpty()) { pairing = false }
+        }
+        webcamDevice != null -> {
+            BackHandler { webcamPcId = null }
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackbar) },
+            ) { padding ->
+                WebcamScreen(
+                    device = webcamDevice,
+                    autoStart = webcamAutoStart,
+                    initialHeight = webcamInitialHeight,
+                    initialCamera = webcamInitialCamera,
+                    onAutoStartConsumed = {
+                        webcamAutoStart = false
+                        webcamInitialHeight = null
+                        webcamInitialCamera = null
+                    },
+                    onAccessChanged = core::refreshNotificationAccess,
+                    onBack = { webcamPcId = null },
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                )
+            }
         }
         recordDevice != null -> {
             BackHandler { recordPcId = null }
@@ -377,6 +451,10 @@ private fun App(
                     onRecord = { id ->
                         recordPcId = id
                     },
+                    onWebcam = { id ->
+                        webcamAutoStart = false
+                        webcamPcId = id
+                    },
                     updater = (LocalContext.current.applicationContext as NectarlinkApplication).updater,
                     onSendFiles = core::sendFiles,
                     onSendFolder = core::sendFolder,
@@ -384,6 +462,14 @@ private fun App(
                     onCancelTransfer = core::cancelTransfer,
                     onAllowStorage = { pcId -> core.setStorageEnabled(pcId, true) },
                     onDismissStorageRequest = core::dismissStorageRequest,
+                    onAcceptWebcamRequest = { req ->
+                        core.clearWebcamRequest(req.pcId)
+                        webcamInitialHeight = req.height
+                        webcamInitialCamera = req.camera
+                        webcamAutoStart = true
+                        webcamPcId = req.pcId
+                    },
+                    onDismissWebcamRequest = { core.clearWebcamRequest() },
                     modifier = modifier,
                 )
                 Tab.Settings -> SettingsScreen(

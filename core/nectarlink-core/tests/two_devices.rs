@@ -36,6 +36,8 @@ struct RecordingPlatform {
     mirror_asks: Mutex<Vec<String>>,
     /// What a PC got of a phone's screen.
     screen: Arc<ScreenSink>,
+    webcam_asks: Mutex<Vec<String>>,
+    webcam: Arc<TestWebcamSink>,
     /// Photos `open_photo` finds, by ID.
     photos: Mutex<std::collections::HashMap<String, std::path::PathBuf>>,
     /// Optional barrier `open_photo` waits on to simulate a slow platform call.
@@ -125,6 +127,27 @@ impl Platform for RecordingPlatform {
         input: nectarlink_core::MirrorInput,
     ) {
         self.mirror_asks.lock().unwrap().push(format!("{input:?} on {session}"));
+    }
+    fn webcam_sink(&self, _peer: &nectarlink_core::DeviceId) -> Option<Arc<dyn nectarlink_core::WebcamSink>> {
+        self.webcam_asks.lock().unwrap().push("sink".into());
+        Some(self.webcam.clone())
+    }
+    fn webcam_requested(
+        &self,
+        _peer: &nectarlink_core::DeviceId,
+        options: &nectarlink_core::WebcamStart,
+    ) -> Result<(), String> {
+        self.webcam_asks
+            .lock()
+            .unwrap()
+            .push(format!("start {} {}x{} @ {}", options.camera, options.width, options.height, options.fps));
+        Ok(())
+    }
+    fn webcam_stop_requested(&self, _peer: &nectarlink_core::DeviceId) {
+        self.webcam_asks.lock().unwrap().push("stop".into());
+    }
+    fn webcam_keyframe_requested(&self, _peer: &nectarlink_core::DeviceId) {
+        self.webcam_asks.lock().unwrap().push("keyframe".into());
     }
     fn phone_apps(&self) -> Result<Vec<nectarlink_core::PhoneApp>, String> {
         let app = |pkg: &str, label: &str, icon: usize| nectarlink_core::PhoneApp {
@@ -471,6 +494,30 @@ impl nectarlink_core::MirrorSink for ScreenSink {
     }
     fn audio_ended(&self) {
         self.got.lock().unwrap().push("sound ended".into());
+    }
+}
+
+#[derive(Debug, Default)]
+struct TestWebcamSink {
+    got: Mutex<Vec<String>>,
+}
+
+impl nectarlink_core::WebcamSink for TestWebcamSink {
+    fn config(&self, config: nectarlink_core::WebcamConfig) {
+        self.got
+            .lock()
+            .unwrap()
+            .push(format!("config {} {}x{} @ {}", config.camera, config.width, config.height, config.fps));
+    }
+    fn packet(&self, keyframe: bool, time_us: u64, data: Vec<u8>) {
+        self.got.lock().unwrap().push(format!(
+            "{} {time_us} {}",
+            if keyframe { "key" } else { "frame" },
+            data.len()
+        ));
+    }
+    fn ended(&self) {
+        self.got.lock().unwrap().push("ended".into());
     }
 }
 
@@ -2880,4 +2927,77 @@ async fn phone_storage_lists_reads_ranges_writes_resumes_mutates_and_enforces_se
             Err(Error::Denied | Error::NotFound)
         ));
     }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_phone_camera_streams_to_the_pc_as_a_webcam() {
+    use nectarlink_core::{MirrorSend, PacketKind};
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::WEBCAM_VIRTUAL]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::WEBCAM_STREAM]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    let options = nectarlink_core::WebcamStart {
+        camera: nectarlink_core::WEBCAM_CAMERA_BACK.into(),
+        width: 1920,
+        height: 1080,
+        fps: 30,
+        bitrate: 6_000_000,
+    };
+    with_timeout("webcam_start", pc.node.webcam_start(phone_id, options.clone())).await.unwrap();
+    assert_eq!(*phone.platform.webcam_asks.lock().unwrap(), ["start back 1920x1080 @ 30"]);
+
+    let stream = Arc::new(with_timeout("webcam_open", phone.node.webcam_open(pc_id)).await.unwrap());
+    let config = nectarlink_core::WebcamConfig {
+        codec: nectarlink_core::WEBCAM_H264.into(),
+        width: 1920,
+        height: 1080,
+        camera: nectarlink_core::WEBCAM_CAMERA_BACK.into(),
+        fps: 30,
+    };
+    let sender = stream.clone();
+    let sent = tokio::task::spawn_blocking(move || {
+        [
+            sender.send(PacketKind::Config, 0, config.to_cbor()),
+            sender.send(PacketKind::Keyframe, 1, vec![0; 48_000]),
+            sender.send(PacketKind::Frame, 33_333, vec![0; 3_200]),
+        ]
+    })
+    .await
+    .unwrap();
+    assert!(sent.iter().all(|s| *s == MirrorSend::Queued), "{sent:?}");
+    wait_for(&mut pc, "webcam on", |e| matches!(e, NodeEvent::Webcam { on: true, .. }).then_some(())).await;
+
+    let sink = pc.platform.webcam.clone();
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while sink.got.lock().unwrap().len() < 3 && tokio::time::Instant::now() < deadline {
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+    assert_eq!(*sink.got.lock().unwrap(), ["config back 1920x1080 @ 30", "key 1 48000", "frame 33333 3200"]);
+
+    pc.node.webcam_keyframe(phone_id).await;
+    pc.node.webcam_stop(phone_id).await;
+    wait_for(&mut pc, "webcam off", |e| matches!(e, NodeEvent::Webcam { on: false, .. }).then_some(())).await;
+
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while !stream.is_closed() && tokio::time::Instant::now() < deadline {
+        let s = stream.clone();
+        tokio::task::spawn_blocking(move || s.send(PacketKind::Frame, 0, vec![0])).await.unwrap();
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+    assert!(stream.is_closed(), "the phone's webcam stream closes");
+
+    for wanted in ["keyframe", "stop"] {
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while !phone.platform.webcam_asks.lock().unwrap().iter().any(|a| a == wanted) {
+            let asks = phone.platform.webcam_asks.lock().unwrap().clone();
+            assert!(std::time::Instant::now() < deadline, "{wanted}: {asks:?}");
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    }
+
+    // Turning off the webcam device toggle refuses new requests.
+    phone.node.set_device_toggle(pc_id, "webcam", false).unwrap();
+    let refused = pc.node.webcam_start(phone_id, options).await;
+    assert!(matches!(refused, Err(Error::Denied)), "{refused:?}");
 }

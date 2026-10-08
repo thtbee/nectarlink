@@ -86,6 +86,7 @@ fun HomeScreen(
     onRemote: (pcId: String) -> Unit,
     onDeck: (pcId: String) -> Unit,
     onRecord: (pcId: String) -> Unit,
+    onWebcam: (pcId: String) -> Unit = {},
     updater: AppUpdater,
     onSendFiles: (pcId: String, uris: List<Uri>) -> Unit,
     onSendFolder: (pcId: String, tree: Uri) -> Unit,
@@ -93,6 +94,8 @@ fun HomeScreen(
     onCancelTransfer: (id: String) -> Unit,
     onAllowStorage: (pcId: String) -> Unit = {},
     onDismissStorageRequest: () -> Unit = {},
+    onAcceptWebcamRequest: (app.nectarlink.android.webcam.WebcamRequest) -> Unit = {},
+    onDismissWebcamRequest: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -130,6 +133,35 @@ fun HomeScreen(
         }
         state.ringingFrom?.let { from ->
             item { RingingBanner(from, onStopRinging) }
+        }
+        state.webcamRequest?.let { req ->
+            item {
+                val pcName = state.nameOf(req.pcId) ?: stringResource(R.string.your_pc)
+                Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.secondaryContainer) {
+                    Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                        Text(
+                            stringResource(R.string.webcam_request_title, pcName),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            stringResource(R.string.webcam_request_text),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { onAcceptWebcamRequest(req) }) {
+                                Text(stringResource(R.string.webcam_start))
+                            }
+                            OutlinedButton(onClick = onDismissWebcamRequest) {
+                                Text(stringResource(R.string.action_not_now))
+                            }
+                        }
+                    }
+                }
+            }
         }
         state.storageRequestedFrom?.let { pcId ->
             item {
@@ -239,7 +271,7 @@ fun HomeScreen(
             }
         }
         items(state.devices, key = { it.id }) { device ->
-            PcCard(device, onRing, onSendFiles, onSendFolder, onPower, onWake, onRemote, onDeck, onRecord)
+            PcCard(device, onRing, onSendFiles, onSendFolder, onPower, onWake, onRemote, onDeck, onRecord, onWebcam)
         }
         if (state.transfers.isNotEmpty()) {
             item { TransfersCard(state, onCancelTransfer) }
@@ -287,6 +319,7 @@ private fun PcCard(
     onRemote: (String) -> Unit,
     onDeck: (String) -> Unit,
     onRecord: (String) -> Unit,
+    onWebcam: (String) -> Unit,
 ) {
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) onSendFiles(device.id, uris)
@@ -390,6 +423,12 @@ private fun PcCard(
                     onClick = { onRecord(device.id) },
                 ) {
                     Text(stringResource(R.string.action_record_pc))
+                }
+                FilledTonalButton(
+                    colors = tonal,
+                    onClick = { onWebcam(device.id) },
+                ) {
+                    Text(stringResource(R.string.action_webcam_pc))
                 }
                 FilledTonalButton(
                     enabled = device.online,

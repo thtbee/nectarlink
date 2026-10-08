@@ -429,47 +429,53 @@ pub(crate) async fn open(shared: &Arc<Shared>, session: &Session, audio: bool) -
     if !shared.toggle_on(&session.peer, TOGGLE) {
         return Err(Error::Denied);
     }
-    let (mut send, mut recv) = session.conn.open_bi().await.map_err(crate::error::net)?;
+    let (mut send, recv) = session.conn.open_bi().await.map_err(crate::error::net)?;
     let op = if audio { mirror::OP_AUDIO } else { mirror::OP_VIDEO };
     let header = StreamHeader { svc: mirror::SERVICE.into(), op: op.into(), v: mirror::VERSION };
     write_frame(&mut send, &Envelope::new(types::STREAM, &header)?.to_cbor()).await?;
-    // Sound and video go out as soon as they're written; sound first, as a
-    // gap in it is the more noticeable.
-    let _ = send.set_priority(if audio { 2 } else { 1 });
-    let (queue, mut packets) =
-        mpsc::channel::<(PacketKind, u64, Vec<u8>)>(if audio { AUDIO_QUEUE } else { QUEUE });
-    let closed = Arc::new(AtomicBool::new(false));
-    let done = closed.clone();
-    let stop = Arc::new(tokio::sync::Notify::new());
-    let stopped = stop.clone();
-    tokio::spawn(async move {
-        let mut ended = Box::pin(async move {
-            // The PC stops reading (STOP_SENDING) when it's done watching.
-            let _ = recv.read_to_end(64).await;
+    Ok(MirrorStream::spawn_stream(send, recv, audio))
+}
+
+impl MirrorStream {
+    pub(crate) fn spawn_stream(mut send: SendStream, mut recv: RecvStream, audio: bool) -> MirrorStream {
+        // Sound and video go out as soon as they're written; sound first, as a
+        // gap in it is the more noticeable.
+        let _ = send.set_priority(if audio { 2 } else { 1 });
+        let (queue, mut packets) =
+            mpsc::channel::<(PacketKind, u64, Vec<u8>)>(if audio { AUDIO_QUEUE } else { QUEUE });
+        let closed = Arc::new(AtomicBool::new(false));
+        let done = closed.clone();
+        let stop = Arc::new(tokio::sync::Notify::new());
+        let stopped = stop.clone();
+        tokio::spawn(async move {
+            let mut ended = Box::pin(async move {
+                // The PC stops reading (STOP_SENDING) when it's done watching.
+                let _ = recv.read_to_end(64).await;
+            });
+            loop {
+                let next = tokio::select! {
+                    _ = &mut ended => break,
+                    _ = stopped.notified() => break,
+                    next = packets.recv() => next,
+                };
+                let Some((kind, time, data)) = next else { break };
+                if done.load(Ordering::Acquire) {
+                    break;
+                }
+                let Ok(header) = video_packet_header(kind, time, data.len()) else { continue };
+                let written = async {
+                    send.write_all(&header).await?;
+                    send.write_all(&data).await
+                };
+                if written.await.is_err() {
+                    break;
+                }
+            }
+            done.store(true, Ordering::Release);
+            let _ = send.finish();
         });
-        loop {
-            let next = tokio::select! {
-                _ = &mut ended => break,
-                _ = stopped.notified() => break,
-                next = packets.recv() => next,
-            };
-            let Some((kind, time, data)) = next else { break };
-            if done.load(Ordering::Acquire) {
-                break;
-            }
-            let Ok(header) = video_packet_header(kind, time, data.len()) else { continue };
-            let written = async {
-                send.write_all(&header).await?;
-                send.write_all(&data).await
-            };
-            if written.await.is_err() {
-                break;
-            }
-        }
-        done.store(true, Ordering::Release);
-        let _ = send.finish();
-    });
-    Ok(MirrorStream { queue, closed, stop, resyncing: Mutex::new(false), audio })
+        MirrorStream { queue, closed, stop, resyncing: Mutex::new(false), audio }
+    }
 }
 
 impl Shared {

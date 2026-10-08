@@ -61,7 +61,7 @@ capability is missing.
 | `toggles.bluetooth` | Turns Bluetooth on or off ([toggles](toggles.md)) | Elevated |
 | `storage.read` | Lists folders and reads files in shared storage or picked SAF folders ([storage](storage.md)) | All files access or picked SAF folder |
 | `storage.write` | Creates folders, writes/uploads files, renames and deletes entries in shared storage or picked SAF folders ([storage](storage.md)) | All files access or picked SAF folder |
-| `camera.stream` | Streams a camera for webcam use | camera permission |
+| `camera.stream` | Streams a camera for webcam use ([webcam](webcam.md)) | camera permission |
 
 ## Desktop
 
@@ -81,4 +81,5 @@ capability is missing.
 | `input.inject` | Accepts pointer, keyboard and presentation input ([remote input](remote.md)) | app update |
 | `recorder` | Saves and converts voice recordings from a phone ([recorder](recorder.md)) | app update |
 | `deck.actions` | Shares its Deck layout and live tile state and runs Deck actions ([deck](deck.md)) | app update |
-| `addon.vcam` | The virtual camera add-on is installed | installing the add-on |
+| `camera.virtual` | Receives and decodes a phone's camera stream ([webcam](webcam.md)) | app update |
+| `addon.vcam` | The virtual camera add-on is installed ([webcam](webcam.md)) | installing the add-on |

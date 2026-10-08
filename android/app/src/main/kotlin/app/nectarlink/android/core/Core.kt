@@ -32,6 +32,8 @@ import app.nectarlink.android.service.ConnectionService
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.storage.PhoneStorage
 import app.nectarlink.android.toggles.PhoneToggles
+import app.nectarlink.android.webcam.WebcamRequests
+import app.nectarlink.android.webcam.WebcamService
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
 import app.nectarlink.core.FileToSend
@@ -87,6 +89,17 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         storage = { storage },
         onMirror = { pc, request ->
             MirrorRequests.show(this.context, request, _state.value.nameOf(pc).orEmpty())
+        },
+        onWebcam = { pc, request ->
+            val session = WebcamService.session.value
+            if (session.active && session.pcId == pc && WebcamService.hasPermission(this.context)) {
+                WebcamService.start(this.context, pc, request.height, request.fps, request.camera)
+                true
+            } else {
+                _state.update { it.copy(webcamRequest = request) }
+                WebcamRequests.show(this.context, request, _state.value.nameOf(pc).orEmpty())
+                true
+            }
         },
         appWindows = AppWindows(this.context, scope, open = { pc -> mirrorOpen(pc) }, nameOf = { pc -> _state.value.nameOf(pc).orEmpty() }),
     )
@@ -495,6 +508,30 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         return node.mirrorOpenAudio(pcId)
     }
 
+    /** Opens this phone's camera stream to a PC (`webcam`), or emits a message on failure. */
+    suspend fun webcamOpenOrMessage(pcId: String): MirrorStream? {
+        startJob?.join()
+        val node = node ?: return null
+        return try {
+            node.webcamOpen(pcId)
+        } catch (e: NectarlinkException) {
+            val name = _state.value.nameOf(pcId).orEmpty()
+            val msg = when (e) {
+                is NectarlinkException.Denied -> context.getString(R.string.webcam_denied_text, name)
+                else -> describe(e)
+            }
+            _messages.tryEmit(msg)
+            null
+        }
+    }
+
+    fun clearWebcamRequest(pcId: String? = null) {
+        if (pcId != null) WebcamRequests.dismiss(context, pcId)
+        _state.update { s ->
+            if (pcId == null || s.webcamRequest?.pcId == pcId) s.copy(webcamRequest = null) else s
+        }
+    }
+
     /**
      * Sends picked or shared files to a PC; problems arrive as messages.
      * The files are opened right away: Android's permission to read a
@@ -603,6 +640,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
             PhoneStorage.capabilities(context) +
+            (if (WebcamService.hasPermission(context)) listOf("webcam.h264") else emptyList()) +
             (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList()) +
             // Apps in windows of their own run on displays the Elevated helper makes.
             (if (Elevated.running && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) listOf("mirror.virtual_display") else emptyList()) +

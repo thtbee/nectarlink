@@ -128,6 +128,8 @@ pub(crate) struct Shared {
     pub(crate) deck: crate::deck::Current,
     /// Stop signals for phone screens shown here, by phone.
     pub(crate) mirror_stops: Mutex<HashMap<MirrorStop, Arc<tokio::sync::Notify>>>,
+    /// Stop signals for phone webcam streams arriving here, by phone.
+    pub(crate) webcam_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
     /// Per-peer rate limiters and prompt state for remote input.
     pub(crate) remote: Mutex<crate::remote::RemoteState>,
     /// Per-peer prompt state and open folders for the storage service.
@@ -320,6 +322,7 @@ impl Shared {
         lock(&self.storage).remove_peer(peer);
         self.toggles.remove_peer(peer);
         self.deck.remove_peer(peer);
+        self.stop_webcam(peer);
         if existed {
             self.emit(NodeEvent::DeviceRemoved(*peer));
         }
@@ -654,6 +657,7 @@ impl Node {
             wake_info: Default::default(),
             deck: Default::default(),
             mirror_stops: Mutex::new(HashMap::new()),
+            webcam_stops: Mutex::new(HashMap::new()),
             remote: Mutex::new(Default::default()),
             storage: Mutex::new(Default::default()),
             data_dir: config.data_dir.clone(),
@@ -902,6 +906,16 @@ impl Node {
                 st.remove_peer(&peer);
             }
         }
+        if toggle == crate::webcam::TOGGLE && !enabled {
+            self.shared.stop_webcam(&peer);
+            let platform = self.shared.platform.clone();
+            drop(self.shared.runtime.spawn_blocking(move || platform.webcam_stop_requested(&peer)));
+            if let Some(session) = self.shared.session(&peer) {
+                self.shared.runtime.spawn(async move {
+                    let _ = crate::webcam::stop(&session).await;
+                });
+            }
+        }
         Ok(())
     }
 
@@ -1103,6 +1117,36 @@ impl Node {
     pub async fn mirror_open_audio(&self, peer: DeviceId) -> Result<crate::MirrorStream> {
         let session = self.connected(&peer)?;
         crate::mirror::open(&self.shared, &session, true).await
+    }
+
+    // ---- Webcam (docs/protocol/webcam.md) ----
+
+    /// Asks a paired phone to start streaming its camera as a webcam.
+    /// Video then arrives through [`Platform::webcam_sink`](crate::Platform::webcam_sink).
+    pub async fn webcam_start(&self, peer: DeviceId, options: crate::WebcamStart) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::webcam::start(&self.shared, &session, options).await
+    }
+
+    /// Stops a webcam stream with `peer` (either direction) and tells `peer`.
+    pub async fn webcam_stop(&self, peer: DeviceId) {
+        self.shared.stop_webcam(&peer);
+        if let Ok(session) = self.connected(&peer) {
+            let _ = crate::webcam::stop(&session).await;
+        }
+    }
+
+    /// Asks a phone for a fresh H.264 keyframe on the webcam stream.
+    pub async fn webcam_keyframe(&self, peer: DeviceId) {
+        if let Ok(session) = self.connected(&peer) {
+            crate::webcam::request_keyframe(&session).await;
+        }
+    }
+
+    /// Opens this phone's camera stream to a paired PC.
+    pub async fn webcam_open(&self, peer: DeviceId) -> Result<crate::MirrorStream> {
+        let session = self.connected(&peer)?;
+        crate::webcam::open(&self.shared, &session).await
     }
 
     // ---- Messages (docs/protocol/sms.md) ----

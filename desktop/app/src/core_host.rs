@@ -111,7 +111,11 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         nectarlink_core::RECORDER.into(),
         nectarlink_core::TOGGLES_SHOW.into(),
         nectarlink_core::STORAGE_MOUNT.into(),
+        nectarlink_core::WEBCAM_VIRTUAL.into(),
     ];
+    if crate::win::vcam::is_registered() {
+        config.capabilities.push(nectarlink_core::WEBCAM_ADDON_VCAM.into());
+    }
     let node = match Node::start(config, platform).await {
         Ok(node) => node,
         Err(e) => {
@@ -173,6 +177,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 crate::send_to::on_event(&event);
                 crate::battery::on_event(&event);
                 crate::storage::on_event(&event);
+                crate::webcam::on_event(&event);
             }
             Err(RecvError::Lagged(missed)) => {
                 // Resynchronize what can be re-read; transient events are lost.

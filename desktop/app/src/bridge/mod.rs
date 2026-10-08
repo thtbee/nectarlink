@@ -33,6 +33,8 @@ pub mod photos;
 pub mod prefs;
 #[allow(unsafe_code)]
 pub mod transfers;
+#[allow(unsafe_code)]
+pub mod webcam;
 
 use std::{
     pin::Pin,

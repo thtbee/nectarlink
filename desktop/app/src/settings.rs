@@ -89,6 +89,13 @@ pub struct Settings {
     pub recordings_folder: Option<PathBuf>,
     /// Output format for saved voice recordings (`m4a`, `mp3`, `wav`, or `flac`).
     pub recordings_format: RecordingFormat,
+    /// Preferred phone for the webcam feature (`None` = first paired phone).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub webcam_phone: Option<String>,
+    /// Webcam output resolution height (`720` or `1080`).
+    pub webcam_height: u32,
+    /// Horizontally mirror the webcam video.
+    pub webcam_mirror: bool,
 }
 
 impl Default for Settings {
@@ -106,6 +113,9 @@ impl Default for Settings {
             start_with_windows: None,
             recordings_folder: None,
             recordings_format: RecordingFormat::default(),
+            webcam_phone: None,
+            webcam_height: 720,
+            webcam_mirror: false,
         }
     }
 }
@@ -172,6 +182,9 @@ mod tests {
             start_with_windows: Some(true),
             recordings_folder: Some(PathBuf::from(r"C:\Recordings")),
             recordings_format: RecordingFormat::Flac,
+            webcam_phone: Some("0101".repeat(16)),
+            webcam_height: 1080,
+            webcam_mirror: true,
         };
         settings.save(dir.path()).unwrap();
         assert_eq!(Settings::load(dir.path()), settings);
