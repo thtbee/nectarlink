@@ -103,6 +103,8 @@ pub mod qobject {
         #[qinvokable]
         fn send(self: &TransferList, device: &QString, urls: &QStringList);
         #[qinvokable]
+        fn accept(self: &TransferList, id: &QString);
+        #[qinvokable]
         fn cancel(self: &TransferList, id: &QString);
         /// Opens what a finished incoming transfer saved (its first file).
         #[qinvokable]
@@ -171,6 +173,7 @@ fn role_value(row: &Row, role: &str) -> QVariant {
         "progress" => QVariant::from(&if t.total == 0 { 1.0 } else { t.done as f64 / t.total as f64 }),
         "rate" => QVariant::from(&row.view.rate),
         "status" => text(match t.state {
+            TransferState::Requested => "requested",
             TransferState::Waiting => "waiting",
             TransferState::Running => "running",
             TransferState::Done { .. } => "done",
@@ -199,18 +202,31 @@ fn saved_path(row: &Row) -> Option<PathBuf> {
 
 impl cxx_qt::Initialize for qobject::TransferList {
     fn initialize(self: Pin<&mut Self>) {
-        super::subscribe(self.qt_thread(), Changes::TRANSFERS | Changes::DEVICES, Self::refresh);
+        super::subscribe(
+            self.qt_thread(),
+            Changes::TRANSFERS | Changes::DEVICES | Changes::LOCALSEND,
+            Self::refresh,
+        );
     }
 }
 
 impl qobject::TransferList {
     fn refresh(mut self: Pin<&mut Self>) {
+        let localsend_peers = core_host::node().map(|n| n.localsend_peers()).unwrap_or_default();
         let new: Vec<Row> = core_host::host().hub.read(|s| {
             s.transfers
                 .iter()
-                .map(|view| Row {
-                    device_name: s.name_of(&view.transfer.device).unwrap_or_default(),
-                    view: view.clone(),
+                .map(|view| {
+                    let device_name = s
+                        .name_of(&view.transfer.device)
+                        .or_else(|| {
+                            localsend_peers
+                                .iter()
+                                .find(|p| p.id == view.transfer.device)
+                                .map(|p| p.alias.clone())
+                        })
+                        .unwrap_or_default();
+                    Row { device_name, view: view.clone() }
                 })
                 .collect()
         });
@@ -278,6 +294,10 @@ impl qobject::TransferList {
             .map(PathBuf::from)
             .collect();
         transfers::send(device, paths);
+    }
+
+    pub fn accept(&self, id: &QString) {
+        transfers::accept(&String::from(id));
     }
 
     pub fn cancel(&self, id: &QString) {

@@ -37,6 +37,30 @@ pub mod qobject {
         /// A number pre-filled in the new-message box ("" for none).
         #[qproperty(QString, compose_to, cxx_name = "composeTo")]
         #[qproperty(QString, compose_name, cxx_name = "composeName")]
+        /// Active app filter ("" = All, "sms" = SMS only, or package name).
+        #[qproperty(QString, app_filter, cxx_name = "appFilter")]
+        /// Filter chips JSON array (`[{ key, label }, ...]`).
+        #[qproperty(QString, available_apps, cxx_name = "availableApps")]
+        /// True when at least one MessagingStyle chat thread exists for this phone.
+        #[qproperty(bool, has_chat_threads, cxx_name = "hasChatThreads")]
+        /// True when the open conversation is a MessagingStyle chat thread (`chat:...`).
+        #[qproperty(bool, current_is_chat, cxx_name = "currentIsChat")]
+        /// Display name of the open conversation's app ("SMS", "WhatsApp", etc.).
+        #[qproperty(QString, current_app_name, cxx_name = "currentAppName")]
+        /// True when the open conversation supports sending/replying right now.
+        #[qproperty(bool, current_can_reply, cxx_name = "currentCanReply")]
+        /// True when the open conversation is a group thread.
+        #[qproperty(bool, current_is_group, cxx_name = "currentIsGroup")]
+        /// True when an image is staged in the composer for MMS.
+        #[qproperty(bool, has_attachment, cxx_name = "hasAttachment")]
+        /// File URL (`file:///...`) for previewing the staged attachment.
+        #[qproperty(QString, attachment_preview, cxx_name = "attachmentPreview")]
+        /// File name of the staged attachment.
+        #[qproperty(QString, attachment_name, cxx_name = "attachmentName")]
+        /// Human-readable size of the staged attachment (e.g. "245 KB").
+        #[qproperty(QString, attachment_size, cxx_name = "attachmentSize")]
+        /// Non-empty when the staged attachment exceeds the 900 KB MMS limit or is invalid.
+        #[qproperty(QString, attachment_error, cxx_name = "attachmentError")]
         type Messages = super::MessagesRust;
     }
 
@@ -60,10 +84,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "loadOlder"]
         fn load_older(self: &Messages);
-        /// Sends a text in the open conversation.
+        /// Sends a text or inline chat reply in the open conversation.
         #[qinvokable]
         fn send(self: &Messages, body: &QString);
-        /// Sends a text to a number, starting a conversation.
+        /// Sends a text (and optional staged MMS attachment) to a number, starting a conversation.
         #[qinvokable]
         #[cxx_name = "sendTo"]
         fn send_to(self: &Messages, to: &QString, body: &QString);
@@ -73,6 +97,26 @@ pub mod qobject {
         /// Puts text on this PC's clipboard (it isn't sent back to the phone).
         #[qinvokable]
         fn copy(self: &Messages, text: &QString);
+        /// Filters the conversation list by app (`""` = All, `"sms"` = SMS, or package name).
+        #[qinvokable]
+        #[cxx_name = "filterByApp"]
+        fn filter_by_app(self: &Messages, app: &QString);
+        /// Deletes a persisted MessagingStyle chat conversation locally.
+        #[qinvokable]
+        #[cxx_name = "deleteChatThread"]
+        fn delete_chat_thread(self: &Messages, thread: &QString);
+        /// Stages an image file (from drag-and-drop or file picker) as an MMS attachment.
+        #[qinvokable]
+        #[cxx_name = "attachFile"]
+        fn attach_file(self: &Messages, path_or_url: &QString) -> bool;
+        /// Stages an image from the PC clipboard (`Ctrl+V`) as an MMS attachment.
+        #[qinvokable]
+        #[cxx_name = "pasteClipboardImage"]
+        fn paste_clipboard_image(self: &Messages) -> bool;
+        /// Clears any staged MMS image attachment.
+        #[qinvokable]
+        #[cxx_name = "clearAttachment"]
+        fn clear_attachment(self: &Messages);
     }
 }
 
@@ -88,6 +132,18 @@ pub struct MessagesRust {
     sending: bool,
     compose_to: QString,
     compose_name: QString,
+    app_filter: QString,
+    available_apps: QString,
+    has_chat_threads: bool,
+    current_is_chat: bool,
+    current_app_name: QString,
+    current_can_reply: bool,
+    current_is_group: bool,
+    has_attachment: bool,
+    attachment_preview: QString,
+    attachment_name: QString,
+    attachment_size: QString,
+    attachment_error: QString,
     /// What was last shown, to skip refreshes that change nothing.
     last: Option<messages::View>,
 }
@@ -97,6 +153,7 @@ impl cxx_qt::Initialize for qobject::Messages {
         self.as_mut().set_status(QString::from("idle"));
         self.as_mut().set_threads(QString::from("[]"));
         self.as_mut().set_messages(QString::from("[]"));
+        self.as_mut().set_available_apps(QString::from("[]"));
         super::subscribe(self.qt_thread(), Changes::MESSAGES, Self::update_view);
         self.update_view();
     }
@@ -124,6 +181,20 @@ impl qobject::Messages {
         self.as_mut().set_sending(view.sending);
         self.as_mut().set_compose_to(QString::from(view.compose_to.as_deref().unwrap_or_default()));
         self.as_mut().set_compose_name(QString::from(view.compose_name.as_deref().unwrap_or_default()));
+        self.as_mut().set_app_filter(QString::from(&view.app_filter));
+        if differs(|v| v.available_apps.to_string()) {
+            self.as_mut().set_available_apps(QString::from(&view.available_apps.to_string()));
+        }
+        self.as_mut().set_has_chat_threads(view.has_chat_threads);
+        self.as_mut().set_current_is_chat(view.current_is_chat);
+        self.as_mut().set_current_app_name(QString::from(&view.current_app_name));
+        self.as_mut().set_current_can_reply(view.current_can_reply);
+        self.as_mut().set_current_is_group(view.current_is_group);
+        self.as_mut().set_has_attachment(view.has_attachment);
+        self.as_mut().set_attachment_preview(QString::from(&view.attachment_preview));
+        self.as_mut().set_attachment_name(QString::from(&view.attachment_name));
+        self.as_mut().set_attachment_size(QString::from(&view.attachment_size));
+        self.as_mut().set_attachment_error(QString::from(&view.attachment_error));
         self.as_mut().rust_mut().last = Some(view);
     }
 
@@ -152,10 +223,7 @@ impl qobject::Messages {
     }
 
     pub fn send(&self, body: &QString) {
-        let body = String::from(body);
-        if !body.trim().is_empty() {
-            messages::send(body);
-        }
+        messages::send(String::from(body));
     }
 
     pub fn refresh(&self) {
@@ -172,8 +240,28 @@ impl qobject::Messages {
         let (to, body) = (String::from(to), String::from(body));
         let to: Vec<String> =
             to.split([',', ';']).map(str::trim).filter(|t| !t.is_empty()).map(Into::into).collect();
-        if !to.is_empty() && !body.trim().is_empty() {
+        if !to.is_empty() {
             messages::send_to(to, body);
         }
+    }
+
+    pub fn filter_by_app(&self, app: &QString) {
+        messages::set_app_filter(String::from(app));
+    }
+
+    pub fn delete_chat_thread(&self, thread: &QString) {
+        messages::delete_chat_thread(String::from(thread));
+    }
+
+    pub fn attach_file(&self, path_or_url: &QString) -> bool {
+        messages::attach_file(String::from(path_or_url))
+    }
+
+    pub fn paste_clipboard_image(&self) -> bool {
+        messages::paste_clipboard_image()
+    }
+
+    pub fn clear_attachment(&self) {
+        messages::clear_attachment();
     }
 }

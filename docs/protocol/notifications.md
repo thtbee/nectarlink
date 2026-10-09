@@ -36,8 +36,9 @@ Notification = {
   actions:  [Action],    // In display order, at most 5
   silent:   bool,        // Arrived without sound or pop-up on the phone; don't alert either
   icon:     bytes?,      // The app's icon, PNG, at most 64 KiB (see §2.1)
-  image:    bytes?,      // The picture it shows (a photo in a message, a big picture), JPEG, at most 160 KiB
-  live:     Live?,       // Ongoing progress, timer, or Android 16 Live Update metadata (see §2.2)
+  image:        bytes?,          // The picture it shows (a photo in a message, a big picture), JPEG, at most 160 KiB
+  live:         Live?,           // Ongoing progress, timer, or Android 16 Live Update metadata (see §2.2)
+  conversation: Conversation?,   // Notification.MessagingStyle conversation metadata (see §2.3)
 }
 
 Action = {
@@ -75,7 +76,7 @@ Live = {
   progress:      uint?,        // Current progress, 0..=max
   max:           uint?,        // Maximum progress (> 0 when determinate)
   indeterminate: bool?,        // True when progress is indeterminate
-  chip:          text?,        // Short status pill text (Notification.getShortCriticalText), at most 16 chars
+  chip:          text?,        // Short status pill text (Notification.getShortCriticalText), at most 32 chars
   segments:      [Segment]?,   // Android 16 ProgressStyle segments, at most 16
   points:        [Point]?,     // Android 16 ProgressStyle milestone points, at most 16
   chronometer:   bool?,        // Live elapsed or countdown timer relative to Notification.when
@@ -98,6 +99,36 @@ one update per second while always delivering the final update (`progress >= max
 or `notify.removed`). Receivers pin live notifications above regular
 notifications in the feed and update both the feed card and the native toast in
 place without re-alerting.
+
+### 2.3 Conversation notifications (`conversation`)
+
+Chat notifications built with `Notification.MessagingStyle` (RCS, WhatsApp,
+Telegram, Signal, and other messaging apps) carry an optional `conversation`
+map so the PC can present them in a unified Messages inbox alongside SMS:
+
+```
+Conversation = {
+  v:        uint,            // Schema version (currently 1)
+  title:    text,            // Group title or 1:1 contact name, at most 256 chars
+  group:    bool?,           // True when MessagingStyle.isGroupConversation is true
+  avatar:   bytes?,          // Conversation or contact avatar (JPEG/PNG), at most 16 KiB
+  messages: [ChatMessage],   // Chronological (oldest first), at most 25
+}
+
+ChatMessage = {
+  sender:    text?,          // Display name (omitted when self_sent is true), at most 128 chars
+  text:      text,           // Message body, at most 4,096 chars
+  time:      int,            // Unix milliseconds
+  self_sent: bool?,          // True when sent by the phone's user
+  avatar:    bytes?,         // Optional sender avatar (JPEG/PNG), at most 16 KiB
+}
+```
+
+To avoid duplicating SMS threads that the SMS provider already supplies, a
+phone with `sms.read` omits `conversation` when a notification from the default
+SMS app matches a message already present in the system SMS/MMS provider.
+Replies from the unified inbox use `notify.action` (§4) with the notification's
+`reply: true` action (`RemoteInput`).
 
 ## 3. Events (phone → PC)
 

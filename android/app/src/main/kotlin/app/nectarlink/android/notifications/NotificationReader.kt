@@ -10,6 +10,7 @@ import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
+import android.provider.Telephony
 import android.service.notification.NotificationListenerService.Ranking
 import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
@@ -18,10 +19,13 @@ import androidx.core.app.NotificationCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.scale
 import java.io.ByteArrayOutputStream
+import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.core.LivePoint
 import app.nectarlink.core.LiveSegment
 import app.nectarlink.core.Notification as Mirrored
 import app.nectarlink.core.NotificationAction as MirroredAction
+import app.nectarlink.core.NotificationChatMessage
+import app.nectarlink.core.NotificationConversation
 import app.nectarlink.core.NotificationLive
 
 /**
@@ -44,6 +48,7 @@ internal class NotificationReader(private val context: Context) {
         val silent = isSilent(sbn, ranking) ||
             (update && (n.flags and Notification.FLAG_ONLY_ALERT_ONCE != 0 || live != null))
         val whenMs = if (live?.chronometer == true && n.`when` > 0L) n.`when` else sbn.postTime
+        val conversation = extractConversation(sbn, n, content.title)
         return Mirrored(
             key = sbn.key,
             app = sbn.packageName,
@@ -57,6 +62,7 @@ internal class NotificationReader(private val context: Context) {
             icon = icon(sbn.packageName),
             image = image(sbn.key, n),
             live = live,
+            conversation = conversation,
         )
     }
 
@@ -273,9 +279,108 @@ internal class NotificationReader(private val context: Context) {
         }
     }.getOrNull()?.takeIf { it.size <= MAX_ICON_BYTES }?.also { icons.put(pkg, it) }
 
+    /**
+     * Extracts `Notification.MessagingStyle` conversation metadata so chat apps
+     * (RCS, WhatsApp, Telegram, Signal, etc.) can be shown in the unified
+     * Messages inbox alongside SMS. Omits `conversation` when the notification
+     * comes from the default SMS app and the message is already in the system
+     * SMS provider.
+     */
+    private fun extractConversation(
+        sbn: StatusBarNotification,
+        n: Notification,
+        fallbackTitle: String?,
+    ): NotificationConversation? = runCatching {
+        val style = NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(n) ?: return null
+        val isGroup = style.isGroupConversation
+        val userName = style.user.name?.toString()?.trim()
+        val userKey = style.user.key
+        val personAvatars = HashMap<String, ByteArray?>()
+
+        val rawMessages = style.messages.mapNotNull { m ->
+            val text = m.text?.toString()?.trim().orEmpty()
+            if (text.isEmpty()) return@mapNotNull null
+            val person = m.person
+            val selfSent = person == null ||
+                (userKey != null && person.key == userKey) ||
+                (!userName.isNullOrEmpty() && person.name?.toString()?.trim() == userName)
+            val sender = if (selfSent) {
+                null
+            } else {
+                person.name?.toString()?.trim()?.takeIf { it.isNotEmpty() }?.take(MAX_SENDER_CHARS)
+            }
+            val time = if (m.timestamp > 0L) m.timestamp else sbn.postTime
+            val avatar = if (selfSent || person.icon == null) {
+                null
+            } else {
+                val cacheKey = person.key ?: person.name?.toString().orEmpty()
+                personAvatars.getOrPut(cacheKey) {
+                    runCatching { avatarFromIcon(person.icon?.toIcon(context)) }.getOrNull()
+                }
+            }
+            NotificationChatMessage(
+                sender = sender,
+                text = text,
+                time = time,
+                selfSent = selfSent,
+                avatar = avatar,
+            )
+        }.takeLast(MAX_CONVERSATION_MESSAGES)
+
+        if (rawMessages.isEmpty()) return null
+
+        val defaultSmsPkg = runCatching { Telephony.Sms.getDefaultSmsPackage(context) }.getOrNull()
+        if (defaultSmsPkg != null && sbn.packageName == defaultSmsPkg && PhoneSms.canRead(context)) {
+            val latest = rawMessages.last()
+            if (PhoneSms.isRecentSmsInProvider(context, latest.text, latest.time)) {
+                return null
+            }
+        }
+
+        val convAvatar = avatarFromIcon(n.getLargeIcon())
+            ?: rawMessages.lastOrNull { !it.selfSent && it.avatar != null }?.avatar
+
+        buildConversation(
+            styleTitle = style.conversationTitle?.toString(),
+            fallbackTitle = fallbackTitle,
+            isGroup = isGroup,
+            convAvatar = convAvatar,
+            messages = rawMessages,
+        )
+    }.getOrNull()
+
+    /** Scales and compresses a notification or person `Icon` to a `<= 16 KiB` JPEG. */
+    private fun avatarFromIcon(icon: Icon?): ByteArray? = runCatching {
+        if (icon == null) return null
+        val drawable = icon.loadDrawable(context) ?: return null
+        val w = drawable.intrinsicWidth.takeIf { it > 0 } ?: AVATAR_PX
+        val h = drawable.intrinsicHeight.takeIf { it > 0 } ?: AVATAR_PX
+        val scale = minOf(1f, AVATAR_PX.toFloat() / maxOf(w, h))
+        val targetW = (w * scale).toInt().coerceAtLeast(1)
+        val targetH = (h * scale).toInt().coerceAtLeast(1)
+        val bitmap = drawable.toBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
+        try {
+            for (quality in intArrayOf(80, 65, 50)) {
+                val bytes = ByteArrayOutputStream().use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
+                    out.toByteArray()
+                }
+                if (bytes.isNotEmpty() && bytes.size <= MAX_AVATAR_BYTES) return bytes
+            }
+            null
+        } finally {
+            bitmap.recycle()
+        }
+    }.getOrNull()
+
     internal companion object {
         const val ICON_PX = 96
         const val MAX_ICON_BYTES = 64 * 1024
+        const val AVATAR_PX = 96
+        const val MAX_AVATAR_BYTES = 16 * 1024
+        const val MAX_CONVERSATION_MESSAGES = 25
+        const val MAX_SENDER_CHARS = 128
+        const val MAX_TITLE_CHARS = 256
         /** Pictures' longest side, and the fallback for large ones. */
         const val IMAGE_PX = 512
         const val SMALL_IMAGE_PX = 360
@@ -283,6 +388,45 @@ internal class NotificationReader(private val context: Context) {
         const val MAX_CHIP_CHARS = 16
         const val MAX_SEGMENTS = 16
         const val MAX_POINTS = 16
+
+        internal fun buildConversation(
+            styleTitle: String?,
+            fallbackTitle: String?,
+            isGroup: Boolean,
+            convAvatar: ByteArray?,
+            messages: List<NotificationChatMessage>,
+        ): NotificationConversation? {
+            val cleanMessages = messages
+                .filter { it.text.isNotBlank() }
+                .takeLast(MAX_CONVERSATION_MESSAGES)
+                .map { msg ->
+                    val cleanSender = if (msg.selfSent) {
+                        null
+                    } else {
+                        msg.sender?.trim()?.takeIf { it.isNotEmpty() }?.take(MAX_SENDER_CHARS)
+                    }
+                    val cleanAvatar = msg.avatar?.takeIf { it.isNotEmpty() && it.size <= MAX_AVATAR_BYTES }
+                    msg.copy(
+                        sender = cleanSender,
+                        text = msg.text.trim(),
+                        avatar = cleanAvatar,
+                    )
+                }
+            if (cleanMessages.isEmpty()) return null
+            val trimmedStyleTitle = styleTitle?.trim()?.takeIf { it.isNotEmpty() }
+            val latestNonSelfSender = cleanMessages.lastOrNull { !it.selfSent && !it.sender.isNullOrEmpty() }?.sender
+            val trimmedFallback = fallbackTitle?.trim()?.takeIf { it.isNotEmpty() }
+            val title = (if (isGroup) trimmedStyleTitle ?: latestNonSelfSender else latestNonSelfSender ?: trimmedStyleTitle)
+                ?: trimmedFallback
+                ?: return null
+            return NotificationConversation(
+                v = 1u,
+                title = title.take(MAX_TITLE_CHARS),
+                group = isGroup,
+                avatar = convAvatar?.takeIf { it.isNotEmpty() && it.size <= MAX_AVATAR_BYTES },
+                messages = cleanMessages,
+            )
+        }
 
         internal fun buildLive(
             progress: Int,

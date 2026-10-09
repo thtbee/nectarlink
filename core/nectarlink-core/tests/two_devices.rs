@@ -20,6 +20,8 @@ use tokio::sync::broadcast::Receiver;
 
 const WAIT: Duration = Duration::from_secs(20);
 
+type MmsRecord = (Vec<String>, String, Vec<nectarlink_core::SmsAttachment>);
+
 #[derive(Debug, Default)]
 struct RecordingPlatform {
     rings: Mutex<Vec<bool>>,
@@ -33,11 +35,13 @@ struct RecordingPlatform {
     calls: Mutex<Vec<(String, nectarlink_core::CallCommand)>>,
     dialed: Mutex<Vec<String>>,
     texts: Mutex<Vec<(Vec<String>, String)>>,
+    mms_sent: Mutex<Vec<MmsRecord>>,
     mirror_asks: Mutex<Vec<String>>,
     /// What a PC got of a phone's screen.
     screen: Arc<ScreenSink>,
     webcam_asks: Mutex<Vec<String>>,
     webcam: Arc<TestWebcamSink>,
+    camera_asks: Mutex<Vec<String>>,
     /// Photos `open_photo` finds, by ID.
     photos: Mutex<std::collections::HashMap<String, std::path::PathBuf>>,
     /// Optional barrier `open_photo` waits on to simulate a slow platform call.
@@ -159,6 +163,17 @@ impl Platform for RecordingPlatform {
     fn webcam_keyframe_requested(&self, _peer: &nectarlink_core::DeviceId) {
         self.webcam_asks.lock().unwrap().push("keyframe".into());
     }
+    fn camera_capture_requested(
+        &self,
+        _peer: &nectarlink_core::DeviceId,
+        request: &nectarlink_core::CameraCaptureRequest,
+    ) -> Result<(), String> {
+        self.camera_asks.lock().unwrap().push(format!("request {} {:?}", request.request_id, request.mode));
+        Ok(())
+    }
+    fn camera_capture_cancelled(&self, _peer: &nectarlink_core::DeviceId, request_id: &str) {
+        self.camera_asks.lock().unwrap().push(format!("cancel {request_id}"));
+    }
     fn phone_apps(&self) -> Result<Vec<nectarlink_core::PhoneApp>, String> {
         let app = |pkg: &str, label: &str, icon: usize| nectarlink_core::PhoneApp {
             pkg: pkg.into(),
@@ -207,6 +222,18 @@ impl Platform for RecordingPlatform {
     }
     fn sms_send(&self, to: &[String], body: &str) -> Result<(), String> {
         self.texts.lock().unwrap().push((to.to_vec(), body.to_owned()));
+        Ok(())
+    }
+    fn send_sms_with_attachments(
+        &self,
+        to: &[String],
+        body: &str,
+        attachments: &[nectarlink_core::SmsAttachment],
+    ) -> Result<(), String> {
+        if attachments.is_empty() {
+            return self.sms_send(to, body);
+        }
+        self.mms_sent.lock().unwrap().push((to.to_vec(), body.to_owned(), attachments.to_vec()));
         Ok(())
     }
     fn sms_part(&self, id: &str) -> Result<(String, Vec<u8>), String> {
@@ -996,6 +1023,7 @@ fn note(key: &str, app: &str, title: &str, icon: bool) -> Notification {
         icon: icon.then(|| vec![0x89, b'P', b'N', b'G', 1, 2, 3]),
         image: None,
         live: None,
+        conversation: None,
     }
 }
 
@@ -3521,4 +3549,800 @@ async fn timeline_records_files_clips_links_photos_recordings_and_sessions_witho
         .timeline_page(&TimelineQuery { kind: Some(TimelineKind::Clip), ..TimelineQuery::default() })
         .unwrap();
     assert!(after_del.entries.is_empty(), "deleting clip removes linked timeline entry");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn messaging_style_notifications_populate_unified_chat_threads_and_reply() {
+    use nectarlink_core::{NotificationChatMessage, NotificationConversation};
+
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    grant_notification_access(&phone).await;
+
+    let now_ms = 1_760_000_000_000i64;
+    let mut wa_note = note("wa|maya", "com.whatsapp", "Maya Lin", true);
+    wa_note.app_name = "WhatsApp".into();
+    wa_note.when = now_ms - 60_000;
+    wa_note.conversation = Some(NotificationConversation {
+        v: 1,
+        title: "Maya Lin".into(),
+        group: false,
+        avatar: Some(vec![0xff, 0xd8, 1, 2]),
+        messages: vec![
+            NotificationChatMessage {
+                sender: Some("Maya Lin".into()),
+                text: "Are you free for a quick sync?".into(),
+                time: now_ms - 120_000,
+                self_sent: false,
+                avatar: None,
+            },
+            NotificationChatMessage {
+                sender: Some("Maya Lin".into()),
+                text: "Sent over the deck too".into(),
+                time: now_ms - 60_000,
+                self_sent: false,
+                avatar: None,
+            },
+        ],
+    });
+
+    phone.node.notification_posted(wa_note).await;
+    let changed_thread = wait_for(&mut pc, "chat thread updated from notification", |e| match e {
+        NodeEvent::SmsChanged { device, thread: Some(tid) }
+            if *device == phone_id && tid.starts_with("chat:") =>
+        {
+            Some(tid.clone())
+        }
+        _ => None,
+    })
+    .await;
+
+    let threads = pc.node.chat_threads(phone_id);
+    assert_eq!(threads.len(), 1);
+    assert_eq!(threads[0].thread_id, changed_thread);
+    assert_eq!(threads[0].app, "com.whatsapp");
+    assert_eq!(threads[0].app_name, "WhatsApp");
+    assert_eq!(threads[0].title, "Maya Lin");
+    assert!(!threads[0].is_group);
+    assert_eq!(threads[0].unread, 2);
+    assert!(threads[0].can_reply());
+    assert!(threads[0].app_icon.is_some());
+    assert!(threads[0].avatar.is_some());
+
+    let msgs = pc.node.chat_messages(phone_id, &changed_thread, 20);
+    assert_eq!(msgs.len(), 2);
+    assert_eq!(msgs[0].text, "Sent over the deck too");
+    assert_eq!(msgs[1].text, "Are you free for a quick sync?");
+
+    // Reply directly from the unified conversation thread.
+    with_timeout(
+        "reply_chat_thread",
+        pc.node.reply_chat_thread(phone_id, &changed_thread, "Give me 5 minutes!".into()),
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        *phone.platform.actions.lock().unwrap(),
+        vec![("wa|maya".into(), "0".into(), Some("Give me 5 minutes!".into()))]
+    );
+
+    let after_reply = pc.node.chat_thread(phone_id, &changed_thread).unwrap();
+    assert_eq!(after_reply.unread, 0);
+    assert_eq!(after_reply.snippet, "You: Give me 5 minutes!");
+    let msgs = pc.node.chat_messages(phone_id, &changed_thread, 20);
+    assert_eq!(msgs.len(), 3);
+    assert_eq!(msgs[0].text, "Give me 5 minutes!");
+    assert!(msgs[0].self_sent);
+
+    // Removing the notification disables inline reply while keeping local history.
+    phone.node.notification_removed("wa|maya".into()).await;
+    wait_for(&mut pc, "notification removed", |e| match e {
+        NodeEvent::NotificationRemoved { device, key } if *device == phone_id && key == "wa|maya" => Some(()),
+        _ => None,
+    })
+    .await;
+    let after_removed = pc.node.chat_thread(phone_id, &changed_thread).unwrap();
+    assert!(!after_removed.can_reply());
+    assert!(matches!(
+        pc.node.reply_chat_thread(phone_id, &changed_thread, "Still there?".into()).await,
+        Err(Error::NotFound)
+    ));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn mms_image_attachments_send_over_sms_service() {
+    use nectarlink_core::{SMS_MAX_ATTACHMENT_BYTES, SmsAttachment};
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::SMS_SHOW]).await;
+    let mut phone =
+        device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::SMS_READ, nectarlink_core::SMS_SEND])
+            .await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+
+    let jpeg = SmsAttachment { mime: "image/jpeg".into(), data: vec![0xff, 0xd8, 1, 2, 3, 4] };
+    let png = SmsAttachment { mime: "image/png".into(), data: vec![0x89, b'P', b'N', b'G', 5, 6] };
+
+    // Send MMS with both caption and a JPEG attachment.
+    with_timeout(
+        "send mms with caption",
+        pc.node.send_sms_with_attachments(
+            phone_id,
+            vec!["+15550100".into()],
+            "Check this out".into(),
+            vec![jpeg.clone()],
+        ),
+    )
+    .await
+    .unwrap();
+
+    // Send image-only MMS (empty body, PNG attachment).
+    with_timeout(
+        "send image-only mms",
+        pc.node.send_sms_with_attachments(
+            phone_id,
+            vec!["+15550188".into()],
+            String::new(),
+            vec![png.clone()],
+        ),
+    )
+    .await
+    .unwrap();
+
+    let sent = phone.platform.mms_sent.lock().unwrap().clone();
+    assert_eq!(sent.len(), 2);
+    assert_eq!(sent[0].0, vec!["+15550100".to_owned()]);
+    assert_eq!(sent[0].1, "Check this out");
+    assert_eq!(sent[0].2, vec![jpeg.clone()]);
+    assert_eq!(sent[1].0, vec!["+15550188".to_owned()]);
+    assert_eq!(sent[1].1, "");
+    assert_eq!(sent[1].2, vec![png.clone()]);
+
+    // Unsupported MIME type is rejected as a protocol error; oversized or too many attachments return TooLarge.
+    let bad_mime = SmsAttachment { mime: "image/gif".into(), data: vec![1, 2, 3] };
+    assert!(matches!(
+        pc.node
+            .send_sms_with_attachments(phone_id, vec!["+15550100".into()], String::new(), vec![bad_mime])
+            .await,
+        Err(Error::Protocol(_))
+    ));
+    assert!(matches!(
+        pc.node
+            .send_sms_with_attachments(phone_id, vec!["+15550100".into()], String::new(), vec![jpeg, png])
+            .await,
+        Err(Error::TooLarge)
+    ));
+    let oversized =
+        SmsAttachment { mime: "image/jpeg".into(), data: vec![0u8; SMS_MAX_ATTACHMENT_BYTES + 1] };
+    assert!(matches!(
+        pc.node
+            .send_sms_with_attachments(phone_id, vec!["+15550100".into()], String::new(), vec![oversized])
+            .await,
+        Err(Error::TooLarge)
+    ));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn continuity_camera_photo_and_scan_flow() {
+    use nectarlink_core::{CameraCaptureMode, CameraCaptureResultMeta};
+
+    let mut pc = device_with("pc", DeviceKind::Desktop, &["camera.continuity"]).await;
+    let mut phone = device_with("phone", DeviceKind::Phone, &["camera.capture"]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    assert_eq!(
+        pc.node.capabilities(phone_id).unwrap().state("camera.continuity"),
+        Some(FeatureState::Available)
+    );
+
+    // 1. Request a photo capture from PC.
+    with_timeout(
+        "request photo capture",
+        pc.node.request_camera_capture(phone_id, "req-photo-1".into(), CameraCaptureMode::Photo),
+    )
+    .await
+    .unwrap();
+
+    let (req_peer, req_id, req_mode) = wait_for(&mut phone, "photo capture requested", |e| match e {
+        NodeEvent::CameraCaptureRequested { device, request_id, mode } => {
+            Some((*device, request_id.clone(), *mode))
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(req_peer, pc_id);
+    assert_eq!(req_id, "req-photo-1");
+    assert_eq!(req_mode, CameraCaptureMode::Photo);
+
+    let fake_jpeg = vec![0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3, 4, 0xFF, 0xD9];
+    let photo_meta = CameraCaptureResultMeta {
+        request_id: "req-photo-1".into(),
+        mode: CameraCaptureMode::Photo,
+        file_name: "IMG_20260409.jpg".into(),
+        mime: "image/jpeg".into(),
+        size: fake_jpeg.len() as u64,
+        width: 1920,
+        height: 1080,
+    };
+    with_timeout(
+        "send photo capture result",
+        phone.node.send_camera_capture_result(pc_id, photo_meta, fake_jpeg.clone()),
+    )
+    .await
+    .unwrap();
+
+    let (recv_peer, recv_id, recv_mode, recv_name, recv_mime, recv_w, recv_h, recv_data, saved_path) =
+        wait_for(&mut pc, "photo capture received", |e| match e {
+            NodeEvent::CameraCaptureReceived {
+                device,
+                request_id,
+                mode,
+                file_name,
+                mime,
+                width,
+                height,
+                data,
+                saved_path,
+            } => Some((
+                *device,
+                request_id.clone(),
+                *mode,
+                file_name.clone(),
+                mime.clone(),
+                *width,
+                *height,
+                data.clone(),
+                saved_path.clone(),
+            )),
+            _ => None,
+        })
+        .await;
+    assert_eq!(recv_peer, phone_id);
+    assert_eq!(recv_id, "req-photo-1");
+    assert_eq!(recv_mode, CameraCaptureMode::Photo);
+    assert_eq!(recv_name, "IMG_20260409.jpg");
+    assert_eq!(recv_mime, "image/jpeg");
+    assert_eq!(recv_w, 1920);
+    assert_eq!(recv_h, 1080);
+    assert_eq!(recv_data, fake_jpeg);
+    let path = saved_path.expect("saved to downloads_dir");
+    assert_eq!(std::fs::read(&path).unwrap(), fake_jpeg);
+
+    // 2. Request a document scan from PC.
+    with_timeout(
+        "request scan capture",
+        pc.node.request_camera_capture(phone_id, "req-scan-2".into(), CameraCaptureMode::Scan),
+    )
+    .await
+    .unwrap();
+
+    let (_, scan_id, scan_mode) = wait_for(&mut phone, "scan capture requested", |e| match e {
+        NodeEvent::CameraCaptureRequested { device, request_id, mode } => {
+            Some((*device, request_id.clone(), *mode))
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(scan_id, "req-scan-2");
+    assert_eq!(scan_mode, CameraCaptureMode::Scan);
+
+    let fake_scan = vec![0xFF, 0xD8, 0xFF, 0xDB, 9, 8, 7, 6, 5, 0xFF, 0xD9];
+    let scan_meta = CameraCaptureResultMeta {
+        request_id: "req-scan-2".into(),
+        mode: CameraCaptureMode::Scan,
+        file_name: "Scan_20260409.jpg".into(),
+        mime: "image/jpeg".into(),
+        size: fake_scan.len() as u64,
+        width: 1654,
+        height: 2339,
+    };
+    with_timeout(
+        "send scan capture result",
+        phone.node.send_camera_capture_result(pc_id, scan_meta, fake_scan.clone()),
+    )
+    .await
+    .unwrap();
+
+    let (_, got_scan_id, got_scan_mode, got_scan_name, _, got_w, got_h, got_scan_data, got_scan_path) =
+        wait_for(&mut pc, "scan capture received", |e| match e {
+            NodeEvent::CameraCaptureReceived {
+                device,
+                request_id,
+                mode,
+                file_name,
+                mime,
+                width,
+                height,
+                data,
+                saved_path,
+            } => Some((
+                *device,
+                request_id.clone(),
+                *mode,
+                file_name.clone(),
+                mime.clone(),
+                *width,
+                *height,
+                data.clone(),
+                saved_path.clone(),
+            )),
+            _ => None,
+        })
+        .await;
+    assert_eq!(got_scan_id, "req-scan-2");
+    assert_eq!(got_scan_mode, CameraCaptureMode::Scan);
+    assert_eq!(got_scan_name, "Scan_20260409.jpg");
+    assert_eq!(got_w, 1654);
+    assert_eq!(got_h, 2339);
+    assert_eq!(got_scan_data, fake_scan);
+    assert!(got_scan_path.unwrap().exists());
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn continuity_camera_cancel_propagates() {
+    use nectarlink_core::CameraCaptureMode;
+
+    let mut pc = device_with("pc", DeviceKind::Desktop, &["camera.continuity"]).await;
+    let mut phone = device_with("phone", DeviceKind::Phone, &["camera.capture"]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Phone cancels an active request -> PC receives CameraCaptureCancelled.
+    with_timeout(
+        "request capture 1",
+        pc.node.request_camera_capture(phone_id, "req-cancel-1".into(), CameraCaptureMode::Photo),
+    )
+    .await
+    .unwrap();
+    wait_for(&mut phone, "capture 1 requested", |e| match e {
+        NodeEvent::CameraCaptureRequested { request_id, .. } if request_id == "req-cancel-1" => Some(()),
+        _ => None,
+    })
+    .await;
+
+    with_timeout(
+        "phone cancels capture 1",
+        phone.node.cancel_camera_capture(pc_id, "req-cancel-1".into(), Some("user dismissed".into())),
+    )
+    .await
+    .unwrap();
+
+    let (from, id, reason) = wait_for(&mut pc, "pc sees cancel 1", |e| match e {
+        NodeEvent::CameraCaptureCancelled { device, request_id, reason } => {
+            Some((*device, request_id.clone(), reason.clone()))
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(from, phone_id);
+    assert_eq!(id, "req-cancel-1");
+    assert_eq!(reason.as_deref(), Some("user dismissed"));
+
+    // PC cancels an active request -> Phone receives CameraCaptureCancelled.
+    with_timeout(
+        "request capture 2",
+        pc.node.request_camera_capture(phone_id, "req-cancel-2".into(), CameraCaptureMode::Scan),
+    )
+    .await
+    .unwrap();
+    wait_for(&mut phone, "capture 2 requested", |e| match e {
+        NodeEvent::CameraCaptureRequested { request_id, .. } if request_id == "req-cancel-2" => Some(()),
+        _ => None,
+    })
+    .await;
+
+    with_timeout(
+        "pc cancels capture 2",
+        pc.node.cancel_camera_capture(phone_id, "req-cancel-2".into(), Some("cancelled on PC".into())),
+    )
+    .await
+    .unwrap();
+
+    let (from2, id2, reason2) = wait_for(&mut phone, "phone sees cancel 2", |e| match e {
+        NodeEvent::CameraCaptureCancelled { device, request_id, reason } => {
+            Some((*device, request_id.clone(), reason.clone()))
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(from2, pc_id);
+    assert_eq!(id2, "req-cancel-2");
+    assert_eq!(reason2.as_deref(), Some("cancelled on PC"));
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn continuity_camera_respects_photos_toggle() {
+    use nectarlink_core::CameraCaptureMode;
+
+    let mut pc = device_with("pc", DeviceKind::Desktop, &["camera.continuity"]).await;
+    let mut phone = device_with("phone", DeviceKind::Phone, &["camera.capture"]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (_pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Turning off photos toggle on PC blocks outgoing request_camera_capture with Error::Denied.
+    pc.node.set_device_toggle(phone_id, "photos", false).unwrap();
+    let res =
+        pc.node.request_camera_capture(phone_id, "req-denied-pc".into(), CameraCaptureMode::Photo).await;
+    assert!(matches!(res, Err(Error::Denied)));
+
+    // Re-enable on PC, but disable photos toggle on phone -> phone replies with cancel.
+    pc.node.set_device_toggle(phone_id, "photos", true).unwrap();
+    phone.node.set_device_toggle(pc.node.device_id(), "photos", false).unwrap();
+    with_timeout(
+        "request with phone photos toggle off",
+        pc.node.request_camera_capture(phone_id, "req-denied-phone".into(), CameraCaptureMode::Photo),
+    )
+    .await
+    .unwrap();
+
+    let (from, id, reason) = wait_for(&mut pc, "phone cancels because photos off", |e| match e {
+        NodeEvent::CameraCaptureCancelled { device, request_id, reason } => {
+            Some((*device, request_id.clone(), reason.clone()))
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(from, phone_id);
+    assert_eq!(id, "req-denied-phone");
+    assert!(reason.unwrap_or_default().contains("photos"));
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn data_retention_counts_and_clear_all_local_data_preserves_pairing_and_settings() {
+    use nectarlink_core::{
+        Notification, NotificationAction, NotificationChatMessage, NotificationConversation,
+    };
+
+    let mut pc = device_with("pc", DeviceKind::Desktop, &["notify.show", "clip.write"]).await;
+    let mut phone = device_with("phone", DeviceKind::Phone, &["notify.mirror", "notify.reply"]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Configure non-default retention and a device toggle on PC.
+    pc.node
+        .set_timeline_retention(nectarlink_core::timeline::TimelineRetention {
+            max_days: 30,
+            max_entries: 5000,
+        })
+        .unwrap();
+    pc.node.set_device_toggle(phone_id, "clipboard", true).unwrap();
+
+    // Send a clipboard item from phone -> PC.
+    with_timeout("send clip", phone.node.send_clipboard(pc_id, "Secret recipe notes".into())).await.unwrap();
+    wait_for(&mut pc, "clip history changed", |e| match e {
+        NodeEvent::ClipboardHistoryChanged => Some(()),
+        _ => None,
+    })
+    .await;
+
+    // Post a MessagingStyle chat notification from phone -> PC.
+    let note = Notification {
+        key: "sig|sam".into(),
+        app: "org.thoughtcrime.securesms".into(),
+        app_name: "Signal".into(),
+        title: Some("Sam Rivera".into()),
+        text: Some("Dinner at 7?".into()),
+        sub: None,
+        when: 1_760_000_000_000,
+        actions: vec![NotificationAction { id: "reply".into(), title: "Reply".into(), reply: true }],
+        silent: false,
+        icon: None,
+        image: None,
+        live: None,
+        conversation: Some(NotificationConversation {
+            v: 1,
+            title: "Sam Rivera".into(),
+            group: false,
+            avatar: None,
+            messages: vec![NotificationChatMessage {
+                sender: Some("Sam Rivera".into()),
+                text: "Dinner at 7?".into(),
+                time: 1_760_000_000_000,
+                self_sent: false,
+                avatar: None,
+            }],
+        }),
+    };
+    phone.node.notification_posted(note).await;
+    wait_for(&mut pc, "chat sms changed", |e| match e {
+        NodeEvent::SmsChanged { device, .. } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    let counts = pc.node.data_retention_counts();
+    assert!(counts.clipboard_items >= 1);
+    assert!(counts.timeline_items >= 1);
+    assert_eq!(counts.timeline_retention_days, 30);
+    assert_eq!(counts.chat_threads, 1);
+    assert_eq!(counts.chat_messages, 1);
+
+    // Clear everything on PC: all history and caches become 0, while pairing and settings remain intact.
+    pc.node.clear_all_local_data().unwrap();
+    let after = pc.node.data_retention_counts();
+    assert_eq!(after.clipboard_items, 0);
+    assert_eq!(after.timeline_items, 0);
+    assert_eq!(after.chat_threads, 0);
+    assert_eq!(after.chat_messages, 0);
+    assert_eq!(after.received_file_records, 0);
+    assert_eq!(after.timeline_retention_days, 30, "timeline retention setting must be preserved");
+    assert_eq!(pc.node.paired_devices().unwrap().len(), 1, "paired devices must never be deleted");
+    assert!(
+        pc.node.device_toggles(phone_id).unwrap().into_iter().any(|(k, v)| k == "clipboard" && v),
+        "per-device toggles must be preserved"
+    );
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+fn free_tcp_port() -> u16 {
+    std::net::TcpListener::bind("127.0.0.1:0")
+        .expect("bind ephemeral port")
+        .local_addr()
+        .expect("local addr")
+        .port()
+}
+
+async fn start_localsend_in(dir: TempDir, name: &'static str, kind: DeviceKind, port: u16) -> TestDevice {
+    init_logging();
+    let mut config = NodeConfig::new(dir.path(), info(name, kind), "0.0.1-test");
+    config.lan_discovery = false;
+    config.away_mode = false;
+    config.localsend_port = port;
+    config.key_protector = Some(Arc::new(PlainKeyProtector));
+    config.capabilities = vec!["media.control".into()];
+    let platform = Arc::new(RecordingPlatform::default());
+    let node = Node::start(config, platform.clone()).await.expect("node starts");
+    let events = node.events();
+    TestDevice { node, events, platform, dir, name }
+}
+
+#[tokio::test]
+async fn localsend_is_off_by_default_and_persists_setting() {
+    let dir = tempfile::tempdir().unwrap();
+    let port1 = free_tcp_port();
+    let mut dev = start_localsend_in(dir, "PC", DeviceKind::Desktop, port1).await;
+
+    assert!(!dev.node.localsend_enabled());
+    assert!(!dev.node.localsend_receiving());
+    assert!(dev.node.localsend_peers().is_empty());
+
+    dev.node.set_localsend_enabled(true).unwrap();
+    wait_for(&mut dev, "localsend enabled event", |e| match e {
+        NodeEvent::LocalSendChanged => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(dev.node.localsend_enabled());
+    // Wait up to 2s for the background TCP listener to bind and set receiving=true.
+    for _ in 0..40 {
+        if dev.node.localsend_receiving() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert!(dev.node.localsend_receiving());
+
+    let dir = dev.dir;
+    dev.node.shutdown().await;
+
+    let port2 = free_tcp_port();
+    let dev2 = start_localsend_in(dir, "PC", DeviceKind::Desktop, port2).await;
+    assert!(dev2.node.localsend_enabled(), "enabled state must persist across restarts");
+    for _ in 0..40 {
+        if dev2.node.localsend_receiving() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert!(dev2.node.localsend_receiving(), "server must start automatically when persisted enabled");
+    dev2.node.shutdown().await;
+}
+
+#[tokio::test]
+async fn localsend_coexists_when_port_is_already_bound() {
+    let occupied = std::net::TcpListener::bind(("0.0.0.0", 0)).expect("bind occupied port");
+    let port = occupied.local_addr().unwrap().port();
+
+    let dir = tempfile::tempdir().unwrap();
+    let dev = start_localsend_in(dir, "PC", DeviceKind::Desktop, port).await;
+    dev.node.set_localsend_enabled(true).unwrap();
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    assert!(dev.node.localsend_enabled());
+    assert!(
+        !dev.node.localsend_receiving(),
+        "when port is occupied by standalone LocalSend, Nectarlink must leave receiving to it without failing"
+    );
+
+    dev.node.shutdown().await;
+    drop(occupied);
+}
+
+#[tokio::test]
+async fn localsend_discovers_peer_requires_accept_and_transfers_files_over_https() {
+    let sender_port = free_tcp_port();
+    let receiver_port = free_tcp_port();
+    let mut sender =
+        start_localsend_in(tempfile::tempdir().unwrap(), "Phone Sender", DeviceKind::Phone, sender_port)
+            .await;
+    let mut receiver =
+        start_localsend_in(tempfile::tempdir().unwrap(), "PC Receiver", DeviceKind::Desktop, receiver_port)
+            .await;
+
+    sender.node.set_localsend_enabled(true).unwrap();
+    receiver.node.set_localsend_enabled(true).unwrap();
+    for _ in 0..40 {
+        if receiver.node.localsend_receiving() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert!(receiver.node.localsend_receiving());
+
+    let peer = sender
+        .node
+        .probe_localsend_peer("127.0.0.1", receiver_port)
+        .await
+        .expect("probe receiver over HTTPS");
+    assert_eq!(peer.alias, "PC Receiver");
+    assert_eq!(peer.port, receiver_port);
+    assert_eq!(peer.protocol, "https");
+    assert_eq!(peer.device_type, "desktop");
+    assert!(sender.node.localsend_peers().iter().any(|p| p.id == peer.id));
+
+    let src_dir = sender.dir.path().join("src_files");
+    std::fs::create_dir_all(src_dir.join("sub")).unwrap();
+    let file_a = src_dir.join("notes.txt");
+    let file_b = src_dir.join("sub").join("hello.txt");
+    std::fs::write(&file_a, b"LocalSend interop over HTTPS!").unwrap();
+    std::fs::write(&file_b, b"Nested folder payload").unwrap();
+
+    let out_id = sender
+        .node
+        .send_files(
+            peer.id,
+            vec![
+                OutgoingFile { name: "notes.txt".into(), folder: None, source: FileSource::Path(file_a) },
+                OutgoingFile {
+                    name: "hello.txt".into(),
+                    folder: Some("sub".into()),
+                    source: FileSource::Path(file_b),
+                },
+            ],
+        )
+        .await
+        .expect("start LocalSend upload");
+
+    let req: Transfer = wait_for(&mut receiver, "incoming LocalSend transfer request", |e| match e {
+        NodeEvent::Transfer(t)
+            if t.direction == Direction::Incoming && t.state == TransferState::Requested =>
+        {
+            Some(t.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(req.files, 2);
+    assert!(
+        !receiver.dir.path().join("received").join("notes.txt").exists(),
+        "unpaired LocalSend transfer must wait for user acceptance before writing files"
+    );
+
+    receiver.node.accept_transfer(&req.id);
+
+    wait_for(&mut sender, "sender LocalSend transfer done", |e| match e {
+        NodeEvent::Transfer(t) if t.id == out_id && matches!(t.state, TransferState::Done { .. }) => Some(()),
+        _ => None,
+    })
+    .await;
+    wait_for(&mut receiver, "receiver LocalSend transfer done", |e| match e {
+        NodeEvent::Transfer(t) if t.id == req.id && matches!(t.state, TransferState::Done { .. }) => Some(()),
+        _ => None,
+    })
+    .await;
+
+    let dl_a = receiver.dir.path().join("received").join("notes.txt");
+    let dl_b = receiver.dir.path().join("received").join("sub").join("hello.txt");
+    assert_eq!(std::fs::read(&dl_a).unwrap(), b"LocalSend interop over HTTPS!");
+    assert_eq!(std::fs::read(&dl_b).unwrap(), b"Nested folder payload");
+
+    assert!(
+        !sender
+            .node
+            .timeline_page(&nectarlink_core::timeline::TimelineQuery::default())
+            .unwrap()
+            .entries
+            .is_empty()
+    );
+    assert!(
+        !receiver
+            .node
+            .timeline_page(&nectarlink_core::timeline::TimelineQuery::default())
+            .unwrap()
+            .entries
+            .is_empty()
+    );
+
+    sender.node.shutdown().await;
+    receiver.node.shutdown().await;
+}
+
+#[tokio::test]
+async fn localsend_declining_transfer_returns_denied_to_sender() {
+    let sender_port = free_tcp_port();
+    let receiver_port = free_tcp_port();
+    let mut sender =
+        start_localsend_in(tempfile::tempdir().unwrap(), "Phone Sender", DeviceKind::Phone, sender_port)
+            .await;
+    let mut receiver =
+        start_localsend_in(tempfile::tempdir().unwrap(), "PC Receiver", DeviceKind::Desktop, receiver_port)
+            .await;
+
+    sender.node.set_localsend_enabled(true).unwrap();
+    receiver.node.set_localsend_enabled(true).unwrap();
+    for _ in 0..40 {
+        if receiver.node.localsend_receiving() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+
+    let peer = sender.node.probe_localsend_peer("127.0.0.1", receiver_port).await.unwrap();
+
+    let file_a = sender.dir.path().join("reject_me.txt");
+    std::fs::write(&file_a, b"do not accept").unwrap();
+
+    let out_id = sender
+        .node
+        .send_files(
+            peer.id,
+            vec![OutgoingFile {
+                name: "reject_me.txt".into(),
+                folder: None,
+                source: FileSource::Path(file_a),
+            }],
+        )
+        .await
+        .unwrap();
+
+    let req: Transfer = wait_for(&mut receiver, "incoming LocalSend transfer request", |e| match e {
+        NodeEvent::Transfer(t)
+            if t.direction == Direction::Incoming && t.state == TransferState::Requested =>
+        {
+            Some(t.clone())
+        }
+        _ => None,
+    })
+    .await;
+
+    receiver.node.cancel_transfer(&req.id);
+
+    wait_for(&mut sender, "sender sees Denied failure", |e| match e {
+        NodeEvent::Transfer(t)
+            if t.id == out_id && t.state == TransferState::Failed(TransferFailure::Denied) =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    assert!(!receiver.dir.path().join("received").join("reject_me.txt").exists());
+
+    sender.node.shutdown().await;
+    receiver.node.shutdown().await;
 }

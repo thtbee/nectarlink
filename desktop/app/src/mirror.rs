@@ -424,6 +424,69 @@ pub fn load_apps(device: DeviceId) {
     });
 }
 
+/// Returns cached `(pkg, label)` pairs for `device` synchronously (0 ms) for
+/// the Command Palette, placing recently mirrored apps first and triggering a
+/// background app list load if not yet cached.
+pub fn palette_apps(device: DeviceId) -> Vec<(String, String)> {
+    let recent = recent_apps(&device);
+    let current = apps(&device);
+    let (app_names, can_load) = core_host::host().hub.read(|s| {
+        let online = s
+            .devices
+            .iter()
+            .any(|d| d.id == device && matches!(d.link, nectarlink_core::LinkState::Online { .. }));
+        let avail = s.matrices.get(&device).and_then(|m| m.state("mirroring.app_windows"))
+            == Some(nectarlink_core::FeatureState::Available);
+        (s.app_names.clone(), online && avail)
+    });
+
+    if current.is_none() && can_load {
+        load_apps(device);
+    }
+
+    let ready_list = match current {
+        Some(Apps::Ready(list)) => list,
+        _ => Vec::new(),
+    };
+
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+
+    for pkg in &recent {
+        let pkg_trim = pkg.trim();
+        if pkg_trim.is_empty() {
+            continue;
+        }
+        let label = ready_list
+            .iter()
+            .find(|a| a.pkg == pkg_trim)
+            .map(|a| a.label.clone())
+            .or_else(|| app_names.get(pkg_trim).cloned())
+            .unwrap_or_else(|| pkg_trim.rsplit('.').next().unwrap_or(pkg_trim).to_owned());
+        if !label.trim().is_empty() && seen.insert(pkg_trim.to_owned()) {
+            out.push((pkg_trim.to_owned(), label));
+        }
+    }
+
+    for a in ready_list {
+        let pkg_trim = a.pkg.trim();
+        let label_trim = a.label.trim();
+        if !pkg_trim.is_empty() && !label_trim.is_empty() && seen.insert(pkg_trim.to_owned()) {
+            out.push((pkg_trim.to_owned(), label_trim.to_owned()));
+        }
+    }
+
+    for (pkg, label) in app_names {
+        let pkg_trim = pkg.trim();
+        let label_trim = label.trim();
+        if !pkg_trim.is_empty() && !label_trim.is_empty() && seen.insert(pkg_trim.to_owned()) {
+            out.push((pkg_trim.to_owned(), label_trim.to_owned()));
+        }
+    }
+
+    out
+}
+
 /// The PC's mouse and keyboard on a mirrored screen or app window, sent in
 /// order.
 pub fn input(window: Window, input: nectarlink_core::MirrorInput) {

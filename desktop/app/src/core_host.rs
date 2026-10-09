@@ -101,6 +101,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         "pc.power".into(),
         nectarlink_core::PC_WAKE.into(),
         nectarlink_core::PHOTOS_SHOW.into(),
+        nectarlink_core::CAMERA_CONTINUITY.into(),
         nectarlink_core::CALLS_SHOW.into(),
         nectarlink_core::CONTACTS_SHOW.into(),
         nectarlink_core::SMS_SHOW.into(),
@@ -176,6 +177,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 crate::notifications::update_toasts(&event);
                 crate::clipboard::on_event(&event);
                 crate::photos::on_event(&event);
+                crate::continuity_camera::on_event(&event);
                 crate::calls::on_event(&event);
                 crate::messages::on_event(&event);
                 crate::mirror::on_event(&event);

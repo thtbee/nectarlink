@@ -340,9 +340,9 @@ fn update(map: &mut HashMap<String, Tracked>, transfer: &Transfer) {
         call: false,
     };
     match &transfer.state {
-        TransferState::Waiting | TransferState::Running => {
+        TransferState::Requested | TransferState::Waiting | TransferState::Running => {
             let progress = Progress {
-                status: if transfer.state == TransferState::Waiting {
+                status: if matches!(transfer.state, TransferState::Requested | TransferState::Waiting) {
                     format!("Waiting for {device}…")
                 } else {
                     format!("Sending to {device}…")

@@ -2,6 +2,7 @@
 package app.nectarlink.android.core
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.service.notification.NotificationListenerService
@@ -114,6 +115,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             }
         },
         appWindows = AppWindows(this.context, scope, open = { pc -> mirrorOpen(pc) }, nameOf = { pc -> _state.value.nameOf(pc).orEmpty() }),
+        nameOf = { pc -> _state.value.nameOf(pc).orEmpty() },
     )
     private val storage = PhoneStorage(this.context) { path ->
         notificationOps.trySend { it.storageChanged(path) }
@@ -204,6 +206,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             ?.createMulticastLock("nectarlink-pairing")
             ?.apply { setReferenceCounted(false) }
 
+    // Holds a multicast lock while LocalSend LAN interop (UDP 224.0.0.167:53317) is enabled.
+    private val localsendMulticast: WifiManager.MulticastLock? =
+        this.context.getSystemService(WifiManager::class.java)
+            ?.createMulticastLock("nectarlink-localsend")
+            ?.apply { setReferenceCounted(false) }
+
     val state: StateFlow<CoreState> = _state.asStateFlow()
 
     /** Short messages for the user (a command failed). */
@@ -252,6 +260,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             }
             val retention = runCatching { started.timelineRetention() }.getOrNull()
             val tlPage = runCatching { started.timelinePage(null, null, null, 0u, 100u) }.getOrNull()
+            val lsEnabled = runCatching { started.localsendEnabled() }.getOrDefault(false)
+            val lsPeers = if (lsEnabled) {
+                runCatching { started.localsendPeers() }.getOrDefault(emptyList())
+            } else {
+                emptyList()
+            }
+            localsendMulticast?.runCatching { if (lsEnabled) acquire() else release() }
+            pruneOldTempCaches()
             _state.update {
                 it.withDevices(devices, storageAllowed).copy(
                     status = CoreStatus.Ready(started.deviceId()),
@@ -261,8 +277,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     timelineTotal = tlPage?.total ?: 0u,
                     timelineHasMore = tlPage?.hasMore ?: false,
                     timelineRetentionDays = retention?.maxDays ?: 90u,
+                    localsendEnabled = lsEnabled,
+                    localsendPeers = lsPeers,
                 )
             }
+            refreshDataRetention()
             if (devices.isNotEmpty()) ConnectionService.start(context)
             scope.launch(Dispatchers.Main) {
                 battery.start()
@@ -402,6 +421,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 it.updatePower(powerLevel(), capabilities(_state.value.notificationAccess))
                 if (photoAccess && (!prevPhotos || photoPartialAccess)) it.photosChanged()
             }
+            scope.launch(Dispatchers.IO) { refreshDataRetention() }
         }
     }
 
@@ -436,6 +456,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 refreshTimeline()
             }
             is Event.TimelineChanged -> refreshTimeline()
+            is Event.LocalSendChanged -> syncLocalSendState()
             else -> {}
         }
     }
@@ -464,7 +485,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         recordings.onTransferEvent(transfer, pcOnline)
         TransferNotifications.update(context, transfer, pc)
         val done = transfer.status as? TransferStatus.Done ?: return
-        if (transfer.direction != TransferDirection.INCOMING) return
+        if (transfer.direction != TransferDirection.INCOMING) {
+            scope.launch(Dispatchers.IO) { refreshDataRetention() }
+            return
+        }
         // Out of the app's cache, into Downloads, then tell the user.
         scope.launch(Dispatchers.IO) {
             val published = done.saved.flatMap { ReceivedFiles.publish(context, java.io.File(it)) }
@@ -484,6 +508,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     transfer.total,
                 )
                 refreshTimeline()
+            } else {
+                refreshDataRetention()
             }
             TransferNotifications.received(context, transfer, published, pc)
         }
@@ -613,6 +639,45 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
+    /** Sends a captured photo or scanned document back to the requesting PC (`camera.result`). */
+    fun sendCameraCaptureResult(
+        pcId: String,
+        requestId: String,
+        mode: String,
+        fileName: String,
+        mime: String,
+        width: Int,
+        height: Int,
+        data: ByteArray,
+    ) {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@launch
+            try {
+                currentNode.sendCameraCaptureResult(
+                    pcId = pcId,
+                    requestId = requestId,
+                    mode = mode,
+                    fileName = fileName,
+                    mime = mime,
+                    width = width.coerceAtLeast(1).toUInt(),
+                    height = height.coerceAtLeast(1).toUInt(),
+                    data = data,
+                )
+            } catch (e: NectarlinkException) {
+                _messages.tryEmit(describe(e))
+            }
+        }
+    }
+
+    /** Notifies the requesting PC that a Continuity Camera capture was cancelled (`camera.cancel`). */
+    fun cancelCameraCapture(pcId: String, requestId: String, reason: String? = null) {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            runCatching { node?.cancelCameraCapture(pcId, requestId, reason) }
+        }
+    }
+
     /**
      * Sends picked or shared files to a PC; problems arrive as messages.
      * The files are opened right away: Android's permission to read a
@@ -655,8 +720,49 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
+    fun acceptTransfer(id: String) {
+        node?.acceptTransfer(id)
+    }
+
     fun cancelTransfer(id: String) {
         node?.cancelTransfer(id)
+    }
+
+    // ---- LocalSend interop ----
+
+    fun setLocalSendEnabled(enabled: Boolean) {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@launch
+            try {
+                currentNode.setLocalsendEnabled(enabled)
+            } catch (e: NectarlinkException) {
+                _messages.tryEmit(describe(e))
+            }
+            localsendMulticast?.runCatching { if (enabled) acquire() else release() }
+            syncLocalSendState()
+        }
+    }
+
+    fun refreshLocalSend() {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@launch
+            runCatching { currentNode.refreshLocalsend() }
+            syncLocalSendState()
+        }
+    }
+
+    private fun syncLocalSendState() {
+        val currentNode = node ?: return
+        val enabled = runCatching { currentNode.localsendEnabled() }.getOrDefault(false)
+        val peers = if (enabled) {
+            runCatching { currentNode.localsendPeers() }.getOrDefault(emptyList())
+        } else {
+            emptyList()
+        }
+        localsendMulticast?.runCatching { if (enabled) acquire() else release() }
+        _state.update { it.copy(localsendEnabled = enabled, localsendPeers = peers) }
     }
 
     // ---- Clipboard ----
@@ -715,6 +821,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             emptyList()
         }
         _state.update { it.copy(clipboardHistoryEnabled = enabled, clipboardHistory = items) }
+        refreshDataRetention()
     }
 
     fun setClipboardHistoryEnabled(enabled: Boolean) {
@@ -785,6 +892,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 timelineRetentionDays = retention?.maxDays ?: it.timelineRetentionDays,
             )
         }
+        refreshDataRetention()
     }
 
     suspend fun queryTimelinePage(
@@ -819,6 +927,91 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             startJob?.join()
             runCatching { node?.clearTimeline() }
             refreshTimeline()
+        }
+    }
+
+    // ---- Data retention & Clear everything ----
+
+    private fun pruneOldTempCaches() {
+        val cutoff = System.currentTimeMillis() - 24L * 60 * 60 * 1000
+        listOf("continuity_camera", "clipboard").forEach { dirName ->
+            java.io.File(context.cacheDir, dirName).listFiles()?.forEach { file ->
+                if (file.isFile && file.lastModified() in 1 until cutoff) {
+                    runCatching { file.delete() }
+                }
+            }
+        }
+    }
+
+    private fun refreshDataRetention() {
+        val counts = runCatching { node?.dataRetentionCounts() }.getOrNull()
+        val photoFiles = listOf("continuity_camera", "clipboard").sumOf { dirName ->
+            java.io.File(context.cacheDir, dirName).listFiles()?.count { it.isFile } ?: 0
+        }
+        val mmsFiles = java.io.File(context.cacheDir, "mms")
+            .listFiles()
+            ?.count { it.isFile && it.name.endsWith(".mms", ignoreCase = true) } ?: 0
+        _state.update {
+            it.copy(
+                receivedFileRecords = counts?.receivedFileRecords?.toInt() ?: it.receivedFileRecords,
+                cachedPhotoFiles = photoFiles,
+                cachedMmsFiles = mmsFiles,
+            )
+        }
+    }
+
+    fun clearMessageCache() {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            java.io.File(context.cacheDir, "mms").listFiles()?.forEach { file ->
+                if (file.isFile && file.name.endsWith(".mms", ignoreCase = true)) {
+                    runCatching { file.delete() }
+                }
+            }
+            runCatching { node?.clearMessageCache() }
+            refreshDataRetention()
+        }
+    }
+
+    fun clearPhotoThumbnailsCache() {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            listOf("continuity_camera", "clipboard").forEach { dirName ->
+                java.io.File(context.cacheDir, dirName).listFiles()?.forEach { file ->
+                    runCatching { file.deleteRecursively() }
+                }
+            }
+            refreshDataRetention()
+        }
+    }
+
+    fun clearReceivedFileHistory() {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            java.io.File(context.cacheDir, "received").listFiles()?.forEach { file ->
+                runCatching { file.deleteRecursively() }
+            }
+            _state.update { s -> s.copy(transfers = s.transfers.filterNot { it.isFinished() }) }
+            runCatching { node?.clearReceivedFileHistory() }
+            refreshTimeline()
+            refreshDataRetention()
+        }
+    }
+
+    fun clearEverything() {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            runCatching { node?.clearAllLocalData() }
+            listOf("mms", "continuity_camera", "clipboard", "received").forEach { dirName ->
+                java.io.File(context.cacheDir, dirName).listFiles()?.forEach { file ->
+                    runCatching { file.deleteRecursively() }
+                }
+            }
+            _state.update { s -> s.copy(transfers = s.transfers.filterNot { it.isFinished() }) }
+            refreshClipboardHistory()
+            refreshTimeline()
+            refreshDataRetention()
+            _messages.tryEmit(context.getString(R.string.data_cleared_everything_toast))
         }
     }
 
@@ -895,7 +1088,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
             PhoneStorage.capabilities(context) +
-            (if (WebcamService.hasPermission(context)) listOf("webcam.h264") else emptyList()) +
+            (if (WebcamService.hasPermission(context)) listOf("camera.stream") else emptyList()) +
+            (if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) listOf("camera.capture") else emptyList()) +
             (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList()) +
             // Apps in windows of their own run on displays the Elevated helper makes.
             (if (Elevated.running && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) listOf("mirror.virtual_display") else emptyList()) +

@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
-<!-- Received files on Android 8–9 (see files/ReceivedFiles.kt), and images
-     a PC put on the clipboard (see clipboard/PhoneClipboard.kt). -->
+<!-- Received files on Android 8–9 (see files/ReceivedFiles.kt), images
+     a PC put on the clipboard (see clipboard/PhoneClipboard.kt), and
+     outgoing MMS PDUs (see sms/PhoneSms.kt). -->
 <paths>
     <external-files-path name="received" path="Download/Nectarlink/" />
     <cache-path name="clipboard" path="clipboard/" />
+    <cache-path name="mms" path="mms/" />
 </paths>

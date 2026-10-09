@@ -863,6 +863,16 @@ pub const FEATURES: &[FeatureDef] = &[
         ],
         partial: None,
     },
+    FeatureDef {
+        id: "camera.continuity",
+        group: FeatureGroup::Camera,
+        requires: &[
+            phone("camera.capture", Unlock::Permission(Permission::Camera)),
+            desktop("camera.continuity", UPDATE),
+            DeviceToggle("photos"),
+        ],
+        partial: None,
+    },
     // Input
     FeatureDef {
         id: "input.remote",
@@ -924,6 +934,7 @@ mod tests {
         "media.control",
         "media.remote",
         "camera.stream",
+        "camera.capture",
         "toggles.read",
         "toggles.ringer",
         "toggles.volume",
@@ -945,6 +956,7 @@ mod tests {
         "mirror.view",
         "mirror.listen",
         "camera.virtual",
+        "camera.continuity",
     ];
 
     fn pc() -> DeviceFacts {
@@ -972,6 +984,7 @@ mod tests {
     fn basic_phone_matches_the_documented_examples() {
         let m = matrix(&facts(DeviceKind::Phone, "android", "16", PowerLevel::Basic, BASIC_PHONE));
         assert_eq!(m.state("clipboard.pc_to_phone"), Some(FeatureState::Available));
+        assert_eq!(m.state("camera.continuity"), Some(FeatureState::Available));
         assert_eq!(
             m.state("clipboard.auto_phone_to_pc"),
             Some(FeatureState::Partial {

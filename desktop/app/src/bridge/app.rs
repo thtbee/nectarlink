@@ -105,7 +105,32 @@ pub mod qobject {
         /// Bumped whenever the Home card's summary (unread messages, missed calls,
         /// latest photo) changes for the watched phone.
         #[qproperty(i32, home_summary_revision)]
+        /// Continuity Camera state (in-flight request and fallback paste prompt).
+        #[qproperty(bool, continuity_camera_busy)]
+        #[qproperty(QString, continuity_camera_status)]
+        #[qproperty(QString, continuity_camera_mode)]
+        #[qproperty(bool, continuity_paste_prompt_visible)]
+        #[qproperty(QString, continuity_paste_prompt_title)]
+        #[qproperty(QString, continuity_paste_prompt_body)]
+        #[qproperty(QString, continuity_paste_target_name)]
+        /// Command Palette state and latest open latency measurement.
+        #[qproperty(bool, command_palette_open)]
+        #[qproperty(QString, command_palette_results)]
+        #[qproperty(f64, command_palette_open_ms)]
+        /// Local storage and retention counts/sizes for Settings → Data & storage, as JSON.
+        #[qproperty(QString, data_retention_summary)]
+        /// LocalSend LAN sharing state and discovered peers (`[{ id, alias, deviceModel, deviceType, fingerprint, ip, port, protocol }]`).
+        #[qproperty(bool, localsend_enabled)]
+        #[qproperty(bool, localsend_receiving)]
+        #[qproperty(QString, localsend_peers_json)]
         type AppController = super::AppControllerRust;
+
+        /// Enables or disables LocalSend LAN discovery and file sharing.
+        #[qinvokable]
+        fn toggle_localsend(self: Pin<&mut AppController>, enabled: bool);
+        /// Triggers an immediate LocalSend multicast/HTTP discovery announcement.
+        #[qinvokable]
+        fn refresh_localsend(self: Pin<&mut AppController>);
 
         /// Asks a paired device to ring (or stop).
         #[qinvokable]
@@ -165,6 +190,35 @@ pub mod qobject {
         #[qinvokable]
         fn run_clip_suggestion(self: &AppController);
 
+        /// Starts a Continuity Camera capture (`"photo"` or `"scan"`) on the active phone.
+        #[qinvokable]
+        fn start_continuity_camera(self: &AppController, mode: &QString);
+        /// Cancels an active Continuity Camera capture request.
+        #[qinvokable]
+        fn cancel_continuity_camera(self: &AppController);
+        /// Pastes the captured Continuity Camera image into the current external window.
+        #[qinvokable]
+        fn confirm_continuity_paste(self: &AppController);
+        /// Dismisses the missing-window paste confirmation prompt, keeping the image on the clipboard.
+        #[qinvokable]
+        fn dismiss_continuity_paste(self: &AppController);
+
+        /// Opens the Command Palette and populates initial results from local state.
+        #[qinvokable]
+        fn open_command_palette(self: Pin<&mut AppController>);
+        /// Closes the Command Palette.
+        #[qinvokable]
+        fn close_command_palette(self: Pin<&mut AppController>);
+        /// Updates the Command Palette search results for `query`.
+        #[qinvokable]
+        fn search_command_palette(self: Pin<&mut AppController>, query: &QString);
+        /// Executes a Command Palette item by ID and closes the palette.
+        #[qinvokable]
+        fn run_command_palette(self: Pin<&mut AppController>, id: &QString);
+        /// Records when the Command Palette UI finished rendering its first frame.
+        #[qinvokable]
+        fn note_command_palette_shown(self: Pin<&mut AppController>);
+
         /// Re-reads whether Windows shows this app's notifications (the user
         /// may have changed it in Settings).
         #[qinvokable]
@@ -205,6 +259,25 @@ pub mod qobject {
         /// Releases idle UI caches and trims the working set when closed to tray.
         #[qinvokable]
         fn trim_working_set(self: &AppController);
+
+        /// Recomputes `data_retention_summary` from local stores and disk caches.
+        #[qinvokable]
+        fn refresh_data_retention(self: Pin<&mut AppController>);
+        /// Clears local notification history (in-memory, on-disk JSON, and cached notification images).
+        #[qinvokable]
+        fn clear_notification_history(self: Pin<&mut AppController>);
+        /// Clears cached SMS/MMS threads, chat threads/messages, and downloaded attachment files.
+        #[qinvokable]
+        fn clear_message_cache(self: Pin<&mut AppController>);
+        /// Clears cached photo thumbnails and viewer files on disk (without touching phone photos).
+        #[qinvokable]
+        fn clear_photo_thumbnails(self: Pin<&mut AppController>);
+        /// Clears received file transfer history records (without deleting saved files in Downloads).
+        #[qinvokable]
+        fn clear_received_file_history(self: Pin<&mut AppController>);
+        /// Clears all local histories and caches across all 6 categories while keeping paired devices and settings intact.
+        #[qinvokable]
+        fn clear_everything(self: Pin<&mut AppController>);
 
         /// A short message for the user (e.g. a command failed).
         #[qsignal]
@@ -263,6 +336,20 @@ pub struct AppControllerRust {
     clipboard_history: QString,
     timeline_preview: QString,
     home_summary_revision: i32,
+    continuity_camera_busy: bool,
+    continuity_camera_status: QString,
+    continuity_camera_mode: QString,
+    continuity_paste_prompt_visible: bool,
+    continuity_paste_prompt_title: QString,
+    continuity_paste_prompt_body: QString,
+    continuity_paste_target_name: QString,
+    command_palette_open: bool,
+    command_palette_results: QString,
+    command_palette_open_ms: f64,
+    data_retention_summary: QString,
+    localsend_enabled: bool,
+    localsend_receiving: bool,
+    localsend_peers_json: QString,
     tray: Option<tray::Tray>,
 }
 
@@ -407,9 +494,13 @@ impl cxx_qt::Initialize for qobject::AppController {
         self.as_mut().set_can_update(crate::updater::can_update());
         self.as_mut().set_clipboard_history(QString::from(&crate::clipboard::history_json()));
         self.as_mut().set_timeline_preview(QString::from(&super::timeline::preview_json()));
+        self.as_mut().set_command_palette_results(QString::from("[]"));
+        self.as_mut().set_data_retention_summary(QString::from(&compute_data_retention_json()));
+        self.as_mut().set_localsend_peers_json(QString::from("[]"));
         let initial_phone_colors = core_host::host().hub.read(|s| phone_colors_json(&s.devices));
         self.as_mut().set_phone_colors(QString::from(&initial_phone_colors));
         self.as_mut().refresh_appearance();
+        self.as_mut().refresh_localsend_state();
         let qt = self.qt_thread();
         *CONTROLLER.get_or_init(Mutex::default).lock().unwrap_or_else(|e| e.into_inner()) = Some(qt.clone());
         super::subscribe(
@@ -436,9 +527,29 @@ impl cxx_qt::Initialize for qobject::AppController {
             let preview = super::timeline::preview_json();
             object.set_timeline_preview(QString::from(&preview));
         });
+        super::subscribe(qt.clone(), Changes::CONTINUITY, Self::refresh_continuity);
+        super::subscribe(qt.clone(), Changes::PALETTE, Self::refresh_palette);
+        super::subscribe(qt.clone(), Changes::LOCALSEND | Changes::STATUS, Self::refresh_localsend_state);
+        super::subscribe(
+            qt.clone(),
+            Changes::DATA_RETENTION
+                | Changes::CLIPBOARD
+                | Changes::TIMELINE
+                | Changes::HISTORY
+                | Changes::TRANSFERS
+                | Changes::MESSAGES
+                | Changes::PHOTOS,
+            |object| {
+                let summary = compute_data_retention_json();
+                object.set_data_retention_summary(QString::from(&summary));
+            },
+        );
 
         let labels = tray::MenuLabels {
             open: "Open Nectarlink".into(),
+            command_palette: "Command palette".into(),
+            take_photo: "Take photo with phone".into(),
+            scan_document: "Scan document with phone".into(),
             find_phone: "Find my phone".into(),
             open_link: "Open copied link on phone".into(),
             quit: "Quit Nectarlink".into(),
@@ -455,6 +566,16 @@ fn on_tray_event(qt: &CxxQtThread<qobject::AppController>, event: tray::TrayEven
         tray::TrayEvent::Open => {
             let _ = qt.queue(|object| object.activate_requested());
         }
+        tray::TrayEvent::CommandPalette => {
+            let results = crate::command_palette::open();
+            let _ = qt.queue(move |mut object| {
+                object.as_mut().set_command_palette_results(QString::from(&results));
+                object.as_mut().set_command_palette_open(true);
+                object.activate_requested();
+            });
+        }
+        tray::TrayEvent::TakePhoto => crate::continuity_camera::start("photo"),
+        tray::TrayEvent::ScanDocument => crate::continuity_camera::start("scan"),
         tray::TrayEvent::OpenLinkOnPhone => crate::links::open_copied_link_on_phone(),
         tray::TrayEvent::Quit => {
             let _ = qt.queue(|object| object.quit_requested());
@@ -659,6 +780,77 @@ impl qobject::AppController {
         }
     }
 
+    fn refresh_continuity(mut self: Pin<&mut Self>) {
+        let view = crate::continuity_camera::view();
+        self.as_mut().set_continuity_camera_busy(view.busy);
+        self.as_mut().set_continuity_camera_mode(QString::from(&view.mode));
+        self.as_mut().set_continuity_camera_status(QString::from(&view.status));
+        self.as_mut().set_continuity_paste_prompt_visible(view.paste_prompt_visible);
+        self.as_mut().set_continuity_paste_prompt_title(QString::from(&view.paste_prompt_title));
+        self.as_mut().set_continuity_paste_prompt_body(QString::from(&view.paste_prompt_body));
+        self.as_mut().set_continuity_paste_target_name(QString::from(&view.paste_target_name));
+    }
+
+    fn refresh_palette(mut self: Pin<&mut Self>) {
+        let was_open = self.command_palette_open;
+        let is_open = crate::command_palette::is_open();
+        self.as_mut().set_command_palette_open(is_open);
+        self.as_mut().set_command_palette_open_ms(crate::command_palette::last_open_ms());
+        if is_open && !was_open {
+            let results = crate::command_palette::search("");
+            self.as_mut().set_command_palette_results(QString::from(&results));
+        }
+    }
+
+    fn refresh_localsend_state(mut self: Pin<&mut Self>) {
+        let (enabled, receiving, peers) = match core_host::node() {
+            Some(node) => (node.localsend_enabled(), node.localsend_receiving(), node.localsend_peers()),
+            None => (false, false, Vec::new()),
+        };
+        core_host::host().hub.update(|s| {
+            s.localsend_enabled = enabled;
+            s.localsend_receiving = receiving;
+            s.localsend_peers = peers.clone();
+            Changes::NONE
+        });
+        let entries: Vec<serde_json::Value> = peers
+            .into_iter()
+            .map(|p| {
+                serde_json::json!({
+                    "id": p.id.to_string(),
+                    "alias": p.alias,
+                    "deviceModel": p.device_model.unwrap_or_default(),
+                    "deviceType": p.device_type,
+                    "fingerprint": p.fingerprint,
+                    "ip": p.ip,
+                    "port": p.port,
+                    "protocol": p.protocol,
+                })
+            })
+            .collect();
+        let json = serde_json::Value::Array(entries).to_string();
+        self.as_mut().set_localsend_enabled(enabled);
+        self.as_mut().set_localsend_receiving(receiving);
+        self.as_mut().set_localsend_peers_json(QString::from(&json));
+    }
+
+    pub fn toggle_localsend(mut self: Pin<&mut Self>, enabled: bool) {
+        if let Some(node) = core_host::node()
+            && let Err(e) = node.set_localsend_enabled(enabled)
+        {
+            show_message(describe(&e));
+        }
+        self.as_mut().refresh_localsend_state();
+        core_host::host().hub.changed(Changes::LOCALSEND);
+    }
+
+    pub fn refresh_localsend(mut self: Pin<&mut Self>) {
+        if let Some(node) = core_host::node() {
+            node.refresh_localsend();
+        }
+        self.as_mut().refresh_localsend_state();
+    }
+
     fn refresh_appearance(mut self: Pin<&mut Self>) {
         self.as_mut().set_system_dark(win::system_dark());
         self.as_mut().set_reduce_motion(win::reduce_motion());
@@ -690,6 +882,86 @@ impl qobject::AppController {
 
     pub fn run_clip_suggestion(&self) {
         crate::clipboard::run_last_suggestion();
+    }
+
+    pub fn start_continuity_camera(&self, mode: &QString) {
+        let idx = self.current_device.max(0) as usize;
+        crate::continuity_camera::start_for_index(idx, &String::from(mode));
+    }
+
+    pub fn cancel_continuity_camera(&self) {
+        crate::continuity_camera::cancel();
+    }
+
+    pub fn confirm_continuity_paste(&self) {
+        crate::continuity_camera::confirm_paste();
+    }
+
+    pub fn dismiss_continuity_paste(&self) {
+        crate::continuity_camera::dismiss_paste();
+    }
+
+    pub fn open_command_palette(mut self: Pin<&mut Self>) {
+        let results = crate::command_palette::open();
+        self.as_mut().set_command_palette_results(QString::from(&results));
+        self.as_mut().set_command_palette_open(true);
+        self.activate_requested();
+    }
+
+    pub fn close_command_palette(self: Pin<&mut Self>) {
+        crate::command_palette::close();
+        self.set_command_palette_open(false);
+    }
+
+    pub fn search_command_palette(self: Pin<&mut Self>, query: &QString) {
+        let results = crate::command_palette::search(&String::from(query));
+        self.set_command_palette_results(QString::from(&results));
+    }
+
+    pub fn note_command_palette_shown(self: Pin<&mut Self>) {
+        let ms = crate::command_palette::mark_shown();
+        self.set_command_palette_open_ms(ms);
+    }
+
+    pub fn run_command_palette(mut self: Pin<&mut Self>, id: &QString) {
+        let action = crate::command_palette::execute(&String::from(id));
+        self.as_mut().set_command_palette_open(false);
+        let Some(action) = action else { return };
+        use crate::command_palette::PaletteUiAction;
+        match action {
+            PaletteUiAction::NavigatePage { page, device_index } => {
+                if let Some(idx) = device_index {
+                    self.as_mut().set_current_device(idx as i32);
+                }
+                self.as_mut().set_current_page(QString::from(&page));
+                self.activate_requested();
+            }
+            PaletteUiAction::StartChat { device_id, number, name } => {
+                if let Ok(dev) = device_id.parse::<DeviceId>() {
+                    if let Some(idx) =
+                        core_host::host().hub.read(|s| s.devices.iter().position(|d| d.id == dev))
+                    {
+                        self.as_mut().set_current_device(idx as i32);
+                    }
+                    crate::messages::open_device(dev);
+                    crate::messages::start_chat(dev, number, name);
+                }
+                self.as_mut().set_current_page(QString::from("messages"));
+                self.activate_requested();
+            }
+            PaletteUiAction::OpenDialer { device_id, number } => {
+                if let Ok(dev) = device_id.parse::<DeviceId>() {
+                    open_dialer(dev, &number);
+                }
+            }
+            PaletteUiAction::OpenDoctor => {
+                self.run_doctor();
+            }
+            PaletteUiAction::OpenPairing => {
+                self.as_mut().set_current_page(QString::from("home"));
+                self.activate_requested();
+            }
+        }
     }
 
     pub fn refresh_toasts_enabled(self: Pin<&mut Self>) {
@@ -895,6 +1167,91 @@ impl qobject::AppController {
         crate::calls::release_idle_resources();
         super::native::ffi::trim_memory_caches();
     }
+
+    pub fn refresh_data_retention(self: Pin<&mut Self>) {
+        let summary = compute_data_retention_json();
+        self.set_data_retention_summary(QString::from(&summary));
+    }
+
+    pub fn clear_notification_history(self: Pin<&mut Self>) {
+        core_host::host().hub.update(|s| s.clear_notification_history() | Changes::DATA_RETENTION);
+        crate::notification_store::clear_disk();
+        self.refresh_data_retention();
+    }
+
+    pub fn clear_message_cache(self: Pin<&mut Self>) {
+        if let Some(node) = core_host::node() {
+            let _ = node.clear_message_cache();
+        }
+        crate::messages::clear_cache();
+        core_host::host().hub.changed(Changes::DATA_RETENTION);
+        self.refresh_data_retention();
+    }
+
+    pub fn clear_photo_thumbnails(self: Pin<&mut Self>) {
+        crate::photos::clear_cache();
+        core_host::host().hub.changed(Changes::DATA_RETENTION);
+        self.refresh_data_retention();
+    }
+
+    pub fn clear_received_file_history(self: Pin<&mut Self>) {
+        if let Some(node) = core_host::node() {
+            let _ = node.clear_received_file_history();
+        }
+        core_host::host()
+            .hub
+            .update(|s| s.clear_transfer_history() | Changes::TIMELINE | Changes::DATA_RETENTION);
+        self.refresh_data_retention();
+    }
+
+    pub fn clear_everything(mut self: Pin<&mut Self>) {
+        if let Some(node) = core_host::node() {
+            let _ = node.clear_all_local_data();
+        }
+        crate::clipboard::clear_history();
+        core_host::host().hub.update(|s| {
+            s.clear_notification_history()
+                | s.clear_transfer_history()
+                | Changes::CLIPBOARD
+                | Changes::TIMELINE
+                | Changes::DATA_RETENTION
+        });
+        crate::notification_store::clear_disk();
+        crate::messages::clear_cache();
+        crate::photos::clear_cache();
+        self.as_mut().refresh_data_retention();
+        self.toast(QString::from("Cleared all local history and caches"));
+    }
+}
+
+fn compute_data_retention_json() -> String {
+    let counts = core_host::node().map(|n| n.data_retention_counts()).unwrap_or_default();
+    let (notification_history, notification_history_enabled, transfer_records) =
+        core_host::host().hub.read(|s| {
+            let finished = s.transfers.iter().filter(|t| t.transfer.state.is_finished()).count();
+            (s.history.len(), s.history_enabled, finished)
+        });
+    let notification_image_bytes = crate::notifications::cached_image_bytes();
+    let (cached_sms_threads, cached_sms_messages, message_attachment_bytes) = crate::messages::cache_stats();
+    let (photo_thumb_files, photo_thumb_bytes) = crate::photos::cache_stats();
+    serde_json::json!({
+        "clipboardItems": counts.clipboard_items,
+        "clipboardBytes": counts.clipboard_bytes,
+        "timelineItems": counts.timeline_items,
+        "timelineRetentionDays": counts.timeline_retention_days,
+        "notificationHistory": notification_history,
+        "notificationHistoryEnabled": notification_history_enabled,
+        "notificationImageBytes": notification_image_bytes,
+        "chatThreads": counts.chat_threads,
+        "chatMessages": counts.chat_messages,
+        "cachedSmsThreads": cached_sms_threads,
+        "cachedSmsMessages": cached_sms_messages,
+        "messageAttachmentBytes": message_attachment_bytes,
+        "photoThumbFiles": photo_thumb_files,
+        "photoThumbBytes": photo_thumb_bytes,
+        "receivedFileRecords": counts.received_file_records as usize + transfer_records,
+    })
+    .to_string()
 }
 
 impl Drop for AppControllerRust {
@@ -978,6 +1335,7 @@ fn home_summary_json(device: DeviceId) -> String {
 }
 
 fn watch_home(device: Option<DeviceId>) {
+    crate::command_palette::set_preferred_device(device);
     home_store(|s| s.watched = device);
     if let Some(id) = device {
         refresh_home_if_needed(id, false, false, false);

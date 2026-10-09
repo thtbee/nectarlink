@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import app.nectarlink.android.calls.PhoneCalls
+import app.nectarlink.android.camera.ContinuityCameraRequests
 import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.android.contacts.PhoneContacts
 import app.nectarlink.android.notifications.NotificationListener
@@ -29,6 +30,7 @@ import app.nectarlink.android.webcam.WebcamService
 import app.nectarlink.core.CallCommand
 import app.nectarlink.core.CallLogEntry
 import app.nectarlink.core.Contact
+import app.nectarlink.core.SmsAttachment
 import app.nectarlink.core.SmsMessage
 import app.nectarlink.core.SmsPartData
 import app.nectarlink.core.SmsThread
@@ -77,6 +79,8 @@ internal class PhonePlatform(
     private val onWebcam: (String, WebcamRequest) -> Boolean,
     /** Apps in windows of their own on PCs (Elevated). */
     private val appWindows: AppWindows,
+    /** Resolves a paired PC's display name by ID. */
+    private val nameOf: (String) -> String = { "" },
 ) : Platform {
     private val context = context.applicationContext
 
@@ -162,6 +166,13 @@ internal class PhonePlatform(
     override fun webcamKeyframeRequested(pcId: String) =
         WebcamService.keyframe(pcId)
 
+    override fun cameraCaptureRequested(pcId: String, requestId: String, mode: String): Boolean =
+        ContinuityCameraRequests.show(context, pcId, requestId, mode, nameOf(pcId))
+
+    override fun cameraCaptureCancelled(pcId: String, requestId: String) {
+        ContinuityCameraRequests.cancelFromPc(context, pcId, requestId)
+    }
+
     override fun phoneApps(): List<PhoneApp> = AppWindows.list(context)
 
     override fun smsThreads(limit: UInt): List<SmsThread> = sms().threads(limit.toInt())
@@ -170,6 +181,9 @@ internal class PhonePlatform(
         sms().messages(thread, before, limit.toInt())
 
     override fun smsSend(to: List<String>, body: String): Boolean = sms().send(to, body)
+
+    override fun sendSmsWithAttachments(to: List<String>, body: String, attachments: List<SmsAttachment>): Boolean =
+        sms().send(to, body, attachments)
 
     override fun smsPart(id: String): SmsPartData? = sms().part(id)
 

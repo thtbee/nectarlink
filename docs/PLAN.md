@@ -129,10 +129,10 @@ Power: 🟢 Basic · 🔵 Assist · 🟣 Elevated (see §4.6).
 ### 3.3 Messages (SMS/MMS + chat apps)
 | Feature | Tier |
 |---|---|
-| SMS/MMS threads, send, receive, search, **attachments (MMS images)** | P0 🟢 |
-| **Unified Conversations**: RCS, WhatsApp, Telegram, Signal and others built from MessagingStyle notifications, with reply via RemoteInput. One inbox on PC | P1 🟢 |
-| Contacts (photos, search, favorites), start a conversation or call from PC | P1 🟢 |
-| Drag an image from the desktop into a thread to send it as MMS | P1 |
+| SMS/MMS threads, send, receive, search, **attachments (MMS images)** ✅ | P0 🟢 |
+| **Unified Conversations**: RCS, WhatsApp, Telegram, Signal and others built from MessagingStyle notifications, with reply via RemoteInput. One inbox on PC ✅ | P1 🟢 |
+| Contacts (photos, search, favorites), start a conversation or call from PC ✅ | P1 🟢 |
+| Drag an image from the desktop into a thread (or paste from the PC clipboard) to send it as MMS ✅ | P1 |
 
 ### 3.4 Calls
 | Feature | Tier |
@@ -163,8 +163,8 @@ current Android. Talking through the PC comes with the HFP item above.
 | Send files/folders both ways: drag-drop, share sheet, Explorer **"Send to phone"** context menu, Windows share sheet | P0 |
 | Fast, resumable, multi-stream transfers with progress, pause/resume, and integrity hashing | P0 |
 | **Flick to send**: flick a photo/file upward on the phone and it lands on the PC. Drag a file to the screen edge on the PC and it flies to the phone. Physics-based animation on both ends | P1 |
-| **LocalSend protocol interop**: send to and receive from any LocalSend device (iOS, Mac, Linux). We implement its open protocol in Rust; we don't reuse its (Dart) code | P1 |
-| **Coexistence**: runs side by side with KDE Connect (ports 1714–1764) and LocalSend (53317) on the same PC without conflicts. If LocalSend's port is taken, Nectarlink still sends but leaves receiving to the LocalSend app | P0 |
+| **LocalSend protocol interop**: send to and receive from any LocalSend device (iOS, Mac, Linux). We implement its open protocol in Rust; we don't reuse its (Dart) code ✅ | P1 |
+| **Coexistence**: runs side by side with KDE Connect (ports 1714–1764) and LocalSend (53317) on the same PC without conflicts. If LocalSend's port is taken, Nectarlink still sends but leaves receiving to the LocalSend app ✅ | P0 |
 | **Phone storage in Explorer** (Cloud Files API: placeholders, on-demand download, native sync icons) ✅ | P1 |
 | **Photos**: gallery with thumbnails, recent screenshots/photos pop up on PC, drag out to the desktop | P0 (recent), P1 (gallery) |
 | Folder sync (Syncthing-style two-way folders, e.g. Camera → PC) | P2 |
@@ -313,7 +313,7 @@ nectarlink/
 - **Encryption:** QUIC + TLS 1.3 (raw public keys), always. Relays only forward ciphertext.
 - **Per-device permissions:** each paired device has feature toggles. Dangerous ones (run commands, remote input into PC, file browse, PC unlock) are **off by default**.
 - **Local API/CLI:** a named pipe with a per-user token. No open localhost TCP port.
-- **At-rest:** message and notification caches are encrypted with a device key, with an auto-purge window (default 7 days for notifications).
+- **At-rest & data retention ✅:** clipboard history is sealed on disk with `KeyProtector` (DPAPI on Windows, Keystore AES-GCM on Android), capped at 50 items, and auto-purges unpinned clips older than 7 days (pinned clips stay; OTPs are never stored). Timeline defaults to 90 days (configurable: 30 / 90 / 365 days or Forever) and 5,000 entries. Notification history on PC is capped at 200 items and 24 hours. `MessagingStyle` conversation cache retains up to 200 threads per peer (100 messages/thread) for 30 days. Both apps expose per-category clear buttons and a single **"Clear everything"** action in *Settings → Privacy & Data* that wipes all local history and caches while keeping device identity, paired devices, and feature toggles intact.
 - Security audit before 1.0. Fuzz the protocol decoder and pairing handshake. The credential provider gets its own threat model and review.
 
 ### 4.4 Connectivity: "it just works"
@@ -731,7 +731,7 @@ Each phase ends with a usable, releasable product. Phase sizes are relative; act
    - Battery soak tests on testers' phones.
    - An opt-in diagnostics bundle, since there's no telemetry.
 10. **Island etiquette.** Auto-hide during fullscreen games, videos and presentations and when Windows is in Do Not Disturb. Handle multiple monitors.
-11. **Data retention defaults** for Timeline (90 days or 5,000 entries, configurable, plus Clear all ✅), clipboard history (50 entries, encrypted, plus Clear history ✅), notification history (24 hours) and message cache: size caps, auto-purge, and one "Clear everything" button.
+11. **Data retention defaults ✅:** Timeline (90 days default — configurable 30 / 90 / 365 days or Forever — and 5,000 entries cap, auto-purged + Clear all ✅), clipboard history (50 entries, 7-day auto-purge for unpinned items while pinned stay, encrypted at rest with `KeyProtector`, OTPs excluded + Clear history ✅), notification history (24 hours, 200 items cap + Clear notifications ✅), `MessagingStyle` message cache (30 days, 200 threads/peer, 100 messages/thread + Clear message cache ✅), received file transfer records (Clear transfer history without deleting files on disk ✅), and one **"Clear everything"** button (`clear_all_local_data`) in *Settings → Privacy & Data* on both PC and Android that wipes all local history and caches while preserving device identity, paired devices, and per-device feature toggles ✅.
 12. **Accessibility and translations from day one.** All strings translatable (`qsTr`, Android resources), RTL layouts, screen-reader labels, keyboard focus order. Retrofitting is expensive.
 13. **Asset licenses.** The display font under OFL, an icon set under a permissive license (e.g. Material Symbols, Apache-2.0). No Microsoft or Google logos; competitor names only in plain comparison wording.
 14. **Realistic pacing.** Claude writes most of the code, but every phase needs maintainer review and tester feedback. Estimate phase durations after Phase 0 from real velocity, not before.

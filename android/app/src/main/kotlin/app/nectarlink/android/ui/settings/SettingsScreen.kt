@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -87,9 +88,15 @@ fun SettingsScreen(
     onSetSuggestClipboardActions: (Boolean) -> Unit = {},
     onSetTimelineRetentionDays: (UInt) -> Unit = {},
     onClearTimeline: () -> Unit = {},
+    onClearMessageCache: () -> Unit = {},
+    onClearPhotoCache: () -> Unit = {},
+    onClearReceivedFileHistory: () -> Unit = {},
+    onClearEverything: () -> Unit = {},
+    onToggleLocalSend: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var confirmUnpair by remember { mutableStateOf<Device?>(null) }
+    var confirmClearEverything by remember { mutableStateOf(false) }
 
     Column(
         modifier.verticalScroll(rememberScrollState()).padding(16.dp),
@@ -120,32 +127,75 @@ fun SettingsScreen(
                     onCheckedChange = onSetSuggestClipboardActions,
                 )
             }
-            SettingRowDivider()
+        }
+
+        Section(stringResource(R.string.settings_localsend_title)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                    Text(stringResource(R.string.settings_clipboard_history), style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.settings_localsend_title), style = MaterialTheme.typography.titleSmall)
                     Text(
-                        stringResource(R.string.settings_clipboard_history_hint),
+                        stringResource(R.string.settings_localsend_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+                Switch(
+                    checked = state.localsendEnabled,
+                    onCheckedChange = onToggleLocalSend,
+                )
+            }
+        }
+
+        Section(stringResource(R.string.settings_data_storage_title)) {
+            // 1. Notification history
+            Column(Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.data_notifications_title), style = MaterialTheme.typography.titleSmall)
+                Text(
+                    stringResource(R.string.data_notifications_subtitle),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            SettingRowDivider()
+
+            // 2. Clipboard history
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text(stringResource(R.string.data_clipboard_title), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.data_clipboard_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (state.clipboardHistory.isNotEmpty()) {
+                        Text(
+                            pluralStringResource(
+                                R.plurals.data_clipboard_count,
+                                state.clipboardHistory.size,
+                                state.clipboardHistory.size,
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
                 }
                 Switch(
                     checked = state.clipboardHistoryEnabled,
                     onCheckedChange = onSetClipboardHistoryEnabled,
                 )
             }
-            if (state.clipboardHistoryEnabled && state.clipboardHistory.isNotEmpty()) {
+            if (state.clipboardHistory.isNotEmpty()) {
                 OutlinedButton(onClick = onClearClipboardHistory) {
-                    Text(stringResource(R.string.clipboard_history_clear))
+                    Text(stringResource(R.string.data_action_clear))
                 }
             }
-        }
+            SettingRowDivider()
 
-        Section(stringResource(R.string.settings_timeline_title)) {
-            Text(stringResource(R.string.settings_timeline_retention), style = MaterialTheme.typography.titleSmall)
+            // 3. Timeline
+            Text(stringResource(R.string.data_timeline_title), style = MaterialTheme.typography.titleSmall)
             Text(
-                stringResource(R.string.settings_timeline_retention_hint),
+                stringResource(R.string.data_timeline_subtitle),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -158,10 +208,75 @@ fun SettingsScreen(
                 ),
                 state.timelineRetentionDays.toString(),
             ) { value -> value.toUIntOrNull()?.let(onSetTimelineRetentionDays) }
-            if (state.timeline.isNotEmpty()) {
+            if (state.timeline.isNotEmpty() || state.timelineTotal > 0u) {
                 OutlinedButton(onClick = onClearTimeline) {
-                    Text(stringResource(R.string.timeline_action_clear_all))
+                    Text(stringResource(R.string.data_action_clear))
                 }
+            }
+            SettingRowDivider()
+
+            // 4. Message cache
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text(stringResource(R.string.data_messages_title), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.data_messages_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (state.cachedMmsFiles > 0) {
+                    OutlinedButton(onClick = onClearMessageCache) {
+                        Text(stringResource(R.string.data_action_clear))
+                    }
+                }
+            }
+            SettingRowDivider()
+
+            // 5. Photo thumbnails & camera cache
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text(stringResource(R.string.data_photos_title), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.data_photos_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (state.cachedPhotoFiles > 0) {
+                    OutlinedButton(onClick = onClearPhotoCache) {
+                        Text(stringResource(R.string.data_action_clear))
+                    }
+                }
+            }
+            SettingRowDivider()
+
+            // 6. Received-file history
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text(stringResource(R.string.data_received_files_title), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.data_received_files_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (state.receivedFileRecords > 0 || state.transfers.isNotEmpty()) {
+                    OutlinedButton(onClick = onClearReceivedFileHistory) {
+                        Text(stringResource(R.string.data_action_clear))
+                    }
+                }
+            }
+            SettingRowDivider()
+
+            // 7. Clear everything
+            Text(
+                stringResource(R.string.data_clear_everything_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(onClick = { confirmClearEverything = true }) {
+                Text(stringResource(R.string.data_clear_everything_button))
             }
         }
 
@@ -367,6 +482,27 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmUnpair = null }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+
+    if (confirmClearEverything) {
+        AlertDialog(
+            onDismissRequest = { confirmClearEverything = false },
+            title = { Text(stringResource(R.string.data_clear_everything_dialog_title)) },
+            text = { Text(stringResource(R.string.data_clear_everything_dialog_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onClearEverything()
+                    confirmClearEverything = false
+                }) {
+                    Text(stringResource(R.string.data_clear_everything_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClearEverything = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
             },
         )
     }

@@ -20,8 +20,8 @@ use iroh_mdns_address_lookup::{DiscoveryEvent, MdnsAddressLookup};
 use nectarlink_protocol::{
     ALPN_PAIR, ALPN_SESSION, DeviceId, Envelope, ErrorCode,
     messages::{
-        Battery, ClipSet, DeviceInfo, HelloUpdate, MediaCommand, MediaPlayer, Notification, NotifyAction,
-        NotifyKey, PowerLevel, Ring, types,
+        Battery, ClipSet, DeviceInfo, DeviceKind, HelloUpdate, MediaCommand, MediaPlayer, Notification,
+        NotifyAction, NotifyKey, PowerLevel, Ring, types,
     },
     pairing::PairingUri,
 };
@@ -80,6 +80,9 @@ pub(crate) struct LocalState {
 impl LocalState {
     pub fn capabilities(&self) -> Vec<String> {
         let mut caps: Vec<String> = BASE_CAPABILITIES.iter().map(|c| (*c).to_owned()).collect();
+        if !matches!(self.device.kind, DeviceKind::Phone | DeviceKind::Tablet) {
+            caps.push(nectarlink_protocol::messages::continuity_camera::RECEIVE.to_owned());
+        }
         for cap in &self.extra_capabilities {
             if !caps.contains(cap) {
                 caps.push(cap.clone());
@@ -141,6 +144,8 @@ pub(crate) struct Shared {
     pub(crate) clipboard_history: crate::clipboard_history::ClipboardHistoryStore,
     /// Smart suggestion for the most recently received text clip, if any.
     pub(crate) last_clip_suggestion: Mutex<Option<(DeviceId, crate::ClipSuggestion)>>,
+    /// LocalSend v2.1 discovery, server, and outgoing transfers.
+    pub(crate) localsend: crate::localsend::LocalSendState,
     pub data_dir: std::path::PathBuf,
     /// Where received files go.
     pub downloads_dir: std::path::PathBuf,
@@ -167,7 +172,13 @@ impl Shared {
     }
 
     pub(crate) fn peer_name(&self, peer: &DeviceId) -> String {
-        self.store.get_peer(peer).ok().flatten().map(|p| p.info.name).unwrap_or_else(|| peer.short())
+        self.store
+            .get_peer(peer)
+            .ok()
+            .flatten()
+            .map(|p| p.info.name)
+            .or_else(|| self.localsend.peer_name(peer))
+            .unwrap_or_else(|| peer.short())
     }
 
     pub(crate) fn record_timeline(&self, mut entry: crate::timeline::NewTimelineEntry) -> Option<i64> {
@@ -649,7 +660,9 @@ impl Node {
         let secret = identity::load_or_create(&config.data_dir, protector.as_ref())?;
         let store = Store::open(&config.data_dir)?;
         let clipboard_history =
-            crate::clipboard_history::ClipboardHistoryStore::open(&config.data_dir, protector);
+            crate::clipboard_history::ClipboardHistoryStore::open(&config.data_dir, protector.clone());
+        let localsend =
+            crate::localsend::LocalSendState::open(&config.data_dir, protector, config.localsend_port)?;
 
         // A stable port lets paired devices reconnect to the addresses they
         // remember even where local discovery is blocked (guest Wi-Fi, some
@@ -724,6 +737,7 @@ impl Node {
             storage: Mutex::new(Default::default()),
             clipboard_history,
             last_clip_suggestion: Mutex::new(None),
+            localsend,
             data_dir: config.data_dir.clone(),
             downloads_dir: config.downloads_dir.clone().unwrap_or_else(|| config.data_dir.join("received")),
             transfers: Mutex::new(HashMap::new()),
@@ -732,6 +746,9 @@ impl Node {
 
         if config.lan_discovery {
             start_lan_discovery(&shared, &config.device.name)?;
+        }
+        if shared.localsend.enabled() {
+            shared.localsend.start(&shared);
         }
 
         let router = Router::builder(endpoint)
@@ -753,6 +770,7 @@ impl Node {
     /// Stops all sessions and networking.
     pub async fn shutdown(&self) {
         self.shared.cancel.cancel();
+        self.shared.localsend.stop(&self.shared);
         let sessions: Vec<_> = lock(&self.shared.sessions).drain().map(|(_, s)| s).collect();
         for session in sessions {
             session.close(CLOSE_NORMAL, b"shutdown");
@@ -837,6 +855,7 @@ impl Node {
     pub async fn refresh(&self) {
         self.network_changed().await;
         self.shared.refresh_all_capabilities();
+        self.shared.localsend.refresh(&self.shared);
         for session in self.shared.live_sessions() {
             let _ = session.send(Envelope::empty(types::NOTIFY_SYNC)).await;
             let _ = session.send(Envelope::empty(types::MEDIA_SYNC)).await;
@@ -1028,11 +1047,52 @@ impl Node {
         transfer::send_recording(&self.shared, peer, file, markers).await
     }
 
-    /// Cancels a transfer in either direction. Unknown IDs are ignored.
+    /// Accepts an incoming transfer waiting for user confirmation (LocalSend).
+    pub fn accept_transfer(&self, id: &str) {
+        self.shared.localsend.resolve_transfer_approval(id, true);
+    }
+
+    /// Cancels a transfer in either direction (or declines a pending incoming
+    /// LocalSend transfer). Unknown IDs are ignored.
     pub fn cancel_transfer(&self, id: &str) {
+        self.shared.localsend.resolve_transfer_approval(id, false);
         if let Some(cancel) = lock(&self.shared.transfers).get(id) {
             cancel.cancel();
         }
+    }
+
+    // ---- LocalSend compatibility (docs/protocol/v0.md) ----
+
+    /// Whether LocalSend v2.1 compatibility is enabled on this device.
+    pub fn localsend_enabled(&self) -> bool {
+        self.shared.localsend.enabled()
+    }
+
+    /// Turns LocalSend v2.1 compatibility on or off (persisted encrypted on disk).
+    pub fn set_localsend_enabled(&self, enabled: bool) -> Result<()> {
+        self.shared.localsend.set_enabled(&self.shared, enabled)
+    }
+
+    /// Whether this device's LocalSend HTTP/HTTPS server is actively bound and
+    /// able to receive incoming files (false when turned off or when TCP port
+    /// 53317 is already owned by a standalone LocalSend process on the same host).
+    pub fn localsend_receiving(&self) -> bool {
+        self.shared.localsend.receiving()
+    }
+
+    /// Returns the LocalSend peers currently discovered on the local network.
+    pub fn localsend_peers(&self) -> Vec<crate::LocalSendPeer> {
+        self.shared.localsend.peers()
+    }
+
+    /// Broadcasts a fresh LocalSend UDP multicast announcement and probes local ports.
+    pub fn refresh_localsend(&self) {
+        self.shared.localsend.refresh(&self.shared);
+    }
+
+    /// Probes `host:port` via the LocalSend v2.1 HTTP/HTTPS API and adds the peer if found.
+    pub async fn probe_localsend_peer(&self, host: &str, port: u16) -> Result<crate::LocalSendPeer> {
+        crate::localsend::probe_peer(&self.shared, host, port).await
     }
 
     // ---- Clipboard (docs/protocol/clipboard.md) ----
@@ -1316,6 +1376,39 @@ impl Node {
         crate::webcam::open(&self.shared, &session).await
     }
 
+    // ---- Continuity Camera (docs/protocol/v0.md §Continuity Camera) ----
+
+    /// Asks a paired phone to capture a photo or scan a document and stream the result back.
+    pub async fn request_camera_capture(
+        &self,
+        peer: DeviceId,
+        request_id: String,
+        mode: crate::CameraCaptureMode,
+    ) -> Result<()> {
+        crate::continuity_camera::request(&self.shared, peer, request_id, mode).await
+    }
+
+    /// Cancels an in-flight Continuity Camera request on either side.
+    pub async fn cancel_camera_capture(
+        &self,
+        peer: DeviceId,
+        request_id: String,
+        reason: Option<String>,
+    ) -> Result<()> {
+        crate::continuity_camera::cancel(&self.shared, peer, request_id, reason).await
+    }
+
+    /// Sends a captured photo or scanned document from this phone to the requesting PC.
+    pub async fn send_camera_capture_result(
+        &self,
+        peer: DeviceId,
+        meta: crate::CameraCaptureResultMeta,
+        bytes: Vec<u8>,
+    ) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::continuity_camera::send_result(&self.shared, &session, meta, bytes).await
+    }
+
     // ---- Messages (docs/protocol/sms.md) ----
 
     /// This phone's messages changed (in `thread`, or anywhere): connected
@@ -1346,13 +1439,123 @@ impl Node {
     /// Sends a text through a paired phone.
     pub async fn sms_send(&self, peer: DeviceId, to: Vec<String>, body: String) -> Result<()> {
         let session = self.connected(&peer)?;
-        crate::sms::send(&self.shared, &session, to, body).await
+        crate::sms::send(&self.shared, &session, to, body, Vec::new()).await
+    }
+
+    /// Sends a text (no attachments) through a paired phone.
+    pub async fn send_sms(
+        &self,
+        peer: impl std::borrow::Borrow<DeviceId>,
+        to: Vec<String>,
+        body: String,
+    ) -> Result<()> {
+        let session = self.connected(peer.borrow())?;
+        crate::sms::send(&self.shared, &session, to, body, Vec::new()).await
+    }
+
+    /// Sends a text or MMS with optional image attachments through a paired phone.
+    pub async fn send_sms_with_attachments(
+        &self,
+        peer: impl std::borrow::Borrow<DeviceId>,
+        to: Vec<String>,
+        body: String,
+        attachments: Vec<crate::SmsAttachment>,
+    ) -> Result<()> {
+        let session = self.connected(peer.borrow())?;
+        crate::sms::send(&self.shared, &session, to, body, attachments).await
+    }
+
+    /// Alias for [`Node::send_sms_with_attachments`].
+    pub async fn sms_send_with_attachments(
+        &self,
+        peer: impl std::borrow::Borrow<DeviceId>,
+        to: Vec<String>,
+        body: String,
+        attachments: Vec<crate::SmsAttachment>,
+    ) -> Result<()> {
+        self.send_sms_with_attachments(peer, to, body, attachments).await
     }
 
     /// A picture in a message: its type and bytes.
     pub async fn sms_part(&self, peer: DeviceId, id: String) -> Result<(String, Vec<u8>)> {
         let session = self.connected(&peer)?;
         crate::sms::part(&self.shared, &session, id).await
+    }
+
+    // ---- Unified Conversations (MessagingStyle notification threads) ----
+
+    /// Lists locally stored `MessagingStyle` chat threads for a paired phone,
+    /// newest first.
+    pub fn chat_threads(&self, peer: impl std::borrow::Borrow<DeviceId>) -> Vec<crate::ChatThreadRecord> {
+        self.shared.store.chat_threads(peer.borrow()).unwrap_or_default()
+    }
+
+    /// Looks up a single `MessagingStyle` chat thread by ID (`chat:<app>:<title>`).
+    pub fn chat_thread(
+        &self,
+        peer: impl std::borrow::Borrow<DeviceId>,
+        thread_id: &str,
+    ) -> Option<crate::ChatThreadRecord> {
+        self.shared.store.chat_thread(peer.borrow(), thread_id).ok().flatten()
+    }
+
+    /// Lists up to `limit` messages in a locally stored `MessagingStyle` chat
+    /// thread, newest first.
+    pub fn chat_messages(
+        &self,
+        peer: impl std::borrow::Borrow<DeviceId>,
+        thread_id: &str,
+        limit: u32,
+    ) -> Vec<crate::ChatMessageRecord> {
+        self.shared.store.chat_messages(peer.borrow(), thread_id, limit as usize).unwrap_or_default()
+    }
+
+    /// Marks a locally stored `MessagingStyle` chat thread as read (`unread = 0`).
+    pub fn mark_chat_thread_read(&self, peer: impl std::borrow::Borrow<DeviceId>, thread_id: &str) -> bool {
+        self.shared.store.mark_chat_thread_read(peer.borrow(), thread_id).unwrap_or(false)
+    }
+
+    /// Deletes a single `MessagingStyle` chat thread and its messages.
+    pub fn delete_chat_thread(&self, peer: impl std::borrow::Borrow<DeviceId>, thread_id: &str) -> bool {
+        self.shared.store.delete_chat_thread(peer.borrow(), thread_id).unwrap_or(false)
+    }
+
+    /// Clears all locally stored `MessagingStyle` chat threads.
+    pub fn clear_chat_threads(&self) -> usize {
+        self.shared.store.clear_chat_threads().unwrap_or(0)
+    }
+
+    /// Sends an inline reply to a `MessagingStyle` chat thread using its
+    /// latest active notification key and reply action ID, and appends the
+    /// outgoing message to the local thread history.
+    pub async fn reply_chat_thread(
+        &self,
+        peer: impl std::borrow::Borrow<DeviceId>,
+        thread_id: &str,
+        text: String,
+    ) -> Result<()> {
+        let peer = *peer.borrow();
+        let trimmed = text.trim();
+        if trimmed.is_empty() {
+            return Err(Error::Protocol("empty reply".into()));
+        }
+        let thread = self.shared.store.chat_thread(&peer, thread_id)?.ok_or(Error::NotFound)?;
+        if !thread.active || thread.notification_key.is_empty() {
+            return Err(Error::NotFound);
+        }
+        let Some(action) = thread.reply_action_id else {
+            return Err(Error::NotFound);
+        };
+        let key = thread.notification_key;
+        let env =
+            Envelope::new(types::NOTIFY_ACTION, &NotifyAction { key, action, reply: Some(trimmed.into()) })?;
+        self.request(peer, env).await?.expect(types::OK)?;
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_millis() as i64);
+        let _ = self.shared.store.append_chat_reply(&peer, thread_id, trimmed, now_ms);
+        self.shared.emit(NodeEvent::SmsChanged { device: peer, thread: Some(thread_id.to_owned()) });
+        Ok(())
     }
 
     // ---- Calls (docs/protocol/calls.md) ----
@@ -1565,8 +1768,20 @@ impl Node {
         action: String,
         reply: Option<String>,
     ) -> Result<()> {
-        let env = Envelope::new(types::NOTIFY_ACTION, &NotifyAction { key, action, reply })?;
+        let env = Envelope::new(
+            types::NOTIFY_ACTION,
+            &NotifyAction { key: key.clone(), action, reply: reply.clone() },
+        )?;
         self.request(peer, env).await?.expect(types::OK)?;
+        if let Some(text) = reply.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
+            let now_ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis() as i64);
+            if let Ok(Some(thread_id)) = self.shared.store.append_chat_reply_by_key(&peer, &key, text, now_ms)
+            {
+                self.shared.emit(NodeEvent::SmsChanged { device: peer, thread: Some(thread_id) });
+            }
+        }
         Ok(())
     }
 
@@ -1901,6 +2116,72 @@ impl Node {
         Ok(removed)
     }
 
+    // ---- Data retention & privacy ----
+
+    /// Returns current item/byte counts and retention settings across local history and caches.
+    pub fn data_retention_counts(&self) -> DataRetentionCounts {
+        let (clip_count, clip_bytes) = self.shared.clipboard_history.count_and_bytes();
+        let timeline_items = self.shared.store.timeline_total_count().unwrap_or(0);
+        let timeline_retention_days = self
+            .shared
+            .store
+            .timeline_retention()
+            .map(|r| r.max_days)
+            .unwrap_or(crate::DEFAULT_TIMELINE_MAX_DAYS);
+        let (chat_threads, chat_messages) = self.shared.store.chat_cache_counts().unwrap_or((0, 0));
+        let received_file_records =
+            self.shared.store.timeline_count_by_kind(crate::TimelineKind::File).unwrap_or(0);
+        DataRetentionCounts {
+            clipboard_items: u32::try_from(clip_count).unwrap_or(u32::MAX),
+            clipboard_bytes: clip_bytes,
+            timeline_items,
+            timeline_retention_days,
+            chat_threads,
+            chat_messages,
+            received_file_records,
+        }
+    }
+
+    /// Clears all locally cached `MessagingStyle` chat threads and messages.
+    pub fn clear_message_cache(&self) -> Result<()> {
+        let removed = self.shared.store.clear_chat_threads()?;
+        if removed > 0
+            && let Ok(peers) = self.shared.store.list_peers()
+        {
+            for peer in peers {
+                self.shared.emit(NodeEvent::SmsChanged { device: peer.id, thread: None });
+            }
+        }
+        Ok(())
+    }
+
+    /// Clears all file transfer records (`TimelineKind::File`) from the local timeline
+    /// without deleting downloaded files on disk.
+    pub fn clear_received_file_history(&self) -> Result<()> {
+        let removed = self.shared.store.delete_timeline_kind(crate::TimelineKind::File)?;
+        if removed > 0 {
+            self.shared.emit(NodeEvent::TimelineChanged);
+        }
+        Ok(())
+    }
+
+    /// Wipes all local history and caches (encrypted clipboard history + image files,
+    /// timeline entries, and `MessagingStyle` conversation cache) while preserving
+    /// device identity, paired devices, and per-device feature toggles.
+    pub fn clear_all_local_data(&self) -> Result<()> {
+        self.shared.clipboard_history.clear()?;
+        *self.shared.last_clip_suggestion.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        self.shared.store.clear_all_history_and_cache()?;
+        self.shared.emit(NodeEvent::ClipboardHistoryChanged);
+        self.shared.emit(NodeEvent::TimelineChanged);
+        if let Ok(peers) = self.shared.store.list_peers() {
+            for peer in peers {
+                self.shared.emit(NodeEvent::SmsChanged { device: peer.id, thread: None });
+            }
+        }
+        Ok(())
+    }
+
     fn resolve_timeline_clip(&self, entry: &mut crate::TimelineEntry) {
         if entry.kind != crate::TimelineKind::Clip {
             return;
@@ -1930,6 +2211,18 @@ impl Node {
             }
         }
     }
+}
+
+/// Summary of locally stored history and cache counts for the Privacy & Data settings UI.
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct DataRetentionCounts {
+    pub clipboard_items: u32,
+    pub clipboard_bytes: u64,
+    pub timeline_items: u32,
+    pub timeline_retention_days: u32,
+    pub chat_threads: u32,
+    pub chat_messages: u32,
+    pub received_file_records: u32,
 }
 
 const PORT_FILE: &str = "port";

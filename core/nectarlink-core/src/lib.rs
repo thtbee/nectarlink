@@ -13,11 +13,13 @@ mod clipboard;
 pub mod clipboard_history;
 mod config;
 mod contacts;
+pub mod continuity_camera;
 pub mod deck;
 mod error;
 mod events;
 pub mod features;
 mod identity;
+pub mod localsend;
 mod media;
 mod mirror;
 mod node;
@@ -40,7 +42,9 @@ pub use calls::CallCommand;
 pub use clip_kind::{
     ClipKind, ClipSuggestion, classify_clip, maps_web_url, percent_encode, tracking_search_url,
 };
-pub use clipboard_history::{ClipboardHistoryEntry, ClipboardItemKind, MAX_CLIPBOARD_HISTORY};
+pub use clipboard_history::{
+    ClipboardHistoryEntry, ClipboardItemKind, MAX_CLIPBOARD_AGE_SECS, MAX_CLIPBOARD_HISTORY,
+};
 pub use config::{NodeConfig, NoopPlatform, Platform};
 pub use deck::{
     COMMANDS_TOGGLE as DECK_COMMANDS_TOGGLE, DECK_ACTIONS, DeckAction, DeckConfig, DeckLayout, DeckPage,
@@ -55,6 +59,10 @@ pub use events::{
 };
 pub use features::{CapabilityMatrix, FeatureState};
 pub use identity::{KeyProtector, PlainKeyProtector, default_protector};
+pub use localsend::{
+    LOCALSEND_DEFAULT_PORT, LOCALSEND_MULTICAST_ADDR, LOCALSEND_PROTOCOL_VERSION, LocalSendPeer,
+    peer_device_id as localsend_peer_device_id,
+};
 pub use media::{MediaAction, MediaError};
 pub use mirror::{MirrorSend, MirrorSink, MirrorStream};
 pub use nectarlink_protocol::messages::clip::{
@@ -63,20 +71,25 @@ pub use nectarlink_protocol::messages::clip::{
 pub use nectarlink_protocol::{
     DeviceId, PacketKind,
     messages::{
-        AudioOutputDevice, Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallState, Contact,
-        ContactNumber, DeviceInfo, DeviceKind, LivePoint, LiveSegment, MediaPlayer, MirrorAudioConfig,
-        MirrorConfig, MirrorInput, MirrorResize, MirrorStart, Notification, NotificationAction,
-        NotificationLive, PcAudioSet, PcWakeInfo, PhoneApp, PhoneToggleSet, PhoneToggleValue, PhoneToggles,
-        PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PowerLevel, ScreenCorners, ScreenRect,
-        ScreenShape, SmsMessage, SmsPart, SmsThread, StorageChanged, StorageDelete, StorageEntries,
-        StorageEntry, StorageList, StorageMkdir, StorageRead, StorageReadMeta, StorageRename,
-        StorageWriteAccept, StorageWriteDone, StorageWriteOffer, TaskNotify, TouchAction, WebcamConfig,
-        WebcamStart,
+        AudioOutputDevice, Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallState,
+        CameraCaptureCancel, CameraCaptureMode, CameraCaptureOk, CameraCaptureRequest,
+        CameraCaptureResultMeta, Contact, ContactNumber, DeviceInfo, DeviceKind, LivePoint, LiveSegment,
+        MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorResize, MirrorStart, Notification,
+        NotificationAction, NotificationChatMessage, NotificationConversation, NotificationLive, PcAudioSet,
+        PcWakeInfo, PhoneApp, PhoneToggleSet, PhoneToggleValue, PhoneToggles, PhotoAlbum, PhotoItem,
+        PhotoNew as Photo, PhotoThumb, PowerLevel, ScreenCorners, ScreenRect, ScreenShape, SmsAttachment,
+        SmsMessage, SmsPart, SmsThread, StorageChanged, StorageDelete, StorageEntries, StorageEntry,
+        StorageList, StorageMkdir, StorageRead, StorageReadMeta, StorageRename, StorageWriteAccept,
+        StorageWriteDone, StorageWriteOffer, TaskNotify, TouchAction, WebcamConfig, WebcamStart,
         calls::{
             CONTROL as CALLS_CONTROL, DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG,
             SHOW as CALLS_SHOW, STATE as CALLS_STATE,
         },
         contacts::{READ as CONTACTS_READ, SHOW as CONTACTS_SHOW},
+        continuity_camera::{
+            CAPTURE as CAMERA_CAPTURE, MAX_IMAGE_BYTES as CAMERA_CAPTURE_MAX_IMAGE_BYTES,
+            RECEIVE as CAMERA_CONTINUITY,
+        },
         format_mac, ipv4_broadcast, is_package_name, is_valid_storage_dir_path, is_valid_storage_id,
         is_valid_storage_name, is_valid_storage_path, magic_packet,
         mirror::{
@@ -92,7 +105,10 @@ pub use nectarlink_protocol::{
             READ as PHOTOS_READ, SHOW as PHOTOS_SHOW,
         },
         ringer_modes, screen_limits,
-        sms::{READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW},
+        sms::{
+            MAX_ATTACHMENT_BYTES as SMS_MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS as SMS_MAX_ATTACHMENTS,
+            READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW,
+        },
         storage::{MOUNT as STORAGE_MOUNT, READ as STORAGE_READ, WRITE as STORAGE_WRITE},
         task_notify, toggle_ids,
         toggles::{
@@ -108,10 +124,14 @@ pub use nectarlink_protocol::{
     },
     pairing::PairingUri,
 };
-pub use node::Node;
+pub use node::{DataRetentionCounts, Node};
 pub use notifications::NotificationError;
 pub use remote::{ButtonAction, INPUT_INJECT, KeyMod, MouseButton, RemoteInput, SlideAction, remote_keys};
 pub use storage::{FolderStorage, StorageError, StorageReadFile, TOGGLE as STORAGE_TOGGLE};
+pub use store::{
+    CHAT_RETENTION_SECS, ChatMessageRecord, ChatThreadRecord, MAX_CHAT_MESSAGES_PER_THREAD,
+    MAX_CHAT_THREADS_PER_PEER, chat_thread_id,
+};
 pub use timeline::{
     DEFAULT_TIMELINE_MAX_DAYS, DEFAULT_TIMELINE_MAX_ENTRIES, DEFAULT_TIMELINE_PAGE_LIMIT,
     MAX_TIMELINE_PAGE_LIMIT, TimelineEntry, TimelineKind, TimelinePage, TimelineQuery, TimelineRetention,

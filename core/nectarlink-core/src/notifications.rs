@@ -56,6 +56,7 @@ struct FeedState {
     active: bool,
     items: HashMap<String, Notification>,
     icons: HashMap<String, Vec<u8>>,
+    peer_icons: HashMap<(DeviceId, String), Vec<u8>>,
 }
 
 impl Feed {
@@ -65,6 +66,18 @@ impl Feed {
 
     pub fn is_active(&self) -> bool {
         self.lock().active
+    }
+
+    /// Records an app icon received from a peer and returns the cached icon
+    /// for `(peer, app)` when `incoming` is `None`.
+    fn peer_icon(&self, peer: DeviceId, app: &str, incoming: Option<&[u8]>) -> Option<Vec<u8>> {
+        let mut state = self.lock();
+        if let Some(icon) = incoming {
+            state.peer_icons.insert((peer, app.to_owned()), icon.to_vec());
+            Some(icon.to_vec())
+        } else {
+            state.peer_icons.get(&(peer, app.to_owned())).cloned()
+        }
     }
 
     /// Stores a notification (its icon separately); returns it without the
@@ -159,12 +172,27 @@ fn approx_size(n: &Notification) -> usize {
     let live = n.live.as_ref().map_or(0, |l| {
         l.chip.as_ref().map_or(0, String::len) + (l.segments.len() + l.points.len()) * 16 + 32
     });
+    let conv = n.conversation.as_ref().map_or(0, |c| {
+        c.title.len()
+            + c.avatar.as_ref().map_or(0, Vec::len)
+            + c.messages
+                .iter()
+                .map(|m| {
+                    m.sender.as_ref().map_or(0, String::len)
+                        + m.text.len()
+                        + m.avatar.as_ref().map_or(0, Vec::len)
+                        + 32
+                })
+                .sum::<usize>()
+            + 32
+    });
     n.key.len()
         + n.app.len()
         + n.app_name.len()
         + text
         + actions
         + live
+        + conv
         + n.image.as_ref().map_or(0, Vec::len)
         + 64
 }
@@ -241,12 +269,24 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         types::NOTIFY_SNAPSHOT => {
             if shared.notifications_allowed(&peer) {
                 let snapshot: NotifySnapshot = env.body()?;
-                let items = snapshot
+                let items: Vec<Notification> = snapshot
                     .items
                     .into_iter()
                     .filter_map(Notification::sanitized)
                     .take(SNAPSHOT_ITEMS)
                     .collect();
+                let mut changed_thread = None;
+                for n in &items {
+                    let cached_icon = shared.notifications.peer_icon(peer, &n.app, n.icon.as_deref());
+                    if let Ok(Some(tid)) =
+                        shared.store.upsert_chat_notification(&peer, n, cached_icon.as_deref(), true)
+                    {
+                        changed_thread = Some(tid);
+                    }
+                }
+                if let Some(thread) = changed_thread {
+                    shared.emit(NodeEvent::SmsChanged { device: peer, thread: Some(thread) });
+                }
                 shared.emit(NodeEvent::NotificationsReset { device: peer, items });
             }
         }
@@ -254,11 +294,21 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             if shared.notifications_allowed(&peer)
                 && let Some(notification) = env.body::<Notification>()?.sanitized()
             {
+                let cached_icon =
+                    shared.notifications.peer_icon(peer, &notification.app, notification.icon.as_deref());
+                if let Ok(Some(thread)) =
+                    shared.store.upsert_chat_notification(&peer, &notification, cached_icon.as_deref(), false)
+                {
+                    shared.emit(NodeEvent::SmsChanged { device: peer, thread: Some(thread) });
+                }
                 shared.emit(NodeEvent::NotificationPosted { device: peer, notification });
             }
         }
         types::NOTIFY_REMOVED => {
             let NotifyKey { key } = env.body()?;
+            if let Ok(Some(thread)) = shared.store.mark_chat_notification_removed(&peer, &key) {
+                shared.emit(NodeEvent::SmsChanged { device: peer, thread: Some(thread) });
+            }
             shared.emit(NodeEvent::NotificationRemoved { device: peer, key });
         }
         // ---- On the phone ----

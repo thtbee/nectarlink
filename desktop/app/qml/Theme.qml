@@ -71,6 +71,7 @@ QtObject {
     readonly property color secondaryContainerContent: palette.onSecondaryContainer
     readonly property color surface: palette.surface
     readonly property color surfaceLow: palette.surfaceContainerLow
+    readonly property color surfaceContainerLow: palette.surfaceContainerLow
     readonly property color surfaceContainer: palette.surfaceContainer
     readonly property color surfaceContainerHigh: palette.surfaceContainerHigh
     readonly property color surfaceContainerHighest: palette.surfaceContainerHighest

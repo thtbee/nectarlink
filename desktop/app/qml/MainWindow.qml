@@ -192,14 +192,28 @@ NativeWindow {
                 size: 20
             }
             IconButton {
+                id: paletteTopBtn
+                anchors.right: timelineTopBtn.visible ? timelineTopBtn.left : (refresh.visible ? refresh.left : parent.right)
+                anchors.rightMargin: (timelineTopBtn.visible || refresh.visible) ? 4 : 8
+                anchors.verticalCenter: parent.verticalCenter
+                iconPath: Icons.search
+                text: qsTr("Commands")
+                label: Preferences.commandPaletteHotkey.length > 0
+                    ? qsTr("Command palette (%1)").arg(Preferences.commandPaletteHotkey)
+                    : qsTr("Command palette (Ctrl+K)")
+                onClicked: AppController.openCommandPalette()
+                Component.onCompleted: window.addCaptionHole(paletteTopBtn)
+            }
+            IconButton {
                 id: timelineTopBtn
                 anchors.right: refresh.visible ? refresh.left : parent.right
                 anchors.rightMargin: refresh.visible ? 4 : 8
                 anchors.verticalCenter: parent.verticalCenter
                 visible: (window.page === "home" || window.page === "timeline") && AppController.hasDevices
                 iconPath: Icons.history
+                text: qsTr("Timeline")
                 tonal: window.page === "timeline"
-                label: qsTr("Timeline")
+                label: qsTr("Files, clips, links, photos, recordings and sessions")
                 onClicked: window.page = window.page === "timeline" ? "home" : "timeline"
                 Component.onCompleted: window.addCaptionHole(timelineTopBtn)
             }
@@ -369,6 +383,56 @@ NativeWindow {
         }
     }
 
+    Sheet {
+        id: continuityPasteSheet
+        opened: AppController.continuityPastePromptVisible
+        cardWidth: 440
+        onOpenedChanged: {
+            if (!opened && AppController.continuityPastePromptVisible)
+                AppController.dismissContinuityPaste()
+        }
+        Column {
+            width: parent.width
+            spacing: 16
+            Avatar {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 56; height: 56
+                iconPath: Icons.camera
+                emphasized: true
+            }
+            Txt {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: AppController.continuityPastePromptTitle.length > 0
+                    ? AppController.continuityPastePromptTitle
+                    : qsTr("Photo ready on clipboard")
+                role: "headline"
+                wrapMode: Text.WordWrap
+            }
+            Txt {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: AppController.continuityPastePromptBody
+                role: "body"
+                muted: true
+                wrapMode: Text.WordWrap
+            }
+            Row {
+                anchors.right: parent.right
+                spacing: 10
+                Button {
+                    variant: "text"
+                    text: qsTr("Keep on clipboard")
+                    onClicked: AppController.dismissContinuityPaste()
+                }
+                Button {
+                    text: qsTr("Paste into active window")
+                    onClicked: AppController.confirmContinuityPaste()
+                }
+            }
+        }
+    }
+
     CaptionButtons {
         id: captionButtons
         window: window
@@ -391,6 +455,23 @@ NativeWindow {
             else
                 doctorLoader.active = true
         }
+    }
+
+    Shortcut {
+        sequences: ["Ctrl+K", "Ctrl+P"]
+        onActivated: {
+            if (AppController.commandPaletteOpen)
+                AppController.closeCommandPalette()
+            else
+                AppController.openCommandPalette()
+        }
+    }
+
+    Loader {
+        id: commandPaletteLoader
+        anchors.fill: parent
+        active: AppController.commandPaletteOpen
+        source: active ? "qrc:/qt/qml/app/nectarlink/qml/components/CommandPalette.qml" : ""
     }
 
     Toast {

@@ -205,6 +205,33 @@ pub fn read() -> Clip {
     read_with(window())
 }
 
+/// Reads an image from the clipboard as PNG bytes, if an image (`PNG`,
+/// `CF_DIBV5`, or `CF_DIB`) is on the clipboard and isn't marked private.
+pub fn read_image_png() -> Option<Vec<u8>> {
+    // SAFETY: format availability checks need no open clipboard.
+    let has = |format: u32| format != 0 && unsafe { IsClipboardFormatAvailable(format) }.is_ok();
+    let png = format("PNG");
+    if !has(png) && !has(CF_DIBV5) && !has(CF_DIB) {
+        return None;
+    }
+    if has(format("ExcludeClipboardContentFromMonitorProcessing")) || has(format("Clipboard Viewer Ignore")) {
+        return None;
+    }
+    let _open = Opened::open(window())?;
+    if let Some(0) = read_dword(format("CanIncludeInClipboardHistory")) {
+        return None;
+    }
+    let image = [(png, true), (CF_DIBV5, false), (CF_DIB, false)]
+        .into_iter()
+        .filter(|&(format, _)| has(format))
+        .find_map(|(format, is_png)| {
+            let bytes = read_block(format)?;
+            Some(if is_png { Image::Png(bytes) } else { Image::Bitmap(bytes) })
+        })?;
+    drop(_open);
+    image.to_png().ok()
+}
+
 /// Puts text on the clipboard (owned by the watcher window, so it isn't
 /// reported as a new copy).
 pub fn write(text: &str) -> Result<(), String> {

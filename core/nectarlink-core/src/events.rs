@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
 //! Events the core pushes to the UI. UIs render from these; they never poll.
 
+use std::path::PathBuf;
+
 use nectarlink_protocol::{
     DeviceId,
-    messages::{Battery, DeviceInfo, MediaPlayer, Notification, PowerLevel},
+    messages::{Battery, CameraCaptureMode, DeviceInfo, MediaPlayer, Notification, PowerLevel},
 };
 
 use crate::{features::CapabilityMatrix, transfer::Transfer};
@@ -209,6 +211,32 @@ pub enum NodeEvent {
         device: DeviceId,
         on: bool,
     },
+    /// A paired PC requested a Continuity Camera capture on this phone.
+    CameraCaptureRequested {
+        device: DeviceId,
+        request_id: String,
+        mode: CameraCaptureMode,
+    },
+    /// A paired phone completed a Continuity Camera capture and sent the image to this PC.
+    CameraCaptureReceived {
+        device: DeviceId,
+        request_id: String,
+        mode: CameraCaptureMode,
+        file_name: String,
+        mime: String,
+        width: u32,
+        height: u32,
+        data: Vec<u8>,
+        saved_path: Option<PathBuf>,
+    },
+    /// A Continuity Camera capture was cancelled by the peer.
+    CameraCaptureCancelled {
+        device: DeviceId,
+        request_id: String,
+        reason: Option<String>,
+    },
     /// The local timeline of items shared with paired devices changed.
     TimelineChanged,
+    /// LocalSend interop state or discovered LocalSend peers changed.
+    LocalSendChanged,
 }

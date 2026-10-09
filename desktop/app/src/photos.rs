@@ -549,8 +549,12 @@ pub fn release_idle_resources() {
     }
 }
 
+fn photos_cache_root() -> PathBuf {
+    core_host::host().data_dir.join("cache").join("photos-thumbs")
+}
+
 fn thumbs_dir(device: DeviceId) -> PathBuf {
-    core_host::host().data_dir.join("cache").join("photos-thumbs").join(device.to_string())
+    photos_cache_root().join(device.to_string())
 }
 
 /// How much the gallery keeps on disk per phone: thumbnails, and full
@@ -558,29 +562,121 @@ fn thumbs_dir(device: DeviceId) -> PathBuf {
 const THUMBS_BUDGET: u64 = 64 << 20;
 const FULL_BUDGET: u64 = 512 << 20;
 
-/// Trims a phone's gallery cache to its budgets.
-fn prune_cache(device: DeviceId) {
-    let Ok(entries) = std::fs::read_dir(thumbs_dir(device)) else { return };
-    let (mut thumbs, mut full): (Vec<_>, Vec<_>) = entries
-        .filter_map(|e| {
-            let e = e.ok()?;
-            let meta = e.metadata().ok().filter(|m| m.is_file())?;
-            Some((meta.modified().ok()?, meta.len(), e.path()))
-        })
-        .partition(|(_, _, path)| {
-            path.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with("thumb-"))
-        });
-    for (files, budget) in [(&mut thumbs, THUMBS_BUDGET), (&mut full, FULL_BUDGET)] {
-        // Newest first; delete beyond the budget.
-        files.sort_by_key(|f| std::cmp::Reverse(f.0));
-        let mut kept = 0u64;
-        for (_, len, path) in files.iter() {
-            kept += len;
-            if kept > budget {
+/// Retention limits for cached photo thumbnails (30 days, max 500 files).
+pub const MAX_PHOTO_CACHE_AGE_SECS: u64 = 30 * 86_400;
+pub const MAX_PHOTO_CACHE_FILES: usize = 500;
+
+fn collect_cache_files(dir: &Path, out: &mut Vec<(std::time::SystemTime, u64, PathBuf)>) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Ok(meta) = entry.metadata() else { continue };
+        if meta.is_dir() {
+            collect_cache_files(&path, out);
+        } else if meta.is_file() {
+            let modified = meta.modified().unwrap_or(std::time::UNIX_EPOCH);
+            out.push((modified, meta.len(), path));
+        }
+    }
+}
+
+/// Trims the photo thumbnail and viewer cache to the 30-day age limit,
+/// 500-file cap, and per-phone byte budgets.
+pub fn prune_cache() {
+    let root = photos_cache_root();
+    let now = std::time::SystemTime::now();
+    let max_age = Duration::from_secs(MAX_PHOTO_CACHE_AGE_SECS);
+
+    let mut all_files = Vec::new();
+    collect_cache_files(&root, &mut all_files);
+
+    // 1. Remove any cached file older than 30 days.
+    all_files.retain(|(modified, _, path)| {
+        let expired = now.duration_since(*modified).unwrap_or_default() > max_age;
+        if expired {
+            let _ = std::fs::remove_file(path);
+        }
+        !expired
+    });
+
+    // 2. Enforce the 500-file cap across the thumbnail cache (newest first).
+    if all_files.len() > MAX_PHOTO_CACHE_FILES {
+        all_files.sort_by_key(|f| std::cmp::Reverse(f.0));
+        for (_, _, path) in all_files.drain(MAX_PHOTO_CACHE_FILES..) {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+
+    // 3. Enforce per-device byte budgets for thumbnails and full-res viewer files.
+    let Ok(device_dirs) = std::fs::read_dir(&root) else { return };
+    for dev_entry in device_dirs.flatten() {
+        if !dev_entry.metadata().is_ok_and(|m| m.is_dir()) {
+            continue;
+        }
+        let Ok(entries) = std::fs::read_dir(dev_entry.path()) else { continue };
+        let (mut thumbs, mut full): (Vec<_>, Vec<_>) = entries
+            .filter_map(|e| {
+                let e = e.ok()?;
+                let meta = e.metadata().ok().filter(|m| m.is_file())?;
+                Some((meta.modified().ok()?, meta.len(), e.path()))
+            })
+            .partition(|(_, _, path)| {
+                path.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with("thumb-"))
+            });
+        for (files, budget) in [(&mut thumbs, THUMBS_BUDGET), (&mut full, FULL_BUDGET)] {
+            files.sort_by_key(|f| std::cmp::Reverse(f.0));
+            let mut kept = 0u64;
+            for (_, len, path) in files.iter() {
+                kept += len;
+                if kept > budget {
+                    let _ = std::fs::remove_file(path);
+                }
+            }
+        }
+    }
+}
+
+/// Immediately deletes all cached photo thumbnails and viewer files on disk
+/// and resets in-memory thumbnail state.
+pub fn clear_cache() {
+    let _ = std::fs::remove_dir_all(photos_cache_root());
+    if let Ok(entries) = std::fs::read_dir(crate::notifications::images_dir()) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with("photo-")) {
                 let _ = std::fs::remove_file(path);
             }
         }
     }
+    gallery_state(|s| {
+        s.generation = s.generation.wrapping_add(1);
+        s.thumbs.clear();
+        s.failed_thumbs.clear();
+        s.full_files.clear();
+        s.wanted_thumbs.clear();
+    });
+    gallery_changed();
+}
+
+/// Returns `(file_count, total_bytes)` for cached photo thumbnails and previews.
+pub fn cache_stats() -> (usize, u64) {
+    let mut files = Vec::new();
+    collect_cache_files(&photos_cache_root(), &mut files);
+    let mut count = files.len();
+    let mut bytes: u64 = files.iter().map(|(_, len, _)| *len).sum();
+    if let Ok(entries) = std::fs::read_dir(crate::notifications::images_dir()) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with("photo-"))
+                && let Ok(meta) = entry.metadata()
+                && meta.is_file()
+            {
+                count += 1;
+                bytes += meta.len();
+            }
+        }
+    }
+    (count, bytes)
 }
 
 pub(crate) fn thumb_path(device: DeviceId, id: &str) -> PathBuf {
@@ -726,7 +822,7 @@ pub fn open_device(device: DeviceId) {
     if !same {
         gallery_changed();
         core_host::spawn(async move {
-            let _ = tokio::task::spawn_blocking(move || prune_cache(device)).await;
+            let _ = tokio::task::spawn_blocking(prune_cache).await;
         });
     }
     reload();
@@ -1050,6 +1146,120 @@ pub fn open_item(id: String) {
                 });
                 gallery_changed();
                 show_photo_error(&e);
+            }
+        }
+    });
+}
+
+/// Opens the most recent photo from `device` in the default viewer, using a
+/// cached local copy when available or fetching it from the phone.
+pub fn open_latest_photo(device: DeviceId) {
+    let cached_or_first = gallery_state(|s| {
+        if s.device != Some(device) {
+            return None;
+        }
+        let first = s.items.first()?;
+        if let Some(existing) = s.full_files.get(&first.id).filter(|p| p.exists()).cloned() {
+            return Some((first.id.clone(), Some(existing)));
+        }
+        let dir = thumbs_dir(device);
+        for ext in ["jpg", "jpeg", "png", "webp", "heic"] {
+            let candidate = dir.join(format!("full-{:016x}.{ext}", fingerprint(&first.id)));
+            if candidate.exists() {
+                s.full_files.insert(first.id.clone(), candidate.clone());
+                return Some((first.id.clone(), Some(candidate)));
+            }
+        }
+        Some((first.id.clone(), None))
+    });
+
+    if let Some((id, Some(path))) = cached_or_first {
+        let _ = id;
+        crate::transfers::open(&path);
+        return;
+    }
+
+    let Some(node) = core_host::node() else { return };
+
+    if let Some((id, None)) = cached_or_first {
+        show_message("Opening latest photo…");
+        core_host::spawn(async move {
+            match node.fetch_photo(device, id.clone()).await {
+                Ok(transfer) => asked(transfer, Intent::Open { item_id: Some(id) }),
+                Err(e) => show_photo_error(&e),
+            }
+        });
+        return;
+    }
+
+    // Check if the timeline already has a local saved photo for this phone while we also query the phone.
+    let timeline_fallback = node
+        .timeline_page(&nectarlink_core::TimelineQuery {
+            kind: Some(nectarlink_core::TimelineKind::Photo),
+            device: Some(device),
+            limit: 10,
+            ..nectarlink_core::TimelineQuery::default()
+        })
+        .map(|p| p.entries)
+        .unwrap_or_default()
+        .into_iter()
+        .find_map(|entry| {
+            let first_target = entry.target.lines().next().unwrap_or("").trim();
+            let p = PathBuf::from(first_target);
+            (!first_target.is_empty() && p.exists()).then_some(p)
+        });
+
+    let online = core_host::host().hub.read(|s| {
+        s.devices
+            .iter()
+            .any(|d| d.id == device && matches!(d.link, nectarlink_core::LinkState::Online { .. }))
+    });
+    if !online {
+        if let Some(path) = timeline_fallback {
+            crate::transfers::open(&path);
+        } else {
+            show_message("The phone isn't connected right now.");
+        }
+        return;
+    }
+
+    show_message("Opening latest photo…");
+    core_host::spawn(async move {
+        match node.photo_list(device, None, None, 1).await {
+            Ok(items) => {
+                let Some(item) = items.into_iter().next() else {
+                    if let Some(path) = timeline_fallback {
+                        crate::transfers::open(&path);
+                    } else {
+                        show_message("No recent photos found on the phone.");
+                    }
+                    return;
+                };
+                let dir = thumbs_dir(device);
+                for ext in ["jpg", "jpeg", "png", "webp", "heic"] {
+                    let candidate = dir.join(format!("full-{:016x}.{ext}", fingerprint(&item.id)));
+                    if candidate.exists() {
+                        crate::transfers::open(&candidate);
+                        return;
+                    }
+                }
+                match node.fetch_photo(device, item.id.clone()).await {
+                    Ok(transfer) => asked(transfer, Intent::Open { item_id: Some(item.id) }),
+                    Err(e) => {
+                        if let Some(path) = timeline_fallback {
+                            crate::transfers::open(&path);
+                        } else {
+                            show_photo_error(&e);
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                if let Some(path) = timeline_fallback {
+                    crate::transfers::open(&path);
+                } else {
+                    show_photo_error(&e);
+                }
             }
         }
     });

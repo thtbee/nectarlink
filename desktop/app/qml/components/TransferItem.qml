@@ -19,7 +19,7 @@ Item {
     required property string reason
     required property string savedPath
 
-    readonly property bool active: status === "waiting" || status === "running"
+    readonly property bool active: status === "requested" || status === "waiting" || status === "running"
 
     implicitHeight: column.height + 20
 
@@ -34,6 +34,10 @@ Item {
 
     function detail() {
         switch (status) {
+        case "requested":
+            return qsTr("%1 wants to send this · %2")
+                .arg(item.deviceName.length > 0 ? item.deviceName : qsTr("Nearby device"))
+                .arg(size(total))
         case "waiting":
             return item.incoming ? qsTr("Paused; continues when %1 is back").arg(item.deviceName)
                                  : qsTr("Waiting for %1").arg(item.deviceName)
@@ -85,7 +89,7 @@ Item {
                 width: parent.width
                 height: 4
                 radius: 2
-                visible: item.active
+                visible: item.status === "waiting" || item.status === "running"
                 color: Theme.surfaceContainerHighest
                 Rectangle {
                     height: parent.height
@@ -110,6 +114,20 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 4
             Button {
+                visible: item.status === "requested"
+                variant: "fill"
+                size: "sm"
+                text: qsTr("Accept")
+                onClicked: TransferList.accept(item.transferId)
+            }
+            Button {
+                visible: item.status === "requested"
+                variant: "outline"
+                size: "sm"
+                text: qsTr("Decline")
+                onClicked: TransferList.cancel(item.transferId)
+            }
+            Button {
                 visible: item.status === "done" && item.incoming && item.savedPath.length > 0
                 variant: "text"
                 size: "sm"
@@ -123,7 +141,7 @@ Item {
                 onClicked: TransferList.showInFolder(item.transferId)
             }
             IconButton {
-                visible: item.active
+                visible: item.status === "waiting" || item.status === "running"
                 iconPath: Icons.close
                 label: qsTr("Cancel")
                 onClicked: TransferList.cancel(item.transferId)

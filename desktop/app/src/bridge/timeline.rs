@@ -46,6 +46,7 @@ pub mod qobject {
         #[qml_element]
         #[qml_singleton]
         #[qproperty(i32, count)]
+        #[qproperty(bool, has_any)]
         #[qproperty(bool, has_more)]
         #[qproperty(QString, search_query)]
         #[qproperty(QString, kind_filter)]
@@ -151,6 +152,7 @@ struct Row {
 #[derive(Default)]
 pub struct TimelineModelRust {
     count: i32,
+    has_any: bool,
     has_more: bool,
     search_query: QString,
     kind_filter: QString,
@@ -261,6 +263,18 @@ impl qobject::TimelineModel {
             offset += fetched;
         }
         let new = build_rows(&all_entries, None);
+        let has_any = if !all_entries.is_empty() {
+            true
+        } else {
+            let q = self.current_query(0, 1);
+            if q.kind.is_none() && q.device.is_none() && q.search.is_none() {
+                false
+            } else {
+                node.timeline_page(&TimelineQuery { limit: 1, ..TimelineQuery::default() })
+                    .is_ok_and(|p| !p.entries.is_empty())
+            }
+        };
+        self.as_mut().set_has_any(has_any);
         self.as_mut().set_has_more(has_more);
 
         let root = QModelIndex::default();

@@ -95,6 +95,14 @@ pub fn load(dir: &Path, state: &mut AppState) {
     }
 }
 
+/// Immediately removes the on-disk notification history file (`notification-history.json`)
+/// and cached notification images in `cache/images/`.
+pub fn clear_disk() {
+    let data_dir = &core_host::host().data_dir;
+    let _ = remove(&data_dir.join(HISTORY_FILE));
+    crate::notifications::clear_cached_images();
+}
+
 fn snapshot(state: &AppState) -> (Rules, Vec<HistoryEntry>) {
     let apps = state
         .app_names
@@ -135,8 +143,11 @@ pub fn start(dir: PathBuf) {
                     tracing::warn!(error = %e, "can't save notification rules");
                 }
                 let history_file = dir.join(HISTORY_FILE);
-                let saved =
-                    if rules.history { write(&history_file, &history) } else { remove(&history_file) };
+                let saved = if rules.history && !history.is_empty() {
+                    write(&history_file, &history)
+                } else {
+                    remove(&history_file)
+                };
                 if let Err(e) = saved {
                     tracing::warn!(error = %e, "can't save notification history");
                 }
@@ -176,6 +187,7 @@ mod tests {
             icon: None,
             image: None,
             live: None,
+            conversation: None,
         }
     }
 

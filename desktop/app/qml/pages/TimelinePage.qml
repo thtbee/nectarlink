@@ -9,6 +9,9 @@ Item {
     id: page
     property bool active: false
     property bool confirmClearAll: false
+    property bool deviceMenuOpen: false
+
+    onActiveChanged: if (!active) deviceMenuOpen = false
 
     opacity: active ? 1 : 0
     visible: opacity > 0
@@ -27,6 +30,42 @@ Item {
         { key: "recording", label: qsTr("Recordings"), icon: Icons.mic },
         { key: "session", label: qsTr("Sessions"), icon: Icons.mirror }
     ]
+
+    readonly property string selectedDeviceName: {
+        if (TimelineModel.deviceFilter.length === 0 || DeviceList.count <= 0)
+            return qsTr("All devices")
+        const row = DeviceList.rowOf(TimelineModel.deviceFilter)
+        return row >= 0 ? DeviceList.deviceNameAt(row) : qsTr("All devices")
+    }
+
+    Connections {
+        target: TimelineModel
+        function onHasAnyChanged() {
+            if (!TimelineModel.hasAny) {
+                page.confirmClearAll = false
+                page.deviceMenuOpen = false
+                if (searchInput.text.length > 0)
+                    searchInput.text = ""
+                if (TimelineModel.searchQuery.length > 0)
+                    TimelineModel.searchQuery = ""
+                if (TimelineModel.kindFilter.length > 0)
+                    TimelineModel.kindFilter = ""
+                if (TimelineModel.deviceFilter.length > 0)
+                    TimelineModel.deviceFilter = ""
+            }
+        }
+    }
+
+    Connections {
+        target: DeviceList
+        function onCountChanged() {
+            if (DeviceList.count <= 1) {
+                page.deviceMenuOpen = false
+                if (TimelineModel.deviceFilter.length > 0)
+                    TimelineModel.deviceFilter = ""
+            }
+        }
+    }
 
     function dayKey(unixSecs) {
         if (!unixSecs || unixSecs <= 0)
@@ -66,6 +105,7 @@ Item {
 
     Column {
         id: headerCol
+        visible: TimelineModel.hasAny
         width: Math.min(860, parent.width - Theme.contentPadding * 2)
         x: Math.max(Theme.contentPadding, (parent.width - width) / 2)
         y: Theme.contentPadding
@@ -151,53 +191,90 @@ Item {
             }
         }
 
-        // Filter chips (by kind, and by device when multiple devices are paired)
-        Flow {
+        // Single-line filter bar: kind chips on the left, compact device dropdown on the right
+        Item {
+            id: filterBar
             width: parent.width
-            spacing: 8
+            height: 30
 
-            Repeater {
-                model: page.kindOptions
-                delegate: Chip {
-                    required property var modelData
-                    text: modelData.label
-                    iconPath: modelData.icon
-                    selected: TimelineModel.kindFilter === modelData.key
-                    TapHandler { onTapped: TimelineModel.kindFilter = modelData.key }
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+            Row {
+                id: kindRow
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 6
+
+                Repeater {
+                    model: page.kindOptions
+                    delegate: Chip {
+                        required property var modelData
+                        text: modelData.label
+                        iconPath: modelData.icon
+                        selected: TimelineModel.kindFilter === modelData.key
+                        TapHandler {
+                            onTapped: {
+                                page.deviceMenuOpen = false
+                                TimelineModel.kindFilter = modelData.key
+                            }
+                        }
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    }
                 }
             }
 
             Rectangle {
+                id: deviceDropdownBtn
                 visible: DeviceList.count > 1
-                width: 1
-                height: 22
-                y: 4
-                color: Theme.outlineVariant
-            }
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                height: 30
+                readonly property real maxAllowedWidth: Math.max(110, filterBar.width - kindRow.width - 12)
+                width: Math.min(maxAllowedWidth, deviceBtnRow.implicitWidth + 22)
+                radius: Theme.pill(height)
+                readonly property bool filtered: TimelineModel.deviceFilter.length > 0
+                color: Theme.graphite
+                    ? (filtered ? Theme.surfaceContent : "transparent")
+                    : (filtered ? Theme.secondaryContainer : Theme.surfaceContainerHigh)
+                border.width: Theme.graphite || page.deviceMenuOpen ? 1 : 0
+                border.color: page.deviceMenuOpen
+                    ? Theme.primary
+                    : (filtered ? Theme.surfaceContent : Theme.outlineVariant)
+                Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
 
-            Chip {
-                visible: DeviceList.count > 1
-                text: qsTr("All devices")
-                selected: TimelineModel.deviceFilter === ""
-                TapHandler { onTapped: TimelineModel.deviceFilter = "" }
-                HoverHandler { cursorShape: Qt.PointingHandCursor }
-            }
+                Accessible.role: Accessible.ComboBox
+                Accessible.name: qsTr("Device filter: %1").arg(page.selectedDeviceName)
+                Accessible.onPressAction: page.deviceMenuOpen = !page.deviceMenuOpen
 
-            Repeater {
-                model: DeviceList.count > 1 ? DeviceList : null
-                delegate: Chip {
-                    required property string deviceId
-                    required property string name
-                    text: name
-                    iconPath: Icons.phone
-                    selected: TimelineModel.deviceFilter === deviceId
-                    TapHandler {
-                        onTapped: TimelineModel.deviceFilter =
-                            (TimelineModel.deviceFilter === deviceId ? "" : deviceId)
+                Row {
+                    id: deviceBtnRow
+                    anchors.centerIn: parent
+                    spacing: 6
+                    Icon {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 14; height: 14
+                        path: Icons.phone
+                        color: deviceBtnLabel.color
                     }
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    Txt {
+                        id: deviceBtnLabel
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Math.min(implicitWidth, deviceDropdownBtn.maxAllowedWidth - 56)
+                        elide: Text.ElideRight
+                        role: "label"
+                        text: page.selectedDeviceName
+                        color: Theme.graphite
+                            ? (deviceDropdownBtn.filtered ? Theme.surface : Theme.surfaceContent)
+                            : (deviceDropdownBtn.filtered ? Theme.secondaryContainerContent : Theme.surfaceContent)
+                    }
+                    Icon {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 12; height: 12
+                        path: Icons.chevronDown
+                        color: deviceBtnLabel.color
+                    }
                 }
+
+                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                TapHandler { onTapped: page.deviceMenuOpen = !page.deviceMenuOpen }
             }
         }
 
@@ -257,7 +334,7 @@ Item {
     // Empty state
     Column {
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: 30
+        anchors.verticalCenterOffset: TimelineModel.hasAny ? 30 : 0
         width: Math.min(420, parent.width - 48)
         spacing: 10
         visible: TimelineModel.count === 0
@@ -279,9 +356,7 @@ Item {
             width: parent.width
             horizontalAlignment: Text.AlignHCenter
             role: "title"
-            text: (TimelineModel.searchQuery.length > 0
-                   || TimelineModel.kindFilter.length > 0
-                   || TimelineModel.deviceFilter.length > 0)
+            text: TimelineModel.hasAny
                   ? qsTr("No matching timeline items")
                   : qsTr("Nothing in the timeline yet")
         }
@@ -291,9 +366,7 @@ Item {
             role: "bodySmall"
             muted: true
             wrapMode: Text.WordWrap
-            text: (TimelineModel.searchQuery.length > 0
-                   || TimelineModel.kindFilter.length > 0
-                   || TimelineModel.deviceFilter.length > 0)
+            text: TimelineModel.hasAny
                   ? qsTr("Try clearing the search or filter to see everything shared with your devices.")
                   : qsTr("Files, folders, clipboard items, links, saved photos, voice recordings, and screen mirroring or webcam sessions appear here automatically.")
         }
@@ -498,6 +571,130 @@ Item {
                 size: "sm"
                 text: qsTr("Load more")
                 onClicked: TimelineModel.loadMore()
+            }
+        }
+    }
+
+    // Device filter dropdown menu overlay
+    Item {
+        id: deviceMenuBackdrop
+        anchors.fill: parent
+        z: 49
+        visible: page.deviceMenuOpen && TimelineModel.hasAny && DeviceList.count > 1
+        TapHandler { onTapped: page.deviceMenuOpen = false }
+    }
+
+    Rectangle {
+        id: deviceMenuCard
+        z: 50
+        visible: page.deviceMenuOpen && TimelineModel.hasAny && DeviceList.count > 1
+        width: Math.max(deviceDropdownBtn.width, 200)
+        height: deviceMenuCol.height + 10
+        x: headerCol.x + headerCol.width - width
+        y: headerCol.y + filterBar.y + filterBar.height + 6
+        radius: Theme.radiusMd
+        color: Theme.graphite ? Theme.surface : Theme.surfaceContainerHighest
+        border.width: 1
+        border.color: Theme.outlineVariant
+
+        Column {
+            id: deviceMenuCol
+            x: 5
+            y: 5
+            width: parent.width - 10
+            spacing: 2
+
+            Rectangle {
+                width: parent.width
+                height: 32
+                radius: Theme.radiusSm
+                color: allDevHover.hovered ? Theme.surfaceContainerHigh : "transparent"
+
+                Row {
+                    x: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 8
+                    Icon {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 14; height: 14
+                        path: Icons.phone
+                        color: TimelineModel.deviceFilter === "" ? Theme.primary : Theme.surfaceContentVariant
+                    }
+                    Txt {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: deviceMenuCol.width - 56
+                        elide: Text.ElideRight
+                        role: "bodySmall"
+                        weight: TimelineModel.deviceFilter === "" ? 600 : 400
+                        text: qsTr("All devices")
+                    }
+                }
+                Icon {
+                    visible: TimelineModel.deviceFilter === ""
+                    anchors.right: parent.right
+                    anchors.rightMargin: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 14; height: 14
+                    path: Icons.check
+                    color: Theme.primary
+                }
+                HoverHandler { id: allDevHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler {
+                    onTapped: {
+                        TimelineModel.deviceFilter = ""
+                        page.deviceMenuOpen = false
+                    }
+                }
+            }
+
+            Repeater {
+                model: DeviceList.count > 1 ? DeviceList : null
+                delegate: Rectangle {
+                    required property string deviceId
+                    required property string name
+                    required property string kind
+                    readonly property bool isCurrent: TimelineModel.deviceFilter === deviceId
+                    width: deviceMenuCol.width
+                    height: 32
+                    radius: Theme.radiusSm
+                    color: devOptHover.hovered ? Theme.surfaceContainerHigh : "transparent"
+
+                    Row {
+                        x: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 8
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 14; height: 14
+                            path: kind === "desktop" || kind === "laptop" ? Icons.laptop : Icons.phone
+                            color: isCurrent ? Theme.primary : Theme.surfaceContentVariant
+                        }
+                        Txt {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: deviceMenuCol.width - 56
+                            elide: Text.ElideRight
+                            role: "bodySmall"
+                            weight: isCurrent ? 600 : 400
+                            text: name
+                        }
+                    }
+                    Icon {
+                        visible: isCurrent
+                        anchors.right: parent.right
+                        anchors.rightMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 14; height: 14
+                        path: Icons.check
+                        color: Theme.primary
+                    }
+                    HoverHandler { id: devOptHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler {
+                        onTapped: {
+                            TimelineModel.deviceFilter = deviceId
+                            page.deviceMenuOpen = false
+                        }
+                    }
+                }
             }
         }
     }

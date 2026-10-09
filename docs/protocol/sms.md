@@ -31,13 +31,18 @@ t = "sms.threads"   re = n   b = { threads: [ thread ] }                  // new
 t = "sms.messages"  id = n   b = { thread: text, ? before: int, limit: uint }
 t = "sms.messages"  re = n   b = { messages: [ message ] }               // newest first
 
-t = "sms.send"      id = n   b = { to: [ text ], body: text }
+t = "sms.send"      id = n   b = { to: [ text ], ? body: text, ? attachments: [ attachment ] }
 t = "ok"            re = n
 
 t = "sms.part"      id = n   b = { id: text }
 t = "sms.part"      re = n   b = { mime: text, data: bytes }
 
 t = "sms.changed"            b = { ? thread: text }                       // phone → PC
+
+attachment = {
+  mime: "image/jpeg" | "image/png",
+  data: bytes,            // At most 900 KiB
+}
 
 thread = {
   id: text,
@@ -72,9 +77,11 @@ with `BUSY`.
 
 ### 2.2 Sending
 
-`sms.send` sends `body` (at most 8 KiB, not blank) to each of `to` (1–20
-numbers) as a text; the phone keeps it with the messages it sent. Errors:
-`DENIED` when messages are off for the PC, `UNSUPPORTED` when the phone
+`sms.send` sends `body` (at most 8 KiB) and/or `attachments` (at most 1 image,
+`image/jpeg` or `image/png`, at most 900 KiB) to `to` (1–20 numbers). When
+`attachments` is empty, `body` must not be blank and is sent as SMS; when an
+image attachment is included, the phone sends it as MMS (`sendMultimediaMessage`).
+Errors: `DENIED` when messages are off for the PC, `UNSUPPORTED` when the phone
 doesn't offer `sms.send`, `INTERNAL` when it couldn't send.
 
 ### 2.3 Changes

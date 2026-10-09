@@ -132,6 +132,19 @@ pub struct DiscoveredDevice {
     pub name: Option<String>,
 }
 
+/// A LocalSend device discovered on the local network (`docs/protocol/v0.md`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct LocalSendPeer {
+    pub id: String,
+    pub alias: String,
+    pub device_model: Option<String>,
+    pub device_type: String,
+    pub fingerprint: String,
+    pub ip: String,
+    pub port: u16,
+    pub protocol: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum PairingFailure {
     Rejected,
@@ -259,6 +272,63 @@ impl std::fmt::Debug for TaskNotify {
     }
 }
 
+/// One chat message inside a `MessagingStyle` notification conversation.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct NotificationChatMessage {
+    /// Sender display name (`None` for the user's own messages or 1:1 chats
+    /// where the conversation title is the sender).
+    #[uniffi(default = None)]
+    pub sender: Option<String>,
+    pub text: String,
+    /// Unix milliseconds.
+    pub time: i64,
+    /// True when sent by the phone user.
+    #[uniffi(default = false)]
+    pub self_sent: bool,
+    /// Optional sender avatar (JPEG/PNG, at most 16 KiB).
+    #[uniffi(default = None)]
+    pub avatar: Option<Vec<u8>>,
+}
+
+/// Never prints message text or sender names (protocol v0 §11).
+impl std::fmt::Debug for NotificationChatMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NotificationChatMessage")
+            .field("time", &self.time)
+            .field("self_sent", &self.self_sent)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Structured `MessagingStyle` conversation metadata carried on a notification.
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct NotificationConversation {
+    /// Schema version (`1`).
+    #[uniffi(default = 1)]
+    pub v: u32,
+    /// Conversation or sender display title.
+    pub title: String,
+    /// True for group conversations (`MessagingStyle.isGroupConversation`).
+    #[uniffi(default = false)]
+    pub group: bool,
+    /// Optional conversation/sender avatar (JPEG/PNG, at most 16 KiB).
+    #[uniffi(default = None)]
+    pub avatar: Option<Vec<u8>>,
+    /// Chronological messages in the notification (oldest first).
+    pub messages: Vec<NotificationChatMessage>,
+}
+
+/// Never prints conversation title or messages (protocol v0 §11).
+impl std::fmt::Debug for NotificationConversation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NotificationConversation")
+            .field("v", &self.v)
+            .field("group", &self.group)
+            .field("messages_len", &self.messages.len())
+            .finish_non_exhaustive()
+    }
+}
+
 /// A notification, as mirrored between devices
 /// (docs/protocol/notifications.md).
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
@@ -285,6 +355,9 @@ pub struct Notification {
     /// Live Update / ongoing progress or timer metadata, when present.
     #[uniffi(default = None)]
     pub live: Option<NotificationLive>,
+    /// Structured `MessagingStyle` conversation metadata, when present.
+    #[uniffi(default = None)]
+    pub conversation: Option<NotificationConversation>,
 }
 
 /// Something playing (or paused) on a device (docs/protocol/media.md).
@@ -401,6 +474,8 @@ pub enum TransferDirection {
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum TransferStatus {
+    /// Incoming transfer waiting for the user to accept or decline (LocalSend).
+    Requested,
     /// Waiting for the other device (to connect, or to continue).
     Waiting,
     Running,
@@ -633,6 +708,8 @@ pub enum Event {
     },
     /// The local cross-device timeline changed.
     TimelineChanged,
+    /// The LocalSend compatibility setting or discovered LocalSend peers changed.
+    LocalSendChanged,
 }
 
 /// One tile on a PC's Deck (`docs/protocol/deck.md`).
@@ -1056,6 +1133,13 @@ pub struct SmsPartData {
     pub data: Vec<u8>,
 }
 
+/// An outgoing MMS image attachment (`image/jpeg` or `image/png`).
+#[derive(Clone, PartialEq, Eq, uniffi::Record)]
+pub struct SmsAttachment {
+    pub mime: String,
+    pub data: Vec<u8>,
+}
+
 macro_rules! private_debug {
     ($($t:ty),*) => {$(
         /// Never prints numbers, names or text (protocol v0 §11).
@@ -1066,7 +1150,7 @@ macro_rules! private_debug {
         }
     )*};
 }
-private_debug!(SmsThread, SmsMessage, SmsPartData, CallLogEntry, ContactNumber, Contact);
+private_debug!(SmsThread, SmsMessage, SmsPartData, SmsAttachment, CallLogEntry, ContactNumber, Contact);
 
 /// One call in this phone's call history (docs/protocol/calls.md).
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
@@ -1411,6 +1495,32 @@ impl From<core::TimelineRetention> for TimelineRetention {
     }
 }
 
+/// Summary of locally stored history and cache counts for Privacy & Data settings.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct DataRetentionCounts {
+    pub clipboard_items: u32,
+    pub clipboard_bytes: u64,
+    pub timeline_items: u32,
+    pub timeline_retention_days: u32,
+    pub chat_threads: u32,
+    pub chat_messages: u32,
+    pub received_file_records: u32,
+}
+
+impl From<core::DataRetentionCounts> for DataRetentionCounts {
+    fn from(c: core::DataRetentionCounts) -> Self {
+        DataRetentionCounts {
+            clipboard_items: c.clipboard_items,
+            clipboard_bytes: c.clipboard_bytes,
+            timeline_items: c.timeline_items,
+            timeline_retention_days: c.timeline_retention_days,
+            chat_threads: c.chat_threads,
+            chat_messages: c.chat_messages,
+            received_file_records: c.received_file_records,
+        }
+    }
+}
+
 private_debug!(PhotoAlbum, PhotoItem, PhotoThumb, StorageEntry, ClipboardHistoryEntry, TimelineEntry);
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
@@ -1650,6 +1760,21 @@ impl From<core::DiscoveredDevice> for DiscoveredDevice {
     }
 }
 
+impl From<core::LocalSendPeer> for LocalSendPeer {
+    fn from(p: core::LocalSendPeer) -> Self {
+        LocalSendPeer {
+            id: p.id.to_string(),
+            alias: p.alias,
+            device_model: p.device_model,
+            device_type: p.device_type,
+            fingerprint: p.fingerprint,
+            ip: p.ip,
+            port: p.port,
+            protocol: p.protocol,
+        }
+    }
+}
+
 impl From<core::PairingFailure> for PairingFailure {
     fn from(f: core::PairingFailure) -> Self {
         match f {
@@ -1742,6 +1867,66 @@ impl From<TaskNotify> for core::TaskNotify {
     }
 }
 
+impl From<core::NotificationChatMessage> for NotificationChatMessage {
+    fn from(m: core::NotificationChatMessage) -> Self {
+        NotificationChatMessage {
+            sender: m.sender,
+            text: m.text,
+            time: m.time,
+            self_sent: m.self_sent,
+            avatar: m.avatar,
+        }
+    }
+}
+
+impl From<NotificationChatMessage> for core::NotificationChatMessage {
+    fn from(m: NotificationChatMessage) -> Self {
+        core::NotificationChatMessage {
+            sender: m.sender,
+            text: m.text,
+            time: m.time,
+            self_sent: m.self_sent,
+            avatar: m.avatar,
+        }
+    }
+}
+
+impl From<core::NotificationConversation> for NotificationConversation {
+    fn from(c: core::NotificationConversation) -> Self {
+        NotificationConversation {
+            v: c.v,
+            title: c.title,
+            group: c.group,
+            avatar: c.avatar,
+            messages: c.messages.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<NotificationConversation> for core::NotificationConversation {
+    fn from(c: NotificationConversation) -> Self {
+        core::NotificationConversation {
+            v: c.v,
+            title: c.title,
+            group: c.group,
+            avatar: c.avatar,
+            messages: c.messages.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<core::SmsAttachment> for SmsAttachment {
+    fn from(a: core::SmsAttachment) -> Self {
+        SmsAttachment { mime: a.mime, data: a.data }
+    }
+}
+
+impl From<SmsAttachment> for core::SmsAttachment {
+    fn from(a: SmsAttachment) -> Self {
+        core::SmsAttachment { mime: a.mime, data: a.data }
+    }
+}
+
 impl From<core::Notification> for Notification {
     fn from(n: core::Notification) -> Self {
         Notification {
@@ -1761,6 +1946,7 @@ impl From<core::Notification> for Notification {
             icon: n.icon,
             image: n.image,
             live: n.live.map(Into::into),
+            conversation: n.conversation.map(Into::into),
         }
     }
 }
@@ -1784,6 +1970,7 @@ impl From<Notification> for core::Notification {
             icon: n.icon,
             image: n.image,
             live: n.live.map(Into::into),
+            conversation: n.conversation.map(Into::into),
         }
     }
 }
@@ -1814,6 +2001,7 @@ impl From<core::Transfer> for Transfer {
             total: t.total,
             done: t.done,
             status: match t.state {
+                core::TransferState::Requested => TransferStatus::Requested,
                 core::TransferState::Waiting => TransferStatus::Waiting,
                 core::TransferState::Running => TransferStatus::Running,
                 core::TransferState::Done { saved } => TransferStatus::Done {
@@ -1885,9 +2073,9 @@ fn features(matrix: &CapabilityMatrix) -> Vec<Feature> {
     matrix.features.iter().map(|(id, state)| Feature { id: (*id).into(), status: (*state).into() }).collect()
 }
 
-impl From<NodeEvent> for Event {
-    fn from(event: NodeEvent) -> Self {
-        match event {
+impl Event {
+    fn from_node(event: NodeEvent) -> Option<Self> {
+        Some(match event {
             NodeEvent::DeviceAdded(device) => Event::DeviceAdded { device: device.into() },
             NodeEvent::DeviceRemoved(id) => Event::DeviceRemoved { id: id.to_string() },
             NodeEvent::LinkChanged { device, link } => {
@@ -1946,6 +2134,9 @@ impl From<NodeEvent> for Event {
                 Event::Mirroring { id: device.to_string(), session, on }
             }
             NodeEvent::Webcam { device, on } => Event::Webcam { id: device.to_string(), on },
+            NodeEvent::CameraCaptureRequested { .. }
+            | NodeEvent::CameraCaptureReceived { .. }
+            | NodeEvent::CameraCaptureCancelled { .. } => return None,
             NodeEvent::RemoteInputRequested { device } => {
                 Event::RemoteInputRequested { id: device.to_string() }
             }
@@ -1966,7 +2157,8 @@ impl From<NodeEvent> for Event {
                 Event::StorageChanged { id: device.to_string(), path }
             }
             NodeEvent::TimelineChanged => Event::TimelineChanged,
-        }
+            NodeEvent::LocalSendChanged => Event::LocalSendChanged,
+        })
     }
 }
 
@@ -2164,6 +2356,11 @@ pub trait Platform: Send + Sync {
     fn webcam_stop_requested(&self, pc_id: String);
     /// The PC needs a fresh H.264 keyframe on the webcam stream.
     fn webcam_keyframe_requested(&self, pc_id: String);
+    /// A PC asked this phone to capture a photo or scan a document (`mode` is
+    /// `"photo"` or `"scan"`). Return `true` if the capture UI was launched.
+    fn camera_capture_requested(&self, pc_id: String, request_id: String, mode: String) -> bool;
+    /// The PC cancelled an in-flight Continuity Camera capture request.
+    fn camera_capture_cancelled(&self, pc_id: String, request_id: String);
     /// A PC asked for the apps it may open in windows (launchable ones).
     fn phone_apps(&self) -> Vec<PhoneApp>;
     /// A PC asked for the latest conversations, newest first.
@@ -2174,6 +2371,14 @@ pub trait Platform: Send + Sync {
     /// A PC asked to send a text (checked: 1–20 recipients, not empty).
     /// False if it couldn't be sent.
     fn sms_send(&self, to: Vec<String>, body: String) -> bool;
+    /// A PC asked to send a text or MMS with optional image attachments.
+    /// False if it couldn't be sent.
+    fn send_sms_with_attachments(
+        &self,
+        to: Vec<String>,
+        body: String,
+        attachments: Vec<SmsAttachment>,
+    ) -> bool;
     /// A PC asked for a message's attachment; null when it's gone.
     fn sms_part(&self, id: String) -> Option<SmsPartData>;
     /// A PC asked to change one of this phone's quick settings (`id`: `"dnd"`,
@@ -2315,6 +2520,24 @@ impl core::Platform for PlatformAdapter {
     fn webcam_keyframe_requested(&self, peer: &DeviceId) {
         self.0.webcam_keyframe_requested(peer.to_string());
     }
+    fn camera_capture_requested(
+        &self,
+        peer: &DeviceId,
+        request: &core::CameraCaptureRequest,
+    ) -> Result<(), String> {
+        let mode = match request.mode {
+            core::CameraCaptureMode::Photo => "photo",
+            core::CameraCaptureMode::Scan => "scan",
+        };
+        if self.0.camera_capture_requested(peer.to_string(), request.request_id.clone(), mode.to_owned()) {
+            Ok(())
+        } else {
+            Err("camera capture unavailable".into())
+        }
+    }
+    fn camera_capture_cancelled(&self, peer: &DeviceId, request_id: &str) {
+        self.0.camera_capture_cancelled(peer.to_string(), request_id.to_owned());
+    }
     fn phone_apps(&self) -> Result<Vec<core::PhoneApp>, String> {
         Ok(self
             .0
@@ -2367,6 +2590,23 @@ impl core::Platform for PlatformAdapter {
     }
     fn sms_send(&self, to: &[String], body: &str) -> Result<(), String> {
         if self.0.sms_send(to.to_vec(), body.to_owned()) { Ok(()) } else { Err("not sent".into()) }
+    }
+    fn send_sms_with_attachments(
+        &self,
+        to: &[String],
+        body: &str,
+        attachments: &[core::SmsAttachment],
+    ) -> Result<(), String> {
+        if attachments.is_empty() {
+            return self.sms_send(to, body);
+        }
+        let att: Vec<SmsAttachment> =
+            attachments.iter().cloned().map(|a| SmsAttachment { mime: a.mime, data: a.data }).collect();
+        if self.0.send_sms_with_attachments(to.to_vec(), body.to_owned(), att) {
+            Ok(())
+        } else {
+            Err("not sent".into())
+        }
     }
     fn sms_part(&self, id: &str) -> Result<(String, Vec<u8>), String> {
         let part = self.0.sms_part(id.to_owned()).ok_or("it's gone")?;
@@ -2598,7 +2838,11 @@ impl NectarlinkNode {
         runtime.spawn(async move {
             loop {
                 match events.recv().await {
-                    Ok(event) => listener.on_event(event.into()),
+                    Ok(event) => {
+                        if let Some(ev) = Event::from_node(event) {
+                            listener.on_event(ev);
+                        }
+                    }
                     Err(RecvError::Lagged(missed)) => tracing::warn!(missed, "event listener fell behind"),
                     Err(RecvError::Closed) => return,
                 }
@@ -2719,9 +2963,48 @@ impl NectarlinkNode {
         self.run(async move { Ok(node.send_recording(id, file, markers).await?) }).await
     }
 
-    /// Cancels a transfer in either direction.
+    /// Accepts an incoming transfer waiting for user confirmation (LocalSend).
+    pub fn accept_transfer(&self, transfer_id: String) {
+        self.node.accept_transfer(&transfer_id);
+    }
+
+    /// Cancels a transfer in either direction (or declines a pending incoming
+    /// LocalSend transfer).
     pub fn cancel_transfer(&self, transfer_id: String) {
         self.node.cancel_transfer(&transfer_id);
+    }
+
+    // ---- LocalSend compatibility ----
+
+    /// Whether LocalSend v2.1 compatibility is enabled on this phone.
+    pub fn localsend_enabled(&self) -> bool {
+        self.node.localsend_enabled()
+    }
+
+    /// Turns LocalSend v2.1 compatibility on or off (persisted encrypted on disk).
+    pub fn set_localsend_enabled(&self, enabled: bool) -> Result<()> {
+        Ok(self.node.set_localsend_enabled(enabled)?)
+    }
+
+    /// Whether this phone's LocalSend server is actively bound and receiving.
+    pub fn localsend_receiving(&self) -> bool {
+        self.node.localsend_receiving()
+    }
+
+    /// Returns the LocalSend peers currently discovered on the local network.
+    pub fn localsend_peers(&self) -> Vec<LocalSendPeer> {
+        self.node.localsend_peers().into_iter().map(Into::into).collect()
+    }
+
+    /// Broadcasts a fresh LocalSend UDP multicast announcement.
+    pub fn refresh_localsend(&self) {
+        self.node.refresh_localsend();
+    }
+
+    /// Probes `host:port` via the LocalSend v2.1 HTTP/HTTPS API and adds the peer if found.
+    pub async fn probe_localsend_peer(&self, host: String, port: u16) -> Result<LocalSendPeer> {
+        let node = self.node.clone();
+        self.run(async move { Ok(node.probe_localsend_peer(&host, port).await?.into()) }).await
     }
 
     // ---- Clipboard ----
@@ -2850,6 +3133,29 @@ impl NectarlinkNode {
         size_bytes: u64,
     ) {
         self.node.update_timeline_by_ref(&ref_id, kind.into(), &title, &detail, &target, size_bytes);
+    }
+
+    // ---- Data retention & privacy ----
+
+    /// Returns current item/byte counts and retention settings across local history and caches.
+    pub fn data_retention_counts(&self) -> DataRetentionCounts {
+        self.node.data_retention_counts().into()
+    }
+
+    /// Clears all locally cached `MessagingStyle` chat threads and messages.
+    pub fn clear_message_cache(&self) -> Result<()> {
+        Ok(self.node.clear_message_cache()?)
+    }
+
+    /// Clears all file transfer records from the local timeline without deleting downloaded files.
+    pub fn clear_received_file_history(&self) -> Result<()> {
+        Ok(self.node.clear_received_file_history()?)
+    }
+
+    /// Wipes all local history and caches (encrypted clipboard history, timeline, and message cache)
+    /// while preserving device identity, paired devices, and per-device feature toggles.
+    pub fn clear_all_local_data(&self) -> Result<()> {
+        Ok(self.node.clear_all_local_data()?)
     }
 
     // ---- Media ----
@@ -3212,6 +3518,67 @@ impl NectarlinkNode {
         let node = self.node.clone();
         let toggles: core::PhoneToggles = toggles.into();
         self.run(async move { Ok(node.toggles_changed(toggles).await?) }).await
+    }
+
+    // ---- Continuity Camera ----
+
+    /// Sends a captured photo or scanned document from this phone to a requesting PC.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn send_camera_capture_result(
+        &self,
+        pc_id: String,
+        request_id: String,
+        mode: String,
+        file_name: String,
+        mime: String,
+        width: u32,
+        height: u32,
+        data: Vec<u8>,
+    ) -> Result<()> {
+        let peer = parse_id(&pc_id)?;
+        let mode = match mode.as_str() {
+            "scan" => core::CameraCaptureMode::Scan,
+            _ => core::CameraCaptureMode::Photo,
+        };
+        let meta = core::CameraCaptureResultMeta {
+            request_id,
+            mode,
+            file_name,
+            mime,
+            size: data.len() as u64,
+            width,
+            height,
+        };
+        let node = self.node.clone();
+        self.run(async move { Ok(node.send_camera_capture_result(peer, meta, data).await?) }).await
+    }
+
+    /// Cancels an in-flight Continuity Camera capture request on either side.
+    pub async fn cancel_camera_capture(
+        &self,
+        peer_id: String,
+        request_id: String,
+        reason: Option<String>,
+    ) -> Result<()> {
+        let peer = parse_id(&peer_id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.cancel_camera_capture(peer, request_id, reason).await?) }).await
+    }
+
+    /// Requests a Continuity Camera capture (`mode` is `"photo"` or `"scan"`) from a paired phone.
+    pub async fn request_camera_capture(
+        &self,
+        peer_id: String,
+        request_id: String,
+        mode: String,
+    ) -> Result<()> {
+        let peer = parse_id(&peer_id)?;
+        let mode = match mode.as_str() {
+            "scan" => core::CameraCaptureMode::Scan,
+            _ => core::CameraCaptureMode::Photo,
+        };
+        let node = self.node.clone();
+        self.run(async move { Ok(node.request_camera_capture(peer, request_id, mode).await?) }).await
     }
 
     /// Reconnects to PCs that aren't connected and syncs connected ones.

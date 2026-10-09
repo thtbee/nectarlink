@@ -28,6 +28,7 @@ const QML: &[&str] = &[
     "qml/components/Card.qml",
     "qml/components/Chip.qml",
     "qml/components/CodeDigits.qml",
+    "qml/components/CommandPalette.qml",
     "qml/components/Divider.qml",
     "qml/components/DoctorSheet.qml",
     "qml/components/HistoryItem.qml",
@@ -66,6 +67,13 @@ const QML_SINGLETONS: &[&str] = &["qml/Tokens.qml", "qml/Theme.qml", "qml/Icons.
 const FONTS: &[&str] =
     &["Figtree.ttf", "InstrumentSerif-Regular.ttf", "SpaceMono-Regular.ttf", "SpaceMono-Bold.ttf"];
 
+fn write_if_changed(path: &Path, content: impl AsRef<[u8]>) {
+    let bytes = content.as_ref();
+    if fs::read(path).ok().as_deref() != Some(bytes) {
+        fs::write(path, bytes).unwrap_or_else(|e| panic!("write {}: {e}", path.display()));
+    }
+}
+
 /// Writes a resource file listing the fonts (they live outside this crate,
 /// so each needs an alias) and returns its path.
 fn fonts_qrc() -> PathBuf {
@@ -80,7 +88,7 @@ fn fonts_qrc() -> PathBuf {
     }
     qrc.push_str("  </qresource>\n</RCC>\n");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR")).join("fonts.qrc");
-    fs::write(&out, qrc).expect("write fonts.qrc");
+    write_if_changed(&out, qrc);
     out
 }
 
@@ -141,7 +149,7 @@ fn icon_file() -> Vec<u8> {
 fn windows_resources() {
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
     let ico = out.join("nectarlink.ico");
-    fs::write(&ico, icon_file()).expect("write the icon");
+    write_if_changed(&ico, icon_file());
     let version = std::env::var("CARGO_PKG_VERSION").expect("version");
     let numbers: Vec<&str> = version.split(['.', '-', '+']).take(3).collect();
     let numeric = format!("{},0", numbers.join(","));
@@ -178,7 +186,7 @@ END
         ico = ico.display().to_string().replace('\\', "/"),
     );
     let rc_path = out.join("nectarlink.rc");
-    fs::write(&rc_path, rc).expect("write the resource script");
+    write_if_changed(&rc_path, rc);
     embed_resource::compile(&rc_path, embed_resource::NONE).manifest_required().expect("compile resources");
 }
 

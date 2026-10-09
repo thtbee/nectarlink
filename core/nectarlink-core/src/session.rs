@@ -336,6 +336,7 @@ fn is_background_rpc(t: &str) -> bool {
             | types::MIRROR_START
             | types::MIRROR_APPS
             | types::WEBCAM_START
+            | types::CAMERA_CAPTURE_REQUEST
             | types::STORAGE_LIST
             | types::STORAGE_MKDIR
             | types::STORAGE_RENAME
@@ -412,6 +413,8 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if t.starts_with("sms.") && crate::sms::handle(shared, session, &env).await? => {}
         t if t.starts_with("mirror.") && crate::mirror::handle(shared, session, &env).await? => {}
         t if t.starts_with("webcam.") && crate::webcam::handle(shared, session, &env).await? => {}
+        t if t.starts_with("camera.capture.")
+            && crate::continuity_camera::handle(shared, session, &env).await? => {}
         t if t.starts_with("remote.") && crate::remote::handle(shared, session, &env).await? => {}
         t if t.starts_with("phone.toggle") && crate::toggles::handle(shared, session, &env).await? => {}
         t if (t.starts_with("deck.") || t == types::PC_AUDIO_SET)

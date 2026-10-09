@@ -428,5 +428,41 @@
     <string name="timeline_retention_90d">90d</string>
     <string name="timeline_retention_1y">1y</string>
     <string name="timeline_retention_all">All</string>
+
+    <!-- Data & storage -->
+    <string name="settings_data_storage_title">Data &amp; storage</string>
+    <string name="data_action_clear">Clear</string>
+    <string name="data_notifications_title">Notification history</string>
+    <string name="data_notifications_subtitle">Mirrored live to paired PCs · not stored on this phone (PCs keep dismissed notifications for up to 24 hours / 300 items)</string>
+    <string name="data_clipboard_title">Clipboard history</string>
+    <string name="data_clipboard_subtitle">Encrypted on device (passwords and OTPs excluded) · kept for 7 days, up to 50 clips / 128 MB</string>
+    <plurals name="data_clipboard_count">
+        <item quantity="one">%d clip stored</item>
+        <item quantity="other">%d clips stored</item>
+    </plurals>
+    <string name="data_timeline_title">Timeline</string>
+    <string name="data_timeline_subtitle">Files, clips, links, photos, recordings and sessions · up to 5,000 items</string>
+    <string name="data_messages_title">Message cache</string>
+    <string name="data_messages_subtitle">SMS and chat notifications are read live from Android; temporary MMS staging files are kept for up to 5 minutes (PCs cache chat threads for 90 days)</string>
+    <string name="data_photos_title">Photo thumbnails &amp; camera cache</string>
+    <string name="data_photos_subtitle">Photos are read directly from MediaStore on demand; temporary Continuity Camera captures are kept for up to 24 hours</string>
+    <string name="data_received_files_title">Received-file history</string>
+    <string name="data_received_files_subtitle">Transfer log kept with Timeline (saved files in Downloads are never deleted)</string>
+    <string name="data_clear_everything_hint">Deletes all clipboard history, Timeline, transfer records and temporary caches on this phone. Paired PCs and settings are kept.</string>
+    <string name="data_clear_everything_button">Clear everything…</string>
+    <string name="data_clear_everything_dialog_title">Clear all local data?</string>
+    <string name="data_clear_everything_dialog_body">This deletes clipboard history, Timeline activity, received-file records, and temporary caches on this phone. Your paired PCs and settings will not be touched.</string>
+    <string name="data_clear_everything_confirm">Clear everything</string>
+    <string name="data_cleared_everything_toast">Cleared all local data on this phone.</string>
+
+    <!-- LocalSend -->
+    <string name="settings_localsend_title">LocalSend</string>
+    <string name="settings_localsend_subtitle">Send files to and receive files from nearby LocalSend devices on your Wi-Fi network. Off by default; incoming files always ask before saving.</string>
+    <string name="localsend_card_title">LocalSend nearby</string>
+    <string name="localsend_card_empty">No LocalSend devices found on this Wi-Fi network yet.</string>
+    <string name="localsend_nearby_device">Nearby device</string>
+    <string name="transfer_requested_from">%1$s wants to send files</string>
+    <string name="action_accept">Accept</string>
+    <string name="action_decline">Decline</string>
 </resources>
 

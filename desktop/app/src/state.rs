@@ -11,8 +11,8 @@ use std::{
 };
 
 use nectarlink_core::{
-    Battery, CapabilityMatrix, DeviceId, DeviceInfo, DiscoveredDevice, LinkState, MediaPlayer, NodeEvent,
-    Notification, PairedDevice, PairingEvent, PairingFailure, PhoneToggles, PowerLevel, Transfer,
+    Battery, CapabilityMatrix, DeviceId, DeviceInfo, DiscoveredDevice, LinkState, LocalSendPeer, MediaPlayer,
+    NodeEvent, Notification, PairedDevice, PairingEvent, PairingFailure, PhoneToggles, PowerLevel, Transfer,
     TransferState,
 };
 
@@ -57,6 +57,14 @@ impl Changes {
     pub const CLIPBOARD: Changes = Changes(1 << 20);
     /// Local cross-device timeline (kept by nectarlink_core).
     pub const TIMELINE: Changes = Changes(1 << 21);
+    /// Continuity Camera capture request or fallback paste prompt state.
+    pub const CONTINUITY: Changes = Changes(1 << 22);
+    /// Command Palette open/search/results state (kept by crate::command_palette).
+    pub const PALETTE: Changes = Changes(1 << 23);
+    /// Data retention & local storage summary (Settings → Data & storage).
+    pub const DATA_RETENTION: Changes = Changes(1 << 24);
+    /// LocalSend LAN interop settings or discovered peers changed.
+    pub const LOCALSEND: Changes = Changes(1 << 25);
 
     pub fn is_empty(self) -> bool {
         self.0 == 0
@@ -260,6 +268,11 @@ pub struct AppState {
     pub laser: Option<(DeviceId, f32, f32)>,
     /// This PC's physical adapters and Wake-on-LAN readiness.
     pub wake: crate::win::wol::WakeStatus,
+    /// Whether LocalSend LAN interop is enabled and whether port 53317 is bound for receiving.
+    pub localsend_enabled: bool,
+    pub localsend_receiving: bool,
+    /// Discovered LocalSend peers on the LAN.
+    pub localsend_peers: Vec<LocalSendPeer>,
 }
 
 impl AppState {
@@ -275,11 +288,12 @@ impl AppState {
         self.devices.iter_mut().find(|d| d.id == *id)
     }
 
-    /// A name for any device we know of (paired or nearby).
+    /// A name for any device we know of (paired, nearby, or LocalSend peer).
     pub fn name_of(&self, id: &DeviceId) -> Option<String> {
         self.device(id)
             .map(|d| d.info.name.clone())
             .or_else(|| self.discovered.iter().find(|d| d.id == *id).and_then(|d| d.name.clone()))
+            .or_else(|| self.localsend_peers.iter().find(|p| p.id == *id).map(|p| p.alias.clone()))
     }
 
     /// Replaces the device list (at startup, from the core's store).
@@ -446,9 +460,13 @@ impl AppState {
             | NodeEvent::DeckState { .. }
             | NodeEvent::StorageRequested { .. }
             | NodeEvent::StorageChanged { .. }
-            | NodeEvent::Webcam { .. } => Changes::NONE,
+            | NodeEvent::Webcam { .. }
+            | NodeEvent::CameraCaptureRequested { .. }
+            | NodeEvent::CameraCaptureCancelled { .. } => Changes::NONE,
+            NodeEvent::CameraCaptureReceived { .. } => Changes::TIMELINE,
             NodeEvent::ClipboardHistoryChanged => Changes::CLIPBOARD | Changes::TIMELINE,
             NodeEvent::TimelineChanged => Changes::TIMELINE,
+            NodeEvent::LocalSendChanged => Changes::LOCALSEND,
             // The gallery's own downloads (for its viewer, or the clipboard)
             // aren't files the user keeps.
             NodeEvent::Transfer(transfer) if crate::photos::is_private(&transfer.id) => {
@@ -515,6 +533,11 @@ impl AppState {
         let before = self.transfers.len();
         self.transfers.retain(|t| !t.transfer.state.is_finished());
         if self.transfers.len() == before { Changes::NONE } else { Changes::TRANSFERS }
+    }
+
+    /// Clears finished transfer records from in-memory state.
+    pub fn clear_transfer_history(&mut self) -> Changes {
+        self.clear_finished_transfers()
     }
 
     /// Records a reply on its way to the phone.
@@ -637,16 +660,22 @@ impl AppState {
         self.history_enabled = on;
         if !on {
             self.history.clear();
+            self.notification_images.clear();
         }
         Changes::HISTORY
     }
 
     pub fn clear_history(&mut self) -> Changes {
-        if self.history.is_empty() {
+        if self.history.is_empty() && self.notification_images.is_empty() {
             return Changes::NONE;
         }
         self.history.clear();
+        self.notification_images.clear();
         Changes::HISTORY
+    }
+
+    pub fn clear_notification_history(&mut self) -> Changes {
+        self.clear_history()
     }
 
     /// Records where a notification's picture is stored.
@@ -907,6 +936,7 @@ mod tests {
             icon: Some(vec![1, 2, 3]),
             image: None,
             live: None,
+            conversation: None,
         }
     }
 

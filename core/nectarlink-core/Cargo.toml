@@ -19,9 +19,17 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 bytes.workspace = true
+data-encoding.workspace = true
+ring = "0.17"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-pki-types = "1.15"
+sha2.workspace = true
+socket2 = "0.6"
 tokio.workspace = true
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 tokio-util.workspace = true
 tracing.workspace = true
+url.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 windows = { workspace = true, features = ["Win32_Foundation", "Win32_Security_Cryptography"] }

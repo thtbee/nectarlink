@@ -202,6 +202,42 @@ pub fn prune_images() {
     }
 }
 
+fn is_notification_image_file(name: &str) -> bool {
+    !name.starts_with("sms-")
+        && !name.starts_with("mms-")
+        && !name.starts_with("chat-")
+        && !name.starts_with("photo-")
+}
+
+/// Immediately removes cached notification images from `cache/images/`.
+pub fn clear_cached_images() {
+    let Ok(entries) = std::fs::read_dir(images_dir()) else { return };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let is_notif = path.file_name().and_then(|n| n.to_str()).is_some_and(is_notification_image_file);
+        if is_notif {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+/// Total byte size of cached notification images on disk.
+pub fn cached_image_bytes() -> u64 {
+    let Ok(entries) = std::fs::read_dir(images_dir()) else { return 0 };
+    entries
+        .flatten()
+        .filter_map(|e| {
+            let name = e.file_name();
+            let name_str = name.to_str()?;
+            if !is_notification_image_file(name_str) {
+                return None;
+            }
+            let meta = e.metadata().ok()?;
+            meta.is_file().then_some(meta.len())
+        })
+        .sum()
+}
+
 fn fnv(bytes: &[u8]) -> u64 {
     bytes.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3))
 }
@@ -383,6 +419,12 @@ pub fn on_toast(event: ToastEvent) {
             return crate::transfers::open(std::path::Path::new(key));
         }
         ToastEvent::Action { device, key, action } if device == crate::transfers::TOAST_GROUP => {
+            if action == crate::transfers::ACTION_ACCEPT {
+                return crate::transfers::accept(key.strip_prefix("req:").unwrap_or(key));
+            }
+            if action == crate::transfers::ACTION_DECLINE {
+                return crate::transfers::cancel(key.strip_prefix("req:").unwrap_or(key));
+            }
             if action == crate::transfers::ACTION_OPEN {
                 return crate::transfers::open(std::path::Path::new(key));
             }
@@ -537,6 +579,7 @@ mod tests {
             icon: None,
             image: None,
             live: None,
+            conversation: None,
         }
     }
 

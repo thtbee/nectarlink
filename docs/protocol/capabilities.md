@@ -28,6 +28,12 @@ capability is missing.
 | `media.control` | Shares its media players for remote control ([media service](media.md); phone: needs notification access) | phone: notification access · desktop: app update |
 | `media.remote` | Shows and controls other devices' media players | app update |
 
+> **LocalSend v2.1 LAN interop:** Unpaired LocalSend discovery and file transfer
+> (`224.0.0.167:53317` UDP multicast + HTTP/HTTPS `/api/localsend/v2/*` on TCP
+> port `53317`, see [protocol §13](v0.md#13-localsend-v21-interoperability-optional-lan-interop))
+> is an opt-in local setting (`localsend.enabled`) rather than a paired-session
+> capability, because it operates with unpaired third-party LocalSend devices.
+
 ## Phone
 
 | ID | Meaning | Unlocked by |
@@ -64,6 +70,7 @@ capability is missing.
 | `storage.read` | Lists folders and reads files in shared storage or picked SAF folders ([storage](storage.md)) | All files access or picked SAF folder |
 | `storage.write` | Creates folders, writes/uploads files, renames and deletes entries in shared storage or picked SAF folders ([storage](storage.md)) | All files access or picked SAF folder |
 | `camera.stream` | Streams a camera for webcam use ([webcam](webcam.md)) | camera permission |
+| `camera.capture` | Captures a photo or document scan on request ([Continuity Camera](v0.md#12-continuity-camera-cameracapture)) | camera permission |
 
 ## Desktop
 
@@ -86,4 +93,6 @@ capability is missing.
 | `pc.audio` | Reports active audio output devices in `deck.state` and accepts `pc.audio.set` volume/mute changes ([deck](deck.md)) | app update |
 | `camera.virtual` | Receives and decodes a phone's camera stream ([webcam](webcam.md)) | app update |
 | `addon.vcam` | The virtual camera add-on is installed ([webcam](webcam.md)) | installing the add-on |
+| `camera.continuity` | Requests and receives Continuity Camera photos and document scans ([Continuity Camera](v0.md#12-continuity-camera-cameracapture)) | app update |
+
 

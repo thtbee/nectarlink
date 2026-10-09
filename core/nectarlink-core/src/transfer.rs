@@ -72,6 +72,9 @@ pub enum TransferFailure {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TransferState {
+    /// An incoming transfer waiting for the user to accept or decline
+    /// (e.g. from a nearby LocalSend device).
+    Requested,
     /// Waiting for the other device: to connect (sending), or to continue
     /// after the connection dropped (receiving; the sender resumes it).
     Waiting,
@@ -210,7 +213,7 @@ fn items(entries: &[FileEntry]) -> Vec<String> {
 
 /// A name Windows can store: no reserved device names (`CON`, `COM1`…),
 /// characters it rejects, or trailing dots and spaces.
-fn storable_name(name: &str) -> String {
+pub(crate) fn storable_name(name: &str) -> String {
     let mut clean: String = name
         .chars()
         .map(|c| if matches!(c, '<' | '>' | ':' | '"' | '|' | '?' | '*') { '_' } else { c })
@@ -316,7 +319,7 @@ fn take_photo_transfer(transfer_id: &str) -> bool {
         .is_some_and(|set| set.remove(transfer_id))
 }
 
-fn transfer_timeline_title(names: &[String]) -> String {
+pub(crate) fn transfer_timeline_title(names: &[String]) -> String {
     match names.len() {
         0 => "Files".into(),
         1 => names[0].clone(),
@@ -399,7 +402,7 @@ fn sanitize_markers(markers: Vec<RecordingMarker>) -> Vec<RecordingMarker> {
         .collect()
 }
 
-fn outgoing_target_path(path: &Path, folder: Option<&str>) -> String {
+pub(crate) fn outgoing_target_path(path: &Path, folder: Option<&str>) -> String {
     if let Some(f) = folder {
         let depth = f.split('/').filter(|s| !s.is_empty()).count();
         let mut p = path;
@@ -426,6 +429,9 @@ async fn send_inner(
         return Err(Error::Protocol("send between 1 and 5000 files".into()));
     }
     if !shared.store.is_paired(&peer)? {
+        if !recording && !is_photo && shared.localsend.has_peer(&peer) {
+            return crate::localsend::send_files(shared, peer, files).await;
+        }
         return Err(Error::NotPaired);
     }
     let toggle = if recording { RECORDINGS_TOGGLE } else { TOGGLE };
@@ -742,6 +748,13 @@ pub(crate) async fn accept_stream(
                 && h.v == nectarlink_protocol::messages::webcam::VERSION =>
         {
             crate::webcam::receive(shared, session.peer, send, recv).await;
+        }
+        Some(h)
+            if h.svc == nectarlink_protocol::messages::continuity_camera::SERVICE
+                && h.op == nectarlink_protocol::messages::continuity_camera::OP_RESULT
+                && h.v == nectarlink_protocol::messages::continuity_camera::VERSION =>
+        {
+            crate::continuity_camera::receive_result(shared, session.peer, send, recv).await;
         }
         Some(h)
             if h.svc == nectarlink_protocol::messages::remote::SERVICE

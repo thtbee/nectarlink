@@ -7,6 +7,7 @@ import app.nectarlink.core.DiscoveredDevice
 import app.nectarlink.core.Event
 import app.nectarlink.core.Feature
 import app.nectarlink.core.Link
+import app.nectarlink.core.LocalSendPeer
 import app.nectarlink.core.PairedDevice
 import app.nectarlink.core.PairingFailure
 import app.nectarlink.core.PowerLevel
@@ -125,11 +126,23 @@ data class CoreState(
     val timelineHasMore: Boolean = false,
     /** Timeline auto-purge retention in days (`0` = keep up to the entry cap regardless of age). */
     val timelineRetentionDays: UInt = 90u,
+    /** Number of received-file transfer records kept in local history. */
+    val receivedFileRecords: Int = 0,
+    /** Number of temporary Continuity Camera / clipboard image files in the phone's cache. */
+    val cachedPhotoFiles: Int = 0,
+    /** Number of temporary MMS staging files in the phone's cache. */
+    val cachedMmsFiles: Int = 0,
+    /** Whether LocalSend LAN interop is enabled (off by default). */
+    val localsendEnabled: Boolean = false,
+    /** Nearby LocalSend devices discovered on the LAN. */
+    val localsendPeers: List<LocalSendPeer> = emptyList(),
 ) {
     fun device(id: String): Device? = devices.firstOrNull { it.id == id }
 
     fun nameOf(id: String): String? =
-        device(id)?.name ?: discovered.firstOrNull { it.id == id }?.name
+        device(id)?.name
+            ?: discovered.firstOrNull { it.id == id }?.name
+            ?: localsendPeers.firstOrNull { it.id == id }?.alias
 
     fun withDevices(paired: List<PairedDevice>, storageAllowed: Set<String> = emptySet()): CoreState {
         val prevById = devices.associateBy { it.id }
@@ -201,8 +214,12 @@ data class CoreState(
             if (pairing == PairingState.Idle) this else copy(pairing = PairingState.Failed(event.failure))
         // PCs don't send notifications; nothing for the phone to show.
         is Event.NotificationsReset, is Event.NotificationPosted, is Event.NotificationRemoved -> this
-        // Android shows its own "copied" confirmation; Core refreshes clipboardHistory/timeline on change.
-        is Event.ClipboardReceived, is Event.ClipboardHistoryChanged, is Event.TimelineChanged -> this
+        // Android shows its own "copied" confirmation; Core refreshes clipboardHistory/timeline/LocalSend on change.
+        is Event.ClipboardReceived,
+        is Event.ClipboardHistoryChanged,
+        is Event.TimelineChanged,
+        is Event.LocalSendChanged,
+        -> this
         is Event.Transfer -> copy(transfers = withTransfer(event.transfer))
         // Shown in Android's media controls (see media/PcMedia).
         is Event.MediaChanged -> this
@@ -240,7 +257,9 @@ data class CoreState(
 const val MAX_FINISHED_TRANSFERS = 5
 
 fun Transfer.isFinished(): Boolean =
-    status !is app.nectarlink.core.TransferStatus.Running && status !is app.nectarlink.core.TransferStatus.Waiting
+    status !is app.nectarlink.core.TransferStatus.Requested &&
+        status !is app.nectarlink.core.TransferStatus.Running &&
+        status !is app.nectarlink.core.TransferStatus.Waiting
 
 internal fun PairedDevice.toDevice() = Device(
     id = id,

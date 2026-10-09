@@ -11,8 +11,9 @@ use clap::{Parser, Subcommand, ValueEnum};
 use nectarlink_core::{
     Battery, ConnectionPath, DeviceId, DeviceInfo, DeviceKind, Direction, FeatureState, LinkState, LivePoint,
     LiveSegment, MediaAction, MediaError, MediaPlayer, Node, NodeConfig, NodeEvent, Notification,
-    NotificationAction, NotificationError, NotificationLive, PairedDevice, PairingEvent, Platform,
-    PowerAction, PowerLevel, ScreenCorners, ScreenRect, ScreenShape, TaskNotify, TransferState,
+    NotificationAction, NotificationChatMessage, NotificationConversation, NotificationError,
+    NotificationLive, PairedDevice, PairingEvent, Platform, PowerAction, PowerLevel, ScreenCorners,
+    ScreenRect, ScreenShape, SmsAttachment, TaskNotify, TransferState,
     features::{Effort, FEATURES, Role, UnsupportedReason, Upgrade, UpgradeAction},
     notify_limits,
 };
@@ -67,6 +68,12 @@ struct Cli {
     /// generated sample folder tree in the data directory).
     #[arg(long, global = true)]
     storage_root: Option<PathBuf>,
+    /// Enable LocalSend v2.1 compatibility (UDP multicast 224.0.0.167:53317 and HTTP/HTTPS server).
+    #[arg(long, global = true)]
+    localsend: bool,
+    /// TCP/UDP port for LocalSend v2.1 (default: 53317).
+    #[arg(long, global = true, default_value_t = nectarlink_core::LOCALSEND_DEFAULT_PORT)]
+    localsend_port: u16,
     /// Log verbosity (error, warn, info, debug, trace).
     #[arg(long, global = true, default_value = "warn")]
     log: String,
@@ -679,8 +686,15 @@ enum SmsArg {
         #[arg(long, default_value_t = 20)]
         limit: u32,
     },
-    /// Send a text.
-    Send { to: String, body: String },
+    /// Send a text or MMS (with --image).
+    Send {
+        to: String,
+        #[arg(default_value = "")]
+        body: String,
+        /// JPEG or PNG image attachment to send as MMS (repeatable, up to 3).
+        #[arg(long = "image", value_name = "PATH")]
+        images: Vec<PathBuf>,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -1065,6 +1079,104 @@ fn sample_texts(main_thread_count: usize) {
         }),
     );
     *TEXTS.lock().unwrap() = rows;
+}
+
+static CHAT_NOTES: std::sync::Mutex<Vec<Notification>> = std::sync::Mutex::new(Vec::new());
+
+fn sample_chat_notifications() -> Vec<Notification> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as i64);
+    let min = 60_000i64;
+    let reply_actions = || {
+        vec![
+            NotificationAction { id: "reply".into(), title: "Reply".into(), reply: true },
+            NotificationAction { id: "read".into(), title: "Mark as read".into(), reply: false },
+        ]
+    };
+    let notes = vec![
+        Notification {
+            key: "chat|whatsapp|maya".into(),
+            app: "com.whatsapp".into(),
+            app_name: "WhatsApp".into(),
+            title: Some("Maya Lin".into()),
+            text: Some("Sent over the deck too".into()),
+            sub: None,
+            when: now - 12 * min,
+            actions: reply_actions(),
+            silent: true,
+            icon: Some(sample_icon(2)),
+            image: None,
+            live: None,
+            conversation: Some(NotificationConversation {
+                v: 1,
+                title: "Maya Lin".into(),
+                group: false,
+                avatar: None,
+                messages: vec![
+                    NotificationChatMessage {
+                        sender: Some("Maya Lin".into()),
+                        text: "Hey! Are you free for a quick call after lunch?".into(),
+                        time: now - 14 * min,
+                        self_sent: false,
+                        avatar: None,
+                    },
+                    NotificationChatMessage {
+                        sender: Some("Maya Lin".into()),
+                        text: "Sent over the deck too".into(),
+                        time: now - 12 * min,
+                        self_sent: false,
+                        avatar: None,
+                    },
+                ],
+            }),
+        },
+        Notification {
+            key: "chat|signal|weekend".into(),
+            app: "org.thoughtcrime.securesms".into(),
+            app_name: "Signal".into(),
+            title: Some("Weekend Hike 🥾".into()),
+            text: Some("Priya: Meet at the trailhead by 8:30?".into()),
+            sub: None,
+            when: now - 22 * min,
+            actions: reply_actions(),
+            silent: true,
+            icon: Some(sample_icon(1)),
+            image: None,
+            live: None,
+            conversation: Some(NotificationConversation {
+                v: 1,
+                title: "Weekend Hike 🥾".into(),
+                group: true,
+                avatar: None,
+                messages: vec![
+                    NotificationChatMessage {
+                        sender: Some("Liam".into()),
+                        text: "Weather looks clear all Saturday morning!".into(),
+                        time: now - 28 * min,
+                        self_sent: false,
+                        avatar: None,
+                    },
+                    NotificationChatMessage {
+                        sender: None,
+                        text: "I'll bring trail mix and the thermos".into(),
+                        time: now - 25 * min,
+                        self_sent: true,
+                        avatar: None,
+                    },
+                    NotificationChatMessage {
+                        sender: Some("Priya".into()),
+                        text: "Meet at the trailhead by 8:30?".into(),
+                        time: now - 22 * min,
+                        self_sent: false,
+                        avatar: None,
+                    },
+                ],
+            }),
+        },
+    ];
+    *CHAT_NOTES.lock().unwrap() = notes.clone();
+    notes
 }
 
 static CONTACTS: std::sync::Mutex<Vec<nectarlink_core::Contact>> = std::sync::Mutex::new(Vec::new());
@@ -1790,6 +1902,34 @@ impl Platform for TerminalPlatform {
         }
         Ok(())
     }
+    fn send_sms_with_attachments(
+        &self,
+        to: &[String],
+        body: &str,
+        attachments: &[SmsAttachment],
+    ) -> std::result::Result<(), String> {
+        if attachments.is_empty() {
+            return self.sms_send(to, body);
+        }
+        println!("A PC sent a message to {} ({} attachment(s)): {body}", to.join(", "), attachments.len());
+        let summary = if body.is_empty() {
+            format!("[{} image attachment(s)]", attachments.len())
+        } else {
+            format!("{body} [{} image attachment(s)]", attachments.len())
+        };
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_millis() as i64);
+        let name = contact_name_for(&to[0]).unwrap_or_default();
+        let mut texts = TEXTS.lock().unwrap();
+        let thread = texts.iter().find(|(_, n, ..)| *n == to[0]).map(|(t, ..)| *t);
+        let thread = thread.unwrap_or_else(|| texts.iter().map(|(t, ..)| *t).max().unwrap_or(0) + 1);
+        texts.push((thread, to[0].clone(), name, false, summary, now));
+        if let Some(node) = TEXTS_NODE.get().cloned() {
+            tokio::runtime::Handle::current().spawn(async move { node.sms_changed(None).await });
+        }
+        Ok(())
+    }
     fn call_command(
         &self,
         id: &str,
@@ -2023,7 +2163,35 @@ impl Platform for TerminalPlatform {
         reply: Option<&str>,
     ) -> Result<(), NotificationError> {
         match reply {
-            Some(text) => println!("The PC replied to {key}: {text}"),
+            Some(text) => {
+                println!("The PC replied to {key}: {text}");
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |d| d.as_millis() as i64);
+                let mut updated = None;
+                {
+                    let mut notes = CHAT_NOTES.lock().unwrap();
+                    if let Some(n) = notes.iter_mut().find(|n| n.key == key) {
+                        n.text = Some(text.to_owned());
+                        n.when = now;
+                        if let Some(conv) = n.conversation.as_mut() {
+                            conv.messages.push(NotificationChatMessage {
+                                sender: None,
+                                text: text.to_owned(),
+                                time: now,
+                                self_sent: true,
+                                avatar: None,
+                            });
+                        }
+                        updated = Some(n.clone());
+                    }
+                }
+                if let (Some(node), Some(note)) = (TEXTS_NODE.get().cloned(), updated) {
+                    tokio::runtime::Handle::current().spawn(async move {
+                        node.notification_posted(note).await;
+                    });
+                }
+            }
             None => println!("The PC ran action {action} of {key}"),
         }
         Ok(())
@@ -2151,6 +2319,48 @@ impl Platform for TerminalPlatform {
         }
         Ok(())
     }
+    fn camera_capture_requested(
+        &self,
+        peer: &DeviceId,
+        request: &nectarlink_core::CameraCaptureRequest,
+    ) -> Result<(), String> {
+        let node = TOGGLES_NODE.get().cloned().ok_or("camera capture is only available with --as-phone")?;
+        let peer_id = *peer;
+        let req_id = request.request_id.clone();
+        let mode = request.mode;
+        println!("A PC asked for Continuity Camera ({}, request {}).", mode.as_str(), req_id);
+        let delay_ms = std::env::var("NECTARLINK_CLI_CAMERA_DELAY_MS")
+            .ok()
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(1200);
+        tokio::runtime::Handle::current().spawn(async move {
+            tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+            let (file_name, jpeg) = match mode {
+                nectarlink_core::CameraCaptureMode::Photo => (
+                    "IMG_continuity.jpg".to_owned(),
+                    sample_jpeg(800, 600, (255, 140, 82), (180, 62, 92), (255, 232, 160)),
+                ),
+                nectarlink_core::CameraCaptureMode::Scan => (
+                    "Scan_continuity.jpg".to_owned(),
+                    sample_jpeg(800, 600, (246, 244, 238), (232, 228, 220), (52, 108, 176)),
+                ),
+            };
+            let meta = nectarlink_core::CameraCaptureResultMeta {
+                request_id: req_id,
+                mode,
+                mime: "image/jpeg".into(),
+                file_name,
+                size: jpeg.len() as u64,
+                width: 800,
+                height: 600,
+            };
+            let _ = node.send_camera_capture_result(peer_id, meta, jpeg).await;
+        });
+        Ok(())
+    }
+    fn camera_capture_cancelled(&self, _peer: &DeviceId, request_id: &str) {
+        println!("Continuity Camera request {request_id} cancelled.");
+    }
 }
 
 struct CliWebcamSink {
@@ -2250,6 +2460,7 @@ async fn start_node(cli: &Cli) -> Result<Node> {
     let mut config = NodeConfig::new(data_dir.clone(), device, env!("CARGO_PKG_VERSION"));
     config.downloads_dir = cli.downloads_dir.clone();
     config.port = cli.port;
+    config.localsend_port = cli.localsend_port;
     config.lan_discovery = !cli.no_lan;
     config.away_mode = cli.away;
     config.power = power;
@@ -2262,6 +2473,7 @@ async fn start_node(cli: &Cli) -> Result<Node> {
             PHONE_STORAGE.set(nectarlink_core::FolderStorage::new(storage_root).with_trash_dir(trash_dir));
         config.capabilities.push(nectarlink_core::STORAGE_READ.into());
         config.capabilities.push(nectarlink_core::STORAGE_WRITE.into());
+        config.capabilities.push(nectarlink_core::CAMERA_CAPTURE.into());
     } else {
         config.capabilities.push(nectarlink_core::RECORDER.into());
         config.capabilities.push(nectarlink_core::TOGGLES_SHOW.into());
@@ -2274,6 +2486,9 @@ async fn start_node(cli: &Cli) -> Result<Node> {
     }
     let extra_caps = config.capabilities.clone();
     let node = Node::start(config, Arc::new(TerminalPlatform)).await.context("failed to start")?;
+    if cli.localsend {
+        node.set_localsend_enabled(true).context("failed to enable LocalSend")?;
+    }
     if cli.as_phone {
         let _ = TOGGLES_NODE.set(node.clone());
         let _ = node.toggles_changed(sample_toggles()).await;
@@ -2357,11 +2572,18 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
         Command::Devices { wait } => {
             tokio::time::sleep(Duration::from_secs(*wait)).await;
             let devices = node.paired_devices()?;
-            if devices.is_empty() {
+            let localsend = node.localsend_peers();
+            if devices.is_empty() && localsend.is_empty() {
                 println!("No paired devices. Run `nectarlink pair` to pair one.");
             }
             for d in devices {
                 print_device(&d);
+            }
+            for p in localsend {
+                println!(
+                    "{:<24} {:<10} LocalSend ({}://{}:{})  {}",
+                    p.alias, p.device_type, p.protocol, p.ip, p.port, p.id
+                );
             }
         }
         Command::Ring { device, off } => {
@@ -2371,8 +2593,10 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             println!("{}", if *off { "Stopped ringing." } else { "Ringing…" });
         }
         Command::Send { device, files } => {
-            let id = resolve(node, device)?;
-            wait_until_online(node, id).await?;
+            let (id, is_localsend) = resolve_send_target(node, device, cli.localsend_port).await?;
+            if !is_localsend {
+                wait_until_online(node, id).await?;
+            }
             send_files(node, id, files).await?;
         }
         Command::Record { device, duration, file, markers } => {
@@ -3077,6 +3301,8 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             let mut offers = cli.offers.clone();
             offers.extend(
                 [
+                    "notify.mirror",
+                    "notify.reply",
                     nectarlink_core::SMS_READ,
                     nectarlink_core::SMS_SEND,
                     nectarlink_core::CALLS_STATE,
@@ -3089,6 +3315,9 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 .map(str::to_owned),
             );
             node.update_power(node_power(cli), offers).await;
+            for n in sample_chat_notifications() {
+                node.notification_posted(n).await;
+            }
             println!("Sharing sample conversations, contacts, and calls with paired PCs.");
             watch(node, false).await?;
         }
@@ -3153,6 +3382,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     nectarlink_core::CALLS_DIAL,
                     nectarlink_core::CONTACTS_READ,
                     nectarlink_core::PHOTOS_READ,
+                    nectarlink_core::CAMERA_CAPTURE,
                     nectarlink_core::TOGGLES_READ,
                     nectarlink_core::TOGGLES_RINGER,
                     nectarlink_core::TOGGLES_VOLUME,
@@ -3207,8 +3437,12 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     icon: None,
                     image: None,
                     live: None,
+                    conversation: None,
                 })
                 .await;
+            }
+            for n in sample_chat_notifications() {
+                node.notification_posted(n).await;
             }
             if *call {
                 let call = nectarlink_core::CallState {
@@ -3271,8 +3505,26 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                         );
                     }
                 }
-                SmsArg::Send { to, body } => {
-                    node.sms_send(id, vec![to.clone()], body.clone()).await.context("not sent")?;
+                SmsArg::Send { to, body, images } => {
+                    if images.is_empty() {
+                        node.sms_send(id, vec![to.clone()], body.clone()).await.context("not sent")?;
+                    } else {
+                        let mut attachments = Vec::with_capacity(images.len());
+                        for path in images {
+                            let data = std::fs::read(path)
+                                .with_context(|| format!("can't read {}", path.display()))?;
+                            let is_png = data.starts_with(b"\x89PNG\r\n\x1a\n")
+                                || path
+                                    .extension()
+                                    .and_then(|e| e.to_str())
+                                    .is_some_and(|e| e.eq_ignore_ascii_case("png"));
+                            let mime = if is_png { "image/png" } else { "image/jpeg" }.to_owned();
+                            attachments.push(SmsAttachment { mime, data });
+                        }
+                        node.send_sms_with_attachments(id, vec![to.clone()], body.clone(), attachments)
+                            .await
+                            .context("not sent")?;
+                    }
                     println!("Sent.");
                 }
             }
@@ -3575,6 +3827,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 icon: None,
                 image,
                 live: live.clone(),
+                conversation: None,
             };
             node.notification_posted(base_note.clone()).await;
             for (i, extra) in also.iter().enumerate() {
@@ -3595,6 +3848,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     icon: None,
                     image: None,
                     live: None,
+                    conversation: None,
                 })
                 .await;
             }
@@ -3774,7 +4028,9 @@ async fn wait_for_outgoing_transfer(
                 }
                 TransferState::Failed(why) => bail!("transfer failed: {why:?}"),
                 TransferState::Cancelled => bail!("transfer cancelled"),
-                TransferState::Waiting => print!("\rWaiting for the device…          "),
+                TransferState::Requested | TransferState::Waiting => {
+                    print!("\rWaiting for the device…          ")
+                }
                 TransferState::Running => {
                     let percent = (t.done * 100).checked_div(t.total).unwrap_or(100);
                     print!("\rSending… {percent}%          ");
@@ -4093,6 +4349,7 @@ fn print_event(node: &Node, event: &NodeEvent) {
         node.paired_devices()
             .ok()
             .and_then(|ds| ds.into_iter().find(|d| d.id == *id).map(|d| d.info.name))
+            .or_else(|| node.localsend_peers().into_iter().find(|p| p.id == *id).map(|p| p.alias))
             .unwrap_or_else(|| id.short())
     };
     match event {
@@ -4244,6 +4501,25 @@ fn print_event(node: &Node, event: &NodeEvent) {
             photo.size,
             photo.thumb.len()
         ),
+        NodeEvent::CameraCaptureRequested { device, request_id, mode } => {
+            println!("{}: requested Continuity Camera {:?} ({request_id})", name(device), mode)
+        }
+        NodeEvent::CameraCaptureReceived {
+            device, request_id, mode, file_name, data, saved_path, ..
+        } => {
+            let where_str = saved_path.as_ref().map(|p| format!(" -> {}", p.display())).unwrap_or_default();
+            println!(
+                "{}: Continuity Camera {:?} {file_name} ({} bytes, {request_id}){where_str}",
+                name(device),
+                mode,
+                data.len()
+            );
+        }
+        NodeEvent::CameraCaptureCancelled { device, request_id, reason } => println!(
+            "{}: Continuity Camera cancelled ({request_id}{})",
+            name(device),
+            reason.as_deref().map(|r| format!(": {r}")).unwrap_or_default()
+        ),
         NodeEvent::MediaChanged { device, players } if players.is_empty() => {
             println!("{}: nothing playing", name(device));
         }
@@ -4264,6 +4540,16 @@ fn print_event(node: &Node, event: &NodeEvent) {
             }
         }
         NodeEvent::Transfer(t) if t.direction == Direction::Incoming => match &t.state {
+            TransferState::Requested => {
+                println!(
+                    "{}: incoming LocalSend transfer ({} file(s), {} bytes): {}; accepting…",
+                    name(&t.device),
+                    t.files,
+                    t.total,
+                    t.names.join(", ")
+                );
+                node.accept_transfer(&t.id);
+            }
             TransferState::Done { saved } => {
                 for path in saved {
                     if t.recording {
@@ -4527,6 +4813,55 @@ fn resolve(node: &Node, query: &str) -> Result<DeviceId> {
         [] => bail!("no paired device matches {query:?}"),
         _ => bail!("{query:?} matches more than one device; use more of the ID"),
     }
+}
+
+/// Resolves a target for `send`: a paired Nectarlink device, a discovered
+/// LocalSend peer, or a `host[:port]` LocalSend address.
+async fn resolve_send_target(node: &Node, query: &str, default_port: u16) -> Result<(DeviceId, bool)> {
+    if let Ok(id) = resolve(node, query)
+        && node.paired_devices()?.iter().any(|d| d.id == id)
+    {
+        return Ok((id, false));
+    }
+    if let Some((host, port_str)) = query.rsplit_once(':')
+        && !host.is_empty()
+        && let Ok(port) = port_str.parse::<u16>()
+    {
+        if !node.localsend_enabled() {
+            let _ = node.set_localsend_enabled(true);
+        }
+        let peer = node
+            .probe_localsend_peer(host, port)
+            .await
+            .with_context(|| format!("no LocalSend peer responded at {host}:{port}"))?;
+        return Ok((peer.id, true));
+    }
+    if query.parse::<std::net::IpAddr>().is_ok() {
+        if !node.localsend_enabled() {
+            let _ = node.set_localsend_enabled(true);
+        }
+        let peer = node
+            .probe_localsend_peer(query, default_port)
+            .await
+            .with_context(|| format!("no LocalSend peer responded at {query}:{default_port}"))?;
+        return Ok((peer.id, true));
+    }
+    if node.localsend_enabled() {
+        let q = query.to_ascii_lowercase();
+        let ls_matches: Vec<_> = node
+            .localsend_peers()
+            .into_iter()
+            .filter(|p| {
+                p.id.to_string().starts_with(&q)
+                    || p.alias.to_ascii_lowercase() == q
+                    || p.ip.eq_ignore_ascii_case(&q)
+            })
+            .collect();
+        if let [one] = ls_matches.as_slice() {
+            return Ok((one.id, true));
+        }
+    }
+    resolve(node, query).map(|id| (id, false))
 }
 
 fn parse_id(s: &str) -> Result<DeviceId> {

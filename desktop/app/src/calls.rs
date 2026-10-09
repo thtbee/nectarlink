@@ -791,6 +791,68 @@ pub fn dial(device: DeviceId, number: String) {
     });
 }
 
+/// Returns cached `(name, number)` pairs for `device` synchronously (0 ms) for
+/// the Command Palette, and kicks off background loading of contacts/call log
+/// if not yet cached.
+pub fn palette_contacts(device: DeviceId) -> Vec<(String, String)> {
+    let (out, need_contacts, need_log) = page_state(|s| {
+        if s.device != Some(device) {
+            *s = PageState { device: Some(device), generation: s.generation + 1, ..PageState::default() };
+            return (Vec::new(), true, true);
+        }
+        let mut seen = std::collections::HashSet::new();
+        let mut list = Vec::new();
+        for c in &s.contacts {
+            let name = c.name.trim();
+            if name.is_empty() {
+                continue;
+            }
+            for num in &c.numbers {
+                let raw = num.number.trim();
+                if raw.is_empty() {
+                    continue;
+                }
+                let key = {
+                    let d = digits(raw);
+                    if d.is_empty() { raw.to_ascii_lowercase() } else { d }
+                };
+                if seen.insert(key) {
+                    list.push((name.to_owned(), raw.to_owned()));
+                }
+            }
+        }
+        for e in &s.log {
+            let raw = e.number.trim();
+            if raw.is_empty() {
+                continue;
+            }
+            let key = {
+                let d = digits(raw);
+                if d.is_empty() { raw.to_ascii_lowercase() } else { d }
+            };
+            if seen.insert(key) {
+                let name = e.name.as_deref().map(str::trim).filter(|n| !n.is_empty()).unwrap_or(raw);
+                list.push((name.to_owned(), raw.to_owned()));
+            }
+        }
+        let need_contacts = s.contacts.is_empty() && s.contacts_status != Status::Loading;
+        let need_log = s.log.is_empty() && s.log_status != Status::Loading;
+        (list, need_contacts, need_log)
+    });
+    if need_contacts {
+        load_contacts();
+    }
+    if need_log {
+        load_call_log(None);
+    }
+    out
+}
+
+/// Places a call from the Command Palette on `device`.
+pub fn dial_from_palette(device: DeviceId, number: &str) {
+    dial(device, number.to_owned());
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

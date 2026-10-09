@@ -44,6 +44,8 @@ QtObject {
     readonly property string mark: "M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5zM9 12h6"
     readonly property string back: "M15 6l-6 6 6 6"
     readonly property string chevronRight: "M9 6l6 6-6 6"
+    readonly property string chevronDown: "M6 9l6 6 6-6"
+    readonly property string clipboardList: "M9 3h6v4H9zM16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2M8.5 11.5h7M8.5 14.5h7M8.5 17.5h4.5"
     readonly property string battery: "M4 7h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2zM22 11v2"
     readonly property string phone: "M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zM11 18h2"
     readonly property string laptop: "M5 5h14a1 1 0 0 1 1 1v10H4V6a1 1 0 0 1 1-1zM2 19h20"

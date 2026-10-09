@@ -72,6 +72,12 @@ pub mod qobject {
         #[qproperty(QString, recordings_format)]
         /// Timeline retention in days (`0` means keep up to 5,000 entries regardless of age).
         #[qproperty(i32, timeline_retention_days)]
+        /// Global hotkey for "Take photo with phone" (e.g. `"Ctrl+Alt+C"`).
+        #[qproperty(QString, continuity_photo_hotkey)]
+        /// Global hotkey for "Scan document with phone" (e.g. `"Ctrl+Alt+D"`).
+        #[qproperty(QString, continuity_scan_hotkey)]
+        /// Global hotkey for the Command Palette (e.g. `"Ctrl+Alt+Space"`).
+        #[qproperty(QString, command_palette_hotkey)]
         type Preferences = super::PreferencesRust;
 
         /// Sets the folder where voice recordings are saved (from a `file:` URL or path).
@@ -159,6 +165,9 @@ pub struct PreferencesRust {
     recordings_folder_is_default: bool,
     recordings_format: QString,
     timeline_retention_days: i32,
+    continuity_photo_hotkey: QString,
+    continuity_scan_hotkey: QString,
+    command_palette_hotkey: QString,
     /// What the user chose (`start_with_windows` shows the default until then).
     start_choice: Option<bool>,
     /// Custom recordings folder if chosen (`None` means default).
@@ -203,6 +212,14 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().rust_mut().custom_recordings_folder = settings.recordings_folder.clone();
         self.as_mut().set_recordings_format(QString::from(settings.recordings_format.as_str()));
         self.as_mut().set_timeline_retention_days(settings.timeline_retention_days as i32);
+        self.as_mut().set_continuity_photo_hotkey(QString::from(&settings.continuity_photo_hotkey));
+        self.as_mut().set_continuity_scan_hotkey(QString::from(&settings.continuity_scan_hotkey));
+        self.as_mut().set_command_palette_hotkey(QString::from(&settings.command_palette_hotkey));
+        crate::win::tray::update_hotkeys(
+            &settings.continuity_photo_hotkey,
+            &settings.continuity_scan_hotkey,
+            &settings.command_palette_hotkey,
+        );
         crate::recordings::init(&settings);
 
         // Save after any change (connected after loading, so loading doesn't
@@ -293,6 +310,36 @@ impl cxx_qt::Initialize for qobject::Preferences {
                 p.save();
             })
             .release();
+        self.as_mut()
+            .on_continuity_photo_hotkey_changed(|p| {
+                crate::win::tray::update_hotkeys(
+                    &String::from(&p.continuity_photo_hotkey),
+                    &String::from(&p.continuity_scan_hotkey),
+                    &String::from(&p.command_palette_hotkey),
+                );
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_continuity_scan_hotkey_changed(|p| {
+                crate::win::tray::update_hotkeys(
+                    &String::from(&p.continuity_photo_hotkey),
+                    &String::from(&p.continuity_scan_hotkey),
+                    &String::from(&p.command_palette_hotkey),
+                );
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_command_palette_hotkey_changed(|p| {
+                crate::win::tray::update_hotkeys(
+                    &String::from(&p.continuity_photo_hotkey),
+                    &String::from(&p.continuity_scan_hotkey),
+                    &String::from(&p.command_palette_hotkey),
+                );
+                p.save();
+            })
+            .release();
     }
 }
 
@@ -352,6 +399,9 @@ impl qobject::Preferences {
             webcam_height: crate::webcam::height(),
             webcam_mirror: crate::webcam::mirror(),
             timeline_retention_days: p.timeline_retention_days.max(0) as u32,
+            continuity_photo_hotkey: String::from(&p.continuity_photo_hotkey),
+            continuity_scan_hotkey: String::from(&p.continuity_scan_hotkey),
+            command_palette_hotkey: String::from(&p.command_palette_hotkey),
         };
         save_in_background(settings);
     }

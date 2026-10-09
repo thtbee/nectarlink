@@ -20,16 +20,12 @@ use windows::{
             IMFAttributes, IMFMediaType, IMFSample, IMFSourceReader, MF_MT_AUDIO_AVG_BYTES_PER_SECOND,
             MF_MT_AUDIO_BITS_PER_SAMPLE, MF_MT_AUDIO_NUM_CHANNELS, MF_MT_AUDIO_SAMPLES_PER_SECOND,
             MF_MT_MAJOR_TYPE, MF_MT_SUBTYPE, MF_SOURCE_READER_FIRST_AUDIO_STREAM,
-            MF_SOURCE_READERF_ENDOFSTREAM, MF_TRANSCODE_CONTAINERTYPE, MF_VERSION, MFAudioFormat_FLAC,
-            MFAudioFormat_MP3, MFAudioFormat_PCM, MFCreateAttributes, MFCreateMediaType,
-            MFCreateSinkWriterFromURL, MFCreateSourceReaderFromURL, MFMediaType_Audio, MFSTARTUP_NOSOCKET,
-            MFShutdown, MFStartup, MFT_ENUM_FLAG_ALL, MFTranscodeContainerType_MP3,
+            MF_SOURCE_READERF_ENDOFSTREAM, MF_TRANSCODE_CONTAINERTYPE, MFAudioFormat_FLAC, MFAudioFormat_MP3,
+            MFAudioFormat_PCM, MFCreateAttributes, MFCreateMediaType, MFCreateSinkWriterFromURL,
+            MFCreateSourceReaderFromURL, MFMediaType_Audio, MFT_ENUM_FLAG_ALL, MFTranscodeContainerType_MP3,
             MFTranscodeGetAudioOutputAvailableTypes,
         },
-        System::{
-            Com::{COINIT_MULTITHREADED, CoInitializeEx},
-            SystemInformation::GetLocalTime,
-        },
+        System::SystemInformation::GetLocalTime,
     },
     core::{HSTRING, Interface},
 };
@@ -38,7 +34,10 @@ use crate::{
     core_host,
     settings::{RecordingFormat, Settings},
     transfers::{ACTION_OPEN, ACTION_SHOW, TOAST_GROUP},
-    win::toast::{self, Toast},
+    win::{
+        h264::ensure_mf_started,
+        toast::{self, Toast},
+    },
 };
 
 #[derive(Debug, Default)]
@@ -246,32 +245,10 @@ fn move_file(src: &Path, dest: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-struct MfSession;
-
-impl MfSession {
-    fn start() -> windows::core::Result<Self> {
-        // SAFETY: plain COM and Media Foundation initialization for this worker thread.
-        unsafe {
-            let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
-            MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET)?;
-        }
-        Ok(Self)
-    }
-}
-
-impl Drop for MfSession {
-    fn drop(&mut self) {
-        // SAFETY: balances MFStartup in MfSession::start.
-        unsafe {
-            let _ = MFShutdown();
-        }
-    }
-}
-
 /// Converts `src` (`.m4a`) to `dest` in `format` (`Mp3`, `Wav`, or `Flac`)
 /// using Windows Media Foundation.
 pub fn convert_audio(src: &Path, dest: &Path, format: RecordingFormat) -> windows::core::Result<()> {
-    let _mf = MfSession::start()?;
+    ensure_mf_started()?;
     let stream_idx = MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32;
 
     // SAFETY: Media Foundation COM interfaces with owned parameters.

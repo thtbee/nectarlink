@@ -2340,20 +2340,28 @@ name = "nectarlink-core"
 version = "0.0.1"
 dependencies = [
  "bytes",
+ "data-encoding",
  "iroh",
  "iroh-mdns-address-lookup",
  "n0-future",
  "nectarlink-protocol",
  "rand",
+ "ring",
  "rusqlite",
+ "rustls",
+ "rustls-pki-types",
  "serde",
  "serde_json",
+ "sha2",
+ "socket2",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "tokio-rustls",
  "tokio-util",
  "tracing",
  "tracing-subscriber",
+ "url",
  "windows",
 ]
 

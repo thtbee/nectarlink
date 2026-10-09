@@ -10,9 +10,37 @@ Item {
     property bool active: false
     signal pairRequested
 
-    onActiveChanged: Webcam.setPreviewActive(active)
-    Component.onCompleted: if (active) Webcam.setPreviewActive(true)
+    onActiveChanged: {
+        Webcam.setPreviewActive(active)
+        if (active)
+            AppController.refreshDataRetention()
+    }
+    Component.onCompleted: {
+        if (active) {
+            Webcam.setPreviewActive(true)
+            AppController.refreshDataRetention()
+        }
+    }
     Component.onDestruction: Webcam.setPreviewActive(false)
+
+    readonly property var retentionSummary: {
+        try {
+            return JSON.parse(AppController.dataRetentionSummary || "{}")
+        } catch (e) {
+            return ({})
+        }
+    }
+
+    function formatRetentionBytes(bytes) {
+        const b = Number(bytes || 0)
+        if (b <= 0)
+            return "0 B"
+        if (b < 1024)
+            return b + " B"
+        if (b < 1024 * 1024)
+            return Math.max(1, Math.round(b / 1024)) + " KB"
+        return (b / (1024 * 1024)).toFixed(1) + " MB"
+    }
 
     opacity: active ? 1 : 0
     visible: opacity > 0
@@ -502,58 +530,6 @@ Item {
                     Divider { width: parent.width }
                     ListRow {
                         width: parent.width
-                        iconPath: Icons.history
-                        title: qsTr("Keep clipboard history")
-                        description: qsTr("Keep the last 50 text and image clips shared between your devices, encrypted on this PC. Passwords and one-time codes are never saved.")
-                        Row {
-                            spacing: 10
-                            Button {
-                                anchors.verticalCenter: parent.verticalCenter
-                                visible: Preferences.clipboardHistory && AppController.clipboardHistory.length > 2
-                                variant: "text"
-                                size: "sm"
-                                text: qsTr("Clear")
-                                onClicked: AppController.clearClipboardHistory()
-                            }
-                            Toggle {
-                                anchors.verticalCenter: parent.verticalCenter
-                                label: qsTr("Keep clipboard history")
-                                checked: Preferences.clipboardHistory
-                                onToggled: (on) => Preferences.clipboardHistory = on
-                            }
-                        }
-                    }
-                    Divider { width: parent.width }
-                    ListRow {
-                        width: parent.width
-                        iconPath: Icons.history
-                        title: qsTr("Timeline retention")
-                        description: qsTr("Keep a searchable local history of files, clips, links, photos, recordings and sessions on this PC (up to 5,000 items).")
-                        Row {
-                            spacing: 8
-                            Button {
-                                anchors.verticalCenter: parent.verticalCenter
-                                variant: "text"
-                                size: "sm"
-                                text: qsTr("Open")
-                                onClicked: AppController.currentPage = "timeline"
-                            }
-                            Segmented {
-                                anchors.verticalCenter: parent.verticalCenter
-                                options: [
-                                    { value: "30", label: qsTr("30d") },
-                                    { value: "90", label: qsTr("90d") },
-                                    { value: "365", label: qsTr("1y") },
-                                    { value: "0", label: qsTr("All") }
-                                ]
-                                value: String(Preferences.timelineRetentionDays)
-                                onPicked: (value) => Preferences.timelineRetentionDays = Number(value)
-                            }
-                        }
-                    }
-                    Divider { width: parent.width }
-                    ListRow {
-                        width: parent.width
                         iconPath: Icons.copy
                         title: qsTr("Copy one-time codes automatically")
                         description: qsTr("Copy verification codes from your phone's notifications and texts as they arrive. They're never sent back or saved.")
@@ -590,6 +566,18 @@ Item {
                     Divider { width: parent.width }
                     ListRow {
                         width: parent.width
+                        iconPath: Icons.globe
+                        title: qsTr("LocalSend on local network")
+                        description: qsTr("Send and receive files with devices running LocalSend on the same Wi‑Fi network without pairing. Incoming files ask before saving.")
+                        Toggle {
+                            label: qsTr("LocalSend on local network")
+                            checked: AppController.localsendEnabled
+                            onToggled: (on) => AppController.toggleLocalsend(on)
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
                         iconPath: Icons.battery
                         title: qsTr("Battery alerts")
                         description: qsTr("Get a notification when your phone's battery is low, and when it's fully charged.")
@@ -597,6 +585,147 @@ Item {
                             label: qsTr("Battery alerts")
                             checked: Preferences.batteryAlerts
                             onToggled: (on) => Preferences.batteryAlerts = on
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.search
+                        title: qsTr("Command palette shortcut")
+                        description: qsTr("Global shortcut to open the Command Palette from any app so you can run actions, text or call contacts, or mirror apps.")
+                        Row {
+                            spacing: 8
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: Preferences.commandPaletteHotkey !== "Ctrl+Alt+Space"
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Reset")
+                                onClicked: {
+                                    paletteHotkeyInput.text = "Ctrl+Alt+Space"
+                                    Preferences.commandPaletteHotkey = "Ctrl+Alt+Space"
+                                }
+                            }
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 132
+                                height: 32
+                                radius: Theme.radiusSm
+                                color: Theme.surfaceContainerHighest
+                                border.width: paletteHotkeyInput.activeFocus ? 2 : 1
+                                border.color: paletteHotkeyInput.activeFocus ? Theme.primary : Theme.outlineVariant
+                                TextInput {
+                                    id: paletteHotkeyInput
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10
+                                    anchors.rightMargin: 10
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    horizontalAlignment: TextInput.AlignHCenter
+                                    font.family: Theme.fontUi
+                                    font.pixelSize: 13
+                                    color: Theme.surfaceContent
+                                    selectionColor: Theme.primaryContainer
+                                    selectedTextColor: Theme.primaryContainerContent
+                                    clip: true
+                                    text: Preferences.commandPaletteHotkey
+                                    onEditingFinished: Preferences.commandPaletteHotkey = text.trim()
+                                    Accessible.name: qsTr("Command palette shortcut")
+                                }
+                            }
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.camera
+                        title: qsTr("Take photo shortcut")
+                        description: qsTr("Global shortcut to open your phone's camera from any app and paste the photo back into the active window.")
+                        Row {
+                            spacing: 8
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: Preferences.continuityPhotoHotkey !== "Ctrl+Alt+C"
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Reset")
+                                onClicked: {
+                                    photoHotkeyInput.text = "Ctrl+Alt+C"
+                                    Preferences.continuityPhotoHotkey = "Ctrl+Alt+C"
+                                }
+                            }
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 132
+                                height: 32
+                                radius: Theme.radiusSm
+                                color: Theme.surfaceContainerHighest
+                                border.width: photoHotkeyInput.activeFocus ? 2 : 1
+                                border.color: photoHotkeyInput.activeFocus ? Theme.primary : Theme.outlineVariant
+                                TextInput {
+                                    id: photoHotkeyInput
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10
+                                    anchors.rightMargin: 10
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    horizontalAlignment: TextInput.AlignHCenter
+                                    font.family: Theme.fontUi
+                                    font.pixelSize: 13
+                                    color: Theme.surfaceContent
+                                    selectionColor: Theme.primaryContainer
+                                    selectedTextColor: Theme.primaryContainerContent
+                                    clip: true
+                                    text: Preferences.continuityPhotoHotkey
+                                    onEditingFinished: Preferences.continuityPhotoHotkey = text.trim()
+                                    Accessible.name: qsTr("Take photo shortcut")
+                                }
+                            }
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.clipboardList
+                        title: qsTr("Scan document shortcut")
+                        description: qsTr("Global shortcut to scan a document with your phone's camera and paste the cropped scan into the active window.")
+                        Row {
+                            spacing: 8
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: Preferences.continuityScanHotkey !== "Ctrl+Alt+D"
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Reset")
+                                onClicked: {
+                                    scanHotkeyInput.text = "Ctrl+Alt+D"
+                                    Preferences.continuityScanHotkey = "Ctrl+Alt+D"
+                                }
+                            }
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 132
+                                height: 32
+                                radius: Theme.radiusSm
+                                color: Theme.surfaceContainerHighest
+                                border.width: scanHotkeyInput.activeFocus ? 2 : 1
+                                border.color: scanHotkeyInput.activeFocus ? Theme.primary : Theme.outlineVariant
+                                TextInput {
+                                    id: scanHotkeyInput
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10
+                                    anchors.rightMargin: 10
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    horizontalAlignment: TextInput.AlignHCenter
+                                    font.family: Theme.fontUi
+                                    font.pixelSize: 13
+                                    color: Theme.surfaceContent
+                                    selectionColor: Theme.primaryContainer
+                                    selectedTextColor: Theme.primaryContainerContent
+                                    clip: true
+                                    text: Preferences.continuityScanHotkey
+                                    onEditingFinished: Preferences.continuityScanHotkey = text.trim()
+                                    Accessible.name: qsTr("Scan document shortcut")
+                                }
+                            }
                         }
                     }
                 }
@@ -867,18 +996,6 @@ Item {
                     width: parent.width
                     ListRow {
                         width: parent.width
-                        iconPath: Icons.history
-                        title: qsTr("Keep a day of history")
-                        description: qsTr("Notifications that go away on your phone stay in History on this PC for a day.")
-                        Toggle {
-                            label: qsTr("Keep a day of history")
-                            checked: NotificationList.historyEnabled
-                            onToggled: (on) => NotificationList.setHistoryEnabled(on)
-                        }
-                    }
-                    Divider { width: parent.width }
-                    ListRow {
-                        width: parent.width
                         iconPath: Icons.moon
                         title: qsTr("Follow your phone's Do not disturb")
                         description: qsTr("No pop-ups or sounds for phone notifications while your phone is on Do not disturb. They still show in the app.")
@@ -952,6 +1069,217 @@ Item {
                                     onPicked: (value) => NotificationList.setAppRule(appRow.modelData.app, value)
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            // ---- Data & storage ----
+            Txt { text: qsTr("Data & storage"); role: "label"; muted: true }
+            Card {
+                width: parent.width
+                Column {
+                    width: parent.width
+                    // 1. Clipboard history
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.clipboard
+                        title: qsTr("Clipboard history")
+                        description: {
+                            const count = Number(page.retentionSummary.clipboardItems || 0)
+                            const size = page.formatRetentionBytes(page.retentionSummary.clipboardBytes)
+                            return qsTr("7 days · up to 50 text and image clips encrypted on this PC (%1 stored · %2). Passwords and one-time codes are never saved.")
+                                .arg(count)
+                                .arg(size)
+                        }
+                        Row {
+                            spacing: 10
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: Number(page.retentionSummary.clipboardItems || 0) > 0
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Clear")
+                                onClicked: {
+                                    AppController.clearClipboardHistory()
+                                    AppController.refreshDataRetention()
+                                }
+                            }
+                            Toggle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                label: qsTr("Clipboard history")
+                                checked: Preferences.clipboardHistory
+                                onToggled: (on) => {
+                                    Preferences.clipboardHistory = on
+                                    AppController.refreshDataRetention()
+                                }
+                            }
+                        }
+                    }
+                    Divider { width: parent.width }
+                    // 2. Cross-device timeline
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.history
+                        title: qsTr("Cross-device timeline")
+                        description: {
+                            const count = Number(page.retentionSummary.timelineItems || 0)
+                            return qsTr("Searchable local history of files, clips, links, photos, recordings and sessions (%1 items · up to 5,000).")
+                                .arg(count)
+                        }
+                        Row {
+                            spacing: 8
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: Number(page.retentionSummary.timelineItems || 0) > 0
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Clear")
+                                onClicked: {
+                                    TimelineModel.clearAll()
+                                    AppController.refreshDataRetention()
+                                }
+                            }
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Open")
+                                onClicked: AppController.currentPage = "timeline"
+                            }
+                            Segmented {
+                                anchors.verticalCenter: parent.verticalCenter
+                                options: [
+                                    { value: "30", label: qsTr("30d") },
+                                    { value: "90", label: qsTr("90d") },
+                                    { value: "365", label: qsTr("1y") },
+                                    { value: "0", label: qsTr("All") }
+                                ]
+                                value: String(Preferences.timelineRetentionDays)
+                                onPicked: (value) => {
+                                    Preferences.timelineRetentionDays = Number(value)
+                                    AppController.refreshDataRetention()
+                                }
+                            }
+                        }
+                    }
+                    Divider { width: parent.width }
+                    // 3. Notification history
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.bell
+                        title: qsTr("Notification history")
+                        description: {
+                            const count = Number(page.retentionSummary.notificationHistory || 0)
+                            const size = page.formatRetentionBytes(page.retentionSummary.notificationImageBytes)
+                            return qsTr("24 hours · up to 100 dismissed notifications (%1 stored · %2 of cached images).")
+                                .arg(count)
+                                .arg(size)
+                        }
+                        Row {
+                            spacing: 10
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: Number(page.retentionSummary.notificationHistory || 0) > 0
+                                         || Number(page.retentionSummary.notificationImageBytes || 0) > 0
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Clear")
+                                onClicked: AppController.clearNotificationHistory()
+                            }
+                            Toggle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                label: qsTr("Notification history")
+                                checked: NotificationList.historyEnabled
+                                onToggled: (on) => {
+                                    NotificationList.setHistoryEnabled(on)
+                                    AppController.refreshDataRetention()
+                                }
+                            }
+                        }
+                    }
+                    Divider { width: parent.width }
+                    // 4. Cached messages & conversations
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.messages
+                        title: qsTr("Cached messages & conversations")
+                        description: {
+                            const chatThreads = Number(page.retentionSummary.chatThreads || 0)
+                            const smsThreads = Number(page.retentionSummary.cachedSmsThreads || 0)
+                            const totalMsgs = Number(page.retentionSummary.chatMessages || 0)
+                                              + Number(page.retentionSummary.cachedSmsMessages || 0)
+                            const size = page.formatRetentionBytes(page.retentionSummary.messageAttachmentBytes)
+                            return qsTr("90 days · up to 500 messages per conversation (%1 conversations · %2 messages · %3 of attachments).")
+                                .arg(chatThreads + smsThreads)
+                                .arg(totalMsgs)
+                                .arg(size)
+                        }
+                        Button {
+                            variant: "text"
+                            size: "sm"
+                            visible: Number(page.retentionSummary.chatThreads || 0) > 0
+                                     || Number(page.retentionSummary.cachedSmsThreads || 0) > 0
+                                     || Number(page.retentionSummary.chatMessages || 0) > 0
+                                     || Number(page.retentionSummary.cachedSmsMessages || 0) > 0
+                                     || Number(page.retentionSummary.messageAttachmentBytes || 0) > 0
+                            text: qsTr("Clear")
+                            onClicked: AppController.clearMessageCache()
+                        }
+                    }
+                    Divider { width: parent.width }
+                    // 5. Photo thumbnails cache
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.photo
+                        title: qsTr("Photo thumbnails cache")
+                        description: {
+                            const files = Number(page.retentionSummary.photoThumbFiles || 0)
+                            const size = page.formatRetentionBytes(page.retentionSummary.photoThumbBytes)
+                            return qsTr("30 days · up to 500 cached thumbnails (%1 files · %2). Original photos on your phone are never touched.")
+                                .arg(files)
+                                .arg(size)
+                        }
+                        Button {
+                            variant: "text"
+                            size: "sm"
+                            visible: Number(page.retentionSummary.photoThumbFiles || 0) > 0
+                            text: qsTr("Clear")
+                            onClicked: AppController.clearPhotoThumbnails()
+                        }
+                    }
+                    Divider { width: parent.width }
+                    // 6. Received file transfer history
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.send
+                        title: qsTr("Received file transfer history")
+                        description: {
+                            const records = Number(page.retentionSummary.receivedFileRecords || 0)
+                            return qsTr("Kept with timeline · %1 transfer records on this PC. Saved files in Downloads are kept.")
+                                .arg(records)
+                        }
+                        Button {
+                            variant: "text"
+                            size: "sm"
+                            visible: Number(page.retentionSummary.receivedFileRecords || 0) > 0
+                            text: qsTr("Clear")
+                            onClicked: AppController.clearReceivedFileHistory()
+                        }
+                    }
+                    Divider { width: parent.width }
+                    // 7. Clear everything
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.trash
+                        title: qsTr("Clear all local history & caches")
+                        description: qsTr("Wipes clipboard history, timeline, notification history, cached messages, photo thumbnails, and transfer history on this PC. Paired devices and settings are kept.")
+                        Button {
+                            variant: "outline"
+                            size: "sm"
+                            iconPath: Icons.trash
+                            text: qsTr("Clear everything…")
+                            onClicked: clearEverythingSheet.open()
                         }
                     }
                 }
@@ -1178,6 +1506,41 @@ Item {
                     onClicked: {
                         AppController.unpair(unpairSheet.deviceId)
                         unpairSheet.close()
+                    }
+                }
+            }
+        }
+    }
+
+    Sheet {
+        id: clearEverythingSheet
+        cardWidth: 420
+        Column {
+            width: parent.width
+            spacing: 16
+            Txt {
+                width: parent.width
+                text: qsTr("Clear all local history & caches?")
+                role: "headline"
+                wrapMode: Text.WordWrap
+            }
+            Txt {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                role: "body"
+                muted: true
+                text: qsTr("This wipes clipboard history, the cross-device timeline, notification history, cached messages, photo thumbnails, and transfer history on this PC. Your paired devices, settings, and saved files in Downloads are kept.")
+            }
+            Row {
+                anchors.right: parent.right
+                spacing: 10
+                Button { variant: "text"; text: qsTr("Cancel"); onClicked: clearEverythingSheet.close() }
+                Button {
+                    iconPath: Icons.trash
+                    text: qsTr("Clear everything")
+                    onClicked: {
+                        AppController.clearEverything()
+                        clearEverythingSheet.close()
                     }
                 }
             }

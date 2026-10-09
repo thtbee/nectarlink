@@ -17,11 +17,14 @@ import android.provider.Telephony
 import android.telephony.SmsManager
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import app.nectarlink.core.SmsAttachment
 import app.nectarlink.core.SmsMessage
 import app.nectarlink.core.SmsPart
 import app.nectarlink.core.SmsPartData
 import app.nectarlink.core.SmsThread
 import java.io.ByteArrayOutputStream
+import java.io.File
 
 /**
  * The phone's text messages, for PCs (docs/protocol/sms.md): lists
@@ -246,21 +249,9 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
 
     // ---- Sending ----
 
-    /** Sends a text to each recipient; Android keeps it in Sent. */
-    fun send(to: List<String>, body: String): Boolean = guarded(false) {
-        if (!granted(context, Manifest.permission.SEND_SMS)) return@guarded false
-        val manager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            context.getSystemService(SmsManager::class.java)
-        } else {
-            @Suppress("DEPRECATION")
-            SmsManager.getDefault()
-        }
-        val parts = manager.divideMessage(body)
-        for (address in to) {
-            manager.sendMultipartTextMessage(address.trim(), null, parts, null, null)
-        }
-        true
-    }
+    /** Sends a text or MMS to each recipient; Android keeps it in Sent. */
+    fun send(to: List<String>, body: String, attachments: List<SmsAttachment> = emptyList()): Boolean =
+        send(context, to, body, attachments)
 
     private inline fun <T> guarded(fallback: T, block: () -> T): T = try {
         block()
@@ -310,6 +301,9 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
         private const val SETTLE_MS = 1000L
         private const val MAX_PART_BYTES = 900 * 1024
         private const val MAX_PHOTO_BYTES = 16 * 1024
+        private const val MMS_CACHE_DIR = "mms"
+        private const val MMS_CACHE_TTL_MS = 5 * 60 * 1000L
+        private const val RECENT_SMS_WINDOW_MS = 60_000L
         /** What a conversation whose latest message is a picture says. */
         private const val PICTURE_SNIPPET = "Picture"
         // MMS address types (PduHeaders.FROM and TO).
@@ -330,5 +324,168 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
         fun canSend(context: Context) = granted(context, Manifest.permission.SEND_SMS)
 
         fun hasAll(context: Context) = permissions.all { granted(context, it) }
+
+        /**
+         * Checks whether `Telephony.Sms` already contains a message with `body`
+         * within 60 seconds of `aroundTimeMs` (so notifications from the default
+         * SMS app aren't duplicated as `NotificationConversation`s when the SMS
+         * provider already supplies them).
+         */
+        fun isRecentSmsInProvider(context: Context, body: String, aroundTimeMs: Long): Boolean {
+            if (!canRead(context)) return false
+            val trimmed = body.trim()
+            if (trimmed.isEmpty()) return false
+            val now = System.currentTimeMillis()
+            val minDate = minOf(aroundTimeMs, now) - RECENT_SMS_WINDOW_MS
+            val maxDate = maxOf(aroundTimeMs, now) + RECENT_SMS_WINDOW_MS
+            return runCatching {
+                context.contentResolver.query(
+                    Telephony.Sms.CONTENT_URI,
+                    arrayOf(Telephony.Sms.BODY),
+                    "${Telephony.Sms.DATE} >= ? AND ${Telephony.Sms.DATE} <= ?",
+                    arrayOf(minDate.toString(), maxDate.toString()),
+                    "${Telephony.Sms.DATE} DESC",
+                )?.use { c ->
+                    while (c.moveToNext()) {
+                        if (c.getString(0)?.trim() == trimmed) return@use true
+                    }
+                    false
+                } ?: false
+            }.getOrDefault(false)
+        }
+
+        /** Sends an SMS or MMS (when `attachments` is non-empty) to `to`. */
+        fun send(
+            context: Context,
+            to: List<String>,
+            body: String,
+            attachments: List<SmsAttachment> = emptyList(),
+        ): Boolean = try {
+            if (!granted(context, Manifest.permission.SEND_SMS)) {
+                false
+            } else {
+                val recipients = to.map { it.trim() }.filter { it.isNotEmpty() }
+                if (recipients.isEmpty()) {
+                    false
+                } else {
+                    val manager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        context.getSystemService(SmsManager::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        SmsManager.getDefault()
+                    }
+                    if (attachments.isEmpty()) {
+                        if (body.isBlank()) {
+                            false
+                        } else {
+                            val parts = manager.divideMessage(body)
+                            for (address in recipients) {
+                                manager.sendMultipartTextMessage(address, null, parts, null, null)
+                            }
+                            true
+                        }
+                    } else {
+                        val now = System.currentTimeMillis()
+                        val mmsDir = File(context.cacheDir, MMS_CACHE_DIR).apply { mkdirs() }
+                        mmsDir.listFiles()?.forEach { f ->
+                            if (f.name.endsWith(".mms") && now - f.lastModified() > MMS_CACHE_TTL_MS) {
+                                f.delete()
+                            }
+                        }
+                        val pduBytes = buildMmsSendReqPdu(recipients, body, attachments, "nl-$now")
+                        val pduFile = File(mmsDir, "send-$now.mms")
+                        pduFile.writeBytes(pduBytes)
+                        val contentUri = FileProvider.getUriForFile(context, "${context.packageName}.files", pduFile)
+                        manager.sendMultimediaMessage(context, contentUri, null, null, null)
+                        true
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "can't send message", e)
+            false
+        }
+
+        /**
+         * Builds an OMA MMS `M-Send.req` binary PDU (`application/vnd.wap.mms-message`)
+         * with `application/vnd.wap.multipart.mixed` parts for optional UTF-8 text and
+         * image attachments.
+         */
+        internal fun buildMmsSendReqPdu(
+            to: List<String>,
+            body: String,
+            attachments: List<SmsAttachment>,
+            transactionId: String = "nl-${System.currentTimeMillis()}",
+        ): ByteArray {
+            val out = ByteArrayOutputStream()
+            // X-Mms-Message-Type (0x8C): m-send-req (0x80)
+            out.write(0x8C)
+            out.write(0x80)
+            // X-Mms-Transaction-Id (0x98): text-string + NUL
+            out.write(0x98)
+            out.write(transactionId.toByteArray(Charsets.US_ASCII))
+            out.write(0x00)
+            // X-Mms-MMS-Version (0x8D): v1.2 (0x92)
+            out.write(0x8D)
+            out.write(0x92)
+            // From (0x89): value-length 0x01, Insert-address-token (0x81)
+            out.write(0x89)
+            out.write(0x01)
+            out.write(0x81)
+            // To (0x97): one per recipient
+            for (raw in to) {
+                val addr = raw.trim()
+                if (addr.isEmpty()) continue
+                val formatted = if ('@' in addr || addr.endsWith("/TYPE=PLMN")) addr else "$addr/TYPE=PLMN"
+                out.write(0x97)
+                out.write(formatted.toByteArray(Charsets.US_ASCII))
+                out.write(0x00)
+            }
+            // Content-Type (0x84): application/vnd.wap.multipart.mixed (0xA3)
+            out.write(0x84)
+            out.write(0xA3)
+
+            // Multipart body: uintvar count of parts
+            val hasText = body.isNotBlank()
+            val partCount = (if (hasText) 1 else 0) + attachments.size
+            writeUintvar(out, partCount)
+
+            if (hasText) {
+                // Content-Type well-known text/plain (0x83) + UTF-8 data bytes
+                val textHeader = byteArrayOf(0x83.toByte())
+                val textBytes = body.toByteArray(Charsets.UTF_8)
+                writeUintvar(out, textHeader.size)
+                writeUintvar(out, textBytes.size)
+                out.write(textHeader)
+                out.write(textBytes)
+            }
+
+            for (att in attachments) {
+                val mime = att.mime.trim().ifEmpty { "image/jpeg" }
+                val mimeHeader = mime.toByteArray(Charsets.US_ASCII) + byteArrayOf(0x00)
+                writeUintvar(out, mimeHeader.size)
+                writeUintvar(out, att.data.size)
+                out.write(mimeHeader)
+                out.write(att.data)
+            }
+
+            return out.toByteArray()
+        }
+
+        /** Encodes a non-negative integer as a WAP WSP `uintvar` (7 bits per byte, MSB continuation). */
+        internal fun writeUintvar(out: ByteArrayOutputStream, value: Int) {
+            require(value >= 0) { "uintvar must be non-negative" }
+            val chunks = IntArray(5)
+            var count = 0
+            var v = value
+            do {
+                chunks[count++] = v and 0x7F
+                v = v ushr 7
+            } while (v > 0)
+            for (i in count - 1 downTo 1) {
+                out.write(chunks[i] or 0x80)
+            }
+            out.write(chunks[0])
+        }
     }
 }

@@ -12,6 +12,8 @@ mod battery;
 mod bridge;
 mod calls;
 mod clipboard;
+mod command_palette;
+mod continuity_camera;
 mod core_host;
 mod deck;
 mod doctor;
@@ -313,6 +315,11 @@ fn main() -> ExitCode {
     battery::set_enabled(settings.battery_alerts);
     storage::start();
     webcam::init(&settings);
+    win::tray::update_hotkeys(
+        &settings.continuity_photo_hotkey,
+        &settings.continuity_scan_hotkey,
+        &settings.command_palette_hotkey,
+    );
     // A test instance (own data folder) leaves the user's menu and sign-in
     // alone.
     if options.data_dir.is_none() {

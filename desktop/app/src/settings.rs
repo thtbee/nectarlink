@@ -108,6 +108,12 @@ pub struct Settings {
     pub webcam_mirror: bool,
     /// Days to keep timeline entries before auto-purging (`0` = keep up to max entries).
     pub timeline_retention_days: u32,
+    /// Global hotkey to trigger "Take photo with phone" (e.g. `"Ctrl+Alt+C"`, or `""` to disable).
+    pub continuity_photo_hotkey: String,
+    /// Global hotkey to trigger "Scan document with phone" (e.g. `"Ctrl+Alt+D"`, or `""` to disable).
+    pub continuity_scan_hotkey: String,
+    /// Global hotkey to open the Command Palette (e.g. `"Ctrl+Alt+Space"`, or `""` to disable).
+    pub command_palette_hotkey: String,
 }
 
 impl Default for Settings {
@@ -134,6 +140,9 @@ impl Default for Settings {
             webcam_height: 720,
             webcam_mirror: false,
             timeline_retention_days: 90,
+            continuity_photo_hotkey: "Ctrl+Alt+C".into(),
+            continuity_scan_hotkey: "Ctrl+Alt+D".into(),
+            command_palette_hotkey: "Ctrl+Alt+Space".into(),
         }
     }
 }
@@ -185,7 +194,9 @@ mod tests {
     #[test]
     fn round_trips_and_defaults() {
         let dir = tempfile::tempdir().unwrap();
-        assert_eq!(Settings::load(dir.path()), Settings::default());
+        let def = Settings::load(dir.path());
+        assert_eq!(def, Settings::default());
+        assert_eq!(def.command_palette_hotkey, "Ctrl+Alt+Space");
 
         let settings = Settings {
             theme: Theme::Graphite,
@@ -209,6 +220,9 @@ mod tests {
             webcam_height: 1080,
             webcam_mirror: true,
             timeline_retention_days: 30,
+            continuity_photo_hotkey: "Ctrl+Alt+P".into(),
+            continuity_scan_hotkey: "Ctrl+Alt+S".into(),
+            command_palette_hotkey: "Ctrl+Shift+Space".into(),
         };
         settings.save(dir.path()).unwrap();
         assert_eq!(Settings::load(dir.path()), settings);

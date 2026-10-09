@@ -8,8 +8,8 @@ use std::sync::Arc;
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, MAX_FRAME_LEN,
     messages::{
-        SmsChanged, SmsMessage, SmsMessages, SmsMessagesGet, SmsPartData, SmsPartGet, SmsSend, SmsThread,
-        SmsThreads, SmsThreadsGet, sms, types,
+        SmsAttachment, SmsChanged, SmsMessage, SmsMessages, SmsMessagesGet, SmsPartData, SmsPartGet, SmsSend,
+        SmsThread, SmsThreads, SmsThreadsGet, sms, types,
     },
 };
 
@@ -70,15 +70,27 @@ pub(crate) async fn messages(
     Ok(messages)
 }
 
-pub(crate) async fn send(shared: &Shared, session: &Session, to: Vec<String>, body: String) -> Result<()> {
+pub(crate) async fn send(
+    shared: &Shared,
+    session: &Session,
+    to: Vec<String>,
+    body: String,
+    attachments: Vec<SmsAttachment>,
+) -> Result<()> {
     allowed(shared, &session.peer)?;
-    let send = SmsSend { to, body };
+    let send = SmsSend { to, body, attachments };
     if !send.is_valid() {
-        return Err(if send.body.len() > sms::MAX_SEND_BYTES {
-            Error::TooLarge
-        } else {
-            Error::Protocol("invalid text".into())
-        });
+        let any_oversized = send.attachments.iter().any(|a| a.data.len() > sms::MAX_ATTACHMENT_BYTES);
+        return Err(
+            if send.body.len() > sms::MAX_SEND_BYTES
+                || any_oversized
+                || send.attachments.len() > sms::MAX_ATTACHMENTS
+            {
+                Error::TooLarge
+            } else {
+                Error::Protocol("invalid text".into())
+            },
+        );
     }
     let env = Envelope::new(types::SMS_SEND, &send)?;
     session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect(types::OK)?;
@@ -160,7 +172,9 @@ async fn answer(shared: &Arc<Shared>, session: &Session, env: &Envelope) -> Resu
                 return Ok(Envelope::error(ErrorCode::BadMessage, "invalid text"));
             }
             blocking(Box::new(move || {
-                platform.sms_send(&send.to, &send.body).map(|()| Envelope::empty(types::OK))
+                platform
+                    .send_sms_with_attachments(&send.to, &send.body, &send.attachments)
+                    .map(|()| Envelope::empty(types::OK))
             }))
             .await
         }

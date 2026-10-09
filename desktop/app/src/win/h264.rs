@@ -3,19 +3,19 @@
 //! MFT, licensed with Windows), in low-latency mode: each access unit in,
 //! its picture out right away, as NV12.
 
-use std::mem::ManuallyDrop;
+use std::{mem::ManuallyDrop, sync::Mutex, time::Duration};
 
 use windows::{
     Win32::{
         Media::MediaFoundation::{
-            CLSID_MSH264DecoderMFT, IMF2DBuffer, IMFMediaType, IMFSample, IMFTransform, MF_E_NOTACCEPTING,
-            MF_E_TRANSFORM_NEED_MORE_INPUT, MF_E_TRANSFORM_STREAM_CHANGE, MF_LOW_LATENCY, MF_MT_FRAME_SIZE,
-            MF_MT_MAJOR_TYPE, MF_MT_SUBTYPE, MF_MT_VIDEO_NOMINAL_RANGE, MF_MT_YUV_MATRIX, MF_VERSION,
-            MFCreateMediaType, MFCreateMemoryBuffer, MFCreateSample, MFMediaType_Video, MFNominalRange_0_255,
-            MFSTARTUP_NOSOCKET, MFShutdown, MFStartup, MFT_MESSAGE_COMMAND_FLUSH,
-            MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, MFT_MESSAGE_NOTIFY_START_OF_STREAM, MFT_OUTPUT_DATA_BUFFER,
-            MFT_OUTPUT_STREAM_PROVIDES_SAMPLES, MFVideoFormat_H264, MFVideoFormat_NV12,
-            MFVideoTransferMatrix_BT601,
+            CLSID_MSH264DecoderMFT, CODECAPI_AVDecNumWorkerThreads, IMF2DBuffer, IMFMediaType, IMFSample,
+            IMFTransform, MF_E_NOTACCEPTING, MF_E_TRANSFORM_NEED_MORE_INPUT, MF_E_TRANSFORM_STREAM_CHANGE,
+            MF_LOW_LATENCY, MF_MT_FRAME_SIZE, MF_MT_MAJOR_TYPE, MF_MT_SUBTYPE, MF_MT_VIDEO_NOMINAL_RANGE,
+            MF_MT_YUV_MATRIX, MF_VERSION, MFCreateMediaType, MFCreateMemoryBuffer, MFCreateSample,
+            MFMediaType_Video, MFNominalRange_0_255, MFSTARTUP_NOSOCKET, MFStartup,
+            MFT_MESSAGE_COMMAND_FLUSH, MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, MFT_MESSAGE_NOTIFY_END_STREAMING,
+            MFT_MESSAGE_NOTIFY_START_OF_STREAM, MFT_OUTPUT_DATA_BUFFER, MFT_OUTPUT_STREAM_PROVIDES_SAMPLES,
+            MFVideoFormat_H264, MFVideoFormat_NV12, MFVideoTransferMatrix_BT601,
         },
         System::Com::{CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx},
     },
@@ -57,24 +57,26 @@ impl Colors {
     }
 }
 
-/// Media Foundation, started for as long as a decoder lives.
-struct MfGuard;
-
-impl MfGuard {
-    fn start() -> windows::core::Result<Self> {
-        // SAFETY: plain Media Foundation startup call.
-        unsafe { MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET)? };
-        Ok(Self)
+/// Initializes COM on the calling thread and starts Media Foundation once for
+/// the process so concurrent decoders and transcoders never tear down Media
+/// Foundation's platform work queues under each other.
+pub(crate) fn ensure_mf_started() -> windows::core::Result<()> {
+    static MF_STARTED: Mutex<bool> = Mutex::new(false);
+    // SAFETY: plain COM and Media Foundation startup calls.
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+        let mut started = MF_STARTED.lock().unwrap_or_else(|e| e.into_inner());
+        if !*started {
+            MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET)?;
+            *started = true;
+        }
+        Ok(())
     }
 }
 
-impl Drop for MfGuard {
-    fn drop(&mut self) {
-        // SAFETY: paired with the `MFStartup` in `MfGuard::start`.
-        unsafe {
-            let _ = MFShutdown();
-        }
-    }
+/// Whether an Annex B buffer contains a coded slice NAL unit (non-IDR `1` or IDR `5`).
+fn has_slice(data: &[u8]) -> bool {
+    data.windows(4).any(|w| w[..3] == [0, 0, 1] && matches!(w[3] & 0x1f, 1 | 5))
 }
 
 pub struct Decoder {
@@ -84,7 +86,6 @@ pub struct Decoder {
     provides_samples: bool,
     output_size: u32,
     colors: Colors,
-    _mf: MfGuard,
 }
 
 impl std::fmt::Debug for Decoder {
@@ -93,18 +94,28 @@ impl std::fmt::Debug for Decoder {
     }
 }
 
+impl Drop for Decoder {
+    fn drop(&mut self) {
+        // SAFETY: tells the transform streaming is over before it is released.
+        unsafe {
+            let _ = self.transform.ProcessMessage(MFT_MESSAGE_COMMAND_FLUSH, 0);
+            let _ = self.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_END_STREAMING, 0);
+        }
+    }
+}
+
 impl Decoder {
     /// A decoder for the calling thread (which it stays on).
     pub fn new() -> windows::core::Result<Decoder> {
         // SAFETY: plain COM and Media Foundation calls with owned values.
         unsafe {
-            let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
-            let mf = MfGuard::start()?;
+            ensure_mf_started()?;
             let transform: IMFTransform =
                 CoCreateInstance(&CLSID_MSH264DecoderMFT, None, CLSCTX_INPROC_SERVER)?;
-            // One picture in, one out: no reordering delay.
+            // One picture in, one out: no reordering delay, single worker thread.
             if let Ok(attributes) = transform.GetAttributes() {
                 let _ = attributes.SetUINT32(&MF_LOW_LATENCY, 1);
+                let _ = attributes.SetUINT32(&CODECAPI_AVDecNumWorkerThreads, 1);
             }
             let input = MFCreateMediaType()?;
             input.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;
@@ -116,7 +127,6 @@ impl Decoder {
                 provides_samples: false,
                 output_size: 0,
                 colors: Colors::default(),
-                _mf: mf,
             };
             decoder.choose_output()?;
             decoder.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0)?;
@@ -158,6 +168,7 @@ impl Decoder {
 
     /// Decodes one access unit (Annex B); returns the pictures it completed.
     pub fn decode(&mut self, data: &[u8], time_us: u64) -> windows::core::Result<Vec<Picture>> {
+        let expects_picture = has_slice(data);
         let sample = sample_of(data, time_us)?;
         let mut pictures = Vec::new();
         // SAFETY: as above.
@@ -165,11 +176,11 @@ impl Decoder {
             match unsafe { self.transform.ProcessInput(0, &sample, 0) } {
                 Ok(()) => break,
                 // Full: take what's ready first, then try again.
-                Err(e) if e.code() == MF_E_NOTACCEPTING => pictures.extend(self.drain()?),
+                Err(e) if e.code() == MF_E_NOTACCEPTING => pictures.extend(self.drain(false)?),
                 Err(e) => return Err(e),
             }
         }
-        pictures.extend(self.drain()?);
+        pictures.extend(self.drain(expects_picture)?);
         Ok(pictures)
     }
 
@@ -181,8 +192,9 @@ impl Decoder {
         }
     }
 
-    fn drain(&mut self) -> windows::core::Result<Vec<Picture>> {
+    fn drain(&mut self, expects_picture: bool) -> windows::core::Result<Vec<Picture>> {
         let mut pictures = Vec::new();
+        let mut waits = 0u32;
         loop {
             let provided = if self.provides_samples {
                 None
@@ -212,7 +224,20 @@ impl Decoder {
                         pictures.push(self.picture(&sample)?);
                     }
                 }
-                Err(e) if e.code() == MF_E_TRANSFORM_NEED_MORE_INPUT => return Ok(pictures),
+                Err(e) if e.code() == MF_E_TRANSFORM_NEED_MORE_INPUT => {
+                    // When an access unit includes both an SPS that triggers
+                    // `MF_E_TRANSFORM_STREAM_CHANGE` and a coded slice, the MFT's
+                    // worker thread signals the stream change as soon as it parses
+                    // the SPS and continues decoding the slice in parallel. Under
+                    // heavy CPU load, the next `ProcessOutput` after `SetOutputType`
+                    // can run before the worker thread finishes pushing the picture.
+                    if expects_picture && pictures.is_empty() && waits < 500 {
+                        waits += 1;
+                        std::thread::sleep(Duration::from_millis(1));
+                        continue;
+                    }
+                    return Ok(pictures);
+                }
                 Err(e) if e.code() == MF_E_TRANSFORM_STREAM_CHANGE => self.choose_output()?,
                 Err(e) => return Err(e),
             }

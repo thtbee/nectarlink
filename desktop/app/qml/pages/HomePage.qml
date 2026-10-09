@@ -17,6 +17,27 @@ Item {
     property bool currentCanReceive: false
     signal pairRequested
 
+    readonly property var localsendPeers: {
+        if (!AppController.localsendEnabled || !AppController.localsendPeersJson || AppController.localsendPeersJson.length === 0)
+            return []
+        try {
+            return JSON.parse(AppController.localsendPeersJson)
+        } catch (e) {
+            return []
+        }
+    }
+
+    FileDialog {
+        id: localsendFilePicker
+        property string targetDeviceId: ""
+        title: qsTr("Send files via LocalSend")
+        fileMode: FileDialog.OpenFiles
+        onAccepted: {
+            if (targetDeviceId.length > 0 && selectedFiles.length > 0)
+                TransferList.send(targetDeviceId, selectedFiles.map(url => url.toString()))
+        }
+    }
+
     opacity: active ? 1 : 0
     visible: opacity > 0
     Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
@@ -194,6 +215,49 @@ Item {
                     width: column.width
                     visible: index === page.current
                 }
+            }
+
+            Card {
+                width: column.width
+                visible: DeviceList.count === 0 && TransferList.count > 0
+                Column {
+                    width: parent.width
+                    spacing: 8
+                    Item {
+                        width: parent.width
+                        height: Math.max(standaloneTransfersHeader.height, standaloneClearTransfers.height)
+                        Txt {
+                            id: standaloneTransfersHeader
+                            anchors.verticalCenter: parent.verticalCenter
+                            role: "label"
+                            muted: true
+                            text: qsTr("Transfers")
+                        }
+                        Button {
+                            id: standaloneClearTransfers
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: TransferList.count > TransferList.active
+                            variant: "text"
+                            size: "sm"
+                            text: qsTr("Clear finished")
+                            onClicked: TransferList.clearFinished()
+                        }
+                    }
+                    ListView {
+                        id: standaloneTransferList
+                        width: parent.width
+                        height: contentHeight
+                        interactive: false
+                        model: TransferList
+                        delegate: TransferItem { width: standaloneTransferList.width }
+                    }
+                }
+            }
+
+            LocalSendCard {
+                width: column.width
+                visible: DeviceList.count === 0 && AppController.localsendEnabled
             }
         }
     }
@@ -614,7 +678,7 @@ Item {
                                         width: 15
                                         height: 15
                                         path: Icons.battery
-                                        color: home.battery <= 15 && !home.charging ? Theme.danger : Theme.heroContent
+                                        color: home.battery <= 15 && !home.charging ? Theme.error : Theme.heroContent
                                     }
                                     Txt {
                                         anchors.verticalCenter: parent.verticalCenter
@@ -658,7 +722,7 @@ Item {
                                     height: parent.height
                                     radius: 3
                                     color: home.battery <= 15 && !home.charging
-                                        ? Theme.danger
+                                        ? Theme.error
                                         : (Theme.graphite ? Theme.heroContent : Theme.primary)
                                 }
                             }
@@ -897,7 +961,7 @@ Item {
                     iconPath: Icons.clipboard
                     feature: home.feature("clipboard.pc_to_phone")
                     onClicked: AppController.sendClipboard(home.deviceId)
-                    sideIcon: Preferences.clipboardHistory ? Icons.history : ""
+                    sideIcon: Preferences.clipboardHistory ? Icons.clipboardList : ""
                     sideLabel: qsTr("Clipboard history")
                     sideAlwaysAvailable: true
                     onSideClicked: {
@@ -937,6 +1001,95 @@ Item {
                     onSideClicked: folderPicker.open()
                 }
             }
+
+            // ---- Continuity Camera ----
+            Card {
+                id: continuityHomeCard
+                width: parent.width
+                readonly property var continuityFeature: home.feature("camera.continuity")
+                readonly property bool available: continuityFeature.state === "available"
+                visible: home.online && (available || continuityFeature.state === "locked" || AppController.continuityCameraBusy)
+                Column {
+                    width: parent.width
+                    spacing: 8
+                    Item {
+                        width: parent.width
+                        height: Math.max(continuityLeftRow.height, continuityRightRow.height)
+                        Row {
+                            id: continuityLeftRow
+                            anchors.left: parent.left
+                            anchors.right: continuityRightRow.left
+                            anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 10
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 18; height: 18
+                                path: Icons.camera
+                                color: Theme.primary
+                            }
+                            Column {
+                                width: parent.width - 28
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 1
+                                Txt {
+                                    width: parent.width
+                                    role: "label"
+                                    elide: Text.ElideRight
+                                    text: AppController.continuityCameraBusy
+                                        ? AppController.continuityCameraStatus
+                                        : qsTr("Continuity Camera")
+                                }
+                                Txt {
+                                    width: parent.width
+                                    role: "caption"
+                                    muted: true
+                                    elide: Text.ElideRight
+                                    text: AppController.continuityCameraBusy
+                                        ? qsTr("It goes on the clipboard and into the active window when ready.")
+                                        : qsTr("With %1's camera, pasted where your cursor is.").arg(home.name)
+                                }
+                            }
+                        }
+                        Row {
+                            id: continuityRightRow
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 8
+                            Button {
+                                visible: !AppController.continuityCameraBusy
+                                enabled: continuityHomeCard.available
+                                variant: "tonal"
+                                size: "sm"
+                                iconPath: Icons.camera
+                                text: qsTr("Take photo")
+                                onClicked: AppController.startContinuityCamera("photo")
+                            }
+                            Button {
+                                visible: !AppController.continuityCameraBusy
+                                enabled: continuityHomeCard.available
+                                variant: "tonal"
+                                size: "sm"
+                                iconPath: Icons.clipboardList
+                                text: qsTr("Scan document")
+                                onClicked: AppController.startContinuityCamera("scan")
+                            }
+                            Button {
+                                visible: AppController.continuityCameraBusy
+                                variant: "outline"
+                                size: "sm"
+                                iconPath: Icons.close
+                                text: qsTr("Cancel")
+                                onClicked: AppController.cancelContinuityCamera()
+                            }
+                        }
+                    }
+                    LockChip {
+                        visible: !continuityHomeCard.available && label.length > 0
+                        feature: continuityHomeCard.continuityFeature
+                    }
+                }
+            }
             FileDialog {
                 id: filePicker
                 title: qsTr("Send to %1").arg(home.name)
@@ -973,7 +1126,6 @@ Item {
                             Button {
                                 variant: "text"
                                 size: "sm"
-                                iconPath: Icons.history
                                 text: qsTr("Timeline")
                                 onClicked: AppController.currentPage = "timeline"
                             }
@@ -1006,6 +1158,12 @@ Item {
                 }
             }
 
+            // ---- LocalSend nearby ----
+            LocalSendCard {
+                width: parent.width
+                visible: AppController.localsendEnabled
+            }
+
             // ---- Notifications ----
             Card {
                 id: feed
@@ -1026,15 +1184,14 @@ Item {
                             muted: true
                             text: feed.count > 0 ? qsTr("Notifications · %1").arg(feed.count) : qsTr("Notifications")
                         }
-                        Button {
+                        IconButton {
                             anchors.right: clearAll.visible ? clearAll.left : parent.right
                             anchors.rightMargin: clearAll.visible ? 8 : 0
                             anchors.verticalCenter: parent.verticalCenter
                             visible: NotificationList.historyEnabled && NotificationHistory.count > 0
-                            variant: "text"
-                            size: "sm"
                             iconPath: Icons.history
                             text: qsTr("History")
+                            label: qsTr("Notification history (last 24 hours)")
                             onClicked: {
                                 historySearch.text = ""
                                 historySheet.open()
@@ -1698,7 +1855,7 @@ Item {
             Item {
                 width: parent.width
                 height: Math.max(historyTitle.height, clearHistory.height)
-                Txt { id: historyTitle; anchors.verticalCenter: parent.verticalCenter; text: qsTr("History"); role: "headline" }
+                Txt { id: historyTitle; anchors.verticalCenter: parent.verticalCenter; text: qsTr("Notification history"); role: "headline" }
                 Button {
                     id: clearHistory
                     anchors.right: parent.right
@@ -1759,13 +1916,13 @@ Item {
                         event.accepted = text.length > 0
                         text = ""
                     }
-                    Accessible.name: qsTr("Search history")
+                    Accessible.name: qsTr("Search notification history")
                     Txt {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: historySearch.text.length === 0
                         role: "body"
                         muted: true
-                        text: qsTr("Search history")
+                        text: qsTr("Search notification history")
                     }
                 }
             }
@@ -2363,6 +2520,120 @@ Item {
             visible: !slider.available && label.length > 0 && slider.feature.action !== "enableToggle"
             feature: slider.feature
             maxWidth: parent.width
+        }
+    }
+
+    // Nearby devices running LocalSend on the local Wi-Fi network.
+    component LocalSendCard: Card {
+        id: lsCard
+        Column {
+            width: parent.width
+            spacing: 10
+            Item {
+                width: parent.width
+                height: Math.max(lsHeaderRow.height, lsRefreshBtn.height)
+                Row {
+                    id: lsHeaderRow
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 8
+                    StatusDot {
+                        anchors.verticalCenter: parent.verticalCenter
+                        online: AppController.localsendReceiving
+                    }
+                    Txt {
+                        anchors.verticalCenter: parent.verticalCenter
+                        role: "label"
+                        muted: true
+                        text: page.localsendPeers.length > 0
+                            ? qsTr("LocalSend nearby · %1").arg(page.localsendPeers.length)
+                            : qsTr("LocalSend nearby")
+                    }
+                }
+                Button {
+                    id: lsRefreshBtn
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    variant: "text"
+                    size: "sm"
+                    text: qsTr("Refresh")
+                    onClicked: AppController.refreshLocalsend()
+                }
+            }
+            Txt {
+                width: parent.width
+                visible: page.localsendPeers.length === 0
+                role: "bodySmall"
+                muted: true
+                wrapMode: Text.WordWrap
+                text: AppController.localsendReceiving
+                    ? qsTr("Listening for LocalSend devices on your Wi‑Fi network.")
+                    : qsTr("LocalSend port 53317 is busy on this PC (another LocalSend app may be running).")
+            }
+            Repeater {
+                model: page.localsendPeers
+                delegate: Item {
+                    id: peerRow
+                    required property var modelData
+                    required property int index
+                    width: parent.width
+                    height: Math.max(36, peerInfoCol.height + 8)
+
+                    Row {
+                        anchors.fill: parent
+                        spacing: 12
+                        Rectangle {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 32; height: 32
+                            radius: Theme.graphite ? Theme.radiusSm : 16
+                            color: Theme.graphite ? "transparent" : Theme.secondaryContainer
+                            border.width: Theme.graphite ? 1 : 0
+                            border.color: Theme.outlineVariant
+                            Icon {
+                                anchors.centerIn: parent
+                                width: 18; height: 18
+                                path: peerRow.modelData.deviceType === "mobile" || peerRow.modelData.deviceType === "tablet"
+                                    ? Icons.phone : Icons.laptop
+                                color: Theme.graphite ? Theme.surfaceContent : Theme.secondaryContainerContent
+                            }
+                        }
+                        Column {
+                            id: peerInfoCol
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 32 - sendPeerBtn.width - 24
+                            spacing: 2
+                            Txt {
+                                width: parent.width
+                                role: "title"
+                                size: 14
+                                elide: Text.ElideRight
+                                text: peerRow.modelData.alias || qsTr("Nearby device")
+                            }
+                            Txt {
+                                width: parent.width
+                                role: "bodySmall"
+                                muted: true
+                                elide: Text.ElideRight
+                                text: [peerRow.modelData.deviceModel, peerRow.modelData.ip]
+                                    .filter(s => s && s.length > 0)
+                                    .join(" · ")
+                            }
+                        }
+                        Button {
+                            id: sendPeerBtn
+                            anchors.verticalCenter: parent.verticalCenter
+                            variant: "tonal"
+                            size: "sm"
+                            iconPath: Icons.send
+                            text: qsTr("Send files")
+                            onClicked: {
+                                localsendFilePicker.targetDeviceId = peerRow.modelData.id
+                                localsendFilePicker.open()
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

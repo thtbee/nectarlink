@@ -473,6 +473,8 @@ private fun App(
                     onSendFolder = core::sendFolder,
                     onAccessChanged = core::refreshNotificationAccess,
                     onCancelTransfer = core::cancelTransfer,
+                    onAcceptTransfer = core::acceptTransfer,
+                    onRefreshLocalSend = core::refreshLocalSend,
                     onAllowStorage = { pcId -> core.setStorageEnabled(pcId, true) },
                     onDismissStorageRequest = core::dismissStorageRequest,
                     onAcceptWebcamRequest = { req ->
@@ -516,6 +518,11 @@ private fun App(
                     onSetSuggestClipboardActions = preferences::updateSuggestClipboardActions,
                     onSetTimelineRetentionDays = core::setTimelineRetentionDays,
                     onClearTimeline = core::clearTimeline,
+                    onClearMessageCache = core::clearMessageCache,
+                    onClearPhotoCache = core::clearPhotoThumbnailsCache,
+                    onClearReceivedFileHistory = core::clearReceivedFileHistory,
+                    onClearEverything = core::clearEverything,
+                    onToggleLocalSend = core::setLocalSendEnabled,
                     modifier = modifier,
                 )
             }

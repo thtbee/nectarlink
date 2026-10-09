@@ -261,6 +261,14 @@
             android:exported="false"
             android:foregroundServiceType="camera" />
 
+        <!-- Continuity Camera: takes a photo or scans a document for a paired PC. -->
+        <activity
+            android:name=".camera.ContinuityCameraActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.Nectarlink" />
+
         <service
             android:name=".service.ConnectionService"
             android:exported="false"

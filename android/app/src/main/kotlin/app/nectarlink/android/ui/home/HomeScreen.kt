@@ -91,6 +91,7 @@ import app.nectarlink.core.ClipboardHistoryEntry
 import app.nectarlink.core.ClipboardItemKind
 import app.nectarlink.core.DeckState
 import app.nectarlink.core.Link
+import app.nectarlink.core.LocalSendPeer
 import app.nectarlink.core.TimelineEntry
 import app.nectarlink.core.TimelineKind
 import app.nectarlink.core.TimelinePage
@@ -128,6 +129,8 @@ fun HomeScreen(
     onSendFolder: (pcId: String, tree: Uri) -> Unit,
     onAccessChanged: () -> Unit,
     onCancelTransfer: (id: String) -> Unit,
+    onAcceptTransfer: (id: String) -> Unit = {},
+    onRefreshLocalSend: () -> Unit = {},
     onAllowStorage: (pcId: String) -> Unit = {},
     onDismissStorageRequest: () -> Unit = {},
     onAcceptWebcamRequest: (app.nectarlink.android.webcam.WebcamRequest) -> Unit = {},
@@ -333,6 +336,15 @@ fun HomeScreen(
                 onSetPcAudio = onSetPcAudio,
             )
         }
+        if (state.localsendEnabled) {
+            item {
+                LocalSendCard(
+                    peers = state.localsendPeers,
+                    onRefresh = onRefreshLocalSend,
+                    onSendFiles = onSendFiles,
+                )
+            }
+        }
         if (state.clipboardHistoryEnabled && state.clipboardHistory.isNotEmpty()) {
             item {
                 ClipboardHistoryCard(
@@ -351,7 +363,7 @@ fun HomeScreen(
             }
         }
         if (state.transfers.isNotEmpty()) {
-            item { TransfersCard(state, onCancelTransfer) }
+            item { TransfersCard(state, onAcceptTransfer, onCancelTransfer) }
         }
     }
 
@@ -1103,51 +1115,174 @@ private fun previewBitmap(bytes: ByteArray): android.graphics.Bitmap? {
 
 private const val PREVIEW_PX = 720
 
-/** Running transfers and the latest finished ones. */
 @Composable
-private fun TransfersCard(state: CoreState, onCancel: (String) -> Unit) {
-    Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainer) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(stringResource(R.string.transfers_title), style = MaterialTheme.typography.titleMedium)
-            state.transfers.forEach { transfer -> TransferRow(transfer, state.nameOf(transfer.deviceId).orEmpty(), onCancel) }
+private fun LocalSendCard(
+    peers: List<LocalSendPeer>,
+    onRefresh: () -> Unit,
+    onSendFiles: (pcId: String, uris: List<Uri>) -> Unit,
+) {
+    Surface(
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.localsend_card_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = onRefresh,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        painterResource(R.drawable.ic_refresh),
+                        contentDescription = stringResource(R.string.action_refresh),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+            if (peers.isEmpty()) {
+                Text(
+                    stringResource(R.string.localsend_card_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                peers.forEach { peer ->
+                    LocalSendPeerRow(peer = peer, onSendFiles = onSendFiles)
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun TransferRow(transfer: Transfer, pc: String, onCancel: (String) -> Unit) {
+private fun LocalSendPeerRow(
+    peer: LocalSendPeer,
+    onSendFiles: (pcId: String, uris: List<Uri>) -> Unit,
+) {
+    val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) onSendFiles(peer.id, uris)
+    }
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(
+                    peer.alias,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val subtitle = peer.deviceModel?.takeIf { it.isNotBlank() } ?: peer.ip
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            FilledTonalButton(onClick = { pickFiles.launch(arrayOf("*/*")) }) {
+                Text(stringResource(R.string.action_send_files))
+            }
+        }
+    }
+}
+
+/** Running transfers and the latest finished ones. */
+@Composable
+private fun TransfersCard(
+    state: CoreState,
+    onAccept: (String) -> Unit,
+    onCancel: (String) -> Unit,
+) {
+    Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainer) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text(stringResource(R.string.transfers_title), style = MaterialTheme.typography.titleMedium)
+            state.transfers.forEach { transfer ->
+                TransferRow(
+                    transfer = transfer,
+                    pc = state.nameOf(transfer.deviceId).orEmpty(),
+                    onAccept = onAccept,
+                    onCancel = onCancel,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransferRow(
+    transfer: Transfer,
+    pc: String,
+    onAccept: (String) -> Unit,
+    onCancel: (String) -> Unit,
+) {
     val incoming = transfer.direction == TransferDirection.INCOMING
     val status = transfer.status
     val title = transferTitle(LocalContext.current.resources, transfer)
+    val peerName = pc.ifEmpty { stringResource(R.string.localsend_nearby_device) }
     val detail = when (status) {
-        is TransferStatus.Waiting -> stringResource(R.string.transfer_waiting, pc)
+        is TransferStatus.Requested ->
+            stringResource(R.string.transfer_requested_from, peerName) +
+                " · " + Formatter.formatShortFileSize(LocalContext.current, transfer.total.toLong())
+        is TransferStatus.Waiting -> stringResource(R.string.transfer_waiting, peerName)
         is TransferStatus.Running ->
-            stringResource(if (incoming) R.string.transfer_receiving else R.string.transfer_sending, pc) +
+            stringResource(if (incoming) R.string.transfer_receiving else R.string.transfer_sending, peerName) +
                 " · " + Formatter.formatShortFileSize(LocalContext.current, transfer.done.toLong()) +
                 " / " + Formatter.formatShortFileSize(LocalContext.current, transfer.total.toLong())
         is TransferStatus.Done ->
-            if (incoming) stringResource(R.string.transfer_received_from, pc) else stringResource(R.string.transfer_sent_to, pc)
+            if (incoming) stringResource(R.string.transfer_received_from, peerName) else stringResource(R.string.transfer_sent_to, peerName)
         is TransferStatus.Cancelled -> stringResource(R.string.transfer_cancelled)
         is TransferStatus.Failed -> when (status.reason) {
-            "denied" -> stringResource(R.string.transfer_denied, pc)
-            "unreachable" -> stringResource(R.string.transfer_unreachable, pc)
+            "denied" -> stringResource(R.string.transfer_denied, peerName)
+            "unreachable" -> stringResource(R.string.transfer_unreachable, peerName)
             "noSpace" -> stringResource(R.string.transfer_no_space)
             else -> stringResource(R.string.transfer_failed)
         }
     }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (!transfer.isFinished()) {
-                Spacer(Modifier.height(6.dp))
-                val progress = if (transfer.total == 0uL) 1f else (transfer.done.toDouble() / transfer.total.toDouble()).toFloat()
-                LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (status is TransferStatus.Running || status is TransferStatus.Waiting) {
+                    Spacer(Modifier.height(6.dp))
+                    val progress = if (transfer.total == 0uL) 1f else (transfer.done.toDouble() / transfer.total.toDouble()).toFloat()
+                    LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Spacer(Modifier.height(4.dp))
-            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (status is TransferStatus.Running || status is TransferStatus.Waiting) {
+                TextButton(onClick = { onCancel(transfer.id) }) { Text(stringResource(R.string.action_cancel)) }
+            }
         }
-        if (!transfer.isFinished()) {
-            TextButton(onClick = { onCancel(transfer.id) }) { Text(stringResource(R.string.action_cancel)) }
+        if (status is TransferStatus.Requested) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { onAccept(transfer.id) }) {
+                    Text(stringResource(R.string.action_accept))
+                }
+                OutlinedButton(onClick = { onCancel(transfer.id) }) {
+                    Text(stringResource(R.string.action_decline))
+                }
+            }
         }
     }
 }

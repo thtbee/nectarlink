@@ -93,6 +93,9 @@ pub mod types {
     pub const WEBCAM_STOP: &str = "webcam.stop";
     pub const WEBCAM_KEYFRAME: &str = "webcam.keyframe";
     pub const WEBCAM_OK: &str = "webcam.ok";
+    pub const CAMERA_CAPTURE_REQUEST: &str = "camera.capture.request";
+    pub const CAMERA_CAPTURE_OK: &str = "camera.capture.ok";
+    pub const CAMERA_CAPTURE_CANCEL: &str = "camera.capture.cancel";
 }
 
 /// What kind of device this is.
@@ -465,10 +468,18 @@ pub mod notify_limits {
     pub const CHIP_CHARS: usize = 32;
     pub const SEGMENTS: usize = 16;
     pub const POINTS: usize = 16;
+    pub const CONVERSATION_VERSION: u32 = 1;
+    pub const CONVERSATION_MESSAGES: usize = 25;
+    pub const SENDER_CHARS: usize = 128;
+    pub const AVATAR_BYTES: usize = 16 * 1024;
 }
 
 fn default_live_v() -> u32 {
     notify_limits::LIVE_VERSION
+}
+
+fn default_conversation_v() -> u32 {
+    notify_limits::CONVERSATION_VERSION
 }
 
 /// One segment of a segmented progress bar (`Notification.ProgressStyle.Segment` on Android 16+).
@@ -610,6 +621,98 @@ impl NotificationLive {
     }
 }
 
+/// One message in a `Notification.MessagingStyle` conversation (`docs/protocol/notifications.md` §2.3).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotificationChatMessage {
+    /// Sender display name (`None` when sent by the phone's user).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sender: Option<String>,
+    /// Message text.
+    pub text: String,
+    /// Message timestamp, Unix milliseconds.
+    pub time: i64,
+    /// True when sent by the phone's user (`MessagingStyle.user` or `Person == null`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub self_sent: bool,
+    /// Optional sender avatar (JPEG/PNG, at most [`notify_limits::AVATAR_BYTES`]).
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    pub avatar: Option<Vec<u8>>,
+}
+
+/// Never prints sender names or message text (protocol v0 §11).
+impl std::fmt::Debug for NotificationChatMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NotificationChatMessage")
+            .field("time", &self.time)
+            .field("self_sent", &self.self_sent)
+            .field("has_avatar", &self.avatar.is_some())
+            .finish_non_exhaustive()
+    }
+}
+
+/// `Notification.MessagingStyle` conversation metadata on a mirrored notification (`docs/protocol/notifications.md` §2.3).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotificationConversation {
+    /// Schema version (currently `1`).
+    #[serde(default = "default_conversation_v")]
+    pub v: u32,
+    /// Conversation title (group name or 1:1 contact name).
+    pub title: String,
+    /// True when `MessagingStyle.isGroupConversation` is true.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub group: bool,
+    /// Conversation or contact avatar (JPEG/PNG, at most [`notify_limits::AVATAR_BYTES`]).
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    pub avatar: Option<Vec<u8>>,
+    /// Messages in chronological order (oldest first, at most [`notify_limits::CONVERSATION_MESSAGES`]).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub messages: Vec<NotificationChatMessage>,
+}
+
+/// Never prints conversation title or messages (protocol v0 §11).
+impl std::fmt::Debug for NotificationConversation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NotificationConversation")
+            .field("v", &self.v)
+            .field("group", &self.group)
+            .field("messages", &self.messages.len())
+            .field("has_avatar", &self.avatar.is_some())
+            .finish_non_exhaustive()
+    }
+}
+
+impl NotificationConversation {
+    /// Applies limits and drops unknown schema versions (`v != 1`) or empty conversations.
+    pub fn sanitized(mut self) -> Option<Self> {
+        use notify_limits::*;
+        if self.v != CONVERSATION_VERSION {
+            return None;
+        }
+        self.title = clean_text(Some(self.title), TITLE_CHARS)?;
+        if self.avatar.as_ref().is_some_and(|a| a.is_empty() || a.len() > AVATAR_BYTES) {
+            self.avatar = None;
+        }
+        let mut cleaned = Vec::with_capacity(self.messages.len().min(CONVERSATION_MESSAGES));
+        let skip = self.messages.len().saturating_sub(CONVERSATION_MESSAGES);
+        for mut m in self.messages.into_iter().skip(skip) {
+            let Some(text) = clean_text(Some(m.text), TEXT_CHARS) else {
+                continue;
+            };
+            m.text = text;
+            m.sender = if m.self_sent { None } else { clean_text(m.sender, SENDER_CHARS) };
+            if m.avatar.as_ref().is_some_and(|a| a.is_empty() || a.len() > AVATAR_BYTES) {
+                m.avatar = None;
+            }
+            cleaned.push(m);
+        }
+        if cleaned.is_empty() {
+            return None;
+        }
+        self.messages = cleaned;
+        Some(self)
+    }
+}
+
 /// A button on a notification.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NotificationAction {
@@ -654,6 +757,9 @@ pub struct Notification {
     /// Live Update metadata (ongoing progress, timer, or Android 16 Live Update).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub live: Option<NotificationLive>,
+    /// `Notification.MessagingStyle` conversation metadata (RCS, WhatsApp, Telegram, Signal, etc.).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conversation: Option<NotificationConversation>,
 }
 
 /// Never prints content: notification text must not reach logs (protocol
@@ -665,6 +771,7 @@ impl std::fmt::Debug for Notification {
             .field("actions", &self.actions.len())
             .field("silent", &self.silent)
             .field("live", &self.live.is_some())
+            .field("conversation", &self.conversation.is_some())
             .finish_non_exhaustive()
     }
 }
@@ -694,8 +801,20 @@ impl Notification {
         self.text = clean_text(self.text, TEXT_CHARS);
         self.sub = clean_text(self.sub, TITLE_CHARS);
         self.live = self.live.and_then(NotificationLive::sanitized);
-        if self.title.is_none() && self.text.is_none() {
+        self.conversation = self.conversation.and_then(NotificationConversation::sanitized);
+        if self.title.is_none() && self.text.is_none() && self.conversation.is_none() {
             return None;
+        }
+        if self.title.is_none()
+            && let Some(conv) = &self.conversation
+        {
+            self.title = Some(conv.title.clone());
+        }
+        if self.text.is_none()
+            && let Some(conv) = &self.conversation
+            && let Some(last) = conv.messages.last()
+        {
+            self.text = Some(last.text.clone());
         }
         truncate_chars(&mut self.app, TITLE_CHARS);
         truncate_chars(&mut self.app_name, TITLE_CHARS);
@@ -1421,6 +1540,102 @@ impl WebcamConfig {
     }
 }
 
+// ---- Continuity Camera (docs/protocol/v0.md §Continuity Camera) ----
+
+pub mod continuity_camera {
+    /// Offered by phones that can capture a still photo or scan a document on request.
+    pub const CAPTURE: &str = "camera.capture";
+    /// Offered by PCs that can request and receive Continuity Camera captures.
+    pub const RECEIVE: &str = "camera.continuity";
+
+    /// The `stream` header's `svc` for a Continuity Camera result upload.
+    pub const SERVICE: &str = "camera";
+    /// The `stream` header's `op` for sending a captured photo or scanned document.
+    pub const OP_RESULT: &str = "result";
+    pub const VERSION: u32 = 1;
+
+    /// Stream frame type sent before the raw image bytes on a `camera` / `result` stream.
+    pub const RESULT_META: &str = "camera.capture.meta";
+
+    /// Capture mode string values.
+    pub const MODE_PHOTO: &str = "photo";
+    pub const MODE_SCAN: &str = "scan";
+
+    /// Maximum image payload size for a Continuity Camera capture (32 MiB).
+    pub const MAX_IMAGE_BYTES: u64 = 32 * 1024 * 1024;
+    /// Maximum length of a request ID in bytes.
+    pub const MAX_ID_BYTES: usize = 64;
+    /// Maximum length of a file name in bytes.
+    pub const MAX_NAME_BYTES: usize = 255;
+}
+
+/// Mode requested for a Continuity Camera capture.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CameraCaptureMode {
+    /// Capture a single high-resolution photo.
+    Photo,
+    /// Capture and perspective-crop / contrast-enhance a document scan.
+    Scan,
+}
+
+impl CameraCaptureMode {
+    /// Wire/display string (`"photo"` or `"scan"`).
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Photo => continuity_camera::MODE_PHOTO,
+            Self::Scan => continuity_camera::MODE_SCAN,
+        }
+    }
+
+    /// Parses `"photo"` or `"scan"` (case-insensitive).
+    #[must_use]
+    pub fn parse(raw: &str) -> Option<Self> {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            continuity_camera::MODE_PHOTO => Some(Self::Photo),
+            continuity_camera::MODE_SCAN => Some(Self::Scan),
+            _ => None,
+        }
+    }
+}
+
+/// `camera.capture.request`: PC asks a paired phone to open its camera UI and capture a photo or scan.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CameraCaptureRequest {
+    pub request_id: String,
+    pub mode: CameraCaptureMode,
+}
+
+/// `camera.capture.ok`: Phone acknowledges that the capture UI was launched.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CameraCaptureOk {
+    pub request_id: String,
+}
+
+/// `camera.capture.cancel`: Either side cancels an in-flight capture request.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CameraCaptureCancel {
+    pub request_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+/// `camera.capture.meta`: Header frame sent on a `camera` / `result` stream before the raw image bytes.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CameraCaptureResultMeta {
+    pub request_id: String,
+    pub mode: CameraCaptureMode,
+    pub file_name: String,
+    /// `"image/jpeg"` or `"image/png"`.
+    pub mime: String,
+    pub size: u64,
+    #[serde(default)]
+    pub width: u32,
+    #[serde(default)]
+    pub height: u32,
+}
+
 // ---- Messages (docs/protocol/sms.md) ----
 
 pub mod sms {
@@ -1438,6 +1653,10 @@ pub mod sms {
     pub const MAX_RECIPIENTS: usize = 20;
     /// A picture in a message, fetched with `sms.part`: at most this many bytes.
     pub const MAX_PART_BYTES: usize = 900 * 1024;
+    /// Most image attachments in one `sms.send` message.
+    pub const MAX_ATTACHMENTS: usize = 1;
+    /// An image sent with `sms.send` (MMS): at most this many bytes.
+    pub const MAX_ATTACHMENT_BYTES: usize = MAX_PART_BYTES;
     /// A contact's photo with a conversation: a JPEG of at most this many bytes.
     pub const MAX_PHOTO_BYTES: usize = 16 * 1024;
 }
@@ -1547,17 +1766,48 @@ pub struct SmsMessages {
     pub messages: Vec<SmsMessage>,
 }
 
+/// An image attachment sent with `sms.send` (MMS).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsAttachment {
+    /// `"image/jpeg"` or `"image/png"`.
+    pub mime: String,
+    #[serde(with = "serde_bytes")]
+    pub data: Vec<u8>,
+}
+
+impl std::fmt::Debug for SmsAttachment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SmsAttachment").field("mime", &self.mime).field("bytes", &self.data.len()).finish()
+    }
+}
+
+impl SmsAttachment {
+    pub fn is_valid(&self) -> bool {
+        matches!(self.mime.as_str(), "image/jpeg" | "image/png")
+            && !self.data.is_empty()
+            && self.data.len() <= sms::MAX_ATTACHMENT_BYTES
+    }
+}
+
 /// Body of `sms.send`.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SmsSend {
     pub to: Vec<String>,
+    #[serde(default)]
     pub body: String,
+    /// Optional image attachment(s) to send as MMS.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub attachments: Vec<SmsAttachment>,
 }
 
 /// Never prints numbers or text (protocol v0 §11).
 impl std::fmt::Debug for SmsSend {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SmsSend").field("to", &self.to.len()).field("bytes", &self.body.len()).finish()
+        f.debug_struct("SmsSend")
+            .field("to", &self.to.len())
+            .field("bytes", &self.body.len())
+            .field("attachments", &self.attachments.len())
+            .finish()
     }
 }
 
@@ -1565,8 +1815,10 @@ impl SmsSend {
     pub fn is_valid(&self) -> bool {
         (1..=sms::MAX_RECIPIENTS).contains(&self.to.len())
             && self.to.iter().all(|a| (1..=64).contains(&a.trim().len()))
-            && !self.body.trim().is_empty()
+            && (!self.body.trim().is_empty() || !self.attachments.is_empty())
             && self.body.len() <= sms::MAX_SEND_BYTES
+            && self.attachments.len() <= sms::MAX_ATTACHMENTS
+            && self.attachments.iter().all(SmsAttachment::is_valid)
     }
 }
 
@@ -3721,6 +3973,7 @@ mod tests {
             icon: Some(vec![0x89, b'P', b'N', b'G']),
             image: None,
             live: None,
+            conversation: None,
         }
     }
 
@@ -3755,6 +4008,34 @@ mod tests {
         assert_eq!(n.actions.len(), notify_limits::ACTIONS);
         assert_eq!(n.icon, None);
         assert_eq!(n.image, None);
+    }
+
+    #[test]
+    fn conversation_notifications_are_sanitized_and_hide_content_in_debug() {
+        let mut n = notification();
+        n.conversation = Some(NotificationConversation {
+            v: 1,
+            title: "Design Team".into(),
+            group: true,
+            avatar: Some(vec![0xff, 0xd8]),
+            messages: (0..30)
+                .map(|i| NotificationChatMessage {
+                    sender: Some(format!("Sender {i}")),
+                    text: format!("Message {i}"),
+                    time: 1_760_000_000_000 + i,
+                    self_sent: i % 2 == 0,
+                    avatar: Some(vec![0; if i == 29 { notify_limits::AVATAR_BYTES + 1 } else { 4 }]),
+                })
+                .collect(),
+        });
+        let shown = format!("{n:?} {:?}", n.conversation);
+        assert!(!shown.contains("Design Team") && !shown.contains("Message 29"), "{shown}");
+        let clean = n.sanitized().unwrap();
+        let conv = clean.conversation.unwrap();
+        assert_eq!(conv.messages.len(), notify_limits::CONVERSATION_MESSAGES);
+        assert_eq!(conv.messages[0].text, "Message 5", "keeps newest messages");
+        assert_eq!(conv.messages[1].sender, None, "self-sent messages drop sender name");
+        assert_eq!(conv.messages.last().unwrap().avatar, None, "oversized avatar is dropped");
     }
 
     #[test]
@@ -3886,13 +4167,33 @@ mod tests {
 
     #[test]
     fn texts_to_send_are_checked() {
-        let send = SmsSend { to: vec!["+15550100".into()], body: "On my way".into() };
+        let send =
+            SmsSend { to: vec!["+15550100".into()], body: "On my way".into(), attachments: Vec::new() };
         assert!(send.is_valid());
         assert!(!format!("{send:?}").contains("way"));
         assert!(!SmsSend { to: vec![], ..send.clone() }.is_valid());
         assert!(!SmsSend { body: "  ".into(), ..send.clone() }.is_valid());
         assert!(!SmsSend { body: "x".repeat(sms::MAX_SEND_BYTES + 1), ..send.clone() }.is_valid());
-        assert!(!SmsSend { to: vec!["1".into(); sms::MAX_RECIPIENTS + 1], ..send }.is_valid());
+        assert!(!SmsSend { to: vec!["1".into(); sms::MAX_RECIPIENTS + 1], ..send.clone() }.is_valid());
+        let with_image = SmsSend {
+            body: String::new(),
+            attachments: vec![SmsAttachment { mime: "image/png".into(), data: vec![1, 2, 3] }],
+            ..send.clone()
+        };
+        assert!(with_image.is_valid(), "an image attachment can be sent without body text");
+        let bad_mime = SmsSend {
+            attachments: vec![SmsAttachment { mime: "text/plain".into(), data: vec![1] }],
+            ..send.clone()
+        };
+        assert!(!bad_mime.is_valid());
+        let oversized = SmsSend {
+            attachments: vec![SmsAttachment {
+                mime: "image/jpeg".into(),
+                data: vec![0; sms::MAX_ATTACHMENT_BYTES + 1],
+            }],
+            ..send
+        };
+        assert!(!oversized.is_valid());
     }
 
     #[test]
@@ -4526,5 +4827,39 @@ mod tests {
         assert_eq!(TaskNotify::format_took(38_000), "Took 38s");
         assert_eq!(TaskNotify::format_took(252_000), "Took 4m 12s");
         assert_eq!(TaskNotify::format_took(3_840_000), "Took 1h 04m");
+    }
+
+    #[test]
+    fn continuity_camera_messages_round_trip() {
+        let req = CameraCaptureRequest { request_id: "req-1".into(), mode: CameraCaptureMode::Scan };
+        let env = Envelope::new(types::CAMERA_CAPTURE_REQUEST, &req).unwrap();
+        let back: CameraCaptureRequest = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, req);
+
+        let ok = CameraCaptureOk { request_id: "req-1".into() };
+        let env_ok = Envelope::new(types::CAMERA_CAPTURE_OK, &ok).unwrap();
+        let back_ok: CameraCaptureOk = Envelope::from_cbor(&env_ok.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back_ok, ok);
+
+        let cancel =
+            CameraCaptureCancel { request_id: "req-1".into(), reason: Some("user dismissed".into()) };
+        let env_cancel = Envelope::new(types::CAMERA_CAPTURE_CANCEL, &cancel).unwrap();
+        let back_cancel: CameraCaptureCancel =
+            Envelope::from_cbor(&env_cancel.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back_cancel, cancel);
+
+        let meta = CameraCaptureResultMeta {
+            request_id: "req-1".into(),
+            mode: CameraCaptureMode::Photo,
+            file_name: "IMG_20260409.jpg".into(),
+            mime: "image/jpeg".into(),
+            size: 12345,
+            width: 1920,
+            height: 1080,
+        };
+        let env_meta = Envelope::new(continuity_camera::RESULT_META, &meta).unwrap();
+        let back_meta: CameraCaptureResultMeta =
+            Envelope::from_cbor(&env_meta.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back_meta, meta);
     }
 }

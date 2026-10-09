@@ -145,7 +145,7 @@ class RecordingsStore(context: Context) {
             val updated = current.map { rec ->
                 if (rec.transferId != transfer.id) return@map rec
                 val nextDelivery = when (val status = transfer.status) {
-                    is TransferStatus.Waiting -> DeliveryState.Waiting
+                    is TransferStatus.Waiting, is TransferStatus.Requested -> DeliveryState.Waiting
                     is TransferStatus.Running -> DeliveryState.Sending
                     is TransferStatus.Done -> DeliveryState.Sent
                     is TransferStatus.Cancelled -> DeliveryState.Idle

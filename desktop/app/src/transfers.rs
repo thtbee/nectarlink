@@ -14,12 +14,16 @@ use crate::{
 };
 
 /// The toast "device" for received-file notifications; their key is the
-/// saved file's path.
+/// saved file's path (or `req:<id>` for a pending incoming transfer request).
 pub const TOAST_GROUP: &str = "files";
 /// The "Open" toast action.
 pub const ACTION_OPEN: &str = "open";
 /// The "Show in folder" toast action.
 pub const ACTION_SHOW: &str = "show";
+/// The "Accept" toast action for an incoming LocalSend transfer request.
+pub const ACTION_ACCEPT: &str = "accept";
+/// The "Decline" toast action for an incoming LocalSend transfer request.
+pub const ACTION_DECLINE: &str = "decline";
 
 /// What a transfer is called: its file or folder's name, or how many.
 pub fn title(t: &Transfer) -> String {
@@ -49,6 +53,13 @@ pub fn send(device: DeviceId, paths: Vec<PathBuf>) {
     });
 }
 
+/// Accepts an incoming transfer waiting in `TransferState::Requested`.
+pub fn accept(id: &str) {
+    if let Some(node) = core_host::node() {
+        node.accept_transfer(id);
+    }
+}
+
 pub fn cancel(id: &str) {
     if let Some(node) = core_host::node() {
         node.cancel_transfer(id);
@@ -57,6 +68,10 @@ pub fn cancel(id: &str) {
 
 /// Opens a received file with its app (or a folder in File Explorer).
 pub fn open(path: &Path) {
+    if path.to_str().is_some_and(|s| s.starts_with("req:")) {
+        crate::bridge::app::request_activation();
+        return;
+    }
     if let Err(e) = std::process::Command::new("explorer").arg(path).spawn() {
         tracing::warn!(error = %e, "can't open a received file");
     }
@@ -64,6 +79,10 @@ pub fn open(path: &Path) {
 
 /// Shows a received file or folder in File Explorer, selected.
 pub fn show_in_folder(path: &Path) {
+    if path.to_str().is_some_and(|s| s.starts_with("req:")) {
+        crate::bridge::app::request_activation();
+        return;
+    }
     let mut select = std::ffi::OsString::from("/select,");
     select.push(path);
     if let Err(e) = std::process::Command::new("explorer").arg(select).spawn() {
@@ -71,11 +90,36 @@ pub fn show_in_folder(path: &Path) {
     }
 }
 
-/// A Windows notification when files from a phone are saved.
+/// A Windows notification when files from a phone or LocalSend peer are requested or saved.
 pub fn on_event(event: &NodeEvent) {
     let NodeEvent::Transfer(t) = event else { return };
     // Photos the user asked to open or copy say nothing about being saved.
     if t.direction != Direction::Incoming || crate::photos::handles(&t.id) {
+        return;
+    }
+    if t.state == TransferState::Requested {
+        let device = core_host::host()
+            .hub
+            .read(|s| s.name_of(&t.device))
+            .or_else(|| {
+                core_host::node()
+                    .and_then(|n| n.localsend_peers().into_iter().find(|p| p.id == t.device).map(|p| p.alias))
+            })
+            .unwrap_or_else(|| "Nearby device".into());
+        toast::show(Toast {
+            device: TOAST_GROUP.into(),
+            key: format!("req:{}", t.id),
+            title: format!("{device} wants to send {}", title(t)),
+            body: "Accept in Nectarlink to save to Downloads\\Nectarlink".into(),
+            attribution: "LocalSend".into(),
+            icon: None,
+            image: None,
+            actions: vec![(ACTION_ACCEPT.into(), "Accept".into()), (ACTION_DECLINE.into(), "Decline".into())],
+            reply: None,
+            silent: false,
+            progress: None,
+            call: false,
+        });
         return;
     }
     let TransferState::Done { saved } = &t.state else { return };
@@ -83,7 +127,14 @@ pub fn on_event(event: &NodeEvent) {
         return crate::recordings::on_done(t.clone());
     }
     let Some(first) = saved.first() else { return };
-    let device = core_host::host().hub.read(|s| s.name_of(&t.device)).unwrap_or_else(|| "your phone".into());
+    let device = core_host::host()
+        .hub
+        .read(|s| s.name_of(&t.device))
+        .or_else(|| {
+            core_host::node()
+                .and_then(|n| n.localsend_peers().into_iter().find(|p| p.id == t.device).map(|p| p.alias))
+        })
+        .unwrap_or_else(|| "your phone".into());
     let title = title(t);
     toast::show(Toast {
         device: TOAST_GROUP.into(),

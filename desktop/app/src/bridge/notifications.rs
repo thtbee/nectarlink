@@ -491,6 +491,7 @@ mod tests {
                         chronometer: false,
                         countdown: false,
                     }),
+                    conversation: None,
                 },
             },
             device_name: "Pixel".into(),

@@ -20,6 +20,9 @@ use crate::{Error, identity::KeyProtector, otp};
 /// Maximum number of clips retained in history.
 pub const MAX_CLIPBOARD_HISTORY: usize = 50;
 
+/// Maximum age in seconds for unpinned clips in history (7 days).
+pub const MAX_CLIPBOARD_AGE_SECS: i64 = 7 * 86_400;
+
 /// Larger images (a big photo) aren't kept, and the oldest unpinned images
 /// go once together they'd take more than this, so history stays small on disk.
 const MAX_IMAGE_BYTES: usize = 16 * 1024 * 1024;
@@ -101,7 +104,7 @@ impl std::fmt::Debug for ClipboardHistoryStore {
 
 impl ClipboardHistoryStore {
     /// Opens the clipboard history store in `data_dir`, decrypting any existing
-    /// history with `protector`.
+    /// history with `protector` and purging unpinned clips older than 7 days.
     pub fn open(data_dir: &Path, protector: Arc<dyn KeyProtector>) -> Self {
         let index_path = data_dir.join(INDEX_FILE);
         let state = match fs::read(&index_path) {
@@ -112,7 +115,22 @@ impl ClipboardHistoryStore {
                 .unwrap_or_default(),
             Err(_) => StoredState::default(),
         };
-        Self { data_dir: data_dir.to_path_buf(), protector, state: Mutex::new(state) }
+        let store = Self { data_dir: data_dir.to_path_buf(), protector, state: Mutex::new(state) };
+        {
+            let mut s = store.state.lock().unwrap_or_else(|e| e.into_inner());
+            let evicted = store.evict_locked(&mut s.items);
+            if !evicted.is_empty() {
+                let _ = store.save_locked(&s);
+            }
+        }
+        store
+    }
+
+    /// Returns `(item_count, total_bytes)` currently stored in clipboard history.
+    pub fn count_and_bytes(&self) -> (usize, u64) {
+        let s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let bytes = s.items.iter().map(|i| i.size.saturating_add(i.entry.text.len() as u64)).sum();
+        (s.items.len(), bytes)
     }
 
     /// Whether clipboard history recording is enabled.
@@ -156,8 +174,9 @@ impl ClipboardHistoryStore {
             existing.entry.incoming = incoming;
             existing.entry.timestamp = now;
             sort_items(&mut s.items);
+            let evicted = self.evict_locked(&mut s.items);
             let _ = self.save_locked(&s);
-            return Some((id, Vec::new()));
+            return Some((id, evicted));
         }
 
         let id = alloc_id(&mut s.next_id);
@@ -220,8 +239,9 @@ impl ClipboardHistoryStore {
                 return None;
             }
             sort_items(&mut s.items);
+            let evicted = self.evict_locked(&mut s.items);
             let _ = self.save_locked(&s);
-            return Some((existing_id, Vec::new()));
+            return Some((existing_id, evicted));
         }
 
         let id = alloc_id(&mut s.next_id);
@@ -358,6 +378,23 @@ impl ClipboardHistoryStore {
 
     fn evict_locked(&self, items: &mut Vec<StoredEntry>) -> Vec<String> {
         let mut evicted_ids = Vec::new();
+        let now = now_unix();
+        // First evict unpinned entries older than MAX_CLIPBOARD_AGE_SECS (7 days).
+        let mut idx = 0;
+        while idx < items.len() {
+            let expired = !items[idx].entry.pinned
+                && items[idx].entry.timestamp > 0
+                && now.saturating_sub(items[idx].entry.timestamp) > MAX_CLIPBOARD_AGE_SECS;
+            if expired {
+                let evicted = items.remove(idx);
+                if evicted.entry.kind == ClipboardItemKind::Image {
+                    let _ = fs::remove_file(self.image_path(&evicted.entry.id));
+                }
+                evicted_ids.push(evicted.entry.id);
+            } else {
+                idx += 1;
+            }
+        }
         while items.len() > MAX_CLIPBOARD_HISTORY {
             // Evict the oldest unpinned item (at the end of `items` after `sort_items`),
             // or the last item if all are pinned.
@@ -527,5 +564,42 @@ mod tests {
         assert!(!store.enabled());
         assert!(!store.record_text("should not record", "Pixel", false));
         assert!(store.list(None).is_empty());
+    }
+
+    #[test]
+    fn evicts_unpinned_entries_older_than_7_days_and_keeps_pinned() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = ClipboardHistoryStore::open(dir.path(), Arc::new(PlainKeyProtector));
+
+        let (old_text_id, _) = store.record_text_with_id("old unpinned text", "Pixel", true).unwrap();
+        let (pinned_old_id, _) = store.record_text_with_id("old pinned text", "Pixel", true).unwrap();
+        assert!(store.set_pinned(&pinned_old_id, true));
+        let png = b"\x89PNG\r\n\x1a\nold-image";
+        let (old_img_id, _) = store.record_image_with_id("image/png", png, "Pixel", true).unwrap();
+
+        // Backdate all three entries to 8 days ago and save to disk.
+        let eight_days_ago = now_unix() - MAX_CLIPBOARD_AGE_SECS - 86_400;
+        {
+            let mut s = store.state.lock().unwrap();
+            for item in &mut s.items {
+                item.entry.timestamp = eight_days_ago;
+            }
+            store.save_locked(&s).unwrap();
+        }
+        assert!(store.image_path(&old_img_id).exists());
+
+        // Re-opening purges the expired unpinned text and image, keeping the pinned entry.
+        let reopened = ClipboardHistoryStore::open(dir.path(), Arc::new(PlainKeyProtector));
+        let remaining = reopened.list(None);
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].id, pinned_old_id);
+        assert!(remaining[0].pinned);
+        assert!(reopened.entry(&old_text_id).is_none());
+        assert!(reopened.entry(&old_img_id).is_none());
+        assert!(!reopened.image_path(&old_img_id).exists());
+
+        let (count, bytes) = reopened.count_and_bytes();
+        assert_eq!(count, 1);
+        assert_eq!(bytes, "old pinned text".len() as u64);
     }
 }

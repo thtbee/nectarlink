@@ -34,10 +34,17 @@ pub struct NodeConfig {
     /// Capabilities this device offers beyond the ones every build does
     /// (docs/protocol/capabilities.md), e.g. `media.control`.
     pub capabilities: Vec<String>,
+    /// TCP/UDP port for LocalSend v2.1 interop (defaults to 53317, or
+    /// `NECTARLINK_LOCALSEND_PORT` when set).
+    pub localsend_port: u16,
 }
 
 impl NodeConfig {
     pub fn new(data_dir: impl Into<PathBuf>, device: DeviceInfo, app_version: impl Into<String>) -> Self {
+        let localsend_port = std::env::var("NECTARLINK_LOCALSEND_PORT")
+            .ok()
+            .and_then(|v| v.parse::<u16>().ok())
+            .unwrap_or(crate::LOCALSEND_DEFAULT_PORT);
         NodeConfig {
             data_dir: data_dir.into(),
             device,
@@ -48,7 +55,8 @@ impl NodeConfig {
             port: 0,
             key_protector: None,
             downloads_dir: None,
-            capabilities: Vec::new(),
+            capabilities: vec![nectarlink_protocol::messages::continuity_camera::RECEIVE.into()],
+            localsend_port,
         }
     }
 }
@@ -63,6 +71,7 @@ impl fmt::Debug for NodeConfig {
             .field("away_mode", &self.away_mode)
             .field("lan_discovery", &self.lan_discovery)
             .field("port", &self.port)
+            .field("localsend_port", &self.localsend_port)
             .field("downloads_dir", &self.downloads_dir)
             .finish_non_exhaustive()
     }
@@ -233,6 +242,22 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't send texts".into())
     }
 
+    /// Send a text or MMS with optional image attachments (checked: 1–20
+    /// recipients, body or attachments non-empty, attachment MIME and sizes
+    /// within limits).
+    fn send_sms_with_attachments(
+        &self,
+        to: &[String],
+        body: &str,
+        attachments: &[crate::SmsAttachment],
+    ) -> Result<(), String> {
+        if attachments.is_empty() {
+            self.sms_send(to, body)
+        } else {
+            Err("MMS attachments are not supported on this device".into())
+        }
+    }
+
     /// A picture in a message: its type and bytes.
     fn sms_part(&self, _id: &str) -> Result<(String, Vec<u8>), String> {
         Err("this device has no messages".into())
@@ -380,6 +405,19 @@ pub trait Platform: Send + Sync + 'static {
 
     /// The PC's webcam decoder needs a fresh keyframe (`webcam.keyframe`).
     fn webcam_keyframe_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
+
+    /// A paired PC requested a Continuity Camera capture (`camera.capture.request`).
+    /// Return `Ok(())` if the phone launched or queued the capture UI, or `Err(reason)` if unavailable.
+    fn camera_capture_requested(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+        _request: &crate::CameraCaptureRequest,
+    ) -> Result<(), String> {
+        Err("camera capture not supported on this device".into())
+    }
+
+    /// The peer cancelled an in-flight Continuity Camera capture (`camera.capture.cancel`).
+    fn camera_capture_cancelled(&self, _peer: &nectarlink_protocol::DeviceId, _request_id: &str) {}
 }
 
 /// A platform that does nothing; useful for tests and headless tools.

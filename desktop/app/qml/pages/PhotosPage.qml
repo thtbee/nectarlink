@@ -409,10 +409,49 @@ Item {
                 anchors.rightMargin: 16
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 8
-                visible: page.selectedCount === 0 && !page.selectMode && Photos.count > 0
+                visible: page.selectedCount === 0 && !page.selectMode
+
+                Txt {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: AppController.continuityCameraBusy
+                    role: "caption"
+                    muted: true
+                    text: AppController.continuityCameraStatus
+                }
+
+                Button {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: AppController.continuityCameraBusy
+                    variant: "outline"
+                    size: "sm"
+                    iconPath: Icons.close
+                    text: qsTr("Cancel")
+                    onClicked: AppController.cancelContinuityCamera()
+                }
+
+                Button {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: !AppController.continuityCameraBusy
+                    variant: "tonal"
+                    size: "sm"
+                    iconPath: Icons.camera
+                    text: gridPane.compactBar ? qsTr("Photo") : qsTr("Take photo")
+                    onClicked: AppController.startContinuityCamera("photo")
+                }
+
+                Button {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: !AppController.continuityCameraBusy
+                    variant: "tonal"
+                    size: "sm"
+                    iconPath: Icons.clipboardList
+                    text: gridPane.compactBar ? qsTr("Scan") : qsTr("Scan document")
+                    onClicked: AppController.startContinuityCamera("scan")
+                }
 
                 Chip {
                     anchors.verticalCenter: parent.verticalCenter
+                    visible: Photos.count > 0
                     iconPath: Icons.folder
                     text: {
                         const f = Photos.saveFolder || ""
@@ -427,6 +466,7 @@ Item {
 
                 Button {
                     anchors.verticalCenter: parent.verticalCenter
+                    visible: Photos.count > 0
                     variant: "tonal"
                     size: "sm"
                     iconPath: Icons.check

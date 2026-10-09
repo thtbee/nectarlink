@@ -129,10 +129,15 @@ tests; there are no releases yet.
   window and the app re-lays out to fit, its size and position are remembered
   for next time, and if it closes on the phone the window offers to open it
   again.
-- **Texts** on the PC: a Messages page with the phone's conversations
-  (pictures included), to reply or start a new one (searching contacts as
-  you type); texts go out through the phone. Search them, copy a one-time
-  code with one click, and open links.
+- **Messages (SMS, MMS and chat apps)** on the PC: one calm Messages inbox
+  combining the phone's SMS/MMS conversations (without duplicating texts the
+  SMS provider already gives) and **Unified Conversations** from RCS, WhatsApp,
+  Telegram, Signal and other `MessagingStyle` chat apps that arrived while
+  connected, marked by app with a filter and inline reply via `RemoteInput`.
+  View pictures in MMS threads, drag an image into a thread or paste one from
+  the PC clipboard (`Ctrl+V`) to preview and send it as MMS, start a new
+  conversation (searching contacts as you type), copy one-time codes with one
+  click, and open links.
 - **Calls and contacts**: a Calls page with the phone's recent calls
   (grouped by day, missed calls marked, tap to call back or text), its
   contacts (favorites first, with photos and search), and a keypad to call
