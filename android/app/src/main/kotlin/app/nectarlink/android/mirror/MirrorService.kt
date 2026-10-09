@@ -40,6 +40,9 @@ class MirrorService : Service() {
     private var encoder: ScreenEncoder? = null
     private var sound: SoundCapture? = null
     private var pcId: String? = null
+    private var wakeLock: android.os.PowerManager.WakeLock? = null
+    private var stayAwake: Boolean = false
+    private var screenOff: Boolean = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -71,6 +74,8 @@ class MirrorService : Service() {
         }
         projection = granted
         pcId = pc
+        stayAwake = intent.getBooleanExtra(EXTRA_STAY_AWAKE, false)
+        screenOff = intent.getBooleanExtra(EXTRA_SCREEN_OFF, false)
         current = this
         granted.registerCallback(object : MediaProjection.Callback() {
             // The user stopped it (from the status bar, or by locking).
@@ -95,10 +100,33 @@ class MirrorService : Service() {
                 encoder = ScreenEncoder(this@MirrorService, running, stream, maxSize, fps, bitrate) {
                     main.post { stopSharing() }
                 }.also { it.start() }
+                applyPower()
             }
             if (audio && SoundCapture.canCapture(this@MirrorService)) startSound(core, pc)
         }
         return START_NOT_STICKY
+    }
+
+    @Suppress("DEPRECATION")
+    private fun applyPower() {
+        val active = encoder != null && projection != null
+        val wantWake = active && (stayAwake || screenOff)
+        if (wantWake) {
+            if (wakeLock == null) {
+                wakeLock = getSystemService(android.os.PowerManager::class.java)?.newWakeLock(
+                    android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK or android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                    "nectarlink:mirror",
+                )?.apply { setReferenceCounted(false) }
+            }
+            if (wakeLock?.isHeld == false) {
+                runCatching { wakeLock?.acquire(4 * 60 * 60 * 1000L) }
+            }
+        } else {
+            if (wakeLock?.isHeld == true) {
+                runCatching { wakeLock?.release() }
+            }
+        }
+        app.nectarlink.android.elevated.Elevated.setScreenOff(active && screenOff)
     }
 
     /** The sound, on a stream of its own; the screen goes on without it if it can't. */
@@ -134,6 +162,11 @@ class MirrorService : Service() {
     }
 
     private fun stopSharing() {
+        stayAwake = false
+        screenOff = false
+        runCatching { if (wakeLock?.isHeld == true) wakeLock?.release() }
+        wakeLock = null
+        app.nectarlink.android.elevated.Elevated.setScreenOff(false)
         encoder?.stop()
         encoder = null
         sound?.stop()
@@ -164,6 +197,8 @@ class MirrorService : Service() {
         private const val EXTRA_FPS = "fps"
         private const val EXTRA_BITRATE = "bitrate"
         private const val EXTRA_AUDIO = "audio"
+        private const val EXTRA_STAY_AWAKE = "stayAwake"
+        private const val EXTRA_SCREEN_OFF = "screenOff"
 
         /** The service sharing the screen now, if any. */
         @Volatile private var current: MirrorService? = null
@@ -184,6 +219,8 @@ class MirrorService : Service() {
                 .putExtra(EXTRA_FPS, request.fps)
                 .putExtra(EXTRA_BITRATE, request.bitrate)
                 .putExtra(EXTRA_AUDIO, request.audio)
+                .putExtra(EXTRA_STAY_AWAKE, request.stayAwake)
+                .putExtra(EXTRA_SCREEN_OFF, request.screenOff)
             ContextCompat.startForegroundService(context, intent)
         }
 
@@ -196,6 +233,18 @@ class MirrorService : Service() {
         /** The PC needs a keyframe. */
         fun keyframe(pcId: String) {
             current?.takeIf { it.pcId == pcId }?.encoder?.requestKeyframe()
+        }
+
+        /** Updates keep-awake and screen-off state while mirroring to [pcId]. */
+        fun setPower(pcId: String, stayAwake: Boolean, screenOff: Boolean) {
+            val service = current ?: return
+            service.main.post {
+                if (service.pcId == pcId) {
+                    service.stayAwake = stayAwake
+                    service.screenOff = screenOff
+                    service.applyPower()
+                }
+            }
         }
     }
 }

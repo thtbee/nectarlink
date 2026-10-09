@@ -114,6 +114,8 @@ pub struct Settings {
     pub continuity_scan_hotkey: String,
     /// Global hotkey to open the Command Palette (e.g. `"Ctrl+Alt+Space"`, or `""` to disable).
     pub command_palette_hotkey: String,
+    /// Global hotkey to slide out the Shelf panel at the screen edge (e.g. `"Ctrl+Alt+S"`, or `""` to disable).
+    pub shelf_hotkey: String,
 }
 
 impl Default for Settings {
@@ -143,6 +145,7 @@ impl Default for Settings {
             continuity_photo_hotkey: "Ctrl+Alt+C".into(),
             continuity_scan_hotkey: "Ctrl+Alt+D".into(),
             command_palette_hotkey: "Ctrl+Alt+Space".into(),
+            shelf_hotkey: "Ctrl+Alt+S".into(),
         }
     }
 }
@@ -197,6 +200,7 @@ mod tests {
         let def = Settings::load(dir.path());
         assert_eq!(def, Settings::default());
         assert_eq!(def.command_palette_hotkey, "Ctrl+Alt+Space");
+        assert_eq!(def.shelf_hotkey, "Ctrl+Alt+S");
 
         let settings = Settings {
             theme: Theme::Graphite,
@@ -223,6 +227,7 @@ mod tests {
             continuity_photo_hotkey: "Ctrl+Alt+P".into(),
             continuity_scan_hotkey: "Ctrl+Alt+S".into(),
             command_palette_hotkey: "Ctrl+Shift+Space".into(),
+            shelf_hotkey: "Ctrl+Alt+E".into(),
         };
         settings.save(dir.path()).unwrap();
         assert_eq!(Settings::load(dir.path()), settings);

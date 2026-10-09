@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.nectarlink.android.R
+import app.nectarlink.android.ui.theme.LocalReducedMotion
 import kotlinx.coroutines.launch
 
 /** "Nectarlink 0.2.0 is available", while there's an update to talk about. */
@@ -66,7 +67,11 @@ fun UpdateCard(updater: AppUpdater, modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodyMedium,
             )
             if (state is AppUpdater.State.Downloading || state is AppUpdater.State.Installing) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
+                if (LocalReducedMotion.current) {
+                    LinearProgressIndicator(progress = { 0.5f }, modifier = Modifier.fillMaxWidth())
+                } else {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (failure == AppUpdater.Reason.NotAllowed && !updater.canInstall()) {

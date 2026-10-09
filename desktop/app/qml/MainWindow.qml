@@ -54,18 +54,30 @@ NativeWindow {
         target: Preferences
         function onBackdropChanged() { window.followBackdrop() }
     }
-    Component.onCompleted: followBackdrop()
-    darkFrame: Theme.dark
-    captionHeight: Theme.topBarHeight
-
     Connections {
         target: window
-        // Back from Settings, maybe with Windows notifications turned on.
         function onActiveChanged() {
-            if (window.active)
+            if (window.active) {
                 AppController.refreshToastsEnabled()
+                if (!window.activeFocusItem && window.contentItem)
+                    window.contentItem.forceActiveFocus()
+            }
+        }
+        function onActiveFocusItemChanged() {
+            if (!window.activeFocusItem && window.contentItem)
+                Qt.callLater(() => {
+                    if (!window.activeFocusItem && window.contentItem)
+                        window.contentItem.forceActiveFocus()
+                })
         }
     }
+    Component.onCompleted: {
+        followBackdrop()
+        if (!window.activeFocusItem && window.contentItem)
+            window.contentItem.forceActiveFocus()
+    }
+    darkFrame: Theme.dark
+    captionHeight: Theme.topBarHeight
 
     function openPairing() { pairingSheet.open() }
 

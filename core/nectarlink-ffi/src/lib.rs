@@ -518,6 +518,9 @@ pub struct Transfer {
     pub recording: bool,
     /// Markers captured during the recording.
     pub markers: Vec<RecordingMarker>,
+    /// True when the sender handed off a single document that should open with
+    /// the default app once it arrives (`docs/protocol/files.md`).
+    pub open_on_arrival: bool,
 }
 
 /// Never prints file names (protocol v0 §11).
@@ -1044,6 +1047,10 @@ pub struct MirrorOptions {
     pub session: u32,
     /// The app (package name) to show in a window of its own.
     pub app: Option<String>,
+    /// Keep the phone awake while mirroring (`session == 0`).
+    pub stay_awake: bool,
+    /// Turn the phone's physical screen off while mirroring (`session == 0`, Elevated).
+    pub screen_off: bool,
 }
 
 /// An app a PC can open in a window (docs/protocol/mirror.md).
@@ -2021,6 +2028,7 @@ impl From<core::Transfer> for Transfer {
             },
             recording: t.recording,
             markers: t.markers.into_iter().map(Into::into).collect(),
+            open_on_arrival: t.open_on_arrival,
         }
     }
 }
@@ -2345,6 +2353,8 @@ pub trait Platform: Send + Sync {
     fn mirror_keyframe_requested(&self, pc_id: String, session: u32);
     /// The PC resized an app window (`session` != 0) to `width × height`.
     fn mirror_resize_requested(&self, pc_id: String, session: u32, width: u32, height: u32);
+    /// The PC updated `stay_awake` or `screen_off` while mirroring the screen (`session == 0`).
+    fn mirror_power_requested(&self, pc_id: String, stay_awake: bool, screen_off: bool);
     /// The PC's mouse or keyboard on the mirrored screen (only while this
     /// phone offers `mirror.input`) or an app window. Return quickly.
     fn mirror_input(&self, pc_id: String, session: u32, input: MirrorInputEvent);
@@ -2481,6 +2491,8 @@ impl core::Platform for PlatformAdapter {
             audio: options.audio,
             session: options.session,
             app: options.app.clone(),
+            stay_awake: options.stay_awake,
+            screen_off: options.screen_off,
         };
         if self.0.mirror_requested(peer.to_string(), options) {
             Ok(())
@@ -2496,6 +2508,9 @@ impl core::Platform for PlatformAdapter {
     }
     fn mirror_resize_requested(&self, peer: &DeviceId, session: u32, width: u32, height: u32) {
         self.0.mirror_resize_requested(peer.to_string(), session, width, height);
+    }
+    fn mirror_power_requested(&self, peer: &DeviceId, stay_awake: bool, screen_off: bool) {
+        self.0.mirror_power_requested(peer.to_string(), stay_awake, screen_off);
     }
     fn mirror_input(&self, peer: &DeviceId, session: u32, input: core::MirrorInput) {
         self.0.mirror_input(peer.to_string(), session, input.into());
@@ -2946,6 +2961,15 @@ impl NectarlinkNode {
         let files = files.into_iter().map(file_to_send).collect::<Result<Vec<_>>>()?;
         let node = self.node.clone();
         self.run(async move { Ok(node.send_files(id, files).await?) }).await
+    }
+
+    /// Hands off a document to a paired PC and asks the PC to open it with the
+    /// default application once it arrives (`docs/protocol/files.md`).
+    pub async fn send_handoff_files(&self, id: String, files: Vec<FileToSend>) -> Result<String> {
+        let id = parse_id(&id)?;
+        let files = files.into_iter().map(file_to_send).collect::<Result<Vec<_>>>()?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.send_handoff_files(id, files).await?) }).await
     }
 
     /// Sends a voice recording and its markers to a paired PC; returns the
@@ -3413,6 +3437,17 @@ impl NectarlinkNode {
         self.run(async move { Ok(Arc::new(MirrorStream(node.mirror_open_audio(id).await?))) }).await
     }
 
+    /// Tells a paired PC that mirroring or remote keyboard input on `session` has stopped (`mirror.stop`).
+    pub async fn mirror_stop(&self, pc_id: String, session: u32) -> Result<()> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move {
+            node.mirror_stop(id, session).await;
+            Ok(())
+        })
+        .await
+    }
+
     /// Opens this phone's camera stream to a paired PC (`docs/protocol/webcam.md`).
     pub async fn webcam_open(&self, pc_id: String) -> Result<Arc<MirrorStream>> {
         let id = parse_id(&pc_id)?;
@@ -3611,6 +3646,73 @@ pub fn tracking_search_url(tracking_number: String) -> String {
 #[uniffi::export]
 pub fn maps_web_url(address: String) -> String {
     core::maps_web_url(&address)
+}
+
+/// Kind of rich Handoff link (`docs/protocol/actions.md`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum HandoffKind {
+    WebLink,
+    VideoLink,
+    MapLocation,
+}
+
+impl From<core::HandoffKind> for HandoffKind {
+    fn from(k: core::HandoffKind) -> Self {
+        match k {
+            core::HandoffKind::WebLink => HandoffKind::WebLink,
+            core::HandoffKind::VideoLink => HandoffKind::VideoLink,
+            core::HandoffKind::MapLocation => HandoffKind::MapLocation,
+        }
+    }
+}
+
+/// Rich Handoff link metadata extracted from a URL, `geo:` URI, or shared text.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct HandoffLink {
+    pub kind: HandoffKind,
+    pub url: String,
+    pub label: String,
+    pub timestamp_secs: Option<u32>,
+    pub map_query: Option<String>,
+}
+
+impl From<core::HandoffLink> for HandoffLink {
+    fn from(h: core::HandoffLink) -> Self {
+        HandoffLink {
+            kind: h.kind.into(),
+            url: h.url,
+            label: h.label,
+            timestamp_secs: h.timestamp_secs,
+            map_query: h.map_query,
+        }
+    }
+}
+
+/// Extracts and classifies a Handoff link (`http://`, `https://`, or `geo:`)
+/// from a URL or shared text snippet.
+#[uniffi::export]
+pub fn extract_handoff_link(text: String) -> Option<HandoffLink> {
+    core::extract_handoff_link(&text).map(Into::into)
+}
+
+/// Attaches or updates a playback timestamp (`?t=123` / `&t=123s`) on a
+/// YouTube, Vimeo, or direct video link.
+#[uniffi::export]
+pub fn with_video_timestamp(url: String, seconds: u32) -> String {
+    core::with_video_timestamp(&url, seconds)
+}
+
+/// Converts a `geo:` URI into a Google Maps `https://` URL.
+#[uniffi::export]
+pub fn geo_to_maps_https(uri: String) -> Option<String> {
+    core::geo_to_maps_https(&uri)
+}
+
+/// Returns true when `name` is a safe document/media file (not an executable or
+/// script) that may be opened automatically on arrival.
+#[uniffi::export]
+pub fn is_safe_handoff_document(name: String) -> bool {
+    core::is_safe_handoff_document(&name)
 }
 
 /// Sends core logs to the platform log (logcat on Android). Call once,

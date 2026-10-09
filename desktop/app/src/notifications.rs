@@ -472,7 +472,34 @@ pub fn on_toast(event: ToastEvent) {
         _ => {}
     }
     match event {
-        ToastEvent::Opened { .. } => crate::bridge::app::request_activation(),
+        ToastEvent::Opened { device, key } => {
+            if let Ok(dev) = device.parse::<DeviceId>() {
+                let app_target = core_host::host().hub.read(|s| {
+                    let can_open = s.matrices.get(&dev).and_then(|m| m.state("mirroring.app_windows"))
+                        == Some(nectarlink_core::FeatureState::Available);
+                    if !can_open {
+                        return None;
+                    }
+                    s.notifications
+                        .iter()
+                        .find(|n| n.device == dev && n.notification.key == key)
+                        .map(|n| (n.notification.app.clone(), n.notification.app_name.clone()))
+                        .or_else(|| {
+                            s.history
+                                .iter()
+                                .find(|h| h.device == dev && h.notification.key == key)
+                                .map(|h| (h.notification.app.clone(), h.notification.app_name.clone()))
+                        })
+                        .filter(|(pkg, _)| !pkg.is_empty())
+                });
+                if let Some((pkg, app_name)) = app_target {
+                    let label = if app_name.is_empty() { pkg.clone() } else { app_name };
+                    crate::mirror::start_app(dev, pkg, label);
+                    return;
+                }
+            }
+            crate::bridge::app::request_activation();
+        }
         ToastEvent::Action { device, key, action } if action == ACTION_COPY_OTP => {
             if let Ok(dev) = device.parse::<DeviceId>() {
                 let code = otp_codes(|c| c.get(&(dev, key.clone())).cloned()).or_else(|| {

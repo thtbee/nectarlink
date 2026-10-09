@@ -319,6 +319,7 @@ fn main() -> ExitCode {
         &settings.continuity_photo_hotkey,
         &settings.continuity_scan_hotkey,
         &settings.command_palette_hotkey,
+        &settings.shelf_hotkey,
     );
     // A test instance (own data folder) leaves the user's menu and sign-in
     // alone.

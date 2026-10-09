@@ -183,7 +183,7 @@ Sheet {
                             anchors.margins: 2
                             radius: Theme.radiusMd
                             color: "transparent"
-                            border.width: recentCell.activeFocus ? 2 : 0
+                            border.width: Theme.focusVisible(recentCell) ? 2 : 0
                             border.color: Theme.primary
                         }
                         Column {
@@ -272,7 +272,7 @@ Sheet {
                     anchors.margins: 4
                     radius: Theme.radiusMd
                     color: "transparent"
-                    border.width: cell.activeFocus ? 2 : 0
+                    border.width: Theme.focusVisible(cell) ? 2 : 0
                     border.color: Theme.primary
                 }
                 Column {

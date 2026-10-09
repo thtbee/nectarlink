@@ -216,7 +216,7 @@ object Tokens {
         outlineVariant = Color(0xFF26272A),
     )
 
-    val warningLight = Color(0xFF9A6700)
+    val warningLight = Color(0xFF7D5200)
     val warningDark = Color(0xFFF2C14E)
     val errorLight = Color(0xFFBA1A1A)
     val errorDark = Color(0xFFFFB4AB)

@@ -1034,6 +1034,16 @@ impl Node {
         transfer::send(&self.shared, peer, files).await
     }
 
+    /// Hands off a document to a paired device and asks the receiver to open it
+    /// with the default application once it arrives (`docs/protocol/files.md`).
+    pub async fn send_handoff_files(
+        &self,
+        peer: DeviceId,
+        files: Vec<transfer::OutgoingFile>,
+    ) -> Result<String> {
+        transfer::send_handoff(&self.shared, peer, files).await
+    }
+
     /// Sends a voice recording and its markers to a paired PC; returns the
     /// transfer's ID. Progress and the outcome arrive as
     /// [`NodeEvent::Transfer`]; the transfer waits for the PC to connect and
@@ -1314,6 +1324,12 @@ impl Node {
     pub async fn mirror_resize(&self, peer: DeviceId, mirroring: u32, width: u32, height: u32) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::mirror::resize(&self.shared, &session, mirroring, width, height).await
+    }
+
+    /// Updates `stay_awake` and `screen_off` while mirroring a phone's screen (`session == 0`).
+    pub async fn mirror_power(&self, peer: DeviceId, stay_awake: bool, screen_off: bool) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::mirror::power(&self.shared, &session, stay_awake, screen_off).await
     }
 
     /// The PC's mouse and keyboard on a phone's mirrored screen or app window.
@@ -2065,6 +2081,36 @@ impl Node {
             self.resolve_timeline_clip(e);
         }
         Ok(entry)
+    }
+
+    /// Records a custom local timeline entry (e.g. a saved mirror screenshot or
+    /// mirror video recording) and emits [`NodeEvent::TimelineChanged`].
+    #[allow(clippy::too_many_arguments)]
+    pub fn record_timeline(
+        &self,
+        kind: crate::TimelineKind,
+        peer: DeviceId,
+        incoming: bool,
+        title: String,
+        detail: String,
+        target: String,
+        size_bytes: u64,
+        duration_secs: u64,
+        ref_id: Option<String>,
+    ) -> Option<i64> {
+        self.shared.record_timeline(crate::timeline::NewTimelineEntry {
+            kind,
+            device_id: peer,
+            device_name: self.shared.peer_name(&peer),
+            incoming,
+            timestamp: crate::now_unix(),
+            title,
+            detail,
+            target,
+            size_bytes,
+            duration_secs,
+            ref_id,
+        })
     }
 
     /// Updates a timeline entry matching `ref_id` (e.g. when a photo or voice

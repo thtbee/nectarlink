@@ -2,11 +2,12 @@
 package app.nectarlink.android.ui.pairing
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,7 @@ import app.nectarlink.android.R
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.core.PairingState
 import app.nectarlink.android.ui.theme.LocalAppFonts
+import app.nectarlink.android.ui.theme.LocalReducedMotion
 import app.nectarlink.core.DiscoveredDevice
 import app.nectarlink.core.PairingFailure
 import kotlinx.coroutines.delay
@@ -78,6 +80,7 @@ fun PairingScreen(
 ) {
     var nearby by rememberSaveable { mutableStateOf(false) }
     val pairing = state.pairing
+    val reducedMotion = LocalReducedMotion.current
     DisposableEffect(Unit) {
         actions.visible(true)
         onDispose { actions.visible(false) }
@@ -110,7 +113,13 @@ fun PairingScreen(
 
         AnimatedContent(
             targetState = pairing to nearby,
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            transitionSpec = {
+                if (reducedMotion) {
+                    EnterTransition.None togetherWith ExitTransition.None
+                } else {
+                    fadeIn() togetherWith fadeOut()
+                }
+            },
             modifier = Modifier.weight(1f),
             label = "pairing",
         ) { (current, showNearby) ->
@@ -176,6 +185,7 @@ private fun Scan(onLink: (String) -> Unit) {
 
 @Composable
 private fun NearbyList(devices: List<DiscoveredDevice>, onPair: (String) -> Unit) {
+    val reducedMotion = LocalReducedMotion.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             stringResource(R.string.pair_nearby_hint),
@@ -196,7 +206,15 @@ private fun NearbyList(devices: List<DiscoveredDevice>, onPair: (String) -> Unit
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    if (reducedMotion) {
+                        CircularProgressIndicator(
+                            progress = { 0.75f },
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    }
                     Spacer(Modifier.width(12.dp))
                     Text(
                         stringResource(R.string.pair_looking),
@@ -210,7 +228,7 @@ private fun NearbyList(devices: List<DiscoveredDevice>, onPair: (String) -> Unit
             Surface(
                 shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.fillMaxWidth().clickable { onPair(device.id) },
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -270,7 +288,15 @@ private fun CodeDigits(code: String) {
 @Composable
 private fun Working(text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+        if (LocalReducedMotion.current) {
+            CircularProgressIndicator(
+                progress = { 0.75f },
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp,
+            )
+        } else {
+            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+        }
         Spacer(Modifier.width(12.dp))
         Text(text, style = MaterialTheme.typography.bodyLarge)
     }

@@ -61,9 +61,23 @@ Item {
         return ""
     }
     property bool replying: false
+    property bool canOpenApp: false
     signal optionsRequested
+    signal openAppRequested
 
     implicitHeight: content.height + 24
+    activeFocusOnTab: item.canOpenApp && !item.replying
+    Accessible.role: item.canOpenApp ? Accessible.Button : Accessible.Grouping
+    Accessible.name: [item.appName, item.title, item.text].filter(s => s.length > 0).join(", ")
+    Accessible.description: item.canOpenApp ? qsTr("Open %1 in an app window").arg(item.appName) : ""
+    Accessible.onPressAction: if (item.canOpenApp && !item.replying) item.openAppRequested()
+    Keys.onPressed: (event) => {
+        if (item.canOpenApp && !item.replying
+                && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
+            item.openAppRequested()
+            event.accepted = true
+        }
+    }
 
     // Ticks once per second only for visible chronometer notifications while the window is shown.
     Timer {
@@ -124,13 +138,15 @@ Item {
         item.replying = false
     }
 
-    // Hover tracking only: clicks go to the buttons inside.
+    // Hover tracking; clicking the card body opens the app window when available.
     MouseArea {
         id: hover
         anchors.fill: parent
         hoverEnabled: true
-        acceptedButtons: Qt.NoButton
+        acceptedButtons: item.canOpenApp && !item.replying ? Qt.LeftButton : Qt.NoButton
+        cursorShape: item.canOpenApp && !item.replying ? Qt.PointingHandCursor : Qt.ArrowCursor
         readonly property bool hovered: containsMouse
+        onClicked: if (item.canOpenApp && !item.replying) item.openAppRequested()
     }
 
     // A light wash of the text color, or a calm highlighted container for Live Updates.
@@ -149,6 +165,15 @@ Item {
             ? Theme.outlineVariant
             : Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, Theme.dark ? 0.34 : 0.24)
         Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        radius: Theme.radiusMd
+        color: "transparent"
+        border.width: Theme.focusVisible(item) ? 2 : 0
+        border.color: Theme.primary
+        visible: Theme.focusVisible(item)
     }
 
     // App icon, or its initial when the phone didn't send one.

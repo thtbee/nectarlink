@@ -45,9 +45,16 @@ Rectangle {
                     anchors.fill: parent
                     radius: Theme.pill(height)
                     color: option.selected ? (Theme.graphite ? Theme.surfaceContent : Theme.surface) : "transparent"
-                    Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
-                    border.width: Theme.focusVisible(option) ? 2 : 0
-                    border.color: Theme.primary
+                    Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.fadeFast } }
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: -3
+                        radius: parent.radius + 3
+                        color: "transparent"
+                        border.width: 2
+                        border.color: Theme.primary
+                        visible: Theme.focusVisible(option)
+                    }
                 }
                 Txt {
                     id: label

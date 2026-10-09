@@ -27,6 +27,7 @@ t = "files.offer"   b = {
     size:    uint,
     ? folder: text,        // Only for files in a sent folder (see below)
   } ],                     // 1–5,000 files, in order
+  ? open_on_arrival: bool, // True when handing off a single document to open on arrival
 }
 ```
 
@@ -43,6 +44,13 @@ Empty folders aren't sent.
 ([`recorder.md`](recorder.md)), `files.offer` sets `"recording": true` on a
 single-file offer (without `folder`) and may include `"markers"`: up to 256
 entries `{ at_ms: uint, label?: text }`.
+
+**Handoff documents.** When a sender hands off a single safe document (`pdf`,
+`txt`, `md`, `rtf`, `csv`, `json`, `html`, `epub`, or Office/OpenDocument files)
+to open immediately on the other device, `files.offer` sets
+`"open_on_arrival": true` on a single-file offer (without `folder` or
+`recording`). Receivers **MUST** check the received file's extension against a
+safe document allowlist and never automatically execute binaries or scripts.
 
 Receivers **MUST** reject an offer that breaks these rules with
 `BAD_MESSAGE`, and still pick their own safe names for writing (see §4). The

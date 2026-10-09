@@ -48,15 +48,22 @@ they're too easy to set off by accident, and lose unsaved work.
 
 ### 2.2 `link.open`
 
-Asks the receiver to open `url`, which **MUST** be an `http` or `https`
-link of at most 4,096 bytes with no whitespace or control characters.
+Asks the receiver to open `url`, which **MUST** be an `http`, `https` or
+`geo:` link of at most 4,096 bytes with no whitespace or control characters.
 Receivers **MUST** check this themselves and answer `BAD_MESSAGE` to
 anything else; no other kind of link is ever opened.
 
-A PC opens the link in its default browser. A phone shows it in a
-notification the user taps to open it, since Android doesn't let apps in
-the background open screens. `INTERNAL` means it couldn't be opened or
-shown.
+Map handoff uses either `geo:<lat>,<lon>?q=...` URIs or web map URLs (Google
+Maps, Apple Maps, Bing Maps, OpenStreetMap). Video handoff preserves or
+attaches the playback timestamp in the URL (`?t=<seconds>` / `&t=<seconds>s` on
+YouTube, `#t=<seconds>s` on Vimeo, `?t=<seconds>` on Twitch).
+
+A PC opens `http`/`https` links in its default browser and converts `geo:`
+URIs to an HTTPS map search URL. When the Android app is in the foreground, it
+opens the link or map intent immediately (`ACTION_VIEW`, falling back to an
+HTTPS map URL if no Maps app handles `geo:`); when in the background, it posts
+a high-priority notification (`Open`, `Open in Maps`, or `Continue watching`)
+the user taps to open it. `INTERNAL` means it couldn't be opened or shown.
 
 ### 2.3 `pc.wake_info` (Wake-on-LAN)
 

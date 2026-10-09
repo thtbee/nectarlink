@@ -146,8 +146,31 @@ pub fn on_event(event: &NodeEvent) {
     }
 }
 
+/// Latest local media players on this PC and when they were sampled.
+static LOCAL_PLAYERS: Mutex<Vec<(nectarlink_core::MediaPlayer, std::time::Instant)>> = Mutex::new(Vec::new());
+
+/// Returns the current playback position in seconds of the active local media
+/// player on this PC (if any player has a non-zero position).
+pub fn local_playback_position_secs() -> Option<u32> {
+    let guard = lock(&LOCAL_PLAYERS);
+    let (player, sampled_at) = guard
+        .iter()
+        .find(|(p, _)| p.playing && p.position.is_some_and(|pos| pos > 0))
+        .or_else(|| guard.iter().find(|(p, _)| p.position.is_some_and(|pos| pos > 0)))?;
+    let base_ms = player.position?;
+    let extra_ms = if player.playing { sampled_at.elapsed().as_millis() as u64 } else { 0 };
+    let total_ms = match player.duration {
+        Some(dur) if dur > 0 => base_ms.saturating_add(extra_ms).min(dur),
+        _ => base_ms.saturating_add(extra_ms),
+    };
+    let secs = (total_ms / 1000) as u32;
+    (secs > 0).then_some(secs)
+}
+
 /// What plays on this PC changed: tell the phones.
 pub fn local_changed(players: Vec<nectarlink_core::MediaPlayer>) {
+    let now = std::time::Instant::now();
+    *lock(&LOCAL_PLAYERS) = players.iter().cloned().map(|p| (p, now)).collect();
     crate::deck::on_local_media_changed(&players);
     core_host::spawn(async move {
         if let Some(node) = core_host::wait_for_node().await {

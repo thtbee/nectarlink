@@ -169,7 +169,8 @@ Card {
                     border.width: Theme.graphite ? 1 : 0
                     border.color: Theme.outlineVariant
                     scale: keyTap.pressed ? Theme.pressScale : 1
-                    Behavior on scale { SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
+                    Behavior on scale { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
+                    activeFocusOnTab: true
                     function press() {
                         PhoneCall.press(modelData)
                         card.pressed = (card.pressed + modelData).slice(-24)
@@ -177,6 +178,21 @@ Card {
                     Accessible.role: Accessible.Button
                     Accessible.name: modelData
                     Accessible.onPressAction: press()
+                    Keys.onPressed: (event) => {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                            key.press()
+                            event.accepted = true
+                        }
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: -3
+                        radius: parent.radius + 3
+                        color: "transparent"
+                        border.width: 2
+                        border.color: Theme.primary
+                        visible: Theme.focusVisible(key)
+                    }
                     Txt { anchors.centerIn: parent; role: "title"; text: key.modelData }
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
                     TapHandler { id: keyTap; onTapped: key.press() }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.ui.theme
 
+import android.animation.ValueAnimator
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -14,12 +15,39 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+
+val LocalReducedMotion = compositionLocalOf { false }
+
+/** True when Android's "Remove animations" (animator duration scale 0) is enabled. */
+@Composable
+fun rememberReducedMotion(): Boolean {
+    var reduced by remember { mutableStateOf(!ValueAnimator.areAnimatorsEnabled()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                reduced = !ValueAnimator.areAnimatorsEnabled()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    return reduced
+}
 
 /** The user's look choices (see Preferences). */
 data class Appearance(
@@ -112,7 +140,11 @@ fun NectarlinkTheme(appearance: Appearance = Appearance(), content: @Composable 
     }
     val assets = LocalContext.current.assets
     val fonts = remember(assets) { AppFonts(assets) }
-    CompositionLocalProvider(LocalAppFonts provides fonts) {
+    val reducedMotion = rememberReducedMotion()
+    CompositionLocalProvider(
+        LocalAppFonts provides fonts,
+        LocalReducedMotion provides reducedMotion,
+    ) {
         MaterialTheme(
             colorScheme = scheme,
             shapes = shapes(graphite),

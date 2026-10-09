@@ -79,4 +79,8 @@ QtObject {
     readonly property string trash: "M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"
     readonly property string edit: "M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"
     readonly property string pin: "M12 17v5M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16h14v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1 1 1 0 0 1 1 1z"
+    readonly property string record: "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"
+    readonly property string stopSquare: "M7 7h10v10H7z"
+    readonly property string screenOff: "M8 2h8a2 2 0 0 1 2 2v8M18 16v4a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 .6-1.4M11 18h2M3 3l18 18"
+    readonly property string coffee: "M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v7a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V8zM6 2v3M10 2v3M14 2v3"
 }

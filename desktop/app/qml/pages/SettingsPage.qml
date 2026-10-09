@@ -34,12 +34,16 @@ Item {
     function formatRetentionBytes(bytes) {
         const b = Number(bytes || 0)
         if (b <= 0)
-            return "0 B"
+            return qsTr("%1 B").arg(0)
         if (b < 1024)
-            return b + " B"
+            return qsTr("%1 B").arg(b)
         if (b < 1024 * 1024)
-            return Math.max(1, Math.round(b / 1024)) + " KB"
-        return (b / (1024 * 1024)).toFixed(1) + " MB"
+            return qsTr("%1 KB").arg(Math.max(1, Math.round(b / 1024)))
+        if (b < 1024 * 1024 * 1024)
+            return qsTr("%1 MB").arg((b / (1024 * 1024)).toFixed(1))
+        if (b < 1024 * 1024 * 1024 * 1024)
+            return qsTr("%1 GB").arg((b / (1024 * 1024 * 1024)).toFixed(1))
+        return qsTr("%1 TB").arg((b / (1024 * 1024 * 1024 * 1024)).toFixed(1))
     }
 
     opacity: active ? 1 : 0
@@ -47,7 +51,7 @@ Item {
     Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
     transform: Translate {
         y: page.active || Theme.reduceMotion ? 0 : 12
-        Behavior on y { SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
+        Behavior on y { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
     }
 
     readonly property var toggleNames: ({
@@ -428,6 +432,12 @@ Item {
                                         Accessible.name: modelData.label
                                         Accessible.checked: selected
                                         Accessible.onPressAction: Preferences.seed = modelData.key
+                                        Keys.onPressed: (event) => {
+                                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                                Preferences.seed = narrowPhoneSwatch.modelData.key
+                                                event.accepted = true
+                                            }
+                                        }
                                         Row {
                                             id: narrowPhoneRow
                                             anchors.centerIn: parent
@@ -637,6 +647,53 @@ Item {
                     Divider { width: parent.width }
                     ListRow {
                         width: parent.width
+                        iconPath: Icons.folder
+                        title: qsTr("Shelf shortcut")
+                        description: qsTr("Global shortcut to slide out the Shelf at the screen edge without stealing focus.")
+                        Row {
+                            spacing: 8
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: Preferences.shelfHotkey !== "Ctrl+Alt+S"
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Reset")
+                                onClicked: {
+                                    shelfHotkeyInput.text = "Ctrl+Alt+S"
+                                    Preferences.shelfHotkey = "Ctrl+Alt+S"
+                                }
+                            }
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 132
+                                height: 32
+                                radius: Theme.radiusSm
+                                color: Theme.surfaceContainerHighest
+                                border.width: shelfHotkeyInput.activeFocus ? 2 : 1
+                                border.color: shelfHotkeyInput.activeFocus ? Theme.primary : Theme.outlineVariant
+                                TextInput {
+                                    id: shelfHotkeyInput
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10
+                                    anchors.rightMargin: 10
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    horizontalAlignment: TextInput.AlignHCenter
+                                    font.family: Theme.fontUi
+                                    font.pixelSize: 13
+                                    color: Theme.surfaceContent
+                                    selectionColor: Theme.primaryContainer
+                                    selectedTextColor: Theme.primaryContainerContent
+                                    clip: true
+                                    text: Preferences.shelfHotkey
+                                    onEditingFinished: Preferences.shelfHotkey = text.trim()
+                                    Accessible.name: qsTr("Shelf shortcut")
+                                }
+                            }
+                        }
+                    }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
                         iconPath: Icons.camera
                         title: qsTr("Take photo shortcut")
                         description: qsTr("Global shortcut to open your phone's camera from any app and paste the photo back into the active window.")
@@ -837,10 +894,10 @@ Item {
                                 delegate: Chip {
                                     required property string deviceId
                                     required property string name
+                                    interactive: true
                                     text: name
                                     selected: Webcam.selectedPhone === deviceId
-                                    TapHandler { onTapped: Webcam.selectPhone(deviceId) }
-                                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                                    onClicked: Webcam.selectPhone(deviceId)
                                 }
                             }
                         }
@@ -965,8 +1022,9 @@ Item {
                                     ? qsTr("%1 · Wake on Magic Packet is on. If this PC still won't wake from sleep or shutdown, check that Wake-on-LAN is enabled in BIOS/UEFI.").arg(adapter)
                                     : qsTr("%1 · Wake on Magic Packet is on. Wi-Fi wake usually works from sleep, not full shutdown; use Ethernet for shutdown wake.").arg(adapter)
                             }
-                            const wifiNote = wired ? "" : qsTr(" Wi-Fi wake rarely works from shutdown.")
-                            return qsTr("%1 · To wake this PC while it sleeps or is shut down, enable Wake on Magic Packet in Device Manager → Network adapters → %1 → Properties (Advanced tab → Wake on Magic Packet → Enabled; Power Management tab → Allow this device to wake the computer, Only allow a magic packet), and enable Wake-on-LAN in BIOS/UEFI.%2").arg(adapter).arg(wifiNote)
+                            return wired
+                                ? qsTr("%1 · To wake this PC while it sleeps or is shut down, enable Wake on Magic Packet in Device Manager → Network adapters → %1 → Properties (Advanced tab → Wake on Magic Packet → Enabled; Power Management tab → Allow this device to wake the computer, Only allow a magic packet), and enable Wake-on-LAN in BIOS/UEFI.").arg(adapter)
+                                : qsTr("%1 · To wake this PC while it sleeps or is shut down, enable Wake on Magic Packet in Device Manager → Network adapters → %1 → Properties (Advanced tab → Wake on Magic Packet → Enabled; Power Management tab → Allow this device to wake the computer, Only allow a magic packet), and enable Wake-on-LAN in BIOS/UEFI. Wi-Fi wake rarely works from shutdown.").arg(adapter)
                         }
                         Row {
                             spacing: 6
@@ -1124,8 +1182,10 @@ Item {
                         title: qsTr("Cross-device timeline")
                         description: {
                             const count = Number(page.retentionSummary.timelineItems || 0)
-                            return qsTr("Searchable local history of files, clips, links, photos, recordings and sessions (%1 items · up to 5,000).")
-                                .arg(count)
+                            return count === 1
+                                ? qsTr("Searchable local history of files, clips, links, photos, recordings and sessions (1 item · up to 5,000).")
+                                : qsTr("Searchable local history of files, clips, links, photos, recordings and sessions (%1 items · up to 5,000).")
+                                    .arg(count)
                         }
                         Row {
                             spacing: 8
@@ -1172,7 +1232,7 @@ Item {
                         description: {
                             const count = Number(page.retentionSummary.notificationHistory || 0)
                             const size = page.formatRetentionBytes(page.retentionSummary.notificationImageBytes)
-                            return qsTr("24 hours · up to 100 dismissed notifications (%1 stored · %2 of cached images).")
+                            return qsTr("24 hours · up to 300 dismissed notifications (%1 stored · %2 of cached images).")
                                 .arg(count)
                                 .arg(size)
                         }
@@ -1207,12 +1267,15 @@ Item {
                         description: {
                             const chatThreads = Number(page.retentionSummary.chatThreads || 0)
                             const smsThreads = Number(page.retentionSummary.cachedSmsThreads || 0)
+                            const convs = chatThreads + smsThreads
                             const totalMsgs = Number(page.retentionSummary.chatMessages || 0)
                                               + Number(page.retentionSummary.cachedSmsMessages || 0)
                             const size = page.formatRetentionBytes(page.retentionSummary.messageAttachmentBytes)
-                            return qsTr("90 days · up to 500 messages per conversation (%1 conversations · %2 messages · %3 of attachments).")
-                                .arg(chatThreads + smsThreads)
-                                .arg(totalMsgs)
+                            const convPart = convs === 1 ? qsTr("1 conversation") : qsTr("%1 conversations").arg(convs)
+                            const msgPart = totalMsgs === 1 ? qsTr("1 message") : qsTr("%1 messages").arg(totalMsgs)
+                            return qsTr("90 days · up to 200 messages per conversation (%1 · %2 · %3 of attachments).")
+                                .arg(convPart)
+                                .arg(msgPart)
                                 .arg(size)
                         }
                         Button {
@@ -1236,9 +1299,11 @@ Item {
                         description: {
                             const files = Number(page.retentionSummary.photoThumbFiles || 0)
                             const size = page.formatRetentionBytes(page.retentionSummary.photoThumbBytes)
-                            return qsTr("30 days · up to 500 cached thumbnails (%1 files · %2). Original photos on your phone are never touched.")
-                                .arg(files)
-                                .arg(size)
+                            return files === 1
+                                ? qsTr("30 days · up to 500 cached thumbnails (1 file · %1). Original photos on your phone are never touched.").arg(size)
+                                : qsTr("30 days · up to 500 cached thumbnails (%1 files · %2). Original photos on your phone are never touched.")
+                                    .arg(files)
+                                    .arg(size)
                         }
                         Button {
                             variant: "text"
@@ -1256,8 +1321,10 @@ Item {
                         title: qsTr("Received file transfer history")
                         description: {
                             const records = Number(page.retentionSummary.receivedFileRecords || 0)
-                            return qsTr("Kept with timeline · %1 transfer records on this PC. Saved files in Downloads are kept.")
-                                .arg(records)
+                            return records === 1
+                                ? qsTr("Kept with timeline · 1 transfer record on this PC. Saved files in Downloads are kept.")
+                                : qsTr("Kept with timeline · %1 transfer records on this PC. Saved files in Downloads are kept.")
+                                    .arg(records)
                         }
                         Button {
                             variant: "text"

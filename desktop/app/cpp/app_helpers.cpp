@@ -3,8 +3,12 @@
 #include "video_view.h"
 
 #include <QtCore/QDir>
+#include <QtCore/QFileInfo>
+#include <QtCore/QMimeData>
 #include <QtCore/QPointer>
+#include <QtCore/QUrl>
 #include <QtCore/QtEnvironmentVariables>
+#include <QtGui/QDrag>
 #include <QtGui/QFontDatabase>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QIcon>
@@ -109,6 +113,36 @@ void trim_memory_caches()
     }
     SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
 #endif
+}
+
+bool start_external_drag(rust::Str file_path, rust::Str text_fallback)
+{
+    const QString path = QString::fromUtf8(file_path.data(), static_cast<qsizetype>(file_path.size())).trimmed();
+    const QString text = QString::fromUtf8(text_fallback.data(), static_cast<qsizetype>(text_fallback.size()));
+    if (path.isEmpty() && text.isEmpty())
+        return false;
+
+    auto *mime = new QMimeData();
+    QPixmap dragPixmap;
+    if (!path.isEmpty() && QFileInfo::exists(path)) {
+        mime->setUrls({QUrl::fromLocalFile(path)});
+        QImage img(path);
+        if (!img.isNull()) {
+            mime->setImageData(img);
+            dragPixmap = QPixmap::fromImage(img.scaled(96, 96, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        }
+    } else if (!text.isEmpty()) {
+        mime->setText(text);
+    } else {
+        delete mime;
+        return false;
+    }
+
+    QDrag drag(QGuiApplication::instance());
+    drag.setMimeData(mime);
+    if (!dragPixmap.isNull())
+        drag.setPixmap(dragPixmap);
+    return drag.exec(Qt::CopyAction) != Qt::IgnoreAction;
 }
 
 

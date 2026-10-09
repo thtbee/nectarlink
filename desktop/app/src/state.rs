@@ -1046,6 +1046,7 @@ mod tests {
             state,
             recording: false,
             markers: Vec::new(),
+            open_on_arrival: false,
         }
     }
 

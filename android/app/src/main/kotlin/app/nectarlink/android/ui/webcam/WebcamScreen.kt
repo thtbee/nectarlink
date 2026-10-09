@@ -51,6 +51,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -261,7 +263,7 @@ fun WebcamScreen(
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            text = "${session.width} × ${session.height} · ${session.fps} fps",
+                            text = stringResource(R.string.webcam_stream_spec, session.width, session.height, session.fps),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.White.copy(alpha = 0.72f),
                         )
@@ -282,10 +284,15 @@ fun WebcamScreen(
                     )
                     Text(
                         text = if (isStreamingHere && !session.connecting) {
-                            stringResource(R.string.webcam_status_streaming, session.width, session.height, device.name) +
-                                " · $camLabel"
+                            stringResource(
+                                R.string.webcam_status_streaming_camera,
+                                session.width,
+                                session.height,
+                                device.name,
+                                camLabel,
+                            )
                         } else {
-                            "${session.width} × ${session.height} · $camLabel"
+                            stringResource(R.string.webcam_stream_camera_spec, session.width, session.height, camLabel)
                         },
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -350,7 +357,7 @@ fun WebcamScreen(
                             val currentLabel = stringResource(
                                 if (session.camera == "front") R.string.webcam_camera_front else R.string.webcam_camera_back,
                             )
-                            Text(stringResource(R.string.webcam_switch_camera) + " ($currentLabel)")
+                            Text(stringResource(R.string.webcam_switch_camera_current, currentLabel))
                         }
 
                         if (session.hasFlash) {
@@ -376,10 +383,13 @@ fun WebcamScreen(
                             style = MaterialTheme.typography.labelLarge,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            val res720p = stringResource(R.string.webcam_res_720p)
+                            val res1080p = stringResource(R.string.webcam_res_1080p)
+                            val res4k = stringResource(R.string.webcam_res_4k)
                             val resolutions = buildList {
-                                add(720 to "720p")
-                                add(1080 to "1080p")
-                                if (session.supports4k) add(2160 to "4K")
+                                add(720 to res720p)
+                                add(1080 to res1080p)
+                                if (session.supports4k) add(2160 to res4k)
                             }
                             for ((h, label) in resolutions) {
                                 FilterChip(
@@ -393,29 +403,30 @@ fun WebcamScreen(
 
                     // Zoom controls: presets + smooth high-contrast slider
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val zoomLabel = stringResource(
+                            R.string.webcam_zoom_label,
+                            String.format(Locale.US, "%.1f", session.zoomRatio).toFloat(),
+                        )
                         Text(
-                            stringResource(
-                                R.string.webcam_zoom_label,
-                                String.format(Locale.US, "%.1f", session.zoomRatio).toFloat(),
-                            ),
+                            zoomLabel,
                             style = MaterialTheme.typography.labelLarge,
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             FilterChip(
                                 selected = kotlin.math.abs(session.zoomRatio - 1f) < 0.08f,
                                 onClick = { WebcamService.setZoomRatio(1f) },
-                                label = { Text("1×") },
+                                label = { Text(stringResource(R.string.webcam_zoom_preset, 1)) },
                             )
                             FilterChip(
                                 selected = kotlin.math.abs(session.zoomRatio - 2f) < 0.08f,
                                 onClick = { WebcamService.setZoomRatio(2f.coerceAtMost(session.maxZoomRatio)) },
-                                label = { Text("2×") },
+                                label = { Text(stringResource(R.string.webcam_zoom_preset, 2)) },
                             )
                             if (session.maxZoomRatio >= 4f) {
                                 FilterChip(
                                     selected = kotlin.math.abs(session.zoomRatio - 4f) < 0.08f,
                                     onClick = { WebcamService.setZoomRatio(4f.coerceAtMost(session.maxZoomRatio)) },
-                                    label = { Text("4×") },
+                                    label = { Text(stringResource(R.string.webcam_zoom_preset, 4)) },
                                 )
                             }
                         }
@@ -433,6 +444,7 @@ fun WebcamScreen(
                                 disabledActiveTrackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
                                 disabledInactiveTrackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
                             ),
+                            modifier = Modifier.semantics { contentDescription = zoomLabel },
                         )
                     }
                 }

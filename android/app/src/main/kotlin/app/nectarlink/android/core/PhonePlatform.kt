@@ -81,6 +81,8 @@ internal class PhonePlatform(
     private val appWindows: AppWindows,
     /** Resolves a paired PC's display name by ID. */
     private val nameOf: (String) -> String = { "" },
+    /** Notifies when a PC starts or stops typing on this phone without mirroring. */
+    private val onKeyboardFromPc: (String, Boolean) -> Unit = { _, _ -> },
 ) : Platform {
     private val context = context.applicationContext
 
@@ -123,12 +125,25 @@ internal class PhonePlatform(
         if (options.app != null) {
             appWindows.open(pcId, options)
         } else {
-            val request = MirrorRequest(pcId, options.maxSize.toInt(), options.fps.toInt(), options.bitrate.toInt(), options.audio)
+            val request = MirrorRequest(
+                pcId,
+                options.maxSize.toInt(),
+                options.fps.toInt(),
+                options.bitrate.toInt(),
+                options.audio,
+                options.stayAwake,
+                options.screenOff,
+            )
             onMirror(pcId, request)
         }
 
+    override fun mirrorPowerRequested(pcId: String, stayAwake: Boolean, screenOff: Boolean) {
+        MirrorService.setPower(pcId, stayAwake, screenOff)
+    }
+
     override fun mirrorStopRequested(pcId: String, session: UInt) {
         if (session != SCREEN) return appWindows.close(pcId, session)
+        onKeyboardFromPc(pcId, false)
         MirrorRequests.dismiss(context, pcId)
         MirrorService.stop(pcId)
     }
@@ -143,6 +158,22 @@ internal class PhonePlatform(
     // Real events when Elevated runs; gestures through the accessibility service otherwise.
     override fun mirrorInput(pcId: String, session: UInt, input: MirrorInputEvent) {
         if (session != SCREEN) return appWindows.input(pcId, session, input)
+        if (input is MirrorInputEvent.Key) {
+            when (input.key) {
+                "keyboard_on" -> {
+                    onKeyboardFromPc(pcId, true)
+                    return
+                }
+                "keyboard_off" -> {
+                    onKeyboardFromPc(pcId, false)
+                    return
+                }
+            }
+        }
+        if (input is MirrorInputEvent.Text && input.text.any { it.code > 127 } && InputService.running) {
+            InputService.handle(input)
+            return
+        }
         if (!Elevated.handle(input)) InputService.handle(input)
     }
 

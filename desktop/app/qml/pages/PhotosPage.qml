@@ -102,9 +102,12 @@ Item {
 
     function formatBytes(bytes) {
         if (!bytes || bytes <= 0) return ""
-        if (bytes < 1024) return bytes + " B"
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB"
-        return (bytes / (1024 * 1024)).toFixed(1) + " MB"
+        if (bytes < 1024) return qsTr("%1 B").arg(Math.round(bytes))
+        const units = [qsTr("%1 KB"), qsTr("%1 MB"), qsTr("%1 GB"), qsTr("%1 TB")]
+        let value = bytes / 1024
+        let unit = 0
+        while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit++ }
+        return units[unit].arg(unit === 0 ? Math.round(value) : (value < 10 ? value.toFixed(1) : Math.round(value)))
     }
 
     function isSelected(id) {
@@ -188,7 +191,7 @@ Item {
     Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
     transform: Translate {
         y: page.active || Theme.reduceMotion ? 0 : 12
-        Behavior on y { SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
+        Behavior on y { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
     }
 
     // Keyboard shortcuts for viewer navigation and selection.
@@ -399,7 +402,9 @@ Item {
                     visible: Photos.count > 0
                     role: "caption"
                     muted: true
-                    text: Photos.more ? qsTr("%1+ items").arg(Photos.count) : qsTr("%1 items").arg(Photos.count)
+                    text: Photos.more
+                        ? qsTr("%1+ items").arg(Photos.count)
+                        : (Photos.count === 1 ? qsTr("1 item") : qsTr("%1 items").arg(Photos.count))
                 }
             }
 
@@ -453,6 +458,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: Photos.count > 0
                     iconPath: Icons.folder
+                    interactive: true
                     text: {
                         const f = Photos.saveFolder || ""
                         if (!gridPane.compactBar) return f
@@ -460,8 +466,7 @@ Item {
                         return parts.length > 0 && parts[parts.length - 1].length > 0
                             ? parts[parts.length - 1] : f
                     }
-                    TapHandler { onTapped: defaultFolderPicker.open() }
-                    HoverHandler { cursorShape: Qt.PointingHandCursor }
+                    onClicked: defaultFolderPicker.open()
                 }
 
                 Button {
@@ -908,6 +913,7 @@ Item {
 
             // Video play button overlay in viewer.
             Rectangle {
+                id: playOverlayBtn
                 anchors.centerIn: parent
                 visible: page.viewedItem !== null && !!page.viewedItem.isVideo
                 width: 76; height: 76
@@ -916,7 +922,27 @@ Item {
                 border.width: 2
                 border.color: "#ffffff"
                 scale: playTap.pressed ? Theme.pressScale : 1
-                Behavior on scale { SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
+                Behavior on scale { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
+                activeFocusOnTab: true
+                Accessible.role: Accessible.Button
+                Accessible.name: qsTr("Play video")
+                Accessible.onPressAction: if (page.viewedItem) Photos.openItem(page.viewedItem.id)
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                        if (page.viewedItem)
+                            Photos.openItem(page.viewedItem.id)
+                        event.accepted = true
+                    }
+                }
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -3
+                    radius: parent.radius + 3
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Theme.primary
+                    visible: Theme.focusVisible(playOverlayBtn)
+                }
                 Icon {
                     anchors.centerIn: parent
                     width: 30; height: 30
@@ -989,8 +1015,8 @@ Item {
                 : albumHover.hovered
                   ? Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, 0.06)
                   : "transparent"
-            border.width: albumRow.activeFocus ? 2 : (Theme.graphite && albumRow.selected ? 1 : 0)
-            border.color: albumRow.activeFocus ? Theme.primary : Theme.surfaceContent
+            border.width: Theme.focusVisible(albumRow) ? 2 : (Theme.graphite && albumRow.selected ? 1 : 0)
+            border.color: Theme.focusVisible(albumRow) ? Theme.primary : Theme.surfaceContent
 
             Item {
                 id: coverBox
@@ -1111,8 +1137,8 @@ Item {
             anchors.margins: 4
             radius: Theme.radiusSm
             color: Theme.surfaceContainerHigh
-            border.width: tile.selected ? 3 : (tile.activeFocus ? 2 : (Theme.graphite ? 1 : 0))
-            border.color: (tile.selected || tile.activeFocus) ? Theme.primary : Theme.outlineVariant
+            border.width: tile.selected ? 3 : (Theme.focusVisible(tile) ? 2 : (Theme.graphite ? 1 : 0))
+            border.color: (tile.selected || Theme.focusVisible(tile)) ? Theme.primary : Theme.outlineVariant
             clip: true
 
             Icon {
@@ -1220,6 +1246,12 @@ Item {
                 color: tile.selected ? Theme.primary : Qt.rgba(0, 0, 0, 0.48)
                 border.width: tile.selected ? 0 : 1.5
                 border.color: "#ffffff"
+                Accessible.role: Accessible.CheckBox
+                Accessible.name: qsTr("Select photo")
+                Accessible.checkable: true
+                Accessible.checked: tile.selected
+                Accessible.onPressAction: page.toggleSelect(tile.itemId, tile.index, false)
+                Accessible.onToggleAction: page.toggleSelect(tile.itemId, tile.index, false)
                 Icon {
                     anchors.centerIn: parent
                     visible: tile.selected

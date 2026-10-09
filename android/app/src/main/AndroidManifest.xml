@@ -16,6 +16,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <!-- Sharing the screen with a PC (each time, after Android's prompt). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- Keeping the phone awake while mirroring its screen to a PC. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Voice recorder to PC while the screen is off or the app is in the background. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <!-- Streaming the camera to a PC as a webcam while the app is in the background. -->
@@ -153,6 +155,16 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
             </intent-filter>
+            <!-- Map locations (geo: URIs) opened with Nectarlink go straight to the PC. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="geo" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <receiver
@@ -273,5 +285,21 @@
             android:name=".service.ConnectionService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
+
+        <!-- Home-screen widget: paired PC connection status, Wake, and battery-free quick actions. -->
+        <receiver
+            android:name=".widget.PcWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_pc_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="app.nectarlink.widget.ACTION_RING_PC" />
+                <action android:name="app.nectarlink.widget.ACTION_LOCK_PC" />
+                <action android:name="app.nectarlink.widget.ACTION_WAKE_PC" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pc_widget_info" />
+        </receiver>
     </application>
 </manifest>

@@ -76,6 +76,12 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,6 +91,7 @@ import app.nectarlink.android.R
 import app.nectarlink.android.core.Core
 import app.nectarlink.android.core.Device
 import app.nectarlink.android.core.WakeState
+import app.nectarlink.android.ui.theme.LocalReducedMotion
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.hypot
@@ -278,7 +285,11 @@ private fun OfflineWakeBanner(device: Device, onWake: () -> Unit) {
                         style = MaterialTheme.typography.titleSmall,
                     )
                     Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    if (LocalReducedMotion.current) {
+                        LinearProgressIndicator(progress = { 0.5f }, modifier = Modifier.fillMaxWidth())
+                    } else {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
                 }
                 device.wakeState == WakeState.TimedOut -> {
                     Text(
@@ -368,6 +379,7 @@ private fun TouchpadView(
         // Big touchpad surface
         val primaryColor = MaterialTheme.colorScheme.primary
         val outlineColor = MaterialTheme.colorScheme.outlineVariant
+        val touchpadDesc = stringResource(R.string.remote_mode_touchpad)
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -378,6 +390,7 @@ private fun TouchpadView(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
+                .semantics { contentDescription = touchpadDesc }
                 .pointerInput(pcId, sensitivity) {
                     val tapSlop = viewConfiguration.touchSlop
                     val tapTimeoutMs = 240L
@@ -584,6 +597,7 @@ private fun TouchpadView(
 
         // Soft keyboard input row when toggled open
         if (showKeyboard) {
+            val typePlaceholder = stringResource(R.string.remote_type_placeholder, pcName)
             OutlinedTextField(
                 value = textBuffer,
                 onValueChange = { next ->
@@ -601,7 +615,7 @@ private fun TouchpadView(
                     }
                     textBuffer = " "
                 },
-                placeholder = { Text(stringResource(R.string.remote_type_placeholder, pcName)) },
+                placeholder = { Text(typePlaceholder) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(
@@ -612,7 +626,8 @@ private fun TouchpadView(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .focusRequester(focusRequester),
+                    .focusRequester(focusRequester)
+                    .semantics { contentDescription = typePlaceholder },
             )
         }
     }
@@ -692,6 +707,7 @@ private fun AirMouseView(
 
         val primaryColor = MaterialTheme.colorScheme.primary
         val outlineColor = MaterialTheme.colorScheme.outlineVariant
+        val airDesc = stringResource(R.string.remote_mode_air)
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
             color = if (padHeld) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -703,6 +719,7 @@ private fun AirMouseView(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
+                .semantics { contentDescription = airDesc }
                 .pointerInput(pcId, hasGyro) {
                     val tapSlop = viewConfiguration.touchSlop
                     val tapTimeoutMs = 240L
@@ -1107,6 +1124,9 @@ private fun VoiceTypingBar(
             } else {
                 MaterialTheme.colorScheme.onSecondaryContainer
             }
+            val dictateLabel = stringResource(
+                if (isListening) R.string.remote_dictate_stop else R.string.remote_dictate,
+            )
 
             Surface(
                 shape = CircleShape,
@@ -1114,6 +1134,25 @@ private fun VoiceTypingBar(
                 contentColor = buttonFg,
                 modifier = Modifier
                     .height(40.dp)
+                    .semantics(mergeDescendants = true) {
+                        role = Role.Button
+                        contentDescription = dictateLabel
+                        onClick(label = dictateLabel) {
+                            if (currentIsListening) {
+                                stopRecognition()
+                            } else if (
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.RECORD_AUDIO,
+                                ) == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                startRecognition()
+                            } else {
+                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            }
+                            true
+                        }
+                    }
                     .pointerInput(pcId) {
                         val holdThresholdMs = 350L
                         awaitEachGesture {
@@ -1159,9 +1198,7 @@ private fun VoiceTypingBar(
                     modifier = Modifier.padding(horizontal = 16.dp),
                 ) {
                     Text(
-                        text = stringResource(
-                            if (isListening) R.string.remote_dictate_stop else R.string.remote_dictate,
-                        ),
+                        text = dictateLabel,
                         style = MaterialTheme.typography.labelLarge,
                         maxLines = 1,
                     )
@@ -1183,7 +1220,12 @@ private fun SpecialKeysBar(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         // Modifier keys row: 4 equal columns that fit at every font scale without overflowing
-        val mods = listOf("ctrl" to "Ctrl", "alt" to "Alt", "shift" to "Shift", "win" to "Win")
+        val mods = listOf(
+            "ctrl" to stringResource(R.string.remote_key_ctrl),
+            "alt" to stringResource(R.string.remote_key_alt),
+            "shift" to stringResource(R.string.remote_key_shift),
+            "win" to stringResource(R.string.remote_key_win),
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1214,6 +1256,11 @@ private fun SpecialKeysBar(
                     modifier = Modifier
                         .weight(1f)
                         .height(36.dp)
+                        .semantics(mergeDescendants = true) {
+                            role = Role.Switch
+                            this.selected = selected
+                            contentDescription = label
+                        }
                         .clickable { onToggleMod(id) },
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
@@ -1230,19 +1277,19 @@ private fun SpecialKeysBar(
 
         // Navigation & special keys row: 6 equal columns across the full width
         val keys = listOf(
-            "escape" to "Esc",
-            "tab" to "Tab",
-            "left" to "←",
-            "up" to "↑",
-            "down" to "↓",
-            "right" to "→",
+            Triple("escape", stringResource(R.string.remote_key_esc), stringResource(R.string.remote_key_esc_desc)),
+            Triple("tab", stringResource(R.string.remote_key_tab), stringResource(R.string.remote_key_tab)),
+            Triple("left", "←", stringResource(R.string.remote_key_left_desc)),
+            Triple("up", "↑", stringResource(R.string.remote_key_up_desc)),
+            Triple("down", "↓", stringResource(R.string.remote_key_down_desc)),
+            Triple("right", "→", stringResource(R.string.remote_key_right_desc)),
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            for ((key, label) in keys) {
+            for ((key, label, a11yLabel) in keys) {
                 Surface(
                     shape = MaterialTheme.shapes.small,
                     color = MaterialTheme.colorScheme.surface,
@@ -1251,7 +1298,11 @@ private fun SpecialKeysBar(
                     modifier = Modifier
                         .weight(1f)
                         .height(36.dp)
-                        .clickable { onKey(key, null) },
+                        .semantics(mergeDescendants = true) {
+                            role = Role.Button
+                            contentDescription = a11yLabel
+                        }
+                        .clickable(role = Role.Button) { onKey(key, null) },
                 ) {
                     Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 2.dp)) {
                         Text(
@@ -1266,18 +1317,18 @@ private fun SpecialKeysBar(
 
         if (showExtraKeys) {
             val extra = listOf(
-                "home" to "Home",
-                "end" to "End",
-                "delete" to "Del",
-                "copy" to "Copy",
-                "paste" to "Paste",
+                Triple("home", stringResource(R.string.remote_key_home), stringResource(R.string.remote_key_home)),
+                Triple("end", stringResource(R.string.remote_key_end), stringResource(R.string.remote_key_end)),
+                Triple("delete", stringResource(R.string.remote_key_del), stringResource(R.string.remote_key_del_desc)),
+                Triple("copy", stringResource(R.string.remote_key_copy), stringResource(R.string.remote_key_copy)),
+                Triple("paste", stringResource(R.string.remote_key_paste), stringResource(R.string.remote_key_paste)),
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                for ((key, label) in extra) {
+                for ((key, label, a11yLabel) in extra) {
                     val isShortcut = key == "copy" || key == "paste"
                     Surface(
                         shape = MaterialTheme.shapes.small,
@@ -1287,7 +1338,11 @@ private fun SpecialKeysBar(
                         modifier = Modifier
                             .weight(1f)
                             .height(36.dp)
-                            .clickable { onKey(key, if (isShortcut) emptyList() else null) },
+                            .semantics(mergeDescendants = true) {
+                                role = Role.Button
+                                contentDescription = a11yLabel
+                            }
+                            .clickable(role = Role.Button) { onKey(key, if (isShortcut) emptyList() else null) },
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 2.dp)) {
                             Text(
@@ -1450,6 +1505,10 @@ private fun PresentationView(
 
         // Hold for laser pointer pad (supports both gyroscope tilt and finger drag)
         val primaryColor = MaterialTheme.colorScheme.primary
+        val laserDesc = stringResource(
+            if (laserHeld) R.string.remote_laser_active else R.string.remote_laser_hold,
+            pcName,
+        )
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
             color = if (laserHeld) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -1461,6 +1520,7 @@ private fun PresentationView(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
+                .semantics { contentDescription = laserDesc }
                 .pointerInput(pcId) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)

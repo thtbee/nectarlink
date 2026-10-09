@@ -25,11 +25,11 @@ Item {
 
     function size(bytes) {
         if (bytes < 1024) return qsTr("%1 B").arg(Math.round(bytes))
-        const units = ["KB", "MB", "GB", "TB"]
+        const units = [qsTr("%1 KB"), qsTr("%1 MB"), qsTr("%1 GB"), qsTr("%1 TB")]
         let value = bytes / 1024
         let unit = 0
         while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit++ }
-        return (value < 10 ? value.toFixed(1) : Math.round(value)) + " " + units[unit]
+        return units[unit].arg(value < 10 ? value.toFixed(1) : Math.round(value))
     }
 
     function detail() {
@@ -42,8 +42,9 @@ Item {
             return item.incoming ? qsTr("Paused; continues when %1 is back").arg(item.deviceName)
                                  : qsTr("Waiting for %1").arg(item.deviceName)
         case "running":
-            return qsTr("%1 of %2").arg(size(done)).arg(size(total))
-                   + (rate > 0 ? " · " + qsTr("%1/s").arg(size(rate)) : "")
+            return rate > 0
+                ? qsTr("%1 of %2 · %3/s").arg(size(done)).arg(size(total)).arg(size(rate))
+                : qsTr("%1 of %2").arg(size(done)).arg(size(total))
         case "done":
             return item.incoming ? qsTr("From %1 · %2").arg(item.deviceName).arg(size(total))
                                  : qsTr("Sent to %1 · %2").arg(item.deviceName).arg(size(total))
@@ -97,7 +98,7 @@ Item {
                     width: parent.width * Math.max(0, Math.min(1, item.progress))
                     color: Theme.primary
                     opacity: item.status === "waiting" ? 0.45 : 1
-                    Behavior on width { NumberAnimation { duration: Theme.reduceMotion ? 0 : 180 } }
+                    Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.reduceMotion ? 0 : 180 } }
                 }
             }
             Txt {

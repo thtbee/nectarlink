@@ -28,5 +28,7 @@ pub mod ffi {
         /// Records the active QML engine so `trim_memory_caches` can run GC and
         /// clear component caches.
         fn register_qml_app_engine(engine: Pin<&mut QQmlApplicationEngine>);
+        /// Starts a native OS drag-and-drop operation for a local file or text.
+        fn start_external_drag(file_path: &str, text_fallback: &str) -> bool;
     }
 }

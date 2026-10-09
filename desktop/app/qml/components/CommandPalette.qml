@@ -41,6 +41,12 @@ Item {
         Qt.callLater(() => AppController.noteCommandPaletteShown())
     }
 
+    Shortcut {
+        sequence: "Esc"
+        enabled: palette.visible
+        onActivated: AppController.closeCommandPalette()
+    }
+
     Rectangle {
         id: scrim
         anchors.fill: parent
@@ -156,27 +162,49 @@ Item {
                     color: Theme.surfaceContainerHighest
                     border.width: 1
                     border.color: Theme.outlineVariant
+                    activeFocusOnTab: true
+
+                    function activate() {
+                        if (searchInput.text.length > 0) {
+                            searchInput.text = ""
+                            searchInput.forceActiveFocus()
+                        } else {
+                            AppController.closeCommandPalette()
+                        }
+                    }
+
+                    Accessible.role: Accessible.Button
+                    Accessible.name: searchInput.text.length > 0 ? qsTr("Clear search") : qsTr("Close command palette")
+                    Accessible.onPressAction: escBadge.activate()
+
+                    Keys.onPressed: (event) => {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                            escBadge.activate()
+                            event.accepted = true
+                        }
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.margins: -3
+                        radius: parent.radius + 3
+                        color: "transparent"
+                        border.width: 2
+                        border.color: Theme.primary
+                        visible: Theme.focusVisible(escBadge)
+                    }
 
                     Txt {
                         id: escLabel
                         anchors.centerIn: parent
-                        text: searchInput.text.length > 0 ? qsTr("Clear") : "Esc"
+                        text: searchInput.text.length > 0 ? qsTr("Clear") : qsTr("Esc")
                         role: "caption"
                         size: 11
                         muted: true
                     }
 
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
-                    TapHandler {
-                        onTapped: {
-                            if (searchInput.text.length > 0) {
-                                searchInput.text = ""
-                                searchInput.forceActiveFocus()
-                            } else {
-                                AppController.closeCommandPalette()
-                            }
-                        }
-                    }
+                    TapHandler { onTapped: escBadge.activate() }
                 }
             }
 
@@ -212,6 +240,13 @@ Item {
                             : rowHover.hovered
                               ? Theme.surfaceContainerHighest
                               : "transparent"
+
+                        Accessible.role: Accessible.ListItem
+                        Accessible.name: (modelData.title || "") + (modelData.subtitle ? ", " + modelData.subtitle : "")
+                        Accessible.onPressAction: {
+                            palette.selectedIndex = row.index
+                            AppController.runCommandPalette(row.modelData.id)
+                        }
 
                         HoverHandler {
                             id: rowHover

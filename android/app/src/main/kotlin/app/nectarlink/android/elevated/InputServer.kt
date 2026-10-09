@@ -28,6 +28,7 @@ import java.security.MessageDigest
  *   K keycode               a key, pressed and released
  *   T text                  typed text (what the keyboard map can type)
  *   C command...            a shell command of a fixed set (see `allowed`)
+ *   P 0 / P 1               physical screen power off (0) or normal (1)
  * Any of these after `@display ` goes to that display (an app window's).
  *
  * A connection whose first line (after the token) is
@@ -38,8 +39,13 @@ import java.security.MessageDigest
  * connection closes the window.
  */
 object InputServer {
+    private const val POWER_MODE_OFF = 0
+    private const val POWER_MODE_NORMAL = 2
+
     private val windows = java.util.Collections.synchronizedSet(LinkedHashSet<AppDisplay>())
     @Volatile private var serverSocket: ServerSocket? = null
+    @Volatile private var displayTurnedOff = false
+    @Volatile private var savedBrightness: Int? = null
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -84,7 +90,59 @@ object InputServer {
                     line = runCatching { reader.nextLine() }.getOrNull()
                 }
             } finally {
+                if (displayTurnedOff) runCatching { setDisplayPower(true) }
                 shutdown()
+            }
+        }
+    }
+
+    /** Turns the physical screen panel on or off while keeping the display pipeline alive for capture. */
+    @android.annotation.SuppressLint("PrivateApi", "DiscouragedPrivateApi", "BlockedPrivateApi")
+    private fun setDisplayPower(on: Boolean) {
+        if (!on) {
+            displayTurnedOff = true
+            if (savedBrightness == null) {
+                savedBrightness = runCatching {
+                    val proc = Runtime.getRuntime().exec(arrayOf("settings", "get", "system", "screen_brightness"))
+                    val out = proc.inputStream.bufferedReader().use { it.readText().trim().toIntOrNull() }
+                    proc.waitFor()
+                    out
+                }.getOrNull()
+            }
+        } else {
+            displayTurnedOff = false
+        }
+        runCatching {
+            val sc = Class.forName("android.view.SurfaceControl")
+            val token = runCatching {
+                sc.getMethod("getInternalDisplayToken").invoke(null) as? android.os.IBinder
+            }.getOrNull() ?: runCatching {
+                val dc = runCatching {
+                    dalvik.system.PathClassLoader("/system/framework/services.jar", null)
+                        .loadClass("com.android.server.display.DisplayControl")
+                }.getOrElse { Class.forName("com.android.server.display.DisplayControl") }
+                val ids = dc.getMethod("getPhysicalDisplayIds").invoke(null) as? LongArray
+                if (ids != null && ids.isNotEmpty()) {
+                    dc.getMethod("getPhysicalDisplayToken", Long::class.javaPrimitiveType)
+                        .invoke(null, ids[0]) as? android.os.IBinder
+                } else {
+                    null
+                }
+            }.getOrNull() ?: return@runCatching
+            sc.getMethod("setDisplayPowerMode", android.os.IBinder::class.java, Int::class.javaPrimitiveType)
+                .invoke(null, token, if (on) POWER_MODE_NORMAL else POWER_MODE_OFF)
+        }
+        if (!on) {
+            runCatching {
+                Runtime.getRuntime().exec(arrayOf("settings", "put", "system", "screen_brightness", "0")).waitFor()
+            }
+        } else if (on) {
+            val saved = savedBrightness
+            if (saved != null) {
+                savedBrightness = null
+                runCatching {
+                    Runtime.getRuntime().exec(arrayOf("settings", "put", "system", "screen_brightness", saved.toString())).waitFor()
+                }
             }
         }
     }
@@ -189,6 +247,7 @@ object InputServer {
                 "C" -> if (allowedCommand(rest) && display < 0) {
                     Runtime.getRuntime().exec(rest.split(' ').toTypedArray()).waitFor()
                 }
+                "P" -> if (display < 0) setDisplayPower(rest.trim() != "0")
             }
         }
 

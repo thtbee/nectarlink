@@ -60,6 +60,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.nectarlink.android.R
@@ -76,6 +80,7 @@ import app.nectarlink.android.files.transferTitle
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
+import app.nectarlink.android.ui.theme.LocalReducedMotion
 import app.nectarlink.android.update.AppUpdater
 import app.nectarlink.android.update.UpdateCard
 import android.app.DownloadManager
@@ -145,6 +150,7 @@ fun HomeScreen(
     onClearTimeline: () -> Unit = {},
     onResendTimelineEntry: (entry: TimelineEntry) -> Unit = {},
     onSetPcAudio: (pcId: String, volume: Int?, muted: Boolean?) -> Unit = { _, _, _ -> },
+    onStopKeyboardFromPc: (pcId: String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showClipboardHistory by remember { mutableStateOf(false) }
@@ -162,13 +168,16 @@ fun HomeScreen(
                     modifier = Modifier.weight(1f),
                 )
                 // Reconnects and syncs with the PCs; spins once to say so.
+                val reducedMotion = LocalReducedMotion.current
                 val spin = remember { androidx.compose.animation.core.Animatable(0f) }
                 val scope = rememberCoroutineScope()
                 IconButton(onClick = {
                     onRefresh()
-                    scope.launch {
-                        spin.snapTo(0f)
-                        spin.animateTo(360f, androidx.compose.animation.core.tween(700))
+                    if (!reducedMotion) {
+                        scope.launch {
+                            spin.snapTo(0f)
+                            spin.animateTo(360f, androidx.compose.animation.core.tween(700))
+                        }
                     }
                 }) {
                     Icon(
@@ -184,6 +193,12 @@ fun HomeScreen(
         }
         state.ringingFrom?.let { from ->
             item { RingingBanner(from, onStopRinging) }
+        }
+        state.keyboardFromPc.forEach { pcId ->
+            item(key = "keyboard_$pcId") {
+                val pcName = state.nameOf(pcId) ?: stringResource(R.string.your_pc)
+                KeyboardBanner(pcName, onStop = { onStopKeyboardFromPc(pcId) })
+            }
         }
         state.webcamRequest?.let { req ->
             item {
@@ -418,6 +433,22 @@ private fun RingingBanner(from: String, onStop: () -> Unit) {
                 modifier = Modifier.weight(1f),
             )
             FilledTonalButton(onClick = onStop) { Text(stringResource(R.string.action_stop_ringing)) }
+        }
+    }
+}
+
+@Composable
+private fun KeyboardBanner(from: String, onStop: () -> Unit) {
+    Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.secondaryContainer) {
+        Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.keyboard_from_pc_banner, from),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(12.dp))
+            Button(onClick = onStop) { Text(stringResource(R.string.keyboard_stop)) }
         }
     }
 }
@@ -698,7 +729,11 @@ private fun PcCard(
             }
             if (!device.online && device.wakeState == WakeState.Waking) {
                 Spacer(Modifier.height(14.dp))
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                if (LocalReducedMotion.current) {
+                    LinearProgressIndicator(progress = { 0.5f }, modifier = Modifier.fillMaxWidth())
+                } else {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
             } else if (!device.online && device.wakeState == WakeState.TimedOut) {
                 Spacer(Modifier.height(16.dp))
                 Surface(
@@ -734,6 +769,7 @@ private fun PcAudioCardSection(
     var showOutputs by remember { mutableStateOf(false) }
     val shownVolume = draggingVolume?.roundToInt() ?: deckState.volume.toInt()
     val defaultOutput = deckState.outputDevices.firstOrNull { it.isDefault } ?: deckState.outputDevices.firstOrNull()
+    val volumeLabel = stringResource(R.string.pc_audio_volume)
 
     Surface(
         shape = MaterialTheme.shapes.large,
@@ -758,7 +794,7 @@ private fun PcAudioCardSection(
                         contentDescription = stringResource(
                             if (deckState.muted) R.string.pc_audio_unmute else R.string.pc_audio_mute,
                         ),
-                        tint = ink.copy(alpha = if (deckState.muted) 0.55f else 0.9f),
+                        tint = ink.copy(alpha = if (deckState.muted) 0.85f else 0.9f),
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -775,7 +811,10 @@ private fun PcAudioCardSection(
                         activeTrackColor = ink,
                         inactiveTrackColor = ink.copy(alpha = 0.22f),
                     ),
-                    modifier = Modifier.weight(1f).height(32.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(32.dp)
+                        .semantics { contentDescription = volumeLabel },
                 )
                 Text(
                     text = if (deckState.muted) {
@@ -790,7 +829,7 @@ private fun PcAudioCardSection(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showOutputs = true }
+                        .clickable(role = Role.Button) { showOutputs = true }
                         .padding(start = 38.dp, end = 4.dp, bottom = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -798,7 +837,7 @@ private fun PcAudioCardSection(
                     Text(
                         text = defaultOutput.name,
                         style = MaterialTheme.typography.labelSmall,
-                        color = ink.copy(alpha = 0.68f),
+                        color = ink.copy(alpha = 0.85f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
@@ -808,7 +847,7 @@ private fun PcAudioCardSection(
                         Text(
                             text = "${deckState.outputDevices.size}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = ink.copy(alpha = 0.55f),
+                            color = ink.copy(alpha = 0.85f),
                         )
                     }
                 }
@@ -902,7 +941,7 @@ private fun ClipboardHistoryCard(
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+        modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen),
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp)) {
             Text(stringResource(R.string.clipboard_history_title), style = MaterialTheme.typography.titleMedium)
@@ -957,12 +996,15 @@ private fun ClipboardHistoryDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (entries.isNotEmpty()) {
+                    val searchLabel = stringResource(R.string.clipboard_history_search)
                     OutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
-                        placeholder = { Text(stringResource(R.string.clipboard_history_search)) },
+                        placeholder = { Text(searchLabel) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = searchLabel },
                     )
                 }
                 when {
@@ -1027,14 +1069,10 @@ private fun ClipboardHistoryRow(
     } else {
         DateUtils.getRelativeTimeSpanString(entry.timestamp * 1000L, now, DateUtils.MINUTE_IN_MILLIS).toString()
     }
-    val header = buildString {
-        append(direction)
-        append(" · ")
-        append(whenText)
-        if (entry.pinned) {
-            append(" · ")
-            append(stringResource(R.string.clipboard_history_pinned))
-        }
+    val header = if (entry.pinned) {
+        stringResource(R.string.clipboard_history_meta_pinned, direction, whenText)
+    } else {
+        stringResource(R.string.clipboard_history_meta, direction, whenText)
     }
     Surface(
         shape = MaterialTheme.shapes.large,
@@ -1235,19 +1273,26 @@ private fun TransferRow(
     onAccept: (String) -> Unit,
     onCancel: (String) -> Unit,
 ) {
+    val context = LocalContext.current
     val incoming = transfer.direction == TransferDirection.INCOMING
     val status = transfer.status
-    val title = transferTitle(LocalContext.current.resources, transfer)
+    val title = transferTitle(context.resources, transfer)
     val peerName = pc.ifEmpty { stringResource(R.string.localsend_nearby_device) }
     val detail = when (status) {
         is TransferStatus.Requested ->
-            stringResource(R.string.transfer_requested_from, peerName) +
-                " · " + Formatter.formatShortFileSize(LocalContext.current, transfer.total.toLong())
+            stringResource(
+                R.string.transfer_requested_from_size,
+                peerName,
+                Formatter.formatShortFileSize(context, transfer.total.toLong()),
+            )
         is TransferStatus.Waiting -> stringResource(R.string.transfer_waiting, peerName)
         is TransferStatus.Running ->
-            stringResource(if (incoming) R.string.transfer_receiving else R.string.transfer_sending, peerName) +
-                " · " + Formatter.formatShortFileSize(LocalContext.current, transfer.done.toLong()) +
-                " / " + Formatter.formatShortFileSize(LocalContext.current, transfer.total.toLong())
+            stringResource(
+                if (incoming) R.string.transfer_receiving_progress else R.string.transfer_sending_progress,
+                peerName,
+                Formatter.formatShortFileSize(context, transfer.done.toLong()),
+                Formatter.formatShortFileSize(context, transfer.total.toLong()),
+            )
         is TransferStatus.Done ->
             if (incoming) stringResource(R.string.transfer_received_from, peerName) else stringResource(R.string.transfer_sent_to, peerName)
         is TransferStatus.Cancelled -> stringResource(R.string.transfer_cancelled)
@@ -1264,7 +1309,12 @@ private fun TransferRow(
                 Text(title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (status is TransferStatus.Running || status is TransferStatus.Waiting) {
                     Spacer(Modifier.height(6.dp))
-                    val progress = if (transfer.total == 0uL) 1f else (transfer.done.toDouble() / transfer.total.toDouble()).toFloat()
+                    val reducedMotion = LocalReducedMotion.current
+                    val progress = if (transfer.total == 0uL) {
+                        if (reducedMotion) 0.5f else 1f
+                    } else {
+                        (transfer.done.toDouble() / transfer.total.toDouble()).toFloat()
+                    }
                     LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
                 }
                 Spacer(Modifier.height(4.dp))
@@ -1326,7 +1376,7 @@ private fun TimelineCard(
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+        modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen),
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -1345,7 +1395,7 @@ private fun TimelineCard(
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                "${latest.title} · $direction",
+                stringResource(R.string.timeline_latest_summary, latest.title, direction),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
@@ -1410,12 +1460,15 @@ private fun TimelineDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val searchLabel = stringResource(R.string.timeline_search)
                 OutlinedTextField(
                     value = search,
                     onValueChange = { search = it },
-                    placeholder = { Text(stringResource(R.string.timeline_search)) },
+                    placeholder = { Text(searchLabel) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = searchLabel },
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),

@@ -141,7 +141,7 @@ Item {
     Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
     transform: Translate {
         y: page.active || Theme.reduceMotion ? 0 : 12
-        Behavior on y { SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
+        Behavior on y { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
     }
 
     Shortcut {
@@ -722,7 +722,7 @@ Item {
                                 border.width: Theme.focusVisible(padKey) ? 2 : (Theme.graphite ? 1 : 0)
                                 border.color: Theme.focusVisible(padKey) ? Theme.primary : Theme.outlineVariant
                                 scale: padTap.pressed ? Theme.pressScale : 1
-                                Behavior on scale { SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
+                                Behavior on scale { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
 
                                 function tapDigit(ch) {
                                     dialInput.text = dialInput.text + ch

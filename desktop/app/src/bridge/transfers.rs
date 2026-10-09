@@ -102,6 +102,11 @@ pub mod qobject {
         /// Sends files (as `file:` URLs, from a picker or a drop) to a device.
         #[qinvokable]
         fn send(self: &TransferList, device: &QString, urls: &QStringList);
+        /// Hands off a document (as `file:` URLs) to a device and asks the
+        /// receiver to open it with its default app once it arrives.
+        #[qinvokable]
+        #[cxx_name = "sendHandoff"]
+        fn send_handoff(self: &TransferList, device: &QString, urls: &QStringList);
         #[qinvokable]
         fn accept(self: &TransferList, id: &QString);
         #[qinvokable]
@@ -296,6 +301,17 @@ impl qobject::TransferList {
         transfers::send(device, paths);
     }
 
+    pub fn send_handoff(&self, device: &QString, urls: &QStringList) {
+        let Some(device) = super::parse_device(device) else { return };
+        let paths: Vec<PathBuf> = QList::<QString>::from(urls)
+            .iter()
+            .filter_map(|url| QUrl::from(url).to_local_file().map(|path| String::from(&path)))
+            .filter(|path| !path.is_empty())
+            .map(PathBuf::from)
+            .collect();
+        transfers::send_handoff(device, paths);
+    }
+
     pub fn accept(&self, id: &QString) {
         transfers::accept(&String::from(id));
     }
@@ -349,6 +365,7 @@ mod tests {
                     state: TransferState::Done { saved: vec![PathBuf::from(r"C:\Downloads\a.jpg")] },
                     recording: false,
                     markers: Vec::new(),
+                    open_on_arrival: false,
                 },
                 rate: 0.0,
                 sampled: Instant::now(),

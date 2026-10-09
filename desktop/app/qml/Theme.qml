@@ -124,10 +124,13 @@ QtObject {
     readonly property int gutter: layout.gutter
     function space(step) { return Tokens.data.spacing.scale[step] }
 
-    // Focus rings show for keyboard focus only, not after a click (the
-    // web's :focus-visible).
+    // Focus rings show for keyboard focus only, not after a click (TapHandler
+    // doesn't take activeFocus on click; activeFocus on a control comes from Tab).
     function focusVisible(item) {
-        return item.activeFocus && (item.focusReason === Qt.TabFocusReason || item.focusReason === Qt.BacktabFocusReason)
+        return item !== null && item !== undefined && item.activeFocus
+            && (item.focusReason === undefined
+                || item.focusReason === Qt.TabFocusReason
+                || item.focusReason === Qt.BacktabFocusReason)
     }
 
     // ---- Motion ----

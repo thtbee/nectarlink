@@ -91,7 +91,7 @@ object TaskNotifications {
         open: PendingIntent,
         groupKey: String,
     ): Notification {
-        val title = task.title.trim().ifEmpty { "Task" }
+        val title = task.title.trim().ifEmpty { context.getString(R.string.task_default_label) }
         val body = context.getString(R.string.task_running_on, from)
         val now = System.currentTimeMillis()
         val elapsedMs = task.elapsedMs.toLong().coerceAtLeast(0L)
@@ -111,7 +111,7 @@ object TaskNotifications {
             .setCategory(Notification.CATEGORY_PROGRESS)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
             runCatching { builder.setRequestPromotedOngoing(true) }
-            builder.setShortCriticalText(shortChipText(title))
+            builder.setShortCriticalText(shortChipText(title, context))
         }
         return builder.build()
     }
@@ -123,8 +123,8 @@ object TaskNotifications {
         open: PendingIntent,
         groupKey: String,
     ): Notification {
-        val title = completionTitle(task.title, task.exitCode)
-        val body = completionBody(from, task.elapsedMs.toLong().coerceAtLeast(0L))
+        val title = completionTitle(task.title, task.exitCode, context)
+        val body = completionBody(from, task.elapsedMs.toLong().coerceAtLeast(0L), context)
         return Notification.Builder(context, CHANNEL_DONE)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
@@ -141,34 +141,40 @@ object TaskNotifications {
             .build()
     }
 
-    internal fun completionTitle(rawTitle: String, exitCode: Int?): String {
-        val base = rawTitle.trim().ifEmpty { "Task" }
+    internal fun completionTitle(rawTitle: String, exitCode: Int?, context: Context? = null): String {
+        val base = rawTitle.trim().ifEmpty {
+            context?.getString(R.string.task_default_label) ?: "Task"
+        }
         return if (exitCode == null || exitCode == 0) {
-            "$base finished"
+            context?.getString(R.string.task_finished_title, base) ?: "$base finished"
         } else {
-            "$base failed (exit $exitCode)"
+            context?.getString(R.string.task_failed_title, base, exitCode) ?: "$base failed (exit $exitCode)"
         }
     }
 
-    internal fun completionBody(from: String, elapsedMs: Long): String {
-        val took = formatTook(elapsedMs)
-        return "$took · $from"
+    internal fun completionBody(from: String, elapsedMs: Long, context: Context? = null): String {
+        val took = formatTook(elapsedMs, context)
+        return context?.getString(R.string.task_took_from, took, from) ?: "$took · $from"
     }
 
-    internal fun formatTook(elapsedMs: Long): String {
+    internal fun formatTook(elapsedMs: Long, context: Context? = null): String {
         val totalSecs = (elapsedMs.coerceAtLeast(0L) + 500L) / 1000L
         val hours = totalSecs / 3600L
         val mins = (totalSecs % 3600L) / 60L
         val secs = totalSecs % 60L
         return when {
-            hours > 0L -> "Took ${hours}h %02dm".format(java.util.Locale.US, mins)
-            mins > 0L -> "Took ${mins}m %02ds".format(java.util.Locale.US, secs)
-            else -> "Took ${secs}s"
+            hours > 0L -> context?.getString(R.string.task_took_hm, hours, mins)
+                ?: "Took ${hours}h %02dm".format(java.util.Locale.US, mins)
+            mins > 0L -> context?.getString(R.string.task_took_ms, mins, secs)
+                ?: "Took ${mins}m %02ds".format(java.util.Locale.US, secs)
+            else -> context?.getString(R.string.task_took_s, secs) ?: "Took ${secs}s"
         }
     }
 
-    internal fun shortChipText(title: String): String {
-        val trimmed = title.trim().ifEmpty { "Running" }
+    internal fun shortChipText(title: String, context: Context? = null): String {
+        val trimmed = title.trim().ifEmpty {
+            context?.getString(R.string.task_running_short) ?: "Running"
+        }
         return if (trimmed.length <= 7) trimmed else trimmed.take(6).trimEnd() + "…"
     }
 }

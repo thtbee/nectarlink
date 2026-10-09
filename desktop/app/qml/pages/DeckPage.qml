@@ -17,19 +17,19 @@ Item {
     Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
     transform: Translate {
         y: page.active || Theme.reduceMotion ? 0 : 12
-        Behavior on y { SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
+        Behavior on y { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
     }
 
     readonly property var pagesList: {
         try {
             const parsed = JSON.parse(DeckController.pagesJson)
-            return Array.isArray(parsed) && parsed.length > 0 ? parsed : [{ id: "main", name: "Main", tiles: [] }]
+            return Array.isArray(parsed) && parsed.length > 0 ? parsed : [{ id: "main", name: qsTr("Main"), tiles: [] }]
         } catch (e) {
-            return [{ id: "main", name: "Main", tiles: [] }]
+            return [{ id: "main", name: qsTr("Main"), tiles: [] }]
         }
     }
     property int currentPageIndex: 0
-    readonly property var currentPage: pagesList[Math.min(currentPageIndex, Math.max(0, pagesList.length - 1))] || { id: "main", name: "Main", tiles: [] }
+    readonly property var currentPage: pagesList[Math.min(currentPageIndex, Math.max(0, pagesList.length - 1))] || { id: "main", name: qsTr("Main"), tiles: [] }
     readonly property var currentTiles: currentPage.tiles || []
     property int draggedTileIndex: -1
 
@@ -298,10 +298,10 @@ Item {
                         delegate: Chip {
                             required property var modelData
                             required property int index
+                            interactive: true
                             selected: index === page.currentPageIndex
                             text: "%1 (%2)".arg(modelData.name).arg((modelData.tiles || []).length)
-                            HoverHandler { cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: page.currentPageIndex = index }
+                            onClicked: page.currentPageIndex = index
                         }
                     }
 
@@ -385,13 +385,13 @@ Item {
                             color: Theme.graphite
                                 ? (tileHover.hovered ? Theme.surfaceContainer : "transparent")
                                 : (tileHover.hovered ? Theme.surfaceContainerHigh : Theme.tileColor)
-                            border.width: isBeingDragged || tileSlot.activeFocus ? 2 : (Theme.graphite ? 1 : 0)
-                            border.color: isBeingDragged || tileSlot.activeFocus
+                            border.width: isBeingDragged || Theme.focusVisible(tileSlot) ? 2 : (Theme.graphite ? 1 : 0)
+                            border.color: isBeingDragged || Theme.focusVisible(tileSlot)
                                 ? Theme.primary
                                 : (tileSlot.highlighted ? Theme.surfaceContent : Theme.outlineVariant)
-                            scale: isBeingDragged ? 0.97 : 1.0
-                            Behavior on scale { NumberAnimation { duration: Theme.fadeFast } }
-                            Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
+                            scale: isBeingDragged ? Theme.pressScale : 1.0
+                            Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast } }
+                            Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.fadeFast } }
 
                             // Top row: Icon badge + live status pill + quick test button
                             Item {
@@ -445,11 +445,20 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     width: 28; height: 28
                                     radius: 14
+                                    activeFocusOnTab: true
                                     color: testHover.hovered ? Theme.surfaceContainerHighest : "transparent"
-                                    opacity: tileHover.hovered || testHover.hovered ? 1 : 0.55
+                                    border.width: Theme.focusVisible(testBtn) ? 2 : 0
+                                    border.color: Theme.primary
+                                    opacity: tileHover.hovered || testHover.hovered || testBtn.activeFocus ? 1 : 0.55
                                     Accessible.role: Accessible.Button
                                     Accessible.name: qsTr("Test %1").arg(tileSlot.modelData.label)
                                     Accessible.onPressAction: DeckController.testTile(tileSlot.modelData.id)
+                                    Keys.onPressed: (event) => {
+                                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                            DeckController.testTile(tileSlot.modelData.id)
+                                            event.accepted = true
+                                        }
+                                    }
 
                                     Icon {
                                         anchors.centerIn: parent
@@ -550,8 +559,8 @@ Item {
                     height: 112
                     radius: Theme.radiusMd
                     color: addHover.hovered ? Theme.surfaceContainerHigh : "transparent"
-                    border.width: addTileBtn.activeFocus ? 2 : 1
-                    border.color: addTileBtn.activeFocus ? Theme.primary : Theme.outlineVariant
+                    border.width: Theme.focusVisible(addTileBtn) ? 2 : 1
+                    border.color: Theme.focusVisible(addTileBtn) ? Theme.primary : Theme.outlineVariant
                     id: addTileBtn
                     activeFocusOnTab: true
                     Accessible.role: Accessible.Button
@@ -697,10 +706,10 @@ Item {
                         model: page.actionChoices
                         delegate: Chip {
                             required property var modelData
+                            interactive: true
                             selected: editorSheet.actionKind === modelData.id
                             text: modelData.label
-                            HoverHandler { cursorShape: Qt.PointingHandCursor }
-                            TapHandler { onTapped: editorSheet.selectKind(modelData.id) }
+                            onClicked: editorSheet.selectKind(modelData.id)
                         }
                     }
                 }
@@ -721,28 +730,28 @@ Item {
                     visible: editorSheet.actionKind === "shortcut"
                     spacing: 8
                     Chip {
+                        interactive: true
                         selected: editorSheet.modCtrl
-                        text: "Ctrl"
-                        HoverHandler { cursorShape: Qt.PointingHandCursor }
-                        TapHandler { onTapped: editorSheet.modCtrl = !editorSheet.modCtrl }
+                        text: qsTr("Ctrl")
+                        onClicked: editorSheet.modCtrl = !editorSheet.modCtrl
                     }
                     Chip {
+                        interactive: true
                         selected: editorSheet.modAlt
-                        text: "Alt"
-                        HoverHandler { cursorShape: Qt.PointingHandCursor }
-                        TapHandler { onTapped: editorSheet.modAlt = !editorSheet.modAlt }
+                        text: qsTr("Alt")
+                        onClicked: editorSheet.modAlt = !editorSheet.modAlt
                     }
                     Chip {
+                        interactive: true
                         selected: editorSheet.modShift
-                        text: "Shift"
-                        HoverHandler { cursorShape: Qt.PointingHandCursor }
-                        TapHandler { onTapped: editorSheet.modShift = !editorSheet.modShift }
+                        text: qsTr("Shift")
+                        onClicked: editorSheet.modShift = !editorSheet.modShift
                     }
                     Chip {
+                        interactive: true
                         selected: editorSheet.modWin
-                        text: "Win"
-                        HoverHandler { cursorShape: Qt.PointingHandCursor }
-                        TapHandler { onTapped: editorSheet.modWin = !editorSheet.modWin }
+                        text: qsTr("Win")
+                        onClicked: editorSheet.modWin = !editorSheet.modWin
                     }
                 }
 
@@ -783,6 +792,7 @@ Item {
                             font.pixelSize: 13
                             text: editorSheet.paramValue
                             onTextEdited: editorSheet.paramValue = text
+                            Accessible.name: qsTr("Action parameter")
                         }
                     }
 
@@ -837,6 +847,7 @@ Item {
                             editorSheet.tileLabel = text
                             editorSheet.labelCustomized = true
                         }
+                        Accessible.name: qsTr("Tile label")
                     }
                 }
             }
@@ -852,13 +863,25 @@ Item {
                     Repeater {
                         model: page.iconChoices
                         delegate: Rectangle {
+                            id: iconCell
                             required property string modelData
                             readonly property bool chosen: editorSheet.tileIcon === modelData
                             width: 27; height: 27
                             radius: Theme.radiusSm
+                            activeFocusOnTab: true
                             color: chosen ? Theme.secondaryContainer : Theme.surfaceContainerHigh
-                            border.width: chosen ? 2 : 0
+                            border.width: chosen || Theme.focusVisible(iconCell) ? 2 : 0
                             border.color: Theme.primary
+                            Accessible.role: Accessible.RadioButton
+                            Accessible.name: modelData
+                            Accessible.checked: chosen
+                            Accessible.onPressAction: editorSheet.tileIcon = modelData
+                            Keys.onPressed: (event) => {
+                                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                    editorSheet.tileIcon = modelData
+                                    event.accepted = true
+                                }
+                            }
                             Icon {
                                 anchors.centerIn: parent
                                 width: 15; height: 15
@@ -956,6 +979,18 @@ Item {
         property bool isNew: true
         cardWidth: 380
 
+        function submitPageName() {
+            const trimmed = pageNameInput.text.trim()
+            if (trimmed.length === 0) return
+            if (pageNameSheet.isNew) {
+                DeckController.addPage(trimmed)
+                page.currentPageIndex = page.pagesList.length - 1
+            } else {
+                DeckController.renamePage(page.currentPage.id, trimmed)
+            }
+            pageNameSheet.close()
+        }
+
         Column {
             width: parent.width
             spacing: 14
@@ -985,6 +1020,9 @@ Item {
                     selectedTextColor: Theme.primaryContainerContent
                     font.family: Theme.fontUi
                     font.pixelSize: 14
+                    Accessible.name: qsTr("Page name")
+                    Keys.onReturnPressed: pageNameSheet.submitPageName()
+                    Keys.onEnterPressed: pageNameSheet.submitPageName()
                 }
             }
 
@@ -995,17 +1033,7 @@ Item {
                 Button {
                     variant: "fill"
                     text: pageNameSheet.isNew ? qsTr("Create") : qsTr("Save")
-                    onClicked: {
-                        const trimmed = pageNameInput.text.trim()
-                        if (trimmed.length === 0) return
-                        if (pageNameSheet.isNew) {
-                            DeckController.addPage(trimmed)
-                            page.currentPageIndex = page.pagesList.length - 1
-                        } else {
-                            DeckController.renamePage(page.currentPage.id, trimmed)
-                        }
-                        pageNameSheet.close()
-                    }
+                    onClicked: pageNameSheet.submitPageName()
                 }
             }
         }

@@ -8,6 +8,8 @@ Rectangle {
     property string text
     property string iconPath
     property bool selected: false
+    property bool interactive: false
+    signal clicked()
 
     implicitHeight: 30
     implicitWidth: row.implicitWidth + 24
@@ -16,7 +18,28 @@ Rectangle {
                           : (selected ? Theme.secondaryContainer : Theme.surfaceContainerHigh)
     border.width: Theme.graphite ? 1 : 0
     border.color: selected ? Theme.surfaceContent : Theme.outlineVariant
-    Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
+    Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.fadeFast } }
+
+    activeFocusOnTab: interactive && visible && enabled
+    Accessible.role: interactive ? Accessible.Button : Accessible.StaticText
+    Accessible.name: chip.text
+    Accessible.onPressAction: if (chip.interactive) chip.clicked()
+    Keys.onPressed: (event) => {
+        if (chip.interactive && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
+            chip.clicked()
+            event.accepted = true
+        }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -3
+        radius: chip.radius + 3
+        color: "transparent"
+        border.width: 2
+        border.color: Theme.primary
+        visible: chip.interactive && Theme.focusVisible(chip)
+    }
 
     Row {
         id: row
@@ -38,4 +61,7 @@ Rectangle {
                                   : (chip.selected ? Theme.secondaryContainerContent : Theme.surfaceContent)
         }
     }
+
+    HoverHandler { enabled: chip.interactive; cursorShape: Qt.PointingHandCursor }
+    TapHandler { enabled: chip.interactive; onTapped: chip.clicked() }
 }

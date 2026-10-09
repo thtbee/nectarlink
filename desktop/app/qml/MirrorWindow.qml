@@ -158,10 +158,27 @@ Window {
             }
         }
 
-        // The keyboard: text goes into the phone's text field; a few keys
-        // have phone meanings.
+        // The keyboard: shortcuts for screenshots and recording work even
+        // without remote control; text and navigation keys go to the phone.
         Keys.onPressed: (event) => {
-            if (!win.canControl || win.phase !== "showing")
+            if (win.phase !== "showing")
+                return
+            if ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_C) {
+                Mirror.screenshotClipboard(win.mirrorKey)
+                event.accepted = true
+                return
+            }
+            if ((event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_S) {
+                Mirror.screenshotFile(win.mirrorKey)
+                event.accepted = true
+                return
+            }
+            if ((event.modifiers & Qt.ControlModifier) && !(event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_R) {
+                Mirror.toggleRecording(win.mirrorKey)
+                event.accepted = true
+                return
+            }
+            if (!win.canControl)
                 return
             const keys = {}
             keys[Qt.Key_Escape] = "back"
@@ -190,30 +207,148 @@ Window {
         }
     }
 
-    // The phone's sound on this PC: on or off, shown while the mouse is
-    // over the window (and while it's off).
+    property int recordingElapsedSecs: 0
+    function updateRecordingElapsed() {
+        if (win.info.recording === true && (win.info.recordingStartedMs || 0) > 0) {
+            win.recordingElapsedSecs = Math.max(0, Math.floor((Date.now() - win.info.recordingStartedMs) / 1000))
+        } else {
+            win.recordingElapsedSecs = 0
+        }
+    }
+    onInfoChanged: updateRecordingElapsed()
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: win.info.recording === true
+        onTriggered: win.updateRecordingElapsed()
+    }
+
+    function formatDuration(secs) {
+        const m = Math.floor(secs / 60)
+        const s = secs % 60
+        return (m < 10 ? "0" + m : "" + m) + ":" + (s < 10 ? "0" + s : "" + s)
+    }
+
+    // Floating mirror toolbar: screenshots, MP4 recording, stay awake, screen off, and audio mute.
     HoverHandler { id: hovering }
     Rectangle {
+        id: toolbar
         anchors.top: parent.top
         anchors.right: parent.right
         anchors.margins: 12
-        width: 40; height: 40
+        width: toolbarRow.implicitWidth + 8
+        height: 40
         radius: 20
-        color: Qt.rgba(0, 0, 0, 0.6)
-        visible: win.info.sound === true && win.phase === "showing"
-        opacity: hovering.hovered || Mirror.muted ? 1 : 0
-        Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
-        IconButton {
+        color: Qt.rgba(0, 0, 0, 0.68)
+        visible: win.phase === "showing" && video.frameSize.width > 0
+        readonly property bool toolbarHasFocus: copyShotBtn.activeFocus || saveShotBtn.activeFocus
+            || recordBtn.activeFocus || stayAwakeBtn.activeFocus || screenOffBtn.activeFocus || soundBtn.activeFocus
+        opacity: hovering.hovered || toolbarHover.hovered || Mirror.muted
+            || win.info.recording === true || win.info.screenOff === true
+            || win.info.stayAwake === true || toolbarHasFocus ? 1 : 0
+        Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast } }
+
+        HoverHandler { id: toolbarHover }
+
+        Row {
+            id: toolbarRow
             anchors.centerIn: parent
-            iconPath: Mirror.muted ? Icons.soundOff : Icons.speaker
-            iconColor: "white"
-            label: Mirror.muted ? qsTr("Play the phone's sound here") : qsTr("Mute the phone's sound here")
-            onClicked: Mirror.toggleSound()
+            spacing: 2
+
+            IconButton {
+                id: copyShotBtn
+                iconPath: Icons.copy
+                iconColor: "white"
+                label: qsTr("Copy screenshot (Ctrl+Shift+C)")
+                onClicked: Mirror.screenshotClipboard(win.mirrorKey)
+            }
+            IconButton {
+                id: saveShotBtn
+                iconPath: Icons.camera
+                iconColor: "white"
+                label: qsTr("Save screenshot (Ctrl+S)")
+                onClicked: Mirror.screenshotFile(win.mirrorKey)
+            }
+            IconButton {
+                id: recordBtn
+                iconPath: win.info.recording === true ? Icons.stopSquare : Icons.record
+                iconColor: win.info.recording === true ? Theme.error : "white"
+                label: win.info.recording === true ? qsTr("Stop recording (Ctrl+R)") : qsTr("Record video (Ctrl+R)")
+                onClicked: Mirror.toggleRecording(win.mirrorKey)
+            }
+            Txt {
+                visible: win.info.recording === true
+                anchors.verticalCenter: parent.verticalCenter
+                leftPadding: 2
+                rightPadding: 6
+                role: "code"
+                size: 12
+                color: "white"
+                text: win.formatDuration(win.recordingElapsedSecs)
+            }
+            IconButton {
+                id: stayAwakeBtn
+                visible: !win.info.app
+                iconPath: Icons.coffee
+                iconColor: win.info.stayAwake === true ? Theme.primary : "white"
+                label: win.info.stayAwake === true
+                    ? qsTr("Phone stays awake while mirroring (turn off)")
+                    : qsTr("Keep phone awake while mirroring")
+                onClicked: Mirror.setStayAwake(win.mirrorKey, !(win.info.stayAwake === true))
+            }
+            IconButton {
+                id: screenOffBtn
+                visible: !win.info.app && win.info.canScreenOff === true
+                iconPath: Icons.screenOff
+                iconColor: win.info.screenOff === true ? Theme.primary : "white"
+                label: win.info.screenOff === true
+                    ? qsTr("Turn phone screen back on")
+                    : qsTr("Turn phone screen off while mirroring")
+                onClicked: Mirror.setScreenOff(win.mirrorKey, !(win.info.screenOff === true))
+            }
+            IconButton {
+                id: soundBtn
+                visible: win.info.sound === true
+                iconPath: Mirror.muted ? Icons.soundOff : Icons.speaker
+                iconColor: "white"
+                label: Mirror.muted ? qsTr("Play the phone's sound here") : qsTr("Mute the phone's sound here")
+                onClicked: Mirror.toggleSound()
+            }
+        }
+    }
+
+    // Brief confirmation pill for screenshots, recordings, and power toggles.
+    Rectangle {
+        id: noticePill
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: hintBanner.visible ? hintBanner.top : parent.bottom
+        anchors.bottomMargin: hintBanner.visible ? 8 : 16
+        width: Math.min(parent.width - 24, noticeTxt.implicitWidth + 24)
+        height: noticeTxt.implicitHeight + 12
+        radius: height / 2
+        color: Qt.rgba(0, 0, 0, 0.78)
+        visible: opacity > 0
+        opacity: (win.info.notice || "").length > 0 ? 1 : 0
+        Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast } }
+        Txt {
+            id: noticeTxt
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors. leftMargin: 12
+            anchors.rightMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight
+            role: "caption"
+            color: "white"
+            text: win.info.notice || ""
         }
     }
 
     // How to control it, until the phone allows it.
     Rectangle {
+        id: hintBanner
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom

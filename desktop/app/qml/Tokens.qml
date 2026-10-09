@@ -270,7 +270,7 @@ QtObject {
               "error": "#BA1A1A",
               "onError": "#FFFFFF",
               "success": "{primary}",
-              "warning": "#9A6700"
+              "warning": "#7D5200"
             }
           }
         },
@@ -329,7 +329,7 @@ QtObject {
               "surfaceContainerHigh": "#EFEBE2",
               "surfaceContainerHighest": "#E8E3D7",
               "surfaceContainerLow": "#F1EDE4",
-              "warning": "#8A6A1F"
+              "warning": "#705516"
             },
             "slate": {
               "buttonShadow": "3px 3px 0 #26272A",

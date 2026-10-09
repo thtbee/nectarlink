@@ -36,28 +36,53 @@ object LinkNotifications {
         )
     }
 
-    /** Shows a link from a PC; false if notifications are off for the app. */
+    /** Shows a link, video with timestamp, or map location from a PC; false if notifications are off. */
     fun show(context: Context, pcName: String, url: String): Boolean {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
             return false
         }
-        val uri = url.toUri()
+        val handoff = app.nectarlink.core.extractHandoffLink(url)
+        val viewIntent = if (url.startsWith("geo:", ignoreCase = true)) {
+            val geoIntent = Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (geoIntent.resolveActivity(context.packageManager) != null) {
+                geoIntent
+            } else {
+                val webFallback = app.nectarlink.core.geoToMapsHttps(url) ?: url
+                Intent(Intent.ACTION_VIEW, webFallback.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        } else {
+            Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        // When Nectarlink is in the foreground, Android allows opening the target right away.
+        runCatching { context.startActivity(viewIntent) }
+
         val open = PendingIntent.getActivity(
             context,
             url.hashCode(),
-            Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            viewIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        // "example.com/path", without the scheme, reads better.
-        val shown = url.substringAfter("://").removeSuffix("/")
+        val from = pcName.ifEmpty { context.getString(R.string.your_pc) }
+        val title = when (handoff?.kind) {
+            app.nectarlink.core.HandoffKind.MAP_LOCATION -> context.getString(R.string.handoff_map_from, from)
+            app.nectarlink.core.HandoffKind.VIDEO_LINK -> context.getString(R.string.handoff_video_from, from)
+            else -> context.getString(R.string.link_from, from)
+        }
+        val shown = handoff?.label ?: url.substringAfter("://").removeSuffix("/")
+        val actionLabel = when (handoff?.kind) {
+            app.nectarlink.core.HandoffKind.MAP_LOCATION -> context.getString(R.string.clip_action_maps)
+            app.nectarlink.core.HandoffKind.VIDEO_LINK -> context.getString(R.string.handoff_action_continue_video)
+            else -> context.getString(R.string.clip_action_open)
+        }
         val notification = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.link_from, pcName.ifEmpty { context.getString(R.string.your_pc) }))
+            .setContentTitle(title)
             .setContentText(shown)
             .setStyle(NotificationCompat.BigTextStyle().bigText(shown))
             .setContentIntent(open)
+            .addAction(0, actionLabel, open)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

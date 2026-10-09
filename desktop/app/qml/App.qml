@@ -21,20 +21,37 @@ QtObject {
         active: AppController.laserActive
         source: active ? "qrc:/qt/qml/app/nectarlink/qml/LaserOverlay.qml" : ""
     }
-    // A window for each phone screen or app being mirrored. The model
-    // keeps a row per window (by key), so a window lives as long as its
-    // mirroring, whatever else changes.
-    readonly property ListModel mirrorWindows: ListModel {}
-    readonly property Instantiator mirrorInstantiator: Instantiator {
-        model: app.mirrorWindows
-        delegate: Loader {
-            required property string key
-            Component.onCompleted: setSource("qrc:/qt/qml/app/nectarlink/qml/MirrorWindow.qml", { mirrorKey: key })
+    property var shelfWindow: null
+    readonly property Component shelfWindowComponent: Component {
+        ShelfWindow {}
+    }
+
+    function syncShelfWindow() {
+        if (AppController.shelfOpen) {
+            trayTrimTimer.stop()
+            if (!app.shelfWindow) {
+                const w = shelfWindowComponent.createObject(app)
+                if (w) {
+                    app.shelfWindow = w
+                } else {
+                    console.warn("ShelfWindow createObject failed:", shelfWindowComponent.errorString())
+                }
+            }
+        } else {
+            if (app.shelfWindow) {
+                app.shelfWindow.destroy()
+                app.shelfWindow = null
+            }
+            if (!app.mainWindow && Object.keys(app.openMirrors).length === 0)
+                trayTrimTimer.restart()
         }
     }
-    readonly property Connections mirrorSync: Connections {
-        target: Mirror
-        function onWindowsChanged() { app.syncMirrorWindows() }
+
+    // A window for each phone screen or app being mirrored. Keyed by
+    // `mirrorKey`, so a window lives as long as its mirroring.
+    property var openMirrors: ({})
+    readonly property Component mirrorWindowComponent: Component {
+        MirrorWindow {}
     }
 
     function syncMirrorWindows() {
@@ -42,18 +59,25 @@ QtObject {
         try {
             keys = JSON.parse(Mirror.windows).map(w => w.key)
         } catch (e) {}
-        for (let i = mirrorWindows.count - 1; i >= 0; i--) {
-            if (keys.indexOf(mirrorWindows.get(i).key) < 0)
-                mirrorWindows.remove(i)
+        const current = app.openMirrors
+        for (const k of Object.keys(current)) {
+            if (keys.indexOf(k) < 0) {
+                if (current[k])
+                    current[k].destroy()
+                delete current[k]
+            }
         }
         for (const key of keys) {
-            let known = false
-            for (let i = 0; i < mirrorWindows.count; i++)
-                known = known || mirrorWindows.get(i).key === key
-            if (!known)
-                mirrorWindows.append({ key: key })
+            if (!current[key]) {
+                const w = mirrorWindowComponent.createObject(app, { mirrorKey: key })
+                if (w) {
+                    current[key] = w
+                } else {
+                    console.warn("MirrorWindow createObject failed:", mirrorWindowComponent.errorString())
+                }
+            }
         }
-        if (!app.mainWindow && mirrorWindows.count === 0)
+        if (!app.mainWindow && Object.keys(current).length === 0 && !AppController.shelfOpen)
             trayTrimTimer.restart()
     }
     readonly property bool startMinimized: Qt.application.arguments.indexOf("--minimized") >= 0
@@ -62,7 +86,7 @@ QtObject {
     readonly property Timer trayTrimTimer: Timer {
         interval: 350
         onTriggered: {
-            if (!app.mainWindow && app.mirrorWindows.count === 0) {
+            if (!app.mainWindow && Object.keys(app.openMirrors).length === 0 && !AppController.shelfOpen) {
                 gc()
                 AppController.trimWorkingSet()
             }
@@ -93,6 +117,10 @@ QtObject {
     }
 
     Component.onCompleted: {
+        Mirror.windowsChanged.connect(app.syncMirrorWindows)
+        AppController.shelfOpenChanged.connect(app.syncShelfWindow)
+        app.syncMirrorWindows()
+        app.syncShelfWindow()
         if (!startMinimized)
             showMain()
         else
@@ -124,6 +152,9 @@ QtObject {
                 if (app.mainWindow)
                     app.mainWindow.flash()
             }
+        }
+        function onShelfOpenChanged() {
+            app.syncShelfWindow()
         }
     }
 }

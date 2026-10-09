@@ -116,6 +116,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         },
         appWindows = AppWindows(this.context, scope, open = { pc -> mirrorOpen(pc) }, nameOf = { pc -> _state.value.nameOf(pc).orEmpty() }),
         nameOf = { pc -> _state.value.nameOf(pc).orEmpty() },
+        onKeyboardFromPc = { pc, on -> setKeyboardFromPc(pc, on) },
     )
     private val storage = PhoneStorage(this.context) { path ->
         notificationOps.trySend { it.storageChanged(path) }
@@ -282,6 +283,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 )
             }
             refreshDataRetention()
+            app.nectarlink.android.clipboard.DirectShareTargets.sync(context, _state.value.devices)
+            app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context, _state.value)
+            scope.launch {
+                _state.collect { s ->
+                    app.nectarlink.android.clipboard.DirectShareTargets.sync(context, s.devices)
+                    app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context, s)
+                }
+            }
             if (devices.isNotEmpty()) ConnectionService.start(context)
             scope.launch(Dispatchers.Main) {
                 battery.start()
@@ -450,13 +459,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 if (_state.value.devices.isEmpty()) ConnectionService.stop(context)
             }
             is Event.Paired -> ConnectionService.start(context)
-            is Event.ClipboardReceived -> onClipboardReceived(event.id)
-            is Event.ClipboardHistoryChanged -> {
+            is Event.ClipboardReceived -> scope.launch(Dispatchers.IO) { onClipboardReceived(event.id) }
+            is Event.ClipboardHistoryChanged -> scope.launch(Dispatchers.IO) {
                 refreshClipboardHistory()
                 refreshTimeline()
             }
-            is Event.TimelineChanged -> refreshTimeline()
-            is Event.LocalSendChanged -> syncLocalSendState()
+            is Event.TimelineChanged -> scope.launch(Dispatchers.IO) { refreshTimeline() }
+            is Event.LocalSendChanged -> scope.launch(Dispatchers.IO) { syncLocalSendState() }
             else -> {}
         }
     }
@@ -683,7 +692,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * The files are opened right away: Android's permission to read a
      * shared item ends with the activity that received it.
      */
-    fun sendFiles(pcId: String, uris: List<Uri>) = send(pcId, OutgoingFiles.open(context, uris))
+    fun sendFiles(pcId: String, uris: List<Uri>, handoff: Boolean = false) =
+        send(pcId, OutgoingFiles.open(context, uris), handoff)
 
     /** Sends a folder the user picked, with everything in it. */
     fun sendFolder(pcId: String, tree: Uri) {
@@ -701,7 +711,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
-    private fun send(pcId: String, files: List<FileToSend>) {
+    private fun send(pcId: String, files: List<FileToSend>, handoff: Boolean = false) {
         if (files.isEmpty()) {
             _messages.tryEmit(context.getString(R.string.transfer_nothing))
             return
@@ -710,7 +720,19 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             startJob?.join()
             val node = node ?: return@launch
             try {
-                node.sendFiles(pcId, files)
+                val singleFileName = if (files.size == 1) {
+                    when (val f = files[0]) {
+                        is FileToSend.Fd -> f.name.takeIf { f.folder == null }
+                        is FileToSend.Path -> f.name.takeIf { f.folder == null }
+                    }
+                } else {
+                    null
+                }
+                if (handoff && singleFileName != null && app.nectarlink.core.isSafeHandoffDocument(singleFileName)) {
+                    node.sendHandoffFiles(pcId, files)
+                } else {
+                    node.sendFiles(pcId, files)
+                }
             } catch (e: NectarlinkException) {
                 val name = _state.value.nameOf(pcId).orEmpty()
                 _messages.tryEmit(
@@ -768,28 +790,41 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     // ---- Clipboard ----
 
     /**
-     * Sends text to every connected PC; returns what to tell the user.
-     * Waits for the core when the app was just launched to send.
+     * Sends text to every connected PC (or to `pcId` when chosen via Direct Share);
+     * returns what to tell the user. Waits for the core when the app was just launched.
      */
-    suspend fun sendClipboard(text: String): String =
-        sendToPcs(image = false) { node, pc -> node.sendClipboard(pc, text) }
+    suspend fun sendClipboard(text: String, pcId: String? = null): String =
+        sendToPcs(image = false, pcId = pcId) { node, pc -> node.sendClipboard(pc, text) }
 
-    /** Sends a copied image to the connected PCs; returns what to tell the user. */
-    suspend fun sendClipboardImage(uri: Uri): String {
+    /** Sends a copied image to the connected PCs (or to `pcId`); returns what to tell the user. */
+    suspend fun sendClipboardImage(uri: Uri, pcId: String? = null): String {
         startJob?.join()
-        if (_state.value.devices.none { it.online }) return context.getString(R.string.clip_no_pc)
+        val targets = if (pcId != null) {
+            _state.value.devices.filter { it.id == pcId && it.online }
+        } else {
+            _state.value.devices.filter { it.online }
+        }
+        if (targets.isEmpty()) return context.getString(R.string.clip_no_pc)
         val image = when (val read = withContext(Dispatchers.IO) { PhoneClipboard.readImage(context, uri) }) {
             is PhoneClipboard.ImageResult.Ready -> read.image
             PhoneClipboard.ImageResult.TooLarge -> return context.getString(R.string.clip_image_too_large)
             PhoneClipboard.ImageResult.Unreadable -> return context.getString(R.string.clip_image_unreadable)
         }
-        return sendToPcs(image = true) { node, pc -> node.sendClipboardImage(pc, image.mime, image.bytes) }
+        return sendToPcs(image = true, pcId = pcId) { node, pc -> node.sendClipboardImage(pc, image.mime, image.bytes) }
     }
 
-    private suspend fun sendToPcs(image: Boolean, send: suspend (NectarlinkNode, String) -> Unit): String {
+    private suspend fun sendToPcs(
+        image: Boolean,
+        pcId: String? = null,
+        send: suspend (NectarlinkNode, String) -> Unit,
+    ): String {
         startJob?.join()
         val node = node ?: return context.getString(R.string.clip_no_pc)
-        val pcs = _state.value.devices.filter { it.online }
+        val pcs = if (pcId != null) {
+            _state.value.devices.filter { it.id == pcId && it.online }
+        } else {
+            _state.value.devices.filter { it.online }
+        }
         if (pcs.isEmpty()) return context.getString(R.string.clip_no_pc)
         val sentTo = mutableListOf<String>()
         var failure: String? = null
@@ -1173,9 +1208,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     /** Locks a PC, or puts it to sleep; says how it went. */
     fun pcPower(id: String, sleep: Boolean) {
-        val node = node ?: return
-        val name = _state.value.nameOf(id).orEmpty()
         scope.launch {
+            startJob?.join()
+            val node = node ?: return@launch
+            val name = _state.value.nameOf(id).orEmpty()
             val message = try {
                 node.pcPower(id, sleep)
                 context.getString(if (sleep) R.string.pc_sleeping else R.string.pc_locked, name)
@@ -1191,10 +1227,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * up to ~60 s for it to connect before showing troubleshooting tips.
      */
     fun wake(id: String) {
-        val node = node ?: return
         wakeTimers.remove(id)?.cancel()
         _state.update { it.withWakeState(id, WakeState.Waking) }
         val timer = scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val node = node ?: return@launch
             repeat(15) {
                 delay(4_000)
                 val dev = _state.value.device(id)
@@ -1212,6 +1249,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
         wakeTimers[id] = timer
         scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val node = node ?: return@launch
             try {
                 node.wake(id)
                 node.refresh()
@@ -1228,13 +1267,24 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
-    /** Opens a link on a PC; returns what to tell the user. */
+    /** Opens a link, video with timestamp, or map location on a PC; returns what to tell the user. */
     suspend fun openLinkOnPc(id: String, url: String): String {
         startJob?.join()
         val node = node ?: return context.getString(R.string.clip_no_pc)
         val name = _state.value.nameOf(id).orEmpty()
+        val handoff = app.nectarlink.core.extractHandoffLink(url)
+        val finalUrl = if (
+            handoff != null &&
+            handoff.kind == app.nectarlink.core.HandoffKind.VIDEO_LINK &&
+            handoff.timestampSecs == null
+        ) {
+            val activeSecs = phoneMedia.activePositionSeconds()
+            if (activeSecs != null) app.nectarlink.core.withVideoTimestamp(handoff.url, activeSecs) else handoff.url
+        } else {
+            handoff?.url ?: url
+        }
         return try {
-            node.openLink(id, url)
+            node.openLink(id, finalUrl)
             context.getString(R.string.link_opened_on, name)
         } catch (e: NectarlinkException) {
             describe(e)
@@ -1408,10 +1458,27 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         _state.update { it.copy(ringingFrom = null) }
     }
 
+    /** Records whether `pcId` is currently typing on this phone without mirroring. */
+    fun setKeyboardFromPc(pcId: String, on: Boolean) {
+        _state.update {
+            it.copy(keyboardFromPc = if (on) it.keyboardFromPc + pcId else it.keyboardFromPc - pcId)
+        }
+    }
+
+    /** Stops remote keyboard typing from `pcId` and notifies the PC. */
+    fun stopKeyboardFromPc(pcId: String) {
+        _state.update { it.copy(keyboardFromPc = it.keyboardFromPc - pcId) }
+        val currentNode = node ?: return
+        scope.launch(Dispatchers.IO) {
+            runCatching { currentNode.mirrorStop(pcId, 0u) }
+        }
+    }
+
     /** Runs a command on the node, turning errors into a message. */
     private fun command(block: suspend (NectarlinkNode) -> Unit) {
-        val node = node ?: return
         scope.launch {
+            startJob?.join()
+            val node = node ?: return@launch
             try {
                 block(node)
             } catch (e: NectarlinkException) {
@@ -1421,11 +1488,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     }
 
     private fun describe(e: NectarlinkException): String = when (e) {
-        is NectarlinkException.Offline -> "The PC isn't connected right now."
-        is NectarlinkException.NotPaired -> "That PC isn't paired anymore."
-        is NectarlinkException.Timeout -> "The PC didn't answer in time."
-        is NectarlinkException.Unsupported -> "The PC's app doesn't support that yet."
-        else -> "Something went wrong."
+        is NectarlinkException.Offline -> context.getString(R.string.error_not_connected)
+        is NectarlinkException.NotPaired -> context.getString(R.string.error_not_paired)
+        is NectarlinkException.Timeout -> context.getString(R.string.error_timed_out)
+        is NectarlinkException.Unsupported -> context.getString(R.string.error_unsupported)
+        else -> context.getString(R.string.error_generic)
     }
 
     enum class RemoteAccess { Allowed, Denied, Offline, Unsupported }

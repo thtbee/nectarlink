@@ -31,12 +31,22 @@ class SendActivity : Activity() {
         super.onCreate(savedInstanceState)
         val intent = intent ?: return finish()
         when (intent.action) {
+            Intent.ACTION_VIEW -> {
+                val uri = intent.data
+                if (uri != null && uri.scheme?.lowercase() == "geo") {
+                    val geo = uri.toString()
+                    sendLink(geo, geo)
+                } else {
+                    finishWith(getString(R.string.clip_nothing_shared))
+                }
+            }
             Intent.ACTION_SEND -> {
                 val stream = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
                 val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+                val link = text?.let(::handoffUrl)
                 when {
-                    stream != null -> sendFiles(listOf(stream))
-                    !text.isNullOrBlank() && webLink(text) != null -> sendLink(webLink(text)!!, text)
+                    stream != null -> sendFiles(listOf(stream), handoff = true)
+                    !text.isNullOrBlank() && link != null -> sendLink(link, text)
                     !text.isNullOrBlank() -> send(text)
                     else -> finishWith(getString(R.string.clip_nothing_shared))
                 }
@@ -49,21 +59,40 @@ class SendActivity : Activity() {
         // The clipboard is read in onWindowFocusChanged.
     }
 
+    private fun targetPcId(): String? {
+        val explicit = intent?.getStringExtra(EXTRA_PC_ID)?.takeIf { it.isNotBlank() }
+        if (explicit != null) return explicit
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            val shortcutId = intent?.getStringExtra(Intent.EXTRA_SHORTCUT_ID)
+            DirectShareTargets.pcIdFromShortcutId(shortcutId)?.let { return it }
+        }
+        return null
+    }
+
     /** Files go to one PC: the connected one, or the one the user picks. */
-    private fun sendFiles(uris: List<Uri>) {
+    private fun sendFiles(uris: List<Uri>, handoff: Boolean = false) {
         sent = true
         val core = (application as NectarlinkApplication).core
+        val chosenPcId = targetPcId()
+        if (chosenPcId != null) {
+            val pc = core.state.value.device(chosenPcId)
+            if (pc != null && pc.online) {
+                core.sendFiles(pc.id, uris, handoff)
+                finishWith(getString(R.string.transfer_sending, pc.name))
+                return
+            }
+        }
         val pcs = core.state.value.devices.filter { it.online }
         when (pcs.size) {
             0 -> finishWith(getString(R.string.clip_no_pc))
             1 -> {
-                core.sendFiles(pcs[0].id, uris)
+                core.sendFiles(pcs[0].id, uris, handoff)
                 finishWith(getString(R.string.transfer_sending, pcs[0].name))
             }
             else -> AlertDialog.Builder(this)
                 .setTitle(R.string.transfer_pick_pc)
                 .setItems(pcs.map { it.name }.toTypedArray()) { _, which ->
-                    core.sendFiles(pcs[which].id, uris)
+                    core.sendFiles(pcs[which].id, uris, handoff)
                     finishWith(getString(R.string.transfer_sending, pcs[which].name))
                 }
                 .setOnCancelListener { finish() }
@@ -83,13 +112,25 @@ class SendActivity : Activity() {
     }
 
     /**
-     * A shared link opens on the PC (the one that takes links; the user
-     * picks when there are several). With no such PC, it goes to the
-     * clipboard like other text.
+     * A shared link, video with timestamp, or map location opens on the PC
+     * (the one that takes links; the user picks when there are several).
+     * With no such PC, it goes to the clipboard like other text.
      */
     private fun sendLink(url: String, text: String) {
         sent = true
         val core = (application as NectarlinkApplication).core
+        val chosenPcId = targetPcId()
+        if (chosenPcId != null) {
+            val pc = core.state.value.device(chosenPcId)
+            if (pc != null && pc.online) {
+                if (pc.has("device.links_to_pc")) {
+                    scope.launch { finishWith(core.openLinkOnPc(pc.id, url)) }
+                } else {
+                    send(text)
+                }
+                return
+            }
+        }
         val pcs = core.state.value.devices.filter { it.online && it.has("device.links_to_pc") }
         when (pcs.size) {
             0 -> send(text)
@@ -107,13 +148,15 @@ class SendActivity : Activity() {
     private fun send(text: String) {
         sent = true
         val core = (application as NectarlinkApplication).core
-        scope.launch { finishWith(core.sendClipboard(text)) }
+        val pcId = targetPcId()
+        scope.launch { finishWith(core.sendClipboard(text, pcId)) }
     }
 
     private fun sendImage(uri: Uri) {
         sent = true
         val core = (application as NectarlinkApplication).core
-        scope.launch { finishWith(core.sendClipboardImage(uri)) }
+        val pcId = targetPcId()
+        scope.launch { finishWith(core.sendClipboardImage(uri, pcId)) }
     }
 
     private fun finishWith(message: String) {
@@ -138,11 +181,28 @@ class SendActivity : Activity() {
             return link.takeIf { web && words.size <= 12 }
         }
 
-        const val ACTION_SEND_CLIPBOARD = "app.nectarlink.action.SEND_CLIPBOARD"
+        /**
+         * Extracts a Handoff URL (web link, YouTube/video URL with timestamp,
+         * `geo:` map URI, or street address converted to `geo:`) from shared text.
+         */
+        fun handoffUrl(text: String): String? {
+            app.nectarlink.core.extractHandoffLink(text)?.let { return it.url }
+            val suggestion = app.nectarlink.core.classifyClip(text)
+            if (suggestion?.kind == app.nectarlink.core.ClipKind.STREET_ADDRESS) {
+                return "geo:0,0?q=${Uri.encode(text.trim())}"
+            }
+            return webLink(text)
+        }
 
-        fun sendClipboardIntent(context: Context): Intent =
+        const val ACTION_SEND_CLIPBOARD = "app.nectarlink.action.SEND_CLIPBOARD"
+        const val EXTRA_PC_ID = "app.nectarlink.extra.PC_ID"
+
+        fun sendClipboardIntent(context: Context, pcId: String? = null): Intent =
             Intent(context, SendActivity::class.java)
                 .setAction(ACTION_SEND_CLIPBOARD)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                .apply {
+                    if (!pcId.isNullOrEmpty()) putExtra(EXTRA_PC_ID, pcId)
+                }
     }
 }

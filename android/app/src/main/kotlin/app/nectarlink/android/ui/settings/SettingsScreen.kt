@@ -44,7 +44,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -113,9 +116,10 @@ fun SettingsScreen(
         }
 
         Section(stringResource(R.string.settings_clipboard_title)) {
+            val suggestionsTitle = stringResource(R.string.settings_clipboard_suggestions)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                    Text(stringResource(R.string.settings_clipboard_suggestions), style = MaterialTheme.typography.titleSmall)
+                    Text(suggestionsTitle, style = MaterialTheme.typography.titleSmall)
                     Text(
                         stringResource(R.string.settings_clipboard_suggestions_hint),
                         style = MaterialTheme.typography.bodySmall,
@@ -125,14 +129,16 @@ fun SettingsScreen(
                 Switch(
                     checked = suggestClipboardActions,
                     onCheckedChange = onSetSuggestClipboardActions,
+                    modifier = Modifier.semantics { contentDescription = suggestionsTitle },
                 )
             }
         }
 
         Section(stringResource(R.string.settings_localsend_title)) {
+            val localsendTitle = stringResource(R.string.settings_localsend_title)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                    Text(stringResource(R.string.settings_localsend_title), style = MaterialTheme.typography.titleSmall)
+                    Text(localsendTitle, style = MaterialTheme.typography.titleSmall)
                     Text(
                         stringResource(R.string.settings_localsend_subtitle),
                         style = MaterialTheme.typography.bodySmall,
@@ -142,6 +148,7 @@ fun SettingsScreen(
                 Switch(
                     checked = state.localsendEnabled,
                     onCheckedChange = onToggleLocalSend,
+                    modifier = Modifier.semantics { contentDescription = localsendTitle },
                 )
             }
         }
@@ -159,9 +166,10 @@ fun SettingsScreen(
             SettingRowDivider()
 
             // 2. Clipboard history
+            val clipboardHistoryTitle = stringResource(R.string.data_clipboard_title)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                    Text(stringResource(R.string.data_clipboard_title), style = MaterialTheme.typography.titleSmall)
+                    Text(clipboardHistoryTitle, style = MaterialTheme.typography.titleSmall)
                     Text(
                         stringResource(R.string.data_clipboard_subtitle),
                         style = MaterialTheme.typography.bodySmall,
@@ -183,6 +191,7 @@ fun SettingsScreen(
                 Switch(
                     checked = state.clipboardHistoryEnabled,
                     onCheckedChange = onSetClipboardHistoryEnabled,
+                    modifier = Modifier.semantics { contentDescription = clipboardHistoryTitle },
                 )
             }
             if (state.clipboardHistory.isNotEmpty()) {
@@ -335,9 +344,10 @@ fun SettingsScreen(
         }
 
         Section(stringResource(R.string.settings_remote)) {
+            val sensitivityTitle = stringResource(R.string.settings_touchpad_sensitivity)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    stringResource(R.string.settings_touchpad_sensitivity),
+                    sensitivityTitle,
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.weight(1f),
                 )
@@ -351,6 +361,7 @@ fun SettingsScreen(
                 value = touchpadSensitivity,
                 onValueChange = onTouchpadSensitivity,
                 valueRange = 0.5f..2.5f,
+                modifier = Modifier.semantics { contentDescription = sensitivityTitle },
             )
         }
 
@@ -372,9 +383,10 @@ fun SettingsScreen(
             if (appearance.theme == "bloom") {
                 SettingRowDivider()
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val dynamicColorTitle = stringResource(R.string.settings_dynamic_color)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                            Text(stringResource(R.string.settings_dynamic_color), style = MaterialTheme.typography.titleSmall)
+                            Text(dynamicColorTitle, style = MaterialTheme.typography.titleSmall)
                             Text(
                                 stringResource(R.string.settings_dynamic_color_hint),
                                 style = MaterialTheme.typography.bodySmall,
@@ -384,27 +396,41 @@ fun SettingsScreen(
                         Switch(
                             checked = appearance.dynamicColor,
                             onCheckedChange = { on -> onAppearance { it.copy(dynamicColor = on) } },
+                            modifier = Modifier.semantics { contentDescription = dynamicColorTitle },
                         )
                     }
                 }
                 if (!appearance.dynamicColor || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Tokens.bloomSeeds.forEach { (name, seed) ->
-                            val selected = appearance.seed == name
+                            val isSelected = appearance.seed == name
+                            val seedLabel = stringResource(
+                                when (name) {
+                                    "honey" -> R.string.settings_seed_honey
+                                    "lavender" -> R.string.settings_seed_lavender
+                                    "ocean" -> R.string.settings_seed_ocean
+                                    "sage" -> R.string.settings_seed_sage
+                                    else -> R.string.settings_seed_honey
+                                },
+                            )
                             Surface(
                                 shape = CircleShape,
                                 color = seed.color,
                                 modifier = Modifier
                                     .size(38.dp)
                                     .then(
-                                        if (selected) {
+                                        if (isSelected) {
                                             Modifier.border(2.5.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
                                         } else {
                                             Modifier.border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                                         },
                                     )
                                     .clickable { onAppearance { it.copy(seed = name) } }
-                                    .semantics { contentDescription = name },
+                                    .semantics {
+                                        role = Role.RadioButton
+                                        selected = isSelected
+                                        contentDescription = seedLabel
+                                    },
                             ) {}
                         }
                     }
@@ -440,9 +466,10 @@ fun SettingsScreen(
                         }
                         OutlinedButton(onClick = { confirmUnpair = device }) { Text(stringResource(R.string.action_unpair)) }
                     }
+                    val storageToggleTitle = stringResource(R.string.storage_pc_toggle)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                            Text(stringResource(R.string.storage_pc_toggle), style = MaterialTheme.typography.bodyMedium)
+                            Text(storageToggleTitle, style = MaterialTheme.typography.bodyMedium)
                             Text(
                                 stringResource(R.string.storage_pc_toggle_hint),
                                 style = MaterialTheme.typography.bodySmall,
@@ -457,6 +484,7 @@ fun SettingsScreen(
                                     context.startActivity(PhoneStorage.allFilesAccessIntent(context))
                                 }
                             },
+                            modifier = Modifier.semantics { contentDescription = storageToggleTitle },
                         )
                     }
                 }

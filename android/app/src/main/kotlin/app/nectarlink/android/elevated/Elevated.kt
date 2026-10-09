@@ -71,6 +71,7 @@ object Elevated {
     private var socket: java.net.Socket? = null
     /** Where the helper listens, and the token it wants, while it runs. */
     @Volatile private var helper: Pair<Int, String>? = null
+    @Volatile private var screenOffRequested = false
 
     val running: Boolean get() = input != null
 
@@ -215,6 +216,7 @@ object Elevated {
         writer.flush()
         input = writer
         _state.value = State.Running
+        if (screenOffRequested) send(writer, "P 0")
         // Watches the helper: when its shell ends, Elevated stops.
         Thread {
             runCatching { output.lineSequence().forEach { line -> Log.d(TAG, "helper: $line") } }
@@ -249,6 +251,7 @@ object Elevated {
     suspend fun stop() = withContext(Dispatchers.IO) { lock.withLock { stopLocked() } }
 
     private fun stopLocked() {
+        screenOffRequested = false
         input = null
         helper = null
         runCatching { socket?.close() }
@@ -262,6 +265,7 @@ object Elevated {
 
     /** Forgets the pairing (the user turned Elevated off). */
     suspend fun forget() {
+        screenOffRequested = false
         stop()
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean(PAIRED, false) }
         runCatching { adb?.close() }
@@ -301,9 +305,16 @@ object Elevated {
             is MirrorInputEvent.Scroll -> "S ${event.x * w} ${event.y * h} ${event.dx} ${event.dy}"
             is MirrorInputEvent.Key -> keys[event.key]?.let { "K $it" }
                 ?: if (event.key == "notifications" && display == null) "C cmd statusbar expand-notifications" else return true
-            // One line per piece: no line breaks inside.
+            // One line per piece: no line breaks inside. Non-ASCII pieces are pasted via the clipboard.
             is MirrorInputEvent.Text -> return event.text.split(LINE_BREAK).withIndex().all { (i, piece) ->
-                (i == 0 || send(writer, "${to}K ${KeyEvent.KEYCODE_ENTER}")) && (piece.isEmpty() || send(writer, "${to}T $piece"))
+                (i == 0 || send(writer, "${to}K ${KeyEvent.KEYCODE_ENTER}")) && when {
+                    piece.isEmpty() -> true
+                    piece.any { it.code > 127 } -> {
+                        app.nectarlink.android.clipboard.PhoneClipboard.write(context, piece)
+                        send(writer, "${to}K ${KeyEvent.KEYCODE_PASTE}")
+                    }
+                    else -> send(writer, "${to}T $piece")
+                }
             }
         }
         return send(writer, line)
@@ -313,6 +324,13 @@ object Elevated {
     fun runCommand(command: String): Boolean {
         val writer = input ?: return false
         return send(writer, "C $command")
+    }
+
+    /** Turns the physical screen panel off or back on while mirroring. */
+    fun setScreenOff(off: Boolean): Boolean {
+        screenOffRequested = off
+        val writer = input ?: return false
+        return send(writer, "P ${if (off) 0 else 1}")
     }
 
     /**

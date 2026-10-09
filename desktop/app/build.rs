@@ -20,6 +20,7 @@ const QML: &[&str] = &[
     "qml/LaserOverlay.qml",
     "qml/MainWindow.qml",
     "qml/MirrorWindow.qml",
+    "qml/ShelfWindow.qml",
     "qml/components/AppsSheet.qml",
     "qml/components/Avatar.qml",
     "qml/components/Button.qml",

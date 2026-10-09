@@ -215,6 +215,16 @@ pub trait Platform: Send + Sync + 'static {
     ) {
     }
 
+    /// The PC changed `stay_awake` or `screen_off` while mirroring this phone's
+    /// screen (`session == 0`).
+    fn mirror_power_requested(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+        _stay_awake: bool,
+        _screen_off: bool,
+    ) {
+    }
+
     /// The apps a PC may open in windows of their own (launchable ones),
     /// with small PNG icons (a PC asked).
     fn phone_apps(&self) -> Result<Vec<crate::PhoneApp>, String> {

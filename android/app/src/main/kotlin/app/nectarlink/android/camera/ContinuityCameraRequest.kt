@@ -49,7 +49,7 @@ object ContinuityCameraRequests {
         context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
             NotificationChannel(
                 CHANNEL,
-                "Camera capture requests",
+                context.getString(R.string.channel_camera_requests),
                 NotificationManager.IMPORTANCE_HIGH,
             ),
         )
@@ -101,14 +101,14 @@ object ContinuityCameraRequests {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
             val title = if (cleanMode == "scan") {
-                "$fromName wants to scan a document"
+                context.getString(R.string.continuity_camera_request_scan_title, fromName)
             } else {
-                "$fromName wants to take a photo"
+                context.getString(R.string.continuity_camera_request_photo_title, fromName)
             }
             val text = if (cleanMode == "scan") {
-                "Tap to scan a document with your camera."
+                context.getString(R.string.continuity_camera_request_scan_text)
             } else {
-                "Tap to take a photo with your camera."
+                context.getString(R.string.continuity_camera_request_photo_text)
             }
             val notification = NotificationCompat.Builder(context, CHANNEL)
                 .setSmallIcon(R.drawable.ic_notification)

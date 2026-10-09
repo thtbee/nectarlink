@@ -109,7 +109,7 @@ Item {
     Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
     transform: Translate {
         y: page.active || Theme.reduceMotion ? 0 : 12
-        Behavior on y { SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
+        Behavior on y { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
     }
 
     function applyComposeTarget() {
@@ -363,8 +363,8 @@ Item {
                         required property var modelData
                         text: modelData.label
                         selected: Messages.appFilter === modelData.key
-                        HoverHandler { cursorShape: Qt.PointingHandCursor }
-                        TapHandler { onTapped: Messages.filterByApp(modelData.key) }
+                        interactive: true
+                        onClicked: Messages.filterByApp(modelData.key)
                     }
                 }
             }
@@ -609,12 +609,19 @@ Item {
                         required property var modelData
                         width: suggestionColumn.width
                         height: 52
+                        activeFocusOnTab: true
                         Accessible.role: Accessible.ListItem
                         Accessible.name: modelData.name + ", " + modelData.number
                         Accessible.onPressAction: choose()
                         function choose() {
                             toField.text = modelData.number
                             composer.focusText()
+                        }
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                srow.choose()
+                                event.accepted = true
+                            }
                         }
                         Rectangle {
                             anchors.fill: parent
@@ -624,6 +631,8 @@ Item {
                             color: sHover.hovered
                                 ? Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, 0.08)
                                 : "transparent"
+                            border.width: Theme.focusVisible(srow) ? 2 : 0
+                            border.color: Theme.primary
                         }
                         Item {
                             id: sFace
@@ -1188,11 +1197,22 @@ Item {
                 Repeater {
                     model: bubble.message.images
                     delegate: Item {
+                        id: picItem
                         required property string modelData
                         width: pictures.width
                         height: modelData.length > 0 && picture.status === Image.Ready
                             ? Math.min(320, width * picture.implicitImageHeight / Math.max(1, picture.implicitImageWidth))
                             : 140
+                        activeFocusOnTab: modelData.length > 0
+                        Accessible.role: Accessible.Button
+                        Accessible.name: qsTr("Open image attachment")
+                        Accessible.onPressAction: if (picItem.modelData.length > 0) Qt.openUrlExternally(picItem.modelData)
+                        Keys.onPressed: (event) => {
+                            if (picItem.modelData.length > 0 && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
+                                Qt.openUrlExternally(picItem.modelData)
+                                event.accepted = true
+                            }
+                        }
                         RoundedImage {
                             id: picture
                             anchors.fill: parent
@@ -1200,6 +1220,14 @@ Item {
                             source: parent.modelData
                             fillMode: Image.PreserveAspectCrop
                             sourceSize.width: 520
+                        }
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 18
+                            color: "transparent"
+                            border.width: 2
+                            border.color: Theme.primary
+                            visible: Theme.focusVisible(picItem)
                         }
                         Spinner { anchors.centerIn: parent; visible: parent.modelData.length === 0 }
                         TapHandler { onTapped: if (parent.modelData.length > 0) Qt.openUrlExternally(parent.modelData) }

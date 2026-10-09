@@ -147,6 +147,9 @@ enum Command {
         device: String,
         #[arg(required = true)]
         files: Vec<PathBuf>,
+        /// Ask the receiving device to open the file with its default app once it arrives.
+        #[arg(long)]
+        open: bool,
     },
     /// Send a voice recording with optional markers to a paired PC (use with
     /// --as-phone) and wait until it has arrived.
@@ -205,8 +208,14 @@ enum Command {
     },
     /// Wake a paired PC using its stored Wake-on-LAN addresses.
     Wake { device: String },
-    /// Open a web link on a paired device.
-    Open { device: String, url: String },
+    /// Open a web, video, or map (`geo:`) link on a paired device.
+    Open {
+        device: String,
+        url: String,
+        /// Attach or update a playback timestamp in seconds for a video link.
+        #[arg(long = "at-seconds")]
+        at_seconds: Option<u32>,
+    },
     /// Browse a paired phone's gallery (albums, photos, thumbnails, download),
     /// or with no arguments watch for new photos from paired phones until Ctrl+C.
     Photos {
@@ -2592,12 +2601,12 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             node.ring(id, !off).await.context("ring failed")?;
             println!("{}", if *off { "Stopped ringing." } else { "Ringing…" });
         }
-        Command::Send { device, files } => {
+        Command::Send { device, files, open } => {
             let (id, is_localsend) = resolve_send_target(node, device, cli.localsend_port).await?;
             if !is_localsend {
                 wait_until_online(node, id).await?;
             }
-            send_files(node, id, files).await?;
+            send_files(node, id, files, *open).await?;
         }
         Command::Record { device, duration, file, markers } => {
             if !cli.as_phone {
@@ -3097,6 +3106,8 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 audio: sound.is_some() && app.is_none(),
                 session,
                 app: app.clone(),
+                stay_awake: false,
+                screen_off: false,
             };
             node.mirror_start(id, options).await.context("the phone didn't ask its user")?;
             println!(
@@ -3196,8 +3207,40 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             if *apps {
                 SCREEN_APPS.store(true, std::sync::atomic::Ordering::Relaxed);
                 offers.push(nectarlink_core::MIRROR_VIRTUAL_DISPLAY.into());
+                offers.push("notify.mirror".into());
             }
             node.update_power(node_power(cli), offers).await;
+            if *apps {
+                if let Ok(paired) = node.paired_devices()
+                    && let Some(first) = paired.first()
+                {
+                    let _ =
+                        tokio::time::timeout(Duration::from_secs(3), wait_until_online(node, first.id)).await;
+                }
+                let now_ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |d| d.as_millis() as i64);
+                node.notification_posted(Notification {
+                    key: "cli|screen|chat".into(),
+                    app: "com.example.chat".into(),
+                    app_name: "Chat".into(),
+                    title: Some("Alice".into()),
+                    text: Some("Tap to open Chat in an app window".into()),
+                    sub: None,
+                    when: now_ms,
+                    actions: vec![NotificationAction {
+                        id: "read".into(),
+                        title: "Mark as read".into(),
+                        reply: false,
+                    }],
+                    silent: true,
+                    icon: Some(sample_icon(2)),
+                    image: None,
+                    live: None,
+                    conversation: None,
+                })
+                .await;
+            }
             println!("Sharing a {width}x{height} screen ({} frames) with PCs that ask.", units.len());
             let streamer = node.clone();
             let (width, height, fps) = (*width, *height, *fps);
@@ -3699,10 +3742,16 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 bcasts,
             );
         }
-        Command::Open { device, url } => {
+        Command::Open { device, url, at_seconds } => {
             let id = resolve(node, device)?;
             wait_until_online(node, id).await?;
-            node.open_link(id, url.clone()).await.context("the link didn't open")?;
+            let resolved =
+                nectarlink_core::extract_handoff_link(url).map(|h| h.url).unwrap_or_else(|| url.clone());
+            let final_url = match at_seconds {
+                Some(secs) => nectarlink_core::with_video_timestamp(&resolved, *secs),
+                None => resolved,
+            };
+            node.open_link(id, final_url).await.context("the link didn't open")?;
             println!("Opened.");
         }
         Command::Media { device, action, player, position } => {
@@ -3962,10 +4011,14 @@ async fn confirm_code(code: String) -> Result<bool> {
 }
 
 /// Sends files and shows progress until they've arrived.
-async fn send_files(node: &Node, device: DeviceId, paths: &[PathBuf]) -> Result<()> {
+async fn send_files(node: &Node, device: DeviceId, paths: &[PathBuf], open: bool) -> Result<()> {
     let mut events = node.events();
     let files = nectarlink_core::outgoing_paths(paths).context("can't read what to send")?;
-    let id = node.send_files(device, files).await.context("can't send")?;
+    let id = if open {
+        node.send_handoff_files(device, files).await.context("can't send")?
+    } else {
+        node.send_files(device, files).await.context("can't send")?
+    };
     wait_for_outgoing_transfer(&mut events, &id).await
 }
 

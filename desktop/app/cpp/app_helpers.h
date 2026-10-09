@@ -32,5 +32,9 @@ void trim_memory_caches();
 void register_qml_engine(QQmlEngine *engine);
 void register_qml_app_engine(QQmlApplicationEngine &engine);
 
+// Starts an OS-level drag-and-drop operation for a local file or text fallback
+// so items dragged out of the Shelf can be dropped into Explorer or any app.
+bool start_external_drag(rust::Str file_path, rust::Str text_fallback);
+
 
 

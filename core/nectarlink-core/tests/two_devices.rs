@@ -134,6 +134,9 @@ impl Platform for RecordingPlatform {
     ) {
         self.mirror_asks.lock().unwrap().push(format!("resize {session} {width}x{height}"));
     }
+    fn mirror_power_requested(&self, _peer: &nectarlink_core::DeviceId, stay_awake: bool, screen_off: bool) {
+        self.mirror_asks.lock().unwrap().push(format!("power awake={stay_awake} off={screen_off}"));
+    }
     fn mirror_input(
         &self,
         _peer: &nectarlink_core::DeviceId,
@@ -1578,6 +1581,8 @@ async fn the_phone_screen_streams_to_the_pc() {
         audio: true,
         session: 0,
         app: None,
+        stay_awake: false,
+        screen_off: false,
     };
     with_timeout("start", pc.node.mirror_start(phone_id, options)).await.unwrap();
     assert_eq!(*phone.platform.mirror_asks.lock().unwrap(), ["start 1920 with sound"]);
@@ -1629,6 +1634,7 @@ async fn the_phone_screen_streams_to_the_pc() {
     assert_eq!(screen.got.lock().unwrap()[3..], ["sound 48000 Hz x2", "sound 10000 1920"]);
 
     pc.node.mirror_keyframe(phone_id, 0).await;
+    pc.node.mirror_power(phone_id, true, true).await.unwrap();
     // The PC's mouse on the phone's screen; nonsense never leaves the PC.
     use nectarlink_core::{MirrorInput, TouchAction};
     pc.node
@@ -1663,7 +1669,8 @@ async fn the_phone_screen_streams_to_the_pc() {
     }
     assert!(sound.is_closed(), "and its sound stream");
     let asks = phone.platform.mirror_asks.lock().unwrap().clone();
-    for wanted in ["keyframe 0", "Touch(Down) on 0", "Key(back) on 0", "stop 0"] {
+    for wanted in ["keyframe 0", "power awake=true off=true", "Touch(Down) on 0", "Key(back) on 0", "stop 0"]
+    {
         assert!(asks.iter().any(|a| a == wanted), "{wanted}: {asks:?}");
     }
     let shown = pc.platform.mirror_asks.lock().unwrap().clone();
@@ -1684,6 +1691,8 @@ async fn phone_apps_open_in_windows_of_their_own() {
         audio: false,
         session,
         app: Some("com.example.chat".into()),
+        stay_awake: false,
+        screen_off: false,
     };
 
     // Not Elevated yet: no apps, no app windows.

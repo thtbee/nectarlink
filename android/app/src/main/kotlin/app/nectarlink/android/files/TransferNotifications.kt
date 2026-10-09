@@ -82,11 +82,23 @@ internal object TransferNotifications {
 
     /**
      * Files from a PC are saved: tap to open the first one, or the
-     * Downloads list when a folder came.
+     * Downloads list when a folder came. When `openOnArrival` is true for a
+     * single safe document, attempts to open it immediately with the default app.
      */
     fun received(context: Context, transfer: Transfer, files: List<ReceivedFiles.Published>, pcName: String) {
-        if (!allowed(context) || files.isEmpty()) return
+        if (files.isEmpty()) return
         val first = files[0]
+        val isHandoffDoc = transfer.openOnArrival &&
+            files.size == 1 &&
+            transfer.files.toInt() == 1 &&
+            app.nectarlink.core.isSafeHandoffDocument(first.name)
+        val directView = Intent(Intent.ACTION_VIEW)
+            .setDataAndType(first.uri, first.mime)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        if (isHandoffDoc) {
+            runCatching { context.startActivity(directView) }
+        }
+        if (!allowed(context)) return
         val open = if (transfer.files.toInt() == transfer.names.size) {
             Intent.createChooser(
                 Intent(Intent.ACTION_VIEW).setDataAndType(first.uri, first.mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
@@ -99,14 +111,22 @@ internal object TransferNotifications {
             context, idOf(transfer), open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        val notification = NotificationCompat.Builder(context, CHANNEL_RECEIVED)
+        val from = pcName.ifEmpty { context.getString(R.string.your_pc) }
+        val text = if (isHandoffDoc) {
+            context.getString(R.string.handoff_doc_received_from, from)
+        } else {
+            context.getString(R.string.transfer_received_from, from)
+        }
+        val builder = NotificationCompat.Builder(context, CHANNEL_RECEIVED)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title(context, transfer))
-            .setContentText(context.getString(R.string.transfer_received_from, pcName))
+            .setContentText(text)
             .setContentIntent(tap)
             .setAutoCancel(true)
-            .build()
-        post(context, idOf(transfer), notification)
+        if (isHandoffDoc) {
+            builder.addAction(0, context.getString(R.string.clip_action_open), tap)
+        }
+        post(context, idOf(transfer), builder.build())
     }
 
     private fun failed(context: Context, transfer: Transfer, pcName: String) {

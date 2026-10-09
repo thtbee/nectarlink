@@ -109,8 +109,8 @@
     <string name="mirror_sharing">Sharing your screen with %1$s</string>
     <string name="action_stop">Stop</string>
     <plurals name="app_windows_title">
-        <item quantity="one">An app is open in a window on a PC</item>
-        <item quantity="other">%d apps are open in windows on a PC</item>
+        <item quantity="one">%1$d app is open in a window on a PC</item>
+        <item quantity="other">%1$d apps are open in windows on a PC</item>
     </plurals>
     <string name="app_windows_text">Shown on %1$s. They run here, beside what\'s on your screen.</string>
     <string name="action_close_all">Close all</string>
@@ -251,6 +251,10 @@
     <string name="channel_ringing">Find my phone</string>
     <string name="notification_connected_to">Connected to %1$s</string>
     <string name="notification_connected_many">Connected to %1$d PCs</string>
+    <plurals name="notification_connected_pcs">
+        <item quantity="one">Connected to %1$d PC</item>
+        <item quantity="other">Connected to %1$d PCs</item>
+    </plurals>
     <string name="notification_waiting">Waiting for your PC</string>
     <string name="notification_not_paired">Not paired with a PC yet</string>
     <plurals name="transfer_files">
@@ -437,8 +441,8 @@
     <string name="data_clipboard_title">Clipboard history</string>
     <string name="data_clipboard_subtitle">Encrypted on device (passwords and OTPs excluded) · kept for 7 days, up to 50 clips / 128 MB</string>
     <plurals name="data_clipboard_count">
-        <item quantity="one">%d clip stored</item>
-        <item quantity="other">%d clips stored</item>
+        <item quantity="one">%1$d clip stored</item>
+        <item quantity="other">%1$d clips stored</item>
     </plurals>
     <string name="data_timeline_title">Timeline</string>
     <string name="data_timeline_subtitle">Files, clips, links, photos, recordings and sessions · up to 5,000 items</string>
@@ -464,5 +468,131 @@
     <string name="transfer_requested_from">%1$s wants to send files</string>
     <string name="action_accept">Accept</string>
     <string name="action_decline">Decline</string>
+    <string name="action_dismiss">Dismiss</string>
+
+    <!-- Continuity Camera -->
+    <string name="channel_camera_requests">Camera capture requests</string>
+    <string name="continuity_camera_request_scan_title">%1$s wants to scan a document</string>
+    <string name="continuity_camera_request_photo_title">%1$s wants to take a photo</string>
+    <string name="continuity_camera_request_scan_text">Tap to scan a document with your camera.</string>
+    <string name="continuity_camera_request_photo_text">Tap to take a photo with your camera.</string>
+    <string name="continuity_camera_scan_title">Scan document</string>
+    <string name="continuity_camera_photo_title">Take photo</string>
+    <string name="continuity_camera_for_pc">For %1$s</string>
+    <string name="continuity_camera_mode_photo">Photo</string>
+    <string name="continuity_camera_mode_scan">Scan</string>
+    <string name="continuity_camera_enhance">Enhance document</string>
+    <string name="continuity_camera_adjust_corners">Adjust corners</string>
+    <string name="continuity_camera_preview_scan">Preview scan</string>
+    <string name="continuity_camera_retake">Retake</string>
+    <string name="continuity_camera_send_scan">Send scan</string>
+    <string name="continuity_camera_use_photo">Use photo</string>
+    <string name="continuity_camera_shutter_photo">Capture photo</string>
+    <string name="continuity_camera_shutter_scan">Capture document</string>
+    <string name="continuity_camera_preview_desc">Captured preview</string>
+    <string name="continuity_camera_corners_desc">Drag corners to adjust document edges</string>
+    <string name="continuity_camera_permission_denied">Camera permission denied on phone</string>
+    <string name="continuity_camera_cancelled">Cancelled on phone</string>
+
+    <!-- Task notifications -->
+    <string name="task_default_label">Task</string>
+    <string name="task_finished_title">%1$s finished</string>
+    <string name="task_failed_title">%1$s failed (exit %2$d)</string>
+    <string name="task_took_from">%1$s · %2$s</string>
+    <string name="task_took_hm">Took %1$dh %2$02dm</string>
+    <string name="task_took_ms">Took %1$dm %2$02ds</string>
+    <string name="task_took_s">Took %1$ds</string>
+    <string name="task_running_short">Running</string>
+
+    <!-- Errors -->
+    <string name="error_not_connected">The PC isn\'t connected right now.</string>
+    <string name="error_not_paired">That PC isn\'t paired anymore.</string>
+    <string name="error_timed_out">The PC didn\'t answer in time.</string>
+    <string name="error_unsupported">The PC\'s app doesn\'t support that yet.</string>
+    <string name="error_generic">Something went wrong.</string>
+
+    <!-- Theme seed names -->
+    <string name="settings_seed_honey">Honey</string>
+    <string name="settings_seed_lavender">Lavender</string>
+    <string name="settings_seed_ocean">Ocean</string>
+    <string name="settings_seed_sage">Sage</string>
+
+    <!-- Deck defaults & accessibility -->
+    <string name="deck_tile_with_badge">%1$s, %2$s</string>
+    <string name="deck_default_page_main">Main</string>
+    <string name="deck_default_play_pause">Play / pause</string>
+    <string name="deck_default_previous">Previous</string>
+    <string name="deck_default_next">Next</string>
+    <string name="deck_default_volume_down">Volume down</string>
+    <string name="deck_default_volume_up">Volume up</string>
+    <string name="deck_default_volume_mute">Mute audio</string>
+    <string name="deck_default_mic_mute">Mic mute</string>
+    <string name="deck_default_show_desktop">Show desktop</string>
+    <string name="deck_default_switch_window">Switch window</string>
+    <string name="deck_default_screenshot">Screenshot</string>
+    <string name="deck_default_lock_pc">Lock PC</string>
+
+    <!-- Remote special keys -->
+    <string name="remote_key_ctrl">Ctrl</string>
+    <string name="remote_key_alt">Alt</string>
+    <string name="remote_key_shift">Shift</string>
+    <string name="remote_key_win">Win</string>
+    <string name="remote_key_esc">Esc</string>
+    <string name="remote_key_esc_desc">Escape</string>
+    <string name="remote_key_tab">Tab</string>
+    <string name="remote_key_left_desc">Left arrow</string>
+    <string name="remote_key_up_desc">Up arrow</string>
+    <string name="remote_key_down_desc">Down arrow</string>
+    <string name="remote_key_right_desc">Right arrow</string>
+    <string name="remote_key_home">Home</string>
+    <string name="remote_key_end">End</string>
+    <string name="remote_key_del">Del</string>
+    <string name="remote_key_del_desc">Delete</string>
+    <string name="remote_key_copy">Copy</string>
+    <string name="remote_key_paste">Paste</string>
+
+    <!-- Webcam formatting -->
+    <string name="webcam_stream_spec">%1$d × %2$d · %3$d fps</string>
+    <string name="webcam_stream_camera_spec">%1$d × %2$d · %3$s</string>
+    <string name="webcam_status_streaming_camera">Streaming %1$d × %2$d to %3$s · %4$s</string>
+    <string name="webcam_switch_camera_current">Flip camera (%1$s)</string>
+    <string name="webcam_res_720p">720p</string>
+    <string name="webcam_res_1080p">1080p</string>
+    <string name="webcam_res_4k">4K</string>
+    <string name="webcam_zoom_preset">%1$d×</string>
+
+    <!-- Formatted status & metadata phrases -->
+    <string name="transfer_requested_from_size">%1$s wants to send files · %2$s</string>
+    <string name="transfer_sending_progress">Sending to %1$s · %2$s / %3$s</string>
+    <string name="transfer_receiving_progress">Receiving from %1$s · %2$s / %3$s</string>
+    <string name="clipboard_history_meta">%1$s · %2$s</string>
+    <string name="clipboard_history_meta_pinned">%1$s · %2$s · Pinned</string>
+    <string name="timeline_latest_summary">%1$s · %2$s</string>
+    <string name="recorder_marker_chip">%1$s · %2$s</string>
+
+    <!-- Rich Handoff -->
+    <string name="handoff_map_from">Map from %1$s</string>
+    <string name="handoff_video_from">Video from %1$s</string>
+    <string name="handoff_action_continue_video">Continue watching</string>
+    <string name="handoff_doc_received_from">From %1$s · tap to open</string>
+
+    <!-- Remote PC keyboard typing without mirroring -->
+    <string name="keyboard_from_pc_banner">Typing from %1$s</string>
+    <string name="keyboard_stop">Stop typing</string>
+
+    <!-- Home-screen PC widget -->
+    <string name="widget_pc_title">PC quick actions</string>
+    <string name="widget_pc_description">Connection status, Send clipboard, Ring PC, Lock PC, and Wake for your paired PC.</string>
+    <string name="widget_pc_no_pc">No PC paired</string>
+    <string name="widget_pc_tap_to_pair">Tap to open Nectarlink and pair a PC</string>
+    <string name="widget_pc_connected">Connected</string>
+    <string name="widget_pc_offline">Offline</string>
+    <string name="widget_pc_waking">Waking…</string>
+    <string name="widget_pc_wake">Wake</string>
+    <string name="widget_pc_send_clip">Send clip</string>
+    <string name="widget_pc_ring">Ring PC</string>
+    <string name="widget_pc_lock">Lock PC</string>
+    <string name="widget_pc_ringing_toast">Ringing %1$s…</string>
+    <string name="widget_pc_waking_toast">Waking %1$s…</string>
 </resources>
 

@@ -45,9 +45,9 @@ FocusScope {
             x: toggle.checked ? parent.width - width - 4.5 : 6.5
             color: toggle.checked ? Theme.primaryContent : Theme.outline
             // Quick and settled, never springy: a switch must feel immediate.
-            Behavior on x { NumberAnimation { duration: Theme.reduceMotion ? 0 : 140; easing.type: Easing.OutCubic } }
-            Behavior on size { NumberAnimation { duration: Theme.reduceMotion ? 0 : 140; easing.type: Easing.OutCubic } }
-            Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
+            Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.reduceMotion ? 0 : 140; easing.type: Easing.OutCubic } }
+            Behavior on size { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.reduceMotion ? 0 : 140; easing.type: Easing.OutCubic } }
+            Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.fadeFast } }
         }
     }
     Rectangle {

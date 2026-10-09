@@ -12,12 +12,25 @@ Item {
     default property alias content: body.data
     signal dismissed
 
-    function open() { opened = true }
+    function open() {
+        opened = true
+        if (!sheet.activeFocus)
+            sheet.forceActiveFocus(Qt.OtherFocusReason)
+    }
     function close() { opened = false }
 
     anchors.fill: parent
     visible: opened || fade.running
     z: 100
+
+    Shortcut {
+        sequence: "Esc"
+        enabled: sheet.opened && sheet.dismissable
+        onActivated: {
+            sheet.close()
+            sheet.dismissed()
+        }
+    }
 
     Rectangle {
         id: scrim
@@ -48,7 +61,7 @@ Item {
         opacity: sheet.opened ? 1 : 0
         scale: sheet.opened || Theme.reduceMotion ? 1 : 0.96
         Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
-        Behavior on scale { SpringAnimation { spring: Theme.springStandard; damping: Theme.dampingStandard } }
+        Behavior on scale { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springStandard; damping: Theme.dampingStandard } }
         clip: true
 
         Flickable {

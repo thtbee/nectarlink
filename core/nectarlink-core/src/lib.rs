@@ -18,6 +18,7 @@ pub mod deck;
 mod error;
 mod events;
 pub mod features;
+pub mod handoff;
 mod identity;
 pub mod localsend;
 mod media;
@@ -58,6 +59,10 @@ pub use events::{
     ConnectionPath, DiscoveredDevice, LinkState, NodeEvent, PairedDevice, PairingEvent, PairingFailure,
 };
 pub use features::{CapabilityMatrix, FeatureState};
+pub use handoff::{
+    HandoffKind, HandoffLink, address_to_geo_uri, extract_handoff_link, format_video_timestamp,
+    geo_to_maps_https, is_safe_handoff_document, parse_video_timestamp, with_video_timestamp,
+};
 pub use identity::{KeyProtector, PlainKeyProtector, default_protector};
 pub use localsend::{
     LOCALSEND_DEFAULT_PORT, LOCALSEND_MULTICAST_ADDR, LOCALSEND_PROTOCOL_VERSION, LocalSendPeer,
@@ -74,13 +79,14 @@ pub use nectarlink_protocol::{
         AudioOutputDevice, Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallState,
         CameraCaptureCancel, CameraCaptureMode, CameraCaptureOk, CameraCaptureRequest,
         CameraCaptureResultMeta, Contact, ContactNumber, DeviceInfo, DeviceKind, LivePoint, LiveSegment,
-        MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorResize, MirrorStart, Notification,
-        NotificationAction, NotificationChatMessage, NotificationConversation, NotificationLive, PcAudioSet,
-        PcWakeInfo, PhoneApp, PhoneToggleSet, PhoneToggleValue, PhoneToggles, PhotoAlbum, PhotoItem,
-        PhotoNew as Photo, PhotoThumb, PowerLevel, ScreenCorners, ScreenRect, ScreenShape, SmsAttachment,
-        SmsMessage, SmsPart, SmsThread, StorageChanged, StorageDelete, StorageEntries, StorageEntry,
-        StorageList, StorageMkdir, StorageRead, StorageReadMeta, StorageRename, StorageWriteAccept,
-        StorageWriteDone, StorageWriteOffer, TaskNotify, TouchAction, WebcamConfig, WebcamStart,
+        MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorPower, MirrorResize, MirrorStart,
+        Notification, NotificationAction, NotificationChatMessage, NotificationConversation,
+        NotificationLive, PcAudioSet, PcWakeInfo, PhoneApp, PhoneToggleSet, PhoneToggleValue, PhoneToggles,
+        PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PowerLevel, ScreenCorners, ScreenRect,
+        ScreenShape, SmsAttachment, SmsMessage, SmsPart, SmsThread, StorageChanged, StorageDelete,
+        StorageEntries, StorageEntry, StorageList, StorageMkdir, StorageRead, StorageReadMeta, StorageRename,
+        StorageWriteAccept, StorageWriteDone, StorageWriteOffer, TaskNotify, TouchAction, WebcamConfig,
+        WebcamStart,
         calls::{
             CONTROL as CALLS_CONTROL, DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG,
             SHOW as CALLS_SHOW, STATE as CALLS_STATE,

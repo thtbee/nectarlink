@@ -12,14 +12,57 @@ Item {
     required property string sub
     required property real when
     required property string iconUrl
+    property bool canOpenApp: false
+    signal openAppRequested
 
     implicitHeight: Math.max(icon.height, content.height) + 20
+    activeFocusOnTab: item.canOpenApp
+    Accessible.role: item.canOpenApp ? Accessible.Button : Accessible.Grouping
+    Accessible.name: [item.appName, item.title, item.text].filter(s => s.length > 0).join(", ")
+    Accessible.description: item.canOpenApp ? qsTr("Open %1 in an app window").arg(item.appName) : ""
+    Accessible.onPressAction: if (item.canOpenApp) item.openAppRequested()
+    Keys.onPressed: (event) => {
+        if (item.canOpenApp && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
+            item.openAppRequested()
+            event.accepted = true
+        }
+    }
 
     function timeText() {
         const date = new Date(when)
         const today = new Date().toDateString() === date.toDateString()
         return today ? date.toLocaleTimeString(Qt.locale(), Locale.ShortFormat)
                      : qsTr("Yesterday %1").arg(date.toLocaleTimeString(Qt.locale(), Locale.ShortFormat))
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        radius: Theme.radiusMd
+        color: Theme.surfaceContent
+        opacity: item.canOpenApp && historyHover.hovered ? 0.045 : 0
+        Behavior on opacity {
+            enabled: !Theme.reduceMotion
+            NumberAnimation { duration: Theme.fadeFast }
+        }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        radius: Theme.radiusMd
+        color: "transparent"
+        border.width: Theme.focusVisible(item) ? 2 : 0
+        border.color: Theme.primary
+        visible: Theme.focusVisible(item)
+    }
+
+    HoverHandler {
+        id: historyHover
+        cursorShape: item.canOpenApp ? Qt.PointingHandCursor : Qt.ArrowCursor
+    }
+
+    TapHandler {
+        enabled: item.canOpenApp
+        onTapped: item.openAppRequested()
     }
 
     Item {

@@ -136,6 +136,8 @@ data class CoreState(
     val localsendEnabled: Boolean = false,
     /** Nearby LocalSend devices discovered on the LAN. */
     val localsendPeers: List<LocalSendPeer> = emptyList(),
+    /** IDs of paired PCs currently typing on this phone without mirroring. */
+    val keyboardFromPc: Set<String> = emptySet(),
 ) {
     fun device(id: String): Device? = devices.firstOrNull { it.id == id }
 
@@ -177,13 +179,16 @@ data class CoreState(
             ringingFrom = if (ringingFrom == nameOf(event.id)) null else ringingFrom,
             storageRequestedFrom = if (storageRequestedFrom == event.id) null else storageRequestedFrom,
             webcamRequest = if (webcamRequest?.pcId == event.id) null else webcamRequest,
+            keyboardFromPc = keyboardFromPc - event.id,
         )
         is Event.LinkChanged -> update(event.id) {
             it.copy(
                 link = event.link,
                 wakeState = if (event.link is Link.Online) WakeState.Idle else it.wakeState,
             )
-        }
+        }.copy(
+            keyboardFromPc = if (event.link is Link.Offline) keyboardFromPc - event.id else keyboardFromPc,
+        )
         is Event.PeerInfoChanged -> update(event.id) {
             it.copy(
                 name = event.info.name,

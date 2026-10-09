@@ -960,6 +960,7 @@ async fn handle_prepare_upload(
         state: TransferState::Requested,
         recording: false,
         markers: Vec::new(),
+        open_on_arrival: false,
     };
 
     let cancel = CancellationToken::new();
@@ -1297,6 +1298,7 @@ pub(crate) async fn send_files(
         state: TransferState::Waiting,
         recording: false,
         markers: Vec::new(),
+        open_on_arrival: false,
     };
 
     let cancel = CancellationToken::new();

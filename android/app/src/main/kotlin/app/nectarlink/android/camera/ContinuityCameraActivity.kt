@@ -72,6 +72,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -83,6 +87,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.nectarlink.android.NectarlinkApplication
 import app.nectarlink.android.R
 import app.nectarlink.android.ui.Preferences
+import app.nectarlink.android.ui.theme.LocalReducedMotion
 import app.nectarlink.android.ui.theme.NectarlinkTheme
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
@@ -111,7 +116,7 @@ class ContinuityCameraActivity : ComponentActivity() {
     ) { granted ->
         cameraPermissionGranted.value = granted
         if (!granted) {
-            cancelAndFinish("Camera permission denied on phone")
+            cancelAndFinish(getString(R.string.continuity_camera_permission_denied))
         }
     }
 
@@ -190,7 +195,7 @@ class ContinuityCameraActivity : ComponentActivity() {
                                 )
                                 Spacer(Modifier.height(12.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    OutlinedButton(onClick = { cancelAndFinish("Cancelled on phone") }) {
+                                    OutlinedButton(onClick = { cancelAndFinish(getString(R.string.continuity_camera_cancelled)) }) {
                                         Text(stringResource(R.string.action_cancel))
                                     }
                                     Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
@@ -221,7 +226,7 @@ class ContinuityCameraActivity : ComponentActivity() {
             (application as? NectarlinkApplication)?.core?.cancelCameraCapture(
                 pcId = pcId,
                 requestId = requestId,
-                reason = "Cancelled on phone",
+                reason = getString(R.string.continuity_camera_cancelled),
             )
         }
         super.onDestroy()
@@ -286,6 +291,7 @@ private fun ContinuityCameraScreen(
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var boundCamera by remember { mutableStateOf<Camera?>(null) }
+    val cancelledText = stringResource(R.string.continuity_camera_cancelled)
 
     BackHandler {
         if (capturedBitmap != null && !busy) {
@@ -293,7 +299,7 @@ private fun ContinuityCameraScreen(
             rectifiedBitmap = null
             showRectifiedPreview = false
         } else if (!busy) {
-            onCancel("Cancelled on phone")
+            onCancel(cancelledText)
         }
     }
 
@@ -393,12 +399,14 @@ private fun ContinuityCameraScreen(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (mode == "scan") "Scan document" else "Take photo",
+                    text = stringResource(
+                        if (mode == "scan") R.string.continuity_camera_scan_title else R.string.continuity_camera_photo_title,
+                    ),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "For $pcName",
+                    text = stringResource(R.string.continuity_camera_for_pc, pcName),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -409,7 +417,7 @@ private fun ContinuityCameraScreen(
                     FilterChip(
                         selected = mode == "photo",
                         onClick = { mode = "photo" },
-                        label = { Text("Photo") },
+                        label = { Text(stringResource(R.string.continuity_camera_mode_photo)) },
                     )
                     FilterChip(
                         selected = mode == "scan",
@@ -417,14 +425,14 @@ private fun ContinuityCameraScreen(
                             mode = "scan"
                             useFrontCamera = false
                         },
-                        label = { Text("Scan") },
+                        label = { Text(stringResource(R.string.continuity_camera_mode_scan)) },
                     )
                 }
             }
 
             Spacer(Modifier.width(8.dp))
             TextButton(
-                onClick = { onCancel("Cancelled on phone") },
+                onClick = { onCancel(cancelledText) },
                 enabled = !busy,
             ) {
                 Text(stringResource(R.string.action_cancel))
@@ -480,7 +488,7 @@ private fun ContinuityCameraScreen(
                 ) {
                     Image(
                         bitmap = displayBitmap.asImageBitmap(),
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.continuity_camera_preview_desc),
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -503,7 +511,11 @@ private fun ContinuityCameraScreen(
                         .background(Color.Black.copy(alpha = 0.45f)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator()
+                    if (LocalReducedMotion.current) {
+                        CircularProgressIndicator(progress = { 0.75f })
+                    } else {
+                        CircularProgressIndicator()
+                    }
                 }
             }
         }
@@ -534,6 +546,9 @@ private fun ContinuityCameraScreen(
                 }
 
                 // Shutter button
+                val shutterDesc = stringResource(
+                    if (mode == "scan") R.string.continuity_camera_shutter_scan else R.string.continuity_camera_shutter_photo,
+                )
                 Box(
                     modifier = Modifier
                         .size(72.dp)
@@ -542,6 +557,10 @@ private fun ContinuityCameraScreen(
                         .padding(6.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary)
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = shutterDesc
+                        }
                         .clickable(enabled = !busy) {
                             val cap = imageCapture
                             if (cap == null) {
@@ -629,12 +648,19 @@ private fun ContinuityCameraScreen(
                         FilterChip(
                             selected = enhanceScan,
                             onClick = { enhanceScan = !enhanceScan },
-                            label = { Text("Enhance document") },
+                            label = { Text(stringResource(R.string.continuity_camera_enhance)) },
                         )
                         FilterChip(
                             selected = showRectifiedPreview,
                             onClick = { showRectifiedPreview = !showRectifiedPreview },
-                            label = { Text(if (showRectifiedPreview) "Adjust corners" else "Preview scan") },
+                            label = {
+                                Text(
+                                    stringResource(
+                                        if (showRectifiedPreview) R.string.continuity_camera_adjust_corners
+                                        else R.string.continuity_camera_preview_scan,
+                                    ),
+                                )
+                            },
                         )
                     }
                 }
@@ -652,7 +678,7 @@ private fun ContinuityCameraScreen(
                         enabled = !busy,
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Retake")
+                        Text(stringResource(R.string.continuity_camera_retake))
                     }
                     Button(
                         onClick = {
@@ -677,7 +703,12 @@ private fun ContinuityCameraScreen(
                         enabled = !busy,
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text(if (mode == "scan") "Send scan" else "Use photo")
+                        Text(
+                            stringResource(
+                                if (mode == "scan") R.string.continuity_camera_send_scan
+                                else R.string.continuity_camera_use_photo,
+                            ),
+                        )
                     }
                 }
             }
@@ -712,6 +743,7 @@ private fun QuadCornerEditorOverlay(
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
     val surfaceColor = MaterialTheme.colorScheme.surface
+    val cornersDesc = stringResource(R.string.continuity_camera_corners_desc)
 
     val containerW = containerSize.width.toFloat()
     val containerH = containerSize.height.toFloat()
@@ -742,6 +774,7 @@ private fun QuadCornerEditorOverlay(
     Canvas(
         modifier = Modifier
             .fillMaxSize()
+            .semantics { contentDescription = cornersDesc }
             .pointerInput(drawW, drawH, offsetX, offsetY) {
                 detectDragGestures(
                     onDragStart = { startOffset ->

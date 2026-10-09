@@ -118,6 +118,19 @@ Card {
                 id: bar
                 width: parent.width
                 height: 16
+                activeFocusOnTab: card.canSeek
+                Accessible.role: Accessible.Slider
+                Accessible.name: qsTr("Playback position")
+                Keys.onPressed: (event) => {
+                    if (!card.canSeek || card.duration <= 0) return
+                    if (event.key === Qt.Key_Left) {
+                        card.send("seek", Math.round(Math.max(0, Math.min(card.duration, card.shown - 5000))))
+                        event.accepted = true
+                    } else if (event.key === Qt.Key_Right) {
+                        card.send("seek", Math.round(Math.max(0, Math.min(card.duration, card.shown + 5000))))
+                        event.accepted = true
+                    }
+                }
                 readonly property real fraction: card.duration > 0 ? Math.max(0, Math.min(1, card.shown / card.duration)) : 0
                 Rectangle {
                     id: track
@@ -134,11 +147,20 @@ Card {
                     }
                 }
                 Rectangle {
-                    visible: card.canSeek && (seek.containsMouse || seek.pressed)
+                    visible: card.canSeek && (seek.containsMouse || seek.pressed || Theme.focusVisible(bar))
                     x: bar.width * bar.fraction - width / 2
                     anchors.verticalCenter: parent.verticalCenter
                     width: 12; height: 12; radius: 6
                     color: Theme.primary
+                }
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -3
+                    radius: Theme.radiusXs + 3
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Theme.primary
+                    visible: Theme.focusVisible(bar)
                 }
                 MouseArea {
                     id: seek

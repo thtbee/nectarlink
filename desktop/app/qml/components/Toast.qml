@@ -28,10 +28,11 @@ Rectangle {
     }
 
     property bool shown: false
+    visible: opacity > 0
     anchors.horizontalCenter: parent.horizontalCenter
     anchors.bottom: parent.bottom
-    anchors.bottomMargin: shown ? 24 : -height
-    Behavior on anchors.bottomMargin { SpringAnimation { spring: Theme.springStandard; damping: Theme.dampingStandard } }
+    anchors.bottomMargin: shown || Theme.reduceMotion ? 24 : -height
+    Behavior on anchors.bottomMargin { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springStandard; damping: Theme.dampingStandard } }
     opacity: shown ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
     z: 200
@@ -70,8 +71,6 @@ Rectangle {
             color: chipHover.hovered
                 ? Qt.rgba(Theme.primaryContainer.r, Theme.primaryContainer.g, Theme.primaryContainer.b, 0.92)
                 : Theme.primaryContainer
-            border.width: Theme.focusVisible(actionChip) ? 2 : 0
-            border.color: Theme.surface
             activeFocusOnTab: toast.shown && toast.hasAction
 
             Accessible.role: Accessible.Button
@@ -89,6 +88,16 @@ Rectangle {
                     trigger()
                     event.accepted = true
                 }
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -3
+                radius: parent.radius + 3
+                color: "transparent"
+                border.width: 2
+                border.color: Theme.primary
+                visible: Theme.focusVisible(actionChip)
             }
 
             Txt {

@@ -100,10 +100,13 @@ const ROLES: &[&str] = &[
 /// Catches mistakes in the token file before they reach a theme.
 fn validate(tokens: &Value) -> Result<()> {
     let themes = tokens.get("themes").context("missing \"themes\"")?;
+    let status = themes.pointer("/bloom/status").context("missing bloom status")?;
     let seeds = themes.pointer("/bloom/seeds").and_then(Value::as_object).context("missing bloom seeds")?;
     for (seed, def) in seeds {
         for mode in ["light", "dark"] {
-            check_palette(def.get(mode), &format!("bloom.{seed}.{mode}"))?;
+            let name = format!("bloom.{seed}.{mode}");
+            check_palette(def.get(mode), &name)?;
+            check_contrast(def.get(mode), status.get(mode), &name)?;
         }
     }
     let variants = themes
@@ -111,7 +114,9 @@ fn validate(tokens: &Value) -> Result<()> {
         .and_then(Value::as_object)
         .context("missing graphite variants")?;
     for (variant, palette) in variants {
-        check_palette(Some(palette), &format!("graphite.{variant}"))?;
+        let name = format!("graphite.{variant}");
+        check_palette(Some(palette), &name)?;
+        check_contrast(Some(palette), Some(palette), &name)?;
     }
     Ok(())
 }
@@ -124,6 +129,83 @@ fn check_palette(palette: Option<&Value>, name: &str) -> Result<()> {
         if !is_hex_color(color) {
             bail!("{name}.{role}: {color:?} is not a #RRGGBB color");
         }
+    }
+    Ok(())
+}
+
+fn parse_rgb(hex: &str) -> Result<(u8, u8, u8)> {
+    if !is_hex_color(hex) {
+        bail!("{hex:?} is not a #RRGGBB color");
+    }
+    let r = u8::from_str_radix(&hex[1..3], 16)?;
+    let g = u8::from_str_radix(&hex[3..5], 16)?;
+    let b = u8::from_str_radix(&hex[5..7], 16)?;
+    Ok((r, g, b))
+}
+
+fn relative_luminance((r, g, b): (u8, u8, u8)) -> f64 {
+    let chan = |c: u8| {
+        let s = f64::from(c) / 255.0;
+        if s <= 0.03928 { s / 12.92 } else { ((s + 0.055) / 1.055).powf(2.4) }
+    };
+    0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b)
+}
+
+fn contrast_ratio(fg: &str, bg: &str) -> Result<f64> {
+    let l1 = relative_luminance(parse_rgb(fg)?);
+    let l2 = relative_luminance(parse_rgb(bg)?);
+    let (bright, dark) = if l1 >= l2 { (l1, l2) } else { (l2, l1) };
+    Ok((bright + 0.05) / (dark + 0.05))
+}
+
+/// Enforces WCAG 2.1 AA (>= 4.5:1) contrast for all text and status pairs.
+fn check_contrast(palette: Option<&Value>, status: Option<&Value>, name: &str) -> Result<()> {
+    let p = palette.and_then(Value::as_object).with_context(|| format!("{name}: missing palette"))?;
+    let s = status.and_then(Value::as_object).with_context(|| format!("{name}: missing status"))?;
+    let get_p = |k: &str| p.get(k).and_then(Value::as_str).with_context(|| format!("{name}: missing {k}"));
+    let get_s = |k: &str| s.get(k).and_then(Value::as_str).with_context(|| format!("{name}: missing {k}"));
+
+    let surfaces = [
+        "surface",
+        "surfaceContainerLow",
+        "surfaceContainer",
+        "surfaceContainerHigh",
+        "surfaceContainerHighest",
+    ];
+    for bg_key in surfaces {
+        let bg = get_p(bg_key)?;
+        for fg_key in ["onSurface", "onSurfaceVariant", "primary"] {
+            let fg = get_p(fg_key)?;
+            let ratio = contrast_ratio(fg, bg)?;
+            if ratio < 4.5 {
+                bail!("{name}: {fg_key} ({fg}) on {bg_key} ({bg}) has contrast {ratio:.2}:1 (< 4.5:1)");
+            }
+        }
+        for st_key in ["warning", "error"] {
+            let fg = get_s(st_key)?;
+            let ratio = contrast_ratio(fg, bg)?;
+            if ratio < 4.5 {
+                bail!("{name}: {st_key} ({fg}) on {bg_key} ({bg}) has contrast {ratio:.2}:1 (< 4.5:1)");
+            }
+        }
+    }
+    for (fg_key, bg_key) in [
+        ("onPrimary", "primary"),
+        ("onPrimaryContainer", "primaryContainer"),
+        ("onSecondaryContainer", "secondaryContainer"),
+    ] {
+        let fg = get_p(fg_key)?;
+        let bg = get_p(bg_key)?;
+        let ratio = contrast_ratio(fg, bg)?;
+        if ratio < 4.5 {
+            bail!("{name}: {fg_key} ({fg}) on {bg_key} ({bg}) has contrast {ratio:.2}:1 (< 4.5:1)");
+        }
+    }
+    let on_err = get_s("onError")?;
+    let err = get_s("error")?;
+    let err_ratio = contrast_ratio(on_err, err)?;
+    if err_ratio < 4.5 {
+        bail!("{name}: onError ({on_err}) on error ({err}) has contrast {err_ratio:.2}:1 (< 4.5:1)");
     }
     Ok(())
 }
@@ -278,5 +360,14 @@ mod tests {
     fn documentation_keys_are_dropped() {
         let v: Value = serde_json::json!({"$note": 1, "a": {"$x": 2, "b": [ {"$y": 3, "c": 4} ]}});
         assert_eq!(strip_docs(&v), serde_json::json!({"a": {"b": [{"c": 4}]}}));
+    }
+
+    #[test]
+    fn rejects_low_contrast_palette() {
+        let source = fs::read_to_string(repo_root().join(TOKENS)).unwrap();
+        let mut tokens: Value = serde_json::from_str(&source).unwrap();
+        tokens.pointer_mut("/themes/bloom/status/light").unwrap()["warning"] = "#9A6700".into();
+        let err = validate(&tokens).unwrap_err().to_string();
+        assert!(err.contains("warning"), "{err}");
     }
 }

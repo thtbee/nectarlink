@@ -2,11 +2,13 @@
 package app.nectarlink.android.ui.deck
 
 import android.app.Activity
+import android.content.Context
 import android.content.res.Configuration
 import android.view.HapticFeedbackConstants
 import android.view.WindowManager
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -71,6 +73,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -84,6 +87,7 @@ import app.nectarlink.android.R
 import app.nectarlink.android.core.Core
 import app.nectarlink.android.core.Device
 import app.nectarlink.android.ui.home.PcAudioOutputsDialog
+import app.nectarlink.android.ui.theme.LocalReducedMotion
 import app.nectarlink.core.DeckLayout
 import app.nectarlink.core.DeckPage
 import app.nectarlink.core.DeckState
@@ -151,7 +155,8 @@ fun DeckScreen(
         }
     }
 
-    val layout = device.deckLayout ?: remember { fallbackDefaultLayout() }
+    val reducedMotion = LocalReducedMotion.current
+    val layout = device.deckLayout ?: remember(context) { fallbackDefaultLayout(context) }
     val liveState = device.deckState ?: DeckState(
         playing = false,
         volume = 50u,
@@ -159,7 +164,7 @@ fun DeckScreen(
         micMuted = false,
         outputDevices = emptyList(),
     )
-    val pages = layout.pages.ifEmpty { fallbackDefaultLayout().pages }
+    val pages = layout.pages.ifEmpty { fallbackDefaultLayout(context).pages }
     val pagerState = rememberPagerState(pageCount = { pages.size })
 
     Column(
@@ -260,7 +265,13 @@ fun DeckScreen(
                     FilterChip(
                         selected = pagerState.currentPage == index,
                         onClick = {
-                            scope.launch { pagerState.animateScrollToPage(index) }
+                            scope.launch {
+                                if (reducedMotion) {
+                                    pagerState.scrollToPage(index)
+                                } else {
+                                    pagerState.animateScrollToPage(index)
+                                }
+                            }
                         },
                         label = {
                             Text(
@@ -357,6 +368,7 @@ private fun DeckAudioHeaderBar(
     var showOutputs by remember { mutableStateOf(false) }
     val shownVolume = draggingVolume?.roundToInt() ?: liveState.volume.toInt()
     val defaultOutput = liveState.outputDevices.firstOrNull { it.isDefault } ?: liveState.outputDevices.firstOrNull()
+    val volumeLabel = stringResource(R.string.pc_audio_volume)
 
     Surface(
         shape = MaterialTheme.shapes.large,
@@ -390,7 +402,9 @@ private fun DeckAudioHeaderBar(
                     },
                     onValueChangeFinished = { draggingVolume = null },
                     valueRange = 0f..100f,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { contentDescription = volumeLabel },
                 )
                 Text(
                     text = if (liveState.muted) {
@@ -405,7 +419,7 @@ private fun DeckAudioHeaderBar(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showOutputs = true }
+                        .clickable(role = Role.Button) { showOutputs = true }
                         .padding(horizontal = 4.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -465,7 +479,11 @@ private fun DeckBanner(
                 }
             }
             if (onDismiss != null) {
-                TextButton(onClick = onDismiss) {
+                val dismissLabel = stringResource(R.string.action_dismiss)
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.semantics { contentDescription = dismissLabel },
+                ) {
                     Text("×", style = MaterialTheme.typography.titleMedium)
                 }
             }
@@ -543,6 +561,7 @@ private fun DeckTileButton(
     enabled: Boolean,
     onPress: () -> Unit,
 ) {
+    val reducedMotion = LocalReducedMotion.current
     val badge = liveBadgeText(tile.kind, liveState)
     val highlighted = isLiveHighlighted(tile.kind, liveState)
     val palette = tilePalette(tile.color, highlighted)
@@ -550,12 +569,16 @@ private fun DeckTileButton(
 
     var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.96f else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        targetValue = if (pressed && !reducedMotion) 0.96f else 1f,
+        animationSpec = if (reducedMotion) snap() else spring(stiffness = Spring.StiffnessHigh),
         label = "tileScale",
     )
 
-    val a11yDescription = if (badge != null) "${tile.label}, $badge" else tile.label
+    val a11yDescription = if (badge != null) {
+        stringResource(R.string.deck_tile_with_badge, tile.label, badge)
+    } else {
+        tile.label
+    }
     val fontScale = LocalConfiguration.current.fontScale.coerceIn(1f, 1.35f)
     val tileHeight = ((if (compact) 98 else 118) * fontScale).dp
 
@@ -574,9 +597,15 @@ private fun DeckTileButton(
                 scaleX = scale
                 scaleY = scale
             }
-            .semantics {
+            .semantics(mergeDescendants = true) {
                 role = Role.Button
                 contentDescription = a11yDescription
+                if (enabled) {
+                    onClick(label = a11yDescription) {
+                        onPress()
+                        true
+                    }
+                }
             }
             .pointerInput(enabled, tile.id) {
                 if (!enabled) return@pointerInput
@@ -992,23 +1021,23 @@ private fun DrawScope.drawSpeakerCone(
     drawPath(cone, color = color, style = stroke)
 }
 
-private fun fallbackDefaultLayout(): DeckLayout = DeckLayout(
+private fun fallbackDefaultLayout(context: Context): DeckLayout = DeckLayout(
     pages = listOf(
         DeckPage(
             id = "main",
-            name = "Main",
+            name = context.getString(R.string.deck_default_page_main),
             tiles = listOf(
-                DeckTile("play_pause", "Play / pause", "play", "amber", "media_play_pause"),
-                DeckTile("prev_track", "Previous", "skip_previous", "slate", "media_previous"),
-                DeckTile("next_track", "Next", "skip_next", "slate", "media_next"),
-                DeckTile("vol_down", "Volume down", "volume_down", "teal", "volume_down"),
-                DeckTile("vol_up", "Volume up", "volume_up", "teal", "volume_up"),
-                DeckTile("vol_mute", "Mute audio", "volume_off", "teal", "volume_mute"),
-                DeckTile("mic_mute", "Mic mute", "mic", "coral", "mic_mute"),
-                DeckTile("show_desktop", "Show desktop", "desktop", "blue", "show_desktop"),
-                DeckTile("switch_window", "Switch window", "switch_window", "blue", "switch_window"),
-                DeckTile("screenshot", "Screenshot", "screenshot", "violet", "screenshot"),
-                DeckTile("lock_pc", "Lock PC", "lock", "red", "lock_pc"),
+                DeckTile("play_pause", context.getString(R.string.deck_default_play_pause), "play", "amber", "media_play_pause"),
+                DeckTile("prev_track", context.getString(R.string.deck_default_previous), "skip_previous", "slate", "media_previous"),
+                DeckTile("next_track", context.getString(R.string.deck_default_next), "skip_next", "slate", "media_next"),
+                DeckTile("vol_down", context.getString(R.string.deck_default_volume_down), "volume_down", "teal", "volume_down"),
+                DeckTile("vol_up", context.getString(R.string.deck_default_volume_up), "volume_up", "teal", "volume_up"),
+                DeckTile("vol_mute", context.getString(R.string.deck_default_volume_mute), "volume_off", "teal", "volume_mute"),
+                DeckTile("mic_mute", context.getString(R.string.deck_default_mic_mute), "mic", "coral", "mic_mute"),
+                DeckTile("show_desktop", context.getString(R.string.deck_default_show_desktop), "desktop", "blue", "show_desktop"),
+                DeckTile("switch_window", context.getString(R.string.deck_default_switch_window), "switch_window", "blue", "switch_window"),
+                DeckTile("screenshot", context.getString(R.string.deck_default_screenshot), "screenshot", "violet", "screenshot"),
+                DeckTile("lock_pc", context.getString(R.string.deck_default_lock_pc), "lock", "red", "lock_pc"),
             ),
         ),
     ),

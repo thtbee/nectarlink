@@ -7,6 +7,8 @@ import android.text.format.Formatter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,6 +60,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import app.nectarlink.android.ui.theme.LocalAppFonts
+import app.nectarlink.android.ui.theme.LocalReducedMotion
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -139,8 +142,10 @@ fun RecorderScreen(
         onDispose { stopPlayback() }
     }
 
+    val reducedMotion = LocalReducedMotion.current
     val animatedLevel by animateFloatAsState(
         targetValue = if (session.active && !session.paused) session.level else 0f,
+        animationSpec = if (reducedMotion) snap() else spring(),
         label = "micLevel",
     )
 
@@ -339,6 +344,7 @@ fun RecorderScreen(
                         Spacer(Modifier.height(16.dp))
 
                         // Marker controls while recording
+                        val markerHint = stringResource(R.string.recorder_marker_hint)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -347,7 +353,7 @@ fun RecorderScreen(
                             OutlinedTextField(
                                 value = markerText,
                                 onValueChange = { markerText = it },
-                                placeholder = { Text(stringResource(R.string.recorder_marker_hint)) },
+                                placeholder = { Text(markerHint) },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                 keyboardActions = KeyboardActions(
@@ -356,7 +362,9 @@ fun RecorderScreen(
                                         markerText = ""
                                     },
                                 ),
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .semantics { contentDescription = markerHint },
                             )
                             val addMarkerDesc = stringResource(R.string.recorder_add_marker)
                             FilledTonalButton(
@@ -384,7 +392,7 @@ fun RecorderScreen(
                                     val label = m.label ?: stringResource(R.string.recorder_marker_default, idx + 1)
                                     AssistChip(
                                         onClick = {},
-                                        label = { Text("$ts · $label") },
+                                        label = { Text(stringResource(R.string.recorder_marker_chip, ts, label)) },
                                     )
                                 }
                             }

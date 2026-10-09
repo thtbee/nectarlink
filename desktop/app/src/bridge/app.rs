@@ -123,6 +123,9 @@ pub mod qobject {
         #[qproperty(bool, localsend_enabled)]
         #[qproperty(bool, localsend_receiving)]
         #[qproperty(QString, localsend_peers_json)]
+        /// Slide-out edge Shelf state and JSON items (`""` while closed so nothing runs while hidden).
+        #[qproperty(bool, shelf_open)]
+        #[qproperty(QString, shelf_items)]
         type AppController = super::AppControllerRust;
 
         /// Enables or disables LocalSend LAN discovery and file sharing.
@@ -131,6 +134,33 @@ pub mod qobject {
         /// Triggers an immediate LocalSend multicast/HTTP discovery announcement.
         #[qinvokable]
         fn refresh_localsend(self: Pin<&mut AppController>);
+
+        /// Toggles the slide-out Shelf panel at the screen edge without stealing focus.
+        #[qinvokable]
+        fn toggle_shelf(self: Pin<&mut AppController>);
+        /// Hides the Shelf panel and releases its cached items.
+        #[qinvokable]
+        fn close_shelf(self: Pin<&mut AppController>);
+        /// Recomputes the Shelf items while the Shelf is open.
+        #[qinvokable]
+        fn refresh_shelf(self: Pin<&mut AppController>);
+        /// Applies Win32 `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST` to the Shelf window.
+        #[qinvokable]
+        fn style_shelf_window(self: &AppController);
+        /// Starts a native OS drag-out operation for a Shelf item (photo, screenshot, clip, or file).
+        #[qinvokable]
+        fn start_shelf_drag(
+            self: &AppController,
+            kind: &QString,
+            id_or_path: &QString,
+            text: &QString,
+        ) -> bool;
+        /// Sends files, images, links, or text dropped onto the Shelf to the active phone.
+        #[qinvokable]
+        fn drop_to_shelf(self: &AppController, urls: &QList_QVariant, text: &QString);
+        /// Opens, reveals, saves, or copies a Shelf item.
+        #[qinvokable]
+        fn activate_shelf_item(self: &AppController, kind: &QString, action: &QString, id_or_path: &QString);
 
         /// Asks a paired device to ring (or stop).
         #[qinvokable]
@@ -189,6 +219,12 @@ pub mod qobject {
         /// Runs the suggested action for the most recently received clipboard item.
         #[qinvokable]
         fn run_clip_suggestion(self: &AppController);
+        /// Hands off a web link, video URL (with timestamp), `geo:` URI, or street address to a phone.
+        #[qinvokable]
+        fn open_link_on_phone(self: &AppController, device: &QString, text: &QString);
+        /// Whether `text` is a web link, video URL, `geo:` URI, or street address that can be handed off.
+        #[qinvokable]
+        fn is_handoff_text(self: &AppController, text: &QString) -> bool;
 
         /// Starts a Continuity Camera capture (`"photo"` or `"scan"`) on the active phone.
         #[qinvokable]
@@ -294,6 +330,9 @@ pub mod qobject {
         /// Show the Connection Doctor.
         #[qsignal]
         fn doctor_requested(self: Pin<&mut AppController>);
+        /// Open the Handoff document picker on the Home page.
+        #[qsignal]
+        fn handoff_file_picker_requested(self: Pin<&mut AppController>);
     }
 
     impl cxx_qt::Threading for AppController {}
@@ -350,12 +389,27 @@ pub struct AppControllerRust {
     localsend_enabled: bool,
     localsend_receiving: bool,
     localsend_peers_json: QString,
+    shelf_open: bool,
+    shelf_items: QString,
     tray: Option<tray::Tray>,
 }
 
 /// The controller's thread handle, so other threads (second launch) can
 /// reach it.
 static CONTROLLER: OnceLock<Mutex<Option<CxxQtThread<qobject::AppController>>>> = OnceLock::new();
+static SHELF_OPEN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Whether the slide-out Shelf panel is currently open.
+pub fn is_shelf_open() -> bool {
+    SHELF_OPEN.load(Ordering::Relaxed)
+}
+
+/// Toggles the slide-out Shelf panel from any thread (Command Palette, tray, or hotkey).
+pub fn toggle_shelf_from_anywhere() {
+    if let Some(qt) = controller() {
+        let _ = qt.queue(|object| object.toggle_shelf());
+    }
+}
 
 /// Downloads and starts the update (from the app or its notification).
 pub fn install_update_in_background() {
@@ -497,6 +551,7 @@ impl cxx_qt::Initialize for qobject::AppController {
         self.as_mut().set_command_palette_results(QString::from("[]"));
         self.as_mut().set_data_retention_summary(QString::from(&compute_data_retention_json()));
         self.as_mut().set_localsend_peers_json(QString::from("[]"));
+        self.as_mut().set_shelf_items(QString::default());
         let initial_phone_colors = core_host::host().hub.read(|s| phone_colors_json(&s.devices));
         self.as_mut().set_phone_colors(QString::from(&initial_phone_colors));
         self.as_mut().refresh_appearance();
@@ -521,11 +576,25 @@ impl cxx_qt::Initialize for qobject::AppController {
             let json = crate::clipboard::history_json();
             object.as_mut().set_clipboard_history(QString::from(&json));
             let preview = super::timeline::preview_json();
-            object.set_timeline_preview(QString::from(&preview));
+            object.as_mut().set_timeline_preview(QString::from(&preview));
+            if object.shelf_open {
+                let shelf = compute_shelf_items_json(object.current_device);
+                object.set_shelf_items(QString::from(&shelf));
+            }
         });
-        super::subscribe(qt.clone(), Changes::TIMELINE | Changes::DEVICES | Changes::STATUS, |object| {
+        super::subscribe(qt.clone(), Changes::TIMELINE | Changes::DEVICES | Changes::STATUS, |mut object| {
             let preview = super::timeline::preview_json();
-            object.set_timeline_preview(QString::from(&preview));
+            object.as_mut().set_timeline_preview(QString::from(&preview));
+            if object.shelf_open {
+                let shelf = compute_shelf_items_json(object.current_device);
+                object.set_shelf_items(QString::from(&shelf));
+            }
+        });
+        super::subscribe(qt.clone(), Changes::TRANSFERS | Changes::PHOTOS, |mut object| {
+            if object.shelf_open {
+                let shelf = compute_shelf_items_json(object.current_device);
+                object.as_mut().set_shelf_items(QString::from(&shelf));
+            }
         });
         super::subscribe(qt.clone(), Changes::CONTINUITY, Self::refresh_continuity);
         super::subscribe(qt.clone(), Changes::PALETTE, Self::refresh_palette);
@@ -548,6 +617,7 @@ impl cxx_qt::Initialize for qobject::AppController {
         let labels = tray::MenuLabels {
             open: "Open Nectarlink".into(),
             command_palette: "Command palette".into(),
+            shelf: "Toggle Shelf".into(),
             take_photo: "Take photo with phone".into(),
             scan_document: "Scan document with phone".into(),
             find_phone: "Find my phone".into(),
@@ -573,6 +643,9 @@ fn on_tray_event(qt: &CxxQtThread<qobject::AppController>, event: tray::TrayEven
                 object.as_mut().set_command_palette_open(true);
                 object.activate_requested();
             });
+        }
+        tray::TrayEvent::Shelf => {
+            let _ = qt.queue(|object| object.toggle_shelf());
         }
         tray::TrayEvent::TakePhoto => crate::continuity_camera::start("photo"),
         tray::TrayEvent::ScanDocument => crate::continuity_camera::start("scan"),
@@ -884,6 +957,16 @@ impl qobject::AppController {
         crate::clipboard::run_last_suggestion();
     }
 
+    pub fn open_link_on_phone(&self, device: &QString, text: &QString) {
+        if let Some(id) = super::parse_device(device) {
+            crate::links::send_to(id, String::from(text));
+        }
+    }
+
+    pub fn is_handoff_text(&self, text: &QString) -> bool {
+        crate::links::is_handoff_text(&String::from(text))
+    }
+
     pub fn start_continuity_camera(&self, mode: &QString) {
         let idx = self.current_device.max(0) as usize;
         crate::continuity_camera::start_for_index(idx, &String::from(mode));
@@ -953,6 +1036,14 @@ impl qobject::AppController {
                 if let Ok(dev) = device_id.parse::<DeviceId>() {
                     open_dialer(dev, &number);
                 }
+            }
+            PaletteUiAction::OpenHandoffFilePicker { device_index } => {
+                if let Some(idx) = device_index {
+                    self.as_mut().set_current_device(idx as i32);
+                }
+                self.as_mut().set_current_page(QString::from("home"));
+                self.as_mut().activate_requested();
+                self.handoff_file_picker_requested();
             }
             PaletteUiAction::OpenDoctor => {
                 self.run_doctor();
@@ -1222,6 +1313,486 @@ impl qobject::AppController {
         self.as_mut().refresh_data_retention();
         self.toast(QString::from("Cleared all local history and caches"));
     }
+
+    pub fn toggle_shelf(mut self: Pin<&mut Self>) {
+        if self.shelf_open {
+            self.close_shelf();
+        } else {
+            SHELF_OPEN.store(true, Ordering::Relaxed);
+            let idx = self.current_device;
+            let json = compute_shelf_items_json(idx);
+            self.as_mut().set_shelf_items(QString::from(&json));
+            self.as_mut().set_shelf_open(true);
+            win::tray::apply_no_activate_style_by_title("Nectarlink Shelf");
+        }
+    }
+
+    pub fn close_shelf(mut self: Pin<&mut Self>) {
+        SHELF_OPEN.store(false, Ordering::Relaxed);
+        self.as_mut().set_shelf_open(false);
+        self.as_mut().set_shelf_items(QString::default());
+    }
+
+    pub fn refresh_shelf(mut self: Pin<&mut Self>) {
+        if !self.shelf_open {
+            return;
+        }
+        if let (Some(dev), _, true) = resolve_shelf_device(self.current_device) {
+            refresh_shelf_photo_if_needed(dev, true);
+        }
+        let json = compute_shelf_items_json(self.current_device);
+        self.as_mut().set_shelf_items(QString::from(&json));
+    }
+
+    pub fn style_shelf_window(&self) {
+        win::tray::apply_no_activate_style_by_title("Nectarlink Shelf");
+    }
+
+    pub fn start_shelf_drag(&self, kind: &QString, id_or_path: &QString, text: &QString) -> bool {
+        let kind_str = String::from(kind);
+        let s = String::from(id_or_path).trim().to_owned();
+        let t = String::from(text);
+
+        if !s.is_empty() && std::path::Path::new(&s).exists() {
+            return super::native::ffi::start_external_drag(&s, &t);
+        }
+        if (kind_str == "photo" || kind_str == "screenshot")
+            && !s.is_empty()
+            && let (Some(dev), _, _) = resolve_shelf_device(self.current_device)
+        {
+            let thumb = crate::photos::thumb_path(dev, &s);
+            if let Some(dir) = thumb.parent() {
+                let prefix = format!("full-{:016x}.", crate::photos::fingerprint(&s));
+                if let Ok(entries) = std::fs::read_dir(dir) {
+                    for entry in entries.flatten() {
+                        let p = entry.path();
+                        if p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with(&prefix))
+                            && p.exists()
+                        {
+                            return super::native::ffi::start_external_drag(&p.to_string_lossy(), &t);
+                        }
+                    }
+                }
+            }
+            if thumb.exists() {
+                return super::native::ffi::start_external_drag(&thumb.to_string_lossy(), &t);
+            }
+        }
+        if kind_str == "clip"
+            && !s.is_empty()
+            && t.is_empty()
+            && let Some(node) = core_host::node()
+            && let Some((_, bytes)) = node.clipboard_history_image(&s)
+        {
+            let tmp = core_host::host().data_dir.join("cache").join("shelf-clip.png");
+            if let Some(parent) = tmp.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+            if std::fs::write(&tmp, &bytes).is_ok() {
+                return super::native::ffi::start_external_drag(&tmp.to_string_lossy(), "");
+            }
+        }
+        super::native::ffi::start_external_drag("", &t)
+    }
+
+    pub fn drop_to_shelf(&self, urls: &QList<QVariant>, text: &QString) {
+        let (Some(device), device_name, _) = resolve_shelf_device(self.current_device) else {
+            show_message("No paired phone is connected.");
+            return;
+        };
+
+        let mut paths: Vec<std::path::PathBuf> = Vec::new();
+        let mut url_text_fallback = String::new();
+        for v in urls.iter() {
+            let raw = v
+                .value::<QString>()
+                .map(|qs| String::from(&qs))
+                .or_else(|| v.value::<cxx_qt_lib::QUrl>().map(|qu| String::from(&qu.to_qstring())))
+                .unwrap_or_default();
+            let raw = raw.trim();
+            if raw.is_empty() {
+                continue;
+            }
+            let local = cxx_qt_lib::QUrl::from(&QString::from(raw))
+                .to_local_file()
+                .map(|p| String::from(&p))
+                .filter(|p| !p.is_empty())
+                .or_else(|| {
+                    raw.strip_prefix("file:///")
+                        .or_else(|| raw.strip_prefix("file://"))
+                        .map(|s| s.replace('/', "\\"))
+                });
+            if let Some(local_str) = local {
+                let pb = std::path::PathBuf::from(&local_str);
+                if pb.exists() {
+                    paths.push(pb);
+                    continue;
+                }
+            }
+            let pb = std::path::PathBuf::from(raw);
+            if pb.exists() {
+                paths.push(pb);
+            } else if url_text_fallback.is_empty() {
+                url_text_fallback = raw.to_owned();
+            }
+        }
+
+        if !paths.is_empty() {
+            crate::transfers::send(device, paths);
+            show_message(format!("Sending to {device_name}…"));
+            return;
+        }
+
+        let dropped_text = {
+            let t = String::from(text).trim().to_owned();
+            if t.is_empty() { url_text_fallback } else { t }
+        };
+        if !dropped_text.is_empty() {
+            if crate::links::is_handoff_text(&dropped_text) {
+                crate::links::send_to(device, dropped_text);
+            } else if let Some(node) = core_host::node() {
+                let name = device_name.clone();
+                core_host::spawn(async move {
+                    match node.send_clipboard(device, dropped_text).await {
+                        Ok(()) => show_message(format!("Sent text to {name}.")),
+                        Err(e) => show_message(describe(&e)),
+                    }
+                });
+            }
+        }
+    }
+
+    pub fn activate_shelf_item(&self, kind: &QString, action: &QString, id_or_path: &QString) {
+        let kind_str = String::from(kind);
+        let action_str = String::from(action);
+        let s = String::from(id_or_path).trim().to_owned();
+
+        match kind_str.as_str() {
+            "photo" | "screenshot" => {
+                let p = std::path::Path::new(&s);
+                if !s.is_empty() && p.exists() {
+                    match action_str.as_str() {
+                        "folder" | "reveal" | "save" => crate::transfers::show_in_folder(p),
+                        "copy" => {
+                            let mime = match p
+                                .extension()
+                                .and_then(|e| e.to_str())
+                                .map(str::to_ascii_lowercase)
+                                .as_deref()
+                            {
+                                Some("png") => "image/png",
+                                _ => "image/jpeg",
+                            };
+                            match std::fs::read(p)
+                                .map_err(|e| e.to_string())
+                                .and_then(|b| crate::win::clipboard::write_image(mime, &b))
+                            {
+                                Ok(()) => show_message("Copied to clipboard."),
+                                Err(_) => show_message("The photo couldn't be copied to the clipboard."),
+                            }
+                        }
+                        _ => crate::transfers::open(p),
+                    }
+                } else if !s.is_empty()
+                    && let (Some(dev), _, _) = resolve_shelf_device(self.current_device)
+                {
+                    let toast_action = match action_str.as_str() {
+                        "save" => Some(crate::photos::ACTION_SAVE),
+                        "copy" => Some(crate::photos::ACTION_COPY),
+                        _ => None,
+                    };
+                    crate::photos::on_toast(&format!("{dev} {s}"), toast_action);
+                }
+            }
+            "clip" => {
+                if !s.is_empty() {
+                    crate::clipboard::copy_history_item(&s);
+                } else {
+                    show_message("Already on clipboard.");
+                }
+            }
+            "file" => {
+                let p = std::path::Path::new(&s);
+                if !s.is_empty() && p.exists() {
+                    if action_str == "folder" || action_str == "reveal" {
+                        crate::transfers::show_in_folder(p);
+                    } else {
+                        crate::transfers::open(p);
+                    }
+                } else {
+                    show_message("That file is no longer in its saved location.");
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn resolve_shelf_device(current_device_idx: i32) -> (Option<DeviceId>, String, bool) {
+    core_host::host().hub.read(|s| {
+        let idx = current_device_idx.max(0) as usize;
+        let chosen = s
+            .devices
+            .get(idx)
+            .filter(|d| matches!(d.link, LinkState::Online { .. }))
+            .or_else(|| s.devices.iter().find(|d| matches!(d.link, LinkState::Online { .. })))
+            .or_else(|| s.devices.get(idx))
+            .or_else(|| s.devices.first());
+        match chosen {
+            Some(d) => (Some(d.id), d.info.name.clone(), matches!(d.link, LinkState::Online { .. })),
+            None => (None, String::new(), false),
+        }
+    })
+}
+
+fn compute_shelf_items_json(current_device_idx: i32) -> String {
+    use nectarlink_core::{ClipboardItemKind, Direction, TimelineKind, TimelineQuery, TransferState};
+
+    let (device_opt, device_name, online) = resolve_shelf_device(current_device_idx);
+    let node = core_host::node();
+
+    let mut latest_photo: Option<serde_json::Value> = None;
+    let mut latest_photo_ts: i64 = -1;
+    let mut latest_screenshot: Option<serde_json::Value> = None;
+    let mut latest_screenshot_ts: i64 = -1;
+
+    // 1. Check HOME_SUMMARY for the active phone (and trigger a one-shot fetch if needed while Shelf is open).
+    if let Some(dev) = device_opt {
+        let summary = home_store(|s| s.devices.get(&dev).cloned());
+        match summary {
+            Some(d) if d.photo_loaded => {
+                if !d.photo_id.is_empty() {
+                    let thumb_p = crate::photos::thumb_path(dev, &d.photo_id);
+                    let thumb_url = if !d.photo_thumb.is_empty() {
+                        d.photo_thumb.clone()
+                    } else if thumb_p.exists() {
+                        crate::icons::file_url(&thumb_p)
+                    } else {
+                        String::new()
+                    };
+                    let obj = serde_json::json!({
+                        "id": d.photo_id,
+                        "name": d.photo_name,
+                        "date": d.photo_date,
+                        "thumbUrl": thumb_url,
+                        "localPath": "",
+                    });
+                    if d.photo_is_screenshot {
+                        latest_screenshot = Some(obj);
+                        latest_screenshot_ts = d.photo_date;
+                    } else {
+                        latest_photo = Some(obj);
+                        latest_photo_ts = d.photo_date;
+                    }
+                }
+            }
+            _ if online => {
+                refresh_shelf_photo_if_needed(dev, false);
+            }
+            _ => {}
+        }
+    }
+
+    // 2. Check Timeline photo entries (saved photos / screenshots on disk).
+    if let Some(ref n) = node
+        && let Ok(page) = n.timeline_page(&TimelineQuery {
+            kind: Some(TimelineKind::Photo),
+            device: device_opt,
+            limit: 25,
+            ..Default::default()
+        })
+    {
+        for entry in page.entries {
+            let first_target = entry.target.lines().next().unwrap_or("").trim();
+            if first_target.is_empty() {
+                continue;
+            }
+            let path = std::path::PathBuf::from(first_target);
+            if !path.exists() {
+                continue;
+            }
+            let name = path.file_name().and_then(|f| f.to_str()).unwrap_or(&entry.title).to_owned();
+            let lower_title = entry.title.to_ascii_lowercase();
+            let lower_name = name.to_ascii_lowercase();
+            let is_shot = lower_title.contains("screenshot")
+                || lower_name.contains("screenshot")
+                || entry.detail.to_ascii_lowercase().contains("screenshot");
+            let obj = serde_json::json!({
+                "id": path.to_string_lossy(),
+                "name": name,
+                "date": entry.timestamp,
+                "thumbUrl": crate::icons::file_url(&path),
+                "localPath": path.to_string_lossy(),
+            });
+            if is_shot {
+                if entry.timestamp >= latest_screenshot_ts {
+                    latest_screenshot_ts = entry.timestamp;
+                    latest_screenshot = Some(obj);
+                }
+            } else if entry.timestamp >= latest_photo_ts {
+                latest_photo_ts = entry.timestamp;
+                latest_photo = Some(obj);
+            }
+        }
+    }
+
+    // 3. Scan Downloads\Nectarlink for mirror screenshots ("Screenshot ...") and saved photos.
+    let dl_dir = core_host::downloads_dir();
+    let mut dl_files: Vec<(i64, u64, std::path::PathBuf, String)> = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&dl_dir) {
+        for e in entries.flatten() {
+            let p = e.path();
+            let Ok(meta) = e.metadata() else { continue };
+            if !meta.is_file() {
+                continue;
+            }
+            let Some(name) = p.file_name().and_then(|n| n.to_str()).map(str::to_owned) else {
+                continue;
+            };
+            let ts = meta
+                .modified()
+                .ok()
+                .and_then(|m| m.duration_since(std::time::UNIX_EPOCH).ok())
+                .map_or(0, |d| d.as_millis() as i64);
+            dl_files.push((ts, meta.len(), p, name));
+        }
+    }
+    dl_files.sort_by_key(|f| std::cmp::Reverse(f.0));
+
+    for (ts, _, p, name) in &dl_files {
+        let ext = p.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase).unwrap_or_default();
+        if !matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp") {
+            continue;
+        }
+        let is_shot = name.to_ascii_lowercase().contains("screenshot");
+        if is_shot && *ts > latest_screenshot_ts {
+            latest_screenshot_ts = *ts;
+            latest_screenshot = Some(serde_json::json!({
+                "id": p.to_string_lossy(),
+                "name": name,
+                "date": *ts,
+                "thumbUrl": crate::icons::file_url(p),
+                "localPath": p.to_string_lossy(),
+            }));
+        } else if !is_shot && latest_photo.is_none() {
+            latest_photo = Some(serde_json::json!({
+                "id": p.to_string_lossy(),
+                "name": name,
+                "date": *ts,
+                "thumbUrl": crate::icons::file_url(p),
+                "localPath": p.to_string_lossy(),
+            }));
+        }
+    }
+
+    // 4. Current clip (from encrypted local clipboard history, or live Windows clipboard fallback).
+    let current_clip =
+        if let Some(entry) = node.as_ref().and_then(|n| n.clipboard_history(None).into_iter().next()) {
+            let (kind, image_data_url) = match entry.kind {
+                ClipboardItemKind::Text => ("text", String::new()),
+                ClipboardItemKind::Image => {
+                    ("image", crate::clipboard::thumb_for_clip(&entry.id).unwrap_or_default())
+                }
+            };
+            serde_json::json!({
+                "id": entry.id,
+                "kind": kind,
+                "text": entry.text,
+                "imageDataUrl": image_data_url,
+                "deviceName": entry.device_name,
+                "localPath": "",
+            })
+        } else {
+            match crate::win::clipboard::read() {
+                crate::win::clipboard::Clip::Text(t) if !t.trim().is_empty() => serde_json::json!({
+                    "id": "",
+                    "kind": "text",
+                    "text": t,
+                    "imageDataUrl": "",
+                    "deviceName": "This PC",
+                    "localPath": "",
+                }),
+                _ => serde_json::Value::Null,
+            }
+        };
+
+    // 5. Recent received files (up to 5 existing files on disk).
+    let mut recent_files: Vec<serde_json::Value> = Vec::new();
+    let mut seen_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut add_file =
+        |recent_files: &mut Vec<serde_json::Value>, path: &std::path::Path, dev_label: &str| {
+            if recent_files.len() >= 5 || !path.exists() || !path.is_file() {
+                return;
+            }
+            let path_str = path.to_string_lossy().into_owned();
+            let key = path_str.to_ascii_lowercase();
+            if !seen_paths.insert(key) {
+                return;
+            }
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("File").to_owned();
+            let size = std::fs::metadata(path).map_or(0, |m| m.len());
+            recent_files.push(serde_json::json!({
+                "name": name,
+                "path": path_str,
+                "size": size,
+                "deviceName": dev_label,
+            }));
+        };
+
+    let transfer_files: Vec<(std::path::PathBuf, String)> = core_host::host().hub.read(|s| {
+        let mut out = Vec::new();
+        for tv in &s.transfers {
+            if tv.transfer.direction == Direction::Incoming
+                && let TransferState::Done { ref saved } = tv.transfer.state
+            {
+                let dname = s.name_of(&tv.transfer.device).unwrap_or_else(|| "Phone".into());
+                for p in saved {
+                    out.push((p.clone(), dname.clone()));
+                }
+            }
+        }
+        out
+    });
+    for (p, dname) in &transfer_files {
+        add_file(&mut recent_files, p, dname);
+    }
+
+    if recent_files.len() < 5
+        && let Some(ref n) = node
+        && let Ok(page) = n.timeline_page(&TimelineQuery {
+            kind: Some(TimelineKind::File),
+            limit: 20,
+            ..Default::default()
+        })
+    {
+        for entry in page.entries {
+            for line in entry.target.lines() {
+                let trimmed = line.trim();
+                if !trimmed.is_empty() {
+                    add_file(&mut recent_files, std::path::Path::new(trimmed), &entry.device_name);
+                }
+            }
+        }
+    }
+
+    for (_, _, p, _) in &dl_files {
+        if recent_files.len() >= 5 {
+            break;
+        }
+        add_file(&mut recent_files, p, if device_name.is_empty() { "Phone" } else { &device_name });
+    }
+
+    serde_json::json!({
+        "hasDevice": device_opt.is_some(),
+        "deviceId": device_opt.map(|d| d.to_string()).unwrap_or_default(),
+        "deviceName": device_name,
+        "online": online,
+        "latestPhoto": latest_photo.unwrap_or(serde_json::Value::Null),
+        "latestScreenshot": latest_screenshot.unwrap_or(serde_json::Value::Null),
+        "currentClip": current_clip,
+        "recentFiles": recent_files,
+    })
+    .to_string()
 }
 
 fn compute_data_retention_json() -> String {
@@ -1301,6 +1872,10 @@ fn bump_home_summary() {
         let _ = qt.queue(|mut object| {
             let rev = object.home_summary_revision.wrapping_add(1);
             object.as_mut().set_home_summary_revision(rev);
+            if object.shelf_open {
+                let shelf = compute_shelf_items_json(object.current_device);
+                object.set_shelf_items(QString::from(&shelf));
+            }
         });
     }
 }
@@ -1384,6 +1959,7 @@ pub(crate) fn update_home_calls(device: DeviceId, entries: &[nectarlink_core::Ca
 pub(crate) fn on_home_event(event: &nectarlink_core::NodeEvent) {
     use nectarlink_core::NodeEvent;
     let watched = home_store(|s| s.watched);
+    let shelf_active = is_shelf_open();
     match event {
         NodeEvent::LinkChanged { device, link: LinkState::Online { .. } } if watched == Some(*device) => {
             refresh_home_if_needed(*device, true, true, true);
@@ -1413,7 +1989,7 @@ pub(crate) fn on_home_event(event: &nectarlink_core::NodeEvent) {
                 refresh_home_if_needed(dev, false, true, false);
             });
         }
-        NodeEvent::PhotoAdded { device, photo } if watched == Some(*device) => {
+        NodeEvent::PhotoAdded { device, photo } if watched == Some(*device) || shelf_active => {
             let thumb_url = crate::photos::write_thumb(*device, &photo.id, &photo.thumb)
                 .or_else(|| {
                     let p = crate::photos::thumb_path(*device, &photo.id);
@@ -1434,8 +2010,12 @@ pub(crate) fn on_home_event(event: &nectarlink_core::NodeEvent) {
             });
             bump_home_summary();
         }
-        NodeEvent::PhotosChanged { device } if watched == Some(*device) => {
-            refresh_home_if_needed(*device, false, false, true);
+        NodeEvent::PhotosChanged { device } if watched == Some(*device) || shelf_active => {
+            if watched == Some(*device) {
+                refresh_home_if_needed(*device, false, false, true);
+            } else {
+                refresh_shelf_photo_if_needed(*device, true);
+            }
         }
         NodeEvent::DeviceRemoved(device) => {
             home_store(|s| {
@@ -1447,6 +2027,88 @@ pub(crate) fn on_home_event(event: &nectarlink_core::NodeEvent) {
         }
         _ => {}
     }
+}
+
+fn refresh_shelf_photo_if_needed(device: DeviceId, force_photo: bool) {
+    let (online, photos_avail) = core_host::host().hub.read(|s| {
+        let online = s.devices.iter().any(|d| d.id == device && matches!(d.link, LinkState::Online { .. }));
+        let avail = s.matrices.get(&device).and_then(|m| m.state("files.recent_photos"))
+            == Some(FeatureState::Available);
+        (online, avail)
+    });
+    if !online || !photos_avail {
+        return;
+    }
+    let do_photo = home_store(|s| {
+        let d = s.devices.entry(device).or_default();
+        let should = !d.photo_busy && (force_photo || !d.photo_loaded);
+        if should {
+            d.photo_busy = true;
+        }
+        should
+    });
+    if do_photo {
+        spawn_home_photo_fetch(device);
+    }
+}
+
+fn spawn_home_photo_fetch(device: DeviceId) {
+    let Some(node) = core_host::node() else {
+        home_store(|s| {
+            if let Some(d) = s.devices.get_mut(&device) {
+                d.photo_busy = false;
+            }
+        });
+        return;
+    };
+    core_host::spawn(async move {
+        let Ok(items) = node.photo_list(device, None, None, 1).await else {
+            home_store(|s| {
+                if let Some(d) = s.devices.get_mut(&device) {
+                    d.photo_busy = false;
+                }
+            });
+            return;
+        };
+        let Some(item) = items.into_iter().next() else {
+            home_store(|s| {
+                let d = s.devices.entry(device).or_default();
+                d.photo_loaded = true;
+                d.photo_busy = false;
+                d.photo_id.clear();
+                d.photo_name.clear();
+                d.photo_date = 0;
+                d.photo_thumb.clear();
+            });
+            bump_home_summary();
+            return;
+        };
+        let mut disk_path = crate::photos::thumb_path(device, &item.id);
+        if !disk_path.exists()
+            && let Ok(thumbs) = node.photo_thumbs(device, vec![item.id.clone()]).await
+            && let Some(first) = thumbs.into_iter().next()
+            && let Some(saved) = crate::photos::write_thumb(device, &first.id, &first.data)
+        {
+            disk_path = saved;
+        }
+        let thumb_url = if disk_path.exists() { crate::icons::file_url(&disk_path) } else { String::new() };
+        let lower_name = item.name.to_ascii_lowercase();
+        let is_screenshot = lower_name.contains("screenshot")
+            || item.album.as_deref().is_some_and(|a| a.to_ascii_lowercase().contains("screenshot"));
+        let is_video = item.duration.is_some() || item.id.starts_with("video:");
+        home_store(|s| {
+            let d = s.devices.entry(device).or_default();
+            d.photo_loaded = true;
+            d.photo_busy = false;
+            d.photo_id = item.id;
+            d.photo_name = item.name;
+            d.photo_date = item.date;
+            d.photo_thumb = thumb_url;
+            d.photo_is_video = is_video;
+            d.photo_is_screenshot = is_screenshot;
+        });
+        bump_home_summary();
+    });
 }
 
 fn refresh_home_if_needed(device: DeviceId, force_sms: bool, force_calls: bool, force_photo: bool) {
@@ -1506,55 +2168,7 @@ fn refresh_home_if_needed(device: DeviceId, force_sms: bool, force_calls: bool, 
         });
     }
     if do_photo {
-        core_host::spawn(async move {
-            let Ok(items) = node.photo_list(device, None, None, 1).await else {
-                home_store(|s| {
-                    if let Some(d) = s.devices.get_mut(&device) {
-                        d.photo_busy = false;
-                    }
-                });
-                return;
-            };
-            let Some(item) = items.into_iter().next() else {
-                home_store(|s| {
-                    let d = s.devices.entry(device).or_default();
-                    d.photo_loaded = true;
-                    d.photo_busy = false;
-                    d.photo_id.clear();
-                    d.photo_name.clear();
-                    d.photo_date = 0;
-                    d.photo_thumb.clear();
-                });
-                bump_home_summary();
-                return;
-            };
-            let mut disk_path = crate::photos::thumb_path(device, &item.id);
-            if !disk_path.exists()
-                && let Ok(thumbs) = node.photo_thumbs(device, vec![item.id.clone()]).await
-                && let Some(first) = thumbs.into_iter().next()
-                && let Some(saved) = crate::photos::write_thumb(device, &first.id, &first.data)
-            {
-                disk_path = saved;
-            }
-            let thumb_url =
-                if disk_path.exists() { crate::icons::file_url(&disk_path) } else { String::new() };
-            let lower_name = item.name.to_ascii_lowercase();
-            let is_screenshot = lower_name.contains("screenshot")
-                || item.album.as_deref().is_some_and(|a| a.to_ascii_lowercase().contains("screenshot"));
-            let is_video = item.duration.is_some() || item.id.starts_with("video:");
-            home_store(|s| {
-                let d = s.devices.entry(device).or_default();
-                d.photo_loaded = true;
-                d.photo_busy = false;
-                d.photo_id = item.id;
-                d.photo_name = item.name;
-                d.photo_date = item.date;
-                d.photo_thumb = thumb_url;
-                d.photo_is_video = is_video;
-                d.photo_is_screenshot = is_screenshot;
-            });
-            bump_home_summary();
-        });
+        spawn_home_photo_fetch(device);
     }
 }
 

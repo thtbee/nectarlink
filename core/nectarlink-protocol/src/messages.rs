@@ -66,6 +66,7 @@ pub mod types {
     pub const SMS_CHANGED: &str = "sms.changed";
     pub const MIRROR_START: &str = "mirror.start";
     pub const MIRROR_STOP: &str = "mirror.stop";
+    pub const MIRROR_POWER: &str = "mirror.power";
     pub const MIRROR_KEYFRAME: &str = "mirror.keyframe";
     pub const MIRROR_RESIZE: &str = "mirror.resize";
     pub const MIRROR_INPUT: &str = "mirror.input";
@@ -1220,6 +1221,12 @@ pub struct MirrorStart {
     /// instead of the phone's screen (with a session other than SCREEN).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub app: Option<String>,
+    /// Keep the phone awake while mirroring its screen (`session == SCREEN`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub stay_awake: bool,
+    /// Turn the phone's physical screen off while mirroring (`session == SCREEN`, Elevated).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub screen_off: bool,
 }
 
 impl MirrorStart {
@@ -1227,9 +1234,21 @@ impl MirrorStart {
     pub fn is_valid(&self) -> bool {
         match &self.app {
             None => self.session == mirror::SCREEN,
-            Some(app) => self.session != mirror::SCREEN && is_package_name(app),
+            Some(app) => {
+                self.session != mirror::SCREEN && is_package_name(app) && !self.stay_awake && !self.screen_off
+            }
         }
     }
+}
+
+/// Body of `mirror.power`: change `stay_awake` or `screen_off` while mirroring
+/// the phone's screen (`session == SCREEN`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorPower {
+    #[serde(default)]
+    pub stay_awake: bool,
+    #[serde(default)]
+    pub screen_off: bool,
 }
 
 /// Which mirroring a `mirror.stop`, `mirror.keyframe` or `mirror.input` is
@@ -1321,8 +1340,24 @@ pub mod mirror_keys {
     pub const DOWN: &str = "down";
     pub const TAB: &str = "tab";
     pub const NOTIFICATIONS: &str = "notifications";
-    pub const ALL: &[&str] =
-        &[BACK, HOME, RECENTS, ENTER, BACKSPACE, DELETE, LEFT, RIGHT, UP, DOWN, TAB, NOTIFICATIONS];
+    pub const KEYBOARD_ON: &str = "keyboard_on";
+    pub const KEYBOARD_OFF: &str = "keyboard_off";
+    pub const ALL: &[&str] = &[
+        BACK,
+        HOME,
+        RECENTS,
+        ENTER,
+        BACKSPACE,
+        DELETE,
+        LEFT,
+        RIGHT,
+        UP,
+        DOWN,
+        TAB,
+        NOTIFICATIONS,
+        KEYBOARD_ON,
+        KEYBOARD_OFF,
+    ];
 }
 
 /// `mirror.input`: the input's fields, and the session when it isn't the
@@ -2563,6 +2598,10 @@ pub struct FilesOffer {
     /// Timestamped markers placed during the recording.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub markers: Vec<RecordingMarker>,
+    /// True when the sender asked the receiver to open this single safe document
+    /// with the OS default application once it finishes arriving (Rich Handoff).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub open_on_arrival: bool,
 }
 
 /// Never prints file names (protocol v0 §11).
@@ -2573,6 +2612,7 @@ impl std::fmt::Debug for FilesOffer {
             .field("files", &self.files.len())
             .field("recording", &self.recording)
             .field("markers", &self.markers.len())
+            .field("open_on_arrival", &self.open_on_arrival)
             .finish()
     }
 }
@@ -4064,6 +4104,7 @@ mod tests {
             files: names.iter().map(|n| FileEntry { name: (*n).into(), size: 1, folder: None }).collect(),
             recording: false,
             markers: Vec::new(),
+            open_on_arrival: false,
         };
         assert!(offer("abcdefghijklmnop", &["photo.jpg", "Résumé (final).pdf"]).is_valid());
         for bad in ["", ".", "..", "a/b", "a\\b", "x\u{0}y", "tab\there"] {
@@ -4082,6 +4123,7 @@ mod tests {
             files: vec![FileEntry { name: "a.jpg".into(), size: 1, folder: Some(folder.into()) }],
             recording: false,
             markers: Vec::new(),
+            open_on_arrival: false,
         };
         for good in ["Trip", "Trip/Day 1", "Trip/Day 1/raw"] {
             assert!(offer(good).is_valid(), "{good:?}");
@@ -4107,6 +4149,7 @@ mod tests {
                 RecordingMarker { at_ms: 1200, label: None },
                 RecordingMarker { at_ms: 5400, label: Some("Action item".into()) },
             ],
+            open_on_arrival: false,
         };
         assert!(rec.is_valid());
         assert!(!format!("{:?}", rec.markers[1]).contains("Action item"));

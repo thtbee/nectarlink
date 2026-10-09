@@ -36,6 +36,16 @@ pub fn title(t: &Transfer) -> String {
 
 /// Sends files and folders to a device; the transfer list shows how it goes.
 pub fn send(device: DeviceId, paths: Vec<PathBuf>) {
+    send_with_mode(device, paths, false);
+}
+
+/// Hands off a document to a device and asks the receiver to open it with its
+/// default app once it arrives.
+pub fn send_handoff(device: DeviceId, paths: Vec<PathBuf>) {
+    send_with_mode(device, paths, true);
+}
+
+fn send_with_mode(device: DeviceId, paths: Vec<PathBuf>, handoff: bool) {
     let Some(node) = core_host::node() else { return };
     core_host::spawn(async move {
         let files = match tokio::task::spawn_blocking(move || nectarlink_core::outgoing_paths(&paths)).await {
@@ -45,7 +55,12 @@ pub fn send(device: DeviceId, paths: Vec<PathBuf>) {
             Ok(Err(e)) => return show_message(describe(&e)),
             Err(_) => return,
         };
-        match node.send_files(device, files).await {
+        let res = if handoff {
+            node.send_handoff_files(device, files).await
+        } else {
+            node.send_files(device, files).await
+        };
+        match res {
             Ok(_) => {}
             Err(Error::Denied) => show_message("Files are turned off for that device."),
             Err(e) => show_message(describe(&e)),
@@ -127,6 +142,13 @@ pub fn on_event(event: &NodeEvent) {
         return crate::recordings::on_done(t.clone());
     }
     let Some(first) = saved.first() else { return };
+    let auto_open = t.open_on_arrival
+        && saved.len() == 1
+        && first.is_file()
+        && first.file_name().and_then(|n| n.to_str()).is_some_and(nectarlink_core::is_safe_handoff_document);
+    if auto_open {
+        open(first);
+    }
     let device = core_host::host()
         .hub
         .read(|s| s.name_of(&t.device))
@@ -140,11 +162,15 @@ pub fn on_event(event: &NodeEvent) {
         device: TOAST_GROUP.into(),
         key: first.to_string_lossy().into_owned(),
         title,
-        body: format!("From {device}, saved in Downloads\\Nectarlink"),
+        body: if auto_open {
+            format!("From {device}, opened from Downloads\\Nectarlink")
+        } else {
+            format!("From {device}, saved in Downloads\\Nectarlink")
+        },
         attribution: "Nectarlink".into(),
         icon: None,
         image: None,
-        actions: vec![(ACTION_SHOW.into(), "Show in folder".into())],
+        actions: vec![(ACTION_OPEN.into(), "Open".into()), (ACTION_SHOW.into(), "Show in folder".into())],
         reply: None,
         silent: false,
         progress: None,

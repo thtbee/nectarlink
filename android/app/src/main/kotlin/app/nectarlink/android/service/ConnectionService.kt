@@ -105,7 +105,11 @@ class ConnectionService : LifecycleService() {
     private fun ongoingNotification(status: Status): Notification {
         val text = when {
             status.connected.size == 1 -> getString(R.string.notification_connected_to, status.connected[0])
-            status.connected.size > 1 -> getString(R.string.notification_connected_many, status.connected.size)
+            status.connected.size > 1 -> resources.getQuantityString(
+                R.plurals.notification_connected_pcs,
+                status.connected.size,
+                status.connected.size,
+            )
             status.paired == 0 -> getString(R.string.notification_not_paired)
             else -> getString(R.string.notification_waiting)
         }

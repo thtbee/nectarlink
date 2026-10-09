@@ -203,6 +203,23 @@ class PhoneMedia(context: Context, private val onChange: (List<MediaPlayer>) -> 
         }
     }
 
+    /** Current playback position in seconds of the active media session, if any. */
+    fun activePositionSeconds(): UInt? {
+        val list = lastSent ?: return null
+        val first = list.firstOrNull { it.playing } ?: list.firstOrNull() ?: return null
+        val baseMs = first.position?.toLong() ?: return null
+        val elapsedMs = if (first.playing && lastSentAt > 0) {
+            (SystemClock.elapsedRealtime() - lastSentAt).coerceAtLeast(0L)
+        } else {
+            0L
+        }
+        val totalMs = (baseMs + elapsedMs).let { pos ->
+            first.duration?.toLong()?.let { dur -> pos.coerceAtMost(dur) } ?: pos
+        }
+        val secs = (totalMs / 1000L).toInt()
+        return if (secs > 0) secs.toUInt() else null
+    }
+
     /**
      * Artwork as a small JPEG, made once per track and picture size (apps
      * hand over a new copy of the same picture with every update).

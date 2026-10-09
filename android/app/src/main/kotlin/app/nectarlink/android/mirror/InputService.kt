@@ -173,6 +173,15 @@ class InputService : AccessibilityService() {
             }
             "left" -> edit { text, start, _ -> Edit(text, if (start > 0) text.offsetByCodePoints(start, -1) else 0) }
             "right" -> edit { text, _, end -> Edit(text, if (end < text.length) text.offsetByCodePoints(end, 1) else text.length) }
+            "up" -> edit { text, start, _ ->
+                val prevNewline = text.lastIndexOf('\n', (start - 1).coerceAtLeast(0))
+                Edit(text, if (prevNewline >= 0) prevNewline else 0)
+            }
+            "down" -> edit { text, _, end ->
+                val nextNewline = text.indexOf('\n', end)
+                Edit(text, if (nextNewline >= 0) (nextNewline + 1).coerceAtMost(text.length) else text.length)
+            }
+            "tab" -> focused()?.focusSearch(android.view.View.FOCUS_FORWARD)?.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
         }
     }
 
@@ -180,16 +189,35 @@ class InputService : AccessibilityService() {
 
     private data class Edit(val text: String, val cursor: Int)
 
+    private var pendingText: String? = null
+    private var pendingCursor: Int = 0
+    private var pendingAt: Long = 0L
+
     /** Changes the focused text field: its text and selection in, the new text and cursor out. */
     private fun edit(change: (String, Int, Int) -> Edit?) {
         val node = focused() ?: return
-        if (!node.isEditable) return
+        if (!isNodeEditable(node)) return
+        runCatching { node.refresh() }
         val showingHint = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && node.isShowingHintText
-        val text = if (showingHint) "" else node.text?.toString().orEmpty()
-        val start = node.textSelectionStart.takeIf { it in 0..text.length } ?: text.length
-        val end = node.textSelectionEnd.takeIf { it in start..text.length } ?: start
+        val rawText = if (showingHint) "" else node.text?.toString().orEmpty()
+        val now = SystemClock.uptimeMillis()
+        val usePending = pendingText != null && (now - pendingAt) < 350L && rawText != pendingText
+        val text = if (usePending) pendingText!! else rawText
+        val start = if (usePending || (rawText == pendingText && node.textSelectionStart <= 0 && pendingCursor > 0)) {
+            pendingCursor.coerceIn(0, text.length)
+        } else {
+            node.textSelectionStart.takeIf { it in 0..text.length } ?: text.length
+        }
+        val end = if (usePending || (rawText == pendingText && node.textSelectionEnd <= 0 && pendingCursor > 0)) {
+            start
+        } else {
+            node.textSelectionEnd.takeIf { it in start..text.length } ?: start
+        }
         val result = change(text, start, end) ?: return
-        if (result.text != text) {
+        pendingText = result.text
+        pendingCursor = result.cursor
+        pendingAt = now
+        if (result.text != text || usePending) {
             node.performAction(
                 AccessibilityNodeInfo.ACTION_SET_TEXT,
                 Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, result.text) },
@@ -204,7 +232,35 @@ class InputService : AccessibilityService() {
         )
     }
 
-    private fun focused(): AccessibilityNodeInfo? = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+    private fun isNodeEditable(node: AccessibilityNodeInfo): Boolean =
+        node.isEditable ||
+            node.className == "android.widget.EditText" ||
+            node.actionList.any { it.id == AccessibilityNodeInfo.ACTION_SET_TEXT }
+
+    private fun focused(): AccessibilityNodeInfo? {
+        findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.takeIf { isNodeEditable(it) }?.let { return it }
+        findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY)?.takeIf { isNodeEditable(it) }?.let { return it }
+        val roots = buildList {
+            rootInActiveWindow?.let { add(it) }
+            runCatching { windows }.getOrNull()?.forEach { w -> w.root?.let { add(it) } }
+        }
+        for (root in roots) {
+            findEditable(root, requireFocused = true)?.let { return it }
+        }
+        for (root in roots) {
+            findEditable(root, requireFocused = false)?.let { return it }
+        }
+        return findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+    }
+
+    private fun findEditable(node: AccessibilityNodeInfo?, requireFocused: Boolean): AccessibilityNodeInfo? {
+        if (node == null) return null
+        if (isNodeEditable(node) && (!requireFocused || node.isFocused)) return node
+        for (i in 0 until node.childCount) {
+            findEditable(node.getChild(i), requireFocused)?.let { return it }
+        }
+        return null
+    }
 
     companion object {
         private const val TAG = "InputService"

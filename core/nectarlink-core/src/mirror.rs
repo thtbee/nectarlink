@@ -23,8 +23,8 @@ use iroh::endpoint::{RecvStream, SendStream, VarInt};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, PacketKind,
     messages::{
-        MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorResize, MirrorSession, MirrorStart, PhoneApp,
-        PhoneApps, StreamHeader, mirror, types,
+        MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorPower, MirrorResize, MirrorSession, MirrorStart,
+        PhoneApp, PhoneApps, StreamHeader, mirror, types,
     },
     read_video_packet, video_packet_header, write_frame,
 };
@@ -129,6 +129,20 @@ pub(crate) async fn resize(
         return Err(Error::Protocol("invalid resize".into()));
     }
     session.send(Envelope::new(types::MIRROR_RESIZE, &msg)?).await
+}
+
+/// Update `stay_awake` and `screen_off` on a phone while mirroring its screen (`session == 0`).
+pub(crate) async fn power(
+    shared: &Shared,
+    session: &Session,
+    stay_awake: bool,
+    screen_off: bool,
+) -> Result<()> {
+    if !shared.toggle_on(&session.peer, TOGGLE) {
+        return Err(Error::Denied);
+    }
+    let msg = MirrorPower { stay_awake, screen_off };
+    session.send(Envelope::new(types::MIRROR_POWER, &msg)?).await
 }
 
 /// The apps a phone can open in windows of their own, by name.
@@ -306,6 +320,7 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let MirrorSession { session: mirroring } = env.body()?;
             // The PC's side: stop showing; the phone's: stop sharing.
             shared.stop_showing(&peer, mirroring);
+            shared.emit(NodeEvent::Mirroring { device: peer, session: mirroring, on: false });
             tokio::task::spawn_blocking(move || platform.mirror_stop_requested(&peer, mirroring));
             session.send(Envelope::empty(types::OK).reply_to(env.id)).await?;
         }
@@ -320,6 +335,16 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             if allowed && resize.is_valid() {
                 tokio::task::spawn_blocking(move || {
                     platform.mirror_resize_requested(&peer, resize.session, resize.width, resize.height);
+                });
+            }
+        }
+        types::MIRROR_POWER => {
+            let power: MirrorPower = env.body()?;
+            let allowed = shared.toggle_on(&peer, TOGGLE)
+                && shared.local_capabilities().iter().any(|c| c == mirror::CAPTURE);
+            if allowed {
+                tokio::task::spawn_blocking(move || {
+                    platform.mirror_power_requested(&peer, power.stay_awake, power.screen_off);
                 });
             }
         }

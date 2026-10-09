@@ -8,10 +8,10 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{
         Arc, Mutex, OnceLock,
-        atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering},
         mpsc::{Receiver, SyncSender, TrySendError, sync_channel},
     },
     time::{Duration, Instant},
@@ -22,12 +22,19 @@ use nectarlink_core::{
 };
 
 use crate::{
-    bridge::{app::describe, native::ffi},
+    bridge::{
+        app::{describe, show_message},
+        native::ffi,
+    },
     core_host,
     state::Changes,
+    transfers::{ACTION_OPEN, ACTION_SHOW, TOAST_GROUP},
     win::{
         audio_out::Player,
         h264::{Decoder, to_bgrx},
+        image::{Bitmap, encode_png},
+        mp4::{MirrorRecorder, local_timestamp_filename, merge_sps_pps},
+        toast::{self, Toast},
     },
 };
 
@@ -39,11 +46,15 @@ const OPTIONS: MirrorStart = MirrorStart {
     audio: true,
     session: MIRROR_SCREEN,
     app: None,
+    stay_awake: false,
+    screen_off: false,
 };
 /// Packets waiting for the decoder, at most (about two seconds).
 const BACKLOG: usize = 120;
 /// How often decode times are logged.
 const STATS_EVERY: Duration = Duration::from_secs(10);
+/// How long an in-window status notice stays visible.
+const NOTICE_DURATION: Duration = Duration::from_secs(3);
 
 /// A mirroring on this PC: a phone and the session, 0 for its screen,
 /// others for its apps in windows of their own.
@@ -152,6 +163,14 @@ struct State {
     windows: HashMap<Window, Shown>,
     /// Phones whose sound is coming in.
     sound: HashSet<DeviceId>,
+    /// Phones kept awake while mirroring their screen.
+    stay_awake: HashSet<DeviceId>,
+    /// Phones whose physical screen is turned off while mirroring.
+    screen_off: HashSet<DeviceId>,
+    /// Phone currently receiving PC keyboard input without screen mirroring.
+    keyboard_device: Option<DeviceId>,
+    /// Short transient feedback notices per mirror window: `(text, shown_at, token)`.
+    notices: HashMap<Window, (String, Instant, u64)>,
     apps: HashMap<DeviceId, Apps>,
     saved: SavedWindows,
 }
@@ -161,6 +180,10 @@ impl Default for State {
         Self {
             windows: HashMap::new(),
             sound: HashSet::new(),
+            stay_awake: HashSet::new(),
+            screen_off: HashSet::new(),
+            keyboard_device: None,
+            notices: HashMap::new(),
             apps: HashMap::new(),
             saved: SavedWindows::load(),
         }
@@ -171,6 +194,21 @@ impl Default for State {
 static MUTED: AtomicBool = AtomicBool::new(false);
 /// The next app window's session.
 static NEXT_SESSION: AtomicU32 = AtomicU32::new(1);
+/// Monotonic token for auto-clearing window notices.
+static NOTICE_SEQ: AtomicU64 = AtomicU64::new(1);
+
+type FrameMap = HashMap<Window, (u32, u32, Arc<Vec<u8>>)>;
+
+/// Latest displayed BGRX frame per window, for instant screenshots.
+static FRAMES: Mutex<Option<FrameMap>> = Mutex::new(None);
+/// Active MP4 recorders per window.
+static RECORDERS: Mutex<Option<HashMap<Window, MirrorRecorder>>> = Mutex::new(None);
+/// Latest video stream dimensions per window.
+static LAST_CONFIG: Mutex<Option<HashMap<Window, (u32, u32)>>> = Mutex::new(None);
+/// Latest audio stream format `(rate, channels)` per device.
+static LAST_AUDIO_CONFIG: Mutex<Option<HashMap<DeviceId, (u32, u8)>>> = Mutex::new(None);
+/// Latest Annex-B SPS/PPS bytes per window so mid-stream recordings have parameter sets immediately.
+static LAST_SPS_PPS: Mutex<Option<HashMap<Window, Vec<u8>>>> = Mutex::new(None);
 
 pub fn muted() -> bool {
     MUTED.load(Ordering::Relaxed)
@@ -189,6 +227,385 @@ pub fn has_sound(device: &DeviceId) -> bool {
 fn set_sound(device: DeviceId, on: bool) {
     state(|s| if on { s.sound.insert(device) } else { s.sound.remove(&device) });
     core_host::host().hub.changed(Changes::MIRROR);
+}
+
+/// Whether `device` is set to stay awake while mirroring its screen.
+pub fn stay_awake(device: &DeviceId) -> bool {
+    state(|s| s.stay_awake.contains(device))
+}
+
+/// Whether `device`'s physical screen is turned off while mirroring.
+pub fn screen_off(device: &DeviceId) -> bool {
+    state(|s| s.screen_off.contains(device))
+}
+
+/// Toggles keeping the phone awake while mirroring (`session == 0`).
+pub fn set_stay_awake(window: Window, on: bool) {
+    if window.session != MIRROR_SCREEN {
+        return;
+    }
+    let screen_off = state(|s| {
+        if on {
+            s.stay_awake.insert(window.device);
+        } else {
+            s.stay_awake.remove(&window.device);
+        }
+        s.screen_off.contains(&window.device)
+    });
+    set_notice(
+        window,
+        if on { "Keeping phone awake while mirroring" } else { "Phone sleep timeout restored" },
+    );
+    core_host::host().hub.changed(Changes::MIRROR);
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        if let Err(e) = node.mirror_power(window.device, on, screen_off).await {
+            tracing::debug!(error = %e, "mirror.power didn't reach the phone");
+        }
+    });
+}
+
+/// Toggles turning the phone's physical screen off while mirroring (`session == 0`).
+pub fn set_screen_off(window: Window, on: bool) {
+    if window.session != MIRROR_SCREEN {
+        return;
+    }
+    let stay_awake = state(|s| {
+        if on {
+            s.screen_off.insert(window.device);
+        } else {
+            s.screen_off.remove(&window.device);
+        }
+        s.stay_awake.contains(&window.device)
+    });
+    set_notice(window, if on { "Phone screen turned off" } else { "Phone screen turned back on" });
+    core_host::host().hub.changed(Changes::MIRROR);
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        if let Err(e) = node.mirror_power(window.device, stay_awake, on).await {
+            tracing::debug!(error = %e, "mirror.power didn't reach the phone");
+        }
+    });
+}
+
+/// Short status banner for `window` if shown within the last 3 seconds.
+pub fn last_notice(window: &Window) -> String {
+    state(|s| {
+        s.notices
+            .get(window)
+            .filter(|(_, at, _)| at.elapsed() < NOTICE_DURATION)
+            .map(|(text, _, _)| text.clone())
+            .unwrap_or_default()
+    })
+}
+
+fn set_notice(window: Window, text: impl Into<String>) {
+    let token = NOTICE_SEQ.fetch_add(1, Ordering::Relaxed);
+    state(|s| {
+        s.notices.insert(window, (text.into(), Instant::now(), token));
+    });
+    core_host::host().hub.changed(Changes::MIRROR);
+    core_host::spawn(async move {
+        tokio::time::sleep(NOTICE_DURATION).await;
+        let cleared = state(|s| {
+            if s.notices.get(&window).is_some_and(|(_, _, t)| *t == token) {
+                s.notices.remove(&window);
+                true
+            } else {
+                false
+            }
+        });
+        if cleared {
+            core_host::host().hub.changed(Changes::MIRROR);
+        }
+    });
+}
+
+fn save_latest_frame(window: Window, width: u32, height: u32, bgrx: Vec<u8>) {
+    FRAMES
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_or_insert_with(HashMap::new)
+        .insert(window, (width, height, Arc::new(bgrx)));
+}
+
+fn clear_window_buffers(window: &Window) {
+    if let Some(frames) = FRAMES.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+        frames.remove(window);
+    }
+    if let Some(cfg) = LAST_CONFIG.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+        cfg.remove(window);
+    }
+    if let Some(sps) = LAST_SPS_PPS.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+        sps.remove(window);
+    }
+}
+
+fn latest_bitmap(window: &Window) -> Option<Bitmap> {
+    let (width, height, raw) = FRAMES
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .and_then(|m| m.get(window))
+        .map(|(w, h, b)| (*w, *h, b.clone()))?;
+    if width == 0 || height == 0 {
+        return None;
+    }
+    let mut bgra = (*raw).clone();
+    for px in bgra.as_chunks_mut::<4>().0 {
+        px[3] = 0xFF;
+    }
+    Some(Bitmap { width, height, bgra })
+}
+
+fn free_path(dir: &Path, name: &str) -> PathBuf {
+    let first = dir.join(name);
+    if !first.exists() {
+        return first;
+    }
+    let path = Path::new(name);
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or(name);
+    let ext = path.extension().and_then(|e| e.to_str());
+    for n in 2..10_000u32 {
+        let candidate = match ext {
+            Some(ext) => dir.join(format!("{stem} ({n}).{ext}")),
+            None => dir.join(format!("{stem} ({n})")),
+        };
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+    first
+}
+
+/// Copies the current mirror frame for `window` to the PC clipboard as PNG.
+pub fn screenshot_clipboard(window: Window) {
+    let Some(bitmap) = latest_bitmap(&window) else {
+        set_notice(window, "Wait for the screen to appear first");
+        show_message("Wait for the screen to appear first.");
+        return;
+    };
+    let copied = encode_png(&bitmap)
+        .map_err(|e| e.to_string())
+        .and_then(|png| crate::win::clipboard::write_image("image/png", &png));
+    match copied {
+        Ok(()) => {
+            set_notice(window, "Screenshot copied to clipboard");
+            show_message("Screenshot copied to clipboard.");
+        }
+        Err(e) => {
+            tracing::warn!(error = %e, "can't copy mirror screenshot");
+            set_notice(window, "Couldn't copy screenshot");
+            show_message("The screenshot couldn't be copied to the clipboard.");
+        }
+    }
+}
+
+/// Saves the current mirror frame for `window` to `Downloads\Nectarlink` as a PNG file.
+pub fn screenshot_file(window: Window) {
+    let Some(bitmap) = latest_bitmap(&window) else {
+        set_notice(window, "Wait for the screen to appear first");
+        show_message("Wait for the screen to appear first.");
+        return;
+    };
+    let png = match encode_png(&bitmap) {
+        Ok(png) => png,
+        Err(e) => {
+            tracing::warn!(error = %e, "can't encode mirror screenshot");
+            set_notice(window, "Couldn't save screenshot");
+            show_message("The screenshot couldn't be saved.");
+            return;
+        }
+    };
+    let base_name = local_timestamp_filename("Screenshot", "png");
+    let dir = core_host::downloads_dir();
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        tracing::warn!(error = %e, "can't create Downloads\\Nectarlink");
+        set_notice(window, "Couldn't save screenshot");
+        show_message("The screenshot couldn't be saved.");
+        return;
+    }
+    let path = free_path(&dir, &base_name);
+    if let Err(e) = std::fs::write(&path, &png) {
+        tracing::warn!(error = %e, "can't write mirror screenshot");
+        set_notice(window, "Couldn't save screenshot");
+        show_message("The screenshot couldn't be saved.");
+        return;
+    }
+    let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or(&base_name).to_owned();
+    if let Some(node) = core_host::node() {
+        node.record_timeline(
+            nectarlink_core::TimelineKind::Photo,
+            window.device,
+            true,
+            file_name.clone(),
+            "Mirror screenshot".into(),
+            path.to_string_lossy().into_owned(),
+            png.len() as u64,
+            0,
+            None,
+        );
+    }
+    let device_name =
+        core_host::host().hub.read(|s| s.name_of(&window.device)).unwrap_or_else(|| "your phone".into());
+    toast::show(Toast {
+        device: TOAST_GROUP.into(),
+        key: path.to_string_lossy().into_owned(),
+        title: file_name.clone(),
+        body: format!("Screenshot from {device_name}, saved in Downloads\\Nectarlink"),
+        attribution: "Nectarlink".into(),
+        icon: None,
+        image: Some(path),
+        actions: vec![(ACTION_OPEN.into(), "Open".into()), (ACTION_SHOW.into(), "Show in folder".into())],
+        reply: None,
+        silent: false,
+        progress: None,
+        call: false,
+    });
+    set_notice(window, format!("Saved {file_name}"));
+    show_message(format!("Saved {file_name} to Downloads\\Nectarlink."));
+}
+
+/// Whether `window` is currently recording to an MP4 file.
+pub fn is_recording(window: &Window) -> bool {
+    RECORDERS.lock().unwrap_or_else(|e| e.into_inner()).as_ref().is_some_and(|m| m.contains_key(window))
+}
+
+/// Unix epoch milliseconds when the active recording for `window` started (`0` if not recording).
+pub fn recording_started_ms(window: &Window) -> i64 {
+    RECORDERS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .and_then(|m| m.get(window))
+        .map_or(0, MirrorRecorder::started_epoch_ms)
+}
+
+/// Starts or stops MP4 recording for `window`.
+pub fn toggle_recording(window: Window) {
+    if is_recording(&window) {
+        stop_recording(window);
+        return;
+    }
+    if !matches!(phase(&window), Some(Phase::Showing)) {
+        set_notice(window, "Wait for the screen to appear first");
+        show_message("Wait for the screen to appear first.");
+        return;
+    }
+    let base_name = local_timestamp_filename("Mirror", "mp4");
+    let dir = core_host::downloads_dir();
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        tracing::warn!(error = %e, "can't create Downloads\\Nectarlink");
+        set_notice(window, "Couldn't start recording");
+        show_message("Couldn't start recording.");
+        return;
+    }
+    let path = free_path(&dir, &base_name);
+    let (width, height) = LAST_CONFIG
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .and_then(|m| m.get(&window).copied())
+        .or_else(|| {
+            FRAMES
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .as_ref()
+                .and_then(|m| m.get(&window).map(|(w, h, _)| (*w, *h)))
+        })
+        .unwrap_or((0, 0));
+
+    let audio_cfg = if window.session == MIRROR_SCREEN && has_sound(&window.device) {
+        LAST_AUDIO_CONFIG
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+            .and_then(|m| m.get(&window.device).copied())
+            .or(Some((48_000, 2)))
+    } else {
+        None
+    };
+
+    let mut recorder = MirrorRecorder::new(path, width, height, OPTIONS.fps, audio_cfg);
+    if let Some(sps_pps) =
+        LAST_SPS_PPS.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|m| m.get(&window))
+    {
+        recorder.set_sps_pps(sps_pps);
+    }
+
+    RECORDERS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_or_insert_with(HashMap::new)
+        .insert(window, recorder);
+
+    set_notice(window, "Recording started");
+    core_host::host().hub.changed(Changes::MIRROR);
+    if let Some(node) = core_host::node() {
+        core_host::spawn(async move { node.mirror_keyframe(window.device, window.session).await });
+    }
+}
+
+/// Stops and finalizes any active MP4 recording for `window`.
+pub fn stop_recording(window: Window) {
+    let recorder =
+        RECORDERS.lock().unwrap_or_else(|e| e.into_inner()).as_mut().and_then(|m| m.remove(&window));
+    let Some(recorder) = recorder else { return };
+    core_host::host().hub.changed(Changes::MIRROR);
+    let duration_secs = recorder.started_at().elapsed().as_secs().max(1);
+
+    core_host::spawn(async move {
+        let res = tokio::task::spawn_blocking(move || recorder.finish()).await;
+        match res {
+            Ok(Ok(path)) => {
+                let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("Mirror.mp4").to_owned();
+                let size_bytes = std::fs::metadata(&path).map_or(0, |m| m.len());
+                if let Some(node) = core_host::node() {
+                    node.record_timeline(
+                        nectarlink_core::TimelineKind::Recording,
+                        window.device,
+                        true,
+                        file_name.clone(),
+                        "Mirror recording".into(),
+                        path.to_string_lossy().into_owned(),
+                        size_bytes,
+                        duration_secs,
+                        None,
+                    );
+                }
+                let device_name = core_host::host()
+                    .hub
+                    .read(|s| s.name_of(&window.device))
+                    .unwrap_or_else(|| "your phone".into());
+                toast::show(Toast {
+                    device: TOAST_GROUP.into(),
+                    key: path.to_string_lossy().into_owned(),
+                    title: file_name.clone(),
+                    body: format!("Recording from {device_name}, saved in Downloads\\Nectarlink"),
+                    attribution: "Nectarlink".into(),
+                    icon: None,
+                    image: None,
+                    actions: vec![
+                        (ACTION_OPEN.into(), "Open".into()),
+                        (ACTION_SHOW.into(), "Show in folder".into()),
+                    ],
+                    reply: None,
+                    silent: false,
+                    progress: None,
+                    call: false,
+                });
+                set_notice(window, format!("Saved {file_name}"));
+                show_message(format!("Saved {file_name} to Downloads\\Nectarlink."));
+            }
+            Ok(Err(msg)) => {
+                set_notice(window, msg.clone());
+                show_message(msg);
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "mirror recording finalize panicked");
+            }
+        }
+    });
 }
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
@@ -238,9 +655,43 @@ pub fn save_geometry(window: Window, x: i32, y: i32, width: u32, height: u32) {
     });
 }
 
-/// Package names of apps opened on `device` from this PC, most recent first.
+/// Package names of recent apps on `device` (apps opened from this PC first,
+/// followed by apps with active or recent notifications), most recent first.
 pub fn recent_apps(device: &DeviceId) -> Vec<String> {
-    state(|s| s.saved.recent.get(&device.to_string()).cloned().unwrap_or_default())
+    let saved = state(|s| s.saved.recent.get(&device.to_string()).cloned().unwrap_or_default());
+    let (notif_pkgs, hist_pkgs) = core_host::host().hub.read(|s| {
+        let active: Vec<String> = s
+            .notifications
+            .iter()
+            .filter(|n| &n.device == device && !n.notification.app.is_empty())
+            .map(|n| n.notification.app.clone())
+            .collect();
+        let history: Vec<String> = s
+            .history
+            .iter()
+            .filter(|h| &h.device == device && !h.notification.app.is_empty())
+            .map(|h| h.notification.app.clone())
+            .collect();
+        (active, history)
+    });
+    merge_recent_apps(&saved, notif_pkgs, hist_pkgs)
+}
+
+pub(crate) fn merge_recent_apps(
+    saved: &[String],
+    active_notif_pkgs: impl IntoIterator<Item = String>,
+    history_pkgs: impl IntoIterator<Item = String>,
+) -> Vec<String> {
+    let mut out = Vec::with_capacity(12);
+    for pkg in saved.iter().cloned().chain(active_notif_pkgs).chain(history_pkgs) {
+        if !pkg.is_empty() && !out.contains(&pkg) {
+            out.push(pkg);
+            if out.len() >= 12 {
+                break;
+            }
+        }
+    }
+    out
 }
 
 fn record_recent(s: &mut State, device: &DeviceId, pkg: &str) {
@@ -253,10 +704,86 @@ fn record_recent(s: &mut State, device: &DeviceId, pkg: &str) {
 
 /// Asks the phone for its screen.
 pub fn start(device: DeviceId) {
+    if keyboard_device() == Some(device) {
+        set_remote_keyboard(None);
+    }
     let window = Window::screen(device);
     ffi::video_clear(&window.key());
-    state(|s| s.windows.insert(window, Shown { phase: Phase::Asking, app: None, pkg: None }));
-    request(window, OPTIONS);
+    let (stay_awake, screen_off) = state(|s| {
+        s.screen_off.remove(&device);
+        s.windows.insert(window, Shown { phase: Phase::Asking, app: None, pkg: None });
+        (s.stay_awake.contains(&device), false)
+    });
+    request(window, MirrorStart { stay_awake, screen_off, ..OPTIONS });
+}
+
+/// Phone currently receiving PC keyboard input without screen mirroring.
+pub fn keyboard_device() -> Option<DeviceId> {
+    state(|s| s.keyboard_device)
+}
+
+/// Starts or stops remote keyboard typing on `device` without screen mirroring.
+pub fn set_remote_keyboard(device: Option<DeviceId>) {
+    let prev = state(|s| {
+        let prev = s.keyboard_device;
+        s.keyboard_device = device;
+        prev
+    });
+    if prev == device {
+        return;
+    }
+    if let Some(old) = prev {
+        input(Window::screen(old), nectarlink_core::MirrorInput::Key { key: "keyboard_off".into() });
+    }
+    if let Some(new) = device {
+        input(Window::screen(new), nectarlink_core::MirrorInput::Key { key: "keyboard_on".into() });
+    }
+    core_host::host().hub.changed(Changes::MIRROR);
+}
+
+/// Toggles remote keyboard typing on `device` without screen mirroring.
+pub fn toggle_remote_keyboard(device: DeviceId) {
+    if keyboard_device() == Some(device) {
+        set_remote_keyboard(None);
+    } else {
+        set_remote_keyboard(Some(device));
+    }
+}
+
+/// Sends a special key (`"enter"`, `"backspace"`, `"delete"`, `"left"`, `"right"`, `"up"`, `"down"`, `"tab"`, `"back"`, `"home"`)
+/// to `device` while remote keyboard mode is active.
+pub fn keyboard_press(device: DeviceId, key_name: String) {
+    if keyboard_device() == Some(device) {
+        input(Window::screen(device), nectarlink_core::MirrorInput::Key { key: key_name });
+    }
+}
+
+/// Sends typed text to `device` while remote keyboard mode is active, splitting into protocol-sized chunks.
+pub fn keyboard_text(device: DeviceId, text: String) {
+    if keyboard_device() != Some(device) || text.is_empty() {
+        return;
+    }
+    let window = Window::screen(device);
+    let mut piece = String::new();
+    for c in text.chars() {
+        if piece.len() + c.len_utf8() > nectarlink_core::MIRROR_MAX_TEXT_BYTES {
+            input(window, nectarlink_core::MirrorInput::Text { text: std::mem::take(&mut piece) });
+        }
+        piece.push(c);
+    }
+    if !piece.is_empty() {
+        input(window, nectarlink_core::MirrorInput::Text { text: piece });
+    }
+}
+
+/// Pastes the PC's current clipboard text onto `device` while remote keyboard mode is active.
+pub fn keyboard_paste(device: DeviceId) {
+    if keyboard_device() != Some(device) {
+        return;
+    }
+    if let crate::win::clipboard::Clip::Text(text) = crate::win::clipboard::read() {
+        keyboard_text(device, text);
+    }
 }
 
 /// Opens one of the phone's apps in a window of its own (or does nothing
@@ -350,7 +877,15 @@ fn request(window: Window, options: MirrorStart) {
 
 /// Stops a mirroring (its window closed).
 pub fn stop(window: Window) {
-    state(|s| s.windows.remove(&window));
+    stop_recording(window);
+    clear_window_buffers(&window);
+    state(|s| {
+        s.windows.remove(&window);
+        s.notices.remove(&window);
+        if window.session == MIRROR_SCREEN {
+            s.screen_off.remove(&window.device);
+        }
+    });
     ffi::video_clear(&window.key());
     core_host::host().hub.changed(Changes::MIRROR);
     let Some(node) = core_host::node() else { return };
@@ -375,13 +910,56 @@ pub fn on_event(event: &NodeEvent) {
         // Closed here: nothing to say. Stopped on the phone: say so.
         NodeEvent::Mirroring { device, session, on: false } => {
             let window = Window { device: *device, session: *session };
+            stop_recording(window);
+            clear_window_buffers(&window);
+            if *session == MIRROR_SCREEN {
+                let cleared_kb = state(|s| {
+                    s.screen_off.remove(device);
+                    if s.keyboard_device == Some(*device) {
+                        s.keyboard_device = None;
+                        true
+                    } else {
+                        false
+                    }
+                });
+                if cleared_kb {
+                    core_host::host().hub.changed(Changes::MIRROR);
+                }
+            }
             if phase(&window).is_some() {
                 set_phase(window, Phase::Ended(None));
             }
         }
         // A phone that went away takes its app list with it.
         NodeEvent::LinkChanged { device, link: nectarlink_core::LinkState::Offline { .. } } => {
-            state(|s| s.apps.remove(device));
+            let cleared_kb = state(|s| {
+                s.apps.remove(device);
+                s.screen_off.remove(device);
+                if s.keyboard_device == Some(*device) {
+                    s.keyboard_device = None;
+                    true
+                } else {
+                    false
+                }
+            });
+            if cleared_kb {
+                core_host::host().hub.changed(Changes::MIRROR);
+            }
+        }
+        NodeEvent::DeviceRemoved(id) => {
+            let cleared_kb = state(|s| {
+                s.apps.remove(id);
+                s.screen_off.remove(id);
+                if s.keyboard_device == Some(*id) {
+                    s.keyboard_device = None;
+                    true
+                } else {
+                    false
+                }
+            });
+            if cleared_kb {
+                core_host::host().hub.changed(Changes::MIRROR);
+            }
         }
         _ => {}
     }
@@ -571,12 +1149,33 @@ impl Sink {
 
 impl MirrorSink for Sink {
     fn config(&self, config: MirrorConfig) {
+        LAST_CONFIG
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_or_insert_with(HashMap::new)
+            .insert(self.window, (config.width, config.height));
+        if let Some(rec) =
+            RECORDERS.lock().unwrap_or_else(|e| e.into_inner()).as_mut().and_then(|m| m.get_mut(&self.window))
+        {
+            rec.on_config(config.width, config.height);
+        }
         let video = self.video.get_or_init(|| Video::start(self.window));
         // The format matters: wait for room rather than drop it.
         let _ = video.queue.send(Item::Config(config));
     }
 
     fn packet(&self, keyframe: bool, time_us: u64, data: Vec<u8>) {
+        {
+            let mut sps_map = LAST_SPS_PPS.lock().unwrap_or_else(|e| e.into_inner());
+            let entry = sps_map.get_or_insert_with(HashMap::new).entry(self.window).or_default();
+            merge_sps_pps(entry, &data);
+        }
+        if let Some(rec) =
+            RECORDERS.lock().unwrap_or_else(|e| e.into_inner()).as_mut().and_then(|m| m.get_mut(&self.window))
+            && let Err(e) = rec.on_packet(keyframe, time_us, &data)
+        {
+            tracing::warn!(error = %e, "mirror recording packet failed");
+        }
         let Some(video) = self.video.get() else { return };
         match video.queue.try_send(Item::Packet { keyframe, time_us, data }) {
             Ok(()) => {
@@ -589,12 +1188,27 @@ impl MirrorSink for Sink {
     }
 
     fn ended(&self) {
+        stop_recording(self.window);
         if let Some(video) = self.video.get() {
             let _ = video.queue.send(Item::Ended);
         }
     }
 
     fn audio_config(&self, config: MirrorAudioConfig) {
+        LAST_AUDIO_CONFIG
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_or_insert_with(HashMap::new)
+            .insert(self.window.device, (config.rate, config.channels));
+        if self.window.session == MIRROR_SCREEN
+            && let Some(rec) = RECORDERS
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .as_mut()
+                .and_then(|m| m.get_mut(&self.window))
+        {
+            rec.on_audio_config(config.rate, config.channels);
+        }
         let mut sound = self.sound.lock().unwrap_or_else(|e| e.into_inner());
         // A new format: a new player (the old one ends when dropped).
         *sound = match Player::start(config.rate, u16::from(config.channels)) {
@@ -607,7 +1221,17 @@ impl MirrorSink for Sink {
         set_sound(self.window.device, sound.is_some());
     }
 
-    fn audio(&self, _time_us: u64, data: Vec<u8>) {
+    fn audio(&self, time_us: u64, data: Vec<u8>) {
+        if self.window.session == MIRROR_SCREEN
+            && let Some(rec) = RECORDERS
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .as_mut()
+                .and_then(|m| m.get_mut(&self.window))
+            && let Err(e) = rec.on_audio(time_us, &data)
+        {
+            tracing::debug!(error = %e, "mirror recording audio packet failed");
+        }
         if muted() {
             return;
         }
@@ -678,9 +1302,11 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
                     let bgrx = to_bgrx(picture, w, h);
                     if (src_w, src_h) == (w, h) || src_w == 0 || src_h == 0 {
                         ffi::video_frame(&stream, src_w, src_h, &bgrx);
+                        save_latest_frame(window, src_w, src_h, bgrx);
                     } else {
                         let scaled = scale_bgrx(&bgrx, src_w, src_h, w, h);
                         ffi::video_frame(&stream, w, h, &scaled);
+                        save_latest_frame(window, w, h, scaled);
                     }
                     stats.shown(decoded, converted.elapsed());
                 } else {
@@ -690,6 +1316,7 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
             Item::Ended => break,
         }
     }
+    clear_window_buffers(&window);
     ffi::video_clear(&stream);
 }
 
@@ -746,5 +1373,30 @@ impl Stats {
             "mirroring"
         );
         *self = Stats::new();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::merge_recent_apps;
+
+    #[test]
+    fn recent_apps_combines_saved_and_notification_packages_without_duplicates() {
+        let saved = vec!["com.android.settings".to_owned(), "org.telegram.messenger".to_owned()];
+        let active = vec![
+            "org.telegram.messenger".to_owned(),
+            "com.google.android.apps.messaging".to_owned(),
+            String::new(),
+        ];
+        let history = vec!["com.google.android.apps.messaging".to_owned(), "com.spotify.music".to_owned()];
+        assert_eq!(
+            merge_recent_apps(&saved, active, history),
+            vec![
+                "com.android.settings".to_owned(),
+                "org.telegram.messenger".to_owned(),
+                "com.google.android.apps.messaging".to_owned(),
+                "com.spotify.music".to_owned(),
+            ]
+        );
     }
 }

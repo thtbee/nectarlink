@@ -112,6 +112,9 @@ pub struct Transfer {
     pub recording: bool,
     /// Timestamped markers placed during the recording.
     pub markers: Vec<RecordingMarker>,
+    /// True when the sender handed off a single document that should open with
+    /// the default app once it arrives (`docs/protocol/files.md`).
+    pub open_on_arrival: bool,
 }
 
 /// Never prints file names (protocol v0 §11).
@@ -127,6 +130,7 @@ impl std::fmt::Debug for Transfer {
             .field("state", &self.state)
             .field("recording", &self.recording)
             .field("markers", &self.markers.len())
+            .field("open_on_arrival", &self.open_on_arrival)
             .finish()
     }
 }
@@ -354,7 +358,20 @@ fn transfer_timeline_detail(entries: &[FileEntry], recording: bool, markers: &[R
 /// Starts sending files; progress and the outcome arrive as
 /// [`NodeEvent::Transfer`]. Returns the transfer's ID.
 pub(crate) async fn send(shared: &Arc<Shared>, peer: DeviceId, files: Vec<OutgoingFile>) -> Result<String> {
-    send_inner(shared, peer, files, false, false, Vec::new()).await
+    send_inner(shared, peer, files, false, false, Vec::new(), false).await
+}
+
+/// Starts sending a handed-off document that should open with the default app
+/// on the receiving device once it arrives (`docs/protocol/files.md`).
+pub(crate) async fn send_handoff(
+    shared: &Arc<Shared>,
+    peer: DeviceId,
+    files: Vec<OutgoingFile>,
+) -> Result<String> {
+    let open_on_arrival = files.len() == 1
+        && files[0].folder.is_none()
+        && crate::handoff::is_safe_handoff_document(&files[0].name);
+    send_inner(shared, peer, files, false, false, Vec::new(), open_on_arrival).await
 }
 
 /// Starts sending photos requested via `photos.get`.
@@ -363,7 +380,7 @@ pub(crate) async fn send_photos_files(
     peer: DeviceId,
     files: Vec<OutgoingFile>,
 ) -> Result<String> {
-    send_inner(shared, peer, files, false, true, Vec::new()).await
+    send_inner(shared, peer, files, false, true, Vec::new(), false).await
 }
 
 /// Starts sending a voice recording and its markers (`docs/protocol/recorder.md`);
@@ -376,7 +393,7 @@ pub(crate) async fn send_recording(
 ) -> Result<String> {
     file.folder = None;
     let clean_markers = sanitize_markers(markers);
-    send_inner(shared, peer, vec![file], true, false, clean_markers).await
+    send_inner(shared, peer, vec![file], true, false, clean_markers, false).await
 }
 
 fn sanitize_markers(markers: Vec<RecordingMarker>) -> Vec<RecordingMarker> {
@@ -424,6 +441,7 @@ async fn send_inner(
     recording: bool,
     is_photo: bool,
     markers: Vec<RecordingMarker>,
+    open_on_arrival: bool,
 ) -> Result<String> {
     if files.is_empty() || files.len() > files::MAX_FILES || (recording && files.len() != 1) {
         return Err(Error::Protocol("send between 1 and 5000 files".into()));
@@ -463,10 +481,21 @@ async fn send_inner(
     }
     let entries: Vec<FileEntry> = opened.iter().map(|(entry, _)| entry.clone()).collect();
     let id = new_id();
+    let open_on_arrival = open_on_arrival
+        && !recording
+        && entries.len() == 1
+        && entries[0].folder.is_none()
+        && crate::handoff::is_safe_handoff_document(&entries[0].name);
     // The whole offer has to fit in one frame.
     let offer = Envelope::new(
         files::OFFER,
-        &FilesOffer { id: id.clone(), files: entries.clone(), recording, markers: markers.clone() },
+        &FilesOffer {
+            id: id.clone(),
+            files: entries.clone(),
+            recording,
+            markers: markers.clone(),
+            open_on_arrival,
+        },
     )
     .map_err(|e| Error::Protocol(e.to_string()))?;
     if offer.to_cbor().len() > nectarlink_protocol::MAX_FRAME_LEN {
@@ -483,9 +512,14 @@ async fn send_inner(
         state: TransferState::Waiting,
         recording,
         markers,
+        open_on_arrival,
     };
     let id = transfer.id.clone();
-    let tl_detail = transfer_timeline_detail(&entries, recording, &transfer.markers);
+    let tl_detail = if open_on_arrival {
+        "Handoff document".into()
+    } else {
+        transfer_timeline_detail(&entries, recording, &transfer.markers)
+    };
     let tl_target = source_targets.join("\n");
     let tl_kind = if recording {
         crate::TimelineKind::Recording
@@ -590,6 +624,7 @@ async fn attempt(
         files: files.iter().map(|(entry, _)| entry.clone()).collect(),
         recording: reporter.transfer.recording,
         markers: reporter.transfer.markers.clone(),
+        open_on_arrival: reporter.transfer.open_on_arrival,
     };
     let (Ok(header), Ok(offer)) =
         (Envelope::new(types::STREAM, &header), Envelope::new(files::OFFER, &offer))
@@ -828,6 +863,11 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
 
     let cancel = CancellationToken::new();
     shared.register_transfer(&offer.id, cancel.clone());
+    let open_on_arrival = offer.open_on_arrival
+        && !offer.recording
+        && offer.files.len() == 1
+        && offer.files[0].folder.is_none()
+        && crate::handoff::is_safe_handoff_document(&offer.files[0].name);
     let transfer = Transfer {
         id: offer.id.clone(),
         device: peer,
@@ -839,6 +879,7 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
         state: TransferState::Running,
         recording: offer.recording,
         markers: offer.markers.clone(),
+        open_on_arrival,
     };
     let mut reporter = Reporter::new(shared.clone(), transfer);
     reporter.set(TransferState::Running);
@@ -862,6 +903,8 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
                         1 => "Photo".into(),
                         n => format!("{n} photos"),
                     }
+                } else if open_on_arrival {
+                    "Handoff document".into()
                 } else {
                     transfer_timeline_detail(&offer.files, offer.recording, &offer.markers)
                 };

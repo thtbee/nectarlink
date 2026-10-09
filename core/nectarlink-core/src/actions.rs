@@ -194,13 +194,21 @@ impl Shared {
     }
 }
 
-/// Checks a link the protocol allows: http or https, not too long.
+/// Checks a link the protocol allows: `http://`, `https://`, or `geo:`, not too long.
 pub(crate) fn valid_link(url: &str) -> bool {
+    if url.len() > nectarlink_protocol::messages::LINK_MAX_BYTES
+        || url.chars().any(|c| c.is_control() || c.is_whitespace())
+    {
+        return false;
+    }
     let lower = url.get(..8).map(str::to_ascii_lowercase).unwrap_or_default();
-    (lower.starts_with("http://") || lower.starts_with("https://"))
-        && url.len() <= nectarlink_protocol::messages::LINK_MAX_BYTES
-        && !url.chars().any(|c| c.is_control() || c.is_whitespace())
-        && url.split("://").nth(1).is_some_and(|rest| !rest.is_empty())
+    if lower.starts_with("http://") || lower.starts_with("https://") {
+        url.split("://").nth(1).is_some_and(|rest| !rest.is_empty())
+    } else if url.get(..4).is_some_and(|p| p.eq_ignore_ascii_case("geo:")) {
+        !url[4..].is_empty()
+    } else {
+        false
+    }
 }
 
 pub(crate) async fn pc_power(shared: &Arc<Shared>, session: &Session, action: PowerAction) -> Result<()> {
@@ -212,13 +220,16 @@ pub(crate) async fn pc_power(shared: &Arc<Shared>, session: &Session, action: Po
     Ok(())
 }
 
-fn link_host(url: &str) -> String {
+fn link_detail(url: &str) -> String {
+    if let Some(h) = crate::handoff::extract_handoff_link(url) {
+        return h.label;
+    }
     url.split("://").nth(1).unwrap_or(url).split(['/', '?', '#']).next().unwrap_or("").to_owned()
 }
 
 pub(crate) async fn open_link(shared: &Arc<Shared>, session: &Session, url: String) -> Result<()> {
     if !valid_link(&url) {
-        return Err(Error::Internal("not a web link".into()));
+        return Err(Error::Internal("not a web or map link".into()));
     }
     if !shared.offers(&session.peer, LINKS)? {
         return Err(Error::Unsupported);
@@ -232,7 +243,7 @@ pub(crate) async fn open_link(shared: &Arc<Shared>, session: &Session, url: Stri
         incoming: false,
         timestamp: crate::now_unix(),
         title: url.clone(),
-        detail: link_host(&url),
+        detail: link_detail(&url),
         target: url,
         size_bytes: 0,
         duration_secs: 0,
@@ -359,7 +370,7 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                             incoming: true,
                             timestamp: crate::now_unix(),
                             title: url.clone(),
-                            detail: link_host(&url),
+                            detail: link_detail(&url),
                             target: url,
                             size_bytes: 0,
                             duration_secs: 0,
@@ -411,9 +422,16 @@ mod tests {
     fn only_web_links_go() {
         assert!(valid_link("https://example.com/a?b=c#d"));
         assert!(valid_link("HTTP://EXAMPLE.COM"));
-        for bad in
-            ["javascript:alert(1)", "file:///C:/x", "https://", "https://a b", "ms-settings:", "ftp://x"]
-        {
+        assert!(valid_link("geo:48.8584,2.2945?q=Eiffel%20Tower"));
+        for bad in [
+            "javascript:alert(1)",
+            "file:///C:/x",
+            "https://",
+            "geo:",
+            "https://a b",
+            "ms-settings:",
+            "ftp://x",
+        ] {
             assert!(!valid_link(bad), "{bad}");
         }
         assert!(!valid_link(&format!("https://a.com/{}", "x".repeat(8192))));

@@ -31,6 +31,7 @@ pub enum PaletteUiAction {
     NavigatePage { page: String, device_index: Option<usize> },
     StartChat { device_id: String, number: String, name: String },
     OpenDialer { device_id: String, number: String },
+    OpenHandoffFilePicker { device_index: Option<usize> },
     OpenDoctor,
     OpenPairing,
 }
@@ -181,6 +182,10 @@ pub fn execute(id: &str) -> Option<PaletteUiAction> {
         return Some(PaletteUiAction::NavigatePage { page: "home".to_owned(), device_index: Some(idx) });
     }
 
+    if id == "action:toggle_shelf" {
+        crate::bridge::app::toggle_shelf_from_anywhere();
+        return None;
+    }
     if id == "action:continuity_photo" {
         crate::continuity_camera::start("photo");
         return None;
@@ -251,6 +256,13 @@ pub fn execute(id: &str) -> Option<PaletteUiAction> {
         crate::mirror::start(dev);
         return None;
     }
+    if let Some(dev_str) = id.strip_prefix("action:type_on_phone:")
+        && let Ok(dev) = dev_str.parse::<DeviceId>()
+    {
+        crate::mirror::toggle_remote_keyboard(dev);
+        let idx = device_index_of(dev);
+        return Some(PaletteUiAction::NavigatePage { page: "home".to_owned(), device_index: idx });
+    }
     if let Some(dev_str) = id.strip_prefix("action:webcam:")
         && let Ok(dev) = dev_str.parse::<DeviceId>()
     {
@@ -273,6 +285,12 @@ pub fn execute(id: &str) -> Option<PaletteUiAction> {
             show_message(e);
         }
         return None;
+    }
+    if let Some(dev_str) = id.strip_prefix("action:handoff_file:")
+        && let Ok(dev) = dev_str.parse::<DeviceId>()
+    {
+        let idx = core_host::host().hub.read(|s| s.devices.iter().position(|d| d.id == dev));
+        return Some(PaletteUiAction::OpenHandoffFilePicker { device_index: idx });
     }
 
     if let Some(rest) = id.strip_prefix("toggle:") {
@@ -523,7 +541,18 @@ fn build_candidates() -> Vec<PaletteCandidate> {
         });
     }
 
-    // Continuity Camera actions (global hotkeys shown as badges/shortcuts)
+    // Shelf & Continuity Camera actions (global hotkeys shown as badges/shortcuts)
+    out.push(PaletteCandidate {
+        id: "action:toggle_shelf".into(),
+        title: if crate::bridge::app::is_shelf_open() { "Hide Shelf".into() } else { "Open Shelf".into() },
+        subtitle: "Slide-out edge panel with latest photo, screenshot, clipboard, and recent files".into(),
+        category: "Actions".into(),
+        icon: "folder".into(),
+        badge: "Shelf".into(),
+        shortcut: settings.shelf_hotkey.clone(),
+        keywords: "shelf panel edge drop zone latest photo screenshot clipboard recent files drag".into(),
+        base_boost: 91,
+    });
     out.push(PaletteCandidate {
         id: "action:continuity_photo".into(),
         title: "Take photo with phone".into(),
@@ -546,15 +575,44 @@ fn build_candidates() -> Vec<PaletteCandidate> {
         keywords: "scan document with phone continuity camera receipt paper pdf paste".into(),
         base_boost: 86,
     });
+    let (link_title, link_sub, link_badge, link_keywords) = match crate::links::handoff_from_clipboard() {
+        Some(h) => match h.kind {
+            nectarlink_core::HandoffKind::MapLocation => (
+                "Open copied location in Maps on phone".to_owned(),
+                h.label,
+                "Handoff · Map".to_owned(),
+                "open copied link map location address directions geo handoff phone".to_owned(),
+            ),
+            nectarlink_core::HandoffKind::VideoLink => (
+                "Continue copied video on phone".to_owned(),
+                h.label,
+                "Handoff · Video".to_owned(),
+                "open copied link video youtube timestamp watch continue handoff phone".to_owned(),
+            ),
+            nectarlink_core::HandoffKind::WebLink => (
+                "Open copied link on phone".to_owned(),
+                h.label,
+                "Handoff".to_owned(),
+                "open copied link url browser web share handoff phone".to_owned(),
+            ),
+        },
+        None => (
+            "Open copied link on phone".to_owned(),
+            "Send a web URL, video with timestamp, or map location on your clipboard to your phone"
+                .to_owned(),
+            "Handoff".to_owned(),
+            "open copied link url browser web video youtube map address handoff phone".to_owned(),
+        ),
+    };
     out.push(PaletteCandidate {
         id: "action:open_link".into(),
-        title: "Open copied link on phone".into(),
-        subtitle: "Send the web URL on your clipboard to your phone's browser".into(),
+        title: link_title,
+        subtitle: link_sub,
         category: "Actions".into(),
         icon: "globe".into(),
-        badge: String::new(),
+        badge: link_badge,
         shortcut: String::new(),
-        keywords: "open copied link url browser web share phone".into(),
+        keywords: link_keywords,
         base_boost: 78,
     });
 
@@ -570,6 +628,22 @@ fn build_candidates() -> Vec<PaletteCandidate> {
             keywords: format!("mirror phone screen cast display stream {dev_name}"),
             base_boost: 80,
         });
+        let typing_active = crate::mirror::keyboard_device() == Some(dev_id);
+        out.push(PaletteCandidate {
+            id: format!("action:type_on_phone:{dev_id}"),
+            title: if typing_active {
+                "Stop typing on phone".into()
+            } else {
+                "Type on phone with PC keyboard".into()
+            },
+            subtitle: format!("Send live keystrokes and text to {dev_name} without screen mirroring"),
+            category: "Actions".into(),
+            icon: "keyboard".into(),
+            badge: dev_name.clone(),
+            shortcut: String::new(),
+            keywords: format!("type on phone keyboard input text without mirroring {dev_name}"),
+            base_boost: 79,
+        });
         let webcam_streaming = matches!(
             crate::webcam::phase(),
             crate::webcam::Phase::Asking { .. } | crate::webcam::Phase::Streaming { .. }
@@ -584,6 +658,17 @@ fn build_candidates() -> Vec<PaletteCandidate> {
             shortcut: String::new(),
             keywords: format!("webcam camera video stream call zoom teams {dev_name}"),
             base_boost: 76,
+        });
+        out.push(PaletteCandidate {
+            id: format!("action:handoff_file:{dev_id}"),
+            title: "Hand off document to phone".into(),
+            subtitle: format!("Send a document to {dev_name} and open it automatically upon arrival"),
+            category: "Actions".into(),
+            icon: "send".into(),
+            badge: "Handoff · Doc".into(),
+            shortcut: String::new(),
+            keywords: format!("hand off handoff document file open pdf doc txt send {dev_name}"),
+            base_boost: 77,
         });
         out.push(PaletteCandidate {
             id: format!("action:phone_storage:{dev_id}"),
@@ -1230,6 +1315,19 @@ mod tests {
                 base_boost: 90,
             },
             PaletteCandidate {
+                id: "action:toggle_shelf".into(),
+                title: "Open Shelf".into(),
+                subtitle: "Slide-out edge panel with latest photo, screenshot, clipboard, and recent files"
+                    .into(),
+                category: "Actions".into(),
+                icon: "folder".into(),
+                badge: "Shelf".into(),
+                shortcut: "Ctrl+Alt+S".into(),
+                keywords: "shelf panel edge drop zone latest photo screenshot clipboard recent files drag"
+                    .into(),
+                base_boost: 91,
+            },
+            PaletteCandidate {
                 id: "action:continuity_photo".into(),
                 title: "Take photo with phone".into(),
                 subtitle: "Capture a photo on your phone and paste it".into(),
@@ -1320,6 +1418,7 @@ mod tests {
         assert_eq!(top("text alice"), "Text Alice Rivera");
         assert_eq!(top("call alice"), "Call Alice Rivera");
         assert_eq!(top("last photo"), "Open last photo");
+        assert_eq!(top("shelf"), "Open Shelf");
         assert_eq!(top("mirror whatsapp"), "Mirror WhatsApp");
         assert_eq!(top("record voice"), "Record voice");
         assert_eq!(top("take photo"), "Take photo with phone");

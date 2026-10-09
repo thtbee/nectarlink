@@ -2,7 +2,7 @@
 
 > **Nectarlink** connects Android phones and Windows PCs. It's one open-source app that replaces Phone Link, KDE Connect, scrcpy, LocalSend and Intel Unison.
 > *Bees carry nectar back to the hive. Nectarlink carries everything between your phone and your PC.*
-> Status: **planning complete, stack locked (Qt Quick + Rust), name final (Nectarlink), repo initialized locally. No product code yet.** Next steps in §12. Last updated 2026-10-04.
+> Status: **in active development (Qt Quick + Rust on Windows 11, Kotlin + Jetpack Compose on Android, shared Rust core).** Phase 1 and most of Phases 2–3 work end to end; see §3 for per-feature status. Last updated 2026-10-09.
 
 ---
 
@@ -106,21 +106,21 @@ Power: 🟢 Basic · 🔵 Assist · 🟣 Elevated (see §4.6).
 ### 3.1 Connection & setup
 | Feature | Tier |
 |---|---|
-| Pair by **QR code** (PC shows QR → phone scans), by **tap a nearby device + 6-digit code match**, or **plug in USB** (auto-pair) | P0 |
-| Auto-reconnect everywhere: PC wake from sleep, Wi-Fi changes, phone reboot, app updates | P0 |
-| Works over **Wi-Fi, Ethernet-to-Wi-Fi, USB**, and **away from home** (hole punching + relay, opt-in, self-hostable) | P0 (LAN/USB), P1 (away) |
-| **Connection Doctor**: detects firewall, Public network profile, AP isolation, VPN, battery optimization, OEM killers. One-click fixes plus per-OEM guides | P0 |
-| Companion Device Manager association + PC BLE beacon, so the phone app is woken when the PC is nearby | P1 |
+| Pair by **QR code** (PC shows QR → phone scans), by **tap a nearby device + 6-digit code match**, or **plug in USB** (auto-pair) — partial (QR code and nearby 6-digit code work; USB auto-pair not started) | P0 |
+| Auto-reconnect everywhere: PC wake from sleep, Wi-Fi changes, phone reboot, app updates ✅ | P0 |
+| Works over **Wi-Fi, Ethernet-to-Wi-Fi, USB**, and **away from home** (hole punching + relay, opt-in, self-hostable) — partial (Wi-Fi and Ethernet-to-Wi-Fi work; USB transport and away-from-home UI/self-hosted relay config not started) | P0 (LAN/USB), P1 (away) |
+| **Connection Doctor**: detects firewall, Public network profile, AP isolation, VPN, battery optimization, OEM killers. One-click fixes plus per-OEM guides — partial (firewall, Public network profile, VPN, and Android battery optimization / local network checks with one-click fixes work; AP isolation probe and per-OEM guides missing) | P0 |
+| Companion Device Manager association + PC BLE beacon, so the phone app is woken when the PC is nearby — not started | P1 |
 | Bluetooth fallback link for low-bandwidth features (notifications, SMS, calls) when there's no shared network | P2 |
-| Multiple phones per PC, multiple PCs per phone, per-device feature permissions | P0 (model), P1 (UI) |
+| Multiple phones per PC, multiple PCs per phone, per-device feature permissions ✅ | P0 (model), P1 (UI) |
 
 ### 3.2 Notifications
 | Feature | Tier |
 |---|---|
-| Mirror notifications as native Windows toasts with **app icon, big images, actions, inline reply** | P0 🟢 |
-| Dismiss sync (clear on one side → cleared on the other), per-app allow/block, quiet hours | P0 🟢 |
-| Notification feed in the app: history, search, grouping by app/conversation | P0 🟢 |
-| **Sensitive notifications / OTPs** | P0 🟣 |
+| Mirror notifications as native Windows toasts with **app icon, big images, actions, inline reply** ✅ | P0 🟢 |
+| Dismiss sync (clear on one side → cleared on the other), per-app allow/block, quiet hours ✅ | P0 🟢 |
+| Notification feed in the app: history, search, grouping by app/conversation — partial (live feed and searchable 24-hour dismissed history work; collapsible grouping by app in the feed is missing, while conversation notifications group in Messages) | P0 🟢 |
+| **Sensitive notifications / OTPs** — not started (Android 15+ `RECEIVE_SENSITIVE_NOTIFICATIONS` appop grant in Elevated mode not wired) | P0 🟣 |
 | **Smart OTP**: detect codes and offer a "Copy code" toast; auto-copy optional ✅ | P1 |
 | **Live Updates** (Android 16 progress notifications: rides, deliveries, timers) shown live on PC ✅ | P1 |
 | DND sync: quiet PC notifications when phone is in DND, plus toggle phone DND from PC (Windows has no public API to read or set Focus/DND) ✅ | P1 🟢/🟣 |
@@ -137,10 +137,10 @@ Power: 🟢 Basic · 🔵 Assist · 🟣 Elevated (see §4.6).
 ### 3.4 Calls
 | Feature | Tier |
 |---|---|
-| Incoming call alert on PC with caller photo; answer / decline / silence (audio stays on phone) | P0 🟢 |
-| Call in progress on PC: timer, hang up, volume; with Elevated (Android 12+), mute, speaker, hold and keypad through a calling-companion `InCallService` | P0 🟢 |
-| Call log, dialer, call from contacts | P1 🟢 |
-| **Call audio on PC via Bluetooth HFP** (PC mic/speakers) | P1 (after spike) |
+| Incoming call alert on PC with caller photo; answer / decline / silence (audio stays on phone) ✅ | P0 🟢 |
+| Call in progress on PC: timer, hang up, volume; with Elevated (Android 12+), mute, speaker, hold and keypad through a calling-companion `InCallService` ✅ | P0 🟢 |
+| Call log, dialer, call from contacts ✅ | P1 🟢 |
+| **Call audio on PC via Bluetooth HFP** (PC mic/speakers) — not started | P1 (after spike) |
 | Auto-pause PC media during calls ✅ | P1 |
 
 Not planned: **recording calls.** Android keeps call audio (`VOICE_CALL`
@@ -150,51 +150,51 @@ current Android. Talking through the PC comes with the HFP item above.
 ### 3.5 Clipboard
 | Feature | Tier |
 |---|---|
-| Text + images + rich text, bidirectional, auto | P0 (PC→phone 🟢, phone→PC auto 🟣) |
-| Fallbacks without Elevated: "Send clipboard" QS tile, share target, notification button | P0 🟢 |
+| Text + images + rich text, bidirectional, auto — partial (plain text and images work with PC→phone auto and manual phone→PC; rich text HTML/RTF and Elevated background phone→PC auto sync are missing) | P0 (PC→phone 🟢, phone→PC auto 🟣) |
+| Fallbacks without Elevated: "Send clipboard" QS tile, share target, notification button ✅ | P0 🟢 |
 | Clipboard history (both devices, local, encrypted), pin items ✅ | P1 |
-| **Smart clipboard (context chips)**: copy an address → "Open in Maps"; a phone number → "Call"; a tracking code → "Track"; a link → "Open on phone"; an OTP → "Paste on PC" | P1 |
-| Respect password managers' "exclude from clipboard history" flags on both sides; never sync sensitive clips | P0 |
+| **Smart clipboard (context chips)**: copy an address → "Open in Maps"; a phone number → "Call"; a tracking code → "Track"; a link → "Open on phone"; an email → "Email" (OTPs have "Copy code" on notifications and texts) ✅ | P1 |
+| Respect password managers' "exclude from clipboard history" flags on both sides; never sync sensitive clips ✅ | P0 |
 | Copy files on PC → paste on phone (and the reverse) | P2 |
 
 ### 3.6 Files & photos
 | Feature | Tier |
 |---|---|
-| Send files/folders both ways: drag-drop, share sheet, Explorer **"Send to phone"** context menu, Windows share sheet | P0 |
-| Fast, resumable, multi-stream transfers with progress, pause/resume, and integrity hashing | P0 |
-| **Flick to send**: flick a photo/file upward on the phone and it lands on the PC. Drag a file to the screen edge on the PC and it flies to the phone. Physics-based animation on both ends | P1 |
+| Send files/folders both ways: drag-drop, share sheet, Explorer **"Send to phone"** context menu, Windows share sheet — partial (drag-drop, file/folder pickers, Android share sheet, and Explorer "Send to" context menu work; Windows share sheet target is missing) | P0 |
+| Fast, resumable, multi-stream transfers with progress, pause/resume, and integrity hashing — partial (pipelined transfers with live progress, cancel, and automatic byte-offset resume after a dropped connection work; manual pause/resume, multi-stream striping, and integrity hashing are missing) | P0 |
+| **Flick to send**: flick a photo/file upward on the phone and it lands on the PC. Drag a file to the screen edge on the PC and it flies to the phone. Physics-based animation on both ends — not started | P1 |
 | **LocalSend protocol interop**: send to and receive from any LocalSend device (iOS, Mac, Linux). We implement its open protocol in Rust; we don't reuse its (Dart) code ✅ | P1 |
 | **Coexistence**: runs side by side with KDE Connect (ports 1714–1764) and LocalSend (53317) on the same PC without conflicts. If LocalSend's port is taken, Nectarlink still sends but leaves receiving to the LocalSend app ✅ | P0 |
 | **Phone storage in Explorer** (Cloud Files API: placeholders, on-demand download, native sync icons) ✅ | P1 |
-| **Photos**: gallery with thumbnails, recent screenshots/photos pop up on PC, drag out to the desktop | P0 (recent), P1 (gallery) |
+| **Photos**: gallery with thumbnails, recent screenshots/photos pop up on PC, drag out to the desktop — partial (recent photo/screenshot popups and the full gallery with albums, thumbnails, viewer, copy, and save work; dragging a photo tile directly out to the desktop is missing) | P0 (recent), P1 (gallery) |
 | Folder sync (Syncthing-style two-way folders, e.g. Camera → PC) | P2 |
 
 ### 3.7 Screen mirroring & phone apps on PC
 | Feature | Tier |
 |---|---|
-| Mirror and control the full phone screen. **Hardware decode**, ≤50 ms on LAN, 1080p60+, H.264/H.265/AV1 | P0 (Standard 🟢 view / 🔵 control, Elevated 🟣) |
-| **Built-in**. Nothing to download and no scrcpy path to configure | P0 |
-| **Audio forwarding** (phone audio plays on PC) | P1 🟣 (or 🟢 via playback capture) |
-| **App windows**: launch a phone app as its own resizable PC window with taskbar icon (virtual display, flex resize). App list and pinning | P1 🟣 |
-| Keyboard (physical layout via UHID), mouse, scroll, gamepad, IME text, copy/paste inside the mirror, drag files in to send | P1 |
-| Screen off while mirroring, keep awake, record, screenshot | P1 |
-| Recent apps / notifications open directly into an app window | P1 |
+| Mirror and control the full phone screen. **Hardware decode**, ≤50 ms on LAN, 1080p60+, H.264/H.265/AV1 — partial (1080p60 H.264 hardware encode/decode, Standard 🟢 view, Assist 🔵 control, and Elevated 🟣 input work; H.265/AV1 codecs and prompt-free Elevated full-screen capture without MediaProjection are missing) | P0 (Standard 🟢 view / 🔵 control, Elevated 🟣) |
+| **Built-in**. Nothing to download and no scrcpy path to configure ✅ | P0 |
+| **Audio forwarding** (phone audio plays on PC) — partial (🟢 playback capture on Android 10+ works with mute on the mirror window; 🟣 Elevated capture of apps that block playback capture is missing) | P1 🟣 (or 🟢 via playback capture) |
+| **App windows**: launch a phone app as its own resizable PC window with taskbar icon (virtual display, flex resize). App list and pinning ✅ | P1 🟣 |
+| Keyboard (physical layout via UHID), mouse, scroll, gamepad, IME text, copy/paste inside the mirror, drag files in to send — partial (mouse, scroll, navigation/edit keys, text input, and Ctrl+V paste work; UHID physical layout, gamepad, Ctrl+C inside the mirror, and drag-files-in-to-send are missing) | P1 |
+| Screen off while mirroring, keep awake, record, screenshot ✅ | P1 |
+| Recent apps / notifications open directly into an app window ✅ | P1 |
 
 ### 3.8 Media & audio
 | Feature | Tier |
 |---|---|
-| Control phone media from PC. Phone media appears **in Windows' own media flyout** with artwork | P0 🟢 |
-| Control PC media from phone (media notification with artwork, seek, volume) | P0 🟢 |
-| PC volume and output device switch from phone | P1 |
-| **Voice Recorder → PC**: record with the phone's (better) mic, hit send, and the file lands on the PC in your chosen format (Opus/M4A/MP3/WAV/FLAC) and folder. Optional: record *straight into* the PC (live stream, appears when you stop), noise suppression, markers ✅ | P1 🟢 |
+| Control phone media from PC. Phone media appears **in Windows' own media flyout** with artwork ✅ | P0 🟢 |
+| Control PC media from phone (media notification with artwork, seek, volume) ✅ | P0 🟢 |
+| PC volume and active output device indicator from phone ✅ (Windows has no public API to switch the default audio output device) | P1 |
+| **Voice Recorder → PC**: record with the phone's (better) mic, hit send, and the file lands on the PC in your chosen format (M4A/MP3/WAV/FLAC) and folder, with timestamped markers ✅ (optional live stream while recording, Opus, and noise suppression not started) | P1 🟢 |
 | Phone as speaker / headphones for PC audio | P2 |
 | Phone as live microphone for PC apps | P2 (needs a virtual audio driver, evaluate) |
 
 ### 3.9 Camera
 | Feature | Tier |
 |---|---|
-| **Phone as webcam** (Windows 11 virtual camera, shows up in Teams/Zoom/OBS/Camera app). Front/back, zoom, torch, HDR, 1080p/4K ✅ | P1 🟢 (Camera2) |
-| **Continuity Camera**: right-click in any PC app → "Take photo / Scan document with phone" → the phone opens the camera (with document edge detection) → the result is pasted at the cursor | P1 🟢 |
+| **Phone as webcam** (Windows 11 virtual camera, shows up in Teams/Zoom/OBS/Camera app). Front/back, zoom, torch, mirror, 720p/1080p ✅ (4K virtual-camera output and HDR not started) | P1 🟢 (Camera2) |
+| **Continuity Camera**: from the PC (Home, tray, Command Palette, or global hotkey) → "Take photo / Scan document with phone" → the phone opens the camera (with document edge detection and perspective correction) → the result is placed on the clipboard and pasted at the cursor ✅ | P1 🟢 |
 
 ### 3.10 Remote input & control
 | Feature | Tier |
@@ -202,11 +202,11 @@ current Android. Talking through the PC comes with the HFP item above.
 | Phone as **touchpad + keyboard** for PC, presentation remote (with laser pointer) ✅ | P1 🟢 |
 | **Air mouse**: point the phone and its gyroscope moves the PC cursor, for presentations and couch use ✅ | P1 🟢 |
 | **Voice typing into PC**: hold a button on the phone, speak, and the text (from the phone's own speech engine) is typed into the PC's focused field ✅ | P1 🟢 |
-| Type on the phone with the PC keyboard (without mirroring) | P1 🟣 |
-| **Deck**: the phone becomes a Stream-Deck-style macro pad for the PC with live tiles: mic mute, media, app launchers, scripts, OBS scenes, window switching, multiple pages, haptic feedback ✅ | P1 🟢 |
+| Type on the phone with the PC keyboard (without mirroring) ✅ | P1 🟣 |
+| **Deck**: the phone becomes a Stream-Deck-style macro pad for the PC with live tiles: mic mute, speaker volume/mute, media, app launchers, shortcuts, scripts/commands, window switching, multiple pages, haptic feedback ✅ (dedicated OBS WebSocket tile not started) | P1 🟢 |
 | **Flow**: move the PC mouse off the screen edge onto the phone/tablet and back, with clipboard following | P2 🟣 |
 | Phone toggles from PC: Wi-Fi, BT, DND, ringer, flashlight, volume, brightness ✅ (the hotspot has no shell command to switch it; see Instant Hotspot) | P1 (partly 🟣) |
-| PC actions from phone: lock, sleep, shutdown, mute, custom commands/scripts ✅ | P0 (lock/sleep), P1 (custom, off by default) |
+| PC actions from phone: lock, sleep, mute, custom commands/scripts ✅ (shutdown intentionally omitted) | P0 (lock/sleep), P1 (custom, off by default) |
 | Wake-on-LAN ✅ | P1 |
 | **Unlock PC with phone fingerprint**: the PC lock screen offers "Unlock with phone" → the phone shows a biometric prompt → a signed challenge unlocks Windows. Built as a Windows credential provider. Keys live in Android Keystore (StrongBox where available) and are bound to biometrics. Works only when paired and nearby (BLE proximity + LAN). Rate-limited, revocable, and **external security review before release** | P2 (dedicated workstream) |
 
@@ -214,27 +214,27 @@ current Android. Talking through the PC comes with the HFP item above.
 | Feature | Tier |
 |---|---|
 | **Nectar Island** (optional extra, off by default): a small, animated pill at the top of the PC screen showing live phone activity (call, timer, music, transfer, Live Update, OTP, voice recording). Expands on hover. A nice touch, not a pillar | P2 |
-| **Shelf**: slide-out edge panel with the latest photo, screenshot, clipboard and recent files. Drag anything in to send | P1 |
-| **Command Palette** (global hotkey): "send clipboard", "find my phone", "text Mom", "open last photo", "mirror Spotify", "record voice" | P1 |
+| **Shelf**: slide-out edge panel with the latest photo, screenshot, clipboard and recent files. Drag anything in to send ✅ | P1 |
+| **Command Palette** (global hotkey): "send clipboard", "find my phone", "text Mom", "open last photo", "mirror Spotify", "record voice" ✅ | P1 |
 | **Material You sync**: the PC app takes its accent and theme from the phone's wallpaper colors, so both apps look like one ✅ | P1 |
-| **Handoff**: send a link, map location, document or YouTube timestamp to open on the other device | P0 (links), P1 (rich) |
+| **Handoff**: send a link, map location, document or YouTube timestamp to open on the other device ✅ | P0 (links), P1 (rich) |
 | **"Ping me when it's done"**: `nectarlink notify-when <pid \| -- command...>` watches a running process or command on the PC, shows a live chronometer notification on the phone while it runs, and alerts the phone when it finishes or fails ✅ | P1 |
 | **Timeline**: one searchable history of everything that moved between devices (files, clips, links, photos, recordings), with "send again" ✅ | P1 |
 | **Your PC in your pocket**: from anywhere (Away mode), browse and grab PC files, see what the PC is doing (Ping-me tasks, downloads), wake it (relayed Wake-on-LAN through another Nectarlink device left at home), and later view/control the PC screen (reverse mirroring) | P2 (files/status in P1 if Away mode lands early) |
 | **Proximity lock**: lock the PC when the phone walks away (BLE RSSI) | P2 |
 | **Automations**: triggers (connected, battery low, call started) → actions | P2 |
-| Find my phone (ring even on silent), battery & signal in tray, low-battery alerts, measured phone screen preview & Home summary ✅ | P0 |
+| Find my phone (ring even on silent), battery & signal in tray, low-battery alerts, measured phone screen preview & Home summary — partial (Find my phone/PC, battery in tray, low-battery and full-charge alerts, and measured phone screen preview with Home summary work; phone signal strength is not reported) | P0 |
 
 ### 3.12 Platform & ecosystem
 | Feature | Tier |
 |---|---|
-| Tray app, start on login, jump list, global hotkeys, Windows Widgets board widget | P0/P1 |
-| Android Quick Settings tiles, home-screen widgets (Glance), share target, Direct Share to PC | P0/P1 |
-| **CLI** (`nectarlink send file.pdf`, `nectarlink clip`, `nectarlink notify`, `nectarlink notify-when`) and local authenticated API for scripts and PowerToys Command Palette ✅ | P1 |
+| Tray app, start on login, jump list, global hotkeys, Windows Widgets board widget — partial (tray app, start on login, and global hotkeys work; taskbar jump list and Windows Widgets board widget not started) | P0/P1 |
+| Android Quick Settings tiles, home-screen widgets (Glance), share target, Direct Share to PC ✅ | P0/P1 |
+| **CLI** (`nectarlink send file.pdf`, `nectarlink clip`, `nectarlink notify`, `nectarlink notify-when`) and local authenticated API for scripts and PowerToys Command Palette — partial (full `nectarlink` CLI and single-instance IPC forwarding work; general local API server and PowerToys extension not started) | P1 |
 | Tablet as second screen (IddCx virtual monitor) | P2 |
 | macOS desktop build | P2 (future scope) |
 | Plugin/extension API over the open protocol | P2 |
-| Full i18n, accessibility (screen readers, keyboard nav, contrast), reduced motion | P1 |
+| Full i18n, accessibility (screen readers, keyboard nav, contrast), reduced motion ✅ | P1 |
 
 ### 3.13 Rejected for now (parked, can be revived later)
 | Idea | Why parked |
@@ -313,7 +313,7 @@ nectarlink/
 - **Encryption:** QUIC + TLS 1.3 (raw public keys), always. Relays only forward ciphertext.
 - **Per-device permissions:** each paired device has feature toggles. Dangerous ones (run commands, remote input into PC, file browse, PC unlock) are **off by default**.
 - **Local API/CLI:** a named pipe with a per-user token. No open localhost TCP port.
-- **At-rest & data retention ✅:** clipboard history is sealed on disk with `KeyProtector` (DPAPI on Windows, Keystore AES-GCM on Android), capped at 50 items, and auto-purges unpinned clips older than 7 days (pinned clips stay; OTPs are never stored). Timeline defaults to 90 days (configurable: 30 / 90 / 365 days or Forever) and 5,000 entries. Notification history on PC is capped at 200 items and 24 hours. `MessagingStyle` conversation cache retains up to 200 threads per peer (100 messages/thread) for 30 days. Both apps expose per-category clear buttons and a single **"Clear everything"** action in *Settings → Privacy & Data* that wipes all local history and caches while keeping device identity, paired devices, and feature toggles intact.
+- **At-rest & data retention ✅:** clipboard history is sealed on disk with `KeyProtector` (DPAPI on Windows, Keystore AES-GCM on Android), capped at 50 items, and auto-purges unpinned clips older than 7 days (pinned clips stay; OTPs are never stored). Timeline defaults to 90 days (configurable: 30 / 90 / 365 days or Forever) and 5,000 entries. Notification history on PC is capped at 300 dismissed items and 24 hours. `MessagingStyle` conversation cache retains up to 200 threads per peer (200 messages/thread) for 90 days. Photo thumbnail cache on PC keeps up to 500 thumbnails for 30 days. Both apps expose per-category clear buttons and a single **"Clear everything"** action in *Settings → Data & storage* that wipes all local history and caches while keeping device identity, paired devices, and feature toggles intact.
 - Security audit before 1.0. Fuzz the protocol decoder and pairing handshake. The credential provider gets its own threat model and review.
 
 ### 4.4 Connectivity: "it just works"
@@ -731,7 +731,7 @@ Each phase ends with a usable, releasable product. Phase sizes are relative; act
    - Battery soak tests on testers' phones.
    - An opt-in diagnostics bundle, since there's no telemetry.
 10. **Island etiquette.** Auto-hide during fullscreen games, videos and presentations and when Windows is in Do Not Disturb. Handle multiple monitors.
-11. **Data retention defaults ✅:** Timeline (90 days default — configurable 30 / 90 / 365 days or Forever — and 5,000 entries cap, auto-purged + Clear all ✅), clipboard history (50 entries, 7-day auto-purge for unpinned items while pinned stay, encrypted at rest with `KeyProtector`, OTPs excluded + Clear history ✅), notification history (24 hours, 200 items cap + Clear notifications ✅), `MessagingStyle` message cache (30 days, 200 threads/peer, 100 messages/thread + Clear message cache ✅), received file transfer records (Clear transfer history without deleting files on disk ✅), and one **"Clear everything"** button (`clear_all_local_data`) in *Settings → Privacy & Data* on both PC and Android that wipes all local history and caches while preserving device identity, paired devices, and per-device feature toggles ✅.
+11. **Data retention defaults ✅:** Timeline (90 days default — configurable 30 / 90 / 365 days or Forever — and 5,000 entries cap, auto-purged + Clear ✅), clipboard history (50 entries, 7-day auto-purge for unpinned items while pinned stay, encrypted at rest with `KeyProtector`, OTPs excluded + Clear ✅), notification history (24 hours, 300 dismissed items cap + Clear ✅), `MessagingStyle` message cache (90 days, 200 threads/peer, 200 messages/thread + Clear ✅), photo thumbnail cache (30 days, 500 thumbnails cap + Clear ✅), received file transfer records (Clear transfer history without deleting files on disk ✅), and one **"Clear everything"** button (`clear_all_local_data`) in *Settings → Data & storage* on both PC and Android that wipes all local history and caches while preserving device identity, paired devices, and per-device feature toggles ✅.
 12. **Accessibility and translations from day one.** All strings translatable (`qsTr`, Android resources), RTL layouts, screen-reader labels, keyboard focus order. Retrofitting is expensive.
 13. **Asset licenses.** The display font under OFL, an icon set under a permissive license (e.g. Material Symbols, Apache-2.0). No Microsoft or Google logos; competitor names only in plain comparison wording.
 14. **Realistic pacing.** Claude writes most of the code, but every phase needs maintainer review and tester feedback. Estimate phase durations after Phase 0 from real velocity, not before.

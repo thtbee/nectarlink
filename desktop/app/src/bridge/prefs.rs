@@ -78,6 +78,8 @@ pub mod qobject {
         #[qproperty(QString, continuity_scan_hotkey)]
         /// Global hotkey for the Command Palette (e.g. `"Ctrl+Alt+Space"`).
         #[qproperty(QString, command_palette_hotkey)]
+        /// Global hotkey for the Shelf panel (e.g. `"Ctrl+Alt+S"`).
+        #[qproperty(QString, shelf_hotkey)]
         type Preferences = super::PreferencesRust;
 
         /// Sets the folder where voice recordings are saved (from a `file:` URL or path).
@@ -168,6 +170,7 @@ pub struct PreferencesRust {
     continuity_photo_hotkey: QString,
     continuity_scan_hotkey: QString,
     command_palette_hotkey: QString,
+    shelf_hotkey: QString,
     /// What the user chose (`start_with_windows` shows the default until then).
     start_choice: Option<bool>,
     /// Custom recordings folder if chosen (`None` means default).
@@ -215,10 +218,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_continuity_photo_hotkey(QString::from(&settings.continuity_photo_hotkey));
         self.as_mut().set_continuity_scan_hotkey(QString::from(&settings.continuity_scan_hotkey));
         self.as_mut().set_command_palette_hotkey(QString::from(&settings.command_palette_hotkey));
+        self.as_mut().set_shelf_hotkey(QString::from(&settings.shelf_hotkey));
         crate::win::tray::update_hotkeys(
             &settings.continuity_photo_hotkey,
             &settings.continuity_scan_hotkey,
             &settings.command_palette_hotkey,
+            &settings.shelf_hotkey,
         );
         crate::recordings::init(&settings);
 
@@ -316,6 +321,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
                     &String::from(&p.continuity_photo_hotkey),
                     &String::from(&p.continuity_scan_hotkey),
                     &String::from(&p.command_palette_hotkey),
+                    &String::from(&p.shelf_hotkey),
                 );
                 p.save();
             })
@@ -326,6 +332,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
                     &String::from(&p.continuity_photo_hotkey),
                     &String::from(&p.continuity_scan_hotkey),
                     &String::from(&p.command_palette_hotkey),
+                    &String::from(&p.shelf_hotkey),
                 );
                 p.save();
             })
@@ -336,6 +343,18 @@ impl cxx_qt::Initialize for qobject::Preferences {
                     &String::from(&p.continuity_photo_hotkey),
                     &String::from(&p.continuity_scan_hotkey),
                     &String::from(&p.command_palette_hotkey),
+                    &String::from(&p.shelf_hotkey),
+                );
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_shelf_hotkey_changed(|p| {
+                crate::win::tray::update_hotkeys(
+                    &String::from(&p.continuity_photo_hotkey),
+                    &String::from(&p.continuity_scan_hotkey),
+                    &String::from(&p.command_palette_hotkey),
+                    &String::from(&p.shelf_hotkey),
                 );
                 p.save();
             })
@@ -402,6 +421,7 @@ impl qobject::Preferences {
             continuity_photo_hotkey: String::from(&p.continuity_photo_hotkey),
             continuity_scan_hotkey: String::from(&p.continuity_scan_hotkey),
             command_palette_hotkey: String::from(&p.command_palette_hotkey),
+            shelf_hotkey: String::from(&p.shelf_hotkey),
         };
         save_in_background(settings);
     }

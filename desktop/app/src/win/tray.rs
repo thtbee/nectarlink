@@ -57,6 +57,7 @@ use windows::{
 pub enum TrayEvent {
     Open,
     CommandPalette,
+    Shelf,
     TakePhoto,
     ScanDocument,
     FindPhone,
@@ -75,6 +76,7 @@ pub enum TrayEvent {
 pub struct MenuLabels {
     pub open: String,
     pub command_palette: String,
+    pub shelf: String,
     pub take_photo: String,
     pub scan_document: String,
     pub find_phone: String,
@@ -89,6 +91,7 @@ const TIMER_TRACK_FG: usize = 1;
 const HOTKEY_PHOTO_ID: i32 = 101;
 const HOTKEY_SCAN_ID: i32 = 102;
 const HOTKEY_PALETTE_ID: i32 = 103;
+const HOTKEY_SHELF_ID: i32 = 104;
 const ICON_ID: u32 = 1;
 const CMD_OPEN: u32 = 1;
 const CMD_FIND_PHONE: u32 = 2;
@@ -97,6 +100,7 @@ const CMD_OPEN_LINK: u32 = 4;
 const CMD_TAKE_PHOTO: u32 = 5;
 const CMD_SCAN_DOCUMENT: u32 = 6;
 const CMD_COMMAND_PALETTE: u32 = 7;
+const CMD_SHELF: u32 = 8;
 const PBT_APMRESUMEAUTOMATIC: usize = 0x12;
 /// NIN_SELECT | NINF_KEY (shellapi.h): the icon was activated with the keyboard.
 const NIN_KEYSELECT: u32 = NIN_SELECT | 0x1;
@@ -107,8 +111,8 @@ type Handler = Box<dyn Fn(TrayEvent)>;
 
 static TRAY_HWND: AtomicIsize = AtomicIsize::new(0);
 static LAST_EXTERNAL_FOREGROUND: Mutex<Option<(isize, String)>> = Mutex::new(None);
-static HOTKEY_SPECS: Mutex<(String, String, String)> =
-    Mutex::new((String::new(), String::new(), String::new()));
+static HOTKEY_SPECS: Mutex<(String, String, String, String)> =
+    Mutex::new((String::new(), String::new(), String::new(), String::new()));
 
 thread_local! {
     static HANDLER: RefCell<Option<Handler>> = RefCell::new(None);
@@ -308,6 +312,35 @@ pub fn send_paste_fallback_if_not_foreground(hwnd: isize) {
     }
 }
 
+/// Applies `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST` to a top-level
+/// window owned by this process matching `title`, so clicking or dragging inside
+/// the Shelf never steals keyboard focus from the user's active window.
+pub fn apply_no_activate_style_by_title(title: &str) {
+    // SAFETY: Enumerates top-level windows in Z-order and updates GWL_EXSTYLE on a window owned by this process.
+    unsafe {
+        let self_pid = GetCurrentProcessId();
+        let mut cur = match GetTopWindow(None) {
+            Ok(h) => h,
+            Err(_) => return,
+        };
+        for _ in 0..256 {
+            let mut pid: u32 = 0;
+            GetWindowThreadProcessId(cur, Some(&mut pid));
+            if pid == self_pid && window_title(cur) == title {
+                let ex = GetWindowLongW(cur, GWL_EXSTYLE) as u32;
+                let wanted = ex | WS_EX_NOACTIVATE.0 | WS_EX_TOOLWINDOW.0 | WS_EX_TOPMOST.0;
+                let _ =
+                    windows::Win32::UI::WindowsAndMessaging::SetWindowLongW(cur, GWL_EXSTYLE, wanted as i32);
+                break;
+            }
+            match GetWindow(cur, GW_HWNDNEXT) {
+                Ok(next) if !next.0.is_null() => cur = next,
+                _ => break,
+            }
+        }
+    }
+}
+
 /// Parses a hotkey string such as `"Ctrl+Alt+C"`, `"Ctrl+Alt+Space"` or `"Ctrl+Shift+F9"` into
 /// `(HOT_KEY_MODIFIERS bits including MOD_NOREPEAT, virtual_key_code)`.
 pub fn parse_hotkey(spec: &str) -> Option<(u32, u32)> {
@@ -367,11 +400,16 @@ pub fn parse_hotkey(spec: &str) -> Option<(u32, u32)> {
     Some((mods | MOD_NOREPEAT.0, vk))
 }
 
-/// Updates the Continuity Camera and Command Palette global hotkeys (`photo_spec`, `scan_spec`, and `palette_spec`).
-pub fn update_hotkeys(photo_spec: &str, scan_spec: &str, palette_spec: &str) {
+/// Updates the Continuity Camera, Command Palette, and Shelf global hotkeys (`photo_spec`, `scan_spec`, `palette_spec`, and `shelf_spec`).
+pub fn update_hotkeys(photo_spec: &str, scan_spec: &str, palette_spec: &str, shelf_spec: &str) {
     {
         let mut specs = HOTKEY_SPECS.lock().unwrap_or_else(|e| e.into_inner());
-        *specs = (photo_spec.trim().to_owned(), scan_spec.trim().to_owned(), palette_spec.trim().to_owned());
+        *specs = (
+            photo_spec.trim().to_owned(),
+            scan_spec.trim().to_owned(),
+            palette_spec.trim().to_owned(),
+            shelf_spec.trim().to_owned(),
+        );
     }
     let raw = TRAY_HWND.load(Ordering::Acquire);
     if raw != 0 {
@@ -383,13 +421,14 @@ pub fn update_hotkeys(photo_spec: &str, scan_spec: &str, palette_spec: &str) {
 }
 
 unsafe fn apply_hotkeys_on_window(hwnd: HWND) {
-    let (photo_spec, scan_spec, palette_spec) =
+    let (photo_spec, scan_spec, palette_spec, shelf_spec) =
         HOTKEY_SPECS.lock().unwrap_or_else(|e| e.into_inner()).clone();
     // SAFETY: Unregistering and registering hotkeys on the thread that owns `hwnd`.
     unsafe {
         let _ = UnregisterHotKey(Some(hwnd), HOTKEY_PHOTO_ID);
         let _ = UnregisterHotKey(Some(hwnd), HOTKEY_SCAN_ID);
         let _ = UnregisterHotKey(Some(hwnd), HOTKEY_PALETTE_ID);
+        let _ = UnregisterHotKey(Some(hwnd), HOTKEY_SHELF_ID);
         if let Some((mods, vk)) = parse_hotkey(&photo_spec)
             && let Err(e) = RegisterHotKey(Some(hwnd), HOTKEY_PHOTO_ID, HOT_KEY_MODIFIERS(mods), vk)
         {
@@ -404,6 +443,11 @@ unsafe fn apply_hotkeys_on_window(hwnd: HWND) {
             && let Err(e) = RegisterHotKey(Some(hwnd), HOTKEY_PALETTE_ID, HOT_KEY_MODIFIERS(mods), vk)
         {
             tracing::debug!(hotkey = %palette_spec, error = %e, "could not register Command Palette hotkey");
+        }
+        if let Some((mods, vk)) = parse_hotkey(&shelf_spec)
+            && let Err(e) = RegisterHotKey(Some(hwnd), HOTKEY_SHELF_ID, HOT_KEY_MODIFIERS(mods), vk)
+        {
+            tracing::debug!(hotkey = %shelf_spec, error = %e, "could not register Shelf hotkey");
         }
     }
 }
@@ -489,6 +533,7 @@ impl Drop for Tray {
             let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_PHOTO_ID);
             let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_SCAN_ID);
             let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_PALETTE_ID);
+            let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_SHELF_ID);
             let _ = KillTimer(Some(self.hwnd), TIMER_TRACK_FG);
             let _ = Shell_NotifyIconW(NIM_DELETE, &data);
             let _ = DestroyWindow(self.hwnd);
@@ -584,6 +629,7 @@ fn show_menu(hwnd: HWND, x: i32, y: i32) {
     let to_wide = |s: &str| s.encode_utf16().chain(Some(0)).collect::<Vec<u16>>();
     let (open, find, quit) = (to_wide(&labels.open), to_wide(&labels.find_phone), to_wide(&labels.quit));
     let palette = to_wide(&labels.command_palette);
+    let shelf = to_wide(&labels.shelf);
     let take_photo = to_wide(&labels.take_photo);
     let scan_doc = to_wide(&labels.scan_document);
     let link = to_wide(&labels.open_link);
@@ -598,6 +644,7 @@ fn show_menu(hwnd: HWND, x: i32, y: i32) {
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
         let _ = AppendMenuW(menu, MF_STRING, CMD_OPEN as usize, PCWSTR(open.as_ptr()));
         let _ = AppendMenuW(menu, MF_STRING, CMD_COMMAND_PALETTE as usize, PCWSTR(palette.as_ptr()));
+        let _ = AppendMenuW(menu, MF_STRING, CMD_SHELF as usize, PCWSTR(shelf.as_ptr()));
         let _ = AppendMenuW(menu, find_flags, CMD_FIND_PHONE as usize, PCWSTR(find.as_ptr()));
         let _ = AppendMenuW(menu, find_flags, CMD_OPEN_LINK as usize, PCWSTR(link.as_ptr()));
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
@@ -614,6 +661,7 @@ fn show_menu(hwnd: HWND, x: i32, y: i32) {
         CMD_SCAN_DOCUMENT => emit(TrayEvent::ScanDocument),
         CMD_OPEN => emit(TrayEvent::Open),
         CMD_COMMAND_PALETTE => emit(TrayEvent::CommandPalette),
+        CMD_SHELF => emit(TrayEvent::Shelf),
         CMD_FIND_PHONE => emit(TrayEvent::FindPhone),
         CMD_OPEN_LINK => emit(TrayEvent::OpenLinkOnPhone),
         CMD_QUIT => emit(TrayEvent::Quit),
@@ -655,6 +703,7 @@ unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lpar
                 HOTKEY_PHOTO_ID => emit(TrayEvent::TakePhoto),
                 HOTKEY_SCAN_ID => emit(TrayEvent::ScanDocument),
                 HOTKEY_PALETTE_ID => emit(TrayEvent::CommandPalette),
+                HOTKEY_SHELF_ID => emit(TrayEvent::Shelf),
                 _ => {}
             }
             LRESULT(0)

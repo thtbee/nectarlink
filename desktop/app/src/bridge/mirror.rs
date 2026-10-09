@@ -42,6 +42,8 @@ pub mod qobject {
         #[qproperty(QString, apps_state, cxx_name = "appsState")]
         /// Why they couldn't be loaded.
         #[qproperty(QString, apps_error, cxx_name = "appsError")]
+        /// Device ID currently receiving PC keyboard input without screen mirroring, or "".
+        #[qproperty(QString, keyboard_device, cxx_name = "keyboardDevice")]
         type Mirror = super::MirrorRust;
     }
 
@@ -93,6 +95,46 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "toggleSound"]
         fn toggle_sound(self: &Mirror);
+        /// Copies a screenshot of a mirror window to the PC clipboard.
+        #[qinvokable]
+        #[cxx_name = "screenshotClipboard"]
+        fn screenshot_clipboard(self: &Mirror, key: &QString);
+        /// Saves a screenshot of a mirror window to Downloads\Nectarlink.
+        #[qinvokable]
+        #[cxx_name = "screenshotFile"]
+        fn screenshot_file(self: &Mirror, key: &QString);
+        /// Starts or stops MP4 video recording for a mirror window.
+        #[qinvokable]
+        #[cxx_name = "toggleRecording"]
+        fn toggle_recording(self: &Mirror, key: &QString);
+        /// Keeps the phone awake while mirroring its screen.
+        #[qinvokable]
+        #[cxx_name = "setStayAwake"]
+        fn set_stay_awake(self: &Mirror, key: &QString, on: bool);
+        /// Turns the phone's physical screen off while mirroring.
+        #[qinvokable]
+        #[cxx_name = "setScreenOff"]
+        fn set_screen_off(self: &Mirror, key: &QString, on: bool);
+        /// Starts or stops remote keyboard typing on `device` without screen mirroring.
+        #[qinvokable]
+        #[cxx_name = "toggleKeyboard"]
+        fn toggle_keyboard(self: &Mirror, device: &QString);
+        /// Stops remote keyboard typing without screen mirroring.
+        #[qinvokable]
+        #[cxx_name = "stopKeyboard"]
+        fn stop_keyboard(self: &Mirror);
+        /// Sends a key name to `device` while remote keyboard typing is active.
+        #[qinvokable]
+        #[cxx_name = "keyboardPress"]
+        fn keyboard_press(self: &Mirror, device: &QString, name: &QString);
+        /// Sends typed text to `device` while remote keyboard typing is active.
+        #[qinvokable]
+        #[cxx_name = "keyboardText"]
+        fn keyboard_text(self: &Mirror, device: &QString, text: &QString);
+        /// Pastes the PC's clipboard text onto `device` while remote keyboard typing is active.
+        #[qinvokable]
+        #[cxx_name = "keyboardPaste"]
+        fn keyboard_paste(self: &Mirror, device: &QString);
     }
 }
 
@@ -105,13 +147,18 @@ pub struct MirrorRust {
     recent_apps: QString,
     apps_state: QString,
     apps_error: QString,
+    keyboard_device: QString,
 }
 
 impl cxx_qt::Initialize for qobject::Mirror {
     fn initialize(self: Pin<&mut Self>) {
         super::subscribe(
             self.qt_thread(),
-            Changes::MIRROR | Changes::CAPABILITIES | Changes::DEVICES,
+            Changes::MIRROR
+                | Changes::CAPABILITIES
+                | Changes::DEVICES
+                | Changes::NOTIFICATIONS
+                | Changes::HISTORY,
             Self::refresh,
         );
     }
@@ -125,16 +172,18 @@ impl qobject::Mirror {
         let windows: Vec<serde_json::Value> = mirror::windows()
             .into_iter()
             .map(|(window, shown)| {
-                let (control, name) = hub.read(|s| {
+                let (control, can_screen_off, name) = hub.read(|s| {
                     // The screen needs control turned on; app windows are Elevated already.
                     let feature = if window.session == MIRROR_SCREEN {
                         "mirroring.control"
                     } else {
                         "mirroring.app_windows"
                     };
-                    let control = s.matrices.get(&window.device).and_then(|m| m.state(feature))
+                    let matrix = s.matrices.get(&window.device);
+                    let control = matrix.and_then(|m| m.state(feature)) == Some(FeatureState::Available);
+                    let can_screen_off = matrix.and_then(|m| m.state("mirroring.app_windows"))
                         == Some(FeatureState::Available);
-                    (control, s.name_of(&window.device).unwrap_or_default())
+                    (control, can_screen_off, s.name_of(&window.device).unwrap_or_default())
                 });
                 let (phase, reason) = match shown.phase {
                     Phase::Asking => ("asking", String::new()),
@@ -162,6 +211,12 @@ impl qobject::Mirror {
                     "reason": reason,
                     "canControl": control,
                     "sound": window.session == MIRROR_SCREEN && mirror::has_sound(&window.device),
+                    "recording": mirror::is_recording(&window),
+                    "recordingStartedMs": mirror::recording_started_ms(&window),
+                    "stayAwake": window.session == MIRROR_SCREEN && mirror::stay_awake(&window.device),
+                    "screenOff": window.session == MIRROR_SCREEN && mirror::screen_off(&window.device),
+                    "canScreenOff": window.session == MIRROR_SCREEN && can_screen_off,
+                    "notice": mirror::last_notice(&window),
                     "savedX": geom.map(|g| g.x),
                     "savedY": geom.map(|g| g.y),
                     "savedWidth": geom.map(|g| g.width).unwrap_or(0),
@@ -174,6 +229,10 @@ impl qobject::Mirror {
             self.as_mut().set_windows(QString::from(&json));
         }
         self.as_mut().set_muted(mirror::muted());
+        let kb = mirror::keyboard_device().map(|d| d.to_string()).unwrap_or_default();
+        if self.keyboard_device.to_string() != kb {
+            self.as_mut().set_keyboard_device(QString::from(&kb));
+        }
 
         let Some(device) = super::parse_device(&self.apps_device) else { return };
         let (state, apps, error) = match mirror::apps(&device) {
@@ -314,6 +373,64 @@ impl qobject::Mirror {
 
     pub fn toggle_sound(&self) {
         mirror::set_muted(!mirror::muted());
+    }
+
+    pub fn screenshot_clipboard(&self, key: &QString) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::screenshot_clipboard(window);
+        }
+    }
+
+    pub fn screenshot_file(&self, key: &QString) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::screenshot_file(window);
+        }
+    }
+
+    pub fn toggle_recording(&self, key: &QString) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::toggle_recording(window);
+        }
+    }
+
+    pub fn set_stay_awake(&self, key: &QString, on: bool) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::set_stay_awake(window, on);
+        }
+    }
+
+    pub fn set_screen_off(&self, key: &QString, on: bool) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::set_screen_off(window, on);
+        }
+    }
+
+    pub fn toggle_keyboard(&self, device: &QString) {
+        if let Some(device) = super::parse_device(device) {
+            mirror::toggle_remote_keyboard(device);
+        }
+    }
+
+    pub fn stop_keyboard(&self) {
+        mirror::set_remote_keyboard(None);
+    }
+
+    pub fn keyboard_press(&self, device: &QString, name: &QString) {
+        if let Some(device) = super::parse_device(device) {
+            mirror::keyboard_press(device, String::from(name));
+        }
+    }
+
+    pub fn keyboard_text(&self, device: &QString, text: &QString) {
+        if let Some(device) = super::parse_device(device) {
+            mirror::keyboard_text(device, String::from(text));
+        }
+    }
+
+    pub fn keyboard_paste(&self, device: &QString) {
+        if let Some(device) = super::parse_device(device) {
+            mirror::keyboard_paste(device);
+        }
     }
 }
 

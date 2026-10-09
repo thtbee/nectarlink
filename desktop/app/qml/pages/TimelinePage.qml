@@ -18,7 +18,18 @@ Item {
     Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
     transform: Translate {
         y: page.active || Theme.reduceMotion ? 0 : 12
-        Behavior on y { SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
+        Behavior on y { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
+    }
+
+    Shortcut {
+        sequence: "Esc"
+        enabled: page.active && (page.deviceMenuOpen || page.confirmClearAll)
+        onActivated: {
+            if (page.deviceMenuOpen)
+                page.deviceMenuOpen = false
+            else if (page.confirmClearAll)
+                page.confirmClearAll = false
+        }
     }
 
     readonly property var kindOptions: [
@@ -150,6 +161,12 @@ Item {
                     clip: true
                     text: TimelineModel.searchQuery
                     onTextEdited: TimelineModel.searchQuery = text
+                    Accessible.name: qsTr("Search timeline")
+                    Keys.onEscapePressed: (event) => {
+                        event.accepted = text.length > 0
+                        text = ""
+                        TimelineModel.searchQuery = ""
+                    }
                 }
                 Txt {
                     anchors.left: searchInput.left
@@ -207,16 +224,14 @@ Item {
                     model: page.kindOptions
                     delegate: Chip {
                         required property var modelData
+                        interactive: true
                         text: modelData.label
                         iconPath: modelData.icon
                         selected: TimelineModel.kindFilter === modelData.key
-                        TapHandler {
-                            onTapped: {
-                                page.deviceMenuOpen = false
-                                TimelineModel.kindFilter = modelData.key
-                            }
+                        onClicked: {
+                            page.deviceMenuOpen = false
+                            TimelineModel.kindFilter = modelData.key
                         }
-                        HoverHandler { cursorShape: Qt.PointingHandCursor }
                     }
                 }
             }
@@ -230,6 +245,7 @@ Item {
                 readonly property real maxAllowedWidth: Math.max(110, filterBar.width - kindRow.width - 12)
                 width: Math.min(maxAllowedWidth, deviceBtnRow.implicitWidth + 22)
                 radius: Theme.pill(height)
+                activeFocusOnTab: true
                 readonly property bool filtered: TimelineModel.deviceFilter.length > 0
                 color: Theme.graphite
                     ? (filtered ? Theme.surfaceContent : "transparent")
@@ -238,11 +254,27 @@ Item {
                 border.color: page.deviceMenuOpen
                     ? Theme.primary
                     : (filtered ? Theme.surfaceContent : Theme.outlineVariant)
-                Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
+                Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.fadeFast } }
 
                 Accessible.role: Accessible.ComboBox
                 Accessible.name: qsTr("Device filter: %1").arg(page.selectedDeviceName)
                 Accessible.onPressAction: page.deviceMenuOpen = !page.deviceMenuOpen
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                        page.deviceMenuOpen = !page.deviceMenuOpen
+                        event.accepted = true
+                    }
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: -3
+                    radius: parent.radius + 3
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Theme.primary
+                    visible: Theme.focusVisible(deviceDropdownBtn)
+                }
 
                 Row {
                     id: deviceBtnRow
@@ -605,10 +637,27 @@ Item {
             spacing: 2
 
             Rectangle {
+                id: allDevItem
                 width: parent.width
                 height: 32
                 radius: Theme.radiusSm
+                activeFocusOnTab: true
                 color: allDevHover.hovered ? Theme.surfaceContainerHigh : "transparent"
+                border.width: Theme.focusVisible(allDevItem) ? 2 : 0
+                border.color: Theme.primary
+                Accessible.role: Accessible.MenuItem
+                Accessible.name: qsTr("All devices")
+                Accessible.onPressAction: {
+                    TimelineModel.deviceFilter = ""
+                    page.deviceMenuOpen = false
+                }
+                Keys.onPressed: (event) => {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                        TimelineModel.deviceFilter = ""
+                        page.deviceMenuOpen = false
+                        event.accepted = true
+                    }
+                }
 
                 Row {
                     x: 10
@@ -650,6 +699,7 @@ Item {
             Repeater {
                 model: DeviceList.count > 1 ? DeviceList : null
                 delegate: Rectangle {
+                    id: devOptItem
                     required property string deviceId
                     required property string name
                     required property string kind
@@ -657,7 +707,23 @@ Item {
                     width: deviceMenuCol.width
                     height: 32
                     radius: Theme.radiusSm
+                    activeFocusOnTab: true
                     color: devOptHover.hovered ? Theme.surfaceContainerHigh : "transparent"
+                    border.width: Theme.focusVisible(devOptItem) ? 2 : 0
+                    border.color: Theme.primary
+                    Accessible.role: Accessible.MenuItem
+                    Accessible.name: name
+                    Accessible.onPressAction: {
+                        TimelineModel.deviceFilter = deviceId
+                        page.deviceMenuOpen = false
+                    }
+                    Keys.onPressed: (event) => {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                            TimelineModel.deviceFilter = deviceId
+                            page.deviceMenuOpen = false
+                            event.accepted = true
+                        }
+                    }
 
                     Row {
                         x: 10

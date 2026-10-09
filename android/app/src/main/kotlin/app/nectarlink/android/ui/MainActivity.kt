@@ -56,6 +56,7 @@ import app.nectarlink.android.ui.recorder.RecorderScreen
 import app.nectarlink.android.ui.remote.RemoteMode
 import app.nectarlink.android.ui.remote.RemoteScreen
 import app.nectarlink.android.ui.settings.SettingsScreen
+import app.nectarlink.android.ui.theme.LocalReducedMotion
 import app.nectarlink.android.ui.theme.NectarlinkTheme
 import app.nectarlink.android.ui.webcam.WebcamScreen
 
@@ -352,7 +353,11 @@ private fun App(
 
     when {
         state.status is CoreStatus.Starting -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
+            if (LocalReducedMotion.current) {
+                CircularProgressIndicator(progress = { 0.75f })
+            } else {
+                CircularProgressIndicator()
+            }
         }
         state.status is CoreStatus.Failed -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(stringResource(R.string.core_failed, state.status.message))
@@ -497,6 +502,7 @@ private fun App(
                     onClearTimeline = core::clearTimeline,
                     onResendTimelineEntry = core::resendTimelineEntry,
                     onSetPcAudio = core::setPcAudio,
+                    onStopKeyboardFromPc = core::stopKeyboardFromPc,
                     modifier = modifier,
                 )
                 Tab.Settings -> SettingsScreen(

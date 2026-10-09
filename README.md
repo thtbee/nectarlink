@@ -77,8 +77,12 @@ tests; there are no releases yet.
 - **Lock, sleep or wake the PC** from the phone (when the PC is offline, Wake
   sends Wake-on-LAN magic packets to its stored network addresses, and the PC's
   Settings shows whether its adapter has Wake on Magic Packet turned on), and
-  **links** both ways: share a link from any phone app to open it on the PC, or
-  send a copied link from the PC's tray to the phone.
+  **Rich Handoff** both ways: share or send a web link, a map location or
+  street address (`geo:` URI or Maps link), a YouTube/Vimeo/Twitch video link
+  with its current playback timestamp (`--at-seconds` or active media session
+  position), or a document (`Shift+Drop`, Command Palette, `nectarlink send --open`,
+  or Android share sheet) that opens automatically in the default app when it
+  arrives.
 - **Notifications** from the phone on the PC, as Windows notifications and in
   a feed in the app, with the app's icon. Reply inline, run their actions
   (such as "Mark as read") or dismiss them from the PC; what's cleared on one
@@ -114,16 +118,28 @@ tests; there are no releases yet.
 - **Screen mirroring**: see the phone's screen on the PC, in a window of
   its own, at up to 1920 pixels and 60 frames a second, hardware encoded on
   the phone, with the phone's sound playing on the PC (Android 10 and
-  later; mute it from the window); Android asks each time. Turn on
-  **Control from your PC** in
+  later; mute it from the window); Android asks each time. From the mirror
+  window's toolbar or keyboard shortcuts, copy a screenshot to the clipboard
+  (`Ctrl+Shift+C`), save a screenshot to `Downloads\Nectarlink` (`Ctrl+S`),
+  record the mirror to an MP4 (`Ctrl+R`, H.264 passthrough with the phone's
+  audio and no video re-encode), keep the phone awake while mirroring, or
+  (with Wireless debugging) turn the phone's physical screen off while the
+  mirror keeps running (and automatically turn it back on when mirroring
+  ends). Turn on **Control from your PC** in
   the phone's Nectarlink settings to tap, swipe, scroll and type with the
   PC's mouse and keyboard (right-click is Back), or set up **Wireless
   debugging** there once for real touch (live dragging) and keys, with
   nothing else to install; Nectarlink turns Wireless debugging back on by
-  itself after a reboot.
+  itself after a reboot. You can also **type on the phone with the PC
+  keyboard without mirroring** from the **Type on phone** card on Home or
+  the Command Palette (live keystrokes, arrows, Backspace, Enter, `Ctrl+V`
+  paste, and Unicode text), with a **Typing from <PC>** banner on the phone
+  to stop it anytime.
 - **Phone apps in windows** on the PC: with Wireless debugging set up
   (Android 11 and later), pick any of the phone's apps (with a Recent row
-  for the ones opened most recently) and it opens in a window of its own with
+  combining apps opened from the PC and apps with recent notifications), or
+  click a phone notification in the feed, Notification history or its Windows
+  notification popup, and the app opens in a window of its own with
   its own taskbar icon, running on the phone beside whatever its screen shows
   and without popping the phone's keyboard up on its screen; resize the
   window and the app re-lays out to fit, its size and position are remembered
@@ -236,10 +252,14 @@ tests; there are no releases yet.
   which takes its colors from the desktop wallpaper, **My phone's colors**
   synced live from the phone's Material You wallpaper seed, or a preset seed,
   and Graphite), Mica, a
-  custom title bar with Snap Layouts, and a tray icon. In the background it
+  custom title bar with Snap Layouts, a tray icon, global **Command Palette**
+  (`Ctrl+Alt+Space`), and a slide-out **Shelf** edge panel (`Ctrl+Alt+S`, never
+  steals focus, unloads completely when hidden) showing the latest photo,
+  latest screenshot, current clip and recent received files — drag anything in
+  to send to the phone or drag out to use in any app. In the background it
   unloads its window and caches (~27 MB private commit when started in the tray
   or ~60 MB after closing the window, with a ~5–10 MB active working set).
-- **Android app**: pairing, home (with Timeline and Clipboard history) and settings, Material You colors (synced live to paired PCs), a background
+- **Android app**: pairing, home (with Timeline and Clipboard history) and settings, Material You colors (synced live to paired PCs), a **home-screen widget** (PC connection status, Wake, and battery-free quick actions: Send clip, Ring PC, Lock PC), **Direct Share** targets for each paired PC in the Android share sheet, a Quick Settings tile, a background
   connection service, and an identity key protected by the Android Keystore.
 - **Connection Doctor** on the PC: finds what keeps the phone from
   connecting (firewall, a public network, a VPN) and fixes what it can.

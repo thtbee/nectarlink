@@ -30,8 +30,10 @@ On the control stream.
 
 ```
 t = "mirror.start"     id = n   b = { max_size: uint, fps: uint, bitrate: uint, ? audio: bool,
-                                     ? session: uint, ? app: text }
+                                     ? session: uint, ? app: text,
+                                     ? stay_awake: bool, ? screen_off: bool }
 t = "mirror.stop"      id = n   b = { ? session: uint }
+t = "mirror.power"              b = { ? stay_awake: bool, ? screen_off: bool }
 t = "mirror.keyframe"           b = { ? session: uint }
 t = "mirror.resize"             b = { session: uint, width: uint, height: uint }
 t = "mirror.apps"      id = n
@@ -45,13 +47,18 @@ means 0, so PCs and phones that predate sessions work as before.
 
 - `mirror.start` (PC → phone): show me your screen, its longer side at most
   `max_size` pixels, at most `fps` frames a second, aiming for `bitrate`
-  bits a second, and with `audio` (default false), its sound too. The
+  bits a second, and with `audio` (default false), its sound too. For the
+  phone's screen (`session` 0), `stay_awake` keeps the phone's screen from
+  timing out while mirrored, and `screen_off` (Elevated) turns the phone's
+  physical display panel off while the mirror keeps running. The
   phone answers `ok` once it has asked its user; video follows only if the
   user agrees, and sound only if the phone can (it may share the screen
   without it). Errors: `DENIED` (mirroring is off for the PC),
   `UNSUPPORTED` (no `mirror.capture`).
 - `mirror.stop` (either way): stop. The PC stops reading the video stream;
-  the phone stops sharing and finishes it.
+  the phone stops sharing, restores normal display power, and finishes it.
+- `mirror.power` (PC → phone): update `stay_awake` and `screen_off` while
+  mirroring the phone's screen (`session` 0). Not answered.
 - `mirror.keyframe` (PC → phone): the decoder lost its place; send a
   keyframe next. Not answered.
 - `mirror.resize` (PC → phone): resize an app window's display (`session != 0`)
@@ -104,13 +111,21 @@ bottom), so they hold at any size and rotation.
 - `scroll`: the mouse wheel at a point, in notches (positive: down or
   right); the phone swipes the other way.
 - `key`: `back`, `home`, `recents`, `notifications`, `enter`, `backspace`,
-  `delete`, `left`, `right`, `up`, `down` or `tab`. Others are dropped.
-- `text`: typed text (at most 4 KiB), into the focused text field. At
-  Elevated it's typed as key events, so only what the keyboard map can type
-  (most Latin text) arrives.
+  `delete`, `left`, `right`, `up`, `down`, `tab`, `keyboard_on` or
+  `keyboard_off`. Others are dropped. `keyboard_on` and `keyboard_off` mark
+  when a PC starts or stops typing on the phone (`session` 0) without
+  opening a video stream; the phone shows a banner with a button to stop it
+  (which sends `mirror.stop` for `session` 0 back to the PC).
+- `text`: typed text (at most 4 KiB), into the focused text field. When the
+  accessibility service (`InputService`) is running, non-ASCII / Unicode
+  text is inserted directly into the focused editable node; at Elevated
+  without the accessibility service, ASCII/Latin text is typed as key events
+  and non-ASCII text is pasted via the phone's clipboard (`KEYCODE_PASTE`).
 
 The Windows app maps the left button to a finger, right-click to Back,
-middle-click to Home and Ctrl+V to typing the PC's clipboard.
+middle-click to Home and Ctrl+V to typing the PC's clipboard, and also
+offers a **Type on phone** bar on Home (and in the Command Palette) to type
+on the phone with the PC keyboard without mirroring its screen.
 
 ## 5. Sound
 

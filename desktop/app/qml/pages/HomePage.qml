@@ -43,7 +43,7 @@ Item {
     Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
     transform: Translate {
         y: page.active || Theme.reduceMotion ? 0 : 12
-        Behavior on y { SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
+        Behavior on y { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springGentle; damping: Theme.dampingGentle } }
     }
 
     onCurrentChanged: {
@@ -199,11 +199,11 @@ Item {
                         required property int index
                         required property string name
                         required property string kind
+                        interactive: true
                         text: name
                         iconPath: kind === "tablet" || kind === "phone" ? Icons.phone : Icons.laptop
                         selected: index === page.current
-                        TapHandler { onTapped: page.current = index }
-                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        onClicked: page.current = index
                     }
                 }
             }
@@ -263,6 +263,8 @@ Item {
     }
 
     // Files dragged onto the page are sent to the device on screen.
+    // Holding Shift while dropping a single document hands it off so it opens
+    // with the default app upon arrival.
     DropArea {
         id: drop
         anchors.fill: parent
@@ -270,7 +272,11 @@ Item {
         onEntered: (drag) => drag.accepted = drag.hasUrls
         onDropped: (drag) => {
             if (drag.hasUrls) {
-                TransferList.send(page.currentDeviceId, drag.urls.map(url => url.toString()))
+                const urls = drag.urls.map(url => url.toString())
+                if ((drag.modifiers & Qt.ShiftModifier) && urls.length === 1)
+                    TransferList.sendHandoff(page.currentDeviceId, urls)
+                else
+                    TransferList.send(page.currentDeviceId, urls)
                 drag.accept(Qt.CopyAction)
             }
         }
@@ -287,7 +293,7 @@ Item {
         border.color: Theme.primary
         Column {
             anchors.centerIn: parent
-            spacing: 12
+            spacing: 8
             Icon {
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: 40; height: 40
@@ -300,6 +306,13 @@ Item {
                 role: "headline"
                 color: Theme.primaryContainerContent
                 text: qsTr("Drop to send to %1").arg(page.currentDeviceName)
+            }
+            Txt {
+                anchors.horizontalCenter: parent.horizontalCenter
+                role: "bodySmall"
+                color: Theme.primaryContainerContent
+                opacity: 0.85
+                text: qsTr("Hold Shift while dropping a document to open it on arrival")
             }
         }
     }
@@ -739,18 +752,33 @@ Item {
                         readonly property real pillWidth: pillCount > 1 ? (width - spacing) / 2 : width
 
                         Rectangle {
+                            id: smsPill
                             visible: heroCard.hasSms
                             width: commRow.pillWidth
                             height: smsPillRow.height + 14
                             radius: Theme.radiusMd
+                            activeFocusOnTab: true
                             readonly property int unread: home.summaryData.unreadMessages || 0
                             color: smsHover.hovered
                                 ? Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.48 : 0.68)
                                 : Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.34 : 0.48)
-                            border.width: 1
-                            border.color: unread > 0
-                                ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.45)
-                                : Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.10)
+                            border.width: Theme.focusVisible(smsPill) ? 2 : 1
+                            border.color: Theme.focusVisible(smsPill)
+                                ? Theme.primary
+                                : (unread > 0
+                                    ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.45)
+                                    : Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.10))
+                            Accessible.role: Accessible.Button
+                            Accessible.name: unread > 0
+                                ? qsTr("%n unread", "", unread)
+                                : qsTr("Messages")
+                            Accessible.onPressAction: AppController.currentPage = "messages"
+                            Keys.onPressed: (event) => {
+                                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                    AppController.currentPage = "messages"
+                                    event.accepted = true
+                                }
+                            }
 
                             Row {
                                 id: smsPillRow
@@ -782,7 +810,7 @@ Item {
                                         width: parent.width
                                         role: "caption"
                                         color: Theme.heroContent
-                                        opacity: 0.74
+                                        opacity: 0.80
                                         elide: Text.ElideRight
                                         text: (home.summaryData.unreadMessages || 0) > 0 && home.summaryData.unreadSender
                                             ? home.summaryData.unreadSender
@@ -795,18 +823,33 @@ Item {
                         }
 
                         Rectangle {
+                            id: callsPill
                             visible: heroCard.hasCalls
                             width: commRow.pillWidth
                             height: callsPillRow.height + 14
                             radius: Theme.radiusMd
+                            activeFocusOnTab: true
                             readonly property int missed: home.summaryData.missedCalls || 0
                             color: callsHover.hovered
                                 ? Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.48 : 0.68)
                                 : Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.34 : 0.48)
-                            border.width: 1
-                            border.color: missed > 0
-                                ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.45)
-                                : Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.10)
+                            border.width: Theme.focusVisible(callsPill) ? 2 : 1
+                            border.color: Theme.focusVisible(callsPill)
+                                ? Theme.primary
+                                : (missed > 0
+                                    ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.45)
+                                    : Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.10))
+                            Accessible.role: Accessible.Button
+                            Accessible.name: missed > 0
+                                ? qsTr("%n missed", "", missed)
+                                : qsTr("Calls")
+                            Accessible.onPressAction: AppController.currentPage = "calls"
+                            Keys.onPressed: (event) => {
+                                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                    AppController.currentPage = "calls"
+                                    event.accepted = true
+                                }
+                            }
 
                             Row {
                                 id: callsPillRow
@@ -838,7 +881,7 @@ Item {
                                         width: parent.width
                                         role: "caption"
                                         color: Theme.heroContent
-                                        opacity: 0.74
+                                        opacity: 0.80
                                         elide: Text.ElideRight
                                         text: (home.summaryData.missedCalls || 0) > 0 && home.summaryData.missedCaller
                                             ? home.summaryData.missedCaller
@@ -853,15 +896,30 @@ Item {
 
                     // 3. Latest photo or screenshot (rounded thumbnail + relative time; click opens Photos).
                     Rectangle {
+                        id: photoPill
                         width: parent.width
                         height: 52
                         visible: heroCard.hasPhotos
                         radius: Theme.radiusMd
+                        activeFocusOnTab: true
                         color: photoHover.hovered
                             ? Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.48 : 0.68)
                             : Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.34 : 0.48)
-                        border.width: 1
-                        border.color: Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.10)
+                        border.width: Theme.focusVisible(photoPill) ? 2 : 1
+                        border.color: Theme.focusVisible(photoPill)
+                            ? Theme.primary
+                            : Qt.rgba(Theme.heroContent.r, Theme.heroContent.g, Theme.heroContent.b, 0.10)
+                        Accessible.role: Accessible.Button
+                        Accessible.name: home.summaryData.photoIsScreenshot
+                            ? qsTr("Latest screenshot")
+                            : (home.summaryData.photoIsVideo ? qsTr("Latest video") : qsTr("Latest photo"))
+                        Accessible.onPressAction: AppController.currentPage = "photos"
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                AppController.currentPage = "photos"
+                                event.accepted = true
+                            }
+                        }
 
                         Row {
                             x: 8
@@ -915,7 +973,7 @@ Item {
                                     width: parent.width
                                     role: "caption"
                                     color: Theme.heroContent
-                                    opacity: 0.74
+                                    opacity: 0.80
                                     elide: Text.ElideRight
                                     text: {
                                         const when = home.summaryData.photoDate
@@ -1090,11 +1148,301 @@ Item {
                     }
                 }
             }
+
+            // ---- Type on phone with PC keyboard (without mirroring) ----
+            Card {
+                id: typeOnPhoneCard
+                width: parent.width
+                readonly property var controlFeature: home.feature("mirroring.control")
+                readonly property bool available: controlFeature.state === "available"
+                readonly property bool typingActive: Mirror.keyboardDevice === home.deviceId
+                visible: home.online && (available || controlFeature.state === "locked" || typingActive)
+                onTypingActiveChanged: {
+                    if (typingActive) {
+                        liveKeyCapture.forceActiveFocus(Qt.OtherFocusReason)
+                    }
+                }
+                Column {
+                    width: parent.width
+                    spacing: 10
+                    Item {
+                        width: parent.width
+                        height: Math.max(typeLeftRow.height, typeRightRow.height)
+                        Row {
+                            id: typeLeftRow
+                            anchors.left: parent.left
+                            anchors.right: typeRightRow.left
+                            anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 10
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 18; height: 18
+                                path: Icons.keyboard
+                                color: Theme.primary
+                            }
+                            Column {
+                                width: parent.width - 28
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 1
+                                Txt {
+                                    width: parent.width
+                                    role: "label"
+                                    elide: Text.ElideRight
+                                    text: typeOnPhoneCard.typingActive
+                                        ? qsTr("Typing on %1").arg(home.name)
+                                        : qsTr("Type on phone")
+                                }
+                                Txt {
+                                    width: parent.width
+                                    role: "caption"
+                                    muted: true
+                                    elide: Text.ElideRight
+                                    text: typeOnPhoneCard.typingActive
+                                        ? qsTr("Press keys in the capture box below, or compose text to send (Esc to stop).")
+                                        : qsTr("Use this PC's keyboard on %1 without mirroring its screen.").arg(home.name)
+                                }
+                            }
+                        }
+                        Row {
+                            id: typeRightRow
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 8
+                            Button {
+                                visible: !typeOnPhoneCard.typingActive
+                                enabled: typeOnPhoneCard.available
+                                variant: "tonal"
+                                size: "sm"
+                                iconPath: Icons.keyboard
+                                text: qsTr("Start typing")
+                                onClicked: Mirror.toggleKeyboard(home.deviceId)
+                            }
+                            Button {
+                                visible: typeOnPhoneCard.typingActive
+                                variant: "outline"
+                                size: "sm"
+                                iconPath: Icons.close
+                                text: qsTr("Stop typing")
+                                onClicked: Mirror.stopKeyboard()
+                            }
+                        }
+                    }
+
+                    Column {
+                        width: parent.width
+                        visible: typeOnPhoneCard.typingActive
+                        spacing: 8
+
+                        FocusScope {
+                            id: liveKeyCapture
+                            width: parent.width
+                            height: 40
+                            activeFocusOnTab: true
+                            property string lastKeyStatus: ""
+                            Accessible.role: Accessible.EditableText
+                            Accessible.name: qsTr("Live keyboard capture for %1").arg(home.name)
+                            Accessible.description: qsTr("Type directly to send keystrokes to the phone, or press Escape to stop.")
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: -3
+                                radius: (Theme.graphite ? Theme.radiusSm : 20) + 3
+                                color: "transparent"
+                                border.width: 2
+                                border.color: Theme.primary
+                                visible: Theme.focusVisible(liveKeyCapture)
+                            }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: Theme.graphite ? Theme.radiusSm : height / 2
+                                color: Theme.graphite ? "transparent" : Theme.surfaceContainerHighest
+                                border.width: liveKeyCapture.activeFocus ? 2 : 1
+                                border.color: liveKeyCapture.activeFocus ? Theme.primary : Theme.outlineVariant
+
+                                Row {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 14
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 14
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 10
+                                    Icon {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 16; height: 16
+                                        path: Icons.keyboard
+                                        color: liveKeyCapture.activeFocus ? Theme.primary : Theme.surfaceContentVariant
+                                    }
+                                    Txt {
+                                        width: parent.width - 26
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        role: "bodySmall"
+                                        muted: !liveKeyCapture.activeFocus
+                                        elide: Text.ElideRight
+                                        text: liveKeyCapture.activeFocus
+                                            ? (liveKeyCapture.lastKeyStatus.length > 0
+                                               ? qsTr("Live keys active · Sent: %1").arg(liveKeyCapture.lastKeyStatus)
+                                               : qsTr("Live keys active — type here, or press Ctrl+V to paste"))
+                                            : qsTr("Click here to capture live keystrokes")
+                                    }
+                                }
+                                TapHandler {
+                                    onTapped: liveKeyCapture.forceActiveFocus(Qt.MouseFocusReason)
+                                }
+                            }
+
+                            Keys.onPressed: (event) => {
+                                if (event.key === Qt.Key_Escape) {
+                                    Mirror.stopKeyboard()
+                                    event.accepted = true
+                                    return
+                                }
+                                if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_V) {
+                                    Mirror.keyboardPaste(home.deviceId)
+                                    liveKeyCapture.lastKeyStatus = qsTr("Clipboard")
+                                    event.accepted = true
+                                    return
+                                }
+                                const names = {}
+                                names[Qt.Key_Return] = "enter"
+                                names[Qt.Key_Enter] = "enter"
+                                names[Qt.Key_Backspace] = "backspace"
+                                names[Qt.Key_Delete] = "delete"
+                                names[Qt.Key_Left] = "left"
+                                names[Qt.Key_Right] = "right"
+                                names[Qt.Key_Up] = "up"
+                                names[Qt.Key_Down] = "down"
+                                names[Qt.Key_Tab] = "tab"
+                                if (names[event.key]) {
+                                    Mirror.keyboardPress(home.deviceId, names[event.key])
+                                    liveKeyCapture.lastKeyStatus = names[event.key]
+                                    event.accepted = true
+                                } else if (event.text.length > 0
+                                           && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))
+                                           && event.text.charCodeAt(0) >= 32) {
+                                    Mirror.keyboardText(home.deviceId, event.text)
+                                    liveKeyCapture.lastKeyStatus = event.text
+                                    event.accepted = true
+                                }
+                            }
+                        }
+
+                        Row {
+                            width: parent.width
+                            spacing: 8
+                            Rectangle {
+                                id: composeBox
+                                width: Math.max(120, parent.width - sendComposeBtn.width - pasteBtn.width - backspaceBtn.width - enterKeyBtn.width - 32)
+                                height: 36
+                                radius: Theme.graphite ? Theme.radiusSm : height / 2
+                                color: Theme.graphite ? "transparent" : Theme.surfaceContainerHighest
+                                border.width: composeInput.activeFocus ? 2 : 1
+                                border.color: composeInput.activeFocus ? Theme.primary : Theme.outlineVariant
+                                TextInput {
+                                    id: composeInput
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 14
+                                    anchors.rightMargin: 14
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    font.family: Theme.fontUi
+                                    font.pixelSize: 13
+                                    color: Theme.surfaceContent
+                                    selectionColor: Theme.primaryContainer
+                                    selectedTextColor: Theme.primaryContainerContent
+                                    clip: true
+                                    Accessible.name: qsTr("Type text to send to %1").arg(home.name)
+                                    Keys.onReturnPressed: {
+                                        if (composeInput.text.length > 0) {
+                                            Mirror.keyboardText(home.deviceId, composeInput.text)
+                                            composeInput.text = ""
+                                        } else {
+                                            Mirror.keyboardPress(home.deviceId, "enter")
+                                        }
+                                    }
+                                    Keys.onEnterPressed: {
+                                        if (composeInput.text.length > 0) {
+                                            Mirror.keyboardText(home.deviceId, composeInput.text)
+                                            composeInput.text = ""
+                                        } else {
+                                            Mirror.keyboardPress(home.deviceId, "enter")
+                                        }
+                                    }
+                                    Keys.onEscapePressed: Mirror.stopKeyboard()
+                                    Txt {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: composeInput.text.length === 0
+                                        role: "bodySmall"
+                                        muted: true
+                                        elide: Text.ElideRight
+                                        width: parent.width
+                                        text: qsTr("Or type a phrase and press Enter…")
+                                    }
+                                }
+                            }
+                            Button {
+                                id: sendComposeBtn
+                                variant: "tonal"
+                                size: "sm"
+                                enabled: composeInput.text.length > 0
+                                text: qsTr("Send")
+                                onClicked: {
+                                    if (composeInput.text.length > 0) {
+                                        Mirror.keyboardText(home.deviceId, composeInput.text)
+                                        composeInput.text = ""
+                                    }
+                                }
+                            }
+                            Button {
+                                id: pasteBtn
+                                variant: "outline"
+                                size: "sm"
+                                iconPath: Icons.clipboard
+                                text: qsTr("Paste")
+                                onClicked: Mirror.keyboardPaste(home.deviceId)
+                            }
+                            Button {
+                                id: backspaceBtn
+                                variant: "outline"
+                                size: "sm"
+                                iconPath: Icons.backspace
+                                text: qsTr("Bksp")
+                                onClicked: Mirror.keyboardPress(home.deviceId, "backspace")
+                            }
+                            Button {
+                                id: enterKeyBtn
+                                variant: "outline"
+                                size: "sm"
+                                text: qsTr("Enter")
+                                onClicked: Mirror.keyboardPress(home.deviceId, "enter")
+                            }
+                        }
+                    }
+
+                    LockChip {
+                        visible: !typeOnPhoneCard.available && label.length > 0
+                        feature: typeOnPhoneCard.controlFeature
+                    }
+                }
+            }
             FileDialog {
                 id: filePicker
                 title: qsTr("Send to %1").arg(home.name)
                 fileMode: FileDialog.OpenFiles
                 onAccepted: TransferList.send(home.deviceId, selectedFiles.map(url => url.toString()))
+            }
+            FileDialog {
+                id: handoffFilePicker
+                title: qsTr("Hand off & open on %1").arg(home.name)
+                fileMode: FileDialog.OpenFile
+                onAccepted: TransferList.sendHandoff(home.deviceId, [selectedFile.toString()])
+            }
+            Connections {
+                target: AppController
+                enabled: home.visible
+                function onHandoffFilePickerRequested() {
+                    handoffFilePicker.open()
+                }
             }
             FolderDialog {
                 id: folderPicker
@@ -1231,6 +1579,8 @@ Item {
                             clock: feedClock.minutes
                             visible: deviceId === home.deviceId
                             height: visible ? implicitHeight : 0
+                            canOpenApp: home.feature("mirroring.app_windows").state === "available" && app.length > 0
+                            onOpenAppRequested: Mirror.startApp(deviceId, app, appName.length > 0 ? appName : app)
                             onOptionsRequested: appSheet.openFor(app, appName)
                         }
                         add: Transition {
@@ -1415,6 +1765,12 @@ Item {
                     return ({})
                 }
                 onVisibleChanged: if (!visible) confirmWifiOff = false
+
+                Shortcut {
+                    sequence: "Esc"
+                    enabled: page.active && phoneControls.confirmWifiOff
+                    onActivated: phoneControls.confirmWifiOff = false
+                }
 
                 Column {
                     width: parent.width
@@ -1648,12 +2004,25 @@ Item {
                             required property var modelData
                             width: parent.width
                             height: 36
+                            activeFocusOnTab: true
+                            Accessible.role: Accessible.Button
+                            Accessible.name: previewRow.modelData.title || ""
+                            Accessible.description: previewRow.modelData.subtitle || ""
+                            Accessible.onPressAction: AppController.currentPage = "timeline"
+                            Keys.onPressed: (event) => {
+                                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                    AppController.currentPage = "timeline"
+                                    event.accepted = true
+                                }
+                            }
 
                             Rectangle {
                                 anchors.fill: parent
                                 anchors.margins: -4
                                 radius: Theme.radiusSm
                                 color: previewHover.hovered ? Theme.surfaceContainerHigh : "transparent"
+                                border.width: Theme.focusVisible(previewRow) ? 2 : 0
+                                border.color: Theme.primary
                             }
 
                             Icon {
@@ -1938,8 +2307,17 @@ Item {
                     Repeater {
                         model: NotificationHistory
                         delegate: HistoryItem {
+                            required property string deviceId
+                            required property string app
                             width: historyColumn.width
                             visible: historySearch.matches([appName, title, text, sub])
+                            canOpenApp: (AppController.capsRevision >= 0
+                                && AppController.featureState(deviceId, "mirroring.app_windows").state === "available")
+                                && app.length > 0
+                            onOpenAppRequested: {
+                                historySheet.close()
+                                Mirror.startApp(deviceId, app, appName.length > 0 ? appName : app)
+                            }
                         }
                     }
                 }
@@ -2144,6 +2522,18 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
                                 spacing: 4
                                 IconButton {
+                                    visible: page.currentDeviceId.length > 0
+                                             && clipRow.modelData.kind === "text"
+                                             && Boolean(clipRow.modelData.text)
+                                             && AppController.isHandoffText(clipRow.modelData.text)
+                                    iconPath: Icons.globe
+                                    label: qsTr("Open on phone")
+                                    onClicked: {
+                                        clipboardSheet.close()
+                                        AppController.openLinkOnPhone(page.currentDeviceId, clipRow.modelData.text)
+                                    }
+                                }
+                                IconButton {
                                     iconPath: Icons.copy
                                     label: qsTr("Copy")
                                     onClicked: AppController.copyClipboardHistory(clipRow.modelData.id)
@@ -2205,11 +2595,11 @@ Item {
         border.width: Theme.focusVisible(tile) ? 2 : (Theme.graphite ? 1 : 0)
         border.color: Theme.focusVisible(tile) ? Theme.primary : Theme.outlineVariant
         scale: tap.pressed && available ? Theme.pressScale : 1
-        Behavior on scale { SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
-        Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
+        Behavior on scale { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
+        Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.fadeFast } }
         transform: Translate {
             y: hover.hovered && tile.available && !tap.pressed ? -Theme.hoverLift : 0
-            Behavior on y { SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
+            Behavior on y { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
         }
 
         Accessible.role: Accessible.Button
@@ -2245,7 +2635,7 @@ Item {
                 width: parent.width
                 spacing: 3
                 Txt { width: parent.width; text: tile.title; role: "title"; size: 14; color: tile.ink; opacity: tile.available ? 1 : 0.6 }
-                Txt { width: parent.width; visible: tile.available; text: tile.subtitle; role: "bodySmall"; color: tile.ink; opacity: 0.75 }
+                Txt { width: parent.width; visible: tile.available; text: tile.subtitle; role: "bodySmall"; color: tile.ink; opacity: tile.active ? 0.82 : 1.0 }
                 // Not built yet, or capabilities unknown until the device has
                 // connected once.
                 Txt {
@@ -2321,8 +2711,8 @@ Item {
             border.color: Theme.focusVisible(qbtn) ? Theme.primary : Theme.outlineVariant
             opacity: qbtn.available || qbtn.active ? 1 : 0.55
             scale: qtap.pressed && qbtn.available ? Theme.pressScale : 1
-            Behavior on scale { SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
-            Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
+            Behavior on scale { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
+            Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.fadeFast } }
 
             Column {
                 anchors.centerIn: parent
@@ -2450,6 +2840,16 @@ Item {
             }
 
             readonly property real fraction: slider.shownValue / 100.0
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -3
+                radius: 6
+                color: "transparent"
+                border.width: 2
+                border.color: Theme.primary
+                visible: Theme.focusVisible(barScope)
+            }
 
             Rectangle {
                 anchors.verticalCenter: parent.verticalCenter

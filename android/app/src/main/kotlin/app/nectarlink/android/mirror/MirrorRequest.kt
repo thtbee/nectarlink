@@ -20,13 +20,23 @@ import androidx.core.content.ContextCompat
 import app.nectarlink.android.R
 
 /** A PC asking for the screen (and its sound), with what it wants. */
-data class MirrorRequest(val pcId: String, val maxSize: Int, val fps: Int, val bitrate: Int, val audio: Boolean) {
+data class MirrorRequest(
+    val pcId: String,
+    val maxSize: Int,
+    val fps: Int,
+    val bitrate: Int,
+    val audio: Boolean,
+    val stayAwake: Boolean = false,
+    val screenOff: Boolean = false,
+) {
     fun toIntent(intent: Intent): Intent = intent
         .putExtra("pc", pcId)
         .putExtra("maxSize", maxSize)
         .putExtra("fps", fps)
         .putExtra("bitrate", bitrate)
         .putExtra("audio", audio)
+        .putExtra("stayAwake", stayAwake)
+        .putExtra("screenOff", screenOff)
 
     companion object {
         fun of(intent: Intent): MirrorRequest? = intent.getStringExtra("pc")?.let {
@@ -36,6 +46,8 @@ data class MirrorRequest(val pcId: String, val maxSize: Int, val fps: Int, val b
                 intent.getIntExtra("fps", 60),
                 intent.getIntExtra("bitrate", 8_000_000),
                 intent.getBooleanExtra("audio", false),
+                intent.getBooleanExtra("stayAwake", false),
+                intent.getBooleanExtra("screenOff", false),
             )
         }
     }
