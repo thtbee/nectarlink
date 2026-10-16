@@ -130,11 +130,34 @@ pub mod qobject {
         #[qproperty(QString, folder_sync_rules_json)]
         /// JSON array of configured `AutomationRule` items.
         #[qproperty(QString, automation_rules_json)]
+        /// Whether a saved main window `(x, y)` position exists.
+        #[qproperty(bool, has_window_position)]
+        /// Saved main window X position in screen pixels.
+        #[qproperty(i32, window_x)]
+        /// Saved main window Y position in screen pixels.
+        #[qproperty(i32, window_y)]
+        /// Saved main window normal width in logical pixels.
+        #[qproperty(i32, window_width)]
+        /// Saved main window normal height in logical pixels.
+        #[qproperty(i32, window_height)]
+        /// Whether the main window was maximized when last open.
+        #[qproperty(bool, window_maximized)]
         type Preferences = super::PreferencesRust;
 
         /// Resets the setup walkthrough to step 0 and opens it again.
         #[qinvokable]
         fn restart_walkthrough(self: Pin<&mut Preferences>);
+        /// Saves the main window's normal position, dimensions, and maximized state.
+        #[qinvokable]
+        fn save_window_geometry(
+            self: Pin<&mut Preferences>,
+            has_position: bool,
+            x: i32,
+            y: i32,
+            width: i32,
+            height: i32,
+            maximized: bool,
+        );
         /// OBS Studio's WebSocket port, for `obs:` Deck commands.
         #[qinvokable]
         fn obs_port(self: &Preferences) -> i32;
@@ -295,6 +318,12 @@ pub struct PreferencesRust {
     hive_invite_dismissed: bool,
     folder_sync_rules_json: QString,
     automation_rules_json: QString,
+    has_window_position: bool,
+    window_x: i32,
+    window_y: i32,
+    window_width: i32,
+    window_height: i32,
+    window_maximized: bool,
     /// What the user chose (`start_with_windows` shows the default until then).
     start_choice: Option<bool>,
     /// Custom recordings folder if chosen (`None` means default).
@@ -377,6 +406,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         let automation_rules_json =
             serde_json::to_string(&settings.automation_rules).unwrap_or_else(|_| "[]".into());
         self.as_mut().set_automation_rules_json(QString::from(&automation_rules_json));
+        self.as_mut().set_has_window_position(settings.window_x.is_some() && settings.window_y.is_some());
+        self.as_mut().set_window_x(settings.window_x.unwrap_or(0));
+        self.as_mut().set_window_y(settings.window_y.unwrap_or(0));
+        self.as_mut().set_window_width(settings.window_width as i32);
+        self.as_mut().set_window_height(settings.window_height as i32);
+        self.as_mut().set_window_maximized(settings.window_maximized);
         crate::win::tray::update_hotkeys(
             &settings.continuity_photo_hotkey,
             &settings.continuity_scan_hotkey,
@@ -671,6 +706,47 @@ impl qobject::Preferences {
         self.save();
     }
 
+    pub fn save_window_geometry(
+        mut self: Pin<&mut Self>,
+        has_position: bool,
+        x: i32,
+        y: i32,
+        width: i32,
+        height: i32,
+        maximized: bool,
+    ) {
+        let clamped_w = (width.max(crate::settings::MIN_WINDOW_WIDTH as i32) as u32).min(7680);
+        let clamped_h = (height.max(crate::settings::MIN_WINDOW_HEIGHT as i32) as u32).min(4320);
+        let (opt_x, opt_y) = if has_position {
+            (Some(x), Some(y))
+        } else {
+            (None, None)
+        };
+        crate::settings::set_window_geometry(opt_x, opt_y, clamped_w, clamped_h, maximized);
+        if *self.has_window_position() != has_position {
+            self.as_mut().set_has_window_position(has_position);
+        }
+        if has_position {
+            if *self.window_x() != x {
+                self.as_mut().set_window_x(x);
+            }
+            if *self.window_y() != y {
+                self.as_mut().set_window_y(y);
+            }
+        }
+        if *self.window_width() != clamped_w as i32 {
+            self.as_mut().set_window_width(clamped_w as i32);
+        }
+        if *self.window_height() != clamped_h as i32 {
+            self.as_mut().set_window_height(clamped_h as i32);
+        }
+        if *self.window_maximized() != maximized {
+            self.as_mut().set_window_maximized(maximized);
+        }
+        let settings = self.current_settings();
+        let _ = settings.save(&core_host::host().data_dir);
+    }
+
     pub fn obs_port(&self) -> i32 {
         i32::from(crate::settings::obs_settings().0)
     }
@@ -843,6 +919,7 @@ impl qobject::Preferences {
 
     fn current_settings(&self) -> Settings {
         let p = self.rust();
+        let (win_x, win_y, win_w, win_h, win_max) = crate::settings::window_geometry();
         Settings {
             theme: match String::from(&p.theme).as_str() {
                 "hive" => Theme::Hive,
@@ -907,6 +984,11 @@ impl qobject::Preferences {
             hive_invite_dismissed: p.hive_invite_dismissed,
             obs_port: crate::settings::obs_settings().0,
             obs_password: crate::settings::obs_settings().1,
+            window_x: win_x,
+            window_y: win_y,
+            window_width: win_w,
+            window_height: win_h,
+            window_maximized: win_max,
         }
     }
 

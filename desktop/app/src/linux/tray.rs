@@ -6,9 +6,9 @@
 use std::{
     collections::HashMap,
     env,
-    io::{BufRead, BufReader, Result},
+    io::{BufRead, BufReader, Result, Write},
     path::PathBuf,
-    process::{Child, Command, Stdio},
+    process::{Child, ChildStdin, Command, Stdio},
     sync::{
         Arc, Mutex, OnceLock,
         atomic::{AtomicBool, Ordering},
@@ -498,6 +498,116 @@ fn spawn_dbus_monitor_reader(
         .ok()
 }
 
+const TRAY_HELPER_SCRIPT: &str = r#"
+import os, sys, threading
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, GLib
+
+icon_path = sys.argv[1]
+tooltip = sys.argv[2]
+labels = sys.argv[3:11]
+icon_dir = os.path.dirname(icon_path)
+icon_name = os.path.splitext(os.path.basename(icon_path))[0]
+
+def emit(action):
+    try:
+        sys.stdout.write(action + "\n")
+        sys.stdout.flush()
+    except Exception:
+        pass
+
+menu = Gtk.Menu()
+def add_item(label, action):
+    item = Gtk.MenuItem(label=label)
+    item.connect('activate', lambda _: emit(action))
+    menu.append(item)
+    return item
+
+add_item(labels[0], 'OPEN')
+add_item(labels[1], 'COMMAND_PALETTE')
+add_item(labels[2], 'SHELF')
+menu.append(Gtk.SeparatorMenuItem())
+add_item(labels[3], 'TAKE_PHOTO')
+add_item(labels[4], 'SCAN_DOCUMENT')
+find_phone_item = add_item(labels[5], 'FIND_PHONE')
+find_phone_item.set_sensitive(False)
+add_item(labels[6], 'OPEN_LINK')
+menu.append(Gtk.SeparatorMenuItem())
+add_item(labels[7], 'QUIT')
+menu.show_all()
+
+ind = None
+status_icon = None
+try:
+    try:
+        gi.require_version('AyatanaAppIndicator3', '0.1')
+        from gi.repository import AyatanaAppIndicator3 as AppIndicator
+    except Exception:
+        gi.require_version('AppIndicator3', '0.1')
+        from gi.repository import AppIndicator3 as AppIndicator
+    ind = AppIndicator.Indicator.new_with_path(
+        'nectarlink',
+        icon_name,
+        AppIndicator.IndicatorCategory.APPLICATION_STATUS,
+        icon_dir,
+    )
+    ind.set_status(AppIndicator.IndicatorStatus.ACTIVE)
+    ind.set_title(tooltip)
+    ind.set_icon_full(icon_path, tooltip)
+    ind.set_menu(menu)
+except Exception:
+    status_icon = Gtk.StatusIcon.new_from_file(icon_path)
+    status_icon.set_tooltip_text(tooltip)
+    status_icon.set_visible(True)
+    status_icon.connect('activate', lambda _: emit('OPEN'))
+    status_icon.connect(
+        'popup-menu',
+        lambda icon, button, time: menu.popup(None, None, Gtk.StatusIcon.position_menu, icon, button, time),
+    )
+
+def apply_cmd(line):
+    parts = line.rstrip('\r\n').split('\t', 1)
+    if len(parts) != 2:
+        return False
+    cmd, val = parts
+    if cmd == 'TOOLTIP':
+        if ind is not None:
+            ind.set_title(val)
+            ind.set_icon_full(icon_path, val)
+        if status_icon is not None:
+            status_icon.set_tooltip_text(val)
+    elif cmd == 'FIND_PHONE':
+        find_phone_item.set_sensitive(val == '1')
+    return False
+
+def stdin_reader():
+    try:
+        for line in sys.stdin:
+            GLib.idle_add(apply_cmd, line)
+    except Exception:
+        pass
+    GLib.idle_add(Gtk.main_quit)
+
+t = threading.Thread(target=stdin_reader, daemon=True)
+t.start()
+Gtk.main()
+"#;
+
+pub(crate) fn parse_tray_helper_action(line: &str) -> Option<TrayEvent> {
+    match line.trim() {
+        "OPEN" => Some(TrayEvent::Open),
+        "COMMAND_PALETTE" => Some(TrayEvent::CommandPalette),
+        "SHELF" => Some(TrayEvent::Shelf),
+        "TAKE_PHOTO" => Some(TrayEvent::TakePhoto),
+        "SCAN_DOCUMENT" => Some(TrayEvent::ScanDocument),
+        "FIND_PHONE" => Some(TrayEvent::FindPhone),
+        "OPEN_LINK" => Some(TrayEvent::OpenLinkOnPhone),
+        "QUIT" => Some(TrayEvent::Quit),
+        _ => None,
+    }
+}
+
 pub struct Tray {
     tooltip: Mutex<String>,
     labels: Mutex<MenuLabels>,
@@ -505,6 +615,7 @@ pub struct Tray {
     icon_path: PathBuf,
     stop: Arc<AtomicBool>,
     handler: Arc<SharedHandler>,
+    helper_stdin: Mutex<Option<ChildStdin>>,
     children: Mutex<Vec<Child>>,
     threads: Mutex<Vec<JoinHandle<()>>>,
 }
@@ -532,11 +643,69 @@ impl Tray {
 
         let stop = Arc::new(AtomicBool::new(false));
         let shared_handler = SharedHandler::new(handler);
+        let mut helper_stdin = None;
         let mut children = Vec::new();
         let mut threads = Vec::new();
 
-        if has_desktop_session() {
+        if !cfg!(test) && has_desktop_session() {
             record_foreground_window();
+
+            // 0. StatusNotifierItem / Gtk.StatusIcon system tray indicator helper.
+            let tray_child = Command::new("python3")
+                .args([
+                    "-u",
+                    "-c",
+                    TRAY_HELPER_SCRIPT,
+                    &icon_path.to_string_lossy(),
+                    tooltip,
+                    &labels.open,
+                    &labels.command_palette,
+                    &labels.shelf,
+                    &labels.take_photo,
+                    &labels.scan_document,
+                    &labels.find_phone,
+                    &labels.open_link,
+                    &labels.quit,
+                ])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null())
+                .spawn();
+
+            if let Ok(mut child) = tray_child {
+                helper_stdin = child.stdin.take();
+                let stdout = child.stdout.take();
+                children.push(child);
+                if let Some(stdout) = stdout {
+                    let reader = BufReader::new(stdout);
+                    let stop_clone = Arc::clone(&stop);
+                    let handler_clone = Arc::clone(&shared_handler);
+                    if let Ok(handle) = std::thread::Builder::new()
+                        .name("tray-sni-helper".into())
+                        .spawn(move || {
+                            for line in reader.lines() {
+                                if stop_clone.load(Ordering::Acquire) {
+                                    break;
+                                }
+                                let Ok(line) = line else { break };
+                                if let Some(ev) = parse_tray_helper_action(&line) {
+                                    if matches!(
+                                        ev,
+                                        TrayEvent::CommandPalette
+                                            | TrayEvent::TakePhoto
+                                            | TrayEvent::ScanDocument
+                                    ) {
+                                        record_foreground_window();
+                                    }
+                                    handler_clone.emit(ev);
+                                }
+                            }
+                        })
+                    {
+                        threads.push(handle);
+                    }
+                }
+            }
 
             // 1. System bus org.freedesktop.login1.Manager PrepareForSleep monitor.
             let login1_child = Command::new("gdbus")
@@ -649,6 +818,7 @@ impl Tray {
             icon_path,
             stop,
             handler: shared_handler,
+            helper_stdin: Mutex::new(helper_stdin),
             children: Mutex::new(children),
             threads: Mutex::new(threads),
         })
@@ -658,12 +828,26 @@ impl Tray {
         if let Ok(mut guard) = self.tooltip.lock() {
             *guard = text.to_string();
         }
+        if let Ok(mut guard) = self.helper_stdin.lock()
+            && let Some(stdin) = guard.as_mut()
+        {
+            let sanitized = text.replace(['\r', '\n', '\t'], " ");
+            let _ = writeln!(stdin, "TOOLTIP\t{sanitized}");
+            let _ = stdin.flush();
+        }
     }
 
     /// Whether "Find my phone" is offered (a phone is paired).
     pub fn set_find_phone_enabled(&self, enabled: bool) {
         if let Ok(mut guard) = self.find_phone_enabled.lock() {
             *guard = enabled;
+        }
+        if let Ok(mut guard) = self.helper_stdin.lock()
+            && let Some(stdin) = guard.as_mut()
+        {
+            let flag = if enabled { "1" } else { "0" };
+            let _ = writeln!(stdin, "FIND_PHONE\t{flag}");
+            let _ = stdin.flush();
         }
     }
 }
@@ -672,6 +856,9 @@ impl Drop for Tray {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
         self.handler.clear();
+        if let Ok(mut stdin_guard) = self.helper_stdin.lock() {
+            let _ = stdin_guard.take();
+        }
         if let Ok(mut children) = self.children.lock() {
             for child in children.iter_mut() {
                 let _ = child.kill();
@@ -806,5 +993,27 @@ mod tests {
         tray.set_find_phone_enabled(true);
         assert!(tray.icon_path.exists());
         drop(tray);
+    }
+
+    #[test]
+    fn parse_tray_helper_action_maps_all_menu_items() {
+        assert_eq!(parse_tray_helper_action("OPEN\n"), Some(TrayEvent::Open));
+        assert_eq!(
+            parse_tray_helper_action("COMMAND_PALETTE"),
+            Some(TrayEvent::CommandPalette)
+        );
+        assert_eq!(parse_tray_helper_action("SHELF"), Some(TrayEvent::Shelf));
+        assert_eq!(parse_tray_helper_action("TAKE_PHOTO"), Some(TrayEvent::TakePhoto));
+        assert_eq!(
+            parse_tray_helper_action("SCAN_DOCUMENT"),
+            Some(TrayEvent::ScanDocument)
+        );
+        assert_eq!(parse_tray_helper_action("FIND_PHONE"), Some(TrayEvent::FindPhone));
+        assert_eq!(
+            parse_tray_helper_action("OPEN_LINK"),
+            Some(TrayEvent::OpenLinkOnPhone)
+        );
+        assert_eq!(parse_tray_helper_action("QUIT"), Some(TrayEvent::Quit));
+        assert_eq!(parse_tray_helper_action("UNKNOWN"), None);
     }
 }

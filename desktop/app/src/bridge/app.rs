@@ -1734,7 +1734,7 @@ impl qobject::AppController {
 
     pub fn logs_url(&self) -> QString {
         let dir = crate::logging::logs_dir(&core_host::host().data_dir);
-        QString::from(&format!("file:///{}", dir.to_string_lossy().replace('\\', "/")))
+        QString::from(&crate::icons::file_url(&dir))
     }
 
     pub fn open_phone_storage(&self, device: &QString) {
@@ -1931,9 +1931,16 @@ impl qobject::AppController {
                 .map(|p| String::from(&p))
                 .filter(|p| !p.is_empty())
                 .or_else(|| {
-                    raw.strip_prefix("file:///")
-                        .or_else(|| raw.strip_prefix("file://"))
-                        .map(|s| s.replace('/', "\\"))
+                    #[cfg(windows)]
+                    {
+                        raw.strip_prefix("file:///")
+                            .or_else(|| raw.strip_prefix("file://"))
+                            .map(|s| s.replace('/', "\\"))
+                    }
+                    #[cfg(not(windows))]
+                    {
+                        raw.strip_prefix("file://").map(str::to_owned)
+                    }
                 });
             if let Some(local_str) = local {
                 let pb = std::path::PathBuf::from(&local_str);
@@ -2530,26 +2537,49 @@ fn compute_shelf_items_json(current_device_idx: i32) -> String {
         let summary = home_store(|s| s.devices.get(&dev).cloned());
         match summary {
             Some(d) if d.photo_loaded => {
-                if !d.photo_id.is_empty() {
-                    let thumb_p = crate::photos::thumb_path(dev, &d.photo_id);
-                    let thumb_url = if !d.photo_thumb.is_empty() {
-                        d.photo_thumb.clone()
+                let make_obj = |id: &str, name: &str, date: i64, cached_thumb: &str| -> serde_json::Value {
+                    let thumb_p = crate::photos::thumb_path(dev, id);
+                    let thumb_url = if !cached_thumb.is_empty() {
+                        cached_thumb.to_owned()
                     } else if thumb_p.exists() {
                         crate::icons::file_url(&thumb_p)
                     } else {
                         String::new()
                     };
-                    let obj = serde_json::json!({
-                        "id": d.photo_id,
-                        "name": d.photo_name,
-                        "date": d.photo_date,
+                    serde_json::json!({
+                        "id": id,
+                        "name": name,
+                        "date": date,
                         "thumbUrl": thumb_url,
                         "localPath": "",
-                    });
+                    })
+                };
+                if !d.latest_photo_id.is_empty() {
+                    latest_photo = Some(make_obj(
+                        &d.latest_photo_id,
+                        &d.latest_photo_name,
+                        d.latest_photo_date,
+                        &d.latest_photo_thumb,
+                    ));
+                    latest_photo_ts = d.latest_photo_date;
+                }
+                if !d.screenshot_id.is_empty() {
+                    latest_screenshot = Some(make_obj(
+                        &d.screenshot_id,
+                        &d.screenshot_name,
+                        d.screenshot_date,
+                        &d.screenshot_thumb,
+                    ));
+                    latest_screenshot_ts = d.screenshot_date;
+                }
+                if !d.photo_id.is_empty() {
+                    let obj = make_obj(&d.photo_id, &d.photo_name, d.photo_date, &d.photo_thumb);
                     if d.photo_is_screenshot {
-                        latest_screenshot = Some(obj);
-                        latest_screenshot_ts = d.photo_date;
-                    } else {
+                        if latest_screenshot.is_none() || d.photo_date > latest_screenshot_ts {
+                            latest_screenshot = Some(obj);
+                            latest_screenshot_ts = d.photo_date;
+                        }
+                    } else if latest_photo.is_none() || d.photo_date > latest_photo_ts {
                         latest_photo = Some(obj);
                         latest_photo_ts = d.photo_date;
                     }
@@ -2562,45 +2592,56 @@ fn compute_shelf_items_json(current_device_idx: i32) -> String {
         }
     }
 
-    // 2. Check Timeline photo entries (saved photos / screenshots on disk).
-    if let Some(ref n) = node
-        && let Ok(page) = n.timeline_page(&TimelineQuery {
-            kind: Some(TimelineKind::Photo),
-            device: device_opt,
-            limit: 25,
-            ..Default::default()
-        })
-    {
-        for entry in page.entries {
-            let first_target = entry.target.lines().next().unwrap_or("").trim();
-            if first_target.is_empty() {
-                continue;
-            }
-            let path = std::path::PathBuf::from(first_target);
-            if !path.exists() {
-                continue;
-            }
-            let name = path.file_name().and_then(|f| f.to_str()).unwrap_or(&entry.title).to_owned();
-            let lower_title = entry.title.to_ascii_lowercase();
-            let lower_name = name.to_ascii_lowercase();
-            let is_shot = lower_title.contains("screenshot")
-                || lower_name.contains("screenshot")
-                || entry.detail.to_ascii_lowercase().contains("screenshot");
-            let obj = serde_json::json!({
-                "id": path.to_string_lossy(),
-                "name": name,
-                "date": entry.timestamp,
-                "thumbUrl": crate::icons::file_url(&path),
-                "localPath": path.to_string_lossy(),
-            });
-            if is_shot {
-                if entry.timestamp >= latest_screenshot_ts {
-                    latest_screenshot_ts = entry.timestamp;
-                    latest_screenshot = Some(obj);
+    // 2. Check Timeline photo & file entries (saved photos / screenshots on disk).
+    if let Some(ref n) = node {
+        for kind in [TimelineKind::Photo, TimelineKind::File] {
+            if let Ok(page) = n.timeline_page(&TimelineQuery {
+                kind: Some(kind),
+                device: device_opt,
+                limit: 25,
+                ..Default::default()
+            }) {
+                for entry in page.entries {
+                    let first_target = entry.target.lines().next().unwrap_or("").trim();
+                    if first_target.is_empty() {
+                        continue;
+                    }
+                    let path = std::path::PathBuf::from(first_target);
+                    if !path.exists() || !path.is_file() {
+                        continue;
+                    }
+                    let ext = path
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .map(str::to_ascii_lowercase)
+                        .unwrap_or_default();
+                    if !matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp") {
+                        continue;
+                    }
+                    let name =
+                        path.file_name().and_then(|f| f.to_str()).unwrap_or(&entry.title).to_owned();
+                    let lower_title = entry.title.to_ascii_lowercase();
+                    let lower_name = name.to_ascii_lowercase();
+                    let is_shot = lower_title.contains("screenshot")
+                        || lower_name.contains("screenshot")
+                        || entry.detail.to_ascii_lowercase().contains("screenshot");
+                    let obj = serde_json::json!({
+                        "id": path.to_string_lossy(),
+                        "name": name,
+                        "date": entry.timestamp,
+                        "thumbUrl": crate::icons::file_url(&path),
+                        "localPath": path.to_string_lossy(),
+                    });
+                    if is_shot {
+                        if entry.timestamp >= latest_screenshot_ts {
+                            latest_screenshot_ts = entry.timestamp;
+                            latest_screenshot = Some(obj);
+                        }
+                    } else if entry.timestamp >= latest_photo_ts {
+                        latest_photo_ts = entry.timestamp;
+                        latest_photo = Some(obj);
+                    }
                 }
-            } else if entry.timestamp >= latest_photo_ts {
-                latest_photo_ts = entry.timestamp;
-                latest_photo = Some(obj);
             }
         }
     }
@@ -2654,10 +2695,13 @@ fn compute_shelf_items_json(current_device_idx: i32) -> String {
         }
     }
 
-    // 4. Current clip (from encrypted local clipboard history, or live Windows clipboard fallback).
-    let current_clip = if let Some(entry) =
-        node.as_ref().and_then(|n| n.clipboard_history(None).into_iter().next())
-    {
+    // 4. Current clip (from encrypted local clipboard history, or live OS clipboard fallback).
+    let current_clip = if let Some(entry) = node.as_ref().and_then(|n| {
+        n.clipboard_history(None).into_iter().find(|e| {
+            !(e.kind == ClipboardItemKind::Text
+                && nectarlink_core::is_likely_binary_or_corrupted_image_text(&e.text))
+        })
+    }) {
         let (kind, image_data_url) = match entry.kind {
             ClipboardItemKind::Text => ("text", String::new()),
             ClipboardItemKind::Image => {
@@ -2674,14 +2718,19 @@ fn compute_shelf_items_json(current_device_idx: i32) -> String {
         })
     } else {
         match crate::win::clipboard::read() {
-            crate::win::clipboard::Clip::Text { text: t, .. } if !t.trim().is_empty() => serde_json::json!({
-                "id": "",
-                "kind": "text",
-                "text": t,
-                "imageDataUrl": "",
-                "deviceName": "This PC",
-                "localPath": "",
-            }),
+            crate::win::clipboard::Clip::Text { text: t, .. }
+                if !t.trim().is_empty()
+                    && !nectarlink_core::is_likely_binary_or_corrupted_image_text(&t) =>
+            {
+                serde_json::json!({
+                    "id": "",
+                    "kind": "text",
+                    "text": t,
+                    "imageDataUrl": "",
+                    "deviceName": "This PC",
+                    "localPath": "",
+                })
+            }
             _ => serde_json::Value::Null,
         }
     };
@@ -2823,6 +2872,14 @@ struct HomeDeviceSummary {
     photo_thumb: String,
     photo_is_video: bool,
     photo_is_screenshot: bool,
+    latest_photo_id: String,
+    latest_photo_name: String,
+    latest_photo_date: i64,
+    latest_photo_thumb: String,
+    screenshot_id: String,
+    screenshot_name: String,
+    screenshot_date: i64,
+    screenshot_thumb: String,
 }
 
 #[derive(Debug, Default)]
@@ -2974,9 +3031,20 @@ pub(crate) fn on_home_event(event: &nectarlink_core::NodeEvent) {
                 entry.photo_id.clone_from(&photo.id);
                 entry.photo_name.clone_from(&photo.name);
                 entry.photo_date = photo.taken;
-                entry.photo_thumb = thumb_url;
+                entry.photo_thumb.clone_from(&thumb_url);
                 entry.photo_is_video = photo.id.starts_with("video:");
                 entry.photo_is_screenshot = photo.screenshot;
+                if photo.screenshot {
+                    entry.screenshot_id.clone_from(&photo.id);
+                    entry.screenshot_name.clone_from(&photo.name);
+                    entry.screenshot_date = photo.taken;
+                    entry.screenshot_thumb = thumb_url;
+                } else {
+                    entry.latest_photo_id.clone_from(&photo.id);
+                    entry.latest_photo_name.clone_from(&photo.name);
+                    entry.latest_photo_date = photo.taken;
+                    entry.latest_photo_thumb = thumb_url;
+                }
             });
             bump_home_summary();
         }
@@ -3032,7 +3100,7 @@ fn spawn_home_photo_fetch(device: DeviceId) {
         return;
     };
     core_host::spawn(async move {
-        let Ok(items) = node.photo_list(device, None, None, 1).await else {
+        let Ok(items) = node.photo_list(device, None, None, 25).await else {
             home_store(|s| {
                 if let Some(d) = s.devices.get_mut(&device) {
                     d.photo_busy = false;
@@ -3040,7 +3108,15 @@ fn spawn_home_photo_fetch(device: DeviceId) {
             });
             return;
         };
-        let Some(item) = items.into_iter().next() else {
+        let is_item_screenshot = |it: &nectarlink_core::PhotoItem| -> bool {
+            it.name.to_ascii_lowercase().contains("screenshot")
+                || it.album.as_deref().is_some_and(|a| a.to_ascii_lowercase().contains("screenshot"))
+        };
+        let first_item = items.first().cloned();
+        let latest_non_shot = items.iter().find(|it| !is_item_screenshot(it)).cloned();
+        let latest_shot = items.iter().find(|it| is_item_screenshot(it)).cloned();
+
+        let Some(item) = first_item else {
             home_store(|s| {
                 let d = s.devices.entry(device).or_default();
                 d.photo_loaded = true;
@@ -3049,23 +3125,52 @@ fn spawn_home_photo_fetch(device: DeviceId) {
                 d.photo_name.clear();
                 d.photo_date = 0;
                 d.photo_thumb.clear();
+                d.latest_photo_id.clear();
+                d.latest_photo_name.clear();
+                d.latest_photo_date = 0;
+                d.latest_photo_thumb.clear();
+                d.screenshot_id.clear();
+                d.screenshot_name.clear();
+                d.screenshot_date = 0;
+                d.screenshot_thumb.clear();
             });
             bump_home_summary();
             return;
         };
-        let mut disk_path = crate::photos::thumb_path(device, &item.id);
-        if !disk_path.exists()
-            && let Ok(thumbs) = node.photo_thumbs(device, vec![item.id.clone()]).await
-            && let Some(first) = thumbs.into_iter().next()
-            && let Some(saved) = crate::photos::write_thumb(device, &first.id, &first.data)
-        {
-            disk_path = saved;
+
+        let mut needed_ids = Vec::new();
+        for cand in [Some(&item), latest_non_shot.as_ref(), latest_shot.as_ref()].into_iter().flatten() {
+            if !crate::photos::thumb_path(device, &cand.id).exists()
+                && !needed_ids.contains(&cand.id)
+            {
+                needed_ids.push(cand.id.clone());
+            }
         }
-        let thumb_url = if disk_path.exists() { crate::icons::file_url(&disk_path) } else { String::new() };
-        let lower_name = item.name.to_ascii_lowercase();
-        let is_screenshot = lower_name.contains("screenshot")
-            || item.album.as_deref().is_some_and(|a| a.to_ascii_lowercase().contains("screenshot"));
+        if !needed_ids.is_empty()
+            && let Ok(thumbs) = node.photo_thumbs(device, needed_ids).await
+        {
+            for th in thumbs {
+                let _ = crate::photos::write_thumb(device, &th.id, &th.data);
+            }
+        }
+
+        let thumb_url_for = |id: &str| -> String {
+            let p = crate::photos::thumb_path(device, id);
+            if p.exists() { crate::icons::file_url(&p) } else { String::new() }
+        };
+
+        let thumb_url = thumb_url_for(&item.id);
+        let is_screenshot = is_item_screenshot(&item);
         let is_video = item.duration.is_some() || item.id.starts_with("video:");
+        let non_shot_tuple = latest_non_shot.map(|it| {
+            let u = thumb_url_for(&it.id);
+            (it.id, it.name, it.date, u)
+        });
+        let shot_tuple = latest_shot.map(|it| {
+            let u = thumb_url_for(&it.id);
+            (it.id, it.name, it.date, u)
+        });
+
         home_store(|s| {
             let d = s.devices.entry(device).or_default();
             d.photo_loaded = true;
@@ -3076,6 +3181,18 @@ fn spawn_home_photo_fetch(device: DeviceId) {
             d.photo_thumb = thumb_url;
             d.photo_is_video = is_video;
             d.photo_is_screenshot = is_screenshot;
+            if let Some((id, name, date, thumb)) = non_shot_tuple {
+                d.latest_photo_id = id;
+                d.latest_photo_name = name;
+                d.latest_photo_date = date;
+                d.latest_photo_thumb = thumb;
+            }
+            if let Some((id, name, date, thumb)) = shot_tuple {
+                d.screenshot_id = id;
+                d.screenshot_name = name;
+                d.screenshot_date = date;
+                d.screenshot_thumb = thumb;
+            }
         });
         bump_home_summary();
     });

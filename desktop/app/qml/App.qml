@@ -14,7 +14,7 @@ QtObject {
     readonly property Loader mainLoader: Loader {
         onLoaded: {
             item.closeRequested.connect(app.onMainClosed)
-            item.bringToFront()
+            item.restoreAndBringToFront()
         }
     }
     readonly property Loader laserLoader: Loader {
@@ -126,6 +126,8 @@ QtObject {
     }
 
     function onMainClosed() {
+        if (mainLoader.item)
+            mainLoader.item.saveWindowState()
         if (!Preferences.closeToTray) {
             Qt.quit()
             return
@@ -164,7 +166,11 @@ QtObject {
     readonly property Connections controller: Connections {
         target: AppController
         function onActivateRequested() { app.showMain() }
-        function onQuitRequested() { Qt.quit() }
+        function onQuitRequested() {
+            if (mainLoader.item)
+                mainLoader.item.saveWindowState()
+            Qt.quit()
+        }
         function onRingingFromChanged() {
             if (AppController.ringingFrom.length > 0) {
                 app.showMain()

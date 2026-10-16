@@ -617,22 +617,18 @@ fn describe_entry(
             if !entry.detail.is_empty() {
                 parts.push(entry.detail.clone());
             }
+            let is_image_ext = exists
+                && Path::new(&primary_path)
+                    .extension()
+                    .and_then(|e| e.to_str())
+                    .is_some_and(|e| matches!(e.to_ascii_lowercase().as_str(), "jpg" | "jpeg" | "png" | "webp" | "gif"));
             let thumb = entry.image_data_url.clone().unwrap_or_else(|| {
-                if entry.kind == TimelineKind::Photo && exists {
-                    let p = Path::new(&primary_path);
-                    let ext = p
-                        .extension()
-                        .and_then(|e| e.to_str())
-                        .map(str::to_ascii_lowercase)
-                        .unwrap_or_default();
-                    if matches!(ext.as_str(), "jpg" | "jpeg" | "png" | "webp") {
-                        return crate::icons::file_url(p);
-                    }
+                if is_image_ext {
+                    return crate::icons::file_url(Path::new(&primary_path));
                 }
                 String::new()
             });
-            let is_image_photo = entry.kind == TimelineKind::Photo
-                && exists
+            let is_image_photo = is_image_ext
                 && Path::new(&primary_path)
                     .extension()
                     .and_then(|e| e.to_str())

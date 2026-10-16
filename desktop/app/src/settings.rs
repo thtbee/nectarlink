@@ -93,9 +93,21 @@ impl RecordingFormat {
 }
 
 pub const DEFAULT_LOCAL_API_PORT: u16 = 53320;
+pub const DEFAULT_WINDOW_WIDTH: u32 = 1120;
+pub const DEFAULT_WINDOW_HEIGHT: u32 = 740;
+pub const MIN_WINDOW_WIDTH: u32 = 900;
+pub const MIN_WINDOW_HEIGHT: u32 = 620;
 
 fn default_local_api_port() -> u16 {
     DEFAULT_LOCAL_API_PORT
+}
+
+fn default_window_width() -> u32 {
+    DEFAULT_WINDOW_WIDTH
+}
+
+fn default_window_height() -> u32 {
+    DEFAULT_WINDOW_HEIGHT
 }
 
 fn default_true() -> bool {
@@ -123,6 +135,8 @@ static FOLDER_SYNC_RULES: std::sync::OnceLock<std::sync::Mutex<Vec<crate::folder
     std::sync::OnceLock::new();
 static AUTOMATION_RULES: std::sync::OnceLock<std::sync::Mutex<Vec<crate::automations::AutomationRule>>> =
     std::sync::OnceLock::new();
+static WINDOW_GEOMETRY: std::sync::Mutex<(Option<i32>, Option<i32>, u32, u32, bool)> =
+    std::sync::Mutex::new((None, None, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, false));
 
 pub fn clipboard_auto_copy_received_files() -> bool {
     CLIPBOARD_AUTO_COPY_FILES.load(std::sync::atomic::Ordering::Relaxed)
@@ -255,6 +269,26 @@ pub fn set_automation_rules(rules: Vec<crate::automations::AutomationRule>) {
         .get_or_init(|| std::sync::Mutex::new(Vec::new()))
         .lock()
         .unwrap_or_else(|e| e.into_inner()) = rules;
+}
+
+pub fn window_geometry() -> (Option<i32>, Option<i32>, u32, u32, bool) {
+    *WINDOW_GEOMETRY.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+pub fn set_window_geometry(
+    x: Option<i32>,
+    y: Option<i32>,
+    width: u32,
+    height: u32,
+    maximized: bool,
+) {
+    *WINDOW_GEOMETRY.lock().unwrap_or_else(|e| e.into_inner()) = (
+        x,
+        y,
+        width.max(MIN_WINDOW_WIDTH),
+        height.max(MIN_WINDOW_HEIGHT),
+        maximized,
+    );
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -413,6 +447,21 @@ pub struct Settings {
     pub obs_port: u16,
     /// OBS's WebSocket password, encrypted with Windows DPAPI (base64). Never stored in clear.
     pub obs_password: Option<String>,
+    /// Last saved main window X coordinate in screen pixels (`None` = OS/centered default).
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "window_x")]
+    pub window_x: Option<i32>,
+    /// Last saved main window Y coordinate in screen pixels (`None` = OS/centered default).
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "window_y")]
+    pub window_y: Option<i32>,
+    /// Last saved main window normal width in logical pixels.
+    #[serde(default = "default_window_width", alias = "window_width")]
+    pub window_width: u32,
+    /// Last saved main window normal height in logical pixels.
+    #[serde(default = "default_window_height", alias = "window_height")]
+    pub window_height: u32,
+    /// Whether the main window was maximized when last open.
+    #[serde(default, alias = "window_maximized")]
+    pub window_maximized: bool,
 }
 
 impl Default for Settings {
@@ -469,6 +518,11 @@ impl Default for Settings {
             hive_invite_dismissed: false,
             obs_port: crate::obs::DEFAULT_PORT,
             obs_password: None,
+            window_x: None,
+            window_y: None,
+            window_width: DEFAULT_WINDOW_WIDTH,
+            window_height: DEFAULT_WINDOW_HEIGHT,
+            window_maximized: false,
         }
     }
 }
@@ -481,6 +535,12 @@ impl Settings {
     pub fn sanitized(mut self) -> Self {
         self.webcam_camera = normalize_webcam_camera(&self.webcam_camera);
         self.walkthrough_step = self.walkthrough_step.min(6);
+        self.window_width = self.window_width.clamp(MIN_WINDOW_WIDTH, 7680);
+        self.window_height = self.window_height.clamp(MIN_WINDOW_HEIGHT, 4320);
+        if self.window_x.is_none() || self.window_y.is_none() {
+            self.window_x = None;
+            self.window_y = None;
+        }
         self
     }
 
@@ -511,6 +571,13 @@ impl Settings {
         set_share_pc_storage(self.share_pc_storage);
         set_forward_pc_notifications_to_phone(self.forward_pc_notifications_to_phone);
         set_away_mode(self.away_mode);
+        set_window_geometry(
+            self.window_x,
+            self.window_y,
+            self.window_width,
+            self.window_height,
+            self.window_maximized,
+        );
     }
 
     /// Loads the settings, falling back to defaults if the file is missing.
@@ -618,6 +685,11 @@ mod tests {
             hive_invite_dismissed: true,
             obs_port: crate::obs::DEFAULT_PORT,
             obs_password: None,
+            window_x: Some(180),
+            window_y: Some(120),
+            window_width: 1280,
+            window_height: 820,
+            window_maximized: true,
         };
         settings.save(dir.path()).unwrap();
         assert_eq!(Settings::load(dir.path()), settings);

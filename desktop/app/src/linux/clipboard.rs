@@ -270,34 +270,53 @@ fn read_os_mime(wayland: bool, mime: &str) -> Option<Vec<u8>> {
     }
 }
 
+fn clean_valid_utf8_text(bytes: Vec<u8>) -> Option<String> {
+    if bytes.is_empty()
+        || bytes.starts_with(b"\xFF\xD8\xFF")
+        || bytes.starts_with(b"\x89PNG\r\n\x1a\n")
+        || bytes.starts_with(b"GIF87a")
+        || bytes.starts_with(b"GIF89a")
+        || bytes.starts_with(b"RIFF")
+        || bytes.starts_with(b"BM")
+    {
+        return None;
+    }
+    let text = String::from_utf8(bytes).ok()?;
+    let trimmed = text.trim_matches('\0');
+    if trimmed.trim().is_empty() || nectarlink_core::is_likely_binary_or_corrupted_image_text(trimmed) {
+        return None;
+    }
+    Some(trimmed.to_owned())
+}
+
 fn read_os_plain_text(wayland: bool) -> Option<String> {
     if wayland {
-        if let Ok(out) = Command::new("wl-paste").arg("--no-newline").output()
-            && out.status.success()
-        {
-            let text = String::from_utf8_lossy(&out.stdout).into_owned();
-            if !text.trim().is_empty() {
+        for mime in ["text/plain;charset=utf-8", "text/plain", "UTF8_STRING"] {
+            if let Ok(out) = Command::new("wl-paste")
+                .args(["--no-newline", "--type", mime])
+                .output()
+                && out.status.success()
+                && let Some(text) = clean_valid_utf8_text(out.stdout)
+            {
                 return Some(text);
             }
         }
     } else {
-        if let Ok(out) = Command::new("xclip")
-            .args(["-selection", "clipboard", "-o"])
-            .output()
-            && out.status.success()
-        {
-            let text = String::from_utf8_lossy(&out.stdout).into_owned();
-            if !text.trim().is_empty() {
+        for mime in ["UTF8_STRING", "text/plain;charset=utf-8", "text/plain", "STRING"] {
+            if let Ok(out) = Command::new("xclip")
+                .args(["-selection", "clipboard", "-t", mime, "-o"])
+                .output()
+                && out.status.success()
+                && let Some(text) = clean_valid_utf8_text(out.stdout)
+            {
                 return Some(text);
             }
         }
         if let Ok(out) = Command::new("xsel").args(["--clipboard", "--output"]).output()
             && out.status.success()
+            && let Some(text) = clean_valid_utf8_text(out.stdout)
         {
-            let text = String::from_utf8_lossy(&out.stdout).into_owned();
-            if !text.trim().is_empty() {
-                return Some(text);
-            }
+            return Some(text);
         }
     }
     None
@@ -340,26 +359,26 @@ fn read_from_os(check_privacy: bool) -> Option<Clip> {
             }
         }
 
-        let has_text = has_mime_target(&targets, "text/plain")
-            || has_mime_target(&targets, "UTF8_STRING")
-            || has_mime_target(&targets, "STRING")
-            || has_mime_target(&targets, "TEXT");
-
-        if !has_text {
-            if has_mime_target(&targets, "image/png")
-                && let Some(bytes) = read_os_mime(wayland, "image/png")
-                && !bytes.is_empty()
+        if has_mime_target(&targets, "image/png")
+            && let Some(bytes) = read_os_mime(wayland, "image/png")
+            && !bytes.is_empty()
+        {
+            return Some(Clip::Image(Image::Png(bytes)));
+        }
+        for img_mime in [
+            "image/jpeg",
+            "image/jpg",
+            "image/webp",
+            "image/bmp",
+            "image/x-bmp",
+            "image/x-MS-bmp",
+        ] {
+            if has_mime_target(&targets, img_mime)
+                && let Some(bytes) = read_os_mime(wayland, img_mime)
+                && let Ok(bitmap) = image::decode(&bytes)
+                && let Ok(png) = image::encode_png(&bitmap)
             {
-                return Some(Clip::Image(Image::Png(bytes)));
-            }
-            for bmp_mime in ["image/bmp", "image/x-bmp", "image/x-MS-bmp"] {
-                if has_mime_target(&targets, bmp_mime)
-                    && let Some(bytes) = read_os_mime(wayland, bmp_mime)
-                    && let Ok(bitmap) = image::decode(&bytes)
-                    && let Ok(png) = image::encode_png(&bitmap)
-                {
-                    return Some(Clip::Image(Image::Png(png)));
-                }
+                return Some(Clip::Image(Image::Png(png)));
             }
         }
 

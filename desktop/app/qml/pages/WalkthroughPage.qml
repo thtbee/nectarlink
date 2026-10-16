@@ -110,7 +110,7 @@ FocusScope {
         "Get the Android app from GitHub Releases or install the APK over USB.",
         "Scan the QR code from the NectarLink Android app, or pick your phone from nearby devices.",
         "Safe features are on by default. Higher-trust access stays off until you turn it on.",
-        "Three quick checks so notifications and discovery work reliably in Windows.",
+        "Three quick checks so notifications and discovery work reliably on your PC.",
         "Reopen it from Settings or the Command Palette."
     ]
 

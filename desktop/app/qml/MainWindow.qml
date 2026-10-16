@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Window
 import QtQuick.Effects
 import app.nectarlink
 
@@ -108,19 +109,131 @@ NativeWindow {
     readonly property string currentDeviceName: DeviceList.count > 0
         ? DeviceList.deviceNameAt(currentDeviceIndex) : ""
 
-    width: 1120
-    height: 740
     minimumWidth: Theme.layout.minWindow[0]
     minimumHeight: Theme.layout.minWindow[1]
+    property int normalWidth: Math.max(minimumWidth, Preferences.windowWidth > 0 ? Preferences.windowWidth : 1120)
+    property int normalHeight: Math.max(minimumHeight, Preferences.windowHeight > 0 ? Preferences.windowHeight : 740)
+    property int normalX: Preferences.windowX
+    property int normalY: Preferences.windowY
+    property bool hasNormalPosition: Preferences.hasWindowPosition
+    property bool restoringGeometry: true
+
+    width: normalWidth
+    height: normalHeight
     title: "NectarLink"
+
+    Timer {
+        id: restoreCompleteTimer
+        interval: 180
+        onTriggered: {
+            if (!Preferences.windowMaximized && window.hasNormalPosition && window.visibility === Window.Windowed) {
+                if (window.x !== window.normalX) window.x = window.normalX
+                if (window.y !== window.normalY) window.y = window.normalY
+            }
+            window.restoringGeometry = false
+        }
+    }
+
+    Timer {
+        id: geometrySaveTimer
+        interval: 250
+        onTriggered: window.saveWindowState()
+    }
+
+    function restoreAndBringToFront() {
+        restoringGeometry = true
+        const targetW = Math.max(minimumWidth, Preferences.windowWidth > 0 ? Preferences.windowWidth : 1120)
+        const targetH = Math.max(minimumHeight, Preferences.windowHeight > 0 ? Preferences.windowHeight : 740)
+        normalWidth = targetW
+        normalHeight = targetH
+        width = targetW
+        height = targetH
+        if (Preferences.hasWindowPosition) {
+            const availW = Screen.desktopAvailableWidth > 0 ? Screen.desktopAvailableWidth : (Screen.width > 0 ? Screen.width : 3840)
+            const availH = Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight : (Screen.height > 0 ? Screen.height : 2160)
+            const clampedX = Math.max(-targetW + 120, Math.min(Preferences.windowX, Math.max(0, availW - 120)))
+            const clampedY = Math.max(0, Math.min(Preferences.windowY, Math.max(0, availH - 80)))
+            normalX = clampedX
+            normalY = clampedY
+            hasNormalPosition = true
+            x = clampedX
+            y = clampedY
+        }
+        if (Preferences.windowMaximized) {
+            showMaximized()
+            raise()
+            requestActivate()
+        } else {
+            bringToFront()
+            if (hasNormalPosition) {
+                x = normalX
+                y = normalY
+            }
+        }
+        restoreCompleteTimer.restart()
+    }
+
+    function saveWindowState() {
+        geometrySaveTimer.stop()
+        if (window.visibility === Window.Windowed && window.visible && !restoringGeometry) {
+            normalX = window.x
+            normalY = window.y
+            hasNormalPosition = true
+            normalWidth = Math.max(window.minimumWidth, window.width)
+            normalHeight = Math.max(window.minimumHeight, window.height)
+        }
+        Preferences.saveWindowGeometry(
+            hasNormalPosition,
+            normalX,
+            normalY,
+            normalWidth,
+            normalHeight,
+            window.visibility === Window.Maximized
+        )
+    }
 
     property bool resizing: resizeSettleTimer.running
     Timer {
         id: resizeSettleTimer
         interval: 140
     }
-    onWidthChanged: if (visible) resizeSettleTimer.restart()
-    onHeightChanged: if (visible) resizeSettleTimer.restart()
+    onXChanged: {
+        if (visible && !restoringGeometry && window.visibility === Window.Windowed) {
+            normalX = window.x
+            hasNormalPosition = true
+            geometrySaveTimer.restart()
+        }
+    }
+    onYChanged: {
+        if (visible && !restoringGeometry && window.visibility === Window.Windowed) {
+            normalY = window.y
+            hasNormalPosition = true
+            geometrySaveTimer.restart()
+        }
+    }
+    onWidthChanged: {
+        if (visible) {
+            resizeSettleTimer.restart()
+            if (!restoringGeometry && window.visibility === Window.Windowed) {
+                normalWidth = Math.max(window.minimumWidth, window.width)
+                geometrySaveTimer.restart()
+            }
+        }
+    }
+    onHeightChanged: {
+        if (visible) {
+            resizeSettleTimer.restart()
+            if (!restoringGeometry && window.visibility === Window.Windowed) {
+                normalHeight = Math.max(window.minimumHeight, window.height)
+                geometrySaveTimer.restart()
+            }
+        }
+    }
+    onVisibilityChanged: {
+        if (visible && !restoringGeometry && (window.visibility === Window.Windowed || window.visibility === Window.Maximized)) {
+            geometrySaveTimer.restart()
+        }
+    }
 
     // Mica/Acrylic is applied by Windows a moment after it's requested. Showing
     // through before it's there reveals the bare desktop (a flash), so the

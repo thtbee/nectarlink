@@ -193,13 +193,44 @@ pub(crate) fn encode_data_url(mime: &str, bytes: &[u8]) -> String {
     out
 }
 
+/// Returns `true` when `raw_text` appears to be binary image data (e.g. JPEG `JFIF`/`Exif`,
+/// PNG `\x89PNG`, GIF `GIF89a`) or UTF-8 lossy-decoded binary bytes containing replacement
+/// characters (`\u{FFFD}`) or non-whitespace control characters.
+#[must_use]
+pub fn is_likely_binary_or_corrupted_image_text(raw_text: &str) -> bool {
+    let sample: String = raw_text.chars().take(512).collect();
+    if sample.starts_with("\u{FFFD}\u{FFFD}\u{FFFD}")
+        || sample.starts_with("\u{89}PNG")
+        || sample.starts_with("\u{FFFD}PNG")
+        || sample.starts_with("GIF87a")
+        || sample.starts_with("GIF89a")
+        || sample.starts_with("JFIF")
+    {
+        return true;
+    }
+    let has_image_marker = sample.contains("JFIF")
+        || sample.contains("Exif")
+        || sample.contains("ICC_PROFILE")
+        || sample.contains("IHDR")
+        || sample.contains("IDAT");
+    let non_printable_or_replacement = sample
+        .chars()
+        .filter(|&c| c == '\u{FFFD}' || (c.is_control() && !matches!(c, '\n' | '\r' | '\t')))
+        .count();
+    has_image_marker || non_printable_or_replacement > 4
+}
+
 /// Formats a clipboard text string for display in the Timeline UI:
+/// - Binary/corrupted image text (`JFIF`, `Exif`, `\x89PNG`) returns `("Copied image", None)`.
 /// - Local file paths (including `"C:\..."` quoted paths from Explorer's "Copy as path")
 ///   return `("Copied <filename>", Some(unquoted_path))`.
 /// - Web/geo URLs (`http://`, `https://`, `geo:`) return `("Link · <domain>", Some(raw_url))`.
 /// - Long or multi-line text returns `("Copied text: <first words>", Some(raw_first_line))`.
 #[must_use]
 pub fn format_clip_display(raw_text: &str) -> (String, Option<String>) {
+    if is_likely_binary_or_corrupted_image_text(raw_text) {
+        return ("Copied image".into(), None);
+    }
     let first_line =
         raw_text.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or_else(|| raw_text.trim());
     let unquoted = first_line
@@ -293,5 +324,11 @@ mod tests {
         let (t4, d4) = format_clip_display(long_note);
         assert!(t4.starts_with("Copied text: "), "expected colon prefix, got {t4}");
         assert_eq!(d4.as_deref(), Some(long_note));
+
+        let jfif_garbage =
+            "\u{FFFD}\u{FFFD}\u{FFFD}\u{E0}\0\x10JFIF\0\x01\x01\0\0\x01\0\x01\0\0\u{FFFD}\u{FFFD}6Exif\0\0II*\0\x08\0\0\0\x0B\0\x0F\x01\x02\0\x07\0\0\0Google\0\x02\x02\u{FFFD}\u{FFFD}ICC_PROFILE";
+        let (t5, d5) = format_clip_display(jfif_garbage);
+        assert_eq!(t5, "Copied image");
+        assert_eq!(d5, None);
     }
 }

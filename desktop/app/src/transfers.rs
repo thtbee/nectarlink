@@ -214,7 +214,12 @@ pub fn open(path: &Path) {
         crate::bridge::app::request_activation();
         return;
     }
+    #[cfg(windows)]
     if let Err(e) = std::process::Command::new("explorer").arg(path).spawn() {
+        tracing::warn!(error = %e, "can't open a received file");
+    }
+    #[cfg(target_os = "linux")]
+    if let Err(e) = crate::win::shell::open_file(path) {
         tracing::warn!(error = %e, "can't open a received file");
     }
 }
@@ -225,9 +230,16 @@ pub fn show_in_folder(path: &Path) {
         crate::bridge::app::request_activation();
         return;
     }
-    let mut select = std::ffi::OsString::from("/select,");
-    select.push(path);
-    if let Err(e) = std::process::Command::new("explorer").arg(select).spawn() {
+    #[cfg(windows)]
+    {
+        let mut select = std::ffi::OsString::from("/select,");
+        select.push(path);
+        if let Err(e) = std::process::Command::new("explorer").arg(select).spawn() {
+            tracing::warn!(error = %e, "can't show a received file");
+        }
+    }
+    #[cfg(target_os = "linux")]
+    if let Err(e) = crate::win::shell::select_in_explorer(path) {
         tracing::warn!(error = %e, "can't show a received file");
     }
 }

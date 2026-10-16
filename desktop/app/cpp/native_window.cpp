@@ -133,6 +133,9 @@ private:
             || window_->minimumSize() == window_->maximumSize()) {
             return {};
         }
+        if (pos.y() < window_->captionHeight() && hitInteractiveControl(window_->contentItem(), pos)) {
+            return {};
+        }
         const qreal w = window_->width();
         const qreal h = window_->height();
         const qreal b = resizeBorderWidth_;
@@ -370,42 +373,6 @@ bool NativeWindow::event(QEvent *event)
         applyFrame();
         return handled;
     }
-#ifndef _WIN32
-    if (m_maximizeButton) {
-        switch (event->type()) {
-        case QEvent::MouseMove: {
-            auto *me = static_cast<QMouseEvent *>(event);
-            const bool onMax = itemContains(m_maximizeButton, me->position());
-            setMaximizeState(onMax, m_maximizePressed && onMax);
-            break;
-        }
-        case QEvent::MouseButtonPress: {
-            auto *me = static_cast<QMouseEvent *>(event);
-            if (me->button() == Qt::LeftButton && itemContains(m_maximizeButton, me->position())) {
-                setMaximizeState(true, true);
-                return true;
-            }
-            break;
-        }
-        case QEvent::MouseButtonRelease: {
-            auto *me = static_cast<QMouseEvent *>(event);
-            if (me->button() == Qt::LeftButton && m_maximizePressed) {
-                const bool onMax = itemContains(m_maximizeButton, me->position());
-                setMaximizeState(onMax, false);
-                if (onMax)
-                    toggleMaximized();
-                return true;
-            }
-            break;
-        }
-        case QEvent::Leave:
-            setMaximizeState(false, false);
-            break;
-        default:
-            break;
-        }
-    }
-#endif
     return QQuickWindow::event(event);
 }
 
@@ -427,8 +394,7 @@ void NativeWindow::applyFrame()
     const COLORREF none = kColorNone;
     DwmSetWindowAttribute(hwnd, kCaptionColor, &none, sizeof(none));
 #else
-    setFlags(flags() | Qt::FramelessWindowHint);
-    setColor(Qt::transparent);
+    setColor(m_darkFrame ? QColor(0x14, 0x13, 0x11) : QColor(0xF8, 0xF6, 0xF2));
     if (!property("_nl_linux_filter").toBool()) {
         setProperty("_nl_linux_filter", true);
         installEventFilter(new LinuxWindowEventFilter(this));
