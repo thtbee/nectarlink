@@ -48,7 +48,7 @@ const DEFER_DIAL: Duration = Duration::from_millis(750);
 /// How long a phone plugged into a PC waits for the PC to dial through the cable before
 /// dialing itself (see [`Shared::usb_tunnel_inbound`]).
 const USB_DIAL_GRACE: Duration = Duration::from_secs(6);
-const EVENT_CAPACITY: usize = 512;
+const EVENT_CAPACITY: usize = 2048;
 /// A connection with no traffic for this long is dead. iroh sends a
 /// keep-alive every 1 s, so a healthy link is never idle that long, and a
 /// device that drops off the network shows as offline within ~2-4 seconds
@@ -551,7 +551,10 @@ impl Shared {
     /// still the peer's session (a replaced one has nothing to say).
     pub fn publish_online(&self, session: &Session) {
         let sessions = lock(&self.sessions);
-        if sessions.get(&session.peer).is_some_and(|current| std::ptr::eq(current.as_ref(), session)) {
+        if sessions
+            .get(&session.peer)
+            .is_some_and(|current| std::ptr::eq(current.as_ref(), session) && current.is_alive())
+        {
             self.set_link(session.peer, LinkState::Online { path: session.path(), rtt_ms: session.rtt_ms() });
         }
     }
@@ -659,9 +662,19 @@ impl Shared {
         if self.usb_peer_addr(&peer).is_some() {
             return true;
         }
-        conn.paths()
-            .iter()
-            .any(|p| matches!(p.remote_addr(), iroh::TransportAddr::Ip(addr) if self.is_usb_addr(addr)))
+        self.is_usb_socket_connection(conn)
+    }
+
+    pub(crate) fn is_usb_socket_connection(&self, conn: &Connection) -> bool {
+        let peer = crate::device_id(&conn.remote_id());
+        let usb_addr = self.usb_peer_addr(&peer);
+        conn.paths().iter().any(|p| match p.remote_addr() {
+            iroh::TransportAddr::Ip(addr) => {
+                self.is_usb_addr(addr)
+                    || usb_addr.is_some_and(|u| u == *addr || addr.ip().to_canonical().is_loopback())
+            }
+            _ => false,
+        })
     }
 
     pub(crate) fn note_discovered(&self, peer: DeviceId, name: Option<String>) {
@@ -676,7 +689,7 @@ impl Shared {
     }
 
     pub(crate) fn on_usb_tunnel_accepted(
-        &self,
+        self: &Arc<Self>,
         peer: DeviceId,
         name: String,
         bridge_addr: SocketAddr,
@@ -691,6 +704,8 @@ impl Shared {
         self.note_discovered(peer, (!name.is_empty()).then_some(name));
         self.remember_addrs(&peer, &[bridge_addr]);
         if self.store.is_paired(&peer).unwrap_or(false) {
+            self.start_supervisor(peer);
+            self.wake_supervisor(&peer);
             if let Some(session) = self.session(&peer) {
                 self.publish_online(&session);
             }
@@ -729,7 +744,7 @@ impl Shared {
                     s.publish_online(&session);
                     s.refresh_capabilities(&peer);
                 } else {
-                    let _ = s.dial(peer).await;
+                    s.wake_supervisor(&peer);
                 }
             });
         } else if auto_pair {
@@ -817,20 +832,22 @@ impl Shared {
         }
     }
 
-    /// Removes any cached non-LAN (cellular / public IPv6 / WAN) addresses for `peer`
-    /// so `maintain` does not repeatedly dial a mobile-data endpoint that rejects connections.
+    /// Removes any cached non-LAN (cellular / public IPv6 / WAN) or stale loopback
+    /// addresses for `peer` so `maintain` does not repeatedly dial a dead endpoint.
     pub(crate) fn purge_non_lan_addrs(&self, peer: &DeviceId) {
         if let Ok(Some(record)) = self.store.get_peer(peer) {
-            let lan_only: Vec<SocketAddr> =
-                record.last_addrs.iter().copied().filter(|a| crate::session::is_lan_ip(a.ip())).collect();
+            let lan_only: Vec<SocketAddr> = record
+                .last_addrs
+                .iter()
+                .copied()
+                .filter(|a| !a.ip().to_canonical().is_loopback() && crate::session::is_lan_ip(a.ip()))
+                .collect();
             if lan_only.len() != record.last_addrs.len()
                 && let Some(seen) = record.last_seen
             {
                 let _ = self.store.record_seen(peer, seen, &lan_only);
             }
-            if let Ok(key) = crate::public_key(peer) {
-                self.memory.add_endpoint_info(EndpointInfo::new(key).with_ip_addrs(lan_only));
-            }
+            self.remember_addrs(peer, &lan_only);
         }
     }
 
@@ -1001,6 +1018,9 @@ impl Shared {
         remote: nectarlink_protocol::messages::Hello,
     ) -> Option<Arc<Session>> {
         let peer = crate::device_id(&conn.remote_id());
+        if conn.close_reason().is_some() {
+            return None;
+        }
         if !self.is_connection_allowed(&conn) {
             tracing::debug!(peer = %peer.short(), "refusing session on non-LAN path while away_mode is off");
             conn.close(VarInt::from_u32(CLOSE_NORMAL), b"away mode disabled");
@@ -1008,7 +1028,10 @@ impl Shared {
         }
         let mut sessions = lock(&self.sessions);
         if let Some(existing) = sessions.get(&peer).filter(|s| s.is_alive()) {
-            let keep_existing = existing.dialer != dialer && existing.dialer < dialer;
+            let existing_is_usb = self.is_usb_socket_connection(&existing.conn);
+            let new_is_usb = self.is_usb_socket_connection(&conn);
+            let keep_existing = (existing_is_usb && !new_is_usb)
+                || (existing.dialer != dialer && existing.dialer < dialer && !(new_is_usb && !existing_is_usb));
             if keep_existing {
                 drop(sessions);
                 conn.close(VarInt::from_u32(CLOSE_DUPLICATE), b"duplicate");
@@ -1043,12 +1066,30 @@ impl Shared {
         let addrs: Vec<SocketAddr> = session
             .remote_ip_addrs()
             .into_iter()
-            .filter(|a| allow_wan || crate::session::is_lan_ip(a.ip()))
+            .filter(|a| !a.ip().to_canonical().is_loopback() && (allow_wan || crate::session::is_lan_ip(a.ip())))
             .collect();
-        if let Err(e) = self.store.record_seen(&peer, crate::now_unix(), &addrs) {
+        let persisted_addrs = if addrs.is_empty() {
+            self.store
+                .get_peer(&peer)
+                .ok()
+                .flatten()
+                .map(|r| {
+                    r.last_addrs
+                        .into_iter()
+                        .filter(|a| {
+                            !a.ip().to_canonical().is_loopback()
+                                && (allow_wan || crate::session::is_lan_ip(a.ip()))
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        } else {
+            addrs
+        };
+        if let Err(e) = self.store.record_seen(&peer, crate::now_unix(), &persisted_addrs) {
             tracing::warn!(error = %e, "failed to record peer addresses");
         }
-        self.remember_addrs(&peer, &addrs);
+        self.remember_addrs(&peer, &persisted_addrs);
         self.emit(NodeEvent::PeerInfoChanged { device: peer, info: effective_device });
         self.emit(NodeEvent::PeerPowerChanged { device: peer, power: remote.power.effective() });
         self.refresh_capabilities(&peer);
@@ -1120,6 +1161,15 @@ impl Shared {
 
     /// Dials a paired device and runs the handshake.
     async fn dial(self: &Arc<Self>, peer: DeviceId) -> Result<Arc<Session>> {
+        struct CloseOnDrop(Option<Connection>);
+        impl Drop for CloseOnDrop {
+            fn drop(&mut self) {
+                if let Some(conn) = self.0.take() {
+                    conn.close(VarInt::from_u32(CLOSE_DUPLICATE), b"dial cancelled");
+                }
+            }
+        }
+
         let mut addr = EndpointAddr::new(crate::public_key(&peer)?);
         if let Some(usb_addr) = self.usb_peer_addr(&peer) {
             addr = addr.with_ip_addr(usb_addr);
@@ -1128,13 +1178,18 @@ impl Shared {
             .await
             .map_err(|_| Error::Timeout)?
             .map_err(crate::error::net)?;
-        if !self.wait_connection_allowed(&conn).await {
+        let mut guard = CloseOnDrop(Some(conn));
+        let conn_ref = guard.0.as_ref().expect("connection present");
+        if !self.wait_connection_allowed(conn_ref).await {
             tracing::debug!(peer = %peer.short(), "refusing outgoing session on non-LAN path while away_mode is off");
-            conn.close(VarInt::from_u32(CLOSE_NORMAL), b"away mode disabled");
+            if let Some(c) = guard.0.take() {
+                c.close(VarInt::from_u32(CLOSE_NORMAL), b"away mode disabled");
+            }
             return Err(Error::Offline);
         }
         let hello = session::local_hello(self);
-        let (send, recv, remote) = session::handshake_dialer(&conn, &hello).await?;
+        let (send, recv, remote) = session::handshake_dialer(conn_ref, &hello).await?;
+        let conn = guard.0.take().expect("connection present");
         self.register_session(conn, self.id, (send, recv), remote)
             .or_else(|| self.session(&peer))
             .ok_or(Error::Offline)
@@ -1145,6 +1200,30 @@ impl Shared {
         for session in self.live_sessions() {
             if let Err(e) = session.send(env.clone()).await {
                 tracing::debug!(peer = %session.peer.short(), error = %e, "broadcast failed");
+            }
+        }
+    }
+}
+
+/// Dials `peer`, interrupting an in-flight non-USB dial if a USB tunnel comes up while waiting.
+async fn dial_with_usb_interrupt(
+    node: &Arc<Shared>,
+    peer: DeviceId,
+    wake: &Notify,
+) -> Option<Result<Arc<Session>>> {
+    let had_usb = node.usb_peer_addr(&peer).is_some();
+    if had_usb {
+        return Some(node.dial(peer).await);
+    }
+    let dial_fut = node.dial(peer);
+    tokio::pin!(dial_fut);
+    loop {
+        tokio::select! {
+            res = &mut dial_fut => return Some(res),
+            _ = wake.notified() => {
+                if node.usb_peer_addr(&peer).is_some() && node.session(&peer).is_none() {
+                    return None;
+                }
             }
         }
     }
@@ -1207,24 +1286,30 @@ async fn maintain(shared: Weak<Shared>, peer: DeviceId, wake: Arc<Notify>, cance
         // When both devices come up together they'd dial each other at once and
         // one connection would be dropped. The higher ID briefly defers so the
         // lower one usually wins; it still dials in case the other can't reach it.
-        if node.id > peer && backoff == BACKOFF_MIN {
+        // Skip the deferral if an outbound USB tunnel is already ready.
+        if node.id > peer && backoff == BACKOFF_MIN && node.usb_peer_addr(&peer).is_none() {
             drop(node);
             tokio::select! {
                 _ = tokio::time::sleep(DEFER_DIAL) => {}
+                _ = wake.notified() => {}
                 _ = cancel.cancelled() => return,
             }
             let Some(again) = shared.upgrade() else { return };
             if again.session(&peer).is_some() {
                 continue;
             }
-            let result = again.dial(peer).await;
+            let Some(result) = dial_with_usb_interrupt(&again, peer, &wake).await else {
+                continue;
+            };
             let ok = handle_dial_result(&again, result, peer, &mut backoff);
             drop(again);
             if ok {
                 continue;
             }
         } else {
-            let result = node.dial(peer).await;
+            let Some(result) = dial_with_usb_interrupt(&node, peer, &wake).await else {
+                continue;
+            };
             let ok = handle_dial_result(&node, result, peer, &mut backoff);
             drop(node);
             if ok {
@@ -1277,8 +1362,18 @@ impl ProtocolHandler for SessionProtocol {
             conn.close(VarInt::from_u32(CLOSE_NORMAL), b"away mode disabled");
             return Err(AcceptError::from_err(Error::Offline));
         }
+        let incoming_is_usb = shared.is_usb_socket_connection(&conn);
+        if shared.session(&peer).is_some_and(|s| {
+            s.is_alive()
+                && (s.dialer == shared.id
+                    || (shared.is_usb_socket_connection(&s.conn) && !incoming_is_usb))
+        }) {
+            tracing::debug!(peer = %peer.short(), "refusing redundant incoming session while outgoing or USB session is already active");
+            conn.close(VarInt::from_u32(CLOSE_DUPLICATE), b"duplicate");
+            return Ok(());
+        }
         let hello = session::local_hello(&shared);
-        match session::handshake_listener(&conn, &hello).await {
+        match session::handshake_listener(&shared, &conn, &hello).await {
             Ok((send, recv, remote)) => {
                 shared.register_session(conn, peer, (send, recv), remote);
                 Ok(())
@@ -1451,8 +1546,12 @@ impl Node {
 
         for peer in shared.store.list_peers()? {
             if !config.away_mode {
-                let lan_only: Vec<SocketAddr> =
-                    peer.last_addrs.iter().copied().filter(|a| crate::session::is_lan_ip(a.ip())).collect();
+                let lan_only: Vec<SocketAddr> = peer
+                    .last_addrs
+                    .iter()
+                    .copied()
+                    .filter(|a| !a.ip().to_canonical().is_loopback() && crate::session::is_lan_ip(a.ip()))
+                    .collect();
                 if lan_only.len() != peer.last_addrs.len()
                     && let Some(seen) = peer.last_seen
                 {
@@ -1490,16 +1589,14 @@ impl Node {
                         .last_addrs
                         .iter()
                         .copied()
-                        .filter(|a| crate::session::is_lan_ip(a.ip()))
+                        .filter(|a| !a.ip().to_canonical().is_loopback() && crate::session::is_lan_ip(a.ip()))
                         .collect();
                     if lan_only.len() != peer.last_addrs.len()
                         && let Some(seen) = peer.last_seen
                     {
                         let _ = self.shared.store.record_seen(&peer.id, seen, &lan_only);
                     }
-                    if let Ok(key) = crate::public_key(&peer.id) {
-                        self.shared.memory.add_endpoint_info(EndpointInfo::new(key).with_ip_addrs(lan_only));
-                    }
+                    self.shared.remember_addrs(&peer.id, &lan_only);
                 }
             }
         } else {
@@ -1705,7 +1802,13 @@ impl Node {
         if !self.shared.store.is_paired(peer)? {
             return Err(Error::NotPaired);
         }
-        self.shared.session(peer).ok_or(Error::Offline)
+        match self.shared.session(peer) {
+            Some(session) => Ok(session),
+            None => {
+                self.shared.wake_supervisor(peer);
+                Err(Error::Offline)
+            }
+        }
     }
 
     /// Like [`connected`](Self::connected), but waits up to [`STREAM_RECONNECT_WAIT`]
@@ -2367,7 +2470,7 @@ impl Node {
             types::AUDIO_PCM,
             &nectarlink_protocol::messages::AudioPcmFrame { sample_rate, channels, pcm },
         )?;
-        session.send(env).await
+        session.try_send_realtime(env)
     }
 
     /// Opens a web link on a paired device.
