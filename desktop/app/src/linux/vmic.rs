@@ -12,11 +12,7 @@ pub const SOURCE_NAME: &str = "NectarLink_Virtual_Mic";
 pub const DEFAULT_FIFO_PATH: &str = "/tmp/nectarlink-vmic.pcm";
 
 pub fn is_available() -> bool {
-    Command::new("pactl")
-        .arg("info")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+    Command::new("pactl").arg("info").output().map(|o| o.status.success()).unwrap_or(false)
 }
 
 pub fn create_source(rate: u32, channels: u8) -> Result<u32, String> {
@@ -47,9 +43,7 @@ pub fn create_source_with_path(rate: u32, channels: u8, fifo_path: &Path) -> Res
 }
 
 pub fn destroy_source(module_id: u32) {
-    let _ = Command::new("pactl")
-        .args(["unload-module", &module_id.to_string()])
-        .status();
+    let _ = Command::new("pactl").args(["unload-module", &module_id.to_string()]).status();
 }
 
 /// Applies `gain_db` (`-12.0..=24.0`) and `muted` to 16-bit signed little-endian
@@ -63,16 +57,12 @@ pub fn process_mic_pcm_s16le(pcm: &[u8], gain_db: f32, muted: bool) -> (Vec<u8>,
         return (vec![0u8; sample_count * 2], 0.0);
     }
 
-    let clamped_db = if gain_db.is_finite() {
-        gain_db.clamp(-12.0, 24.0)
-    } else {
-        0.0
-    };
+    let clamped_db = if gain_db.is_finite() { gain_db.clamp(-12.0, 24.0) } else { 0.0 };
     let linear_gain = 10.0_f32.powf(clamped_db / 20.0);
     let mut out = Vec::with_capacity(sample_count * 2);
     let mut sum_sq = 0.0_f64;
 
-    for chunk in pcm.chunks_exact(2) {
+    for chunk in pcm.as_chunks::<2>().0 {
         let raw = i16::from_le_bytes([chunk[0], chunk[1]]);
         let norm = (f32::from(raw) / 32768.0) * linear_gain;
         // Soft-knee saturation above 0.9 to prevent harsh digital clipping.
@@ -111,13 +101,7 @@ impl VirtualMic {
     pub fn new(rate: u32, channels: u8) -> Self {
         let fifo_path = PathBuf::from(DEFAULT_FIFO_PATH);
         let module_id = create_source_with_path(rate, channels, &fifo_path).ok();
-        Self {
-            fifo_path,
-            module_id,
-            gain_db: 0.0,
-            muted: false,
-            last_rms: 0.0,
-        }
+        Self { fifo_path, module_id, gain_db: 0.0, muted: false, last_rms: 0.0 }
     }
 
     pub fn is_active(&self) -> bool {
@@ -125,11 +109,7 @@ impl VirtualMic {
     }
 
     pub fn set_gain_db(&mut self, gain_db: f32) {
-        self.gain_db = if gain_db.is_finite() {
-            gain_db.clamp(-12.0, 24.0)
-        } else {
-            0.0
-        };
+        self.gain_db = if gain_db.is_finite() { gain_db.clamp(-12.0, 24.0) } else { 0.0 };
     }
 
     pub fn gain_db(&self) -> f32 {

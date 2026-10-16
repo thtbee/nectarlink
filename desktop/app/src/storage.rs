@@ -10,6 +10,7 @@
 
 #![allow(unsafe_code)]
 
+use std::path::{Path, PathBuf};
 #[cfg(windows)]
 use std::{
     collections::{HashMap, HashSet},
@@ -21,7 +22,6 @@ use std::{
     },
     time::Duration,
 };
-use std::path::{Path, PathBuf};
 
 use nectarlink_core::{DeviceId, NodeEvent};
 #[cfg(windows)]
@@ -47,7 +47,7 @@ use windows::{
             CloudFilters::{
                 CF_CALLBACK_INFO, CF_CALLBACK_PARAMETERS, CF_CALLBACK_REGISTRATION,
                 CF_CALLBACK_TYPE_FETCH_DATA, CF_CALLBACK_TYPE_FETCH_PLACEHOLDERS, CF_CALLBACK_TYPE_NONE,
-                CF_CALLBACK_TYPE_NOTIFY_RENAME, CF_CALLBACK_TYPE_NOTIFY_DELETE,
+                CF_CALLBACK_TYPE_NOTIFY_DELETE, CF_CALLBACK_TYPE_NOTIFY_RENAME,
                 CF_CONNECT_FLAG_REQUIRE_FULL_FILE_PATH, CF_CONNECT_FLAG_REQUIRE_PROCESS_INFO,
                 CF_CONNECTION_KEY, CF_CONVERT_FLAG_MARK_IN_SYNC, CF_FS_METADATA, CF_IN_SYNC_STATE_IN_SYNC,
                 CF_OPERATION_INFO, CF_OPERATION_PARAMETERS, CF_OPERATION_PARAMETERS_0,

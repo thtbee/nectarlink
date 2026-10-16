@@ -452,9 +452,7 @@ fn install_with_task(shown: bool) -> Result<(), String> {
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     spawn_relauncher(&exe, &update.version, shown)?;
     let mut cmd = std::process::Command::new("schtasks.exe");
-    cmd.args(["/Run", "/TN", TASK])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null());
+    cmd.args(["/Run", "/TN", TASK]).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
     #[cfg(windows)]
     cmd.creation_flags(CREATE_NO_WINDOW);
     let started = cmd.status().map_err(|e| e.to_string())?;
@@ -488,9 +486,7 @@ fn spawn_relauncher(exe: &Path, version: &str, shown: bool) -> Result<(), String
         .stderr(std::process::Stdio::null());
     #[cfg(windows)]
     cmd.creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS);
-    cmd.spawn()
-        .map(|_| ())
-        .map_err(|e| format!("relauncher: {e}"))
+    cmd.spawn().map(|_| ()).map_err(|e| format!("relauncher: {e}"))
 }
 
 fn relauncher_script(exe: &str, version: &str, arguments: &str) -> String {

@@ -59,8 +59,7 @@ pub fn open_maps(address: &str) -> Result<(), String> {
 /// Checks whether a custom URI scheme has a registered handler via `xdg-mime`.
 pub fn is_url_scheme_registered(scheme: &str) -> bool {
     let scheme = scheme.trim().trim_end_matches(':');
-    if scheme.is_empty()
-        || !scheme.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+    if scheme.is_empty() || !scheme.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
     {
         return false;
     }
@@ -186,22 +185,138 @@ pub fn sleep_system() -> Result<(), String> {
     sleep()
 }
 
-/// Launches an application or opens a file path.
-pub fn launch_app(path: &Path) -> Result<(), String> {
-    if path.as_os_str().is_empty() {
-        return Err("empty application path".into());
-    }
-    if path.is_file() {
-        if let Ok( child ) = Command::new(path)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-        {
-            drop(child);
+/// Launches an interactive or full-screen screenshot tool on Linux, falling back to `Print`.
+pub fn take_screenshot() -> Result<(), String> {
+    let candidates: &[(&str, &[&str])] = &[
+        ("spectacle", &[]),
+        ("gnome-screenshot", &["-i"]),
+        ("flameshot", &["gui"]),
+        ("xfce4-screenshooter", &["-r"]),
+    ];
+    for (prog, args) in candidates {
+        if spawn_detached(prog, args).is_ok() {
             return Ok(());
         }
     }
+    super::input::press_key("print", &[]);
+    Ok(())
+}
+
+/// Parses the `[Desktop Entry]` `Exec=` command from a `.desktop` file and strips
+/// freedesktop field codes (`%f`, `%F`, `%u`, `%U`, `%i`, `%c`, `%k`, etc.).
+pub(crate) fn parse_desktop_exec(contents: &str) -> Option<(String, Vec<String>)> {
+    let mut in_desktop_entry = false;
+    for raw_line in contents.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if line.starts_with('[') && line.ends_with(']') {
+            in_desktop_entry = line == "[Desktop Entry]";
+            continue;
+        }
+        if !in_desktop_entry {
+            continue;
+        }
+        if let Some(rest) = line.strip_prefix("Exec=") {
+            let tokens = split_args(rest.trim());
+            let mut filtered: Vec<String> = Vec::new();
+            for tok in tokens {
+                if tok.starts_with('%') && tok.len() == 2 && tok != "%%" {
+                    continue;
+                }
+                let cleaned = tok.replace("%%", "%");
+                if !cleaned.is_empty() {
+                    filtered.push(cleaned);
+                }
+            }
+            let mut iter = filtered.into_iter();
+            let program = iter.next()?;
+            let args: Vec<String> = iter.collect();
+            return Some((program, args));
+        }
+    }
+    None
+}
+
+/// Searches standard XDG application directories (`~/.local/share/applications`,
+/// `/usr/local/share/applications`, `/usr/share/applications`, `/var/lib/flatpak/exports/share/applications`)
+/// for a `.desktop` file by filename.
+fn find_desktop_file(desktop_name: &str) -> Option<PathBuf> {
+    let mut dirs_to_check = Vec::new();
+    if let Some(data_local) = dirs::data_local_dir() {
+        dirs_to_check.push(data_local.join("applications"));
+    }
+    dirs_to_check.push(PathBuf::from("/usr/local/share/applications"));
+    dirs_to_check.push(PathBuf::from("/usr/share/applications"));
+    dirs_to_check.push(PathBuf::from("/var/lib/flatpak/exports/share/applications"));
+    for dir in dirs_to_check {
+        let candidate = dir.join(desktop_name);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+/// Launches an application, `.desktop` launcher, `.AppImage`, `.sh` script, or executable binary.
+pub fn launch_app(path: &Path) -> Result<(), String> {
+    let raw = path.to_string_lossy();
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Err("empty application path".into());
+    }
+
+    let lower = trimmed.to_ascii_lowercase();
+    if lower.ends_with(".desktop") {
+        // Resolve the .desktop file path if it exists directly or in XDG applications directories.
+        let resolved = if path.is_file() { Some(path.to_path_buf()) } else { find_desktop_file(trimmed) };
+
+        if let Some(ref desktop_path) = resolved {
+            // 1. Try `gio launch <path.desktop>`
+            if Command::new("gio")
+                .args(["launch", &desktop_path.to_string_lossy()])
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .is_ok()
+            {
+                return Ok(());
+            }
+
+            // 2. Parse `[Desktop Entry]` `Exec=` directly and spawn the target binary.
+            if let Ok(contents) = fs::read_to_string(desktop_path)
+                && let Some((prog, args)) = parse_desktop_exec(&contents)
+            {
+                let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+                if spawn_detached(&prog, &arg_refs).is_ok() {
+                    return Ok(());
+                }
+            }
+        }
+
+        // 3. Try `gtk-launch <desktop-id>` using the file stem / filename.
+        if let Some(file_name) = path.file_name().and_then(|n| n.to_str())
+            && spawn_detached("gtk-launch", &[file_name]).is_ok()
+        {
+            return Ok(());
+        }
+        return Err(format!("could not launch desktop entry {trimmed}"));
+    }
+
+    if lower.ends_with(".sh") && path.is_file() {
+        return spawn_detached("sh", &[trimmed]);
+    }
+
+    if path.is_file()
+        && let Ok(child) =
+            Command::new(path).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).spawn()
+    {
+        drop(child);
+        return Ok(());
+    }
+
     open_file(path)
 }
 
@@ -243,13 +358,11 @@ fn recycle_file_in(trash_dir: &Path, path: &Path) -> Result<(), String> {
     fs::create_dir_all(&files_dir).map_err(|e| e.to_string())?;
     fs::create_dir_all(&info_dir).map_err(|e| e.to_string())?;
 
-    let base_name = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("trashed_item");
+    let base_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("trashed_item");
     let mut chosen_name = base_name.to_owned();
     let mut counter = 2u32;
-    while files_dir.join(&chosen_name).exists() || info_dir.join(format!("{chosen_name}.trashinfo")).exists() {
+    while files_dir.join(&chosen_name).exists() || info_dir.join(format!("{chosen_name}.trashinfo")).exists()
+    {
         chosen_name = format!("{base_name}.{counter}");
         counter += 1;
     }
@@ -257,11 +370,8 @@ fn recycle_file_in(trash_dir: &Path, path: &Path) -> Result<(), String> {
     let dest_file: PathBuf = files_dir.join(&chosen_name);
     let dest_info: PathBuf = info_dir.join(format!("{chosen_name}.trashinfo"));
     let secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
-    let info_contents = format!(
-        "[Trash Info]\nPath={}\nDeletionDate=1970-01-01T00:00:{:02}\n",
-        abs.display(),
-        secs % 60
-    );
+    let info_contents =
+        format!("[Trash Info]\nPath={}\nDeletionDate=1970-01-01T00:00:{:02}\n", abs.display(), secs % 60);
     fs::write(&dest_info, info_contents).map_err(|e| e.to_string())?;
     if let Err(e) = fs::rename(path, &dest_file) {
         let _ = fs::remove_file(&dest_info);
@@ -298,5 +408,36 @@ mod tests {
         assert!(!file.exists());
         assert!(trash.join("files").join("note.txt").is_file());
         assert!(trash.join("info").join("note.txt.trashinfo").is_file());
+    }
+
+    #[test]
+    fn parses_desktop_entry_exec_and_strips_field_codes() {
+        let desktop = "\
+[Desktop Entry]
+Type=Application
+Name=Firefox Web Browser
+Exec=/usr/lib/firefox/firefox --new-window %u
+Icon=firefox
+
+[Desktop Action new-private-window]
+Name=Open a New Private Window
+Exec=/usr/lib/firefox/firefox --private-window %u
+";
+        let (prog, args) = parse_desktop_exec(desktop).expect("should parse Exec=");
+        assert_eq!(prog, "/usr/lib/firefox/firefox");
+        assert_eq!(args, vec!["--new-window"]);
+    }
+
+    #[test]
+    fn launch_app_executes_desktop_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let marker = dir.path().join("launched.txt");
+        let desktop_path = dir.path().join("test-app.desktop");
+        let desktop_contents = format!(
+            "[Desktop Entry]\nType=Application\nName=TestApp\nExec=/bin/sh -c \"echo ok > '{}'\" %U\n",
+            marker.display()
+        );
+        fs::write(&desktop_path, desktop_contents).unwrap();
+        assert!(launch_app(&desktop_path).is_ok());
     }
 }

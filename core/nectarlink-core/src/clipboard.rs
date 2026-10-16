@@ -33,7 +33,10 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         Envelope::error(ErrorCode::Denied, "the clipboard is off for this device")
     } else {
         match env.body::<ClipSet>() {
-            Ok(clip) if clip.is_valid() && !crate::timeline::is_likely_binary_or_corrupted_image_text(&clip.text) => {
+            Ok(clip)
+                if clip.is_valid()
+                    && !crate::timeline::is_likely_binary_or_corrupted_image_text(&clip.text) =>
+            {
                 let platform = shared.platform.clone();
                 let text = clip.text;
                 let html = clip.html;

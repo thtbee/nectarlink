@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Linux equivalent of Jump List tasks via freedesktop.org `.desktop` Desktop Actions
 // (`~/.local/share/applications/nectarlink.desktop` + hicolor app icon).
 //
@@ -16,31 +17,11 @@ pub const ARG: &str = "--task";
 /// Kept in parity with the Windows Jump List (`win/jumplist.rs`) and
 /// `bridge::app::NectarLinkApp::dispatch_jump_task`.
 pub const TASKS: &[(&str, &str, &str)] = &[
-    (
-        "send-files",
-        "Send files to phone",
-        "Open the file picker to send files to your phone",
-    ),
-    (
-        "send-clipboard",
-        "Send clipboard to phone",
-        "Send what's currently copied on this PC to your phone",
-    ),
-    (
-        "find-phone",
-        "Find my phone",
-        "Make your paired phone ring",
-    ),
-    (
-        "take-photo",
-        "Take photo with phone",
-        "Capture a photo with your phone camera and paste it here",
-    ),
-    (
-        "open-timeline",
-        "Open Timeline",
-        "Open the chronological activity feed in NectarLink",
-    ),
+    ("send-files", "Send files to phone", "Open the file picker to send files to your phone"),
+    ("send-clipboard", "Send clipboard to phone", "Send what's currently copied on this PC to your phone"),
+    ("find-phone", "Find my phone", "Make your paired phone ring"),
+    ("take-photo", "Take photo with phone", "Capture a photo with your phone camera and paste it here"),
+    ("open-timeline", "Open Timeline", "Open the chronological activity feed in NectarLink"),
 ];
 
 fn applications_dir() -> Option<PathBuf> {
@@ -155,36 +136,21 @@ mod tests {
 
     #[test]
     fn default_profile_omits_data_dir() {
-        assert_eq!(
-            build_task_arguments("send-files", None),
-            "--task send-files"
-        );
+        assert_eq!(build_task_arguments("send-files", None), "--task send-files");
     }
 
     #[test]
     fn custom_profile_quotes_data_dir() {
         let p = Path::new("/home/Alice Smith/.local/share/NectarLink Dev");
         let args = build_task_arguments("find-phone", Some(p));
-        assert_eq!(
-            args,
-            "--data-dir \"/home/Alice Smith/.local/share/NectarLink Dev\" --task find-phone"
-        );
+        assert_eq!(args, "--data-dir \"/home/Alice Smith/.local/share/NectarLink Dev\" --task find-phone");
     }
 
     #[test]
     fn all_defined_tasks_have_non_empty_metadata() {
         assert_eq!(TASKS.len(), 5);
         let ids: Vec<&str> = TASKS.iter().map(|(id, _, _)| *id).collect();
-        assert_eq!(
-            ids,
-            vec![
-                "send-files",
-                "send-clipboard",
-                "find-phone",
-                "take-photo",
-                "open-timeline"
-            ]
-        );
+        assert_eq!(ids, vec!["send-files", "send-clipboard", "find-phone", "take-photo", "open-timeline"]);
         for &(action, title, tip) in TASKS {
             assert!(!action.is_empty());
             assert!(!title.is_empty());
@@ -198,31 +164,20 @@ mod tests {
         let exe = Path::new("/usr/bin/nectarlink-desktop");
         let icon = Path::new("/home/user/.local/share/icons/hicolor/256x256/apps/nectarlink.png");
 
-        let desktop_path =
-            write_desktop_file_to(tmp.path(), exe, icon, None).expect("write desktop file");
+        let desktop_path = write_desktop_file_to(tmp.path(), exe, icon, None).expect("write desktop file");
         assert!(desktop_path.exists());
 
         let text = std::fs::read_to_string(&desktop_path).expect("read desktop file");
         assert!(text.contains("[Desktop Entry]"));
         assert!(text.contains("MimeType=x-scheme-handler/nectarlink;"));
-        assert!(
-            text.contains("Actions=send-files;send-clipboard;find-phone;take-photo;open-timeline;")
-        );
+        assert!(text.contains("Actions=send-files;send-clipboard;find-phone;take-photo;open-timeline;"));
         assert!(text.contains(&format!("Icon={}", icon.display())));
 
         for &(action, title, _) in TASKS {
+            assert!(text.contains(&format!("[Desktop Action {action}]")), "missing section for {action}");
+            assert!(text.contains(&format!("Name={title}")), "missing title for {action}");
             assert!(
-                text.contains(&format!("[Desktop Action {action}]")),
-                "missing section for {action}"
-            );
-            assert!(
-                text.contains(&format!("Name={title}")),
-                "missing title for {action}"
-            );
-            assert!(
-                text.contains(&format!(
-                    "Exec=\"/usr/bin/nectarlink-desktop\" --task {action}"
-                )),
+                text.contains(&format!("Exec=\"/usr/bin/nectarlink-desktop\" --task {action}")),
                 "missing Exec for {action}"
             );
         }

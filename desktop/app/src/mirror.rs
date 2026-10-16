@@ -1570,10 +1570,7 @@ struct LinuxGamepadPoller {
 #[cfg(target_os = "linux")]
 impl Default for LinuxGamepadPoller {
     fn default() -> Self {
-        Self {
-            fd: -1,
-            state: GamepadState::default(),
-        }
+        Self { fd: -1, state: GamepadState::default() }
     }
 }
 
@@ -1582,24 +1579,11 @@ impl Default for LinuxGamepadPoller {
 fn poll_gamepad() -> Option<GamepadState> {
     static POLLER: Mutex<LinuxGamepadPoller> = Mutex::new(LinuxGamepadPoller {
         fd: -1,
-        state: GamepadState {
-            buttons: 0,
-            lx: 0,
-            ly: 0,
-            rx: 0,
-            ry: 0,
-            lt: 0,
-            rt: 0,
-        },
+        state: GamepadState { buttons: 0, lx: 0, ly: 0, rx: 0, ry: 0, lt: 0, rt: 0 },
     });
     let mut poller = POLLER.lock().unwrap_or_else(|e| e.into_inner());
     if poller.fd < 0 {
-        let paths = [
-            c"/dev/input/js0",
-            c"/dev/input/js1",
-            c"/dev/input/js2",
-            c"/dev/input/js3",
-        ];
+        let paths = [c"/dev/input/js0", c"/dev/input/js1", c"/dev/input/js2", c"/dev/input/js3"];
         for path in paths {
             let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY | libc::O_NONBLOCK) };
             if fd >= 0 {
@@ -1614,18 +1598,9 @@ fn poll_gamepad() -> Option<GamepadState> {
     }
 
     loop {
-        let mut ev = JsEvent {
-            time: 0,
-            value: 0,
-            type_: 0,
-            number: 0,
-        };
+        let mut ev = JsEvent { time: 0, value: 0, type_: 0, number: 0 };
         let n = unsafe {
-            libc::read(
-                poller.fd,
-                (&mut ev as *mut JsEvent).cast(),
-                std::mem::size_of::<JsEvent>(),
-            )
+            libc::read(poller.fd, (&mut ev as *mut JsEvent).cast(), std::mem::size_of::<JsEvent>())
         };
         if n == std::mem::size_of::<JsEvent>() as isize {
             apply_js_event(&mut poller.state, ev);

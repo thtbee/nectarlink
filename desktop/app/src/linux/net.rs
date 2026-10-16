@@ -41,13 +41,7 @@ struct Timeval {
 
 unsafe extern "C" {
     fn socket(domain: i32, ty: i32, protocol: i32) -> i32;
-    fn setsockopt(
-        fd: i32,
-        level: i32,
-        optname: i32,
-        optval: *const std::ffi::c_void,
-        optlen: u32,
-    ) -> i32;
+    fn setsockopt(fd: i32, level: i32, optname: i32, optval: *const std::ffi::c_void, optlen: u32) -> i32;
     fn bind(fd: i32, addr: *const std::ffi::c_void, addrlen: u32) -> i32;
     fn recv(fd: i32, buf: *mut std::ffi::c_void, len: usize, flags: i32) -> isize;
     fn close(fd: i32) -> i32;
@@ -79,10 +73,7 @@ pub fn watch(callback: impl Fn() + Send + Sync + 'static) {
                     nl_family: AF_NETLINK as u16,
                     nl_pad: 0,
                     nl_pid: 0,
-                    nl_groups: RTMGRP_LINK
-                        | RTMGRP_IPV4_IFADDR
-                        | RTMGRP_IPV6_IFADDR
-                        | RTMGRP_IPV4_ROUTE,
+                    nl_groups: RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR | RTMGRP_IPV4_ROUTE,
                 };
                 let tv = Timeval { tv_sec: 1, tv_usec: 0 };
                 let _ = setsockopt(
@@ -92,11 +83,7 @@ pub fn watch(callback: impl Fn() + Send + Sync + 'static) {
                     (&raw const tv).cast(),
                     std::mem::size_of::<Timeval>() as u32,
                 );
-                bind(
-                    fd,
-                    (&raw const addr).cast(),
-                    std::mem::size_of::<SockAddrNl>() as u32,
-                ) == 0
+                bind(fd, (&raw const addr).cast(), std::mem::size_of::<SockAddrNl>() as u32) == 0
             };
             if bound {
                 let mut buf = [0u8; 4096];

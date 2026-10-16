@@ -16,25 +16,10 @@ pub const CALL_END: &str = "end";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ToastEvent {
-    Opened {
-        device: String,
-        key: String,
-    },
-    Action {
-        device: String,
-        key: String,
-        action: String,
-    },
-    Reply {
-        device: String,
-        key: String,
-        action: String,
-        text: String,
-    },
-    Dismissed {
-        device: String,
-        key: String,
-    },
+    Opened { device: String, key: String },
+    Action { device: String, key: String, action: String },
+    Reply { device: String, key: String, action: String, text: String },
+    Dismissed { device: String, key: String },
 }
 
 #[derive(Clone)]
@@ -109,10 +94,7 @@ struct Toaster {
 }
 
 impl Toaster {
-    fn new(
-        icon: PathBuf,
-        on_event: Option<Box<dyn Fn(ToastEvent) + Send + Sync + 'static>>,
-    ) -> Self {
+    fn new(icon: PathBuf, on_event: Option<Box<dyn Fn(ToastEvent) + Send + Sync + 'static>>) -> Self {
         Self {
             icon,
             on_event,
@@ -124,19 +106,13 @@ impl Toaster {
         }
     }
 
-    fn record_shown(
-        &mut self,
-        device: String,
-        key: String,
-        id: u32,
-        snapshot: ToastSnapshot,
-    ) {
+    fn record_shown(&mut self, device: String, key: String, id: u32, snapshot: ToastSnapshot) {
         let target = (device, key);
-        if let Some(old_id) = self.active_ids.insert(target.clone(), id) {
-            if old_id != id {
-                self.id_to_target.remove(&old_id);
-                self.reply_actions.remove(&old_id);
-            }
+        if let Some(old_id) = self.active_ids.insert(target.clone(), id)
+            && old_id != id
+        {
+            self.id_to_target.remove(&old_id);
+            self.reply_actions.remove(&old_id);
         }
         self.id_to_target.insert(id, target.clone());
         if let Some((reply_action, _)) = &snapshot.reply {
@@ -160,12 +136,8 @@ impl Toaster {
     }
 
     fn take_by_device(&mut self, device: &str) -> Vec<u32> {
-        let keys: Vec<(String, String)> = self
-            .active_ids
-            .keys()
-            .filter(|(d, _)| d == device)
-            .cloned()
-            .collect();
+        let keys: Vec<(String, String)> =
+            self.active_ids.keys().filter(|(d, _)| d == device).cloned().collect();
         let mut ids = Vec::new();
         for target in keys {
             if let Some(id) = self.active_ids.remove(&target) {
@@ -194,26 +166,14 @@ impl Toaster {
                 if action_key == "default" || action_key.is_empty() {
                     Some(ToastEvent::Opened { device, key })
                 } else {
-                    Some(ToastEvent::Action {
-                        device,
-                        key,
-                        action: action_key,
-                    })
+                    Some(ToastEvent::Action { device, key, action: action_key })
                 }
             }
             MonitorSignal::NotificationReplied { id, text } => {
                 let (device, key) = self.id_to_target.get(&id)?.clone();
-                let action = self
-                    .reply_actions
-                    .get(&id)
-                    .cloned()
-                    .unwrap_or_else(|| "inline-reply".to_string());
-                Some(ToastEvent::Reply {
-                    device,
-                    key,
-                    action,
-                    text,
-                })
+                let action =
+                    self.reply_actions.get(&id).cloned().unwrap_or_else(|| "inline-reply".to_string());
+                Some(ToastEvent::Reply { device, key, action, text })
             }
             MonitorSignal::NotificationClosed { id, reason } => {
                 let (device, key) = self.id_to_target.remove(&id)?;
@@ -222,11 +182,7 @@ impl Toaster {
                 self.snapshots.remove(&(device.clone(), key.clone()));
                 // Freedesktop NotificationClosed reasons:
                 // 1 = expired, 2 = dismissed by user, 3 = closed by CloseNotification, 4 = undefined
-                if reason == 2 {
-                    Some(ToastEvent::Dismissed { device, key })
-                } else {
-                    None
-                }
+                if reason == 2 { Some(ToastEvent::Dismissed { device, key }) } else { None }
             }
         }
     }
@@ -254,16 +210,14 @@ where
         }
     } else {
         let bg_icon = icon.clone();
-        let _ = std::thread::Builder::new()
-            .name("toast-icon".into())
-            .spawn(move || {
-                if !bg_icon.exists() {
-                    if let Some(parent) = bg_icon.parent() {
-                        let _ = std::fs::create_dir_all(parent);
-                    }
-                    let _ = super::icon::write_png(&bg_icon, 128);
+        let _ = std::thread::Builder::new().name("toast-icon".into()).spawn(move || {
+            if !bg_icon.exists() {
+                if let Some(parent) = bg_icon.parent() {
+                    let _ = std::fs::create_dir_all(parent);
                 }
-            });
+                let _ = super::icon::write_png(&bg_icon, 128);
+            }
+        });
     }
 
     let callback: Box<dyn Fn(ToastEvent) + Send + Sync + 'static> = Box::new(on_event);
@@ -278,9 +232,7 @@ where
 
     if !cfg!(test) {
         MONITOR_STARTED.get_or_init(|| {
-            let _ = std::thread::Builder::new()
-                .name("toasts".into())
-                .spawn(monitor_loop);
+            let _ = std::thread::Builder::new().name("toasts".into()).spawn(monitor_loop);
         });
     }
     crate::pc_notifications::start_listener();
@@ -317,19 +269,11 @@ pub fn show(toast: Toast) {
         let Ok(guard) = mutex.lock() else {
             return;
         };
-        let existing = guard
-            .active_ids
-            .get(&(toast.device.clone(), toast.key.clone()))
-            .copied()
-            .unwrap_or(0);
+        let existing = guard.active_ids.get(&(toast.device.clone(), toast.key.clone())).copied().unwrap_or(0);
         (existing, guard.icon.clone())
     };
 
-    let chosen_icon = toast
-        .icon
-        .clone()
-        .or(toast.image.clone())
-        .unwrap_or(default_icon);
+    let chosen_icon = toast.icon.clone().or(toast.image.clone()).unwrap_or(default_icon);
     let icon_str = chosen_icon.to_string_lossy().to_string();
     let title = format_summary(&toast.title, &toast.attribution);
     let body = format_body(&toast.body, &toast.attribution, toast.progress.as_ref());
@@ -346,28 +290,28 @@ pub fn show(toast: Toast) {
         toast.call,
     );
 
-    if let Some(mutex) = TOASTER.get() {
-        if let Ok(mut guard) = mutex.lock() {
-            let id = notified_id.unwrap_or_else(|| {
-                if replaces_id != 0 {
-                    replaces_id
-                } else {
-                    guard.next_fallback_id += 1;
-                    guard.next_fallback_id
-                }
-            });
-            let snapshot = ToastSnapshot {
-                title: toast.title,
-                body: toast.body,
-                attribution: toast.attribution,
-                icon_path: icon_str,
-                actions: toast.actions,
-                reply: toast.reply,
-                silent: toast.silent,
-                call: toast.call,
-            };
-            guard.record_shown(toast.device, toast.key, id, snapshot);
-        }
+    if let Some(mutex) = TOASTER.get()
+        && let Ok(mut guard) = mutex.lock()
+    {
+        let id = notified_id.unwrap_or_else(|| {
+            if replaces_id != 0 {
+                replaces_id
+            } else {
+                guard.next_fallback_id += 1;
+                guard.next_fallback_id
+            }
+        });
+        let snapshot = ToastSnapshot {
+            title: toast.title,
+            body: toast.body,
+            attribution: toast.attribution,
+            icon_path: icon_str,
+            actions: toast.actions,
+            reply: toast.reply,
+            silent: toast.silent,
+            call: toast.call,
+        };
+        guard.record_shown(toast.device, toast.key, id, snapshot);
     }
 }
 
@@ -404,12 +348,11 @@ pub fn update_progress(device: &str, key: &str, progress: Progress) {
         snapshot.call,
     );
 
-    if let Some(id) = new_id {
-        if id != replaces_id {
-            if let Ok(mut guard) = mutex.lock() {
-                guard.record_shown(device.to_string(), key.to_string(), id, snapshot);
-            }
-        }
+    if let Some(id) = new_id
+        && id != replaces_id
+        && let Ok(mut guard) = mutex.lock()
+    {
+        guard.record_shown(device.to_string(), key.to_string(), id, snapshot);
     }
 }
 
@@ -502,16 +445,10 @@ fn format_body(body: &str, attribution: &str, progress: Option<&Progress>) -> St
 }
 
 fn compute_progress_percent(progress: &Progress) -> i32 {
-    progress
-        .value
-        .map(|v| (v.clamp(0.0, 1.0) * 100.0).round() as i32)
-        .unwrap_or(0)
+    progress.value.map(|v| (v.clamp(0.0, 1.0) * 100.0).round() as i32).unwrap_or(0)
 }
 
-fn build_actions_gvariant(
-    actions: &[(String, String)],
-    reply: Option<&(String, String)>,
-) -> String {
+fn build_actions_gvariant(actions: &[(String, String)], reply: Option<&(String, String)>) -> String {
     let mut items: Vec<String> = Vec::new();
     items.push("'default'".to_string());
     items.push("'Open'".to_string());
@@ -522,11 +459,7 @@ fn build_actions_gvariant(
         }
     }
     if let Some((_action_id, placeholder)) = reply {
-        let label = if placeholder.trim().is_empty() {
-            "Reply"
-        } else {
-            placeholder.trim()
-        };
+        let label = if placeholder.trim().is_empty() { "Reply" } else { placeholder.trim() };
         items.push("'inline-reply'".to_string());
         items.push(escape_gvariant_string(label));
     }
@@ -601,12 +534,11 @@ fn send_notification(
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .output()
+        && output.status.success()
     {
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            if let Some(id) = parse_notify_id(&stdout) {
-                return Some(id);
-            }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if let Some(id) = parse_notify_id(&stdout) {
+            return Some(id);
         }
     }
 
@@ -632,17 +564,12 @@ fn send_notification(
     if !body.is_empty() {
         cmd.arg(body);
     }
-    if let Ok(output) = cmd
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .output()
+    if let Ok(output) = cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).output()
+        && output.status.success()
     {
-        if output.status.success() {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            if let Some(id) = parse_notify_id(&stdout) {
-                return Some(id);
-            }
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if let Some(id) = parse_notify_id(&stdout) {
+            return Some(id);
         }
     }
 
@@ -700,14 +627,12 @@ fn monitor_loop() {
                 let ev = guard.handle_signal(signal)?;
                 Some(ev)
             });
-            if let Some(event) = event_and_cb {
-                if let Some(mutex) = TOASTER.get() {
-                    if let Ok(guard) = mutex.lock() {
-                        if let Some(cb) = &guard.on_event {
-                            cb(event);
-                        }
-                    }
-                }
+            if let Some(event) = event_and_cb
+                && let Some(mutex) = TOASTER.get()
+                && let Ok(guard) = mutex.lock()
+                && let Some(cb) = &guard.on_event
+            {
+                cb(event);
             }
         }
     }
@@ -773,9 +698,7 @@ fn parse_first_uint32(s: &str) -> Option<(u32, &str)> {
     } else {
         after_prefix
     };
-    let end = after_uint
-        .find(|c: char| !c.is_ascii_digit())
-        .unwrap_or(after_uint.len());
+    let end = after_uint.find(|c: char| !c.is_ascii_digit()).unwrap_or(after_uint.len());
     let val = after_uint[..end].parse::<u32>().ok()?;
     Some((val, &after_uint[end..]))
 }
@@ -821,19 +744,13 @@ mod tests {
         let action_line = "/org/freedesktop/Notifications: org.freedesktop.Notifications.ActionInvoked (uint32 15, 'mark_read')";
         assert_eq!(
             parse_monitor_line(action_line),
-            Some(MonitorSignal::ActionInvoked {
-                id: 15,
-                action_key: "mark_read".to_string()
-            })
+            Some(MonitorSignal::ActionInvoked { id: 15, action_key: "mark_read".to_string() })
         );
 
         let reply_line = "/org/freedesktop/Notifications: org.freedesktop.Notifications.NotificationReplied (uint32 15, 'Sounds good\\'s!')";
         assert_eq!(
             parse_monitor_line(reply_line),
-            Some(MonitorSignal::NotificationReplied {
-                id: 15,
-                text: "Sounds good's!".to_string()
-            })
+            Some(MonitorSignal::NotificationReplied { id: 15, text: "Sounds good's!".to_string() })
         );
 
         let closed_line = "/org/freedesktop/Notifications: org.freedesktop.Notifications.NotificationClosed (uint32 15, uint32 2)";
@@ -860,21 +777,12 @@ mod tests {
         toaster.record_shown("phone-1".to_string(), "notif-a".to_string(), 77, snap);
 
         assert_eq!(
-            toaster.handle_signal(MonitorSignal::ActionInvoked {
-                id: 77,
-                action_key: "default".to_string(),
-            }),
-            Some(ToastEvent::Opened {
-                device: "phone-1".to_string(),
-                key: "notif-a".to_string(),
-            })
+            toaster.handle_signal(MonitorSignal::ActionInvoked { id: 77, action_key: "default".to_string() }),
+            Some(ToastEvent::Opened { device: "phone-1".to_string(), key: "notif-a".to_string() })
         );
 
         assert_eq!(
-            toaster.handle_signal(MonitorSignal::ActionInvoked {
-                id: 77,
-                action_key: "archive".to_string(),
-            }),
+            toaster.handle_signal(MonitorSignal::ActionInvoked { id: 77, action_key: "archive".to_string() }),
             Some(ToastEvent::Action {
                 device: "phone-1".to_string(),
                 key: "notif-a".to_string(),
@@ -883,10 +791,8 @@ mod tests {
         );
 
         assert_eq!(
-            toaster.handle_signal(MonitorSignal::NotificationReplied {
-                id: 77,
-                text: "On my way".to_string(),
-            }),
+            toaster
+                .handle_signal(MonitorSignal::NotificationReplied { id: 77, text: "On my way".to_string() }),
             Some(ToastEvent::Reply {
                 device: "phone-1".to_string(),
                 key: "notif-a".to_string(),
@@ -897,10 +803,7 @@ mod tests {
 
         assert_eq!(
             toaster.handle_signal(MonitorSignal::NotificationClosed { id: 77, reason: 2 }),
-            Some(ToastEvent::Dismissed {
-                device: "phone-1".to_string(),
-                key: "notif-a".to_string(),
-            })
+            Some(ToastEvent::Dismissed { device: "phone-1".to_string(), key: "notif-a".to_string() })
         );
 
         assert!(toaster.active_ids.is_empty());

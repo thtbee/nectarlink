@@ -33,16 +33,7 @@ pub fn get(url: &str, limit: usize) -> Result<Vec<u8>, String> {
     let max_size = (limit.saturating_add(1)).to_string();
 
     if let Ok(output) = Command::new("curl")
-        .args([
-            "-fsSL",
-            "--max-time",
-            "60",
-            "--max-filesize",
-            &max_size,
-            "-A",
-            &ua,
-            url,
-        ])
+        .args(["-fsSL", "--max-time", "60", "--max-filesize", &max_size, "-A", &ua, url])
         .stdin(Stdio::null())
         .output()
     {
@@ -158,11 +149,7 @@ pub fn get_json(url: &str) -> Result<String, String> {
 }
 
 /// Downloads `url` to `dest` (up to 512 MiB).
-pub fn download_to_file(
-    url: &str,
-    dest: &Path,
-    on_progress: impl FnMut(u64, u64),
-) -> Result<(), String> {
+pub fn download_to_file(url: &str, dest: &Path, on_progress: impl FnMut(u64, u64)) -> Result<(), String> {
     download(url, dest, 512 * 1024 * 1024, on_progress)
 }
 
@@ -174,8 +161,6 @@ mod tests {
     fn refuses_plain_http_urls() {
         assert!(get("http://example.com/releases", 1024).is_err());
         assert!(get_retrying("http://example.com/releases", 1024).is_err());
-        assert!(
-            download("http://example.com/setup", Path::new("out.bin"), 1024, |_, _| {}).is_err()
-        );
+        assert!(download("http://example.com/setup", Path::new("out.bin"), 1024, |_, _| {}).is_err());
     }
 }

@@ -22,11 +22,7 @@ const SAMPLE_MAX_DIM: u32 = palette::MAX_SAMPLE_SIDE;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Source {
-    Image {
-        path: PathBuf,
-        modified: Option<SystemTime>,
-        len: u64,
-    },
+    Image { path: PathBuf, modified: Option<SystemTime>, len: u64 },
     Solid(Rgb),
 }
 
@@ -55,11 +51,7 @@ fn current_source() -> Option<Source> {
         && let Ok(meta) = fs::metadata(&path)
         && meta.is_file()
     {
-        return Some(Source::Image {
-            path,
-            modified: meta.modified().ok(),
-            len: meta.len(),
-        });
+        return Some(Source::Image { path, modified: meta.modified().ok(), len: meta.len() });
     }
     gnome_solid_color().map(Source::Solid)
 }
@@ -69,7 +61,7 @@ fn sample_grid(path: &Path) -> Option<(u32, u32, Vec<Rgb>)> {
     let bitmap = image::decode(&bytes).ok()?;
     let scaled = image::scale_to(&bitmap, SAMPLE_MAX_DIM);
     let mut pixels = Vec::with_capacity((scaled.width * scaled.height) as usize);
-    for chunk in scaled.bgra.chunks_exact(4) {
+    for chunk in scaled.bgra.as_chunks::<4>().0 {
         pixels.push(Rgb::new(chunk[2], chunk[1], chunk[0]));
     }
     Some((scaled.width, scaled.height, pixels))
@@ -93,10 +85,8 @@ fn percent_decode(input: &str) -> String {
     while i < bytes.len() {
         if bytes[i] == b'%'
             && i + 2 < bytes.len()
-            && let (Some(hi), Some(lo)) = (
-                (bytes[i + 1] as char).to_digit(16),
-                (bytes[i + 2] as char).to_digit(16),
-            )
+            && let (Some(hi), Some(lo)) =
+                ((bytes[i + 1] as char).to_digit(16), (bytes[i + 2] as char).to_digit(16))
         {
             out.push(((hi << 4) | lo) as u8);
             i += 3;
@@ -139,11 +129,7 @@ pub fn parse_gsettings_wallpaper_uri(raw: &str) -> Option<PathBuf> {
     let without_scheme = trimmed.strip_prefix("file://").unwrap_or(trimmed);
     let decoded = percent_decode(without_scheme);
     let cleaned = decoded.trim();
-    if cleaned.is_empty() {
-        None
-    } else {
-        Some(expand_tilde(cleaned))
-    }
+    if cleaned.is_empty() { None } else { Some(expand_tilde(cleaned)) }
 }
 
 /// Parses KDE Plasma's `plasma-org.kde.plasma.desktop-appletsrc` contents for `Image=` entries.
@@ -151,12 +137,11 @@ pub fn parse_kde_wallpaper_config(content: &str) -> Option<PathBuf> {
     let mut found: Option<PathBuf> = None;
     for line in content.lines() {
         let line = line.trim();
-        if let Some(rest) = line.strip_prefix("Image=") {
-            if let Some(path) = parse_gsettings_wallpaper_uri(rest)
-                && path.extension().is_some()
-            {
-                found = Some(path);
-            }
+        if let Some(rest) = line.strip_prefix("Image=")
+            && let Some(path) = parse_gsettings_wallpaper_uri(rest)
+            && path.extension().is_some()
+        {
+            found = Some(path);
         }
     }
     found
@@ -240,20 +225,12 @@ pub fn parse_hyprpaper_wallpaper(content: &str) -> Option<PathBuf> {
 
 fn current_wallpaper_path() -> Option<PathBuf> {
     let dark = super::system_dark();
-    let uri_keys = if dark {
-        ["picture-uri-dark", "picture-uri"]
-    } else {
-        ["picture-uri", "picture-uri-dark"]
-    };
+    let uri_keys =
+        if dark { ["picture-uri-dark", "picture-uri"] } else { ["picture-uri", "picture-uri-dark"] };
 
-    for schema in [
-        "org.gnome.desktop.background",
-        "org.cinnamon.desktop.background",
-    ] {
+    for schema in ["org.gnome.desktop.background", "org.cinnamon.desktop.background"] {
         for key in uri_keys {
-            if let Ok(output) = Command::new("gsettings")
-                .args(["get", schema, key])
-                .output()
+            if let Ok(output) = Command::new("gsettings").args(["get", schema, key]).output()
                 && output.status.success()
                 && let Some(candidate) =
                     parse_gsettings_wallpaper_uri(&String::from_utf8_lossy(&output.stdout))
@@ -265,12 +242,9 @@ fn current_wallpaper_path() -> Option<PathBuf> {
     }
 
     for key in ["picture-filename", "picture-uri"] {
-        if let Ok(output) = Command::new("gsettings")
-            .args(["get", "org.mate.background", key])
-            .output()
+        if let Ok(output) = Command::new("gsettings").args(["get", "org.mate.background", key]).output()
             && output.status.success()
-            && let Some(candidate) =
-                parse_gsettings_wallpaper_uri(&String::from_utf8_lossy(&output.stdout))
+            && let Some(candidate) = parse_gsettings_wallpaper_uri(&String::from_utf8_lossy(&output.stdout))
             && candidate.is_file()
         {
             return Some(candidate);
@@ -366,9 +340,7 @@ SlidePaths=/usr/share/wallpapers
 ";
         assert_eq!(
             parse_kde_wallpaper_config(sample),
-            Some(PathBuf::from(
-                "/usr/share/wallpapers/Next/contents/images/5120x2880.png"
-            ))
+            Some(PathBuf::from("/usr/share/wallpapers/Next/contents/images/5120x2880.png"))
         );
     }
 
@@ -391,10 +363,7 @@ preload = /home/alice/wall.png
 # monitor wallpaper
 wallpaper = DP-1, /home/alice/wall.png
 ";
-        assert_eq!(
-            parse_hyprpaper_wallpaper(hyprpaper),
-            Some(PathBuf::from("/home/alice/wall.png"))
-        );
+        assert_eq!(parse_hyprpaper_wallpaper(hyprpaper), Some(PathBuf::from("/home/alice/wall.png")));
     }
 
     #[test]
@@ -408,12 +377,7 @@ wallpaper = DP-1, /home/alice/wall.png
             // Vibrant cobalt blue in BGRA order
             bgra.extend_from_slice(&[220, 90, 30, 255]);
         }
-        let png = image::encode_png(&image::Bitmap {
-            width,
-            height,
-            bgra,
-        })
-        .expect("encode_png");
+        let png = image::encode_png(&image::Bitmap { width, height, bgra }).expect("encode_png");
         fs::write(&path, png).expect("write png");
 
         let seed = seed_from_path(&path).expect("seed_from_path");

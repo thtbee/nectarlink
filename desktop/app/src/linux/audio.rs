@@ -43,13 +43,8 @@ pub(crate) fn parse_pactl_mute(mute_out: &str) -> Option<bool> {
 
 /// Parses `pactl get-sink-volume` and optional `pactl get-sink-mute` output
 /// into `(volume_percent, muted)`.
-pub(crate) fn parse_pactl_volume_and_mute(
-    vol_out: &str,
-    mute_out: Option<&str>,
-) -> Option<(u8, bool)> {
-    let pct_token = vol_out
-        .split_whitespace()
-        .find_map(|tok| tok.strip_suffix('%'))?;
+pub(crate) fn parse_pactl_volume_and_mute(vol_out: &str, mute_out: Option<&str>) -> Option<(u8, bool)> {
+    let pct_token = vol_out.split_whitespace().find_map(|tok| tok.strip_suffix('%'))?;
     let pct_val = pct_token.trim().parse::<f32>().ok()?;
     if !pct_val.is_finite() {
         return None;
@@ -61,29 +56,17 @@ pub(crate) fn parse_pactl_volume_and_mute(
 
 /// Parses `pactl list sinks` output along with `pactl get-default-sink` into
 /// sorted `AudioOutputDevice` entries (default first, then alphabetical by name).
-pub(crate) fn parse_pactl_sinks(
-    list_out: &str,
-    default_sink: Option<&str>,
-) -> Vec<AudioOutputDevice> {
+pub(crate) fn parse_pactl_sinks(list_out: &str, default_sink: Option<&str>) -> Vec<AudioOutputDevice> {
     let default_trimmed = default_sink.map(str::trim).filter(|s| !s.is_empty());
     let mut out = Vec::new();
     let mut current_id: Option<String> = None;
     let mut current_desc: Option<String> = None;
 
-    let flush = |id: &mut Option<String>,
-                 desc: &mut Option<String>,
-                 out: &mut Vec<AudioOutputDevice>| {
+    let flush = |id: &mut Option<String>, desc: &mut Option<String>, out: &mut Vec<AudioOutputDevice>| {
         if let Some(sink_id) = id.take() {
-            let name = desc
-                .take()
-                .filter(|d| !d.is_empty())
-                .unwrap_or_else(|| sink_id.clone());
+            let name = desc.take().filter(|d| !d.is_empty()).unwrap_or_else(|| sink_id.clone());
             let is_default = default_trimmed == Some(sink_id.as_str());
-            out.push(AudioOutputDevice {
-                id: sink_id,
-                name,
-                is_default,
-            });
+            out.push(AudioOutputDevice { id: sink_id, name, is_default });
         } else {
             *desc = None;
         }
@@ -107,11 +90,7 @@ pub(crate) fn parse_pactl_sinks(
     }
     flush(&mut current_id, &mut current_desc, &mut out);
 
-    out.sort_by(|a, b| {
-        b.is_default
-            .cmp(&a.is_default)
-            .then_with(|| a.name.cmp(&b.name))
-    });
+    out.sort_by(|a, b| b.is_default.cmp(&a.is_default).then_with(|| a.name.cmp(&b.name)));
     out
 }
 
@@ -134,9 +113,7 @@ pub(crate) fn parse_pactl_subscribe_line(line: &str) -> bool {
 
 /// Reads the default speaker endpoint's `(volume_percent, muted)`.
 pub fn speaker_state() -> Option<(u8, bool)> {
-    if let Ok(out) = Command::new("wpctl")
-        .args(["get-volume", "@DEFAULT_AUDIO_SINK@"])
-        .output()
+    if let Ok(out) = Command::new("wpctl").args(["get-volume", "@DEFAULT_AUDIO_SINK@"]).output()
         && out.status.success()
         && let Some(state) = parse_wpctl_volume(&String::from_utf8_lossy(&out.stdout))
     {
@@ -146,9 +123,7 @@ pub fn speaker_state() -> Option<(u8, bool)> {
         return Some(state);
     }
 
-    if let Ok(vol_out) = Command::new("pactl")
-        .args(["get-sink-volume", "@DEFAULT_SINK@"])
-        .output()
+    if let Ok(vol_out) = Command::new("pactl").args(["get-sink-volume", "@DEFAULT_SINK@"]).output()
         && vol_out.status.success()
     {
         let mute_out = Command::new("pactl")
@@ -157,10 +132,9 @@ pub fn speaker_state() -> Option<(u8, bool)> {
             .ok()
             .filter(|o| o.status.success())
             .map(|o| String::from_utf8_lossy(&o.stdout).into_owned());
-        if let Some(state) = parse_pactl_volume_and_mute(
-            &String::from_utf8_lossy(&vol_out.stdout),
-            mute_out.as_deref(),
-        ) {
+        if let Some(state) =
+            parse_pactl_volume_and_mute(&String::from_utf8_lossy(&vol_out.stdout), mute_out.as_deref())
+        {
             if let Ok(mut guard) = FALLBACK_SPEAKER.lock() {
                 *guard = state;
             }
@@ -182,11 +156,7 @@ pub fn set_speaker_volume(level: u8) -> Result<(), String> {
         .args(["set-volume", "@DEFAULT_AUDIO_SINK@", &arg])
         .status()
         .and_then(|s| if s.success() { Ok(s) } else { Err(std::io::Error::other("wpctl failed")) })
-        .or_else(|_| {
-            Command::new("pactl")
-                .args(["set-sink-volume", "@DEFAULT_SINK@", &arg])
-                .status()
-        });
+        .or_else(|_| Command::new("pactl").args(["set-sink-volume", "@DEFAULT_SINK@", &arg]).status());
     Ok(())
 }
 
@@ -200,11 +170,7 @@ pub fn set_speaker_mute(muted: bool) -> Result<(), String> {
         .args(["set-mute", "@DEFAULT_AUDIO_SINK@", flag])
         .status()
         .and_then(|s| if s.success() { Ok(s) } else { Err(std::io::Error::other("wpctl failed")) })
-        .or_else(|_| {
-            Command::new("pactl")
-                .args(["set-sink-mute", "@DEFAULT_SINK@", flag])
-                .status()
-        });
+        .or_else(|_| Command::new("pactl").args(["set-sink-mute", "@DEFAULT_SINK@", flag]).status());
     Ok(())
 }
 
@@ -237,9 +203,7 @@ pub fn toggle_speaker_mute() -> Result<bool, String> {
 
 /// Reads whether the default capture (microphone) endpoint is muted.
 pub fn mic_muted() -> Option<bool> {
-    if let Ok(out) = Command::new("wpctl")
-        .args(["get-volume", "@DEFAULT_AUDIO_SOURCE@"])
-        .output()
+    if let Ok(out) = Command::new("wpctl").args(["get-volume", "@DEFAULT_AUDIO_SOURCE@"]).output()
         && out.status.success()
         && let Some((_, muted)) = parse_wpctl_volume(&String::from_utf8_lossy(&out.stdout))
     {
@@ -249,9 +213,7 @@ pub fn mic_muted() -> Option<bool> {
         return Some(muted);
     }
 
-    if let Ok(out) = Command::new("pactl")
-        .args(["get-source-mute", "@DEFAULT_SOURCE@"])
-        .output()
+    if let Ok(out) = Command::new("pactl").args(["get-source-mute", "@DEFAULT_SOURCE@"]).output()
         && out.status.success()
         && let Some(muted) = parse_pactl_mute(&String::from_utf8_lossy(&out.stdout))
     {
@@ -276,11 +238,7 @@ pub fn toggle_mic_mute() -> Result<bool, String> {
         .args(["set-mute", "@DEFAULT_AUDIO_SOURCE@", flag])
         .status()
         .and_then(|s| if s.success() { Ok(s) } else { Err(std::io::Error::other("wpctl failed")) })
-        .or_else(|_| {
-            Command::new("pactl")
-                .args(["set-source-mute", "@DEFAULT_SOURCE@", flag])
-                .status()
-        });
+        .or_else(|_| Command::new("pactl").args(["set-source-mute", "@DEFAULT_SOURCE@", flag]).status());
     Ok(next)
 }
 
@@ -298,10 +256,7 @@ pub fn output_devices() -> Vec<AudioOutputDevice> {
     if let Ok(list_out) = Command::new("pactl").args(["list", "sinks"]).output()
         && list_out.status.success()
     {
-        let parsed = parse_pactl_sinks(
-            &String::from_utf8_lossy(&list_out.stdout),
-            default_sink.as_deref(),
-        );
+        let parsed = parse_pactl_sinks(&String::from_utf8_lossy(&list_out.stdout), default_sink.as_deref());
         if !parsed.is_empty() {
             return parsed;
         }
@@ -327,11 +282,7 @@ pub fn set_default_output_device(id: &str) -> Result<(), String> {
         .or_else(|_| Command::new("wpctl").args(["set-default", trimmed]).status())
         .map_err(|e| format!("failed to set default output device: {e}"))?;
 
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!("audio backend rejected default sink '{trimmed}'"))
-    }
+    if status.success() { Ok(()) } else { Err(format!("audio backend rejected default sink '{trimmed}'")) }
 }
 
 /// Subscribes to PipeWire/PulseAudio sink/source/server events and invokes
@@ -340,17 +291,12 @@ pub fn watch(changed: fn()) {
     if WATCH_STARTED.set(()).is_err() {
         return;
     }
-    let _ = std::thread::Builder::new()
-        .name("audio-watch".into())
-        .spawn(move || watch_thread(changed));
+    let _ = std::thread::Builder::new().name("audio-watch".into()).spawn(move || watch_thread(changed));
 }
 
 fn watch_thread(changed: fn()) {
-    let Ok(mut child) = Command::new("pactl")
-        .arg("subscribe")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
+    let Ok(mut child) =
+        Command::new("pactl").arg("subscribe").stdout(Stdio::piped()).stderr(Stdio::null()).spawn()
     else {
         return;
     };
@@ -361,16 +307,14 @@ fn watch_thread(changed: fn()) {
     };
 
     let (tx, rx) = mpsc::channel::<()>();
-    let _ = std::thread::Builder::new()
-        .name("audio-watch-reader".into())
-        .spawn(move || {
-            let reader = BufReader::new(stdout);
-            for line in reader.lines().map_while(Result::ok) {
-                if parse_pactl_subscribe_line(&line) && tx.send(()).is_err() {
-                    break;
-                }
+    let _ = std::thread::Builder::new().name("audio-watch-reader".into()).spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines().map_while(Result::ok) {
+            if parse_pactl_subscribe_line(&line) && tx.send(()).is_err() {
+                break;
             }
-        });
+        }
+    });
 
     while rx.recv().is_ok() {
         while rx.recv_timeout(Duration::from_millis(80)).is_ok() {}
@@ -388,10 +332,7 @@ mod tests {
     #[test]
     fn parse_wpctl_volume_handles_normal_and_muted_lines() {
         assert_eq!(parse_wpctl_volume("Volume: 0.45\n"), Some((45, false)));
-        assert_eq!(
-            parse_wpctl_volume("Volume: 0.72 [MUTED]\n"),
-            Some((72, true))
-        );
+        assert_eq!(parse_wpctl_volume("Volume: 0.72 [MUTED]\n"), Some((72, true)));
         assert_eq!(parse_wpctl_volume("Volume: 1.35"), Some((100, false)));
         assert_eq!(parse_wpctl_volume("garbage"), None);
     }
@@ -399,14 +340,8 @@ mod tests {
     #[test]
     fn parse_pactl_volume_and_mute_extracts_percentage_and_mute() {
         let vol = "Volume: front-left: 32768 /  50% / -18.06 dB,   front-right: 32768 /  50% / -18.06 dB\n";
-        assert_eq!(
-            parse_pactl_volume_and_mute(vol, Some("Mute: no\n")),
-            Some((50, false))
-        );
-        assert_eq!(
-            parse_pactl_volume_and_mute(vol, Some("Mute: yes\n")),
-            Some((50, true))
-        );
+        assert_eq!(parse_pactl_volume_and_mute(vol, Some("Mute: no\n")), Some((50, false)));
+        assert_eq!(parse_pactl_volume_and_mute(vol, Some("Mute: yes\n")), Some((50, true)));
         assert_eq!(parse_pactl_volume_and_mute("invalid output", None), None);
     }
 
@@ -439,12 +374,8 @@ Sink #52
         assert!(parse_pactl_subscribe_line("Event 'change' on sink #0"));
         assert!(parse_pactl_subscribe_line("Event 'change' on source #2"));
         assert!(parse_pactl_subscribe_line("Event 'change' on server #0"));
-        assert!(!parse_pactl_subscribe_line(
-            "Event 'change' on sink-input #44"
-        ));
-        assert!(!parse_pactl_subscribe_line(
-            "Event 'change' on source-output #12"
-        ));
+        assert!(!parse_pactl_subscribe_line("Event 'change' on sink-input #44"));
+        assert!(!parse_pactl_subscribe_line("Event 'change' on source-output #12"));
         assert!(!parse_pactl_subscribe_line("Event 'new' on client #99"));
     }
 

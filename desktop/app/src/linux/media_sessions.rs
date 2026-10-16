@@ -37,11 +37,7 @@ struct PausedForCall {
 impl PausedForCall {
     fn take_valid(&mut self, now: Instant) -> Vec<String> {
         let taken = std::mem::take(&mut self.players);
-        if now.saturating_duration_since(self.paused_at) <= CALL_PAUSE_TTL {
-            taken
-        } else {
-            Vec::new()
-        }
+        if now.saturating_duration_since(self.paused_at) <= CALL_PAUSE_TTL { taken } else { Vec::new() }
     }
 
     fn observe_playing(&mut self, id: &str, now: Instant) {
@@ -91,9 +87,7 @@ impl ArtCache {
 }
 
 fn fnv(bytes: &[u8]) -> u64 {
-    bytes.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| {
-        (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3)
-    })
+    bytes.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, b| (h ^ u64::from(*b)).wrapping_mul(0x0100_0000_01b3))
 }
 
 fn percent_decode(input: &str) -> String {
@@ -103,10 +97,8 @@ fn percent_decode(input: &str) -> String {
     while i < bytes.len() {
         if bytes[i] == b'%'
             && i + 2 < bytes.len()
-            && let (Some(hi), Some(lo)) = (
-                (bytes[i + 1] as char).to_digit(16),
-                (bytes[i + 2] as char).to_digit(16),
-            )
+            && let (Some(hi), Some(lo)) =
+                ((bytes[i + 1] as char).to_digit(16), (bytes[i + 2] as char).to_digit(16))
         {
             out.push(((hi << 4) | lo) as u8);
             i += 3;
@@ -123,11 +115,7 @@ pub(crate) fn resolve_art_file_url(art_url: &str) -> Option<PathBuf> {
     let trimmed = art_url.trim().trim_matches('\'').trim_matches('"').trim();
     let rest = trimmed.strip_prefix("file://")?;
     let decoded = percent_decode(rest);
-    if decoded.trim().is_empty() {
-        None
-    } else {
-        Some(PathBuf::from(decoded))
-    }
+    if decoded.trim().is_empty() { None } else { Some(PathBuf::from(decoded)) }
 }
 
 fn load_art_from_url(art_url: &str) -> Option<(String, Vec<u8>)> {
@@ -161,9 +149,7 @@ where
         return;
     }
     let on_change: OnChange = Box::new(on_change);
-    let spawned = std::thread::Builder::new()
-        .name("media-sessions".into())
-        .spawn(move || run(&on_change));
+    let spawned = std::thread::Builder::new().name("media-sessions".into()).spawn(move || run(&on_change));
     if let Err(e) = spawned {
         tracing::warn!(error = %e, "can't spawn Linux media-sessions watcher");
     }
@@ -176,9 +162,7 @@ fn run(on_change: &OnChange) {
         let players = snapshot(&mut art_cache);
         let should_emit = match &last {
             None => true,
-            Some((prev, prev_at)) => {
-                players_meaningfully_changed(prev, &players, prev_at.elapsed())
-            }
+            Some((prev, prev_at)) => players_meaningfully_changed(prev, &players, prev_at.elapsed()),
         };
         if should_emit {
             on_change(players.clone());
@@ -218,9 +202,7 @@ pub(crate) fn players_meaningfully_changed(
             (Some(_), None) | (None, Some(_)) => return true,
             (Some(old_pos), Some(new_pos)) => {
                 let expected = if a.playing {
-                    old_pos
-                        .saturating_add(elapsed_ms)
-                        .min(a.duration.unwrap_or(u64::MAX))
+                    old_pos.saturating_add(elapsed_ms).min(a.duration.unwrap_or(u64::MAX))
                 } else {
                     old_pos
                 };
@@ -344,29 +326,11 @@ pub(crate) fn parse_playerctl_line(line: &str) -> Option<RawMprisPlayer> {
     if raw_title.is_empty() {
         return None;
     }
-    let artist = fields
-        .get(4)
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .map(str::to_owned);
-    let album = fields
-        .get(5)
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .map(str::to_owned);
-    let duration_us = fields
-        .get(6)
-        .and_then(|s| s.trim().parse::<i64>().ok())
-        .filter(|&v| v > 0);
-    let position_us = fields
-        .get(7)
-        .and_then(|s| s.trim().parse::<i64>().ok())
-        .filter(|&v| v >= 0);
-    let art_url = fields
-        .get(8)
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .map(str::to_owned);
+    let artist = fields.get(4).map(|s| s.trim()).filter(|s| !s.is_empty()).map(str::to_owned);
+    let album = fields.get(5).map(|s| s.trim()).filter(|s| !s.is_empty()).map(str::to_owned);
+    let duration_us = fields.get(6).and_then(|s| s.trim().parse::<i64>().ok()).filter(|&v| v > 0);
+    let position_us = fields.get(7).and_then(|s| s.trim().parse::<i64>().ok()).filter(|&v| v >= 0);
+    let art_url = fields.get(8).map(|s| s.trim()).filter(|s| !s.is_empty()).map(str::to_owned);
 
     let duration = duration_us.map(|us| (us as u64) / 1000).filter(|&ms| ms > 0);
     let position = position_us.map(|us| {
@@ -376,10 +340,8 @@ pub(crate) fn parse_playerctl_line(line: &str) -> Option<RawMprisPlayer> {
 
     let mut app = readable_player_app(player_name);
     let mut title = raw_title.to_owned();
-    if matches!(
-        app.as_str(),
-        "Firefox" | "Chrome" | "Chromium" | "Brave" | "Edge"
-    ) && let Some((clean, site)) = title.rsplit_once(" on ")
+    if matches!(app.as_str(), "Firefox" | "Chrome" | "Chromium" | "Brave" | "Edge")
+        && let Some((clean, site)) = title.rsplit_once(" on ")
     {
         let site = site.trim();
         let clean = clean.trim();
@@ -390,12 +352,7 @@ pub(crate) fn parse_playerctl_line(line: &str) -> Option<RawMprisPlayer> {
     }
 
     let playing = status.eq_ignore_ascii_case("Playing");
-    let mut actions = vec![
-        "play".to_owned(),
-        "pause".to_owned(),
-        "next".to_owned(),
-        "previous".to_owned(),
-    ];
+    let mut actions = vec!["play".to_owned(), "pause".to_owned(), "next".to_owned(), "previous".to_owned()];
     if duration.is_some() {
         actions.push("seek".to_owned());
     }
@@ -447,11 +404,7 @@ fn extract_gvariant_string(text: &str, key: &str) -> Option<String> {
     let after_quote = &inside[quote.len_utf8()..];
     let end_quote = after_quote.find(quote)?;
     let val = after_quote[..end_quote].trim();
-    if val.is_empty() {
-        None
-    } else {
-        Some(val.to_owned())
-    }
+    if val.is_empty() { None } else { Some(val.to_owned()) }
 }
 
 fn extract_gvariant_i64(text: &str, key: &str) -> Option<i64> {
@@ -479,9 +432,7 @@ fn extract_gvariant_bool(text: &str, key: &str) -> Option<bool> {
 }
 
 pub(crate) fn parse_gdbus_player_properties(bus_name: &str, gdbus_output: &str) -> Option<RawMprisPlayer> {
-    let short_id = bus_name
-        .strip_prefix("org.mpris.MediaPlayer2.")
-        .unwrap_or(bus_name);
+    let short_id = bus_name.strip_prefix("org.mpris.MediaPlayer2.").unwrap_or(bus_name);
     if is_excluded_player(short_id) {
         return None;
     }
@@ -633,9 +584,7 @@ pub fn command(player: &str, action: MediaAction, position: Option<u64>) -> Resu
 
     // Fallback to direct `gdbus` MPRIS2 call when `playerctl` is not installed or fails.
     let target_bus = if player.trim().is_empty() {
-        list_gdbus_mpris_buses()
-            .and_then(|mut b| b.drain(..).next())
-            .ok_or(MediaError::NotFound)?
+        list_gdbus_mpris_buses().and_then(|mut b| b.drain(..).next()).ok_or(MediaError::NotFound)?
     } else {
         mpris_bus_name(player)
     };
@@ -646,9 +595,7 @@ pub fn command(player: &str, action: MediaAction, position: Option<u64>) -> Resu
         MediaAction::Next => gdbus_player_call(&target_bus, "Next", &[]),
         MediaAction::Previous => gdbus_player_call(&target_bus, "Previous", &[]),
         MediaAction::Seek => {
-            let target_us = i64::try_from(position.unwrap_or(0))
-                .unwrap_or(0)
-                .saturating_mul(1000);
+            let target_us = i64::try_from(position.unwrap_or(0)).unwrap_or(0).saturating_mul(1000);
             let offset_str = target_us.to_string();
             gdbus_player_call(&target_bus, "Seek", &[&offset_str])
         }
@@ -656,9 +603,7 @@ pub fn command(player: &str, action: MediaAction, position: Option<u64>) -> Resu
     if ok {
         Ok(())
     } else {
-        Err(MediaError::Failed(format!(
-            "MPRIS command {action:?} failed for {target_bus}"
-        )))
+        Err(MediaError::Failed(format!("MPRIS command {action:?} failed for {target_bus}")))
     }
 }
 
@@ -667,12 +612,7 @@ pub fn pause_for_call() {
     let mut paused = Vec::new();
 
     if let Ok(out) = Command::new("playerctl")
-        .args([
-            "--all-players",
-            "status",
-            "--format",
-            "{{playerName}}\t{{status}}",
-        ])
+        .args(["--all-players", "status", "--format", "{{playerName}}\t{{status}}"])
         .output()
         && out.status.success()
     {
@@ -681,9 +621,7 @@ pub fn pause_for_call() {
             if let Some((name, status)) = line.split_once('\t') {
                 let name = name.trim();
                 if !is_excluded_player(name) && status.trim().eq_ignore_ascii_case("Playing") {
-                    let _ = Command::new("playerctl")
-                        .args(["--player", name, "pause"])
-                        .status();
+                    let _ = Command::new("playerctl").args(["--player", name, "pause"]).status();
                     paused.push(name.to_owned());
                 }
             }
@@ -702,10 +640,7 @@ pub fn pause_for_call() {
     if !paused.is_empty()
         && let Ok(mut guard) = PAUSED_FOR_CALL.lock()
     {
-        *guard = Some(PausedForCall {
-            players: paused,
-            paused_at: Instant::now(),
-        });
+        *guard = Some(PausedForCall { players: paused, paused_at: Instant::now() });
     }
 }
 
@@ -717,10 +652,8 @@ pub fn resume_after_call() {
         .and_then(|mut g| g.as_mut().map(|p| p.take_valid(Instant::now())))
         .unwrap_or_default();
     for player in players {
-        let ok = Command::new("playerctl")
-            .args(["--player", &player, "play"])
-            .status()
-            .is_ok_and(|s| s.success());
+        let ok =
+            Command::new("playerctl").args(["--player", &player, "play"]).status().is_ok_and(|s| s.success());
         if !ok {
             let bus = mpris_bus_name(&player);
             let _ = gdbus_player_call(&bus, "Play", &[]);
@@ -802,27 +735,15 @@ mod tests {
         let old = vec![sample_player("spotify", true, Some(10_000))];
         // 2 seconds later, position is 12_100 ms (within 1500 ms of expected 12_000 ms)
         let normal_tick = vec![sample_player("spotify", true, Some(12_100))];
-        assert!(!players_meaningfully_changed(
-            &old,
-            &normal_tick,
-            Duration::from_secs(2)
-        ));
+        assert!(!players_meaningfully_changed(&old, &normal_tick, Duration::from_secs(2)));
 
         // User seeked forward to 45_000 ms
         let seeked = vec![sample_player("spotify", true, Some(45_000))];
-        assert!(players_meaningfully_changed(
-            &old,
-            &seeked,
-            Duration::from_secs(2)
-        ));
+        assert!(players_meaningfully_changed(&old, &seeked, Duration::from_secs(2)));
 
         // Playback paused
         let paused = vec![sample_player("spotify", false, Some(12_000))];
-        assert!(players_meaningfully_changed(
-            &old,
-            &paused,
-            Duration::from_secs(2)
-        ));
+        assert!(players_meaningfully_changed(&old, &paused, Duration::from_secs(2)));
     }
 
     #[test]
@@ -838,10 +759,7 @@ mod tests {
     #[test]
     fn paused_for_call_expires_after_ttl() {
         let start = Instant::now();
-        let mut state = PausedForCall {
-            players: vec!["spotify".to_string()],
-            paused_at: start,
-        };
+        let mut state = PausedForCall { players: vec!["spotify".to_string()], paused_at: start };
         let expired = state.take_valid(start + CALL_PAUSE_TTL + Duration::from_secs(1));
         assert!(expired.is_empty());
     }
@@ -849,10 +767,8 @@ mod tests {
     #[test]
     fn paused_for_call_returns_players_within_ttl() {
         let start = Instant::now();
-        let mut state = PausedForCall {
-            players: vec!["spotify".to_string(), "vlc".to_string()],
-            paused_at: start,
-        };
+        let mut state =
+            PausedForCall { players: vec!["spotify".to_string(), "vlc".to_string()], paused_at: start };
         let valid = state.take_valid(start + Duration::from_secs(10));
         assert_eq!(valid, vec!["spotify".to_string(), "vlc".to_string()]);
         assert!(state.take_valid(start + Duration::from_secs(11)).is_empty());

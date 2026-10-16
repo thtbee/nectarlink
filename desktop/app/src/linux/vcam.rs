@@ -143,11 +143,8 @@ fn run_modprobe(args: &[&str]) -> Result<(), String> {
             Ok(out) if out.status.success() => return Ok(()),
             Ok(out) => {
                 let stderr = String::from_utf8_lossy(&out.stderr).trim().to_owned();
-                last_err = if stderr.is_empty() {
-                    format!("{bin} exited with {}", out.status)
-                } else {
-                    stderr
-                };
+                last_err =
+                    if stderr.is_empty() { format!("{bin} exited with {}", out.status) } else { stderr };
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
             Err(e) => last_err = e.to_string(),
@@ -171,11 +168,7 @@ pub fn register_hklm() -> Result<(), String> {
         format!("options v4l2loopback exclusive_caps=1 card_label=\"{FRIENDLY_NAME}\"\n"),
     );
 
-    run_modprobe(&[
-        "v4l2loopback",
-        "exclusive_caps=1",
-        &format!("card_label={FRIENDLY_NAME}"),
-    ])
+    run_modprobe(&["v4l2loopback", "exclusive_caps=1", &format!("card_label={FRIENDLY_NAME}")])
 }
 
 /// Removes persistent `v4l2loopback` config files and unloads the kernel module.
@@ -252,9 +245,7 @@ pub struct VirtualCameraHandle {
 
 impl std::fmt::Debug for VirtualCameraHandle {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("VirtualCameraHandle")
-            .field("running", &!self.stop.load(Ordering::Relaxed))
-            .finish()
+        f.debug_struct("VirtualCameraHandle").field("running", &!self.stop.load(Ordering::Relaxed)).finish()
     }
 }
 
@@ -329,12 +320,11 @@ fn v4l2_worker_loop(stop: &AtomicBool) {
 
         if v4l2_file.is_none()
             && let Some(dev_path) = find_v4l2loopback_device()
+            && let Ok(file) = OpenOptions::new().read(true).write(true).open(&dev_path)
         {
-            if let Ok(file) = OpenOptions::new().read(true).write(true).open(&dev_path) {
-                v4l2_file = Some(file);
-                configured_dims = None;
-                last_ts = None;
-            }
+            v4l2_file = Some(file);
+            configured_dims = None;
+            last_ts = None;
         }
 
         let (Some(map), Some(dev)) = (mapping.as_ref(), v4l2_file.as_mut()) else {

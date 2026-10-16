@@ -22,25 +22,13 @@ pub const ARG: &str = "--widget-provider";
 pub const WIDGET_ID: &str = "NectarlinkPhoneStatus";
 
 /// Snapshot of the primary phone's live status for the widget card.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct WidgetState {
     pub connected: bool,
     pub phone_name: String,
     pub battery_level: Option<u8>,
     pub battery_charging: bool,
     pub last_clip_preview: String,
-}
-
-impl Default for WidgetState {
-    fn default() -> Self {
-        Self {
-            connected: false,
-            phone_name: String::new(),
-            battery_level: None,
-            battery_charging: false,
-            last_clip_preview: String::new(),
-        }
-    }
 }
 
 /// Path to `widget-state.json` inside `data_dir`.
@@ -193,11 +181,7 @@ pub fn handle_action_verb(verb: &str, data_dir: Option<&Path>) -> Result<(), Str
     };
 
     if let Some(dir) = data_dir {
-        let req = if action == "open" {
-            Request::Show
-        } else {
-            Request::Task { action: action.to_owned() }
-        };
+        let req = if action == "open" { Request::Show } else { Request::Task { action: action.to_owned() } };
         if crate::launch::queue(dir, &req).is_ok() {
             single_instance::wake(dir);
             return Ok(());

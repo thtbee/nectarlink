@@ -2618,8 +2618,7 @@ fn compute_shelf_items_json(current_device_idx: i32) -> String {
                     if !matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp") {
                         continue;
                     }
-                    let name =
-                        path.file_name().and_then(|f| f.to_str()).unwrap_or(&entry.title).to_owned();
+                    let name = path.file_name().and_then(|f| f.to_str()).unwrap_or(&entry.title).to_owned();
                     let lower_title = entry.title.to_ascii_lowercase();
                     let lower_name = name.to_ascii_lowercase();
                     let is_shot = lower_title.contains("screenshot")
@@ -2719,8 +2718,7 @@ fn compute_shelf_items_json(current_device_idx: i32) -> String {
     } else {
         match crate::win::clipboard::read() {
             crate::win::clipboard::Clip::Text { text: t, .. }
-                if !t.trim().is_empty()
-                    && !nectarlink_core::is_likely_binary_or_corrupted_image_text(&t) =>
+                if !t.trim().is_empty() && !nectarlink_core::is_likely_binary_or_corrupted_image_text(&t) =>
             {
                 serde_json::json!({
                     "id": "",
@@ -3140,9 +3138,7 @@ fn spawn_home_photo_fetch(device: DeviceId) {
 
         let mut needed_ids = Vec::new();
         for cand in [Some(&item), latest_non_shot.as_ref(), latest_shot.as_ref()].into_iter().flatten() {
-            if !crate::photos::thumb_path(device, &cand.id).exists()
-                && !needed_ids.contains(&cand.id)
-            {
+            if !crate::photos::thumb_path(device, &cand.id).exists() && !needed_ids.contains(&cand.id) {
                 needed_ids.push(cand.id.clone());
             }
         }

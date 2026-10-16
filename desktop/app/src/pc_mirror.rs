@@ -8,16 +8,16 @@
 
 #[cfg(windows)]
 use std::mem::{ManuallyDrop, size_of};
-#[cfg(any(windows, target_os = "linux"))]
-use std::time::{Duration, Instant};
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
 };
+#[cfg(any(windows, target_os = "linux"))]
+use std::time::{Duration, Instant};
 
+use nectarlink_core::{DeviceId, KeyMod, MirrorInput, MirrorStart, mirror_keys};
 #[cfg(any(windows, target_os = "linux"))]
 use nectarlink_core::{MirrorConfig, MirrorSend, PacketKind};
-use nectarlink_core::{DeviceId, KeyMod, MirrorInput, MirrorStart, mirror_keys};
 #[cfg(windows)]
 use windows::Win32::{
     Foundation::POINT,
@@ -548,18 +548,18 @@ fn has_h264_sps(data: &[u8]) -> bool {
 #[cfg(target_os = "linux")]
 #[repr(C)]
 struct SEncParamBase {
-    i_usage_type: std::ffi::c_int,      // 0 = CAMERA_VIDEO_REAL_TIME
+    i_usage_type: std::ffi::c_int, // 0 = CAMERA_VIDEO_REAL_TIME
     i_pic_width: std::ffi::c_int,
     i_pic_height: std::ffi::c_int,
     i_target_bitrate: std::ffi::c_int,
-    i_rc_mode: std::ffi::c_int,         // 1 = RC_BITRATE_MODE
+    i_rc_mode: std::ffi::c_int, // 1 = RC_BITRATE_MODE
     f_max_frame_rate: f32,
 }
 
 #[cfg(target_os = "linux")]
 #[repr(C)]
 struct SSourcePicture {
-    i_color_format: std::ffi::c_int,    // 23 = videoFormatI420
+    i_color_format: std::ffi::c_int, // 23 = videoFormatI420
     i_stride: [std::ffi::c_int; 4],
     p_data: [*mut u8; 4],
     i_pic_width: std::ffi::c_int,
@@ -587,7 +587,7 @@ struct SLayerBSInfo {
 struct SFrameBSInfo {
     i_layer_num: std::ffi::c_int,
     s_layer_info: [SLayerBSInfo; 128],
-    e_frame_type: std::ffi::c_int,      // 1 = IDR, 2 = I, 3 = P, 4 = Skip
+    e_frame_type: std::ffi::c_int, // 1 = IDR, 2 = I, 3 = P, 4 = Skip
     i_frame_size_in_bytes: std::ffi::c_int,
     ui_time_stamp: i64,
 }
@@ -595,7 +595,7 @@ struct SFrameBSInfo {
 #[cfg(target_os = "linux")]
 #[repr(C)]
 struct SBitrateInfo {
-    i_layer: std::ffi::c_int,           // 4 = SPATIAL_LAYER_ALL, 0 = SPATIAL_LAYER_0
+    i_layer: std::ffi::c_int, // 4 = SPATIAL_LAYER_ALL, 0 = SPATIAL_LAYER_0
     i_bitrate: std::ffi::c_int,
 }
 
@@ -608,11 +608,7 @@ struct OpenH264EncApi {
 #[cfg(target_os = "linux")]
 unsafe fn dl_sym<T: Copy>(lib: *mut std::ffi::c_void, name: &std::ffi::CStr) -> Option<T> {
     let raw = unsafe { libc::dlsym(lib, name.as_ptr()) };
-    if raw.is_null() {
-        None
-    } else {
-        Some(unsafe { std::mem::transmute_copy(&raw) })
-    }
+    if raw.is_null() { None } else { Some(unsafe { std::mem::transmute_copy(&raw) }) }
 }
 
 #[cfg(target_os = "linux")]
@@ -807,12 +803,7 @@ impl H264Encoder {
             let v_ptr = y_ptr.add(y_size + quarter);
             let pic = SSourcePicture {
                 i_color_format: 23, // videoFormatI420
-                i_stride: [
-                    w as std::ffi::c_int,
-                    (w / 2) as std::ffi::c_int,
-                    (w / 2) as std::ffi::c_int,
-                    0,
-                ],
+                i_stride: [w as std::ffi::c_int, (w / 2) as std::ffi::c_int, (w / 2) as std::ffi::c_int, 0],
                 p_data: [y_ptr, u_ptr, v_ptr, std::ptr::null_mut()],
                 i_pic_width: w as std::ffi::c_int,
                 i_pic_height: h as std::ffi::c_int,
@@ -839,9 +830,7 @@ impl H264Encoder {
             let mut raw = Vec::new();
             for idx in 0..layer_count {
                 let layer = &bs_info.s_layer_info[idx];
-                if layer.p_bs_buf.is_null()
-                    || layer.p_nal_length_in_byte.is_null()
-                    || layer.i_nal_count <= 0
+                if layer.p_bs_buf.is_null() || layer.p_nal_length_in_byte.is_null() || layer.i_nal_count <= 0
                 {
                     continue;
                 }
@@ -1237,11 +1226,13 @@ fn capture_primary_screen(dst_w: u32, dst_h: u32, bgra: &mut Vec<u8>) -> Option<
         bgra.resize(needed, 0);
 
         for y in 0..dst_h {
-            let sy = ((u64::from(y) * u64::from(src_h)) / u64::from(dst_h)).min(u64::from(src_h - 1)) as usize;
+            let sy =
+                ((u64::from(y) * u64::from(src_h)) / u64::from(dst_h)).min(u64::from(src_h - 1)) as usize;
             let src_row = (*img).data.add(sy * bytes_per_line);
             let dst_row_offset = (y as usize) * (dst_w as usize) * 4;
             for x in 0..dst_w {
-                let sx = ((u64::from(x) * u64::from(src_w)) / u64::from(dst_w)).min(u64::from(src_w - 1)) as usize;
+                let sx =
+                    ((u64::from(x) * u64::from(src_w)) / u64::from(dst_w)).min(u64::from(src_w - 1)) as usize;
                 let px = src_row.add(sx * bpp);
                 let dst_idx = dst_row_offset + (x as usize) * 4;
                 bgra[dst_idx] = *px;

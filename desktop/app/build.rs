@@ -289,8 +289,8 @@ fn main() {
     {
         println!("cargo:rustc-link-arg=-fuse-ld=bfd");
         println!("cargo:rustc-link-lib=Qt6Quick");
-        let sysroot_lib = std::path::Path::new(&manifest_dir)
-            .join("../../.qt6-sysroot/usr/lib/x86_64-linux-gnu");
+        let sysroot_lib =
+            std::path::Path::new(&manifest_dir).join("../../.qt6-sysroot/usr/lib/x86_64-linux-gnu");
         if let Ok(canon) = sysroot_lib.canonicalize() {
             println!("cargo:rustc-link-search=native={}", canon.display());
             println!("cargo:rustc-link-arg=-Wl,--disable-new-dtags");

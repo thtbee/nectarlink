@@ -135,7 +135,8 @@ static FOLDER_SYNC_RULES: std::sync::OnceLock<std::sync::Mutex<Vec<crate::folder
     std::sync::OnceLock::new();
 static AUTOMATION_RULES: std::sync::OnceLock<std::sync::Mutex<Vec<crate::automations::AutomationRule>>> =
     std::sync::OnceLock::new();
-static WINDOW_GEOMETRY: std::sync::Mutex<(Option<i32>, Option<i32>, u32, u32, bool)> =
+type WindowGeometryState = (Option<i32>, Option<i32>, u32, u32, bool);
+static WINDOW_GEOMETRY: std::sync::Mutex<WindowGeometryState> =
     std::sync::Mutex::new((None, None, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, false));
 
 pub fn clipboard_auto_copy_received_files() -> bool {
@@ -275,20 +276,9 @@ pub fn window_geometry() -> (Option<i32>, Option<i32>, u32, u32, bool) {
     *WINDOW_GEOMETRY.lock().unwrap_or_else(|e| e.into_inner())
 }
 
-pub fn set_window_geometry(
-    x: Option<i32>,
-    y: Option<i32>,
-    width: u32,
-    height: u32,
-    maximized: bool,
-) {
-    *WINDOW_GEOMETRY.lock().unwrap_or_else(|e| e.into_inner()) = (
-        x,
-        y,
-        width.max(MIN_WINDOW_WIDTH),
-        height.max(MIN_WINDOW_HEIGHT),
-        maximized,
-    );
+pub fn set_window_geometry(x: Option<i32>, y: Option<i32>, width: u32, height: u32, maximized: bool) {
+    *WINDOW_GEOMETRY.lock().unwrap_or_else(|e| e.into_inner()) =
+        (x, y, width.max(MIN_WINDOW_WIDTH), height.max(MIN_WINDOW_HEIGHT), maximized);
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -222,11 +222,7 @@ pub(crate) fn format_monitor_source_name(default_sink: Option<&str>) -> String {
     let Some(trimmed) = default_sink.map(str::trim).filter(|s| !s.is_empty()) else {
         return "@DEFAULT_MONITOR@".to_owned();
     };
-    if trimmed.ends_with(".monitor") {
-        trimmed.to_owned()
-    } else {
-        format!("{trimmed}.monitor")
-    }
+    if trimmed.ends_with(".monitor") { trimmed.to_owned() } else { format!("{trimmed}.monitor") }
 }
 
 #[cfg(target_os = "linux")]
@@ -287,13 +283,7 @@ fn capture_and_stream_once() -> Result<(), String> {
         .spawn()
         .or_else(|_| {
             Command::new("pw-record")
-                .args([
-                    "--raw",
-                    "--format=f32",
-                    "--rate=48000",
-                    "--channels=2",
-                    "-",
-                ])
+                .args(["--raw", "--format=f32", "--rate=48000", "--channels=2", "-"])
                 .stdout(Stdio::piped())
                 .stderr(Stdio::null())
                 .spawn()
@@ -329,8 +319,8 @@ fn capture_and_stream_once() -> Result<(), String> {
         if stdout.read_exact(&mut raw_buf).is_err() {
             break;
         }
-        for (dst, chunk) in floats.iter_mut().zip(raw_buf.chunks_exact(4)) {
-            *dst = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+        for (dst, &chunk) in floats.iter_mut().zip(raw_buf.as_chunks::<4>().0) {
+            *dst = f32::from_le_bytes(chunk);
         }
         let has_signal = floats.iter().any(|&s| s.is_finite() && s.abs() > 1e-5);
         let pcm_bytes = if has_signal {
@@ -540,10 +530,7 @@ mod tests {
             format_monitor_source_name(Some("alsa_output.pci-0000_00_1f.3.analog-stereo\n")),
             "alsa_output.pci-0000_00_1f.3.analog-stereo.monitor"
         );
-        assert_eq!(
-            format_monitor_source_name(Some("alsa_output.pci.monitor")),
-            "alsa_output.pci.monitor"
-        );
+        assert_eq!(format_monitor_source_name(Some("alsa_output.pci.monitor")), "alsa_output.pci.monitor");
         assert_eq!(format_monitor_source_name(Some("  ")), "@DEFAULT_MONITOR@");
         assert_eq!(format_monitor_source_name(None), "@DEFAULT_MONITOR@");
     }

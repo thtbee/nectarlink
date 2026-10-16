@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 use std::ffi::{CStr, c_char, c_int, c_uchar, c_void};
 use std::io::{Error, ErrorKind, Result};
 use std::ptr;
@@ -66,22 +67,13 @@ struct OpenH264BufferInfo {
 
 unsafe fn load_sym<T: Copy>(lib: *mut c_void, name: &CStr) -> Option<T> {
     let raw = unsafe { libc::dlsym(lib, name.as_ptr()) };
-    if raw.is_null() {
-        None
-    } else {
-        Some(unsafe { std::mem::transmute_copy(&raw) })
-    }
+    if raw.is_null() { None } else { Some(unsafe { std::mem::transmute_copy(&raw) }) }
 }
 
 fn avcodec_api() -> Option<&'static AvCodecApi> {
     static API: OnceLock<Option<AvCodecApi>> = OnceLock::new();
     API.get_or_init(|| unsafe {
-        let avutil_candidates = [
-            c"libavutil.so.58",
-            c"libavutil.so.59",
-            c"libavutil.so.57",
-            c"libavutil.so",
-        ];
+        let avutil_candidates = [c"libavutil.so.58", c"libavutil.so.59", c"libavutil.so.57", c"libavutil.so"];
         let mut avutil = ptr::null_mut();
         for name in avutil_candidates {
             avutil = libc::dlopen(name.as_ptr(), libc::RTLD_NOW | libc::RTLD_GLOBAL);
@@ -93,12 +85,8 @@ fn avcodec_api() -> Option<&'static AvCodecApi> {
             return None;
         }
 
-        let avcodec_candidates = [
-            c"libavcodec.so.60",
-            c"libavcodec.so.61",
-            c"libavcodec.so.59",
-            c"libavcodec.so",
-        ];
+        let avcodec_candidates =
+            [c"libavcodec.so.60", c"libavcodec.so.61", c"libavcodec.so.59", c"libavcodec.so"];
         let mut avcodec = ptr::null_mut();
         for name in avcodec_candidates {
             avcodec = libc::dlopen(name.as_ptr(), libc::RTLD_NOW | libc::RTLD_LOCAL);
@@ -134,11 +122,7 @@ fn avcodec_api() -> Option<&'static AvCodecApi> {
 fn openh264_api() -> Option<&'static OpenH264Api> {
     static API: OnceLock<Option<OpenH264Api>> = OnceLock::new();
     API.get_or_init(|| unsafe {
-        let candidates = [
-            c"libopenh264.so.7",
-            c"libopenh264.so.6",
-            c"libopenh264.so",
-        ];
+        let candidates = [c"libopenh264.so.7", c"libopenh264.so.6", c"libopenh264.so"];
         let mut lib = ptr::null_mut();
         for name in candidates {
             lib = libc::dlopen(name.as_ptr(), libc::RTLD_NOW | libc::RTLD_LOCAL);
@@ -152,10 +136,7 @@ fn openh264_api() -> Option<&'static OpenH264Api> {
         Some(OpenH264Api {
             create_decoder: load_sym(lib, c"WelsCreateDecoder")?,
             destroy_decoder: load_sym(lib, c"WelsDestroyDecoder")?,
-            initialize: load_sym(
-                lib,
-                c"_ZN7WelsDec12CWelsDecoder10InitializeEPK19TagSVCDecodingParam",
-            )?,
+            initialize: load_sym(lib, c"_ZN7WelsDec12CWelsDecoder10InitializeEPK19TagSVCDecodingParam")?,
             uninitialize: load_sym(lib, c"_ZN7WelsDec12CWelsDecoder12UninitializeEv")?,
             decode_frame_no_delay: load_sym(
                 lib,
@@ -167,14 +148,8 @@ fn openh264_api() -> Option<&'static OpenH264Api> {
 }
 
 enum Backend {
-    AvCodec {
-        ctx: *mut c_void,
-        pkt: *mut c_void,
-        frame: *mut c_void,
-    },
-    OpenH264 {
-        dec: *mut c_void,
-    },
+    AvCodec { ctx: *mut c_void, pkt: *mut c_void, frame: *mut c_void },
+    OpenH264 { dec: *mut c_void },
 }
 
 // SAFETY: Decoder is owned and used exclusively by a single decode worker thread at a time.
@@ -238,29 +213,23 @@ impl Decoder {
 
     pub fn new_for_codec(codec: &str) -> Result<Decoder> {
         ensure_mf_started()?;
-        let (codec_name, c_name) =
-            if codec.eq_ignore_ascii_case("hevc") || codec.eq_ignore_ascii_case("h265") {
-                ("hevc", c"hevc")
-            } else if codec.eq_ignore_ascii_case("av1") {
-                ("av1", c"av1")
-            } else {
-                ("h264", c"h264")
-            };
+        let (codec_name, c_name) = if codec.eq_ignore_ascii_case("hevc") || codec.eq_ignore_ascii_case("h265")
+        {
+            ("hevc", c"hevc")
+        } else if codec.eq_ignore_ascii_case("av1") {
+            ("av1", c"av1")
+        } else {
+            ("h264", c"h264")
+        };
 
         if let Some(backend) = Self::try_new_avcodec(c_name) {
-            return Ok(Decoder {
-                codec_name,
-                backend,
-            });
+            return Ok(Decoder { codec_name, backend });
         }
 
         if codec_name == "h264"
             && let Some(backend) = Self::try_new_openh264()
         {
-            return Ok(Decoder {
-                codec_name,
-                backend,
-            });
+            return Ok(Decoder { codec_name, backend });
         }
 
         Err(Error::new(
@@ -344,8 +313,7 @@ impl Decoder {
     }
 
     fn decode_openh264(dec: *mut c_void, data: &[u8]) -> Result<Vec<Picture>> {
-        let api = openh264_api()
-            .ok_or_else(|| Error::new(ErrorKind::Unsupported, "OpenH264 unavailable"))?;
+        let api = openh264_api().ok_or_else(|| Error::new(ErrorKind::Unsupported, "OpenH264 unavailable"))?;
         let mut pictures = Vec::new();
         // OpenH264's DecodeFrameNoDelay processes one NAL or a full access unit; feeding each
         // Annex-B NAL unit in order guarantees SPS, PPS, SEI, and IDR/slice NALs in a single
@@ -373,8 +341,7 @@ impl Decoder {
                     && !dst[0].is_null()
                     && !dst[1].is_null()
                     && !dst[2].is_null()
-                {
-                    if let Some(pic) = i420_to_nv12_picture(
+                    && let Some(pic) = i420_to_nv12_picture(
                         dst[0],
                         dst[1],
                         dst[2],
@@ -383,9 +350,9 @@ impl Decoder {
                         info.y_stride.max(info.width) as usize,
                         info.uv_stride.max(info.width / 2) as usize,
                         Colors::default(),
-                    ) {
-                        pictures.push(pic);
-                    }
+                    )
+                {
+                    pictures.push(pic);
                 }
             }
         }
@@ -398,8 +365,8 @@ impl Decoder {
         frame: *mut c_void,
         data: &[u8],
     ) -> Result<Vec<Picture>> {
-        let api = avcodec_api()
-            .ok_or_else(|| Error::new(ErrorKind::Unsupported, "libavcodec unavailable"))?;
+        let api =
+            avcodec_api().ok_or_else(|| Error::new(ErrorKind::Unsupported, "libavcodec unavailable"))?;
         unsafe {
             let alloc_rc = (api.av_new_packet)(pkt, data.len() as c_int);
             if alloc_rc < 0 {
@@ -498,8 +465,7 @@ fn split_annexb_nals(data: &[u8]) -> Vec<&[u8]> {
 unsafe fn extract_avframe_picture(frame: *const c_void) -> Option<Picture> {
     unsafe {
         let data = ptr::slice_from_raw_parts(frame as *const *const u8, 8).as_ref()?;
-        let linesize =
-            ptr::slice_from_raw_parts(frame.byte_add(0x40) as *const c_int, 8).as_ref()?;
+        let linesize = ptr::slice_from_raw_parts(frame.byte_add(0x40) as *const c_int, 8).as_ref()?;
         let width = *(frame.byte_add(0x68) as *const c_int);
         let height = *(frame.byte_add(0x6c) as *const c_int);
         let format = *(frame.byte_add(0x74) as *const c_int);
@@ -540,20 +506,8 @@ unsafe fn extract_avframe_picture(frame: *const c_void) -> Option<Picture> {
         // AV_PIX_FMT_YUV420P = 0, AV_PIX_FMT_YUVJ420P = 12
         if !data[1].is_null() && !data[2].is_null() {
             let uv_stride = linesize[1].max(width / 2) as usize;
-            let colors = Colors {
-                bt601: false,
-                full_range: format == 12,
-            };
-            return i420_to_nv12_picture(
-                data[0],
-                data[1],
-                data[2],
-                w,
-                h,
-                y_stride,
-                uv_stride,
-                colors,
-            );
+            let colors = Colors { bt601: false, full_range: format == 12 };
+            return i420_to_nv12_picture(data[0], data[1], data[2], w, h, y_stride, uv_stride, colors);
         }
         None
     }
@@ -594,14 +548,7 @@ unsafe fn i420_to_nv12_picture(
             }
         }
     }
-    Some(Picture {
-        width: w as u32,
-        height: h as u32,
-        stride: w,
-        plane_rows: h,
-        nv12,
-        colors,
-    })
+    Some(Picture { width: w as u32, height: h as u32, stride: w, plane_rows: h, nv12, colors })
 }
 
 pub fn to_bgrx(picture: &Picture, width: u32, height: u32) -> Vec<u8> {
@@ -610,13 +557,12 @@ pub fn to_bgrx(picture: &Picture, width: u32, height: u32) -> Vec<u8> {
     let stride = picture.stride.max(w);
     let uv_base = stride * picture.plane_rows.max(h);
 
-    let (y_scale, y_bias, c_rv, c_gu, c_gv, c_bu) =
-        match (picture.colors.bt601, picture.colors.full_range) {
-            (false, false) => (298, 16, 459, 55, 136, 541),
-            (false, true) => (256, 0, 403, 48, 120, 475),
-            (true, false) => (298, 16, 409, 100, 208, 516),
-            (true, true) => (256, 0, 359, 88, 183, 454),
-        };
+    let (y_scale, y_bias, c_rv, c_gu, c_gv, c_bu) = match (picture.colors.bt601, picture.colors.full_range) {
+        (false, false) => (298, 16, 459, 55, 136, 541),
+        (false, true) => (256, 0, 403, 48, 120, 475),
+        (true, false) => (298, 16, 409, 100, 208, 516),
+        (true, true) => (256, 0, 359, 88, 183, 454),
+    };
 
     let mut out = vec![0u8; w * h * 4];
     for row in 0..h {
@@ -649,11 +595,11 @@ mod tests {
     use super::*;
 
     const SAMPLE_H264_KEYFRAME_64X64: &[u8] = &[
-        0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0xc0, 0x0a, 0xd9, 0x04, 0x26, 0xc0, 0x44, 0x00, 0x00,
-        0x03, 0x00, 0x04, 0x00, 0x00, 0x03, 0x00, 0xc8, 0x3c, 0x48, 0x99, 0x20, 0x00, 0x00, 0x00,
-        0x01, 0x68, 0xcb, 0x83, 0xcb, 0x20, 0x00, 0x00, 0x01, 0x65, 0x88, 0x84, 0x0a, 0xf1, 0x18,
-        0xa0, 0x00, 0x27, 0xa7, 0x1c, 0x00, 0x04, 0xbe, 0x23, 0x80, 0x00, 0x82, 0xec, 0x9c, 0x9c,
-        0x9d, 0x75, 0xd7, 0x5d, 0x75, 0xd7, 0x5d, 0x75, 0xd7, 0x5e,
+        0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0xc0, 0x0a, 0xd9, 0x04, 0x26, 0xc0, 0x44, 0x00, 0x00, 0x03, 0x00,
+        0x04, 0x00, 0x00, 0x03, 0x00, 0xc8, 0x3c, 0x48, 0x99, 0x20, 0x00, 0x00, 0x00, 0x01, 0x68, 0xcb, 0x83,
+        0xcb, 0x20, 0x00, 0x00, 0x01, 0x65, 0x88, 0x84, 0x0a, 0xf1, 0x18, 0xa0, 0x00, 0x27, 0xa7, 0x1c, 0x00,
+        0x04, 0xbe, 0x23, 0x80, 0x00, 0x82, 0xec, 0x9c, 0x9c, 0x9d, 0x75, 0xd7, 0x5d, 0x75, 0xd7, 0x5d, 0x75,
+        0xd7, 0x5e,
     ];
 
     #[test]
@@ -670,14 +616,11 @@ mod tests {
             stride,
             plane_rows,
             nv12,
-            colors: Colors {
-                bt601: false,
-                full_range: true,
-            },
+            colors: Colors { bt601: false, full_range: true },
         };
         let bgrx = to_bgrx(&pic, width as u32, height as u32);
         assert_eq!(bgrx.len(), width * height * 4);
-        for px in bgrx.chunks_exact(4) {
+        for px in bgrx.as_chunks::<4>().0 {
             assert_eq!(px[0], 128);
             assert_eq!(px[1], 128);
             assert_eq!(px[2], 128);
@@ -697,9 +640,7 @@ mod tests {
     #[test]
     fn decoder_decodes_real_h264_keyframe_immediately() {
         let mut dec = Decoder::new().expect("H.264 decoder should initialize on Linux");
-        let pics = dec
-            .decode(SAMPLE_H264_KEYFRAME_64X64, 0)
-            .expect("H.264 keyframe should decode");
+        let pics = dec.decode(SAMPLE_H264_KEYFRAME_64X64, 0).expect("H.264 keyframe should decode");
         assert_eq!(pics.len(), 1, "expected immediate zero-delay decoded frame");
         let pic = &pics[0];
         assert_eq!(pic.width, 64);

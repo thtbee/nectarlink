@@ -173,7 +173,10 @@ mod keyring {
             get_or_create_wrapping_key().is_ok()
         }
 
-        pub(super) fn protect_with_key(wrapping_key: &[u8; KEY_LEN], plaintext: &[u8]) -> io::Result<Vec<u8>> {
+        pub(super) fn protect_with_key(
+            wrapping_key: &[u8; KEY_LEN],
+            plaintext: &[u8],
+        ) -> io::Result<Vec<u8>> {
             let unbound = UnboundKey::new(&CHACHA20_POLY1305, wrapping_key)
                 .map_err(|_| io::Error::other("invalid wrapping key"))?;
             let key = LessSafeKey::new(unbound);

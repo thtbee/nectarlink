@@ -60,8 +60,7 @@ impl Image {
         match self {
             Image::Png(bytes) => Ok(bytes.clone()),
             Image::Bitmap(dib) => {
-                let bmp =
-                    image::bmp_from_dib(dib).ok_or_else(|| "invalid DIB header".to_string())?;
+                let bmp = image::bmp_from_dib(dib).ok_or_else(|| "invalid DIB header".to_string())?;
                 let decoded = image::decode(&bmp).map_err(|e| e.to_string())?;
                 image::encode_png(&decoded).map_err(|e| e.to_string())
             }
@@ -71,20 +70,14 @@ impl Image {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Clip {
-    Text {
-        text: String,
-        html: Option<String>,
-        rtf: Option<String>,
-    },
+    Text { text: String, html: Option<String>, rtf: Option<String> },
     Image(Image),
     Private,
     Empty,
 }
 
 fn fnv(bytes: &[u8]) -> u64 {
-    bytes.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, &b| {
-        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
-    })
+    bytes.iter().fold(0xcbf2_9ce4_8422_2325_u64, |h, &b| (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3))
 }
 
 pub(crate) fn fingerprint(clip: &Clip) -> Option<Fingerprint> {
@@ -92,11 +85,7 @@ pub(crate) fn fingerprint(clip: &Clip) -> Option<Fingerprint> {
         Clip::Text { text, .. } => {
             let normalized = text.replace("\r\n", "\n");
             let stripped = normalized.trim_end_matches('\n');
-            if stripped.trim().is_empty() {
-                None
-            } else {
-                Some(Fingerprint::Text(fnv(stripped.as_bytes())))
-            }
+            if stripped.trim().is_empty() { None } else { Some(Fingerprint::Text(fnv(stripped.as_bytes()))) }
         }
         Clip::Image(Image::Png(bytes) | Image::Bitmap(bytes)) => {
             if let Ok(bitmap) = image::decode(bytes) {
@@ -142,18 +131,14 @@ fn has_gnome_privacy_hint(targets: &str) -> bool {
 }
 
 fn has_kde_password_hint(targets: &str) -> bool {
-    targets
-        .lines()
-        .any(|line| line.trim().eq_ignore_ascii_case("x-kde-passwordManagerHint"))
+    targets.lines().any(|line| line.trim().eq_ignore_ascii_case("x-kde-passwordManagerHint"))
 }
 
 fn has_mime_target(targets: &str, wanted: &str) -> bool {
     targets.lines().any(|line| {
         let t = line.trim();
         t.eq_ignore_ascii_case(wanted)
-            || t.split(';')
-                .next()
-                .is_some_and(|base| base.trim().eq_ignore_ascii_case(wanted))
+            || t.split(';').next().is_some_and(|base| base.trim().eq_ignore_ascii_case(wanted))
     })
 }
 
@@ -162,9 +147,7 @@ pub(crate) fn is_kde_secret_value(bytes: &[u8]) -> bool {
         Some(end) => &bytes[..end],
         None => bytes,
     };
-    std::str::from_utf8(trimmed)
-        .ok()
-        .is_some_and(|s| s.trim().eq_ignore_ascii_case("secret"))
+    std::str::from_utf8(trimmed).ok().is_some_and(|s| s.trim().eq_ignore_ascii_case("secret"))
 }
 
 /// Starts watching the Linux clipboard on a background thread (`"clipboard"`).
@@ -180,9 +163,7 @@ where
     if !has_display_server() {
         return;
     }
-    let spawned = std::thread::Builder::new()
-        .name("clipboard".into())
-        .spawn( watcher_loop );
+    let spawned = std::thread::Builder::new().name("clipboard".into()).spawn(watcher_loop);
     if let Err(e) = spawned {
         tracing::warn!(error = %e, "can't start Linux clipboard watcher");
     }
@@ -193,7 +174,7 @@ fn watcher_loop() {
         std::thread::sleep(POLL_INTERVAL);
         let clip = read();
         if let Some(on_copy) = ON_COPY.get() {
-            let _ = report_if_changed(clip, |c| on_copy(c));
+            let _ = report_if_changed(clip, on_copy);
         }
     }
 }
@@ -207,17 +188,11 @@ where
     if matches!(clip, Clip::Private | Clip::Empty) {
         return false;
     }
-    if let Clip::Text {
-        ref text,
-        ref mut html,
-        ref mut rtf,
-    } = clip
+    if let Clip::Text { ref text, ref mut html, ref mut rtf } = clip
         && html.is_none()
         && rtf.is_none()
-        && let Some((prev_text, saved_html, saved_rtf)) = LAST_WRITTEN_RICH
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .clone()
+        && let Some((prev_text, saved_html, saved_rtf)) =
+            LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()).clone()
         && prev_text == *text
     {
         *html = saved_html;
@@ -244,9 +219,7 @@ fn query_os_targets() -> Option<(bool, String)> {
     {
         return Some((true, String::from_utf8_lossy(&out.stdout).into_owned()));
     }
-    if let Ok(out) = Command::new("xclip")
-        .args(["-selection", "clipboard", "-t", "TARGETS", "-o"])
-        .output()
+    if let Ok(out) = Command::new("xclip").args(["-selection", "clipboard", "-t", "TARGETS", "-o"]).output()
         && out.status.success()
     {
         return Some((false, String::from_utf8_lossy(&out.stdout).into_owned()));
@@ -256,16 +229,10 @@ fn query_os_targets() -> Option<(bool, String)> {
 
 fn read_os_mime(wayland: bool, mime: &str) -> Option<Vec<u8>> {
     if wayland {
-        let out = Command::new("wl-paste")
-            .args(["--no-newline", "--type", mime])
-            .output()
-            .ok()?;
+        let out = Command::new("wl-paste").args(["--no-newline", "--type", mime]).output().ok()?;
         out.status.success().then_some(out.stdout)
     } else {
-        let out = Command::new("xclip")
-            .args(["-selection", "clipboard", "-t", mime, "-o"])
-            .output()
-            .ok()?;
+        let out = Command::new("xclip").args(["-selection", "clipboard", "-t", mime, "-o"]).output().ok()?;
         out.status.success().then_some(out.stdout)
     }
 }
@@ -292,9 +259,7 @@ fn clean_valid_utf8_text(bytes: Vec<u8>) -> Option<String> {
 fn read_os_plain_text(wayland: bool) -> Option<String> {
     if wayland {
         for mime in ["text/plain;charset=utf-8", "text/plain", "UTF8_STRING"] {
-            if let Ok(out) = Command::new("wl-paste")
-                .args(["--no-newline", "--type", mime])
-                .output()
+            if let Ok(out) = Command::new("wl-paste").args(["--no-newline", "--type", mime]).output()
                 && out.status.success()
                 && let Some(text) = clean_valid_utf8_text(out.stdout)
             {
@@ -303,9 +268,8 @@ fn read_os_plain_text(wayland: bool) -> Option<String> {
         }
     } else {
         for mime in ["UTF8_STRING", "text/plain;charset=utf-8", "text/plain", "STRING"] {
-            if let Ok(out) = Command::new("xclip")
-                .args(["-selection", "clipboard", "-t", mime, "-o"])
-                .output()
+            if let Ok(out) =
+                Command::new("xclip").args(["-selection", "clipboard", "-t", mime, "-o"]).output()
                 && out.status.success()
                 && let Some(text) = clean_valid_utf8_text(out.stdout)
             {
@@ -322,17 +286,11 @@ fn read_os_plain_text(wayland: bool) -> Option<String> {
     None
 }
 
-fn enrich_with_last_written_rich(
-    text: String,
-    mut html: Option<String>,
-    mut rtf: Option<String>,
-) -> Clip {
+fn enrich_with_last_written_rich(text: String, mut html: Option<String>, mut rtf: Option<String>) -> Clip {
     if html.is_none()
         && rtf.is_none()
-        && let Some((prev_text, saved_html, saved_rtf)) = LAST_WRITTEN_RICH
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .clone()
+        && let Some((prev_text, saved_html, saved_rtf)) =
+            LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()).clone()
         && prev_text == text
     {
         html = saved_html;
@@ -365,14 +323,9 @@ fn read_from_os(check_privacy: bool) -> Option<Clip> {
         {
             return Some(Clip::Image(Image::Png(bytes)));
         }
-        for img_mime in [
-            "image/jpeg",
-            "image/jpg",
-            "image/webp",
-            "image/bmp",
-            "image/x-bmp",
-            "image/x-MS-bmp",
-        ] {
+        for img_mime in
+            ["image/jpeg", "image/jpg", "image/webp", "image/bmp", "image/x-bmp", "image/x-MS-bmp"]
+        {
             if has_mime_target(&targets, img_mime)
                 && let Some(bytes) = read_os_mime(wayland, img_mime)
                 && let Ok(bitmap) = image::decode(&bytes)
@@ -461,33 +414,22 @@ pub fn write_private(text: &str) -> Result<(), String> {
     write_text(text, None, None, true)
 }
 
-fn write_text(
-    text: &str,
-    html: Option<&str>,
-    rtf: Option<&str>,
-    private: bool,
-) -> Result<(), String> {
+fn write_text(text: &str, html: Option<&str>, rtf: Option<&str>, private: bool) -> Result<(), String> {
     let mut html_owned = html.filter(|s| !s.trim().is_empty()).map(str::to_owned);
     let mut rtf_owned = rtf.filter(|s| !s.trim().is_empty()).map(str::to_owned);
 
     if !private
         && html_owned.is_none()
         && rtf_owned.is_none()
-        && let Some((prev_text, prev_h, prev_r)) = LAST_WRITTEN_RICH
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .as_ref()
+        && let Some((prev_text, prev_h, prev_r)) =
+            LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()).as_ref()
         && prev_text == text
     {
         html_owned = prev_h.clone();
         rtf_owned = prev_r.clone();
     }
 
-    let text_clip = Clip::Text {
-        text: text.to_owned(),
-        html: html_owned.clone(),
-        rtf: rtf_owned.clone(),
-    };
+    let text_clip = Clip::Text { text: text.to_owned(), html: html_owned.clone(), rtf: rtf_owned.clone() };
 
     // Update LAST_REPORTED and LAST_WRITTEN_RICH BEFORE touching the OS
     // clipboard so the background watcher never echoes our own write back.
@@ -534,19 +476,13 @@ pub fn write_image(mime: &str, bytes: &[u8]) -> Result<(), String> {
     };
 
     // Record fingerprint BEFORE updating the system clipboard.
-    *LAST_REPORTED.lock().unwrap_or_else(|e| e.into_inner()) =
-        Some(Fingerprint::Image(fnv(&bitmap.bgra)));
+    *LAST_REPORTED.lock().unwrap_or_else(|e| e.into_inner()) = Some(Fingerprint::Image(fnv(&bitmap.bgra)));
     *LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()) = None;
     *LAST_CLIP.lock().unwrap_or_else(|e| e.into_inner()) = Clip::Image(Image::Png(png.clone()));
 
     if !cfg!(test) && has_display_server() {
-        let _ = pipe_to_cmd("wl-copy", &["--type", "image/png"], &png).or_else(|_| {
-            pipe_to_cmd(
-                "xclip",
-                &["-selection", "clipboard", "-t", "image/png"],
-                &png,
-            )
-        });
+        let _ = pipe_to_cmd("wl-copy", &["--type", "image/png"], &png)
+            .or_else(|_| pipe_to_cmd("xclip", &["-selection", "clipboard", "-t", "image/png"], &png));
     }
     Ok(())
 }
@@ -562,11 +498,7 @@ fn pipe_to_cmd(program: &str, args: &[&str], bytes: &[u8]) -> std::io::Result<()
         stdin.write_all(bytes)?;
     }
     let status = child.wait()?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(std::io::Error::other("clipboard helper exited with error"))
-    }
+    if status.success() { Ok(()) } else { Err(std::io::Error::other("clipboard helper exited with error")) }
 }
 
 /// Converts a filesystem path into a percent-encoded `file:///...` URI suitable
@@ -606,13 +538,12 @@ pub(crate) fn from_file_uri(uri: &str) -> Option<PathBuf> {
     }
     let rest = if let Some(after) = trimmed.strip_prefix("file://localhost/") {
         format!("/{after}")
-    } else if let Some(after) = trimmed.strip_prefix("file://") {
+    } else {
+        let after = trimmed.strip_prefix("file://")?;
         if after.is_empty() {
             return None;
         }
         after.to_owned()
-    } else {
-        return None;
     };
 
     let bytes = rest.as_bytes();
@@ -675,19 +606,12 @@ pub fn read_files() -> Option<Vec<PathBuf>> {
         && let Some(bytes) = read_os_mime(is_wayland(), "text/uri-list")
         && let Ok(text) = String::from_utf8(bytes)
     {
-        let parsed: Vec<PathBuf> = parse_uri_list(&text)
-            .into_iter()
-            .filter(|p| p.exists())
-            .collect();
+        let parsed: Vec<PathBuf> = parse_uri_list(&text).into_iter().filter(|p| p.exists()).collect();
         if !parsed.is_empty() {
             return Some(parsed);
         }
     }
-    LAST_FILES
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .clone()
-        .filter(|v| !v.is_empty())
+    LAST_FILES.lock().unwrap_or_else(|e| e.into_inner()).clone().filter(|v| !v.is_empty())
 }
 
 pub fn write_files(paths: &[PathBuf]) -> bool {
@@ -697,15 +621,9 @@ pub fn write_files(paths: &[PathBuf]) -> bool {
     *LAST_FILES.lock().unwrap_or_else(|e| e.into_inner()) = Some(paths.to_vec());
     if !cfg!(test) && has_display_server() {
         let uri_list = format_uri_list(paths);
-        let _ = pipe_to_cmd("wl-copy", &["--type", "text/uri-list"], uri_list.as_bytes()).or_else(
-            |_| {
-                pipe_to_cmd(
-                    "xclip",
-                    &["-selection", "clipboard", "-t", "text/uri-list"],
-                    uri_list.as_bytes(),
-                )
-            },
-        );
+        let _ = pipe_to_cmd("wl-copy", &["--type", "text/uri-list"], uri_list.as_bytes()).or_else(|_| {
+            pipe_to_cmd("xclip", &["-selection", "clipboard", "-t", "text/uri-list"], uri_list.as_bytes())
+        });
     }
     true
 }
@@ -799,11 +717,7 @@ pub(crate) fn decode_cf_rtf(bytes: &[u8]) -> Option<String> {
         None => bytes,
     };
     let s = std::str::from_utf8(trimmed).ok()?.trim();
-    if s.starts_with("{\\rtf") {
-        Some(s.to_string())
-    } else {
-        None
-    }
+    if s.starts_with("{\\rtf") { Some(s.to_string()) } else { None }
 }
 
 #[cfg(test)]
@@ -848,14 +762,7 @@ mod tests {
     fn text_and_rich_text_round_trip_and_preserve_last_written_rich() {
         let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         write("plain clip").expect("write plain");
-        assert_eq!(
-            read(),
-            Clip::Text {
-                text: "plain clip".to_string(),
-                html: None,
-                rtf: None,
-            }
-        );
+        assert_eq!(read(), Clip::Text { text: "plain clip".to_string(), html: None, rtf: None });
 
         let html = "<p><b>Rich</b> clip</p>";
         let rtf = "{\\rtf1\\ansi{\\b Rich} clip}";
@@ -884,22 +791,13 @@ mod tests {
         // Writing private text marks the clipboard as Private and clears rich state.
         write_private("948271").expect("write private");
         assert_eq!(read(), Clip::Private);
-        assert!(
-            LAST_WRITTEN_RICH
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .is_none()
-        );
+        assert!(LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()).is_none());
     }
 
     #[test]
     fn image_png_and_bitmap_round_trip_and_update_fingerprint() {
         let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-        let bmp = Bitmap {
-            width: 4,
-            height: 4,
-            bgra: vec![0x42, 0x84, 0xC6, 0xFF].repeat(16),
-        };
+        let bmp = Bitmap { width: 4, height: 4, bgra: [0x42, 0x84, 0xC6, 0xFF].repeat(16) };
         let png = image::encode_png(&bmp).expect("encode png");
         write_image("image/png", &png).expect("write image");
         let read_png = read_image_png().expect("read_image_png");
@@ -925,10 +823,8 @@ mod tests {
         );
         assert_eq!(from_file_uri("# comment line"), None);
 
-        let paths = vec![
-            PathBuf::from("/tmp/nectarlink_a.txt"),
-            PathBuf::from("/tmp/nectarlink dir/b 🐝.png"),
-        ];
+        let paths =
+            vec![PathBuf::from("/tmp/nectarlink_a.txt"), PathBuf::from("/tmp/nectarlink dir/b 🐝.png")];
         let list = format_uri_list(&paths);
         assert_eq!(parse_uri_list(&list), paths);
 
@@ -946,30 +842,17 @@ mod tests {
         // echo "from phone" back to the phone (even with CRLF differences).
         let mut reported = Vec::new();
         assert!(!report_if_changed(
-            Clip::Text {
-                text: "from phone\r\n".into(),
-                html: None,
-                rtf: None,
-            },
+            Clip::Text { text: "from phone\r\n".into(), html: None, rtf: None },
             |c| reported.push(c)
         ));
         let _ = write("from phone");
-        assert!(!report_if_changed(
-            Clip::Text {
-                text: "from phone".into(),
-                html: None,
-                rtf: None,
-            },
-            |c| reported.push(c)
-        ));
+        assert!(!report_if_changed(Clip::Text { text: "from phone".into(), html: None, rtf: None }, |c| {
+            reported.push(c)
+        }));
         assert!(reported.is_empty());
 
         // When new user content appears on the PC, it is reported exactly once.
-        let user_clip = Clip::Text {
-            text: "copied on PC".into(),
-            html: None,
-            rtf: None,
-        };
+        let user_clip = Clip::Text { text: "copied on PC".into(), html: None, rtf: None };
         assert!(report_if_changed(user_clip.clone(), |c| reported.push(c)));
         assert!(!report_if_changed(user_clip, |c| reported.push(c)));
         assert_eq!(reported.len(), 1);

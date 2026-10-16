@@ -140,9 +140,8 @@ pub fn system_dark() -> bool {
             return false;
         }
     }
-    if let Ok(output) = Command::new("gsettings")
-        .args(["get", "org.gnome.desktop.interface", "color-scheme"])
-        .output()
+    if let Ok(output) =
+        Command::new("gsettings").args(["get", "org.gnome.desktop.interface", "color-scheme"]).output()
         && output.status.success()
     {
         let text = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
@@ -167,9 +166,8 @@ pub fn system_dark() -> bool {
 
 /// Whether desktop animations are turned off.
 pub fn reduce_motion() -> bool {
-    if let Ok(output) = Command::new("gsettings")
-        .args(["get", "org.gnome.desktop.interface", "enable-animations"])
-        .output()
+    if let Ok(output) =
+        Command::new("gsettings").args(["get", "org.gnome.desktop.interface", "enable-animations"]).output()
         && output.status.success()
     {
         let text = String::from_utf8_lossy(&output.stdout);
@@ -187,11 +185,8 @@ pub fn work_area() -> Option<(i32, i32, i32, i32)> {
     {
         let text = String::from_utf8_lossy(&output.stdout);
         if let Some((_, rhs)) = text.split_once('=') {
-            let nums: Vec<i32> = rhs
-                .split(',')
-                .filter_map(|p| p.trim().parse::<i32>().ok())
-                .take(4)
-                .collect();
+            let nums: Vec<i32> =
+                rhs.split(',').filter_map(|p| p.trim().parse::<i32>().ok()).take(4).collect();
             if let [x, y, w, h] = nums.as_slice()
                 && *w > 0
                 && *h > 0
@@ -238,10 +233,7 @@ mod tests {
     #[test]
     fn parses_os_release_pretty_name() {
         let sample = "NAME=\"Ubuntu\"\nPRETTY_NAME=\"Ubuntu 24.04.1 LTS\"\nID=ubuntu\n";
-        assert_eq!(
-            parse_os_release_pretty_name(sample).as_deref(),
-            Some("Ubuntu 24.04.1 LTS")
-        );
+        assert_eq!(parse_os_release_pretty_name(sample).as_deref(), Some("Ubuntu 24.04.1 LTS"));
     }
 
     #[test]

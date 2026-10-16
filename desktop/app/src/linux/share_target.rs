@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Linux Share Target / freedesktop MIME & URI-scheme handler (`nectarlink://`, `file://`, URLs).
 
 #![allow(dead_code)]
@@ -40,11 +41,7 @@ pub fn take_activated_share(data_dir: &Path) -> Option<SharedPayload> {
     let bytes = std::fs::read(&path).ok()?;
     let _ = std::fs::remove_file(&path);
     let payload: SharedPayload = serde_json::from_slice(&bytes).ok()?;
-    if payload.is_empty() {
-        None
-    } else {
-        Some(payload)
-    }
+    if payload.is_empty() { None } else { Some(payload) }
 }
 
 /// Parse command-line targets (`%U` / `%F` from `.desktop` Exec lines, `file://` URIs,
@@ -116,10 +113,10 @@ fn looks_like_local_path(s: &str) -> bool {
 }
 
 fn expand_tilde(s: &str) -> PathBuf {
-    if let Some(rest) = s.strip_prefix("~/") {
-        if let Some(home) = std::env::var_os("HOME") {
-            return PathBuf::from(home).join(rest);
-        }
+    if let Some(rest) = s.strip_prefix("~/")
+        && let Some(home) = std::env::var_os("HOME")
+    {
+        return PathBuf::from(home).join(rest);
     }
     PathBuf::from(s)
 }
@@ -129,12 +126,13 @@ fn percent_decode(s: &str) -> String {
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
     while i < bytes.len() {
-        if bytes[i] == b'%' && i + 2 < bytes.len() {
-            if let (Some(h), Some(l)) = (from_hex(bytes[i + 1]), from_hex(bytes[i + 2])) {
-                out.push((h << 4) | l);
-                i += 3;
-                continue;
-            }
+        if bytes[i] == b'%'
+            && i + 2 < bytes.len()
+            && let (Some(h), Some(l)) = (from_hex(bytes[i + 1]), from_hex(bytes[i + 2]))
+        {
+            out.push((h << 4) | l);
+            i += 3;
+            continue;
         }
         out.push(bytes[i]);
         i += 1;
@@ -175,31 +173,21 @@ mod tests {
 
     #[test]
     fn parse_targets_handles_urls_and_plain_text() {
-        let targets = vec![
-            "https://example.com/article?id=42".to_string(),
-            "Check out this article".to_string(),
-        ];
+        let targets =
+            vec!["https://example.com/article?id=42".to_string(), "Check out this article".to_string()];
         let payload = parse_targets(&targets);
         assert!(payload.files.is_empty());
-        assert_eq!(
-            payload.url.as_deref(),
-            Some("https://example.com/article?id=42")
-        );
+        assert_eq!(payload.url.as_deref(), Some("https://example.com/article?id=42"));
         assert_eq!(payload.text.as_deref(), Some("Check out this article"));
     }
 
     #[test]
     fn parse_targets_handles_nectarlink_scheme_and_local_paths() {
-        let targets = vec![
-            "nectarlink://share?text=hello".to_string(),
-            "/var/tmp/some-archive.tar.gz".to_string(),
-        ];
+        let targets =
+            vec!["nectarlink://share?text=hello".to_string(), "/var/tmp/some-archive.tar.gz".to_string()];
         let payload = parse_targets(&targets);
         assert_eq!(payload.url.as_deref(), Some("nectarlink://share?text=hello"));
-        assert_eq!(
-            payload.files,
-            vec![PathBuf::from("/var/tmp/some-archive.tar.gz")]
-        );
+        assert_eq!(payload.files, vec![PathBuf::from("/var/tmp/some-archive.tar.gz")]);
     }
 
     #[test]

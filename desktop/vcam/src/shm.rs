@@ -218,7 +218,8 @@ impl SharedFrameMapping {
     #[allow(unsafe_code)]
     pub fn open_or_create(name: &str) -> std::io::Result<Self> {
         let path = unix_shm_path(name);
-        let file = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).open(path)?;
+        let file =
+            std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(false).open(path)?;
         file.set_len(TOTAL_MAPPING_BYTES as u64)?;
         Self::map(std::os::fd::OwnedFd::from(file))
     }
@@ -283,7 +284,6 @@ impl SharedFrameMapping {
 }
 
 impl SharedFrameMapping {
-
     fn ensure_initialized(&self) {
         let h = self.header();
         if h.magic.load(Ordering::Acquire) != MAGIC {

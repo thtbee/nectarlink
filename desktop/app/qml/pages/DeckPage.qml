@@ -105,7 +105,7 @@ Item {
         { id: "shortcut",         group: qsTr("Custom"), label: qsTr("Keyboard shortcut") },
         { id: "open_url",         group: qsTr("Custom"), label: qsTr("Open website") },
         { id: "type_text",        group: qsTr("Custom"), label: qsTr("Type text snippet") },
-        { id: "launch_app",       group: qsTr("Apps"),   label: qsTr("Launch application (.exe / .lnk)") },
+        { id: "launch_app",       group: qsTr("Apps"),   label: Qt.platform.os === "linux" ? qsTr("Launch application (.desktop / binary)") : qsTr("Launch application (.exe / .lnk)") },
         { id: "run_command",      group: qsTr("Apps"),   label: qsTr("Run shell command") }
     ]
 
@@ -144,7 +144,9 @@ Item {
     FileDialog {
         id: appFilePicker
         title: qsTr("Choose an application or shortcut")
-        nameFilters: [qsTr("Applications and shortcuts (*.exe *.lnk)")]
+        nameFilters: Qt.platform.os === "linux"
+            ? [qsTr("Applications and launchers (*.desktop *.AppImage *.sh *)"), qsTr("All files (*)")]
+            : [qsTr("Applications and shortcuts (*.exe *.lnk)")]
         onAccepted: {
             const localPath = DeckController.urlToLocalPath(selectedFile.toString())
             if (localPath.length > 0) {
@@ -152,7 +154,7 @@ Item {
                 if (!editorSheet.labelCustomized || editorSheet.tileLabel.length === 0 || editorSheet.tileLabel === qsTr("Launch app")) {
                     const parts = localPath.split(/[\\/]/)
                     const file = parts[parts.length - 1] || ""
-                    const stem = file.replace(/\.(exe|lnk)$/i, "")
+                    const stem = file.replace(/\.(exe|lnk|desktop|appimage|sh)$/i, "")
                     if (stem.length > 0)
                         editorSheet.tileLabel = stem
                 }
@@ -755,7 +757,7 @@ Item {
                     text: editorSheet.actionKind === "shortcut" ? qsTr("Key (e.g. c, v, z, f5, tab, enter, space, escape, up, down):")
                         : editorSheet.actionKind === "open_url" ? qsTr("Website address (https://…):")
                         : editorSheet.actionKind === "type_text" ? qsTr("Text snippet to type:")
-                        : editorSheet.actionKind === "launch_app" ? qsTr("Application or shortcut path (.exe or .lnk):")
+                        : editorSheet.actionKind === "launch_app" ? (Qt.platform.os === "linux" ? qsTr("Application or launcher path (/usr/bin/…, .desktop, .AppImage, or .sh):") : qsTr("Application or shortcut path (.exe or .lnk):"))
                         : qsTr("Shell command to run on this PC:")
                 }
 

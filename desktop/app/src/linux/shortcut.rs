@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Linux file-manager "Send to" integration and `.lnk`-compatible shortcut metadata.
 //
 // `crate::send_to` reconciles per-device `<Name>.lnk` files in `send_to_dir()`.
@@ -48,12 +49,7 @@ pub fn write(path: &Path, shortcut: &Shortcut) -> Result<()> {
          X-NectarLink-Target={}\n\
          X-NectarLink-Args={}\n\
          X-NectarLink-Comment={}\n",
-        shortcut.description,
-        target,
-        shortcut.arguments,
-        target,
-        shortcut.arguments,
-        shortcut.description,
+        shortcut.description, target, shortcut.arguments, target, shortcut.arguments, shortcut.description,
     );
     std::fs::write(path, content)?;
 
@@ -67,10 +63,10 @@ pub fn write(path: &Path, shortcut: &Shortcut) -> Result<()> {
         }
     }
 
-    if let (Some(parent), Some(real_send_to)) = (path.parent(), send_to_dir()) {
-        if parent == real_send_to {
-            let _ = sync_file_manager_menus(parent);
-        }
+    if let (Some(parent), Some(real_send_to)) = (path.parent(), send_to_dir())
+        && parent == real_send_to
+    {
+        let _ = sync_file_manager_menus(parent);
     }
 
     Ok(())
@@ -102,11 +98,7 @@ fn read_shortcut(path: &Path) -> Option<Shortcut> {
             comment = rest.to_string();
         }
     }
-    Some(Shortcut {
-        target: target?,
-        arguments: args?,
-        description: comment,
-    })
+    Some(Shortcut { target: target?, arguments: args?, description: comment })
 }
 
 /// Resolve the user's Startup / Autostart folder (`~/.config/autostart`).
@@ -142,16 +134,13 @@ fn collect_shortcuts(send_to_dir: &Path) -> Result<Vec<(PathBuf, Shortcut)>> {
     };
     for entry in read_dir.flatten() {
         let path = entry.path();
-        if !path
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("lnk"))
-        {
+        if !path.extension().is_some_and(|e| e.eq_ignore_ascii_case("lnk")) {
             continue;
         }
-        if let Some(sc) = read_shortcut(&path) {
-            if sc.arguments.starts_with("--send-to ") {
-                out.push((path, sc));
-            }
+        if let Some(sc) = read_shortcut(&path)
+            && sc.arguments.starts_with("--send-to ")
+        {
+            out.push((path, sc));
         }
     }
     Ok(out)
@@ -163,13 +152,7 @@ fn extract_device_id(args: &str) -> String {
         if pair[0] == "--send-to" {
             let sanitized: String = pair[1]
                 .chars()
-                .map(|c| {
-                    if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
-                        c
-                    } else {
-                        '_'
-                    }
-                })
+                .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
                 .collect();
             if !sanitized.is_empty() {
                 return sanitized;
@@ -180,16 +163,8 @@ fn extract_device_id(args: &str) -> String {
 }
 
 fn format_menu_label(path: &Path) -> String {
-    let stem = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("Phone")
-        .trim();
-    let with_prefix = if stem.starts_with("Send to ") {
-        stem.to_string()
-    } else {
-        format!("Send to {stem}")
-    };
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("Phone").trim();
+    let with_prefix = if stem.starts_with("Send to ") { stem.to_string() } else { format!("Send to {stem}") };
     if with_prefix.ends_with("(NectarLink)") || with_prefix.contains("(NectarLink ") {
         with_prefix
     } else {
@@ -290,8 +265,7 @@ pub fn write_file_manager_integrations(
         for entry in rd.flatten() {
             let p = entry.path();
             if let Some(name) = p.file_name().and_then(|s| s.to_str()) {
-                let is_nectarlink =
-                    name.ends_with("(NectarLink)") || name.contains("(NectarLink ");
+                let is_nectarlink = name.ends_with("(NectarLink)") || name.contains("(NectarLink ");
                 if is_nectarlink && !desired_nautilus.contains(name) {
                     let _ = std::fs::remove_file(&p);
                 }
@@ -304,13 +278,12 @@ pub fn write_file_manager_integrations(
         if let Ok(rd) = std::fs::read_dir(dir) {
             for entry in rd.flatten() {
                 let p = entry.path();
-                if let Some(name) = p.file_name().and_then(|s| s.to_str()) {
-                    if name.starts_with("nectarlink-send-")
-                        && name.ends_with(".desktop")
-                        && !desired_desktop.contains(name)
-                    {
-                        let _ = std::fs::remove_file(&p);
-                    }
+                if let Some(name) = p.file_name().and_then(|s| s.to_str())
+                    && name.starts_with("nectarlink-send-")
+                    && name.ends_with(".desktop")
+                    && !desired_desktop.contains(name)
+                {
+                    let _ = std::fs::remove_file(&p);
                 }
             }
         }
@@ -335,14 +308,7 @@ mod tests {
         write(&path, &shortcut).unwrap();
         assert_eq!(arguments(&path).as_deref(), Some(shortcut.arguments.as_str()));
         // Replacing works too.
-        write(
-            &path,
-            &Shortcut {
-                arguments: "--send-to def".into(),
-                ..shortcut
-            },
-        )
-        .unwrap();
+        write(&path, &Shortcut { arguments: "--send-to def".into(), ..shortcut }).unwrap();
         assert_eq!(arguments(&path).as_deref(), Some("--send-to def"));
         assert_eq!(arguments(&dir.path().join("missing.lnk")), None);
     }
@@ -366,27 +332,14 @@ mod tests {
             description: "Send to Galaxy S25".to_string(),
         };
 
-        write_file_manager_integrations(
-            tmp.path(),
-            &[(lnk1.clone(), sc1.clone()), (lnk2.clone(), sc2)],
-        )
-        .expect("write integrations");
+        write_file_manager_integrations(tmp.path(), &[(lnk1.clone(), sc1.clone()), (lnk2.clone(), sc2)])
+            .expect("write integrations");
 
-        let nautilus_p1 = tmp
-            .path()
-            .join("nautilus/scripts/Send to Pixel 9 (NectarLink)");
-        let nautilus_p2 = tmp
-            .path()
-            .join("nautilus/scripts/Send to Galaxy S25 (NectarLink)");
-        let kio_p1 = tmp
-            .path()
-            .join("kio/servicemenus/nectarlink-send-pixel9.desktop");
-        let kio_p2 = tmp
-            .path()
-            .join("kio/servicemenus/nectarlink-send-s25.desktop");
-        let act_p1 = tmp
-            .path()
-            .join("file-manager/actions/nectarlink-send-pixel9.desktop");
+        let nautilus_p1 = tmp.path().join("nautilus/scripts/Send to Pixel 9 (NectarLink)");
+        let nautilus_p2 = tmp.path().join("nautilus/scripts/Send to Galaxy S25 (NectarLink)");
+        let kio_p1 = tmp.path().join("kio/servicemenus/nectarlink-send-pixel9.desktop");
+        let kio_p2 = tmp.path().join("kio/servicemenus/nectarlink-send-s25.desktop");
+        let act_p1 = tmp.path().join("file-manager/actions/nectarlink-send-pixel9.desktop");
 
         assert!(nautilus_p1.exists());
         assert!(nautilus_p2.exists());

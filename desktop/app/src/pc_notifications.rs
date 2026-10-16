@@ -164,9 +164,7 @@ pub fn forward_to_phones(app_name: &str, title: &str, text: &str) -> bool {
 pub fn start_listener() {
     LISTENER_STARTED.get_or_init(|| {
         if !cfg!(test) {
-            let _ = std::thread::Builder::new()
-                .name("pc-notifications".into())
-                .spawn(dbus_monitor_loop);
+            let _ = std::thread::Builder::new().name("pc-notifications".into()).spawn(dbus_monitor_loop);
         }
     });
 }
@@ -178,10 +176,7 @@ pub fn start_listener() {}
 #[cfg(target_os = "linux")]
 fn dbus_monitor_loop() {
     let Ok(mut child) = Command::new("dbus-monitor")
-        .args([
-            "--session",
-            "type='method_call',interface='org.freedesktop.Notifications',member='Notify'",
-        ])
+        .args(["--session", "type='method_call',interface='org.freedesktop.Notifications',member='Notify'"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -202,10 +197,8 @@ fn dbus_monitor_loop() {
     for line in reader.lines().map_while(Result::ok) {
         let trimmed = line.trim();
         if trimmed.contains("member=Notify") {
-            if in_notify {
-                if let Some((app, title, body)) = parse_dbus_notify_line(&current_block) {
-                    let _ = forward_pc_toast(&app, &title, &body);
-                }
+            if in_notify && let Some((app, title, body)) = parse_dbus_notify_line(&current_block) {
+                let _ = forward_pc_toast(&app, &title, &body);
             }
             current_block.clear();
             in_notify = true;
@@ -281,11 +274,7 @@ mod tests {
         let parsed = parse_dbus_notify_line(sample);
         assert_eq!(
             parsed,
-            Some((
-                "Firefox".to_string(),
-                "Download complete".to_string(),
-                "ubuntu.iso".to_string()
-            ))
+            Some(("Firefox".to_string(), "Download complete".to_string(), "ubuntu.iso".to_string()))
         );
     }
 

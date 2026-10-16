@@ -377,9 +377,6 @@ mod tests {
         let expected_art = "file:///C:/data/cache/art/a.jpg";
         #[cfg(not(windows))]
         let expected_art = "file:///data/cache/art/a.jpg";
-        assert_eq!(
-            get("art").value::<QString>().map(|s| String::from(&s)),
-            Some(expected_art.into())
-        );
+        assert_eq!(get("art").value::<QString>().map(|s| String::from(&s)), Some(expected_art.into()));
     }
 }

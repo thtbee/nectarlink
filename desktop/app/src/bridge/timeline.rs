@@ -618,10 +618,9 @@ fn describe_entry(
                 parts.push(entry.detail.clone());
             }
             let is_image_ext = exists
-                && Path::new(&primary_path)
-                    .extension()
-                    .and_then(|e| e.to_str())
-                    .is_some_and(|e| matches!(e.to_ascii_lowercase().as_str(), "jpg" | "jpeg" | "png" | "webp" | "gif"));
+                && Path::new(&primary_path).extension().and_then(|e| e.to_str()).is_some_and(|e| {
+                    matches!(e.to_ascii_lowercase().as_str(), "jpg" | "jpeg" | "png" | "webp" | "gif")
+                });
             let thumb = entry.image_data_url.clone().unwrap_or_else(|| {
                 if is_image_ext {
                     return crate::icons::file_url(Path::new(&primary_path));

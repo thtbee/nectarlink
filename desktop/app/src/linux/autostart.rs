@@ -62,8 +62,7 @@ fn is_enabled_in(config_dir: &Path) -> bool {
     };
     !contents.lines().any(|line| {
         let t = line.trim();
-        t.eq_ignore_ascii_case("Hidden=true")
-            || t.eq_ignore_ascii_case("X-GNOME-Autostart-enabled=false")
+        t.eq_ignore_ascii_case("Hidden=true") || t.eq_ignore_ascii_case("X-GNOME-Autostart-enabled=false")
     })
 }
 

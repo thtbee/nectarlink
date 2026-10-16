@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 use std::fs;
 use std::io::Result;
 use std::path::Path;
@@ -23,11 +24,7 @@ pub struct Adapters {
 }
 
 pub fn firewall(_exe: &Path) -> Result<Firewall> {
-    Ok(Firewall {
-        on: false,
-        allowed: true,
-        blocked: false,
-    })
+    Ok(Firewall { on: false, allowed: true, blocked: false })
 }
 
 pub fn networks() -> Result<Vec<Network>> {
@@ -43,10 +40,7 @@ pub fn networks() -> Result<Vec<Network>> {
                 .trim()
                 .to_ascii_lowercase();
             if state == "up" {
-                list.push(Network {
-                    name,
-                    trusted: true,
-                });
+                list.push(Network { name, trusted: true });
             }
         }
     }
@@ -92,8 +86,5 @@ pub fn fix_firewall(_exe: &Path) -> Result<bool> {
 }
 
 pub fn open_firewall_settings() -> bool {
-    Command::new("gufw")
-        .spawn()
-        .or_else(|_| Command::new("firewall-config").spawn())
-        .is_ok()
+    Command::new("gufw").spawn().or_else(|_| Command::new("firewall-config").spawn()).is_ok()
 }

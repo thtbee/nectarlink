@@ -53,12 +53,8 @@ fn socket_path(data_dir: &Path) -> PathBuf {
 /// instance already holds it.
 pub fn acquire(data_dir: &Path) -> io::Result<Instance> {
     fs::create_dir_all(data_dir)?;
-    let lock_file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(lock_path(data_dir))?;
+    let lock_file =
+        OpenOptions::new().read(true).write(true).create(true).truncate(false).open(lock_path(data_dir))?;
 
     // SAFETY: `lock_file` is an open file descriptor owned by this process.
     let rc = unsafe { flock(lock_file.as_raw_fd(), LOCK_EX | LOCK_NB) };

@@ -75,8 +75,7 @@ impl Jitter {
         }
         self.pcm.extend(&data[..usable]);
         if self.pcm.len() > self.max_bytes {
-            let drop =
-                ((self.pcm.len() - self.target_bytes) / self.frame_bytes) * self.frame_bytes;
+            let drop = ((self.pcm.len() - self.target_bytes) / self.frame_bytes) * self.frame_bytes;
             self.pcm.drain(..drop.min(self.pcm.len()));
         }
         if self.pcm.len() >= self.start_bytes {
@@ -119,10 +118,7 @@ impl Jitter {
                 written += self.frame_bytes;
                 produced_frames += 1;
 
-                if stretch
-                    && produced_frames == frames / 2
-                    && written + self.frame_bytes <= total_bytes
-                {
+                if stretch && produced_frames == frames / 2 && written + self.frame_bytes <= total_bytes {
                     if self.pcm.len() >= self.frame_bytes {
                         for (i, b) in next_peek.iter_mut().enumerate() {
                             *b = self.pcm.get(i).copied().unwrap_or(0);
@@ -151,9 +147,7 @@ impl Jitter {
 fn spawn_pcm_sink(rate: u32, channels: u16, device_id: Option<&str>) -> Option<Child> {
     let rate_s = rate.to_string();
     let ch_s = channels.to_string();
-    let dev = device_id
-        .map(str::trim)
-        .filter(|s| !s.is_empty() && *s != "default");
+    let dev = device_id.map(str::trim).filter(|s| !s.is_empty() && *s != "default");
 
     let mut pacat = Command::new("pacat");
     pacat.args([
@@ -167,49 +161,22 @@ fn spawn_pcm_sink(rate: u32, channels: u16, device_id: Option<&str>) -> Option<C
     if let Some(d) = dev {
         pacat.arg(format!("--device={d}"));
     }
-    if let Ok(child) = pacat
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-    {
+    if let Ok(child) = pacat.stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn() {
         return Some(child);
     }
 
     let mut pw = Command::new("pw-play");
-    pw.args([
-        "--raw",
-        "--format=s16",
-        &format!("--rate={rate_s}"),
-        &format!("--channels={ch_s}"),
-    ]);
+    pw.args(["--raw", "--format=s16", &format!("--rate={rate_s}"), &format!("--channels={ch_s}")]);
     if let Some(d) = dev {
         pw.arg(format!("--target={d}"));
     }
     pw.arg("-");
-    if let Ok(child) = pw
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-    {
+    if let Ok(child) = pw.stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn() {
         return Some(child);
     }
 
     Command::new("aplay")
-        .args([
-            "-q",
-            "-t",
-            "raw",
-            "-f",
-            "S16_LE",
-            "-r",
-            &rate_s,
-            "-c",
-            &ch_s,
-            "--buffer-size=1920",
-            "-",
-        ])
+        .args(["-q", "-t", "raw", "-f", "S16_LE", "-r", &rate_s, "-c", &ch_s, "--buffer-size=1920", "-"])
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -229,11 +196,7 @@ impl Player {
         Self::start_for_device(rate, channels, None)
     }
 
-    pub fn start_for_device(
-        rate: u32,
-        channels: u16,
-        device_id: Option<&str>,
-    ) -> Result<Player> {
+    pub fn start_for_device(rate: u32, channels: u16, device_id: Option<&str>) -> Result<Player> {
         let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(64);
         let stop = Arc::new(AtomicBool::new(false));
         let thread_stop = Arc::clone(&stop);
@@ -241,44 +204,38 @@ impl Player {
         let clean_channels = channels.max(1);
         let dev_owned = device_id.map(str::to_owned);
 
-        let handle = thread::Builder::new()
-            .name("nectarlink-audio-out".into())
-            .spawn(move || {
-                let mut jitter = Jitter::new(clean_rate, clean_channels);
-                let frame_bytes = jitter.frame_bytes;
-                let frames_per_tick = ((clean_rate as usize) / 100).max(1);
-                let mut scratch = vec![0u8; frames_per_tick * frame_bytes];
-                let mut child = spawn_pcm_sink(clean_rate, clean_channels, dev_owned.as_deref());
+        let handle = thread::Builder::new().name("nectarlink-audio-out".into()).spawn(move || {
+            let mut jitter = Jitter::new(clean_rate, clean_channels);
+            let frame_bytes = jitter.frame_bytes;
+            let frames_per_tick = ((clean_rate as usize) / 100).max(1);
+            let mut scratch = vec![0u8; frames_per_tick * frame_bytes];
+            let mut child = spawn_pcm_sink(clean_rate, clean_channels, dev_owned.as_deref());
 
-                while !thread_stop.load(Ordering::Acquire) {
-                    while let Ok(chunk) = rx.try_recv() {
-                        jitter.push(&chunk);
-                    }
-                    let has_audio = jitter.pull(&mut scratch, frames_per_tick);
-                    if has_audio
-                        && let Some(proc) = child.as_mut()
-                        && let Some(stdin) = proc.stdin.as_mut()
-                        && stdin.write_all(&scratch).is_err()
-                    {
-                        let _ = proc.kill();
-                        let _ = proc.wait();
-                        child = spawn_pcm_sink(clean_rate, clean_channels, dev_owned.as_deref());
-                    }
-                    thread::sleep(Duration::from_millis(10));
+            while !thread_stop.load(Ordering::Acquire) {
+                while let Ok(chunk) = rx.try_recv() {
+                    jitter.push(&chunk);
                 }
-
-                if let Some(mut proc) = child {
-                    drop(proc.stdin.take());
+                let has_audio = jitter.pull(&mut scratch, frames_per_tick);
+                if has_audio
+                    && let Some(proc) = child.as_mut()
+                    && let Some(stdin) = proc.stdin.as_mut()
+                    && stdin.write_all(&scratch).is_err()
+                {
                     let _ = proc.kill();
                     let _ = proc.wait();
+                    child = spawn_pcm_sink(clean_rate, clean_channels, dev_owned.as_deref());
                 }
-            })?;
+                thread::sleep(Duration::from_millis(10));
+            }
 
-        Ok(Player {
-            tx,
-            stop,
-            handle: Some(handle),
-        })
+            if let Some(mut proc) = child {
+                drop(proc.stdin.take());
+                let _ = proc.kill();
+                let _ = proc.wait();
+            }
+        })?;
+
+        Ok(Player { tx, stop, handle: Some(handle) })
     }
 
     pub fn push(&self, data: Vec<u8>) {

@@ -325,8 +325,7 @@ mod tests {
         assert!(t4.starts_with("Copied text: "), "expected colon prefix, got {t4}");
         assert_eq!(d4.as_deref(), Some(long_note));
 
-        let jfif_garbage =
-            "\u{FFFD}\u{FFFD}\u{FFFD}\u{E0}\0\x10JFIF\0\x01\x01\0\0\x01\0\x01\0\0\u{FFFD}\u{FFFD}6Exif\0\0II*\0\x08\0\0\0\x0B\0\x0F\x01\x02\0\x07\0\0\0Google\0\x02\x02\u{FFFD}\u{FFFD}ICC_PROFILE";
+        let jfif_garbage = "\u{FFFD}\u{FFFD}\u{FFFD}\u{E0}\0\x10JFIF\0\x01\x01\0\0\x01\0\x01\0\0\u{FFFD}\u{FFFD}6Exif\0\0II*\0\x08\0\0\0\x0B\0\x0F\x01\x02\0\x07\0\0\0Google\0\x02\x02\u{FFFD}\u{FFFD}ICC_PROFILE";
         let (t5, d5) = format_clip_display(jfif_garbage);
         assert_eq!(t5, "Copied image");
         assert_eq!(d5, None);

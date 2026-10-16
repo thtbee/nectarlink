@@ -45,21 +45,15 @@ pub(crate) fn parse_bluetoothctl_devices(output: &str) -> Vec<(String, String)> 
 pub(crate) fn parse_bluetoothctl_connected(info_output: &str) -> bool {
     info_output.lines().any(|line| {
         let trimmed = line.trim();
-        trimmed
-            .strip_prefix("Connected:")
-            .map(|v| v.trim().eq_ignore_ascii_case("yes"))
-            .unwrap_or(false)
+        trimmed.strip_prefix("Connected:").map(|v| v.trim().eq_ignore_ascii_case("yes")).unwrap_or(false)
     })
 }
 
 /// Formats a Bluetooth MAC address (`AA:BB:CC:DD:EE:FF`) into its PipeWire /
 /// PulseAudio BlueZ card name (`bluez_card.AA_BB_CC_DD_EE_FF`).
 pub(crate) fn bluez_card_name_for_mac(mac: &str) -> String {
-    let underscored: String = mac
-        .trim()
-        .chars()
-        .map(|c| if c == ':' || c == '-' { '_' } else { c })
-        .collect();
+    let underscored: String =
+        mac.trim().chars().map(|c| if c == ':' || c == '-' { '_' } else { c }).collect();
     format!("bluez_card.{underscored}")
 }
 
@@ -83,9 +77,7 @@ pub fn match_endpoint<'a>(
 }
 
 fn enumerate_paired_devices() -> Vec<(String, String)> {
-    if let Ok(out) = Command::new("bluetoothctl")
-        .args(["devices", "Paired"])
-        .output()
+    if let Ok(out) = Command::new("bluetoothctl").args(["devices", "Paired"]).output()
         && out.status.success()
     {
         let parsed = parse_bluetoothctl_devices(&String::from_utf8_lossy(&out.stdout));
@@ -115,11 +107,7 @@ pub fn probe_status(phone_name: Option<&str>) -> HfpStatus {
     let endpoints = enumerate_paired_devices();
     if let Some((mac, name)) = match_endpoint(&endpoints, phone_name) {
         let display = if name.trim().is_empty() {
-            phone_name
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .unwrap_or(mac.as_str())
-                .to_owned()
+            phone_name.map(str::trim).filter(|s| !s.is_empty()).unwrap_or(mac.as_str()).to_owned()
         } else {
             name.clone()
         };
@@ -129,20 +117,14 @@ pub fn probe_status(phone_name: Option<&str>) -> HfpStatus {
         } else {
             format!("Bluetooth paired with {display} (not currently connected).")
         };
-        return HfpStatus {
-            available: true,
-            connected,
-            device_name: display,
-            detail,
-        };
+        return HfpStatus { available: true, connected, device_name: display, detail };
     }
 
     HfpStatus {
         available: false,
         connected: false,
         device_name: phone_name.unwrap_or_default().to_string(),
-        detail: "Pair your phone over system Bluetooth to route call audio through this PC."
-            .to_string(),
+        detail: "Pair your phone over system Bluetooth to route call audio through this PC.".to_string(),
     }
 }
 
@@ -152,11 +134,7 @@ pub fn connect_audio(phone_name: Option<&str>) -> Result<HfpStatus, String> {
         return Ok(probe_status(phone_name));
     };
     let display = if name.trim().is_empty() {
-        phone_name
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .unwrap_or(mac.as_str())
-            .to_owned()
+        phone_name.map(str::trim).filter(|s| !s.is_empty()).unwrap_or(mac.as_str()).to_owned()
     } else {
         name.clone()
     };
@@ -168,9 +146,7 @@ pub fn connect_audio(phone_name: Option<&str>) -> Result<HfpStatus, String> {
         .status()
         .and_then(|s| if s.success() { Ok(s) } else { Err(std::io::Error::other("profile")) })
         .or_else(|_| {
-            Command::new("pactl")
-                .args(["set-card-profile", &card, "headset-head-unit-cvsd"])
-                .status()
+            Command::new("pactl").args(["set-card-profile", &card, "headset-head-unit-cvsd"]).status()
         });
 
     let connected = query_device_connected(mac);
@@ -182,12 +158,7 @@ pub fn connect_audio(phone_name: Option<&str>) -> Result<HfpStatus, String> {
     } else {
         format!("Bluetooth paired with {display} (not currently connected).")
     };
-    Ok(HfpStatus {
-        available: true,
-        connected,
-        device_name: display,
-        detail,
-    })
+    Ok(HfpStatus { available: true, connected, device_name: display, detail })
 }
 
 pub fn disconnect_audio() {
@@ -195,9 +166,7 @@ pub fn disconnect_audio() {
         && let Some((mac, _)) = guard.take()
     {
         let card = bluez_card_name_for_mac(&mac);
-        let _ = Command::new("pactl")
-            .args(["set-card-profile", &card, "a2dp-sink"])
-            .status();
+        let _ = Command::new("pactl").args(["set-card-profile", &card, "a2dp-sink"]).status();
     }
 }
 
@@ -265,9 +234,6 @@ Device AA:BB:CC:DD:EE:FF (public)
 
     #[test]
     fn bluez_card_name_for_mac_replaces_colons_with_underscores() {
-        assert_eq!(
-            bluez_card_name_for_mac("AA:BB:CC:DD:EE:FF"),
-            "bluez_card.AA_BB_CC_DD_EE_FF"
-        );
+        assert_eq!(bluez_card_name_for_mac("AA:BB:CC:DD:EE:FF"), "bluez_card.AA_BB_CC_DD_EE_FF");
     }
 }

@@ -717,11 +717,7 @@ impl qobject::Preferences {
     ) {
         let clamped_w = (width.max(crate::settings::MIN_WINDOW_WIDTH as i32) as u32).min(7680);
         let clamped_h = (height.max(crate::settings::MIN_WINDOW_HEIGHT as i32) as u32).min(4320);
-        let (opt_x, opt_y) = if has_position {
-            (Some(x), Some(y))
-        } else {
-            (None, None)
-        };
+        let (opt_x, opt_y) = if has_position { (Some(x), Some(y)) } else { (None, None) };
         crate::settings::set_window_geometry(opt_x, opt_y, clamped_w, clamped_h, maximized);
         if *self.has_window_position() != has_position {
             self.as_mut().set_has_window_position(has_position);

@@ -40,10 +40,7 @@ fn local_ymdhms() -> (i32, u32, u32, u32, u32, u32) {
         }
     }
 
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+    let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let days = secs / 86_400;
     let rem = secs % 86_400;
     let hour = (rem / 3600) as u32;
@@ -134,14 +131,10 @@ pub fn merge_sps_pps(dest: &mut Vec<u8>, incoming: &[u8]) {
         return;
     }
     let existing = split_annexb(dest);
-    let mut sps: Option<Vec<u8>> = existing
-        .iter()
-        .find(|nal| nal_type(nal) == Some(7))
-        .map(|nal| (*nal).to_vec());
-    let mut pps: Option<Vec<u8>> = existing
-        .iter()
-        .find(|nal| nal_type(nal) == Some(8))
-        .map(|nal| (*nal).to_vec());
+    let mut sps: Option<Vec<u8>> =
+        existing.iter().find(|nal| nal_type(nal) == Some(7)).map(|nal| (*nal).to_vec());
+    let mut pps: Option<Vec<u8>> =
+        existing.iter().find(|nal| nal_type(nal) == Some(8)).map(|nal| (*nal).to_vec());
     for nal in nals {
         match nal_type(nal) {
             Some(7) => sps = Some(nal.to_vec()),
@@ -193,9 +186,8 @@ impl MirrorRecorder {
         fps: u32,
         audio_cfg: Option<(u32, u8)>,
     ) -> MirrorRecorder {
-        let started_epoch_ms = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_or(0, |d| d.as_millis() as i64);
+        let started_epoch_ms =
+            SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_millis() as i64);
         MirrorRecorder {
             path,
             width: width.max(1),
@@ -333,15 +325,7 @@ fn mux_audio_with_ffmpeg(mp4_path: &Path, rate: u32, channels: u8, pcm: &[u8]) {
     let status = Command::new("ffmpeg")
         .args(["-y", "-loglevel", "error", "-i"])
         .arg(&video_tmp)
-        .args([
-            "-f",
-            "s16le",
-            "-ar",
-            &rate.to_string(),
-            "-ac",
-            &channels.to_string(),
-            "-i",
-        ])
+        .args(["-f", "s16le", "-ar", &rate.to_string(), "-ac", &channels.to_string(), "-i"])
         .arg(&audio_tmp)
         .args(["-c:v", "copy", "-c:a", "aac", "-b:a", "128k", "-shortest", "-movflags", "+faststart"])
         .arg(mp4_path)
@@ -397,7 +381,7 @@ fn write_mp4_container(
     for (idx, frame) in frames.iter().enumerate() {
         let mut sample_bytes = Vec::new();
         for nal in split_annexb(&frame.data) {
-            if nal.is_empty() || matches!(nal_type(nal), Some(7 | 8 | 9)) {
+            if nal.is_empty() || matches!(nal_type(nal), Some(7..=9)) {
                 continue;
             }
             let len = nal.len() as u32;
@@ -520,7 +504,17 @@ fn build_moov(
 ) -> Vec<u8> {
     let total_duration: u32 = sample_deltas.iter().copied().fold(0u32, u32::saturating_add).max(1);
     let mvhd = build_mvhd(total_duration);
-    let trak = build_trak(width, height, total_duration, sps, pps, sample_deltas, sync_samples, sample_sizes, chunk_offset);
+    let trak = build_trak(
+        width,
+        height,
+        total_duration,
+        sps,
+        pps,
+        sample_deltas,
+        sync_samples,
+        sample_sizes,
+        chunk_offset,
+    );
     let mut body = Vec::with_capacity(mvhd.len() + trak.len());
     body.extend_from_slice(&mvhd);
     body.extend_from_slice(&trak);
@@ -558,7 +552,17 @@ fn build_trak(
     chunk_offset: u32,
 ) -> Vec<u8> {
     let tkhd = build_tkhd(width, height, duration);
-    let mdia = build_mdia(width, height, duration, sps, pps, sample_deltas, sync_samples, sample_sizes, chunk_offset);
+    let mdia = build_mdia(
+        width,
+        height,
+        duration,
+        sps,
+        pps,
+        sample_deltas,
+        sync_samples,
+        sample_sizes,
+        chunk_offset,
+    );
     let mut body = Vec::with_capacity(tkhd.len() + mdia.len());
     body.extend_from_slice(&tkhd);
     body.extend_from_slice(&mdia);
@@ -683,13 +687,14 @@ fn build_stsd(width: u16, height: u16, sps: &[u8], pps: &[u8]) -> Vec<u8> {
     let profile_compat = *sps.get(2).unwrap_or(&0xC0);
     let level_idc = *sps.get(3).unwrap_or(&0x1F);
 
-    let mut avcc_body = Vec::new();
-    avcc_body.push(1); // configurationVersion
-    avcc_body.push(profile_idc);
-    avcc_body.push(profile_compat);
-    avcc_body.push(level_idc);
-    avcc_body.push(0xFF); // 4-byte NAL unit lengths
-    avcc_body.push(0xE1); // 1 SPS
+    let mut avcc_body = vec![
+        1, // configurationVersion
+        profile_idc,
+        profile_compat,
+        level_idc,
+        0xFF, // 4-byte NAL unit lengths
+        0xE1, // 1 SPS
+    ];
     avcc_body.extend_from_slice(&(sps.len() as u16).to_be_bytes());
     avcc_body.extend_from_slice(sps);
     avcc_body.push(1); // 1 PPS
@@ -793,8 +798,8 @@ mod tests {
         assert_eq!(
             extracted,
             vec![
-                0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0x00, 0x1F,
-                0x00, 0x00, 0x00, 0x01, 0x68, 0xCE, 0x3C, 0x80,
+                0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0x00, 0x1F, 0x00, 0x00, 0x00, 0x01, 0x68, 0xCE, 0x3C,
+                0x80,
             ]
         );
         assert!(extract_sps_pps(&[0x00, 0x00, 0x00, 0x01, 0x65, 0x88]).is_none());
@@ -838,14 +843,10 @@ mod tests {
 
     #[test]
     fn is_parameter_only_ignores_slice_packets() {
-        let params = [
-            0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0x00, 0x1F,
-            0x00, 0x00, 0x00, 0x01, 0x68, 0xCE, 0x3C, 0x80,
-        ];
-        let with_slice = [
-            0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0x00, 0x1F,
-            0x00, 0x00, 0x00, 0x01, 0x65, 0x88, 0x84,
-        ];
+        let params =
+            [0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0x00, 0x1F, 0x00, 0x00, 0x00, 0x01, 0x68, 0xCE, 0x3C, 0x80];
+        let with_slice =
+            [0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0x00, 0x1F, 0x00, 0x00, 0x00, 0x01, 0x65, 0x88, 0x84];
         assert!(is_parameter_only(&params));
         assert!(!is_parameter_only(&with_slice));
         assert!(!is_parameter_only(&[]));
@@ -867,8 +868,8 @@ mod tests {
 
         let mut rec = MirrorRecorder::new(mp4_path.clone(), 320, 240, 30, None);
         let sps_pps = [
-            0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0xC0, 0x1F, 0xDA, 0x01, 0x40, 0x16, 0xEC, 0x04, 0x40,
-            0x00, 0x00, 0x00, 0x01, 0x68, 0xCE, 0x3C, 0x80,
+            0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0xC0, 0x1F, 0xDA, 0x01, 0x40, 0x16, 0xEC, 0x04, 0x40, 0x00,
+            0x00, 0x00, 0x01, 0x68, 0xCE, 0x3C, 0x80,
         ];
         rec.on_packet(false, 0, &sps_pps).unwrap();
 

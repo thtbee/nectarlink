@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 use std::collections::BTreeSet;
 use std::fs;
 use std::net::Ipv4Addr;
@@ -40,10 +41,7 @@ pub struct WakeStatus {
 
 impl WakeStatus {
     pub fn primary(&self) -> Option<&WakeAdapter> {
-        self.adapters
-            .iter()
-            .find(|a| a.wired)
-            .or_else(|| self.adapters.first())
+        self.adapters.iter().find(|a| a.wired).or_else(|| self.adapters.first())
     }
 
     pub fn state_str(&self) -> &'static str {
@@ -69,13 +67,7 @@ pub fn query_wake_status() -> WakeStatus {
         }
     }
 
-    WakeStatus {
-        info: PcWakeInfo {
-            macs,
-            broadcasts: broadcast_set.into_iter().collect(),
-        },
-        adapters,
-    }
+    WakeStatus { info: PcWakeInfo { macs, broadcasts: broadcast_set.into_iter().collect() }, adapters }
 }
 
 fn enumerate_wake_adapters() -> Vec<WakeAdapter> {
@@ -99,19 +91,14 @@ fn enumerate_wake_adapters() -> Vec<WakeAdapter> {
             continue;
         }
         let path = entry.path();
-        let operstate = fs::read_to_string(path.join("operstate"))
-            .unwrap_or_default()
-            .trim()
-            .to_ascii_lowercase();
+        let operstate =
+            fs::read_to_string(path.join("operstate")).unwrap_or_default().trim().to_ascii_lowercase();
         if operstate != "up" && operstate != "unknown" {
             continue;
         }
         let raw_mac = fs::read_to_string(path.join("address")).unwrap_or_default();
-        let bytes: Vec<u8> = raw_mac
-            .trim()
-            .split(':')
-            .filter_map(|p| u8::from_str_radix(p, 16).ok())
-            .collect();
+        let bytes: Vec<u8> =
+            raw_mac.trim().split(':').filter_map(|p| u8::from_str_radix(p, 16).ok()).collect();
         let Some(mac) = format_mac(&bytes) else {
             continue;
         };
@@ -119,13 +106,7 @@ fn enumerate_wake_adapters() -> Vec<WakeAdapter> {
         let support = probe_adapter_wake_support(&path);
         let broadcasts = broadcasts_by_iface.get(&name).cloned().unwrap_or_default();
 
-        result.push(WakeAdapter {
-            label: name,
-            wired,
-            mac,
-            broadcasts,
-            support,
-        });
+        result.push(WakeAdapter { label: name, wired, mac, broadcasts, support });
     }
     result
 }
@@ -143,8 +124,7 @@ fn probe_adapter_wake_support(iface_sys_path: &Path) -> WakeSupport {
 }
 
 fn query_ipv4_broadcasts() -> std::collections::HashMap<String, Vec<String>> {
-    let mut map: std::collections::HashMap<String, Vec<String>> =
-        std::collections::HashMap::new();
+    let mut map: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
     let Ok(output) = Command::new("ip").args(["-4", "-o", "addr", "show"]).output() else {
         return map;
     };
@@ -204,10 +184,7 @@ mod tests {
 
     #[test]
     fn formats_valid_mac_and_rejects_invalid() {
-        assert_eq!(
-            format_mac(&[0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]),
-            Some("AA:BB:CC:DD:EE:FF".to_string())
-        );
+        assert_eq!(format_mac(&[0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff]), Some("AA:BB:CC:DD:EE:FF".to_string()));
         assert_eq!(format_mac(&[0, 0, 0, 0, 0, 0]), None);
         assert_eq!(format_mac(&[0xff; 6]), None);
         assert_eq!(format_mac(&[1, 2, 3]), None);
@@ -219,10 +196,7 @@ mod tests {
             subnet_broadcast(Ipv4Addr::new(192, 168, 1, 42), 24),
             Some(Ipv4Addr::new(192, 168, 1, 255))
         );
-        assert_eq!(
-            subnet_broadcast(Ipv4Addr::new(10, 0, 12, 5), 16),
-            Some(Ipv4Addr::new(10, 0, 255, 255))
-        );
+        assert_eq!(subnet_broadcast(Ipv4Addr::new(10, 0, 12, 5), 16), Some(Ipv4Addr::new(10, 0, 255, 255)));
         assert_eq!(subnet_broadcast(Ipv4Addr::new(192, 168, 1, 1), 32), None);
         assert_eq!(subnet_broadcast(Ipv4Addr::new(192, 168, 1, 1), 0), None);
     }

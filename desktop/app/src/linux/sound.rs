@@ -46,7 +46,7 @@ pub fn generate_alarm_wav(duration_ms: u32, sample_rate: u32) -> Vec<u8> {
     for idx in 0..total_samples {
         let seg = idx / segment_samples;
         let pos_in_seg = idx % segment_samples;
-        let freq = if seg % 2 == 0 { 880.0_f32 } else { 1320.0_f32 };
+        let freq = if seg.is_multiple_of(2) { 880.0_f32 } else { 1320.0_f32 };
         let env = if pos_in_seg < fade_samples {
             (pos_in_seg as f32) / (fade_samples as f32)
         } else if segment_samples - pos_in_seg <= fade_samples {
@@ -112,52 +112,48 @@ pub fn start_ringing() {
     if RINGING.swap(true, Ordering::SeqCst) {
         return;
     }
-    let _ = thread::Builder::new()
-        .name("nectarlink-alarm".into())
-        .spawn(|| {
-            let wav_path = std::env::temp_dir().join("nectarlink-find-pc-alarm.wav");
-            let wav_bytes = generate_alarm_wav(1000, 48_000);
-            let _ = std::fs::write(&wav_path, wav_bytes);
+    let _ = thread::Builder::new().name("nectarlink-alarm".into()).spawn(|| {
+        let wav_path = std::env::temp_dir().join("nectarlink-find-pc-alarm.wav");
+        let wav_bytes = generate_alarm_wav(1000, 48_000);
+        let _ = std::fs::write(&wav_path, wav_bytes);
 
-            let started = Instant::now();
-            while RINGING.load(Ordering::SeqCst) && started.elapsed() < MAX_RING_DURATION {
-                if let Some(child) = spawn_alarm_player(&wav_path) {
-                    if let Ok(mut guard) = ACTIVE_CHILD.lock() {
-                        *guard = Some(child);
+        let started = Instant::now();
+        while RINGING.load(Ordering::SeqCst) && started.elapsed() < MAX_RING_DURATION {
+            if let Some(child) = spawn_alarm_player(&wav_path) {
+                if let Ok(mut guard) = ACTIVE_CHILD.lock() {
+                    *guard = Some(child);
+                }
+                loop {
+                    if !RINGING.load(Ordering::SeqCst) || started.elapsed() >= MAX_RING_DURATION {
+                        kill_active_child();
+                        break;
                     }
-                    loop {
-                        if !RINGING.load(Ordering::SeqCst)
-                            || started.elapsed() >= MAX_RING_DURATION
-                        {
-                            kill_active_child();
-                            break;
-                        }
-                        let finished = if let Ok(mut guard) = ACTIVE_CHILD.lock() {
-                            if let Some(c) = guard.as_mut() {
-                                matches!(c.try_wait(), Ok(Some(_)) | Err(_))
-                            } else {
-                                true
-                            }
+                    let finished = if let Ok(mut guard) = ACTIVE_CHILD.lock() {
+                        if let Some(c) = guard.as_mut() {
+                            matches!(c.try_wait(), Ok(Some(_)) | Err(_))
                         } else {
                             true
-                        };
-                        if finished {
-                            break;
                         }
-                        thread::sleep(Duration::from_millis(40));
+                    } else {
+                        true
+                    };
+                    if finished {
+                        break;
                     }
-                }
-
-                let step = Duration::from_millis(50);
-                let mut waited = Duration::ZERO;
-                while waited < RING_PAUSE && RINGING.load(Ordering::SeqCst) {
-                    thread::sleep(step);
-                    waited += step;
+                    thread::sleep(Duration::from_millis(40));
                 }
             }
-            kill_active_child();
-            RINGING.store(false, Ordering::SeqCst);
-        });
+
+            let step = Duration::from_millis(50);
+            let mut waited = Duration::ZERO;
+            while waited < RING_PAUSE && RINGING.load(Ordering::SeqCst) {
+                thread::sleep(step);
+                waited += step;
+            }
+        }
+        kill_active_child();
+        RINGING.store(false, Ordering::SeqCst);
+    });
 }
 
 pub fn stop_ringing() {
@@ -185,7 +181,9 @@ mod tests {
         assert_eq!(data_len, expected_data_bytes);
 
         let non_zero = wav[44..]
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|c| i16::from_le_bytes([c[0], c[1]]))
             .any(|s| s.unsigned_abs() > 10_000);
         assert!(non_zero, "synthesized alarm waveform should be audible");

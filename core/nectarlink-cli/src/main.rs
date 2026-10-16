@@ -6027,10 +6027,7 @@ mod tests {
     #[cfg(target_os = "linux")]
     #[test]
     fn linux_watch_waits_for_short_lived_child() {
-        let mut child = std::process::Command::new("sh")
-            .args(["-c", "sleep 0.1"])
-            .spawn()
-            .unwrap();
+        let mut child = std::process::Command::new("sh").args(["-c", "sleep 0.1"]).spawn().unwrap();
         let watched = linux_watch::open_process(child.id()).unwrap();
         assert!(!watched.name.is_empty());
         let wait_start = std::time::Instant::now();
@@ -6097,4 +6094,3 @@ mod tests {
         assert!(!linux_watch::is_desktop_running(dir.path()));
     }
 }
-

@@ -81,9 +81,8 @@ where
     }
     let (sender, receiver) = mpsc::channel::<Option<Shown>>();
     if QUEUE.set(Mutex::new(sender)).is_ok() {
-        let spawned = std::thread::Builder::new()
-            .name("media-controls".into())
-            .spawn(move || run_worker(receiver));
+        let spawned =
+            std::thread::Builder::new().name("media-controls".into()).spawn(move || run_worker(receiver));
         if let Err(e) = spawned {
             tracing::warn!(error = %e, "Linux media-controls worker unavailable");
         }
@@ -145,23 +144,13 @@ pub(crate) fn build_export_state(shown: Option<&Shown>) -> MprisExportState {
 
     let player = &shown.view.player;
     let can = |action: &str| player.actions.iter().any(|a| a == action);
-    let title = player
-        .title
-        .as_deref()
-        .unwrap_or(&player.app)
-        .to_owned();
+    let title = player.title.as_deref().unwrap_or(&player.app).to_owned();
     let artist = format_artist_line(player.artist.as_deref(), &player.app, &shown.device_name);
     let album = player.album.clone().unwrap_or_default();
-    let art_url = shown
-        .view
-        .art
-        .as_ref()
-        .map(|p| format!("file://{}", p.display()));
+    let art_url = shown.view.art.as_ref().map(|p| format!("file://{}", p.display()));
 
     let elapsed_ms = if player.playing {
-        SystemTime::now()
-            .duration_since(shown.view.at)
-            .map_or(0, |d| d.as_millis() as u64)
+        SystemTime::now().duration_since(shown.view.at).map_or(0, |d| d.as_millis() as u64)
     } else {
         0
     };
@@ -177,11 +166,7 @@ pub(crate) fn build_export_state(shown: Option<&Shown>) -> MprisExportState {
         device_id: Some(shown.device.to_string()),
         device_name: Some(shown.device_name.clone()),
         player_id: Some(player.id.clone()),
-        playback_status: if player.playing {
-            "Playing".to_owned()
-        } else {
-            "Paused".to_owned()
-        },
+        playback_status: if player.playing { "Playing".to_owned() } else { "Paused".to_owned() },
         title,
         artist,
         album,
@@ -197,9 +182,7 @@ pub(crate) fn build_export_state(shown: Option<&Shown>) -> MprisExportState {
 }
 
 fn mpris_state_path() -> Option<PathBuf> {
-    let base = dirs::runtime_dir()
-        .or_else(dirs::cache_dir)
-        .unwrap_or_else(std::env::temp_dir);
+    let base = dirs::runtime_dir().or_else(dirs::cache_dir).unwrap_or_else(std::env::temp_dir);
     Some(base.join("nectarlink").join("mpris-state.json"))
 }
 
@@ -216,14 +199,8 @@ fn write_mpris_state_file(state: &MprisExportState) {
     let Ok(json) = serde_json::to_vec_pretty(state) else {
         return;
     };
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |d| d.subsec_nanos());
-    let tmp_path = parent.join(format!(
-        ".mpris-state.{}.{}.tmp",
-        std::process::id(),
-        nanos
-    ));
+    let nanos = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.subsec_nanos());
+    let tmp_path = parent.join(format!(".mpris-state.{}.{}.tmp", std::process::id(), nanos));
     if fs::write(&tmp_path, &json).is_ok() {
         let _ = fs::rename(&tmp_path, &path);
     }
@@ -248,14 +225,8 @@ pub fn handle_mpris_call(method: &str, position_us: Option<i64>) -> bool {
         "Play" => dispatch_command(MediaAction::Play, None),
         "Pause" => dispatch_command(MediaAction::Pause, None),
         "PlayPause" => {
-            let currently_playing = lock(&LAST_SHOWN)
-                .as_ref()
-                .is_some_and(|s| s.view.player.playing);
-            let action = if currently_playing {
-                MediaAction::Pause
-            } else {
-                MediaAction::Play
-            };
+            let currently_playing = lock(&LAST_SHOWN).as_ref().is_some_and(|s| s.view.player.playing);
+            let action = if currently_playing { MediaAction::Pause } else { MediaAction::Play };
             dispatch_command(action, None)
         }
         "Next" => dispatch_command(MediaAction::Next, None),
@@ -314,17 +285,14 @@ mod tests {
             format_artist_line(Some("Daft Punk"), "Spotify", "Pixel 9"),
             "Daft Punk · Spotify on Pixel 9"
         );
-        assert_eq!(
-            format_artist_line(None, "YouTube Music", "Galaxy S24"),
-            "YouTube Music on Galaxy S24"
-        );
+        assert_eq!(format_artist_line(None, "YouTube Music", "Galaxy S24"), "YouTube Music on Galaxy S24");
     }
 
     #[test]
     fn show_and_mpris_calls_dispatch_commands_and_clear_on_none() {
+        type ReceivedMediaCmd = (DeviceId, String, MediaAction, Option<u64>);
         let _serial = lock(&TEST_LOCK);
-        let received: Arc<Mutex<Vec<(DeviceId, String, MediaAction, Option<u64>)>>> =
-            Arc::new(Mutex::new(Vec::new()));
+        let received: Arc<Mutex<Vec<ReceivedMediaCmd>>> = Arc::new(Mutex::new(Vec::new()));
         let sink = Arc::clone(&received);
         start(move |dev, player, action, pos| {
             lock(&sink).push((dev, player, action, pos));
@@ -348,44 +316,16 @@ mod tests {
 
         let events = lock(&received).clone();
         assert_eq!(events.len(), 7);
-        assert_eq!(
-            events[0],
-            (expected_dev, "com.spotify.music".to_owned(), MediaAction::Play, None)
-        );
-        assert_eq!(
-            events[1],
-            (expected_dev, "com.spotify.music".to_owned(), MediaAction::Pause, None)
-        );
-        assert_eq!(
-            events[2],
-            (expected_dev, "com.spotify.music".to_owned(), MediaAction::Pause, None)
-        );
-        assert_eq!(
-            events[3],
-            (expected_dev, "com.spotify.music".to_owned(), MediaAction::Next, None)
-        );
-        assert_eq!(
-            events[4],
-            (
-                expected_dev,
-                "com.spotify.music".to_owned(),
-                MediaAction::Previous,
-                None
-            )
-        );
+        assert_eq!(events[0], (expected_dev, "com.spotify.music".to_owned(), MediaAction::Play, None));
+        assert_eq!(events[1], (expected_dev, "com.spotify.music".to_owned(), MediaAction::Pause, None));
+        assert_eq!(events[2], (expected_dev, "com.spotify.music".to_owned(), MediaAction::Pause, None));
+        assert_eq!(events[3], (expected_dev, "com.spotify.music".to_owned(), MediaAction::Next, None));
+        assert_eq!(events[4], (expected_dev, "com.spotify.music".to_owned(), MediaAction::Previous, None));
         assert_eq!(
             events[5],
-            (
-                expected_dev,
-                "com.spotify.music".to_owned(),
-                MediaAction::Seek,
-                Some(42_500)
-            )
+            (expected_dev, "com.spotify.music".to_owned(), MediaAction::Seek, Some(42_500))
         );
-        assert_eq!(
-            events[6],
-            (expected_dev, "com.spotify.music".to_owned(), MediaAction::Play, None)
-        );
+        assert_eq!(events[6], (expected_dev, "com.spotify.music".to_owned(), MediaAction::Play, None));
 
         // Clearing with show(None) stops dispatching commands
         show(None);

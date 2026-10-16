@@ -79,10 +79,7 @@ fn has_desktop_session() -> bool {
 
 fn is_nectarlink_title(title: &str) -> bool {
     let trimmed = title.trim();
-    trimmed.is_empty()
-        || trimmed
-            .get(..10)
-            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("nectarlink"))
+    trimmed.is_empty() || trimmed.get(..10).is_some_and(|prefix| prefix.eq_ignore_ascii_case("nectarlink"))
 }
 
 fn parse_window_handle(raw: &str) -> Option<isize> {
@@ -90,10 +87,7 @@ fn parse_window_handle(raw: &str) -> Option<isize> {
     if trimmed.is_empty() {
         return None;
     }
-    let handle = if let Some(hex) = trimmed
-        .strip_prefix("0x")
-        .or_else(|| trimmed.strip_prefix("0X"))
-    {
+    let handle = if let Some(hex) = trimmed.strip_prefix("0x").or_else(|| trimmed.strip_prefix("0X")) {
         isize::from_str_radix(hex, 16).ok()?
     } else if let Ok(num) = trimmed.parse::<isize>() {
         num
@@ -126,12 +120,7 @@ fn raw_window_id(hwnd: isize) -> String {
 }
 
 fn run_command_stdout(program: &str, args: &[&str]) -> Option<String> {
-    let output = Command::new(program)
-        .args(args)
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
+    let output = Command::new(program).args(args).stdin(Stdio::null()).stderr(Stdio::null()).output().ok()?;
     if !output.status.success() {
         return None;
     }
@@ -178,10 +167,7 @@ pub fn snapshot_target_window() -> Option<(isize, String)> {
         *guard = Some((hwnd, title.clone()));
         return Some((hwnd, title));
     }
-    LAST_EXTERNAL_WINDOW
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .clone()
+    LAST_EXTERNAL_WINDOW.lock().unwrap_or_else(|e| e.into_inner()).clone()
 }
 
 /// Returns true if `hwnd` still refers to an existing, visible top-level window.
@@ -399,9 +385,7 @@ pub fn is_prepare_for_sleep_resume_line(line: &str) -> bool {
     if !trimmed.contains("PrepareForSleep") {
         return false;
     }
-    trimmed.contains("(false")
-        || trimmed.contains("boolean false")
-        || trimmed.ends_with(" false")
+    trimmed.contains("(false") || trimmed.contains("boolean false") || trimmed.ends_with(" false")
 }
 
 /// Returns true when a line from `gdbus monitor` or `dbus-monitor` indicates
@@ -416,8 +400,10 @@ pub fn is_portal_appearance_changed_line(line: &str) -> bool {
             || trimmed.contains("accent-color"))
 }
 
+type TrayEventHandler = Box<dyn Fn(TrayEvent)>;
+
 struct SharedHandler {
-    inner: Mutex<Option<Box<dyn Fn(TrayEvent)>>>,
+    inner: Mutex<Option<TrayEventHandler>>,
 }
 
 // SAFETY: Access to `inner` is serialized by its `Mutex`, and all invocations
@@ -427,9 +413,7 @@ unsafe impl Sync for SharedHandler {}
 
 impl SharedHandler {
     fn new(handler: impl Fn(TrayEvent) + 'static) -> Arc<Self> {
-        Arc::new(Self {
-            inner: Mutex::new(Some(Box::new(handler))),
-        })
+        Arc::new(Self { inner: Mutex::new(Some(Box::new(handler))) })
     }
 
     fn emit(&self, event: TrayEvent) {
@@ -448,10 +432,7 @@ impl SharedHandler {
 }
 
 fn tray_icon_cache_path() -> PathBuf {
-    dirs::cache_dir()
-        .unwrap_or_else(env::temp_dir)
-        .join("nectarlink")
-        .join("tray-icon.png")
+    dirs::cache_dir().unwrap_or_else(env::temp_dir).join("nectarlink").join("tray-icon.png")
 }
 
 fn spawn_dbus_monitor_reader(
@@ -462,11 +443,7 @@ fn spawn_dbus_monitor_reader(
 ) -> Option<JoinHandle<()>> {
     let stdout = child.stdout.take()?;
     std::thread::Builder::new()
-        .name(if is_login1 {
-            "tray-login1-monitor".into()
-        } else {
-            "tray-portal-monitor".into()
-        })
+        .name(if is_login1 { "tray-login1-monitor".into() } else { "tray-portal-monitor".into() })
         .spawn(move || {
             let reader = BufReader::new(stdout);
             let mut awaiting_sleep_bool = false;
@@ -635,11 +612,7 @@ impl std::fmt::Debug for Tray {
 }
 
 impl Tray {
-    pub fn create(
-        tooltip: &str,
-        labels: MenuLabels,
-        handler: impl Fn(TrayEvent) + 'static,
-    ) -> Result<Tray> {
+    pub fn create(tooltip: &str, labels: MenuLabels, handler: impl Fn(TrayEvent) + 'static) -> Result<Tray> {
         let icon_path = tray_icon_cache_path();
         if let Err(e) = super::icon::write_png(&icon_path, 32) {
             tracing::debug!(error = %e, path = %icon_path.display(), "could not write tray icon PNG");
@@ -684,9 +657,8 @@ impl Tray {
                     let reader = BufReader::new(stdout);
                     let stop_clone = Arc::clone(&stop);
                     let handler_clone = Arc::clone(&shared_handler);
-                    if let Ok(handle) = std::thread::Builder::new()
-                        .name("tray-sni-helper".into())
-                        .spawn(move || {
+                    if let Ok(handle) =
+                        std::thread::Builder::new().name("tray-sni-helper".into()).spawn(move || {
                             for line in reader.lines() {
                                 if stop_clone.load(Ordering::Acquire) {
                                     break;
@@ -741,9 +713,8 @@ impl Tray {
                     let fake_child_reader = BufReader::new(stdout);
                     let stop_clone = Arc::clone(&stop);
                     let handler_clone = Arc::clone(&shared_handler);
-                    if let Ok(handle) = std::thread::Builder::new()
-                        .name("tray-login1-monitor".into())
-                        .spawn(move || {
+                    if let Ok(handle) =
+                        std::thread::Builder::new().name("tray-login1-monitor".into()).spawn(move || {
                             let mut awaiting_sleep_bool = false;
                             for line in fake_child_reader.lines() {
                                 if stop_clone.load(Ordering::Acquire) {
@@ -793,9 +764,8 @@ impl Tray {
                     let reader = BufReader::new(stdout);
                     let stop_clone = Arc::clone(&stop);
                     let handler_clone = Arc::clone(&shared_handler);
-                    if let Ok(handle) = std::thread::Builder::new()
-                        .name("tray-portal-monitor".into())
-                        .spawn(move || {
+                    if let Ok(handle) =
+                        std::thread::Builder::new().name("tray-portal-monitor".into()).spawn(move || {
                             for line in reader.lines() {
                                 if stop_clone.load(Ordering::Acquire) {
                                     break;
@@ -1002,21 +972,12 @@ mod tests {
     #[test]
     fn parse_tray_helper_action_maps_all_menu_items() {
         assert_eq!(parse_tray_helper_action("OPEN\n"), Some(TrayEvent::Open));
-        assert_eq!(
-            parse_tray_helper_action("COMMAND_PALETTE"),
-            Some(TrayEvent::CommandPalette)
-        );
+        assert_eq!(parse_tray_helper_action("COMMAND_PALETTE"), Some(TrayEvent::CommandPalette));
         assert_eq!(parse_tray_helper_action("SHELF"), Some(TrayEvent::Shelf));
         assert_eq!(parse_tray_helper_action("TAKE_PHOTO"), Some(TrayEvent::TakePhoto));
-        assert_eq!(
-            parse_tray_helper_action("SCAN_DOCUMENT"),
-            Some(TrayEvent::ScanDocument)
-        );
+        assert_eq!(parse_tray_helper_action("SCAN_DOCUMENT"), Some(TrayEvent::ScanDocument));
         assert_eq!(parse_tray_helper_action("FIND_PHONE"), Some(TrayEvent::FindPhone));
-        assert_eq!(
-            parse_tray_helper_action("OPEN_LINK"),
-            Some(TrayEvent::OpenLinkOnPhone)
-        );
+        assert_eq!(parse_tray_helper_action("OPEN_LINK"), Some(TrayEvent::OpenLinkOnPhone));
         assert_eq!(parse_tray_helper_action("QUIT"), Some(TrayEvent::Quit));
         assert_eq!(parse_tray_helper_action("UNKNOWN"), None);
     }

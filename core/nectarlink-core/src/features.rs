@@ -282,13 +282,7 @@ impl DeviceFacts {
             "android" => (DeviceKind::Phone, PowerLevel::Basic),
             _ => (DeviceKind::Desktop, PowerLevel::NotApplicable),
         };
-        DeviceFacts {
-            kind,
-            os: os.to_owned(),
-            os_ver: String::new(),
-            caps: BTreeSet::new(),
-            power,
-        }
+        DeviceFacts { kind, os: os.to_owned(), os_ver: String::new(), caps: BTreeSet::new(), power }
     }
 
     fn role(&self) -> Option<Role> {

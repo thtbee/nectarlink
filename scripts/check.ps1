@@ -92,8 +92,17 @@ try {
         Invoke-Step "Android" {
             Push-Location (Join-Path $root "android")
             try {
-                if (-not $env:JAVA_HOME) { $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr" }
-                & .\gradlew.bat --console=plain -q testDebugUnitTest lintDebug assembleDebug
+                if ($IsLinux -or $IsMacOS) {
+                    if (-not $env:JAVA_HOME) {
+                        foreach ($candidate in @("/opt/android-studio/jbr", "$HOME/android-studio/jbr", "/usr/lib/jvm/java-21-openjdk-amd64", "/usr/lib/jvm/java-17-openjdk-amd64")) {
+                            if (Test-Path $candidate) { $env:JAVA_HOME = $candidate; break }
+                        }
+                    }
+                    & ./gradlew --console=plain -q testDebugUnitTest lintDebug assembleDebug
+                } else {
+                    if (-not $env:JAVA_HOME) { $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr" }
+                    & .\gradlew.bat --console=plain -q testDebugUnitTest lintDebug assembleDebug
+                }
             } finally {
                 Pop-Location
             }
