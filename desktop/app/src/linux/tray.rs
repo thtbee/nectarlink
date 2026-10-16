@@ -524,7 +524,7 @@ def add_item(label, action):
     menu.append(item)
     return item
 
-add_item(labels[0], 'OPEN')
+open_item = add_item(labels[0], 'OPEN')
 add_item(labels[1], 'COMMAND_PALETTE')
 add_item(labels[2], 'SHELF')
 menu.append(Gtk.SeparatorMenuItem())
@@ -556,6 +556,10 @@ try:
     ind.set_title(tooltip)
     ind.set_icon_full(icon_path, tooltip)
     ind.set_menu(menu)
+    try:
+        ind.set_secondary_activate_target(open_item)
+    except Exception:
+        pass
 except Exception:
     status_icon = Gtk.StatusIcon.new_from_file(icon_path)
     status_icon.set_tooltip_text(tooltip)

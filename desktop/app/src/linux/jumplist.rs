@@ -104,24 +104,28 @@ pub fn write_desktop_file_to(
          Exec=\"{exe_str}\" %U\n\
          Icon={icon_str}\n\
          Terminal=false\n\
-         Categories=Utility;Network;FileTransfer;\n\
+         Categories=Utility;FileTransfer;\n\
          MimeType=x-scheme-handler/nectarlink;\n\
          StartupWMClass=NectarLink\n\
          Actions={};\n",
         actions_list.join(";")
     );
 
-    for &(action, title, comment) in TASKS {
+    for &(action, title, _comment) in TASKS {
         let args = build_task_arguments(action, custom_data_dir);
         content.push_str(&format!(
             "\n[Desktop Action {action}]\n\
              Name={title}\n\
-             Comment={comment}\n\
              Exec=\"{exe_str}\" {args}\n"
         ));
     }
 
     std::fs::write(&desktop_path, content)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&desktop_path, std::fs::Permissions::from_mode(0o755));
+    }
     Ok(desktop_path)
 }
 

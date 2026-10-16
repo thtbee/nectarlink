@@ -217,6 +217,9 @@ NativeWindow::NativeWindow(QWindow *parent)
     // closed to the tray instead of keeping GPU buffers in private commit.
     setPersistentSceneGraph(false);
     setPersistentGraphics(false);
+    connect(this, &QWindow::visibilityChanged, this, [this](QWindow::Visibility) {
+        emit windowVisibilityChanged();
+    });
 #ifndef _WIN32
     setProperty("_nl_linux_filter", true);
     installEventFilter(new LinuxWindowEventFilter(this));

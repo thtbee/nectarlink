@@ -126,9 +126,15 @@ NativeWindow {
         id: restoreCompleteTimer
         interval: 180
         onTriggered: {
-            if (!Preferences.windowMaximized && window.hasNormalPosition && window.visibility === Window.Windowed) {
-                if (window.x !== window.normalX) window.x = window.normalX
-                if (window.y !== window.normalY) window.y = window.normalY
+            if (!Preferences.windowMaximized && window.visibility === Window.Windowed) {
+                if (window.hasNormalPosition) {
+                    if (window.x !== window.normalX) window.x = window.normalX
+                    if (window.y !== window.normalY) window.y = window.normalY
+                } else if (window.visible) {
+                    window.normalX = window.x
+                    window.normalY = window.y
+                    window.hasNormalPosition = true
+                }
             }
             window.restoringGeometry = false
         }
@@ -175,7 +181,8 @@ NativeWindow {
 
     function saveWindowState() {
         geometrySaveTimer.stop()
-        if (window.visibility === Window.Windowed && window.visible && !restoringGeometry) {
+        if (window.visibility === Window.Windowed && window.visible && !restoringGeometry
+            && window.width >= window.minimumWidth && window.height >= window.minimumHeight) {
             normalX = window.x
             normalY = window.y
             hasNormalPosition = true
@@ -229,7 +236,7 @@ NativeWindow {
             }
         }
     }
-    onVisibilityChanged: {
+    onWindowVisibilityChanged: {
         if (visible && !restoringGeometry && (window.visibility === Window.Windowed || window.visibility === Window.Maximized)) {
             geometrySaveTimer.restart()
         }

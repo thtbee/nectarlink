@@ -32,8 +32,8 @@ Row {
         label: buttons.maximized ? qsTr("Restore") : qsTr("Maximize")
         // Mouse input for this button goes through Windows WM_NCHITTEST (Snap Layouts) on Windows.
         nativeInput: Qt.platform.os === "windows"
-        hovered: nativeInput ? buttons.window.maximizeHovered : hover.hovered
-        pressed: nativeInput ? buttons.window.maximizePressed : tap.pressed
+        nativeHovered: buttons.window.maximizeHovered
+        nativePressed: buttons.window.maximizePressed
         onActivated: buttons.window.toggleMaximized()
         Component.onCompleted: {
             buttons.window.maximizeButton = maximize
@@ -55,8 +55,10 @@ Row {
         property string label
         property bool danger: false
         property bool nativeInput: false
-        property bool hovered: !nativeInput && hover.hovered
-        property bool pressed: !nativeInput && tap.pressed
+        property bool nativeHovered: false
+        property bool nativePressed: false
+        readonly property bool hovered: nativeInput ? nativeHovered : hover.hovered
+        readonly property bool pressed: nativeInput ? nativePressed : tap.pressed
         signal activated
 
         width: 46

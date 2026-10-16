@@ -12,6 +12,8 @@ QtObject {
 
     readonly property var mainWindow: mainLoader.item
     readonly property Loader mainLoader: Loader {
+        active: false
+        source: "qrc:/qt/qml/app/nectarlink/qml/MainWindow.qml"
         onLoaded: {
             item.closeRequested.connect(app.onMainClosed)
             item.restoreAndBringToFront()
@@ -118,15 +120,16 @@ QtObject {
 
     function showMain() {
         trayTrimTimer.stop()
-        if (!mainLoader.item) {
-            mainLoader.setSource("qrc:/qt/qml/app/nectarlink/qml/MainWindow.qml")
+        if (!mainLoader.active || !mainLoader.item) {
+            mainLoader.active = false
+            mainLoader.active = true
         } else {
             mainLoader.item.bringToFront()
         }
     }
 
     function onMainClosed() {
-        if (mainLoader.item)
+        if (mainLoader.active && mainLoader.item)
             mainLoader.item.saveWindowState()
         if (!Preferences.closeToTray) {
             Qt.quit()
@@ -136,7 +139,7 @@ QtObject {
         Qt.callLater(() => {
             if (mainLoader.item)
                 mainLoader.item.releaseAndTeardown()
-            mainLoader.setSource("")
+            mainLoader.active = false
             trayTrimTimer.restart()
         })
     }
@@ -167,7 +170,7 @@ QtObject {
         target: AppController
         function onActivateRequested() { app.showMain() }
         function onQuitRequested() {
-            if (mainLoader.item)
+            if (mainLoader.active && mainLoader.item)
                 mainLoader.item.saveWindowState()
             Qt.quit()
         }
