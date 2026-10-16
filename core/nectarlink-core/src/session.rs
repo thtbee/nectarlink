@@ -95,10 +95,7 @@ pub(crate) async fn handshake_listener(
         let (mut send, mut recv) = conn.accept_bi().await.map_err(crate::error::net)?;
         let remote = read_hello(&mut recv).await?;
         check_versions(conn, &mut send, hello, &remote).await?;
-        if shared
-            .session(&peer)
-            .is_some_and(|s| s.is_alive() && s.dialer == shared.id)
-        {
+        if shared.session(&peer).is_some_and(|s| s.is_alive() && s.dialer == shared.id) {
             tracing::debug!(peer = %peer.short(), "aborting incoming handshake before Hello reply because outgoing session is already active");
             conn.close(VarInt::from_u32(CLOSE_DUPLICATE), b"duplicate");
             return Err(Error::Offline);

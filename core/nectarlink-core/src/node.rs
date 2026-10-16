@@ -1031,7 +1031,9 @@ impl Shared {
             let existing_is_usb = self.is_usb_socket_connection(&existing.conn);
             let new_is_usb = self.is_usb_socket_connection(&conn);
             let keep_existing = (existing_is_usb && !new_is_usb)
-                || (existing.dialer != dialer && existing.dialer < dialer && !(new_is_usb && !existing_is_usb));
+                || (existing.dialer != dialer
+                    && existing.dialer < dialer
+                    && !(new_is_usb && !existing_is_usb));
             if keep_existing {
                 drop(sessions);
                 conn.close(VarInt::from_u32(CLOSE_DUPLICATE), b"duplicate");
@@ -1066,7 +1068,9 @@ impl Shared {
         let addrs: Vec<SocketAddr> = session
             .remote_ip_addrs()
             .into_iter()
-            .filter(|a| !a.ip().to_canonical().is_loopback() && (allow_wan || crate::session::is_lan_ip(a.ip())))
+            .filter(|a| {
+                !a.ip().to_canonical().is_loopback() && (allow_wan || crate::session::is_lan_ip(a.ip()))
+            })
             .collect();
         let persisted_addrs = if addrs.is_empty() {
             self.store
@@ -1365,8 +1369,7 @@ impl ProtocolHandler for SessionProtocol {
         let incoming_is_usb = shared.is_usb_socket_connection(&conn);
         if shared.session(&peer).is_some_and(|s| {
             s.is_alive()
-                && (s.dialer == shared.id
-                    || (shared.is_usb_socket_connection(&s.conn) && !incoming_is_usb))
+                && (s.dialer == shared.id || (shared.is_usb_socket_connection(&s.conn) && !incoming_is_usb))
         }) {
             tracing::debug!(peer = %peer.short(), "refusing redundant incoming session while outgoing or USB session is already active");
             conn.close(VarInt::from_u32(CLOSE_DUPLICATE), b"duplicate");

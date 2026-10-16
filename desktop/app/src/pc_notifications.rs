@@ -3,13 +3,14 @@
 //! connected phones when `forward_pc_notifications_to_phone` is enabled in
 //! Settings (default `false`, privacy-first).
 
+#[cfg(target_os = "linux")]
 use std::{
     io::{BufRead, BufReader},
     process::{Command, Stdio},
-    sync::{
-        OnceLock,
-        atomic::{AtomicU64, Ordering},
-    },
+    sync::OnceLock,
+};
+use std::{
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -18,6 +19,7 @@ use nectarlink_core::Notification;
 use crate::{core_host, settings};
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
+#[cfg(target_os = "linux")]
 static LISTENER_STARTED: OnceLock<()> = OnceLock::new();
 
 /// Builds a sanitized [`Notification`] representing a PC notification.
@@ -49,6 +51,7 @@ pub fn build_pc_notification(
 
 /// Returns `true` when the notification originated from NectarLink itself or a
 /// blocked system self-source so we never create a forwarding loop.
+#[cfg(any(target_os = "linux", test))]
 pub fn is_blocked_self_source(app_name: &str) -> bool {
     let lower = app_name.trim().to_lowercase();
     lower.is_empty()
@@ -61,6 +64,7 @@ pub fn is_blocked_self_source(app_name: &str) -> bool {
 /// into `(app_name, summary, body)`.
 ///
 /// Supports `dbus-monitor` `string "..."` fields from `org.freedesktop.Notifications.Notify`.
+#[cfg(any(target_os = "linux", test))]
 pub fn parse_dbus_notify_line(line: &str) -> Option<(String, String, String)> {
     let trimmed = line.trim();
     if trimmed.is_empty() {
@@ -104,6 +108,7 @@ pub fn parse_dbus_notify_line(line: &str) -> Option<(String, String, String)> {
     None
 }
 
+#[cfg(any(target_os = "linux", test))]
 fn take_unescaped_quoted(s: &str) -> Option<(String, &str)> {
     let mut out = String::new();
     let mut escaped = false;
@@ -124,6 +129,7 @@ fn take_unescaped_quoted(s: &str) -> Option<(String, &str)> {
 
 /// Forwards a captured PC notification if it is not from a blocked self-source,
 /// has non-empty content, and `forward_pc_notifications_to_phone` is enabled.
+#[cfg(any(target_os = "linux", test))]
 pub fn forward_pc_toast(app_name: &str, title: &str, text: &str) -> bool {
     if is_blocked_self_source(app_name) {
         return false;
@@ -168,10 +174,6 @@ pub fn start_listener() {
         }
     });
 }
-
-/// No-op stub on non-Linux platforms unless implemented there.
-#[cfg(not(target_os = "linux"))]
-pub fn start_listener() {}
 
 #[cfg(target_os = "linux")]
 fn dbus_monitor_loop() {

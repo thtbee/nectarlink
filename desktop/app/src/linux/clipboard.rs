@@ -664,7 +664,8 @@ pub fn write_files(paths: &[PathBuf]) -> bool {
     }
     let uri_list = format_uri_list(paths);
     let trimmed = uri_list.trim_end_matches(&['\r', '\n'][..]);
-    *LAST_REPORTED.lock().unwrap_or_else(|e| e.into_inner()) = Some(Fingerprint::Text(fnv(trimmed.as_bytes())));
+    *LAST_REPORTED.lock().unwrap_or_else(|e| e.into_inner()) =
+        Some(Fingerprint::Text(fnv(trimmed.as_bytes())));
     *LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()) = None;
     *LAST_CLIP.lock().unwrap_or_else(|e| e.into_inner()) = Clip::Empty;
     *LAST_FILES.lock().unwrap_or_else(|e| e.into_inner()) = Some(paths.to_vec());
