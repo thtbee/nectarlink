@@ -6,18 +6,20 @@
 
 #![allow(unsafe_code)]
 
+#[cfg(windows)]
 use std::{
     mem::{ManuallyDrop, size_of},
-    sync::{
-        Arc, Mutex,
-        atomic::{AtomicBool, Ordering},
-    },
     time::{Duration, Instant},
 };
-
-use nectarlink_core::{
-    DeviceId, KeyMod, MirrorConfig, MirrorInput, MirrorSend, MirrorStart, PacketKind, mirror_keys,
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
 };
+
+#[cfg(windows)]
+use nectarlink_core::{MirrorConfig, MirrorSend, PacketKind};
+use nectarlink_core::{DeviceId, KeyMod, MirrorInput, MirrorStart, mirror_keys};
+#[cfg(windows)]
 use windows::Win32::{
     Foundation::POINT,
     Graphics::Gdi::{
@@ -44,13 +46,9 @@ use windows::Win32::{
     },
 };
 
-use crate::{
-    core_host,
-    win::{
-        self,
-        h264::{create_mft, ensure_mf_started},
-    },
-};
+#[cfg(windows)]
+use crate::win::h264::{create_mft, ensure_mf_started};
+use crate::{core_host, win};
 
 struct ActiveSession {
     peer: DeviceId,
@@ -61,9 +59,11 @@ struct ActiveSession {
 static ACTIVE: Mutex<Option<ActiveSession>> = Mutex::new(None);
 
 /// The lowest bitrate the stream backs off to on a slow link.
+#[cfg(windows)]
 const MIN_BITRATE: u32 = 600_000;
 
 /// What a sharing session sent in the last stats window.
+#[cfg(windows)]
 #[derive(Default)]
 struct Stats {
     frames: u64,
@@ -293,6 +293,7 @@ pub(crate) fn bgra_to_nv12(bgra: &[u8], width: usize, height: usize, nv12: &mut 
     }
 }
 
+#[cfg(windows)]
 pub(crate) struct H264Encoder {
     transform: IMFTransform,
     /// The encoder's settings interface, when it has one: keyframes on demand and live
@@ -306,6 +307,7 @@ pub(crate) struct H264Encoder {
     sent_first_frame: bool,
 }
 
+#[cfg(windows)]
 impl Drop for H264Encoder {
     fn drop(&mut self) {
         // SAFETY: flushes and ends streaming on the MFT before drop.
@@ -316,6 +318,7 @@ impl Drop for H264Encoder {
     }
 }
 
+#[cfg(windows)]
 impl H264Encoder {
     pub(crate) fn new(width: u32, height: u32, fps: u32, bitrate: u32) -> windows::core::Result<Self> {
         ensure_mf_started()?;
@@ -515,6 +518,7 @@ impl H264Encoder {
     }
 }
 
+#[cfg(windows)]
 unsafe fn make_sample(bytes: &[u8], hns: i64, dur_hns: i64) -> windows::core::Result<IMFSample> {
     // SAFETY: allocates an IMFMediaBuffer of `bytes.len()` and copies `bytes` into it.
     unsafe {
@@ -532,16 +536,19 @@ unsafe fn make_sample(bytes: &[u8], hns: i64, dur_hns: i64) -> windows::core::Re
     }
 }
 
+#[cfg(windows)]
 fn has_h264_idr(data: &[u8]) -> bool {
     data.windows(4).any(|w| w[..3] == [0, 0, 1] && (w[3] & 0x1f) == 5)
 }
 
+#[cfg(windows)]
 fn has_h264_sps(data: &[u8]) -> bool {
     data.windows(4).any(|w| w[..3] == [0, 0, 1] && (w[3] & 0x1f) == 7)
 }
 
 /// Captures the primary desktop monitor into `bgra` scaled to `(dst_w, dst_h)`
 /// and returns the current physical screen dimensions `(src_w, src_h)`.
+#[cfg(windows)]
 fn capture_primary_screen(dst_w: u32, dst_h: u32, bgra: &mut Vec<u8>) -> Option<(u32, u32)> {
     // SAFETY: Win32 GDI device context and bitmap calls with balanced cleanup.
     unsafe {
@@ -631,6 +638,20 @@ fn capture_primary_screen(dst_w: u32, dst_h: u32, bgra: &mut Vec<u8>) -> Option<
     }
 }
 
+#[cfg(target_os = "linux")]
+fn run_capture_loop(
+    peer: DeviceId,
+    _options: MirrorStart,
+    stop: Arc<AtomicBool>,
+    _force_keyframe: Arc<AtomicBool>,
+) {
+    let _ = (target_dimensions(1920, 1080, 1280), bgra_to_nv12 as fn(&[u8], usize, usize, &mut Vec<u8>));
+    tracing::warn!(%peer, "PC screen mirroring capture is not yet available on Linux");
+    crate::input_share::leave_remote();
+    cleanup_session(&stop);
+}
+
+#[cfg(windows)]
 fn run_capture_loop(
     peer: DeviceId,
     options: MirrorStart,
@@ -835,6 +856,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn computes_target_dimensions_and_nv12() {
+        let (w, h) = target_dimensions(1920, 1080, 1280);
+        assert_eq!(w % 16, 0);
+        assert_eq!(h % 16, 0);
+        let bgra = vec![128u8; (w as usize) * (h as usize) * 4];
+        let mut nv12 = Vec::new();
+        bgra_to_nv12(&bgra, w as usize, h as usize, &mut nv12);
+        assert_eq!(nv12.len(), (w as usize) * (h as usize) * 3 / 2);
+    }
+
+    #[cfg(windows)]
+    #[test]
     fn encodes_nv12_frames_and_decodes_back_with_mft() {
         let (w, h) = target_dimensions(1920, 1080, 1280);
         assert_eq!(w % 16, 0);
@@ -871,6 +904,7 @@ mod tests {
         assert!(decoded_any, "decoder must reconstruct at least one frame from H264Encoder");
     }
 
+    #[cfg(windows)]
     #[test]
     fn keyframes_come_on_request_without_rebuilding_the_encoder() {
         let (w, h) = target_dimensions(1280, 720, 1280);

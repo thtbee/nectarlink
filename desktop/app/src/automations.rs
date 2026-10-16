@@ -15,6 +15,7 @@ use crate::{deck, settings, win};
 /// Supported automation trigger identifiers.
 pub const TRIGGER_PHONE_CONNECTED: &str = "phone_connected";
 pub const TRIGGER_PHONE_DISCONNECTED: &str = "phone_disconnected";
+#[allow(dead_code)]
 pub const TRIGGER_PHONE_WALKED_AWAY: &str = "phone_walked_away";
 pub const TRIGGER_CALL_RINGING: &str = "call_ringing";
 pub const TRIGGER_CALL_ENDED: &str = "call_ended";

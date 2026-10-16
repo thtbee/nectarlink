@@ -11,6 +11,7 @@ use std::{
     time::Duration,
 };
 
+#[cfg(windows)]
 use windows::Win32::{
     Media::Audio::{
         AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK,
@@ -62,6 +63,7 @@ pub fn f32_stereo_to_i16le(samples: &[f32]) -> Vec<u8> {
     out
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy)]
 struct Biquad {
     b0: f32,
@@ -75,6 +77,7 @@ struct Biquad {
     z2_r: f32,
 }
 
+#[allow(dead_code)]
 impl Biquad {
     fn low_shelf(sample_rate: f32, freq: f32, gain_db: f32) -> Self {
         let a = 10.0_f32.powf(gain_db / 40.0);
@@ -145,11 +148,13 @@ impl Biquad {
     }
 }
 
+#[allow(dead_code)]
 struct SpeakerEnhancer {
     low_shelf: Biquad,
     high_shelf: Biquad,
 }
 
+#[allow(dead_code)]
 impl SpeakerEnhancer {
     fn new(sample_rate: u32) -> Self {
         let sr = sample_rate as f32;
@@ -211,6 +216,14 @@ fn ensure_worker() {
         .ok();
 }
 
+#[cfg(target_os = "linux")]
+fn run_loopback_worker() {
+    while is_enabled() {
+        std::thread::sleep(Duration::from_millis(500));
+    }
+}
+
+#[cfg(windows)]
 fn run_loopback_worker() {
     // SAFETY: Initialize COM and elevate thread priority for low-latency audio capture.
     unsafe {
@@ -226,6 +239,7 @@ fn run_loopback_worker() {
     }
 }
 
+#[cfg(windows)]
 fn capture_and_stream_once() -> Result<(), String> {
     let node = core_host::node().ok_or_else(|| "core node not running".to_owned())?;
     let peers: Vec<_> = node

@@ -103,6 +103,9 @@ windows = { workspace = true, features = [
     "Win32_Media_MediaFoundation",
 ] }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
+
 [build-dependencies]
 cxx-qt-build = { workspace = true, features = ["link_qt_object_files"] }
 embed-resource.workspace = true

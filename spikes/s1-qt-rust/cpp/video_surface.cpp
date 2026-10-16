@@ -9,15 +9,16 @@
 #include <QtQuick/QQuickWindow>
 #include <QtQuick/QSGRendererInterface>
 #include <QtQuick/QSGSimpleTextureNode>
-#include <QtQuick/qsgtexture_platform.h>
 
+#ifdef _WIN32
+#include <QtQuick/qsgtexture_platform.h>
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
 #include <wrl/client.h>
+using Microsoft::WRL::ComPtr;
+#endif
 
 #include <optional>
-
-using Microsoft::WRL::ComPtr;
 
 namespace nl {
 
@@ -25,13 +26,16 @@ namespace {
 
 constexpr quint32 kWidth = 1920;
 constexpr quint32 kHeight = 1080;
+#ifdef _WIN32
 constexpr quint32 kFps = 60;
+#endif
 
 // Owns the producer and the GPU resources on Qt's device. Lives on the render
 // thread, so the producer stops whenever the scene graph lets go of the node.
 class VideoNode final : public QSGSimpleTextureNode
 {
 public:
+#ifdef _WIN32
     static VideoNode *create(QQuickWindow *window, std::shared_ptr<FrameNotifier> notifier, QString *error)
     {
         QSGRendererInterface *ri = window->rendererInterface();
@@ -122,6 +126,16 @@ private:
     std::unique_ptr<QSGTexture> m_sgTexture;
     ID3D11DeviceContext *m_context = nullptr; // owned by Qt
     quint64 m_lastPublished = 0;
+#else
+    static VideoNode *create(QQuickWindow *, std::shared_ptr<FrameNotifier>, QString *error)
+    {
+        *error = QStringLiteral("D3D11 spike video requires Windows");
+        return nullptr;
+    }
+    bool sync(quint64 *) { return true; }
+    quint64 published() const { return 0; }
+    quint64 dropped() const { return 0; }
+#endif
 };
 
 QRectF fitted(const QRectF &bounds, QSizeF content)

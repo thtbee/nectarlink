@@ -4,8 +4,10 @@
 
 #![allow(linker_messages)]
 
+#[cfg(windows)]
 use std::sync::atomic::Ordering;
 
+#[cfg(windows)]
 use windows::{
     Win32::{
         Foundation::{CLASS_E_CLASSNOTAVAILABLE, E_INVALIDARG, E_POINTER, S_FALSE, S_OK},
@@ -16,16 +18,19 @@ use windows::{
 };
 
 pub mod shm;
+#[cfg(windows)]
 pub mod source;
 
 pub use shm::{
     DEFAULT_MAPPING_NAME, LOCAL_MAPPING_NAME, MAX_FRAME_BYTES, MAX_HEIGHT, MAX_WIDTH, SharedFrameMapping,
     bgrx_to_nv12, fit_bgrx_aspect, render_placeholder_bgrx,
 };
+#[cfg(windows)]
 pub use source::{SAMPLE_DURATION_100NS, VcamClassFactory, VcamMediaSource, VcamMediaStream};
 
 /// CLSID of the NectarLink Virtual Camera Media Foundation media source:
 /// `{8E6C3B74-5D4A-4B9E-9A12-7C8F1E2D3A40}`.
+#[cfg(windows)]
 pub const CLSID_NECTARLINK_VCAM: GUID = GUID::from_u128(0x8e6c3b74_5d4a_4b9e_9a12_7c8f1e2d3a40);
 
 /// Standard COM DLL entry point returning an `IClassFactory` for
@@ -33,6 +38,7 @@ pub const CLSID_NECTARLINK_VCAM: GUID = GUID::from_u128(0x8e6c3b74_5d4a_4b9e_9a1
 ///
 /// # Safety
 /// `rclsid`, `riid`, and `ppv` must be valid pointers as specified by COM.
+#[cfg(windows)]
 #[unsafe(no_mangle)]
 #[allow(unsafe_code)]
 pub unsafe extern "system" fn DllGetClassObject(
@@ -61,6 +67,7 @@ pub unsafe extern "system" fn DllGetClassObject(
 }
 
 /// Standard COM DLL unload check.
+#[cfg(windows)]
 #[unsafe(no_mangle)]
 #[allow(unsafe_code)]
 pub extern "system" fn DllCanUnloadNow() -> HRESULT {
@@ -71,6 +78,7 @@ pub extern "system" fn DllCanUnloadNow() -> HRESULT {
 #[allow(unsafe_code)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
     use windows::Win32::{
         Media::{
             KernelStreaming::PINNAME_VIDEO_CAPTURE,
@@ -87,6 +95,7 @@ mod tests {
         System::Com::StructuredStorage::PROPVARIANT,
     };
 
+    #[cfg(windows)]
     #[test]
     fn dll_get_class_object_activates_media_source_in_process() {
         unsafe {
@@ -106,6 +115,7 @@ mod tests {
         }
     }
 
+    #[cfg(windows)]
     #[test]
     fn media_source_delivers_placeholder_and_live_shared_memory_samples() {
         unsafe {

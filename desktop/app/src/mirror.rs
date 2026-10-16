@@ -1283,6 +1283,7 @@ pub fn leave_window() {
 }
 
 /// Records text that arrived from a remote device so focus/hover sync never echoes it back.
+#[allow(dead_code)]
 pub fn note_remote_clipboard(text: &str) {
     let normalized = text.replace("\r\n", "\n");
     state(|s| {
@@ -1333,10 +1334,13 @@ pub fn sync_clipboard_on_focus(window: Window) {
 }
 
 /// Standard XInput / Xbox left thumbstick deadzone.
+#[allow(dead_code)]
 pub const LEFT_THUMB_DEADZONE: i16 = 7849;
 /// Standard XInput / Xbox right thumbstick deadzone.
+#[allow(dead_code)]
 pub const RIGHT_THUMB_DEADZONE: i16 = 8689;
 /// Standard XInput / Xbox trigger threshold.
+#[allow(dead_code)]
 pub const TRIGGER_THRESHOLD: u8 = 30;
 
 /// Normalized controller snapshot forwarded via [`nectarlink_core::MirrorInput::Gamepad`].
@@ -1366,12 +1370,14 @@ impl GamepadState {
     }
 }
 
+#[allow(dead_code)]
 fn deadzone_axis(val: i16, deadzone: i16) -> i16 {
     if val.saturating_abs() <= deadzone { 0 } else { val }
 }
 
 /// Applies stick deadzones and trigger thresholds so idle controller noise does
 /// not generate redundant [`nectarlink_core::MirrorInput::Gamepad`] frames.
+#[allow(dead_code)]
 pub fn normalize_gamepad_state(raw: GamepadState) -> GamepadState {
     GamepadState {
         buttons: raw.buttons,
@@ -1384,6 +1390,7 @@ pub fn normalize_gamepad_state(raw: GamepadState) -> GamepadState {
     }
 }
 
+#[cfg(windows)]
 #[allow(unsafe_code)]
 fn poll_xinput_gamepad() -> Option<GamepadState> {
     use windows::Win32::UI::Input::XboxController::{XINPUT_STATE, XInputGetState};
@@ -1406,6 +1413,7 @@ fn poll_xinput_gamepad() -> Option<GamepadState> {
     None
 }
 
+#[cfg(windows)]
 fn poll_winrt_gamepad() -> Option<GamepadState> {
     use windows::Gaming::Input::{Gamepad, GamepadButtons};
     let gamepads = Gamepad::Gamepads().ok()?;
@@ -1471,8 +1479,14 @@ fn poll_winrt_gamepad() -> Option<GamepadState> {
     }))
 }
 
+#[cfg(windows)]
 fn poll_gamepad() -> Option<GamepadState> {
     poll_xinput_gamepad().or_else(poll_winrt_gamepad)
+}
+
+#[cfg(target_os = "linux")]
+fn poll_gamepad() -> Option<GamepadState> {
+    None
 }
 
 fn ensure_gamepad_loop() {

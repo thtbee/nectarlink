@@ -279,8 +279,19 @@ fn main() {
         .build();
 
     // The C++ window code calls DWM, Shell property store, and user32 directly.
-    println!("cargo:rustc-link-lib=dwmapi");
-    println!("cargo:rustc-link-lib=ole32");
-    println!("cargo:rustc-link-lib=shell32");
-    println!("cargo:rustc-link-lib=user32");
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        println!("cargo:rustc-link-lib=dwmapi");
+        println!("cargo:rustc-link-lib=ole32");
+        println!("cargo:rustc-link-lib=shell32");
+        println!("cargo:rustc-link-lib=user32");
+    } else if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux")
+        && let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR")
+    {
+        let sysroot_lib = std::path::Path::new(&manifest_dir)
+            .join("../../.qt6-sysroot/usr/lib/x86_64-linux-gnu");
+        if let Ok(canon) = sysroot_lib.canonicalize() {
+            println!("cargo:rustc-link-search=native={}", canon.display());
+            println!("cargo:rustc-link-arg=-Wl,-rpath,{}", canon.display());
+        }
+    }
 }

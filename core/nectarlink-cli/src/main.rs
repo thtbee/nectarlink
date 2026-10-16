@@ -5215,7 +5215,7 @@ fn default_command_title(first_token: &str) -> String {
 }
 
 enum TaskTransport {
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "linux"))]
     DesktopDir(PathBuf),
     Standalone {
         node: Node,
@@ -5225,12 +5225,14 @@ enum TaskTransport {
 
 impl TaskTransport {
     async fn send(&self, device_query: Option<&str>, task: &TaskNotify) -> Result<()> {
-        // Only the desktop app's queue (Windows) picks the phone by name here.
-        #[cfg(not(windows))]
+        // Only the desktop app's queue (Windows / Linux) picks the phone by name here.
+        #[cfg(not(any(windows, target_os = "linux")))]
         let _ = device_query;
         match self {
             #[cfg(windows)]
             TaskTransport::DesktopDir(dir) => win_watch::queue_desktop_task_notify(dir, device_query, task),
+            #[cfg(target_os = "linux")]
+            TaskTransport::DesktopDir(dir) => linux_watch::queue_desktop_task_notify(dir, device_query, task),
             TaskTransport::Standalone { node, targets } => {
                 let mut sent_any = false;
                 let mut last_err = None;
@@ -5251,21 +5253,28 @@ impl TaskTransport {
     async fn shutdown(self) {
         match self {
             TaskTransport::Standalone { node, .. } => node.shutdown().await,
-            #[cfg(windows)]
+            #[cfg(any(windows, target_os = "linux"))]
             TaskTransport::DesktopDir(_) => {}
         }
     }
 }
 
 async fn connect_task_transport(cli: &Cli, device_query: Option<&str>) -> Result<TaskTransport> {
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "linux"))]
     {
         let desktop_dir = match &cli.data_dir {
             Some(dir) => Some(dir.clone()),
             None => dirs::data_local_dir().map(|d| d.join("Nectarlink")),
         };
+        #[cfg(windows)]
         if let Some(dir) = desktop_dir
             && win_watch::is_desktop_running(&dir)
+        {
+            return Ok(TaskTransport::DesktopDir(dir));
+        }
+        #[cfg(target_os = "linux")]
+        if let Some(dir) = desktop_dir
+            && linux_watch::is_desktop_running(&dir)
         {
             return Ok(TaskTransport::DesktopDir(dir));
         }
@@ -5379,9 +5388,61 @@ async fn run_notify_when(
             );
             return Ok(0);
         }
-        #[cfg(not(windows))]
+        #[cfg(target_os = "linux")]
         {
-            bail!("watching a process by PID is only supported on Windows");
+            let pid: u32 = target[0].parse()?;
+            let watched = linux_watch::open_process(pid)?;
+            let title = title_override
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(str::to_owned)
+                .unwrap_or_else(|| watched.name.clone());
+            let started = watched.started_epoch_ms;
+            let initial_elapsed = (now_unix_ms().max(0) as u64).saturating_sub(started);
+            let task_id = format!("pid-{pid}-{started}");
+            let transport = connect_task_transport(cli, device).await?;
+            let running = TaskNotify {
+                id: task_id.clone(),
+                title: title.clone(),
+                active: true,
+                elapsed_ms: initial_elapsed,
+                exit_code: None,
+            };
+            transport.send(device, &running).await?;
+            let mut wait_handle = tokio::task::spawn_blocking(move || linux_watch::wait_process(watched));
+            let elapsed = tokio::select! {
+                res = &mut wait_handle => res.context("process watch task panicked")?,
+                _ = tokio::signal::ctrl_c() => {
+                    let dismissed = TaskNotify {
+                        id: task_id,
+                        title,
+                        active: false,
+                        elapsed_ms: 0,
+                        exit_code: None,
+                    };
+                    let _ = transport.send(device, &dismissed).await;
+                    transport.shutdown().await;
+                    return Ok(130);
+                }
+            };
+            let total_elapsed = elapsed.as_millis() as u64;
+            let finished = TaskNotify {
+                id: task_id,
+                title: title.clone(),
+                active: false,
+                elapsed_ms: total_elapsed,
+                exit_code: Some(0),
+            };
+            let took = TaskNotify::format_took(total_elapsed);
+            let send_res = transport.send(device, &finished).await;
+            transport.shutdown().await;
+            send_res?;
+            println!("{title} finished ({took}).");
+            return Ok(0);
+        }
+        #[cfg(not(any(windows, target_os = "linux")))]
+        {
+            bail!("watching a process by PID is only supported on Windows and Linux");
         }
     }
 
@@ -5596,6 +5657,197 @@ mod win_watch {
     }
 }
 
+#[cfg(target_os = "linux")]
+#[allow(unsafe_code)]
+mod linux_watch {
+    use std::{
+        fs,
+        io::Write,
+        os::unix::{
+            io::{AsRawFd, FromRawFd, OwnedFd, RawFd},
+            net::UnixStream,
+        },
+        path::Path,
+        sync::atomic::{AtomicU64, Ordering},
+        time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    };
+
+    use anyhow::{Context, Result, anyhow};
+    use nectarlink_core::TaskNotify;
+    use serde::Serialize;
+
+    static REQUEST_SEQ: AtomicU64 = AtomicU64::new(0);
+
+    #[derive(Serialize)]
+    #[serde(tag = "kind", rename_all = "camelCase")]
+    enum DesktopRequest<'a> {
+        TaskNotify {
+            #[serde(skip_serializing_if = "Option::is_none")]
+            device: Option<&'a str>,
+            task: &'a TaskNotify,
+        },
+    }
+
+    pub fn is_desktop_running(data_dir: &Path) -> bool {
+        let lock_path = data_dir.join("instance.lock");
+        if let Ok(file) = fs::File::open(&lock_path) {
+            // SAFETY: `file.as_raw_fd()` is a valid open file descriptor for the duration of this block.
+            let rc = unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) };
+            if rc == 0 {
+                // SAFETY: Releasing the non-blocking probe lock immediately before closing `file`.
+                unsafe {
+                    let _ = libc::flock(file.as_raw_fd(), libc::LOCK_UN);
+                }
+            } else {
+                let err = std::io::Error::last_os_error();
+                if err.raw_os_error() == Some(libc::EWOULDBLOCK)
+                    || err.raw_os_error() == Some(libc::EAGAIN)
+                    || err.kind() == std::io::ErrorKind::WouldBlock
+                {
+                    return true;
+                }
+            }
+        }
+        let sock_path = data_dir.join("instance.sock");
+        UnixStream::connect(sock_path).is_ok()
+    }
+
+    pub fn queue_desktop_task_notify(data_dir: &Path, device: Option<&str>, task: &TaskNotify) -> Result<()> {
+        let dir = data_dir.join("requests");
+        fs::create_dir_all(&dir).context("can't create desktop requests directory")?;
+        let nanos = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_nanos());
+        let seq = REQUEST_SEQ.fetch_add(1, Ordering::Relaxed);
+        let name = format!("{nanos:024}-{}-{seq:04}", std::process::id());
+        let partial = dir.join(format!("{name}.tmp"));
+        let final_path = dir.join(format!("{name}.json"));
+        let payload = serde_json::to_vec(&DesktopRequest::TaskNotify { device, task })?;
+        let mut file = fs::File::create(&partial)?;
+        file.write_all(&payload)?;
+        file.sync_all()?;
+        drop(file);
+        fs::rename(&partial, &final_path)?;
+
+        let sock_path = data_dir.join("instance.sock");
+        if let Ok(mut stream) = UnixStream::connect(&sock_path) {
+            let _ = writeln!(stream, "{}", final_path.display());
+            let _ = stream.flush();
+        }
+        Ok(())
+    }
+
+    #[derive(Debug)]
+    pub struct WatchedProcess {
+        pub pid: u32,
+        pub name: String,
+        pub started_epoch_ms: u64,
+        pidfd: Option<OwnedFd>,
+    }
+
+    fn parse_proc_stat_comm(stat_content: &str) -> Option<String> {
+        let open = stat_content.find('(')?;
+        let close = stat_content.rfind(')')?;
+        if close <= open + 1 {
+            return None;
+        }
+        let comm = stat_content[open + 1..close].trim();
+        (!comm.is_empty()).then(|| comm.to_owned())
+    }
+
+    fn parse_started_epoch_ms(stat_content: &str) -> Option<u64> {
+        let close = stat_content.rfind(')')?;
+        let after_comm = stat_content.get(close + 1..)?;
+        // Field 22 in `/proc/<pid>/stat` is `starttime` (19th 0-indexed token after `(comm)`).
+        let starttime_ticks: u64 = after_comm.split_whitespace().nth(19)?.parse().ok()?;
+
+        let proc_stat = fs::read_to_string("/proc/stat").ok()?;
+        let btime_secs: u64 = proc_stat
+            .lines()
+            .find_map(|line| line.strip_prefix("btime "))?
+            .split_whitespace()
+            .next()?
+            .parse()
+            .ok()?;
+
+        // SAFETY: `sysconf(_SC_CLK_TCK)` is a thread-safe POSIX query with no pointer arguments.
+        let clk_tck = unsafe { libc::sysconf(libc::_SC_CLK_TCK) };
+        if clk_tck <= 0 {
+            return None;
+        }
+        let offset_ms = (u128::from(starttime_ticks) * 1000) / (clk_tck as u128);
+        Some(btime_secs.saturating_mul(1000).saturating_add(offset_ms as u64))
+    }
+
+    pub fn open_process(pid: u32) -> Result<WatchedProcess> {
+        let stat_path = format!("/proc/{pid}/stat");
+        let stat_content = fs::read_to_string(&stat_path)
+            .map_err(|_| anyhow!("cannot open PID {pid}: process does not exist"))?;
+
+        let name = fs::read_to_string(format!("/proc/{pid}/comm"))
+            .ok()
+            .map(|s| s.trim().to_owned())
+            .filter(|s| !s.is_empty())
+            .or_else(|| parse_proc_stat_comm(&stat_content))
+            .unwrap_or_else(|| format!("PID {pid}"));
+
+        let started_epoch_ms = parse_started_epoch_ms(&stat_content).unwrap_or(0);
+
+        let pidfd = if (pid as libc::pid_t) > 0 {
+            // SAFETY: `SYS_pidfd_open` with flags=0 returns a new file descriptor on success or -1 on error.
+            let raw = unsafe { libc::syscall(libc::SYS_pidfd_open, pid as libc::pid_t, 0 as libc::c_uint) };
+            if raw >= 0 {
+                // SAFETY: `raw` is a valid, freshly opened file descriptor returned by `pidfd_open`.
+                Some(unsafe { OwnedFd::from_raw_fd(raw as RawFd) })
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        Ok(WatchedProcess { pid, name, started_epoch_ms, pidfd })
+    }
+
+    fn proc_stat_alive(pid: u32) -> bool {
+        let Ok(stat_content) = fs::read_to_string(format!("/proc/{pid}/stat")) else {
+            return false;
+        };
+        let Some(close) = stat_content.rfind(')') else {
+            return false;
+        };
+        let state = stat_content.get(close + 1..).and_then(|s| s.split_whitespace().next()).unwrap_or("");
+        !matches!(state, "Z" | "X" | "x")
+    }
+
+    pub fn wait_process(proc: WatchedProcess) -> Duration {
+        let started_wait = Instant::now();
+        if let Some(fd) = proc.pidfd.as_ref() {
+            let mut pfd = libc::pollfd { fd: fd.as_raw_fd(), events: libc::POLLIN, revents: 0 };
+            loop {
+                // SAFETY: `pfd` is a valid single-element `pollfd` referencing an open `pidfd`.
+                let rc = unsafe { libc::poll(&mut pfd, 1, -1) };
+                if rc >= 0 {
+                    break;
+                }
+                let err = std::io::Error::last_os_error();
+                if err.raw_os_error() != Some(libc::EINTR) {
+                    break;
+                }
+            }
+        } else {
+            while proc_stat_alive(proc.pid) {
+                std::thread::sleep(Duration::from_millis(200));
+            }
+        }
+        let waited = started_wait.elapsed();
+        if proc.started_epoch_ms == 0 {
+            waited
+        } else {
+            let now_ms = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_millis() as u64);
+            Duration::from_millis(now_ms.saturating_sub(proc.started_epoch_ms)).max(waited)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5759,4 +6011,90 @@ mod tests {
         assert_eq!(json["device"], "pixel");
         assert_eq!(json["task"]["id"], "test-1");
     }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_watch_opens_self_and_rejects_invalid_pid() {
+        let me = linux_watch::open_process(std::process::id()).unwrap();
+        assert_eq!(me.pid, std::process::id());
+        assert!(!me.name.is_empty());
+        assert!(me.started_epoch_ms > 1_700_000_000_000);
+
+        let err = linux_watch::open_process(u32::MAX).unwrap_err();
+        assert!(err.to_string().contains("process does not exist"), "unexpected error: {err}");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_watch_waits_for_short_lived_child() {
+        let mut child = std::process::Command::new("sh")
+            .args(["-c", "sleep 0.1"])
+            .spawn()
+            .unwrap();
+        let watched = linux_watch::open_process(child.id()).unwrap();
+        assert!(!watched.name.is_empty());
+        let wait_start = std::time::Instant::now();
+        let elapsed = linux_watch::wait_process(watched);
+        let wall = wait_start.elapsed();
+        let _ = child.wait();
+        assert!(elapsed >= Duration::from_millis(50), "expected >= 50ms elapsed, got {elapsed:?}");
+        assert!(wall < Duration::from_secs(5), "wait_process took too long: {wall:?}");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    #[allow(unsafe_code)]
+    fn linux_desktop_dir_lock_detection_and_request_queueing() {
+        use std::{
+            io::Read,
+            os::unix::{io::AsRawFd, net::UnixListener},
+        };
+
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!linux_watch::is_desktop_running(dir.path()));
+
+        let lock_file = std::fs::File::create(dir.path().join("instance.lock")).unwrap();
+        // Unlocked file alone does not indicate a running instance.
+        assert!(!linux_watch::is_desktop_running(dir.path()));
+
+        // SAFETY: Acquiring an exclusive flock on `instance.lock` to simulate a running desktop instance.
+        let rc = unsafe { libc::flock(lock_file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) };
+        assert_eq!(rc, 0);
+        assert!(linux_watch::is_desktop_running(dir.path()));
+
+        let listener = UnixListener::bind(dir.path().join("instance.sock")).unwrap();
+        let task = TaskNotify {
+            id: "test-linux-1".into(),
+            title: "cargo build".into(),
+            active: true,
+            elapsed_ms: 0,
+            exit_code: None,
+        };
+        linux_watch::queue_desktop_task_notify(dir.path(), Some("pixel"), &task).unwrap();
+
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut notified_path = String::new();
+        stream.read_to_string(&mut notified_path).unwrap();
+        assert!(notified_path.ends_with(".json\n"), "unexpected socket payload: {notified_path:?}");
+
+        let entries: Vec<_> = std::fs::read_dir(dir.path().join("requests"))
+            .unwrap()
+            .filter_map(|e| e.ok().map(|e| e.path()))
+            .collect();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(notified_path.trim(), entries[0].to_string_lossy());
+        let json: serde_json::Value = serde_json::from_slice(&std::fs::read(&entries[0]).unwrap()).unwrap();
+        assert_eq!(json["kind"], "taskNotify");
+        assert_eq!(json["device"], "pixel");
+        assert_eq!(json["task"]["id"], "test-linux-1");
+
+        // SAFETY: Unlocking `instance.lock` and removing `instance.sock`.
+        unsafe {
+            let _ = libc::flock(lock_file.as_raw_fd(), libc::LOCK_UN);
+        }
+        drop(listener);
+        let _ = std::fs::remove_file(dir.path().join("instance.sock"));
+        assert!(!linux_watch::is_desktop_running(dir.path()));
+    }
 }
+

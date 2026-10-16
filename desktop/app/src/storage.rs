@@ -10,19 +10,23 @@
 
 #![allow(unsafe_code)]
 
+#[cfg(windows)]
 use std::{
     collections::{HashMap, HashSet},
     ffi::{OsStr, c_void},
     os::windows::ffi::{OsStrExt, OsStringExt},
-    path::{Path, PathBuf},
     sync::{
         Arc, Mutex, MutexGuard,
         atomic::{AtomicBool, Ordering},
     },
     time::Duration,
 };
+use std::path::{Path, PathBuf};
 
-use nectarlink_core::{DeviceId, LinkState, NodeEvent, StorageEntry};
+use nectarlink_core::{DeviceId, NodeEvent};
+#[cfg(windows)]
+use nectarlink_core::{LinkState, StorageEntry};
+#[cfg(windows)]
 use windows::{
     Security::Cryptography::{BinaryStringEncoding, CryptographicBuffer},
     Storage::{
@@ -43,7 +47,7 @@ use windows::{
             CloudFilters::{
                 CF_CALLBACK_INFO, CF_CALLBACK_PARAMETERS, CF_CALLBACK_REGISTRATION,
                 CF_CALLBACK_TYPE_FETCH_DATA, CF_CALLBACK_TYPE_FETCH_PLACEHOLDERS, CF_CALLBACK_TYPE_NONE,
-                CF_CALLBACK_TYPE_NOTIFY_DELETE, CF_CALLBACK_TYPE_NOTIFY_RENAME,
+                CF_CALLBACK_TYPE_NOTIFY_RENAME, CF_CALLBACK_TYPE_NOTIFY_DELETE,
                 CF_CONNECT_FLAG_REQUIRE_FULL_FILE_PATH, CF_CONNECT_FLAG_REQUIRE_PROCESS_INFO,
                 CF_CONNECTION_KEY, CF_CONVERT_FLAG_MARK_IN_SYNC, CF_FS_METADATA, CF_IN_SYNC_STATE_IN_SYNC,
                 CF_OPERATION_INFO, CF_OPERATION_PARAMETERS, CF_OPERATION_PARAMETERS_0,
@@ -68,33 +72,38 @@ use windows::{
     core::{HSTRING, PCWSTR},
 };
 
-use crate::{
-    core_host,
-    state::{Changes, CoreStatus},
-    win,
-};
+#[cfg(windows)]
+use crate::state::{Changes, CoreStatus};
+use crate::{core_host, win};
 
 /// Provider prefix for sync root IDs (`NectarLink!<device_id>`).
+#[cfg(windows)]
 const PROVIDER_PREFIX: &str = "Nectarlink!";
 
 /// Difference between Windows FILETIME epoch (1601-01-01) and Unix epoch
 /// (1970-01-01) in 100-nanosecond intervals.
+#[allow(dead_code)]
 const EPOCH_DIFF_100NS: i64 = 116_444_736_000_000_000;
 
 /// Cloud file network unavailable NTSTATUS (`STATUS_CLOUD_FILE_NETWORK_UNAVAILABLE`).
+#[cfg(windows)]
 const STATUS_CLOUD_NETWORK_UNAVAILABLE: NTSTATUS = STATUS_CLOUD_FILE_NETWORK_UNAVAILABLE;
 
 /// Cloud file unsuccessful / cancelled operation NTSTATUS (`STATUS_CLOUD_FILE_UNSUCCESSFUL`).
+#[cfg(windows)]
 const STATUS_CLOUD_UNSUCCESSFUL: NTSTATUS = STATUS_CLOUD_FILE_UNSUCCESSFUL;
 
 /// Chunk size for hydrating files via `CF_OPERATION_TYPE_TRANSFER_DATA` (must be
 /// a multiple of 4096 bytes for non-EOF chunks).
+#[cfg(windows)]
 const HYDRATE_CHUNK_BYTES: usize = 256 * 1024;
 
+#[cfg(windows)]
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
     m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
+#[cfg(windows)]
 struct ActiveRoot {
     device: DeviceId,
     name: String,
@@ -105,19 +114,24 @@ struct ActiveRoot {
     uploading: Mutex<HashSet<String>>,
 }
 
+#[cfg(windows)]
 static ACTIVE_ROOTS: Mutex<Option<HashMap<DeviceId, Arc<ActiveRoot>>>> = Mutex::new(None);
+#[cfg(windows)]
 static RECONCILING: Mutex<()> = Mutex::new(());
 
+#[cfg(windows)]
 fn active_roots() -> MutexGuard<'static, Option<HashMap<DeviceId, Arc<ActiveRoot>>>> {
     lock(&ACTIVE_ROOTS)
 }
 
+#[cfg(windows)]
 fn get_active_root(device: &DeviceId) -> Option<Arc<ActiveRoot>> {
     active_roots().as_ref().and_then(|m| m.get(device).cloned())
 }
 
 /// Starts watching paired devices and their `storage` toggles to register or
 /// unregister File Explorer sync roots.
+#[cfg(windows)]
 pub fn start() {
     {
         let mut map = active_roots();
@@ -135,7 +149,11 @@ pub fn start() {
     sync();
 }
 
+#[cfg(target_os = "linux")]
+pub fn start() {}
+
 /// Triggers a reconciliation of active sync roots (e.g. after a device toggle changes).
+#[cfg(windows)]
 pub fn sync() {
     let host = core_host::host();
     let Some(node) = core_host::node() else { return };
@@ -170,7 +188,11 @@ pub fn sync() {
     });
 }
 
+#[cfg(target_os = "linux")]
+pub fn sync() {}
+
 /// Handles core events (`StorageChanged`, `DeviceRemoved`, `LinkChanged`).
+#[cfg(windows)]
 pub fn on_event(event: &NodeEvent) {
     match event {
         NodeEvent::DeviceRemoved(device) => {
@@ -199,7 +221,11 @@ pub fn on_event(event: &NodeEvent) {
     }
 }
 
+#[cfg(target_os = "linux")]
+pub fn on_event(_event: &NodeEvent) {}
+
 /// Disconnects active sync roots when the desktop app exits.
+#[cfg(windows)]
 pub fn shutdown() {
     let roots: Vec<Arc<ActiveRoot>> =
         active_roots().as_mut().map(|m| m.drain().map(|(_, v)| v).collect()).unwrap_or_default();
@@ -210,7 +236,11 @@ pub fn shutdown() {
     }
 }
 
+#[cfg(target_os = "linux")]
+pub fn shutdown() {}
+
 /// Unregisters all `NectarLink!*` sync roots from Windows (`--uninstall`).
+#[cfg(windows)]
 pub fn unregister_all() {
     shutdown();
     win::with_com(|| {
@@ -241,8 +271,16 @@ pub fn unregister_all() {
     });
 }
 
+#[cfg(target_os = "linux")]
+pub fn unregister_all() {
+    if let Some(base) = base_sync_dir() {
+        let _ = std::fs::remove_dir(&base);
+    }
+}
+
 /// Returns the local sync root path for a paired phone (`%USERPROFILE%\Nectarlink\<Phone name>`).
 pub fn sync_root_path_for(device: DeviceId) -> Option<PathBuf> {
+    #[cfg(windows)]
     if let Some(active) = get_active_root(&device) {
         return Some(active.root_path.clone());
     }
@@ -257,13 +295,21 @@ pub fn open_in_explorer(device: DeviceId) -> Result<(), String> {
     if !path.exists() {
         std::fs::create_dir_all(&path).map_err(|e| e.to_string())?;
     }
-    win::shell::run(Path::new("explorer.exe"), &format!("\"{}\"", path.display()))
+    #[cfg(windows)]
+    {
+        win::shell::run(Path::new("explorer.exe"), &format!("\"{}\"", path.display()))
+    }
+    #[cfg(target_os = "linux")]
+    {
+        win::shell::open_folder(&path)
+    }
 }
 
 fn base_sync_dir() -> Option<PathBuf> {
     dirs::home_dir().map(|h| h.join("Nectarlink"))
 }
 
+#[cfg(windows)]
 fn sync_root_id(device: DeviceId) -> HSTRING {
     HSTRING::from(format!("{PROVIDER_PREFIX}{device}"))
 }
@@ -292,6 +338,7 @@ pub fn sanitize_folder_name(device_name: &str) -> String {
 
 /// Converts a Unix timestamp in milliseconds to Windows FILETIME 100ns ticks
 /// since 1601-01-01.
+#[allow(dead_code)]
 pub fn unix_ms_to_filetime_ticks(unix_ms: i64) -> i64 {
     EPOCH_DIFF_100NS.saturating_add(unix_ms.max(0).saturating_mul(10_000))
 }
@@ -305,6 +352,7 @@ pub fn filetime_ticks_to_unix_ms(ticks: i64) -> i64 {
 /// Computes the slash-separated relative path inside `root_path` from a full
 /// local path (`""` for the sync root itself). Returns `None` if `full_path` is
 /// not inside `root_path`.
+#[allow(dead_code)]
 pub fn relative_path_under_root(root_path: &Path, full_path: &Path) -> Option<String> {
     let root_norm = normalize_win_path(root_path);
     let full_norm = normalize_win_path(full_path);
@@ -325,12 +373,14 @@ pub fn relative_path_under_root(root_path: &Path, full_path: &Path) -> Option<St
     Some(parts.join("/"))
 }
 
+#[allow(dead_code)]
 fn normalize_win_path(path: &Path) -> String {
     let s = path.to_string_lossy();
     let stripped = s.strip_prefix(r"\\?\").unwrap_or(&s);
     stripped.trim_end_matches('\\').to_owned()
 }
 
+#[cfg(windows)]
 fn reconcile(desired: &[(DeviceId, String, bool)], disabled: &[(DeviceId, String)]) {
     // Unregister any disabled devices that belong to this instance.
     for (id, name) in disabled {
@@ -372,6 +422,7 @@ fn reconcile(desired: &[(DeviceId, String, bool)], disabled: &[(DeviceId, String
     }
 }
 
+#[cfg(windows)]
 fn remove_device_root(device: DeviceId, known_name: Option<&str>) {
     let removed = active_roots().as_mut().and_then(|m| m.remove(&device));
     let mut folder_to_clean: Option<PathBuf> = None;
@@ -397,6 +448,7 @@ fn remove_device_root(device: DeviceId, known_name: Option<&str>) {
     }
 }
 
+#[cfg(windows)]
 fn cleanup_sync_root_dir(path: &Path) {
     if !path.exists() {
         return;
@@ -404,6 +456,7 @@ fn cleanup_sync_root_dir(path: &Path) {
     let _ = std::fs::remove_dir_all(path);
 }
 
+#[cfg(windows)]
 fn register_and_connect(device: DeviceId, name: &str, online: bool) -> Result<(), String> {
     let base = base_sync_dir().ok_or_else(|| "no user home directory".to_owned())?;
     let folder_name = sanitize_folder_name(name);
@@ -502,10 +555,12 @@ fn register_and_connect(device: DeviceId, name: &str, online: bool) -> Result<()
     Ok(())
 }
 
+#[cfg(windows)]
 fn to_wide_null(s: impl AsRef<OsStr>) -> Vec<u16> {
     s.as_ref().encode_wide().chain(std::iter::once(0)).collect()
 }
 
+#[cfg(windows)]
 unsafe fn pcwstr_to_string(ptr: PCWSTR) -> String {
     if ptr.is_null() {
         return String::new();
@@ -515,6 +570,7 @@ unsafe fn pcwstr_to_string(ptr: PCWSTR) -> String {
     std::ffi::OsString::from_wide(slice).to_string_lossy().into_owned()
 }
 
+#[cfg(windows)]
 unsafe fn callback_root_and_path(
     info: *const CF_CALLBACK_INFO,
 ) -> Option<(Arc<ActiveRoot>, String, CF_CONNECTION_KEY, i64, i64)> {
@@ -535,6 +591,7 @@ unsafe fn callback_root_and_path(
     Some((root, rel, cb.ConnectionKey, cb.TransferKey, cb.RequestKey))
 }
 
+#[cfg(windows)]
 fn make_op_info(
     connection_key: CF_CONNECTION_KEY,
     transfer_key: i64,
@@ -552,6 +609,7 @@ fn make_op_info(
     }
 }
 
+#[cfg(windows)]
 unsafe extern "system" fn on_fetch_placeholders(
     callback_info: *const CF_CALLBACK_INFO,
     _callback_parameters: *const CF_CALLBACK_PARAMETERS,
@@ -585,6 +643,7 @@ unsafe extern "system" fn on_fetch_placeholders(
     });
 }
 
+#[cfg(windows)]
 fn transfer_placeholders(
     connection_key: CF_CONNECTION_KEY,
     transfer_key: i64,
@@ -630,6 +689,7 @@ fn transfer_placeholders(
     let _ = unsafe { CfExecute(&op_info, &mut op_params) };
 }
 
+#[cfg(windows)]
 fn ack_placeholders_failed(connection_key: CF_CONNECTION_KEY, transfer_key: i64, request_key: i64) {
     let op_info =
         make_op_info(connection_key, transfer_key, request_key, CF_OPERATION_TYPE_TRANSFER_PLACEHOLDERS);
@@ -650,6 +710,7 @@ fn ack_placeholders_failed(connection_key: CF_CONNECTION_KEY, transfer_key: i64,
     let _ = unsafe { CfExecute(&op_info, &mut op_params) };
 }
 
+#[cfg(windows)]
 fn build_placeholder_create_info(
     entry: &StorageEntry,
     wide_name: &[u16],
@@ -678,6 +739,7 @@ fn build_placeholder_create_info(
     }
 }
 
+#[cfg(windows)]
 unsafe extern "system" fn on_fetch_data(
     callback_info: *const CF_CALLBACK_INFO,
     callback_parameters: *const CF_CALLBACK_PARAMETERS,
@@ -792,6 +854,7 @@ unsafe extern "system" fn on_fetch_data(
     });
 }
 
+#[cfg(windows)]
 fn transfer_data_chunk(
     connection_key: CF_CONNECTION_KEY,
     transfer_key: i64,
@@ -817,6 +880,7 @@ fn transfer_data_chunk(
     unsafe { CfExecute(&op_info, &mut op_params) }.is_ok()
 }
 
+#[cfg(windows)]
 fn ack_data_failed(
     connection_key: CF_CONNECTION_KEY,
     transfer_key: i64,
@@ -827,6 +891,7 @@ fn ack_data_failed(
     let _ = transfer_data_chunk(connection_key, transfer_key, request_key, &[], offset, status);
 }
 
+#[cfg(windows)]
 unsafe extern "system" fn on_notify_rename(
     callback_info: *const CF_CALLBACK_INFO,
     callback_parameters: *const CF_CALLBACK_PARAMETERS,
@@ -867,6 +932,7 @@ unsafe extern "system" fn on_notify_rename(
     });
 }
 
+#[cfg(windows)]
 fn ack_rename(connection_key: CF_CONNECTION_KEY, transfer_key: i64, request_key: i64, status: NTSTATUS) {
     let op_info = make_op_info(connection_key, transfer_key, request_key, CF_OPERATION_TYPE_ACK_RENAME);
     let mut op_params = CF_OPERATION_PARAMETERS {
@@ -882,6 +948,7 @@ fn ack_rename(connection_key: CF_CONNECTION_KEY, transfer_key: i64, request_key:
     let _ = unsafe { CfExecute(&op_info, &mut op_params) };
 }
 
+#[cfg(windows)]
 unsafe extern "system" fn on_notify_delete(
     callback_info: *const CF_CALLBACK_INFO,
     _callback_parameters: *const CF_CALLBACK_PARAMETERS,
@@ -913,6 +980,7 @@ unsafe extern "system" fn on_notify_delete(
     });
 }
 
+#[cfg(windows)]
 fn ack_delete(connection_key: CF_CONNECTION_KEY, transfer_key: i64, request_key: i64, status: NTSTATUS) {
     let op_info = make_op_info(connection_key, transfer_key, request_key, CF_OPERATION_TYPE_ACK_DELETE);
     let mut op_params = CF_OPERATION_PARAMETERS {
@@ -929,6 +997,7 @@ fn ack_delete(connection_key: CF_CONNECTION_KEY, transfer_key: i64, request_key:
 }
 
 /// Refreshes a folder's placeholders from the phone (`storage.changed` or initial connect).
+#[cfg(windows)]
 async fn refresh_folder(root: Arc<ActiveRoot>, rel_folder: &str) {
     let Some(node) = core_host::node() else { return };
     let Ok(entries) = node.storage_list(root.device, rel_folder).await else { return };
@@ -984,6 +1053,7 @@ async fn refresh_folder(root: Arc<ActiveRoot>, rel_folder: &str) {
 
 /// Watches the sync root directory for files or folders dropped in by the user
 /// and uploads them to the phone via `storage.write` / `storage.mkdir`.
+#[cfg(windows)]
 fn start_directory_watcher(root: Arc<ActiveRoot>, stop: Arc<AtomicBool>) {
     let _ = std::thread::Builder::new().name("storage-watch".into()).spawn(move || {
         let wide_dir = to_wide_null(&root.root_path);
@@ -1066,6 +1136,7 @@ fn start_directory_watcher(root: Arc<ActiveRoot>, stop: Arc<AtomicBool>) {
     });
 }
 
+#[cfg(windows)]
 fn parse_notify_buffer(bytes: &[u8]) -> Vec<String> {
     let mut out = Vec::new();
     let mut offset = 0usize;
@@ -1096,6 +1167,7 @@ fn parse_notify_buffer(bytes: &[u8]) -> Vec<String> {
 
 /// Checks whether `full_path` is a newly dropped non-placeholder file/folder or
 /// a modified placeholder that is no longer in sync.
+#[cfg(windows)]
 fn needs_upload(full_path: &Path) -> bool {
     let wide = to_wide_null(full_path);
     let mut find_data = WIN32_FIND_DATAW::default();
@@ -1116,6 +1188,7 @@ fn needs_upload(full_path: &Path) -> bool {
     (state.0 & CF_PLACEHOLDER_STATE_IN_SYNC.0) == 0
 }
 
+#[cfg(windows)]
 async fn upload_local_item(root: &Arc<ActiveRoot>, rel_slash: &str, full_path: &Path) {
     if !full_path.exists() || !needs_upload(full_path) {
         return;
@@ -1130,6 +1203,7 @@ async fn upload_local_item(root: &Arc<ActiveRoot>, rel_slash: &str, full_path: &
     }
 }
 
+#[cfg(windows)]
 fn mark_path_in_sync(full_path: &Path, rel_slash: &str, is_dir: bool) {
     let wide = to_wide_null(full_path);
     let flags = if is_dir { FILE_FLAG_BACKUP_SEMANTICS } else { Default::default() };
@@ -1183,6 +1257,7 @@ mod tests {
         assert_eq!(unix_ms_to_filetime_ticks(-500), EPOCH_DIFF_100NS);
     }
 
+    #[cfg(windows)]
     #[test]
     fn builds_placeholder_metadata_for_files_and_folders() {
         let file_entry = StorageEntry {

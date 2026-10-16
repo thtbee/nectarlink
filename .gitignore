@@ -17,6 +17,7 @@ signing.properties
 **/*.rs.bk
 
 # ---- Qt / C++ build output ----
+/.qt6-sysroot/
 build/
 build-*/
 *.qmlc

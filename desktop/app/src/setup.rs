@@ -19,8 +19,9 @@
 //! The renamed copies matter: the installer closes running copies of
 //! `nectarlink-desktop.exe` by name, which would otherwise include these.
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::{
-    os::windows::process::CommandExt,
     path::{Path, PathBuf},
     time::{Duration, Instant},
 };
@@ -33,11 +34,20 @@ pub const INSTALLED_ARG: &str = "--installed";
 /// Where the Android app is downloaded (the done screen's QR code and link).
 pub const ANDROID_URL: &str = "https://github.com/thtbee/nectarlink/releases/latest";
 
+#[cfg(windows)]
 const APP_EXE: &str = "nectarlink-desktop.exe";
+#[cfg(target_os = "linux")]
+const APP_EXE: &str = "nectarlink-desktop";
+#[cfg(windows)]
 const UNINSTALL_KEY: &str = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Nectarlink";
+#[cfg(windows)]
 const SETUP_COPY_NAME: &str = "Nectarlink Uninstall.exe";
+#[cfg(target_os = "linux")]
+const SETUP_COPY_NAME: &str = "Nectarlink Uninstall";
 
+#[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+#[cfg(windows)]
 const DETACHED_PROCESS: u32 = 0x0000_0008;
 
 /// What the window is for.
@@ -56,6 +66,7 @@ pub struct Installed {
     pub version: String,
 }
 
+#[cfg(windows)]
 pub fn installed() -> Option<Installed> {
     use windows::Win32::System::Registry::HKEY_LOCAL_MACHINE;
     let dir = crate::win::reg_string(HKEY_LOCAL_MACHINE, UNINSTALL_KEY, "InstallLocation")?;
@@ -63,6 +74,17 @@ pub fn installed() -> Option<Installed> {
         crate::win::reg_string(HKEY_LOCAL_MACHINE, UNINSTALL_KEY, "DisplayVersion").unwrap_or_default();
     let dir = PathBuf::from(dir);
     dir.join(APP_EXE).is_file().then_some(Installed { dir, version })
+}
+
+#[cfg(target_os = "linux")]
+pub fn installed() -> Option<Installed> {
+    for candidate in ["/usr/bin", "/usr/local/bin", "/opt/nectarlink"] {
+        let dir = PathBuf::from(candidate);
+        if dir.join(APP_EXE).is_file() {
+            return Some(Installed { dir, version: env!("CARGO_PKG_VERSION").to_owned() });
+        }
+    }
+    None
 }
 
 /// How this install relates to the copy already on the PC.
@@ -197,9 +219,15 @@ pub fn remove_user_data() {
 }
 
 /// `%LOCALAPPDATA%\Nectarlink`, the app's default data folder.
+#[cfg(windows)]
 fn user_data_dir() -> Option<PathBuf> {
     let local = std::env::var_os("LOCALAPPDATA").map(PathBuf::from)?;
     local.is_absolute().then(|| local.join("Nectarlink"))
+}
+
+#[cfg(target_os = "linux")]
+fn user_data_dir() -> Option<PathBuf> {
+    dirs::data_local_dir().map(|d| d.join("Nectarlink"))
 }
 
 /// Runs `program` elevated with `params` and follows `progress` until it
@@ -278,6 +306,7 @@ fn progress_file(what: &str) -> PathBuf {
 /// Starts the installed app as this user, not elevated. Through Explorer, so
 /// it starts as a fresh process of the shell and inherits nothing from
 /// whatever launched setup.
+#[cfg(windows)]
 pub fn open_app(dir: &Path) -> Result<(), String> {
     let app = dir.join(APP_EXE);
     if !app.is_file() {
@@ -286,6 +315,21 @@ pub fn open_app(dir: &Path) -> Result<(), String> {
     std::process::Command::new("explorer.exe")
         .arg(&app)
         .creation_flags(DETACHED_PROCESS)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(target_os = "linux")]
+pub fn open_app(dir: &Path) -> Result<(), String> {
+    let app = dir.join(APP_EXE);
+    if !app.is_file() {
+        return Err(format!("{} is missing", app.display()));
+    }
+    std::process::Command::new(&app)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .spawn()
         .map(|_| ())
         .map_err(|e| e.to_string())
@@ -318,6 +362,7 @@ pub fn hand_over_removal(installed: &Path) -> Result<bool, String> {
 }
 
 /// Deletes this program's temporary copy once it has exited.
+#[cfg(windows)]
 pub fn delete_own_copy_later() {
     let Ok(exe) = std::env::current_exe() else { return };
     let Some(dir) = exe.parent() else { return };
@@ -332,6 +377,27 @@ pub fn delete_own_copy_later() {
     let _ = std::process::Command::new("cmd.exe")
         .raw_arg(script)
         .creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS)
+        .spawn();
+}
+
+#[cfg(target_os = "linux")]
+pub fn delete_own_copy_later() {
+    let Ok(exe) = std::env::current_exe() else { return };
+    let Some(dir) = exe.parent() else { return };
+    let temp = std::env::temp_dir();
+    let ours = dir.starts_with(&temp)
+        && dir.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with("Nectarlink-uninstall-"));
+    if !ours {
+        return;
+    }
+    let _ = std::process::Command::new("sh")
+        .arg("-c")
+        .arg("sleep 3 && rm -rf \"$1\"")
+        .arg("sh")
+        .arg(dir)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .spawn();
 }
 

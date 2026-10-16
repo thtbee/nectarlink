@@ -359,7 +359,10 @@ mod tests {
                 art_key: None,
                 art: None,
             },
+            #[cfg(windows)]
             art: Some(PathBuf::from(r"C:\data\cache\art\a.jpg")),
+            #[cfg(not(windows))]
+            art: Some(PathBuf::from("/data/cache/art/a.jpg")),
             at: UNIX_EPOCH + std::time::Duration::from_millis(1_500),
         };
         let get = |role| role_value(&row, role);
@@ -370,9 +373,13 @@ mod tests {
         assert_eq!(get("positionAt").value::<f64>(), Some(1_500.0));
         assert_eq!(get("canPause").value::<bool>(), Some(true));
         assert_eq!(get("canPlay").value::<bool>(), Some(false));
+        #[cfg(windows)]
+        let expected_art = "file:///C:/data/cache/art/a.jpg";
+        #[cfg(not(windows))]
+        let expected_art = "file:///data/cache/art/a.jpg";
         assert_eq!(
             get("art").value::<QString>().map(|s| String::from(&s)),
-            Some("file:///C:/data/cache/art/a.jpg".into())
+            Some(expected_art.into())
         );
     }
 }

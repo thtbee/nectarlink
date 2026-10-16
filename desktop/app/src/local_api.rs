@@ -103,19 +103,7 @@ pub fn token_file_path() -> PathBuf {
 /// guessable token.
 pub fn generate_token() -> Option<String> {
     let mut bytes = [0u8; 32];
-    let filled = windows::Security::Cryptography::CryptographicBuffer::GenerateRandom(32)
-        .and_then(|buf| {
-            let mut arr = windows::core::Array::<u8>::new();
-            windows::Security::Cryptography::CryptographicBuffer::CopyToByteArray(&buf, &mut arr)?;
-            if arr.len() == 32 {
-                bytes.copy_from_slice(&arr);
-                Ok(())
-            } else {
-                Err(windows::core::Error::empty())
-            }
-        })
-        .is_ok();
-    (filled || crate::win::secure_random(&mut bytes)).then(|| HEXLOWER.encode(&bytes))
+    crate::win::secure_random(&mut bytes).then(|| HEXLOWER.encode(&bytes))
 }
 
 fn is_valid_token_hex(s: &str) -> bool {

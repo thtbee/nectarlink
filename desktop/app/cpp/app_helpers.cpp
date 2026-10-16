@@ -12,7 +12,10 @@
 #include <QtCore/QStringList>
 #include <QtCore/QTranslator>
 #include <QtCore/QUrl>
+#include <QtCore/QtGlobal>
+#if __has_include(<QtCore/QtEnvironmentVariables>)
 #include <QtCore/QtEnvironmentVariables>
+#endif
 #include <QtGui/QDrag>
 #include <QtGui/QFontDatabase>
 #include <QtGui/QGuiApplication>
@@ -53,6 +56,11 @@ void register_qml_engine(QQmlEngine *engine)
 void register_qml_app_engine(QQmlApplicationEngine &engine)
 {
     qmlEngineRef() = &engine;
+#ifdef __linux__
+    const QString localQml = QStringLiteral("/datadisk/Repos/nectarlink/.qt6-sysroot/usr/lib/x86_64-linux-gnu/qt6/qml");
+    if (QFileInfo::exists(localQml))
+        engine.addImportPath(localQml);
+#endif
 }
 
 #include <QtCore/QDateTime>

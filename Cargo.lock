@@ -2334,6 +2334,7 @@ dependencies = [
  "clap",
  "dirs",
  "hostname",
+ "libc",
  "nectarlink-core",
  "qrcode",
  "serde",
@@ -2354,6 +2355,7 @@ dependencies = [
  "data-encoding",
  "iroh",
  "iroh-mdns-address-lookup",
+ "libc",
  "material-colors",
  "n0-future",
  "nectarlink-adb",
@@ -2392,6 +2394,7 @@ dependencies = [
  "dirs",
  "embed-resource",
  "hostname",
+ "libc",
  "material-colors",
  "nectarlink-core",
  "nectarlink-vcam",
@@ -2441,6 +2444,7 @@ version = "0.1.4"
 dependencies = [
  "ab_glyph",
  "embed-resource",
+ "libc",
  "windows",
  "windows-core",
 ]

@@ -66,6 +66,8 @@ pub use handoff::{
     geo_to_maps_https, is_safe_handoff_document, parse_video_timestamp, timeline_link_title_and_detail,
     with_video_timestamp,
 };
+#[cfg(target_os = "linux")]
+pub use identity::SecretServiceKeyProtector;
 pub use identity::{KeyProtector, PlainKeyProtector, default_protector, install_id_from};
 pub use localsend::{
     LOCALSEND_DEFAULT_PORT, LOCALSEND_MULTICAST_ADDR, LOCALSEND_PROTOCOL_VERSION, LocalSendPeer,
