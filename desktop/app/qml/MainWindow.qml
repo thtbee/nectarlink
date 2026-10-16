@@ -127,7 +127,7 @@ NativeWindow {
     // window turns translucent only once the backdrop is in place, and opaque again
     // before it is removed.
     // Hive keeps its own fixed colors, so it never shows the wallpaper through.
-    readonly property bool wantBackdrop: (Preferences.backdrop || Theme.glass) && !Theme.amoled && !Theme.hive
+    readonly property bool wantBackdrop: Qt.platform.os === "windows" && (Preferences.backdrop || Theme.glass) && !Theme.amoled && !Theme.hive
     property bool micaApplied: false
     property bool micaVisible: false
     backdrop: micaApplied
@@ -520,7 +520,7 @@ NativeWindow {
                 visible: (shown || opacity > 0) && room > 120
                 opacity: shown ? 1 : 0
                 scale: shown ? 1 : 0.94
-                color: Theme.errorContainer
+                color: Theme.errorContainer || Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.2)
                 border.width: 1
                 border.color: Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, Theme.dark ? 0.45 : 0.30)
                 Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
@@ -568,7 +568,7 @@ NativeWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     text: sharingPill.fullText
                     role: "label"
-                    color: Theme.errorContainerContent
+                    color: Theme.errorContainerContent || Theme.error
                     elide: Text.ElideRight
                 }
                 Button {
@@ -646,7 +646,7 @@ NativeWindow {
             anchors.bottom: parent.bottom
             width: parent.width
             clip: true
-            topLeftRadius: 18
+            Component.onCompleted: if ("topLeftRadius" in this) topLeftRadius = 18
             // Hive: lets the comb show faintly through, under opaque cards.
             color: Theme.hive
                 ? Qt.rgba(Theme.surfaceContainerLow.r, Theme.surfaceContainerLow.g, Theme.surfaceContainerLow.b, Theme.dark ? 0.50 : 0.58)

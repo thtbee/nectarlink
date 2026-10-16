@@ -175,6 +175,10 @@ pub fn forward_pc_notifications_to_phone() -> bool {
 
 pub fn set_forward_pc_notifications_to_phone(on: bool) {
     FORWARD_PC_NOTIFICATIONS.store(on, std::sync::atomic::Ordering::Relaxed);
+    #[cfg(target_os = "linux")]
+    if on {
+        crate::pc_notifications::start_listener();
+    }
 }
 
 /// Whether the PC's clipboard goes to the phone when control moves to it (`input_share`).

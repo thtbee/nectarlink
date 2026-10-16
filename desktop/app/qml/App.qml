@@ -155,9 +155,10 @@ QtObject {
     // Qt follows the system color scheme unless told otherwise; the window
     // frame and Mica tint must follow the app's theme instead.
     readonly property Binding colorScheme: Binding {
-        target: Qt.styleHints
+        when: "colorScheme" in Qt.styleHints && typeof Qt.ColorScheme !== "undefined"
+        target: "colorScheme" in Qt.styleHints ? Qt.styleHints : null
         property: "colorScheme"
-        value: Theme.dark ? Qt.ColorScheme.Dark : Qt.ColorScheme.Light
+        value: typeof Qt.ColorScheme !== "undefined" ? (Theme.dark ? Qt.ColorScheme.Dark : Qt.ColorScheme.Light) : 0
     }
 
     readonly property Connections controller: Connections {

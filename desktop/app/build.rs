@@ -287,11 +287,20 @@ fn main() {
     } else if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux")
         && let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR")
     {
+        println!("cargo:rustc-link-arg=-fuse-ld=bfd");
+        println!("cargo:rustc-link-lib=Qt6Quick");
         let sysroot_lib = std::path::Path::new(&manifest_dir)
             .join("../../.qt6-sysroot/usr/lib/x86_64-linux-gnu");
         if let Ok(canon) = sysroot_lib.canonicalize() {
             println!("cargo:rustc-link-search=native={}", canon.display());
+            println!("cargo:rustc-link-arg=-Wl,--disable-new-dtags");
             println!("cargo:rustc-link-arg=-Wl,-rpath,{}", canon.display());
         }
     }
+    println!("cargo:rerun-if-changed=cpp/app_helpers.h");
+    println!("cargo:rerun-if-changed=cpp/app_helpers.cpp");
+    println!("cargo:rerun-if-changed=cpp/native_window.h");
+    println!("cargo:rerun-if-changed=cpp/native_window.cpp");
+    println!("cargo:rerun-if-changed=cpp/video_view.h");
+    println!("cargo:rerun-if-changed=cpp/video_view.cpp");
 }

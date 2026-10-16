@@ -769,7 +769,7 @@ Item {
                         Shape {
                             id: phoneShape
                             anchors.fill: parent
-                            preferredRendererType: Shape.CurveRenderer
+                            Component.onCompleted: if ("preferredRendererType" in this) preferredRendererType = 2
 
                             // 1. Outer front chassis outline with measured per-corner radii.
                             ShapePath {
@@ -834,7 +834,7 @@ Item {
                         Shape {
                             anchors.fill: parent
                             visible: phoneArt.cutoutSvg.length > 0
-                            preferredRendererType: Shape.CurveRenderer
+                            Component.onCompleted: if ("preferredRendererType" in this) preferredRendererType = 2
                             ShapePath {
                                 strokeWidth: 0.8
                                 strokeColor: Qt.rgba(1, 1, 1, Theme.dark ? 0.16 : 0.22)
@@ -943,7 +943,7 @@ Item {
 
                                 Shape {
                                     anchors.fill: parent
-                                    preferredRendererType: Shape.CurveRenderer
+                                    Component.onCompleted: if ("preferredRendererType" in this) preferredRendererType = 2
 
                                     // Background circular ring track
                                     ShapePath {

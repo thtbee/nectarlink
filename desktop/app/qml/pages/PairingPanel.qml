@@ -239,7 +239,7 @@ Item {
                         anchors.left: deviceIcon.right; anchors.leftMargin: 12
                         anchors.right: pairButton.left; anchors.rightMargin: 12
                         anchors.verticalCenter: parent.verticalCenter
-                        text: modelData.name
+                        text: (modelData && modelData.name) ? modelData.name : ""
                         role: "title"
                     }
                     Button {

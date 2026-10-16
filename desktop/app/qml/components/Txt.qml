@@ -30,7 +30,9 @@ Text {
     font.family: family
     font.pixelSize: Math.max(1, Math.round(size))
     font.weight: weight
-    font.variableAxes: family === Theme.fontUi ? { "wght": weight } : {}
+    onFamilyChanged: if ("variableAxes" in font) font.variableAxes = family === Theme.fontUi ? { "wght": weight } : {}
+    onWeightChanged: if ("variableAxes" in font) font.variableAxes = family === Theme.fontUi ? { "wght": weight } : {}
+    Component.onCompleted: if ("variableAxes" in font) font.variableAxes = family === Theme.fontUi ? { "wght": weight } : {}
     font.letterSpacing: (graphiteLabel ? Theme.labelStyle.tracking : spec.tracking) * size
     font.capitalization: graphiteLabel ? Font.AllUppercase : Font.MixedCase
     // Token line heights are CSS-style (a multiple of the font size), not

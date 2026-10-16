@@ -205,10 +205,11 @@ NativeWindow::NativeWindow(QWindow *parent)
     // Qt removes the system title bar and lets content fill the window.
 #ifdef _WIN32
     setFlags(flags() | Qt::ExpandedClientAreaHint);
+    setColor(Qt::transparent);
 #else
     setFlags(flags() | Qt::FramelessWindowHint);
+    setColor(QColor(0x14, 0x13, 0x11));
 #endif
-    setColor(Qt::transparent);
     // Drop the scene graph and D3D/RHI resources when the window is hidden or
     // closed to the tray instead of keeping GPU buffers in private commit.
     setPersistentSceneGraph(false);
