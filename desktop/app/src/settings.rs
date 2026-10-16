@@ -182,6 +182,14 @@ pub fn share_pc_storage() -> bool {
 
 pub fn set_share_pc_storage(on: bool) {
     SHARE_PC_STORAGE.store(on, std::sync::atomic::Ordering::Relaxed);
+    if on
+        && let Some(node) = crate::core_host::node()
+        && let Ok(devices) = node.paired_devices()
+    {
+        for d in devices {
+            let _ = node.set_device_toggle(d.id, "storage", true);
+        }
+    }
 }
 
 pub fn forward_pc_notifications_to_phone() -> bool {

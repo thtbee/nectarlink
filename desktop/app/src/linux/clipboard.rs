@@ -299,6 +299,29 @@ fn enrich_with_last_written_rich(text: String, mut html: Option<String>, mut rtf
     Clip::Text { text, html, rtf }
 }
 
+pub(crate) fn has_copied_files_mime(targets: &str) -> bool {
+    has_mime_target(targets, "text/uri-list")
+        || has_mime_target(targets, "x-special/gnome-copied-files")
+        || has_mime_target(targets, "x-special/mate-copied-files")
+        || has_mime_target(targets, "application/x-kde-cutselection")
+}
+
+pub(crate) fn is_copied_file_uri_text(text: &str) -> bool {
+    let mut found_file_uri = false;
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') || matches!(trimmed, "copy" | "cut") {
+            continue;
+        }
+        if from_file_uri(trimmed).is_some() {
+            found_file_uri = true;
+        } else {
+            return false;
+        }
+    }
+    found_file_uri
+}
+
 fn read_from_os(check_privacy: bool) -> Option<Clip> {
     if cfg!(test) || !has_display_server() {
         return None;
@@ -335,7 +358,14 @@ fn read_from_os(check_privacy: bool) -> Option<Clip> {
             }
         }
 
+        if has_copied_files_mime(&targets) {
+            return Some(Clip::Empty);
+        }
+
         if let Some(text) = read_os_plain_text(wayland) {
+            if is_copied_file_uri_text(&text) {
+                return Some(Clip::Empty);
+            }
             let html = if has_mime_target(&targets, "text/html") {
                 read_os_mime(wayland, "text/html").and_then(|b| {
                     decode_cf_html(&b).or_else(|| {
@@ -359,6 +389,9 @@ fn read_from_os(check_privacy: bool) -> Option<Clip> {
     }
 
     if let Some(text) = read_os_plain_text(is_wayland()) {
+        if is_copied_file_uri_text(&text) {
+            return Some(Clip::Empty);
+        }
         return Some(enrich_with_last_written_rich(text, None, None));
     }
     None
@@ -601,14 +634,25 @@ pub fn build_dropfiles_payload(paths: &[PathBuf]) -> Vec<u8> {
 }
 
 pub fn read_files() -> Option<Vec<PathBuf>> {
-    if !cfg!(test)
-        && has_display_server()
-        && let Some(bytes) = read_os_mime(is_wayland(), "text/uri-list")
-        && let Ok(text) = String::from_utf8(bytes)
-    {
-        let parsed: Vec<PathBuf> = parse_uri_list(&text).into_iter().filter(|p| p.exists()).collect();
-        if !parsed.is_empty() {
-            return Some(parsed);
+    if !cfg!(test) && has_display_server() {
+        let wayland = is_wayland();
+        for mime in ["text/uri-list", "x-special/gnome-copied-files", "x-special/mate-copied-files"] {
+            if let Some(bytes) = read_os_mime(wayland, mime)
+                && let Ok(text) = String::from_utf8(bytes)
+            {
+                let parsed: Vec<PathBuf> = parse_uri_list(&text).into_iter().filter(|p| p.exists()).collect();
+                if !parsed.is_empty() {
+                    return Some(parsed);
+                }
+            }
+        }
+        if let Some(text) = read_os_plain_text(wayland)
+            && is_copied_file_uri_text(&text)
+        {
+            let parsed: Vec<PathBuf> = parse_uri_list(&text).into_iter().filter(|p| p.exists()).collect();
+            if !parsed.is_empty() {
+                return Some(parsed);
+            }
         }
     }
     LAST_FILES.lock().unwrap_or_else(|e| e.into_inner()).clone().filter(|v| !v.is_empty())
@@ -618,9 +662,13 @@ pub fn write_files(paths: &[PathBuf]) -> bool {
     if paths.is_empty() {
         return false;
     }
+    let uri_list = format_uri_list(paths);
+    let trimmed = uri_list.trim_end_matches(&['\r', '\n'][..]);
+    *LAST_REPORTED.lock().unwrap_or_else(|e| e.into_inner()) = Some(Fingerprint::Text(fnv(trimmed.as_bytes())));
+    *LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    *LAST_CLIP.lock().unwrap_or_else(|e| e.into_inner()) = Clip::Empty;
     *LAST_FILES.lock().unwrap_or_else(|e| e.into_inner()) = Some(paths.to_vec());
     if !cfg!(test) && has_display_server() {
-        let uri_list = format_uri_list(paths);
         let _ = pipe_to_cmd("wl-copy", &["--type", "text/uri-list"], uri_list.as_bytes()).or_else(|_| {
             pipe_to_cmd("xclip", &["-selection", "clipboard", "-t", "text/uri-list"], uri_list.as_bytes())
         });
@@ -871,5 +919,38 @@ mod tests {
 
         let gnome_targets = "text/plain\nx-gnome-privacy-hint\n";
         assert!(is_secret_mime_list(gnome_targets));
+    }
+
+    #[test]
+    fn copied_files_uri_list_is_not_treated_as_text_clip() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let targets = "text/plain\ntext/uri-list\n";
+        assert!(has_copied_files_mime(targets));
+        let gnome_targets = "x-special/gnome-copied-files\nUTF8_STRING\n";
+        assert!(has_copied_files_mime(gnome_targets));
+
+        assert!(is_copied_file_uri_text(
+            "file:///home/jochen/Downloads/Nectarlink/PXL_20261016_130349832.MP.jpg\r\n"
+        ));
+        assert!(is_copied_file_uri_text(
+            "copy\nfile:///home/jochen/Downloads/Nectarlink/PXL_20261016_130349832.MP.jpg"
+        ));
+        assert!(!is_copied_file_uri_text("Check out file:///tmp/a.txt and https://example.com"));
+
+        // After write_files, read() must return Clip::Empty (so send_now falls through to
+        // read_files() and the background watcher never echoes file:///... as text).
+        let paths = vec![PathBuf::from("/home/jochen/Downloads/Nectarlink/PXL_20261016_130349832.MP.jpg")];
+        assert!(write_files(&paths));
+        assert_eq!(read(), Clip::Empty);
+        let mut reported = Vec::new();
+        assert!(!report_if_changed(
+            Clip::Text {
+                text: "file:///home/jochen/Downloads/Nectarlink/PXL_20261016_130349832.MP.jpg".into(),
+                html: None,
+                rtf: None,
+            },
+            |c| reported.push(c)
+        ));
+        assert!(reported.is_empty());
     }
 }

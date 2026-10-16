@@ -218,6 +218,9 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         max_entries: nectarlink_core::DEFAULT_TIMELINE_MAX_ENTRIES,
     });
     let _ = host.node.set(node);
+    if saved_settings.share_pc_storage {
+        crate::settings::set_share_pc_storage(true);
+    }
     host.hub.update(|s| {
         let mut changes = s.set_devices(devices);
         for m in matrices {

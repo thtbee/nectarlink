@@ -1649,6 +1649,9 @@ impl qobject::AppController {
             core_host::refresh_capabilities();
         }
         if name_str == "storage" {
+            if on && !crate::settings::share_pc_storage() {
+                crate::settings::set_share_pc_storage(true);
+            }
             crate::storage::sync();
         }
         let revision = self.toggles_revision.wrapping_add(1);

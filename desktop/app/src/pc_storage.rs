@@ -168,8 +168,22 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
+fn any_peer_storage_toggle_enabled() -> bool {
+    let Some(node) = crate::core_host::node() else {
+        return false;
+    };
+    let Ok(devices) = node.paired_devices() else {
+        return false;
+    };
+    devices.into_iter().any(|d| {
+        node.device_toggles(d.id)
+            .ok()
+            .is_some_and(|toggles| toggles.into_iter().any(|(k, on)| k == "storage" && on))
+    })
+}
+
 fn ensure_enabled() -> Result<PcStorage, StorageError> {
-    if !settings::share_pc_storage() {
+    if !settings::share_pc_storage() && !any_peer_storage_toggle_enabled() {
         return Err(StorageError::Denied);
     }
     Ok(PcStorage::system())
