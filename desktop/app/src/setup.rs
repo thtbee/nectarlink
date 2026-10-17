@@ -130,7 +130,10 @@ impl Step {
         match self {
             Step::Closing => "Closing NectarLink",
             Step::Files => "Copying files",
+            #[cfg(windows)]
             Step::Firewall => "Allowing through Windows Firewall",
+            #[cfg(target_os = "linux")]
+            Step::Firewall => "Configure Linux firewall rules",
             Step::Updates => "Setting up updates",
             Step::Shortcuts => "Adding shortcuts",
             Step::Cleanup => "Removing files",
@@ -188,6 +191,7 @@ pub fn install(installer: &Path, on_event: impl FnMut(Event)) -> Outcome {
 
 /// Removes the copy in `installed` with administrator rights, then this
 /// user's data.
+#[cfg(windows)]
 pub fn remove(installed: &Path, mut on_event: impl FnMut(Event)) -> Outcome {
     let uninstaller = installed.join("uninstall.exe");
     if !uninstaller.is_file() {
@@ -205,6 +209,44 @@ pub fn remove(installed: &Path, mut on_event: impl FnMut(Event)) -> Outcome {
         remove_user_data();
     }
     outcome
+}
+
+#[cfg(target_os = "linux")]
+pub fn remove(installed: &Path, mut on_event: impl FnMut(Event)) -> Outcome {
+    on_event(Event::Step(Step::Closing));
+    let _ = crate::win::autostart::set_enabled(false);
+    crate::win::jumplist::unregister();
+    let _ = crate::send_to::remove_all();
+    crate::storage::unregister_all();
+
+    on_event(Event::Step(Step::Cleanup));
+    let uninstaller = installed.join("uninstall.exe");
+    if uninstaller.is_file() {
+        let progress = progress_file("remove");
+        let params = format!("/S /PROGRESS={}", progress.display());
+        let outcome =
+            run_tracked(&uninstaller, &params, &progress, Duration::from_secs(300), false, &mut on_event);
+        if outcome == Outcome::Done {
+            remove_user_data();
+        }
+        return outcome;
+    }
+
+    let script = if installed == Path::new("/opt/nectarlink") {
+        "rm -rf /opt/nectarlink /usr/local/bin/nectarlink-desktop"
+    } else {
+        "rm -f /usr/local/bin/nectarlink-desktop /usr/bin/nectarlink-desktop && rm -rf /opt/nectarlink"
+    };
+    match crate::win::elevated::run_elevated(Path::new("sh"), &["-c", script]) {
+        Ok(0) => {
+            remove_user_data();
+            on_event(Event::Done);
+            Outcome::Done
+        }
+        Ok(126 | 127) => Outcome::Declined,
+        Ok(code) => Outcome::Failed(format!("Uninstall stopped with code {code}.")),
+        Err(e) => Outcome::Failed(format!("Couldn't uninstall NectarLink: {e}")),
+    }
 }
 
 /// Removes this user's settings, pairings, history and caches. Received

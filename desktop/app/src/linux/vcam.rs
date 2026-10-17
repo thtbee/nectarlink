@@ -129,6 +129,14 @@ pub fn is_registered() -> bool {
     find_v4l2loopback_device().is_some() || PathBuf::from("/sys/module/v4l2loopback").exists()
 }
 
+/// Ensures `v4l2loopback` is registered, attempting `register_hklm()` when not already active.
+pub fn ensure_registered() -> bool {
+    if is_registered() {
+        return true;
+    }
+    register_hklm().is_ok() && is_registered()
+}
+
 fn run_modprobe(args: &[&str]) -> Result<(), String> {
     let bins = ["/sbin/modprobe", "/usr/sbin/modprobe", "modprobe"];
     let mut last_err = String::from("modprobe not found");

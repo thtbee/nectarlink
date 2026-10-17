@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Phone-as-Microphone virtual audio source on Linux via PulseAudio / PipeWire
-//! `module-pipe-source`, including PCM gain/mute processing and RMS level
-//! metering.
+//! `module-pipe-source`, including FIFO creation (`mkfifo`), non-blocking PCM
+//! writes, gain/mute processing, and RMS level metering.
 
-use std::fs::OpenOptions;
-use std::io::Write;
+use std::ffi::CString;
+use std::fs::{File, OpenOptions};
+use std::io::{ErrorKind, Write};
+use std::os::unix::ffi::OsStrExt;
+use std::os::unix::fs::{FileTypeExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -15,11 +18,51 @@ pub fn is_available() -> bool {
     Command::new("pactl").arg("info").output().map(|o| o.status.success()).unwrap_or(false)
 }
 
+/// Ensures that `fifo_path` exists on disk as a Unix FIFO (`0o600`).
+/// If a regular file exists at `fifo_path`, it is replaced with a FIFO.
+pub fn ensure_fifo(fifo_path: &Path) -> Result<(), String> {
+    if let Some(parent) = fifo_path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        std::fs::create_dir_all(parent).map_err(|e| format!("create FIFO parent dir: {e}"))?;
+    }
+
+    if let Ok(meta) = std::fs::symlink_metadata(fifo_path) {
+        if meta.file_type().is_fifo() {
+            return Ok(());
+        }
+        std::fs::remove_file(fifo_path)
+            .map_err(|e| format!("remove non-FIFO at {}: {e}", fifo_path.display()))?;
+    }
+
+    let c_path =
+        CString::new(fifo_path.as_os_str().as_bytes()).map_err(|e| format!("invalid FIFO path: {e}"))?;
+    // SAFETY: `c_path` is a valid NUL-terminated path string.
+    let rc = unsafe { libc::mkfifo(c_path.as_ptr(), 0o600) };
+    if rc != 0 {
+        let err = std::io::Error::last_os_error();
+        if err.kind() == ErrorKind::AlreadyExists
+            && std::fs::symlink_metadata(fifo_path).map(|m| m.file_type().is_fifo()).unwrap_or(false)
+        {
+            return Ok(());
+        }
+        return Err(format!("mkfifo({}): {err}", fifo_path.display()));
+    }
+    Ok(())
+}
+
+/// Opens `fifo_path` in non-blocking read-write mode (`O_RDWR | O_NONBLOCK`) so opening and
+/// writing never block when no PulseAudio/PipeWire reader is currently attached.
+pub fn open_fifo_nonblocking(fifo_path: &Path) -> std::io::Result<File> {
+    OpenOptions::new().read(true).write(true).custom_flags(libc::O_NONBLOCK).open(fifo_path)
+}
+
 pub fn create_source(rate: u32, channels: u8) -> Result<u32, String> {
     create_source_with_path(rate, channels, Path::new(DEFAULT_FIFO_PATH))
 }
 
 pub fn create_source_with_path(rate: u32, channels: u8, fifo_path: &Path) -> Result<u32, String> {
+    let _ = ensure_fifo(fifo_path);
     let output = Command::new("pactl")
         .args([
             "load-module",
@@ -89,6 +132,7 @@ pub fn process_mic_pcm_s16le(pcm: &[u8], gain_db: f32, muted: bool) -> (Vec<u8>,
 #[derive(Debug)]
 pub struct VirtualMic {
     fifo_path: PathBuf,
+    fifo_file: Option<File>,
     module_id: Option<u32>,
     gain_db: f32,
     muted: bool,
@@ -100,12 +144,35 @@ impl VirtualMic {
     /// underlying `module-pipe-source` in PulseAudio/PipeWire.
     pub fn new(rate: u32, channels: u8) -> Self {
         let fifo_path = PathBuf::from(DEFAULT_FIFO_PATH);
+        let _ = ensure_fifo(&fifo_path);
+        let fifo_file = open_fifo_nonblocking(&fifo_path).ok();
         let module_id = create_source_with_path(rate, channels, &fifo_path).ok();
-        Self { fifo_path, module_id, gain_db: 0.0, muted: false, last_rms: 0.0 }
+        Self { fifo_path, fifo_file, module_id, gain_db: 0.0, muted: false, last_rms: 0.0 }
+    }
+
+    /// Creates a `VirtualMic` backed by a specific FIFO path (creating the FIFO if needed)
+    /// without invoking `pactl`.
+    pub fn open_fifo_only(fifo_path: impl Into<PathBuf>) -> Result<Self, String> {
+        let fifo_path = fifo_path.into();
+        ensure_fifo(&fifo_path)?;
+        let fifo_file = open_fifo_nonblocking(&fifo_path)
+            .map_err(|e| format!("open FIFO {}: {e}", fifo_path.display()))?;
+        Ok(Self {
+            fifo_path,
+            fifo_file: Some(fifo_file),
+            module_id: None,
+            gain_db: 0.0,
+            muted: false,
+            last_rms: 0.0,
+        })
     }
 
     pub fn is_active(&self) -> bool {
         self.module_id.is_some()
+    }
+
+    pub fn fifo_path(&self) -> &Path {
+        &self.fifo_path
     }
 
     pub fn set_gain_db(&mut self, gain_db: f32) {
@@ -131,17 +198,36 @@ impl VirtualMic {
         self.last_rms
     }
 
+    /// Writes already-processed or raw `s16le` bytes into the underlying non-blocking FIFO.
+    /// Returns the number of bytes written (`0` if the kernel pipe buffer is currently full).
+    pub fn write_pcm_s16le(&mut self, pcm: &[u8]) -> Result<usize, String> {
+        if pcm.is_empty() {
+            return Ok(0);
+        }
+        if self.fifo_file.is_none() {
+            ensure_fifo(&self.fifo_path)?;
+            self.fifo_file = open_fifo_nonblocking(&self.fifo_path).ok();
+        }
+        let Some(file) = self.fifo_file.as_mut() else {
+            return Err(format!("FIFO {} is not open", self.fifo_path.display()));
+        };
+        match file.write(pcm) {
+            Ok(n) => Ok(n),
+            Err(e) if e.kind() == ErrorKind::WouldBlock => Ok(0),
+            Err(e) => {
+                self.fifo_file = None;
+                Err(format!("FIFO write error: {e}"))
+            }
+        }
+    }
+
     /// Processes incoming `s16le` PCM frames and writes them to the pipe FIFO
-    /// if the virtual source is active.
+    /// if the virtual source or FIFO handle is active.
     pub fn push_pcm(&mut self, pcm: &[u8]) -> Result<f32, String> {
         let (processed, rms) = process_mic_pcm_s16le(pcm, self.gain_db, self.muted);
         self.last_rms = rms;
-        if self.module_id.is_some()
-            && !processed.is_empty()
-            && self.fifo_path.exists()
-            && let Ok(mut file) = OpenOptions::new().write(true).open(&self.fifo_path)
-        {
-            let _ = file.write_all(&processed);
+        if (self.module_id.is_some() || self.fifo_file.is_some()) && !processed.is_empty() {
+            let _ = self.write_pcm_s16le(&processed);
         }
         Ok(rms)
     }
@@ -149,6 +235,7 @@ impl VirtualMic {
 
 impl Drop for VirtualMic {
     fn drop(&mut self) {
+        self.fifo_file = None;
         if let Some(id) = self.module_id.take() {
             destroy_source(id);
         }
@@ -158,6 +245,8 @@ impl Drop for VirtualMic {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Read;
+    use std::os::unix::fs::PermissionsExt;
 
     #[test]
     fn process_mic_pcm_s16le_unity_gain_preserves_signal_and_computes_rms() {
@@ -194,5 +283,32 @@ mod tests {
         assert!(s0 > 18000, "+6 dB should roughly double moderate sample: {s0}");
         assert!(s1 >= 29000, "soft limiter should keep loud sample near full scale: {s1}");
         assert!(rms > 0.5 && rms <= 1.0);
+    }
+
+    #[test]
+    fn ensure_fifo_creates_named_pipe_and_nonblocking_writes_succeed_without_reader() {
+        let dir = tempfile::tempdir().unwrap();
+        let fifo_path = dir.path().join("test-vmic.pcm");
+
+        // Write a regular file first to verify `ensure_fifo` replaces non-FIFOs.
+        std::fs::write(&fifo_path, b"stale").unwrap();
+        ensure_fifo(&fifo_path).expect("ensure_fifo should replace regular file with FIFO");
+
+        let meta = std::fs::symlink_metadata(&fifo_path).unwrap();
+        assert!(meta.file_type().is_fifo(), "path must be a Unix FIFO");
+        assert_eq!(meta.permissions().mode() & 0o777, 0o600);
+
+        let mut vmic = VirtualMic::open_fifo_only(&fifo_path).expect("should open FIFO non-blocking");
+        let mut raw = Vec::new();
+        for _ in 0..32 {
+            raw.extend_from_slice(&8192i16.to_le_bytes());
+        }
+        let rms = vmic.push_pcm(&raw).expect("push_pcm should not block without reader");
+        assert!(rms > 0.2 && rms < 0.3, "expected ~0.25 RMS, got {rms}");
+
+        let mut reader = open_fifo_nonblocking(&fifo_path).unwrap();
+        let mut buf = vec![0u8; raw.len()];
+        let n = reader.read(&mut buf).expect("should read pushed PCM bytes from FIFO");
+        assert_eq!(n, raw.len());
     }
 }

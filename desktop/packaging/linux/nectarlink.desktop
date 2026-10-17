@@ -1,0 +1,27 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=NectarLink
+GenericName=Phone Link
+Comment=Connect your Android phone and Linux PC over LAN
+Exec=nectarlink-desktop %U
+Icon=nectarlink
+Terminal=false
+Categories=Network;Utility;FileTransfer;Telephony;
+Keywords=android;phone;sync;clipboard;notifications;files;mirror;sms;calls;
+StartupNotify=true
+StartupWMClass=nectarlink-desktop
+MimeType=x-scheme-handler/tel;x-scheme-handler/sms;x-scheme-handler/smsto;x-scheme-handler/mms;x-scheme-handler/mmsto;
+Actions=SendFiles;SendClipboard;FindMyPhone;
+
+[Desktop Action SendFiles]
+Name=Send files to phone
+Exec=nectarlink-desktop --jump-send-files
+
+[Desktop Action SendClipboard]
+Name=Send clipboard to phone
+Exec=nectarlink-desktop --jump-send-clipboard
+
+[Desktop Action FindMyPhone]
+Name=Ring phone
+Exec=nectarlink-desktop --jump-find-phone

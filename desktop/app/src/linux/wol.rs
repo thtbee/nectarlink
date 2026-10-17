@@ -103,7 +103,7 @@ fn enumerate_wake_adapters() -> Vec<WakeAdapter> {
             continue;
         };
         let wired = !path.join("wireless").exists() && !path.join("phy80211").exists();
-        let support = probe_adapter_wake_support(&path);
+        let support = probe_adapter_wake_support(&name, &path);
         let broadcasts = broadcasts_by_iface.get(&name).cloned().unwrap_or_default();
 
         result.push(WakeAdapter { label: name, wired, mac, broadcasts, support });
@@ -111,7 +111,42 @@ fn enumerate_wake_adapters() -> Vec<WakeAdapter> {
     result
 }
 
-fn probe_adapter_wake_support(iface_sys_path: &Path) -> WakeSupport {
+pub fn parse_ethtool_wol(output: &str) -> Option<bool> {
+    let mut supports_magic = false;
+    let mut active_modes: Option<&str> = None;
+
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if let Some(rest) = trimmed.strip_prefix("Supports Wake-on:") {
+            if rest.trim().contains('g') {
+                supports_magic = true;
+            }
+        } else if let Some(rest) = trimmed.strip_prefix("Wake-on:") {
+            active_modes = Some(rest.trim());
+        }
+    }
+
+    let modes = active_modes?;
+    if modes.contains('g') {
+        Some(true)
+    } else if supports_magic || modes.contains('d') {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+fn probe_adapter_wake_support(iface_name: &str, iface_sys_path: &Path) -> WakeSupport {
+    if let Ok(output) = Command::new("ethtool").arg(iface_name).output()
+        && output.status.success()
+    {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        match parse_ethtool_wol(&stdout) {
+            Some(true) => return WakeSupport::Enabled,
+            Some(false) => return WakeSupport::Disabled,
+            None => {}
+        }
+    }
     let wakeup_path = iface_sys_path.join("device/power/wakeup");
     if let Ok(state) = fs::read_to_string(wakeup_path) {
         return match state.trim() {
@@ -199,5 +234,35 @@ mod tests {
         assert_eq!(subnet_broadcast(Ipv4Addr::new(10, 0, 12, 5), 16), Some(Ipv4Addr::new(10, 0, 255, 255)));
         assert_eq!(subnet_broadcast(Ipv4Addr::new(192, 168, 1, 1), 32), None);
         assert_eq!(subnet_broadcast(Ipv4Addr::new(192, 168, 1, 1), 0), None);
+    }
+
+    #[test]
+    fn parses_ethtool_magic_packet_enabled_and_disabled() {
+        let enabled_output = "\
+Settings for enp3s0:
+\tSupported ports: [ TP ]
+\tSupports Wake-on: pumbg
+\tWake-on: g
+\tLink detected: yes
+";
+        assert_eq!(parse_ethtool_wol(enabled_output), Some(true));
+
+        let disabled_output = "\
+Settings for enp3s0:
+\tSupported ports: [ TP ]
+\tSupports Wake-on: pumbg
+\tWake-on: d
+\tLink detected: yes
+";
+        assert_eq!(parse_ethtool_wol(disabled_output), Some(false));
+
+        let unicast_only_output = "\
+Settings for enp3s0:
+\tSupports Wake-on: pumbg
+\tWake-on: u
+";
+        assert_eq!(parse_ethtool_wol(unicast_only_output), Some(false));
+
+        assert_eq!(parse_ethtool_wol("Settings for lo:\n\tLink detected: yes\n"), None);
     }
 }
