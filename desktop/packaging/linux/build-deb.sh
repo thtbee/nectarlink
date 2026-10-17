@@ -41,6 +41,9 @@ mkdir -p \
     "${PKG_ROOT}/usr/share/icons/hicolor/scalable/apps"
 
 install -m 0755 "${BIN_PATH}" "${PKG_ROOT}/usr/bin/nectarlink-desktop"
+for qm in "$(dirname "${BIN_PATH}")"/nectarlink_*.qm; do
+    [[ -f "${qm}" ]] && install -m 0644 "${qm}" "${PKG_ROOT}/usr/bin/$(basename "${qm}")"
+done
 install -m 0644 "${SCRIPT_DIR}/nectarlink.desktop" "${PKG_ROOT}/usr/share/applications/nectarlink.desktop"
 install -m 0644 "${SCRIPT_DIR}/org.nectarlink.desktop.metainfo.xml" "${PKG_ROOT}/usr/share/metainfo/org.nectarlink.desktop.metainfo.xml"
 

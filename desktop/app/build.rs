@@ -235,6 +235,195 @@ END
     embed_resource::compile(&rc_path, embed_resource::NONE).manifest_required().expect("compile resources");
 }
 
+fn find_lrelease() -> Option<PathBuf> {
+    if let Ok(custom) = std::env::var("LRELEASE") {
+        let p = PathBuf::from(custom);
+        if p.is_file() {
+            return Some(p);
+        }
+    }
+    for candidate in [
+        "/usr/lib/qt6/bin/lrelease",
+        "/usr/lib64/qt6/bin/lrelease",
+        "/usr/bin/lrelease-qt6",
+        "/usr/bin/lrelease",
+    ] {
+        let p = PathBuf::from(candidate);
+        if p.is_file() {
+            return Some(p);
+        }
+    }
+    None
+}
+
+fn elf_hash(bytes: &[u8]) -> u32 {
+    let mut h: u32 = 0;
+    for &b in bytes {
+        h = h.wrapping_shl(4).wrapping_add(u32::from(b));
+        let g = h & 0xf000_0000;
+        if g != 0 {
+            h ^= g >> 24;
+        }
+        h &= !g;
+    }
+    if h == 0 { 1 } else { h }
+}
+
+fn unescape_xml(s: &str) -> String {
+    s.replace("&apos;", "'")
+        .replace("&quot;", "\"")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+}
+
+fn extract_tag<'a>(block: &'a str, tag: &str) -> Option<&'a str> {
+    let open = format!("<{tag}");
+    let close = format!("</{tag}>");
+    let start_tag = block.find(&open)?;
+    let after_open = &block[start_tag + open.len()..];
+    let gt = after_open.find('>')?;
+    let content_start = &after_open[gt + 1..];
+    let end = content_start.find(&close)?;
+    Some(&content_start[..end])
+}
+
+fn compile_ts_to_qm_rust(ts_path: &Path, qm_path: &Path) -> bool {
+    let Ok(xml) = fs::read_to_string(ts_path) else {
+        return false;
+    };
+    let mut entries: Vec<(u32, Vec<u8>)> = Vec::new();
+    let mut rest = xml.as_str();
+    while let Some(ctx_pos) = rest.find("<context>") {
+        let after_ctx = &rest[ctx_pos + "<context>".len()..];
+        let Some(ctx_end) = after_ctx.find("</context>") else {
+            break;
+        };
+        let ctx_block = &after_ctx[..ctx_end];
+        let ctx_name = extract_tag(ctx_block, "name").map(unescape_xml).unwrap_or_default();
+        let ctx_bytes = ctx_name.as_bytes();
+
+        let mut msg_rest = ctx_block;
+        while let Some(msg_pos) = msg_rest.find("<message") {
+            let after_msg = &msg_rest[msg_pos..];
+            let Some(msg_end) = after_msg.find("</message>") else {
+                break;
+            };
+            let msg_block = &after_msg[..msg_end];
+            if let (Some(raw_src), Some(raw_tr)) =
+                (extract_tag(msg_block, "source"), extract_tag(msg_block, "translation"))
+            {
+                let src = unescape_xml(raw_src);
+                let tr_body = extract_tag(raw_tr, "numerusform").unwrap_or(raw_tr);
+                let tr = unescape_xml(tr_body);
+                if !tr.is_empty() {
+                    let src_bytes = src.as_bytes();
+                    let h = elf_hash(src_bytes);
+                    let mut tr_utf16be = Vec::with_capacity(tr.len() * 2);
+                    for u in tr.encode_utf16() {
+                        tr_utf16be.extend_from_slice(&u.to_be_bytes());
+                    }
+                    let mut rec = Vec::new();
+                    // Tag_Translation = 3
+                    rec.push(3u8);
+                    rec.extend_from_slice(&(tr_utf16be.len() as u32).to_be_bytes());
+                    rec.extend_from_slice(&tr_utf16be);
+                    // Tag_Comment = 8 (empty)
+                    rec.push(8u8);
+                    rec.extend_from_slice(&0u32.to_be_bytes());
+                    // Tag_SourceText = 6
+                    rec.push(6u8);
+                    rec.extend_from_slice(&(src_bytes.len() as u32).to_be_bytes());
+                    rec.extend_from_slice(src_bytes);
+                    // Tag_Context = 7
+                    rec.push(7u8);
+                    rec.extend_from_slice(&(ctx_bytes.len() as u32).to_be_bytes());
+                    rec.extend_from_slice(ctx_bytes);
+                    // Tag_End = 1
+                    rec.push(1u8);
+                    entries.push((h, rec));
+                }
+            }
+            msg_rest = &after_msg[msg_end + "</message>".len()..];
+        }
+        rest = &after_ctx[ctx_end + "</context>".len()..];
+    }
+
+    entries.sort_by_key(|(h, _)| *h);
+    let mut messages_buf = Vec::new();
+    let mut hashes_buf = Vec::with_capacity(entries.len() * 8);
+    for (h, rec) in entries {
+        hashes_buf.extend_from_slice(&h.to_be_bytes());
+        hashes_buf.extend_from_slice(&(messages_buf.len() as u32).to_be_bytes());
+        messages_buf.extend_from_slice(&rec);
+    }
+
+    let mut qm = Vec::with_capacity(16 + 10 + hashes_buf.len() + messages_buf.len());
+    qm.extend_from_slice(&[
+        0x3c, 0xb8, 0x64, 0x18, 0xca, 0xef, 0x9c, 0x95, 0xcd, 0x21, 0x1c, 0xbf, 0x60, 0xa1, 0xbd, 0xdd,
+    ]);
+    // Tag_Hashes = 0x42
+    qm.push(0x42);
+    qm.extend_from_slice(&(hashes_buf.len() as u32).to_be_bytes());
+    qm.extend_from_slice(&hashes_buf);
+    // Tag_Messages = 0x69
+    qm.push(0x69);
+    qm.extend_from_slice(&(messages_buf.len() as u32).to_be_bytes());
+    qm.extend_from_slice(&messages_buf);
+
+    fs::write(qm_path, qm).is_ok()
+}
+
+fn compile_translations() {
+    let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") else {
+        return;
+    };
+    let i18n_dir = Path::new(&manifest_dir).join("i18n");
+    println!("cargo:rerun-if-changed={}", i18n_dir.display());
+    let Ok(entries) = fs::read_dir(&i18n_dir) else {
+        return;
+    };
+    let ts_files: Vec<PathBuf> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().and_then(|s| s.to_str()) == Some("ts"))
+        .collect();
+    for ts in &ts_files {
+        println!("cargo:rerun-if-changed={}", ts.display());
+    }
+    if ts_files.is_empty() {
+        return;
+    }
+    let lrelease = find_lrelease();
+    let Ok(out_dir) = std::env::var("OUT_DIR") else {
+        return;
+    };
+    let out_path = PathBuf::from(out_dir);
+    let profile_dir = out_path.ancestors().nth(3).map(Path::to_path_buf);
+
+    for ts in ts_files {
+        let Some(stem) = ts.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        let qm_name = format!("{stem}.qm");
+        let out_qm = out_path.join(&qm_name);
+        let compiled = if let Some(ref bin) = lrelease {
+            std::process::Command::new(bin)
+                .arg("-silent")
+                .arg(&ts)
+                .arg("-qm")
+                .arg(&out_qm)
+                .status()
+                .is_ok_and(|s| s.success())
+        } else {
+            compile_ts_to_qm_rust(&ts, &out_qm)
+        };
+        if compiled && let Some(ref target_dir) = profile_dir {
+            let _ = fs::copy(&out_qm, target_dir.join(&qm_name));
+        }
+    }
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=src/mark.rs");
     for qml in QML.iter().chain(QML_SINGLETONS.iter()) {
@@ -243,6 +432,7 @@ fn main() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
         windows_resources();
     }
+    compile_translations();
     let module = QmlModule::new("app.nectarlink")
         .qml_files(QML.iter().map(|f| QmlFile::from(*f)))
         .qml_files(QML_SINGLETONS.iter().map(|f| QmlFile::from(*f).singleton(true)));

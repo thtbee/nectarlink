@@ -960,4 +960,250 @@ mod tests {
         assert!(upgraded.reconcile_walkthrough_for_paired_devices(2));
         assert!(upgraded.walkthrough_completed);
     }
+
+    #[test]
+    fn theme_switching_persists_all_themes_color_modes_seeds_and_modifiers() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let themes = [
+            ("bloom", Theme::Bloom),
+            ("hive", Theme::Hive),
+            ("glass", Theme::Glass),
+            ("blurry", Theme::Glass),
+            ("graphite", Theme::Graphite),
+        ];
+        let modes = [("system", ColorMode::System), ("light", ColorMode::Light), ("dark", ColorMode::Dark)];
+        let seeds = [
+            "wallpaper",
+            "phone",
+            "artwork",
+            "black",
+            "honey",
+            "lavender",
+            "ocean",
+            "rose",
+            "sage",
+            "terracotta",
+        ];
+
+        for &(theme_str, expected_theme) in &themes {
+            for &(mode_str, expected_mode) in &modes {
+                for &seed in &seeds {
+                    for &amoled in &[false, true] {
+                        for &comb_motion in &[false, true] {
+                            let raw = serde_json::json!({
+                                "theme": theme_str,
+                                "colorMode": mode_str,
+                                "seed": seed,
+                                "amoled": amoled,
+                                "combMotion": comb_motion,
+                            });
+                            fs::write(dir.path().join(FILE_NAME), raw.to_string()).unwrap();
+                            let loaded = Settings::load(dir.path());
+                            assert_eq!(loaded.theme, expected_theme);
+                            assert_eq!(loaded.color_mode, expected_mode);
+                            assert_eq!(loaded.seed, seed);
+                            assert_eq!(loaded.amoled, amoled);
+                            assert_eq!(loaded.comb_motion, comb_motion);
+
+                            loaded.save(dir.path()).unwrap();
+                            let round_tripped = Settings::load(dir.path());
+                            assert_eq!(round_tripped.theme, expected_theme);
+                            assert_eq!(round_tripped.color_mode, expected_mode);
+                            assert_eq!(round_tripped.seed, seed);
+                            assert_eq!(round_tripped.amoled, amoled);
+                            assert_eq!(round_tripped.comb_motion, comb_motion);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn extract_qt_placeholders(s: &str) -> Vec<String> {
+        let mut out = Vec::new();
+        let bytes = s.as_bytes();
+        let mut i = 0;
+        while i + 1 < bytes.len() {
+            if bytes[i] == b'%' {
+                if bytes[i + 1].is_ascii_digit() && bytes[i + 1] != b'0' {
+                    out.push(format!("%{}", bytes[i + 1] as char));
+                    i += 2;
+                    continue;
+                } else if bytes[i + 1] == b'n' {
+                    let prev_ok = i == 0 || !bytes[i - 1].is_ascii_alphabetic();
+                    let next_ok = i + 2 >= bytes.len() || !bytes[i + 2].is_ascii_alphabetic();
+                    if prev_ok && next_ok {
+                        out.push("%n".to_owned());
+                        i += 2;
+                        continue;
+                    }
+                }
+            }
+            i += 1;
+        }
+        out.sort();
+        out.dedup();
+        out
+    }
+
+    #[test]
+    fn desktop_i18n_catalog_is_complete_preserves_placeholders_and_compiles_to_qm() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let ts_path = manifest_dir.join("i18n/nectarlink_zh_CN.ts");
+        let xml = fs::read_to_string(&ts_path).expect("read desktop/app/i18n/nectarlink_zh_CN.ts");
+        assert!(xml.contains(r#"language="zh_CN""#));
+        assert!(
+            !xml.contains(r#"type="unfinished""#),
+            "nectarlink_zh_CN.ts must not contain unfinished translations"
+        );
+
+        let mut msg_count = 0usize;
+        for msg_chunk in xml.split("<message").skip(1) {
+            let Some(msg_body) = msg_chunk.split("</message>").next() else {
+                continue;
+            };
+            let Some(src_start) = msg_body.find("<source>") else {
+                continue;
+            };
+            let Some(src_end) = msg_body.find("</source>") else {
+                continue;
+            };
+            let source = &msg_body[src_start + "<source>".len()..src_end];
+
+            let Some(tr_tag_start) = msg_body.find("<translation") else {
+                panic!("message missing <translation> for source: {source}");
+            };
+            let tr_after_open = &msg_body[tr_tag_start..];
+            let Some(tr_gt) = tr_after_open.find('>') else {
+                panic!("malformed <translation> tag for source: {source}");
+            };
+            let Some(tr_end) = tr_after_open.find("</translation>") else {
+                panic!("missing </translation> for source: {source}");
+            };
+            let tr_inner = &tr_after_open[tr_gt + 1..tr_end];
+            assert!(
+                !tr_inner.trim().is_empty(),
+                "empty translation in nectarlink_zh_CN.ts for source: {source}"
+            );
+
+            let src_ph = extract_qt_placeholders(source);
+            let mut tr_texts = Vec::new();
+            if tr_inner.contains("<numerusform>") {
+                for nf in tr_inner.split("<numerusform>").skip(1) {
+                    if let Some(nf_body) = nf.split("</numerusform>").next() {
+                        assert!(!nf_body.trim().is_empty(), "empty numerusform for source: {source}");
+                        tr_texts.push(nf_body);
+                    }
+                }
+            } else {
+                tr_texts.push(tr_inner);
+            }
+
+            for tr_text in tr_texts {
+                for ph in &src_ph {
+                    if ph == "%n" {
+                        continue;
+                    }
+                    assert!(
+                        tr_text.contains(ph),
+                        "placeholder {ph} missing in zh_CN translation '{tr_text}' for source '{source}'"
+                    );
+                }
+            }
+            msg_count += 1;
+        }
+        assert!(msg_count >= 900, "expected >= 900 translated messages, found {msg_count}");
+
+        // Verify build.rs compiled nectarlink_zh_CN.ts into a valid binary .qm file in OUT_DIR.
+        let out_qm = Path::new(env!("OUT_DIR")).join("nectarlink_zh_CN.qm");
+        let qm_bytes = fs::read(&out_qm).expect("read compiled nectarlink_zh_CN.qm from OUT_DIR");
+        assert!(qm_bytes.len() > 10_000, "compiled .qm unexpectedly small: {} bytes", qm_bytes.len());
+        assert_eq!(
+            &qm_bytes[..16],
+            &[0x3C, 0xB8, 0x64, 0x18, 0xCA, 0xEF, 0x9C, 0x95, 0xCD, 0x21, 0x1C, 0xBF, 0x60, 0xA1, 0xBD, 0xDD,],
+            "compiled .qm file must start with 16-byte Qt magic header"
+        );
+    }
+
+    fn extract_android_placeholders(s: &str) -> Vec<String> {
+        let mut out = Vec::new();
+        let bytes = s.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            if bytes[i] == b'%' {
+                if i + 1 < bytes.len() && bytes[i + 1] == b'%' {
+                    i += 2;
+                    continue;
+                }
+                let start = i;
+                i += 1;
+                while i < bytes.len() && (bytes[i].is_ascii_digit() || bytes[i] == b'$' || bytes[i] == b'.') {
+                    i += 1;
+                }
+                if i < bytes.len() && matches!(bytes[i], b's' | b'd' | b'f') {
+                    i += 1;
+                    out.push(s[start..i].to_owned());
+                    continue;
+                }
+            }
+            i += 1;
+        }
+        out.sort();
+        out.dedup();
+        out
+    }
+
+    fn parse_android_strings_xml(xml: &str) -> std::collections::BTreeMap<String, String> {
+        let mut map = std::collections::BTreeMap::new();
+        for chunk in xml.split("<string ").skip(1) {
+            let Some(tag_end) = chunk.find('>') else {
+                continue;
+            };
+            let attrs = &chunk[..tag_end];
+            if attrs.contains(r#"translatable="false""#) {
+                continue;
+            }
+            let Some(name_idx) = attrs.find(r#"name=""#) else {
+                continue;
+            };
+            let after_name = &attrs[name_idx + r#"name=""#.len()..];
+            let Some(quote_end) = after_name.find('"') else {
+                continue;
+            };
+            let name = &after_name[..quote_end];
+            let rest = &chunk[tag_end + 1..];
+            let Some(val_end) = rest.find("</string>") else {
+                continue;
+            };
+            map.insert(name.to_owned(), rest[..val_end].to_owned());
+        }
+        map
+    }
+
+    #[test]
+    fn android_i18n_catalog_matches_all_translatable_keys_and_placeholders() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let en_xml = fs::read_to_string(repo_root.join("android/app/src/main/res/values/strings.xml"))
+            .expect("read values/strings.xml");
+        let zh_xml = fs::read_to_string(repo_root.join("android/app/src/main/res/values-zh-rCN/strings.xml"))
+            .expect("read values-zh-rCN/strings.xml");
+
+        let en_strings = parse_android_strings_xml(&en_xml);
+        let zh_strings = parse_android_strings_xml(&zh_xml);
+        assert!(en_strings.len() >= 1000, "expected >= 1000 Android strings, got {}", en_strings.len());
+
+        for (key, en_val) in &en_strings {
+            let zh_val = zh_strings
+                .get(key)
+                .unwrap_or_else(|| panic!("missing zh-rCN translation for Android string key '{key}'"));
+            assert!(!zh_val.trim().is_empty(), "empty zh-rCN translation for Android string key '{key}'");
+            let en_ph = extract_android_placeholders(en_val);
+            let zh_ph = extract_android_placeholders(zh_val);
+            assert_eq!(
+                en_ph, zh_ph,
+                "placeholder mismatch for Android string key '{key}': en={en_ph:?} vs zh={zh_ph:?}"
+            );
+        }
+    }
 }

@@ -46,6 +46,11 @@ static LAST_WRITTEN_RICH: Mutex<Option<WrittenRich>> = Mutex::new(None);
 /// Wayland/X11 clipboard server.
 static LAST_CLIP: Mutex<Clip> = Mutex::new(Clip::Empty);
 
+/// Plain text of the most recent `write_private` call so an explicit
+/// `read_for_paste` (Ctrl+V in a mirror window) can read it even when
+/// `read()` treats it as `Clip::Private`.
+static LAST_PRIVATE_TEXT: Mutex<Option<String>> = Mutex::new(None);
+
 /// In-memory file-list fallback for headless environments.
 static LAST_FILES: Mutex<Option<Vec<PathBuf>>> = Mutex::new(None);
 
@@ -425,7 +430,13 @@ pub fn read_for_paste() -> Clip {
     if let Some(os_clip) = read_from_os(false) {
         return os_clip;
     }
-    read()
+    let fallback = read();
+    if matches!(fallback, Clip::Private)
+        && let Some(text) = LAST_PRIVATE_TEXT.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    {
+        return Clip::Text { text, html: None, rtf: None };
+    }
+    fallback
 }
 
 pub fn read_image_png() -> Option<Vec<u8>> {
@@ -470,8 +481,10 @@ fn write_text(text: &str, html: Option<&str>, rtf: Option<&str>, private: bool) 
 
     if private {
         *LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        *LAST_PRIVATE_TEXT.lock().unwrap_or_else(|e| e.into_inner()) = Some(text.to_owned());
         *LAST_CLIP.lock().unwrap_or_else(|e| e.into_inner()) = Clip::Private;
     } else {
+        *LAST_PRIVATE_TEXT.lock().unwrap_or_else(|e| e.into_inner()) = None;
         *LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()) =
             if html_owned.is_some() || rtf_owned.is_some() {
                 Some((text.to_owned(), html_owned.clone(), rtf_owned.clone()))
@@ -511,6 +524,7 @@ pub fn write_image(mime: &str, bytes: &[u8]) -> Result<(), String> {
     // Record fingerprint BEFORE updating the system clipboard.
     *LAST_REPORTED.lock().unwrap_or_else(|e| e.into_inner()) = Some(Fingerprint::Image(fnv(&bitmap.bgra)));
     *LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    *LAST_PRIVATE_TEXT.lock().unwrap_or_else(|e| e.into_inner()) = None;
     *LAST_CLIP.lock().unwrap_or_else(|e| e.into_inner()) = Clip::Image(Image::Png(png.clone()));
 
     if !cfg!(test) && has_display_server() {
@@ -667,6 +681,7 @@ pub fn write_files(paths: &[PathBuf]) -> bool {
     *LAST_REPORTED.lock().unwrap_or_else(|e| e.into_inner()) =
         Some(Fingerprint::Text(fnv(trimmed.as_bytes())));
     *LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    *LAST_PRIVATE_TEXT.lock().unwrap_or_else(|e| e.into_inner()) = None;
     *LAST_CLIP.lock().unwrap_or_else(|e| e.into_inner()) = Clip::Empty;
     *LAST_FILES.lock().unwrap_or_else(|e| e.into_inner()) = Some(paths.to_vec());
     if !cfg!(test) && has_display_server() {
@@ -841,6 +856,14 @@ mod tests {
         write_private("948271").expect("write private");
         assert_eq!(read(), Clip::Private);
         assert!(LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()).is_none());
+    }
+
+    #[test]
+    fn read_for_paste_returns_private_text() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        write_private("secret").expect("write_private");
+        assert_eq!(read(), Clip::Private);
+        assert_eq!(read_for_paste(), Clip::Text { text: "secret".into(), html: None, rtf: None });
     }
 
     #[test]

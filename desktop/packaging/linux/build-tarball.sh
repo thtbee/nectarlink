@@ -31,6 +31,9 @@ BUNDLE_DIR="${STAGE_DIR}/${BUNDLE_NAME}"
 mkdir -p "${BUNDLE_DIR}/share/applications" "${BUNDLE_DIR}/share/metainfo" "${BUNDLE_DIR}/share/icons"
 
 install -m 0755 "${BIN_PATH}" "${BUNDLE_DIR}/nectarlink-desktop"
+for qm in "$(dirname "${BIN_PATH}")"/nectarlink_*.qm; do
+    [[ -f "${qm}" ]] && install -m 0644 "${qm}" "${BUNDLE_DIR}/$(basename "${qm}")"
+done
 install -m 0644 "${SCRIPT_DIR}/nectarlink.desktop" "${BUNDLE_DIR}/share/applications/nectarlink.desktop"
 install -m 0644 "${SCRIPT_DIR}/org.nectarlink.desktop.metainfo.xml" "${BUNDLE_DIR}/share/metainfo/org.nectarlink.desktop.metainfo.xml"
 
@@ -64,6 +67,9 @@ fi
 
 mkdir -p "${PREFIX}" "$(dirname "${BIN_LINK}")" "${APPS_DIR}" "${META_DIR}" "${ICON_DIR}"
 install -m 0755 "${SELF_DIR}/nectarlink-desktop" "${PREFIX}/nectarlink-desktop"
+for qm in "${SELF_DIR}"/nectarlink_*.qm; do
+    [[ -f "${qm}" ]] && install -m 0644 "${qm}" "${PREFIX}/$(basename "${qm}")"
+done
 ln -sf "${PREFIX}/nectarlink-desktop" "${BIN_LINK}"
 install -m 0644 "${SELF_DIR}/share/applications/nectarlink.desktop" "${APPS_DIR}/nectarlink.desktop"
 install -m 0644 "${SELF_DIR}/share/metainfo/org.nectarlink.desktop.metainfo.xml" "${META_DIR}/org.nectarlink.desktop.metainfo.xml"

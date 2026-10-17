@@ -129,10 +129,14 @@ pub fn power_saver() -> bool {
     false
 }
 
-/// Whether the desktop prefers a dark color scheme.
-pub fn system_dark() -> bool {
-    if let Ok(gtk_theme) = std::env::var("GTK_THEME") {
-        let lower = gtk_theme.to_ascii_lowercase();
+/// Parses GTK_THEME, gsettings color-scheme, and kdeglobals ColorScheme to decide dark mode.
+pub(crate) fn parse_system_dark_sources(
+    gtk_theme: Option<&str>,
+    gsettings_color_scheme: Option<&str>,
+    kdeglobals: Option<&str>,
+) -> bool {
+    if let Some(gtk) = gtk_theme {
+        let lower = gtk.to_ascii_lowercase();
         if lower.contains("dark") {
             return true;
         }
@@ -140,11 +144,8 @@ pub fn system_dark() -> bool {
             return false;
         }
     }
-    if let Ok(output) =
-        Command::new("gsettings").args(["get", "org.gnome.desktop.interface", "color-scheme"]).output()
-        && output.status.success()
-    {
-        let text = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
+    if let Some(gs) = gsettings_color_scheme {
+        let text = gs.to_ascii_lowercase();
         if text.contains("prefer-dark") {
             return true;
         }
@@ -152,9 +153,7 @@ pub fn system_dark() -> bool {
             return false;
         }
     }
-    if let Some(config) = dirs::config_dir()
-        && let Ok(kde) = fs::read_to_string(config.join("kdeglobals"))
-    {
+    if let Some(kde) = kdeglobals {
         for line in kde.lines() {
             if let Some(scheme) = line.trim().strip_prefix("ColorScheme=") {
                 return scheme.to_ascii_lowercase().contains("dark");
@@ -162,6 +161,19 @@ pub fn system_dark() -> bool {
         }
     }
     true
+}
+
+/// Whether the desktop prefers a dark color scheme.
+pub fn system_dark() -> bool {
+    let gtk_theme = std::env::var("GTK_THEME").ok();
+    let gsettings = Command::new("gsettings")
+        .args(["get", "org.gnome.desktop.interface", "color-scheme"])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned());
+    let kdeglobals = dirs::config_dir().and_then(|c| fs::read_to_string(c.join("kdeglobals")).ok());
+    parse_system_dark_sources(gtk_theme.as_deref(), gsettings.as_deref(), kdeglobals.as_deref())
 }
 
 /// Whether desktop animations are turned off.
@@ -234,6 +246,18 @@ mod tests {
     fn parses_os_release_pretty_name() {
         let sample = "NAME=\"Ubuntu\"\nPRETTY_NAME=\"Ubuntu 24.04.1 LTS\"\nID=ubuntu\n";
         assert_eq!(parse_os_release_pretty_name(sample).as_deref(), Some("Ubuntu 24.04.1 LTS"));
+    }
+
+    #[test]
+    fn parses_system_dark_across_gtk_gnome_and_kde_sources() {
+        assert!(parse_system_dark_sources(Some("Adwaita-dark"), Some("'prefer-light'"), None));
+        assert!(!parse_system_dark_sources(Some("Adwaita-light"), Some("'prefer-dark'"), None));
+        assert!(parse_system_dark_sources(None, Some("'prefer-dark'\n"), None));
+        assert!(!parse_system_dark_sources(None, Some("'prefer-light'\n"), None));
+        assert!(!parse_system_dark_sources(None, Some("'default'\n"), None));
+        assert!(parse_system_dark_sources(None, None, Some("[General]\nColorScheme=BreezeDark\n")));
+        assert!(!parse_system_dark_sources(None, None, Some("[General]\nColorScheme=BreezeLight\n")));
+        assert!(parse_system_dark_sources(None, None, None));
     }
 
     #[test]
