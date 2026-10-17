@@ -172,6 +172,10 @@ fn reconcile(dir: &Path, desired: &[(DeviceId, String)], exe: &Path) -> io::Resu
     for (path, link) in &planned {
         shortcut::write(path, link).map_err(io::Error::other)?;
     }
+    #[cfg(target_os = "linux")]
+    if shortcut::send_to_dir().as_deref() == Some(dir) {
+        let _ = shortcut::sync_file_manager_menus(dir);
+    }
     Ok(())
 }
 

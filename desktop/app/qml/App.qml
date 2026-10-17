@@ -12,9 +12,11 @@ QtObject {
 
     readonly property var mainWindow: mainLoader.item
     readonly property Loader mainLoader: Loader {
+        active: false
+        source: "qrc:/qt/qml/app/nectarlink/qml/MainWindow.qml"
         onLoaded: {
             item.closeRequested.connect(app.onMainClosed)
-            item.bringToFront()
+            item.restoreAndBringToFront()
         }
     }
     readonly property Loader laserLoader: Loader {
@@ -118,14 +120,17 @@ QtObject {
 
     function showMain() {
         trayTrimTimer.stop()
-        if (!mainLoader.item) {
-            mainLoader.setSource("qrc:/qt/qml/app/nectarlink/qml/MainWindow.qml")
+        if (!mainLoader.active || !mainLoader.item) {
+            mainLoader.active = false
+            mainLoader.active = true
         } else {
             mainLoader.item.bringToFront()
         }
     }
 
     function onMainClosed() {
+        if (mainLoader.active && mainLoader.item)
+            mainLoader.item.saveWindowState()
         if (!Preferences.closeToTray) {
             Qt.quit()
             return
@@ -134,7 +139,7 @@ QtObject {
         Qt.callLater(() => {
             if (mainLoader.item)
                 mainLoader.item.releaseAndTeardown()
-            mainLoader.setSource("")
+            mainLoader.active = false
             trayTrimTimer.restart()
         })
     }
@@ -155,15 +160,20 @@ QtObject {
     // Qt follows the system color scheme unless told otherwise; the window
     // frame and Mica tint must follow the app's theme instead.
     readonly property Binding colorScheme: Binding {
-        target: Qt.styleHints
+        when: "colorScheme" in Qt.styleHints && typeof Qt.ColorScheme !== "undefined"
+        target: "colorScheme" in Qt.styleHints ? Qt.styleHints : null
         property: "colorScheme"
-        value: Theme.dark ? Qt.ColorScheme.Dark : Qt.ColorScheme.Light
+        value: typeof Qt.ColorScheme !== "undefined" ? (Theme.dark ? Qt.ColorScheme.Dark : Qt.ColorScheme.Light) : 0
     }
 
     readonly property Connections controller: Connections {
         target: AppController
         function onActivateRequested() { app.showMain() }
-        function onQuitRequested() { Qt.quit() }
+        function onQuitRequested() {
+            if (mainLoader.active && mainLoader.item)
+                mainLoader.item.saveWindowState()
+            Qt.quit()
+        }
         function onRingingFromChanged() {
             if (AppController.ringingFrom.length > 0) {
                 app.showMain()

@@ -24,8 +24,9 @@
 //! new version once the installer is done, or the old one again if the
 //! update didn't go through.
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::{
-    os::windows::process::CommandExt,
     path::{Path, PathBuf},
     process::ExitCode,
     sync::{
@@ -70,7 +71,9 @@ pub const SERVICE_ARG: &str = "--update-service";
 const QUIET_FOR: Duration = Duration::from_secs(10 * 60);
 /// While an update waits for a quiet moment, how often to look for one.
 const LOOK_FOR_QUIET: Duration = Duration::from_secs(5 * 60);
+#[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+#[cfg(windows)]
 const DETACHED_PROCESS: u32 = 0x0000_0008;
 
 static AUTO: AtomicBool = AtomicBool::new(true);
@@ -210,13 +213,41 @@ fn latest() -> Result<Option<Update>, String> {
     Ok(newer_release(release, env!("CARGO_PKG_VERSION")))
 }
 
+#[cfg(windows)]
 const INSTALLER_SUFFIX: &str =
     if cfg!(target_arch = "aarch64") { "-arm64-setup.exe" } else { "-x64-setup.exe" };
 
+#[cfg(target_os = "linux")]
+const INSTALLER_SUFFIX: &str =
+    if cfg!(target_arch = "aarch64") { "-aarch64.AppImage" } else { "-x86_64.AppImage" };
+
+#[cfg(target_os = "linux")]
+const LINUX_FALLBACK_SUFFIXES: &[&str] = if cfg!(target_arch = "aarch64") {
+    &["-aarch64.AppImage", "_arm64.deb", "-linux-aarch64.tar.gz"]
+} else {
+    &["-x86_64.AppImage", "_amd64.deb", "-linux-x86_64.tar.gz"]
+};
+
 /// The release as an update, if it's a newer published one with an
 /// installer for this architecture and its sums.
+#[cfg(windows)]
 fn newer_release(release: Release, current: &str) -> Option<Update> {
     newer_release_for(release, current, INSTALLER_SUFFIX)
+}
+
+#[cfg(target_os = "linux")]
+fn newer_release(release: Release, current: &str) -> Option<Update> {
+    if std::env::var_os("APPIMAGE").is_some()
+        && let Some(u) = newer_release_for(release.clone(), current, INSTALLER_SUFFIX)
+    {
+        return Some(u);
+    }
+    for &suffix in LINUX_FALLBACK_SUFFIXES {
+        if let Some(u) = newer_release_for(release.clone(), current, suffix) {
+            return Some(u);
+        }
+    }
+    None
 }
 
 fn newer_release_for(release: Release, current: &str, suffix: &str) -> Option<Update> {
@@ -230,7 +261,9 @@ fn newer_release_for(release: Release, current: &str, suffix: &str) -> Option<Up
     // The name becomes a file name under %TEMP%: a plain name only, never a path.
     let installer = release.assets.iter().find(|a| {
         a.name.ends_with(suffix)
-            && a.name.starts_with("Nectarlink-")
+            && (a.name.starts_with("Nectarlink-")
+                || a.name.starts_with("nectarlink_")
+                || a.name.starts_with("nectarlink-"))
             && a.name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_'))
             && !a.name.contains("..")
     })?;
@@ -303,6 +336,7 @@ fn quiet() -> bool {
 }
 
 /// Whether the installer registered [`TASK`] on this PC.
+#[cfg(windows)]
 fn task_registered() -> bool {
     std::process::Command::new("schtasks.exe")
         .args(["/Query", "/TN", TASK])
@@ -311,6 +345,11 @@ fn task_registered() -> bool {
         .stderr(std::process::Stdio::null())
         .status()
         .is_ok_and(|s| s.success())
+}
+
+#[cfg(target_os = "linux")]
+fn task_registered() -> bool {
+    false
 }
 
 /// Installs the update found: downloads it (reporting `progress(done,
@@ -370,12 +409,22 @@ impl std::fmt::Display for StageError {
 /// Where the app leaves a downloaded installer for the task:
 /// `%ProgramData%\Nectarlink\updates`. Anyone may write here; the task only
 /// runs a copy that matches the release's own sums.
+#[cfg(windows)]
 fn staging_dir() -> PathBuf {
     std::env::var_os("ProgramData")
         .map(PathBuf::from)
         .filter(|p| p.is_absolute())
         .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
         .join("Nectarlink")
+        .join("updates")
+}
+
+#[cfg(target_os = "linux")]
+fn staging_dir() -> PathBuf {
+    dirs::cache_dir()
+        .filter(|p| p.is_absolute())
+        .unwrap_or_else(std::env::temp_dir)
+        .join("nectarlink")
         .join("updates")
 }
 
@@ -442,13 +491,11 @@ fn install_with_task(shown: bool) -> Result<(), String> {
     let update = available().ok_or("no update")?;
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     spawn_relauncher(&exe, &update.version, shown)?;
-    let started = std::process::Command::new("schtasks.exe")
-        .args(["/Run", "/TN", TASK])
-        .creation_flags(CREATE_NO_WINDOW)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .map_err(|e| e.to_string())?;
+    let mut cmd = std::process::Command::new("schtasks.exe");
+    cmd.args(["/Run", "/TN", TASK]).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    let started = cmd.status().map_err(|e| e.to_string())?;
     if !started.success() {
         return Err(format!("schtasks /Run: {started}"));
     }
@@ -459,6 +506,7 @@ fn install_with_task(shown: bool) -> Result<(), String> {
 
 /// A hidden PowerShell that waits (up to ten minutes) until `version` is
 /// installed and the installer has finished, then opens the app again.
+#[cfg(windows)]
 fn spawn_relauncher(exe: &Path, version: &str, shown: bool) -> Result<(), String> {
     // Both come from this program (its own path, and a version the release
     // check already parsed); checked again so they can't break out of the
@@ -471,10 +519,30 @@ fn spawn_relauncher(exe: &Path, version: &str, shown: bool) -> Result<(), String
     let arguments = if shown { UPDATED_ARG.to_owned() } else { format!("--minimized {UPDATED_ARG}") };
     let script = relauncher_script(exe, version, &arguments);
     let encoded: Vec<u8> = script.encode_utf16().flat_map(u16::to_le_bytes).collect();
-    std::process::Command::new("powershell.exe")
-        .args(["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand"])
+    let mut cmd = std::process::Command::new("powershell.exe");
+    cmd.args(["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand"])
         .arg(data_encoding::BASE64.encode(&encoded))
-        .creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    cmd.creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS);
+    cmd.spawn().map(|_| ()).map_err(|e| format!("relauncher: {e}"))
+}
+
+#[cfg(target_os = "linux")]
+fn spawn_relauncher(exe: &Path, version: &str, shown: bool) -> Result<(), String> {
+    let exe =
+        exe.to_str().filter(|e| !e.contains('\'') && !e.contains('\n')).ok_or("unusual install path")?;
+    if !version.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-')) {
+        return Err("unusual version".into());
+    }
+    let arguments = if shown { UPDATED_ARG.to_owned() } else { format!("--minimized {UPDATED_ARG}") };
+    std::process::Command::new("sh")
+        .arg("-c")
+        .arg("sleep 2 && exec \"$1\" $2")
+        .arg("sh")
+        .arg(exe)
+        .arg(&arguments)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -483,6 +551,7 @@ fn spawn_relauncher(exe: &Path, version: &str, shown: bool) -> Result<(), String
         .map_err(|e| format!("relauncher: {e}"))
 }
 
+#[cfg_attr(target_os = "linux", allow(dead_code))]
 fn relauncher_script(exe: &str, version: &str, arguments: &str) -> String {
     let start = if arguments.is_empty() {
         format!("Start-Process -FilePath '{exe}'")
@@ -553,11 +622,11 @@ pub fn run_service() -> ExitCode {
         }
     };
     // Not waited for: the installer replaces this program, which must not be running.
-    match std::process::Command::new(&path)
-        .arg("/S")
-        .creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS)
-        .spawn()
-    {
+    let mut cmd = std::process::Command::new(&path);
+    cmd.arg("/S");
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS);
+    match cmd.spawn() {
         Ok(_) => {
             log(&format!("installing {}", update.version));
             ExitCode::SUCCESS
@@ -579,6 +648,7 @@ fn unix_seconds_now() -> String {
 /// can change: Windows' `SystemTemp` (older Windows: the SYSTEM account's
 /// temp folder, whose new subfolders users can't write to). Earlier ones are
 /// removed first (in `SystemTemp` only, where nobody else can create them).
+#[cfg(windows)]
 fn service_dir() -> std::io::Result<PathBuf> {
     let windows =
         std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(r"C:\Windows"));
@@ -595,6 +665,19 @@ fn service_dir() -> std::io::Result<PathBuf> {
     } else {
         std::env::temp_dir()
     };
+    let mut random = [0u8; 8];
+    if !crate::win::secure_random(&mut random) {
+        return Err(std::io::Error::other("no secure random source"));
+    }
+    let name = format!("nectarlink-update-{}", random.iter().map(|b| format!("{b:02x}")).collect::<String>());
+    let dir = parent.join(name);
+    std::fs::create_dir(&dir)?;
+    Ok(dir)
+}
+
+#[cfg(target_os = "linux")]
+fn service_dir() -> std::io::Result<PathBuf> {
+    let parent = PathBuf::from("/var/tmp");
     let mut random = [0u8; 8];
     if !crate::win::secure_random(&mut random) {
         return Err(std::io::Error::other("no secure random source"));
@@ -630,6 +713,7 @@ fn download_verified(update: &Update, dir: &Path) -> Result<PathBuf, String> {
 /// The installer with Windows' administrator prompt (no update task): a
 /// fresh copy of the download in this user's temp folder, checked again, so
 /// what runs is what was checked.
+#[cfg(windows)]
 fn install_with_prompt(update: &Update, staged: &Path) -> Result<(), String> {
     let failed = |e: String| {
         tracing::warn!(error = e, "update failed");
@@ -652,6 +736,55 @@ fn install_with_prompt(update: &Update, staged: &Path) -> Result<(), String> {
     // Silent, then opens the new version (/RUN); Windows asks for
     // permission first. The installer closes this copy itself.
     crate::win::shell::run(&path, "/S /RUN").map_err(failed)?;
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn install_with_prompt(update: &Update, staged: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let failed = |e: String| {
+        tracing::warn!(error = e, "update failed");
+        "The update couldn't be started. Try again.".to_owned()
+    };
+    let expected = expected_hash(update).map_err(|e| e.for_user())?;
+    if sha256_file(staged).map_err(|e| failed(e.to_string()))? != expected {
+        let _ = std::fs::remove_file(staged);
+        return Err(StageError::Damaged.for_user());
+    }
+
+    let staged_name = staged.file_name().and_then(|s| s.to_str()).unwrap_or_default();
+    if let Some(appimage_os) = std::env::var_os("APPIMAGE")
+        && staged_name.ends_with(".AppImage")
+    {
+        let appimage_path = PathBuf::from(appimage_os);
+        let new_path = appimage_path.with_extension("AppImage.new");
+        std::fs::copy(staged, &new_path).map_err(|e| failed(e.to_string()))?;
+        std::fs::set_permissions(&new_path, std::fs::Permissions::from_mode(0o755))
+            .map_err(|e| failed(e.to_string()))?;
+        std::fs::rename(&new_path, &appimage_path).map_err(|e| failed(e.to_string()))?;
+        spawn_relauncher(&appimage_path, &update.version, true)?;
+        crate::bridge::app::request_quit();
+        return Ok(());
+    }
+
+    if staged_name.ends_with(".deb") {
+        let staged_str = staged.to_string_lossy();
+        let code =
+            crate::win::elevated::run_elevated(Path::new("dpkg"), &["-i", &staged_str]).map_err(failed)?;
+        if code != 0 {
+            return Err(failed(format!("dpkg exited with status {code}")));
+        }
+        if let Ok(exe) = std::env::current_exe() {
+            let _ = spawn_relauncher(&exe, &update.version, true);
+        }
+        crate::bridge::app::request_quit();
+        return Ok(());
+    }
+
+    if crate::win::shell::open_url(&update.notes_url).is_err() {
+        return Err("Couldn't open the release page.".into());
+    }
     Ok(())
 }
 
@@ -724,6 +857,23 @@ fn after_start(shown: bool, title: String, body: String) {
     });
 }
 
+impl Clone for Asset {
+    fn clone(&self) -> Self {
+        Self { name: self.name.clone(), browser_download_url: self.browser_download_url.clone() }
+    }
+}
+impl Clone for Release {
+    fn clone(&self) -> Self {
+        Self {
+            tag_name: self.tag_name.clone(),
+            html_url: self.html_url.clone(),
+            draft: self.draft,
+            prerelease: self.prerelease,
+            assets: self.assets.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -753,6 +903,14 @@ mod tests {
                 Asset {
                     name: "Nectarlink-9.0.0-arm64-setup.exe".into(),
                     browser_download_url: "https://x/setup-arm64".into(),
+                },
+                Asset {
+                    name: "Nectarlink-9.0.0-x86_64.AppImage".into(),
+                    browser_download_url: "https://x/appimage-x64".into(),
+                },
+                Asset {
+                    name: "nectarlink_9.0.0_amd64.deb".into(),
+                    browser_download_url: "https://x/deb-amd64".into(),
                 },
                 Asset { name: "SHA256SUMS.txt".into(), browser_download_url: "https://x/sums".into() },
             ],
@@ -825,6 +983,27 @@ mod tests {
         let mut no_sums = release("v9.0.0");
         no_sums.assets.pop();
         assert!(newer_release(no_sums, "0.0.1").is_none());
+    }
+
+    #[test]
+    fn matches_linux_appimage_and_deb_assets() {
+        let appimage = newer_release_for(release("v9.0.0"), "0.0.1", "-x86_64.AppImage").unwrap();
+        assert_eq!(
+            (appimage.installer_name.as_str(), appimage.installer_url.as_str()),
+            ("Nectarlink-9.0.0-x86_64.AppImage", "https://x/appimage-x64")
+        );
+        let deb = newer_release_for(release("v9.0.0"), "0.0.1", "_amd64.deb").unwrap();
+        assert_eq!(
+            (deb.installer_name.as_str(), deb.installer_url.as_str()),
+            ("nectarlink_9.0.0_amd64.deb", "https://x/deb-amd64")
+        );
+    }
+
+    #[test]
+    fn linux_staging_dir_is_absolute_and_under_nectarlink_updates() {
+        let dir = staging_dir();
+        assert!(dir.is_absolute(), "staging_dir must be absolute: {}", dir.display());
+        assert!(dir.ends_with("updates"));
     }
 
     #[test]

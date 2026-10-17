@@ -8,8 +8,9 @@
 //! mutex taken with a zero timeout, so a busy consumer makes the producer drop
 //! a frame instead of stalling, exactly what live video wants.
 
-#![allow(unsafe_code)]
+#![allow(dead_code, unsafe_code)]
 
+#[cfg(windows)]
 use std::{
     sync::{
         Arc,
@@ -19,6 +20,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[cfg(windows)]
 use windows::{
     Win32::{
         Foundation::{CloseHandle, E_FAIL, HANDLE, HMODULE, LUID, RECT, S_OK},
@@ -78,12 +80,42 @@ unsafe impl Send for ffi::FrameNotifier {}
 // SAFETY: as above.
 unsafe impl Sync for ffi::FrameNotifier {}
 
+#[cfg(not(windows))]
+pub struct VideoSource;
+
+#[cfg(not(windows))]
+impl VideoSource {
+    fn shared_handle(&self) -> usize {
+        0
+    }
+    fn frames_published(&self) -> u64 {
+        0
+    }
+    fn frames_dropped(&self) -> u64 {
+        0
+    }
+}
+
+#[cfg(not(windows))]
+fn video_source_start(
+    _adapter_luid: i64,
+    _width: u32,
+    _height: u32,
+    _fps: u32,
+    _notifier: cxx::SharedPtr<ffi::FrameNotifier>,
+) -> Result<Box<VideoSource>, String> {
+    let _ = &_notifier;
+    Err("D3D11 spike video requires Windows".into())
+}
+
+#[cfg(windows)]
 #[derive(Default)]
 struct Counters {
     published: AtomicU64,
     dropped: AtomicU64,
 }
 
+#[cfg(windows)]
 pub struct VideoSource {
     shared: HANDLE,
     counters: Arc<Counters>,
@@ -92,8 +124,10 @@ pub struct VideoSource {
 }
 
 // SAFETY: the HANDLE is an owned NT handle, usable from any thread.
+#[cfg(windows)]
 unsafe impl Send for VideoSource {}
 
+#[cfg(windows)]
 impl VideoSource {
     fn shared_handle(&self) -> usize {
         self.shared.0 as usize
@@ -108,6 +142,7 @@ impl VideoSource {
     }
 }
 
+#[cfg(windows)]
 impl Drop for VideoSource {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Relaxed);
@@ -122,6 +157,7 @@ impl Drop for VideoSource {
     }
 }
 
+#[cfg(windows)]
 fn video_source_start(
     adapter_luid: i64,
     width: u32,
@@ -175,6 +211,7 @@ fn video_source_start(
 }
 
 /// The producer's GPU state. Lives on the producer thread after creation.
+#[cfg(windows)]
 struct Gpu {
     context: ID3D11DeviceContext1,
     target: ID3D11Texture2D,
@@ -187,8 +224,10 @@ struct Gpu {
 
 // SAFETY: the device is created without D3D11_CREATE_DEVICE_SINGLETHREADED and
 // the context is only ever used by one thread at a time (moved, never shared).
+#[cfg(windows)]
 unsafe impl Send for Gpu {}
 
+#[cfg(windows)]
 impl Gpu {
     fn new(luid: LUID, width: u32, height: u32) -> windows::core::Result<Self> {
         // SAFETY: plain D3D11/DXGI object creation; every out-pointer is a

@@ -3182,6 +3182,7 @@ impl NectarlinkNode {
             runtime.block_on(Node::start(config, Arc::new(PlatformAdapter(platform, listener.clone()))))?;
 
         let mut events = node.events();
+        let node_for_events = node.clone();
         runtime.spawn(async move {
             loop {
                 match events.recv().await {
@@ -3190,7 +3191,32 @@ impl NectarlinkNode {
                             listener.on_event(ev);
                         }
                     }
-                    Err(RecvError::Lagged(missed)) => tracing::warn!(missed, "event listener fell behind"),
+                    Err(RecvError::Lagged(missed)) => {
+                        tracing::warn!(missed, "event listener fell behind; resynchronizing state");
+                        if let Ok(devices) = node_for_events.paired_devices() {
+                            for d in devices {
+                                listener.on_event(Event::LinkChanged {
+                                    id: d.id.to_string(),
+                                    link: d.link.into(),
+                                });
+                                listener.on_event(Event::WakeInfoChanged {
+                                    id: d.id.to_string(),
+                                    can_wake: d.can_wake,
+                                });
+                                listener.on_event(Event::PeerInfoChanged {
+                                    id: d.id.to_string(),
+                                    info: d.info.into(),
+                                });
+                                if let Ok(matrix) = node_for_events.capabilities(d.id) {
+                                    listener.on_event(Event::Capabilities {
+                                        id: d.id.to_string(),
+                                        features: features(&matrix),
+                                    });
+                                }
+                            }
+                        }
+                        listener.on_event(Event::QueueChanged);
+                    }
                     Err(RecvError::Closed) => return,
                 }
             }

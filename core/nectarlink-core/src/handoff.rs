@@ -275,7 +275,7 @@ fn find_url_or_geo_token(text: &str) -> Option<String> {
         return None;
     }
     // Check if the whole string is a geo: URI (possibly with spaces in ?q= that we encode).
-    if trimmed.len() > 4 && trimmed[..4].eq_ignore_ascii_case("geo:") {
+    if trimmed.len() > 4 && trimmed.get(..4).is_some_and(|p| p.eq_ignore_ascii_case("geo:")) {
         let first_line = trimmed.lines().next().unwrap_or(trimmed).trim();
         let normalized: String =
             first_line.chars().filter(|c| !c.is_control()).map(|c| if c == ' ' { '+' } else { c }).collect();
@@ -440,8 +440,9 @@ fn extract_http_map_query(url: &str) -> Option<String> {
     let after_scheme = before_frag.split("://").nth(1)?;
     let path = after_scheme.find('/').map(|i| &after_scheme[i..])?;
     for marker in ["/maps/place/", "/maps/search/"] {
-        if let Some(idx) = path.to_ascii_lowercase().find(marker) {
-            let rest = &path[idx + marker.len()..];
+        if let Some(idx) = path.to_ascii_lowercase().find(marker)
+            && let Some(rest) = path.get(idx + marker.len()..)
+        {
             let seg = rest.split('/').next().unwrap_or("");
             if !seg.is_empty() && !seg.starts_with('@') {
                 let decoded = clean_map_label(&percent_decode(seg));
@@ -608,6 +609,15 @@ mod tests {
 
         let apple = extract_handoff_link("https://maps.apple.com/?q= Cupertino+CA").unwrap();
         assert_eq!(apple.kind, HandoffKind::MapLocation);
+    }
+
+    #[test]
+    fn handles_multibyte_utf8_at_char_boundaries_without_panicking() {
+        // '—' is 3 bytes at bytes 3..6 when preceded by 3 ASCII bytes ("abc—def").
+        assert!(extract_handoff_link("abc—def").is_none());
+        assert!(extract_handoff_link("🚀✨🔥").is_none());
+        let link = extract_handoff_link("abc— https://nectarlink.app/docs").unwrap();
+        assert_eq!(link.url, "https://nectarlink.app/docs");
     }
 
     #[test]

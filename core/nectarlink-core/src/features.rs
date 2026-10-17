@@ -276,6 +276,15 @@ impl DeviceFacts {
         DeviceFacts { kind: info.kind, os: info.os.clone(), os_ver: info.os_ver.clone(), caps, power }
     }
 
+    /// Creates baseline [`DeviceFacts`] for a desktop or phone OS.
+    pub fn for_os(os: &str) -> Self {
+        let (kind, power) = match os {
+            "android" => (DeviceKind::Phone, PowerLevel::Basic),
+            _ => (DeviceKind::Desktop, PowerLevel::NotApplicable),
+        };
+        DeviceFacts { kind, os: os.to_owned(), os_ver: String::new(), caps: BTreeSet::new(), power }
+    }
+
     fn role(&self) -> Option<Role> {
         role_from(self.kind, &self.os)
     }
@@ -303,7 +312,7 @@ fn role_from(kind: DeviceKind, os: &str) -> Option<Role> {
         DeviceKind::Desktop | DeviceKind::Laptop => Some(Role::Desktop),
         DeviceKind::Unknown => match os {
             "android" => Some(Role::Phone),
-            "windows" | "macos" => Some(Role::Desktop),
+            "windows" | "macos" | "linux" => Some(Role::Desktop),
             _ => None,
         },
     }
@@ -1208,6 +1217,28 @@ mod tests {
     fn unknown_kinds_fall_back_to_the_os() {
         let phone = facts(DeviceKind::Unknown, "android", "16", PowerLevel::Basic, BASIC_PHONE);
         assert_eq!(matrix(&phone).state("device.find_phone"), Some(FeatureState::Available));
+
+        let linux_unknown = facts(DeviceKind::Unknown, "linux", "6.12", PowerLevel::NotApplicable, PC);
+        assert_eq!(linux_unknown.role(), Some(Role::Desktop));
+        assert_eq!(
+            matrix_with(&phone, &linux_unknown, &HashMap::new()).state("device.find_phone"),
+            Some(FeatureState::Available)
+        );
+    }
+
+    #[test]
+    fn linux_desktop_maps_to_desktop_role_and_matches_windows_feature_matrix() {
+        let mut linux_pc = DeviceFacts::for_os("linux");
+        assert_eq!(linux_pc.kind, DeviceKind::Desktop);
+        assert_eq!(linux_pc.role(), Some(Role::Desktop));
+        linux_pc.os_ver = "6.12".into();
+        linux_pc.caps = PC.iter().map(|c| (*c).to_owned()).collect();
+
+        let phone = facts(DeviceKind::Phone, "android", "16", PowerLevel::Basic, BASIC_PHONE);
+        let toggles = HashMap::new();
+        let m_linux = matrix_with(&phone, &linux_pc, &toggles);
+        let m_win = matrix_with(&phone, &pc(), &toggles);
+        assert_eq!(m_linux, m_win);
     }
 
     #[test]

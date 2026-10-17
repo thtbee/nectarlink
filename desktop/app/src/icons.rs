@@ -43,7 +43,8 @@ pub fn save(data_dir: &Path, app: &str, png: &[u8]) -> std::io::Result<PathBuf> 
 
 /// A `file:///` URL for QML and toasts.
 pub fn file_url(path: &Path) -> String {
-    format!("file:///{}", path.to_string_lossy().replace('\\', "/"))
+    let normalized = path.to_string_lossy().replace('\\', "/");
+    format!("file:///{}", normalized.trim_start_matches('/'))
 }
 
 /// Returns the cached PNG icon path for `app` if it exists on disk.
@@ -69,5 +70,6 @@ mod tests {
         assert_eq!(file_name("../../evil\\x"), "_.._evil_x.png");
         assert!(save(dir.path(), "com.bad", b"GIF89a").is_err(), "only PNG");
         assert!(file_url(Path::new(r"C:\a\b.png")).starts_with("file:///C:/a/b.png"));
+        assert_eq!(file_url(Path::new("/home/user/a.png")), "file:///home/user/a.png");
     }
 }

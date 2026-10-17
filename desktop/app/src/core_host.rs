@@ -39,6 +39,7 @@ pub fn host() -> &'static CoreHost {
 }
 
 /// The running host's data directory, if the host has been started.
+#[allow(dead_code)]
 pub fn try_data_dir() -> Option<&'static std::path::Path> {
     HOST.get().map(|h| h.data_dir.as_path())
 }
@@ -217,6 +218,9 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         max_entries: nectarlink_core::DEFAULT_TIMELINE_MAX_ENTRIES,
     });
     let _ = host.node.set(node);
+    if saved_settings.share_pc_storage {
+        crate::settings::set_share_pc_storage(true);
+    }
     host.hub.update(|s| {
         let mut changes = s.set_devices(devices);
         for m in matrices {
@@ -353,7 +357,7 @@ fn this_device() -> DeviceInfo {
     DeviceInfo {
         name,
         kind: if crate::win::is_laptop() { DeviceKind::Laptop } else { DeviceKind::Desktop },
-        os: "windows".into(),
+        os: std::env::consts::OS.into(),
         os_ver: crate::win::os_version(),
         model: None,
         accent: None,

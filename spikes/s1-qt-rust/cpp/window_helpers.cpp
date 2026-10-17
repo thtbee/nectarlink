@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "window_helpers.h"
 
+#include <QtCore/QtGlobal>
+#if __has_include(<QtCore/QtEnvironmentVariables>)
 #include <QtCore/QtEnvironmentVariables>
+#endif
 #include <QtGui/QGuiApplication>
 #include <QtQuick/QQuickWindow>
 

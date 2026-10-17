@@ -124,6 +124,10 @@ pub fn history_json() -> String {
     }
     let items: Vec<serde_json::Value> = entries
         .into_iter()
+        .filter(|entry| {
+            !(entry.kind == ClipboardItemKind::Text
+                && nectarlink_core::is_likely_binary_or_corrupted_image_text(&entry.text))
+        })
         .map(|entry| {
             let kind = match entry.kind {
                 ClipboardItemKind::Text => "text",
@@ -164,7 +168,7 @@ fn make_thumbs(node: Node, ids: Vec<String>) {
             thumbs(|t| t.insert(id, url));
         }
         MAKING_THUMBS.store(false, Ordering::Release);
-        core_host::host().hub.changed(Changes::CLIPBOARD);
+        core_host::host().hub.changed(Changes::CLIPBOARD | Changes::TIMELINE);
     });
 }
 

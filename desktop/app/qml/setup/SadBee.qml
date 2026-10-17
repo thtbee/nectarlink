@@ -83,7 +83,7 @@ Item {
         // Body with stripes and a stinger.
         Shape {
             anchors.fill: parent
-            preferredRendererType: Shape.CurveRenderer
+            Component.onCompleted: if ("preferredRendererType" in this) preferredRendererType = 2
             ShapePath {
                 strokeWidth: 0
                 strokeColor: "transparent"
@@ -123,7 +123,7 @@ Item {
         // Head, face and drooping antennae.
         Shape {
             anchors.fill: parent
-            preferredRendererType: Shape.CurveRenderer
+            Component.onCompleted: if ("preferredRendererType" in this) preferredRendererType = 2
             ShapePath {
                 strokeWidth: 2.2
                 strokeColor: bee.headColor

@@ -13,8 +13,13 @@ publish = false
 name = "nectarlink_vcam"
 crate-type = ["cdylib", "rlib"]
 
-[target.'cfg(windows)'.dependencies]
+[dependencies]
 ab_glyph = "0.2"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
 windows = { workspace = true, features = [
     "Win32_Foundation",
     "Win32_Media_KernelStreaming",

@@ -442,7 +442,7 @@ Window {
 
                         Shape {
                             anchors.fill: parent
-                            preferredRendererType: Shape.CurveRenderer
+                            Component.onCompleted: if ("preferredRendererType" in this) preferredRendererType = 2
 
                             ShapePath {
                                 strokeColor: Qt.rgba(1, 1, 1, 0.16)
@@ -699,7 +699,7 @@ Window {
 
                         Shape {
                             anchors.fill: parent
-                            preferredRendererType: Shape.CurveRenderer
+                            Component.onCompleted: if ("preferredRendererType" in this) preferredRendererType = 2
                             ShapePath {
                                 strokeColor: Qt.rgba(1, 1, 1, 0.16)
                                 fillColor: "transparent"

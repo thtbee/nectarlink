@@ -66,6 +66,8 @@ pub use handoff::{
     geo_to_maps_https, is_safe_handoff_document, parse_video_timestamp, timeline_link_title_and_detail,
     with_video_timestamp,
 };
+#[cfg(target_os = "linux")]
+pub use identity::SecretServiceKeyProtector;
 pub use identity::{KeyProtector, PlainKeyProtector, default_protector, install_id_from};
 pub use localsend::{
     LOCALSEND_DEFAULT_PORT, LOCALSEND_MULTICAST_ADDR, LOCALSEND_PROTOCOL_VERSION, LocalSendPeer,
@@ -151,7 +153,7 @@ pub use store::{
 pub use timeline::{
     DEFAULT_TIMELINE_MAX_DAYS, DEFAULT_TIMELINE_MAX_ENTRIES, DEFAULT_TIMELINE_PAGE_LIMIT,
     MAX_TIMELINE_PAGE_LIMIT, TimelineEntry, TimelineKind, TimelinePage, TimelineQuery, TimelineRetention,
-    format_clip_display,
+    format_clip_display, is_likely_binary_or_corrupted_image_text,
 };
 pub use transfer::{
     Direction, FileSource, OutgoingFile, RECORDER, RecordingMarker, Transfer, TransferFailure, TransferState,

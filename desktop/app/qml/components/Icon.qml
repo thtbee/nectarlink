@@ -18,7 +18,7 @@ Item {
         width: 24
         height: 24
         scale: Math.min(icon.width, icon.height) / 24
-        preferredRendererType: Shape.CurveRenderer
+        Component.onCompleted: if ("preferredRendererType" in this) preferredRendererType = 2
         ShapePath {
             strokeColor: icon.color
             strokeWidth: icon.stroke

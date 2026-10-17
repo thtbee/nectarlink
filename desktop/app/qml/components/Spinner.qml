@@ -13,7 +13,7 @@ Item {
 
     Shape {
         anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
+        Component.onCompleted: if ("preferredRendererType" in this) preferredRendererType = 2
         RotationAnimator on rotation {
             running: spinner.visible && !Theme.reduceMotion
             from: 0; to: 360; duration: 900

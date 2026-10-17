@@ -1283,6 +1283,7 @@ pub fn leave_window() {
 }
 
 /// Records text that arrived from a remote device so focus/hover sync never echoes it back.
+#[allow(dead_code)]
 pub fn note_remote_clipboard(text: &str) {
     let normalized = text.replace("\r\n", "\n");
     state(|s| {
@@ -1333,10 +1334,13 @@ pub fn sync_clipboard_on_focus(window: Window) {
 }
 
 /// Standard XInput / Xbox left thumbstick deadzone.
+#[allow(dead_code)]
 pub const LEFT_THUMB_DEADZONE: i16 = 7849;
 /// Standard XInput / Xbox right thumbstick deadzone.
+#[allow(dead_code)]
 pub const RIGHT_THUMB_DEADZONE: i16 = 8689;
 /// Standard XInput / Xbox trigger threshold.
+#[allow(dead_code)]
 pub const TRIGGER_THRESHOLD: u8 = 30;
 
 /// Normalized controller snapshot forwarded via [`nectarlink_core::MirrorInput::Gamepad`].
@@ -1366,12 +1370,14 @@ impl GamepadState {
     }
 }
 
+#[allow(dead_code)]
 fn deadzone_axis(val: i16, deadzone: i16) -> i16 {
     if val.saturating_abs() <= deadzone { 0 } else { val }
 }
 
 /// Applies stick deadzones and trigger thresholds so idle controller noise does
 /// not generate redundant [`nectarlink_core::MirrorInput::Gamepad`] frames.
+#[allow(dead_code)]
 pub fn normalize_gamepad_state(raw: GamepadState) -> GamepadState {
     GamepadState {
         buttons: raw.buttons,
@@ -1384,6 +1390,7 @@ pub fn normalize_gamepad_state(raw: GamepadState) -> GamepadState {
     }
 }
 
+#[cfg(windows)]
 #[allow(unsafe_code)]
 fn poll_xinput_gamepad() -> Option<GamepadState> {
     use windows::Win32::UI::Input::XboxController::{XINPUT_STATE, XInputGetState};
@@ -1406,6 +1413,7 @@ fn poll_xinput_gamepad() -> Option<GamepadState> {
     None
 }
 
+#[cfg(windows)]
 fn poll_winrt_gamepad() -> Option<GamepadState> {
     use windows::Gaming::Input::{Gamepad, GamepadButtons};
     let gamepads = Gamepad::Gamepads().ok()?;
@@ -1471,8 +1479,153 @@ fn poll_winrt_gamepad() -> Option<GamepadState> {
     }))
 }
 
+#[cfg(windows)]
 fn poll_gamepad() -> Option<GamepadState> {
     poll_xinput_gamepad().or_else(poll_winrt_gamepad)
+}
+
+#[cfg(target_os = "linux")]
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+struct JsEvent {
+    time: u32,
+    value: i16,
+    type_: u8,
+    number: u8,
+}
+
+#[cfg(target_os = "linux")]
+fn apply_js_event(state: &mut GamepadState, ev: JsEvent) {
+    let kind = ev.type_ & !0x80; // Mask out JS_EVENT_INIT (0x80).
+    match kind {
+        0x01 => {
+            // JS_EVENT_BUTTON
+            let mask: u16 = match ev.number {
+                0 => 0x1000,  // A
+                1 => 0x2000,  // B
+                2 => 0x4000,  // X
+                3 => 0x8000,  // Y
+                4 => 0x0100,  // LB
+                5 => 0x0200,  // RB
+                6 => 0x0020,  // View / Back
+                7 => 0x0010,  // Menu / Start
+                9 => 0x0040,  // LThumb
+                10 => 0x0080, // RThumb
+                12 => 0x0001, // DPad Up
+                13 => 0x0002, // DPad Down
+                14 => 0x0004, // DPad Left
+                15 => 0x0008, // DPad Right
+                _ => 0,
+            };
+            if mask != 0 {
+                if ev.value != 0 {
+                    state.buttons |= mask;
+                } else {
+                    state.buttons &= !mask;
+                }
+            }
+        }
+        0x02 => {
+            // JS_EVENT_AXIS
+            match ev.number {
+                0 => state.lx = ev.value,
+                1 => state.ly = ev.value.saturating_neg(),
+                2 => {
+                    state.lt = ((i32::from(ev.value) + 32768) * 255 / 65535).clamp(0, 255) as u8;
+                }
+                3 => state.rx = ev.value,
+                4 => state.ry = ev.value.saturating_neg(),
+                5 => {
+                    state.rt = ((i32::from(ev.value) + 32768) * 255 / 65535).clamp(0, 255) as u8;
+                }
+                6 => {
+                    state.buttons &= !(0x0004 | 0x0008);
+                    if ev.value < 0 {
+                        state.buttons |= 0x0004; // DPad Left
+                    } else if ev.value > 0 {
+                        state.buttons |= 0x0008; // DPad Right
+                    }
+                }
+                7 => {
+                    state.buttons &= !(0x0001 | 0x0002);
+                    if ev.value < 0 {
+                        state.buttons |= 0x0001; // DPad Up
+                    } else if ev.value > 0 {
+                        state.buttons |= 0x0002; // DPad Down
+                    }
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+}
+
+#[cfg(target_os = "linux")]
+struct LinuxGamepadPoller {
+    fd: std::ffi::c_int,
+    state: GamepadState,
+}
+
+#[cfg(target_os = "linux")]
+impl Default for LinuxGamepadPoller {
+    fn default() -> Self {
+        Self { fd: -1, state: GamepadState::default() }
+    }
+}
+
+#[cfg(target_os = "linux")]
+#[allow(unsafe_code)]
+fn poll_gamepad() -> Option<GamepadState> {
+    static POLLER: Mutex<LinuxGamepadPoller> = Mutex::new(LinuxGamepadPoller {
+        fd: -1,
+        state: GamepadState { buttons: 0, lx: 0, ly: 0, rx: 0, ry: 0, lt: 0, rt: 0 },
+    });
+    let mut poller = POLLER.lock().unwrap_or_else(|e| e.into_inner());
+    if poller.fd < 0 {
+        let paths = [c"/dev/input/js0", c"/dev/input/js1", c"/dev/input/js2", c"/dev/input/js3"];
+        for path in paths {
+            let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY | libc::O_NONBLOCK) };
+            if fd >= 0 {
+                poller.fd = fd;
+                poller.state = GamepadState::default();
+                break;
+            }
+        }
+    }
+    if poller.fd < 0 {
+        return None;
+    }
+
+    loop {
+        let mut ev = JsEvent { time: 0, value: 0, type_: 0, number: 0 };
+        let n = unsafe {
+            libc::read(poller.fd, (&mut ev as *mut JsEvent).cast(), std::mem::size_of::<JsEvent>())
+        };
+        if n == std::mem::size_of::<JsEvent>() as isize {
+            apply_js_event(&mut poller.state, ev);
+        } else if n < 0 {
+            let err = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
+            if err == libc::EAGAIN || err == libc::EWOULDBLOCK {
+                break;
+            }
+            unsafe {
+                libc::close(poller.fd);
+            }
+            poller.fd = -1;
+            poller.state = GamepadState::default();
+            return None;
+        } else {
+            unsafe {
+                libc::close(poller.fd);
+            }
+            poller.fd = -1;
+            poller.state = GamepadState::default();
+            return None;
+        }
+    }
+
+    Some(normalize_gamepad_state(poller.state))
 }
 
 fn ensure_gamepad_loop() {
@@ -1902,5 +2055,41 @@ mod tests {
         let (win, paths) = parse_dropped_file_urls(&[key, file_url]);
         assert_eq!(win.map(|w| w.device), Some(dev));
         assert_eq!(paths, vec![file_a]);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_js_event_updates_buttons_and_axes() {
+        use super::{JsEvent, apply_js_event};
+
+        let mut state = GamepadState::default();
+        // Press A (0 = 0x1000) and RB (5 = 0x0200), plus init flag (0x80) on Menu (7 = 0x0010).
+        apply_js_event(&mut state, JsEvent { time: 1, value: 1, type_: 0x01, number: 0 });
+        apply_js_event(&mut state, JsEvent { time: 2, value: 1, type_: 0x01, number: 5 });
+        apply_js_event(&mut state, JsEvent { time: 3, value: 1, type_: 0x81, number: 7 });
+        assert_eq!(state.buttons, 0x1000 | 0x0200 | 0x0010);
+
+        // Release RB.
+        apply_js_event(&mut state, JsEvent { time: 4, value: 0, type_: 0x01, number: 5 });
+        assert_eq!(state.buttons, 0x1000 | 0x0010);
+
+        // Move LX (0), LY inverted (1), LT (2), RX (3), RY inverted (4), RT (5), DPad X/Y (6/7).
+        apply_js_event(&mut state, JsEvent { time: 5, value: 20_000, type_: 0x02, number: 0 });
+        apply_js_event(&mut state, JsEvent { time: 6, value: -18_000, type_: 0x02, number: 1 });
+        apply_js_event(&mut state, JsEvent { time: 7, value: 32_767, type_: 0x02, number: 2 });
+        apply_js_event(&mut state, JsEvent { time: 8, value: -15_000, type_: 0x02, number: 3 });
+        apply_js_event(&mut state, JsEvent { time: 9, value: 22_000, type_: 0x02, number: 4 });
+        apply_js_event(&mut state, JsEvent { time: 10, value: 0, type_: 0x02, number: 5 });
+        apply_js_event(&mut state, JsEvent { time: 11, value: -32_767, type_: 0x02, number: 6 }); // DPad Left
+        apply_js_event(&mut state, JsEvent { time: 12, value: -32_767, type_: 0x02, number: 7 }); // DPad Up
+
+        let normalized = normalize_gamepad_state(state);
+        assert_eq!(normalized.buttons, 0x1000 | 0x0010 | 0x0004 | 0x0001);
+        assert_eq!(normalized.lx, 20_000);
+        assert_eq!(normalized.ly, 18_000);
+        assert_eq!(normalized.rx, -15_000);
+        assert_eq!(normalized.ry, -22_000);
+        assert_eq!(normalized.lt, 255);
+        assert_eq!(normalized.rt, 127);
     }
 }

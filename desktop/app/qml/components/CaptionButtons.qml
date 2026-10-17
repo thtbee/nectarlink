@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Shapes
 import app.nectarlink
 
-// Minimize, maximize/restore and close, drawn like Windows 11's own (same
-// size and glyphs) in the app's colors. The maximize button is registered
-// with the window so Windows shows Snap Layouts when hovering it.
+// Minimize, maximize/restore and close, drawn in the app's colors using crisp
+// vector strokes so they render identically on Windows and Linux without
+// requiring the Windows-only Segoe Fluent Icons font. The maximize button is
+// registered with the window so Windows shows Snap Layouts when hovering it.
 Row {
     id: buttons
     required property NativeWindow window
@@ -17,25 +19,30 @@ Row {
 
     CaptionButton {
         id: minimize
-        glyph: ""
+        iconPath: "M 1 5 L 9 5"
         label: qsTr("Minimize")
         onActivated: buttons.window.showMinimized()
         Component.onCompleted: buttons.window.addCaptionHole(minimize)
     }
     CaptionButton {
         id: maximize
-        glyph: buttons.maximized ? "" : ""
+        iconPath: buttons.maximized
+                  ? "M 1 3 L 7 3 L 7 9 L 1 9 Z M 3 3 L 3 1 L 9 1 L 9 7 L 7 7"
+                  : "M 1 1 L 9 1 L 9 9 L 1 9 Z"
         label: buttons.maximized ? qsTr("Restore") : qsTr("Maximize")
-        // Mouse input for this button goes through Windows (Snap Layouts).
-        nativeInput: true
-        hovered: buttons.window.maximizeHovered
-        pressed: buttons.window.maximizePressed
+        // Mouse input for this button goes through Windows WM_NCHITTEST (Snap Layouts) on Windows.
+        nativeInput: Qt.platform.os === "windows"
+        nativeHovered: buttons.window.maximizeHovered
+        nativePressed: buttons.window.maximizePressed
         onActivated: buttons.window.toggleMaximized()
-        Component.onCompleted: buttons.window.maximizeButton = maximize
+        Component.onCompleted: {
+            buttons.window.maximizeButton = maximize
+            buttons.window.addCaptionHole(maximize)
+        }
     }
     CaptionButton {
         id: close
-        glyph: ""
+        iconPath: "M 1 1 L 9 9 M 9 1 L 1 9"
         label: qsTr("Close")
         danger: true
         onActivated: buttons.window.close()
@@ -44,12 +51,14 @@ Row {
 
     component CaptionButton: Item {
         id: button
-        property string glyph
+        property string iconPath
         property string label
         property bool danger: false
         property bool nativeInput: false
-        property bool hovered: !nativeInput && hover.hovered
-        property bool pressed: !nativeInput && tap.pressed
+        property bool nativeHovered: false
+        property bool nativePressed: false
+        readonly property bool hovered: nativeInput ? nativeHovered : hover.hovered
+        readonly property bool pressed: nativeInput ? nativePressed : tap.pressed
         signal activated
 
         width: 46
@@ -66,7 +75,7 @@ Row {
             }
         }
 
-        // Windows' close button turns red on hover in every theme.
+        // The close button turns red on hover in every theme.
         readonly property color dangerColor: "#C42B1C"
         Rectangle {
             anchors.fill: parent
@@ -77,13 +86,20 @@ Row {
                      : (button.pressed ? 0.12 : (button.hovered ? 0.07 : 0))
             Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
         }
-        Text {
+        Shape {
             anchors.centerIn: parent
-            text: button.glyph
-            font.family: "Segoe Fluent Icons"
-            font.pixelSize: 10
-            color: button.danger && (button.hovered || button.pressed) ? "#FFFFFF" : Theme.surfaceContent
+            width: 10
+            height: 10
             opacity: buttons.window.active || button.hovered ? 1 : 0.45
+            Component.onCompleted: if ("preferredRendererType" in this) preferredRendererType = 2
+            ShapePath {
+                strokeColor: button.danger && (button.hovered || button.pressed) ? "#FFFFFF" : Theme.surfaceContent
+                strokeWidth: 1.25
+                fillColor: "transparent"
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+                PathSvg { path: button.iconPath }
+            }
         }
         Rectangle {
             anchors.fill: parent

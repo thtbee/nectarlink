@@ -86,13 +86,20 @@ pub(crate) async fn handshake_dialer(
 
 /// Runs the listener side of the handshake on an accepted connection.
 pub(crate) async fn handshake_listener(
+    shared: &Shared,
     conn: &Connection,
     hello: &Hello,
 ) -> Result<(SendStream, RecvStream, Hello)> {
+    let peer = crate::device_id(&conn.remote_id());
     let run = async {
         let (mut send, mut recv) = conn.accept_bi().await.map_err(crate::error::net)?;
         let remote = read_hello(&mut recv).await?;
         check_versions(conn, &mut send, hello, &remote).await?;
+        if shared.session(&peer).is_some_and(|s| s.is_alive() && s.dialer == shared.id) {
+            tracing::debug!(peer = %peer.short(), "aborting incoming handshake before Hello reply because outgoing session is already active");
+            conn.close(VarInt::from_u32(CLOSE_DUPLICATE), b"duplicate");
+            return Err(Error::Offline);
+        }
         write_frame(&mut send, &Envelope::new(types::HELLO, hello)?.to_cbor()).await?;
         Ok((send, recv, remote))
     };
@@ -300,20 +307,32 @@ impl Session {
         self.outbox.send(env).await.map_err(|_| Error::Offline)
     }
 
+    /// Best-effort non-blocking enqueue for real-time media frames (e.g. PCM audio fallback)
+    /// so they never fill the control stream outbox and starve heartbeats or RPCs.
+    pub fn try_send_realtime(&self, env: Envelope) -> Result<()> {
+        if self.outbox.capacity() <= OUTBOX_CAPACITY / 2 {
+            return Ok(());
+        }
+        match self.outbox.try_send(env) {
+            Ok(()) | Err(mpsc::error::TrySendError::Full(_)) => Ok(()),
+            Err(mpsc::error::TrySendError::Closed(_)) => Err(Error::Offline),
+        }
+    }
+
     /// Sends a request and waits for the reply with the matching `re`.
     pub async fn request(&self, env: Envelope, timeout: Duration) -> Result<Envelope> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = oneshot::channel();
         self.pending.lock().unwrap_or_else(|e| e.into_inner()).insert(id, tx);
-        let result = async {
+        let result = match tokio::time::timeout(timeout, async {
             self.send(env.with_id(id)).await?;
-            match tokio::time::timeout(timeout, rx).await {
-                Ok(Ok(reply)) => Ok(reply),
-                Ok(Err(_)) => Err(Error::Offline),
-                Err(_) => Err(Error::Timeout),
-            }
-        }
-        .await;
+            rx.await.map_err(|_| Error::Offline)
+        })
+        .await
+        {
+            Ok(inner) => inner,
+            Err(_) => Err(Error::Timeout),
+        };
         self.pending.lock().unwrap_or_else(|e| e.into_inner()).remove(&id);
         result
     }
@@ -338,9 +357,16 @@ impl Session {
 
 async fn writer(mut send: SendStream, mut outbox: mpsc::Receiver<Envelope>) {
     while let Some(env) = outbox.recv().await {
-        if let Err(e) = write_frame(&mut send, &env.to_cbor()).await {
-            tracing::debug!(error = %e, "control stream write failed");
-            return;
+        match tokio::time::timeout(REQUEST_TIMEOUT, write_frame(&mut send, &env.to_cbor())).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => {
+                tracing::debug!(error = %e, "control stream write failed");
+                return;
+            }
+            Err(_) => {
+                tracing::debug!("control stream write timed out");
+                return;
+            }
         }
     }
     let _ = send.finish();

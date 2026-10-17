@@ -85,10 +85,21 @@ object PhoneClipboard {
         val clip = manager(context)?.primaryClip ?: return Read.Empty
         if (clip.description.isSensitive()) return Read.Private
         val resolver = context.contentResolver
+        val descHasImage = (0 until clip.description.mimeTypeCount)
+            .any { clip.description.getMimeType(it)?.startsWith("image/") == true }
         for (i in 0 until clip.itemCount) {
             val item = clip.getItemAt(i)
+            // Check URI first before reading text or coercing to text (which opens the URI stream as raw UTF-8).
+            val uri = item.uri
+            if (uri != null) {
+                if (isRecentUriEcho(uri)) return Read.Empty
+                val resolvedMime = runCatching { resolver.getType(uri) }.getOrNull()
+                if (resolvedMime?.startsWith("image/") == true || descHasImage || isImageUriByMagic(resolver, uri)) {
+                    return Read.Image(uri)
+                }
+            }
             val cs = item.text
-            cs?.toString()?.takeIf(String::isNotBlank)?.let { text ->
+            cs?.toString()?.takeIf { it.isNotBlank() && !isLikelyBinaryText(it) }?.let { text ->
                 val html = item.htmlText?.takeIf(String::isNotBlank) ?: run {
                     if (cs is android.text.Spanned &&
                         cs.getSpans(0, cs.length, android.text.style.CharacterStyle::class.java).isNotEmpty()
@@ -103,14 +114,74 @@ object PhoneClipboard {
                 }
                 return Read.Text(text, html)
             }
-            // Checked before coercing to text, which would turn it into its address.
-            val uri = item.uri
-            if (uri != null && isRecentUriEcho(uri)) return Read.Empty
-            if (uri != null && resolver.getType(uri)?.startsWith("image/") == true) return Read.Image(uri)
         }
         val text = (0 until clip.itemCount)
-            .firstNotNullOfOrNull { clip.getItemAt(it).coerceToText(context)?.toString()?.takeIf(String::isNotBlank) }
+            .asSequence()
+            .map { clip.getItemAt(it) }
+            // Never call coerceToText on an item with a content URI because Android opens a FileInputStream
+            // on the URI and decodes raw binary file bytes (e.g. JPEG/JFIF) as UTF-8 text.
+            .filter { it.uri == null }
+            .mapNotNull { it.coerceToText(context)?.toString()?.takeIf { s -> s.isNotBlank() && !isLikelyBinaryText(s) } }
+            .firstOrNull()
         return text?.takeUnless { isRecentEcho(it) }?.let { Read.Text(it) } ?: Read.Empty
+    }
+
+    private fun isImageUriByMagic(resolver: android.content.ContentResolver, uri: Uri): Boolean = runCatching {
+        resolver.openInputStream(uri)?.use { input ->
+            val header = input.readNBytesCompat(16)
+            sniffImageMime(header) != null
+        } ?: false
+    }.getOrDefault(false)
+
+    private fun sniffImageMime(bytes: ByteArray): String? {
+        if (bytes.size >= 3 &&
+            bytes[0] == 0xFF.toByte() &&
+            bytes[1] == 0xD8.toByte() &&
+            bytes[2] == 0xFF.toByte()
+        ) {
+            return "image/jpeg"
+        }
+        if (bytes.size >= 8 &&
+            bytes[0] == 0x89.toByte() &&
+            bytes[1] == 0x50.toByte() &&
+            bytes[2] == 0x4E.toByte() &&
+            bytes[3] == 0x47.toByte()
+        ) {
+            return "image/png"
+        }
+        if (bytes.size >= 12 &&
+            bytes[0] == 'R'.code.toByte() &&
+            bytes[1] == 'I'.code.toByte() &&
+            bytes[2] == 'F'.code.toByte() &&
+            bytes[3] == 'F'.code.toByte() &&
+            bytes[8] == 'W'.code.toByte() &&
+            bytes[9] == 'E'.code.toByte() &&
+            bytes[10] == 'B'.code.toByte() &&
+            bytes[11] == 'P'.code.toByte()
+        ) {
+            return "image/webp"
+        }
+        if (bytes.size >= 4 &&
+            bytes[0] == 'G'.code.toByte() &&
+            bytes[1] == 'I'.code.toByte() &&
+            bytes[2] == 'F'.code.toByte() &&
+            bytes[3] == '8'.code.toByte()
+        ) {
+            return "image/gif"
+        }
+        return null
+    }
+
+    private fun isLikelyBinaryText(s: String): Boolean {
+        val sample = if (s.length > 512) s.substring(0, 512) else s
+        if (sample.contains('\u0000')) return true
+        if ((sample.contains("JFIF") || sample.contains("Exif") || sample.contains("PNG\r\n")) &&
+            sample.any { it == '\uFFFD' || (it.code < 0x20 && it != '\n' && it != '\r' && it != '\t') }
+        ) {
+            return true
+        }
+        val badCount = sample.count { it == '\uFFFD' || (it.code < 0x20 && it != '\n' && it != '\r' && it != '\t') }
+        return sample.length >= 8 && badCount * 10 >= sample.length
     }
 
     /**
@@ -127,8 +198,9 @@ object PhoneClipboard {
             if (buffer.size > MAX_IMAGE_BYTES) return ImageResult.TooLarge
             buffer
         } ?: return ImageResult.Unreadable
-        when (val mime = resolver.getType(uri)) {
-            "image/png", "image/jpeg" -> ImageResult.Ready(ImageData(mime, bytes))
+        val effectiveMime = resolver.getType(uri)?.takeIf { it.startsWith("image/") } ?: sniffImageMime(bytes)
+        when (effectiveMime) {
+            "image/png", "image/jpeg" -> ImageResult.Ready(ImageData(effectiveMime, bytes))
             else -> {
                 val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return ImageResult.Unreadable
                 val png = java.io.ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }

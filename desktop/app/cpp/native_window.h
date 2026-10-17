@@ -72,6 +72,7 @@ signals:
     void captionHeightChanged();
     void maximizeButtonChanged();
     void maximizeStateChanged();
+    void windowVisibilityChanged();
     void closeRequested();
 
 protected:

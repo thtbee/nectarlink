@@ -93,9 +93,21 @@ impl RecordingFormat {
 }
 
 pub const DEFAULT_LOCAL_API_PORT: u16 = 53320;
+pub const DEFAULT_WINDOW_WIDTH: u32 = 1120;
+pub const DEFAULT_WINDOW_HEIGHT: u32 = 740;
+pub const MIN_WINDOW_WIDTH: u32 = 900;
+pub const MIN_WINDOW_HEIGHT: u32 = 620;
 
 fn default_local_api_port() -> u16 {
     DEFAULT_LOCAL_API_PORT
+}
+
+fn default_window_width() -> u32 {
+    DEFAULT_WINDOW_WIDTH
+}
+
+fn default_window_height() -> u32 {
+    DEFAULT_WINDOW_HEIGHT
 }
 
 fn default_true() -> bool {
@@ -123,6 +135,9 @@ static FOLDER_SYNC_RULES: std::sync::OnceLock<std::sync::Mutex<Vec<crate::folder
     std::sync::OnceLock::new();
 static AUTOMATION_RULES: std::sync::OnceLock<std::sync::Mutex<Vec<crate::automations::AutomationRule>>> =
     std::sync::OnceLock::new();
+type WindowGeometryState = (Option<i32>, Option<i32>, u32, u32, bool);
+static WINDOW_GEOMETRY: std::sync::Mutex<WindowGeometryState> =
+    std::sync::Mutex::new((None, None, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, false));
 
 pub fn clipboard_auto_copy_received_files() -> bool {
     CLIPBOARD_AUTO_COPY_FILES.load(std::sync::atomic::Ordering::Relaxed)
@@ -167,6 +182,14 @@ pub fn share_pc_storage() -> bool {
 
 pub fn set_share_pc_storage(on: bool) {
     SHARE_PC_STORAGE.store(on, std::sync::atomic::Ordering::Relaxed);
+    if on
+        && let Some(node) = crate::core_host::node()
+        && let Ok(devices) = node.paired_devices()
+    {
+        for d in devices {
+            let _ = node.set_device_toggle(d.id, "storage", true);
+        }
+    }
 }
 
 pub fn forward_pc_notifications_to_phone() -> bool {
@@ -175,6 +198,10 @@ pub fn forward_pc_notifications_to_phone() -> bool {
 
 pub fn set_forward_pc_notifications_to_phone(on: bool) {
     FORWARD_PC_NOTIFICATIONS.store(on, std::sync::atomic::Ordering::Relaxed);
+    #[cfg(target_os = "linux")]
+    if on {
+        crate::pc_notifications::start_listener();
+    }
 }
 
 /// Whether the PC's clipboard goes to the phone when control moves to it (`input_share`).
@@ -251,6 +278,15 @@ pub fn set_automation_rules(rules: Vec<crate::automations::AutomationRule>) {
         .get_or_init(|| std::sync::Mutex::new(Vec::new()))
         .lock()
         .unwrap_or_else(|e| e.into_inner()) = rules;
+}
+
+pub fn window_geometry() -> (Option<i32>, Option<i32>, u32, u32, bool) {
+    *WINDOW_GEOMETRY.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+pub fn set_window_geometry(x: Option<i32>, y: Option<i32>, width: u32, height: u32, maximized: bool) {
+    *WINDOW_GEOMETRY.lock().unwrap_or_else(|e| e.into_inner()) =
+        (x, y, width.max(MIN_WINDOW_WIDTH), height.max(MIN_WINDOW_HEIGHT), maximized);
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -409,6 +445,21 @@ pub struct Settings {
     pub obs_port: u16,
     /// OBS's WebSocket password, encrypted with Windows DPAPI (base64). Never stored in clear.
     pub obs_password: Option<String>,
+    /// Last saved main window X coordinate in screen pixels (`None` = OS/centered default).
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "window_x")]
+    pub window_x: Option<i32>,
+    /// Last saved main window Y coordinate in screen pixels (`None` = OS/centered default).
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "window_y")]
+    pub window_y: Option<i32>,
+    /// Last saved main window normal width in logical pixels.
+    #[serde(default = "default_window_width", alias = "window_width")]
+    pub window_width: u32,
+    /// Last saved main window normal height in logical pixels.
+    #[serde(default = "default_window_height", alias = "window_height")]
+    pub window_height: u32,
+    /// Whether the main window was maximized when last open.
+    #[serde(default, alias = "window_maximized")]
+    pub window_maximized: bool,
 }
 
 impl Default for Settings {
@@ -465,6 +516,11 @@ impl Default for Settings {
             hive_invite_dismissed: false,
             obs_port: crate::obs::DEFAULT_PORT,
             obs_password: None,
+            window_x: None,
+            window_y: None,
+            window_width: DEFAULT_WINDOW_WIDTH,
+            window_height: DEFAULT_WINDOW_HEIGHT,
+            window_maximized: false,
         }
     }
 }
@@ -477,6 +533,12 @@ impl Settings {
     pub fn sanitized(mut self) -> Self {
         self.webcam_camera = normalize_webcam_camera(&self.webcam_camera);
         self.walkthrough_step = self.walkthrough_step.min(6);
+        self.window_width = self.window_width.clamp(MIN_WINDOW_WIDTH, 7680);
+        self.window_height = self.window_height.clamp(MIN_WINDOW_HEIGHT, 4320);
+        if self.window_x.is_none() || self.window_y.is_none() {
+            self.window_x = None;
+            self.window_y = None;
+        }
         self
     }
 
@@ -507,6 +569,13 @@ impl Settings {
         set_share_pc_storage(self.share_pc_storage);
         set_forward_pc_notifications_to_phone(self.forward_pc_notifications_to_phone);
         set_away_mode(self.away_mode);
+        set_window_geometry(
+            self.window_x,
+            self.window_y,
+            self.window_width,
+            self.window_height,
+            self.window_maximized,
+        );
     }
 
     /// Loads the settings, falling back to defaults if the file is missing.
@@ -614,6 +683,11 @@ mod tests {
             hive_invite_dismissed: true,
             obs_port: crate::obs::DEFAULT_PORT,
             obs_password: None,
+            window_x: Some(180),
+            window_y: Some(120),
+            window_width: 1280,
+            window_height: 820,
+            window_maximized: true,
         };
         settings.save(dir.path()).unwrap();
         assert_eq!(Settings::load(dir.path()), settings);
@@ -885,5 +959,251 @@ mod tests {
         assert_eq!(upgraded.walkthrough_step, 0);
         assert!(upgraded.reconcile_walkthrough_for_paired_devices(2));
         assert!(upgraded.walkthrough_completed);
+    }
+
+    #[test]
+    fn theme_switching_persists_all_themes_color_modes_seeds_and_modifiers() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let themes = [
+            ("bloom", Theme::Bloom),
+            ("hive", Theme::Hive),
+            ("glass", Theme::Glass),
+            ("blurry", Theme::Glass),
+            ("graphite", Theme::Graphite),
+        ];
+        let modes = [("system", ColorMode::System), ("light", ColorMode::Light), ("dark", ColorMode::Dark)];
+        let seeds = [
+            "wallpaper",
+            "phone",
+            "artwork",
+            "black",
+            "honey",
+            "lavender",
+            "ocean",
+            "rose",
+            "sage",
+            "terracotta",
+        ];
+
+        for &(theme_str, expected_theme) in &themes {
+            for &(mode_str, expected_mode) in &modes {
+                for &seed in &seeds {
+                    for &amoled in &[false, true] {
+                        for &comb_motion in &[false, true] {
+                            let raw = serde_json::json!({
+                                "theme": theme_str,
+                                "colorMode": mode_str,
+                                "seed": seed,
+                                "amoled": amoled,
+                                "combMotion": comb_motion,
+                            });
+                            fs::write(dir.path().join(FILE_NAME), raw.to_string()).unwrap();
+                            let loaded = Settings::load(dir.path());
+                            assert_eq!(loaded.theme, expected_theme);
+                            assert_eq!(loaded.color_mode, expected_mode);
+                            assert_eq!(loaded.seed, seed);
+                            assert_eq!(loaded.amoled, amoled);
+                            assert_eq!(loaded.comb_motion, comb_motion);
+
+                            loaded.save(dir.path()).unwrap();
+                            let round_tripped = Settings::load(dir.path());
+                            assert_eq!(round_tripped.theme, expected_theme);
+                            assert_eq!(round_tripped.color_mode, expected_mode);
+                            assert_eq!(round_tripped.seed, seed);
+                            assert_eq!(round_tripped.amoled, amoled);
+                            assert_eq!(round_tripped.comb_motion, comb_motion);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn extract_qt_placeholders(s: &str) -> Vec<String> {
+        let mut out = Vec::new();
+        let bytes = s.as_bytes();
+        let mut i = 0;
+        while i + 1 < bytes.len() {
+            if bytes[i] == b'%' {
+                if bytes[i + 1].is_ascii_digit() && bytes[i + 1] != b'0' {
+                    out.push(format!("%{}", bytes[i + 1] as char));
+                    i += 2;
+                    continue;
+                } else if bytes[i + 1] == b'n' {
+                    let prev_ok = i == 0 || !bytes[i - 1].is_ascii_alphabetic();
+                    let next_ok = i + 2 >= bytes.len() || !bytes[i + 2].is_ascii_alphabetic();
+                    if prev_ok && next_ok {
+                        out.push("%n".to_owned());
+                        i += 2;
+                        continue;
+                    }
+                }
+            }
+            i += 1;
+        }
+        out.sort();
+        out.dedup();
+        out
+    }
+
+    #[test]
+    fn desktop_i18n_catalog_is_complete_preserves_placeholders_and_compiles_to_qm() {
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let ts_path = manifest_dir.join("i18n/nectarlink_zh_CN.ts");
+        let xml = fs::read_to_string(&ts_path).expect("read desktop/app/i18n/nectarlink_zh_CN.ts");
+        assert!(xml.contains(r#"language="zh_CN""#));
+        assert!(
+            !xml.contains(r#"type="unfinished""#),
+            "nectarlink_zh_CN.ts must not contain unfinished translations"
+        );
+
+        let mut msg_count = 0usize;
+        for msg_chunk in xml.split("<message").skip(1) {
+            let Some(msg_body) = msg_chunk.split("</message>").next() else {
+                continue;
+            };
+            let Some(src_start) = msg_body.find("<source>") else {
+                continue;
+            };
+            let Some(src_end) = msg_body.find("</source>") else {
+                continue;
+            };
+            let source = &msg_body[src_start + "<source>".len()..src_end];
+
+            let Some(tr_tag_start) = msg_body.find("<translation") else {
+                panic!("message missing <translation> for source: {source}");
+            };
+            let tr_after_open = &msg_body[tr_tag_start..];
+            let Some(tr_gt) = tr_after_open.find('>') else {
+                panic!("malformed <translation> tag for source: {source}");
+            };
+            let Some(tr_end) = tr_after_open.find("</translation>") else {
+                panic!("missing </translation> for source: {source}");
+            };
+            let tr_inner = &tr_after_open[tr_gt + 1..tr_end];
+            assert!(
+                !tr_inner.trim().is_empty(),
+                "empty translation in nectarlink_zh_CN.ts for source: {source}"
+            );
+
+            let src_ph = extract_qt_placeholders(source);
+            let mut tr_texts = Vec::new();
+            if tr_inner.contains("<numerusform>") {
+                for nf in tr_inner.split("<numerusform>").skip(1) {
+                    if let Some(nf_body) = nf.split("</numerusform>").next() {
+                        assert!(!nf_body.trim().is_empty(), "empty numerusform for source: {source}");
+                        tr_texts.push(nf_body);
+                    }
+                }
+            } else {
+                tr_texts.push(tr_inner);
+            }
+
+            for tr_text in tr_texts {
+                for ph in &src_ph {
+                    if ph == "%n" {
+                        continue;
+                    }
+                    assert!(
+                        tr_text.contains(ph),
+                        "placeholder {ph} missing in zh_CN translation '{tr_text}' for source '{source}'"
+                    );
+                }
+            }
+            msg_count += 1;
+        }
+        assert!(msg_count >= 900, "expected >= 900 translated messages, found {msg_count}");
+
+        // Verify build.rs compiled nectarlink_zh_CN.ts into a valid binary .qm file in OUT_DIR.
+        let out_qm = Path::new(env!("OUT_DIR")).join("nectarlink_zh_CN.qm");
+        let qm_bytes = fs::read(&out_qm).expect("read compiled nectarlink_zh_CN.qm from OUT_DIR");
+        assert!(qm_bytes.len() > 10_000, "compiled .qm unexpectedly small: {} bytes", qm_bytes.len());
+        assert_eq!(
+            &qm_bytes[..16],
+            &[0x3C, 0xB8, 0x64, 0x18, 0xCA, 0xEF, 0x9C, 0x95, 0xCD, 0x21, 0x1C, 0xBF, 0x60, 0xA1, 0xBD, 0xDD,],
+            "compiled .qm file must start with 16-byte Qt magic header"
+        );
+    }
+
+    fn extract_android_placeholders(s: &str) -> Vec<String> {
+        let mut out = Vec::new();
+        let bytes = s.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            if bytes[i] == b'%' {
+                if i + 1 < bytes.len() && bytes[i + 1] == b'%' {
+                    i += 2;
+                    continue;
+                }
+                let start = i;
+                i += 1;
+                while i < bytes.len() && (bytes[i].is_ascii_digit() || bytes[i] == b'$' || bytes[i] == b'.') {
+                    i += 1;
+                }
+                if i < bytes.len() && matches!(bytes[i], b's' | b'd' | b'f') {
+                    i += 1;
+                    out.push(s[start..i].to_owned());
+                    continue;
+                }
+            }
+            i += 1;
+        }
+        out.sort();
+        out.dedup();
+        out
+    }
+
+    fn parse_android_strings_xml(xml: &str) -> std::collections::BTreeMap<String, String> {
+        let mut map = std::collections::BTreeMap::new();
+        for chunk in xml.split("<string ").skip(1) {
+            let Some(tag_end) = chunk.find('>') else {
+                continue;
+            };
+            let attrs = &chunk[..tag_end];
+            if attrs.contains(r#"translatable="false""#) {
+                continue;
+            }
+            let Some(name_idx) = attrs.find(r#"name=""#) else {
+                continue;
+            };
+            let after_name = &attrs[name_idx + r#"name=""#.len()..];
+            let Some(quote_end) = after_name.find('"') else {
+                continue;
+            };
+            let name = &after_name[..quote_end];
+            let rest = &chunk[tag_end + 1..];
+            let Some(val_end) = rest.find("</string>") else {
+                continue;
+            };
+            map.insert(name.to_owned(), rest[..val_end].to_owned());
+        }
+        map
+    }
+
+    #[test]
+    fn android_i18n_catalog_matches_all_translatable_keys_and_placeholders() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let en_xml = fs::read_to_string(repo_root.join("android/app/src/main/res/values/strings.xml"))
+            .expect("read values/strings.xml");
+        let zh_xml = fs::read_to_string(repo_root.join("android/app/src/main/res/values-zh-rCN/strings.xml"))
+            .expect("read values-zh-rCN/strings.xml");
+
+        let en_strings = parse_android_strings_xml(&en_xml);
+        let zh_strings = parse_android_strings_xml(&zh_xml);
+        assert!(en_strings.len() >= 1000, "expected >= 1000 Android strings, got {}", en_strings.len());
+
+        for (key, en_val) in &en_strings {
+            let zh_val = zh_strings
+                .get(key)
+                .unwrap_or_else(|| panic!("missing zh-rCN translation for Android string key '{key}'"));
+            assert!(!zh_val.trim().is_empty(), "empty zh-rCN translation for Android string key '{key}'");
+            let en_ph = extract_android_placeholders(en_val);
+            let zh_ph = extract_android_placeholders(zh_val);
+            assert_eq!(
+                en_ph, zh_ph,
+                "placeholder mismatch for Android string key '{key}': en={en_ph:?} vs zh={zh_ph:?}"
+            );
+        }
     }
 }

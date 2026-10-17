@@ -12,7 +12,10 @@
 #include <QtCore/QStringList>
 #include <QtCore/QTranslator>
 #include <QtCore/QUrl>
+#include <QtCore/QtGlobal>
+#if __has_include(<QtCore/QtEnvironmentVariables>)
 #include <QtCore/QtEnvironmentVariables>
+#endif
 #include <QtGui/QDrag>
 #include <QtGui/QFontDatabase>
 #include <QtGui/QGuiApplication>
@@ -53,6 +56,13 @@ void register_qml_engine(QQmlEngine *engine)
 void register_qml_app_engine(QQmlApplicationEngine &engine)
 {
     qmlEngineRef() = &engine;
+    engine.addImportPath(QStringLiteral("qrc:/qt/qml"));
+    engine.addImportPath(QStringLiteral(":/qt/qml"));
+#ifdef __linux__
+    const QString localQml = QStringLiteral("/datadisk/Repos/nectarlink/.qt6-sysroot/usr/lib/x86_64-linux-gnu/qt6/qml");
+    if (QFileInfo::exists(localQml))
+        engine.addImportPath(localQml);
+#endif
 }
 
 #include <QtCore/QDateTime>
@@ -85,6 +95,14 @@ void prepare_qt()
 
 void prepare_qt_without_log()
 {
+#ifdef __linux__
+    const QString localPlugins = QStringLiteral("/datadisk/Repos/nectarlink/.qt6-sysroot/usr/lib/x86_64-linux-gnu/qt6/plugins");
+    if (qEnvironmentVariableIsEmpty("QT_PLUGIN_PATH") && QFileInfo::exists(localPlugins))
+        qputenv("QT_PLUGIN_PATH", localPlugins.toUtf8());
+    const QString localQml = QStringLiteral("/datadisk/Repos/nectarlink/.qt6-sysroot/usr/lib/x86_64-linux-gnu/qt6/qml");
+    if (qEnvironmentVariableIsEmpty("QML_IMPORT_PATH") && QFileInfo::exists(localQml))
+        qputenv("QML_IMPORT_PATH", localQml.toUtf8());
+#endif
     // Windows get an alpha channel so the Mica backdrop can show through, and
     // D3D swap chains are presented with DirectComposition, without which
     // transparent pixels render white (see spikes/s1-qt-rust, lesson 7).
