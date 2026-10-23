@@ -39,6 +39,7 @@ mod store;
 pub mod timeline;
 pub mod toggles;
 mod transfer;
+pub mod unlock;
 pub mod usb;
 pub mod webcam;
 
