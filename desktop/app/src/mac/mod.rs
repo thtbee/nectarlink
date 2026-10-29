@@ -8,6 +8,8 @@ pub mod autostart;
 pub mod ble_beacon;
 pub mod browser;
 pub mod bt_hfp;
+#[cfg(feature = "macos-native-camera")]
+pub mod camera_output;
 pub mod clipboard;
 pub mod doctor;
 pub mod elevated;

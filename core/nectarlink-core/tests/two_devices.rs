@@ -589,9 +589,13 @@ impl nectarlink_core::MirrorSink for ScreenSink {
 #[derive(Debug, Default)]
 struct TestWebcamSink {
     got: Mutex<Vec<String>>,
+    closed: Mutex<Option<Arc<tokio::sync::Notify>>>,
 }
 
 impl nectarlink_core::WebcamSink for TestWebcamSink {
+    fn closed(&self) -> Option<Arc<tokio::sync::Notify>> {
+        self.closed.lock().unwrap().clone()
+    }
     fn config(&self, config: nectarlink_core::WebcamConfig) {
         self.got
             .lock()
@@ -3397,6 +3401,62 @@ async fn the_phone_camera_streams_to_the_pc_as_a_webcam() {
 #[tokio::test(flavor = "multi_thread")]
 async fn the_phone_negotiates_hevc_only_with_an_advertising_receiver() {
     webcam_round_trip(true).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_owned_webcam_sink_can_close_its_admitted_stream() {
+    webcam_output_closes(false).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_revoked_webcam_sink_cannot_lose_its_early_stop_signal() {
+    webcam_output_closes(true).await;
+}
+
+async fn webcam_output_closes(revoked_before_admission: bool) {
+    use nectarlink_core::{MirrorSend, PacketKind};
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::WEBCAM_VIRTUAL]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::WEBCAM_STREAM]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let signal = Arc::new(tokio::sync::Notify::new());
+    *pc.platform.webcam.closed.lock().unwrap() = Some(signal.clone());
+    if revoked_before_admission {
+        signal.notify_one();
+    }
+    let stream =
+        Arc::new(with_timeout("webcam_open", phone.node.webcam_open(pc.node.device_id())).await.unwrap());
+    let config = nectarlink_core::WebcamConfig {
+        codec: "h264".into(),
+        width: 1280,
+        height: 720,
+        camera: nectarlink_core::WEBCAM_CAMERA_BACK.into(),
+        fps: 30,
+        max_height: 2160,
+    };
+    let sender = stream.clone();
+    assert_eq!(
+        tokio::task::spawn_blocking(move || sender.send(PacketKind::Config, 0, config.to_cbor()))
+            .await
+            .unwrap(),
+        MirrorSend::Queued
+    );
+    wait_for(&mut pc, "webcam on", |e| matches!(e, NodeEvent::Webcam { on: true, .. }).then_some(())).await;
+    if !revoked_before_admission {
+        signal.notify_one();
+    }
+    wait_for(&mut pc, "webcam off", |e| matches!(e, NodeEvent::Webcam { on: false, .. }).then_some(())).await;
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while !stream.is_closed() && tokio::time::Instant::now() < deadline {
+        let sender = stream.clone();
+        tokio::task::spawn_blocking(move || sender.send(PacketKind::Frame, 0, vec![0])).await.unwrap();
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert!(stream.is_closed(), "revoking the exact output closes the phone stream");
+    assert!(pc.platform.webcam.got.lock().unwrap().iter().any(|item| item == "ended"));
+    assert!(
+        !phone.platform.webcam_asks.lock().unwrap().iter().any(|item| item == "stop"),
+        "output cancellation must not issue a peer-wide Stop for a later stream"
+    );
 }
 
 async fn webcam_round_trip(hevc: bool) {

@@ -35,6 +35,9 @@ use nectarlink_vcam::{
     DEFAULT_MAPPING_NAME, LOCAL_MAPPING_NAME, SharedFrameMapping, render_placeholder_bgrx,
 };
 
+#[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+use crate::win::camera_output;
+
 use crate::{
     bridge::{app::describe, native::ffi},
     core_host,
@@ -210,6 +213,8 @@ pub fn init(settings: &Settings) {
 
 /// Stops the virtual camera session on app exit.
 pub fn shutdown() {
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+    camera_output::shutdown();
     state(|s| {
         if let Some(mapping) = &s.mapping {
             mapping.set_idle("");
@@ -395,6 +400,11 @@ fn phone_name_for(device: Option<DeviceId>) -> String {
 /// as it exists (the camera creates it when an app first opens it, so look
 /// again every second until then), else this session's.
 fn mapping() -> Option<Arc<SharedFrameMapping>> {
+    #[cfg(target_os = "macos")]
+    {
+        return None;
+    }
+    #[cfg(not(target_os = "macos"))]
     state(|s| {
         let due = s.global_tried.is_none_or(|at| at.elapsed() >= std::time::Duration::from_secs(1));
         if !s.mapping_global && due {
@@ -419,6 +429,11 @@ fn mapping() -> Option<Arc<SharedFrameMapping>> {
 /// Updates the camera's global mapping (if a camera client has opened it)
 /// without allocating the 33 MB local fallback mapping while idle.
 fn idle_mapping() -> Option<Arc<SharedFrameMapping>> {
+    #[cfg(target_os = "macos")]
+    {
+        return None;
+    }
+    #[cfg(not(target_os = "macos"))]
     state(|s| {
         let due = s.global_tried.is_none_or(|at| at.elapsed() >= std::time::Duration::from_secs(1));
         if !s.mapping_global && due {
@@ -525,6 +540,29 @@ fn reconfigure_active_stream() {
 
 /// Requests a webcam stream from `device` (or the selected phone).
 pub fn start(device: Option<DeviceId>) {
+    #[cfg(target_os = "macos")]
+    if !vcam::stream_admission_ready() {
+        state(|s| {
+            s.phase = Phase::Ended {
+                reason: crate::i18n::tr!(
+                    "Webcam",
+                    "Native camera streaming requires owned webcam protocol support."
+                ),
+            }
+        });
+        core_host::host().hub.changed(Changes::WEBCAM);
+        return;
+    }
+    #[cfg(target_os = "macos")]
+    if !vcam::is_registered() {
+        state(|s| {
+            s.phase = Phase::Ended {
+                reason: crate::i18n::tr!("Webcam", "The signed camera extension is not ready."),
+            }
+        });
+        core_host::host().hub.changed(Changes::WEBCAM);
+        return;
+    }
     let Some(device) = device.or_else(selected_phone) else { return };
     set_selected_phone(device);
     state(|s| s.phase = Phase::Asking { device });
@@ -555,6 +593,8 @@ pub fn start(device: Option<DeviceId>) {
 
 /// Stops the active or pending webcam stream.
 pub fn stop() {
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+    let closed_owned_output = camera_output::shutdown();
     let device = state(|s| {
         let dev = match s.phase {
             Phase::Asking { device } | Phase::Streaming { device, .. } => Some(device),
@@ -565,6 +605,12 @@ pub fn stop() {
     });
     refresh_idle_frame();
     core_host::host().hub.changed(Changes::WEBCAM);
+    // The exact admitted sink already stopped its QUIC stream. A deferred
+    // peer-wide Stop could otherwise stop a successor from the same phone.
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+    if closed_owned_output {
+        return;
+    }
     if let (Some(device), Some(node)) = (device, core_host::node()) {
         core_host::spawn(async move {
             node.webcam_stop(device).await;
@@ -574,6 +620,7 @@ pub fn stop() {
 
 pub fn on_event(event: &NodeEvent) {
     match event {
+        #[cfg(not(target_os = "macos"))]
         NodeEvent::Webcam { device, on: true } => {
             state(|s| {
                 s.preferred_phone = Some(*device);
@@ -583,6 +630,7 @@ pub fn on_event(event: &NodeEvent) {
             });
             core_host::host().hub.changed(Changes::WEBCAM);
         }
+        #[cfg(not(all(target_os = "macos", feature = "macos-native-camera")))]
         NodeEvent::Webcam { device, on: false }
         | NodeEvent::LinkChanged { device, link: nectarlink_core::LinkState::Offline { .. } } => {
             let changed = state(|s| {
@@ -609,7 +657,20 @@ pub fn on_event(event: &NodeEvent) {
 
 /// Returns a [`WebcamSink`] for an incoming `"webcam"` stream from `device`.
 pub fn sink(device: &DeviceId) -> Option<Arc<dyn WebcamSink>> {
-    Some(Arc::new(Sink::new(*device)))
+    #[cfg(target_os = "macos")]
+    if !vcam::stream_admission_ready() || !vcam::is_registered() {
+        return None;
+    }
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+    {
+        let stopped = Arc::new(tokio::sync::Notify::new());
+        let lease = camera_output::claim(*device, stopped.clone()).ok()?;
+        Some(Arc::new(Sink { device: *device, video: OnceLock::new(), lease, stopped }))
+    }
+    #[cfg(not(all(target_os = "macos", feature = "macos-native-camera")))]
+    {
+        Some(Arc::new(Sink::new(*device)))
+    }
 }
 
 enum Item {
@@ -624,13 +685,63 @@ struct Video {
 }
 
 struct Sink {
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+    lease: camera_output::Lease,
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+    stopped: Arc<tokio::sync::Notify>,
     device: DeviceId,
     video: OnceLock<Video>,
 }
 
 impl Sink {
+    #[cfg(not(all(target_os = "macos", feature = "macos-native-camera")))]
     fn new(device: DeviceId) -> Self {
         Self { device, video: OnceLock::new() }
+    }
+
+    fn configure(&self, config: WebcamConfig) {
+        let update = || {
+            follow_stream(config.width, config.height);
+            UHD.store(config.max_height >= 2160, Ordering::Relaxed);
+            state(|s| {
+                s.preferred_phone = Some(self.device);
+                s.phase = Phase::Streaming {
+                    device: self.device,
+                    width: config.width,
+                    height: config.height,
+                    fps: config.fps,
+                };
+            });
+        };
+        #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+        if camera_output::with_owner(self.lease, update).is_none() {
+            return;
+        }
+        #[cfg(not(all(target_os = "macos", feature = "macos-native-camera")))]
+        update();
+        core_host::host().hub.changed(Changes::WEBCAM);
+        let video = self.video.get_or_init(|| {
+            Video::start(
+                self.device,
+                #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+                self.lease,
+            )
+        });
+        let _ = video.queue.send(Item::Config(config));
+    }
+
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+    fn end_output(&self) {
+        let _ = camera_output::with_owner(self.lease, || {
+            state(|s| {
+                if matches!(s.phase, Phase::Streaming { device, .. } if device == self.device) {
+                    s.phase = Phase::Idle;
+                }
+            })
+        });
+        camera_output::release(self.lease);
+        refresh_idle_frame();
+        core_host::host().hub.changed(Changes::WEBCAM);
     }
 
     fn keyframe_please(&self) {
@@ -642,15 +753,31 @@ impl Sink {
 }
 
 impl Video {
-    fn start(device: DeviceId) -> Self {
+    fn start(
+        device: DeviceId,
+        #[cfg(all(target_os = "macos", feature = "macos-native-camera"))] lease: camera_output::Lease,
+    ) -> Self {
         let (queue, items) = sync_channel(BACKLOG);
         let waiting = Arc::new(AtomicUsize::new(0));
         let counter = waiting.clone();
-        let started = std::thread::Builder::new()
-            .name("webcam-decoder".into())
-            .spawn(move || decode(device, &items, &counter));
+        let started = std::thread::Builder::new().name("webcam-decoder".into()).spawn(move || {
+            decode(
+                device,
+                &items,
+                &counter,
+                #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+                lease,
+            )
+        });
         if let Err(e) = started {
             tracing::error!(error = %e, "can't start the webcam decoder");
+            #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+            {
+                let _ = camera_output::with_owner(lease, || {
+                    state(|s| s.phase = Phase::Ended { reason: "The camera decoder could not start.".into() })
+                });
+                camera_output::release(lease);
+            }
         }
         Self { queue, waiting }
     }
@@ -658,20 +785,12 @@ impl Video {
 
 impl WebcamSink for Sink {
     fn config(&self, config: WebcamConfig) {
-        follow_stream(config.width, config.height);
-        UHD.store(config.max_height >= 2160, Ordering::Relaxed);
-        state(|s| {
-            s.preferred_phone = Some(self.device);
-            s.phase = Phase::Streaming {
-                device: self.device,
-                width: config.width,
-                height: config.height,
-                fps: config.fps,
-            };
-        });
-        core_host::host().hub.changed(Changes::WEBCAM);
-        let video = self.video.get_or_init(|| Video::start(self.device));
-        let _ = video.queue.send(Item::Config(config));
+        self.configure(config);
+    }
+
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+    fn closed(&self) -> Option<Arc<tokio::sync::Notify>> {
+        Some(self.stopped.clone())
     }
 
     fn packet(&self, keyframe: bool, time_us: u64, data: Vec<u8>) {
@@ -691,9 +810,18 @@ impl WebcamSink for Sink {
     }
 
     fn ended(&self) {
+        #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+        self.end_output();
         if let Some(video) = self.video.get() {
             let _ = video.queue.send(Item::Ended);
         }
+    }
+}
+
+#[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+impl Drop for Sink {
+    fn drop(&mut self) {
+        self.end_output();
     }
 }
 
@@ -727,16 +855,38 @@ pub fn supports_hevc() -> bool {
     })
 }
 
-fn decode(device: DeviceId, items: &Receiver<Item>, waiting: &AtomicUsize) {
+fn decode(
+    device: DeviceId,
+    items: &Receiver<Item>,
+    waiting: &AtomicUsize,
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))] lease: camera_output::Lease,
+) {
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+    struct Release(camera_output::Lease);
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+    impl Drop for Release {
+        fn drop(&mut self) {
+            camera_output::release(self.0);
+        }
+    }
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+    let _release = Release(lease);
     // On the GPU when there is one: 4K takes about 24 ms a frame in software
     // and 11 ms on a GPU, against 33 ms per frame at 30 fps.
     let mut decoder = match Decoder::new_gpu("h264") {
         Ok(decoder) => decoder,
         Err(e) => {
             tracing::error!(error = %e, "no H.264 decoder for webcam");
-            state(|s| {
-                s.phase = Phase::Ended { reason: "This PC can't decode the phone's camera video.".into() };
-            });
+            let fail = || {
+                state(|s| {
+                    s.phase =
+                        Phase::Ended { reason: "This PC can't decode the phone's camera video.".into() };
+                });
+            };
+            #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+            let _ = camera_output::with_owner(lease, fail);
+            #[cfg(not(all(target_os = "macos", feature = "macos-native-camera")))]
+            fail();
             refresh_idle_frame();
             core_host::host().hub.changed(Changes::WEBCAM);
             return;
@@ -759,6 +909,10 @@ fn decode(device: DeviceId, items: &Receiver<Item>, waiting: &AtomicUsize) {
     let mut shared_transport = false;
 
     while let Ok(item) = items.recv() {
+        #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+        if camera_output::with_owner(lease, || ()).is_none() {
+            break;
+        }
         match item {
             Item::Config(config) => {
                 if decoder.codec() != config.codec {
@@ -856,6 +1010,11 @@ fn decode(device: DeviceId, items: &Receiver<Item>, waiting: &AtomicUsize) {
                     if flip {
                         mirror_bgrx_in_place(&mut bgrx, src_w, src_h);
                     }
+                    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+                    if let Err(error) = camera_output::publish(lease, src_w, src_h, &bgrx) {
+                        tracing::warn!(%error, "native camera output ended");
+                        break;
+                    }
                     if local_mapping.is_none() && last_mapping_check.elapsed() >= Duration::from_secs(1) {
                         local_mapping = mapping();
                         last_mapping_check = Instant::now();
@@ -871,6 +1030,11 @@ fn decode(device: DeviceId, items: &Receiver<Item>, waiting: &AtomicUsize) {
                         gpu_publisher.idle();
                     }
                     if preview {
+                        #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+                        let _ = camera_output::with_owner(lease, || {
+                            ffi::video_frame(PREVIEW_STREAM, src_w, src_h, &bgrx)
+                        });
+                        #[cfg(not(all(target_os = "macos", feature = "macos-native-camera")))]
                         ffi::video_frame(PREVIEW_STREAM, src_w, src_h, &bgrx);
                     }
                 }
@@ -881,11 +1045,17 @@ fn decode(device: DeviceId, items: &Receiver<Item>, waiting: &AtomicUsize) {
 
     #[cfg(windows)]
     drop(gpu_publisher);
-    state(|s| {
-        if matches!(s.phase, Phase::Streaming { device: d, .. } if d == device) {
-            s.phase = Phase::Idle;
-        }
-    });
+    let finish = || {
+        state(|s| {
+            if matches!(s.phase, Phase::Streaming { device: d, .. } if d == device) {
+                s.phase = Phase::Idle;
+            }
+        });
+    };
+    #[cfg(all(target_os = "macos", feature = "macos-native-camera"))]
+    let _ = camera_output::with_owner(lease, finish);
+    #[cfg(not(all(target_os = "macos", feature = "macos-native-camera")))]
+    finish();
     refresh_idle_frame();
     core_host::host().hub.changed(Changes::WEBCAM);
 }

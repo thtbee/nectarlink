@@ -27,6 +27,11 @@ pub trait WebcamSink: Send + Sync {
     fn packet(&self, keyframe: bool, time_us: u64, data: Vec<u8>);
     /// The stream ended (the phone stopped, or the connection dropped).
     fn ended(&self);
+    /// Optional exact-sink cancellation, e.g. a revoked native camera producer.
+    /// Notify permits are retained when cancellation precedes the receive loop.
+    fn closed(&self) -> Option<Arc<tokio::sync::Notify>> {
+        None
+    }
 }
 
 impl std::fmt::Debug for dyn WebcamSink {
@@ -78,10 +83,10 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
         tracing::warn!("a phone sent a webcam format this PC can't decode");
         return refuse(send, recv);
     };
-    let Some(sink) = shared.platform.webcam_sink(&peer) else {
+    let Some((sink, stopped)) = shared.new_webcam_sink(&peer) else {
         return refuse(send, recv);
     };
-    let stopped = shared.new_webcam_stop(&peer);
+    let output_closed = sink.closed();
     let started_at = std::time::Instant::now();
     let tl_row = shared.record_timeline(crate::timeline::NewTimelineEntry {
         kind: crate::TimelineKind::Session,
@@ -101,6 +106,12 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
     loop {
         let packet = tokio::select! {
             _ = stopped.notified() => break,
+            _ = async {
+                match &output_closed {
+                    Some(signal) => signal.notified().await,
+                    None => std::future::pending().await,
+                }
+            } => break,
             packet = read_video_packet(&mut recv) => packet,
         };
         match packet {
@@ -201,14 +212,17 @@ pub(crate) async fn open(shared: &Arc<Shared>, session: &Session) -> Result<Mirr
 }
 
 impl Shared {
-    fn new_webcam_stop(&self, peer: &DeviceId) -> Arc<tokio::sync::Notify> {
+    fn new_webcam_sink(&self, peer: &DeviceId) -> Option<(Arc<dyn WebcamSink>, Arc<tokio::sync::Notify>)> {
+        // Platform admission must return quickly and must not call back into
+        // webcam stop. Register in that same order: a revoked sink must never
+        // overwrite a successor's cancellation token after acquiring output.
+        let mut stops = self.webcam_stops.lock().unwrap_or_else(|e| e.into_inner());
+        let sink = self.platform.webcam_sink(peer)?;
         let signal = Arc::new(tokio::sync::Notify::new());
-        if let Some(prev) =
-            self.webcam_stops.lock().unwrap_or_else(|e| e.into_inner()).insert(*peer, signal.clone())
-        {
+        if let Some(prev) = stops.insert(*peer, signal.clone()) {
             prev.notify_one();
         }
-        signal
+        Some((sink, signal))
     }
 
     fn clear_webcam_stop(&self, peer: &DeviceId, signal: &Arc<tokio::sync::Notify>) -> bool {

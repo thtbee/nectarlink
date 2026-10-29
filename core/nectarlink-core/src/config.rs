@@ -497,6 +497,8 @@ pub trait Platform: Send + Sync + 'static {
 
     /// Where a phone's webcam video stream goes on this PC when it starts
     /// streaming (`docs/protocol/webcam.md`). `None` refuses the stream.
+    /// Called synchronously during admission: return quickly and do not
+    /// re-enter webcam start/stop on this node from this callback.
     fn webcam_sink(
         &self,
         _peer: &nectarlink_protocol::DeviceId,

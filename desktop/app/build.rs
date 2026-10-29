@@ -351,7 +351,71 @@ fn compile_translations() {
     }
 }
 
+/// Opt-in native producer/activation bridge; the separate extension executable
+/// is assembled only by scripts/macos/build-native-camera-extension.py.
+fn native_camera_support() {
+    use std::process::Command;
+    let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR"));
+    let arch = match std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() {
+        Ok("aarch64") => "arm64",
+        Ok("x86_64") => "x86_64",
+        _ => panic!("unsupported native camera architecture"),
+    };
+    let mut objects = Vec::new();
+    for stem in ["NectarLinkCameraProducer", "NectarLinkCameraActivation"] {
+        let source = format!("src/mac/camera_extension/{stem}.m");
+        println!("cargo:rerun-if-changed={source}");
+        let object = out.join(format!("{stem}.o"));
+        assert!(
+            Command::new("xcrun")
+                .args([
+                    "--sdk",
+                    "macosx",
+                    "clang",
+                    "-c",
+                    "-fobjc-arc",
+                    "-O2",
+                    "-arch",
+                    arch,
+                    "-mmacosx-version-min=12.3",
+                    &source,
+                    "-o"
+                ])
+                .arg(&object)
+                .status()
+                .expect("compile native camera bridge")
+                .success()
+        );
+        objects.push(object);
+    }
+    for header in ["NectarLinkCamera.h", "NectarLinkCameraActivation.h"] {
+        println!("cargo:rerun-if-changed=src/mac/camera_extension/{header}");
+    }
+    let library = out.join("libnectarlink_camera.a");
+    assert!(
+        Command::new("xcrun")
+            .args(["libtool", "-static", "-o"])
+            .arg(&library)
+            .args(objects)
+            .status()
+            .expect("archive native camera bridge")
+            .success()
+    );
+    println!("cargo:rustc-link-search=native={}", out.display());
+    println!("cargo:rustc-link-lib=static=nectarlink_camera");
+    for framework in
+        ["Foundation", "CoreMediaIO", "CoreMedia", "CoreVideo", "Accelerate", "SystemExtensions", "Security"]
+    {
+        println!("cargo:rustc-link-lib=framework={framework}");
+    }
+}
+
 fn main() {
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos")
+        && std::env::var_os("CARGO_FEATURE_MACOS_NATIVE_CAMERA").is_some()
+    {
+        native_camera_support();
+    }
     println!("cargo:rerun-if-changed=src/mark.rs");
     for qml in QML.iter().chain(QML_SINGLETONS.iter()) {
         println!("cargo:rerun-if-changed={qml}");

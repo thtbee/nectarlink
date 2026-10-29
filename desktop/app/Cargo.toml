@@ -10,6 +10,10 @@ repository.workspace = true
 license = "GPL-3.0-or-later"
 publish = false
 
+[features]
+# Maintainer opt-in: also requires qualified signed bundles and user activation.
+macos-native-camera = []
+
 [[bin]]
 name = "nectarlink-desktop"
 path = "src/main.rs"
