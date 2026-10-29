@@ -575,6 +575,12 @@ void NativeWindow::applyFrame()
     // its own caption buttons over the app's.
     const MARGINS margins { 0, 0, 0, 0 };
     DwmExtendFrameIntoClientArea(hwnd, &margins);
+    if (!systemBackdropSupported() && !property("_nl_win10_frame").toBool()) {
+        // Make Windows re-run WM_NCCALCSIZE so the Windows 10 path above applies.
+        setProperty("_nl_win10_frame", true);
+        SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                     SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
     const BOOL dark = m_darkFrame;
     DwmSetWindowAttribute(hwnd, kUseImmersiveDarkMode, &dark, sizeof(dark));
     // Windows 10 has no system backdrop or caption color: skip both, and the
@@ -663,6 +669,25 @@ bool NativeWindow::nativeEvent(const QByteArray &eventType, void *message, qintp
     const MSG *msg = static_cast<const MSG *>(message);
 
     switch (msg->message) {
+    // Windows 10: Qt's expanded client area still leaves the native caption
+    // drawn over the top of the client area. Take the whole non-client area
+    // except the side/bottom resize borders, so only the app's own bar shows.
+    case WM_NCCALCSIZE:
+        if (msg->wParam == TRUE && !systemBackdropSupported()) {
+            auto *params = reinterpret_cast<NCCALCSIZE_PARAMS *>(msg->lParam);
+            const LONG top = params->rgrc[0].top;
+            DefWindowProcW(msg->hwnd, WM_NCCALCSIZE, msg->wParam, msg->lParam);
+            params->rgrc[0].top = top;
+            if (IsZoomed(msg->hwnd)) {
+                // A maximized window hangs its frame off-screen; keep the bar visible.
+                const UINT dpi = GetDpiForWindow(msg->hwnd);
+                params->rgrc[0].top += GetSystemMetricsForDpi(SM_CYFRAME, dpi)
+                    + GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+            }
+            *result = 0;
+            return true;
+        }
+        break;
     case WM_NCHITTEST: {
         const long hit = hitTest(GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam));
         if (hit != HTCLIENT) {
