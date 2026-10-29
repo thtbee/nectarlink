@@ -250,6 +250,7 @@ mod tests {
         let version = os_version();
         let parts: Vec<&str> = version.split('.').collect();
         assert_eq!(parts.len(), 3, "{version}");
-        assert!(parts[2].parse::<u32>().unwrap() >= 22000, "NectarLink targets Windows 11: {version}");
+        // Any real build number; Windows 10 (19041+) runs the app too.
+        assert!(parts[2].parse::<u32>().unwrap() >= 10240, "not a Windows 10 or 11 build: {version}");
     }
 }
