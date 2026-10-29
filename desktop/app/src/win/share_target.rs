@@ -238,6 +238,7 @@ mod tests {
         for format in ["StorageItems", "WebLink", "Uri", "Text", "Bitmap"] {
             assert!(xml_str.contains(&format!("<uap:DataFormat>{format}</uap:DataFormat>")));
         }
-        assert!(xml_str.contains(r#"ToastActivatorCLSID="{7B9E0E64-5C5A-4E8B-9D31-5A4C2B10F6E1}""#));
+        // Without braces: the schema rejects them, and the package then never registers (#84).
+        assert!(xml_str.contains(r#"ToastActivatorCLSID="7B9E0E64-5C5A-4E8B-9D31-5A4C2B10F6E1""#));
     }
 }

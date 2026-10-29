@@ -78,6 +78,8 @@ mod imp {
     };
 
     #[cfg(windows)]
+    use crate::i18n::tr;
+    #[cfg(windows)]
     use crate::state::{Changes, CoreStatus};
     use crate::{core_host, win};
 
@@ -672,7 +674,12 @@ mod imp {
 
         core_host::spawn(async move {
             let Some(node) = core_host::node() else {
-                ack_placeholders_failed(connection_key, transfer_key, request_key);
+                ack_placeholders_failed(
+                    connection_key,
+                    transfer_key,
+                    request_key,
+                    STATUS_CLOUD_NETWORK_UNAVAILABLE,
+                );
                 return;
             };
             match node.storage_list(root.device, &rel_path).await {
@@ -686,7 +693,8 @@ mod imp {
                         error = %e,
                         "fetch placeholders failed"
                     );
-                    ack_placeholders_failed(connection_key, transfer_key, request_key);
+                    let status = failure_status(root.device, &e);
+                    ack_placeholders_failed(connection_key, transfer_key, request_key, status);
                 }
             }
         });
@@ -741,8 +749,66 @@ mod imp {
         let _ = unsafe { CfExecute(&op_info, &mut op_params) };
     }
 
+    /// What Explorer is told when the phone couldn't list or read something.
+    /// A refusal (storage access off, or no All files access) isn't a network
+    /// problem: it's "access denied", and NectarLink says what to turn on.
     #[cfg(windows)]
-    fn ack_placeholders_failed(connection_key: CF_CONNECTION_KEY, transfer_key: i64, request_key: i64) {
+    fn failure_status(device: DeviceId, error: &nectarlink_core::Error) -> NTSTATUS {
+        match error {
+            nectarlink_core::Error::Denied | nectarlink_core::Error::Unsupported => {
+                explain_refusal(device, matches!(error, nectarlink_core::Error::Unsupported));
+                STATUS_ACCESS_DENIED
+            }
+            _ => STATUS_CLOUD_NETWORK_UNAVAILABLE,
+        }
+    }
+
+    /// Says on this PC why the phone's folder won't open, at most every ten
+    /// minutes per phone (Explorer asks again for every folder it shows).
+    #[cfg(windows)]
+    fn explain_refusal(device: DeviceId, no_all_files_access: bool) {
+        static SHOWN: Mutex<Option<std::collections::HashMap<DeviceId, std::time::Instant>>> =
+            Mutex::new(None);
+        {
+            let mut shown = lock(&SHOWN);
+            let shown = shown.get_or_insert_with(Default::default);
+            if shown.get(&device).is_some_and(|at| at.elapsed() < std::time::Duration::from_secs(600)) {
+                return;
+            }
+            shown.insert(device, std::time::Instant::now());
+        }
+        let name = core_host::host().hub.read(|s| s.name_of(&device)).unwrap_or_else(|| "your phone".into());
+        let body = if no_all_files_access {
+            tr!("Storage", "On the phone, allow All files access for NectarLink.")
+        } else {
+            tr!(
+                "Storage",
+                "On the phone, turn on Browse this phone's storage in File Explorer in NectarLink."
+            )
+        };
+        crate::win::toast::show(crate::win::toast::Toast {
+            device: crate::transfers::TOAST_GROUP.into(),
+            key: format!("storage-refused-{device}"),
+            title: tr!("Storage", "%1's files aren't shared with this PC", name),
+            body,
+            attribution: "NectarLink".into(),
+            icon: None,
+            image: None,
+            actions: Vec::new(),
+            reply: None,
+            silent: false,
+            progress: None,
+            call: false,
+        });
+    }
+
+    #[cfg(windows)]
+    fn ack_placeholders_failed(
+        connection_key: CF_CONNECTION_KEY,
+        transfer_key: i64,
+        request_key: i64,
+        status: NTSTATUS,
+    ) {
         let op_info =
             make_op_info(connection_key, transfer_key, request_key, CF_OPERATION_TYPE_TRANSFER_PLACEHOLDERS);
         let mut op_params = CF_OPERATION_PARAMETERS {
@@ -750,7 +816,7 @@ mod imp {
             Anonymous: CF_OPERATION_PARAMETERS_0 {
                 TransferPlaceholders: windows::Win32::Storage::CloudFilters::CF_OPERATION_PARAMETERS_0_4 {
                     Flags: windows::Win32::Storage::CloudFilters::CF_OPERATION_TRANSFER_PLACEHOLDERS_FLAGS(0),
-                    CompletionStatus: STATUS_CLOUD_NETWORK_UNAVAILABLE,
+                    CompletionStatus: status,
                     PlaceholderTotalCount: 0,
                     PlaceholderArray: std::ptr::null_mut(),
                     PlaceholderCount: 0,
@@ -838,7 +904,7 @@ mod imp {
                         transfer_key,
                         request_key,
                         required_offset as i64,
-                        STATUS_CLOUD_NETWORK_UNAVAILABLE,
+                        failure_status(root.device, &e),
                     );
                     return;
                 }

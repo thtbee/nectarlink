@@ -308,24 +308,6 @@
     </message>
 </context>
 <context>
-    <name>BtHfp</name>
-    <message>
-        <location filename="../rust_strings.h" line="42"/>
-        <source>Bluetooth connected (%1).</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rust_strings.h" line="43"/>
-        <source>Bluetooth paired with %1 (not currently connected).</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rust_strings.h" line="44"/>
-        <source>No paired Bluetooth phone endpoint found in Windows.</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
     <name>CallCard</name>
     <message>
         <location filename="../../qml/components/CallCard.qml" line="79"/>
@@ -373,27 +355,27 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/components/CallCard.qml" line="231"/>
+        <location filename="../../qml/components/CallCard.qml" line="232"/>
         <source>Connect PC audio</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/components/CallCard.qml" line="231"/>
+        <location filename="../../qml/components/CallCard.qml" line="232"/>
         <source>Bluetooth settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/components/CallCard.qml" line="249"/>
+        <location filename="../../qml/components/CallCard.qml" line="250"/>
         <source>Call volume down</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/components/CallCard.qml" line="258"/>
+        <location filename="../../qml/components/CallCard.qml" line="259"/>
         <source>End call</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/components/CallCard.qml" line="301"/>
+        <location filename="../../qml/components/CallCard.qml" line="302"/>
         <source>Call volume up</source>
         <translation type="unfinished"></translation>
     </message>
@@ -401,27 +383,27 @@
 <context>
     <name>Calls</name>
     <message>
-        <location filename="../rust_strings.h" line="45"/>
+        <location filename="../rust_strings.h" line="42"/>
         <source>Calling %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="46"/>
+        <location filename="../rust_strings.h" line="43"/>
         <source>Missed call from %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="47"/>
+        <location filename="../rust_strings.h" line="44"/>
         <source>On a call with %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="48"/>
+        <location filename="../rust_strings.h" line="45"/>
         <source>That call is over.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="49"/>
+        <location filename="../rust_strings.h" line="46"/>
         <source>Unknown caller</source>
         <translation type="unfinished"></translation>
     </message>
@@ -736,67 +718,67 @@
 <context>
     <name>Clipboard</name>
     <message>
-        <location filename="../rust_strings.h" line="50"/>
+        <location filename="../rust_strings.h" line="47"/>
         <source>Copied from %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="51"/>
+        <location filename="../rust_strings.h" line="48"/>
         <source>Copied from %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="52"/>
+        <location filename="../rust_strings.h" line="49"/>
         <source>Copied to clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="53"/>
+        <location filename="../rust_strings.h" line="50"/>
         <source>Sending copied files to %1…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="54"/>
+        <location filename="../rust_strings.h" line="51"/>
         <source>Sent to %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="55"/>
+        <location filename="../rust_strings.h" line="52"/>
         <source>That clip is no longer in clipboard history.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="56"/>
+        <location filename="../rust_strings.h" line="53"/>
         <source>That image can&apos;t be read.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="57"/>
+        <location filename="../rust_strings.h" line="54"/>
         <source>That image is too large to send.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="58"/>
+        <location filename="../rust_strings.h" line="55"/>
         <source>That&apos;s too much text to send at once.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="59"/>
+        <location filename="../rust_strings.h" line="56"/>
         <source>The clipboard is turned off for %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="60"/>
+        <location filename="../rust_strings.h" line="57"/>
         <source>There&apos;s no text, image, or file on the clipboard.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="61"/>
+        <location filename="../rust_strings.h" line="58"/>
         <source>Update NectarLink on %1 to send it images.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="62"/>
+        <location filename="../rust_strings.h" line="59"/>
         <source>What you copied is marked private by its app, so it wasn&apos;t sent.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -849,462 +831,462 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="63"/>
+        <location filename="../rust_strings.h" line="60"/>
         <source>Browse all 28 features, live capability status, and where to find them</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="64"/>
+        <location filename="../rust_strings.h" line="61"/>
         <source>Browse phone storage in File Explorer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="65"/>
+        <location filename="../rust_strings.h" line="62"/>
         <source>Call %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="66"/>
+        <location filename="../rust_strings.h" line="63"/>
         <source>Calling %1 on %2…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="67"/>
+        <location filename="../rust_strings.h" line="64"/>
         <source>Capture a photo on your phone and paste it into the active window</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="68"/>
+        <location filename="../rust_strings.h" line="65"/>
         <source>Check Wake-on-LAN status in Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="69"/>
+        <location filename="../rust_strings.h" line="66"/>
         <source>Connection Doctor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="70"/>
+        <location filename="../rust_strings.h" line="67"/>
         <source>Continue copied video on phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="71"/>
+        <location filename="../rust_strings.h" line="68"/>
         <source>Copied image</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="72"/>
+        <location filename="../rust_strings.h" line="69"/>
         <source>Copied number</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="73"/>
+        <location filename="../rust_strings.h" line="70"/>
         <source>Copy: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="74"/>
+        <location filename="../rust_strings.h" line="71"/>
         <source>Diagnose and fix firewall, discovery, or network issues</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="75"/>
+        <location filename="../rust_strings.h" line="72"/>
         <source>Features guide</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="76"/>
+        <location filename="../rust_strings.h" line="73"/>
         <source>Find %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="77"/>
+        <location filename="../rust_strings.h" line="74"/>
         <source>Find my phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="78"/>
+        <location filename="../rust_strings.h" line="75"/>
         <source>From %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="79"/>
+        <location filename="../rust_strings.h" line="76"/>
         <source>Hand off document to phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="80"/>
+        <location filename="../rust_strings.h" line="77"/>
         <source>Handoff · Doc</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="81"/>
+        <location filename="../rust_strings.h" line="78"/>
         <source>Handoff · Map</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="82"/>
+        <location filename="../rust_strings.h" line="79"/>
         <source>Handoff · Video</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="83"/>
+        <location filename="../rust_strings.h" line="80"/>
         <source>Hide Shelf</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="84"/>
+        <location filename="../rust_strings.h" line="81"/>
         <source>Make %1 ring at full volume</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="85"/>
+        <location filename="../rust_strings.h" line="82"/>
         <source>Make phone ring at full volume</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="86"/>
+        <location filename="../rust_strings.h" line="83"/>
         <source>Mirror %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="87"/>
+        <location filename="../rust_strings.h" line="84"/>
         <source>Mirror Apps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="88"/>
+        <location filename="../rust_strings.h" line="85"/>
         <source>Mirror phone screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="89"/>
+        <location filename="../rust_strings.h" line="86"/>
         <source>Mute %1&apos;s ringer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="90"/>
+        <location filename="../rust_strings.h" line="87"/>
         <source>No physical network adapter found for Wake-on-LAN.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="91"/>
+        <location filename="../rust_strings.h" line="88"/>
         <source>Open %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="92"/>
+        <location filename="../rust_strings.h" line="89"/>
         <source>Open %1 in a window from %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="93"/>
+        <location filename="../rust_strings.h" line="90"/>
         <source>Open %1&apos;s Cloud Files folder in Explorer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="94"/>
+        <location filename="../rust_strings.h" line="91"/>
         <source>Open Shelf</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="95"/>
+        <location filename="../rust_strings.h" line="92"/>
         <source>Open conversation on %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="96"/>
+        <location filename="../rust_strings.h" line="93"/>
         <source>Open copied link on phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="97"/>
+        <location filename="../rust_strings.h" line="94"/>
         <source>Open copied location in Maps on phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="98"/>
+        <location filename="../rust_strings.h" line="95"/>
         <source>Open last photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="99"/>
+        <location filename="../rust_strings.h" line="96"/>
         <source>Open last photo from %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="100"/>
+        <location filename="../rust_strings.h" line="97"/>
         <source>Open newest photo or screenshot</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="101"/>
+        <location filename="../rust_strings.h" line="98"/>
         <source>Open the newest photo or screenshot from %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="102"/>
+        <location filename="../rust_strings.h" line="99"/>
         <source>Open voice recordings folder for %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="103"/>
+        <location filename="../rust_strings.h" line="100"/>
         <source>Opened Recordings folder. Start a voice note in NectarLink on %1 to send it here.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="104"/>
+        <location filename="../rust_strings.h" line="101"/>
         <source>Pair a new phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="105"/>
+        <location filename="../rust_strings.h" line="102"/>
         <source>Place a phone call or open in dialer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="106"/>
+        <location filename="../rust_strings.h" line="103"/>
         <source>Place call on %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="107"/>
+        <location filename="../rust_strings.h" line="104"/>
         <source>Quick Toggles</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="108"/>
+        <location filename="../rust_strings.h" line="105"/>
         <source>Re-open the step-by-step setup walkthrough</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="109"/>
+        <location filename="../rust_strings.h" line="106"/>
         <source>Ready on %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="110"/>
+        <location filename="../rust_strings.h" line="107"/>
         <source>Recent Activity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="111"/>
+        <location filename="../rust_strings.h" line="108"/>
         <source>Reconnect paired phones and refresh notifications and media</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="112"/>
+        <location filename="../rust_strings.h" line="109"/>
         <source>Record voice</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="113"/>
+        <location filename="../rust_strings.h" line="110"/>
         <source>Ringer: Silent</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="114"/>
+        <location filename="../rust_strings.h" line="111"/>
         <source>Ringer: Sound</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="115"/>
+        <location filename="../rust_strings.h" line="112"/>
         <source>Ringer: Vibrate</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="116"/>
+        <location filename="../rust_strings.h" line="113"/>
         <source>Ringing %1…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="117"/>
+        <location filename="../rust_strings.h" line="114"/>
         <source>Scan a document on your phone and paste it into the active window</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="118"/>
+        <location filename="../rust_strings.h" line="115"/>
         <source>Scan document with phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="119"/>
+        <location filename="../rust_strings.h" line="116"/>
         <source>Send a document to %1 and open it automatically upon arrival</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="120"/>
+        <location filename="../rust_strings.h" line="117"/>
         <source>Send clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="121"/>
+        <location filename="../rust_strings.h" line="118"/>
         <source>Send clipboard to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="122"/>
+        <location filename="../rust_strings.h" line="119"/>
         <source>Send copied text or image</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="123"/>
+        <location filename="../rust_strings.h" line="120"/>
         <source>Send copied text or image to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="124"/>
+        <location filename="../rust_strings.h" line="121"/>
         <source>Send live keystrokes and text to %1 without screen mirroring</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="125"/>
+        <location filename="../rust_strings.h" line="122"/>
         <source>Set %1&apos;s ringer mode to normal sound</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="126"/>
+        <location filename="../rust_strings.h" line="123"/>
         <source>Set %1&apos;s ringer mode to vibrate</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="127"/>
+        <location filename="../rust_strings.h" line="124"/>
         <source>Setup walkthrough</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="128"/>
+        <location filename="../rust_strings.h" line="125"/>
         <source>Show QR code and pairing code to link another phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="129"/>
+        <location filename="../rust_strings.h" line="126"/>
         <source>Slide-out edge panel with latest photo, screenshot, clipboard, and recent files</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="130"/>
+        <location filename="../rust_strings.h" line="127"/>
         <source>Start a new message conversation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="131"/>
+        <location filename="../rust_strings.h" line="128"/>
         <source>Starting phone webcam…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="132"/>
+        <location filename="../rust_strings.h" line="129"/>
         <source>Stop phone webcam</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="133"/>
+        <location filename="../rust_strings.h" line="130"/>
         <source>Stop typing on phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="134"/>
+        <location filename="../rust_strings.h" line="131"/>
         <source>Stopped phone webcam.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="135"/>
+        <location filename="../rust_strings.h" line="132"/>
         <source>Stream %1&apos;s camera into the NectarLink virtual webcam</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="136"/>
+        <location filename="../rust_strings.h" line="133"/>
         <source>Stream %1&apos;s screen in a desktop window</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="137"/>
+        <location filename="../rust_strings.h" line="134"/>
         <source>Switch Bluetooth on %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="138"/>
+        <location filename="../rust_strings.h" line="135"/>
         <source>Switch Do Not Disturb on %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="139"/>
+        <location filename="../rust_strings.h" line="136"/>
         <source>Switch Wi-Fi on %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="140"/>
+        <location filename="../rust_strings.h" line="137"/>
         <source>Switch to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="141"/>
+        <location filename="../rust_strings.h" line="138"/>
         <source>Switch torch / flashlight on %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="142"/>
+        <location filename="../rust_strings.h" line="139"/>
         <source>Sync now</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="143"/>
+        <location filename="../rust_strings.h" line="140"/>
         <source>Syncing devices…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="144"/>
+        <location filename="../rust_strings.h" line="141"/>
         <source>Take photo with phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="145"/>
+        <location filename="../rust_strings.h" line="142"/>
         <source>Text %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="146"/>
+        <location filename="../rust_strings.h" line="143"/>
         <source>That file is no longer in its saved location.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="147"/>
+        <location filename="../rust_strings.h" line="144"/>
         <source>Toggle Bluetooth</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="148"/>
+        <location filename="../rust_strings.h" line="145"/>
         <source>Toggle Do Not Disturb</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="149"/>
+        <location filename="../rust_strings.h" line="146"/>
         <source>Toggle Flashlight</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="150"/>
+        <location filename="../rust_strings.h" line="147"/>
         <source>Toggle Wi-Fi</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="151"/>
+        <location filename="../rust_strings.h" line="148"/>
         <source>Type on phone with PC keyboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="152"/>
+        <location filename="../rust_strings.h" line="149"/>
         <source>Use phone as webcam</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="153"/>
+        <location filename="../rust_strings.h" line="150"/>
         <source>Wake-on-LAN is ready on %1 (phones can wake this PC).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="154"/>
+        <location filename="../rust_strings.h" line="151"/>
         <source>Wake-on-LAN on %1 is %2. Check Settings.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1312,67 +1294,67 @@
 <context>
     <name>ContinuityCamera</name>
     <message>
-        <location filename="../rust_strings.h" line="155"/>
+        <location filename="../rust_strings.h" line="152"/>
         <source>Allow Photos access for %1 in Settings first.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="156"/>
+        <location filename="../rust_strings.h" line="153"/>
         <source>Camera capture cancelled on %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="157"/>
+        <location filename="../rust_strings.h" line="154"/>
         <source>Camera is busy on %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="158"/>
+        <location filename="../rust_strings.h" line="155"/>
         <source>Camera permission was denied on %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="159"/>
+        <location filename="../rust_strings.h" line="156"/>
         <source>Couldn’t copy image to clipboard: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="160"/>
+        <location filename="../rust_strings.h" line="157"/>
         <source>Couldn’t open camera on %1: %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="161"/>
+        <location filename="../rust_strings.h" line="158"/>
         <source>Image is on your clipboard. Press Ctrl+V in your target app.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="162"/>
+        <location filename="../rust_strings.h" line="159"/>
         <source>Opening camera on %1…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="163"/>
+        <location filename="../rust_strings.h" line="160"/>
         <source>Opening document scanner on %1…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="164"/>
+        <location filename="../rust_strings.h" line="161"/>
         <source>Pair your phone first to take a photo or scan a document.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="165"/>
+        <location filename="../rust_strings.h" line="162"/>
         <source>Pasted into %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="166"/>
+        <location filename="../rust_strings.h" line="163"/>
         <source>Scan a document on %1…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="167"/>
+        <location filename="../rust_strings.h" line="164"/>
         <source>Take a photo on %1…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1380,7 +1362,7 @@
 <context>
     <name>CoreHost</name>
     <message>
-        <location filename="../rust_strings.h" line="168"/>
+        <location filename="../rust_strings.h" line="165"/>
         <source>Dropped %1 queued item(s) for %2 (device unpaired).</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1388,82 +1370,82 @@
 <context>
     <name>Deck</name>
     <message>
-        <location filename="../rust_strings.h" line="169"/>
+        <location filename="../rust_strings.h" line="166"/>
         <source>Alt + Tab</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="170"/>
+        <location filename="../rust_strings.h" line="167"/>
         <source>Application path must end with .exe or .lnk.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="171"/>
+        <location filename="../rust_strings.h" line="168"/>
         <source>Choose a key for the shortcut.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="172"/>
+        <location filename="../rust_strings.h" line="169"/>
         <source>Choose an application (.exe or .lnk) on this PC.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="173"/>
+        <location filename="../rust_strings.h" line="170"/>
         <source>Enter a command to run on this PC.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="174"/>
+        <location filename="../rust_strings.h" line="171"/>
         <source>Enter an application path (/usr/bin/..., .desktop, or .AppImage).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="175"/>
+        <location filename="../rust_strings.h" line="172"/>
         <source>Enter an http:// or https:// web address.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="176"/>
+        <location filename="../rust_strings.h" line="173"/>
         <source>Enter the text snippet to type.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="177"/>
+        <location filename="../rust_strings.h" line="174"/>
         <source>Invalid action configuration.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="178"/>
+        <location filename="../rust_strings.h" line="175"/>
         <source>Invalid tile properties.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="179"/>
+        <location filename="../rust_strings.h" line="176"/>
         <source>Media key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="180"/>
+        <location filename="../rust_strings.h" line="177"/>
         <source>Page not found.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="181"/>
+        <location filename="../rust_strings.h" line="178"/>
         <source>This page already has the maximum number of tiles (24).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="182"/>
+        <location filename="../rust_strings.h" line="179"/>
         <source>Tile not found.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="183"/>
+        <location filename="../rust_strings.h" line="180"/>
         <source>Use a single key (a-z, 0-9, f1-f12, enter, tab, space, escape, arrows, etc.).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="184"/>
+        <location filename="../rust_strings.h" line="181"/>
         <source>Web address must start with http:// or https://.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1870,332 +1852,332 @@
 <context>
     <name>Doctor</name>
     <message>
-        <location filename="../rust_strings.h" line="185"/>
+        <location filename="../rust_strings.h" line="182"/>
         <source>%1 Open NectarLink on the phone and keep both on the same network. If the phone asks to run in the background, allow it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="186"/>
+        <location filename="../rust_strings.h" line="183"/>
         <source>%1 days ago</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="187"/>
+        <location filename="../rust_strings.h" line="184"/>
         <source>%1 hours ago</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="188"/>
+        <location filename="../rust_strings.h" line="185"/>
         <source>%1 is connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="189"/>
+        <location filename="../rust_strings.h" line="186"/>
         <source>%1 is on this Wi-Fi, but the router blocks direct connections (AP isolation)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="190"/>
+        <location filename="../rust_strings.h" line="187"/>
         <source>%1 is set as a public network</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="191"/>
+        <location filename="../rust_strings.h" line="188"/>
         <source>%1 isn&apos;t connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="192"/>
+        <location filename="../rust_strings.h" line="189"/>
         <source>%1 minutes ago</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="193"/>
+        <location filename="../rust_strings.h" line="190"/>
         <source>%1 · %2 ms</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="194"/>
+        <location filename="../rust_strings.h" line="191"/>
         <source>A VPN is on</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="195"/>
+        <location filename="../rust_strings.h" line="192"/>
         <source>A firewall rule blocks incoming NectarLink connections. Allow it, and your phone can connect.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="196"/>
+        <location filename="../rust_strings.h" line="193"/>
         <source>Calls and alerts can&apos;t play sound yet</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="197"/>
+        <location filename="../rust_strings.h" line="194"/>
         <source>Connect it to the same Wi-Fi or wired network as your phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="198"/>
+        <location filename="../rust_strings.h" line="195"/>
         <source>Connected to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="199"/>
+        <location filename="../rust_strings.h" line="196"/>
         <source>Connected to a network</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="200"/>
+        <location filename="../rust_strings.h" line="197"/>
         <source>Connecting to %1…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="201"/>
+        <location filename="../rust_strings.h" line="198"/>
         <source>GNOME shows app icons there only with the AppIndicator extension. Install it (gnome-shell-extension-appindicator) and turn it on in Extensions.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="202"/>
+        <location filename="../rust_strings.h" line="199"/>
         <source>Install fuse3 to browse your phone&apos;s files in your file manager.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="203"/>
+        <location filename="../rust_strings.h" line="200"/>
         <source>Install gstreamer1.0-pipewire and gstreamer1.0-tools, and the desktop portal (xdg-desktop-portal) if it&apos;s missing.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="204"/>
+        <location filename="../rust_strings.h" line="201"/>
         <source>Install pipewire-pulse (or pulseaudio-utils) for call audio and Find my PC.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="205"/>
+        <location filename="../rust_strings.h" line="202"/>
         <source>Install v4l2loopback-dkms, then restart, so apps can use your phone as a camera.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="206"/>
+        <location filename="../rust_strings.h" line="203"/>
         <source>It hasn&apos;t connected yet.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="207"/>
+        <location filename="../rust_strings.h" line="204"/>
         <source>Keep %1 reachable in the background (%2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="208"/>
+        <location filename="../rust_strings.h" line="205"/>
         <source>Last seen %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="209"/>
+        <location filename="../rust_strings.h" line="206"/>
         <source>NectarLink can&apos;t show its icon in the top bar</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="210"/>
+        <location filename="../rust_strings.h" line="207"/>
         <source>NectarLink is in the top bar</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="211"/>
+        <location filename="../rust_strings.h" line="208"/>
         <source>NectarLink isn&apos;t allowed through Windows Firewall</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="212"/>
+        <location filename="../rust_strings.h" line="209"/>
         <source>NectarLink isn&apos;t allowed through the firewall</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="213"/>
+        <location filename="../rust_strings.h" line="210"/>
         <source>On Huawei / Honor: open Settings → Battery → App launch, turn off Manage automatically for NectarLink, and keep Auto-launch, Secondary launch, and Run in background on.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="214"/>
+        <location filename="../rust_strings.h" line="211"/>
         <source>On OnePlus / OxygenOS: open Settings → Apps → App management → NectarLink → Battery usage and turn on Allow background activity and Allow auto-launch.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="215"/>
+        <location filename="../rust_strings.h" line="212"/>
         <source>On Oppo / Realme: open Settings → Apps → App management → NectarLink → Battery usage and turn on Allow background activity and Allow auto-launch.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="216"/>
+        <location filename="../rust_strings.h" line="213"/>
         <source>On Pixel: open Settings → Apps → See all apps → NectarLink → App battery usage, tap Allow background usage, and choose Unrestricted.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="217"/>
+        <location filename="../rust_strings.h" line="214"/>
         <source>On Samsung: open Settings → Apps → NectarLink → Battery and choose Unrestricted, then in Device care → Battery → Background usage limits make sure NectarLink is never put to sleep.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="218"/>
+        <location filename="../rust_strings.h" line="215"/>
         <source>On USB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="219"/>
+        <location filename="../rust_strings.h" line="216"/>
         <source>On Vivo / OriginOS / Funtouch: open Settings → Battery → Background power consumption management → NectarLink and choose Unrestricted, and allow Autostart.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="220"/>
+        <location filename="../rust_strings.h" line="217"/>
         <source>On Xiaomi / HyperOS / MIUI: open Settings → Apps → Manage apps → NectarLink, turn on Autostart, and set Battery saver to No restrictions.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="221"/>
+        <location filename="../rust_strings.h" line="218"/>
         <source>On public networks Windows keeps other devices from finding this PC. If it&apos;s your home or work network, set it to Private.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="222"/>
+        <location filename="../rust_strings.h" line="219"/>
         <source>On public networks the firewall keeps other devices from finding this PC. If it&apos;s your home or work network, open network settings and set its firewall zone to Home or Trusted.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="223"/>
+        <location filename="../rust_strings.h" line="220"/>
         <source>On this network</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="224"/>
+        <location filename="../rust_strings.h" line="221"/>
         <source>Phone as webcam is ready</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="225"/>
+        <location filename="../rust_strings.h" line="222"/>
         <source>Phone as webcam needs one more step</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="226"/>
+        <location filename="../rust_strings.h" line="223"/>
         <source>Phone storage can open in your file manager</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="227"/>
+        <location filename="../rust_strings.h" line="224"/>
         <source>Phone storage needs one more step</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="228"/>
+        <location filename="../rust_strings.h" line="225"/>
         <source>Showing this PC&apos;s screen needs one more step</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="229"/>
+        <location filename="../rust_strings.h" line="226"/>
         <source>Someone chose not to allow it when Windows asked. Allow it, and your phone can connect.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="230"/>
+        <location filename="../rust_strings.h" line="227"/>
         <source>Sound is ready</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="231"/>
+        <location filename="../rust_strings.h" line="228"/>
         <source>The firewall blocks NectarLink</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="232"/>
+        <location filename="../rust_strings.h" line="229"/>
         <source>The firewall is off for this network</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="233"/>
+        <location filename="../rust_strings.h" line="230"/>
         <source>The firewall lets your phone connect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="234"/>
+        <location filename="../rust_strings.h" line="231"/>
         <source>The touchpad and keyboard on your phone need the desktop portal (xdg-desktop-portal) or access to /dev/uinput.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="235"/>
+        <location filename="../rust_strings.h" line="232"/>
         <source>This PC can see %1 announce itself on the network, but the router is blocking devices from talking directly to each other (often called AP Isolation, Client Isolation, or Guest Wi-Fi). Move both devices off any Guest Wi-Fi network, turn off AP / Client Isolation in your router&apos;s Wi-Fi settings, or connect with a USB cable.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="236"/>
+        <location filename="../rust_strings.h" line="233"/>
         <source>This PC isn&apos;t on a network</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="237"/>
+        <location filename="../rust_strings.h" line="234"/>
         <source>This network</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="238"/>
+        <location filename="../rust_strings.h" line="235"/>
         <source>This usually takes a few seconds.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="239"/>
+        <location filename="../rust_strings.h" line="236"/>
         <source>VPNs often keep devices on your network from reaching this PC. If your phone can&apos;t connect, try turning it off.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="240"/>
+        <location filename="../rust_strings.h" line="237"/>
         <source>While away</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="241"/>
+        <location filename="../rust_strings.h" line="238"/>
         <source>Windows Firewall blocks NectarLink</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="242"/>
+        <location filename="../rust_strings.h" line="239"/>
         <source>Windows Firewall is off for this network</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="243"/>
+        <location filename="../rust_strings.h" line="240"/>
         <source>Windows Firewall lets your phone connect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="244"/>
+        <location filename="../rust_strings.h" line="241"/>
         <source>Your phone can control this PC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="245"/>
+        <location filename="../rust_strings.h" line="242"/>
         <source>Your phone can show this PC&apos;s screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="246"/>
+        <location filename="../rust_strings.h" line="243"/>
         <source>Your phone can&apos;t control this PC yet</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="247"/>
+        <location filename="../rust_strings.h" line="244"/>
         <source>Your phone may not be able to connect. Allow it once here.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="248"/>
+        <location filename="../rust_strings.h" line="245"/>
         <source>a minute ago</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="249"/>
+        <location filename="../rust_strings.h" line="246"/>
         <source>an hour ago</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="250"/>
+        <location filename="../rust_strings.h" line="247"/>
         <source>just now</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2261,32 +2243,32 @@
 <context>
     <name>Errors</name>
     <message>
-        <location filename="../rust_strings.h" line="251"/>
+        <location filename="../rust_strings.h" line="248"/>
         <source>Something went wrong: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="252"/>
+        <location filename="../rust_strings.h" line="249"/>
         <source>That device isn&apos;t paired anymore.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="253"/>
+        <location filename="../rust_strings.h" line="250"/>
         <source>The device declined.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="254"/>
+        <location filename="../rust_strings.h" line="251"/>
         <source>The device didn&apos;t answer in time.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="255"/>
+        <location filename="../rust_strings.h" line="252"/>
         <source>The device isn&apos;t connected right now.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="256"/>
+        <location filename="../rust_strings.h" line="253"/>
         <source>The device&apos;s app doesn&apos;t support that yet.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2495,12 +2477,12 @@
 <context>
     <name>FolderSync</name>
     <message>
-        <location filename="../rust_strings.h" line="257"/>
+        <location filename="../rust_strings.h" line="254"/>
         <source>Folders are up to date.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="258"/>
+        <location filename="../rust_strings.h" line="255"/>
         <source>Synced %1 file(s).</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2508,7 +2490,7 @@
 <context>
     <name>Guide</name>
     <message>
-        <location filename="../rust_strings.h" line="259"/>
+        <location filename="../rust_strings.h" line="256"/>
         <source>1. Install NectarLink on your PC (Windows 11 or Linux) and your Android phone (Android 8.0 or newer).
 2. Connect both devices to the same Wi-Fi network, or plug your phone into your PC with a USB cable.
 3. Open the Pair step in the setup walkthrough, or click + (Pair a new device) at the bottom of the left rail.
@@ -2517,72 +2499,72 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="260"/>
+        <location filename="../rust_strings.h" line="257"/>
         <source>Android permissions and why each is optional</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="261"/>
+        <location filename="../rust_strings.h" line="258"/>
         <source>Automations</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="262"/>
+        <location filename="../rust_strings.h" line="259"/>
         <source>Calls</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="263"/>
+        <location filename="../rust_strings.h" line="260"/>
         <source>Clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="264"/>
+        <location filename="../rust_strings.h" line="261"/>
         <source>Command palette</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="265"/>
+        <location filename="../rust_strings.h" line="262"/>
         <source>Connection Doctor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="266"/>
+        <location filename="../rust_strings.h" line="263"/>
         <source>Continuity camera</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="267"/>
+        <location filename="../rust_strings.h" line="264"/>
         <source>Deck</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="268"/>
+        <location filename="../rust_strings.h" line="265"/>
         <source>Drop shelf</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="269"/>
+        <location filename="../rust_strings.h" line="266"/>
         <source>Elevated and Assist modes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="270"/>
+        <location filename="../rust_strings.h" line="267"/>
         <source>Features guide</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="271"/>
+        <location filename="../rust_strings.h" line="268"/>
         <source>Features reference</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="272"/>
+        <location filename="../rust_strings.h" line="269"/>
         <source>Handoff</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="273"/>
+        <location filename="../rust_strings.h" line="270"/>
         <source>If your phone and PC do not see each other:
 
 1. Open Connection Doctor from Settings › Connection &amp; About or the Command Palette.
@@ -2592,17 +2574,17 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="274"/>
+        <location filename="../rust_strings.h" line="271"/>
         <source>Install and first-time setup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="275"/>
+        <location filename="../rust_strings.h" line="272"/>
         <source>Local HTTP API</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="276"/>
+        <location filename="../rust_strings.h" line="273"/>
         <source>Local by default
 Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Connection &amp; About › Check for updates.
 
@@ -2614,17 +2596,17 @@ Sensitive capabilities such as Share PC folders, Remote input, and Reverse PC sc
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="277"/>
+        <location filename="../rust_strings.h" line="274"/>
         <source>LocalSend</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="278"/>
+        <location filename="../rust_strings.h" line="275"/>
         <source>Messages</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="279"/>
+        <location filename="../rust_strings.h" line="276"/>
         <source>Most NectarLink features work in Standard mode with regular Android permissions. Two optional modes unlock deeper system integration:
 
 Elevated mode (Wireless debugging or root)
@@ -2638,12 +2620,12 @@ Assist mode (Android Accessibility Service)
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="280"/>
+        <location filename="../rust_strings.h" line="277"/>
         <source>Nectar Island</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="281"/>
+        <location filename="../rust_strings.h" line="278"/>
         <source>NectarLink links your Android phone and your PC directly on your local network or over a USB cable.
 
 How it works
@@ -2658,7 +2640,7 @@ Capability tiers on Android
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="282"/>
+        <location filename="../rust_strings.h" line="279"/>
         <source>NectarLink never asks for every permission up front. Each feature works independently:
 
 - Notification Access: Required only if you want phone notifications, inline replies, and notification-backed chat threads on your PC.
@@ -2669,97 +2651,97 @@ Capability tiers on Android
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="283"/>
+        <location filename="../rust_strings.h" line="280"/>
         <source>NectarLink overview</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="284"/>
+        <location filename="../rust_strings.h" line="281"/>
         <source>Notifications</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="285"/>
+        <location filename="../rust_strings.h" line="282"/>
         <source>Phone as speaker</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="286"/>
+        <location filename="../rust_strings.h" line="283"/>
         <source>Phone as webcam</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="287"/>
+        <location filename="../rust_strings.h" line="284"/>
         <source>Phone controls</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="288"/>
+        <location filename="../rust_strings.h" line="285"/>
         <source>Photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="289"/>
+        <location filename="../rust_strings.h" line="286"/>
         <source>Privacy and security</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="290"/>
+        <location filename="../rust_strings.h" line="287"/>
         <source>Remote input</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="291"/>
+        <location filename="../rust_strings.h" line="288"/>
         <source>Screen mirroring</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="292"/>
+        <location filename="../rust_strings.h" line="289"/>
         <source>Select any feature card in the Features guide to inspect its live status, jump directly to its control with Show me, or read how it works and what permissions it uses.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="293"/>
+        <location filename="../rust_strings.h" line="290"/>
         <source>Send files</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="294"/>
+        <location filename="../rust_strings.h" line="291"/>
         <source>Share PC folders</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="295"/>
+        <location filename="../rust_strings.h" line="292"/>
         <source>Share PC screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="296"/>
+        <location filename="../rust_strings.h" line="293"/>
         <source>Timeline</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="297"/>
+        <location filename="../rust_strings.h" line="294"/>
         <source>Troubleshooting and Connection Doctor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="298"/>
+        <location filename="../rust_strings.h" line="295"/>
         <source>Type on phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="299"/>
+        <location filename="../rust_strings.h" line="296"/>
         <source>Voice recorder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="300"/>
+        <location filename="../rust_strings.h" line="297"/>
         <source>Wake PC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="301"/>
+        <location filename="../rust_strings.h" line="298"/>
         <source>What it does
 Browses recent photos, camera shots, and screenshots on your phone without copying your entire library first. You can view full-resolution images, copy them to the clipboard, save them to disk, or drag them directly into other Windows apps.
 
@@ -2772,7 +2754,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="302"/>
+        <location filename="../rust_strings.h" line="299"/>
         <source>What it does
 Controls your phone&apos;s Do Not Disturb mode, ringer mode (Sound, Vibrate, Silent), flashlight, media volume, screen brightness, Wi-Fi, Bluetooth, and Find My Phone ring from your PC.
 
@@ -2785,7 +2767,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="303"/>
+        <location filename="../rust_strings.h" line="300"/>
         <source>What it does
 Discovers and exchanges files with nearby devices running LocalSend v2 on your local network without requiring pairing.
 
@@ -2798,7 +2780,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="304"/>
+        <location filename="../rust_strings.h" line="301"/>
         <source>What it does
 Displays a compact pill at the top center of your primary monitor for incoming calls, live file transfer progress, media playback, and optional notification previews.
 
@@ -2810,7 +2792,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="305"/>
+        <location filename="../rust_strings.h" line="302"/>
         <source>What it does
 Exposes an opt-in localhost HTTP/JSON and Server-Sent Events API on 127.0.0.1 (default port 53320) protected by a bearer token so scripts, CLI tools, and Stream Deck plugins can trigger NectarLink actions.
 
@@ -2822,7 +2804,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="306"/>
+        <location filename="../rust_strings.h" line="303"/>
         <source>What it does
 Forwards keystrokes and pasted text from your PC keyboard directly to your phone without needing to mirror the phone screen.
 
@@ -2835,7 +2817,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="307"/>
+        <location filename="../rust_strings.h" line="304"/>
         <source>What it does
 Inspects Windows Firewall rules, network profile type (Private vs Public), UDP discovery sockets, and paired phone reachability, and offers one-click fixes.
 
@@ -2848,7 +2830,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="308"/>
+        <location filename="../rust_strings.h" line="305"/>
         <source>What it does
 Keeps selected folders on your phone (such as DCIM/Camera or Download) and folders on your PC in sync in one-way or two-way mode, and lets your phone browse shared PC folders.
 
@@ -2861,7 +2843,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="309"/>
+        <location filename="../rust_strings.h" line="306"/>
         <source>What it does
 Lets you read and send SMS and MMS conversations, plus reply to notification-backed chat threads from messaging apps such as WhatsApp, Signal, and Telegram.
 
@@ -2875,7 +2857,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="310"/>
+        <location filename="../rust_strings.h" line="307"/>
         <source>What it does
 Lets your paired phone wake this PC from sleep or soft power-off over your local network using a Wake-on-LAN packet.
 
@@ -2888,7 +2870,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="311"/>
+        <location filename="../rust_strings.h" line="308"/>
         <source>What it does
 Lets your phone act as a wireless trackpad, keyboard, presentation clicker, and on-screen laser pointer for your PC.
 
@@ -2901,7 +2883,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="312"/>
+        <location filename="../rust_strings.h" line="309"/>
         <source>What it does
 Mirrors your phone notifications to the Home feed and Windows notification pop-ups. You can reply inline to messages, click action buttons, dismiss individual notifications or groups, and undo a recent dismissal.
 
@@ -2916,7 +2898,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="313"/>
+        <location filename="../rust_strings.h" line="310"/>
         <source>What it does
 Opens a keyboard-first search bar over actions, contacts, message threads, mirrorable apps, phone quick toggles, clipboard history, and navigation pages.
 
@@ -2929,7 +2911,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="314"/>
+        <location filename="../rust_strings.h" line="311"/>
         <source>What it does
 Opens a lightweight slide-out panel at the edge of your monitor showing your phone&apos;s latest photo, latest screenshot, recent clipboard items, and recent received files. Drag items out into any app, or drop files onto the Shelf to send them to your phone.
 
@@ -2943,7 +2925,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="315"/>
+        <location filename="../rust_strings.h" line="312"/>
         <source>What it does
 Provides a unified, searchable chronological feed of files, photos, clipboard items, calls, messages, and voice recordings shared between your phone and PC.
 
@@ -2956,7 +2938,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="316"/>
+        <location filename="../rust_strings.h" line="313"/>
         <source>What it does
 Receives voice notes recorded on your phone and saves them to your PC in your chosen audio format (M4A, MP3, WAV, or FLAC).
 
@@ -2969,7 +2951,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="317"/>
+        <location filename="../rust_strings.h" line="314"/>
         <source>What it does
 Runs automatic trigger-action rules such as locking your PC when your phone disconnects, pausing media when a call arrives, or running a command when your phone connects.
 
@@ -2981,7 +2963,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="318"/>
+        <location filename="../rust_strings.h" line="315"/>
         <source>What it does
 Sends files, folders, links, and text between your phone and PC at local network speed. If your phone is offline when you send, NectarLink places the item in the Waiting to send queue and delivers it automatically as soon as your phone reconnects.
 
@@ -2994,7 +2976,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="319"/>
+        <location filename="../rust_strings.h" line="316"/>
         <source>What it does
 Sends web links, video links with their current playback timestamp, map coordinates or street addresses, and documents to your phone so they open immediately in the right app.
 
@@ -3006,7 +2988,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="320"/>
+        <location filename="../rust_strings.h" line="317"/>
         <source>What it does
 Shares copied text, rich HTML/RTF text, images, and small copied file sets between your PC and phone. Keeps an encrypted local history of up to 50 items with pinning and smart context chips for links, phone numbers, addresses, and tracking codes.
 
@@ -3020,7 +3002,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="321"/>
+        <location filename="../rust_strings.h" line="318"/>
         <source>What it does
 Shows incoming and active phone calls on your PC with Answer, Decline, and Reject with SMS actions, plus browsable call history, contacts, and a dialpad.
 
@@ -3034,7 +3016,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="322"/>
+        <location filename="../rust_strings.h" line="319"/>
         <source>What it does
 Streams your PC system audio to your connected phone in real time over the encrypted connection so you can listen through your phone speakers or headphones.
 
@@ -3047,7 +3029,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="323"/>
+        <location filename="../rust_strings.h" line="320"/>
         <source>What it does
 Streams your PC&apos;s screen to your phone so you can view your desktop from across the room and use your phone as a trackpad or laser pointer.
 
@@ -3060,7 +3042,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="324"/>
+        <location filename="../rust_strings.h" line="321"/>
         <source>What it does
 Streams your phone camera into the NectarLink Virtual Camera on Windows so Zoom, Teams, Meet, Discord, and OBS can use your phone&apos;s rear or front camera at up to 4K.
 
@@ -3074,7 +3056,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="325"/>
+        <location filename="../rust_strings.h" line="322"/>
         <source>What it does
 Streams your phone screen into a low-latency desktop window with hardware-accelerated decoding, or opens individual Android apps in their own windows on your PC.
 
@@ -3089,7 +3071,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="326"/>
+        <location filename="../rust_strings.h" line="323"/>
         <source>What it does
 Syncs media playback between your phone and PC, switches Windows audio output and microphone devices, and turns your phone into a customizable grid of shortcut tiles, macros, and volume sliders.
 
@@ -3101,7 +3083,7 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="327"/>
+        <location filename="../rust_strings.h" line="324"/>
         <source>What it does
 Triggers your phone camera from any Windows app to snap a photo or scan a document, then copies the result to the Windows clipboard and pastes it into the active window.
 
@@ -4042,17 +4024,17 @@ What it needs
 <context>
     <name>Hotspot</name>
     <message>
-        <location filename="../rust_strings.h" line="328"/>
+        <location filename="../rust_strings.h" line="325"/>
         <source>%1&apos;s hotspot didn&apos;t show up. Check that it&apos;s on, then pick %2 in Windows&apos; Wi-Fi list.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="329"/>
+        <location filename="../rust_strings.h" line="326"/>
         <source>Connected to %1&apos;s hotspot.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="330"/>
+        <location filename="../rust_strings.h" line="327"/>
         <source>Couldn&apos;t join %1&apos;s hotspot. Pick %2 in Windows&apos; Wi-Fi list.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4155,62 +4137,62 @@ What it needs
 <context>
     <name>Links</name>
     <message>
-        <location filename="../rust_strings.h" line="331"/>
+        <location filename="../rust_strings.h" line="328"/>
         <source>%1: tap the notification on your phone to continue watching.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="332"/>
+        <location filename="../rust_strings.h" line="329"/>
         <source>%1: tap the notification on your phone to open in Maps.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="333"/>
+        <location filename="../rust_strings.h" line="330"/>
         <source>Copy a link or address first</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="334"/>
+        <location filename="../rust_strings.h" line="331"/>
         <source>Copy a web link (https://…), geo: URI, or street address, then choose this again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="335"/>
+        <location filename="../rust_strings.h" line="332"/>
         <source>Copy a web link, video URL, or street address, then choose this again to open it on your phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="336"/>
+        <location filename="../rust_strings.h" line="333"/>
         <source>Couldn&apos;t send it</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="337"/>
+        <location filename="../rust_strings.h" line="334"/>
         <source>No phone to open it on</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="338"/>
+        <location filename="../rust_strings.h" line="335"/>
         <source>Pair a phone first, or enable opening links on your phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="339"/>
+        <location filename="../rust_strings.h" line="336"/>
         <source>Sent to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="340"/>
+        <location filename="../rust_strings.h" line="337"/>
         <source>Tap the notification on your phone to open it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="341"/>
+        <location filename="../rust_strings.h" line="338"/>
         <source>That&apos;s not a link or address</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="342"/>
+        <location filename="../rust_strings.h" line="339"/>
         <source>Update NectarLink on %1.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4504,17 +4486,17 @@ What it needs
 <context>
     <name>Media</name>
     <message>
-        <location filename="../rust_strings.h" line="343"/>
+        <location filename="../rust_strings.h" line="340"/>
         <source>Media is turned off for that device.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="344"/>
+        <location filename="../rust_strings.h" line="341"/>
         <source>That player can&apos;t do that.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="345"/>
+        <location filename="../rust_strings.h" line="342"/>
         <source>That player isn&apos;t playing anymore.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4522,17 +4504,17 @@ What it needs
 <context>
     <name>Messages</name>
     <message>
-        <location filename="../rust_strings.h" line="346"/>
+        <location filename="../rust_strings.h" line="343"/>
         <source>Attachment is %1 (MMS supports up to 900 KB)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="347"/>
+        <location filename="../rust_strings.h" line="344"/>
         <source>Group texts can&apos;t be sent from the PC yet.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="348"/>
+        <location filename="../rust_strings.h" line="345"/>
         <source>Only image or voice-note audio files can be attached.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4853,117 +4835,117 @@ What it needs
 <context>
     <name>Mirror</name>
     <message>
-        <location filename="../rust_strings.h" line="349"/>
+        <location filename="../rust_strings.h" line="346"/>
         <source>Couldn&apos;t start recording.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="350"/>
+        <location filename="../rust_strings.h" line="347"/>
         <source>Mirror recording</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="351"/>
+        <location filename="../rust_strings.h" line="348"/>
         <source>Mirror screenshot</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="352"/>
+        <location filename="../rust_strings.h" line="349"/>
         <source>Mirroring is turned off for this phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="353"/>
+        <location filename="../rust_strings.h" line="350"/>
         <source>Recording from %1, saved in Downloads/Nectarlink</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="354"/>
+        <location filename="../rust_strings.h" line="351"/>
         <source>Recording from %1, saved in Downloads\Nectarlink</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="355"/>
+        <location filename="../rust_strings.h" line="352"/>
         <source>Saved %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="356"/>
+        <location filename="../rust_strings.h" line="353"/>
         <source>Saved %1 to Downloads/Nectarlink.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="357"/>
+        <location filename="../rust_strings.h" line="354"/>
         <source>Saved %1 to Downloads\Nectarlink.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="358"/>
+        <location filename="../rust_strings.h" line="355"/>
         <source>Screenshot copied to clipboard.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="359"/>
+        <location filename="../rust_strings.h" line="356"/>
         <source>Screenshot from %1, saved in Downloads/Nectarlink</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="360"/>
+        <location filename="../rust_strings.h" line="357"/>
         <source>Screenshot from %1, saved in Downloads\Nectarlink</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="361"/>
+        <location filename="../rust_strings.h" line="358"/>
         <source>Sending %1 files…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="362"/>
+        <location filename="../rust_strings.h" line="359"/>
         <source>Sending %1…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="363"/>
+        <location filename="../rust_strings.h" line="360"/>
         <source>Set up Wireless debugging in NectarLink on the phone to open its apps here.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="364"/>
+        <location filename="../rust_strings.h" line="361"/>
         <source>Show in folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="365"/>
+        <location filename="../rust_strings.h" line="362"/>
         <source>The app didn&apos;t open on the phone. Try again, or open NectarLink on the phone to check Wireless debugging.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="366"/>
+        <location filename="../rust_strings.h" line="363"/>
         <source>The phone isn&apos;t connected.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="367"/>
+        <location filename="../rust_strings.h" line="364"/>
         <source>The screenshot couldn&apos;t be copied to the clipboard.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="368"/>
+        <location filename="../rust_strings.h" line="365"/>
         <source>The screenshot couldn&apos;t be saved.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="369"/>
+        <location filename="../rust_strings.h" line="366"/>
         <source>This PC can&apos;t decode the phone&apos;s video.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="370"/>
+        <location filename="../rust_strings.h" line="367"/>
         <source>This phone&apos;s app doesn&apos;t share its screen yet. Update NectarLink on the phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="371"/>
+        <location filename="../rust_strings.h" line="368"/>
         <source>Wait for the screen to appear first.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5115,7 +5097,7 @@ What it needs
 <context>
     <name>Mp4</name>
     <message>
-        <location filename="../rust_strings.h" line="372"/>
+        <location filename="../rust_strings.h" line="369"/>
         <source>No video frames were recorded yet.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5209,47 +5191,47 @@ What it needs
 <context>
     <name>Notifications</name>
     <message>
-        <location filename="../rust_strings.h" line="373"/>
+        <location filename="../rust_strings.h" line="370"/>
         <source>Code copied</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="374"/>
+        <location filename="../rust_strings.h" line="371"/>
         <source>Copy code</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="375"/>
+        <location filename="../rust_strings.h" line="372"/>
         <source>Dismissed %1 from %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="376"/>
+        <location filename="../rust_strings.h" line="373"/>
         <source>Dismissed %1 notifications</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="377"/>
+        <location filename="../rust_strings.h" line="374"/>
         <source>Dismissed from %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="378"/>
+        <location filename="../rust_strings.h" line="375"/>
         <source>Notification dismissed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="379"/>
+        <location filename="../rust_strings.h" line="376"/>
         <source>Open</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="380"/>
+        <location filename="../rust_strings.h" line="377"/>
         <source>Reply</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="381"/>
+        <location filename="../rust_strings.h" line="378"/>
         <source>That notification is gone from the phone.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5365,17 +5347,17 @@ What it needs
 <context>
     <name>Obs</name>
     <message>
-        <location filename="../rust_strings.h" line="382"/>
+        <location filename="../rust_strings.h" line="379"/>
         <source>OBS isn&apos;t reachable on port %1. Turn on its WebSocket server.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="383"/>
+        <location filename="../rust_strings.h" line="380"/>
         <source>OBS: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="384"/>
+        <location filename="../rust_strings.h" line="381"/>
         <source>The service on that port isn&apos;t OBS.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5546,7 +5528,7 @@ What it needs
 <context>
     <name>PcMirror</name>
     <message>
-        <location filename="../rust_strings.h" line="385"/>
+        <location filename="../rust_strings.h" line="382"/>
         <source>Can&apos;t find the player&apos;s window. Play the video on this PC again, then turn on Play on phone.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5554,17 +5536,17 @@ What it needs
 <context>
     <name>PhoneMic</name>
     <message>
-        <location filename="../rust_strings.h" line="386"/>
+        <location filename="../rust_strings.h" line="383"/>
         <source>Tap Start on %1 to use its microphone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="387"/>
+        <location filename="../rust_strings.h" line="384"/>
         <source>The microphone is turned off for this PC on %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="388"/>
+        <location filename="../rust_strings.h" line="385"/>
         <source>Update NectarLink on %1 to use its microphone.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5572,22 +5554,22 @@ What it needs
 <context>
     <name>PhoneSound</name>
     <message>
-        <location filename="../rust_strings.h" line="389"/>
+        <location filename="../rust_strings.h" line="386"/>
         <source>%1 couldn&apos;t ask to share its sound. Check that NectarLink can show notifications on the phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="390"/>
+        <location filename="../rust_strings.h" line="387"/>
         <source>Mirroring is turned off for this phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="391"/>
+        <location filename="../rust_strings.h" line="388"/>
         <source>The phone isn&apos;t connected.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="392"/>
+        <location filename="../rust_strings.h" line="389"/>
         <source>Update NectarLink on %1 to play its sound here.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5595,57 +5577,57 @@ What it needs
 <context>
     <name>PhotoBackup</name>
     <message>
-        <location filename="../rust_strings.h" line="393"/>
+        <location filename="../rust_strings.h" line="390"/>
         <source>Can&apos;t write to the backup folder.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="394"/>
+        <location filename="../rust_strings.h" line="391"/>
         <source>Copying, %1 left</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="395"/>
+        <location filename="../rust_strings.h" line="392"/>
         <source>Looking for new photos…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="396"/>
+        <location filename="../rust_strings.h" line="393"/>
         <source>Off</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="397"/>
+        <location filename="../rust_strings.h" line="394"/>
         <source>Photos are turned off for this PC on %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="398"/>
+        <location filename="../rust_strings.h" line="395"/>
         <source>The backup folder&apos;s drive is full.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="399"/>
+        <location filename="../rust_strings.h" line="396"/>
         <source>The backup stopped. It tries again in a few minutes.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="400"/>
+        <location filename="../rust_strings.h" line="397"/>
         <source>Up to date</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="401"/>
+        <location filename="../rust_strings.h" line="398"/>
         <source>Up to date, %1 backed up</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="402"/>
+        <location filename="../rust_strings.h" line="399"/>
         <source>Update NectarLink on %1 to back up its photos.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="403"/>
+        <location filename="../rust_strings.h" line="400"/>
         <source>Waiting for %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5653,67 +5635,67 @@ What it needs
 <context>
     <name>Photos</name>
     <message>
-        <location filename="../rust_strings.h" line="404"/>
+        <location filename="../rust_strings.h" line="401"/>
         <source>Copied to clipboard.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="405"/>
+        <location filename="../rust_strings.h" line="402"/>
         <source>From %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="406"/>
+        <location filename="../rust_strings.h" line="403"/>
         <source>New photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="407"/>
+        <location filename="../rust_strings.h" line="404"/>
         <source>New screenshot</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="408"/>
+        <location filename="../rust_strings.h" line="405"/>
         <source>No recent photos found on the phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="409"/>
+        <location filename="../rust_strings.h" line="406"/>
         <source>Opening latest photo…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="410"/>
+        <location filename="../rust_strings.h" line="407"/>
         <source>Saved %1 items to %2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="411"/>
+        <location filename="../rust_strings.h" line="408"/>
         <source>Saved %1 to %2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="412"/>
+        <location filename="../rust_strings.h" line="409"/>
         <source>That photo isn&apos;t on the phone anymore.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="413"/>
+        <location filename="../rust_strings.h" line="410"/>
         <source>The phone doesn&apos;t share photos or files with this PC.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="414"/>
+        <location filename="../rust_strings.h" line="411"/>
         <source>The phone isn&apos;t connected right now.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="415"/>
+        <location filename="../rust_strings.h" line="412"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="416"/>
+        <location filename="../rust_strings.h" line="413"/>
         <source>The photo couldn&apos;t be copied. It&apos;s in Downloads\Nectarlink.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5993,32 +5975,32 @@ What it needs
 <context>
     <name>PlayOnPhone</name>
     <message>
-        <location filename="../rust_strings.h" line="417"/>
+        <location filename="../rust_strings.h" line="414"/>
         <source>Connect your phone to play on it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="418"/>
+        <location filename="../rust_strings.h" line="415"/>
         <source>Media is turned off for %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="419"/>
+        <location filename="../rust_strings.h" line="416"/>
         <source>Opening in %1 on %2. Tap the notification there.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="420"/>
+        <location filename="../rust_strings.h" line="417"/>
         <source>Sent to %1. Tap the notification there.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="421"/>
+        <location filename="../rust_strings.h" line="418"/>
         <source>Tap the notification on %1 to watch.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="422"/>
+        <location filename="../rust_strings.h" line="419"/>
         <source>Update NectarLink on %1 to play on it.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6026,7 +6008,7 @@ What it needs
 <context>
     <name>Prefs</name>
     <message>
-        <location filename="../rust_strings.h" line="423"/>
+        <location filename="../rust_strings.h" line="420"/>
         <source>Connected to OBS.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6034,7 +6016,7 @@ What it needs
 <context>
     <name>Recordings</name>
     <message>
-        <location filename="../rust_strings.h" line="424"/>
+        <location filename="../rust_strings.h" line="421"/>
         <source>Recording from %1 saved</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6050,57 +6032,57 @@ What it needs
 <context>
     <name>SendTo</name>
     <message>
-        <location filename="../rust_strings.h" line="425"/>
+        <location filename="../rust_strings.h" line="422"/>
         <source>Copied to your phone&apos;s clipboard.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="426"/>
+        <location filename="../rust_strings.h" line="423"/>
         <source>Couldn&apos;t reach %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="427"/>
+        <location filename="../rust_strings.h" line="424"/>
         <source>Couldn&apos;t send %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="428"/>
+        <location filename="../rust_strings.h" line="425"/>
         <source>Couldn&apos;t send to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="429"/>
+        <location filename="../rust_strings.h" line="426"/>
         <source>Couldn&apos;t share with %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="430"/>
+        <location filename="../rust_strings.h" line="427"/>
         <source>File failed integrity check; partial file kept to resume.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="431"/>
+        <location filename="../rust_strings.h" line="428"/>
         <source>Send to %1 with NectarLink</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="432"/>
+        <location filename="../rust_strings.h" line="429"/>
         <source>Sending to %1…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="433"/>
+        <location filename="../rust_strings.h" line="430"/>
         <source>Sent to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="434"/>
+        <location filename="../rust_strings.h" line="431"/>
         <source>The transfer didn&apos;t go through.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="435"/>
+        <location filename="../rust_strings.h" line="432"/>
         <source>Waiting for %1…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -7604,32 +7586,32 @@ What it needs
 <context>
     <name>Setup</name>
     <message>
-        <location filename="../rust_strings.h" line="436"/>
+        <location filename="../rust_strings.h" line="433"/>
         <source>Couldn&apos;t start setup: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="437"/>
+        <location filename="../rust_strings.h" line="434"/>
         <source>Couldn&apos;t uninstall NectarLink: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="438"/>
+        <location filename="../rust_strings.h" line="435"/>
         <source>Setup is taking too long. Try again after restarting the PC.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="439"/>
+        <location filename="../rust_strings.h" line="436"/>
         <source>Setup stopped with code %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="440"/>
+        <location filename="../rust_strings.h" line="437"/>
         <source>The uninstaller is missing. Reinstall NectarLink, then uninstall it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="441"/>
+        <location filename="../rust_strings.h" line="438"/>
         <source>Uninstall stopped with code %1.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -8009,6 +7991,24 @@ What it needs
     <message>
         <location filename="../../qml/ShelfWindow.qml" line="1275"/>
         <source>Flick any card up to send to phone, drag out to use, or drop files in</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>Storage</name>
+    <message>
+        <location filename="../rust_strings.h" line="439"/>
+        <source>%1&apos;s files aren&apos;t shared with this PC</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="440"/>
+        <source>On the phone, allow All files access for NectarLink.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="441"/>
+        <source>On the phone, turn on Browse this phone&apos;s storage in File Explorer in NectarLink.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

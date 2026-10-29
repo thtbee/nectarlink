@@ -56,7 +56,7 @@
           </uap:ShareTarget>
         </uap:Extension>
         <desktop:Extension Category="windows.toastNotificationActivation">
-          <desktop:ToastNotificationActivation ToastActivatorCLSID="{7B9E0E64-5C5A-4E8B-9D31-5A4C2B10F6E1}" />
+          <desktop:ToastNotificationActivation ToastActivatorCLSID="7B9E0E64-5C5A-4E8B-9D31-5A4C2B10F6E1" />
         </desktop:Extension>
         <com:Extension Category="windows.comServer">
           <com:ComServer>

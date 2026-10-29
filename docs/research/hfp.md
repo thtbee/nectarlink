@@ -31,5 +31,6 @@ We evaluated three Windows Bluetooth APIs for using the PC's microphone and spea
 
 ## 3. Scope of `desktop/app/src/win/bt_hfp.rs`
 
-- `desktop/app/src/win/bt_hfp.rs` is a read-only Windows Bluetooth pairing inspection helper (`BluetoothDevice::GetDeviceSelectorFromPairingState(true)` + `DeviceInformation::FindAllAsyncAqsFilter`).
-- It does **not** implement an HFP Audio Gateway or SCO voice transport, and it is not wired to claim call audio routing in the Calls UI.
+- `desktop/app/src/win/bt_hfp.rs` reports no call audio, so the Calls page shows no "PC call audio" panel on Windows. Call audio stays on the phone.
+- It used to report the Bluetooth link to a paired device, which read as call audio on the PC and could name a paired headset instead of the phone (#86).
+- On Linux, `desktop/app/src/linux/bt_hfp.rs` routes call audio through BlueZ and PipeWire or PulseAudio, and the panel is shown there.

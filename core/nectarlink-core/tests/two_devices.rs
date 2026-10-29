@@ -3065,6 +3065,44 @@ async fn phone_toggles_arrive_on_connect_change_and_respect_capabilities_and_tog
     ));
 }
 
+/// A device relays Wake-on-LAN only for an address one of its paired PCs
+/// gave as its own (#74 audit), never for any MAC another device names.
+#[tokio::test(flavor = "multi_thread")]
+async fn wake_relay_is_only_for_a_paired_pcs_own_address() {
+    use nectarlink_core::{PC_WAKE, PcWakeInfo};
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[PC_WAKE]).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pc.node
+        .set_wake_info(PcWakeInfo {
+            macs: vec!["00:00:5E:00:53:01".into()],
+            broadcasts: vec!["127.255.255.255".into()],
+        })
+        .await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    wait_for(&mut phone, "wake info", |e| match e {
+        NodeEvent::WakeInfoChanged { device, can_wake: true } if *device == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+    let loopback = Some(std::net::Ipv4Addr::new(127, 255, 255, 255));
+
+    // The PC's own address: the phone relays it.
+    with_timeout(
+        "relay own",
+        pc.node.wake_via_relay(&phone_id, [0x00, 0x00, 0x5e, 0x00, 0x53, 0x01], loopback),
+    )
+    .await
+    .expect("a paired PC's own address is relayed");
+    // Any other address: refused.
+    let other = with_timeout(
+        "relay other",
+        pc.node.wake_via_relay(&phone_id, [0x02, 0x11, 0x22, 0x33, 0x44, 0x55], loopback),
+    )
+    .await;
+    assert!(matches!(other, Err(Error::Denied)), "{other:?}");
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn wake_info_syncs_persists_respects_toggle_and_sends_magic_packet() {
     use nectarlink_core::{PC_WAKE, PcWakeInfo, magic_packet};

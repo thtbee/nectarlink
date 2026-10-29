@@ -209,8 +209,9 @@ Card {
             text: qsTr("Mute, speaker and keypad need Elevated on the phone (Android 12 or later).")
         }
 
-        // ---- Bluetooth HFP / PC call audio ----
+        // ---- Bluetooth HFP / PC call audio (Linux only) ----
         Row {
+            visible: PhoneCall.hfpDetail.length > 0
             width: parent.width
             spacing: 10
             Txt {

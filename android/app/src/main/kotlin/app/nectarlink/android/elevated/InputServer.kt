@@ -812,6 +812,14 @@ object InputServer {
         private const val UHID_EVENT_SIZE = 4380
         private const val BUS_USB = 0x03
 
+        // While a hardware keyboard is attached Android hides the on-screen
+        // one, so the virtual keyboard only stays while the PC is typing.
+        private const val KEYBOARD_IDLE_MS = 10_000L
+        private val idle = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r ->
+            Thread(r, "nectarlink-uhid-idle").apply { isDaemon = true }
+        }
+        private var idleClose: java.util.concurrent.ScheduledFuture<*>? = null
+
         // Standard 8-byte boot HID keyboard report descriptor.
         private val KEYBOARD_RD = byteArrayOf(
             0x05, 0x01, // Usage Page (Generic Desktop)
@@ -917,14 +925,38 @@ object InputServer {
         @Synchronized
         fun sendKeyTap(androidKeyCode: Int): Boolean {
             val usage = androidKeyCodeToHidUsage(androidKeyCode) ?: return false
-            if (!keyboardAttempted) {
+            val created = !keyboardAttempted
+            if (created) {
                 keyboardAttempted = true
                 keyboardFd = openDevice("NectarLink Virtual Keyboard", 0x4EE7, KEYBOARD_RD)
             }
             val fd = keyboardFd ?: return false
+            idleClose?.cancel(false)
+            idleClose = idle.schedule({ closeKeyboard() }, KEYBOARD_IDLE_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
+            // A device that was just created may not be registered in time for
+            // its first report: that key goes the injected way.
+            if (created) return false
             val down = ByteArray(8).apply { this[2] = usage.toByte() }
             val up = ByteArray(8)
             return writeInputReport(fd, down) && writeInputReport(fd, up)
+        }
+
+        /** Removes the virtual keyboard; the next key from the PC adds it again. */
+        @Synchronized
+        private fun closeKeyboard() {
+            keyboardFd?.let(::destroy)
+            keyboardFd = null
+            keyboardAttempted = false
+            idleClose = null
+        }
+
+        private fun destroy(fd: java.io.RandomAccessFile) {
+            runCatching {
+                val buf = java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                buf.putInt(UHID_DESTROY)
+                fd.write(buf.array())
+                fd.close()
+            }
         }
 
         @Synchronized
@@ -948,14 +980,9 @@ object InputServer {
 
         @Synchronized
         fun closeAll() {
-            for (fd in listOfNotNull(keyboardFd, gamepadFd)) {
-                runCatching {
-                    val buf = java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN)
-                    buf.putInt(UHID_DESTROY)
-                    fd.write(buf.array())
-                    fd.close()
-                }
-            }
+            idleClose?.cancel(false)
+            idleClose = null
+            listOfNotNull(keyboardFd, gamepadFd).forEach(::destroy)
             keyboardFd = null
             gamepadFd = null
         }

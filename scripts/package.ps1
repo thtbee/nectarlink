@@ -236,9 +236,31 @@ foreach ($spec in @(@{ Name = 'Square44x44Logo.png'; Size = 44 }, @{ Name = 'Squ
     $ico.Dispose()
 }
 $manifest = Get-Content (Join-Path $root 'desktop\installer\AppxManifest.xml') -Raw
-$manifest = $manifest -replace 'Version="\d+\.\d+\.\d+\.\d+"', "Version=`"$numeric.0`""
+# Only the package's own version: MinVersion is the oldest Windows it runs on.
+$manifest = $manifest -replace '(<Identity\b[^>]*?\s)Version="[^"]*"', "`${1}Version=`"$numeric.0`""
 $manifest = $manifest -replace 'ProcessorArchitecture="x64"', "ProcessorArchitecture=`"$Arch`""
 Set-Content -Path (Join-Path $stage 'AppxManifest.xml') -Value $manifest -Encoding UTF8 -NoNewline
+
+# Windows checks the manifest only when setup registers it, and setup can't
+# show why it failed, so it's checked here the way makeappx packs it (#84).
+$makeappx = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\makeappx.exe" -ErrorAction SilentlyContinue |
+    Sort-Object { [version]$_.Directory.Parent.Name } -Descending | Select-Object -First 1
+if ($makeappx) {
+    $check = Join-Path ([IO.Path]::GetTempPath()) "nectarlink-appx-$PID"
+    try {
+        New-Item -ItemType Directory -Force (Join-Path $check 'content') | Out-Null
+        Copy-Item (Join-Path $stage 'AppxManifest.xml'), $assetsDir -Destination (Join-Path $check 'content') -Recurse
+        # The app is outside the package (its install folder); any file stands in for it.
+        Set-Content (Join-Path $check 'content\nectarlink-desktop.exe') 'app'
+        Invoke-Native "the package manifest check" {
+            & $makeappx.FullName pack /o /d (Join-Path $check 'content') /p (Join-Path $check 'check.msix')
+        }
+    } finally {
+        Remove-Item -Recurse -Force $check -ErrorAction SilentlyContinue
+    }
+} else {
+    Write-Warning "makeappx isn't installed (Windows SDK), so the package manifest isn't checked"
+}
 
 $size = (Get-ChildItem $stage -Recurse -File | Measure-Object Length -Sum).Sum / 1MB
 Write-Host ("Staged {0:N1} MB in {1}" -f $size, $stage)

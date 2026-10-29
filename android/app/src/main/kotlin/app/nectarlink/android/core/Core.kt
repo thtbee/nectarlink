@@ -67,6 +67,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -77,6 +78,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -466,6 +468,26 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             refreshDataRetention()
             app.nectarlink.android.clipboard.DirectShareTargets.sync(context, _state.value.devices)
             app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context, _state.value)
+            currentRunScope.launch(Dispatchers.IO) {
+                // A rename in Android's settings reaches the PCs right away,
+                // not at the next start (#87).
+                callbackFlow {
+                    val observer = object : android.database.ContentObserver(null) {
+                        override fun onChange(selfChange: Boolean) {
+                            trySend(Unit)
+                        }
+                    }
+                    context.contentResolver.registerContentObserver(
+                        android.provider.Settings.Global.getUriFor(android.provider.Settings.Global.DEVICE_NAME),
+                        false,
+                        observer,
+                    )
+                    awaitClose { context.contentResolver.unregisterContentObserver(observer) }
+                }.collect {
+                    runCatching { started.updateDeviceInfo(deviceInfo(context, _state.value.activeMediaColor)) }
+                        .onFailure { Log.w(TAG, "can't send the new device name", it) }
+                }
+            }
             currentRunScope.launch(Dispatchers.IO) {
                 _state
                     .map { s ->

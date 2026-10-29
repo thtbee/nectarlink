@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! macOS Bluetooth HFP integration.
+//! Bluetooth call audio on macOS: not yet. Call audio stays on the phone, and
+//! the Calls page shows no "PC call audio" panel here.
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HfpStatus {
@@ -9,13 +10,8 @@ pub struct HfpStatus {
     pub detail: String,
 }
 
-pub fn probe_status(phone_name: Option<&str>) -> HfpStatus {
-    HfpStatus {
-        available: true,
-        connected: false,
-        device_name: phone_name.unwrap_or("Phone").to_string(),
-        detail: "Bluetooth ready".to_string(),
-    }
+pub fn probe_status(_phone_name: Option<&str>) -> HfpStatus {
+    HfpStatus::default()
 }
 
 pub fn connect_audio(phone_name: Option<&str>) -> Result<HfpStatus, String> {

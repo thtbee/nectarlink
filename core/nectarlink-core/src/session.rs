@@ -361,6 +361,17 @@ impl Session {
     }
 }
 
+/// Whether `mac` is the Wake-on-LAN address of a PC paired with this device.
+fn is_known_wake_mac(shared: &Shared, mac: &[u8; 6]) -> bool {
+    let mac = nectarlink_protocol::messages::format_mac(mac);
+    shared
+        .store
+        .list_peers()
+        .unwrap_or_default()
+        .iter()
+        .any(|p| p.wake_info.as_ref().is_some_and(|w| w.macs.iter().any(|m| m.eq_ignore_ascii_case(&mac))))
+}
+
 /// The control stream goes out before media streams ([`crate::mirror`]):
 /// with a few app windows filling the link, heartbeats queued behind video
 /// timed out and closed a live session.
@@ -537,12 +548,22 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if (t == types::FILES_RESUME || t == types::FILES_CANCEL)
             && crate::transfer::handle_control(shared, peer, &env).await? => {}
         types::WAKE_RELAY => {
-            if let Ok(req) = env.body::<WakeRelay>() {
+            let req = env.body::<WakeRelay>().ok();
+            // Only for a PC paired with this device, by an address it gave as its own.
+            let known = req.as_ref().is_some_and(|r| is_known_wake_mac(shared, &r.mac));
+            if let Some(req) = req.filter(|_| known) {
                 let bcast = req.broadcast.as_deref().and_then(|s| s.parse().ok());
                 let _ = wake::send_magic_packet(req.mac, bcast);
+            } else {
+                tracing::debug!(peer = %peer.short(), "refusing to wake an address no paired PC gave");
             }
             if env.id.is_some() {
-                session.send(Envelope::empty(types::OK).reply_to(env.id)).await?;
+                let reply = if known {
+                    Envelope::empty(types::OK)
+                } else {
+                    Envelope::error(ErrorCode::Denied, "not a paired PC's wake address")
+                };
+                session.send(reply.reply_to(env.id)).await?;
             }
         }
         types::AUDIO_PCM => {
