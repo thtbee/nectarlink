@@ -347,7 +347,8 @@ NativeWindow {
     // window turns translucent only once the backdrop is in place, and opaque again
     // before it is removed.
     // Hive keeps its own fixed colors, so it never shows the wallpaper through.
-    readonly property bool wantBackdrop: Qt.platform.os === "windows" && (Preferences.backdrop || Theme.glass) && !Theme.amoled && !Theme.hive
+    // Windows 10 has no backdrop: the window stays opaque there.
+    readonly property bool wantBackdrop: Qt.platform.os === "windows" && systemBackdropSupported && (Preferences.backdrop || Theme.glass) && !Theme.amoled && !Theme.hive
     property bool micaApplied: false
     property bool micaVisible: false
     backdrop: micaApplied

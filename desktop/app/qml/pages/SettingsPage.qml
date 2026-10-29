@@ -825,6 +825,7 @@ Item {
                             id: appearanceBottomPair
                             readonly property bool showGraphiteAmoled: Theme.graphite && Theme.dark
                             readonly property bool showMica: Qt.platform.os === "windows"
+                                && !!Window.window && Window.window.systemBackdropSupported === true
                             visible: !Theme.hive && (showMica || showGraphiteAmoled)
                             width: parent.width
                             readonly property bool splitCols: showGraphiteAmoled && showMica && width >= 460

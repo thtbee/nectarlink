@@ -36,6 +36,25 @@ constexpr int kBackdropMica = 2;             // DWMSBT_MAINWINDOW
 constexpr int kBackdropAcrylic = 3;          // DWMSBT_TRANSIENTWINDOW (Desktop Acrylic blur)
 constexpr COLORREF kColorNone = 0xFFFFFFFE;  // DWMWA_COLOR_NONE
 
+constexpr DWORD kFirstWindows11Build = 22000;
+
+// The real Windows build: GetVersionEx lies without a manifest entry, and
+// RtlGetVersion doesn't.
+DWORD windowsBuild()
+{
+    using RtlGetVersionFn = LONG(WINAPI *)(OSVERSIONINFOW *);
+    static const DWORD build = [] {
+        OSVERSIONINFOW info { sizeof(info) };
+        if (const HMODULE ntdll = GetModuleHandleW(L"ntdll.dll")) {
+            const auto fn = reinterpret_cast<RtlGetVersionFn>(GetProcAddress(ntdll, "RtlGetVersion"));
+            if (fn && fn(&info) == 0)
+                return info.dwBuildNumber;
+        }
+        return DWORD(0);
+    }();
+    return build;
+}
+
 HWND hwndOf(const QWindow *window)
 {
     return reinterpret_cast<HWND>(window->winId());
@@ -366,6 +385,15 @@ NativeWindow::NativeWindow(QWindow *parent)
 #endif
 }
 
+bool NativeWindow::systemBackdropSupported()
+{
+#ifdef _WIN32
+    return windowsBuild() >= kFirstWindows11Build;
+#else
+    return false;
+#endif
+}
+
 void NativeWindow::setBackdrop(bool on)
 {
     if (m_backdrop == on)
@@ -549,10 +577,14 @@ void NativeWindow::applyFrame()
     DwmExtendFrameIntoClientArea(hwnd, &margins);
     const BOOL dark = m_darkFrame;
     DwmSetWindowAttribute(hwnd, kUseImmersiveDarkMode, &dark, sizeof(dark));
-    const int backdrop = m_backdrop ? (m_acrylic ? kBackdropAcrylic : kBackdropMica) : kBackdropNone;
-    DwmSetWindowAttribute(hwnd, kSystemBackdropType, &backdrop, sizeof(backdrop));
-    const COLORREF none = kColorNone;
-    DwmSetWindowAttribute(hwnd, kCaptionColor, &none, sizeof(none));
+    // Windows 10 has no system backdrop or caption color: skip both, and the
+    // QML side keeps the window opaque there (see systemBackdropSupported).
+    if (systemBackdropSupported()) {
+        const int backdrop = m_backdrop ? (m_acrylic ? kBackdropAcrylic : kBackdropMica) : kBackdropNone;
+        DwmSetWindowAttribute(hwnd, kSystemBackdropType, &backdrop, sizeof(backdrop));
+        const COLORREF none = kColorNone;
+        DwmSetWindowAttribute(hwnd, kCaptionColor, &none, sizeof(none));
+    }
 #elif defined(__linux__)
     setColor(m_darkFrame ? QColor(0x14, 0x13, 0x11) : QColor(0xF8, 0xF6, 0xF2));
     if (!property("_nl_linux_filter").toBool()) {

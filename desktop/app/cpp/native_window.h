@@ -32,6 +32,9 @@ class NativeWindow : public QQuickWindow
     Q_PROPERTY(QQuickItem *maximizeButton READ maximizeButton WRITE setMaximizeButton NOTIFY maximizeButtonChanged)
     Q_PROPERTY(bool maximizeHovered READ maximizeHovered NOTIFY maximizeStateChanged)
     Q_PROPERTY(bool maximizePressed READ maximizePressed NOTIFY maximizeStateChanged)
+    // Whether Windows can draw Mica/Acrylic behind the window (Windows 11,
+    // build 22000 and later). Elsewhere the window must stay opaque.
+    Q_PROPERTY(bool systemBackdropSupported READ systemBackdropSupported CONSTANT)
 
 public:
     explicit NativeWindow(QWindow *parent = nullptr);
@@ -48,6 +51,7 @@ public:
     void setMaximizeButton(QQuickItem *item);
     bool maximizeHovered() const { return m_maximizeHovered; }
     bool maximizePressed() const { return m_maximizePressed; }
+    static bool systemBackdropSupported();
 
     // Interactive items inside the title strip (buttons, search fields):
     // clicks there go to the item instead of dragging the window.
