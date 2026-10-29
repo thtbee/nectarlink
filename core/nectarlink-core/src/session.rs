@@ -41,12 +41,35 @@ pub(crate) const CLOSE_DUPLICATE: u32 = 100;
 /// QUIC close code for a normal shutdown.
 pub(crate) const CLOSE_NORMAL: u32 = 0;
 
-/// Returns true if `ip` is a strictly local/private LAN or loopback address
-/// (excluding carrier CGNAT `100.64.0.0/10` and global internet IPv6 `2000::/3`).
+/// Returns true if `ip` is a local/private LAN or loopback address, or a
+/// Tailscale tailnet address (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`).
+/// Global internet addresses (public IPv4, `2000::/3`) are rejected.
+///
+/// Tailnet addresses count as local: Tailscale's WireGuard network is private
+/// to the user's devices, and it's how a PC is reached from another network
+/// without relays. Carrier CGNAT shares `100.64.0.0/10`, but a direct path
+/// still needs the paired device's key, and relays stay off.
 pub(crate) fn is_lan_ip(ip: std::net::IpAddr) -> bool {
     match ip.to_canonical() {
-        std::net::IpAddr::V4(v4) => v4.is_private() || v4.is_link_local() || v4.is_loopback(),
+        std::net::IpAddr::V4(v4) => {
+            v4.is_private() || v4.is_link_local() || v4.is_loopback() || is_tailnet_ip(std::net::IpAddr::V4(v4))
+        }
         std::net::IpAddr::V6(v6) => v6.is_loopback() || v6.is_unicast_link_local() || v6.is_unique_local(),
+    }
+}
+
+/// Returns true if `ip` is in Tailscale's ranges: IPv4 `100.64.0.0/10` (the
+/// shared address space it assigns from) or IPv6 `fd7a:115c:a1e0::/48`.
+pub(crate) fn is_tailnet_ip(ip: std::net::IpAddr) -> bool {
+    match ip.to_canonical() {
+        std::net::IpAddr::V4(v4) => {
+            let [a, b, ..] = v4.octets();
+            a == 100 && (b & 0xC0) == 64
+        }
+        std::net::IpAddr::V6(v6) => {
+            let seg = v6.segments();
+            seg[0] == 0xfd7a && seg[1] == 0x115c && seg[2] == 0xa1e0
+        }
     }
 }
 
@@ -672,11 +695,11 @@ async fn heartbeat(session: &Arc<Session>, shared: &Weak<Shared>) {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_lan_ip, is_same_ipv6_subnet};
+    use super::{is_lan_ip, is_same_ipv6_subnet, is_tailnet_ip};
     use std::net::{IpAddr, Ipv6Addr};
 
     #[test]
-    fn lan_ip_accepts_private_local_and_rejects_wan_and_cgnat() {
+    fn lan_ip_accepts_private_local_and_tailnet_and_rejects_wan() {
         for ok in [
             "127.0.0.1",
             "192.168.1.42",
@@ -686,15 +709,29 @@ mod tests {
             "::1",
             "fe80::1234",
             "fd12:3456:789a::1",
+            "100.64.0.1",
+            "100.101.102.103",
+            "100.127.255.254",
+            "fd7a:115c:a1e0::1",
         ] {
             let ip: IpAddr = ok.parse().unwrap();
             assert!(is_lan_ip(ip), "expected {ok} to be treated as LAN IP");
         }
 
-        for bad in ["8.8.8.8", "100.64.0.1", "100.115.92.2", "2001:4860:4860::8888", "2401:4900:1c2a:8b00::1"]
+        for bad in ["8.8.8.8", "100.63.255.255", "100.128.0.1", "2001:4860:4860::8888", "2401:4900:1c2a:8b00::1"]
         {
             let ip: IpAddr = bad.parse().unwrap();
             assert!(!is_lan_ip(ip), "expected {bad} to be rejected as non-LAN IP");
+        }
+    }
+
+    #[test]
+    fn tailnet_ip_matches_only_tailscale_ranges() {
+        for ok in ["100.64.0.0", "100.100.100.100", "100.127.255.255", "fd7a:115c:a1e0:ab12::1", "::ffff:100.64.1.2"] {
+            assert!(is_tailnet_ip(ok.parse().unwrap()), "expected {ok} to be a tailnet IP");
+        }
+        for bad in ["100.63.0.1", "100.128.0.1", "192.168.1.1", "fd7a:115c:a1e1::1", "fd12::1"] {
+            assert!(!is_tailnet_ip(bad.parse().unwrap()), "expected {bad} not to be a tailnet IP");
         }
     }
 
