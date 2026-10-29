@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -68,6 +69,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -442,6 +444,9 @@ private fun TouchpadView(
     val activeMods = remember { mutableStateListOf<String>() }
     var dragging by remember { mutableStateOf(false) }
     var touchPoint by remember { mutableStateOf<Offset?>(null) }
+    // The PC's screen above the touchpad, so the pointer isn't moved blind.
+    // Off by default: it streams the PC's screen like the Screen mode does.
+    var showScreen by rememberSaveable { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -465,6 +470,27 @@ private fun TouchpadView(
         // While typing, the keyboard leaves too little room for the touchpad,
         // and the field below must keep its full height.
         if (!imeVisible) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.remote_touchpad_show_screen),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(checked = showScreen, onCheckedChange = { showScreen = it })
+            }
+            if (showScreen) {
+                // Same stream as the Screen mode, view only.
+                PcMirrorView(
+                    pcId = pcId,
+                    pcName = pcName,
+                    core = core,
+                    preview = true,
+                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                )
+            }
             // Big touchpad surface
             val primaryColor = MaterialTheme.colorScheme.primary
             val outlineColor = MaterialTheme.colorScheme.outlineVariant
