@@ -155,4 +155,4 @@ For power users who use **PowerToys Command Palette**, **AutoHotkey**, **Raycast
 ## Limits
 
 - **Global Hotkey Conflicts**: If another Windows application has already registered `Ctrl+Alt+Space`, `Ctrl+Alt+S`, `Ctrl+Alt+C`, or `Ctrl+Alt+D` as a system-wide hotkey, you can assign any non-conflicting `Ctrl`/`Alt`/`Shift`/`Win` key combination in **Settings › Shortcuts & Rules**.
-- **Windows Widgets Board Provider (`NectarlinkPhoneStatus`)**: NectarLink includes a Windows App SDK Widget Provider (`desktop/app/src/win/widget.rs`), plus the taskbar **Jump List** that works on all installs. Appearing inside the Windows 11 `Win+W` Widgets board requires the app's sparse package manifest to be registered with a trusted code-signing certificate or Windows Developer Mode enabled. On Android, the **PC quick actions** home-screen widget works on all devices out of the box.
+- **No Windows Widgets board widget yet**: NectarLink doesn't offer a widget in the Windows 11 `Win+W` Widgets board. The taskbar **Jump List** works on all installs, and on Android the **PC quick actions** home-screen widget works on all devices.

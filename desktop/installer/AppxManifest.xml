@@ -2,12 +2,10 @@
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
-  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap3 uap10 com desktop rescap">
+  IgnorableNamespaces="uap uap10 desktop rescap">
 
   <Identity
     Name="Nectarlink.Desktop"
@@ -58,39 +56,6 @@
         <desktop:Extension Category="windows.toastNotificationActivation">
           <desktop:ToastNotificationActivation ToastActivatorCLSID="7B9E0E64-5C5A-4E8B-9D31-5A4C2B10F6E1" />
         </desktop:Extension>
-        <com:Extension Category="windows.comServer">
-          <com:ComServer>
-            <com:ExeServer Executable="nectarlink-desktop.exe" Arguments="--widget-provider" DisplayName="Nectarlink Widget Provider">
-              <com:Class Id="9C4E1A22-8F3B-4D09-A6E2-1D8F5C3B9E04" DisplayName="NectarlinkWidgetProvider" />
-            </com:ExeServer>
-          </com:ComServer>
-        </com:Extension>
-        <uap3:Extension Category="windows.appExtension">
-          <uap3:AppExtension Name="com.microsoft.windows.widgets" DisplayName="Nectarlink" Id="NectarlinkWidgets" PublicFolder="Widgets">
-            <uap3:Properties>
-              <WidgetProvider>
-                <ProviderIcons>
-                  <Icon Path="Assets\Square44x44Logo.png" />
-                </ProviderIcons>
-                <Activation>
-                  <CreateInstance ClassId="9C4E1A22-8F3B-4D09-A6E2-1D8F5C3B9E04" />
-                </Activation>
-                <Definitions>
-                  <Definition Id="NectarlinkPhoneStatus" DisplayName="Phone Status" Description="Phone battery, connection status, clipboard preview, and quick actions">
-                    <Capabilities>
-                      <Capability>
-                        <Size Name="medium" />
-                      </Capability>
-                      <Capability>
-                        <Size Name="large" />
-                      </Capability>
-                    </Capabilities>
-                  </Definition>
-                </Definitions>
-              </WidgetProvider>
-            </uap3:Properties>
-          </uap3:AppExtension>
-        </uap3:Extension>
       </Extensions>
     </Application>
   </Applications>

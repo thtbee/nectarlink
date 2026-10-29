@@ -88,15 +88,17 @@ async fn relayed_wake_and_pc_audio_pcm_roundtrip() {
     let (_phone_dir, _pc_dir, phone, pc) = start_paired_nodes().await;
     let mut phone_events = phone.events();
 
-    // 1. Relayed Wake-on-LAN (`wake.relay`) from phone through PC.
-    phone
+    // 1. Relayed Wake-on-LAN (`wake.relay`) from phone through PC: only for a
+    // paired PC's own address (two_devices.rs covers relaying one), so an
+    // address nobody gave is refused.
+    let relayed = phone
         .wake_via_relay(
             &pc.device_id(),
             [0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc],
             Some(std::net::Ipv4Addr::LOCALHOST),
         )
-        .await
-        .expect("wake_via_relay succeeds");
+        .await;
+    assert!(matches!(relayed, Err(nectarlink_core::Error::Denied)), "{relayed:?}");
 
     // 2. Low-latency PC-to-Phone PCM audio stream (`audio.pcm`).
     let pcm_payload: Vec<u8> = (0..1920).map(|i| (i % 251) as u8).collect();

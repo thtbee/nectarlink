@@ -228,7 +228,7 @@ current Android.
 ### 3.12 Platform & ecosystem
 | Feature | Tier |
 |---|---|
-| Tray app, start on login, jump list, global hotkeys, Windows Widgets board widget: tray app, start on login, taskbar jump list, and global hotkeys ship for unpackaged installs (done); Windows Widgets board provider **requires signed MSIX/sparse package identity or Windows Developer Mode (Send-to menu and Explorer context menu ship for unpackaged installs)** | P0/P1 |
+| Tray app, start on login, jump list, global hotkeys, Windows Widgets board widget: tray app, start on login, taskbar jump list, and global hotkeys ship for unpackaged installs (done); Windows Widgets board provider **not built yet: it needs the Windows App SDK and package identity (#85)** | P0/P1 |
 | Android Quick Settings tiles, home-screen widgets (Glance), share target, Direct Share to PC (done) | P0/P1 |
 | **CLI** (`nectarlink send file.pdf`, `nectarlink clip`, `nectarlink notify`, `nectarlink notify-when`) and local authenticated API for scripts and PowerToys Command Palette (done) | P1 |
 | Tablet as second screen (IddCx virtual monitor): deferred (requires an WHQL-signed UMDF/IddCx indirect display driver) | P2 |

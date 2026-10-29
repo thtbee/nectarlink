@@ -491,7 +491,4 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Updater", "Your phone reconnects on its own."), // desktop/app/src/updater.rs
     QT_TRANSLATE_NOOP("Webcam", "Starting camera on %1…"), // desktop/app/src/bridge/webcam.rs
     QT_TRANSLATE_NOOP("Webcam", "Streaming %1 × %2 · %3 fps from %4"), // desktop/app/src/bridge/webcam.rs
-    QT_TRANSLATE_NOOP("Widget", "No phone connected"), // desktop/app/src/win/widget.rs
-    QT_TRANSLATE_NOOP("Widget", "No recent clipboard items"), // desktop/app/src/win/widget.rs
-    QT_TRANSLATE_NOOP("Widget", "Not available"), // desktop/app/src/win/widget.rs
 };

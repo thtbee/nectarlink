@@ -9106,19 +9106,16 @@ What it needs
 <context>
     <name>Widget</name>
     <message>
-        <location filename="rust_strings.h" line="494"/>
         <source>No phone connected</source>
-        <translation>未连接手机</translation>
+        <translation type="vanished">未连接手机</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="495"/>
         <source>No recent clipboard items</source>
-        <translation>没有最近的剪贴板内容</translation>
+        <translation type="vanished">没有最近的剪贴板内容</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="496"/>
         <source>Not available</source>
-        <translation>不可用</translation>
+        <translation type="vanished">不可用</translation>
     </message>
 </context>
 </TS>

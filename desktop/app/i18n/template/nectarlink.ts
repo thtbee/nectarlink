@@ -8819,22 +8819,4 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
 </context>
-<context>
-    <name>Widget</name>
-    <message>
-        <location filename="../rust_strings.h" line="494"/>
-        <source>No phone connected</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rust_strings.h" line="495"/>
-        <source>No recent clipboard items</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../rust_strings.h" line="496"/>
-        <source>Not available</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
 </TS>

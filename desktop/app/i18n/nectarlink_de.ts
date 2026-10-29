@@ -9110,19 +9110,16 @@ Voraussetzungen
 <context>
     <name>Widget</name>
     <message>
-        <location filename="rust_strings.h" line="494"/>
         <source>No phone connected</source>
-        <translation>Kein Gerät verbunden</translation>
+        <translation type="vanished">Kein Gerät verbunden</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="495"/>
         <source>No recent clipboard items</source>
-        <translation>Keine aktuellen Einträge in der Zwischenablage</translation>
+        <translation type="vanished">Keine aktuellen Einträge in der Zwischenablage</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="496"/>
         <source>Not available</source>
-        <translation>Nicht verfügbar</translation>
+        <translation type="vanished">Nicht verfügbar</translation>
     </message>
 </context>
 </TS>

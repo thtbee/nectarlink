@@ -231,10 +231,9 @@ Section "Install"
   CreateShortCut "$SMPROGRAMS\${DISPLAY}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\${EXE}" 0 "" "" "Your phone, on your PC"
   CreateShortCut "$DESKTOP\${DISPLAY}.lnk" "$INSTDIR\${EXE}" "" "$INSTDIR\${EXE}" 0 "" "" "Your phone, on your PC"
 
-  ; The Windows Share sheet and Widgets board need the app's sparse package
-  ; registered, which Windows allows for an unsigned one only with Developer
-  ; Mode on. Why it didn't register goes to sparse-package.log (#84).
-  CreateDirectory "$INSTDIR\Widgets"
+  ; The Windows Share sheet needs the app's sparse package registered, which
+  ; Windows allows for an unsigned one only with Developer Mode on. Why it
+  ; didn't register goes to sparse-package.log (#84).
   Delete "$INSTDIR\sparse-package.log"
   nsExec::Exec 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "try { Add-AppxPackage -Register \"$INSTDIR\AppxManifest.xml\" -ExternalLocation \"$INSTDIR\" -ErrorAction Stop } catch { $$_ | Out-File -Encoding utf8 \"$INSTDIR\sparse-package.log\" }"'
 
@@ -289,7 +288,6 @@ Section "Uninstall"
     Delete "$INSTDIR\nectarlink_vcam.dll"
     Delete "$INSTDIR\AppxManifest.xml"
     RMDir /r "$INSTDIR\Assets"
-    RMDir "$INSTDIR\Widgets"
     Delete "$INSTDIR\sparse-package.log"
     Delete "$INSTDIR\update.log"
     Delete "$INSTDIR\uninstall.exe"

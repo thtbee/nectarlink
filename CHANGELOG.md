@@ -166,6 +166,29 @@ has a Stop button. Choosing another
 
 ### Fixed
 
+- **The phone's keyboard didn't open after typing from the PC.** With
+  Elevated, the PC's keys reach the phone through a virtual keyboard that
+  stayed connected, so Android hid the on-screen keyboard in every app. It
+  now goes away 10 seconds after the last key from the PC
+  ([#93](https://github.com/thtbee/nectarlink/issues/93)).
+- **Renaming the phone reached the PC only after the app restarted.** It
+  now shows on the PC right away ([#87](https://github.com/thtbee/nectarlink/issues/87)).
+- **The phone's folder in File Explorer said the network was unavailable**
+  when the phone had turned it away. It now says access is denied, and a
+  notification on the PC says what to turn on ([#88](https://github.com/thtbee/nectarlink/issues/88)).
+- **The phone rang twice during a call** while Phone as speaker was on:
+  the PC's ringtone was played on the phone as well.
+- **NectarLink never appeared in the Windows Share sheet,** even with
+  Developer Mode on, because its package didn't register. It does now,
+  and if Windows refuses it, `sparse-package.log` in the install folder
+  says why ([#84](https://github.com/thtbee/nectarlink/issues/84)).
+- **The Calls page showed "PC call audio connected"** on Windows, sometimes
+  with a headset's name. Windows doesn't let apps carry a phone call's
+  audio, so the panel is gone there; call audio stays on the phone
+  ([#86](https://github.com/thtbee/nectarlink/issues/86)).
+- **A Phone Status widget was listed for the Widgets board** but never
+  showed anything. It's removed until a working one is built
+  ([#85](https://github.com/thtbee/nectarlink/issues/85)).
 - **Find my phone could ring too quietly to hear** when the alarm volume
   was low. It now rings at full alarm volume and puts your volume back
   afterwards, even if the app is closed mid-ring. Do Not Disturb still
