@@ -352,7 +352,6 @@
     <string name="remote_laser_active">激光笔已开启（%1$s）· 倾斜手机或在此拖动</string>
     <string name="remote_volume_hint">此界面打开时，音量键也可切换幻灯片。</string>
     <string name="remote_mode_screen">屏幕</string>
-    <string name="remote_touchpad_show_screen">显示电脑屏幕</string>
     <string name="pc_mirror_connecting">正在连接到 %1$s…</string>
     <string name="pc_mirror_fullscreen">全屏</string>
     <string name="pc_mirror_exit_fullscreen">退出全屏</string>

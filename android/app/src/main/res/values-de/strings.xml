@@ -365,7 +365,6 @@
     <string name="remote_laser_active">Laser auf %1$s · Gerät neigen oder hier ziehen</string>
     <string name="remote_volume_hint">Solange dieser Bildschirm geöffnet ist, wechseln auch die Lautstärketasten die Folien.</string>
     <string name="remote_mode_screen">Bildschirm</string>
-    <string name="remote_touchpad_show_screen">PC-Bildschirm anzeigen</string>
     <string name="pc_mirror_connecting">%1$s wird verbunden…</string>
     <string name="pc_mirror_fullscreen">Vollbild</string>
     <string name="pc_mirror_exit_fullscreen">Vollbild beenden</string>
