@@ -115,7 +115,7 @@ NativeWindow {
                 anchors.centerIn: parent
                 visible: Qt.platform.os === "windows"
                 text: "\ue8bb"
-                font.family: "Segoe Fluent Icons"
+                font.family: Theme.captionIconFont
                 font.pixelSize: 10
                 color: closeArea.containsMouse ? "#FFFFFF" : window.ink
             }

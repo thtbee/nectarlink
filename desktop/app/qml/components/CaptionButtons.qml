@@ -4,7 +4,7 @@ import QtQuick.Shapes
 import app.nectarlink
 
 // Minimize, maximize/restore and close, drawn like Windows 11's own on Windows
-// (Segoe Fluent Icons) and with crisp vector strokes on Linux where that font
+// (Segoe Fluent Icons, or Segoe MDL2 Assets on Windows 10) and with crisp vector strokes on Linux where that font
 // isn't installed. The maximize button is registered with the window so Windows
 // shows Snap Layouts when hovering it.
 Row {
@@ -94,7 +94,7 @@ Row {
             anchors.centerIn: parent
             visible: Qt.platform.os === "windows"
             text: button.glyph
-            font.family: "Segoe Fluent Icons"
+            font.family: Theme.captionIconFont
             font.pixelSize: 10
             color: button.danger && (button.hovered || button.pressed) ? "#FFFFFF" : Theme.surfaceContent
             opacity: buttons.window.active || button.hovered ? 1 : 0.45
