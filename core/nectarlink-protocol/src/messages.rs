@@ -1698,6 +1698,12 @@ pub fn is_valid_app_apk(apk: &str) -> bool {
         && is_shell_word(apk)
 }
 
+/// NectarLink's package, or its local test build (`app.nectarlink.dev`, the
+/// `applicationIdSuffix` of a side-by-side build). No other package.
+pub fn is_own_package(p: &str) -> bool {
+    p == elevated::PACKAGE || p.strip_prefix(elevated::PACKAGE) == Some(".dev")
+}
+
 /// A grant the phone may ask for itself, and nothing else: a permission or
 /// app op for NectarLink's own package, or its own notification listener.
 pub fn is_valid_grant(grant: &str) -> bool {
@@ -1705,15 +1711,14 @@ pub fn is_valid_grant(grant: &str) -> bool {
     if !words.iter().all(|w| is_shell_word(w)) {
         return false;
     }
-    let pkg = elevated::PACKAGE;
     match words.as_slice() {
-        ["pm", "grant", p, perm] => *p == pkg && perm.starts_with("android.permission."),
+        ["pm", "grant", p, perm] => is_own_package(p) && perm.starts_with("android.permission."),
         ["appops", "set", p, op, "allow"] => {
-            *p == pkg && op.bytes().all(|b| b.is_ascii_uppercase() || b == b'_')
+            is_own_package(p) && op.bytes().all(|b| b.is_ascii_uppercase() || b == b'_')
         }
-        ["cmd", "notification", "allow_dnd", p] => *p == pkg,
+        ["cmd", "notification", "allow_dnd", p] => is_own_package(p),
         ["cmd", "notification", "allow_listener", component] => {
-            component.strip_prefix(pkg).is_some_and(|rest| rest.starts_with('/'))
+            component.split_once('/').is_some_and(|(p, rest)| is_own_package(p) && !rest.is_empty())
         }
         _ => false,
     }
@@ -4301,7 +4306,17 @@ mod tests {
             !ElevatedUsbStart { token: "not-hex-token-not-hex-token-not-hex".into(), ..start.clone() }
                 .is_valid()
         );
-        assert!(!ElevatedUsbStart { grants: vec![start.grants[0].clone(); 9], ..start }.is_valid());
+        assert!(!ElevatedUsbStart { grants: vec![start.grants[0].clone(); 9], ..start.clone() }.is_valid());
+        // The side-by-side test build grants itself too.
+        let dev = ElevatedUsbStart {
+            apk: "/data/app/~~kG3x_Q==/app.nectarlink.dev-Ab1-cD2==/base.apk".into(),
+            grants: vec![
+                "pm grant app.nectarlink.dev android.permission.WRITE_SECURE_SETTINGS".into(),
+                "cmd notification allow_listener app.nectarlink.dev/app.nectarlink.android.notifications.NotificationListener".into(),
+            ],
+            ..start
+        };
+        assert!(dev.is_valid());
     }
 
     #[test]
