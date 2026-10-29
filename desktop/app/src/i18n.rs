@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 /// Languages the app speaks, as Settings offers them: a locale name ("" for
 /// the system's) and how the language calls itself.
 pub const LANGUAGES: &[(&str, &str)] =
-    &[("", ""), ("en", "English"), ("de", "Deutsch"), ("zh_CN", "简体中文")];
+    &[("", ""), ("en", "English"), ("de", "Deutsch"), ("zh_CN", "简体中文"), ("tr", "Türkçe")];
 
 /// [`LANGUAGES`] without the system's, as JSON for Settings: `[{ code, name }]`.
 pub fn languages_json() -> String {
@@ -151,7 +151,7 @@ mod tests {
 
     #[test]
     fn only_offered_languages_are_kept() {
-        assert!(is_known("") && is_known("zh_CN") && is_known("de") && is_known("en"));
+        assert!(is_known("") && is_known("zh_CN") && is_known("de") && is_known("en") && is_known("tr"));
         let listed: Vec<serde_json::Value> = serde_json::from_str(&languages_json()).unwrap();
         assert_eq!(listed[0], serde_json::json!({ "code": "en", "name": "English" }));
         assert!(listed.iter().all(|l| l["code"] != ""), "the system's isn't a choice in the list");

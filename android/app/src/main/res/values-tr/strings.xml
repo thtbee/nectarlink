@@ -1,0 +1,1373 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="app_name">NectarLink</string>
+
+    <!-- Pairing -->
+    <string name="pair_title">Bilgisayarla eşleştir</string>
+    <string name="pair_show_title">Telefon veya tablet eşleştir</string>
+    <string name="pair_show_hint">Diğer telefonunuzda veya tabletinizde NectarLink\'i açın, Eşleştir\'e dokunun ve bu kodu tarayın.</string>
+    <string name="pair_show_qr_desc">Başka bir telefon veya tablet için eşleştirme kodu</string>
+    <string name="action_show_code">Bunun yerine telefon veya tablet eşleştir</string>
+    <string name="pair_scan_hint">Bilgisayarınızda NectarLink\'i açın. Kamerayı gösterdiği koda tutun. Başka bir telefon veya tablet kodunu Telefon veya tablet eşleştir bölümünde gösterir.</string>
+    <string name="pair_nearby_title">Yakındakiyle eşleştir</string>
+    <string name="pair_nearby_hint">Bilgisayarınızda NectarLink\'i açın ve eşleştirme ekranını açık tutun. Bilgisayarınız burada görünür.</string>
+    <string name="pair_looking">Bilgisayarlar aranıyor…</string>
+    <string name="pair_joining">Eşleştiriliyor…</string>
+    <string name="pair_connecting">Bağlanılıyor: %1$s…</string>
+    <string name="pair_waiting">%1$s bekleniyor…</string>
+    <string name="pair_check_code">Kodu kontrol edin</string>
+    <string name="pair_compare_hint">%1$s cihazında da aynı kodun göründüğünden emin olun. Bu, araya başka birinin girip eşleşmesini önler.</string>
+    <string name="pair_done_title">Eşleştirildi</string>
+    <string name="pair_done">%1$s bu telefonla eşleştirildi.</string>
+    <string name="pair_failed_title">Eşleştirme başarısız oldu</string>
+    <string name="pair_failed_rejected">Kodlar eşleşmedi, bu yüzden hiçbir şey eşleştirilmedi.</string>
+    <string name="pair_failed_declined">Eşleştirme cihazlardan birinde reddedildi.</string>
+    <string name="pair_failed_expired">Kodun süresi doldu. Bilgisayarınızda yeni bir kod gösterin.</string>
+    <string name="pair_failed_unreachable">Bilgisayara ulaşılamadı. İkisinin de aynı ağda olduğundan emin olun.</string>
+    <string name="pair_failed_other">Bu bir NectarLink eşleştirme kodu değil veya bir sorun oluştu.</string>
+    <string name="your_pc">bilgisayarınız</string>
+    <string name="camera_permission_needed">NectarLink\'in eşleştirme kodunu taramak için kameraya ihtiyacı var. Hiçbir şey kaydedilmez.</string>
+
+    <!-- Home -->
+    <string name="home_title">Ana Sayfa</string>
+    <string name="link_online">Bağlı</string>
+    <string name="link_online_rtt">Bağlı · %1$d ms</string>
+    <string name="link_usb">USB ile bağlı</string>
+    <string name="link_usb_rtt">USB ile bağlı · %1$d ms</string>
+    <string name="link_away">Uzaktan bağlı</string>
+    <string name="link_connecting">Bağlanılıyor…</string>
+    <string name="link_offline_seen">Çevrimdışı · son görülme %1$s</string>
+    <string name="link_offline_now">Çevrimdışı · az önce görüldü</string>
+    <string name="link_never">Henüz bağlanılmadı</string>
+    <string name="link_not_reconnecting">Yeniden bağlanmıyor</string>
+    <string name="battery_level">%%%1$d</string>
+    <string name="battery_charging">%%%1$d · şarj oluyor</string>
+    <string name="ringing_title">%1$s telefonunuzu çaldırıyor</string>
+    <string name="ringing_title_unknown">Bilgisayarınız telefonunuzu çaldırıyor</string>
+    <string name="connected">Bağlı</string>
+    <string name="not_connected">Bağlı değil</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Ayarlar</string>
+    <string name="settings_appearance">Görünüm</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_mode">Mod</string>
+    <string name="settings_language">Dil</string>
+    <string name="settings_language_more">Daha fazla</string>
+    <string name="settings_dynamic_color">Duvar kağıdından renkler</string>
+    <string name="settings_dynamic_color_hint">Duvar kağıdınızın renklerini kullanın.</string>
+    <string name="settings_devices">Bilgisayarlar</string>
+    <string name="settings_about">Hakkında</string>
+    <string name="settings_notifications">Bildirimler</string>
+    <string name="notifications_title">Bildirimleri bilgisayarınızda göster</string>
+    <string name="notifications_on">Açık. Bildirimler eşleştirilmiş bilgisayarlarınızda görünür; oradan yanıtlayabilir ve kapatabilirsiniz.</string>
+    <string name="notifications_off">NectarLink\'in bu telefonun bildirimlerini bilgisayarınızda göstermesi için bildirim erişimine ihtiyacı var.</string>
+    <string name="notifications_restricted">Anahtar gri mi görünüyor? Uygulama bilgileri\'ni açın, ⋮ simgesine dokunun, “Kısıtlanmış ayarlara izin ver”i seçin ve tekrar deneyin.</string>
+    <string name="action_allow">İzin ver</string>
+    <string name="clip_share_label">Bilgisayara gönder</string>
+    <string name="channel_transfers">Dosya aktarımları</string>
+    <string name="channel_received">Alınan dosyalar</string>
+    <string name="channel_pc_media">Bilgisayarınızdaki medya</string>
+    <string name="media_on">%2$s cihazında %1$s</string>
+    <string name="media_play">Oynat</string>
+    <string name="media_pause">Duraklat</string>
+    <string name="media_next">Sonraki</string>
+    <string name="media_previous">Önceki</string>
+    <string name="action_send_files">Dosya gönder</string>
+    <string name="action_send_folder">Klasör gönder</string>
+    <string name="input_service_label">NectarLink: bilgisayarınızdan kontrol</string>
+    <string name="input_service_description">Ekranını eşleştirilmiş bir bilgisayarla paylaşırken bilgisayarınızın fare ve klavyesinin bu telefonda dokunmasına, kaydırmasına ve yazmasına olanak tanır. Başka hiçbir şeyi okumaz.</string>
+    <string name="settings_control">Bilgisayarınızdan kontrol</string>
+    <string name="control_title">Bilgisayarınızın fare ve klavyesini kullanın</string>
+    <string name="control_on">Açık: ekranınız bilgisayarınızda gösterilirken oradan dokunabilir, kaydırabilir ve yazabilirsiniz.</string>
+    <string name="control_off">Bu ekranı gösterirken bilgisayarınızdan dokunun, kaydırın ve yazın. Erişilebilirlik bölümünde NectarLink\'i açın.</string>
+    <string name="dnd_access_title">Rahatsız Etmeyin ve sessiz mod</string>
+    <string name="dnd_access_on">Açık: bilgisayarınız Rahatsız Etmeyin modunu açıp kapatabilir ve zili sessize alabilir.</string>
+    <string name="dnd_access_off">Bilgisayarınızın Rahatsız Etmeyin modunu açıp kapatmasına ve zili sessize almasına izin verin.</string>
+    <string name="write_settings_title">Ekran parlaklığı</string>
+    <string name="write_settings_on">Açık: bilgisayarınız bu telefonun ekran parlaklığını ayarlayabilir.</string>
+    <string name="write_settings_off">Bilgisayarınızın bu telefonun ekran parlaklığını ayarlamasına izin verin.</string>
+    <string name="local_network_title">Bu ağda bilgisayarınıza ulaşın</string>
+    <string name="local_network_text">Android, bir uygulama ağınızdaki cihazlarla iletişim kurmadan önce izin ister. NectarLink\'in bilgisayarınıza ulaşmak için bu izne ihtiyacı var.</string>
+    <string name="channel_elevated">Kablosuz hata ayıklama kurulumu</string>
+    <string name="elevated_title">Gerçek dokunma ve tuşlar (Kablosuz hata ayıklama)</string>
+    <string name="elevated_not_set_up">Bilgisayarınızdan gerçek zamanlı dokunma, tüm tuşlar ve aramalarda sessize alma, bekletme ve tuş takımı. Android\'in kendi Kablosuz hata ayıklama özelliğini kullanır.</string>
+    <string name="elevated_waiting">Kablosuz hata ayıklama bekleniyor. Geliştirici seçenekleri\'nden açın.</string>
+    <string name="elevated_starting">Başlatılıyor…</string>
+    <string name="elevated_running">Açık: bilgisayarınızın faresi ve klavyesi gerçek bir dokunmatik ekran ve klavye gibi çalışır.</string>
+    <string name="elevated_failed">Başlatılamadı. Kablosuz hata ayıklamanın açık olduğunu kontrol edip tekrar deneyin.</string>
+    <string name="elevated_not_paired">Telefon NectarLink\'in eşleştirmesini unuttu. Yeniden kurun.</string>
+    <string name="elevated_set_up">Kur</string>
+    <string name="elevated_use_root">Root kullan</string>
+    <string name="elevated_root_hint">Bu telefon root\'lu, bu yüzden Yükseltilmiş mod bunun yerine root üzerinden başlayabilir: eşleştirme gerekmez ve yeniden başlatmadan sonra veya Wi-Fi dışındayken kendiliğinden geri gelir. Kablosuz hata ayıklamadakiyle aynı izinleri alır.</string>
+    <string name="elevated_running_root">Açık, root üzerinden: bilgisayarınızın faresi ve klavyesi gerçek bir dokunmatik ekran ve klavye gibi çalışır.</string>
+    <string name="elevated_root_failed">Root izni verilmedi veya root yöneticiniz NectarLink\'in yardımcısını shell kullanıcısı olarak başlatamıyor. Bunun yerine Kablosuz hata ayıklama ile kurabilirsiniz.</string>
+    <string name="elevated_turn_off">Kapat</string>
+    <string name="elevated_try_again">Tekrar dene</string>
+    <string name="elevated_steps_title">Kablosuz hata ayıklamayı ayarlayın</string>
+    <string name="elevated_steps">Android\'in hassas olarak gizlediği bildirimlerdeki tek kullanımlık kodlar da bilgisayarınıza ulaşır.\n\n1. Geliştirici seçeneklerini açın: Ayarlar › Telefon hakkında bölümünde Derleme numarası\'na 7 kez dokunun.\n2. Geliştirici seçenekleri\'nde Kablosuz hata ayıklamayı açın (Wi-Fi\'da), içine girin ve Eşleme kodu ile cihazı eşle\'ye dokunun.\n3. Kodu kapatmadan 6 haneli kodu NectarLink\'in bildirimine yazın.</string>
+    <string name="elevated_open_developer">Geliştirici seçeneklerini aç</string>
+    <string name="elevated_pair_title">NectarLink\'i Kablosuz hata ayıklama ile eşleştirin</string>
+    <string name="elevated_pair_text">Kablosuz hata ayıklama bölümünde Eşleme kodu ile cihazı eşle\'ye dokunun, ardından kodu buraya yazın.</string>
+    <string name="elevated_pair_action">Kodu gir</string>
+    <string name="elevated_pair_hint">6 haneli eşleştirme kodu</string>
+    <string name="elevated_pairing">Eşleştiriliyor…</string>
+    <string name="elevated_no_dialog">Eşleştirme kodu görünmüyor. Kablosuz hata ayıklama bölümünde Eşleme kodu ile cihazı eşle\'ye dokunun, ardından kodu buraya yazın.</string>
+    <string name="elevated_wrong_code">Bu kod çalışmadı. Kontrol edip yeniden yazın.</string>
+    <string name="channel_mirroring">Ekran paylaşımı</string>
+    <string name="channel_mirror_requests">Ekran paylaşımı istekleri</string>
+    <string name="mirror_request_title">%1$s ekranınızı görmek istiyor</string>
+    <string name="mirror_request_title_sound">%1$s telefonunuzun sesini çalmak istiyor</string>
+    <string name="mirror_request_text">Paylaşmak için dokunun. İstediğiniz zaman durdurabilirsiniz.</string>
+    <string name="mirror_request_text_sound">Paylaşmak için dokunun. Android ekranınızı paylaşmak için izin ister; bilgisayara yalnızca ses gider.</string>
+    <string name="mirror_sharing">Ekranınız %1$s ile paylaşılıyor</string>
+    <string name="mirror_sharing_sound">Telefonunuzun sesi %1$s ile paylaşılıyor</string>
+    <string name="action_stop">Durdur</string>
+    <plurals name="app_windows_title">
+        <item quantity="one">%1$d uygulama bir bilgisayarda pencerede açık</item>
+        <item quantity="other">%1$d uygulama bir bilgisayarda pencerelerde açık</item>
+    </plurals>
+    <string name="app_windows_text">%1$s cihazında gösteriliyor. Burada, ekranınızdakilerin yanında çalışırlar.</string>
+    <string name="action_close_all">Tümünü kapat</string>
+    <string name="settings_calls_and_contacts">Aramalar, kişiler ve mesajlar</string>
+    <string name="sms_title">Bilgisayarınızdan mesajlaşın</string>
+    <string name="sms_on">Açık. Konuşmalar bilgisayarınızda görünür; oradan mesaj okuyabilir ve gönderebilirsiniz.</string>
+    <string name="sms_off">Bilgisayarınızdan mesaj okuyun ve gönderin. Mesajlara ve kişilere erişim gerekir.</string>
+    <string name="calls_title">Bilgisayarınızda aramalar</string>
+    <string name="calls_on">Açık. Bilgisayarınız gelen ve son aramaları gösterir, arama başlatabilir veya yanıtlayabilir.</string>
+    <string name="calls_off">Kimin aradığını görün ve bilgisayarınızdan arama başlatın veya yanıtlayın. Ses telefonda kalır. Aramalara, arama geçmişine ve kişilere erişim gerekir.</string>
+    <string name="contacts_title">Bilgisayarınızda kişiler</string>
+    <string name="contacts_on">Açık. Kişileriniz bilgisayarınızdaki Aramalar ve Mesajlar bölümlerinde kullanılabilir.</string>
+    <string name="contacts_off">Bilgisayarınızdan kişilerde arayın, arama yapın veya mesaj gönderin. Kişilere erişim gerekir.</string>
+    <string name="settings_photos">Fotoğraflar ve videolar</string>
+    <string name="photos_title">Bilgisayarınızda fotoğraflar ve videolar</string>
+    <string name="photos_on">Açık. Fotoğraflarınız, ekran görüntüleriniz ve videolarınız bilgisayarınızda kullanılabilir.</string>
+    <string name="photos_partial">Yalnızca bazı fotoğraflar paylaşılıyor. Tüm galerinize bilgisayarınızdan göz atmak için tümüne izin verin.</string>
+    <string name="photos_off">Fotoğraf ve videolara bilgisayarınızdan göz atın, yeni ekran görüntülerini anında alın. Fotoğraflara ve videolara erişim gerekir.</string>
+    <string name="action_select_photos">Tümüne izin ver</string>
+    <string name="transfer_too_many">Bu klasörde bir kerede gönderilemeyecek kadar çok dosya var.</string>
+    <string name="transfers_title">Aktarımlar</string>
+    <string name="transfer_sending">%1$s cihazına gönderiliyor</string>
+    <string name="transfer_receiving">%1$s cihazından alınıyor</string>
+    <string name="transfer_waiting">%1$s bekleniyor</string>
+    <string name="transfer_pause">Duraklat</string>
+    <string name="transfer_resume">Sürdür</string>
+    <string name="transfer_paused_progress">Duraklatıldı · %1$s / %2$s</string>
+    <string name="transfer_received_from">Kaynak: %1$s · Download/Nectarlink klasöründe</string>
+    <string name="transfer_sent_to">%1$s cihazına gönderildi</string>
+    <string name="transfer_cancelled">İptal edildi</string>
+    <string name="transfer_denied">%1$s bu telefondan dosya kabul etmiyor.</string>
+    <string name="transfer_unreachable">%1$s cihazına ulaşılamadı.</string>
+    <string name="transfer_no_space">Yeterli alan yok.</string>
+    <string name="transfer_failed_integrity">Dosya bütünlük denetimini geçemedi; devam edebilmek için kısmi dosya saklandı</string>
+    <string name="transfer_failed">Aktarım tamamlanamadı.</string>
+    <string name="transfer_nothing">Bu dosyalar açılamıyor.</string>
+    <string name="transfer_off_for">%1$s için dosyalar kapalı.</string>
+    <string name="transfer_pick_pc">Hangi bilgisayara gönderilsin?</string>
+    <string name="clip_tile_label">Panoyu gönder</string>
+    <string name="action_send_clipboard">Panoyu gönder</string>
+    <string name="clip_sent_to">%1$s cihazına gönderildi</string>
+    <string name="clip_no_pc">Şu anda bağlı bilgisayar yok.</string>
+    <string name="clip_off_for">%1$s için pano kapalı.</string>
+    <string name="clip_too_large">Bir kerede gönderilemeyecek kadar çok metin var.</string>
+    <string name="clip_private">Kopyaladığınız içerik, uygulaması tarafından gizli olarak işaretlendiği için gönderilmedi.</string>
+    <string name="clip_empty">Panoda metin veya görüntü yok.</string>
+    <string name="clip_image_too_large">Bu görüntü gönderilemeyecek kadar büyük.</string>
+    <string name="clip_image_unreadable">Bu görüntü okunamıyor.</string>
+    <string name="clip_image_unsupported">Görüntü göndermek için %1$s cihazındaki NectarLink\'i güncelleyin.</string>
+    <string name="clip_nothing_shared">Gönderilecek metin yok.</string>
+    <string name="clipboard_history_title">Pano geçmişi</string>
+    <string name="clipboard_history_subtitle">Bilgisayarlarınızla paylaşılan son 50 öğe, bu telefonda şifreli olarak saklanır.</string>
+    <string name="clipboard_history_just_now">az önce</string>
+    <string name="clipboard_history_empty">Henüz bir şey yok. Bilgisayarlarınızla paylaşılan öğeler burada görünür.</string>
+    <string name="clipboard_history_search">Pano geçmişinde ara</string>
+    <string name="clipboard_history_no_match">“%1$s” ile eşleşen bir şey yok.</string>
+    <string name="clipboard_history_from">Kaynak: %1$s</string>
+    <string name="clipboard_history_sent_to">%1$s cihazına gönderildi</string>
+    <string name="clipboard_history_image">Görüntü</string>
+    <string name="clipboard_history_copy">Kopyala</string>
+    <string name="clipboard_history_copied">Panoya kopyalandı</string>
+    <string name="clipboard_history_pin">Sabitle</string>
+    <string name="clipboard_history_unpin">Sabitlemeyi kaldır</string>
+    <string name="clipboard_history_delete">Sil</string>
+    <string name="clipboard_history_clear">Geçmişi temizle</string>
+    <string name="clipboard_history_done">Bitti</string>
+    <string name="settings_clipboard_title">Pano</string>
+    <string name="settings_clipboard_suggestions">Kopyalanan metin için eylem öner</string>
+    <string name="settings_clipboard_suggestions_hint">Bilgisayarınızdan gelen metin için eylem önerin: bağlantılar, haritalar, aramalar, kargo takibi ve e-posta.</string>
+    <string name="clip_received_from">%1$s cihazından kopyalandı</string>
+    <string name="clip_action_open">Aç</string>
+    <string name="clip_action_maps">Haritalar\'da aç</string>
+    <string name="clip_action_call">Ara</string>
+    <string name="clip_action_track">Takip et</string>
+    <string name="clip_action_email">E-posta gönder</string>
+    <string name="background_title">Arka planda ulaşılabilir kalın</string>
+    <string name="background_text">Android pil tasarrufu için NectarLink\'i duraklatıyor, bu yüzden bilgisayarınız ona ulaşamıyor. Arka planda çalışmasına izin verin.</string>
+    <string name="background_on">Arka planda bağlı kalmasına izin verildi</string>
+    <string name="settings_background_title">Arka plan ve pil</string>
+    <string name="settings_run_in_background">Arka planda çalıştır</string>
+    <string name="settings_run_in_background_hint">Bu telefonu bilgisayarınızdan ulaşılabilir tutar. Kapalıyken NectarLink yalnızca açıkken bağlanır ve bildirim kaybolur.</string>
+    <string name="home_background_off_title">Arka plan bağlantısı kapalı</string>
+    <string name="home_background_off_text">NectarLink yalnızca uygulama açıkken bağlanır. Bu telefonu bilgisayarınızdan ulaşılabilir tutmak için açın.</string>
+    <string name="battery_open_oem_settings">Pil ayarları</string>
+    <string name="battery_guide_samsung">Samsung\'da: Uygulama bilgileri › Pil › Kısıtlanmamış\'ı seçin ve Cihaz bakımı › Pil › Arka plan kullanım sınırları bölümünde NectarLink\'in asla uyku moduna alınmadığından emin olun.</string>
+    <string name="battery_guide_xiaomi">Xiaomi / HyperOS / MIUI\'de: NectarLink için Otomatik başlat\'ı açın ve Uygulama bilgileri › Pil tasarrufu bölümünde Kısıtlama yok\'u seçin.</string>
+    <string name="battery_guide_oneplus">OnePlus / OxygenOS\'ta: Uygulama bilgileri › Pil kullanımı bölümünü açın, Arka plan etkinliğine izin ver ve Otomatik başlatmaya izin ver seçeneklerini açın.</string>
+    <string name="battery_guide_oppo_realme">Oppo / Realme\'de: Uygulama bilgileri › Pil kullanımı bölümünü açın, Arka plan etkinliğine izin ver ve Otomatik başlatmaya izin ver seçeneklerini açın.</string>
+    <string name="battery_guide_vivo">Vivo / Funtouch / OriginOS\'ta: Uygulama bilgileri › Pil bölümünü açın, Kısıtlanmamış\'ı (Yüksek arka plan güç kullanımı) seçin ve Otomatik başlat\'a izin verin.</string>
+    <string name="battery_guide_huawei">Huawei / Honor\'da: Uygulama başlatma\'yı (Telefon Yöneticisi) açın, NectarLink için Otomatik olarak yönet\'i kapatın ve Otomatik başlatma, İkincil başlatma ve Arka planda çalıştır seçeneklerini açık tutun.</string>
+    <string name="battery_guide_pixel">Pixel\'de: Uygulama bilgileri › Uygulama pil kullanımı bölümünü açın, Arka plan kullanımına izin ver\'e dokunun ve Kısıtlanmamış\'ı seçin.</string>
+    <string name="action_manage">Yönet</string>
+    <string name="action_app_info">Uygulama bilgileri</string>
+    <string name="theme_hive">Hive</string>
+    <string name="hive_invite_title">Yeni tema Hive\'ı deneyin</string>
+    <string name="hive_invite_text">Kömür karası üzerinde bal ya da sıcak balmumu tonları, uygulamanın arkasında canlı bir petekle. İstediğiniz zaman Ayarlar\'dan değiştirin.</string>
+    <string name="hive_invite_try">Hive\'ı dene</string>
+    <string name="hive_invite_dismiss">Şimdi değil</string>
+    <string name="settings_comb_motion">Hareketli petek</string>
+    <string name="settings_comb_motion_hint">Petek nefes alır ve atar. Animasyonları kaldır veya pil tasarrufu açıkken durağan kalır.</string>
+    <string name="theme_bloom">Bloom</string>
+    <string name="theme_graphite">Graphite</string>
+    <string name="mode_system">Sistem</string>
+    <string name="mode_light">Açık</string>
+    <string name="mode_dark">Koyu</string>
+    <string name="about_version">NectarLink %1$s</string>
+    <string name="unpair_title">%1$s eşleştirmesi kaldırılsın mı?</string>
+    <string name="unpair_text">İki cihaz da birbirini unutur. İstediğiniz zaman yeniden eşleştirebilirsiniz.</string>
+    <string name="core_failed">NectarLink başlatılamadı: %1$s</string>
+
+    <!-- Actions -->
+    <string name="action_pair">Eşleştir</string>
+    <string name="action_pair_nearby">Bunun yerine yakındakiyle eşleştir</string>
+    <string name="action_scan_instead">Bunun yerine kod tara</string>
+    <string name="action_codes_match">Kodlar eşleşiyor</string>
+    <string name="action_codes_differ">Eşleşmiyor</string>
+    <string name="action_try_again">Tekrar dene</string>
+    <string name="action_cancel">İptal</string>
+    <string name="action_allow_camera">Kameraya izin ver</string>
+    <string name="action_ring_pc">Bilgisayarı çaldır</string>
+    <string name="action_stop_ringing">Çalmayı durdur</string>
+    <string name="action_stop_service">Kapat</string>
+    <string name="action_turn_on">Aç</string>
+    <string name="action_ring_device">Çaldır</string>
+    <string name="peer_kind_phone">Telefon</string>
+    <string name="peer_kind_tablet">Tablet</string>
+    <string name="action_unpair">Eşleştirmeyi kaldır</string>
+    <string name="action_pair_new">Başka bir bilgisayar eşleştir</string>
+    <string name="action_refresh">Yenile</string>
+    <string name="action_update">Güncelle</string>
+    <string name="update_title">NectarLink %1$s kullanılabilir</string>
+    <string name="update_text">En son iyileştirmeleri ve düzeltmeleri edinin.</string>
+    <string name="update_downloading">İndiriliyor…</string>
+    <string name="update_downloading_progress">İndiriliyor · %1$s / %2$s</string>
+    <string name="update_waiting_network">Bağlantı bekleniyor. İndirme kaldığı yerden devam eder.</string>
+    <string name="update_installing">Kuruluyor. Android onaylamanızı isteyebilir.</string>
+    <string name="update_not_allowed">NectarLink\'in güncellemelerini kurmasına izin verin. Geri döndüğünüzde güncelleme devam eder.</string>
+    <string name="update_damaged">İndirilen dosya bozuk olduğu için kurulmadı. Tekrar deneyin.</string>
+    <string name="update_offline">Güncelleme indirilemedi. İnternete bağlandığınızda tekrar deneyin.</string>
+    <string name="update_install_failed">Android güncellemeyi kurmadı. Tekrar deneyin.</string>
+    <string name="update_whats_new">Yenilikler</string>
+    <string name="update_check">Güncellemeleri denetle</string>
+    <string name="update_checking">Güncellemeler denetleniyor…</string>
+    <string name="update_up_to_date_version">NectarLink %1$s güncel.</string>
+    <string name="update_current_version">NectarLink %1$s sürümü yüklü.</string>
+    <string name="update_check_failed">Güncellemeler denetlenemedi. İnternet bağlantınızı kontrol edin.</string>
+    <string name="action_lock_pc">Bilgisayarı kilitle</string>
+    <string name="action_sleep_pc">Uyut</string>
+    <string name="action_wake_pc">Uyandır</string>
+    <string name="action_disconnect">Bağlantıyı kes</string>
+    <string name="action_stop_reconnecting">Yeniden bağlanmayı durdur</string>
+    <string name="action_reconnect">Yeniden bağlan</string>
+    <string name="wake_waking">%1$s uyandırılıyor…</string>
+    <string name="wake_timeout_title">%1$s henüz uyanmadı</string>
+    <string name="wake_timeout_text">Şunları kontrol edin:\n• Wake-on-LAN, BIOS/UEFI\'de ve Windows\'ta ağ bağdaştırıcısının ayarlarında (Güç Yönetimi ve Wake on Magic Packet) etkin.\n• %1$s kapatıldıysa Ethernet\'e bağlı (Wi-Fi ile uyandırma, kapalı durumdan nadiren çalışır).\n• Bu telefon %1$s ile aynı ağda.</string>
+    <string name="wake_not_ready">Bu telefonun ağ adresini öğrenmesi için %1$s cihazına bir kez bağlanın.</string>
+    <string name="pc_locked">%1$s kilitlendi.</string>
+    <string name="pc_sleeping">%1$s uyku moduna geçiyor.</string>
+    <string name="pc_actions_off">%1$s üzerinde bu telefon için kilitleme ve uyku kapalı.</string>
+    <string name="channel_links">Bilgisayarınızdan gelen bağlantılar</string>
+    <!-- Play on phone: what a PC plays, streamed to the phone. -->
+    <string name="watch_offer_title">%1$s cihazından izle</string>
+    <string name="watch_offer_untitled">Bilgisayarınızda çalan</string>
+    <string name="watch_back_10">10 saniye geri</string>
+    <string name="watch_forward_10">10 saniye ileri</string>
+    <string name="watch_seek">Konum</string>
+    <string name="watch_file_failed">Bu video oynatılamadı.</string>
+    <string name="watch_offer_action">İzle</string>
+    <string name="watch_from">Kaynak: %1$s</string>
+    <string name="watch_close">Kapat</string>
+    <string name="link_from">%1$s cihazından bağlantı</string>
+    <string name="link_opened_on">%1$s cihazında açıldı</string>
+    <string name="link_pick_pc">Hangi bilgisayarda açılsın?</string>
+    <string name="channel_pc_tasks">Bilgisayarınızdaki görevler</string>
+    <string name="channel_pc_tasks_running">Bilgisayarınızda çalışan görevler</string>
+    <string name="task_running_on">%1$s üzerinde çalışıyor</string>
+
+    <!-- Notifications -->
+    <string name="channel_connection">Bağlantı</string>
+    <string name="channel_ringing">Telefonumu bul</string>
+    <string name="notification_connected_to">%1$s cihazına bağlı</string>
+    <plurals name="notification_connected_pcs">
+        <item quantity="one">%1$d bilgisayara bağlı</item>
+        <item quantity="other">%1$d bilgisayara bağlı</item>
+    </plurals>
+    <string name="notification_waiting">Bilgisayarınız bekleniyor</string>
+    <string name="notification_not_paired">Henüz bir bilgisayarla eşleştirilmedi</string>
+    <plurals name="transfer_files">
+        <item quantity="one">%1$d dosya</item>
+        <item quantity="other">%1$d dosya</item>
+    </plurals>
+    <plurals name="transfer_items">
+        <item quantity="one">%1$d öğe</item>
+        <item quantity="other">%1$d öğe</item>
+    </plurals>
+
+    <!-- Remote input (touchpad, air mouse, keyboard, voice typing & presentation) -->
+    <string name="action_remote_pc">Bilgisayarı kontrol et</string>
+    <string name="action_back">Geri</string>
+    <string name="settings_remote">Bilgisayarınızı kontrol edin</string>
+    <string name="settings_volume_keys_control_pc">Ses düğmeleri bilgisayarınızı kontrol eder</string>
+    <string name="settings_volume_keys_control_pc_hint">Bilgisayarınız müzik veya video çalarken telefonunuzun ses düğmeleri bilgisayarın ses düzeyini değiştirir.</string>
+    <string name="settings_touchpad_sensitivity">Dokunmatik yüzey hızı</string>
+    <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
+    <string name="remote_mode_touchpad">Dokunmatik yüzey</string>
+    <string name="remote_mode_air">Air mouse</string>
+    <string name="remote_mode_presentation">Sunum</string>
+    <string name="remote_touchpad_hint">Taşımak için sürükleyin · Tıklamak için dokunun · Sağ tık veya kaydırma için iki parmak · Sürüklemek için iki kez dokunup basılı tutun</string>
+    <string name="remote_air_hold">%1$s üzerinde nişan almak için basılı tutun</string>
+    <string name="remote_air_active">%1$s üzerinde hareket ediyor · telefonu eğin veya tıklamak için dokunun</string>
+    <string name="remote_air_hint">İşaretçiyi hareket ettirmek için alana basılı tutup telefonu eğin · Tıklamak için alana dokunun · Durmak için bırakın</string>
+    <string name="remote_air_no_gyro_title">Bu telefonda jiroskop yok</string>
+    <string name="remote_air_no_gyro_text">Air mouse, telefonu nasıl eğdiğinizi izlemek için jiroskop kullanır. Bunun yerine Dokunmatik yüzey modunu kullanın.</string>
+    <string name="remote_left_click">Sol</string>
+    <string name="remote_right_click">Sağ</string>
+    <string name="remote_middle_click">Orta</string>
+    <string name="remote_keyboard">Klavye</string>
+    <string name="remote_type_placeholder">%1$s cihazına yazın…</string>
+    <string name="remote_dictate">Dikte et</string>
+    <string name="remote_dictate_stop">Durdur</string>
+    <string name="remote_dictate_hint">%1$s cihazına konuşmak için Dikte et\'e dokunun veya basılı tutun</string>
+    <string name="remote_dictate_listening">%1$s için dinleniyor…</string>
+    <string name="remote_dictate_typing">%1$s cihazına yazılıyor…</string>
+    <string name="remote_dictate_typed">%1$s cihazına yazıldı: “%2$s”</string>
+    <string name="remote_dictate_no_recognizer">Bu telefonda konuşma tanıma yüklü değil.</string>
+    <string name="remote_dictate_no_speech">Hiçbir şey algılanmadı. Tekrar denemek için Dikte et\'e dokunun veya basılı tutun.</string>
+    <string name="remote_dictate_error">Konuşma tanıma tamamlanamadı. Tekrar denemek için Dikte et\'e dokunun veya basılı tutun.</string>
+    <string name="remote_dictate_permission_needed">NectarLink\'in %1$s cihazına dikte edebilmesi için mikrofon erişimine ihtiyacı var.</string>
+    <string name="remote_denied_title">%1$s üzerinde kontrole izin verin</string>
+    <string name="remote_denied_text">%1$s üzerinde, NectarLink\'in sorduğu pencerede veya Ayarlar › Cihazlar bölümünde bu telefondan kontrole izin verin.</string>
+    <string name="remote_offline_text">%1$s şu anda bağlı değil.</string>
+    <string name="remote_unsupported_text">Bu telefondan kontrol etmek için %1$s cihazındaki NectarLink\'i güncelleyin.</string>
+    <string name="remote_slide_next">Sonraki slayt</string>
+    <string name="remote_slide_prev">Önceki</string>
+    <string name="remote_slide_start">Gösteriyi başlat</string>
+    <string name="remote_slide_stop">Gösteriyi bitir</string>
+    <string name="remote_slide_black">Siyah ekran</string>
+    <string name="remote_laser_hold">Lazer işaretçi için basılı tutun</string>
+    <string name="remote_laser_active">%1$s üzerinde lazer · telefonu eğin veya burada sürükleyin</string>
+    <string name="remote_volume_hint">Bu ekran açıkken ses düğmeleri de slayt değiştirir.</string>
+    <string name="remote_mode_screen">Ekran</string>
+    <string name="pc_mirror_connecting">Bağlanılıyor: %1$s…</string>
+    <string name="pc_mirror_fullscreen">Tam ekran</string>
+    <string name="pc_mirror_exit_fullscreen">Tam ekrandan çık</string>
+    <string name="pc_mirror_right_click">Sağ tık</string>
+    <string name="pc_mirror_task_view">Görev Görünümü</string>
+    <string name="pc_mirror_keyboard">Klavye</string>
+    <string name="pc_mirror_hide_keyboard">Tuşları gizle</string>
+    <string name="pc_mirror_send_text">Gönder</string>
+    <string name="pc_mirror_backspace">Backspace</string>
+    <string name="pc_mirror_quality_720p">720p</string>
+    <string name="pc_mirror_quality_1080p">1080p</string>
+    <string name="pc_mirror_quality_desc">Yayın kalitesi: %1$s</string>
+    <string name="pc_mirror_viewport_desc">%1$s ekranı</string>
+
+    <!-- Voice recorder to PC -->
+    <string name="action_record_pc">Kaydet</string>
+    <string name="channel_recorder">Ses kaydedici</string>
+    <!-- Phone as microphone. -->
+    <string name="channel_mic">Bilgisayarınız için mikrofon</string>
+    <string name="channel_mic_requests">Mikrofon istekleri</string>
+    <string name="mic_notification_title">%1$s için mikrofon açık</string>
+    <string name="mic_notification_text">Bilgisayarınız bu telefonun mikrofonunu duyuyor.</string>
+    <string name="mic_request_title">%1$s bu telefonun mikrofonunu istiyor</string>
+    <string name="mic_request_text">Başlatmak için dokunun. Siz veya bilgisayar durdurana kadar açık kalır.</string>
+    <string name="mic_request_start">Başlat</string>
+    <string name="mic_request_card_text">Siz veya bilgisayar durdurana kadar açık kalır.</string>
+    <string name="mic_pc_toggle">Bu telefonu mikrofon olarak kullan</string>
+    <string name="mic_pc_toggle_hint">Varsayılan olarak açık. Bu bilgisayar mikrofonu isteyebilir. Yalnızca Başlat\'a dokunduğunuzda açılır.</string>
+    <string name="recorder_notification_recording">%1$s için kaydediliyor</string>
+    <string name="recorder_notification_paused">Kayıt duraklatıldı (%1$s)</string>
+    <string name="recorder_permission_title">Mikrofon erişimine izin verin</string>
+    <string name="recorder_permission_text">NectarLink mikrofonu yalnızca %1$s cihazına göndermek üzere sesli not kaydederken kullanır.</string>
+    <string name="recorder_allow_mic">Mikrofona izin ver</string>
+    <string name="recorder_offline_hint">Kayıtlar bu telefona kaydedilir ve %1$s bağlandığında otomatik olarak gönderilir.</string>
+    <string name="recorder_status_ready">%1$s için kayda hazır</string>
+    <string name="recorder_status_recording">%1$s için kaydediliyor</string>
+    <string name="recorder_status_paused">Duraklatıldı</string>
+    <string name="recorder_start">Kaydı başlat</string>
+    <string name="recorder_pause">Duraklat</string>
+    <string name="recorder_resume">Sürdür</string>
+    <string name="recorder_marker_hint">İşaretçi etiketi (isteğe bağlı)</string>
+    <string name="recorder_add_marker">İşaretçi ekle</string>
+    <string name="recorder_marker_default">İşaretçi %1$d</string>
+    <string name="recorder_saved_title">Kayıtlar</string>
+    <string name="recorder_send_now">Gönder</string>
+    <string name="recorder_send_again">Yeniden gönder</string>
+    <string name="recorder_delete">Sil</string>
+    <string name="recorder_denied_text">%1$s üzerinde bu telefon için ses kayıtları kapalı.</string>
+    <plurals name="recorder_markers_count">
+        <item quantity="one">%1$d işaretçi</item>
+        <item quantity="other">%1$d işaretçi</item>
+    </plurals>
+
+    <!-- Deck (macro pad to PC) -->
+    <string name="action_deck_pc">Deck</string>
+    <string name="action_desk_pc">Masa saati</string>
+    <string name="deck_fullscreen">Tam ekran</string>
+    <string name="deck_exit_fullscreen">Tam ekrandan çık</string>
+    <string name="deck_playing">Oynatılıyor</string>
+    <string name="deck_paused">Duraklatıldı</string>
+    <string name="deck_muted">Sessiz</string>
+    <string name="deck_live">Canlı</string>
+    <string name="deck_volume_percent">%%%1$d</string>
+    <string name="deck_empty_page">Bu sayfada henüz kutucuk yok. %1$s üzerindeki NectarLink\'ten kutucuk ekleyin.</string>
+    <string name="deck_commands_denied_title">%1$s üzerinde komutlara izin verin</string>
+    <string name="deck_commands_denied_text">Bu telefondan kabuk komutları çalıştırmak için %1$s üzerinde NectarLink › Ayarlar › Cihazlar bölümünde bu telefon için “Deck kabuk komutlarını çalıştır” seçeneğini açın.</string>
+    <string name="deck_hint">Kutucukları %1$s üzerindeki Deck\'ten özelleştirin</string>
+    <string name="pc_audio_volume">Ses düzeyi</string>
+    <string name="pc_audio_mute">Sesi kapat</string>
+    <string name="pc_audio_unmute">Sesi aç</string>
+    <string name="pc_audio_muted">Sessiz</string>
+    <string name="pc_audio_output">Çıkış: %1$s</string>
+    <string name="pc_audio_outputs_title">%1$s üzerindeki ses çıkışları</string>
+    <string name="pc_audio_default_badge">Varsayılan</string>
+    <string name="pc_audio_outputs_hint">%1$s üzerindeki etkin oynatma cihazları.</string>
+    <string name="pc_audio_use_phone_speaker">Telefonu hoparlör olarak kullan</string>
+    <string name="pc_audio_use_phone_speaker_sub">Bilgisayar sesini bu telefonda çal</string>
+    <string name="pc_audio_use_phone_speaker_on">Bilgisayar sesi bu telefona aktarılıyor</string>
+    <string name="pc_audio_use_phone_mic">Telefonu mikrofon olarak kullan</string>
+    <string name="pc_audio_use_phone_mic_sub">Bu telefonun mikrofonunu bilgisayara gönder</string>
+    <string name="pc_audio_use_phone_mic_on">Bilgisayar bu telefonun mikrofonunu duyuyor</string>
+
+    <!-- Phone storage in File Explorer -->
+    <string name="storage_all_files_title">Tüm dosyalara erişim</string>
+    <string name="storage_all_files_on">Açık. İzin verdiğiniz bilgisayarlar bu telefonun dosyalarına Dosya Gezgini\'nde göz atabilir, açabilir ve kopyalayabilir.</string>
+    <string name="storage_all_files_off">Bu telefonun klasörlerine bilgisayarınızdaki Dosya Gezgini\'nden göz atın. Tüm dosyalara erişim gerekir; ya da aşağıdan belirli klasörleri seçin.</string>
+    <string name="storage_saf_title">Yalnızca seçili klasörler</string>
+    <string name="storage_saf_hint">Yalnızca seçtiğiniz klasörleri paylaşın.</string>
+    <string name="storage_add_folder">Klasör ekle</string>
+    <string name="storage_remove_folder">Kaldır</string>
+    <string name="storage_pc_toggle">Bu telefonun depolama alanına Dosya Gezgini\'nden göz at</string>
+    <string name="storage_pc_toggle_hint">Varsayılan olarak kapalı. Bu bilgisayarın paylaşılan dosyalarınızı listelemesine, açmasına, yüklemesine, yeniden adlandırmasına ve silmesine olanak tanır.</string>
+    <string name="storage_request_title">%1$s bu telefonun depolama alanına göz atmak istiyor</string>
+    <string name="storage_request_text">%1$s, paylaşılan depolama alanınıza (veya seçili klasörlere) Dosya Gezgini\'nden göz atabilsin mi?</string>
+    <string name="action_not_now">Şimdi değil</string>
+
+    <!-- Phone as webcam to PC -->
+    <string name="action_webcam_pc">Web kamerası</string>
+    <string name="channel_webcam">Web kamerası</string>
+    <string name="channel_webcam_requests">Web kamerası istekleri</string>
+    <string name="webcam_notification_streaming">Kamera %1$s cihazına aktarılıyor</string>
+    <string name="webcam_notification_detail">%1$d × %2$d · %3$s kamera</string>
+    <string name="webcam_request_title">%1$s kameranızı kullanmak istiyor</string>
+    <string name="webcam_request_text">Web kamerası kontrollerini açıp aktarımı başlatmak için dokunun.</string>
+    <string name="webcam_permission_title">Kamera erişimine izin verin</string>
+    <string name="webcam_permission_text">NectarLink kamerayı yalnızca %1$s cihazına web kamerası olarak görüntü aktarırken kullanır.</string>
+    <string name="webcam_allow_camera">Kameraya izin ver</string>
+    <string name="webcam_status_connecting">Kamera %1$s cihazına bağlanıyor…</string>
+    <string name="webcam_status_ready">%1$s cihazına aktarmaya hazır</string>
+    <string name="webcam_start">Web kamerasını başlat</string>
+    <string name="webcam_stop">Web kamerasını durdur</string>
+    <string name="webcam_camera_back">Arka</string>
+    <string name="webcam_camera_front">Ön</string>
+    <string name="webcam_switch_to_front">Ön kameraya geç</string>
+    <string name="webcam_switch_to_back">Arka kameraya geç</string>
+    <string name="webcam_turn_torch_on">Feneri aç</string>
+    <string name="webcam_turn_torch_off">Feneri kapat</string>
+    <string name="webcam_switch_camera">Kamerayı çevir</string>
+    <string name="webcam_zoom_label">Yakınlaştırma %1$.1f×</string>
+    <string name="webcam_resolution_label">Çözünürlük</string>
+    <string name="webcam_denied_text">%1$s üzerinde bu telefon için web kamerası kapalı.</string>
+    <string name="webcam_offline_hint">Kameranızı aktarmaya başlamak için %1$s ile aynı ağa bağlanın.</string>
+
+    <!-- Timeline -->
+    <string name="timeline_title">Zaman Çizelgesi</string>
+    <string name="timeline_subtitle">Bilgisayarlarınızla paylaşılan dosyalar, pano öğeleri, bağlantılar, fotoğraflar ve oturumlar.</string>
+    <string name="timeline_search">Zaman çizelgesinde ara</string>
+    <string name="timeline_empty">Zaman çizelgenizde henüz bir şey yok.</string>
+    <string name="timeline_no_match">“%1$s” ile eşleşen bir şey yok.</string>
+    <string name="timeline_filter_all">Tümü</string>
+    <string name="timeline_filter_files">Dosyalar</string>
+    <string name="timeline_filter_clips">Pano öğeleri</string>
+    <string name="timeline_filter_links">Bağlantılar</string>
+    <string name="timeline_filter_photos">Fotoğraflar</string>
+    <string name="timeline_filter_recordings">Kayıtlar</string>
+    <string name="timeline_filter_sessions">Oturumlar</string>
+    <string name="timeline_action_open">Aç</string>
+    <string name="timeline_action_folder">Klasörde göster</string>
+    <string name="timeline_action_copy">Kopyala</string>
+    <string name="timeline_action_send_again">Yeniden gönder</string>
+    <string name="timeline_action_remove">Kaldır</string>
+    <string name="timeline_action_clear_all">Tümünü temizle</string>
+    <string name="timeline_action_load_more">Daha fazla yükle</string>
+    <string name="timeline_today">Bugün</string>
+    <string name="timeline_yesterday">Dün</string>
+    <string name="timeline_retention_30d">30 g</string>
+    <string name="timeline_retention_90d">90 g</string>
+    <string name="timeline_retention_1y">1 y</string>
+    <string name="timeline_retention_all">Tümü</string>
+
+    <!-- Data & storage -->
+    <string name="settings_data_storage_title">Veri ve depolama</string>
+    <string name="data_action_clear">Temizle</string>
+    <string name="data_notifications_title">Bildirim geçmişi</string>
+    <string name="data_notifications_subtitle">Eşleştirilmiş bilgisayarlara canlı yansıtılır · bu telefonda saklanmaz (bilgisayarlar kapatılan bildirimleri en fazla 24 saat / 300 öğe saklar)</string>
+    <string name="data_clipboard_title">Pano geçmişi</string>
+    <string name="data_clipboard_subtitle">Cihazda şifreli (parolalar ve tek kullanımlık kodlar hariç) · 7 gün, en fazla 50 öğe / 128 MB saklanır</string>
+    <plurals name="data_clipboard_count">
+        <item quantity="one">%1$d pano öğesi kayıtlı</item>
+        <item quantity="other">%1$d pano öğesi kayıtlı</item>
+    </plurals>
+    <string name="data_timeline_title">Zaman Çizelgesi</string>
+    <string name="data_timeline_subtitle">Dosyalar, pano öğeleri, bağlantılar, fotoğraflar, kayıtlar ve oturumlar · en fazla 5.000 öğe</string>
+    <string name="data_messages_title">Mesaj önbelleği</string>
+    <string name="data_messages_subtitle">SMS ve sohbet bildirimleri Android\'den canlı okunur; geçici MMS hazırlık dosyaları en fazla 5 dakika saklanır (bilgisayarlar sohbetleri 90 gün önbellekte tutar)</string>
+    <string name="data_photos_title">Fotoğraf küçük resimleri ve kamera önbelleği</string>
+    <string name="data_photos_subtitle">Fotoğraflar gerektiğinde doğrudan MediaStore\'dan okunur; geçici Continuity Camera çekimleri en fazla 24 saat saklanır</string>
+    <string name="data_received_files_title">Alınan dosya geçmişi</string>
+    <string name="data_received_files_subtitle">Aktarım günlüğü Zaman Çizelgesi ile birlikte saklanır (İndirilenler\'e kaydedilen dosyalar asla silinmez)</string>
+    <string name="data_clear_everything_hint">Pano geçmişini, Zaman Çizelgesi\'ni, aktarım kayıtlarını ve önbellekleri siler. Eşleştirilmiş bilgisayarlar ve ayarlar korunur.</string>
+    <string name="data_clear_everything_button">Her şeyi temizle…</string>
+    <string name="data_clear_everything_dialog_title">Tüm yerel veriler temizlensin mi?</string>
+    <string name="data_clear_everything_dialog_body">Bu telefondaki pano geçmişini, Zaman Çizelgesi\'ni, alınan dosya kayıtlarını ve önbellekleri siler. Eşleştirilmiş bilgisayarlar ve ayarlar korunur.</string>
+    <string name="data_clear_everything_confirm">Her şeyi temizle</string>
+    <string name="data_cleared_everything_toast">Bu telefondaki tüm yerel veriler temizlendi.</string>
+
+    <!-- LocalSend -->
+    <string name="settings_localsend_title">LocalSend</string>
+    <string name="settings_localsend_subtitle">Yakındaki LocalSend cihazlarıyla dosya gönderip alın. Varsayılan olarak kapalı. Gelen dosyalar için her zaman önce sorulur.</string>
+    <string name="localsend_card_title">Yakındaki LocalSend cihazları</string>
+    <string name="localsend_card_empty">Bu Wi-Fi ağında henüz LocalSend cihazı bulunamadı.</string>
+    <string name="localsend_nearby_device">Yakındaki cihaz</string>
+    <string name="action_accept">Kabul et</string>
+    <string name="action_decline">Reddet</string>
+    <string name="action_dismiss">Kapat</string>
+
+    <!-- Continuity Camera -->
+    <string name="channel_camera_requests">Kamera çekim istekleri</string>
+    <string name="continuity_camera_request_scan_title">%1$s bir belge taramak istiyor</string>
+    <string name="continuity_camera_request_photo_title">%1$s bir fotoğraf çekmek istiyor</string>
+    <string name="continuity_camera_request_scan_text">Kameranızla belge taramak için dokunun.</string>
+    <string name="continuity_camera_request_photo_text">Kameranızla fotoğraf çekmek için dokunun.</string>
+    <string name="continuity_camera_scan_title">Belge tara</string>
+    <string name="continuity_camera_photo_title">Fotoğraf çek</string>
+    <string name="continuity_camera_for_pc">%1$s için</string>
+    <string name="continuity_camera_mode_photo">Fotoğraf</string>
+    <string name="continuity_camera_mode_scan">Tara</string>
+    <string name="continuity_camera_enhance">Belgeyi iyileştir</string>
+    <string name="continuity_camera_adjust_corners">Köşeleri ayarla</string>
+    <string name="continuity_camera_preview_scan">Taramayı önizle</string>
+    <string name="continuity_camera_retake">Yeniden çek</string>
+    <string name="continuity_camera_send_scan">Taramayı gönder</string>
+    <string name="continuity_camera_use_photo">Fotoğrafı kullan</string>
+    <string name="continuity_camera_shutter_photo">Fotoğraf çek</string>
+    <string name="continuity_camera_shutter_scan">Belgeyi yakala</string>
+    <string name="continuity_camera_preview_desc">Yakalanan önizleme</string>
+    <string name="continuity_camera_corners_desc">Belge kenarlarını ayarlamak için köşeleri sürükleyin</string>
+    <string name="continuity_camera_permission_denied">Telefonda kamera izni reddedildi</string>
+    <string name="continuity_camera_cancelled">Telefonda iptal edildi</string>
+
+    <!-- Task notifications -->
+    <string name="task_default_label">Görev</string>
+    <string name="task_finished_title">%1$s tamamlandı</string>
+    <string name="task_failed_title">%1$s başarısız oldu (çıkış kodu %2$d)</string>
+    <string name="task_took_from">%1$s · %2$s</string>
+    <string name="task_took_hm">Süre: %1$d sa %2$02d dk</string>
+    <string name="task_took_ms">Süre: %1$d dk %2$02d sn</string>
+    <string name="task_took_s">Süre: %1$d sn</string>
+    <string name="task_running_short">Çalışıyor</string>
+
+    <!-- Errors -->
+    <string name="error_not_connected">Bilgisayar şu anda bağlı değil.</string>
+    <string name="error_not_paired">Bu bilgisayar artık eşleştirilmiş değil.</string>
+    <string name="error_timed_out">Bilgisayar zamanında yanıt vermedi.</string>
+    <string name="error_unsupported">Bilgisayardaki uygulama bunu henüz desteklemiyor.</string>
+    <string name="error_generic">Bir sorun oluştu.</string>
+
+    <!-- Theme seed names -->
+    <string name="settings_seed_honey">Bal</string>
+    <string name="settings_seed_lavender">Lavanta</string>
+    <string name="settings_seed_ocean">Okyanus</string>
+    <string name="settings_seed_sage">Adaçayı</string>
+    <string name="settings_seed_black">Siyah</string>
+    <string name="settings_amoled">Saf siyah (AMOLED)</string>
+    <string name="settings_amoled_hint">OLED ekranlar için kapkara #000000 koyu yüzeyler.</string>
+
+    <!-- Deck defaults & accessibility -->
+    <string name="deck_tile_with_badge">%1$s, %2$s</string>
+    <string name="deck_default_page_main">Ana</string>
+    <string name="deck_default_play_pause">Oynat / duraklat</string>
+    <string name="deck_default_previous">Önceki</string>
+    <string name="deck_default_next">Sonraki</string>
+    <string name="deck_default_volume_down">Sesi azalt</string>
+    <string name="deck_default_volume_up">Sesi artır</string>
+    <string name="deck_default_volume_mute">Sesi kapat</string>
+    <string name="deck_default_mic_mute">Mikrofonu kapat</string>
+    <string name="deck_default_show_desktop">Masaüstünü göster</string>
+    <string name="deck_default_switch_window">Pencere değiştir</string>
+    <string name="deck_default_screenshot">Ekran görüntüsü</string>
+    <string name="deck_default_lock_pc">Bilgisayarı kilitle</string>
+
+    <!-- Remote special keys -->
+    <string name="remote_key_ctrl">Ctrl</string>
+    <string name="remote_key_alt">Alt</string>
+    <string name="remote_key_shift">Shift</string>
+    <string name="remote_key_win">Win</string>
+    <string name="remote_key_esc">Esc</string>
+    <string name="remote_key_esc_desc">Escape</string>
+    <string name="remote_key_tab">Tab</string>
+    <string name="remote_key_left_desc">Sol ok</string>
+    <string name="remote_key_up_desc">Yukarı ok</string>
+    <string name="remote_key_down_desc">Aşağı ok</string>
+    <string name="remote_key_right_desc">Sağ ok</string>
+    <string name="remote_key_home">Home</string>
+    <string name="remote_key_end">End</string>
+    <string name="remote_key_del">Del</string>
+    <string name="remote_key_del_desc">Delete</string>
+    <string name="remote_key_copy">Kopyala</string>
+    <string name="remote_key_paste">Yapıştır</string>
+
+    <!-- Webcam formatting -->
+    <string name="webcam_stream_spec">%1$d × %2$d · %3$d fps</string>
+    <string name="webcam_stream_camera_spec">%1$d × %2$d · %3$s</string>
+    <string name="webcam_status_streaming_camera">%3$s cihazına %1$d × %2$d aktarılıyor · %4$s</string>
+    <string name="webcam_res_720p">720p</string>
+    <string name="webcam_res_1080p">1080p</string>
+    <string name="webcam_res_4k">4K</string>
+    <string name="webcam_zoom_preset">%1$d×</string>
+
+    <!-- Formatted status & metadata phrases -->
+    <string name="transfer_requested_from_size">%1$s dosya göndermek istiyor · %2$s</string>
+    <string name="transfer_sending_progress">%1$s cihazına gönderiliyor · %2$s / %3$s</string>
+    <string name="transfer_receiving_progress">%1$s cihazından alınıyor · %2$s / %3$s</string>
+    <string name="clipboard_history_meta">%1$s · %2$s</string>
+    <string name="clipboard_history_meta_pinned">%1$s · %2$s · Sabitlendi</string>
+    <string name="timeline_latest_summary">%1$s · %2$s</string>
+    <string name="recorder_marker_chip">%1$s · %2$s</string>
+
+    <!-- Rich Handoff -->
+    <string name="handoff_map_from">%1$s cihazından harita</string>
+    <string name="handoff_video_from">%1$s cihazından video</string>
+    <string name="handoff_action_continue_video">İzlemeye devam et</string>
+    <string name="handoff_doc_received_from">Kaynak: %1$s · açmak için dokunun</string>
+
+    <!-- Remote PC keyboard typing without mirroring -->
+    <string name="keyboard_from_pc_banner">%1$s cihazından yazılıyor</string>
+    <string name="keyboard_stop">Yazmayı durdur</string>
+
+    <!-- Home-screen PC widget -->
+    <string name="widget_pc_title">Bilgisayar hızlı işlemleri</string>
+    <string name="widget_pc_description">Eşleştirilmiş bilgisayarınız için bağlantı durumu, Panoyu gönder, Bilgisayarı çaldır, Bilgisayarı kilitle ve Uyandır.</string>
+    <string name="widget_pc_no_pc">Eşleştirilmiş bilgisayar yok</string>
+    <string name="widget_pc_tap_to_pair">NectarLink\'i açıp bir bilgisayar eşleştirmek için dokunun</string>
+    <string name="widget_pc_connected">Bağlı</string>
+    <string name="widget_pc_offline">Çevrimdışı</string>
+    <string name="widget_pc_waking">Uyandırılıyor…</string>
+    <string name="widget_pc_wake">Uyandır</string>
+    <string name="widget_pc_send_clip">Panoyu gönder</string>
+    <string name="widget_pc_ring">Bilgisayarı çaldır</string>
+    <string name="widget_pc_lock">Bilgisayarı kilitle</string>
+    <string name="widget_pc_ringing_toast">%1$s çaldırılıyor…</string>
+    <string name="widget_pc_waking_toast">%1$s uyandırılıyor…</string>
+
+    <!-- Companion Device Manager proximity wake -->
+    <string name="companion_wake_title">Bilgisayar yakındayken uyandır (Companion Device)</string>
+    <string name="companion_wake_on">İlişkilendirildi · bilgisayarınız yakındayken Android NectarLink\'i uyandırır</string>
+    <string name="companion_wake_off">BLE işareti menzile girdiğinde Android\'in NectarLink\'i uyandırması için bilgisayarınızı ilişkilendirin</string>
+    <string name="companion_wake_associate">İlişkilendir</string>
+
+    <!-- Flick to Send sheet -->
+
+    <!-- PC notifications & Browse PC files -->
+    <string name="channel_pc_notifications">Bilgisayar bildirimleri</string>
+    <string name="channel_peer_notifications">Diğer telefonunuzdan veya tabletinizden bildirimler</string>
+    <string name="action_browse_pc_files">Bilgisayar dosyalarına göz at</string>
+    <string name="pc_files_title">%1$s üzerindeki dosyalar</string>
+    <string name="pc_files_root">Ana klasör</string>
+    <string name="pc_files_up">Yukarı</string>
+    <string name="pc_files_empty">Bu klasör boş.</string>
+    <string name="pc_files_loading">Dosyalar yükleniyor…</string>
+    <string name="pc_files_downloading">İndiriliyor: %1$s…</string>
+    <string name="pc_files_saved">%1$s, İndirilenler klasörüne kaydedildi</string>
+    <string name="pc_files_failed">%1$s indirilemedi</string>
+    <string name="pc_files_not_shared">%1$s üzerindeki NectarLink Ayarları\'nda “Bilgisayarınız cebinizde” seçeneğini açın.</string>
+    <string name="pc_files_offline">%1$s bağlı değil.</string>
+    <string name="pc_files_update">Dosyalarına göz atmak için %1$s üzerindeki NectarLink\'i güncelleyin.</string>
+    <string name="pc_files_not_found">Bu klasör artık %1$s üzerinde değil.</string>
+    <string name="pc_files_error">Bu klasör %1$s üzerinde listelenemedi. Tekrar deneyin.</string>
+    <string name="pc_files_folder_downloads">İndirilenler</string>
+    <string name="pc_files_folder_documents">Belgeler</string>
+    <string name="pc_files_folder_desktop">Masaüstü</string>
+    <string name="pc_files_folder_pictures">Resimler</string>
+
+    <!-- Live streaming banners, remote input setup, collapsible permissions & clipboard privacy -->
+    <string name="mirror_banner_subtitle_control_on">Bilgisayarınızdan dokunun, kaydırın ve yazın</string>
+    <string name="mirror_banner_subtitle_audio">Ekran ve ses · istediğiniz zaman Durdur\'a dokunun</string>
+    <string name="mirror_banner_subtitle">Canlı ekran aktarımı · istediğiniz zaman Durdur\'a dokunun</string>
+    <string name="mirror_banner_subtitle_sound">Yalnızca ses · istediğiniz zaman Durdur\'a dokunun</string>
+    <string name="mirror_allow_pc_control">Bilgisayar faresiyle kontrole izin ver</string>
+    <string name="action_open_controls">Kontroller</string>
+    <string name="remote_input_requested_title">Bilgisayarınız bu telefonu kontrol etmeye çalıştı</string>
+    <string name="remote_input_requested_text">Bilgisayarınızın fare ve klavyesini bu telefonda kullanmak için Erişilebilirlik bölümünde “NectarLink: bilgisayarınızdan kontrol” seçeneğini açın.</string>
+    <string name="permissions_setup_title">İzinler ve kurulum (%1$d kaldı)</string>
+    <string name="permissions_setup_subtitle">Bildirimler, aramalar, mesajlar, fotoğraflar ve arka plan erişimi</string>
+    <string name="clipboard_preview_hidden">••••••••••••</string>
+    <string name="clipboard_preview_reveal">Göster</string>
+    <string name="clipboard_preview_hide">Gizle</string>
+
+    <!-- Send queue -->
+    <string name="send_queue_title_count">Gönderilmeyi bekliyor · %1$d</string>
+    <string name="send_queue_cancel_all">Tümünü iptal et</string>
+    <string name="send_queue_clear">Temizle</string>
+    <string name="send_queue_waiting_for">%1$s bekleniyor</string>
+    <string name="send_queue_sending_progress">Gönderiliyor · %%%1$d</string>
+    <string name="send_queue_sending">Gönderiliyor…</string>
+    <string name="send_queue_failed_reason">Başarısız · %1$s</string>
+    <string name="send_queue_expired_reason">Süresi doldu · %1$s</string>
+    <string name="send_queue_retry">Tekrar dene</string>
+    <string name="send_queue_dismiss">Kapat</string>
+    <string name="send_queue_offline_toast">%1$s çevrimdışı. Geri geldiğinde gönderilecek.</string>
+    <string name="send_queue_undo">Geri al</string>
+    <string name="send_queue_full">Gönderim kuyruğu dolu. Temizleyin veya bekleyen öğelerin bitmesini bekleyin.</string>
+    <string name="send_queue_dropped_unpair">%2$s için sıradaki %1$d öğe bırakıldı (cihaz eşleştirmesi kaldırıldı).</string>
+
+    <!-- Setup Walkthrough -->
+    <string name="walkthrough_step_progress">Adım %1$d / %2$d</string>
+    <string name="walkthrough_stage_desc">Petek kurulum aşaması, adım %1$d / %2$d</string>
+    <string name="walkthrough_action_skip">Kurulumu atla</string>
+    <string name="walkthrough_action_back">Geri</string>
+    <string name="walkthrough_action_get_started">Başlayın</string>
+    <string name="walkthrough_action_continue">Devam</string>
+    <string name="walkthrough_action_pair_later">Daha sonra eşleştir</string>
+    <string name="walkthrough_action_done">Bitti</string>
+    <string name="walkthrough_action_open_guide">Özellik rehberini aç</string>
+
+    <string name="walkthrough_welcome_title">Telefonunuzu ve bilgisayarınızı bağlayın</string>
+    <string name="walkthrough_welcome_subtitle">Bildirimler, aramalar, mesajlar, dosyalar, pano, kamera ve ekran; bilgisayarınızla paylaşılır.</string>
+    <string name="walkthrough_welcome_card_heading">Tasarımı gereği gizli</string>
+    <string name="walkthrough_welcome_tls_title">Uçtan uca şifreli (TLS 1.3)</string>
+    <string name="walkthrough_welcome_tls_body">Her bağlantı karşılıklı doğrulanmış cihaz sertifikaları kullanır.</string>
+    <string name="walkthrough_welcome_lan_title">Wi-Fi, Ethernet veya USB üzerinden doğrudan</string>
+    <string name="walkthrough_welcome_lan_body">Trafik ağınızda kalır. Aktarma sunucusu yalnızca Mobil veri üzerinden bağlan açıkken kullanılır.</string>
+    <string name="walkthrough_welcome_local_title">Hesap veya bulut depolama yok</string>
+    <string name="walkthrough_welcome_local_body">Cihaz anahtarları Windows DPAPI ve Android Keystore ile korunur.</string>
+
+    <string name="walkthrough_permissions_title">İzinler</string>
+    <string name="walkthrough_permissions_subtitle">Yalnızca kullandıklarınıza izin verin. Herhangi bir izni daha sonra Ayarlar\'dan değiştirebilirsiniz.</string>
+    <string name="walkthrough_permissions_granted_badge">%1$d / %2$d izin verildi</string>
+    <string name="walkthrough_perm_counter">İzin %1$d / %2$d</string>
+    <string name="walkthrough_perm_counter_optional">İzin %1$d / %2$d · İsteğe bağlı</string>
+    <string name="walkthrough_perm_status_granted">İzin verildi</string>
+    <string name="walkthrough_perm_status_not_granted">İzin verilmedi</string>
+    <string name="walkthrough_perm_action_grant">İzin ver</string>
+    <string name="walkthrough_perm_action_manage">Yönet</string>
+    <string name="walkthrough_perm_action_next">Sonraki</string>
+    <string name="walkthrough_perm_dot_desc">%1$s, %2$s</string>
+
+    <string name="walkthrough_perm_notif_title">Bildirimler</string>
+    <string name="walkthrough_perm_notif_does">Telefon bildirimlerini bilgisayarınızda görün, kapatın ve yanıtlayın; medyayı kontrol edin.</string>
+    <string name="walkthrough_perm_notif_requires">Android, Bildirim erişimi ve bildirim izni gerektirir.</string>
+    <string name="walkthrough_restricted_title">Android bu ayarı engelledi</string>
+    <string name="walkthrough_restricted_body">Android, uygulama mağazası yerine bir dosyadan kurulan uygulamalar için bazı izinleri kısıtlar. Bu izni vermek için:</string>
+    <string name="walkthrough_restricted_step1">Uygulama bilgilerini aç\'a dokunun.</string>
+    <string name="walkthrough_restricted_step2">Sağ üstteki ⋮ simgesine, ardından Kısıtlanmış ayarlara izin ver\'e dokunun ve onaylayın.</string>
+    <string name="walkthrough_restricted_step3">Buraya geri dönüp yeniden İzin ver\'e dokunun.</string>
+    <string name="walkthrough_restricted_note">Menü bu seçeneği yalnızca izni bir kez vermeyi denedikten sonra gösterir. Bazı telefonlarda farklı adlandırılmış olabilir.</string>
+    <string name="walkthrough_restricted_open">Uygulama bilgilerini aç</string>
+
+    <string name="walkthrough_perm_battery_title">Kısıtlanmamış pil</string>
+    <string name="walkthrough_perm_battery_does">Ekran kapalıyken telefonunuzu ulaşılabilir tutun.</string>
+    <string name="walkthrough_perm_battery_requires">Telefon kilitliyken bilgisayarınızla bağlantıyı etkin tutar.</string>
+
+    <string name="walkthrough_perm_calls_title">Aramalar</string>
+    <string name="walkthrough_perm_calls_does">Gelen aramaları bilgisayarınızda görün; masaüstünüzden yanıtlayın, reddedin veya arama yapın.</string>
+    <string name="walkthrough_perm_calls_requires">Android, Telefon ve Arama kayıtları izinleri gerektirir.</string>
+
+    <string name="walkthrough_perm_sms_title">Mesajlar</string>
+    <string name="walkthrough_perm_sms_does">Kişi adlarıyla birlikte SMS ve MMS mesajlarını bilgisayarınızdan okuyun ve gönderin.</string>
+    <string name="walkthrough_perm_sms_requires">Android, SMS ve Kişiler izinleri gerektirir.</string>
+
+    <string name="walkthrough_perm_photos_title">Fotoğraflar</string>
+    <string name="walkthrough_perm_photos_does">Son telefon fotoğraflarına bilgisayarınızdan göz atın ve orijinallerini kaydedin.</string>
+    <string name="walkthrough_perm_photos_requires">Android, Fotoğraflar ve videolar erişimi gerektirir.</string>
+
+    <string name="walkthrough_perm_storage_title">Dosya Gezgini\'nde depolama</string>
+    <string name="walkthrough_perm_storage_does">Telefon klasörlerinize bilgisayarınızdan Dosya Gezgini\'nde göz atın.</string>
+    <string name="walkthrough_perm_storage_requires">Android, Tüm dosyalara erişim veya seçili klasörler gerektirir.</string>
+
+    <string name="walkthrough_perm_access_title">Yardımcı</string>
+    <string name="walkthrough_perm_access_does">Yansıtılan telefon ekranınızı bilgisayarınızdan fare ve klavyeyle kontrol edin.</string>
+    <string name="walkthrough_perm_access_requires">Android, NectarLink Erişilebilirlik hizmetini veya Yükseltilmiş modu gerektirir.</string>
+
+    <string name="walkthrough_pair_title">Bilgisayarınızla eşleştirin</string>
+    <string name="walkthrough_pair_subtitle">Bilgisayarınızda NectarLink\'i açın. QR kodunu tarayın veya aşağıdan bilgisayarınızı seçin.</string>
+    <string name="walkthrough_pair_ready_title">Eşleştirilmiş bilgisayar</string>
+    <string name="walkthrough_pair_badge_paired">Eşleştirildi</string>
+    <string name="walkthrough_pair_device_online">%1$s · Bağlı</string>
+    <string name="walkthrough_pair_device_offline">%1$s · Çevrimdışı</string>
+    <string name="walkthrough_pair_scan_qr">QR kodunu tara</string>
+    <string name="walkthrough_pair_hide_qr">QR tarayıcıyı gizle</string>
+    <string name="walkthrough_pair_nearby_heading">Yakındaki bilgisayarlar</string>
+    <string name="walkthrough_pair_nearby_tap">Yerel ağınızda eşleştirmek için dokunun</string>
+    <string name="walkthrough_pair_usb_title">USB ile otomatik eşleştirme</string>
+    <string name="walkthrough_pair_usb_hint">Otomatik eşleştirmek için USB hata ayıklama açıkken bir USB kablosu bağlayın.</string>
+
+    <string name="walkthrough_power_title">Yetki düzeyinizi seçin</string>
+    <string name="walkthrough_power_subtitle">Bilgisayarınızın bu telefon üzerinde ne kadar kontrole sahip olacağını seçin.</string>
+    <string name="walkthrough_power_current_badge">Geçerli: %1$s</string>
+    <string name="walkthrough_power_badge_active">Etkin</string>
+    <string name="walkthrough_power_badge_available">Kullanılabilir</string>
+    <string name="walkthrough_power_badge_optional">İsteğe bağlı</string>
+    <string name="walkthrough_power_standard_title">Standart</string>
+    <string name="walkthrough_power_standard_sub">Varsayılan kurulum</string>
+    <string name="walkthrough_power_standard_desc">Bildirimler, aramalar, mesajlar, fotoğraflar, dosyalar, Panoyu gönder kutucuğu ve yalnızca görüntüleme amaçlı yansıtma.</string>
+    <string name="walkthrough_power_assist_title">Yardımcı</string>
+    <string name="walkthrough_power_assist_sub">Erişilebilirlik hizmeti</string>
+    <string name="walkthrough_power_assist_desc">Ekran yansıtma sırasında bilgisayarınızdan fare ve klavye kontrolü ekler.</string>
+    <string name="walkthrough_power_assist_manage">Yönet</string>
+    <string name="walkthrough_power_assist_open">Aç</string>
+    <string name="walkthrough_power_elevated_title">Yükseltilmiş</string>
+    <string name="walkthrough_power_elevated_sub">Kablosuz hata ayıklama</string>
+    <string name="walkthrough_power_elevated_desc">Arka planda pano eşitleme, kendi bilgisayar pencerelerinde açılan uygulamalar ve düşük gecikmeli giriş.</string>
+    <string name="walkthrough_power_elevated_reconnect">Yeniden bağlan</string>
+    <string name="walkthrough_power_elevated_enable">Kur</string>
+    <string name="walkthrough_power_elevated_hide_steps">Adımları gizle</string>
+    <string name="walkthrough_power_elevated_show_steps">Adımları göster</string>
+    <string name="walkthrough_power_elevated_steps_heading">Kablosuz hata ayıklama kurulumu</string>
+    <string name="walkthrough_power_elevated_step1">1. Geliştirici seçeneklerini açmak için Ayarlar › Telefon hakkında bölümünde Derleme numarası\'na 7 kez dokunun.</string>
+    <string name="walkthrough_power_elevated_step2">2. Geliştirici seçeneklerini açmak için Kur\'a dokunun.</string>
+    <string name="walkthrough_power_elevated_step3">3. Kablosuz hata ayıklamayı açın, Eşleme kodu ile cihazı eşle\'ye dokunun ve 6 haneli kodu bildirime girin.</string>
+
+    <string name="walkthrough_done_title">Kurulum tamamlandı</string>
+    <string name="walkthrough_done_subtitle">NectarLink hazır. Bu rehberi istediğiniz zaman Ayarlar › Hakkında bölümünden yeniden açabilirsiniz.</string>
+    <string name="walkthrough_done_summary_heading">Kurulumunuz</string>
+    <string name="walkthrough_done_paired_label">Eşleştirilmiş bilgisayar</string>
+    <string name="walkthrough_done_no_pc">Henüz yok · istediğiniz zaman Ana Sayfa\'dan eşleştirin</string>
+    <string name="walkthrough_done_power_label">Yetki düzeyi</string>
+    <string name="walkthrough_done_power_elevated">Yükseltilmiş (Kablosuz hata ayıklama)</string>
+    <string name="walkthrough_done_power_assist">Yardımcı (Erişilebilirlik hizmeti)</string>
+    <string name="walkthrough_done_power_standard">Standart</string>
+    <string name="walkthrough_done_permissions_label">İzinler</string>
+    <string name="walkthrough_done_no_permissions">Henüz izin verilmedi</string>
+    <string name="walkthrough_done_try_heading">İlk önce deneyin</string>
+    <string name="walkthrough_done_try_1">1. Metin kopyalayın ve bilgisayarınızda yapıştırmak için Panoyu gönder kutucuğuna dokunun.</string>
+    <string name="walkthrough_done_try_2">2. Android Paylaş menüsünden herhangi bir dosya veya bağlantıyı NectarLink\'e paylaşın.</string>
+
+    <!-- Features Guide Chrome -->
+    <string name="guide_back">Geri</string>
+    <string name="guide_open_walkthrough">Kurulum rehberi</string>
+    <string name="guide_title">Özellik rehberi</string>
+    <string name="guide_subtitle">Bu telefondaki özelliklerin hazır olup olmadığını kontrol edin veya doğrudan kontrollerine gidin.</string>
+    <string name="guide_search_placeholder">Özellik veya izin ara</string>
+    <string name="guide_search_desc">Özellik ara</string>
+    <string name="guide_connect_pc_banner">Hangi özelliklerin hazır olduğunu görmek için bilgisayarınızı bağlayın</string>
+    <string name="guide_empty_title">Eşleşen özellik yok</string>
+    <string name="guide_empty_body">Başka bir anahtar kelime deneyin veya Tümü\'nü seçin.</string>
+    <string name="guide_where_prefix">Nerede: %1$s</string>
+    <string name="guide_needs_prefix">Gerekenler: %1$s</string>
+    <string name="guide_external_heading">Android\'den açın</string>
+    <string name="guide_action_show_me">Göster</string>
+    <string name="guide_action_learn_more">Daha fazla bilgi</string>
+    <string name="guide_action_done">Bitti</string>
+    <string name="guide_sheet_where">Nerede bulunur</string>
+    <string name="guide_sheet_needs">Neye ihtiyacınız var</string>
+    <string name="guide_sheet_steps_phone">Telefonunuzda</string>
+    <string name="guide_sheet_steps_pc">Bilgisayarınızda</string>
+    <string name="guide_sheet_options">Seçenekler</string>
+    <string name="guide_sheet_privacy">Veri ve gizlilik</string>
+    <string name="guide_sheet_limits">Sınırlamalar</string>
+    <string name="guide_numbered_step">%1$d. %2$s</string>
+
+    <string name="guide_area_all">Tümü</string>
+    <string name="guide_area_notifications_calls">Bildirimler ve Aramalar</string>
+    <string name="guide_area_messages">Mesajlar</string>
+    <string name="guide_area_clipboard_files">Pano ve Dosyalar</string>
+    <string name="guide_area_mirroring_camera">Yansıtma ve Kamera</string>
+    <string name="guide_area_input_control">Giriş ve Kontrol</string>
+    <string name="guide_area_power_network">Güç ve Ağ</string>
+
+    <string name="guide_badge_available">Hazır</string>
+    <string name="guide_badge_needs_permission">Gerekli: %1$s</string>
+    <string name="guide_badge_needs_power">Gerekli: %1$s</string>
+    <string name="guide_badge_connect_pc">Kontrol etmek için bilgisayarınızı bağlayın</string>
+
+    <string name="guide_req_notification_access">Bildirim erişimi</string>
+    <string name="guide_req_unrestricted_battery">Kısıtlanmamış pil</string>
+    <string name="guide_req_calls">Telefon ve Arama kayıtları</string>
+    <string name="guide_req_sms_contacts">SMS ve Kişiler</string>
+    <string name="guide_req_photos">Fotoğraflar</string>
+    <string name="guide_req_storage">Tüm dosyalara erişim</string>
+    <string name="guide_req_dnd">Rahatsız Etmeyin erişimi</string>
+    <string name="guide_req_write_settings">Sistem ayarlarını değiştirme</string>
+    <string name="guide_req_elevated">Yükseltilmiş</string>
+    <string name="guide_req_assist_or_elevated">Yardımcı veya Yükseltilmiş</string>
+
+    <string name="guide_fix_grant">İzin ver</string>
+    <string name="guide_fix_allow">İzin ver</string>
+    <string name="guide_fix_enable">Etkinleştir</string>
+    <string name="guide_fix_pair">Eşleştir</string>
+
+    <!-- Features Guide Entries -->
+    <!-- 1. Notifications -->
+    <string name="guide_notif_title">Bildirimler</string>
+    <string name="guide_notif_summary">Telefon bildirimlerini bilgisayarınızda görün, kapatın veya doğrudan yanıtlayın.</string>
+    <string name="guide_notif_where">Ayarlar › İzinler › Bildirimler</string>
+    <string name="guide_notif_needs">Bildirim erişimi, bilgisayar için Bildirimler anahtarı açık</string>
+    <string name="guide_notif_need_1">NectarLink için Android Bildirim erişimi etkin.</string>
+    <string name="guide_notif_need_2">Android 13 ve üzerinde, uygulama dosyadan kurulduysa Uygulama bilgileri\'nde Kısıtlanmış ayarlara izin ver etkin.</string>
+    <string name="guide_notif_need_3">Bilgisayar eşleştirilmiş ve çevrimiçi.</string>
+    <string name="guide_notif_phone_1">Ayarlar › İzinler › Bildirimler\'i açın ve İzin ver\'e dokunun.</string>
+    <string name="guide_notif_phone_2">Android Bildirim erişimi bölümünde NectarLink\'i açın.</string>
+    <string name="guide_notif_pc_1">Telefon bildirimlerini bilgisayarın bildirim merkezinde veya NectarLink penceresinde görüntüleyin.</string>
+    <string name="guide_notif_pc_2">Kartta bir yanıt yazıp Gönder\'e basın veya her iki cihazda da temizlemek için kapatın.</string>
+    <string name="guide_notif_opt_1">İzin ver / Yönet: Android Bildirim erişimi ayarlarını açar.</string>
+    <string name="guide_notif_opt_2">Bilgisayar başına Bildirimler anahtarı: Eşleştirilmiş bir bilgisayarın bildirim alıp almayacağını belirler.</string>
+    <string name="guide_notif_privacy">Bildirimler TLS 1.3 üzerinden aktarılır ve bu telefonda yalnızca bellekte tutulur.</string>
+    <string name="guide_notif_limits">Devam eden sistem bildirimleri uzaktan kapatılamaz.</string>
+
+    <!-- 2. Calls -->
+    <string name="guide_calls_title">Aramalar</string>
+    <string name="guide_calls_summary">Gelen aramaları bilgisayarınızda görün, yanıtlayın veya reddedin ve masaüstünüzden numara arayın.</string>
+    <string name="guide_calls_where">Ayarlar › İzinler › Aramalar, kişiler ve mesajlar</string>
+    <string name="guide_calls_needs">Telefon, Arama kayıtları ve Kişiler izinleri</string>
+    <string name="guide_calls_need_1">Android\'de Telefon ve Arama kayıtları izinleri verilmiş.</string>
+    <string name="guide_calls_need_2">Arayan adları ve fotoğrafları için Kişiler izni verilmiş.</string>
+    <string name="guide_calls_phone_1">Ayarlar › İzinler › Aramalar, kişiler ve mesajlar\'ı açın ve İzin ver\'e dokunun.</string>
+    <string name="guide_calls_phone_2">Sessize al, Hoparlör ve Kapat kontrolleri için etkin arama bildirimini kullanın.</string>
+    <string name="guide_calls_pc_1">Bilgisayarınızdaki gelen arama bildiriminden aramayı yanıtlayın, reddedin veya SMS ile yanıt verin.</string>
+    <string name="guide_calls_pc_2">Arama geçmişine göz atmak veya numara aramak için bilgisayarınızda Aramalar\'ı açın.</string>
+    <string name="guide_calls_opt_1">Yanıtla / Reddet: Telefonunuzdaki gelen aramayı kabul eder veya reddeder.</string>
+    <string name="guide_calls_opt_2">Sessize al / Hoparlör: Arama sırasında telefon mikrofonunu sessize alır veya hoparlörü açıp kapatır.</string>
+    <string name="guide_calls_privacy">Arama geçmişi bilgisayarınız bağlandığında Android\'den okunur ve eşleştirilmiş cihazlarınızın dışına asla çıkmaz.</string>
+    <string name="guide_calls_limits">Arama sesi telefonunuzda veya kulaklığınızda kalır. Android 12 ve üzerinde bilgisayardan arama içi sessize alma ve bekletme için Yükseltilmiş mod gerekir.</string>
+
+    <!-- 3. Now playing -->
+    <string name="guide_media_title">Şimdi çalıyor</string>
+    <string name="guide_media_summary">Telefon ve bilgisayardaki medya oynatmayı kontrol edin, bilgisayarın ses düzeyini ayarlayın veya bilgisayar sesini telefon hoparlörünüze aktarın.</string>
+    <string name="guide_media_where">Ana Sayfa › Eşleştirilmiş bilgisayar kartı › Bilgisayar sesi</string>
+    <string name="guide_media_needs">Telefon medyası için Bildirim erişimi, bilgisayar sesi için çevrimiçi eşleştirilmiş bilgisayar</string>
+    <string name="guide_media_need_1">Etkin medya oturumlarını okumak için Android\'de Bildirim erişimi.</string>
+    <string name="guide_media_need_2">Çevrimiçi eşleştirilmiş bilgisayar.</string>
+    <string name="guide_media_phone_1">Ana Sayfa\'da eşleştirilmiş bilgisayar kartınızdaki Bilgisayar sesi bölümünü genişletin.</string>
+    <string name="guide_media_phone_2">Bilgisayar ses düzeyi kaydırıcısını ayarlayın veya Telefonu hoparlör olarak kullan\'ı açın.</string>
+    <string name="guide_media_pc_1">Telefondaki oynatmayı bilgisayarınızdan Oynat, Duraklat, Sonraki ve Önceki ile kontrol edin.</string>
+    <string name="guide_media_opt_1">Telefonu hoparlör olarak kullan: Bilgisayarınızdaki sesi düşük gecikmeyle telefonunuza aktarır.</string>
+    <string name="guide_media_opt_2">Ses düzeyi ve Sessize al: Bilgisayarınızdaki varsayılan oynatma cihazını kontrol eder.</string>
+    <string name="guide_media_privacy">Medya bilgileri ve kapak görselleri, TLS 1.3 üzerinden yerel medya oturumundan gelir.</string>
+    <string name="guide_media_limits">Canlı bilgisayar sesi aktarımı için kararlı bir Wi-Fi veya USB bağlantısı gerekir.</string>
+
+    <!-- 4. Messages -->
+    <string name="guide_sms_title">Mesajlar</string>
+    <string name="guide_sms_summary">Konuşmaları okuyun, MMS eklerini görüntüleyin ve bilgisayarınızdan mesaj gönderin.</string>
+    <string name="guide_sms_where">Ayarlar › İzinler › Aramalar, kişiler ve mesajlar</string>
+    <string name="guide_sms_needs">SMS ve Kişiler izinleri</string>
+    <string name="guide_sms_need_1">Android\'de SMS izni verilmiş.</string>
+    <string name="guide_sms_need_2">Kişi adları ve profil resimleri için Kişiler izni verilmiş.</string>
+    <string name="guide_sms_phone_1">Ayarlar › İzinler › Aramalar, kişiler ve mesajlar\'ı açın; Bilgisayarınızdan mesajlaşın ve Kişiler için izin verin.</string>
+    <string name="guide_sms_pc_1">Konuşmaları okumak veya SMS ve MMS yanıtları göndermek için bilgisayarınızda Mesajlar\'ı açın.</string>
+    <string name="guide_sms_opt_1">İzin ver / Yönet: SMS ve Kişiler için Android izin ayarlarını açar.</string>
+    <string name="guide_sms_opt_2">Mesaj önbelleği: Hazırlanan MMS dosyalarını Ayarlar › Özellikler ve Veriler › Veri ve depolama bölümünden temizleyin.</string>
+    <string name="guide_sms_privacy">Mesajlar gerektiğinde Android telefon hizmetinden okunur.</string>
+    <string name="guide_sms_limits">Gönderim, telefonunuzun SIM kartını ve operatör tarifenizi kullanır.</string>
+
+    <!-- 5. Clipboard -->
+    <string name="guide_clip_title">Pano</string>
+    <string name="guide_clip_summary">Kopyalanan metin ve görüntüleri telefon ile bilgisayar arasında paylaşın ve son 50 öğeye Pano geçmişi\'nden göz atın.</string>
+    <string name="guide_clip_where">Ana Sayfa › Pano geçmişi (veya Ayarlar › Özellikler ve Veriler › Pano)</string>
+    <string name="guide_clip_needs">Eşleştirilmiş bilgisayar; telefondan bilgisayara otomatik arka plan eşitlemesi için Yükseltilmiş mod</string>
+    <string name="guide_clip_need_1">Bilgisayardan telefona pano eşitleme ve Panoyu gönder kutucuğu ek kurulum olmadan çalışır.</string>
+    <string name="guide_clip_need_2">Yükseltilmiş mod, telefondan bilgisayara otomatik pano eşitlemeyi ekler.</string>
+    <string name="guide_clip_phone_1">Telefonunuzda metin veya görüntü kopyalayın, ardından NectarLink\'i açın veya Panoyu gönder kutucuğuna dokunun.</string>
+    <string name="guide_clip_phone_2">Son öğeleri görüntülemek, sabitlemek, kopyalamak veya silmek için Ana Sayfa\'da Pano geçmişi\'ne dokunun.</string>
+    <string name="guide_clip_pc_1">Telefonunuzun panosuna göndermek için bilgisayarınızda metin veya görüntü kopyalayın.</string>
+    <string name="guide_clip_opt_1">Göster / Gizle: Ana Sayfa\'daki son pano önizlemesini gizler veya gösterir.</string>
+    <string name="guide_clip_opt_2">Sabitle: Bir öğeyi 50 öğelik geçmişin en üstünde tutar.</string>
+    <string name="guide_clip_opt_3">Kopyalanan metin için eylem öner: Bilgisayarınızdan gelen bağlantıları, haritaları veya numaraları açmayı önerir.</string>
+    <string name="guide_clip_privacy">Pano geçmişi diskte şifrelenir ve parola yöneticilerinin hassas olarak işaretlediği öğeleri içermez.</string>
+    <string name="guide_clip_limits">Android 10 ve üzeri, Yükseltilmiş mod olmadan veya Panoyu gönder\'e dokunulmadan arka planda pano okumayı engeller.</string>
+
+    <!-- 6. Send clipboard -->
+    <string name="guide_tile_title">Panoyu gönder</string>
+    <string name="guide_tile_summary">Hızlı Ayarlar kutucuğunu kullanarak herhangi bir uygulamadan telefon panonuzu bilgisayarınıza gönderin.</string>
+    <string name="guide_tile_where">Android Hızlı Ayarlar paneli › Panoyu gönder</string>
+    <string name="guide_tile_needs">Eşleştirilmiş bilgisayar</string>
+    <string name="guide_tile_ext_1">1. Hızlı Ayarlar\'ı açmak için ekranınızın üstünden iki kez aşağı kaydırın.</string>
+    <string name="guide_tile_ext_2">2. Düzenle\'ye dokunun ve Panoyu gönder\'i etkin kutucuklarınıza sürükleyin.</string>
+    <string name="guide_tile_ext_3">3. Herhangi bir uygulamada metin kopyalayın, aşağı kaydırın ve Panoyu gönder\'e dokunun.</string>
+    <string name="guide_tile_need_1">En az bir eşleştirilmiş bilgisayar.</string>
+    <string name="guide_tile_phone_1">Panoyu gönder kutucuğunu Hızlı Ayarlar\'a bir kez ekleyin, ardından kopyaladıktan sonra ona dokunun.</string>
+    <string name="guide_tile_pc_1">Bilgisayarınızda Ctrl+V ile yapıştırın.</string>
+    <string name="guide_tile_opt_1">Panoyu gönder kutucuğu: Dokunduğunuzda geçerli telefon panosunu bir kez okur ve gönderir ya da sıraya alır.</string>
+    <string name="guide_tile_privacy">Panoyu yalnızca dokunulduğunda okur. Çevrimdışıyken öğeler en fazla 24 saat sırada bekler.</string>
+    <string name="guide_tile_limits">Yükseltilmiş moddaki arka plan pano eşitlemesi etkin değilken kullanılır.</string>
+
+    <!-- 7. Send files -->
+    <string name="guide_files_title">Dosya gönder</string>
+    <string name="guide_files_summary">Dosya veya klasörleri telefon ile bilgisayar arasında Wi-Fi, Ethernet veya USB üzerinden, duraklatma ve sürdürme desteğiyle aktarın.</string>
+    <string name="guide_files_where">Ana Sayfa › Eşleştirilmiş bilgisayar kartı › Dosya gönder / Klasör gönder</string>
+    <string name="guide_files_needs">Eşleştirilmiş bilgisayar</string>
+    <string name="guide_files_need_1">Eşleştirilmiş bilgisayar (çevrimdışıyken dosyalar Gönderim kuyruğunda en fazla 7 gün bekler).</string>
+    <string name="guide_files_phone_1">Ana Sayfa\'da eşleştirilmiş bilgisayar kartınızdaki Dosya gönder veya Klasör gönder\'e dokunun.</string>
+    <string name="guide_files_phone_2">Ana Sayfa\'daki Aktarımlar kartından etkin aktarımları duraklatın, sürdürün veya iptal edin.</string>
+    <string name="guide_files_pc_1">Dosyaları bilgisayarınızdaki NectarLink penceresine veya ekranın üst kenarındaki Island\'a sürükleyin.</string>
+    <string name="guide_files_opt_1">Dosya gönder / Klasör gönder: Tek tek dosyaları veya klasör ağaçlarının tamamını aktarır.</string>
+    <string name="guide_files_opt_2">Duraklat / Sürdür: Yarıda kalan aktarımları, tamamlanmış baytları yeniden göndermeden sürdürür.</string>
+    <string name="guide_files_privacy">Dosyalar QUIC TLS 1.3 üzerinden BLAKE3 bütünlük doğrulamasıyla Download/Nectarlink klasörüne aktarılır.</string>
+    <string name="guide_files_limits">Tek seferde en fazla 5.000 dosya.</string>
+
+    <!-- 8. Send queue -->
+    <string name="guide_queue_title">Gönderim kuyruğu</string>
+    <string name="guide_queue_summary">Bilgisayarınız çevrimdışıyken dosyaları, bağlantıları, pano öğelerini ve kayıtları sıraya alın; yeniden bağlandığında teslim edilsin.</string>
+    <string name="guide_queue_where">Ana Sayfa › Gönderilmeyi bekliyor kartı</string>
+    <string name="guide_queue_needs">Eşleştirilmiş bilgisayar</string>
+    <string name="guide_queue_need_1">En az bir eşleştirilmiş bilgisayar.</string>
+    <string name="guide_queue_phone_1">Çevrimdışı bir bilgisayara dosya, pano öğesi veya bağlantı gönderin; bunlar Ana Sayfa\'da Gönderilmeyi bekliyor bölümünde görünür.</string>
+    <string name="guide_queue_phone_2">Sıradaki öğeler, bilgisayarınız yeniden bağlanır bağlanmaz sırayla otomatik olarak gönderilir.</string>
+    <string name="guide_queue_pc_1">Telefonunuz çevrimdışıyken bilgisayarınızda sıraya alınan öğeler de yeniden bağlanınca teslim edilir.</string>
+    <string name="guide_queue_opt_1">Tekrar dene / Kapat / Tümünü iptal et: Ana Sayfa\'da sıradaki öğeleri tek tek veya topluca yönetin.</string>
+    <string name="guide_queue_privacy">Sıradaki veriler uygulamanın özel depolama alanında kalır ve teslim edildiğinde veya eşleştirme kaldırıldığında silinir.</string>
+    <string name="guide_queue_limits">En fazla 200 öğe veya 10 GiB tutar. Dosyaların süresi 7 gün, pano öğeleri ve bağlantıların süresi 24 saat sonra dolar.</string>
+
+    <!-- 9. Send to PC -->
+    <string name="guide_share_title">Bilgisayara gönder</string>
+    <string name="guide_share_summary">Herhangi bir Android uygulamasından bağlantı, metin, fotoğraf veya belgeleri sistemin Paylaş menüsüyle bilgisayarınıza paylaşın.</string>
+    <string name="guide_share_where">Android Paylaş menüsü › Bilgisayara gönder</string>
+    <string name="guide_share_needs">Eşleştirilmiş bilgisayar</string>
+    <string name="guide_share_ext_1">1. Telefonunuzdaki herhangi bir tarayıcı, galeri veya belge uygulamasında Paylaş\'a dokunun.</string>
+    <string name="guide_share_ext_2">2. NectarLink\'i seçin (Bilgisayara gönder veya Bilgisayarda aç).</string>
+    <string name="guide_share_need_1">En az bir eşleştirilmiş bilgisayar.</string>
+    <string name="guide_share_phone_1">Android Paylaş menüsünden herhangi bir bağlantı veya dosyayı paylaşın ve hedef bilgisayarınızı seçin.</string>
+    <string name="guide_share_pc_1">Bağlantılar bilgisayarınızın varsayılan tarayıcısında açılır; dosyalar İndirilenler\'e kaydedilir.</string>
+    <string name="guide_share_opt_1">Bilgisayara gönder / Bilgisayarda aç: Dosyaları kaydeder veya bağlantıları ve güvenli belgeleri gelir gelmez açar.</string>
+    <string name="guide_share_privacy">Çalıştırılabilir dosyalar ve betikler bilgisayarınızda asla otomatik açılmaz.</string>
+    <string name="guide_share_limits">Yalnızca güvenli belge türleri otomatik açılır; diğer tüm dosyalar İndirilenler\'e kaydedilir.</string>
+
+    <!-- 10. Storage in File Explorer -->
+    <string name="guide_storage_title">Dosya Gezgini\'nde depolama</string>
+    <string name="guide_storage_summary">Bu telefonun paylaşılan depolama alanına veya seçili klasörlerine Windows Dosya Gezgini\'nden göz atın.</string>
+    <string name="guide_storage_where">Ayarlar › İzinler › Fotoğraflar ve videolar (ve Ayarlar › Cihazlar)</string>
+    <string name="guide_storage_needs">Tüm dosyalara erişim (veya seçili klasörler) ve bilgisayar başına depolama anahtarı</string>
+    <string name="guide_storage_need_1">Ayarlar › İzinler › Fotoğraflar ve videolar bölümünde Tüm dosyalara erişim veya seçili klasörler.</string>
+    <string name="guide_storage_need_2">Ayarlar › Cihazlar bölümünde bilgisayar için Bu telefonun depolama alanına Dosya Gezgini\'nden göz at etkin.</string>
+    <string name="guide_storage_phone_1">Ayarlar › İzinler › Fotoğraflar ve videolar bölümünde Tüm dosyalara erişim izni verin veya klasör seçin.</string>
+    <string name="guide_storage_phone_2">Ayarlar › Cihazlar bölümünde bilgisayarınız için depolama anahtarını açın.</string>
+    <string name="guide_storage_pc_1">Telefon depolama alanınızı bilgisayarınızda NectarLink\'ten veya Windows Dosya Gezgini\'nden açın.</string>
+    <string name="guide_storage_opt_1">Tüm dosyalara erişim / Yalnızca seçili klasörler: Tüm depolamayı veya yalnızca seçilen SAF klasörlerini paylaşın.</string>
+    <string name="guide_storage_privacy">Depolamaya göz atma, siz açana kadar her bilgisayar için varsayılan olarak kapalıdır.</string>
+    <string name="guide_storage_limits">Android, /Android/data içindeki özel uygulama dizinlerine erişimi engeller.</string>
+
+    <!-- 11. Browse PC files -->
+    <string name="guide_pc_files_title">Bilgisayar dosyalarına göz at</string>
+    <string name="guide_pc_files_summary">Bilgisayarınızın paylaştığı klasörlere telefonunuzdan göz atın ve dosyaları İndirilenler\'e indirin.</string>
+    <string name="guide_pc_files_where">Ana Sayfa › Eşleştirilmiş bilgisayar kartı › Bilgisayar dosyalarına göz at</string>
+    <string name="guide_pc_files_needs">Depolama paylaşımı etkin, çevrimiçi eşleştirilmiş bilgisayar</string>
+    <string name="guide_pc_files_need_1">Klasörlerini paylaşan (Bilgisayarınız cebinizde) çevrimiçi eşleştirilmiş bilgisayar.</string>
+    <string name="guide_pc_files_phone_1">Ana Sayfa\'da eşleştirilmiş bilgisayar kartınızdaki Bilgisayar dosyalarına göz at\'a dokunun ve indirmek için herhangi bir dosyaya dokunun.</string>
+    <string name="guide_pc_files_pc_1">Bilgisayarınızdaki NectarLink Ayarları\'nda Bilgisayarınız cebinizde seçeneğini açın.</string>
+    <string name="guide_pc_files_opt_1">Bilgisayar dosyalarına göz at paneli: Bilgisayar klasörlerinde gezinin ve dosyaları İndirilenler\'e indirin.</string>
+    <string name="guide_pc_files_privacy">İndirilen dosyalar yerel olarak telefonunuzun İndirilenler klasörüne kaydedilir.</string>
+    <string name="guide_pc_files_limits">Eşleştirilmiş bilgisayarın çevrimiçi olması gerekir.</string>
+
+    <!-- 12. Photos -->
+    <string name="guide_photos_title">Fotoğraflar</string>
+    <string name="guide_photos_summary">Telefonunuzdaki fotoğraflara, ekran görüntülerine ve videolara bilgisayarınızdan göz atın ve tam çözünürlüklü orijinalleri kaydedin.</string>
+    <string name="guide_photos_where">Ayarlar › İzinler › Fotoğraflar ve videolar</string>
+    <string name="guide_photos_needs">Fotoğraflar ve videolar izni</string>
+    <string name="guide_photos_need_1">Android\'de Fotoğraflar ve videolar izni verilmiş.</string>
+    <string name="guide_photos_phone_1">Ayarlar › İzinler › Fotoğraflar ve videolar\'ı açın ve İzin ver\'e dokunun.</string>
+    <string name="guide_photos_pc_1">Küçük resimlere göz atmak ve orijinalleri kopyalamak veya kaydetmek için bilgisayarınızda Fotoğraflar\'ı açın.</string>
+    <string name="guide_photos_opt_1">Tümüne izin ver: Android 14 ve üzerinde kısmi fotoğraf erişimi etkinken tam galeri erişimi verir.</string>
+    <string name="guide_photos_privacy">Küçük resimler istendiğinde telefonunuzda yerel olarak oluşturulur.</string>
+    <string name="guide_photos_limits">Android 14 ve üzerinde kısmi fotoğraf erişimi yalnızca seçtiğiniz fotoğrafları gösterir.</string>
+
+    <!-- 13. Timeline -->
+    <string name="guide_timeline_title">Zaman Çizelgesi</string>
+    <string name="guide_timeline_summary">Bilgisayarlarınızla paylaşılan dosyaların, pano öğelerinin, bağlantıların, fotoğrafların, kayıtların ve oturumların yerel geçmişinde arama yapın.</string>
+    <string name="guide_timeline_where">Ana Sayfa › Zaman Çizelgesi (ve Ayarlar › Özellikler ve Veriler › Veri ve depolama)</string>
+    <string name="guide_timeline_needs">Ek izin gerekmez</string>
+    <string name="guide_timeline_need_1">Zaman Çizelgesi kartının Ana Sayfa\'da görünmesi için en az bir paylaşılan öğe.</string>
+    <string name="guide_timeline_phone_1">Arama yapmak, türe göre filtrelemek veya geçmiş öğelerde Yeniden gönder\'e dokunmak için Ana Sayfa\'da Zaman Çizelgesi\'ne dokunun.</string>
+    <string name="guide_timeline_pc_1">Etkinlik geçmişinde masaüstünüzden arama yapmak için bilgisayarınızda Zaman Çizelgesi\'ni açın.</string>
+    <string name="guide_timeline_opt_1">Zaman çizelgesi öğelerini sakla (30 gün, 90 gün, 1 yıl, Tümü): Saklama süresini Ayarlar › Özellikler ve Veriler › Veri ve depolama bölümünden ayarlayın.</string>
+    <string name="guide_timeline_privacy">Yalnızca cihazınızdaki yerel bir SQLite veritabanında saklanır.</string>
+    <string name="guide_timeline_limits">Yerel olarak en fazla 5.000 kayıt tutar.</string>
+
+    <!-- 14. LocalSend -->
+    <string name="guide_localsend_title">LocalSend</string>
+    <string name="guide_localsend_summary">Eşleştirme yapmadan, aynı Wi-Fi ağındaki yakın LocalSend cihazlarıyla dosya gönderip alın.</string>
+    <string name="guide_localsend_where">Ayarlar › Özellikler ve Veriler › LocalSend (ve Ana Sayfa › Yakındaki LocalSend cihazları)</string>
+    <string name="guide_localsend_needs">Ayarlar › Özellikler ve Veriler bölümünde LocalSend etkin</string>
+    <string name="guide_localsend_need_1">Ayarlar › Özellikler ve Veriler bölümünde LocalSend anahtarı açık.</string>
+    <string name="guide_localsend_phone_1">Ayarlar › Özellikler ve Veriler bölümünde LocalSend\'i etkinleştirin, ardından Ana Sayfa\'daki Yakındaki LocalSend cihazları kartını kullanın.</string>
+    <string name="guide_localsend_pc_1">Aynı yerel ağdaki herhangi bir LocalSend cihazıyla dosya gönderin veya kabul edin.</string>
+    <string name="guide_localsend_opt_1">LocalSend anahtarı: 53317 numaralı bağlantı noktasında yerel ağ çok noktaya yayın keşfini kontrol eder.</string>
+    <string name="guide_localsend_privacy">Varsayılan olarak kapalıdır; gelen aktarımlar kaydetmeden önce her zaman sorar.</string>
+    <string name="guide_localsend_limits">Yalnızca aynı yerel ağda çalışır.</string>
+
+    <!-- 15. Screen mirroring -->
+    <string name="guide_mirror_title">Ekran yansıtma</string>
+    <string name="guide_mirror_summary">Telefon ekranınızı ve dahili sesini bilgisayarınızdaki bir pencereye aktarın veya bilgisayar ekranınızı telefonunuzda görüntüleyin.</string>
+    <string name="guide_mirror_where">Ayarlar › İzinler › Bilgisayarınızdan kontrol (veya Ana Sayfa › Bilgisayarı kontrol et)</string>
+    <string name="guide_mirror_needs">Çevrimiçi eşleştirilmiş bilgisayar; fare ve klavye kontrolü için Yardımcı veya Yükseltilmiş</string>
+    <string name="guide_mirror_need_1">Çevrimiçi eşleştirilmiş bilgisayar.</string>
+    <string name="guide_mirror_need_2">İsteğe bağlı: Bilgisayardan fare ve klavye girişi için Yardımcı (Erişilebilirlik) veya Yükseltilmiş.</string>
+    <string name="guide_mirror_phone_1">Yansıtma bilgisayarınızdan başlatıldığında Android\'in yakalama isteminde Şimdi başlat\'a dokunun.</string>
+    <string name="guide_mirror_phone_2">Ekran paylaşımını istediğiniz zaman bitirmek için Ana Sayfa\'daki şeritte Durdur\'a dokunun.</string>
+    <string name="guide_mirror_pc_1">Telefonunuzun canlı penceresini açmak için bilgisayarınızda Ekran yansıtma\'yı başlatın.</string>
+    <string name="guide_mirror_opt_1">Durdur: Ekran yakalamayı Ana Sayfa\'dan veya bildirimden hemen sonlandırır.</string>
+    <string name="guide_mirror_privacy">Yükseltilmiş sanal ekran üzerinden başlatılmadıkça telefonunuzda onay gerektirir.</string>
+    <string name="guide_mirror_limits">FLAG_SECURE kullanan uygulamalar standart MediaProjection akışlarında siyah görünür.</string>
+
+    <!-- 16. App streams -->
+    <string name="guide_apps_title">Uygulama akışları</string>
+    <string name="guide_apps_summary">Telefon ekranınız bağımsız kalırken tek tek Android uygulamalarını bilgisayarınızda kendi pencerelerinde açın.</string>
+    <string name="guide_apps_where">Ayarlar › İzinler › Bilgisayarınızdan kontrol › Gerçek dokunma ve tuşlar (Kablosuz hata ayıklama)</string>
+    <string name="guide_apps_needs">Yükseltilmiş (Kablosuz hata ayıklama)</string>
+    <string name="guide_apps_need_1">Kablosuz hata ayıklama ile kurulmuş Yükseltilmiş mod.</string>
+    <string name="guide_apps_need_2">Çevrimiçi eşleştirilmiş bilgisayar.</string>
+    <string name="guide_apps_phone_1">Ayarlar › İzinler › Bilgisayarınızdan kontrol bölümünde Kablosuz hata ayıklamayı kurun.</string>
+    <string name="guide_apps_pc_1">Bilgisayarınızda Uygulama akışları\'nı açın ve kendi penceresinde başlatmak için herhangi bir telefon uygulamasına tıklayın.</string>
+    <string name="guide_apps_opt_1">Tümünü kapat: Etkin tüm sanal ekran uygulama pencerelerini Ana Sayfa\'daki şeritten kapatır.</string>
+    <string name="guide_apps_privacy">Uygulama pencereleri bu telefondaki yerel bir sanal ekrandan TLS 1.3 üzerinden aktarılır.</string>
+    <string name="guide_apps_limits">Android\'de sanal ekran oluşturmak için Yükseltilmiş mod gerekir.</string>
+
+    <!-- 17. Phone as webcam -->
+    <string name="guide_webcam_title">Telefon web kamerası</string>
+    <string name="guide_webcam_summary">Telefonunuzun ön veya arka kamerasını bilgisayarınıza 4K\'ya veya 60 fps\'ye kadar aktarın.</string>
+    <string name="guide_webcam_where">Ana Sayfa › Eşleştirilmiş bilgisayar kartı › Web kamerası</string>
+    <string name="guide_webcam_needs">Kamera izni, çevrimiçi eşleştirilmiş bilgisayar</string>
+    <string name="guide_webcam_need_1">Android\'de Kamera izni ve çevrimiçi eşleştirilmiş bilgisayar.</string>
+    <string name="guide_webcam_phone_1">Ana Sayfa\'da eşleştirilmiş bilgisayar kartınızdaki Web kamerası\'na dokunun, çözünürlüğü ve lensi seçin, ardından Web kamerasını başlat\'a dokunun.</string>
+    <string name="guide_webcam_pc_1">Canlı kamera akışını bilgisayarınızdaki NectarLink\'te görüntüleyin veya kaydedin.</string>
+    <string name="guide_webcam_opt_1">Kamerayı çevir / Fener / Yakınlaştırma / Çözünürlük (720p, 1080p, 4K): Canlı kamera kontrolleri.</string>
+    <string name="guide_webcam_privacy">Asla sessizce başlamaz; aktarım sırasında sürekli bir bildirim gösterir.</string>
+    <string name="guide_webcam_limits">1080p 60 fps ve 4K, donanım kodlayıcı desteği ve hızlı Wi-Fi veya USB gerektirir.</string>
+
+    <!-- 18. Continuity camera -->
+    <string name="guide_continuity_title">Continuity Camera</string>
+    <string name="guide_continuity_summary">Telefon kameranızla fotoğraf çekin veya bir belgeyi tarayıp kırparak doğrudan bilgisayarınıza aktarın.</string>
+    <string name="guide_continuity_where">Bilgisayarınızdan istenir › Telefondaki Continuity Camera istemi</string>
+    <string name="guide_continuity_needs">Kamera izni, çevrimiçi eşleştirilmiş bilgisayar</string>
+    <string name="guide_continuity_need_1">Android\'de Kamera izni ve çevrimiçi eşleştirilmiş bilgisayar.</string>
+    <string name="guide_continuity_phone_1">İstek bildirimine veya şeride dokunun, fotoğraf çekin veya belge köşelerini ayarlayın, ardından Gönder\'e dokunun.</string>
+    <string name="guide_continuity_pc_1">Bilgisayarınızdaki NectarLink\'ten Fotoğraf çek veya Belge tara\'yı başlatın.</string>
+    <string name="guide_continuity_opt_1">Köşeleri ayarla / Belgeyi iyileştir: Taramalar için perspektif kırpma ve kontrast iyileştirme.</string>
+    <string name="guide_continuity_privacy">Çekimler yalnızca Fotoğrafı kullan veya Taramayı gönder\'e dokunduğunuzda gönderilir.</string>
+    <string name="guide_continuity_limits">Kamera istekleri yanıtlanmazsa 2 dakika sonra sona erer.</string>
+
+    <!-- 19. Voice recorder -->
+    <string name="guide_recorder_title">Ses kaydedici</string>
+    <string name="guide_recorder_summary">Zaman damgalı işaretçilerle sesli notlar kaydedip bilgisayarınıza gönderin; çevrimdışıyken otomatik olarak sıraya alınır.</string>
+    <string name="guide_recorder_where">Ana Sayfa › Eşleştirilmiş bilgisayar kartı › Kaydet</string>
+    <string name="guide_recorder_needs">Mikrofon izni, eşleştirilmiş bilgisayar</string>
+    <string name="guide_recorder_need_1">Android\'de Mikrofon izni ve eşleştirilmiş bilgisayar.</string>
+    <string name="guide_recorder_phone_1">Ana Sayfa\'da eşleştirilmiş bilgisayar kartınızdaki Kaydet\'e, ardından Kaydı başlat\'a dokunun.</string>
+    <string name="guide_recorder_phone_2">Anları işaretlemek için İşaretçi ekle\'ye dokunun; kayıtlar bittiğinde gönderilir veya sıraya alınır.</string>
+    <string name="guide_recorder_pc_1">Tamamlanan kayıtlar bilgisayarınızın İndirilenler klasörüne ve Zaman Çizelgesi\'ne gelir.</string>
+    <string name="guide_recorder_opt_1">İşaretçi ekle / Yeniden gönder / Sil: İşaretçileri ve kaydedilmiş ses kayıtlarını yönetin.</string>
+    <string name="guide_recorder_privacy">Mikrofonu yalnızca kayıt sırasında kullanır; kayıtlar teslim edilene kadar özel depolamada saklanır.</string>
+    <string name="guide_recorder_limits">Çevrimdışı kayıtlar otomatik olarak sıraya alınır ve bilgisayarınız yeniden bağlandığında gönderilir.</string>
+
+    <!-- 20. Control PC -->
+    <string name="guide_remote_title">Bilgisayarı kontrol et</string>
+    <string name="guide_remote_summary">Telefonunuzu bilgisayarınız için dokunmatik yüzey, klavye, sesli dikte mikrofonu, air mouse veya sunum kumandası olarak kullanın.</string>
+    <string name="guide_remote_where">Ana Sayfa › Eşleştirilmiş bilgisayar kartı › Bilgisayarı kontrol et</string>
+    <string name="guide_remote_needs">Uzaktan kontrole izin verilmiş, çevrimiçi eşleştirilmiş bilgisayar</string>
+    <string name="guide_remote_need_1">Bu telefon için kontrole izin verilmiş, çevrimiçi eşleştirilmiş bilgisayar.</string>
+    <string name="guide_remote_phone_1">Ana Sayfa\'da eşleştirilmiş bilgisayar kartınızdaki Bilgisayarı kontrol et\'e dokunun.</string>
+    <string name="guide_remote_phone_2">Dokunmatik yüzey, Air mouse, Sunum, Klavye ve Dikte et arasında geçiş yapın.</string>
+    <string name="guide_remote_pc_1">İstendiğinde bilgisayarınızda uzaktan kontrolü onaylayın.</string>
+    <string name="guide_remote_opt_1">Dokunmatik yüzey hızı: Hassasiyeti Ayarlar › Özellikler ve Veriler › Bilgisayarınızı kontrol edin bölümünden ayarlayın.</string>
+    <string name="guide_remote_privacy">Giriş olayları şifreli QUIC akışları üzerinden eşleştirilmiş bilgisayarınıza iletilir.</string>
+    <string name="guide_remote_limits">Air mouse, telefonunuzda donanım jiroskopu gerektirir.</string>
+
+    <!-- 21. Assist -->
+    <string name="guide_assist_title">Yardımcı</string>
+    <string name="guide_assist_summary">Bilgisayarınızın fare ve klavyesinin, Erişilebilirlik hizmetini kullanarak bu telefonda dokunmasına, kaydırmasına ve yazmasına izin verin.</string>
+    <string name="guide_assist_where">Ayarlar › İzinler › Bilgisayarınızdan kontrol › Bilgisayarınızın fare ve klavyesini kullanın</string>
+    <string name="guide_assist_needs">Erişilebilirlik hizmeti etkin</string>
+    <string name="guide_assist_need_1">Android Ayarları\'nda NectarLink Erişilebilirlik hizmeti etkin.</string>
+    <string name="guide_assist_phone_1">Ayarlar › İzinler › Bilgisayarınızdan kontrol\'ü açın ve Bilgisayarınızın fare ve klavyesini kullanın altında İzin ver\'e dokunun.</string>
+    <string name="guide_assist_pc_1">Bilgisayarınızdaki telefon yansıtma penceresinde tıklayın, sürükleyin, kaydırın ve yazın.</string>
+    <string name="guide_assist_opt_1">Yazmayı durdur: Bilgisayardan uzaktan klavye yazmayı Ana Sayfa\'daki şeritten sonlandırır.</string>
+    <string name="guide_assist_privacy">Eşleştirilmiş bilgisayarınızdan gelen hareketleri ve metni uygular; ekran içeriğini veya parolaları okumaz.</string>
+    <string name="guide_assist_limits">Android 13 ve üzerinde dosyadan kurulan APK\'lar önce Uygulama bilgileri\'nde Kısıtlanmış ayarlara izin ver\'i etkinleştirmelidir.</string>
+
+    <!-- 22. Elevated -->
+    <string name="guide_elevated_title">Yükseltilmiş</string>
+    <string name="guide_elevated_summary">Kablosuz hata ayıklama aracılığıyla gerçek dokunma ve tuşlar, Uygulama akışları, arka planda pano eşitleme ve arama içi kontroller.</string>
+    <string name="guide_elevated_where">Ayarlar › İzinler › Bilgisayarınızdan kontrol › Gerçek dokunma ve tuşlar (Kablosuz hata ayıklama)</string>
+    <string name="guide_elevated_needs">Kablosuz hata ayıklama</string>
+    <string name="guide_elevated_need_1">Geliştirici seçenekleri ve Kablosuz hata ayıklama açık.</string>
+    <string name="guide_elevated_phone_1">Ayarlar › İzinler › Bilgisayarınızdan kontrol\'ü açın ve Gerçek dokunma ve tuşlar altında Kur\'a dokunun.</string>
+    <string name="guide_elevated_phone_2">Kablosuz hata ayıklama\'da Eşleme kodu ile cihazı eşle\'ye dokunun ve 6 haneli kodu bildirime girin.</string>
+    <string name="guide_elevated_pc_1">Bilgisayarınızdan Uygulama akışları\'nı, arka planda pano eşitlemeyi ve düşük gecikmeli girişi kullanın.</string>
+    <string name="guide_elevated_opt_1">Kur / Kapat: Yerel Kablosuz hata ayıklama yardımcısını eşleştirir veya durdurur.</string>
+    <string name="guide_elevated_privacy">Bu telefonda yerel olarak loopback ADB üzerinden çalışır; harici bir sunucu kullanılmaz.</string>
+    <string name="guide_elevated_limits">İlk Kablosuz hata ayıklama eşleştirmesi için Wi-Fi gerekir.</string>
+
+    <!-- 23. Deck -->
+    <string name="guide_deck_title">Deck</string>
+    <string name="guide_deck_summary">Telefonunuzu kısayol kutucukları, medya tuşları, ses düzeyi kaydırıcıları ve canlı bilgisayar sistem göstergelerinden oluşan bir ızgara olarak kullanın.</string>
+    <string name="guide_deck_where">Ana Sayfa › Eşleştirilmiş bilgisayar kartı › Deck</string>
+    <string name="guide_deck_needs">Çevrimiçi eşleştirilmiş bilgisayar</string>
+    <string name="guide_deck_need_1">Çevrimiçi eşleştirilmiş bilgisayar.</string>
+    <string name="guide_deck_phone_1">Ana Sayfa\'da eşleştirilmiş bilgisayar kartınızdaki Deck\'e dokunun ve eylemini tetiklemek için herhangi bir kutucuğa dokunun.</string>
+    <string name="guide_deck_pc_1">Deck sayfalarını ve kutucuklarını bilgisayarınızdaki NectarLink\'te özelleştirin.</string>
+    <string name="guide_deck_opt_1">Tam ekran: Deck ızgarasını telefon ekranınızın tamamına yayar.</string>
+    <string name="guide_deck_privacy">Deck düzenleri ve sistem istatistikleri telefonunuz ile eşleştirilmiş bilgisayarınız arasında kalır.</string>
+    <string name="guide_deck_limits">Kabuk komutu kutucukları, bilgisayarınızda bu telefon için Deck kabuk komutlarını çalıştır seçeneğinin açık olmasını gerektirir.</string>
+
+    <!-- 24. Desk Mode -->
+    <string name="guide_desk_title">Masa Modu</string>
+    <string name="guide_desk_summary">Canlı bilgisayar bağlantı durumu, medya kontrolleri ve hızlı eylemlerle sürekli açık OLED masa saati.</string>
+    <string name="guide_desk_where">Ana Sayfa › Eşleştirilmiş bilgisayar kartı › Masa saati</string>
+    <string name="guide_desk_needs">Eşleştirilmiş bilgisayar</string>
+    <string name="guide_desk_need_1">Eşleştirilmiş bilgisayar.</string>
+    <string name="guide_desk_phone_1">Ana Sayfa\'da eşleştirilmiş bilgisayar kartınızdaki Masa saati\'ne dokunun ve telefonunuzu bir standa veya şarj cihazına yerleştirin.</string>
+    <string name="guide_desk_pc_1">Bilgisayardaki medya oynatma ve durum bilgileri Masa Modu ekranında canlı olarak güncellenir.</string>
+    <string name="guide_desk_opt_1">OLED yanma koruması: OLED ekranları korumak için düzen piksellerini düzenli aralıklarla kaydırır.</string>
+    <string name="guide_desk_privacy">Canlı bilgisayar durumundan yararlanarak telefonunuzda yerel olarak oluşturulur.</string>
+    <string name="guide_desk_limits">Açıkken ekranı uyanık tutar.</string>
+
+    <!-- 25. Wake PC -->
+    <string name="guide_wake_title">Bilgisayarı uyandır</string>
+    <string name="guide_wake_summary">Uyku modundaki eşleştirilmiş bir bilgisayarı yerel ağınız üzerinden Wake-on-LAN ile uyandırın.</string>
+    <string name="guide_wake_where">Ana Sayfa › Eşleştirilmiş bilgisayar kartı › Uyandır</string>
+    <string name="guide_wake_needs">BIOS\'ta ve ağ bağdaştırıcısında Wake-on-LAN etkin, eşleştirilmiş bilgisayar</string>
+    <string name="guide_wake_need_1">NectarLink\'in MAC adresini öğrenebilmesi için en az bir kez yerel ağ üzerinden bağlanmış eşleştirilmiş bilgisayar.</string>
+    <string name="guide_wake_need_2">Windows ağ bağdaştırıcısı ayarlarında ve BIOS/UEFI\'de Wake-on-LAN etkin.</string>
+    <string name="guide_wake_phone_1">Eşleştirilmiş bilgisayarınız Ana Sayfa\'da çevrimdışı göründüğünde kartındaki Uyandır\'a dokunun.</string>
+    <string name="guide_wake_pc_1">Aygıt Yöneticisi › Ağ bağdaştırıcıları › Güç Yönetimi bölümünde Wake-on-LAN paketiyle uyandırmayı etkinleştirin.</string>
+    <string name="guide_wake_opt_1">Uyandır: Yerel ağda bir Wake-on-LAN paketi gönderir.</string>
+    <string name="guide_wake_privacy">Daha önceki, kimliği doğrulanmış bir yerel ağ oturumunda öğrenilen MAC adresini kullanır.</string>
+    <string name="guide_wake_limits">Ethernet veya Wake on Wireless LAN destekleyen bir Wi-Fi bağdaştırıcısı gerektirir.</string>
+
+    <!-- 26. Quick actions -->
+    <string name="guide_quick_title">Hızlı eylemler</string>
+    <string name="guide_quick_summary">Bilgisayarınızı Ana Sayfa\'dan veya ana ekran widget\'ından çaldırın, kilitleyin veya uyutun; telefonun Rahatsız Etmeyin, el feneri ve parlaklık ayarlarını bilgisayarınızdan kontrol edin.</string>
+    <string name="guide_quick_where">Ana Sayfa › Eşleştirilmiş bilgisayar kartı (ve Ayarlar › İzinler › Bilgisayarınızdan kontrol)</string>
+    <string name="guide_quick_needs">Bilgisayardan telefona geçişler için Rahatsız Etmeyin erişimi ve Ekran parlaklığı izni</string>
+    <string name="guide_quick_need_1">Bilgisayarı çaldır, Bilgisayarı kilitle, Uyut ve telefon el feneri ek izin olmadan çalışır.</string>
+    <string name="guide_quick_need_2">Rahatsız Etmeyin ve sessiz mod, Rahatsız Etmeyin erişimi gerektirir.</string>
+    <string name="guide_quick_need_3">Telefon parlaklığı kontrolü, Ekran parlaklığı izni veya Yükseltilmiş mod gerektirir.</string>
+    <string name="guide_quick_phone_1">Ana Sayfa\'daki eşleştirilmiş bilgisayar kartınızda Bilgisayarı çaldır, Bilgisayarı kilitle ve Uyut\'u kullanın veya bilgisayar hızlı eylemler widget\'ını ekleyin.</string>
+    <string name="guide_quick_pc_1">Telefonun Rahatsız Etmeyin, zil, el feneri, ses düzeyi ve parlaklık ayarlarını bilgisayarınızdaki NectarLink\'ten açıp kapatın.</string>
+    <string name="guide_quick_opt_1">Rahatsız Etmeyin / Ekran parlaklığı: Ayarlar › İzinler › Bilgisayarınızdan kontrol bölümünden izin verin.</string>
+    <string name="guide_quick_privacy">Komutların kimliği her cihaz için TLS 1.3 üzerinden doğrulanır.</string>
+    <string name="guide_quick_limits">Bilgisayarı kilitleme ve uyutma, bilgisayardaki Ayarlar › Cihazlar bölümünden her telefon için ayrı ayrı açılıp kapatılabilir.</string>
+
+    <!-- 27. Connect over mobile data -->
+    <string name="guide_away_title">Mobil veri üzerinden bağlan</string>
+    <string name="guide_away_summary">Wi-Fi\'dan uzaktayken bilgisayarınıza hücresel veri üzerinden bağlı kalın veya USB kablosuyla bağlanın.</string>
+    <string name="guide_away_where">Ayarlar › Cihazlar › Mobil veri üzerinden bağlan</string>
+    <string name="guide_away_needs">Kısıtlanmamış pil, Mobil veri üzerinden bağlan etkin</string>
+    <string name="guide_away_need_1">Ayarlar › İzinler › Arka plan ve pil bölümünde Kısıtlanmamış pil.</string>
+    <string name="guide_away_need_2">Ayarlar › Cihazlar bölümünde Mobil veri üzerinden bağlan etkin.</string>
+    <string name="guide_away_phone_1">Ayarlar › Cihazlar bölümünde Mobil veri üzerinden bağlan\'ı açın.</string>
+    <string name="guide_away_pc_1">Bilgisayar kartınız, etkin bağlantıya göre Uzaktan bağlı veya USB ile bağlı gösterir.</string>
+    <string name="guide_away_opt_1">Mobil veri üzerinden bağlan: Yerel ağ veya USB kullanılamadığında uçtan uca şifreli bir aktarma sunucusu kullanır.</string>
+    <string name="guide_away_privacy">Aktarma sunucusu trafiği, eşleştirilmiş TLS 1.3 cihaz anahtarlarınızla uçtan uca şifrelenir.</string>
+    <string name="guide_away_limits">Mobil veri üzerinden dosya aktarımları hücresel veri tarifenizi kullanır.</string>
+
+    <!-- 28. Connection Doctor -->
+    <string name="guide_doctor_title">Bağlantı Doktoru</string>
+    <string name="guide_doctor_summary">Telefonunuzun erişilebilir kalması için arka plan pil ayarlarını, Companion Device ile uyandırmayı ve yerel ağ erişimini kontrol edin.</string>
+    <string name="guide_doctor_where">Ayarlar › İzinler › Arka plan ve pil</string>
+    <string name="guide_doctor_needs">Kısıtlanmamış pil</string>
+    <string name="guide_doctor_need_1">Kısıtlanmamış arka plan pil kullanımı etkin.</string>
+    <string name="guide_doctor_need_2">İsteğe bağlı: Bilgisayar yakındayken uyandır (Companion Device) ilişkilendirilmiş.</string>
+    <string name="guide_doctor_phone_1">Ayarlar › İzinler › Arka plan ve pil\'i açın ve kısıtlanmamış pil kullanımına izin verin.</string>
+    <string name="guide_doctor_phone_2">Telefonunuzun üreticisi arka plan uygulamalarını kısıtlıyorsa üreticiye özel pil rehberini izleyin.</string>
+    <string name="guide_doctor_pc_1">Aktarım gecikmesini, bağlantı noktalarını ve bağlantı sağlığını incelemek için bilgisayarınızda Bağlantı Doktoru\'nu açın.</string>
+    <string name="guide_doctor_opt_1">Bilgisayar yakındayken uyandır: Bilgisayarınızı ilişkilendirir; böylece BLE menzilindeyken Android NectarLink\'i uyandırır.</string>
+    <string name="guide_doctor_privacy">Tanılama işlemleri telefonunuz ile eşleştirilmiş bilgisayarınız arasında yerel olarak çalışır.</string>
+    <string name="guide_doctor_limits">Bazı telefon üreticilerinin pil tasarrufu ayarları Kısıtlanmamış olarak ayarlanmalıdır.</string>
+    <string name="pair_link_title">%1$s ile eşleştirilsin mi?</string>
+    <string name="pair_link_body">Bir eşleştirme bağlantısı açıldı. Yalnızca bu cihazın kodunu az önce kendiniz taradıysanız veya açtıysanız eşleştirin. Eşleştirilmiş bir cihaz bu telefonun bildirimlerini ve mesajlarını alabilir.</string>
+    <string name="pair_link_confirm">Eşleştir</string>
+    <string name="pair_link_cancel">İptal</string>
+    <string name="pair_link_unknown_pc">bu cihaz</string>
+    <string name="data_clear_failed">Geçmişin bir kısmı temizlenemedi. Tekrar deneyin.</string>
+    <string name="channel_updates">Güncellemeler</string>
+    <string name="update_ready_title">NectarLink %1$s hazır</string>
+    <string name="update_ready_text">Güncellemeyi kurmak için dokunun.</string>
+    <string name="update_done_title">NectarLink %1$s sürümüne güncellendi</string>
+    <string name="update_done_text">Açmak için dokunun. Bilgisayarlarınız kendiliğinden yeniden bağlanır.</string>
+    <string name="update_auto_title">Güncellemeleri otomatik kur</string>
+    <string name="update_auto_text">GitHub\'daki yeni sürümler arka planda kurulur.</string>
+
+    <string name="home_guide_title">Rehber</string>
+    <string name="home_whats_new_guide">Yenilikler: Özellik rehberi</string>
+    <string name="home_guide_card_body">Tüm NectarLink özelliklerini keşfedin, izinleri canlı olarak kontrol edin veya herhangi bir kontrole doğrudan gitmek için Göster\'e dokunun.</string>
+    <string name="home_no_pc_paired">Henüz eşleştirilmiş bilgisayar yok</string>
+    <string name="home_no_pc_body">QR kodu veya yerel keşifle eşleştirmek için Windows ya da Linux bilgisayarınızda NectarLink\'i açın veya kurulum rehberini yeniden açın.</string>
+    <string name="home_background_clipboard_title">Arka planda pano ve tam kontrol</string>
+    <string name="home_background_clipboard_body">Panoyu arka planda eşitleyin ve Kablosuz hata ayıklama ile dokunmatik kontrolü etkinleştirin.</string>
+    <string name="home_section_screen">Ekran, Kamera ve Giriş</string>
+    <string name="home_section_transfer">Hızlı Aktarım ve Pano</string>
+    <string name="home_section_system">Sistem ve Güç</string>
+    <string name="settings_category_devices">Cihazlar</string>
+    <string name="settings_category_features">Özellikler ve Veriler</string>
+    <string name="settings_theme_artwork_color">Medya kapak görseli rengi</string>
+    <string name="settings_mobile_data_body">Wi-Fi\'dan uzaktayken LTE/5G veya aktarma sunucusu üzerinden bağlı kalın</string>
+    <string name="settings_background_clipboard_title">Arka planda pano erişimi</string>
+    <string name="settings_guide_card_body">Tüm özelliklere göz atın, gereksinimleri canlı olarak kontrol edin veya doğrudan kontrollerine gidin.</string>
+    <string name="settings_walkthrough_body">İzinler, eşleştirme ve yetki düzeyleri için kurulum rehberini yeniden açın.</string>
+    <string name="desk_exit">Masa Modundan çık</string>
+    <string name="desk_media_playing">Bilgisayar medyası · Çalıyor</string>
+    <string name="desk_media_audio">Bilgisayar medyası ve sesi</string>
+    <string name="desk_pc_screen">Bilgisayar ekranı</string>
+    <string name="queue_kind_clipboard">Pano</string>
+    <string name="queue_kind_clipboard_image">Pano görüntüsü</string>
+    <string name="queue_kind_files">Dosyalar</string>
+    <string name="queue_kind_folder">Klasör</string>
+    <string name="queue_kind_link">Bağlantı</string>
+    <string name="queue_kind_document">Belge</string>
+    <string name="queue_kind_recording">Kayıt</string>
+    <string name="queue_kind_task_alert">Görev uyarısı</string>
+    <string name="queue_kind_camera_request">Kamera isteği</string>
+
+    <string name="settings_theme_artwork_body">Uygulama ve cam renklerini çalan medyanın kapak görseliyle eşitle</string>
+    <string name="settings_wireless_debugging_active">Kablosuz hata ayıklama ile etkin · pano otomatik olarak eşitlenir</string>
+    <string name="settings_wireless_debugging_hint">Panonun arka planda eşitlenebilmesi için Kablosuz hata ayıklamaya izin verin veya bildirimdeki Panoyu gönder\'i kullanın</string>
+
+    <!-- Pause for banking apps -->
+    <string name="banking_title">Bankacılık uygulamaları için duraklat</string>
+    <string name="banking_text">Bazı bankacılık uygulamaları Geliştirici seçenekleri, hata ayıklama veya bir erişilebilirlik hizmeti açıkken açılmaz. Bu uygulamaları burada seçin: NectarLink, onlar açıkken bu ayarları kapatır ve çıktığınızda yeniden açar.</string>
+    <plurals name="banking_chosen">
+        <item quantity="one">%1$d uygulama seçildi</item>
+        <item quantity="other">%1$d uygulama seçildi</item>
+    </plurals>
+    <string name="banking_needs_elevated">NectarLink\'in bu ayarları değiştirebilmesi için Yükseltilmiş modun bir kez kurulması gerekir.</string>
+    <string name="banking_needs_usage">NectarLink\'in bir bankacılık uygulamasının ne zaman açık olduğunu görebilmesi için kullanım erişimine izin verin.</string>
+    <string name="banking_paused_now">Şu anda bir bankacılık uygulaması için duraklatıldı.</string>
+    <string name="banking_choose">Uygulamaları seç</string>
+    <string name="banking_pick_title">Bankacılık uygulamaları</string>
+    <string name="banking_search">Uygulamalarda ara</string>
+    <string name="banking_shortcut">Kısayol ekle</string>
+    <string name="banking_shortcut_hint">Bir uygulama hâlâ açılmıyorsa onu kısayolundan açın: NectarLink önce duraklar, sonra uygulamayı açar.</string>
+    <string name="banking_channel">Bankacılık uygulamaları için duraklat</string>
+    <string name="banking_paused_title">Bir bankacılık uygulaması için duraklatıldı</string>
+    <string name="banking_paused_text">Geliştirici seçenekleri, hata ayıklama ve NectarLink\'in erişilebilirlik hizmeti, uygulamadan çıkana kadar kapalı.</string>
+    <string name="banking_turn_back_on">Yeniden aç</string>
+    <string name="action_done">Bitti</string>
+    <!-- The phone's name as PCs see it when NectarLink runs in another Android profile: "Pixel 9a (Work)". -->
+    <string name="device_name_in_profile">%1$s (%2$s)</string>
+    <string name="profile_work">İş</string>
+    <string name="profile_other">İkinci profil</string>
+</resources>
+
+
+

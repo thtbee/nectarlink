@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Turkish.** The Android and PC apps speak Turkish (Türkçe): pick it in
+  Settings, or they follow the system's language. Thanks to
+  [@sedatdagg](https://github.com/sedatdagg).
 - **Your phone's sound on the PC, without mirroring.** **Phone sound on this
   PC** on Home plays what the phone plays through the PC's speakers or
   headphones, with no mirror window. With Elevated it starts right away;
