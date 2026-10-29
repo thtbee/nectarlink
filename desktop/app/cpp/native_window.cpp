@@ -584,6 +584,21 @@ void NativeWindow::applyFrame()
     // its own caption buttons over the app's.
     const MARGINS margins { 0, 0, 0, 0 };
     DwmExtendFrameIntoClientArea(hwnd, &margins);
+    if (!systemBackdropSupported()) {
+        // Windows 10, frameless: give back the frame styles so Snap, Win+arrow,
+        // min/max animations and the shadow work. WM_NCCALCSIZE below keeps the
+        // whole window as client area, so no caption is drawn.
+        const LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        const LONG_PTR want = (style & ~LONG_PTR(WS_POPUP))
+            | WS_THICKFRAME | WS_CAPTION | WS_SYSMENU | WS_MAXIMIZEBOX | WS_MINIMIZEBOX;
+        if (style != want) {
+            SetWindowLongPtrW(hwnd, GWL_STYLE, want);
+            SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                         SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        const MARGINS shadow { 0, 0, 1, 0 };  // a 1px frame keeps the DWM shadow
+        DwmExtendFrameIntoClientArea(hwnd, &shadow);
+    }
     const BOOL dark = m_darkFrame;
     DwmSetWindowAttribute(hwnd, kUseImmersiveDarkMode, &dark, sizeof(dark));
     // Windows 10 has no system backdrop or caption color: skip both, and the
@@ -672,6 +687,24 @@ bool NativeWindow::nativeEvent(const QByteArray &eventType, void *message, qintp
     const MSG *msg = static_cast<const MSG *>(message);
 
     switch (msg->message) {
+    case WM_NCCALCSIZE:
+        // Windows 10 (frame styles on a frameless window): all client area.
+        if (msg->wParam == TRUE && !systemBackdropSupported()) {
+            if (IsZoomed(msg->hwnd)) {
+                // Maximized windows hang their frame off-screen: pull it back in.
+                auto *params = reinterpret_cast<NCCALCSIZE_PARAMS *>(msg->lParam);
+                const UINT dpi = GetDpiForWindow(msg->hwnd);
+                const int fx = GetSystemMetricsForDpi(SM_CXFRAME, dpi) + GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+                const int fy = GetSystemMetricsForDpi(SM_CYFRAME, dpi) + GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+                params->rgrc[0].left += fx;
+                params->rgrc[0].right -= fx;
+                params->rgrc[0].top += fy;
+                params->rgrc[0].bottom -= fy;
+            }
+            *result = 0;
+            return true;
+        }
+        break;
     case WM_NCHITTEST: {
         const long hit = hitTest(GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam));
         if (hit != HTCLIENT) {
