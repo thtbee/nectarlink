@@ -366,6 +366,11 @@ object Elevated {
                 _state.value = State.NotSetUp
                 return@withLock false
             }
+            // A PC that already has this phone in its own adb (USB, or the
+            // developer's wireless `adb connect`) starts the helper through that
+            // connection first, so NectarLink doesn't hold a second debugging
+            // session of its own next to it.
+            if (startOverUsbLocked()) return@withLock true
             turnOnWirelessDebugging()
             // A connection from before is stale once the helper stopped
             // (wireless debugging went off with the old network): start fresh.
