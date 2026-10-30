@@ -193,10 +193,6 @@ Section "Install"
   !insertmacro Progress "step firewall"
   nsExec::Exec 'netsh advfirewall firewall delete rule name="${FIREWALL_RULE}"'
   nsExec::Exec 'netsh advfirewall firewall add rule name="${FIREWALL_RULE}" dir=in action=allow program="$INSTDIR\${EXE}" enable=yes profile=private,domain description="Lets paired phones connect to NectarLink."'
-  ; Tailscale's adapter can be a Public network: allow the tailnet's ranges
-  ; there too, and nothing else on Public networks.
-  nsExec::Exec 'netsh advfirewall firewall delete rule name="${FIREWALL_RULE} (Tailscale)"'
-  nsExec::Exec 'netsh advfirewall firewall add rule name="${FIREWALL_RULE} (Tailscale)" dir=in action=allow program="$INSTDIR\${EXE}" enable=yes profile=public remoteip=100.64.0.0/10,fd7a:115c:a1e0::/48 description="Lets paired phones connect to NectarLink over Tailscale."'
 
   ; Updates without an administrator prompt: a task that runs this app as
   ; SYSTEM to install a newer release (desktop/app/src/updater.rs). Only
@@ -276,7 +272,6 @@ Section "Uninstall"
   !insertmacro Progress "step cleanup"
   nsExec::Exec 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "try { Get-AppxPackage -Name \"Nectarlink.Desktop\" -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue } catch {}"'
   nsExec::Exec 'netsh advfirewall firewall delete rule name="${FIREWALL_RULE}"'
-  nsExec::Exec 'netsh advfirewall firewall delete rule name="${FIREWALL_RULE} (Tailscale)"'
   nsExec::Exec 'schtasks /Delete /TN "Nectarlink Update" /F'
   Delete "$SMPROGRAMS\${DISPLAY}.lnk"
   Delete "$DESKTOP\${DISPLAY}.lnk"
