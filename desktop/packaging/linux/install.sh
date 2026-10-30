@@ -4,7 +4,7 @@
 # Installs NectarLink on Linux, with everything it needs, and shows each step
 # as it goes:
 #
-#   curl -fsSL https://github.com/thtbee/nectarlink/releases/latest/download/install.sh | sh
+#   curl -fsSL https://github.com/alejandrokundrah/nectarlink/releases/latest/download/install.sh | sh
 #
 # It picks the package that fits this system (.deb with apt, .rpm with dnf
 # or zypper, the tarball elsewhere), checks it against the release's
@@ -26,7 +26,7 @@
 # Everything is in functions, called on the last line: piped into sh, the
 # whole script has arrived before anything runs.
 
-REPO="thtbee/nectarlink"
+REPO="alejandrokundrah/nectarlink"
 DATA_PORT=7718
 MDNS_PORT=5353
 LOCALSEND_PORT=53317

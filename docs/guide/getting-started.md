@@ -25,7 +25,7 @@ This guide walks you through installing NectarLink on Windows, Linux and Android
 Open a terminal and run:
 
 ```bash
-curl -fsSL https://github.com/thtbee/nectarlink/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/alejandrokundrah/nectarlink/releases/latest/download/install.sh | sh
 ```
 
 It shows each step as it runs, and `sudo` asks for your password once. It:
@@ -54,7 +54,7 @@ Each kind of install updates itself the same way it was installed.
 ### Uninstalling
 
 - **Windows:** open **Settings › Apps › Installed apps**, choose **NectarLink**, then **Uninstall**. This removes the app, its firewall rule, update task, shortcuts and Share sheet entry, and deletes its settings and pairings on this PC. Files you received and voice recordings stay where they were saved.
-- **Linux:** run `curl -fsSL https://github.com/thtbee/nectarlink/releases/latest/download/install.sh | sh -s -- --uninstall`. This removes the app however it was installed, its webcam, input and firewall settings, its menu entry and starting with your computer. Your settings and pairings stay in `~/.local/share/Nectarlink`; delete that folder to remove them too. An AppImage is removed by deleting the file.
+- **Linux:** run `curl -fsSL https://github.com/alejandrokundrah/nectarlink/releases/latest/download/install.sh | sh -s -- --uninstall`. This removes the app however it was installed, its webcam, input and firewall settings, its menu entry and starting with your computer. Your settings and pairings stay in `~/.local/share/Nectarlink`; delete that folder to remove them too. An AppImage is removed by deleting the file.
 - **Android:** uninstall it like any other app.
 
 ## First-Run Setup Walkthrough

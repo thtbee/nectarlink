@@ -188,7 +188,7 @@ Provides network diagnostics, **Connect over mobile data**, Wake-on-LAN readines
 | **Wake from your phone** | Read-only status indicator (`Ready`, `Off in Windows`, `Check settings`, `No adapter`) | Inspects your active Windows network adapter and tells you whether Wake on LAN is enabled in Device Manager so your phone can wake this PC from sleep. |
 | **Local automation API** | **Off** (default port `53320`) | Starts the loopback-only HTTP/JSON server (`127.0.0.1:<port>`) for PowerToys, AutoHotkey, and scripts, and writes the 256-bit Bearer token to `%LOCALAPPDATA%\Nectarlink\api-token.json`. |
 | **NectarLink `<version>`** | **Check for updates** and **Open logs** buttons | Shows the app version and this PC's device name, checks GitHub Releases for SHA-256 verified updates, or opens the local diagnostic logs folder. |
-| **Check for updates** | **On** (shown on installed copies) | Checks GitHub Releases over HTTPS (`https://api.github.com/repos/thtbee/nectarlink/releases/latest`) 30 seconds after startup and every 24 hours. |
+| **Check for updates** | **On** (shown on installed copies) | Checks GitHub Releases over HTTPS (`https://api.github.com/repos/alejandrokundrah/nectarlink/releases/latest`) 30 seconds after startup and every 24 hours. |
 | **Install updates automatically** | **On** | Installs a newer release by itself when nobody has used the PC for 10 minutes and nothing is in progress (no mirroring, app window, transfer, call, screen sharing or webcam). No administrator prompt: the installer sets up a task that does it. Turn it off to install from the notification or **Check for updates** when you choose. |
 | **Setup walkthrough & Features guide** | Action buttons / Command Palette entries | Reopens the first-run setup walkthrough or the interactive in-app Features Guide at any time. |
 
@@ -257,7 +257,7 @@ Each permission row shows its live state (**On** / **Allowed** vs **Off**) and a
 | **Data & storage › Photo thumbnails & camera cache** | **Clear** button | Clears temporary Continuity Camera captures (automatically cleaned up after 24 hours). |
 | **Data & storage › Received-file history** | **Clear** button | Clears the transfer log without deleting any saved files in `Download/Nectarlink`. |
 | **Data & storage › Clear everything...** | Confirmation dialog | Deletes all clipboard history, `Timeline`, transfer records, and temporary caches on this phone while keeping your paired PCs and settings. |
-| **About › NectarLink `<version>` & Check for updates** | **Check for updates** button | Shows the installed version and checks GitHub Releases (`https://api.github.com/repos/thtbee/nectarlink/releases/latest`) for SHA-256 verified APK updates. |
+| **About › NectarLink `<version>` & Check for updates** | **Check for updates** button | Shows the installed version and checks GitHub Releases (`https://api.github.com/repos/alejandrokundrah/nectarlink/releases/latest`) for SHA-256 verified APK updates. |
 | **About › Install updates automatically** | **On** | Checks once a day in the background and installs a newer release by itself. Android 12 and later install it without asking once NectarLink has installed an update before; otherwise a notification asks for one tap. Needs **Install unknown apps** allowed for NectarLink. |
 
 <p align="center">

@@ -453,7 +453,7 @@ NativeWindow {
                 font.pixelSize: 13
                 font.underline: true
                 color: window.honey
-                text: "github.com/thtbee/nectarlink/releases/latest"
+                text: "github.com/alejandrokundrah/nectarlink/releases/latest"
                 Accessible.role: Accessible.Link
                 Accessible.name: qsTr("Open the Android app download page")
                 Accessible.onPressAction: Setup.openAndroidPage()
@@ -549,7 +549,7 @@ NativeWindow {
                             anchors.fill: parent
                             anchors.margins: -6
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: Qt.openUrlExternally("https://github.com/thtbee/nectarlink/blob/main/docs/guide/privacy-and-security.md")
+                            onClicked: Qt.openUrlExternally("https://github.com/alejandrokundrah/nectarlink/blob/main/docs/guide/privacy-and-security.md")
                         }
                     }
                 }

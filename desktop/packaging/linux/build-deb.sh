@@ -178,8 +178,8 @@ Architecture: ${DEB_ARCH}
 Installed-Size: ${INSTALLED_SIZE}
 Depends: libc6, libgcc-s1, libstdc++6, libgl1, libx11-6, libxcb1, libxkbcommon0, libwayland-client0, libfontconfig1, libfreetype6, libdbus-1-3${QT_DEPENDS}
 Recommends: fuse3, curl | wget, ffmpeg, gstreamer1.0-tools, gstreamer1.0-pipewire, gstreamer1.0-plugins-base, libopenh264-8 | libopenh264-7 | libopenh264-6 | libavcodec62 | libavcodec61 | libavcodec60, pipewire-bin | pulseaudio-utils, pipewire, wl-clipboard, xclip, xdg-utils, avahi-daemon, bluez, v4l2loopback-dkms, policykit-1 | pkexec
-Maintainer: thtbee <https://github.com/thtbee/nectarlink>
-Homepage: https://github.com/thtbee/nectarlink
+Maintainer: thtbee <https://github.com/alejandrokundrah/nectarlink>
+Homepage: https://github.com/alejandrokundrah/nectarlink
 Description: Connect your Android phone and Linux PC over LAN
  NectarLink links your Android phone and Linux desktop over your local
  network with end-to-end encryption, clipboard sync, notification

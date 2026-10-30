@@ -17,7 +17,7 @@ version = "0.1.4"
 edition = "2024"
 rust-version = "1.97"
 authors = ["The NectarLink contributors"]
-repository = "https://github.com/thtbee/nectarlink"
+repository = "https://github.com/alejandrokundrah/nectarlink"
 
 # Each release's name, from a bee's life (0.1 Pollen, …); the release
 # workflow puts it in the release's title.

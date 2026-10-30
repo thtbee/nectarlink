@@ -27,7 +27,7 @@ A few things that keep translations consistent:
 - Keep the product name "NectarLink" as it is.
 - Short UI labels stay short; the English text is already written to fit.
 - If a string's meaning isn't clear from its context, ask in the pull request
-  or on [Discussions](https://github.com/thtbee/nectarlink/discussions).
+  or on [Discussions](https://github.com/alejandrokundrah/nectarlink/discussions).
 
 ## Partly translated languages
 
@@ -74,7 +74,7 @@ the test above fails otherwise.
 
 [Hosted Weblate](https://hosted.weblate.org/) is free for open-source projects
 (the Libre plan). Create a project named NectarLink with the repository
-`https://github.com/thtbee/nectarlink.git`, branch `main`, and have Weblate
+`https://github.com/alejandrokundrah/nectarlink.git`, branch `main`, and have Weblate
 push to a fork and open pull requests rather than push to `main`. Then add
 two components:
 

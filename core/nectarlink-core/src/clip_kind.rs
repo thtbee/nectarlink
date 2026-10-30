@@ -838,7 +838,7 @@ mod tests {
         let positives = [
             ("https://nectarlink.app/docs?tab=1#top", "https://nectarlink.app/docs?tab=1#top"),
             ("  http://example.com/path/to/page  ", "http://example.com/path/to/page"),
-            ("HTTPS://github.com/thtbee/nectarlink", "https://github.com/thtbee/nectarlink"),
+            ("HTTPS://github.com/alejandrokundrah/nectarlink", "https://github.com/alejandrokundrah/nectarlink"),
             (
                 "www.wikipedia.org/wiki/Rust_(programming_language)",
                 "https://www.wikipedia.org/wiki/Rust_(programming_language)",
@@ -895,7 +895,7 @@ mod tests {
 
         let negatives = [
             "@username",
-            "git@github.com:thtbee/nectarlink.git",
+            "git@github.com:alejandrokundrah/nectarlink.git",
             "banner@2x.png",
             "user@localhost",
             "user@@example.com",

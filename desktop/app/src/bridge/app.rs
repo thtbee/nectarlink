@@ -753,7 +753,7 @@ impl cxx_qt::Initialize for qobject::AppController {
         self.as_mut().set_data_retention_summary(QString::default());
         self.as_mut().set_localsend_peers_json(QString::from("[]"));
         self.as_mut().set_shelf_items(QString::default());
-        if let Ok(qr) = crate::qr::encode("https://github.com/thtbee/nectarlink/releases/latest") {
+        if let Ok(qr) = crate::qr::encode("https://github.com/alejandrokundrah/nectarlink/releases/latest") {
             let svg = format!(
                 "data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {size} {size}\" shape-rendering=\"crispEdges\"><rect width=\"{size}\" height=\"{size}\" fill=\"white\"/><path d=\"{path}\" fill=\"black\"/></svg>",
                 size = qr.size,

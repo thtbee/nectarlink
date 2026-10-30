@@ -14,8 +14,8 @@ Hi, I'm Bee, and yes, a bee built an app called NectarLink. I build cool stuff
 in the open on [𝕏 @thtbee_](https://x.com/thtbee_), so come see what's next.
 Feedback, bugs or ideas? DM me directly.
 
-[![Latest release](https://img.shields.io/github/v/release/thtbee/nectarlink?label=download)](https://github.com/thtbee/nectarlink/releases/latest)
-[![CI](https://github.com/thtbee/nectarlink/actions/workflows/ci.yml/badge.svg)](https://github.com/thtbee/nectarlink/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/alejandrokundrah/nectarlink?label=download)](https://github.com/alejandrokundrah/nectarlink/releases/latest)
+[![CI](https://github.com/alejandrokundrah/nectarlink/actions/workflows/ci.yml/badge.svg)](https://github.com/alejandrokundrah/nectarlink/actions/workflows/ci.yml)
 [![Apps: GPL-3.0-or-later](https://img.shields.io/badge/apps-GPL--3.0--or--later-blue)](LICENSE)
 [![Core: MPL-2.0](https://img.shields.io/badge/core-MPL--2.0-blue)](LICENSE)
 
@@ -38,10 +38,10 @@ of new features I wanted that I think you'll enjoy having too.
 
 | | Download | Needs |
 |---|---|---|
-| **Windows (x64)** | [Installer (.exe)](https://github.com/thtbee/nectarlink/releases/download/v0.1.4/Nectarlink-0.1.4-x64-setup.exe) | Windows 10 (2004+) or 11, 64-bit Intel or AMD (Phone as webcam needs Windows 11) |
+| **Windows (x64)** | [Installer (.exe)](https://github.com/alejandrokundrah/nectarlink/releases/download/v0.1.4/Nectarlink-0.1.4-x64-setup.exe) | Windows 10 (2004+) or 11, 64-bit Intel or AMD (Phone as webcam needs Windows 11) |
 | **Windows (ARM64)** | From the next release | Windows 11 on ARM (Snapdragon) |
 | **Linux (x86_64)** | From the next release: [one command](#on-linux), or a .deb, .rpm, AppImage or .tar.gz | Ubuntu 24.04 or newer, Debian 13, Fedora 40 or newer, 64-bit Intel or AMD |
-| **Android** | [App (.apk)](https://github.com/thtbee/nectarlink/releases/download/v0.1.4/Nectarlink-0.1.4-android.apk) | Android 8.0 or newer |
+| **Android** | [App (.apk)](https://github.com/alejandrokundrah/nectarlink/releases/download/v0.1.4/Nectarlink-0.1.4-android.apk) | Android 8.0 or newer |
 
 The apps update themselves from GitHub Releases and check every download
 against its SHA-256 sums.
@@ -52,7 +52,7 @@ From the next release, one command installs NectarLink with everything it
 needs, and shows each step as it goes:
 
 ```bash
-curl -fsSL https://github.com/thtbee/nectarlink/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/alejandrokundrah/nectarlink/releases/latest/download/install.sh | sh
 ```
 
 It picks the package for your system (.deb with apt, .rpm with dnf or zypper,
@@ -303,7 +303,7 @@ Releases are built by CI from a `v*` tag; see
 ## Questions and ideas
 
 Ask questions, share ideas and show your setup in
-[Discussions](https://github.com/thtbee/nectarlink/discussions). Issues are for
+[Discussions](https://github.com/alejandrokundrah/nectarlink/discussions). Issues are for
 bugs and agreed feature work.
 
 ## Contributing

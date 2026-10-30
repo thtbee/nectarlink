@@ -101,7 +101,7 @@ The Windows desktop client combining a Rust service host with a Qt 6.12 Quick/QM
   - `local_api.rs`: Opt-in localhost HTTP/SSE server (`127.0.0.1:53320`) for CLI, PowerToys, Raycast, and Stream Deck integrations.
   - `share_target.rs` and `shell_integration.rs`: Windows Share Target activation and Explorer context-menu verb registration (`Send to Phone with NectarLink`).
   - `setup.rs` (with `bridge/setup.rs` and `qml/setup/`): The installer's and uninstaller's window. The NSIS installer (`desktop/installer/nectarlink.nsi`) unpacks the app and starts it with `--setup`; the uninstall entry starts the installed app with `--remove`. The window runs the NSIS installer or uninstaller silently with administrator rights and shows its progress.
-  - `updater.rs`: Automatic release update checker (`https://api.github.com/repos/thtbee/nectarlink/releases/latest`) and SHA-256 verified silent NSIS installer runner on installed desktop copies.
+  - `updater.rs`: Automatic release update checker (`https://api.github.com/repos/alejandrokundrah/nectarlink/releases/latest`) and SHA-256 verified silent NSIS installer runner on installed desktop copies.
 
 ### 6. `desktop/vcam` (`nectarlink-vcam`)
 
