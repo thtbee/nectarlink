@@ -16,7 +16,7 @@ as carrier CGNAT. So:
 mDNS doesn't cross Tailscale (no multicast), so with the address dropped there
 was nothing to dial. Tailscale's IPv6 range (`fd7a:115c:a1e0::/48`) is already a
 unique-local address and passed; most setups only route IPv4 by default.
-On Windows, the installer's firewall rule covered Private and Domain networks
+On Windows, the installer's firewall rule covers Private and Domain networks
 only; the Tailscale adapter is often a Public network.
 
 ## Change
@@ -24,8 +24,15 @@ only; the Tailscale adapter is often a Public network.
   `fd7a:115c:a1e0::/48`). Every LAN-only filter now keeps tailnet addresses,
   so the PC's tailnet address from pairing (or learned from a session) is
   stored, dialed and allowed, with away mode off.
-- The installer adds a second firewall rule: Public profile, remote addresses
-  limited to the tailnet ranges.
+- No new firewall rule. A Public-profile rule for `100.64.0.0/10` would also
+  open the port to carrier and hotspot networks that use that range. Instead,
+  mark the Tailscale network Private once, in an administrator PowerShell:
+
+  ```powershell
+  Set-NetConnectionProfile -InterfaceAlias Tailscale -NetworkCategory Private
+  ```
+
+  The installer's existing rule (Private and Domain) then covers it.
 
 Unchanged: pairing, device keys, QUIC end-to-end encryption, relays (still off
 unless away mode is on), mDNS.
