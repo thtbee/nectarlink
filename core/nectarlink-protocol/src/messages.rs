@@ -1698,10 +1698,11 @@ pub fn is_valid_app_apk(apk: &str) -> bool {
         && is_shell_word(apk)
 }
 
-/// NectarLink's package, or its local test build (`app.nectarlink.dev`, the
-/// `applicationIdSuffix` of a side-by-side build). No other package.
+/// NectarLink's package. Debug builds of the PC app also accept its local
+/// test build (`app.nectarlink.dev`, the `applicationIdSuffix` of a
+/// side-by-side build); release builds accept no other package.
 pub fn is_own_package(p: &str) -> bool {
-    p == elevated::PACKAGE || p.strip_prefix(elevated::PACKAGE) == Some(".dev")
+    p == elevated::PACKAGE || (cfg!(debug_assertions) && p.strip_prefix(elevated::PACKAGE) == Some(".dev"))
 }
 
 /// A grant the phone may ask for itself, and nothing else: a permission or
@@ -4307,7 +4308,7 @@ mod tests {
                 .is_valid()
         );
         assert!(!ElevatedUsbStart { grants: vec![start.grants[0].clone(); 9], ..start.clone() }.is_valid());
-        // The side-by-side test build grants itself too.
+        // The side-by-side test build grants itself, in debug builds only.
         let dev = ElevatedUsbStart {
             apk: "/data/app/~~kG3x_Q==/app.nectarlink.dev-Ab1-cD2==/base.apk".into(),
             grants: vec![
@@ -4316,7 +4317,7 @@ mod tests {
             ],
             ..start
         };
-        assert!(dev.is_valid());
+        assert_eq!(dev.is_valid(), cfg!(debug_assertions));
     }
 
     #[test]
