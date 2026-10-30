@@ -372,8 +372,6 @@ NativeWindow::NativeWindow(QWindow *parent)
         // app bar's buttons and WM_NCHITTEST still give drag, resize and maximize.
         setFlags(flags() | Qt::FramelessWindowHint);
     }
-    qInfo("NativeWindow: Windows build %lu, %s", static_cast<unsigned long>(windowsBuild()),
-          systemBackdropSupported() ? "expanded client area (Windows 11)" : "frameless (Windows 10)");
     setColor(Qt::transparent);
 #elif defined(__linux__)
     setFlags(flags() | Qt::FramelessWindowHint);

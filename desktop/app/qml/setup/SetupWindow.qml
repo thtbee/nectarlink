@@ -30,6 +30,11 @@ NativeWindow {
         ? (dark ? Qt.rgba(0.55, 0.52, 0.48, 0.55) : Qt.rgba(0.72, 0.68, 0.62, 0.55))
         : (dark ? Qt.rgba(1.0, 0.62, 0.18, 0.75) : Qt.rgba(1.0, 0.72, 0.37, 0.80))
 
+    // Not Theme's: Theme reads the app's settings and data, which setup and
+    // the uninstaller (which deletes them) must leave alone.
+    readonly property string captionIconFont: Qt.fontFamilies().indexOf("Segoe Fluent Icons") >= 0
+        ? "Segoe Fluent Icons" : "Segoe MDL2 Assets"
+
     readonly property string action: removing ? "remove"
         : Setup.kind === "update" ? "update"
         : Setup.kind === "reinstall" ? "reinstall"
@@ -115,7 +120,7 @@ NativeWindow {
                 anchors.centerIn: parent
                 visible: Qt.platform.os === "windows"
                 text: "\ue8bb"
-                font.family: Theme.captionIconFont
+                font.family: window.captionIconFont
                 font.pixelSize: 10
                 color: closeArea.containsMouse ? "#FFFFFF" : window.ink
             }
