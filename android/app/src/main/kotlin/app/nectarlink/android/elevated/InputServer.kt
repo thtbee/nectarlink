@@ -43,12 +43,14 @@ import java.security.MessageDigest
  * on its own only during idle maintenance. Asked once per version by
  * [Elevated]; allowed by name in the helper.
  */
-internal const val COMPILE_APP_COMMAND = "cmd package compile -m speed-profile app.nectarlink"
+internal const val COMPILE_APP_COMMAND = "cmd package compile -m speed-profile ${app.nectarlink.android.BuildConfig.APPLICATION_ID}"
 
 object InputServer {
     private const val POWER_MODE_OFF = 0
     private const val POWER_MODE_NORMAL = 2
-    private const val PKG = "app.nectarlink"
+    // The installed package, so a build with an applicationIdSuffix (".dev")
+    // grants itself and gets the attach broadcast, not the release app.
+    private const val PKG = app.nectarlink.android.BuildConfig.APPLICATION_ID
 
     private val windows = java.util.Collections.synchronizedSet(LinkedHashSet<AppDisplay>())
     @Volatile private var serverSocket: ServerSocket? = null
