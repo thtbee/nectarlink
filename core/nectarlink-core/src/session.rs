@@ -52,7 +52,10 @@ pub(crate) const CLOSE_NORMAL: u32 = 0;
 pub(crate) fn is_lan_ip(ip: std::net::IpAddr) -> bool {
     match ip.to_canonical() {
         std::net::IpAddr::V4(v4) => {
-            v4.is_private() || v4.is_link_local() || v4.is_loopback() || is_tailnet_ip(std::net::IpAddr::V4(v4))
+            v4.is_private()
+                || v4.is_link_local()
+                || v4.is_loopback()
+                || is_tailnet_ip(std::net::IpAddr::V4(v4))
         }
         std::net::IpAddr::V6(v6) => v6.is_loopback() || v6.is_unicast_link_local() || v6.is_unique_local(),
     }
@@ -718,7 +721,8 @@ mod tests {
             assert!(is_lan_ip(ip), "expected {ok} to be treated as LAN IP");
         }
 
-        for bad in ["8.8.8.8", "100.63.255.255", "100.128.0.1", "2001:4860:4860::8888", "2401:4900:1c2a:8b00::1"]
+        for bad in
+            ["8.8.8.8", "100.63.255.255", "100.128.0.1", "2001:4860:4860::8888", "2401:4900:1c2a:8b00::1"]
         {
             let ip: IpAddr = bad.parse().unwrap();
             assert!(!is_lan_ip(ip), "expected {bad} to be rejected as non-LAN IP");
@@ -727,7 +731,13 @@ mod tests {
 
     #[test]
     fn tailnet_ip_matches_only_tailscale_ranges() {
-        for ok in ["100.64.0.0", "100.100.100.100", "100.127.255.255", "fd7a:115c:a1e0:ab12::1", "::ffff:100.64.1.2"] {
+        for ok in [
+            "100.64.0.0",
+            "100.100.100.100",
+            "100.127.255.255",
+            "fd7a:115c:a1e0:ab12::1",
+            "::ffff:100.64.1.2",
+        ] {
             assert!(is_tailnet_ip(ok.parse().unwrap()), "expected {ok} to be a tailnet IP");
         }
         for bad in ["100.63.0.1", "100.128.0.1", "192.168.1.1", "fd7a:115c:a1e1::1", "fd12::1"] {
