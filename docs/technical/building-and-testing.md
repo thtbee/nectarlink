@@ -75,7 +75,15 @@ target\release\nectarlink-desktop.exe --register-vcam
 
 `--unregister-vcam` removes the registration again.
 
-> **Debug builds and Frame Server.** The virtual camera is loaded by the Windows Frame Server service, which runs as `NT AUTHORITY\LocalService` and cannot read files under your user profile. Registering `target\debug\nectarlink_vcam.dll` therefore succeeds, but starting the camera fails with `0x80070005` (access denied). Test with the installed build, which keeps the DLL under `C:\Program Files\Nectarlink`; to test a local DLL, stop the `FrameServer` service, copy it over the installed DLL, and run the installed `nectarlink-desktop.exe --register-vcam` elevated.
+> **Debug builds and Frame Server.** The virtual camera is loaded by the Windows
+> Frame Server service, which runs as `NT AUTHORITY\LocalService` and cannot
+> read files under your user profile. Registering
+> `target\debug\nectarlink_vcam.dll` therefore succeeds, but starting the camera
+> fails with `0x80070005` (access denied). Test with the installed build, which
+> keeps the DLL in its install folder (under `C:\Program Files\Nectarlink` by
+> default); to test a local DLL, stop the `FrameServer` service
+> (`Stop-Service FrameServer`), copy it over the installed DLL, and run the
+> installed `nectarlink-desktop.exe --register-vcam` elevated.
 
 ### 4. Design Tokens and Third-Party Notices (`cargo xtask`)
 
