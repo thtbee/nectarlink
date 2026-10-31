@@ -67,11 +67,15 @@ The compiled executable is placed at `target/release/nectarlink-desktop.exe`.
 cargo build --release -p nectarlink-vcam
 ```
 
-Produces `target/release/nectarlink_vcam.dll`. To register the COM virtual camera for testing with video conferencing apps, run in an elevated PowerShell prompt:
+Produces `target/release/nectarlink_vcam.dll`. The DLL exports only `DllGetClassObject` and `DllCanUnloadNow`; it does not export `DllRegisterServer`, so `regsvr32` cannot register it. The desktop app writes the COM and Frame Server registry keys instead. Build the desktop app (section 2), then run in an elevated PowerShell prompt:
 
 ```powershell
-regsvr32.exe target\release\nectarlink_vcam.dll
+target\release\nectarlink-desktop.exe --register-vcam
 ```
+
+`--unregister-vcam` removes the registration again.
+
+> **Debug builds and Frame Server.** The virtual camera is loaded by the Windows Frame Server service, which runs as `NT AUTHORITY\LocalService` and cannot read files under your user profile. Registering `target\debug\nectarlink_vcam.dll` therefore succeeds, but starting the camera fails with `0x80070005` (access denied). Test with the installed build, which keeps the DLL under `C:\Program Files\Nectarlink`; to test a local DLL, stop the `FrameServer` service, copy it over the installed DLL, and run the installed `nectarlink-desktop.exe --register-vcam` elevated.
 
 ### 4. Design Tokens and Third-Party Notices (`cargo xtask`)
 
