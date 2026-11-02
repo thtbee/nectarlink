@@ -6,9 +6,10 @@ On stock Android (non-rooted devices without OEM system-signature privileges), c
 
 1. **`CAPTURE_AUDIO_OUTPUT` & `CONTROL_INCALL_EXPERIENCE` are signature/privileged permissions**: Third-party apps, even when granted `READ_PHONE_STATE`, `ANSWER_PHONE_CALLS`, `CALL_PHONE`, or `InCallService` role, cannot read the downlink voice stream or inject uplink microphone PCM into an active cellular call over Wi-Fi/LAN.
 2. **`AudioPlaybackCapture` (`MediaProjection`) excludes voice calls**: Android 10+'s `AudioPlaybackCaptureConfiguration` explicitly blocks capturing `USAGE_VOICE_COMMUNICATION` and `USAGE_VOICE_COMMUNICATION_SIGNALLING`.
-3. **ADB `appops` / shell Grade B cannot bypass HAL voice routing**: Unlike `PROJECT_MEDIA` or `READ_CLIPBOARD_IN_BACKGROUND`, the restriction on `VOICE_CALL` audio capture is enforced in `AudioPolicyManager` (`CAP_SYS_ADMIN` / `AID_AUDIOSERVER` / privileged partition check) and in hardware DSP routing on Qualcomm/Tensor/Exynos platforms.
+3. **The shell user (`Elevated`) may record the call sources, but whether they carry the call depends on the phone**: `shell` holds `CAPTURE_AUDIO_OUTPUT` (the Elevated helper already records `REMOTE_SUBMIX` with it), which is the permission `AudioPolicyService` asks for `VOICE_CALL`, `VOICE_UPLINK` and `VOICE_DOWNLINK`. Checked on 2026-11-02 on an Android 17 emulator: a recorder on each of the three, created from `app_process` as `shell`, initializes and records, during a call and outside one. The emulator's audio HAL feeds its microphone input there either way, so it can't show whether a real phone's HAL delivers the call; that is decided per device, in the audio HAL and the modem's DSP.
+4. **Nothing can feed sound into a cellular call's uplink**: the modem mixes the microphone in its DSP. No app, `shell` included, has an API to replace or add to it; only an audio route the phone itself switches to (earpiece, speaker, wired or Bluetooth headset) does.
 
-Consequently, streaming two-way cellular call audio over a custom Wi-Fi/QUIC socket is impossible for any user-installed Android application.
+Consequently, hearing a cellular call on the PC is possible only with `Elevated` and only on phones whose audio HAL delivers the call to those sources (to be confirmed on real devices), and talking into it from the PC's microphone is impossible for a user-installed Android app.
 
 ---
 
