@@ -404,6 +404,9 @@
     <string name="mic_request_card_text">Siz veya bilgisayar durdurana kadar açık kalır.</string>
     <string name="mic_pc_toggle">Bu telefonu mikrofon olarak kullan</string>
     <string name="mic_pc_toggle_hint">Varsayılan olarak açık. Bu bilgisayar mikrofonu isteyebilir. Yalnızca Başlat\'a dokunduğunuzda açılır.</string>
+    <string name="mic_pc_toggle_hint_auto">Varsayılan olarak açık. Bu bilgisayar mikrofonu isteyebilir ve mikrofon hemen açılır.</string>
+    <string name="start_without_asking_toggle">Kamerayı ve mikrofonu sormadan başlat</string>
+    <string name="start_without_asking_hint">Bu bilgisayar istediğinde telefona dokunmadan hemen açılırlar. Elevated gerekir. Elevated olmadan telefon her zamanki gibi sorar.</string>
     <string name="recorder_notification_recording">%1$s için kaydediliyor</string>
     <string name="recorder_notification_paused">Kayıt duraklatıldı (%1$s)</string>
     <string name="recorder_permission_title">Mikrofon erişimine izin verin</string>

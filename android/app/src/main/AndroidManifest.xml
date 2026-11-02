@@ -349,6 +349,15 @@
             android:taskAffinity=""
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
+        <!-- Exported for the Elevated helper; acts only on a request the user allowed (PcAutoStart). -->
+        <activity
+            android:name=".service.PcStartActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <receiver
             android:name=".mic.MicDeclineReceiver"
             android:exported="false" />

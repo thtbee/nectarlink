@@ -847,6 +847,8 @@ object InputServer {
             "appops set app.nectarlink GET_USAGE_STATS allow",
             // Fast starts right after an install or update.
             COMPILE_APP_COMMAND,
+            // Start without asking: the camera or microphone a chosen PC asked for.
+            app.nectarlink.android.service.PcAutoStart.OPEN_COMMAND,
         )
 
         private companion object {

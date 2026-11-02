@@ -33,7 +33,7 @@ You can preview your phone's camera inside NectarLink's **Settings › Camera & 
 
 1. Start the webcam from either side:
    - **From your phone**: Tap **Webcam** on the Android Home screen and tap **Start webcam**.
-   - **From your PC**: Open **Settings › Camera & Audio** (or click the webcam control on Home) and click **Start webcam**. For your privacy, **starting the webcam from the PC always posts a confirmation request on your phone** (`<PC> wants to use your camera`) so your phone's camera never opens silently without your consent on the phone.
+   - **From your PC**: Open **Settings › Camera & Audio** (or click the webcam control on Home) and click **Start webcam**. For your privacy, **starting the webcam from the PC posts a confirmation request on your phone** (`<PC> wants to use your camera`) so your phone's camera never opens without your consent on the phone. To skip the tap for a PC you trust, turn on **Start the camera and microphone without asking** under that PC in the phone's **Settings › PCs** (`Elevated`; off by default). Its webcam and microphone requests then start right away, even with the phone locked, and the **Stop** notification and Android's camera dot still show.
 2. While streaming, you can adjust the camera from either your phone or your PC:
    - **Camera lens**: Switch between **Back** and **Front** cameras.
    - **Resolution**: Choose **720p** (`1280 x 720`), **1080p** (`1920 x 1080`), or **4K** (`3840 x 2160` on phones whose camera sensor supports 4K at 30 fps).
@@ -110,7 +110,7 @@ Use your phone's microphone to record voice notes, interviews, or meeting memos 
 
 ## Data and Privacy
 
-- **Explicit camera consent on the phone**: A paired PC can never open your phone's camera silently. Whenever you click **Start webcam** or trigger **Continuity Camera** from the PC, your phone displays a notification requiring a physical tap on the phone before the camera opens. While streaming, Android's green camera privacy indicator and NectarLink's persistent **Streaming camera to `<PC>`** notification remain visible on your phone with a one-tap **Stop** button.
+- **Explicit camera consent on the phone**: A paired PC can never open your phone's camera unless you allowed it. Whenever you click **Start webcam** or trigger **Continuity Camera** from the PC, your phone displays a notification requiring a physical tap on the phone before the camera opens, unless you turned on **Start the camera and microphone without asking** for that PC (webcam and microphone only). While streaming, Android's green camera privacy indicator and NectarLink's persistent **Streaming camera to `<PC>`** notification remain visible on your phone with a one-tap **Stop** button.
 - **Shared memory isolation**: On Windows, decoded webcam frames are passed to the Media Foundation virtual camera DLL through a logon-session-scoped shared memory ring buffer (`Local\NectarlinkVirtualCamera_v2`) with strict atomic bounds checking (`MAX_WIDTH = 3840`, `MAX_HEIGHT = 2160`) so other Windows user accounts cannot read the feed.
 - **Temporary camera cache**: Temporary Continuity Camera captures on the phone are stored in the app's private cache and deleted automatically within 24 hours (or immediately via **Settings › Features & Data › Data & storage › Photo thumbnails & camera cache › Clear**).
 

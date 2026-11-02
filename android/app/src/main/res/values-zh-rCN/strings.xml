@@ -388,6 +388,9 @@
     <string name="mic_request_card_text">在你或电脑停止之前会一直开启。</string>
     <string name="mic_pc_toggle">将此手机用作麦克风</string>
     <string name="mic_pc_toggle_hint">默认开启。此电脑可以请求使用麦克风，只有在你轻触“开始”后才会开启。</string>
+    <string name="mic_pc_toggle_hint_auto">默认开启。此电脑可以请求使用麦克风，请求后会立即开启。</string>
+    <string name="start_without_asking_toggle">无需询问即可启动相机和麦克风</string>
+    <string name="start_without_asking_hint">此电脑请求时，相机或麦克风会立即开启，无需在手机上轻触。需要 Elevated。没有 Elevated 时，手机会照常询问。</string>
     <string name="recorder_notification_recording">正在为 %1$s 录音</string>
     <string name="recorder_notification_paused">录音已暂停（%1$s）</string>
     <string name="recorder_permission_title">允许使用麦克风</string>

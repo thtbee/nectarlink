@@ -404,6 +404,9 @@
     <string name="mic_request_card_text">It stays on until you or the PC stop it.</string>
     <string name="mic_pc_toggle">Use this phone as a microphone</string>
     <string name="mic_pc_toggle_hint">On by default. This PC can ask for the microphone. It only turns on when you tap Start.</string>
+    <string name="mic_pc_toggle_hint_auto">On by default. This PC can ask for the microphone, and it turns on right away.</string>
+    <string name="start_without_asking_toggle">Start the camera and microphone without asking</string>
+    <string name="start_without_asking_hint">When this PC asks, they turn on right away, with no tap on the phone. Needs Elevated. Without it, the phone asks as usual.</string>
     <string name="recorder_notification_recording">Recording for %1$s</string>
     <string name="recorder_notification_paused">Recording paused (%1$s)</string>
     <string name="recorder_permission_title">Allow microphone access</string>

@@ -33,6 +33,7 @@ import app.nectarlink.android.recorder.DeliveryState
 import app.nectarlink.android.recorder.RecordingsStore
 import app.nectarlink.android.recorder.SavedRecording
 import app.nectarlink.android.service.ConnectionService
+import app.nectarlink.android.service.PcAutoStart
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.storage.PhoneStorage
 import app.nectarlink.android.mic.MicService
@@ -112,6 +113,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             // Asked on Home too, so it's seen with notifications off or while the app is open.
             _state.update { it.copy(micRequestFrom = pc) }
             app.nectarlink.android.mic.MicRequests.show(this.context, pc, _state.value.nameOf(pc).orEmpty())
+            PcAutoStart.tryStart(this.context, PcAutoStart.Kind.MIC, pc)
             true
         },
         onMicStop = { pc -> clearMicRequest(pc) },
@@ -149,6 +151,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             } else {
                 _state.update { it.copy(webcamRequest = request) }
                 WebcamRequests.show(this.context, request, _state.value.nameOf(pc).orEmpty())
+                PcAutoStart.tryStart(this.context, PcAutoStart.Kind.WEBCAM, pc)
                 true
             }
         },
@@ -891,6 +894,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             is Event.DeviceAdded -> ConnectionService.start(context)
             is Event.DeviceRemoved -> {
                 wakeTimers.remove(event.id)?.cancel()
+                // Paired again later, it asks again until chosen again.
+                PcAutoStart.set(context, event.id, false)
                 scope.launch(Dispatchers.Default) {
                     pcMedia.update(event.id, "", emptyList())
                     pcNotificationPoster.cancelAll(event.id)

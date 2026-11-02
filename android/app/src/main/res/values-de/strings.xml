@@ -404,6 +404,9 @@
     <string name="mic_request_card_text">Es bleibt aktiv, bis du oder der PC es beenden.</string>
     <string name="mic_pc_toggle">Dieses Gerät als Mikrofon verwenden</string>
     <string name="mic_pc_toggle_hint">Standardmäßig ein. Dieser PC kann das Mikrofon anfordern. Es schaltet sich erst ein, wenn du auf „Starten“ tippst.</string>
+    <string name="mic_pc_toggle_hint_auto">Standardmäßig ein. Dieser PC kann das Mikrofon anfordern, und es schaltet sich sofort ein.</string>
+    <string name="start_without_asking_toggle">Kamera und Mikrofon ohne Nachfrage starten</string>
+    <string name="start_without_asking_hint">Wenn dieser PC fragt, schalten sie sich sofort ein, ohne Tippen auf dem Telefon. Braucht Elevated. Ohne Elevated fragt das Telefon wie gewohnt.</string>
     <string name="recorder_notification_recording">Aufnahme für %1$s</string>
     <string name="recorder_notification_paused">Aufnahme pausiert (%1$s)</string>
     <string name="recorder_permission_title">Mikrofonzugriff erlauben</string>

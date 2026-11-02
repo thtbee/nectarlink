@@ -785,6 +785,7 @@ private fun App(
                     val suggestClipboardActions by preferences.suggestClipboardActions.collectAsStateWithLifecycle()
                     val volumeKeysControlPc by preferences.volumeKeysControlPc.collectAsStateWithLifecycle()
                     val backgroundServiceEnabled by preferences.backgroundServiceEnabled.collectAsStateWithLifecycle()
+                    val startWithoutAsking by app.nectarlink.android.service.PcAutoStart.pcs(context).collectAsStateWithLifecycle()
                     val hiveInviteShown by preferences.hiveInviteShown.collectAsStateWithLifecycle()
                     val saveableStateHolder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
 
@@ -946,6 +947,8 @@ private fun App(
                                     updater = (context.applicationContext as NectarlinkApplication).updater,
                                     onSetStorageEnabled = core::setStorageEnabled,
                                     onSetMicEnabled = core::setMicEnabled,
+                                    startWithoutAsking = startWithoutAsking,
+                                    onSetStartWithoutAsking = { pc, on -> app.nectarlink.android.service.PcAutoStart.set(context, pc, on) },
                                     onAddSafFolder = core::addSafFolder,
                                     onRemoveSafFolder = core::removeSafFolder,
                                     onSetClipboardHistoryEnabled = core::setClipboardHistoryEnabled,
