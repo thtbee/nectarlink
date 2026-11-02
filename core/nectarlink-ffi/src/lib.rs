@@ -3399,6 +3399,12 @@ impl NectarlinkNode {
         self.node.pairing_cancel();
     }
 
+    /// Whether a list of nearby devices (pairing) is on screen: the LAN is
+    /// then asked who's there often, and rarely otherwise, to save battery.
+    pub fn set_discovery_fast(&self, fast: bool) {
+        self.node.set_discovery_fast(fast);
+    }
+
     pub fn discovered_devices(&self) -> Vec<DiscoveredDevice> {
         self.node.discovered_devices().into_iter().map(Into::into).collect()
     }

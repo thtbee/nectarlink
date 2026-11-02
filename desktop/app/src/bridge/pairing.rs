@@ -64,6 +64,11 @@ pub mod qobject {
         /// Leaves pairing mode.
         #[qinvokable]
         fn cancel(self: Pin<&mut Pairing>);
+        /// Whether a pairing screen (with its list of nearby phones) is on
+        /// screen: this PC then asks the LAN who's there often.
+        #[qinvokable]
+        #[cxx_name = "setNearbyShown"]
+        fn set_nearby_shown(self: &Pairing, shown: bool);
     }
 
     impl cxx_qt::Threading for Pairing {}
@@ -251,6 +256,12 @@ impl qobject::Pairing {
             PairingView::Failed(PairingFailure::Declined)
         };
         hub().update(|s| s.set_pairing(next));
+    }
+
+    pub fn set_nearby_shown(&self, shown: bool) {
+        if let Some(node) = core_host::node() {
+            node.set_discovery_fast(shown);
+        }
     }
 
     pub fn cancel(self: Pin<&mut Self>) {

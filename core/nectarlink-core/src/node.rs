@@ -12,7 +12,7 @@ use std::{
 use iroh::{
     Endpoint, EndpointAddr, RelayMode,
     address_lookup::{DnsAddressLookup, MemoryLookup, PkarrPublisher, PkarrResolver},
-    endpoint::{Connection, QuicTransportConfig, VarInt, presets},
+    endpoint::{Connection, PortmapperConfig, QuicTransportConfig, VarInt, presets},
     endpoint_info::{EndpointInfo, UserData},
     protocol::{AcceptError, ProtocolHandler, Router},
 };
@@ -42,7 +42,11 @@ use crate::{
 
 const DIAL_TIMEOUT: Duration = Duration::from_secs(15);
 const BACKOFF_MIN: Duration = Duration::from_secs(1);
-const BACKOFF_MAX: Duration = Duration::from_secs(30);
+/// The longest wait between redials of an offline device. Waking for a
+/// handshake every 30 s all night kept phones from sleeping; a network change,
+/// a LAN sighting, the PC dialing in or the phone being unlocked
+/// (`network_changed`) all redial at once anyway.
+const BACKOFF_MAX: Duration = Duration::from_secs(120);
 /// The per-device setting behind [`Node::set_reconnect`], on unless the user
 /// turned it off. Not one of the toggles the apps list.
 const RECONNECT_TOGGLE: &str = "reconnect";
@@ -55,12 +59,19 @@ const USB_DIAL_GRACE: Duration = Duration::from_secs(6);
 /// notification snapshots and multi-peer capability/state bursts without lagging
 /// UI or FFI subscribers.
 const EVENT_CAPACITY: usize = 2048;
-/// A connection with no traffic for this long is dead. iroh sends a
-/// keep-alive every 1 s, so a healthy link is never idle that long, and a
-/// device that drops off the network shows as offline within ~2-4 seconds
-/// instead of after QUIC's default of 30 s.
-const KEEP_ALIVE_INTERVAL: Duration = Duration::from_millis(1000);
-const IDLE_TIMEOUT: Duration = Duration::from_secs(8);
+/// A connection with no traffic for this long is dead, and a quiet one gets a
+/// keep-alive this often. Both match iroh's own per-path limits (it pings an
+/// idle path every 5 s and drops one silent for 15 s), so a device that
+/// drops off shows as offline within ~15 s. Shorter kept the phone's Wi-Fi
+/// and CPU from ever sleeping on a connected phone.
+const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
+const IDLE_TIMEOUT: Duration = Duration::from_secs(15);
+/// How often this device asks the LAN who's there (mDNS). Answers to others'
+/// queries go out at once either way, so only a device showing a nearby list
+/// (pairing) needs to ask often; asking every 700 ms all the time kept phones
+/// awake (`Node::set_discovery_fast`).
+const MDNS_FAST: Duration = Duration::from_millis(700);
+const MDNS_SLOW: Duration = Duration::from_secs(30);
 /// How long opening a stream the PC asked for (its screen, an app window)
 /// waits for the connection to come back if it just dropped or was replaced.
 const STREAM_RECONNECT_WAIT: Duration = Duration::from_secs(10);
@@ -145,6 +156,9 @@ pub(crate) struct Shared {
     discovered: Mutex<HashMap<DeviceId, DiscoveredDevice>>,
     /// Last LAN mDNS sighting per peer (timestamp and announced socket addresses).
     lan_seen: Mutex<HashMap<DeviceId, (std::time::Instant, Vec<SocketAddr>)>>,
+    /// The running mDNS's task and whether it asks often (`install_mdns`);
+    /// `None` without LAN discovery.
+    lan_discovery: Mutex<Option<(CancellationToken, bool)>>,
     /// Consecutive direct/QUIC dial failures per peer since last connected.
     dial_failures: Mutex<HashMap<DeviceId, u32>>,
     /// The last capability matrix emitted per device, to emit only changes.
@@ -1566,6 +1580,7 @@ impl Node {
             supervisors: Mutex::new(HashMap::new()),
             discovered: Mutex::new(HashMap::new()),
             lan_seen: Mutex::new(HashMap::new()),
+            lan_discovery: Mutex::new(None),
             dial_failures: Mutex::new(HashMap::new()),
             matrices: Mutex::new(HashMap::new()),
             away_mode: std::sync::atomic::AtomicBool::new(config.away_mode),
@@ -1804,6 +1819,20 @@ impl Node {
     }
 
     /// Devices discovered on the local network that aren't paired yet.
+    /// Asks the LAN who's there often while a list of nearby devices is on
+    /// screen (pairing), and rarely otherwise, which keeps phones asleep.
+    /// No-op without LAN discovery.
+    pub fn set_discovery_fast(&self, fast: bool) {
+        let running = lock(&self.shared.lan_discovery).as_ref().map(|(_, f)| *f);
+        if running.is_none_or(|f| f == fast) {
+            return;
+        }
+        let _runtime = self.shared.runtime.enter();
+        if let Err(e) = install_mdns(&self.shared, fast) {
+            tracing::warn!(error = %e, fast, "can't change how often mDNS asks");
+        }
+    }
+
     pub fn discovered_devices(&self) -> Vec<DiscoveredDevice> {
         lock(&self.shared.discovered).values().cloned().collect()
     }
@@ -3924,8 +3953,9 @@ async fn bind_endpoint(
             .address_lookup(PkarrResolver::n0_dns())
             .address_lookup(DnsAddressLookup::n0_dns())
     } else {
-        // LAN only: no relays, nothing published outside the network.
-        builder.relay_mode(RelayMode::Disabled)
+        // LAN only: no relays, nothing published outside the network, and no
+        // asking the router to open ports (UPnP, NAT-PMP, PCP) every few seconds.
+        builder.relay_mode(RelayMode::Disabled).portmapper_config(PortmapperConfig::Disabled)
     };
     if !config.away_mode {
         let v4_port = ports.map_or(0, |p| p.v4);
@@ -3947,11 +3977,7 @@ async fn bind_endpoint(
 
 /// Announces this device on the LAN and watches for others.
 fn start_lan_discovery(shared: &Arc<Shared>, name: &str) -> Result<()> {
-    let mdns = MdnsAddressLookup::builder()
-        .service_name("nectarlink")
-        .build(shared.endpoint.id())
-        .map_err(crate::error::net)?;
-    shared.endpoint.address_lookup().map_err(crate::error::net)?.add(mdns.clone());
+    install_mdns(shared, false)?;
     // Announce our name so nearby pairing can show it; truncate safely.
     let mut announced = name.to_owned();
     while announced.len() > UserData::MAX_LENGTH {
@@ -3960,9 +3986,40 @@ fn start_lan_discovery(shared: &Arc<Shared>, name: &str) -> Result<()> {
     if let Ok(data) = UserData::try_from(announced) {
         shared.endpoint.set_user_data_for_address_lookup(Some(data));
     }
+    Ok(())
+}
+
+/// Starts mDNS, asking the LAN who's there every [`MDNS_FAST`] or
+/// [`MDNS_SLOW`], in place of the one running. iroh can't drop a single
+/// address lookup, so a swap clears them all and puts the others back.
+fn install_mdns(shared: &Arc<Shared>, fast: bool) -> Result<()> {
+    let mdns = MdnsAddressLookup::builder()
+        .service_name("nectarlink")
+        .discovery_cadence(if fast { MDNS_FAST } else { MDNS_SLOW })
+        .build(shared.endpoint.id())
+        .map_err(crate::error::net)?;
+    let lookups = shared.endpoint.address_lookup().map_err(crate::error::net)?;
+    let cancel = shared.cancel.child_token();
+    let previous = lock(&shared.lan_discovery).replace((cancel.clone(), fast));
+    if let Some((old, _)) = previous {
+        old.cancel();
+        lookups.clear();
+        lookups.add(shared.memory.clone());
+        if shared.away_mode() {
+            add_internet_lookups(&shared.endpoint)?;
+        }
+        // A nearby list just opened: start it fresh rather than keep what the
+        // old mDNS saw, which will never expire now.
+        if fast {
+            let gone: Vec<DeviceId> = lock(&shared.discovered).drain().map(|(id, _)| id).collect();
+            for id in gone {
+                shared.emit(NodeEvent::DiscoveryExpired(id));
+            }
+        }
+    }
+    lookups.add(mdns.clone());
 
     let weak = Arc::downgrade(shared);
-    let cancel = shared.cancel.child_token();
     tokio::spawn(async move {
         use n0_future::StreamExt;
         let mut events = mdns.subscribe().await;
@@ -3999,6 +4056,17 @@ fn start_lan_discovery(shared: &Arc<Shared>, name: &str) -> Result<()> {
             }
         }
     });
+    Ok(())
+}
+
+/// The internet lookups away mode uses, the same ones `bind_endpoint` sets
+/// up, for putting back after `install_mdns` clears them.
+fn add_internet_lookups(endpoint: &Endpoint) -> Result<()> {
+    use iroh::address_lookup::AddressLookupBuilder;
+    let lookups = endpoint.address_lookup().map_err(crate::error::net)?;
+    lookups.add(PkarrPublisher::n0_dns().into_address_lookup(endpoint).map_err(crate::error::net)?);
+    lookups.add(PkarrResolver::n0_dns().into_address_lookup(endpoint).map_err(crate::error::net)?);
+    lookups.add(DnsAddressLookup::n0_dns().into_address_lookup(endpoint).map_err(crate::error::net)?);
     Ok(())
 }
 

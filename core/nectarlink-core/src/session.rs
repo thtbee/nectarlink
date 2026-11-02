@@ -31,7 +31,10 @@ pub(crate) mod wake;
 
 pub(crate) const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 pub(crate) const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
-const HEARTBEAT_INTERVAL: Duration = Duration::from_millis(2500);
+/// How often each side pings the other for the round-trip time and to catch
+/// a peer that stopped answering. A link that dropped is QUIC's to notice
+/// (`IDLE_TIMEOUT` in node.rs); pinging every 2.5 s kept phones awake.
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(15);
 const HEARTBEAT_TIMEOUT: Duration = Duration::from_millis(3000);
 const HEARTBEAT_RETRY_TIMEOUT: Duration = Duration::from_millis(1500);
 const OUTBOX_CAPACITY: usize = 256;

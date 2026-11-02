@@ -72,7 +72,7 @@ A `nectarlink/0` session uses four distinct QUIC transport primitives:
    - `caps`: List of currently enabled capability identifiers (for example `["msg.v0", "clip.v0", "files.v0", ...]`).
 2. **Active Set Computation**: The session's active capabilities equal the set intersection of both peers' advertised `caps`, filtered through the local `CapabilityMatrix` for that peer.
 3. **Live Capability Updates (`hello.update`)**: When a user toggles a feature in **Device Settings** or grants a runtime permission on Android, the device sends `Envelope { t: "hello.update", b: HelloUpdate { caps } }` on the existing control stream without dropping the QUIC session.
-4. **Liveness (`ping` / `pong`)**: Peers exchange `ping { ts }` and `pong { ts }` envelopes alongside QUIC's 1-second transport keep-alive (`KEEP_ALIVE_INTERVAL = 1,000 ms`) to measure application-layer round-trip time (`rtt_ms`).
+4. **Liveness (`ping` / `pong`)**: Peers exchange `ping { ts }` and `pong { ts }` envelopes every 15 s (`HEARTBEAT_INTERVAL`) to measure application-layer round-trip time (`rtt_ms`) and catch a peer that stopped answering. A link that dropped is QUIC's to notice: a keep-alive every 5 s and a 15 s idle timeout (`KEEP_ALIVE_INTERVAL`, `IDLE_TIMEOUT`, matching iroh's per-path limits), so an offline device shows within about 15 s. Shorter intervals kept phones from sleeping. mDNS asks the LAN who's there every 30 s, and every 700 ms only while a pairing screen shows nearby devices (`Node::set_discovery_fast`); answers go out at once either way.
 
 ## Resumable File Transfers (`files.v0`)
 

@@ -21,16 +21,22 @@ Item {
 
     onRunningChanged: {
         showNearby = false
+        // Nearby phones show up fast only while this is on screen.
+        Pairing.setNearbyShown(running)
         if (running && state_ !== "comparing" && state_ !== "confirmed" && state_ !== "connecting")
             Pairing.start()
         else if (!running)
             stopHosting()
     }
     Component.onCompleted: {
+        Pairing.setNearbyShown(running)
         if (running && state_ !== "comparing" && state_ !== "confirmed" && state_ !== "connecting")
             Pairing.start()
     }
-    Component.onDestruction: stopHosting()
+    Component.onDestruction: {
+        Pairing.setNearbyShown(false)
+        stopHosting()
+    }
 
     // Left with its code still showing: the PC stops waiting to be paired.
     function stopHosting() {

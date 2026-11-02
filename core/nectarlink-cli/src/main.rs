@@ -2723,6 +2723,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
         }
         Command::Nearby { device: None, wait } => {
             println!("Looking for devices on this network for {wait}s…");
+            node.set_discovery_fast(true);
             tokio::time::sleep(Duration::from_secs(*wait)).await;
             let found = node.discovered_devices();
             if found.is_empty() {
