@@ -185,9 +185,11 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Deck", "Use a single key (a-z, 0-9, f1-f12, enter, tab, space, escape, arrows, etc.)."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Web address must start with http:// or https://."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 Open NectarLink on the phone and keep both on the same network. If the phone asks to run in the background, allow it."), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "%1 announces itself at %2, which isn't in a private range such as 192.168.x.x. NectarLink connects on such a network once both apps are up to date. Until then, turn on Connect over mobile data on both, or connect with a USB cable."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 days ago"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 hours ago"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 is connected"), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "%1 is on this Wi-Fi at an address outside the usual home ranges"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 is on this Wi-Fi, but the router blocks direct connections (AP isolation)"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 is set as a public network"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 isn't connected"), // desktop/app/src/doctor.rs
