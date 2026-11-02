@@ -1904,6 +1904,15 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (app.nectarlink.android.mirror.ScreenEncoder.supportsHevcDecoder()) listOf("mirror.decode.hevc") else emptyList())
 
     /**
+     * The phone was unlocked: redial a paired PC that's offline now instead
+     * of at its next retry, which can be up to two minutes off.
+     */
+    fun reconnectIfOffline() {
+        if (_state.value.devices.none { !it.online }) return
+        scope.launch { runCatching { node?.networkChanged() } }
+    }
+
+    /**
      * Triggers an immediate network/presence reconnect (e.g. when woken by
      * CompanionDeviceService on BLE proximity beacon appearance).
      */
@@ -1998,10 +2007,18 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
-    /** Keeps local discovery working while the pairing screen is open. */
+    /**
+     * Keeps local discovery working while the pairing screen is open, and has
+     * it ask the network who's there often only then: asking all the time
+     * kept the phone awake.
+     */
     fun setPairingScreenOpen(open: Boolean) {
         pairingMulticast?.runCatching { if (open) acquire() else release() }
+        scope.launch(discoveryPace) { runCatching { node?.setDiscoveryFast(open) } }
     }
+
+    /** One at a time, so a quick open and close can't land out of order. */
+    private val discoveryPace = Dispatchers.IO.limitedParallelism(1)
 
     fun resetPairing() {
         _state.update { it.copy(pairing = PairingState.Idle) }

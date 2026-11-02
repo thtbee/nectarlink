@@ -38,8 +38,8 @@ import kotlinx.coroutines.launch
 /**
  * Keeps this phone reachable by its paired PCs while the app is in the
  * background: a foreground service (type "connected device") with an
- * ongoing notification, plus the Wi-Fi multicast lock that local discovery
- * needs on Android.
+ * ongoing notification, plus, while the screen is on, the Wi-Fi multicast
+ * lock that local discovery needs on Android.
  */
 class ConnectionService : LifecycleService() {
     private var multicastLock: WifiManager.MulticastLock? = null
@@ -65,7 +65,8 @@ class ConnectionService : LifecycleService() {
         }
         multicastLock = getSystemService(WifiManager::class.java)
             ?.createMulticastLock("nectarlink-discovery")
-            ?.apply { setReferenceCounted(false); acquire() }
+            ?.apply { setReferenceCounted(false) }
+        setDiscoveryLock(getSystemService(PowerManager::class.java)?.isInteractive != false)
         registerScreenWake()
 
         lifecycleScope.launch {
@@ -140,9 +141,20 @@ class ConnectionService : LifecycleService() {
 
     override fun onDestroy() {
         unregisterScreenWake()
-        multicastLock?.runCatching { release() }
+        setDiscoveryLock(false)
         getSystemService(NotificationManager::class.java)?.cancel(ONGOING_ID)
         super.onDestroy()
+    }
+
+    /**
+     * Holds the multicast lock only while the screen is on. With it held,
+     * Wi-Fi wakes the phone for every multicast packet on the network (mDNS,
+     * SSDP from TVs and speakers), all night. With the screen off, the phone
+     * and its PCs reach each other at the addresses they last had; a pairing
+     * screen holds a lock of its own.
+     */
+    private fun setDiscoveryLock(on: Boolean) {
+        multicastLock?.runCatching { if (on) { if (!isHeld) acquire() } else if (isHeld) release() }
     }
 
     /**
@@ -155,12 +167,16 @@ class ConnectionService : LifecycleService() {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 val action = intent.action
+                if (action == Intent.ACTION_SCREEN_OFF) return setDiscoveryLock(false)
                 if (action != Intent.ACTION_SCREEN_ON && action != Intent.ACTION_USER_PRESENT) return
+                setDiscoveryLock(true)
                 screenWake.trySend(Unit)
+                if (action == Intent.ACTION_USER_PRESENT) (application as NectarlinkApplication).core.reconnectIfOffline()
             }
         }
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_USER_PRESENT)
         }
         val registered = runCatching {
