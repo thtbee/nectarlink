@@ -627,11 +627,17 @@ impl Shared {
         self.away_mode.load(std::sync::atomic::Ordering::Relaxed)
     }
 
-    pub(crate) fn is_allowed_peer_ip(&self, ip: std::net::IpAddr) -> bool {
-        if self.away_mode() {
-            return true;
-        }
+    pub(crate) fn is_allowed_peer_ip(&self, peer: &DeviceId, ip: std::net::IpAddr) -> bool {
+        self.away_mode() || self.is_lan_peer_ip(peer, ip)
+    }
+
+    /// Whether `ip` reaches `peer` on this network (`session::is_lan_peer_ip`),
+    /// from the addresses `peer` last announced over mDNS here.
+    pub(crate) fn is_lan_peer_ip(&self, peer: &DeviceId, ip: std::net::IpAddr) -> bool {
         crate::session::is_lan_ip(ip)
+            || lock(&self.lan_seen)
+                .get(peer)
+                .is_some_and(|(_, announced)| crate::session::is_lan_peer_ip(ip, announced))
     }
 
     pub(crate) fn is_connection_allowed(&self, conn: &Connection) -> bool {
@@ -640,11 +646,12 @@ impl Shared {
         }
         // Any direct LAN (or USB) path will do: a connection often reports its
         // relay path first while the direct one comes up.
+        let peer = crate::device_id(&conn.remote_id());
         conn.paths().iter().any(|p| {
             !p.is_relay()
                 && match p.remote_addr() {
                     iroh::TransportAddr::Ip(addr) => {
-                        self.is_usb_addr(addr) || self.is_allowed_peer_ip(addr.ip())
+                        self.is_usb_addr(addr) || self.is_allowed_peer_ip(&peer, addr.ip())
                     }
                     _ => false,
                 }
@@ -872,7 +879,7 @@ impl Shared {
                 } else if a.ip().is_loopback() {
                     false
                 } else {
-                    allow_wan || crate::session::is_lan_ip(a.ip())
+                    allow_wan || self.is_lan_peer_ip(peer, a.ip())
                 }
             })
             .collect();
@@ -897,7 +904,7 @@ impl Shared {
                 .last_addrs
                 .iter()
                 .copied()
-                .filter(|a| !a.ip().to_canonical().is_loopback() && crate::session::is_lan_ip(a.ip()))
+                .filter(|a| !a.ip().to_canonical().is_loopback() && self.is_lan_peer_ip(peer, a.ip()))
                 .collect();
             if lan_only.len() != record.last_addrs.len()
                 && let Some(seen) = record.last_seen
@@ -1149,7 +1156,7 @@ impl Shared {
             .remote_ip_addrs()
             .into_iter()
             .filter(|a| {
-                !a.ip().to_canonical().is_loopback() && (allow_wan || crate::session::is_lan_ip(a.ip()))
+                !a.ip().to_canonical().is_loopback() && (allow_wan || self.is_lan_peer_ip(&peer, a.ip()))
             })
             .collect();
         let persisted_addrs = if addrs.is_empty() {
@@ -1162,7 +1169,7 @@ impl Shared {
                         .into_iter()
                         .filter(|a| {
                             !a.ip().to_canonical().is_loopback()
-                                && (allow_wan || crate::session::is_lan_ip(a.ip()))
+                                && (allow_wan || self.is_lan_peer_ip(&peer, a.ip()))
                         })
                         .collect()
                 })

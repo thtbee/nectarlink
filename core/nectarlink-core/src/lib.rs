@@ -149,6 +149,7 @@ pub use palette::{
 };
 pub use play_on_phone::PlayOnPhone;
 pub use remote::{ButtonAction, INPUT_INJECT, KeyMod, MouseButton, RemoteInput, SlideAction, remote_keys};
+pub use session::is_lan_ip;
 pub use storage::{FolderStorage, StorageError, StorageReadFile, TOGGLE as STORAGE_TOGGLE};
 pub use store::{
     CHAT_RETENTION_SECS, ChatMessageRecord, ChatThreadRecord, MAX_CHAT_MESSAGES_PER_THREAD,

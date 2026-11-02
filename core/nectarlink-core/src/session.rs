@@ -52,7 +52,7 @@ pub(crate) const CLOSE_NORMAL: u32 = 0;
 /// to the user's devices, and it's how a PC is reached from another network
 /// without relays. Carrier CGNAT shares `100.64.0.0/10`, but a direct path
 /// still needs the paired device's key, and relays stay off.
-pub(crate) fn is_lan_ip(ip: std::net::IpAddr) -> bool {
+pub fn is_lan_ip(ip: std::net::IpAddr) -> bool {
     match ip.to_canonical() {
         std::net::IpAddr::V4(v4) => {
             v4.is_private()
@@ -62,6 +62,15 @@ pub(crate) fn is_lan_ip(ip: std::net::IpAddr) -> bool {
         }
         std::net::IpAddr::V6(v6) => v6.is_loopback() || v6.is_unicast_link_local() || v6.is_unique_local(),
     }
+}
+
+/// Returns true if `ip` reaches a peer on this network: a LAN address
+/// (`is_lan_ip`), or one the peer announced over mDNS here (`announced`).
+/// mDNS doesn't cross routers, so the second covers home networks numbered
+/// outside the private ranges (#131).
+pub(crate) fn is_lan_peer_ip(ip: std::net::IpAddr, announced: &[std::net::SocketAddr]) -> bool {
+    let ip = ip.to_canonical();
+    is_lan_ip(ip) || announced.iter().any(|a| a.ip().to_canonical() == ip)
 }
 
 /// Returns true if `ip` is in Tailscale's ranges: IPv4 `100.64.0.0/10` (the
@@ -750,8 +759,8 @@ async fn heartbeat(session: &Arc<Session>, shared: &Weak<Shared>) {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_lan_ip, is_same_ipv6_subnet, is_tailnet_ip};
-    use std::net::{IpAddr, Ipv6Addr};
+    use super::{is_lan_ip, is_lan_peer_ip, is_same_ipv6_subnet, is_tailnet_ip};
+    use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 
     #[test]
     fn lan_ip_accepts_private_local_and_tailnet_and_rejects_wan() {
@@ -779,6 +788,22 @@ mod tests {
             let ip: IpAddr = bad.parse().unwrap();
             assert!(!is_lan_ip(ip), "expected {bad} to be rejected as non-LAN IP");
         }
+    }
+
+    #[test]
+    fn a_public_address_the_peer_announced_over_mdns_counts_as_lan() {
+        let announced: Vec<SocketAddr> = vec!["192.1.1.208:49806".parse().unwrap()];
+        // The peer's own address, on any port and IPv4-mapped too.
+        for ok in ["192.1.1.208", "::ffff:192.1.1.208"] {
+            assert!(is_lan_peer_ip(ok.parse().unwrap(), &announced), "expected {ok} to be LAN");
+        }
+        // Private addresses need no announcement.
+        assert!(is_lan_peer_ip("192.168.1.42".parse().unwrap(), &[]));
+        // Other public addresses, even next to it, stay out.
+        for bad in ["192.1.1.209", "8.8.8.8", "2001:4860:4860::8888"] {
+            assert!(!is_lan_peer_ip(bad.parse().unwrap(), &announced), "expected {bad} not to be LAN");
+        }
+        assert!(!is_lan_peer_ip("192.1.1.208".parse().unwrap(), &[]));
     }
 
     #[test]

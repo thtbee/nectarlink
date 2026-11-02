@@ -41,6 +41,8 @@ pub struct DeviceFact {
     pub os: String,
     pub link: LinkState,
     pub mdns_seen_ago_secs: Option<u64>,
+    /// The addresses it last announced over mDNS.
+    pub mdns_addrs: Vec<std::net::SocketAddr>,
     pub dial_failures: u32,
 }
 
@@ -82,6 +84,7 @@ pub fn gather() -> Facts {
                     os: d.info.os.clone(),
                     link: d.link.clone(),
                     mdns_seen_ago_secs: diag.mdns_seen_ago_secs,
+                    mdns_addrs: diag.mdns_addrs,
                     dial_failures: diag.dial_failures,
                 }
             })
@@ -335,7 +338,34 @@ pub fn diagnose(facts: &Facts, now_secs: i64) -> Vec<Check> {
             || matches!(d.link, LinkState::Online { path: ConnectionPath::Relay, .. }))
             && d.mdns_seen_ago_secs.is_some_and(|s| s <= 120)
             && d.dial_failures >= 1;
-        if ap_isolated {
+        // A network numbered outside the private ranges (#131): NectarLink
+        // before 0.1.5 refused it without Connect over mobile data, which
+        // looks the same from here as a router keeping devices apart.
+        let direct =
+            matches!(d.link, LinkState::Online { path: ConnectionPath::Lan | ConnectionPath::Usb, .. });
+        let outside_private = !direct
+            && d.mdns_seen_ago_secs.is_some_and(|s| s <= 120)
+            && !d.mdns_addrs.is_empty()
+            && d.mdns_addrs.iter().all(|a| !nectarlink_core::is_lan_ip(a.ip()));
+        if outside_private {
+            let id = if i == 0 { "outside-private".to_owned() } else { format!("outside-private-{i}") };
+            let outcome =
+                if matches!(d.link, LinkState::Online { .. }) { Outcome::Warn } else { Outcome::Fail };
+            checks.push(check(
+                &id,
+                outcome,
+                tr!("Doctor", "%1 is on this Wi-Fi at an address outside the usual home ranges", name),
+                tr!(
+                    "Doctor",
+                    "%1 announces itself at %2, which isn't in a private range such as 192.168.x.x. \
+                     NectarLink connects on such a network once both apps are up to date. Until then, \
+                     turn on Connect over mobile data on both, or connect with a USB cable.",
+                    name,
+                    d.mdns_addrs[0].ip()
+                ),
+                Some("reconnect"),
+            ));
+        } else if ap_isolated {
             let ap_id = if i == 0 { "ap-isolation".to_owned() } else { format!("ap-isolation-{i}") };
             let outcome =
                 if matches!(d.link, LinkState::Online { .. }) { Outcome::Warn } else { Outcome::Fail };
@@ -485,6 +515,7 @@ mod tests {
             os: "android".into(),
             link,
             mdns_seen_ago_secs: None,
+            mdns_addrs: Vec::new(),
             dial_failures: 0,
         }
     }
@@ -548,6 +579,7 @@ mod tests {
             os: "android".into(),
             link: LinkState::Offline { last_seen: Some(900) },
             mdns_seen_ago_secs: Some(15),
+            mdns_addrs: vec!["192.168.1.55:4242".parse().unwrap()],
             dial_failures: 2,
         }];
         let checks = diagnose(&f, 1_000);
@@ -563,6 +595,22 @@ mod tests {
         let ap_relay =
             checks_relay.iter().find(|c| c.id == "ap-isolation").expect("ap-isolation warn on relay");
         assert_eq!(ap_relay.outcome, Outcome::Warn);
+
+        // A phone announcing only a public address is a network outside the
+        // private ranges (#131), not AP isolation.
+        f.devices[0].link = LinkState::Offline { last_seen: Some(900) };
+        f.devices[0].mdns_addrs = vec!["192.1.1.208:49806".parse().unwrap()];
+        let checks_public = diagnose(&f, 1_000);
+        assert!(!checks_public.iter().any(|c| c.id == "ap-isolation"));
+        let outside =
+            checks_public.iter().find(|c| c.id == "outside-private").expect("outside-private check present");
+        assert_eq!(outside.outcome, Outcome::Fail);
+        assert!(outside.detail.contains("192.1.1.208"), "{}", outside.detail);
+        // Once it's connected on this network, there's nothing to report.
+        f.devices[0].link = LinkState::Online { path: ConnectionPath::Lan, rtt_ms: 4 };
+        assert!(!diagnose(&f, 1_000).iter().any(|c| c.id == "outside-private"));
+        f.devices[0].link = LinkState::Online { path: ConnectionPath::Relay, rtt_ms: 48 };
+        f.devices[0].mdns_addrs = vec!["192.168.1.55:4242".parse().unwrap()];
 
         // Stale mDNS (> 120s) does not trigger AP isolation.
         f.devices[0].mdns_seen_ago_secs = Some(121);
@@ -594,6 +642,7 @@ mod tests {
                 os: "android".into(),
                 link: LinkState::Offline { last_seen: Some(500) },
                 mdns_seen_ago_secs: None,
+                mdns_addrs: Vec::new(),
                 dial_failures: 0,
             }];
             let checks = diagnose(&f, 600);
