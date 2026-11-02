@@ -56,7 +56,7 @@ material-colors = { version = "0.5", default-features = false, features = ["std"
 n0-future = "0.3"
 qrcode = { version = "0.14", default-features = false }
 rand = "0.10"
-rusqlite = { version = "0.40", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_bytes = "0.11"
