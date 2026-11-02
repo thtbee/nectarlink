@@ -90,6 +90,16 @@ pub(crate) async fn start(shared: &Shared, session: &Session, options: MirrorSta
         return Err(Error::Denied);
     }
     if !options.is_valid() {
+        // Refused here, before anything reaches the phone: say which options.
+        tracing::warn!(
+            session = options.session,
+            app = options.app.is_some(),
+            watch = options.watch.is_some(),
+            stay_awake = options.stay_awake,
+            screen_off = options.screen_off,
+            sound_only = options.sound_only,
+            "not asking the phone: invalid mirroring options"
+        );
         return Err(Error::Protocol("invalid mirroring options".into()));
     }
     let env = Envelope::new(types::MIRROR_START, &options)?;

@@ -56,6 +56,9 @@ const OPTIONS: MirrorStart = MirrorStart {
 const BACKLOG: usize = 120;
 /// How often decode times are logged.
 const STATS_EVERY: Duration = Duration::from_secs(10);
+/// Even while it's behind, the decoder shows a picture at least this often:
+/// skipping every one froze the window on its last picture (#125).
+const SHOW_AT_LEAST_EVERY: Duration = Duration::from_millis(200);
 /// How long an in-window status notice stays visible.
 const NOTICE_DURATION: Duration = Duration::from_secs(3);
 
@@ -946,7 +949,15 @@ fn is_latest_attempt(window: Window, attempt: u64) -> bool {
     ATTEMPTS.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|a| a.get(&window)) == Some(&attempt)
 }
 
-fn request(window: Window, options: MirrorStart) {
+fn request(window: Window, mut options: MirrorStart) {
+    // An app window's start can't carry these (`MirrorStart::is_valid`), so
+    // asking with them failed every app window after one was turned on
+    // (#124). The phone takes them with `mirror.power` once the window shows
+    // (see `on_event`).
+    if options.app.is_some() {
+        options.stay_awake = false;
+        options.screen_off = false;
+    }
     let attempt = next_attempt(window);
     if window.session == MIRROR_SCREEN {
         crate::phone_sound::stop_for_window(window.device);
@@ -1021,6 +1032,18 @@ pub fn on_event(event: &NodeEvent) {
             let window = Window { device: *device, session: *session };
             set_phase(window, Phase::Showing);
             if *session != MIRROR_SCREEN {
+                // Keep awake / screen off, as set for this phone, apply to its app windows too.
+                let (stay_awake, screen_off) = state(|s| power(s, device));
+                if (stay_awake || screen_off)
+                    && let Some(node) = core_host::node()
+                {
+                    let device = *device;
+                    core_host::spawn(async move {
+                        if let Err(e) = node.mirror_power(device, stay_awake, screen_off).await {
+                            tracing::debug!(error = %e, "mirror.power didn't reach the phone");
+                        }
+                    });
+                }
                 let saved = state(|s| {
                     let pkg = s.windows.get(&window).and_then(|w| w.pkg.as_deref())?;
                     s.saved.geometry.get(&format!("{device}/{pkg}")).copied()
@@ -1967,6 +1990,7 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
     // After a gap, pictures are garbage until the next keyframe.
     let mut need_keyframe = true;
     let mut stats = Stats::new();
+    let mut last_shown = Instant::now();
     while let Ok(item) = items.recv() {
         match item {
             Item::Config(config) => {
@@ -2016,8 +2040,11 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
                     }
                 };
                 let decoded = started.elapsed();
-                // Behind: skip showing this one, the next is already here.
-                if let (Some(picture), false) = (pictures.last(), behind) {
+                // Behind: skip showing this one, the next is already here,
+                // unless nothing has been shown for a while.
+                let show = !behind || last_shown.elapsed() >= SHOW_AT_LEAST_EVERY;
+                if let (Some(picture), true) = (pictures.last(), show) {
+                    last_shown = Instant::now();
                     let converted = Instant::now();
                     let (w, h) = if size.0 > 0 { size } else { (picture.width, picture.height) };
                     let (src_w, src_h) = (w.min(picture.width), h.min(picture.height));
@@ -2084,7 +2111,15 @@ impl Stats {
 
     fn maybe_log(&mut self) {
         let elapsed = self.since.elapsed();
-        if elapsed < STATS_EVERY || self.shown == 0 {
+        if elapsed < STATS_EVERY {
+            return;
+        }
+        if self.shown == 0 {
+            // Decoding but showing nothing: say so rather than go quiet.
+            if self.skipped > 0 {
+                tracing::warn!(skipped = self.skipped, "mirroring: no picture shown");
+            }
+            *self = Stats::new();
             return;
         }
         tracing::info!(
