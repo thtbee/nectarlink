@@ -246,6 +246,10 @@ has a Stop button. Choosing another
   behind decoding: it now shows a new picture at least five times a second
   even then, and the log says when nothing could be shown
   ([#125](https://github.com/thtbee/nectarlink/issues/125)).
+- **A landscape-only app or game in an app window came out sideways,**
+  and taps landed in the wrong place. The window now turns to the app's
+  shape, so the picture is upright and taps land where you click
+  ([#126](https://github.com/thtbee/nectarlink/issues/126)).
 - **Clear all on the PC cleared ongoing notifications too** (a timer, a
   battery monitor), which the phone keeps, so they vanished from the PC
   until the app next updated them. They now stay, without a dismiss

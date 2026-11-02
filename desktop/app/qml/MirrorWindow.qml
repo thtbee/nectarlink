@@ -88,6 +88,18 @@ Window {
             Qt.callLater(() => { win.readyForResize = true })
             return
         }
+        // An app that only runs one way up turned the phone's display (#126):
+        // the window takes the app's shape, and its usual resize tells the
+        // phone the matching size.
+        if (sized && info.app && (frame.width > frame.height) !== (width > height)) {
+            const turnedW = Math.max(240, Math.min(Math.round(availW * 0.95), height))
+            const turnedH = Math.max(240, Math.min(Math.round(availH * 0.95), width))
+            width = turnedW
+            height = turnedH
+            x = Math.max(0, Math.min(availW - turnedW, x))
+            y = Math.max(0, Math.min(availH - turnedH, y))
+            return
+        }
         const maxH = availH * 0.85
         const maxW = availW * 0.85
         const scale = Math.min(maxH / frame.height, maxW / frame.width, 1)

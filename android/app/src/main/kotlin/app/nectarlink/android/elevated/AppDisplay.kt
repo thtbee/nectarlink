@@ -40,6 +40,9 @@ class AppDisplay(
 
     @Volatile private var running = true
     @Volatile private var nextSize: Triple<Int, Int, Int>? = null
+    /** The display's size and density now, to turn it with its app. */
+    @Volatile private var size = Triple(width, height, dpi)
+    private var lastRotationCheck = 0L
     private var display: VirtualDisplay? = null
 
     /** The display's ID, once made. */
@@ -98,6 +101,7 @@ class AppDisplay(
                 curW = newW
                 curH = newH
                 curDpi = newDpi
+                size = Triple(curW, curH, curDpi)
                 writeConfig(data, curW, curH, displayId, next.codecName)
             }
         } finally {
@@ -113,6 +117,26 @@ class AppDisplay(
 
     fun stop() {
         running = false
+    }
+
+    /**
+     * An app that only runs one way up (a landscape-only game in a portrait
+     * window, #126) turns the display (it rotates with its content). The
+     * picture then came out on its side and taps landed elsewhere, so the
+     * display takes the app's shape instead: the same size the other way
+     * round, which the PC's window follows.
+     */
+    private fun followAppOrientation() {
+        // Not the phone's own screen (mirroring it uses this loop too).
+        if (displayId <= 0) return
+        val now = android.os.SystemClock.uptimeMillis()
+        if (now - lastRotationCheck < ROTATION_CHECK_MS) return
+        lastRotationCheck = now
+        val rotation = runCatching { display?.display?.rotation }.getOrNull() ?: return
+        if (rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270) {
+            val (w, h, d) = size
+            nextSize = Triple(h, w, d)
+        }
     }
 
     fun resize(w: Int, h: Int, newDpi: Int) {
@@ -203,6 +227,7 @@ class AppDisplay(
         val info = MediaCodec.BufferInfo()
         var parameters = ByteArray(0)
         while (running && nextSize == null) {
+            followAppOrientation()
             val index = codec.dequeueOutputBuffer(info, 50_000)
             if (index < 0) continue
             val buffer = codec.getOutputBuffer(index)
@@ -418,6 +443,7 @@ class AppDisplay(
 
         /** How often an open window counts as activity; well under any screen timeout. */
         private const val KEEP_ACTIVE_MS = 4_000L
+        private const val ROTATION_CHECK_MS = 250L
 
         /** WindowManager.DISPLAY_IME_POLICY_HIDE. */
         private const val DISPLAY_IME_POLICY_HIDE = 2
