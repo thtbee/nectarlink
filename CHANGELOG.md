@@ -174,6 +174,15 @@ has a Stop button. Choosing another
   video, in 4% steps, as with KDE Connect. When the phone plays something
   itself, or the PC is paused, they work on the phone as usual. Turn it off
   in the phone's **Settings › Control your PC**.
+- **App windows bring the phone's sound to the PC.** It starts with the
+  first app window and stops with the last, and the phone goes quiet
+  meanwhile. The speaker button in any app window mutes it
+  ([#121](https://github.com/thtbee/nectarlink/issues/121)).
+- **Start the camera and microphone without asking.** For a PC you trust,
+  turn it on under that PC in the phone's **Settings › PCs**: its webcam
+  and microphone requests start right away, even with the phone locked,
+  with no tap. Needs Elevated; it's off by default
+  ([#132](https://github.com/thtbee/nectarlink/issues/132)).
 
 ### Changed
 
@@ -246,6 +255,14 @@ has a Stop button. Choosing another
   behind decoding: it now shows a new picture at least five times a second
   even then, and the log says when nothing could be shown
   ([#125](https://github.com/thtbee/nectarlink/issues/125)).
+- **A home network numbered outside the private ranges** (such as
+  192.1.1.0/24) only connected with Connect over mobile data on. A
+  device's address counts as this network when it announces itself there,
+  and Connection Doctor names the address instead of blaming AP isolation
+  ([#131](https://github.com/thtbee/nectarlink/issues/131)).
+- **The Apps page showed "android:11"** on phones older than Android 11.
+  It now says app windows need Android 11 or newer
+  ([#134](https://github.com/thtbee/nectarlink/issues/134)).
 - **A landscape-only app or game in an app window came out sideways,**
   and taps landed in the wrong place. The window now turns to the app's
   shape, so the picture is upright and taps land where you click
