@@ -49,7 +49,8 @@ against its SHA-256 sums.
 ### On Linux
 
 From the next release, one command installs NectarLink with everything it
-needs, and shows each step as it goes:
+needs, and shows each step as it goes. Until that release is out, the
+command below gives a 404: 0.1.4 has no Linux packages.
 
 ```bash
 curl -fsSL https://github.com/thtbee/nectarlink/releases/latest/download/install.sh | sh
