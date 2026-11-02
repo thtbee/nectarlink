@@ -221,6 +221,23 @@ has a Stop button. Choosing another
 
 ### Fixed
 
+- **App windows failed with "invalid mirroring options"** after Keep
+  phone awake or Turn phone screen off was turned on in any mirror window,
+  until the PC app restarted. Both settings now reach app windows once
+  they open ([#124](https://github.com/thtbee/nectarlink/issues/124)).
+- **Turn phone screen off while mirroring left the screen on,** only
+  dimmed, on recent Android. It now turns the panel off, on Android 15 and
+  later through the system's own call for it, while the mirrored screen or
+  app windows keep running
+  ([#122](https://github.com/thtbee/nectarlink/issues/122)).
+- **An app window could freeze on its last picture** when the PC fell
+  behind decoding: it now shows a new picture at least five times a second
+  even then, and the log says when nothing could be shown
+  ([#125](https://github.com/thtbee/nectarlink/issues/125)).
+- **Clear all on the PC cleared ongoing notifications too** (a timer, a
+  battery monitor), which the phone keeps, so they vanished from the PC
+  until the app next updated them. They now stay, without a dismiss
+  button, as on the phone.
 - **The build docs registered the virtual camera with `regsvr32`,** which
   can't work. They now use the app's `--register-vcam`, and say why a
   debug build's camera fails to start. Thanks to
