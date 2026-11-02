@@ -180,7 +180,7 @@ has a Stop button. Choosing another
   ([#121](https://github.com/thtbee/nectarlink/issues/121)).
 - **Start the camera and microphone without asking.** For a PC you trust,
   turn it on under that PC in the phone's **Settings › PCs**: its webcam
-  and microphone requests start right away, even with the phone locked,
+  and microphone requests start right away, even with the screen off,
   with no tap. Needs Elevated; it's off by default
   ([#132](https://github.com/thtbee/nectarlink/issues/132)).
 
