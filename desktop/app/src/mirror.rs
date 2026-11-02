@@ -193,6 +193,23 @@ impl State {
             .iter()
             .any(|(w, shown)| w.device == *device && matches!(shown.phase, Phase::Asking | Phase::Showing))
     }
+
+    /// Whether `device` has an app window open (asked for or showing), or
+    /// its screen's window when `screen`.
+    fn has_window(&self, device: &DeviceId, screen: bool) -> bool {
+        self.windows.iter().any(|(w, shown)| {
+            w.device == *device
+                && (w.session == MIRROR_SCREEN) == screen
+                && matches!(shown.phase, Phase::Asking | Phase::Showing)
+        })
+    }
+}
+
+/// The phone's sound comes with its app windows (#121): it starts with the
+/// first one and stops with the last, unless the screen's window has it.
+fn follow_app_windows(device: DeviceId) {
+    let (apps, screen) = state(|s| (s.has_window(&device, false), s.has_window(&device, true)));
+    crate::phone_sound::for_app_windows(device, apps && !screen);
 }
 
 impl Default for State {
@@ -1023,7 +1040,12 @@ pub fn stop(window: Window) {
     ffi::video_clear(&window.key());
     core_host::host().hub.changed(Changes::MIRROR);
     let Some(node) = core_host::node() else { return };
-    core_host::spawn(async move { node.mirror_stop(window.device, window.session).await });
+    core_host::spawn(async move {
+        node.mirror_stop(window.device, window.session).await;
+        // After the stop, so a screen window's sound is gone before the app
+        // windows ask for it again.
+        follow_app_windows(window.device);
+    });
 }
 
 pub fn on_event(event: &NodeEvent) {
@@ -1032,6 +1054,7 @@ pub fn on_event(event: &NodeEvent) {
             let window = Window { device: *device, session: *session };
             set_phase(window, Phase::Showing);
             if *session != MIRROR_SCREEN {
+                follow_app_windows(*device);
                 // Keep awake / screen off, as set for this phone, apply to its app windows too.
                 let (stay_awake, screen_off) = state(|s| power(s, device));
                 if (stay_awake || screen_off)
@@ -1079,6 +1102,11 @@ pub fn on_event(event: &NodeEvent) {
                     s.screen_off.remove(device);
                 }
             });
+            // The phone's sound plays here alone with session 0 too: its own
+            // ending must not ask for it again.
+            if *session != MIRROR_SCREEN {
+                follow_app_windows(*device);
+            }
         }
         // A phone that went away takes its app list with it.
         NodeEvent::LinkChanged { device, link: nectarlink_core::LinkState::Offline { .. } } => {

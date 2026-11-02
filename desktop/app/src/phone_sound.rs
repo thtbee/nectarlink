@@ -5,7 +5,10 @@
 //! window takes over, since that brings the sound too.
 
 use std::{
-    sync::{Arc, Mutex},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -29,6 +32,9 @@ enum Phase {
 
 /// The one phone whose sound plays here, if any.
 static ACTIVE: Mutex<Option<(DeviceId, Phase)>> = Mutex::new(None);
+/// Whether it plays for the phone's app windows (it stops with the last
+/// one), rather than because it was turned on here.
+static FOR_APPS: AtomicBool = AtomicBool::new(false);
 
 fn active() -> Option<(DeviceId, Phase)> {
     *ACTIVE.lock().unwrap_or_else(|e| e.into_inner())
@@ -42,22 +48,34 @@ fn set_active(next: Option<(DeviceId, Phase)>) {
         changed
     };
     if changed {
-        core_host::host().hub.changed(Changes::MEDIA);
+        // Home's switch, and app windows' sound button.
+        core_host::host().hub.changed(Changes::MEDIA | Changes::MIRROR);
     }
 }
 
 /// The phone to play: the first one online that can share its sound alone.
 pub fn phone() -> Option<(DeviceId, String)> {
+    sharing_phones().into_iter().next()
+}
+
+/// The phones online that can share their sound alone, with their names.
+fn sharing_phones() -> Vec<(DeviceId, String)> {
     core_host::host().hub.read(|s| {
         s.devices
             .iter()
             .filter(|d| matches!(d.link, LinkState::Online { .. }))
-            .find(|d| {
+            .filter(|d| {
                 s.matrices.get(&d.id).and_then(|m| m.state("mirroring.sound"))
                     == Some(FeatureState::Available)
             })
             .map(|d| (d.id, d.info.name.clone()))
+            .collect()
     })
+}
+
+/// Whether `device`'s sound is playing here without its screen's window.
+pub fn playing(device: &DeviceId) -> bool {
+    active() == Some((*device, Phase::Playing))
 }
 
 /// "off", "asking" (waiting for the phone) or "playing".
@@ -77,7 +95,31 @@ pub fn set_on(on: bool) {
         }
         return;
     }
-    let (Some((device, name)), Some(node)) = (phone(), core_host::node()) else { return };
+    // Turned on here: it stays on after app windows close.
+    FOR_APPS.store(false, Ordering::Relaxed);
+    if let Some((device, name)) = phone() {
+        start(device, name, false);
+    }
+}
+
+/// `device`'s app windows opened (`open`) or all closed (#121): its sound
+/// plays here while they're open. Sound turned on here stays as it is.
+pub fn for_app_windows(device: DeviceId, open: bool) {
+    match active() {
+        None if open => {
+            let Some((_, name)) = sharing_phones().into_iter().find(|(d, _)| *d == device) else { return };
+            FOR_APPS.store(true, Ordering::Relaxed);
+            start(device, name, true);
+        }
+        Some((d, _)) if d == device && !open && FOR_APPS.load(Ordering::Relaxed) => stop(device),
+        _ => {}
+    }
+}
+
+/// Asks `device` for its sound. `quiet`: for app windows, which work without
+/// it, so a phone that can't share it only says so in the log.
+fn start(device: DeviceId, name: String, quiet: bool) {
+    let Some(node) = core_host::node() else { return };
     if active().is_some() {
         return;
     }
@@ -97,6 +139,10 @@ pub fn set_on(on: bool) {
         };
         if let Err(e) = node.mirror_start(device, options).await {
             set_active(None);
+            if quiet {
+                tracing::info!(error = %e, "the phone's sound didn't come with its app windows");
+                return;
+            }
             show_message(match e {
                 Error::Denied => tr!("PhoneSound", "Mirroring is turned off for this phone."),
                 Error::Unsupported => {

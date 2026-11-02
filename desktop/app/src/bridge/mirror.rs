@@ -232,7 +232,12 @@ impl qobject::Mirror {
                     "phase": phase,
                     "reason": reason,
                     "canControl": control,
-                    "sound": window.session == MIRROR_SCREEN && mirror::has_sound(&window.device),
+                    // An app window has the phone's sound while it plays here (#121).
+                    "sound": if window.session == MIRROR_SCREEN {
+                        mirror::has_sound(&window.device)
+                    } else {
+                        crate::phone_sound::playing(&window.device)
+                    },
                     "recording": mirror::is_recording(&window),
                     "recordingStartedMs": mirror::recording_started_ms(&window),
                     "stayAwake": mirror::stay_awake(&window.device),
