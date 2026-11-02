@@ -49,6 +49,10 @@ change things that need a step from you, and its notes say so.
   (`docs/technical/tailscale.md` has the command). Thanks to
   [@waytoo-average](https://github.com/waytoo-average)
   ([#105](https://github.com/thtbee/nectarlink/pull/105)).
+- **A native installer for Windows on ARM** (Snapdragon PCs):
+  `Nectarlink-<version>-arm64-setup.exe`, next to the x64 one. Thanks to
+  [@HosseinDianati](https://github.com/HosseinDianati)
+  ([#14](https://github.com/thtbee/nectarlink/pull/14)).
 - **Elevated through Shizuku.** If you use Shizuku, **Use Shizuku** in
   Elevated's settings starts it through Shizuku instead of NectarLink's own
   Wireless debugging pairing, so it keeps working away from Wi-Fi while
@@ -173,6 +177,14 @@ has a Stop button. Choosing another
 
 ### Changed
 
+- **Less battery in the background.** The phone app wakes the radio far
+  less often: connection checks are spaced out, looking for nearby devices
+  slows down outside pairing, the phone stops listening for nearby devices
+  while its screen is off, and it no longer asks the router to open ports
+  on a home network. It also retries a missing PC less often, and right away
+  when you unlock the phone. In our tests it sent and received about 85%
+  fewer packets with the screen off. With the screen off, a PC that has just
+  started can take up to two minutes to show the phone as connected.
 - **Windows 10 looks right.** The window no longer shows Windows 10's own
   title bar over NectarLink's, Snap and resizing work, and the caption
   buttons show. Phone as webcam still needs Windows 11. Thanks to
