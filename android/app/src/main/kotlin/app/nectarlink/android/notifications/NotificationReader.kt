@@ -59,6 +59,8 @@ internal class NotificationReader(private val context: Context) {
             `when` = whenMs,
             actions = actions(n),
             silent = silent,
+            // Android won't let a listener dismiss these, so a PC's Clear all leaves them.
+            ongoing = !sbn.isClearable,
             icon = icon(sbn.packageName),
             image = image(sbn.key, n, content.title, content.text),
             live = live,

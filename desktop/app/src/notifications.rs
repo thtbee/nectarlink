@@ -613,6 +613,7 @@ mod tests {
             when: 1_760_000_000_000,
             actions: Vec::new(),
             silent: false,
+            ongoing: false,
             icon: None,
             image: None,
             live: None,

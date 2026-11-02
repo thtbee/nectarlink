@@ -479,6 +479,9 @@ enum Command {
         /// Don't alert (like a silent notification on the phone).
         #[arg(long)]
         silent: bool,
+        /// One the phone won't let be dismissed (ongoing, or no-clear).
+        #[arg(long)]
+        ongoing: bool,
         /// A picture it shows (JPEG, at most 160 KiB).
         #[arg(long)]
         image: Option<PathBuf>,
@@ -1210,6 +1213,7 @@ fn sample_chat_notifications() -> Vec<Notification> {
             when: now - 12 * min,
             actions: reply_actions(),
             silent: true,
+            ongoing: false,
             icon: Some(sample_icon(2)),
             image: None,
             live: None,
@@ -1246,6 +1250,7 @@ fn sample_chat_notifications() -> Vec<Notification> {
             when: now - 22 * min,
             actions: reply_actions(),
             silent: true,
+            ongoing: false,
             icon: Some(sample_icon(1)),
             image: None,
             live: None,
@@ -3570,6 +3575,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                         reply: false,
                     }],
                     silent: true,
+                    ongoing: false,
                     icon: Some(sample_icon(2)),
                     image: None,
                     live: None,
@@ -3821,6 +3827,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     when: now - 7 * 60_000 * i as i64,
                     actions,
                     silent: true,
+                    ongoing: false,
                     icon: None,
                     image: None,
                     live: None,
@@ -4152,6 +4159,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             key,
             reply,
             silent,
+            ongoing,
             image,
             also,
             progress,
@@ -4217,6 +4225,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 when,
                 actions,
                 silent: *silent,
+                ongoing: *ongoing,
                 icon: None,
                 image,
                 live: live.clone(),
@@ -4238,6 +4247,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     when: now_ms - 60_000 * (i as i64 + 1),
                     actions: Vec::new(),
                     silent: true,
+                    ongoing: false,
                     icon: None,
                     image: None,
                     live: None,

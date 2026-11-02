@@ -809,6 +809,11 @@ pub struct Notification {
     /// Arrived without sound or pop-up on the phone.
     #[serde(default)]
     pub silent: bool,
+    /// The phone won't let it be dismissed (ongoing, or marked no-clear):
+    /// Clear all leaves it, and it has no dismiss of its own. Phones before
+    /// this field say nothing, which reads as dismissable.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ongoing: bool,
     /// The app's icon (PNG), sent with an app's first notification per
     /// session.
     #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
@@ -4682,11 +4687,27 @@ mod tests {
             when: 1_760_000_000_000,
             actions: vec![NotificationAction { id: "0".into(), title: "Reply".into(), reply: true }],
             silent: false,
+            ongoing: false,
             icon: Some(vec![0x89, b'P', b'N', b'G']),
             image: None,
             live: None,
             conversation: None,
         }
+    }
+
+    #[test]
+    fn ongoing_is_only_sent_when_set_and_older_phones_read_as_dismissable() {
+        let has_field = |env: &Envelope| match &env.b {
+            Some(ciborium::Value::Map(fields)) => fields.iter().any(|(k, _)| k.as_text() == Some("ongoing")),
+            _ => false,
+        };
+        let plain = Envelope::new(types::NOTIFY_POSTED, &notification()).unwrap();
+        assert!(!has_field(&plain));
+        assert!(!plain.body::<Notification>().unwrap().ongoing);
+        let sticky =
+            Envelope::new(types::NOTIFY_POSTED, &Notification { ongoing: true, ..notification() }).unwrap();
+        assert!(has_field(&sticky));
+        assert!(sticky.body::<Notification>().unwrap().ongoing);
     }
 
     #[test]

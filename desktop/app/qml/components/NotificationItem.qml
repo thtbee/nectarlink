@@ -24,6 +24,8 @@ Item {
     required property string replies
     required property string otpCode
     required property string live
+    // The phone won't dismiss it (ongoing or no-clear), so it has no Dismiss.
+    required property bool ongoing
     required property int groupCount
     required property int groupIndex
     required property bool groupExpanded
@@ -622,7 +624,8 @@ Item {
     }
 
     IconButton {
-        anchors.right: dismiss.left
+        anchors.right: dismiss.visible ? dismiss.left : parent.right
+        anchors.rightMargin: dismiss.visible ? 0 : 8
         y: 8
         iconPath: Icons.more
         label: qsTr("Options for %1").arg(item.appName)
@@ -638,6 +641,7 @@ Item {
         anchors.rightMargin: 8
         y: 8
         iconPath: Icons.close
+        visible: !item.ongoing || (item.isGroupLead && !item.groupExpanded && item.groupCount > 1)
         label: item.isGroupLead && !item.groupExpanded
                ? qsTr("Dismiss %1 notifications from %2").arg(item.groupCount).arg(item.appName)
                : qsTr("Dismiss")

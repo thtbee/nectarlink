@@ -204,6 +204,7 @@ const ROLES: &[&str] = &[
     "replyAction",
     "replyLabel",
     "silent",
+    "ongoing",
     "replies",
     "otpCode",
     "live",
@@ -244,6 +245,7 @@ fn role_value(row: &Row, role: &str) -> QVariant {
         "replyAction" => text(reply.map_or("", |a| a.id.as_str())),
         "replyLabel" => text(reply.map_or("", |a| a.title.as_str())),
         "silent" => QVariant::from(&n.silent),
+        "ongoing" => QVariant::from(&n.ongoing),
         // As JSON: [{ "text", "pending" }].
         "replies" => text(
             &serde_json::Value::from(
@@ -487,6 +489,10 @@ impl qobject::NotificationList {
             let found = core_host::host().hub.read(|s| {
                 s.notifications.iter().find(|n| n.device == dev_id && n.notification.key == key_str).cloned()
             });
+            // The phone won't dismiss these, so it would only come back.
+            if found.as_ref().is_some_and(|v| v.notification.ongoing) {
+                return;
+            }
             if let Some(view) = found {
                 let label = if view.notification.app_name.is_empty() {
                     tr!("Notifications", "Notification dismissed")
@@ -506,7 +512,7 @@ impl qobject::NotificationList {
         let views: Vec<NotificationView> = core_host::host().hub.read(|s| {
             s.notifications
                 .iter()
-                .filter(|n| n.device == dev_id && n.notification.app == app_str)
+                .filter(|n| n.device == dev_id && n.notification.app == app_str && !n.notification.ongoing)
                 .cloned()
                 .collect()
         });
@@ -533,7 +539,11 @@ impl qobject::NotificationList {
         let views: Vec<NotificationView> = core_host::host().hub.read(|s| {
             s.notifications
                 .iter()
-                .filter(|n| n.device == dev_id && s.app_rule(&n.notification.app) != AppRule::Hidden)
+                .filter(|n| {
+                    n.device == dev_id
+                        && !n.notification.ongoing
+                        && s.app_rule(&n.notification.app) != AppRule::Hidden
+                })
                 .cloned()
                 .collect()
         });
@@ -656,6 +666,7 @@ mod tests {
                         NotificationAction { id: "m".into(), title: "Mute".into(), reply: false },
                     ],
                     silent: false,
+                    ongoing: false,
                     icon: None,
                     image: None,
                     live: Some(nectarlink_core::NotificationLive {
@@ -710,6 +721,7 @@ mod tests {
             when,
             actions: Vec::new(),
             silent: false,
+            ongoing: false,
             icon: None,
             image: None,
             live: None,

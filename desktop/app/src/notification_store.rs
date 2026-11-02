@@ -192,6 +192,7 @@ mod tests {
             when: 1,
             actions: Vec::new(),
             silent: false,
+            ongoing: false,
             icon: None,
             image: None,
             live: None,

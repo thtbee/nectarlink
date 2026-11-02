@@ -1249,6 +1249,7 @@ mod tests {
             when,
             actions: Vec::new(),
             silent: false,
+            ongoing: false,
             icon: Some(vec![1, 2, 3]),
             image: None,
             live: None,

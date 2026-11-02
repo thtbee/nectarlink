@@ -38,6 +38,7 @@ Notification = {
   when:     int,         // When it was posted, Unix milliseconds
   actions:  [Action],    // In display order, at most 5
   silent:   bool,        // Arrived without sound or pop-up on the phone; don't alert either
+  ongoing:  bool,        // The phone won't dismiss it (ongoing or no-clear); absent means false
   icon:     bytes?,      // The app's icon, PNG, at most 64 KiB (see §2.1)
   image:        bytes?,          // The picture it shows (a photo in a message, a big picture), JPEG, at most 160 KiB
   live:         Live?,           // Ongoing progress, timer, or Android 16 Live Update metadata (see §2.2)
@@ -165,7 +166,10 @@ t = "ok"               re = n
   user turned notifications from this phone back on. A phone that doesn't
   mirror notifications ignores it.
 - **`notify.dismiss`** dismisses the notification on the phone. Dismissing
-  one that's already gone succeeds.
+  one that's already gone succeeds. A PC **SHOULD NOT** send it for an `ongoing`
+  notification, nor remove one from its list on a "clear all": Android
+  doesn't let the phone dismiss those, so they'd stay on the phone and only
+  come back to the PC when the app next updated them.
 - **`notify.action`** runs an action. For a reply action, `reply` holds the
   text (at most 4,096 characters). The phone answers `ok` once the action ran,
   without waiting for its effect (the message being delivered, for example).

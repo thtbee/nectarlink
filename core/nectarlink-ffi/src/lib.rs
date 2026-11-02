@@ -374,6 +374,10 @@ pub struct Notification {
     /// Structured `MessagingStyle` conversation metadata, when present.
     #[uniffi(default = None)]
     pub conversation: Option<NotificationConversation>,
+    /// Can't be dismissed (ongoing or no-clear), so a PC's Clear all leaves
+    /// it. Last, with a default, so positional callers keep working.
+    #[uniffi(default = false)]
+    pub ongoing: bool,
 }
 
 /// Something playing (or paused) on a device (docs/protocol/media.md).
@@ -2263,6 +2267,7 @@ impl From<core::Notification> for Notification {
                 .map(|a| NotificationAction { id: a.id, title: a.title, reply: a.reply })
                 .collect(),
             silent: n.silent,
+            ongoing: n.ongoing,
             icon: n.icon,
             image: n.image,
             live: n.live.map(Into::into),
@@ -2287,6 +2292,7 @@ impl From<Notification> for core::Notification {
                 .map(|a| core::NotificationAction { id: a.id, title: a.title, reply: a.reply })
                 .collect(),
             silent: n.silent,
+            ongoing: n.ongoing,
             icon: n.icon,
             image: n.image,
             live: n.live.map(Into::into),

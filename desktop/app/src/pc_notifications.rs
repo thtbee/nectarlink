@@ -37,6 +37,7 @@ pub fn build_pc_notification(
         when: when_ms,
         actions: Vec::new(),
         silent: false,
+        ongoing: false,
         icon: None,
         image: None,
         live: None,
