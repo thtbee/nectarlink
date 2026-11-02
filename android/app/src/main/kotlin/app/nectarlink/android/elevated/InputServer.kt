@@ -422,26 +422,17 @@ object InputServer {
         } else {
             displayTurnedOff = false
         }
-        runCatching {
-            val sc = Class.forName("android.view.SurfaceControl")
-            val token = runCatching {
-                sc.getMethod("getInternalDisplayToken").invoke(null) as? android.os.IBinder
-            }.getOrNull() ?: runCatching {
-                val dc = runCatching {
-                    dalvik.system.PathClassLoader("/system/framework/services.jar", null)
-                        .loadClass("com.android.server.display.DisplayControl")
-                }.getOrElse { Class.forName("com.android.server.display.DisplayControl") }
-                val ids = dc.getMethod("getPhysicalDisplayIds").invoke(null) as? LongArray
-                if (ids != null && ids.isNotEmpty()) {
-                    dc.getMethod("getPhysicalDisplayToken", Long::class.javaPrimitiveType)
-                        .invoke(null, ids[0]) as? android.os.IBinder
-                } else {
-                    null
-                }
-            }.getOrNull() ?: return@runCatching
-            sc.getMethod("setDisplayPowerMode", android.os.IBinder::class.java, Int::class.javaPrimitiveType)
-                .invoke(null, token, if (on) POWER_MODE_NORMAL else POWER_MODE_OFF)
+        // Android 15 has a call for this; before it, SurfaceControl. Either
+        // failing used to leave only the brightness at 0, a dim but lit panel (#122).
+        val how = when {
+            requestDisplayPower(on) -> "requestDisplayPower"
+            setPanelPowerMode(on) -> "setDisplayPowerMode"
+            else -> null
         }
+        System.err.println(
+            if (how != null) "screen ${if (on) "on" else "off"} through $how"
+            else "can't turn the phone's screen ${if (on) "on" else "off"}",
+        )
         if (!on) {
             runCatching {
                 Runtime.getRuntime().exec(arrayOf("settings", "put", "system", "screen_brightness", "0")).waitFor()
@@ -455,6 +446,70 @@ object InputServer {
                 }
             }
         }
+    }
+
+    /**
+     * Android 15+: `IDisplayManager.requestDisplayPower` for the built-in
+     * display, which turns the panel off while other displays (app windows)
+     * keep running. False when it isn't there or didn't work.
+     */
+    @android.annotation.SuppressLint("PrivateApi", "DiscouragedPrivateApi", "BlockedPrivateApi")
+    private fun requestDisplayPower(on: Boolean): Boolean {
+        if (android.os.Build.VERSION.SDK_INT < 35) return false
+        return runCatching {
+            val binder = Class.forName("android.os.ServiceManager")
+                .getMethod("getService", String::class.java).invoke(null, "display") as android.os.IBinder
+            val manager = Class.forName("android.hardware.display.IDisplayManager\$Stub")
+                .getMethod("asInterface", android.os.IBinder::class.java).invoke(null, binder)
+            val method = manager.javaClass.methods.first {
+                it.name == "requestDisplayPower" && it.parameterTypes.size == 2 &&
+                    it.parameterTypes[0] == Int::class.javaPrimitiveType
+            }
+            // On or off; some releases take a display state instead (STATE_ON 2, STATE_OFF 1).
+            val power: Any = if (method.parameterTypes[1] == Boolean::class.javaPrimitiveType) on else if (on) 2 else 1
+            (method.invoke(manager, android.view.Display.DEFAULT_DISPLAY, power) as? Boolean) != false
+        }.onFailure { System.err.println("requestDisplayPower: $it") }.getOrDefault(false)
+    }
+
+    /**
+     * Before Android 15: each built-in panel's power mode through
+     * SurfaceControl. Newer releases keep the panels' tokens in
+     * `DisplayControl`, a class of `services.jar` whose native half lives in
+     * `libandroid_servers`, which has to be loaded first.
+     */
+    @android.annotation.SuppressLint("PrivateApi", "DiscouragedPrivateApi", "BlockedPrivateApi")
+    private fun setPanelPowerMode(on: Boolean): Boolean = runCatching {
+        val sc = Class.forName("android.view.SurfaceControl")
+        val tokens = runCatching {
+            listOfNotNull(sc.getMethod("getInternalDisplayToken").invoke(null) as? android.os.IBinder)
+        }.getOrNull().orEmpty().ifEmpty {
+            val dc = displayControl()
+            val ids = dc.getMethod("getPhysicalDisplayIds").invoke(null) as? LongArray ?: LongArray(0)
+            val token = dc.getMethod("getPhysicalDisplayToken", Long::class.javaPrimitiveType)
+            buildList { for (id in ids) (token.invoke(null, id) as? android.os.IBinder)?.let(::add) }
+        }
+        check(tokens.isNotEmpty()) { "no display token" }
+        val setMode = sc.getMethod("setDisplayPowerMode", android.os.IBinder::class.java, Int::class.javaPrimitiveType)
+        tokens.forEach { setMode.invoke(null, it, if (on) POWER_MODE_NORMAL else POWER_MODE_OFF) }
+        true
+    }.onFailure { System.err.println("setDisplayPowerMode: $it") }.getOrDefault(false)
+
+    @android.annotation.SuppressLint("PrivateApi", "DiscouragedPrivateApi", "BlockedPrivateApi")
+    private fun displayControl(): Class<*> {
+        val factory = Class.forName("com.android.internal.os.ClassLoaderFactory")
+        val create = factory.getDeclaredMethod(
+            "createClassLoader",
+            String::class.java, String::class.java, String::class.java, ClassLoader::class.java,
+            Int::class.javaPrimitiveType, Boolean::class.javaPrimitiveType, String::class.java,
+        )
+        val loader = create.invoke(
+            null, "/system/framework/services.jar", null, null, ClassLoader.getSystemClassLoader(), 0, true, null,
+        ) as ClassLoader
+        val dc = loader.loadClass("com.android.server.display.DisplayControl")
+        Runtime::class.java.getDeclaredMethod("loadLibrary0", Class::class.java, String::class.java)
+            .apply { isAccessible = true }
+            .invoke(Runtime.getRuntime(), dc, "android_servers")
+        return dc
     }
 
     /**

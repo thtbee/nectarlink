@@ -908,7 +908,7 @@ object Elevated {
     /** Turns the physical screen panel off or back on while mirroring. */
     fun setScreenOff(off: Boolean): Boolean {
         screenOffRequested = off
-        val writer = input ?: return false
+        val writer = input ?: return false.also { Log.i(TAG, "screen ${if (off) "off" else "on"} asked, Elevated isn't running") }
         return send(writer, "P ${if (off) 0 else 1}")
     }
 
