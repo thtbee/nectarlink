@@ -42,4 +42,22 @@ int nectarlink_video_encoder_receive(void* encoder, const uint8_t** bytes, size_
                                      char* error, size_t capacity);
 void nectarlink_video_encoder_request_keyframe(void* encoder);
 bool nectarlink_video_encoder_set_bitrate(void* encoder, int bitrate);
+
+void* nectarlink_video_aac_encoder_create(int sample_rate, int channels, char* error, size_t capacity);
+void nectarlink_video_aac_encoder_destroy(void* encoder);
+// Pass nullptr or zero frames to flush remaining samples and signal end-of-stream.
+int nectarlink_video_aac_encoder_send(void* encoder, const int16_t* pcm, size_t frames,
+                                      char* error, size_t capacity);
+// Packet storage belongs to the encoder and remains valid until the next receive call.
+int nectarlink_video_aac_encoder_receive(void* encoder, const uint8_t** bytes, size_t* length,
+                                         char* error, size_t capacity);
+
+void* nectarlink_video_aac_decoder_create(char* error, size_t capacity);
+void nectarlink_video_aac_decoder_destroy(void* decoder);
+// Pass nullptr or zero length to signal end-of-stream.
+int nectarlink_video_aac_decoder_send(void* decoder, const uint8_t* bytes, size_t length,
+                                      char* error, size_t capacity);
+// Sample storage belongs to the decoder and remains valid until the next receive call.
+int nectarlink_video_aac_decoder_receive(void* decoder, const int16_t** pcm, size_t* frames,
+                                         int* sample_rate, int* channels, char* error, size_t capacity);
 }

@@ -316,14 +316,14 @@ pub fn convert_audio(src: &Path, dest: &Path, format: RecordingFormat) -> std::i
     if status.success() { Ok(()) } else { Err(std::io::Error::other(format!("ffmpeg exited with {status}"))) }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", linux_ffmpeg_video))]
 struct DemuxedM4a {
     sample_rate: u32,
     asc: [u8; 2],
     frames: Vec<Vec<u8>>,
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", linux_ffmpeg_video))]
 fn default_aac_lc_asc(sample_rate: u32, channels: u8) -> [u8; 2] {
     let freq_idx: u8 = match sample_rate {
         96_000 => 0,
@@ -347,7 +347,7 @@ fn default_aac_lc_asc(sample_rate: u32, channels: u8) -> [u8; 2] {
     [b0, b1]
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", linux_ffmpeg_video))]
 fn demux_m4a_aac(bytes: &[u8]) -> Option<DemuxedM4a> {
     #[derive(Default)]
     struct TrackTables {
@@ -548,83 +548,34 @@ fn demux_m4a_aac(bytes: &[u8]) -> Option<DemuxedM4a> {
     Some(DemuxedM4a { sample_rate, asc, frames })
 }
 
-#[cfg(target_os = "linux")]
-struct AvAacDecoderApi {
-    avcodec_find_decoder_by_name: unsafe extern "C" fn(*const std::ffi::c_char) -> *const std::ffi::c_void,
-    avcodec_alloc_context3: unsafe extern "C" fn(*const std::ffi::c_void) -> *mut std::ffi::c_void,
-    avcodec_free_context: unsafe extern "C" fn(*mut *mut std::ffi::c_void),
-    avcodec_open2: unsafe extern "C" fn(
-        *mut std::ffi::c_void,
-        *const std::ffi::c_void,
-        *mut *mut std::ffi::c_void,
-    ) -> std::ffi::c_int,
-    avcodec_send_packet:
-        unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> std::ffi::c_int,
-    avcodec_receive_frame:
-        unsafe extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void) -> std::ffi::c_int,
-    av_frame_alloc: unsafe extern "C" fn() -> *mut std::ffi::c_void,
-    av_frame_free: unsafe extern "C" fn(*mut *mut std::ffi::c_void),
-    av_frame_unref: unsafe extern "C" fn(*mut std::ffi::c_void),
-    av_packet_alloc: unsafe extern "C" fn() -> *mut std::ffi::c_void,
-    av_packet_free: unsafe extern "C" fn(*mut *mut std::ffi::c_void),
+#[cfg(all(target_os = "linux", linux_ffmpeg_video))]
+unsafe extern "C" {
+    fn nectarlink_video_aac_decoder_create(
+        error: *mut std::ffi::c_char,
+        capacity: usize,
+    ) -> *mut std::ffi::c_void;
+    fn nectarlink_video_aac_decoder_destroy(decoder: *mut std::ffi::c_void);
+    fn nectarlink_video_aac_decoder_send(
+        decoder: *mut std::ffi::c_void,
+        bytes: *const u8,
+        length: usize,
+        error: *mut std::ffi::c_char,
+        capacity: usize,
+    ) -> std::ffi::c_int;
+    fn nectarlink_video_aac_decoder_receive(
+        decoder: *mut std::ffi::c_void,
+        pcm: *mut *const i16,
+        frames: *mut usize,
+        sample_rate: *mut std::ffi::c_int,
+        channels: *mut std::ffi::c_int,
+        error: *mut std::ffi::c_char,
+        capacity: usize,
+    ) -> std::ffi::c_int;
 }
 
-#[cfg(target_os = "linux")]
-fn av_aac_decoder_api() -> Option<&'static AvAacDecoderApi> {
-    static API: std::sync::OnceLock<Option<AvAacDecoderApi>> = std::sync::OnceLock::new();
-    API.get_or_init(|| unsafe {
-        unsafe fn dlopen_any(candidates: &[&std::ffi::CStr]) -> *mut std::ffi::c_void {
-            for name in candidates {
-                let h = unsafe { libc::dlopen(name.as_ptr(), libc::RTLD_NOW | libc::RTLD_LOCAL) };
-                if !h.is_null() {
-                    return h;
-                }
-            }
-            std::ptr::null_mut()
-        }
-        unsafe fn sym<T: Copy>(handle: *mut std::ffi::c_void, name: &std::ffi::CStr) -> Option<T> {
-            let p = unsafe { libc::dlsym(handle, name.as_ptr()) };
-            if p.is_null() { None } else { Some(unsafe { std::mem::transmute_copy(&p) }) }
-        }
-
-        let avcodec = dlopen_any(&[
-            c"libavcodec.so.62",
-            c"libavcodec.so.61",
-            c"libavcodec.so.60",
-            c"libavcodec.so.59",
-            c"libavcodec.so",
-        ]);
-        let avutil = dlopen_any(&[
-            c"libavutil.so.60",
-            c"libavutil.so.59",
-            c"libavutil.so.58",
-            c"libavutil.so.57",
-            c"libavutil.so",
-        ]);
-        if avcodec.is_null() || avutil.is_null() {
-            return None;
-        }
-        Some(AvAacDecoderApi {
-            avcodec_find_decoder_by_name: sym(avcodec, c"avcodec_find_decoder_by_name")?,
-            avcodec_alloc_context3: sym(avcodec, c"avcodec_alloc_context3")?,
-            avcodec_free_context: sym(avcodec, c"avcodec_free_context")?,
-            avcodec_open2: sym(avcodec, c"avcodec_open2")?,
-            avcodec_send_packet: sym(avcodec, c"avcodec_send_packet")?,
-            avcodec_receive_frame: sym(avcodec, c"avcodec_receive_frame")?,
-            av_frame_alloc: sym(avutil, c"av_frame_alloc")?,
-            av_frame_free: sym(avutil, c"av_frame_free")?,
-            av_frame_unref: sym(avutil, c"av_frame_unref")?,
-            av_packet_alloc: sym(avcodec, c"av_packet_alloc")?,
-            av_packet_free: sym(avcodec, c"av_packet_free")?,
-        })
-    })
-    .as_ref()
-}
-
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", linux_ffmpeg_video))]
 fn decode_m4a_to_pcm_s16le(m4a_bytes: &[u8]) -> Option<(u32, u8, Vec<i16>)> {
     let demuxed = demux_m4a_aac(m4a_bytes)?;
-    let api = av_aac_decoder_api()?;
 
     let obj_type = ((demuxed.asc[0] >> 3) & 0x1F).max(1);
     let profile = (obj_type - 1) & 0x03;
@@ -632,113 +583,55 @@ fn decode_m4a_to_pcm_s16le(m4a_bytes: &[u8]) -> Option<(u32, u8, Vec<i16>)> {
     let chan_cfg = ((demuxed.asc[1] >> 3) & 0x0F).clamp(1, 2);
 
     unsafe {
-        let codec = (api.avcodec_find_decoder_by_name)(c"aac".as_ptr());
-        if codec.is_null() {
+        let mut error = [0 as std::ffi::c_char; 256];
+        let dec = nectarlink_video_aac_decoder_create(error.as_mut_ptr(), error.len());
+        if dec.is_null() {
             return None;
         }
-        let ctx = (api.avcodec_alloc_context3)(codec);
-        if ctx.is_null() {
-            return None;
-        }
-        struct Guard {
-            api: &'static AvAacDecoderApi,
-            ctx: *mut std::ffi::c_void,
-            frame: *mut std::ffi::c_void,
-            pkt: *mut std::ffi::c_void,
-        }
+        struct Guard(*mut std::ffi::c_void);
         impl Drop for Guard {
             fn drop(&mut self) {
-                unsafe {
-                    if !self.frame.is_null() {
-                        (self.api.av_frame_free)(&mut self.frame);
-                    }
-                    if !self.pkt.is_null() {
-                        (self.api.av_packet_free)(&mut self.pkt);
-                    }
-                    if !self.ctx.is_null() {
-                        (self.api.avcodec_free_context)(&mut self.ctx);
-                    }
-                }
+                unsafe { nectarlink_video_aac_decoder_destroy(self.0) };
             }
         }
-        let mut g = Guard { api, ctx, frame: std::ptr::null_mut(), pkt: std::ptr::null_mut() };
-        if (api.avcodec_open2)(g.ctx, codec, std::ptr::null_mut()) < 0 {
-            return None;
-        }
-        g.frame = (api.av_frame_alloc)();
-        g.pkt = (api.av_packet_alloc)();
-        if g.frame.is_null() || g.pkt.is_null() {
-            return None;
-        }
+        let guard = Guard(dec);
 
         let mut sample_rate = demuxed.sample_rate;
-        let channels = chan_cfg as usize;
+        let mut out_channels = chan_cfg;
         let mut pcm_samples = Vec::new();
 
-        let drain_frames = |ctx: *mut std::ffi::c_void,
-                            frame: *mut std::ffi::c_void,
+        let drain_frames = |dec: *mut std::ffi::c_void,
                             sample_rate: &mut u32,
+                            out_channels: &mut u8,
                             pcm_samples: &mut Vec<i16>| {
+            let mut err = [0 as std::ffi::c_char; 256];
             loop {
-                if (api.avcodec_receive_frame)(ctx, frame) < 0 {
+                let mut pcm_ptr: *const i16 = std::ptr::null();
+                let mut frames = 0usize;
+                let mut sr = 0 as std::ffi::c_int;
+                let mut ch = 0 as std::ffi::c_int;
+                let status = nectarlink_video_aac_decoder_receive(
+                    dec,
+                    &mut pcm_ptr,
+                    &mut frames,
+                    &mut sr,
+                    &mut ch,
+                    err.as_mut_ptr(),
+                    err.len(),
+                );
+                if status <= 0 {
                     break;
                 }
-                let nb_samples = *(frame.byte_add(0x70) as *const std::ffi::c_int);
-                let fmt = *(frame.byte_add(0x74) as *const std::ffi::c_int);
-                let sr = *(frame.byte_add(0x7c) as *const std::ffi::c_int);
                 if sr >= 8_000 {
                     *sample_rate = sr as u32;
                 }
-                if nb_samples > 0 {
-                    let n = nb_samples as usize;
-                    let data_ptrs = std::slice::from_raw_parts(frame as *const *const u8, 8);
-                    match fmt {
-                        8 => {
-                            // AV_SAMPLE_FMT_FLTP (planar f32)
-                            for i in 0..n {
-                                for &plane_ptr in data_ptrs.iter().take(channels) {
-                                    let s = if !plane_ptr.is_null() {
-                                        let plane = std::slice::from_raw_parts(plane_ptr as *const f32, n);
-                                        (plane[i].clamp(-1.0, 1.0) * 32767.0) as i16
-                                    } else {
-                                        0
-                                    };
-                                    pcm_samples.push(s);
-                                }
-                            }
-                        }
-                        6 => {
-                            // AV_SAMPLE_FMT_S16P (planar i16)
-                            for i in 0..n {
-                                for &plane_ptr in data_ptrs.iter().take(channels) {
-                                    let s = if !plane_ptr.is_null() {
-                                        let plane = std::slice::from_raw_parts(plane_ptr as *const i16, n);
-                                        plane[i]
-                                    } else {
-                                        0
-                                    };
-                                    pcm_samples.push(s);
-                                }
-                            }
-                        }
-                        3 if !data_ptrs[0].is_null() => {
-                            // AV_SAMPLE_FMT_FLT (interleaved f32)
-                            let interleaved =
-                                std::slice::from_raw_parts(data_ptrs[0] as *const f32, n * channels);
-                            for &v in interleaved {
-                                pcm_samples.push((v.clamp(-1.0, 1.0) * 32767.0) as i16);
-                            }
-                        }
-                        1 if !data_ptrs[0].is_null() => {
-                            // AV_SAMPLE_FMT_S16 (interleaved i16)
-                            let interleaved =
-                                std::slice::from_raw_parts(data_ptrs[0] as *const i16, n * channels);
-                            pcm_samples.extend_from_slice(interleaved);
-                        }
-                        _ => {}
-                    }
+                if (1..=2).contains(&ch) {
+                    *out_channels = ch as u8;
                 }
-                (api.av_frame_unref)(frame);
+                if !pcm_ptr.is_null() && frames > 0 {
+                    let count = frames * usize::from((*out_channels).clamp(1, 2));
+                    pcm_samples.extend_from_slice(std::slice::from_raw_parts(pcm_ptr, count));
+                }
             }
         };
 
@@ -758,22 +651,31 @@ fn decode_m4a_to_pcm_s16le(m4a_bytes: &[u8]) -> Option<(u32, u8, Vec<i16>)> {
             adts_buf.extend_from_slice(&header);
             adts_buf.extend_from_slice(raw_frame);
 
-            *(g.pkt.byte_add(0x18) as *mut *mut u8) = adts_buf.as_mut_ptr();
-            *(g.pkt.byte_add(0x20) as *mut std::ffi::c_int) = adts_buf.len() as std::ffi::c_int;
-            if (api.avcodec_send_packet)(g.ctx, g.pkt) >= 0 {
-                drain_frames(g.ctx, g.frame, &mut sample_rate, &mut pcm_samples);
+            if nectarlink_video_aac_decoder_send(
+                guard.0,
+                adts_buf.as_ptr(),
+                adts_buf.len(),
+                error.as_mut_ptr(),
+                error.len(),
+            ) >= 0
+            {
+                drain_frames(guard.0, &mut sample_rate, &mut out_channels, &mut pcm_samples);
             }
         }
-        *(g.pkt.byte_add(0x18) as *mut *mut u8) = std::ptr::null_mut();
-        *(g.pkt.byte_add(0x20) as *mut std::ffi::c_int) = 0;
-        let _ = (api.avcodec_send_packet)(g.ctx, std::ptr::null());
-        drain_frames(g.ctx, g.frame, &mut sample_rate, &mut pcm_samples);
+        let _ =
+            nectarlink_video_aac_decoder_send(guard.0, std::ptr::null(), 0, error.as_mut_ptr(), error.len());
+        drain_frames(guard.0, &mut sample_rate, &mut out_channels, &mut pcm_samples);
 
         if pcm_samples.is_empty() {
             return None;
         }
-        Some((sample_rate, chan_cfg, pcm_samples))
+        Some((sample_rate, out_channels, pcm_samples))
     }
+}
+
+#[cfg(all(target_os = "linux", not(linux_ffmpeg_video)))]
+fn decode_m4a_to_pcm_s16le(_m4a_bytes: &[u8]) -> Option<(u32, u8, Vec<i16>)> {
+    None
 }
 
 #[cfg(target_os = "linux")]
@@ -1644,7 +1546,7 @@ mod tests {
         }
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", linux_ffmpeg_video))]
     #[test]
     fn in_process_audio_conversion_works_without_ffmpeg() {
         let dir = tempfile::tempdir().unwrap();
