@@ -59,8 +59,9 @@ class CallCompanion : InCallService() {
 
     /** Only a call in progress has controls; ringing and ending report themselves. */
     private fun changed() {
-        number()?.let(PhoneCalls::companionNumber)
-        val state = call?.stateNow()
+        val currentCall = call
+        val state = currentCall?.stateNow()
+        PhoneCalls.companionUpdate(state, number(), name())
         if (state == Call.STATE_ACTIVE || state == Call.STATE_HOLDING) PhoneCalls.controlsChanged()
     }
 

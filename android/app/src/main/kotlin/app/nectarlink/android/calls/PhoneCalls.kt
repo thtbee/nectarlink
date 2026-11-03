@@ -70,16 +70,22 @@ internal class PhoneCalls(
         val id: String,
         val incoming: Boolean,
         var number: String?,
+        var name: String? = null,
         var answered: Boolean = false,
         /** Declined from a PC: not a missed call. */
         var declined: Boolean = false,
         /** When it was answered (Unix ms). */
         var since: Long? = null,
+        /** Started from [CallCompanion] without a telephony broadcast (for example, READ_PHONE_STATE not granted). */
+        var fromCompanion: Boolean = false,
     )
 
     fun start() {
         instance = this
-        if (receiver == null && canFollow(context)) {
+        if (!canFollow(context)) {
+            receiver?.let { runCatching { context.unregisterReceiver(it) } }
+            receiver = null
+        } else if (receiver == null) {
             receiver = object : BroadcastReceiver() {
                 override fun onReceive(context: Context, intent: Intent) {
                     val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE) ?: return
@@ -99,7 +105,11 @@ internal class PhoneCalls(
                 )
             }
         }
-        if (logObserver == null && canReadLog(context)) {
+        if (!canReadLog(context)) {
+            logObserver?.let { runCatching { context.contentResolver.unregisterContentObserver(it) } }
+            logObserver = null
+            main.removeCallbacks(notifyLog)
+        } else if (logObserver == null) {
             runCatching {
                 logObserver = object : ContentObserver(main) {
                     override fun onChange(selfChange: Boolean) {
@@ -133,15 +143,18 @@ internal class PhoneCalls(
                         id = System.currentTimeMillis().toString(),
                         incoming = true,
                         number = number ?: CallCompanion.number(),
+                        name = CallCompanion.name(),
                     )
                     current = tracked
                     report(tracked, CallPhase.RINGING)
                 }
                 // The same call again, now with its number.
                 call.number == null && number != null && !call.answered -> {
+                    call.fromCompanion = false
                     call.number = number
                     report(call, CallPhase.RINGING)
                 }
+                else -> call.fromCompanion = false
             }
             TelephonyManager.EXTRA_STATE_OFFHOOK -> when {
                 call == null -> {
@@ -151,11 +164,19 @@ internal class PhoneCalls(
                     // Android's broadcast never has the number of a call made on
                     // the phone: the one dialed from a PC, or Telecom's.
                     val outNumber = number ?: dialed ?: CallCompanion.number()
-                    val tracked = Tracked(id = now.toString(), incoming = false, number = outNumber, answered = true, since = now)
+                    val tracked = Tracked(
+                        id = now.toString(),
+                        incoming = false,
+                        number = outNumber,
+                        name = CallCompanion.name(),
+                        answered = true,
+                        since = now,
+                    )
                     current = tracked
                     report(tracked, CallPhase.ACTIVE)
                 }
                 !call.answered -> {
+                    call.fromCompanion = false
                     if (call.number == null && number != null) {
                         call.number = number
                     }
@@ -163,6 +184,7 @@ internal class PhoneCalls(
                     call.since = System.currentTimeMillis()
                     report(call, CallPhase.ACTIVE)
                 }
+                else -> call.fromCompanion = false
             }
             TelephonyManager.EXTRA_STATE_IDLE -> if (call != null) {
                 current = null
@@ -182,9 +204,10 @@ internal class PhoneCalls(
     private fun report(call: Tracked, phase: CallPhase, missedCheck: Boolean = false) {
         // A snapshot: the call may change while this waits its turn.
         val number = call.number
+        val fallbackName = call.name
         val incoming = call.incoming
         val since = call.since
-        worker.execute { send(call.id, phase, incoming, number, since, missedCheck) }
+        worker.execute { send(call.id, phase, incoming, number, fallbackName, since, missedCheck) }
     }
 
     private fun send(
@@ -192,22 +215,25 @@ internal class PhoneCalls(
         phase: CallPhase,
         incoming: Boolean,
         number: String?,
+        fallbackName: String?,
         since: Long?,
         missedCheck: Boolean,
     ) {
         // Every report carries the name (an answered call kept it before
         // only on the phone); looked up once per number while the call lasts.
         val (found, photo) = number?.let { contacts.getOrPut(it) { contact(it) } } ?: (null to null)
-        val name = found ?: CallCompanion.name()
+        val rawName = found ?: fallbackName ?: CallCompanion.name()
+        val safeNumber = number?.let { truncateUtf8(it, MAX_NUMBER_BYTES) }?.takeIf { it.isNotEmpty() }
+        val safeName = rawName?.let { truncateUtf8(it, MAX_TEXT_BYTES) }?.takeIf { it.isNotEmpty() }
         if (phase == CallPhase.ENDED) contacts.clear()
         val missed = missedCheck && wasMissed(id, number)
         onChange(
             Call(
-                id = id,
+                id = truncateUtf8(id, MAX_ID_BYTES),
                 state = phase,
                 incoming = incoming,
-                number = number,
-                name = name,
+                number = safeNumber,
+                name = safeName,
                 photo = photo.takeIf { phase == CallPhase.RINGING || (!incoming && phase == CallPhase.ACTIVE) },
                 missed = missed,
                 since = since.takeIf { phase == CallPhase.ACTIVE },
@@ -223,12 +249,67 @@ internal class PhoneCalls(
         }
     }
 
-    /** The companion learned the call's number, which Android's broadcast didn't have. */
-    private fun numberKnown(number: String) {
+    /** The companion observed a call state, number or caller display name change. */
+    private fun onCompanionUpdate(state: Int?, number: String?, name: String?) {
         main.post {
-            val call = current?.takeIf { it.number == null } ?: return@post
-            call.number = number
-            report(call, if (call.answered) CallPhase.ACTIVE else CallPhase.RINGING)
+            val call = current
+            if (call != null) {
+                if (call.fromCompanion && (state == null || state == android.telecom.Call.STATE_DISCONNECTED)) {
+                    stateChanged(TelephonyManager.EXTRA_STATE_IDLE, null)
+                    return@post
+                }
+                if (call.fromCompanion && !call.answered &&
+                    (state == android.telecom.Call.STATE_ACTIVE || state == android.telecom.Call.STATE_HOLDING)
+                ) {
+                    if (call.number == null && number != null) call.number = number
+                    if (name != null) call.name = name
+                    call.answered = true
+                    call.since = System.currentTimeMillis()
+                    report(call, CallPhase.ACTIVE)
+                    return@post
+                }
+                var updated = false
+                if (call.number == null && number != null) {
+                    call.number = number
+                    updated = true
+                }
+                if (name != null && call.name != name) {
+                    call.name = name
+                    updated = true
+                }
+                if (updated) {
+                    report(call, if (call.answered) CallPhase.ACTIVE else CallPhase.RINGING)
+                }
+            } else {
+                when (state) {
+                    android.telecom.Call.STATE_RINGING -> {
+                        val tracked = Tracked(
+                            id = System.currentTimeMillis().toString(),
+                            incoming = true,
+                            number = number,
+                            name = name,
+                            fromCompanion = true,
+                        )
+                        current = tracked
+                        report(tracked, CallPhase.RINGING)
+                    }
+                    android.telecom.Call.STATE_ACTIVE, android.telecom.Call.STATE_HOLDING -> {
+                        val now = System.currentTimeMillis()
+                        val dialed = lastDialed?.takeIf { now - it.second < 15_000L }?.first
+                        val tracked = Tracked(
+                            id = now.toString(),
+                            incoming = false,
+                            number = number ?: dialed,
+                            name = name,
+                            answered = true,
+                            since = now,
+                            fromCompanion = true,
+                        )
+                        current = tracked
+                        report(tracked, CallPhase.ACTIVE)
+                    }
+                }
+            }
         }
     }
 
@@ -336,7 +417,7 @@ internal class PhoneCalls(
     /** Recent calls from the phone's call history (`call.log`). */
     @SuppressLint("MissingPermission")
     fun callLog(before: Long?, limit: Int): List<CallLogEntry> {
-        check(canReadLog(context)) { "Call log permission not granted" }
+        if (!canReadLog(context)) return emptyList()
         return try {
             val resolver = context.contentResolver
             val contactsAllowed = granted(context, Manifest.permission.READ_CONTACTS)
@@ -431,8 +512,11 @@ internal class PhoneCalls(
             val tm = context.getSystemService(TelecomManager::class.java) ?: return emptyList()
             val default = tm.getDefaultOutgoingPhoneAccount(PhoneAccount.SCHEME_TEL)
             tm.callCapablePhoneAccounts.mapNotNull { handle ->
+                val rawId = handle.id?.trim().orEmpty()
+                if (rawId.isEmpty()) return@mapNotNull null
                 val account = tm.getPhoneAccount(handle) ?: return@mapNotNull null
-                CallSim(id = handle.id, label = simLabel(handle, account), isDefault = handle == default)
+                val id = truncateUtf8(rawId, MAX_ID_BYTES)
+                CallSim(id = id, label = simLabel(handle, account), isDefault = handle == default)
             }
         }.getOrElse {
             Log.w(TAG, "can't list the SIMs", it)
@@ -445,7 +529,10 @@ internal class PhoneCalls(
     fun dialOn(number: String, sim: String): Boolean {
         val handle = if (canListSims(context)) {
             runCatching {
-                context.getSystemService(TelecomManager::class.java)?.callCapablePhoneAccounts?.firstOrNull { it.id == sim }
+                context.getSystemService(TelecomManager::class.java)?.callCapablePhoneAccounts?.firstOrNull {
+                    val rawId = it.id?.trim().orEmpty()
+                    rawId == sim || truncateUtf8(rawId, MAX_ID_BYTES) == sim
+                }
             }.getOrNull()
         } else {
             null
@@ -465,12 +552,13 @@ internal class PhoneCalls(
             context.getSystemService(SubscriptionManager::class.java)
                 ?.getActiveSubscriptionInfo(subId)?.simSlotIndex?.takeIf { it >= 0 }?.plus(1)
         }.getOrNull()
-        return when {
+        val label = when {
             slot != null && carrier.isNotEmpty() -> "SIM $slot · $carrier"
             slot != null -> "SIM $slot"
             carrier.isNotEmpty() -> carrier
-            else -> handle.id
+            else -> handle.id?.trim().orEmpty()
         }.take(MAX_SIM_LABEL)
+        return truncateUtf8(label, MAX_TEXT_BYTES)
     }
 
     @SuppressLint("MissingPermission")
@@ -564,6 +652,9 @@ internal class PhoneCalls(
         private const val TAG = "PhoneCalls"
         /** The protocol's limit for a label (`calls::MAX_TEXT_BYTES`), in characters to be safe. */
         private const val MAX_SIM_LABEL = 64
+        internal const val MAX_ID_BYTES = 128
+        internal const val MAX_NUMBER_BYTES = 64
+        internal const val MAX_TEXT_BYTES = 256
 
         @Volatile private var instance: PhoneCalls? = null
 
@@ -572,9 +663,29 @@ internal class PhoneCalls(
             instance?.resendActive()
         }
 
-        /** The companion has the call's number (Telecom's handle). */
-        internal fun companionNumber(number: String) {
-            instance?.numberKnown(number)
+        /** The companion observed a call state, number, or caller display name change. */
+        internal fun companionUpdate(state: Int?, number: String?, name: String?) {
+            instance?.onCompanionUpdate(state, number, name)
+        }
+
+        /** Truncates [text] on a code-point boundary so its UTF-8 encoding is at most [maxBytes]. */
+        internal fun truncateUtf8(text: String, maxBytes: Int): String {
+            if (text.toByteArray(Charsets.UTF_8).size <= maxBytes) return text
+            var used = 0
+            var i = 0
+            while (i < text.length) {
+                val cp = text.codePointAt(i)
+                val bytes = when {
+                    cp <= 0x7F -> 1
+                    cp <= 0x7FF -> 2
+                    cp <= 0xFFFF -> 3
+                    else -> 4
+                }
+                if (used + bytes > maxBytes) break
+                used += bytes
+                i += Character.charCount(cp)
+            }
+            return text.substring(0, i)
         }
         private const val MAX_PHOTO_BYTES = 64 * 1024
         private const val MAX_LOG_PAGE = 100
