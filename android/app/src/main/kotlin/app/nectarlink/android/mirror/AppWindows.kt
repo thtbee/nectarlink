@@ -274,7 +274,7 @@ class AppWindows(
 
     companion object {
         private const val TAG = "AppWindows"
-        private const val NOTIFICATION_ID = 7
+        private const val NOTIFICATION_ID = 10
         /** Packets from the helper, at most. */
         private const val MAX_PACKET = 8 shl 20
 

@@ -53,4 +53,20 @@ class WindowShapeTest {
         assertTrue(small.first >= 240 && small.second >= 240)
         assertAligned(small)
     }
+
+    @Test
+    fun inputCoordinatesAndScrollDeltasClampOvershootWithinScreenBounds() {
+        val (x0, y0) = clampScreenPoint(-0.4f, -0.5f, 1080f, 2340f)
+        assertEquals(0f, x0, 0f)
+        assertEquals(0f, y0, 0f)
+
+        val (x1, y1) = clampScreenPoint(1.4f, 1.5f, 1080f, 2340f)
+        assertEquals(1079f, x1, 0f)
+        assertEquals(2339f, y1, 0f)
+
+        val dxLeftEdge = clampScrollDelta(1f, -500f, 1080f)
+        assertEquals(0f, dxLeftEdge, 0f)
+        val dxRightEdge = clampScrollDelta(1079f, 500f, 1080f)
+        assertEquals(0f, dxRightEdge, 0f)
+    }
 }

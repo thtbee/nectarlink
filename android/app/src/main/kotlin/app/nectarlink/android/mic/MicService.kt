@@ -57,7 +57,15 @@ class MicService : Service() {
         when (intent?.action) {
             ACTION_START -> {
                 val pcId = intent.getStringExtra(EXTRA_PC)
-                if (pcId != null && !running) start(pcId) else if (pcId == null) stopSelf()
+                if (pcId != null && !running) {
+                    start(pcId)
+                } else if (running) {
+                    val activePc = _streaming.value ?: pcId.orEmpty()
+                    val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0
+                    runCatching { ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(activePc), type) }
+                } else {
+                    stopAfterForeground("")
+                }
             }
             ACTION_STOP -> {
                 val pcId = _streaming.value
@@ -72,10 +80,18 @@ class MicService : Service() {
         return START_NOT_STICKY
     }
 
+    private fun stopAfterForeground(pcId: String) {
+        createChannel(this)
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0
+        runCatching { ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(pcId), type) }
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
     @SuppressLint("MissingPermission")
     private fun start(pcId: String) {
         if (!hasPermission(this)) {
-            stopSelf()
+            stopAfterForeground(pcId)
             return
         }
         createChannel(this)
@@ -208,6 +224,7 @@ class MicService : Service() {
 
         /** Starts streaming to [pcId]; only from the foreground (Android's rule for the mic). */
         fun start(context: Context, pcId: String) {
+            if (!hasPermission(context) || _streaming.value != null) return
             val intent = Intent(context, MicService::class.java).setAction(ACTION_START).putExtra(EXTRA_PC, pcId)
             ContextCompat.startForegroundService(context, intent)
         }
