@@ -4,7 +4,27 @@ All notable changes to NectarLink. Versions follow
 [semantic versioning](https://semver.org); before 1.0, a minor version may
 change things that need a step from you, and its notes say so.
 
-## Unreleased
+## 0.1.5 (2026-11-03)
+
+The PC app on Linux and on Windows on ARM, Phone as microphone, Play on
+phone, your phone's sound on the PC, a Nightly channel, and the fixes for
+what people reported since 0.1.4.
+
+### Downloads
+
+| Download | For | Needs |
+|---|---|---|
+| [Nectarlink-0.1.5-x64-setup.exe](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-x64-setup.exe) | Windows | Windows 10 (2004+) or 11, 64-bit Intel or AMD (Phone as webcam needs Windows 11) |
+| [Nectarlink-0.1.5-arm64-setup.exe](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-arm64-setup.exe) | Windows on ARM | Windows 11 on ARM (Snapdragon) |
+| [nectarlink_0.1.5_amd64.deb](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/nectarlink_0.1.5_amd64.deb) | Ubuntu, Debian | Ubuntu 24.04 or newer, Debian 13, 64-bit Intel or AMD |
+| [nectarlink-0.1.5-1.x86_64.rpm](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/nectarlink-0.1.5-1.x86_64.rpm) | Fedora, openSUSE | Fedora 40 or newer, 64-bit Intel or AMD |
+| [Nectarlink-0.1.5-x86_64.AppImage](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-x86_64.AppImage) | Other Linux | A distribution from 2024 or newer, 64-bit Intel or AMD |
+| [Nectarlink-0.1.5-linux-x86_64.tar.gz](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-linux-x86_64.tar.gz) | Other Linux | As the AppImage |
+| [Nectarlink-0.1.5-android.apk](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-android.apk) | Android | Android 8.0 or newer |
+
+All are listed with their SHA-256 hashes in [SHA256SUMS.txt](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/SHA256SUMS.txt).
+On Linux, `curl -fsSL https://github.com/thtbee/nectarlink/releases/latest/download/install.sh | sh`
+picks the right one. Installed copies update themselves.
 
 ### New
 
