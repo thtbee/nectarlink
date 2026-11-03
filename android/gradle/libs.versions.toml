@@ -12,6 +12,8 @@ zxing = "3.5.4"
 jna = "5.19.1"
 shizuku = "13.1.5"
 junit = "4.13.2"
+# Unit tests only: Android's own org.json is a stub off the device.
+orgJson = "20260814"
 
 [libraries]
 libadb-android = { module = "com.github.MuntashirAkon:libadb-android", version = "3.1.1" }
@@ -37,6 +39,7 @@ camerax-view = { module = "androidx.camera:camera-view", version.ref = "camerax"
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 junit = { module = "junit:junit", version.ref = "junit" }
+org-json = { module = "org.json:json", version.ref = "orgJson" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

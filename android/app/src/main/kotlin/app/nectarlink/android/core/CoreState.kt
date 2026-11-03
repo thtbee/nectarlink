@@ -389,6 +389,8 @@ data class CoreState(
             if (pairing == PairingState.Idle) this else copy(pairing = PairingState.Failed(event.failure))
         // PCs don't send notifications; nothing for the phone to show.
         is Event.NotificationsReset, is Event.NotificationPosted, is Event.NotificationRemoved -> this
+        // The updater acts on it (Core); nothing shows.
+        is Event.UpdateHint -> this
         // Android shows its own "copied" confirmation; Core refreshes clipboardHistory/timeline/LocalSend/sendQueue on change.
         is Event.ClipboardReceived,
         is Event.ClipboardHistoryChanged,
@@ -481,6 +483,7 @@ data class CoreState(
 }
 
 internal fun Event.affectsCoreState(): Boolean = when (this) {
+    is Event.UpdateHint,
     is Event.NotificationsReset,
     is Event.NotificationPosted,
     is Event.NotificationRemoved,

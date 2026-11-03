@@ -1319,6 +1319,13 @@
     <string name="update_done_text">Tippe zum Öffnen. Deine PCs verbinden sich automatisch wieder.</string>
     <string name="update_auto_title">Updates automatisch installieren</string>
     <string name="update_auto_text">Neue Versionen von GitHub werden im Hintergrund installiert.</string>
+    <string name="update_nightly">Nightly %1$d</string>
+    <string name="update_nightly_named">Nightly %1$d (%2$s)</string>
+    <string name="update_channel_title">Update-Kanal</string>
+    <string name="update_channel_stable">Stabil</string>
+    <string name="update_channel_nightly">Nightly</string>
+    <string name="update_channel_stable_text">Veröffentlichte Versionen, getestet und seltener.</string>
+    <string name="update_channel_nightly_text">Der neueste Build, alle paar Stunden, mit den neuesten Korrekturen und Funktionen, manchmal auch mit neuen Fehlern. Zurück auf Stabil behält dieses Telefon seinen Build, bis die nächste Version neuer ist.</string>
 
     <string name="home_guide_title">Anleitung</string>
     <string name="home_whats_new_guide">Neu: Funktionsübersicht</string>

@@ -1649,8 +1649,9 @@ private fun Label(text: String) {
 /** The third language choice when it isn't a picked language: opens the list. */
 private const val MORE_LANGUAGES = "more"
 
+/** A row of choices, one picked. */
 @Composable
-private fun Choice(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) {
+internal fun Choice(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) {
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
         options.forEachIndexed { index, (value, label) ->
             SegmentedButton(

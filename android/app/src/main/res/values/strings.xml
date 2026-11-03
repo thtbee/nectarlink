@@ -1319,6 +1319,13 @@
     <string name="update_done_text">Tap to open it. Your PCs reconnect on their own.</string>
     <string name="update_auto_title">Install updates automatically</string>
     <string name="update_auto_text">New versions from GitHub install in the background.</string>
+    <string name="update_nightly">Nightly %1$d</string>
+    <string name="update_nightly_named">Nightly %1$d (%2$s)</string>
+    <string name="update_channel_title">Update channel</string>
+    <string name="update_channel_stable">Stable</string>
+    <string name="update_channel_nightly">Nightly</string>
+    <string name="update_channel_stable_text">Releases, tested and less often.</string>
+    <string name="update_channel_nightly_text">The newest build from every couple of hours, with the latest fixes and features, and sometimes new bugs. Back on Stable, this phone keeps its build until the next release is newer.</string>
 
     <string name="home_guide_title">Guide</string>
     <string name="home_whats_new_guide">What is new: Features guide</string>

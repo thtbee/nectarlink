@@ -62,7 +62,7 @@ private fun UpdatePanel(updater: AppUpdater, state: AppUpdater.State, update: Ap
         modifier = modifier,
     ) {
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(R.string.update_title, update.version), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.update_title, update.title(context)), style = MaterialTheme.typography.titleMedium)
             val status = when {
                 state is AppUpdater.State.Downloading && state.waitingForNetwork -> stringResource(R.string.update_waiting_network)
                 state is AppUpdater.State.Downloading && state.total > 0 -> stringResource(
@@ -113,12 +113,13 @@ private fun UpdatePanel(updater: AppUpdater, state: AppUpdater.State, update: Ap
     }
 }
 
-/** Updates in Settings: automatic installs on or off, a check, and what it found. */
+/** Updates in Settings: automatic installs on or off, the channel, a check, and what it found. */
 @Composable
 fun CheckForUpdates(updater: AppUpdater) {
     if (!updater.enabled) return
     val state by updater.state.collectAsStateWithLifecycle()
     val auto by updater.autoInstall.collectAsStateWithLifecycle()
+    val channel by updater.channel.collectAsStateWithLifecycle()
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(stringResource(R.string.update_auto_title), style = MaterialTheme.typography.titleSmall)
@@ -132,6 +133,21 @@ fun CheckForUpdates(updater: AppUpdater) {
             checked = auto,
             onCheckedChange = updater::setAutoInstall,
             colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+        )
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(stringResource(R.string.update_channel_title), style = MaterialTheme.typography.titleSmall)
+        app.nectarlink.android.ui.settings.Choice(
+            listOf(
+                AppUpdater.Channel.Stable.key to stringResource(R.string.update_channel_stable),
+                AppUpdater.Channel.Nightly.key to stringResource(R.string.update_channel_nightly),
+            ),
+            channel.key,
+        ) { key -> AppUpdater.Channel.parse(key)?.let(updater::setChannel) }
+        Text(
+            stringResource(if (channel == AppUpdater.Channel.Nightly) R.string.update_channel_nightly_text else R.string.update_channel_stable_text),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
     val update = state.update

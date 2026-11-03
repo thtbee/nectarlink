@@ -1318,6 +1318,13 @@
     <string name="update_done_text">Açmak için dokunun. Bilgisayarlarınız kendiliğinden yeniden bağlanır.</string>
     <string name="update_auto_title">Güncellemeleri otomatik kur</string>
     <string name="update_auto_text">GitHub\'daki yeni sürümler arka planda kurulur.</string>
+    <string name="update_nightly">Nightly %1$d</string>
+    <string name="update_nightly_named">Nightly %1$d (%2$s)</string>
+    <string name="update_channel_title">Güncelleme kanalı</string>
+    <string name="update_channel_stable">Kararlı</string>
+    <string name="update_channel_nightly">Nightly</string>
+    <string name="update_channel_stable_text">Yayınlanan sürümler: test edilmiş ve daha seyrek.</string>
+    <string name="update_channel_nightly_text">Birkaç saatte bir çıkan en yeni derleme: en son düzeltmeler ve özellikler, bazen de yeni hatalar. Kararlı\'ya dönünce bu telefon, bir sonraki sürüm daha yeni olana kadar derlemesini korur.</string>
 
     <string name="home_guide_title">Rehber</string>
     <string name="home_whats_new_guide">Yenilikler: Özellik rehberi</string>

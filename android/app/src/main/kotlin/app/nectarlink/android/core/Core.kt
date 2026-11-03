@@ -892,6 +892,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 }
             }
             is Event.DeviceAdded -> ConnectionService.start(context)
+            // A PC heard of a new build: the updater checks the feed if it's for this phone.
+            is Event.UpdateHint -> (context.applicationContext as? app.nectarlink.android.NectarlinkApplication)
+                ?.updater?.onHint(event.channel, event.version)
             is Event.DeviceRemoved -> {
                 wakeTimers.remove(event.id)?.cancel()
                 // Paired again later, it asks again until chosen again.
@@ -2033,6 +2036,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     // ---- Devices ----
 
     fun ring(id: String, on: Boolean) = command { it.ring(id, on) }
+
+    /** Tells paired PCs that `version` is out on `channel`, so they needn't wait for their next check. */
+    fun announceUpdate(channel: String, version: String) = command { it.announceUpdate(channel, version) }
 
     /** Locks a PC, or puts it to sleep; says how it went. */
     fun pcPower(id: String, sleep: Boolean) {

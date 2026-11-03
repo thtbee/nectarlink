@@ -43,11 +43,16 @@ import java.net.URL
 import java.security.MessageDigest
 
 /**
- * Updates from GitHub releases: checks the latest release, and installs a
- * newer signed APK after checking it against the release's SHA-256 sums.
+ * Updates from GitHub releases: checks the channel's feed (a small JSON file
+ * per channel, see the PC app's `feed.rs`), and installs a newer signed APK
+ * after checking it against the SHA-256 the feed lists. Until a feed is
+ * published it reads GitHub's latest release and its sums, as before feeds.
  * Android only installs it over this app when it's signed with the same
  * key, so only release builds update themselves (debug builds are signed
  * differently).
+ *
+ * A paired PC checks on a schedule and tells the phone when a build is out
+ * ([onHint]), so the phone rarely needs to check on its own.
  *
  * Downloads resume where they stopped: across a dropped or changed network
  * (it waits for one to come back), and across restarts of the app.
@@ -61,9 +66,35 @@ class AppUpdater(context: Context) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val busy = Mutex()
 
-    /** A newer release. */
+    /** A newer build. A feed lists its APK's hash; a release found through GitHub's API its sums. */
     @androidx.compose.runtime.Immutable
-    data class Update(val version: String, val notesUrl: String, internal val apkUrl: String, internal val apkName: String, internal val sumsUrl: String)
+    data class Update(
+        val version: String,
+        val notesUrl: String,
+        internal val apkUrl: String,
+        internal val apkName: String,
+        internal val sumsUrl: String?,
+        internal val sha256: String? = null,
+        /** A nightly's name ("Amber Clover"). */
+        val name: String? = null,
+    ) {
+        /** How to name it to people: "0.1.5" or "Nightly 7 (Amber Clover)". */
+        fun title(context: Context): String {
+            val n = nightlyBuild(version) ?: return version
+            return if (name != null) context.getString(R.string.update_nightly_named, n, name) else context.getString(R.string.update_nightly, n)
+        }
+    }
+
+    /** Which builds this install updates to. */
+    enum class Channel(val key: String) {
+        Stable("stable"),
+        Nightly("nightly"),
+        ;
+
+        companion object {
+            fun parse(key: String?): Channel? = entries.firstOrNull { it.key == key }
+        }
+    }
 
     sealed interface State {
         data object Idle : State
@@ -102,6 +133,40 @@ class AppUpdater(context: Context) {
         _autoInstall.value = on
     }
 
+    private val _channel = MutableStateFlow(Channel.parse(prefs.getString(UPDATE_CHANNEL, null)) ?: channelOf(BuildConfig.VERSION_NAME))
+
+    /** The channel picked in Settings, or the build's own (a nightly install follows Nightly). */
+    val channel: StateFlow<Channel> = _channel.asStateFlow()
+
+    /** Follows `channel` from now on, and checks it now. */
+    fun setChannel(channel: Channel) {
+        if (_channel.value == channel) return
+        prefs.edit { putString(UPDATE_CHANNEL, channel.key) }
+        _channel.value = channel
+        scope.launch { check() }
+    }
+
+    /** Told when a feed shows a build, so the phone can pass it on to its PCs. */
+    @Volatile var onFeedSeen: ((channel: String, version: String) -> Unit)? = null
+
+    private var lastHintCheck = 0L
+
+    /**
+     * A paired device heard of `version` on `channel`: if it's for this install's
+     * channel and newer, check now (and install, with automatic updates on), at
+     * most every [HINT_EVERY_MS]. Only a hint: the feed decides what installs.
+     */
+    fun onHint(channel: String, version: String) {
+        val heard = Channel.parse(channel) ?: return
+        if (!enabled || !(heard == Channel.Stable || _channel.value == Channel.Nightly)) return
+        if (!isNewer(version, BuildConfig.VERSION_NAME)) return
+        val now = SystemClock.elapsedRealtime()
+        if (lastHintCheck != 0L && now - lastHintCheck < HINT_EVERY_MS) return
+        lastHintCheck = now
+        Log.i(TAG, "heard of $version on $channel")
+        scope.launch { update() }
+    }
+
     /**
      * For the background: checks when due and, with automatic updates on, installs a newer
      * release. Android 12 and later install it without asking once NectarLink has installed
@@ -110,14 +175,29 @@ class AppUpdater(context: Context) {
     suspend fun updateIfDue() {
         if (!enabled || isBusy()) return
         checkIfDue()
+        installIfAutomatic()
+    }
+
+    /** Checks now and, with automatic updates on, installs what it finds. */
+    private suspend fun update() {
+        if (!enabled || isBusy()) return
+        check()
+        installIfAutomatic()
+    }
+
+    private suspend fun installIfAutomatic() {
         val available = (_state.value as? State.Available)?.update ?: return
         if (_autoInstall.value && canInstall()) install(available, automatic = true)
     }
 
-    /** Checks at most once a day (call when the app comes to the front). */
+    /**
+     * Checks when due: daily on Stable, every six hours on Nightly (call when the
+     * app comes to the front). A paired PC's hints ([onHint]) come sooner.
+     */
     suspend fun checkIfDue() {
         val last = prefs.getLong(LAST_CHECK, 0)
-        if (System.currentTimeMillis() - last < CHECK_EVERY_MS) return
+        val every = if (_channel.value == Channel.Nightly) NIGHTLY_CHECK_EVERY_MS else CHECK_EVERY_MS
+        if (System.currentTimeMillis() - last < every) return
         check()
     }
 
@@ -145,7 +225,69 @@ class AppUpdater(context: Context) {
         it is State.Downloading || it is State.Installing || it is State.Checking
     }
 
+    /**
+     * The newest build for this install's channel, if newer: from the feeds
+     * (Stable reads the stable one, Nightly both, since a release newer than the
+     * last nightly is for nightly installs too), or until a feed is published,
+     * from GitHub's latest release.
+     */
     private fun latest(): Update? {
+        val feeds = if (_channel.value == Channel.Nightly) listOf(Channel.Stable, Channel.Nightly) else listOf(Channel.Stable)
+        var published = false
+        var newest: Update? = null
+        var failure: Exception? = null
+        for (feedChannel in feeds) {
+            val feed = try {
+                fetchFeed(feedChannel) ?: continue
+            } catch (e: IOException) {
+                failure = e
+                continue
+            } catch (e: org.json.JSONException) {
+                failure = e
+                continue
+            }
+            published = true
+            runCatching { onFeedSeen?.invoke(feedChannel.key, feed.getString("version")) }
+            val update = feedUpdate(feed, BuildConfig.VERSION_NAME) ?: continue
+            if (newest == null || isNewer(update.version, newest.version)) newest = update
+        }
+        if (published) return newest
+        failure?.let { throw it }
+        return latestRelease()
+    }
+
+    /**
+     * The channel's feed, checked for what it must be, or null when none is
+     * published. A conditional request: while the feed is unchanged GitHub
+     * answers 304, and the copy kept from last time is used.
+     */
+    private fun fetchFeed(channel: Channel): JSONObject? {
+        val etagKey = "feedEtag.${channel.key}"
+        val bodyKey = "feedBody.${channel.key}"
+        val etag = prefs.getString(etagKey, null)
+        val connection = connect("$FEEDS${channel.key}.json", etag = etag?.takeIf { prefs.contains(bodyKey) })
+        val body = try {
+            when (val code = connection.responseCode) {
+                HttpURLConnection.HTTP_NOT_MODIFIED -> prefs.getString(bodyKey, null) ?: throw IOException("no kept feed")
+                HttpURLConnection.HTTP_OK -> {
+                    val text = String(readLimited(connection, MAX_FEED))
+                    val newEtag = connection.getHeaderField("ETag")?.takeIf { it.length <= 200 }
+                    checkedFeed(JSONObject(text), channel)
+                    prefs.edit {
+                        if (newEtag != null) putString(etagKey, newEtag).putString(bodyKey, text) else remove(etagKey).remove(bodyKey)
+                    }
+                    text
+                }
+                HttpURLConnection.HTTP_NOT_FOUND -> return null
+                else -> throw HttpStatus(code)
+            }
+        } finally {
+            connection.disconnect()
+        }
+        return checkedFeed(JSONObject(body), channel)
+    }
+
+    private fun latestRelease(): Update? {
         val body = try {
             get(LATEST, 1 shl 20)
         } catch (e: HttpStatus) {
@@ -167,6 +309,11 @@ class AppUpdater(context: Context) {
             if (name == "SHA256SUMS.txt") sums = asset
         }
         if (apk == null || sums == null) return null
+        if (!apk.getString("browser_download_url").startsWith(RELEASE_DOWNLOADS) ||
+            !sums.getString("browser_download_url").startsWith(RELEASE_DOWNLOADS)
+        ) {
+            return null
+        }
         return Update(
             version = version,
             notesUrl = release.getString("html_url"),
@@ -236,8 +383,11 @@ class AppUpdater(context: Context) {
      * partial download only ever continues into the same file.
      */
     private suspend fun download(update: Update): File {
-        val sums = retrying(update) { String(get(update.sumsUrl, 64 * 1024)) }
-        val expected = listedHash(sums, update.apkName) ?: throw DamagedException()
+        val expected = update.sha256 ?: run {
+            val sumsUrl = update.sumsUrl ?: throw DamagedException()
+            val sums = retrying(update) { String(get(sumsUrl, 64 * 1024)) }
+            listedHash(sums, update.apkName) ?: throw DamagedException()
+        }
         val dir = File(context.cacheDir, UPDATES_DIR).apply { mkdirs() }
         val name = "nectarlink-${expected.take(16)}.apk"
         val apk = File(dir, name)
@@ -426,7 +576,7 @@ class AppUpdater(context: Context) {
         if (!mayNotify()) return
         val manager = context.getSystemService(NotificationManager::class.java)
         channel(manager)
-        val version = (_state.value as? State.Installing)?.update?.version.orEmpty()
+        val version = (_state.value as? State.Installing)?.update?.title(context).orEmpty()
         val tap = PendingIntent.getActivity(context, READY_ID, confirm, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val notification = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
@@ -479,6 +629,16 @@ class AppUpdater(context: Context) {
     companion object {
         private const val TAG = "AppUpdater"
         private const val LATEST = "https://api.github.com/repos/thtbee/nectarlink/releases/latest"
+
+        /** The channels' feeds: `<FEEDS><channel>.json`. */
+        private const val FEEDS = "https://raw.githubusercontent.com/thtbee/nectarlink/channels/"
+
+        /** The only place an update is downloaded from. */
+        private const val RELEASE_DOWNLOADS = "https://github.com/thtbee/nectarlink/releases/download/"
+        private const val NOTES = "https://github.com/thtbee/nectarlink/"
+        private const val FEED_SCHEMA = 1
+        private const val MAX_FEED = 64 * 1024
+        private const val UPDATE_CHANNEL = "channel"
         private const val LAST_CHECK = "lastCheck"
         private const val AUTO_INSTALL = "autoInstall"
         private const val LAST_AUTOMATIC = "lastAutomatic"
@@ -487,6 +647,10 @@ class AppUpdater(context: Context) {
         private const val READY_ID = 0x0D47
         private const val UPDATED_ID = 0x0D48
         private const val CHECK_EVERY_MS = 24L * 3600 * 1000
+        private const val NIGHTLY_CHECK_EVERY_MS = 6L * 3600 * 1000
+
+        /** Hints from paired devices start a check at most this often. */
+        private const val HINT_EVERY_MS = 10L * 60 * 1000
         private const val MAX_APK = 300L * 1024 * 1024
         private const val MAX_ATTEMPTS = 6
         private const val NETWORK_WAIT_MS = 2L * 60 * 1000
@@ -496,8 +660,11 @@ class AppUpdater(context: Context) {
         /** A response other than the one expected. */
         private class HttpStatus(val code: Int) : IOException("HTTP $code")
 
-        /** A connection for `url`, asking for the bytes from `from` on when that's past 0. */
-        private fun connect(url: String, from: Long = 0): HttpURLConnection {
+        /**
+         * A connection for `url`, asking for the bytes from `from` on when that's past 0,
+         * and only if it changed from `etag` when there's one (a 304 answers otherwise).
+         */
+        private fun connect(url: String, from: Long = 0, etag: String? = null): HttpURLConnection {
             if (!url.startsWith("https://")) throw IOException("only https")
             return (URL(url).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 15_000
@@ -507,6 +674,9 @@ class AppUpdater(context: Context) {
                 setRequestProperty("User-Agent", "Nectarlink/${BuildConfig.VERSION_NAME} (Android)")
                 setRequestProperty("Accept", "application/vnd.github+json, application/octet-stream")
                 if (from > 0) setRequestProperty("Range", "bytes=$from-")
+                if (etag != null && etag.length <= 200 && '\r' !in etag && '\n' !in etag) {
+                    setRequestProperty("If-None-Match", etag)
+                }
                 // Redirects stay on https (HttpURLConnection never follows one to another
                 // protocol); checked again in case that ever changes.
                 responseCode
@@ -519,20 +689,76 @@ class AppUpdater(context: Context) {
             val connection = connect(url)
             try {
                 if (connection.responseCode != HttpURLConnection.HTTP_OK) throw HttpStatus(connection.responseCode)
-                return connection.inputStream.use { input ->
-                    val out = java.io.ByteArrayOutputStream()
-                    val buffer = ByteArray(16 * 1024)
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read < 0) break
-                        if (out.size() + read > limit) throw IOException("too large")
-                        out.write(buffer, 0, read)
-                    }
-                    out.toByteArray()
-                }
+                return readLimited(connection, limit)
             } finally {
                 connection.disconnect()
             }
+        }
+
+        private fun readLimited(connection: HttpURLConnection, limit: Int): ByteArray = connection.inputStream.use { input ->
+            val out = java.io.ByteArrayOutputStream()
+            val buffer = ByteArray(16 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                if (out.size() + read > limit) throw IOException("too large")
+                out.write(buffer, 0, read)
+            }
+            out.toByteArray()
+        }
+
+        /** The channel a build belongs to: nightlies to Nightly, everything else to Stable. */
+        fun channelOf(version: String): Channel = if (nightlyBuild(version) != null) Channel.Nightly else Channel.Stable
+
+        /** A file name to save under: plain characters only, never a path. */
+        internal fun isPlainName(name: String): Boolean =
+            name.isNotEmpty() && name.length <= 128 && ".." !in name && name.all { it.isLetterOrDigit() && it.code < 128 || it in "-._" }
+
+        /**
+         * The feed if it's one for `channel`: its schema, channel and version match,
+         * and its files only point at this repository's release downloads with a
+         * SHA-256 each; files that don't are dropped. Throws otherwise.
+         */
+        internal fun checkedFeed(feed: JSONObject, channel: Channel): JSONObject {
+            if (feed.optInt("schema") != FEED_SCHEMA) throw IOException("feed schema ${feed.optInt("schema")}")
+            if (Channel.parse(feed.optString("channel")) != channel) throw IOException("not the ${channel.key} feed")
+            val version = feed.getString("version")
+            if (version.length > 64 || compareVersions(version, "0.0.0") == null || channelOf(version) != channel) {
+                throw IOException("not a ${channel.key} build: $version")
+            }
+            if (!feed.optString("notes").startsWith(NOTES)) feed.put("notes", "${NOTES}releases")
+            val files = feed.getJSONArray("files")
+            val kept = org.json.JSONArray()
+            for (i in 0 until files.length()) {
+                val file = files.optJSONObject(i) ?: continue
+                val url = file.optString("url")
+                val hash = file.optString("sha256").lowercase()
+                if (isPlainName(file.optString("name")) && url.startsWith(RELEASE_DOWNLOADS) &&
+                    ".." !in url.removePrefix(RELEASE_DOWNLOADS) && hash.length == 64 && hash.all { it in "0123456789abcdef" }
+                ) {
+                    kept.put(file.put("sha256", hash))
+                }
+            }
+            return feed.put("files", kept)
+        }
+
+        /** The feed's build as an update, if it's newer than `current` and has an APK. */
+        internal fun feedUpdate(feed: JSONObject, current: String): Update? {
+            val version = feed.getString("version")
+            if (!isNewer(version, current)) return null
+            val files = feed.getJSONArray("files")
+            val apk = (0 until files.length()).map { files.getJSONObject(it) }
+                .firstOrNull { it.getString("name").endsWith("-android.apk") && it.getString("name").startsWith("Nectarlink-") }
+                ?: return null
+            return Update(
+                version = version,
+                notesUrl = feed.getString("notes"),
+                apkUrl = apk.getString("url"),
+                apkName = apk.getString("name"),
+                sumsUrl = null,
+                sha256 = apk.getString("sha256"),
+                name = feed.optString("name").takeIf { it.isNotEmpty() && it.length <= 64 },
+            )
         }
 
         private fun sha256(file: File): String {
@@ -560,21 +786,54 @@ class AppUpdater(context: Context) {
             hash?.takeIf { file == name && it.length == 64 }
         }
 
-        /** `1.2.3` style versions; a release is newer than its pre-releases. */
-        fun isNewer(candidate: String, current: String): Boolean {
-            fun parse(v: String): Pair<List<Int>, String?>? {
-                val numbers = v.substringBefore('-').split('.').map { it.toIntOrNull() ?: return null }
+        /**
+         * `1.2.3` style versions; a release is newer than its pre-releases, and
+         * pre-release parts compare as semver does, numbers as numbers
+         * (`1.2.3-nightly.10` is after `1.2.3-nightly.9`).
+         */
+        fun isNewer(candidate: String, current: String): Boolean = compareVersions(candidate, current)?.let { it > 0 } == true
+
+        /** The order of two versions (negative, zero, positive), or null if either isn't one. */
+        fun compareVersions(a: String, b: String): Int? {
+            fun parse(v: String): Pair<List<Long>, String?>? {
+                val plain = v.substringBefore('+')
+                val pre = if ('-' in plain) plain.substringAfter('-').ifEmpty { return null } else null
+                val numbers = plain.substringBefore('-').split('.').map { it.toLongOrNull() ?: return null }
                 if (numbers.size !in 2..3) return null
-                return (numbers + List(3 - numbers.size) { 0 }) to v.substringAfter('-', "").ifEmpty { null }
+                return (numbers + List(3 - numbers.size) { 0L }) to pre
             }
-            val (a, aPre) = parse(candidate) ?: return false
-            val (b, bPre) = parse(current) ?: return false
-            for (i in 0..2) if (a[i] != b[i]) return a[i] > b[i]
+            fun comparePre(x: String, y: String): Int {
+                val xs = x.split('.')
+                val ys = y.split('.')
+                for (i in 0 until minOf(xs.size, ys.size)) {
+                    val xn = xs[i].toLongOrNull()
+                    val yn = ys[i].toLongOrNull()
+                    val order = when {
+                        xn != null && yn != null -> xn.compareTo(yn)
+                        xn != null -> -1
+                        yn != null -> 1
+                        else -> xs[i].compareTo(ys[i])
+                    }
+                    if (order != 0) return order
+                }
+                return xs.size.compareTo(ys.size)
+            }
+            val (an, ap) = parse(a) ?: return null
+            val (bn, bp) = parse(b) ?: return null
+            for (i in 0..2) if (an[i] != bn[i]) return an[i].compareTo(bn[i])
             return when {
-                aPre == null && bPre != null -> true
-                aPre != null && bPre != null -> aPre > bPre
-                else -> false
+                ap == null && bp == null -> 0
+                ap == null -> 1
+                bp == null -> -1
+                else -> comparePre(ap, bp)
             }
+        }
+
+        /** The nightly build number of `1.2.3-nightly.N`. */
+        fun nightlyBuild(version: String): Int? {
+            val pre = version.substringBefore('+').substringAfter('-', "")
+            if (!pre.startsWith("nightly.")) return null
+            return pre.removePrefix("nightly.").toIntOrNull()
         }
     }
 }

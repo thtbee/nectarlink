@@ -1181,6 +1181,13 @@
     <string name="update_done_text">点击打开。您的电脑会自动重新连接。</string>
     <string name="update_auto_title">自动安装更新</string>
     <string name="update_auto_text">来自 GitHub 的新版本会在后台安装。</string>
+    <string name="update_nightly">Nightly %1$d</string>
+    <string name="update_nightly_named">Nightly %1$d（%2$s）</string>
+    <string name="update_channel_title">更新渠道</string>
+    <string name="update_channel_stable">稳定版</string>
+    <string name="update_channel_nightly">Nightly</string>
+    <string name="update_channel_stable_text">正式发布的版本，经过测试，更新较少。</string>
+    <string name="update_channel_nightly_text">每隔几小时发布的最新版本，包含最新的修复和功能，有时也会带来新问题。切回稳定版后，这部手机会保留当前版本，直到下一个正式版更新。</string>
 
     <string name="home_guide_title">指南</string>
     <string name="home_whats_new_guide">新增：功能指南</string>

@@ -60,6 +60,9 @@ class NectarlinkApplication : Application(), DefaultLifecycleObserver {
         Elevated.onChange = { core.refreshNotificationAccess() }
         Elevated.onClipboardChanged = { text, html -> core.onElevatedClipboardChanged(text, html) }
 
+        // A build the phone sees in a feed is passed on to its PCs.
+        updater.onFeedSeen = { channel, version -> core.announceUpdate(channel, version) }
+
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
         getSharedPreferences("appearance", Context.MODE_PRIVATE)
             .registerOnSharedPreferenceChangeListener(prefListener)
