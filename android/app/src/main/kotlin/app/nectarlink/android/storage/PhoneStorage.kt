@@ -12,6 +12,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.FileObserver
+import android.os.storage.StorageManager
+import android.os.storage.StorageVolume
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.Settings
@@ -29,7 +31,8 @@ import java.nio.file.Files
 /**
  * Exposes this phone's shared storage (or user-picked SAF folders when full
  * storage access is not granted) to paired PCs for browsing in File Explorer
- * (`docs/protocol/storage.md`).
+ * (`docs/protocol/storage.md`). With full access, each SD card or USB drive
+ * shows as a folder of its own at the root, named as Android names it.
  *
  * Security invariants:
  * - Paths are relative to the shared root; `..`, `.`, leading/trailing `/`,
@@ -52,14 +55,22 @@ class PhoneStorage(
             throw StorageFailure.Invalid("invalid directory path")
         }
         if (hasAllFilesAccess(context)) {
-            val root = sharedRoot()
-            val dir = resolveExistingInRoot(root, blockedDirs(context, root), path, allowRoot = true)
+            val volumes = removableVolumes()
+            val (root, rel) = locate(volumes, path)
+            val blocked = blockedDirs(context, root)
+            val dir = resolveExistingInRoot(root, blocked, rel, allowRoot = true)
             if (!dir.isDirectory) throw StorageFailure.NotFound()
             watchDirectory(path, dir)
             val children = dir.listFiles() ?: throw StorageFailure.Denied()
             val canonRoot = runCatching { root.canonicalFile }.getOrElse { throw StorageFailure.NotFound() }
-            val blocked = blockedDirs(context, root)
-            val out = ArrayList<StorageEntry>(children.size)
+            val out = ArrayList<StorageEntry>(children.size + volumes.size)
+            if (path.isEmpty()) {
+                for (volume in volumes) {
+                    out.add(
+                        StorageEntry(name = volume.name, size = 0uL, modified = volume.dir.lastModified(), isDir = true),
+                    )
+                }
+            }
             for (child in children) {
                 val name = child.name
                 if (!isValidName(name) || name.startsWith(".nectarlink")) continue
@@ -89,8 +100,8 @@ class PhoneStorage(
             throw StorageFailure.Invalid("invalid file path")
         }
         if (hasAllFilesAccess(context)) {
-            val root = sharedRoot()
-            val file = resolveExistingInRoot(root, blockedDirs(context, root), path, allowRoot = false)
+            val (root, rel) = locate(removableVolumes(), path)
+            val file = resolveExistingInRoot(root, blockedDirs(context, root), rel, allowRoot = false)
             if (!file.isFile) throw StorageFailure.NotFound()
             return StorageReadFile(
                 source = FileToSend.Path(
@@ -117,9 +128,9 @@ class PhoneStorage(
             throw StorageFailure.Failed("missing staged file")
         }
         if (hasAllFilesAccess(context)) {
-            val root = sharedRoot()
+            val (root, rel) = locate(removableVolumes(), path)
             val blocked = blockedDirs(context, root)
-            val dest = resolveTargetInRoot(root, blocked, path)
+            val dest = resolveTargetInRoot(root, blocked, rel)
             val parent = dest.parentFile ?: throw StorageFailure.Denied()
             if (!parent.exists() && !parent.mkdirs() && !parent.isDirectory) {
                 throw StorageFailure.Failed("cannot create parent folder")
@@ -150,9 +161,9 @@ class PhoneStorage(
             throw StorageFailure.Invalid("invalid folder path")
         }
         if (hasAllFilesAccess(context)) {
-            val root = sharedRoot()
+            val (root, rel) = locate(removableVolumes(), path)
             val blocked = blockedDirs(context, root)
-            val dest = resolveTargetInRoot(root, blocked, path)
+            val dest = resolveTargetInRoot(root, blocked, rel)
             if (!dest.exists() && !dest.mkdirs() && !dest.isDirectory) {
                 throw StorageFailure.Failed("cannot create folder")
             }
@@ -174,10 +185,14 @@ class PhoneStorage(
             throw StorageFailure.Invalid("invalid rename path")
         }
         if (hasAllFilesAccess(context)) {
-            val root = sharedRoot()
+            val volumes = removableVolumes()
+            val (root, fromRel) = locate(volumes, from)
+            val (toRoot, toRel) = locate(volumes, to)
+            // A rename can't cross from one storage to another.
+            if (toRoot != root) throw StorageFailure.Failed("can't move between the phone's storage and an SD card")
             val blocked = blockedDirs(context, root)
-            val src = resolveExistingInRoot(root, blocked, from, allowRoot = false)
-            val dst = resolveTargetInRoot(root, blocked, to)
+            val src = resolveExistingInRoot(root, blocked, fromRel, allowRoot = false)
+            val dst = resolveTargetInRoot(root, blocked, toRel)
             val parent = dst.parentFile ?: throw StorageFailure.Denied()
             if (!parent.exists() && !parent.mkdirs() && !parent.isDirectory) {
                 throw StorageFailure.Failed("cannot create destination parent")
@@ -219,9 +234,9 @@ class PhoneStorage(
             throw StorageFailure.Invalid("invalid delete path")
         }
         if (hasAllFilesAccess(context)) {
-            val root = sharedRoot()
+            val (root, rel) = locate(removableVolumes(), path)
             val blocked = blockedDirs(context, root)
-            val target = resolveExistingInRoot(root, blocked, path, allowRoot = false)
+            val target = resolveExistingInRoot(root, blocked, rel, allowRoot = false)
             if (target.isFile && isMediaFile(target) && moveToMediaStoreTrash(target)) {
                 return
             }
@@ -239,6 +254,35 @@ class PhoneStorage(
         if (!confirmed) throw StorageFailure.Denied()
         deleteSaf(folders, path)
     }
+
+    /**
+     * Mounted SD cards and USB drives, each with its name at the root. A name
+     * that a folder in internal storage already has gets a number after it.
+     */
+    private fun removableVolumes(): List<Volume> {
+        val manager = context.getSystemService(StorageManager::class.java) ?: return emptyList()
+        val internal = sharedRoot()
+        val found = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                manager.storageVolumes.mapNotNull { volume -> volume.directory?.let { volume to it } }
+            } else {
+                // Before Android 11 a volume has no directory of its own: take
+                // it from this app's folder on the volume.
+                context.getExternalFilesDirs(null).filterNotNull().mapNotNull { appDir ->
+                    val dir = appDir.path.substringBefore("/Android/data/", missingDelimiterValue = "")
+                    if (dir.isEmpty()) return@mapNotNull null
+                    manager.getStorageVolume(File(dir))?.let { it to File(dir) }
+                }
+            }
+        }.getOrDefault(emptyList())
+        val removable = found.filter { (volume, _) -> volume.isRemovable && volume.isReadable() }
+        return volumeNames(removable.map { (volume, dir) -> volume.getDescription(context) to dir }) { name ->
+            File(internal, name).exists()
+        }
+    }
+
+    private fun StorageVolume.isReadable(): Boolean =
+        state == Environment.MEDIA_MOUNTED || state == Environment.MEDIA_MOUNTED_READ_ONLY
 
     @Synchronized
     fun stopWatching() {
@@ -635,6 +679,38 @@ class PhoneStorage(
                 .sortedBy { it.name.lowercase() }
         }
 
+        /**
+         * Names for removable volumes at the root, from their descriptions ("SD
+         * card"): unique, and different from every name `taken` reports.
+         */
+        internal fun volumeNames(volumes: List<Pair<String, File>>, taken: (String) -> Boolean): List<Volume> {
+            val used = HashSet<String>()
+            return volumes.map { (description, dir) ->
+                val base = description.filter { it != '/' && it != '\\' && !it.isISOControl() }
+                    .trim()
+                    .take(64)
+                    .ifEmpty { "SD card" }
+                var name = base
+                var n = 2
+                while (!isValidName(name) || name in used || taken(name)) {
+                    name = "$base ($n)"
+                    n++
+                }
+                used += name
+                Volume(name, dir)
+            }
+        }
+
+        /**
+         * Where a protocol path lives: on the removable volume its first
+         * segment names, at the rest of the path, or else in internal storage.
+         */
+        internal fun locate(volumes: List<Volume>, path: String, internal: File = sharedRoot()): Pair<File, String> {
+            val first = path.substringBefore('/')
+            val volume = volumes.firstOrNull { it.name == first } ?: return internal to path
+            return volume.dir to path.substringAfter('/', missingDelimiterValue = "")
+        }
+
         internal fun blockedDirs(context: Context, root: File): List<File> = buildList {
             add(File("/data"))
             add(File(root, "Android/data"))
@@ -752,3 +828,6 @@ class PhoneStorage(
         }
     }
 }
+
+/** An SD card or USB drive, shown as the folder `name` at the root. */
+internal data class Volume(val name: String, val dir: File)

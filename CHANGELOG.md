@@ -8,6 +8,11 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **SD cards in File Explorer.** With All files access, an SD card or USB
+  drive in the phone shows as a folder of its own (such as **SD card**)
+  beside the internal storage's folders. Before Android 11, Android lets
+  apps only read SD cards
+  ([D#149](https://github.com/thtbee/nectarlink/discussions/149)).
 - **Turkish.** The Android and PC apps speak Turkish (Türkçe): pick it in
   Settings, or they follow the system's language. Thanks to
   [@sedatdagg](https://github.com/sedatdagg).

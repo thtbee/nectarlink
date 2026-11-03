@@ -74,6 +74,7 @@ You can browse your phone's internal storage or selected folders directly inside
 3. On your PC, open **Settings › Devices**, select your phone, and turn on **File Explorer integration** (or click **Open** next to it). The first time your PC connects to phone storage, your phone also shows a confirmation prompt if storage access was not enabled yet.
 4. Windows mounts your phone under `%USERPROFILE%\Nectarlink\<Phone name>` using the native Windows Cloud Files API (`cfapi`).
 5. Browse folders at local speed using lightweight file placeholders. When you double-click a file to open it, Windows downloads its contents on demand with native progress bars and sync status icons. You can drag new files into the folder to upload them to your phone, create folders, rename files, and delete files (on Android 11+, deleted media files move to the phone's trash rather than being permanently erased).
+6. With **All files access**, an SD card or USB drive in the phone shows as a folder of its own (such as **SD card**) next to the internal storage's folders. Before Android 11, Android lets apps only read SD cards, so files there can be opened but not changed. With **Selected folders only**, pick a folder on the SD card in Android's picker instead.
 
 ### Browsing PC Files from Your Phone ("Your PC in your pocket")
 

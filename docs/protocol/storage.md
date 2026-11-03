@@ -37,6 +37,11 @@ phone's shared storage root:
 - The phone resolves paths strictly inside its shared root (rejecting symlinks
   pointing outside the canonical root) and never exposes `/data` or the app's
   private directories.
+- With full storage access, the root also lists each mounted SD card or USB
+  drive as a folder, named as the phone names it (`"SD card"`, numbered if a
+  folder in internal storage has that name). Paths under it are on that
+  volume, with the same rules; the folder itself can't be renamed or deleted,
+  and a rename between volumes is refused (`FAILED`), so the PC copies instead.
 
 ## 3. Control-stream messages
 

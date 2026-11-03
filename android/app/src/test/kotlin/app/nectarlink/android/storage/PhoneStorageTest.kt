@@ -114,4 +114,29 @@ class PhoneStorageTest {
             temp.deleteRecursively()
         }
     }
+
+    @Test
+    fun namesRemovableVolumesWithoutClashing() {
+        val sd = File("/storage/1A2B-3C4D")
+        val usb = File("/storage/5E6F-7081")
+        val other = File("/storage/9999-0000")
+        val names = PhoneStorage.volumeNames(
+            listOf("SD card" to sd, "SD card" to other, "SanDisk/USB" to usb, "  " to File("/storage/X")),
+        ) { it == "SanDiskUSB" }
+        assertEquals(listOf("SD card", "SD card (2)", "SanDiskUSB (2)", "SD card (3)"), names.map { it.name })
+        assertEquals(listOf(sd, other, usb, File("/storage/X")), names.map { it.dir })
+    }
+
+    @Test
+    fun locatesPathsOnRemovableVolumesOrInternalStorage() {
+        val internal = File("/storage/emulated/0")
+        val sd = File("/storage/1A2B-3C4D")
+        val volumes = listOf(Volume("SD card", sd))
+        assertEquals(internal to "", PhoneStorage.locate(volumes, "", internal))
+        assertEquals(internal to "DCIM/Camera", PhoneStorage.locate(volumes, "DCIM/Camera", internal))
+        assertEquals(sd to "", PhoneStorage.locate(volumes, "SD card", internal))
+        assertEquals(sd to "DCIM/IMG_1.jpg", PhoneStorage.locate(volumes, "SD card/DCIM/IMG_1.jpg", internal))
+        // Only a whole first segment names a volume.
+        assertEquals(internal to "SD cards/x", PhoneStorage.locate(volumes, "SD cards/x", internal))
+    }
 }
