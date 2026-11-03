@@ -74,7 +74,10 @@ $identityHash = (Get-FileHash $identity -Algorithm SHA256).Hash
 Write-Host "Updating to $newVersion"
 Start-Process $Setup -ArgumentList '/S' -Wait
 Check "$newVersion replaced it" ((DisplayVersion) -eq $newVersion)
-Check "the update task is there after the update" ([bool](schtasks.exe /Query /TN 'Nectarlink Update' 2>$null))
+$scheduler = New-Object -ComObject Schedule.Service
+$scheduler.Connect()
+$task = try { $scheduler.GetFolder('\').GetTask('Nectarlink Update') } catch { $null }
+Check "the update task is there after the update" ($null -ne $task -and $task.Definition.Actions.Item(1).Path.Trim('"') -eq $exe)
 RunOnce $newVersion
 Check "the update kept this PC's identity" ((Get-FileHash $identity -Algorithm SHA256).Hash -eq $identityHash)
 
