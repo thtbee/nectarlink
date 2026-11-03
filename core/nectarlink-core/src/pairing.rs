@@ -518,14 +518,32 @@ fn local_device(shared: &Shared) -> DeviceInfo {
 
 async fn dial(shared: &Arc<Shared>, peer: &DeviceId) -> Result<Connection> {
     let mut addr = EndpointAddr::new(crate::public_key(peer)?);
-    if let Some(usb_addr) = shared.usb_peer_addr(peer) {
+    let usb_target = shared.usb_peer_or_pending_addr(peer);
+    if let Some((usb_addr, _)) = usb_target {
         addr = addr.with_ip_addr(usb_addr);
     }
     let err = match tokio::time::timeout(DIAL_TIMEOUT, shared.endpoint.connect(addr, ALPN_PAIR)).await {
-        Ok(Ok(conn)) => return Ok(conn),
+        Ok(Ok(conn)) => {
+            if !shared.verify_usb_connection(&conn).await {
+                conn.close(VarInt::from_u32(CLOSE_FAILED), b"usb mismatch");
+                return Err(Error::Denied);
+            }
+            if let Some((usb_addr, true)) = usb_target
+                && shared.usb_peer_addr(peer) != Some(usb_addr)
+            {
+                shared.cancel_pending_usb_port(usb_addr.port());
+                conn.close(VarInt::from_u32(CLOSE_FAILED), b"usb unverified");
+                return Err(Error::Denied);
+            }
+            return Ok(conn);
+        }
         Ok(Err(e)) => crate::error::net(e),
         Err(_) => Error::Timeout,
     };
+    if let Some((usb_addr, true)) = usb_target {
+        shared.cancel_pending_usb_port(usb_addr.port());
+        return Err(err);
+    }
     shared.emit(NodeEvent::Pairing(PairingEvent::Failed(PairingFailure::Unreachable)));
     Err(err)
 }

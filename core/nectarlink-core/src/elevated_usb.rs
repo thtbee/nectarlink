@@ -48,7 +48,13 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
     }
     let peer = session.peer;
     let request: ElevatedUsbStart = env.body()?;
-    let usb = shared.usb_serials.lock().unwrap_or_else(|e| e.into_inner()).get(&peer).cloned();
+    let usb = shared
+        .usb_serials
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get(&peer)
+        .cloned()
+        .filter(|(_, _, port)| session.uses_usb_bridge_port(*port));
     let refusal = if !request.is_valid() {
         Some(Envelope::error(ErrorCode::BadMessage, "invalid Elevated over USB request"))
     } else if !shared.we_offer(elevated::USB) {
@@ -62,11 +68,11 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         session.send(refusal.reply_to(env.id)).await?;
         return Ok(true);
     }
-    let Some((serial, adb_addr)) = usb else { return Ok(true) };
+    let Some((serial, adb_addr, bridge_port)) = usb else { return Ok(true) };
     // Grants and the helper take seconds: answer from a task of its own.
     let (shared, session, id) = (shared.clone(), session.clone(), env.id);
     tokio::spawn(async move {
-        let reply = match launch(&shared, peer, adb_addr, &serial, &request).await {
+        let reply = match launch(&shared, peer, adb_addr, &serial, bridge_port, &request).await {
             Ok(port) => Envelope::new(types::ELEVATED_USB_READY, &ElevatedUsbReady { port })
                 .unwrap_or_else(|_| Envelope::error(ErrorCode::Internal, "can't answer")),
             Err(reason) => {
@@ -86,6 +92,7 @@ async fn launch(
     peer: DeviceId,
     adb_addr: SocketAddr,
     serial: &str,
+    bridge_port: u16,
     request: &ElevatedUsbStart,
 ) -> std::result::Result<u16, String> {
     for grant in &request.grants {
@@ -105,6 +112,17 @@ async fn launch(
         let mut sink = [0u8; 1024];
         while matches!(output.read(&mut sink).await, Ok(n) if n > 0) {}
     });
+    let still_active = {
+        let serials = shared.usb_serials.lock().unwrap_or_else(|e| e.into_inner());
+        !shared.cancel.is_cancelled()
+            && serials
+                .get(&peer)
+                .is_some_and(|(s, a, p)| s == serial && *a == adb_addr && *p == bridge_port)
+    };
+    if !still_active {
+        keep.abort();
+        return Err("the USB connection ended".into());
+    }
     if let Some(old) = shared.usb_helpers.lock().unwrap_or_else(|e| e.into_inner()).insert(peer, keep) {
         old.abort();
     }
