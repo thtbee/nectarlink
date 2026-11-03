@@ -4411,24 +4411,33 @@ impl NectarlinkNode {
             };
             let mut offset = 0u64;
             let chunk_len = 128 * 1024u64;
-            loop {
+            // Complete only once every byte the peer says the file has is
+            // here: a read that comes back short or empty before then (the
+            // file shrank, the peer stopped) is a failed download, not a
+            // smaller file.
+            let complete = loop {
                 let Ok((meta, chunk)) =
                     node.storage_read(peer_id, remote_path.clone(), offset, Some(chunk_len)).await
                 else {
-                    return false;
+                    break false;
                 };
-                if chunk.is_empty() {
-                    break;
+                if meta.size == 0 {
+                    break true;
                 }
-                if f.write_all(&chunk).await.is_err() {
-                    return false;
+                if chunk.is_empty() || f.write_all(&chunk).await.is_err() {
+                    break false;
                 }
                 offset += chunk.len() as u64;
-                if offset >= meta.size || (chunk.len() as u64) < chunk_len {
-                    break;
+                if offset >= meta.size {
+                    break true;
                 }
+            };
+            if complete && f.flush().await.is_ok() {
+                return true;
             }
-            f.flush().await.is_ok()
+            drop(f);
+            let _ = tokio::fs::remove_file(&local_dest).await;
+            false
         })
     }
 
