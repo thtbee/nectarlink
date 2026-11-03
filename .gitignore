@@ -59,3 +59,7 @@ aqtinstall.log
 
 # Kotlin compiler session data
 .kotlin/
+
+# Nix build outputs
+result
+result-*
