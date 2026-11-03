@@ -265,6 +265,10 @@ has a Stop button. Choosing another
   phones on all of its networks. Thanks to
   [@samsarajr](https://github.com/samsarajr) for the packet capture that
   found it ([#148](https://github.com/thtbee/nectarlink/issues/148)).
+- **App windows stayed empty when the phone's screen was off.** Android
+  started their display asleep too, so the app never drew. Opening one now
+  wakes the phone's screen first, as mirroring does
+  ([#152](https://github.com/thtbee/nectarlink/issues/152)).
 - **A transfer paused and quickly resumed on the receiving device could stay
   paused on the sending one** for good. It now carries on.
 - **App windows failed with "invalid mirroring options"** after Keep
