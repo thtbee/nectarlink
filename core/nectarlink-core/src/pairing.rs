@@ -60,7 +60,7 @@ const CLOSE_FAILED: u32 = 1;
 struct HostMode {
     secret: [u8; SECRET_LEN],
     expires_at: Instant,
-    failures: u32,
+    failures_by_peer: std::collections::HashMap<DeviceId, u32>,
 }
 
 /// Pairing state shared by both flows. Only one ceremony runs at a time.
@@ -114,17 +114,24 @@ impl PairingState {
         *lock(&self.host) = None;
     }
 
-    /// Records a failed attempt; returns true if pairing mode just ended.
-    fn record_failure(&self) -> bool {
+    /// Records a failed attempt for `peer`; returns true if pairing mode just ended.
+    fn record_failure(&self, peer: DeviceId) -> bool {
         let mut host = lock(&self.host);
         if let Some(mode) = host.as_mut() {
-            mode.failures += 1;
-            if mode.failures >= MAX_FAILED_ATTEMPTS {
+            let count = mode.failures_by_peer.entry(peer).or_insert(0);
+            *count += 1;
+            if *count >= MAX_FAILED_ATTEMPTS {
                 *host = None;
                 return true;
             }
         }
         false
+    }
+
+    fn cancel_nearby(&self) {
+        if let Some((_, tx)) = lock(&self.sas_decision).take() {
+            let _ = tx.send(false);
+        }
     }
 
     fn begin_nearby(&self) -> Option<NearbyGuard<'_>> {
@@ -168,8 +175,11 @@ impl PairingState {
 /// Starts host pairing mode and returns the link to show as a QR code.
 pub(crate) async fn start_host(shared: &Arc<Shared>) -> Result<PairingUri> {
     let secret: [u8; SECRET_LEN] = rand::random();
-    *lock(&shared.pairing.host) =
-        Some(HostMode { secret, expires_at: Instant::now() + PAIRING_TTL, failures: 0 });
+    *lock(&shared.pairing.host) = Some(HostMode {
+        secret,
+        expires_at: Instant::now() + PAIRING_TTL,
+        failures_by_peer: std::collections::HashMap::new(),
+    });
 
     // Expire quietly; tell the UI if nobody paired in time.
     let weak = Arc::downgrade(shared);
@@ -354,13 +364,15 @@ pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
                 match accept_nearby(&shared, peer, first, &mut send, &mut recv, is_usb).await {
                     Ok(Some(device)) => device,
                     Ok(None) => return Err(Error::Denied),
-                    Err(e) => {
-                        let ended = shared.pairing.record_failure();
-                        let err = fail(&shared, e);
-                        if ended && !matches!(err, Error::Denied) {
+                    Err((e, sas_shown)) => {
+                        let ended = shared.pairing.record_failure(peer);
+                        if sas_shown {
+                            return Err(fail(&shared, e));
+                        }
+                        if ended {
                             shared.emit(NodeEvent::Pairing(PairingEvent::Failed(PairingFailure::Rejected)));
                         }
-                        return Err(err);
+                        return Err(e);
                     }
                 }
             }
@@ -372,6 +384,7 @@ pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
         };
         // Store only once the initiator acknowledged our last message.
         recv_env(&mut recv, STEP_TIMEOUT).await?.expect(types::PAIR_DONE)?;
+        shared.pairing.end_host();
         Ok(device)
     }
     .await;
@@ -407,12 +420,12 @@ async fn accept_qr(
     };
     if !proto::verify_pair_proof(&secret, &peer, &shared.id, &request.proof) {
         send_env(send, Envelope::error(ErrorCode::Denied, "pairing code mismatch")).await?;
-        if shared.pairing.record_failure() {
+        if shared.pairing.record_failure(peer) {
             shared.emit(NodeEvent::Pairing(PairingEvent::Failed(PairingFailure::Rejected)));
         }
         return Err(Error::Denied);
     }
-    shared.pairing.end_host();
+    shared.pairing.cancel_nearby();
     send_env(send, Envelope::new(types::PAIR_ACCEPT, &PairAccept { device: local_device(shared) })?).await?;
     Ok(request.device.sanitized())
 }
@@ -424,31 +437,41 @@ async fn accept_nearby(
     send: &mut SendStream,
     recv: &mut RecvStream,
     is_usb: bool,
-) -> Result<Option<DeviceInfo>> {
+) -> std::result::Result<Option<DeviceInfo>, (Error, bool)> {
     if !shared.pairing.is_hosting() && !is_usb {
-        send_env(send, Envelope::error(ErrorCode::Denied, "pairing mode ended")).await?;
+        send_env(send, Envelope::error(ErrorCode::Denied, "pairing mode ended"))
+            .await
+            .map_err(|e| (e, false))?;
         return Ok(None);
     }
     let Some(_nearby) = shared.pairing.begin_nearby() else {
-        send_env(send, Envelope::error(ErrorCode::Busy, "another pairing is in progress")).await?;
+        send_env(send, Envelope::error(ErrorCode::Busy, "another pairing is in progress"))
+            .await
+            .map_err(|e| (e, false))?;
         return Ok(None);
     };
-    let commit: PairCommit = env.body()?;
+    let commit: PairCommit = env.body().map_err(|e| (Error::from(e), false))?;
     let peer_device = commit.device.sanitized();
     shared.note_discovered(peer, Some(peer_device.name.clone()));
     let n_b: [u8; NONCE_LEN] = rand::random();
     let nonce = PairNonce { device: local_device(shared), n_b: n_b.to_vec() };
-    send_env(send, Envelope::new(types::PAIR_NONCE, &nonce)?).await?;
+    let nonce_env = Envelope::new(types::PAIR_NONCE, &nonce).map_err(|e| (Error::from(e), false))?;
+    send_env(send, nonce_env).await.map_err(|e| (e, false))?;
 
-    let reveal: PairReveal = recv_env(recv, STEP_TIMEOUT).await?.expect_body(types::PAIR_REVEAL)?;
+    let reveal: PairReveal = recv_env(recv, STEP_TIMEOUT)
+        .await
+        .map_err(|e| (e, false))?
+        .expect_body(types::PAIR_REVEAL)
+        .map_err(|e| (Error::from(e), false))?;
     if !proto::verify_commitment(&commit.c, &reveal.n_a) {
-        send_env(send, Envelope::error(ErrorCode::Denied, "commitment mismatch")).await?;
-        return Err(Error::Denied);
+        send_env(send, Envelope::error(ErrorCode::Denied, "commitment mismatch"))
+            .await
+            .map_err(|e| (e, false))?;
+        return Err((Error::Denied, false));
     }
     // The initiator is A, we are B.
     let code = proto::sas_code(&reveal.n_a, &n_b, &peer, &shared.id);
-    exchange_decisions(shared, peer, code, send, recv, Role::Host).await?;
-    shared.pairing.end_host();
+    exchange_decisions(shared, peer, code, send, recv, Role::Host).await.map_err(|e| (e, true))?;
     Ok(Some(peer_device))
 }
 
@@ -688,5 +711,28 @@ mod tests {
 
         drop(guard);
         assert!(state.begin_nearby().is_some(), "slot released after guard drops");
+    }
+
+    #[test]
+    fn failures_are_tracked_per_peer_and_cancel_nearby_dismisses_pending_sas() {
+        let state = PairingState::default();
+        *lock(&state.host) = Some(HostMode {
+            secret: [7; SECRET_LEN],
+            expires_at: Instant::now() + PAIRING_TTL,
+            failures_by_peer: std::collections::HashMap::new(),
+        });
+        let peer_a = DeviceId([1; 32]);
+        let peer_b = DeviceId([2; 32]);
+        for _ in 0..4 {
+            assert!(!state.record_failure(peer_a));
+            assert!(!state.record_failure(peer_b));
+        }
+        assert!(state.is_hosting(), "4 failures from two different peers do not end hosting");
+        assert!(state.record_failure(peer_a), "5th failure from one peer ends hosting");
+        assert!(!state.is_hosting());
+
+        let mut rx = state.await_decision(peer_a).unwrap();
+        state.cancel_nearby();
+        assert_eq!(rx.try_recv(), Ok(false));
     }
 }
