@@ -285,7 +285,46 @@ fun HomeScreen(
         if (visibleMatch != null) {
             runCatching { listState.animateScrollToItem(visibleMatch.index) }
         } else {
-            runCatching { listState.animateScrollToItem(0) }
+            val orderedKeys = buildList {
+                add("home_header")
+                if (showWhatsNewGuideBanner) add("whats_new_guide_banner")
+                if (showHiveInvite && !showWhatsNewGuideBanner) add("hive_invite")
+                if (state.ringingFrom != null) add("ringing_banner")
+                if (mirrorSession.active) add("mirror_active_banner")
+                if (webcamSession.active) add("webcam_active_banner")
+                if (recorderSession.active) add("recorder_active_banner")
+                if (micStreamingTo != null) add("mic_active_banner")
+                state.keyboardFromPc.forEach { add("keyboard_$it") }
+                if (state.webcamRequest != null) add("webcam_request")
+                if (state.micRequestFrom?.takeIf { it != micStreamingTo } != null) add("mic_request")
+                if (state.storageRequestedFrom != null) add("storage_request")
+                add("update_card")
+                if (!backgroundServiceEnabled) add("background_connection_off")
+                if (!state.localNetwork) add("local_network_setup")
+                if (state.remoteInputRequested && !state.inputAccess && !state.elevated) add("remote_input_requested")
+                if (state.devices.none { !it.isAndroid }) add("no_paired_pc_card")
+                state.devices.filter { !it.isAndroid }.forEach { add(it.id) }
+                state.devices.filter { it.isAndroid }.forEach { add(it.id) }
+                if (state.sendQueue.isNotEmpty()) add("send_queue")
+                if (state.devices.isNotEmpty()) {
+                    var missingCount = 0
+                    if (!state.backgroundUnrestricted) missingCount++
+                    if (!state.notificationAccess) missingCount++
+                    if (!state.elevated) missingCount++
+                    if (!state.inputAccess && !state.elevated) missingCount++
+                    if (!state.smsAccess) missingCount++
+                    if (!state.callAccess) missingCount++
+                    if (!state.contactsAccess) missingCount++
+                    if (!state.photoAccess) missingCount++
+                    if (missingCount > 0) add("permissions_setup_card")
+                }
+                if (state.localsendEnabled) add("localsend_card")
+                if (state.clipboardHistoryEnabled && state.clipboardHistory.isNotEmpty()) add("clipboard_history_card")
+                if (state.timeline.isNotEmpty()) add("timeline_card")
+                if (state.transfers.isNotEmpty()) add("transfers_card")
+            }
+            val targetIndex = orderedKeys.indexOf(targetKey).takeIf { it >= 0 } ?: 0
+            runCatching { listState.animateScrollToItem(targetIndex) }
         }
         delay(2200)
         if (pulsingTarget == target) {
@@ -3357,8 +3396,18 @@ private fun openTimelineTarget(context: android.content.Context, entry: Timeline
                         FileProvider.getUriForFile(context, "${context.packageName}.files", File(target))
                     else -> return
                 }
+                val ext = target.substringAfterLast('.', "").lowercase()
+                val mime = context.contentResolver.getType(uri)?.takeIf { it != "application/octet-stream" }
+                    ?: android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+                    ?: when (entry.kind) {
+                        TimelineKind.PHOTO -> "image/*"
+                        TimelineKind.RECORDING -> "audio/*"
+                        else -> null
+                    }
                 val view = Intent(Intent.ACTION_VIEW)
-                    .setData(uri)
+                    .apply {
+                        if (mime != null) setDataAndType(uri, mime) else setData(uri)
+                    }
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(Intent.createChooser(view, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             }
