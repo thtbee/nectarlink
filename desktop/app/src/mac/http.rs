@@ -20,7 +20,10 @@ pub fn get(url: &str, limit: usize) -> Result<Vec<u8>, String> {
 /// What a conditional GET found.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Fresh {
-    /// The same as the copy with that ETag.
+    /// The same as the copy with that ETag. Never on the Mac yet: its
+    /// `get_fresh` is a plain fetch while the preview doesn't update itself,
+    /// but callers match on the same variants as on the other platforms.
+    #[allow(dead_code)]
     NotModified,
     /// New content, and its ETag when the server gave one.
     Changed { body: Vec<u8>, etag: Option<String> },
