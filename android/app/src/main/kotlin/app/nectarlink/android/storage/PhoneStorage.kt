@@ -191,7 +191,11 @@ class PhoneStorage(
             // A rename can't cross from one storage to another.
             if (toRoot != root) throw StorageFailure.Failed("can't move between the phone's storage and an SD card")
             val blocked = blockedDirs(context, root)
-            val src = resolveExistingInRoot(root, blocked, fromRel, allowRoot = false)
+            val src = resolveEntryInRoot(root, blocked, fromRel)
+            val srcCanon = runCatching { src.canonicalFile }.getOrElse { throw StorageFailure.Denied() }
+            if (containsBlockedDir(srcCanon, blocked)) {
+                throw StorageFailure.Denied()
+            }
             val dst = resolveTargetInRoot(root, blocked, toRel)
             val parent = dst.parentFile ?: throw StorageFailure.Denied()
             if (!parent.exists() && !parent.mkdirs() && !parent.isDirectory) {
@@ -203,7 +207,7 @@ class PhoneStorage(
                 throw StorageFailure.Denied()
             }
             // Never replace another file (renameTo would); a change of letter case only is fine.
-            if (dst.exists() && !src.absolutePath.equals(dst.absolutePath, ignoreCase = true)) {
+            if ((dst.exists() || isSymlink(dst)) && !src.absolutePath.equals(dst.absolutePath, ignoreCase = true)) {
                 throw StorageFailure.Failed("a file or folder with that name already exists")
             }
             if (!src.renameTo(dst)) {
@@ -236,14 +240,19 @@ class PhoneStorage(
         if (hasAllFilesAccess(context)) {
             val (root, rel) = locate(removableVolumes(), path)
             val blocked = blockedDirs(context, root)
-            val target = resolveExistingInRoot(root, blocked, rel, allowRoot = false)
-            if (target.isFile && isMediaFile(target) && moveToMediaStoreTrash(target)) {
+            val canonRoot = runCatching { root.canonicalFile }.getOrElse { throw StorageFailure.NotFound() }
+            val target = resolveEntryInRoot(root, blocked, rel)
+            val targetCanon = runCatching { target.canonicalFile }.getOrElse { throw StorageFailure.Denied() }
+            if (containsBlockedDir(targetCanon, blocked)) {
+                throw StorageFailure.Denied()
+            }
+            if (!isSymlink(target) && target.isFile && isMediaFile(target) && moveToMediaStoreTrash(target)) {
                 return
             }
             if (!confirmed) {
                 throw StorageFailure.Denied()
             }
-            if (!target.deleteRecursively()) {
+            if (!deleteTreeSafely(target, canonRoot, blocked)) {
                 throw StorageFailure.Failed("delete failed")
             }
             MediaScannerConnection.scanFile(context, arrayOf(target.absolutePath), null, null)
@@ -665,19 +674,28 @@ class PhoneStorage(
                     .filter { it.isReadPermission }
                     .map { it.uri }
                     .toSet()
-            }.getOrDefault(emptySet())
-            return prefs.getStringSet(KEY_TREES, emptySet()).orEmpty()
-                .mapNotNull { entry ->
-                    val idx = entry.indexOf('|')
-                    if (idx <= 0) return@mapNotNull null
-                    val name = entry.substring(0, idx)
-                    val uri = runCatching { Uri.parse(entry.substring(idx + 1)) }.getOrNull()
-                        ?: return@mapNotNull null
-                    if (persisted.isNotEmpty() && uri !in persisted) return@mapNotNull null
-                    SafFolder(name, uri)
-                }
-                .sortedBy { it.name.lowercase() }
+            }.getOrNull()
+            return filterPersistedSafEntries(
+                rawEntries = prefs.getStringSet(KEY_TREES, emptySet()).orEmpty(),
+                persistedUris = persisted,
+                parseUri = { raw -> runCatching { Uri.parse(raw) }.getOrNull() },
+            ).map { (name, uri) -> SafFolder(name, uri) }
         }
+
+        internal fun <U> filterPersistedSafEntries(
+            rawEntries: Set<String>,
+            persistedUris: Set<U>?,
+            parseUri: (String) -> U?,
+        ): List<Pair<String, U>> = rawEntries
+            .mapNotNull { entry ->
+                val idx = entry.indexOf('|')
+                if (idx <= 0) return@mapNotNull null
+                val name = entry.substring(0, idx)
+                val uri = parseUri(entry.substring(idx + 1)) ?: return@mapNotNull null
+                if (persistedUris != null && uri !in persistedUris) return@mapNotNull null
+                name to uri
+            }
+            .sortedBy { it.first.lowercase() }
 
         /**
          * Names for removable volumes at the root, from their descriptions ("SD
@@ -762,6 +780,80 @@ class PhoneStorage(
         internal fun isSymlink(file: File): Boolean =
             runCatching { Files.isSymbolicLink(file.toPath()) }.getOrDefault(false)
 
+        /** True when `candidate` is or contains any directory in `blocked` (e.g. `Android` contains `Android/data`). */
+        internal fun containsBlockedDir(candidate: File, blocked: List<File>): Boolean {
+            val candPath = runCatching { candidate.canonicalPath }.getOrDefault(candidate.absolutePath)
+            val prefix = if (candPath.endsWith(File.separator)) candPath else "$candPath${File.separator}"
+            for (b in blocked) {
+                val bp = runCatching { b.canonicalPath }.getOrDefault(b.absolutePath)
+                if (bp == candPath || bp.startsWith(prefix)) {
+                    return true
+                }
+            }
+            return false
+        }
+
+        /**
+         * Resolves an entry inside `root` for `delete` or `rename`, canonicalizing
+         * parent segments while preserving the final segment as the link itself if
+         * it is a symbolic link (after verifying its target is also inside `root`).
+         */
+        internal fun resolveEntryInRoot(
+            root: File,
+            blocked: List<File>,
+            rel: String,
+        ): File {
+            if (!isValidPath(rel)) throw StorageFailure.Invalid("invalid storage path")
+            val canonRoot = runCatching { root.canonicalFile }.getOrElse { throw StorageFailure.NotFound() }
+            if (!isInsideRoot(canonRoot, blocked, canonRoot)) throw StorageFailure.Denied()
+
+            val segments = rel.split('/')
+            var cur = canonRoot
+            for (i in 0 until segments.size - 1) {
+                cur = File(cur, segments[i])
+                if (!cur.exists() && !isSymlink(cur)) {
+                    throw StorageFailure.NotFound()
+                }
+                val target = runCatching { cur.canonicalFile }.getOrElse { throw StorageFailure.Denied() }
+                if (!isInsideRoot(canonRoot, blocked, target)) {
+                    throw StorageFailure.Denied()
+                }
+                cur = target
+            }
+            val leaf = File(cur, segments.last())
+            if (!leaf.exists() && !isSymlink(leaf)) {
+                throw StorageFailure.NotFound()
+            }
+            val leafTarget = runCatching { leaf.canonicalFile }.getOrElse { throw StorageFailure.Denied() }
+            if (!isInsideRoot(canonRoot, blocked, leafTarget)) {
+                throw StorageFailure.Denied()
+            }
+            return if (isSymlink(leaf)) leaf else leafTarget
+        }
+
+        /**
+         * Deletes `file` recursively without following symbolic links into target
+         * directories and without deleting any ancestor of a blocked directory.
+         */
+        internal fun deleteTreeSafely(file: File, canonRoot: File, blocked: List<File>): Boolean {
+            if (isSymlink(file)) {
+                return runCatching { Files.deleteIfExists(file.toPath()) }.getOrDefault(false) || file.delete()
+            }
+            val canon = runCatching { file.canonicalFile }.getOrNull() ?: return false
+            if (!isInsideRoot(canonRoot, blocked, canon) || containsBlockedDir(canon, blocked)) {
+                return false
+            }
+            if (file.isDirectory) {
+                val children = file.listFiles() ?: return false
+                for (child in children) {
+                    if (!deleteTreeSafely(child, canonRoot, blocked)) {
+                        return false
+                    }
+                }
+            }
+            return runCatching { Files.deleteIfExists(file.toPath()) }.getOrDefault(false) || file.delete()
+        }
+
         /**
          * Resolves an existing path inside `root`, rejecting `..`, absolute
          * paths, blocked directories, and symlinks pointing outside `root`.
@@ -788,6 +880,7 @@ class PhoneStorage(
                 if (!isInsideRoot(canonRoot, blocked, target)) {
                     throw StorageFailure.Denied()
                 }
+                cur = target
             }
             val finalCanon = runCatching { cur.canonicalFile }.getOrElse { throw StorageFailure.NotFound() }
             if (!finalCanon.exists()) throw StorageFailure.NotFound()
@@ -817,6 +910,7 @@ class PhoneStorage(
                     if (!isInsideRoot(canonRoot, blocked, target)) {
                         throw StorageFailure.Denied()
                     }
+                    cur = target
                 } else {
                     val absCheck = File(cur.absolutePath)
                     if (!isInsideRoot(canonRoot, blocked, absCheck)) {
