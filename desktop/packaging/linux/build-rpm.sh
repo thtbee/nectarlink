@@ -15,6 +15,10 @@ if [[ -z "${VERSION}" ]]; then
     echo "error: could not determine version from ${REPO_ROOT}/Cargo.toml" >&2
     exit 1
 fi
+# Inside the package a nightly is 1.2.3~nightly.N: `~` sorts before the
+# release, as `-` does in our versions, so apt and dnf take the release over
+# its nightlies. File names keep the `-`.
+PKG_VERSION="$(printf '%s' "${VERSION}" | sed 's/-/~/')"
 
 ARCH="${ARCH:-$(uname -m)}"
 case "${ARCH}" in
@@ -65,7 +69,7 @@ fi
 
 cat > "${STAGE_DIR}/rpmbuild/SPECS/nectarlink.spec" <<EOF
 Name:           nectarlink
-Version:        ${VERSION}
+Version:        ${PKG_VERSION}
 Release:        1
 Summary:        Connect your Android phone and Linux PC over LAN
 License:        GPL-3.0-or-later
@@ -124,5 +128,5 @@ rpmbuild -bb --quiet \
 
 mkdir -p "${OUT_DIR}"
 OUT_RPM="${OUT_DIR}/nectarlink-${VERSION}-1.${RPM_ARCH}.rpm"
-cp "${STAGE_DIR}/rpmbuild/RPMS/nectarlink-${VERSION}-1.${RPM_ARCH}.rpm" "${OUT_RPM}"
+cp "${STAGE_DIR}/rpmbuild/RPMS/nectarlink-${PKG_VERSION}-1.${RPM_ARCH}.rpm" "${OUT_RPM}"
 echo "Built ${OUT_RPM}"

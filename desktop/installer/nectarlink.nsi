@@ -29,7 +29,8 @@
 ; the app's own uninstall window (--remove), which runs uninstall.exe
 ; elevated and then removes the user's data.
 ;
-; Defines passed in: VERSION (numbers only, e.g. 0.0.1), DISPLAY_VERSION
+; Defines passed in: VERSION (numbers only, e.g. 0.0.1), BUILD (the file
+; version's fourth number: a nightly's number, 999 for a release), DISPLAY_VERSION
 ; (e.g. 0.0.1-beta.2), ARCH (x64 or arm64), STAGE (the folder with the app
 ; and its Qt files), ICON, OUTFILE.
 
@@ -62,7 +63,7 @@ SilentUnInstall silent
 ShowInstDetails nevershow
 ShowUninstDetails nevershow
 
-VIProductVersion "${VERSION}.0"
+VIProductVersion "${VERSION}.${BUILD}"
 VIAddVersionKey "ProductName" "${DISPLAY}"
 VIAddVersionKey "FileDescription" "${DISPLAY} Setup"
 VIAddVersionKey "CompanyName" "The NectarLink contributors"

@@ -10,9 +10,23 @@ plugins {
 val appVersion: String = rootProject.file("../Cargo.toml").readLines()
     .first { it.startsWith("version = ") }
     .substringAfter('"').substringBefore('"')
-/** 1.2.3 → 1002003: every release must have a larger code than the last. */
-val appVersionCode: Int = appVersion.substringBefore('-').split('.').map(String::toInt)
-    .let { (major, minor, patch) -> major * 1_000_000 + minor * 1_000 + patch }
+/**
+ * Every build must have a larger code than the last one it updates. 1.2.3 → 10203999,
+ * and its nightlies 1.2.3-nightly.N → 10203000 + N, between the release before and
+ * their own release, so a nightly install moves to the release when it's out.
+ */
+val appVersionCode: Int = run {
+    val (major, minor, patch) = appVersion.substringBefore('-').split('.').map(String::toInt)
+    require(major <= 213 && minor <= 99 && patch <= 99) { "version $appVersion doesn't fit an Android version code" }
+    val pre = appVersion.substringAfter('-', "")
+    val build = when {
+        pre.isEmpty() -> 999
+        pre.startsWith("nightly.") -> pre.removePrefix("nightly.").toInt()
+            .also { require(it in 1..998) { "nightly number $it must be 1 to 998" } }
+        else -> error("only releases and nightlies get an Android version code, not $appVersion")
+    }
+    major * 10_000_000 + minor * 100_000 + patch * 1_000 + build
+}
 
 android {
     namespace = "app.nectarlink.android"
@@ -213,4 +227,5 @@ dependencies {
     // UniFFI's Kotlin bindings call the core through JNA.
     implementation(libs.jna) { artifact { type = "aar" } }
     testImplementation(libs.junit)
+    testImplementation(libs.org.json)
 }

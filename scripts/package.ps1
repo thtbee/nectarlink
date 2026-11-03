@@ -46,6 +46,10 @@ $version = (Select-String -Path Cargo.toml -Pattern '^version = "([^"]+)"' | Sel
 if (-not $version) { throw "can't read the version from Cargo.toml" }
 # Windows file versions are numbers only: 0.0.1-beta.2 -> 0.0.1.
 $numeric = ($version -split '[-+]')[0]
+# Their fourth number orders builds of one version, as Android's version code
+# does: a nightly 1.2.3-nightly.N is N, the release 999, after its nightlies.
+$build = if ($version -match '-nightly\.(\d+)$') { [int]$Matches[1] } elseif ($version -notmatch '-') { 999 } else { 0 }
+if ($build -lt 0 -or $build -gt 999) { throw "nightly number in $version must be 1 to 998" }
 
 # ---- Target Architecture & Build Paths ----
 $isArm64 = $Arch -eq 'arm64'
@@ -237,7 +241,7 @@ foreach ($spec in @(@{ Name = 'Square44x44Logo.png'; Size = 44 }, @{ Name = 'Squ
 }
 $manifest = Get-Content (Join-Path $root 'desktop\installer\AppxManifest.xml') -Raw
 # Only the package's own version: MinVersion is the oldest Windows it runs on.
-$manifest = $manifest -replace '(<Identity\b[^>]*?\s)Version="[^"]*"', "`${1}Version=`"$numeric.0`""
+$manifest = $manifest -replace '(<Identity\b[^>]*?\s)Version="[^"]*"', "`${1}Version=`"$numeric.$build`""
 $manifest = $manifest -replace 'ProcessorArchitecture="x64"', "ProcessorArchitecture=`"$Arch`""
 Set-Content -Path (Join-Path $stage 'AppxManifest.xml') -Value $manifest -Encoding UTF8 -NoNewline
 
@@ -273,7 +277,7 @@ if (-not $makensis) { $makensis = Join-Path ${env:ProgramFiles(x86)} 'NSIS\maken
 if (-not (Test-Path $makensis)) { throw "NSIS (makensis) not found" }
 $out = Join-Path $package "Nectarlink-$version-$Arch-setup.exe"
 Invoke-Native "makensis" {
-    & $makensis /V2 "/DVERSION=$numeric" "/DDISPLAY_VERSION=$version" "/DARCH=$Arch" "/DSTAGE=$stage" `
+    & $makensis /V2 "/DVERSION=$numeric" "/DBUILD=$build" "/DDISPLAY_VERSION=$version" "/DARCH=$Arch" "/DSTAGE=$stage" `
         "/DICON=$($icon.FullName)" "/DOUTFILE=$out" (Join-Path $root 'desktop\installer\nectarlink.nsi')
 }
 Write-Host ("Installer: {0} ({1:N1} MB)" -f $out, ((Get-Item $out).Length / 1MB))

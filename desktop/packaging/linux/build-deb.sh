@@ -14,6 +14,10 @@ if [[ -z "${VERSION}" ]]; then
     echo "error: could not determine version from ${REPO_ROOT}/Cargo.toml" >&2
     exit 1
 fi
+# Inside the package a nightly is 1.2.3~nightly.N: `~` sorts before the
+# release, as `-` does in our versions, so apt and dnf take the release over
+# its nightlies. File names keep the `-`.
+PKG_VERSION="$(printf '%s' "${VERSION}" | sed 's/-/~/')"
 
 ARCH="${ARCH:-$(dpkg --print-architecture 2>/dev/null || uname -m)}"
 case "${ARCH}" in
@@ -171,7 +175,7 @@ INSTALLED_SIZE="$(du -sk "${PKG_ROOT}/usr" | awk '{print $1}')"
 
 cat > "${PKG_ROOT}/DEBIAN/control" <<EOF
 Package: nectarlink
-Version: ${VERSION}
+Version: ${PKG_VERSION}
 Section: net
 Priority: optional
 Architecture: ${DEB_ARCH}
