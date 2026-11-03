@@ -183,6 +183,16 @@ has a Stop button. Choosing another
   and microphone requests start right away, even with the screen off,
   with no tap. Needs Elevated; it's off by default
   ([#132](https://github.com/thtbee/nectarlink/issues/132)).
+- **A Nightly channel.** Pick **Stable** or **Nightly** under Updates in
+  Settings, on the PC and on the phone. Nightly gets a build of the latest
+  code every couple of hours when it changes, each named for a flower
+  ("Golden Lavender"), and releases too; Stable gets releases. Back on
+  Stable, a nightly stays until the next release is newer.
+- **Updates arrive sooner and cost less.** The apps read a small file per
+  channel instead of GitHub's release list, and an unchanged one is a few
+  hundred bytes. The PC checks every 12 hours on Stable and every 2 hours on
+  Nightly (twice as long on battery), and tells your phone when there's a new
+  build, so the phone hardly checks on its own.
 
 ### Changed
 

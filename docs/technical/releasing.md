@@ -30,11 +30,43 @@ Each Windows updater picks the installer for its own architecture.
 2. **Checks.** `./scripts/check.ps1 -Android` locally, and a green CI run on
    the commit to release.
 3. **Tag and push.** `git tag v<version>` on that commit and push the tag.
-   The `Release` workflow refuses a tag that doesn't match `Cargo.toml`.
+   The `Release` workflow refuses a tag that doesn't match `Cargo.toml`. It
+   builds with `build.yml`, the same workflow nightlies use.
 4. **Review the draft.** The workflow creates a draft release with generated
    notes. Edit the notes (what's new, anything users must do), check the
-   four files are there, then **Publish**. Installed copies see it within a
-   day: updaters skip drafts and pre-releases.
+   files are there, then **Publish**. Publishing runs `channels.yml`, which
+   points the stable feed at the release; installed copies on Stable see it
+   within half a day, sooner when a paired PC tells its phone.
+
+## Channels and nightlies
+
+Installs follow a channel, picked in Settings: **Stable** (releases) or
+**Nightly**. Each channel has a feed, a small JSON file on the `channels`
+branch (`stable.json`, `nightly.json`), with the newest build's version,
+name, notes page, and each file's download address and SHA-256
+(`.github/scripts/write-feed.py`; the format is in
+`desktop/app/src/feed.rs`). The apps read it with a conditional request, so
+an unchanged feed costs a few hundred bytes; until a feed exists they fall
+back to GitHub's latest release. A Nightly install reads both feeds, so it
+takes a release that's newer than its nightly.
+
+`nightly.yml` runs every two hours. When `main` changed (more than docs) since
+the last nightly and CI passed on it, it builds `<next>-nightly.N` with
+`build.yml`, publishes it as a pre-release named for a flower
+(`nightly-name.py`, "Golden Lavender"), points the nightly feed at it and keeps
+the last six nightlies. `<next>` is the version in `Cargo.toml`, or the next
+patch when that's already released; `set-version.sh` sets it for the build.
+Run it by hand from the Actions tab (with **force** to build even if nothing
+changed).
+
+Version order: `1.2.3-nightly.N` comes after `1.2.2` and before `1.2.3`, and
+`nightly.10` after `nightly.9`. Android's `versionCode` is
+`major·10⁷ + minor·10⁵ + patch·10³ + build`, where `build` is N for a nightly
+and 999 for a release; the Windows file and package versions end in the same
+number, and Linux packages use `1.2.3~nightly.N`, which apt and dnf sort
+before `1.2.3`. So a nightly install moves to the release when it's out, and
+a phone can't go from a nightly back to an older release without
+reinstalling.
 
 ## Signing
 
@@ -60,8 +92,13 @@ Signing. Either plugs in after `package.ps1` builds the installer, before
 
 ## How the apps update
 
-- **Windows** (`desktop/app/src/updater.rs`): checks the latest release 30
-  seconds after start and daily. With **Install updates automatically** on,
+- **Windows** (`desktop/app/src/updater.rs`): checks its channel's feed 30
+  seconds after start, then every 12 hours on Stable and every 2 hours on
+  Nightly (twice as long on battery), and sooner when a phone tells it of a
+  build (`update_relay.rs`, `event.update`); it tells its phones when it sees
+  one. The **Nectarlink Update** task reads the channel from
+  `%ProgramData%\Nectarlink\update-channel`, which the app writes; any user
+  may change it, and it only picks between this repository's own builds. With **Install updates automatically** on,
   it waits until nobody has used the PC for 10 minutes and nothing is in
   progress, then starts the **Nectarlink Update** task that the installer
   registers (`desktop/installer/nectarlink.nsi`). The task runs as SYSTEM,
@@ -69,8 +106,9 @@ Signing. Either plugs in after `package.ps1` builds the installer, before
   relauncher reopens the app afterwards. The task logs to `update.log` in the
   install folder. Details and the security reasoning:
   [security model](security-model.md#automatic-updates-and-release-verification).
-- **Android** (`update/AppUpdater.kt`): checks daily from the connection
-  service and when the app opens, and installs through `PackageInstaller`.
+- **Android** (`update/AppUpdater.kt`): hears of new builds from its PC
+  (`onHint`), and checks on its own daily on Stable or every six hours on
+  Nightly, and when the app opens; installs through `PackageInstaller`.
   Android 12 and later skip the confirmation once NectarLink installed the
   running version itself; the first update after a manual install asks once.
 
