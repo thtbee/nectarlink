@@ -111,8 +111,9 @@ impl Response {
 }
 
 /// Sends a GET for an `https://` URL (following redirects), asking for the
-/// bytes from `from` on when that's past 0.
-fn open(url: &str, from: u64) -> Result<Response, String> {
+/// bytes from `from` on when that's past 0, and only if it changed from
+/// `etag` when there's one (a 304 answers otherwise).
+fn open(url: &str, from: u64, etag: Option<&str>) -> Result<Response, String> {
     let rest = url.strip_prefix("https://").ok_or("only https")?;
     let (host, path) = rest.split_once('/').map_or((rest, "/".to_owned()), |(h, p)| (h, format!("/{p}")));
     let agent = HSTRING::from(format!("Nectarlink/{} (Windows)", env!("CARGO_PKG_VERSION")));
@@ -152,6 +153,10 @@ fn open(url: &str, from: u64) -> Result<Response, String> {
         if from > 0 {
             headers.push_str(&format!("Range: bytes={from}-\r\n"));
         }
+        // An ETag is a short quoted token; anything else isn't sent.
+        if let Some(etag) = etag.filter(|e| e.len() <= 200 && !e.contains(['\r', '\n'])) {
+            headers.push_str(&format!("If-None-Match: {etag}\r\n"));
+        }
         let headers: Vec<u16> = headers.encode_utf16().collect();
         WinHttpSendRequest(request.0, Some(&headers), None, 0, 0, 0).map_err(|e| format!("send: {e}"))?;
         WinHttpReceiveResponse(request.0, std::ptr::null_mut()).map_err(|e| format!("receive: {e}"))?;
@@ -172,10 +177,38 @@ fn open(url: &str, from: u64) -> Result<Response, String> {
 
 /// Fetches an `https://` URL (following redirects), up to `limit` bytes.
 pub fn get(url: &str, limit: usize) -> Result<Vec<u8>, String> {
-    let response = open(url, 0)?;
+    let response = open(url, 0, None)?;
     if response.status != 200 {
         return Err(format!("HTTP {}", response.status));
     }
+    read_all(&response, limit)
+}
+
+/// What a conditional GET found.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Fresh {
+    /// The same as the copy with that ETag.
+    NotModified,
+    /// New content, and its ETag when the server gave one.
+    Changed { body: Vec<u8>, etag: Option<String> },
+}
+
+/// Fetches an `https://` URL unless it's unchanged since `etag`: the server
+/// then answers 304, a few hundred bytes with no body.
+pub fn get_fresh(url: &str, limit: usize, etag: Option<&str>) -> Result<Fresh, String> {
+    let response = open(url, 0, etag)?;
+    match response.status {
+        304 if etag.is_some() => Ok(Fresh::NotModified),
+        200 => {
+            let etag = response.header("ETag");
+            Ok(Fresh::Changed { body: read_all(&response, limit)?, etag })
+        }
+        status => Err(format!("HTTP {status}")),
+    }
+}
+
+/// The whole body, up to `limit` bytes.
+fn read_all(response: &Response, limit: usize) -> Result<Vec<u8>, String> {
     let mut body = Vec::new();
     let mut chunk = vec![0u8; 64 * 1024];
     loop {
@@ -252,7 +285,7 @@ fn download_once(
     progress: &mut impl FnMut(u64, u64),
 ) -> Result<(), String> {
     let have = file.metadata().map(|m| m.len()).unwrap_or(0);
-    let response = open(url, have)?;
+    let response = open(url, have, None)?;
     let (append, total) = match response.status {
         206 => {
             let total = response.header("Content-Range").and_then(|r| range_total(&r));

@@ -31,10 +31,10 @@ use std::{
     path::{Path, PathBuf},
     process::ExitCode,
     sync::{
-        Mutex, MutexGuard,
+        Condvar, Mutex, MutexGuard,
         atomic::{AtomicBool, Ordering},
     },
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use serde::Deserialize;
@@ -42,29 +42,50 @@ use sha2::{Digest, Sha256};
 
 use crate::{
     core_host,
+    feed::{self, RELEASE_DOWNLOADS},
     state::Changes,
+    version::{self, Channel},
     win::{autostart, http, toast},
 };
 
 const LATEST: &str = "https://api.github.com/repos/thtbee/nectarlink/releases/latest";
-/// Where our release files are. An update is only downloaded from here, so a
-/// changed or spoofed release listing can't point the installer elsewhere.
-const RELEASE_DOWNLOADS: &str = "https://github.com/thtbee/nectarlink/releases/download/";
 const FIRST_CHECK: Duration = Duration::from_secs(30);
-const EVERY: Duration = Duration::from_secs(24 * 3600);
+/// How often a nightly install checks: nightlies are built at most every two
+/// hours. A check is a conditional GET, a few hundred bytes when unchanged.
+const NIGHTLY_EVERY: Duration = Duration::from_secs(2 * 3600);
+const STABLE_EVERY: Duration = Duration::from_secs(12 * 3600);
+/// A check asked for early (a phone heard of a new build, the channel
+/// changed) waits at least this long after the last one.
+const MIN_BETWEEN: Duration = Duration::from_secs(5 * 60);
 const MAX_INSTALLER: u64 = 400 * 1024 * 1024;
 /// The toast "device" for update notices.
 pub const TOAST_GROUP: &str = "update";
 pub const ACTION_UPDATE: &str = "update";
 
-/// A newer release.
+/// A newer build.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Update {
     pub version: String,
+    /// A nightly's name ("Amber Clover"), when its feed gave one.
+    pub name: Option<String>,
     pub notes_url: String,
     installer_url: String,
     installer_name: String,
-    sums_url: String,
+    /// Where the build's SHA-256 sums are, for a release found through
+    /// GitHub's API; a feed lists the installer's own hash instead.
+    sums_url: Option<String>,
+    sha256: Option<String>,
+}
+
+impl Update {
+    /// How to name it to people: "0.1.5" or "Nightly 7 (Amber Clover)".
+    pub fn title(&self) -> String {
+        match (crate::version::nightly_build(&self.version), &self.name) {
+            (Some(n), Some(name)) => tr!("Updater", "Nightly %1 (%2)", n, name),
+            (Some(n), None) => tr!("Updater", "Nightly %1", n),
+            (None, _) => self.version.clone(),
+        }
+    }
 }
 
 /// The scheduled task the installer registers (see the module docs).
@@ -84,6 +105,10 @@ static AUTO: AtomicBool = AtomicBool::new(true);
 static AUTO_INSTALL: AtomicBool = AtomicBool::new(true);
 static CHECKING: AtomicBool = AtomicBool::new(false);
 static FOUND: Mutex<Option<Update>> = Mutex::new(None);
+/// The channel picked in Settings; `None` follows the build's own.
+static CHANNEL: Mutex<Option<Channel>> = Mutex::new(None);
+/// Set by [`check_soon`]; the checking thread waits on it.
+static SOON: (Mutex<bool>, Condvar) = (Mutex::new(false), Condvar::new());
 
 fn found() -> MutexGuard<'static, Option<Update>> {
     FOUND.lock().unwrap_or_else(|e| e.into_inner())
@@ -92,6 +117,86 @@ fn found() -> MutexGuard<'static, Option<Update>> {
 /// The update found, if any.
 pub fn available() -> Option<Update> {
     found().clone()
+}
+
+/// The channel this install follows: as picked in Settings, or the one its
+/// build came from (a nightly install follows Nightly until told otherwise).
+pub fn channel() -> Channel {
+    CHANNEL
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .unwrap_or_else(|| version::channel_of(env!("CARGO_PKG_VERSION")))
+}
+
+/// Follows `channel` from now on, and checks it soon. On Windows the update
+/// task reads it too, from a file beside the downloads.
+pub fn set_channel(channel: Channel) {
+    let changed = CHANNEL.lock().unwrap_or_else(|e| e.into_inner()).replace(channel) != Some(channel);
+    write_service_channel(channel);
+    if changed {
+        check_soon();
+    }
+}
+
+/// Where the app tells the update task which channel to follow.
+#[cfg(windows)]
+fn service_channel_file() -> PathBuf {
+    staging_dir().with_file_name("update-channel")
+}
+
+#[cfg(windows)]
+fn write_service_channel(channel: Channel) {
+    let path = service_channel_file();
+    if std::fs::read_to_string(&path).ok().and_then(|c| Channel::parse(&c)) == Some(channel) {
+        return;
+    }
+    let written = path
+        .parent()
+        .map_or(Ok(()), std::fs::create_dir_all)
+        .and_then(|()| std::fs::write(&path, channel.as_str()));
+    if let Err(e) = written {
+        tracing::warn!(error = %e, "the update task won't know the channel");
+    }
+}
+
+#[cfg(not(windows))]
+fn write_service_channel(_channel: Channel) {}
+
+/// The channel for the update task: any user may set it, and it only picks
+/// between this repository's own builds, which the task checks as always.
+#[cfg(windows)]
+fn read_service_channel() -> Option<Channel> {
+    Channel::parse(&std::fs::read_to_string(service_channel_file()).ok()?)
+}
+
+#[cfg(not(windows))]
+fn read_service_channel() -> Option<Channel> {
+    None
+}
+
+/// Checks soon (at most every [`MIN_BETWEEN`]), not waiting for the next turn.
+pub fn check_soon() {
+    let (soon, wake) = &SOON;
+    *soon.lock().unwrap_or_else(|e| e.into_inner()) = true;
+    wake.notify_all();
+}
+
+/// Waits up to `limit`; true when [`check_soon`] asked meanwhile.
+fn wait_for_soon(limit: Duration) -> bool {
+    let (soon, wake) = &SOON;
+    let guard = soon.lock().unwrap_or_else(|e| e.into_inner());
+    let (mut guard, _) =
+        wake.wait_timeout_while(guard, limit, |asked| !*asked).unwrap_or_else(|e| e.into_inner());
+    std::mem::take(&mut *guard)
+}
+
+/// How long until the next check: by channel, and twice as long on battery.
+fn check_every() -> Duration {
+    let every = match channel() {
+        Channel::Nightly => NIGHTLY_EVERY,
+        Channel::Stable => STABLE_EVERY,
+    };
+    if crate::win::on_battery() { every * 2 } else { every }
 }
 
 pub fn set_auto(on: bool) {
@@ -109,7 +214,8 @@ pub fn can_update() -> bool {
     std::env::current_exe().is_ok_and(|exe| autostart::is_installed(&exe))
 }
 
-/// Checks soon after startup, then daily, while automatic checks are on.
+/// Checks soon after startup, then on the channel's schedule ([`check_every`])
+/// or sooner when asked ([`check_soon`]), while automatic checks are on.
 pub fn start() {
     if !can_update() {
         return;
@@ -117,12 +223,13 @@ pub fn start() {
     let spawned = std::thread::Builder::new().name("updates".into()).spawn(|| {
         std::thread::sleep(FIRST_CHECK);
         loop {
+            let checked = Instant::now();
             if AUTO.load(Ordering::Relaxed) {
                 check_now(false);
             }
-            // Daily; while an update waits to install itself, look for a quiet moment.
-            let next_check = std::time::Instant::now() + EVERY;
-            while let Some(left) = next_check.checked_duration_since(std::time::Instant::now()) {
+            // While an update waits to install itself, look for a quiet moment.
+            let next_check = checked + check_every();
+            while let Some(left) = next_check.checked_duration_since(Instant::now()) {
                 if AUTO.load(Ordering::Relaxed)
                     && AUTO_INSTALL.load(Ordering::Relaxed)
                     && available().is_some()
@@ -137,7 +244,13 @@ pub fn start() {
                         tracing::warn!(error = e, "the automatic update didn't start");
                     }
                 }
-                std::thread::sleep(left.min(LOOK_FOR_QUIET));
+                if wait_for_soon(left.min(LOOK_FOR_QUIET)) {
+                    // Asked early: check now, or once the minimum gap is over.
+                    if let Some(wait) = (checked + MIN_BETWEEN).checked_duration_since(Instant::now()) {
+                        std::thread::sleep(wait);
+                    }
+                    break;
+                }
             }
         }
     });
@@ -162,9 +275,16 @@ pub fn check_now(told: bool) -> Option<String> {
             if new {
                 announce(&update);
             }
-            Some(tr!("Updater", "NectarLink %1 is available.", update.version))
+            Some(tr!("Updater", "NectarLink %1 is available.", update.title()))
         }
-        Ok(None) => told.then(|| tr!("Updater", "NectarLink is up to date.")),
+        Ok(None) => {
+            // Nothing newer on this channel now (it may have just changed):
+            // what was found before isn't for this install anymore.
+            if found().take().is_some() {
+                core_host::host().hub.update(|_| Changes::UPDATE);
+            }
+            told.then(|| tr!("Updater", "NectarLink is up to date."))
+        }
         Err(e) => {
             tracing::info!(error = %e, "couldn't check for updates");
             told.then(|| tr!("Updater", "Couldn't check for updates. Check your internet connection."))
@@ -176,7 +296,7 @@ fn announce(update: &Update) {
     toast::show(toast::Toast {
         device: TOAST_GROUP.into(),
         key: update.version.clone(),
-        title: tr!("Updater", "NectarLink %1 is available", update.version),
+        title: tr!("Updater", "NectarLink %1 is available", update.title()),
         body: tr!("Updater", "Update now, or later from Settings."),
         attribution: "NectarLink".into(),
         icon: None,
@@ -206,7 +326,46 @@ struct Asset {
     browser_download_url: String,
 }
 
+/// The newest build for this install's channel, if it's newer than this one.
 fn latest() -> Result<Option<Update>, String> {
+    latest_for(channel(), env!("CARGO_PKG_VERSION"))
+}
+
+/// From the channel feeds: Stable reads the stable feed, Nightly both (a
+/// release newer than the last nightly is for nightly installs too). Until
+/// a feed is published, from GitHub's latest release, as before feeds.
+fn latest_for(channel: Channel, current: &str) -> Result<Option<Update>, String> {
+    let feeds: &[Channel] = match channel {
+        Channel::Stable => &[Channel::Stable],
+        Channel::Nightly => &[Channel::Stable, Channel::Nightly],
+    };
+    let mut published = false;
+    let mut newest: Option<Update> = None;
+    let mut failed = None;
+    for &feed_channel in feeds {
+        match feed::fetch(feed_channel) {
+            Ok(Some(found)) => {
+                published = true;
+                crate::update_relay::seen(feed_channel, &found.version);
+                if let Some(update) = feed_update(&found, current)
+                    && newest.as_ref().is_none_or(|n| is_newer(&update.version, &n.version))
+                {
+                    newest = Some(update);
+                }
+            }
+            Ok(None) => {}
+            Err(e) => {
+                tracing::info!(channel = feed_channel.as_str(), error = %e, "couldn't read the feed");
+                failed = Some(e);
+            }
+        }
+    }
+    if published {
+        return Ok(newest);
+    }
+    if let Some(e) = failed {
+        return Err(e);
+    }
     let body = match http::get(LATEST, 1024 * 1024) {
         Ok(body) => body,
         // GitHub answers 404 until the first release is published: nothing newer.
@@ -214,7 +373,53 @@ fn latest() -> Result<Option<Update>, String> {
         Err(e) => return Err(e),
     };
     let release: Release = serde_json::from_slice(&body).map_err(|e| e.to_string())?;
-    Ok(newer_release(release, env!("CARGO_PKG_VERSION")))
+    Ok(newer_release(release, current))
+}
+
+/// The feed's build as an update for this install, if it's newer and has
+/// a file for this kind of install.
+fn feed_update(found: &feed::Feed, current: &str) -> Option<Update> {
+    if !is_newer(&found.version, current) {
+        return None;
+    }
+    let file = install_suffixes()
+        .iter()
+        .find_map(|suffix| found.files.iter().find(|f| is_installer_name(&f.name, suffix)))?;
+    Some(Update {
+        version: found.version.clone(),
+        name: found.name.clone(),
+        notes_url: found.notes.clone(),
+        installer_url: file.url.clone(),
+        installer_name: file.name.clone(),
+        sums_url: None,
+        sha256: Some(file.sha256.clone()),
+    })
+}
+
+/// Whether `name` is one of our files ending in `suffix`. The name becomes
+/// a file name under %TEMP%: a plain name only, never a path.
+fn is_installer_name(name: &str, suffix: &str) -> bool {
+    name.ends_with(suffix)
+        && (name.starts_with("Nectarlink-")
+            || name.starts_with("nectarlink_")
+            || name.starts_with("nectarlink-"))
+        && feed::is_plain_name(name)
+}
+
+/// The files this install takes, best first.
+#[cfg(windows)]
+fn install_suffixes() -> &'static [&'static str] {
+    std::slice::from_ref(&INSTALLER_SUFFIX)
+}
+
+#[cfg(target_os = "linux")]
+fn install_suffixes() -> &'static [&'static str] {
+    linux_suffixes(detect_linux_install_kind())
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
+fn install_suffixes() -> &'static [&'static str] {
+    &[]
 }
 
 #[cfg(windows)]
@@ -309,19 +514,18 @@ fn newer_release_linux(release: Release, current: &str, is_appimage: bool) -> Op
 }
 
 #[cfg(target_os = "linux")]
-fn newer_release_linux_kind(release: Release, current: &str, kind: LinuxInstallKind) -> Option<Update> {
-    let suffixes = match kind {
+fn linux_suffixes(kind: LinuxInstallKind) -> &'static [&'static str] {
+    match kind {
         LinuxInstallKind::AppImage => APPIMAGE_SUFFIXES,
         LinuxInstallKind::Deb => DEB_SUFFIXES,
         LinuxInstallKind::Rpm => RPM_SUFFIXES,
         LinuxInstallKind::Tarball => TARBALL_SUFFIXES,
-    };
-    for &suffix in suffixes {
-        if let Some(u) = newer_release_for(release.clone(), current, suffix) {
-            return Some(u);
-        }
     }
-    None
+}
+
+#[cfg(target_os = "linux")]
+fn newer_release_linux_kind(release: Release, current: &str, kind: LinuxInstallKind) -> Option<Update> {
+    linux_suffixes(kind).iter().find_map(|suffix| newer_release_for(release.clone(), current, suffix))
 }
 
 #[cfg_attr(not(any(windows, target_os = "linux", test)), allow(dead_code))]
@@ -333,15 +537,8 @@ fn newer_release_for(release: Release, current: &str, suffix: &str) -> Option<Up
     if !is_newer(&version, current) {
         return None;
     }
-    // The name becomes a file name under %TEMP%: a plain name only, never a path.
     let installer = release.assets.iter().find(|a| {
-        a.name.ends_with(suffix)
-            && (a.name.starts_with("Nectarlink-")
-                || a.name.starts_with("nectarlink_")
-                || a.name.starts_with("nectarlink-"))
-            && a.name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_'))
-            && !a.name.contains("..")
-            && a.browser_download_url.starts_with(RELEASE_DOWNLOADS)
+        is_installer_name(&a.name, suffix) && a.browser_download_url.starts_with(RELEASE_DOWNLOADS)
     })?;
     let sums = release
         .assets
@@ -349,39 +546,16 @@ fn newer_release_for(release: Release, current: &str, suffix: &str) -> Option<Up
         .find(|a| a.name == "SHA256SUMS.txt" && a.browser_download_url.starts_with(RELEASE_DOWNLOADS))?;
     Some(Update {
         version,
+        name: None,
         notes_url: release.html_url,
         installer_url: installer.browser_download_url.clone(),
         installer_name: installer.name.clone(),
-        sums_url: sums.browser_download_url.clone(),
+        sums_url: Some(sums.browser_download_url.clone()),
+        sha256: None,
     })
 }
 
-/// A version's numbers, and its pre-release part.
-type Version<'a> = ((u64, u64, u64), Option<&'a str>);
-
-/// `1.2.3` style versions, with an optional `-pre` part (a release is
-/// newer than its pre-releases).
-pub(crate) fn is_newer(candidate: &str, current: &str) -> bool {
-    fn parse(v: &str) -> Option<Version<'_>> {
-        let (numbers, pre) = match v.split_once('-') {
-            Some((n, p)) => (n, Some(p)),
-            None => (v, None),
-        };
-        let mut parts = numbers.split('.').map(str::parse::<u64>);
-        let version = (parts.next()?.ok()?, parts.next()?.ok()?, parts.next().unwrap_or(Ok(0)).ok()?);
-        Some((version, pre))
-    }
-    let (Some((a, a_pre)), Some((b, b_pre))) = (parse(candidate), parse(current)) else { return false };
-    match a.cmp(&b) {
-        std::cmp::Ordering::Greater => true,
-        std::cmp::Ordering::Less => false,
-        std::cmp::Ordering::Equal => match (a_pre, b_pre) {
-            (None, Some(_)) => true,
-            (Some(x), Some(y)) => x > y,
-            _ => false,
-        },
-    }
-}
+pub(crate) use crate::version::is_newer;
 
 /// The SHA-256 a sums file lists for `name` (`<hex>  <name>` lines).
 fn listed_hash(sums: &str, name: &str) -> Option<String> {
@@ -520,9 +694,13 @@ fn staging_dir() -> PathBuf {
     }
 }
 
-/// The release's SHA-256 for its installer.
+/// The build's SHA-256 for its installer: from its feed, or its release's sums.
 fn expected_hash(update: &Update) -> Result<String, StageError> {
-    let sums = http::get_retrying(&update.sums_url, 64 * 1024).map_err(StageError::Network)?;
+    if let Some(hash) = &update.sha256 {
+        return Ok(hash.clone());
+    }
+    let sums_url = update.sums_url.as_deref().ok_or(StageError::Damaged)?;
+    let sums = http::get_retrying(sums_url, 64 * 1024).map_err(StageError::Network)?;
     listed_hash(&String::from_utf8_lossy(&sums), &update.installer_name).ok_or(StageError::Damaged)
 }
 
@@ -704,6 +882,9 @@ pub fn run_service() -> ExitCode {
                 .and_then(|mut f| std::io::Write::write_all(&mut f, line.as_bytes()));
         }
     };
+    if let Some(channel) = read_service_channel() {
+        *CHANNEL.lock().unwrap_or_else(|e| e.into_inner()) = Some(channel);
+    }
     let update = match latest() {
         Ok(Some(update)) => update,
         Ok(None) => {
@@ -1170,17 +1351,6 @@ impl Clone for Release {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn versions_compare() {
-        assert!(is_newer("0.1.0", "0.0.1"));
-        assert!(is_newer("1.0.0", "0.9.9"));
-        assert!(is_newer("0.2.0", "0.2.0-beta.1"));
-        assert!(is_newer("0.2.0-beta.2", "0.2.0-beta.1"));
-        assert!(!is_newer("0.0.1", "0.0.1"));
-        assert!(!is_newer("0.0.1", "0.1.0"));
-        assert!(!is_newer("garbage", "0.1.0"));
-    }
 
     fn release(tag: &str) -> Release {
         Release {

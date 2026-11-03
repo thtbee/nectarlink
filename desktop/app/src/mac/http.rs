@@ -17,6 +17,20 @@ pub fn get(url: &str, limit: usize) -> Result<Vec<u8>, String> {
     Ok(output.stdout)
 }
 
+/// What a conditional GET found.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Fresh {
+    /// The same as the copy with that ETag.
+    NotModified,
+    /// New content, and its ETag when the server gave one.
+    Changed { body: Vec<u8>, etag: Option<String> },
+}
+
+/// A plain fetch for now: the Mac preview doesn't update itself yet.
+pub fn get_fresh(url: &str, limit: usize, _etag: Option<&str>) -> Result<Fresh, String> {
+    get(url, limit).map(|body| Fresh::Changed { body, etag: None })
+}
+
 pub fn get_retrying(url: &str, limit: usize) -> Result<Vec<u8>, String> {
     for _ in 0..3 {
         if let Ok(data) = get(url, limit) {

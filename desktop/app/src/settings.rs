@@ -400,6 +400,10 @@ pub struct Settings {
     /// Install a newer release by itself at a quiet moment (with `auto_update`).
     #[serde(alias = "install_updates")]
     pub install_updates: bool,
+    /// Which builds to update to: "stable", "nightly", or empty to follow
+    /// the installed build's own channel.
+    #[serde(alias = "update_channel")]
+    pub update_channel: String,
     /// Tell when a phone's battery is low, or full.
     #[serde(alias = "battery_alerts")]
     pub battery_alerts: bool,
@@ -564,6 +568,7 @@ impl Default for Settings {
             send_to_menu: true,
             auto_update: true,
             install_updates: true,
+            update_channel: String::new(),
             battery_alerts: true,
             battery_full_threshold: default_battery_full_threshold(),
             device_nicknames: std::collections::HashMap::new(),
@@ -800,6 +805,7 @@ mod tests {
             send_to_menu: false,
             auto_update: false,
             install_updates: false,
+            update_channel: "nightly".into(),
             battery_alerts: false,
             battery_full_threshold: 80,
             device_nicknames: std::collections::HashMap::from([("abc".to_owned(), "Work phone".to_owned())]),

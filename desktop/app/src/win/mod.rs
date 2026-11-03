@@ -123,6 +123,15 @@ pub fn is_laptop() -> bool {
     ok && status.BatteryFlag != 128 && status.BatteryFlag != 255
 }
 
+/// Whether this PC runs on its battery right now (unplugged).
+pub fn on_battery() -> bool {
+    let mut status = SYSTEM_POWER_STATUS::default();
+    // SAFETY: status is a live, writable struct.
+    let ok = unsafe { GetSystemPowerStatus(&mut status) }.is_ok();
+    // ACLineStatus: 0 offline, 1 online, 255 unknown.
+    ok && status.ACLineStatus == 0
+}
+
 /// Whether battery saver (energy saver on Windows 11) is on: decorative
 /// animation should rest.
 pub fn power_saver() -> bool {

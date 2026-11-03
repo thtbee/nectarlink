@@ -239,6 +239,59 @@ pub fn get(url: &str, limit: usize) -> Result<Vec<u8>, String> {
     Ok(body)
 }
 
+/// What a conditional GET found.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Fresh {
+    /// The same as the copy with that ETag.
+    NotModified,
+    /// New content, and its ETag when the server gave one.
+    Changed { body: Vec<u8>, etag: Option<String> },
+}
+
+/// The `ETag` of the last response in `curl -D` output.
+fn last_etag(headers: &str) -> Option<String> {
+    let mut etag = None;
+    for line in headers.lines() {
+        if parse_status_line(line).is_some() {
+            etag = None;
+        } else if let Some((name, value)) = line.split_once(':')
+            && name.trim().eq_ignore_ascii_case("etag")
+        {
+            etag = Some(value.trim().to_owned()).filter(|v| !v.is_empty());
+        }
+    }
+    etag
+}
+
+/// Fetches `url` unless it's unchanged since `etag`: the server then answers
+/// 304, a few hundred bytes with no body. Without `curl` it's a plain fetch.
+pub fn get_fresh(url: &str, limit: usize, etag: Option<&str>) -> Result<Fresh, String> {
+    validate_https(url)?;
+    // An ETag is a short quoted token; anything else isn't sent.
+    let etag = etag.filter(|e| e.len() <= 200 && !e.contains(['\r', '\n']));
+    let mut args = curl_get_args(&(limit.saturating_add(1)).to_string(), &user_agent(), url);
+    if let Some(etag) = etag {
+        let at = args.len() - 2;
+        args.insert(at, "-H".into());
+        args.insert(at + 1, format!("If-None-Match: {etag}"));
+    }
+    let Ok(output) = Command::new("curl").args(&args).stdin(Stdio::null()).output() else {
+        return get(url, limit).map(|body| Fresh::Changed { body, etag: None });
+    };
+    if output.status.code() == Some(63) || output.stdout.len() > limit {
+        return Err("too large".into());
+    }
+    let headers = String::from_utf8_lossy(&output.stderr);
+    match parse_last_http_status(&headers) {
+        Some(304) if etag.is_some() => Ok(Fresh::NotModified),
+        Some(200) if output.status.success() => {
+            Ok(Fresh::Changed { body: output.stdout, etag: last_etag(&headers) })
+        }
+        Some(code) => Err(format!("HTTP {code}")),
+        None => Err(headers.lines().last().unwrap_or("curl failed").trim().to_owned()),
+    }
+}
+
 /// Network trouble or a server hiccup, worth another try. Not missing
 /// files, refusals or a body that's too large.
 fn retryable(error: &str) -> bool {
@@ -465,6 +518,14 @@ mod tests {
             download("http://example.com/setup", Path::new("out.bin"), 1024, |_, _| {}).unwrap_err(),
             "only https"
         );
+    }
+
+    #[test]
+    fn reads_the_etag_of_the_final_response() {
+        let headers = "HTTP/2 302\r\netag: \"redirect\"\r\n\r\nHTTP/2 200\r\nETag: W/\"abc\"\r\n\r\n";
+        assert_eq!(last_etag(headers), Some("W/\"abc\"".into()));
+        assert_eq!(last_etag("HTTP/2 302\r\netag: \"x\"\r\n\r\nHTTP/2 200\r\n\r\n"), None);
+        assert_eq!(get_fresh("http://example.com/feed", 1024, None).unwrap_err(), "only https");
     }
 
     #[test]

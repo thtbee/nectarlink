@@ -18,6 +18,7 @@ mod continuity_camera;
 mod core_host;
 mod deck;
 mod doctor;
+mod feed;
 mod folder_sync;
 mod hotspot;
 mod i18n;
@@ -55,7 +56,9 @@ mod startup;
 mod state;
 mod storage;
 mod transfers;
+mod update_relay;
 mod updater;
+mod version;
 mod webcam;
 #[cfg(windows)]
 mod win;
@@ -627,6 +630,9 @@ fn main() -> ExitCode {
         startup::start(settings.start_with_windows);
         updater::set_auto(settings.auto_update);
         updater::set_auto_install(settings.install_updates);
+        if let Some(channel) = version::Channel::parse(&settings.update_channel) {
+            updater::set_channel(channel);
+        }
         updater::start();
         match (updater::note_running_version(&data_dir), options.updated) {
             (Some(previous), _) => {

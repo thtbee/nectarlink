@@ -788,7 +788,8 @@ impl cxx_qt::Initialize for qobject::AppController {
             Self::refresh,
         );
         super::subscribe(qt.clone(), Changes::UPDATE, |object| {
-            let version = crate::updater::available().map(|u| u.version).unwrap_or_default();
+            // Its name for people: "0.1.5", or "Nightly 7 (Amber Clover)".
+            let version = crate::updater::available().map(|u| u.title()).unwrap_or_default();
             object.set_update_version(QString::from(&version));
         });
         super::subscribe(qt.clone(), Changes::CLIPBOARD, |mut object| {

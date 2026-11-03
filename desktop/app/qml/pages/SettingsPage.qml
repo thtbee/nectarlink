@@ -3326,11 +3326,30 @@ Item {
                             visible: AppController.canUpdate
                             iconPath: Icons.refresh
                             title: qsTr("Check for updates")
-                            description: qsTr("Looks for a new version on GitHub once a day.")
+                            description: Preferences.updateChannel === "nightly"
+                                         ? qsTr("Looks for a new build every couple of hours, and tells your phone.")
+                                         : qsTr("Looks for a new release twice a day, and tells your phone.")
                             Toggle {
                                 label: qsTr("Check for updates")
                                 checked: Preferences.autoUpdate
                                 onToggled: (on) => Preferences.autoUpdate = on
+                            }
+                        }
+                        ListRow {
+                            width: parent.width
+                            visible: AppController.canUpdate
+                            iconPath: Icons.moon
+                            title: qsTr("Update channel")
+                            description: Preferences.updateChannel === "nightly"
+                                         ? qsTr("The newest build from every couple of hours, with the latest fixes and features, and sometimes new bugs. Back on Stable, this PC keeps its build until the next release is newer.")
+                                         : qsTr("Releases, tested and less often.")
+                            Segmented {
+                                options: [
+                                    { value: "stable", label: qsTr("Stable") },
+                                    { value: "nightly", label: qsTr("Nightly") }
+                                ]
+                                value: Preferences.updateChannel
+                                onPicked: (value) => Preferences.updateChannel = value
                             }
                         }
                         ListRow {

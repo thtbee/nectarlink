@@ -65,6 +65,14 @@ pub fn os_version() -> String {
 }
 
 /// Whether this Mac runs on a battery (MacBook).
+/// Whether this Mac runs on its battery right now.
+pub fn on_battery() -> bool {
+    std::process::Command::new("pmset")
+        .args(["-g", "batt"])
+        .output()
+        .is_ok_and(|out| String::from_utf8_lossy(&out.stdout).contains("'Battery Power'"))
+}
+
 pub fn is_laptop() -> bool {
     let output = std::process::Command::new("pmset").arg("-g").arg("batt").output().ok();
     if let Some(out) = output {

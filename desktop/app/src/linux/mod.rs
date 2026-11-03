@@ -196,6 +196,26 @@ pub fn is_laptop() -> bool {
 }
 
 /// Whether power-saver mode is active (`/sys/firmware/acpi/platform_profile` or `powerprofilesctl`).
+/// Whether this PC runs on its battery right now: it has one, and no mains
+/// supply says it's online.
+pub fn on_battery() -> bool {
+    let Ok(entries) = fs::read_dir("/sys/class/power_supply") else { return false };
+    let mut battery = false;
+    for entry in entries.flatten() {
+        let kind = fs::read_to_string(entry.path().join("type")).unwrap_or_default();
+        match kind.trim() {
+            "Mains" | "USB" => {
+                if fs::read_to_string(entry.path().join("online")).is_ok_and(|o| o.trim() == "1") {
+                    return false;
+                }
+            }
+            "Battery" => battery = true,
+            _ => {}
+        }
+    }
+    battery
+}
+
 pub fn power_saver() -> bool {
     if let Ok(profile) = fs::read_to_string("/sys/firmware/acpi/platform_profile")
         && profile.trim().eq_ignore_ascii_case("low-power")
