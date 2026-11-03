@@ -563,20 +563,30 @@ impl Decoder {
                 let mut scan0 = std::ptr::null_mut();
                 let mut pitch = 0;
                 two_d.Lock2D(&mut scan0, &mut pitch)?;
-                let stride = pitch.unsigned_abs() as usize;
-                let rows = height as usize;
-                let len = stride * rows * 3 / 2;
-                let nv12 = std::slice::from_raw_parts(scan0, len).to_vec();
+                if pitch > 0 && !scan0.is_null() && (pitch as usize) >= width as usize {
+                    let stride = pitch as usize;
+                    let rows = height as usize;
+                    let len = stride * rows * 3 / 2;
+                    let nv12 = std::slice::from_raw_parts(scan0, len).to_vec();
+                    two_d.Unlock2D()?;
+                    return Ok(Picture { width, height, stride, plane_rows: rows, nv12, colors });
+                }
                 two_d.Unlock2D()?;
-                return Ok(Picture { width, height, stride, plane_rows: rows, nv12, colors });
             }
             let mut data = std::ptr::null_mut();
             let mut length = 0;
             buffer.Lock(&mut data, None, Some(&mut length))?;
-            let nv12 = std::slice::from_raw_parts(data, length as usize).to_vec();
+            let nv12 = if data.is_null() || length == 0 {
+                Vec::new()
+            } else {
+                std::slice::from_raw_parts(data, length as usize).to_vec()
+            };
             buffer.Unlock()?;
             let stride = width as usize;
             let plane_rows = (nv12.len() * 2 / 3) / stride.max(1);
+            if plane_rows < height as usize || nv12.len() < stride * (height as usize) * 3 / 2 {
+                return Err(E_FAIL.into());
+            }
             Ok(Picture { width, height, stride, plane_rows, nv12, colors })
         }
     }
