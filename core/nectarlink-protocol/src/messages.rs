@@ -394,6 +394,21 @@ pub struct Hello {
     #[serde(default)]
     pub caps: Vec<String>,
     pub power: PowerLevel,
+    /// The sender's LocalSend certificate fingerprint, when it answers
+    /// LocalSend, so the receiver can leave it out of its LocalSend nearby
+    /// list: it's reached as a paired device already.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub localsend: Option<String>,
+}
+
+impl Hello {
+    /// [`Hello::localsend`] when it looks like a certificate fingerprint
+    /// (hex, as LocalSend writes a SHA-256), else nothing.
+    pub fn localsend_fingerprint(&self) -> Option<&str> {
+        self.localsend
+            .as_deref()
+            .filter(|f| (16..=128).contains(&f.len()) && f.bytes().all(|b| b.is_ascii_hexdigit()))
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -4692,10 +4707,36 @@ mod tests {
             device: info(),
             caps: vec!["core.ping".into(), "device.battery".into()],
             power: PowerLevel::Elevated,
+            localsend: Some("ab".repeat(32)),
         };
         let env = Envelope::new(types::HELLO, &hello).unwrap();
         let back: Hello = Envelope::from_cbor(&env.to_cbor()).unwrap().expect_body(types::HELLO).unwrap();
         assert_eq!(back, hello);
+        assert_eq!(back.localsend_fingerprint(), Some("ab".repeat(32).as_str()));
+    }
+
+    #[test]
+    fn hello_localsend_fingerprint_is_hex_or_nothing() {
+        let with = |f: Option<&str>| Hello {
+            proto: 0,
+            min: 0,
+            app: "0.0.1".into(),
+            device: info(),
+            caps: Vec::new(),
+            power: PowerLevel::Basic,
+            localsend: f.map(str::to_owned),
+        };
+        assert_eq!(
+            with(Some("0123456789ABCDEFabcdef")).localsend_fingerprint(),
+            Some("0123456789ABCDEFabcdef")
+        );
+        assert_eq!(with(Some("random")).localsend_fingerprint(), None);
+        assert_eq!(with(Some(&"a".repeat(129))).localsend_fingerprint(), None);
+        assert_eq!(with(None).localsend_fingerprint(), None);
+        // An older device's hello, without the field, still reads.
+        let old = Envelope::new(types::HELLO, &with(None)).unwrap();
+        let back: Hello = Envelope::from_cbor(&old.to_cbor()).unwrap().expect_body(types::HELLO).unwrap();
+        assert_eq!(back.localsend, None);
     }
 
     #[test]

@@ -4874,6 +4874,44 @@ async fn localsend_coexists_when_port_is_already_bound() {
     drop(occupied);
 }
 
+/// A paired phone also answers LocalSend (NectarLink does). It isn't listed
+/// as a LocalSend device nearby too, until it's unpaired.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_paired_device_is_left_out_of_localsend_nearby() {
+    let pc_port = free_tcp_port();
+    let phone_port = free_tcp_port();
+    let mut pc = start_localsend_in(tempfile::tempdir().unwrap(), "PC", DeviceKind::Desktop, pc_port).await;
+    let mut phone =
+        start_localsend_in(tempfile::tempdir().unwrap(), "Pixel", DeviceKind::Phone, phone_port).await;
+    pc.node.set_localsend_enabled(true).unwrap();
+    phone.node.set_localsend_enabled(true).unwrap();
+    for _ in 0..40 {
+        if phone.node.localsend_receiving() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+
+    let found = pc.node.probe_localsend_peer("127.0.0.1", phone_port).await.expect("probe the phone");
+    assert_eq!(found.alias, "Pixel");
+    assert!(
+        !pc.node.localsend_peers().iter().any(|p| p.id == found.id),
+        "the paired phone is reached as itself, not listed again as LocalSend"
+    );
+
+    pc.node.unpair(phone_id).await.unwrap();
+    wait_for(&mut pc, "device removed", |e| matches!(e, NodeEvent::DeviceRemoved(_)).then_some(())).await;
+    assert!(
+        pc.node.localsend_peers().iter().any(|p| p.id == found.id),
+        "once unpaired, it's a LocalSend device like any other"
+    );
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
 #[tokio::test]
 async fn localsend_discovers_peer_requires_accept_and_transfers_files_over_https() {
     let sender_port = free_tcp_port();

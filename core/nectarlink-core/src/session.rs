@@ -104,6 +104,8 @@ pub(crate) fn local_hello(shared: &Shared) -> Hello {
         device: local.device.clone(),
         caps: local.capabilities(),
         power: local.power,
+        // Public (LocalSend announces it), and only told to paired devices.
+        localsend: Some(shared.localsend.fingerprint().to_owned()),
     }
 }
 

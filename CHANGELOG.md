@@ -265,6 +265,10 @@ has a Stop button. Choosing another
   phones on all of its networks. Thanks to
   [@samsarajr](https://github.com/samsarajr) for the packet capture that
   found it ([#148](https://github.com/thtbee/nectarlink/issues/148)).
+- **Your paired phone no longer shows twice on Home.** NectarLink on the
+  phone also answers LocalSend, so it was listed under LocalSend nearby as
+  well, with a second Send files. Paired devices are left out of that list,
+  on the PC and on the phone.
 - **WhatsApp and other apps' calls can be answered from the PC.** With
   Elevated, Answer, Decline and the in-call controls now work on calls in
   apps that use Android's calling (WhatsApp, Telegram...), and the PC shows

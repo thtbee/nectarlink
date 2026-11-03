@@ -338,6 +338,11 @@ impl LocalSendState {
         self.enabled.load(Ordering::Relaxed)
     }
 
+    /// This device's LocalSend certificate fingerprint.
+    pub(crate) fn fingerprint(&self) -> &str {
+        &self.identity.fingerprint
+    }
+
     pub fn receiving(&self) -> bool {
         self.receiving.load(Ordering::Relaxed)
     }

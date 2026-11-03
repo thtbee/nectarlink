@@ -157,6 +157,9 @@ pub(crate) struct Shared {
     discovered: Mutex<HashMap<DeviceId, DiscoveredDevice>>,
     /// Last LAN mDNS sighting per peer (timestamp and announced socket addresses).
     lan_seen: Mutex<HashMap<DeviceId, (std::time::Instant, Vec<SocketAddr>)>>,
+    /// Each paired device's LocalSend fingerprint, from its hello: the
+    /// LocalSend nearby list leaves those devices out.
+    paired_localsend: Mutex<HashMap<DeviceId, String>>,
     /// The newest build this device heard of, per channel (`announce_update`),
     /// for peers that connect later.
     update_hints: Mutex<HashMap<String, String>>,
@@ -1106,6 +1109,10 @@ impl Shared {
         lock(&self.watch_offers).remove(peer);
         self.stop_mic(peer);
         self.stop_showing_all(peer);
+        // Unpaired, it's a LocalSend device like any other again.
+        if lock(&self.paired_localsend).remove(peer).is_some() {
+            self.emit(NodeEvent::LocalSendChanged);
+        }
         if !dropped_queue.is_empty() {
             self.emit(NodeEvent::QueueChanged);
             if dropped_count > 0 {
@@ -1161,6 +1168,17 @@ impl Shared {
             existing.close(CLOSE_DUPLICATE, b"duplicate");
         }
 
+        let localsend = remote.localsend_fingerprint().map(str::to_ascii_lowercase);
+        let localsend_changed = {
+            let mut known = lock(&self.paired_localsend);
+            match &localsend {
+                Some(f) => known.insert(peer, f.clone()).as_ref() != Some(f),
+                None => known.remove(&peer).is_some(),
+            }
+        };
+        if localsend_changed {
+            self.emit(NodeEvent::LocalSendChanged);
+        }
         let remote_device = remote.device.sanitized();
         if let Err(e) = self.store.update_info(&peer, &remote_device) {
             tracing::warn!(error = %e, "failed to update peer info");
@@ -1634,6 +1652,7 @@ impl Node {
             supervisors: Mutex::new(HashMap::new()),
             discovered: Mutex::new(HashMap::new()),
             lan_seen: Mutex::new(HashMap::new()),
+            paired_localsend: Mutex::new(HashMap::new()),
             update_hints: Mutex::new(HashMap::new()),
             lan_discovery: Mutex::new(None),
             dial_failures: Mutex::new(HashMap::new()),
@@ -2338,8 +2357,14 @@ impl Node {
     }
 
     /// Returns the LocalSend peers currently discovered on the local network.
+    /// LocalSend devices nearby, apart from paired devices that also answer
+    /// LocalSend (a NectarLink phone does): those are reached as themselves.
     pub fn localsend_peers(&self) -> Vec<crate::LocalSendPeer> {
-        self.shared.localsend.peers()
+        let paired =
+            lock(&self.shared.paired_localsend).values().cloned().collect::<std::collections::HashSet<_>>();
+        let mut peers = self.shared.localsend.peers();
+        peers.retain(|p| !paired.contains(&p.fingerprint.to_ascii_lowercase()));
+        peers
     }
 
     /// Broadcasts a fresh LocalSend UDP multicast announcement and probes local ports.
