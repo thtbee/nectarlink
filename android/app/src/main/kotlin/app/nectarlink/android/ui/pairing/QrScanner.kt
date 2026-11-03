@@ -91,9 +91,15 @@ private fun CameraPreview(onLink: (String) -> Unit, modifier: Modifier) {
 
     DisposableEffect(lifecycleOwner) {
         val found = AtomicBoolean(false)
+        val disposed = AtomicBoolean(false)
         val providerFuture = ProcessCameraProvider.getInstance(context)
         providerFuture.addListener({
-            val provider = providerFuture.get()
+            if (disposed.get()) return@addListener
+            val provider = runCatching { providerFuture.get() }.getOrNull() ?: return@addListener
+            if (disposed.get()) {
+                runCatching { provider.unbindAll() }
+                return@addListener
+            }
             val preview = Preview.Builder().build().also { it.surfaceProvider = previewView.surfaceProvider }
             val analysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -109,12 +115,27 @@ private fun CameraPreview(onLink: (String) -> Unit, modifier: Modifier) {
                     }
                 }
             }
-            provider.unbindAll()
-            provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
+            runCatching { provider.unbindAll() }
+            val bound = runCatching {
+                provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
+            }.recoverCatching {
+                provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_FRONT_CAMERA, preview, analysis)
+            }
+            if (bound.isFailure) {
+                android.util.Log.w("QrScanner", "couldn't bind camera for QR scanning", bound.exceptionOrNull())
+            }
         }, ContextCompat.getMainExecutor(context))
 
         onDispose {
-            if (providerFuture.isDone) providerFuture.get().unbindAll()
+            disposed.set(true)
+            if (providerFuture.isDone) {
+                runCatching { providerFuture.get().unbindAll() }
+            } else {
+                providerFuture.addListener(
+                    { runCatching { providerFuture.get().unbindAll() } },
+                    ContextCompat.getMainExecutor(context),
+                )
+            }
             analyzerExecutor.shutdown()
         }
     }

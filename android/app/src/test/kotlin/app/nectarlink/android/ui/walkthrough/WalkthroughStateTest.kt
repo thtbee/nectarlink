@@ -79,6 +79,20 @@ class WalkthroughStateTest {
         assertTrue(upgradeWithDevices.markCompletedAutomatically)
         assertTrue(upgradeWithDevices.showWhatsNewGuideBanner)
 
+        // 3b. Active first-run walkthrough stays open at Welcome even if a PC pairs via deep link.
+        val pairedDuringActiveWelcome = resolveStartupWalkthrough(
+            persistence = WalkthroughPersistence(
+                completed = false,
+                currentStepIndex = WalkthroughStep.Welcome.index,
+                whatsNewGuideDismissed = false,
+            ),
+            hasPairedDevices = true,
+            walkthroughAlreadyActive = true,
+        )
+        assertTrue(pairedDuringActiveWelcome.showWalkthrough)
+        assertEquals(WalkthroughStep.Welcome, pairedDuringActiveWelcome.initialStep)
+        assertFalse(pairedDuringActiveWelcome.markCompletedAutomatically)
+
         // 4. Completed walkthrough shows What's New banner until dismissed.
         val completed = resolveStartupWalkthrough(
             persistence = WalkthroughPersistence(

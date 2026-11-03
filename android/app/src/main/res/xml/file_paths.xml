@@ -5,6 +5,7 @@
      outgoing MMS PDUs (see sms/PhoneSms.kt). -->
 <paths>
     <external-files-path name="received" path="Download/Nectarlink/" />
+    <files-path name="recordings" path="recordings/" />
     <cache-path name="clipboard" path="clipboard/" />
     <cache-path name="mms" path="mms/" />
 </paths>

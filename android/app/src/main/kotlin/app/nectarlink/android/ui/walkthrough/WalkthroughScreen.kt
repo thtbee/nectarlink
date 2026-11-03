@@ -144,13 +144,29 @@ fun WalkthroughScreen(
         step.previous?.let(onStepChange)
     }
 
-    val postNotifGranted = remember(state.notificationAccess) {
+    fun checkPostNotifGranted(): Boolean =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED
         } else {
             true
         }
+
+    var postNotifGranted by remember { mutableStateOf(checkPostNotifGranted()) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, state.notificationAccess) {
+        postNotifGranted = checkPostNotifGranted()
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                postNotifGranted = checkPostNotifGranted()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val notifyAccessAndPostNotifChanged: () -> Unit = {
+        postNotifGranted = checkPostNotifGranted()
+        onAccessChanged()
     }
 
     val permissionGrantedFlags = remember(
@@ -248,7 +264,7 @@ fun WalkthroughScreen(
                         state = state,
                         postNotifGranted = postNotifGranted,
                         isGlass = isGlass,
-                        onAccessChanged = onAccessChanged,
+                        onAccessChanged = notifyAccessAndPostNotifChanged,
                     )
                     WalkthroughStep.Pair -> PairStepContent(
                         state = state,
@@ -259,10 +275,11 @@ fun WalkthroughScreen(
                     WalkthroughStep.PowerLevel -> PowerLevelStepContent(
                         state = state,
                         isGlass = isGlass,
-                        onAccessChanged = onAccessChanged,
+                        onAccessChanged = notifyAccessAndPostNotifChanged,
                     )
                     WalkthroughStep.Done -> DoneStepContent(
                         state = state,
+                        postNotifGranted = postNotifGranted,
                         isGlass = isGlass,
                     )
                 }
@@ -1929,6 +1946,7 @@ private fun PowerLevelRow(
 @Composable
 private fun DoneStepContent(
     state: CoreState,
+    postNotifGranted: Boolean,
     isGlass: Boolean,
 ) {
     val noPcText = stringResource(R.string.walkthrough_done_no_pc)
@@ -1954,7 +1972,7 @@ private fun DoneStepContent(
     val noneGrantedText = stringResource(R.string.walkthrough_done_no_permissions)
 
     val grantedPermissions = buildList {
-        if (state.notificationAccess) add(notifLabel)
+        if (state.notificationAccess && postNotifGranted) add(notifLabel)
         if (state.backgroundUnrestricted) add(batteryLabel)
         if (state.callAccess) add(callsLabel)
         if (state.smsAccess && state.contactsAccess) add(smsLabel)
