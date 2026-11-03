@@ -3,7 +3,10 @@
 //! USB-attached Android devices and set up TCP port forwarding for NectarLink's
 //! USB QUIC tunnel.
 
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::{
+    net::{Ipv4Addr, SocketAddr, SocketAddrV4},
+    time::Duration,
+};
 
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -14,23 +17,64 @@ use tokio_util::sync::CancellationToken;
 /// Default local ADB server address (`127.0.0.1:5037`).
 pub const DEFAULT_ADB_ADDR: SocketAddr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 5037));
 
+/// Per-operation timeout for ADB socket connects, commands, and replies.
+#[cfg(not(test))]
+const ADB_TIMEOUT: Duration = Duration::from_secs(5);
+#[cfg(test)]
+const ADB_TIMEOUT: Duration = Duration::from_millis(200);
+
+async fn with_adb_timeout<F, T>(fut: F) -> Result<T, AdbError>
+where
+    F: std::future::Future<Output = Result<T, AdbError>>,
+{
+    tokio::time::timeout(ADB_TIMEOUT, fut).await.map_err(|_| {
+        AdbError::Io(std::io::Error::new(std::io::ErrorKind::TimedOut, "adb request timed out"))
+    })?
+}
+
+async fn connect_adb(server: SocketAddr) -> Result<TcpStream, AdbError> {
+    with_adb_timeout(async { Ok(TcpStream::connect(server).await?) }).await
+}
+
 /// Returns `true` if `serial` is non-empty, made only of the characters
 /// serials use, and permitted by the optional `NECTARLINK_ADB_ONLY_SERIAL`
 /// filter. A USB device names its own serial, and it goes into adb commands
 /// as text, so anything else (`;`, spaces, control characters) is refused.
 pub fn is_serial_allowed(serial: &str) -> bool {
-    let trimmed = serial.trim();
-    if trimmed.is_empty()
-        || trimmed.len() > 128
-        || !trimmed
+    if serial != serial.trim() {
+        return false;
+    }
+    if serial.is_empty()
+        || serial.len() > 128
+        || !serial
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-' | b':' | b'[' | b']'))
     {
         return false;
     }
+    if serial.contains(':') || serial.contains('[') || serial.contains(']') {
+        let valid_host_port = if let Some(rest) = serial.strip_prefix('[') {
+            rest.split_once("]:").is_some_and(|(host, port)| {
+                !host.is_empty()
+                    && !host.contains(['[', ']'])
+                    && !port.is_empty()
+                    && port.bytes().all(|b| b.is_ascii_digit())
+            })
+        } else {
+            serial.split_once(':').is_some_and(|(host, port)| {
+                !host.is_empty()
+                    && !host.contains(['[', ']'])
+                    && !port.is_empty()
+                    && port.bytes().all(|b| b.is_ascii_digit())
+            })
+        };
+        if !valid_host_port {
+            return false;
+        }
+    }
     if let Ok(only) = std::env::var("NECTARLINK_ADB_ONLY_SERIAL") {
         let only = only.trim();
-        if !only.is_empty() && trimmed != only {
+        if !only.is_empty() && serial != only {
             return false;
         }
     }
@@ -126,29 +170,35 @@ pub fn parse_devices_l(input: &str) -> Vec<AdbDevice> {
 
 /// Sends a length-prefixed command to the ADB server and reads the 4-byte status.
 pub async fn send_command(stream: &mut TcpStream, cmd: &str) -> Result<(), AdbError> {
-    let frame = format!("{:04x}{cmd}", cmd.len());
-    stream.write_all(frame.as_bytes()).await?;
-    stream.flush().await?;
-    let mut status = [0u8; 4];
-    stream.read_exact(&mut status).await?;
-    match &status {
-        b"OKAY" => Ok(()),
-        b"FAIL" => {
-            let reason = read_payload(stream).await.unwrap_or_else(|_| "unknown failure".into());
-            Err(AdbError::Remote(reason))
+    with_adb_timeout(async {
+        let frame = format!("{:04x}{cmd}", cmd.len());
+        stream.write_all(frame.as_bytes()).await?;
+        stream.flush().await?;
+        let mut status = [0u8; 4];
+        stream.read_exact(&mut status).await?;
+        match &status {
+            b"OKAY" => Ok(()),
+            b"FAIL" => {
+                let reason = read_payload_inner(stream).await.unwrap_or_else(|_| "unknown failure".into());
+                Err(AdbError::Remote(reason))
+            }
+            other => {
+                Err(AdbError::Protocol(format!("unexpected ADB status: {}", String::from_utf8_lossy(other))))
+            }
         }
-        other => {
-            Err(AdbError::Protocol(format!("unexpected ADB status: {}", String::from_utf8_lossy(other))))
-        }
-    }
+    })
+    .await
 }
 
-/// Reads a 4-hex-digit length prefix followed by the UTF-8 payload.
-pub async fn read_payload(stream: &mut TcpStream) -> Result<String, AdbError> {
+async fn read_payload_inner(stream: &mut TcpStream) -> Result<String, AdbError> {
     let mut len_hex = [0u8; 4];
     stream.read_exact(&mut len_hex).await?;
+    read_payload_after_len(stream, &len_hex).await
+}
+
+async fn read_payload_after_len(stream: &mut TcpStream, len_hex: &[u8; 4]) -> Result<String, AdbError> {
     let len_str =
-        std::str::from_utf8(&len_hex).map_err(|_| AdbError::Protocol("invalid hex length".into()))?;
+        std::str::from_utf8(len_hex).map_err(|_| AdbError::Protocol("invalid hex length".into()))?;
     let len = usize::from_str_radix(len_str, 16)
         .map_err(|_| AdbError::Protocol(format!("invalid hex length: {len_str}")))?;
     let mut buf = vec![0u8; len];
@@ -158,9 +208,14 @@ pub async fn read_payload(stream: &mut TcpStream) -> Result<String, AdbError> {
     String::from_utf8(buf).map_err(|_| AdbError::Protocol("invalid UTF-8 payload".into()))
 }
 
+/// Reads a 4-hex-digit length prefix followed by the UTF-8 payload.
+pub async fn read_payload(stream: &mut TcpStream) -> Result<String, AdbError> {
+    with_adb_timeout(read_payload_inner(stream)).await
+}
+
 /// Lists attached ADB devices via `host:devices-l`.
 pub async fn list_devices(server: SocketAddr) -> Result<Vec<AdbDevice>, AdbError> {
-    let mut stream = TcpStream::connect(server).await?;
+    let mut stream = connect_adb(server).await?;
     send_command(&mut stream, "host:devices-l").await?;
     let payload = read_payload(&mut stream).await?;
     Ok(parse_devices_l(&payload))
@@ -180,7 +235,7 @@ pub async fn forward_tcp(
     let mut port = if local_port == 0 { free_local_port().await? } else { local_port };
     let mut attempts = 0;
     loop {
-        let mut stream = TcpStream::connect(server).await?;
+        let mut stream = connect_adb(server).await?;
         let cmd = format!("host-serial:{serial}:forward:tcp:{port};tcp:{remote_port}");
         match send_command(&mut stream, &cmd).await {
             Ok(()) => return Ok(port),
@@ -221,7 +276,7 @@ pub async fn shell(server: SocketAddr, serial: &str, command: &str) -> Result<Tc
     if !is_serial_allowed(serial) {
         return Err(AdbError::BlockedSerial(serial.to_owned()));
     }
-    let mut stream = TcpStream::connect(server).await?;
+    let mut stream = connect_adb(server).await?;
     send_command(&mut stream, &format!("host:transport:{serial}")).await?;
     send_command(&mut stream, &format!("shell:{command}")).await?;
     Ok(stream)
@@ -232,7 +287,7 @@ pub async fn kill_forward_tcp(server: SocketAddr, serial: &str, local_port: u16)
     if !is_serial_allowed(serial) {
         return Err(AdbError::BlockedSerial(serial.to_owned()));
     }
-    let mut stream = TcpStream::connect(server).await?;
+    let mut stream = connect_adb(server).await?;
     let cmd = format!("host-serial:{serial}:killforward:tcp:{local_port}");
     send_command(&mut stream, &cmd).await?;
     Ok(())
@@ -250,13 +305,18 @@ where
 {
     let mut stream = tokio::select! {
         _ = cancel.cancelled() => return Ok(()),
-        res = TcpStream::connect(server) => res?,
+        res = connect_adb(server) => res?,
     };
     send_command(&mut stream, "host:track-devices").await?;
     loop {
+        let mut len_hex = [0u8; 4];
+        tokio::select! {
+            _ = cancel.cancelled() => return Ok(()),
+            res = stream.read_exact(&mut len_hex) => { res?; }
+        };
         let payload = tokio::select! {
             _ = cancel.cancelled() => return Ok(()),
-            res = read_payload(&mut stream) => res?,
+            res = with_adb_timeout(read_payload_after_len(&mut stream, &len_hex)) => res?,
         };
         on_change(parse_devices_l(&payload));
     }
@@ -296,7 +356,11 @@ mod tests {
         }
         for serial in [
             "",
+            " emulator-5554",
+            "emulator-5554 ",
             "a;b",
+            "x:kill",
+            "x:forward:tcp",
             "x:forward:tcp:1;tcp:2",
             "a b",
             "a
@@ -518,6 +582,20 @@ emulator-5554          device product:sdk_gphone64_x86_64 model:Pixel_9 device:e
         assert!(recorded.iter().any(|c| c == &format!("host-serial:emulator-5554:killforward:tcp:{port}")));
         assert!(recorded.iter().any(|c| c == "host:track-devices"));
 
+        srv.abort();
+    }
+
+    #[tokio::test]
+    async fn hung_adb_server_times_out() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let srv = tokio::spawn(async move {
+            let (_socket, _) = listener.accept().await.unwrap();
+            std::future::pending::<()>().await;
+        });
+
+        let err = list_devices(addr).await.unwrap_err();
+        assert!(matches!(err, AdbError::Io(ref e) if e.kind() == std::io::ErrorKind::TimedOut));
         srv.abort();
     }
 }
