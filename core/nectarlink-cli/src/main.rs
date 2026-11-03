@@ -2936,7 +2936,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     let thumbs =
                         node.photo_thumbs(id, ids.clone()).await.context("can't fetch thumbnails")?;
                     for t in thumbs {
-                        let safe = t.id.replace(':', "-");
+                        let safe = t.id.replace([':', '/', '\\'], "-");
                         let path = dir.join(format!("{safe}.jpg"));
                         std::fs::write(&path, &t.data).context("can't write thumbnail")?;
                         println!("{} ({} B) -> {}", t.id, t.data.len(), path.display());

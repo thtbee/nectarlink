@@ -53,12 +53,17 @@ pub(crate) async fn list(
     if query.as_ref().is_some_and(|q| q.len() > contacts::MAX_QUERY_BYTES) {
         return Err(Error::TooLarge);
     }
-    let env = Envelope::new(
-        types::CONTACTS_LIST,
-        &ContactsListGet { query, offset, limit: limit.clamp(1, contacts::MAX_PAGE) },
-    )?;
-    let ContactsList { contacts } =
+    let limit = limit.clamp(1, contacts::MAX_PAGE);
+    let env = Envelope::new(types::CONTACTS_LIST, &ContactsListGet { query, offset, limit })?;
+    let ContactsList { mut contacts } =
         session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect_body(types::CONTACTS_LIST)?;
+    contacts.truncate(limit as usize);
+    for c in &mut contacts {
+        c.numbers.truncate(contacts::MAX_NUMBERS);
+        if c.photo.as_ref().is_some_and(|p| p.len() > contacts::MAX_PHOTO_BYTES) {
+            c.photo = None;
+        }
+    }
     Ok(contacts)
 }
 
