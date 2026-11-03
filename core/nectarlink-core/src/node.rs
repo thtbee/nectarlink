@@ -197,6 +197,8 @@ pub(crate) struct Shared {
     pub(crate) deck: crate::deck::Current,
     /// Stop signals for phone screens shown here, by phone.
     pub(crate) mirror_stops: Mutex<HashMap<MirrorStop, Arc<tokio::sync::Notify>>>,
+    /// Active outgoing mirror session IDs requested by peers (`(peer, session)`).
+    pub(crate) outgoing_mirror_sessions: Mutex<std::collections::HashSet<(DeviceId, u32)>>,
     /// Peers granted one-time reverse-mirror consent for the current session.
     pub(crate) pc_mirror_sessions: Mutex<std::collections::HashSet<DeviceId>>,
     /// Play on phone offers this PC made, by phone: the player and when.
@@ -807,8 +809,7 @@ impl Shared {
     }
 
     pub(crate) fn is_usb_addr_for(&self, peer: &DeviceId, addr: &SocketAddr) -> bool {
-        addr.ip().to_canonical().is_loopback()
-            && lock(&self.usb_bridge_ports).get(&addr.port()) == Some(peer)
+        addr.ip().to_canonical().is_loopback() && lock(&self.usb_bridge_ports).get(&addr.port()) == Some(peer)
     }
 
     pub(crate) fn usb_peer_addr(&self, peer: &DeviceId) -> Option<SocketAddr> {
@@ -819,10 +820,7 @@ impl Shared {
         if let Some(addr) = self.usb_peer_addr(peer) {
             return Some((addr, false));
         }
-        lock(&self.usb_pending)
-            .values()
-            .find(|p| &p.peer == peer)
-            .map(|p| (p.bridge_addr, true))
+        lock(&self.usb_pending).values().find(|p| &p.peer == peer).map(|p| (p.bridge_addr, true))
     }
 
     /// Whether `peer` is a PC this phone is plugged into: the PC dials through the cable.
@@ -848,8 +846,7 @@ impl Shared {
     /// USB tunnel only once authenticated.
     pub(crate) async fn verify_usb_connection(self: &Arc<Self>, conn: &Connection) -> bool {
         let peer = crate::device_id(&conn.remote_id());
-        let has_pending_for_peer =
-            || lock(&self.usb_pending).values().any(|p| p.peer == peer);
+        let has_pending_for_peer = || lock(&self.usb_pending).values().any(|p| p.peer == peer);
         let max_iters = if has_pending_for_peer() { 25 } else { 1 };
         for i in 0..max_iters {
             let mut matched_ports = Vec::new();
@@ -1278,6 +1275,7 @@ impl Shared {
         lock(&self.watch_offers).remove(peer);
         self.stop_mic(peer);
         self.stop_showing_all(peer);
+        self.take_outgoing_mirror_sessions(peer);
         // Unpaired, it's a LocalSend device like any other again.
         if lock(&self.paired_localsend).remove(peer).is_some() {
             self.emit(NodeEvent::LocalSendChanged);
@@ -1460,6 +1458,19 @@ impl Shared {
                 self.set_link(ended.peer, LinkState::Offline { last_seen: Some(crate::now_unix()) });
             }
             drop(sessions);
+            self.stop_showing_all(&ended.peer);
+            self.stop_webcam(&ended.peer);
+            self.stop_mic(&ended.peer);
+            let outgoing = self.take_outgoing_mirror_sessions(&ended.peer);
+            if !outgoing.is_empty() {
+                let peer = ended.peer;
+                let platform = self.platform.clone();
+                tokio::task::spawn_blocking(move || {
+                    for session_id in outgoing {
+                        platform.mirror_stop_requested(&peer, session_id);
+                    }
+                });
+            }
             let _ = self.store.clear_send_queue_retry_delays(&ended.peer);
             self.queue_notify.notify_waiters();
         }
@@ -1903,6 +1914,7 @@ impl Node {
             tasks: Default::default(),
             deck: Default::default(),
             mirror_stops: Mutex::new(HashMap::new()),
+            outgoing_mirror_sessions: Mutex::new(std::collections::HashSet::new()),
             pc_mirror_sessions: Mutex::new(std::collections::HashSet::new()),
             watch_offers: Mutex::new(HashMap::new()),
             webcam_stops: Mutex::new(HashMap::new()),
@@ -2330,16 +2342,27 @@ impl Node {
             if toggle == crate::mirror::PC_MIRROR_TOGGLE {
                 lock(&self.shared.pc_mirror_sessions).remove(&peer);
             }
-            self.shared.stop_showing_all(&peer);
+            let mut sessions_to_stop = self.shared.stop_showing_all(&peer);
+            for s in self.shared.take_outgoing_mirror_sessions(&peer) {
+                if !sessions_to_stop.contains(&s) {
+                    sessions_to_stop.push(s);
+                }
+            }
+            if !sessions_to_stop.contains(&crate::MIRROR_SCREEN) {
+                sessions_to_stop.push(crate::MIRROR_SCREEN);
+            }
             let platform = self.shared.platform.clone();
-            drop(
-                self.shared
-                    .runtime
-                    .spawn_blocking(move || platform.mirror_stop_requested(&peer, crate::MIRROR_SCREEN)),
-            );
+            let local_sessions = sessions_to_stop.clone();
+            drop(self.shared.runtime.spawn_blocking(move || {
+                for s in local_sessions {
+                    platform.mirror_stop_requested(&peer, s);
+                }
+            }));
             if let Some(session) = self.shared.session(&peer) {
                 self.shared.runtime.spawn(async move {
-                    let _ = crate::mirror::stop(&session, crate::MIRROR_SCREEN).await;
+                    for s in sessions_to_stop {
+                        let _ = crate::mirror::stop(&session, s).await;
+                    }
                 });
             }
         }
