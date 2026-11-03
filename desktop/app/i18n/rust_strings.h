@@ -500,6 +500,8 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Updater", "NectarLink is still on the version you had. Try again from Settings."), // desktop/app/src/updater.rs
     QT_TRANSLATE_NOOP("Updater", "NectarLink is up to date."), // desktop/app/src/updater.rs
     QT_TRANSLATE_NOOP("Updater", "NectarLink is updated to %1"), // desktop/app/src/updater.rs
+    QT_TRANSLATE_NOOP("Updater", "Nightly %1"), // desktop/app/src/updater.rs
+    QT_TRANSLATE_NOOP("Updater", "Nightly %1 (%2)"), // desktop/app/src/updater.rs
     QT_TRANSLATE_NOOP("Updater", "The download was damaged, so it wasn't installed. Try again."), // desktop/app/src/updater.rs
     QT_TRANSLATE_NOOP("Updater", "The update couldn't be downloaded. Check your internet connection and try again."), // desktop/app/src/updater.rs
     QT_TRANSLATE_NOOP("Updater", "The update couldn't be saved. Check that there's free space and try again."), // desktop/app/src/updater.rs
