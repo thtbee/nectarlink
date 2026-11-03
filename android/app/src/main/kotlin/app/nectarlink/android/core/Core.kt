@@ -259,6 +259,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     @Volatile private var networkChange: Job? = null
     private val lifecycleMutex = Mutex()
     private val startGuard = StartGuard()
+    @Volatile private var activeStartSeq = 0
     private val wakeTimers = java.util.concurrent.ConcurrentHashMap<String, Job>()
 
     @Volatile private var lastBattery: app.nectarlink.core.Battery? = null
@@ -398,10 +399,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * two nodes with one identity, which kept taking the PC from each other.
      */
     fun start() {
+        val token = startGuard.beginStart()
         scope.launch(Dispatchers.IO) {
             lifecycleMutex.withLock {
-                if (node != null || startJob?.isActive == true) return@withLock
-                val token = startGuard.beginStart()
+                if (startGuard.isCancelled(token) || node != null || startJob?.isActive == true) return@withLock
+                activeStartSeq = token.startSeq
                 val currentRun = Job()
                 runJob = currentRun
                 val currentRunScope = CoroutineScope(scope.coroutineContext + currentRun)
@@ -450,11 +452,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 emptyList()
             }
             val initialQueue = runCatching { started.sendQueue(null).map { it.toUi() } }.getOrDefault(emptyList())
-            localsendMulticast?.runCatching { if (lsEnabled) acquire() else release() }
+            updateLocalSendMulticast(lsEnabled)
             pruneOldTempCaches()
             _state.update {
                 it.withDevices(devices, pcToggles.storageAllowed, pcToggles.micOff).copy(
-                    status = CoreStatus.Ready(started.deviceId()),
                     sendQueue = initialQueue,
                     clipboardHistoryEnabled = clipHistEnabled,
                     clipboardHistory = clipHist,
@@ -466,6 +467,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     awayMode = initialAwayMode,
                     localsendPeers = lsPeers,
                 )
+            }
+            if (devices.isNotEmpty()) ConnectionService.start(context)
+            val companionAssociated = PcCompanion.isAssociated(context)
+            if (companionAssociated && devices.isNotEmpty()) {
+                PcCompanion.startObservingPresence(context)
+            }
+            _state.update {
+                it.copy(status = CoreStatus.Ready(started.deviceId()))
             }
             NotificationListener.instance?.refreshActive()
             refreshDataRetention()
@@ -527,11 +536,6 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                         first = false
                         app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context, _state.value)
                     }
-            }
-            if (devices.isNotEmpty()) ConnectionService.start(context)
-            val companionAssociated = PcCompanion.isAssociated(context)
-            if (companionAssociated) {
-                PcCompanion.startObservingPresence(context)
             }
             val initialInputEnabled = InputService.running || InputService.enabled(context)
             val initialElevated = Elevated.running
@@ -602,9 +606,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * Non-blocking and safe to call from any thread.
      */
     fun stop() {
-        startGuard.stop()
+        val stopSeq = startGuard.recordStop()
         scope.launch(Dispatchers.IO) {
             lifecycleMutex.withLock {
+                if (activeStartSeq > stopSeq) return@withLock
                 val activeJob = startJob
                 val activeRun = runJob
                 if (activeJob == null && node == null && activeRun == null) return@withLock
@@ -639,10 +644,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     photos.stop()
                     phoneMedia.stop()
                     pcSpeakerPlayer.stop()
+                    ringer.stopRinging()
                 }
 
                 lastReportedBattery = null
-                localsendMulticast?.runCatching { release() }
+                pairingMulticast?.runCatching { if (isHeld) release() }
+                localsendMulticast?.runCatching { if (isHeld) release() }
                 wakeTimers.values.forEach { it.cancel() }
                 wakeTimers.clear()
 
@@ -812,6 +819,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 lastTransferUiEmitMs.remove(transfer.id)
             }
         }
+        val removedName = if (event is Event.DeviceRemoved) _state.value.nameOf(event.id) else null
         if (event.affectsCoreState()) {
             _state.update { it.reduce(event) }
         }
@@ -838,6 +846,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 event.sampleRate.toInt(),
                 event.channels.toInt(),
                 event.pcm,
+                event.id,
             )
             is Event.PcMirrorConfig -> {
                 _pcMirrorConfig.value = PcMirrorConfigState(
@@ -874,7 +883,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     scope.launch(Dispatchers.Default) {
                         pcMedia.update(event.id, "", emptyList())
                     }
-                    pcSpeakerPlayer.stop()
+                    pcSpeakerPlayer.stopForPc(event.id)
                     if (_pcMirrorConfig.value?.pcId == event.id) {
                         _pcMirrorConfig.value = null
                     }
@@ -903,14 +912,19 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     pcMedia.update(event.id, "", emptyList())
                     pcNotificationPoster.cancelAll(event.id)
                 }
-                pcSpeakerPlayer.stop()
+                pcSpeakerPlayer.stopForPc(event.id)
+                if (_state.value.ringingFrom == null) {
+                    ringer.stopRinging()
+                }
                 if (_pcMirrorConfig.value?.pcId == event.id) {
                     _pcMirrorConfig.value = null
                 }
                 if (lastPcMirrorKeyframe?.pcId == event.id) {
                     lastPcMirrorKeyframe = null
                 }
-                if (_state.value.devices.isEmpty()) ConnectionService.stop(context)
+                val noDevicesRemaining = _state.value.devices.isEmpty()
+                PcCompanion.disassociateForRemovedPc(context, removedName, noDevicesRemaining)
+                if (noDevicesRemaining) ConnectionService.stop(context)
             }
             is Event.Paired -> ConnectionService.start(context)
             is Event.ClipboardReceived -> scope.launch(Dispatchers.IO) { onClipboardReceived(event.id) }
@@ -1458,6 +1472,18 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
+    internal fun onScreenInteractiveChanged(interactive: Boolean) {
+        updateLocalSendMulticast(_state.value.localsendEnabled, interactive)
+    }
+
+    private fun updateLocalSendMulticast(
+        enabled: Boolean,
+        interactive: Boolean = context.getSystemService(android.os.PowerManager::class.java)?.isInteractive != false,
+    ) {
+        val shouldHold = enabled && interactive && isRunning
+        localsendMulticast?.runCatching { if (shouldHold) { if (!isHeld) acquire() } else if (isHeld) release() }
+    }
+
     fun setLocalSendEnabled(enabled: Boolean) {
         scope.launch(Dispatchers.IO) {
             startJob?.join()
@@ -1467,7 +1493,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             } catch (e: NectarlinkException) {
                 _messages.tryEmit(describe(e))
             }
-            localsendMulticast?.runCatching { if (enabled) acquire() else release() }
+            updateLocalSendMulticast(enabled)
             syncLocalSendState()
         }
     }
@@ -1489,7 +1515,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         } else {
             emptyList()
         }
-        localsendMulticast?.runCatching { if (enabled) acquire() else release() }
+        updateLocalSendMulticast(enabled)
         _state.update { it.copy(localsendEnabled = enabled, localsendPeers = peers) }
     }
 
@@ -2508,7 +2534,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     /** Stops this phone ringing. */
     fun stopRinging() {
         ringer.stopRinging()
-        _state.update { it.copy(ringingFrom = null) }
+        _state.update { it.copy(ringingFrom = null, ringingPeerId = null) }
     }
 
     /** Records whether `pcId` is currently typing on this phone without mirroring. */

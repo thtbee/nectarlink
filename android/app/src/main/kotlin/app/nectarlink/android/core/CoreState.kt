@@ -182,6 +182,8 @@ data class CoreState(
     val pairing: PairingState = PairingState.Idle,
     /** Name of the device making this phone ring, or null. */
     val ringingFrom: String? = null,
+    /** ID of the device making this phone ring, or null. */
+    val ringingPeerId: String? = null,
     /** Whether the user let NectarLink read notifications (to mirror them). */
     val notificationAccess: Boolean = false,
     /** Whether Android lets NectarLink reach the local network (Android 17). */
@@ -306,6 +308,8 @@ data class CoreState(
         devices = devices.map { d ->
             if (d.online) d.copy(link = Link.Offline(System.currentTimeMillis() / 1000L), wakeState = WakeState.Idle) else d
         }.sortedWith(deviceOrder),
+        ringingFrom = null,
+        ringingPeerId = null,
         keyboardFromPc = emptySet(),
         micRequestFrom = null,
     )
@@ -316,15 +320,19 @@ data class CoreState(
             val device = event.device.toDevice()
             copy(devices = (devices.filterNot { it.id == device.id } + device).sortedWith(deviceOrder))
         }
-        is Event.DeviceRemoved -> copy(
-            devices = devices.filterNot { it.id == event.id },
-            sendQueue = sendQueue.filterNot { it.peerId == event.id },
-            ringingFrom = if (ringingFrom == nameOf(event.id)) null else ringingFrom,
-            storageRequestedFrom = if (storageRequestedFrom == event.id) null else storageRequestedFrom,
-            webcamRequest = if (webcamRequest?.pcId == event.id) null else webcamRequest,
-            micRequestFrom = if (micRequestFrom == event.id) null else micRequestFrom,
-            keyboardFromPc = keyboardFromPc - event.id,
-        )
+        is Event.DeviceRemoved -> {
+            val clearRing = ringingPeerId == event.id || (ringingPeerId == null && ringingFrom == nameOf(event.id))
+            copy(
+                devices = devices.filterNot { it.id == event.id },
+                sendQueue = sendQueue.filterNot { it.peerId == event.id },
+                ringingFrom = if (clearRing) null else ringingFrom,
+                ringingPeerId = if (clearRing) null else ringingPeerId,
+                storageRequestedFrom = if (storageRequestedFrom == event.id) null else storageRequestedFrom,
+                webcamRequest = if (webcamRequest?.pcId == event.id) null else webcamRequest,
+                micRequestFrom = if (micRequestFrom == event.id) null else micRequestFrom,
+                keyboardFromPc = keyboardFromPc - event.id,
+            )
+        }
         is Event.LinkChanged -> {
             val prev = device(event.id)
             if (prev == null) {
@@ -365,6 +373,8 @@ data class CoreState(
                 model = event.info.model,
                 accent = event.info.accent ?: it.accent,
             )
+        }.let { updated ->
+            if (updated.ringingPeerId == event.id) updated.copy(ringingFrom = event.info.name) else updated
         }
         is Event.PeerPowerChanged -> update(event.id) { it.copy(power = event.power) }
         is Event.WakeInfoChanged -> update(event.id) {
@@ -378,7 +388,10 @@ data class CoreState(
         is Event.Capabilities -> update(event.id) { it.copy(features = event.features) }
         is Event.DeckLayout -> update(event.id) { it.copy(deckLayout = event.layout) }
         is Event.DeckState -> update(event.id) { it.copy(deckState = event.state) }
-        is Event.Ring -> copy(ringingFrom = if (event.on) nameOf(event.id) ?: "" else null)
+        is Event.Ring -> copy(
+            ringingFrom = if (event.on) nameOf(event.id) ?: "" else null,
+            ringingPeerId = if (event.on) event.id else null,
+        )
         is Event.Discovered -> copy(discovered = discovered.filterNot { it.id == event.device.id } + event.device)
         is Event.DiscoveryExpired -> copy(discovered = discovered.filterNot { it.id == event.id })
         is Event.PairingCode -> copy(pairing = PairingState.Comparing(event.peer, event.code))

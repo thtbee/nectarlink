@@ -155,6 +155,7 @@ class ConnectionService : LifecycleService() {
      */
     private fun setDiscoveryLock(on: Boolean) {
         multicastLock?.runCatching { if (on) { if (!isHeld) acquire() } else if (isHeld) release() }
+        (application as? NectarlinkApplication)?.core?.onScreenInteractiveChanged(on)
     }
 
     /**

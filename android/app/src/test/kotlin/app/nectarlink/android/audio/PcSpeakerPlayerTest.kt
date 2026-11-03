@@ -35,10 +35,14 @@ class PcSpeakerPlayerTest {
 
         assertFalse(player.playing.value)
 
-        player.playFrame(44_100, 2, ByteArray(16))
+        player.playFrame(44_100, 2, ByteArray(16), pcId = "pc-a")
         assertTrue(player.playing.value)
 
-        player.stop()
+        // Another PC disconnecting does not stop playback for pc-a.
+        player.stopForPc("pc-b")
+        assertTrue(player.playing.value)
+
+        player.stopForPc("pc-a")
         assertFalse(player.playing.value)
     }
 }

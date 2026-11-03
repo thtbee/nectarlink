@@ -30,11 +30,12 @@ class StartGuardTest {
     fun startAfterStopIsNotCancelled() {
         val guard = StartGuard()
         val firstToken = guard.beginStart()
-        guard.stop()
+        val stopSeq = guard.recordStop()
 
         val nextToken = guard.beginStart()
 
         assertTrue(guard.isCancelled(firstToken))
         assertFalse(guard.isCancelled(nextToken))
+        assertTrue(nextToken.startSeq > stopSeq)
     }
 }
