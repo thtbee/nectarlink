@@ -118,6 +118,9 @@ object BankingPause {
             putBoolean(WAS_ACCESSIBILITY, accessibility)
         }
         _paused.value = true
+        Elevated.pauseForBanking()
+        app.nectarlink.android.mirror.MirrorService.stopCurrent()
+        app.nectarlink.android.mirror.AppWindows.closeAllCurrent()
         runCatching {
             if (accessibility) setAccessibility(context, false)
             Settings.Global.putInt(resolver, WIRELESS_DEBUGGING, 0)
@@ -196,17 +199,30 @@ object BankingPause {
     class Foreground(context: Context) {
         private val usage = context.getSystemService(UsageStatsManager::class.java)
         private val power = context.getSystemService(PowerManager::class.java)
+        private val keyguard = context.getSystemService(android.app.KeyguardManager::class.java)
         /** The first read looks back an hour, to know what's in front already. */
         private var lastQueryMs = System.currentTimeMillis() - 3_600_000
+        private var wasLocked = false
         /** The app last brought to the front, as far as the events say. */
         var current: String? = null
             private set
 
-        /** Reads the events since the last call; returns the app in front (null when the screen is off). */
+        /** Reads the events since the last call; returns the app in front (or [PauseDecider.LOCKED_PACKAGE] when locked or off). */
         fun poll(): String? {
-            if (power?.isInteractive == false) return null
             val now = System.currentTimeMillis()
-            val events = runCatching { usage?.queryEvents(lastQueryMs, now) }.getOrNull()
+            if (power?.isInteractive == false || keyguard?.isKeyguardLocked == true) {
+                wasLocked = true
+                current = null
+                lastQueryMs = now
+                return PauseDecider.LOCKED_PACKAGE
+            }
+            val fromMs = if (wasLocked) {
+                wasLocked = false
+                (now - 5_000).coerceAtMost(lastQueryMs)
+            } else {
+                lastQueryMs
+            }
+            val events = runCatching { usage?.queryEvents(fromMs, now) }.getOrNull()
             lastQueryMs = now
             if (events != null) {
                 val event = UsageEvents.Event()
@@ -214,10 +230,15 @@ object BankingPause {
                     events.getNextEvent(event)
                     // ACTIVITY_RESUMED (Android 10+) has the same value.
                     @Suppress("DEPRECATION")
-                    if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) current = event.packageName
+                    if (event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                        val pkg = event.packageName
+                        if (current != null || pkg !in PauseDecider.NEUTRAL_PACKAGES) {
+                            current = pkg
+                        }
+                    }
                 }
             }
-            return current
+            return current ?: PauseDecider.LOCKED_PACKAGE
         }
     }
 

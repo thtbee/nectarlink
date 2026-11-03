@@ -45,6 +45,9 @@ class PauseDecider(
     companion object {
         const val RESUME_AFTER_MS = 3_000L
 
+        /** Reported when the phone is locked or its screen is off, so a pause ends after [RESUME_AFTER_MS]. */
+        const val LOCKED_PACKAGE = "com.android.keyguard"
+
         /** Shown over any app: the system UI and permission and install prompts. */
         val NEUTRAL_PACKAGES = setOf(
             "android",
