@@ -91,6 +91,7 @@ internal class PhonePlatform(
     private val onKeyboardFromPc: (String, Boolean) -> Unit = { _, _ -> },
 ) : Platform {
     private val context = context.applicationContext
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     override fun startRinging() = ringer.startRinging()
 
@@ -246,11 +247,14 @@ internal class PhonePlatform(
     override fun webcamKeyframeRequested(pcId: String) =
         WebcamService.keyframe(pcId)
 
-    override fun cameraCaptureRequested(pcId: String, requestId: String, mode: String): Boolean =
-        ContinuityCameraRequests.show(context, pcId, requestId, mode, nameOf(pcId))
+    override fun cameraCaptureRequested(pcId: String, requestId: String, mode: String): Boolean {
+        val pcName = nameOf(pcId)
+        mainHandler.post { ContinuityCameraRequests.show(context, pcId, requestId, mode, pcName) }
+        return true
+    }
 
     override fun cameraCaptureCancelled(pcId: String, requestId: String) {
-        ContinuityCameraRequests.cancelFromPc(context, pcId, requestId)
+        mainHandler.post { ContinuityCameraRequests.cancelFromPc(context, pcId, requestId) }
     }
 
     override fun phoneApps(): List<PhoneApp> = AppWindows.list(context)

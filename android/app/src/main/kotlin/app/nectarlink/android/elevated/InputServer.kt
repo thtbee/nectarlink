@@ -56,9 +56,21 @@ object InputServer {
     private const val VOLUME_POLL_MS = 30L
     private const val VOLUME_SETTLE_MS = 600L
     private const val MAX_VOLUME_PRESSES = 200
+    private const val AUTH_TIMEOUT_MS = 2_000
+    internal const val MAX_TOKEN_CHARS = 128
+    internal const val MAX_LINE_CHARS = 256 * 1024
+    private const val MAX_CLIENTS = 16
     // The installed package, so a build with an applicationIdSuffix (".dev")
     // grants itself and gets the attach broadcast, not the release app.
     private const val PKG = app.nectarlink.android.BuildConfig.APPLICATION_ID
+
+    private val clientPool = java.util.concurrent.ThreadPoolExecutor(
+        0,
+        MAX_CLIENTS,
+        60L,
+        java.util.concurrent.TimeUnit.SECONDS,
+        java.util.concurrent.SynchronousQueue(),
+    ) { r -> Thread(r, "nectarlink-input-client") }
 
     private val windows = java.util.Collections.synchronizedSet(LinkedHashSet<AppDisplay>())
     @Volatile private var serverSocket: ServerSocket? = null
@@ -103,7 +115,11 @@ object InputServer {
         }
         while (!server.isClosed) {
             val client = runCatching { server.accept() }.getOrNull() ?: continue
-            Thread { serve(client, token, injector) }.start()
+            try {
+                clientPool.execute { serve(client, token, injector) }
+            } catch (_: java.util.concurrent.RejectedExecutionException) {
+                runCatching { client.close() }
+            }
         }
     }
 
@@ -327,29 +343,32 @@ object InputServer {
     private fun serve(client: Socket, token: String, injector: Injector) {
         client.use {
             client.tcpNoDelay = true
-            client.soTimeout = 0
+            client.soTimeout = AUTH_TIMEOUT_MS
             val reader = client.inputStream.bufferedReader()
             // Compared in constant time: the token is the only key.
-            val given = runCatching { reader.nextLine() }.getOrNull() ?: return
+            val given = runCatching { reader.nextLine(MAX_TOKEN_CHARS) }.getOrNull() ?: return
             if (!MessageDigest.isEqual(given.toByteArray(), token.toByteArray())) return
-            val first = runCatching { reader.nextLine() }.getOrNull()
+            val first = runCatching { reader.nextLine(MAX_LINE_CHARS) }.getOrNull()
+            client.soTimeout = 0
             if (first != null && first.startsWith("V ")) return appWindow(client, first, reader)
             if (first == "A") return streamDeviceAudio(client.getOutputStream(), injector)
             val writer = java.io.OutputStreamWriter(client.getOutputStream(), Charsets.UTF_8)
             controlOut = writer
             try {
-                var line: String? = if (first == "H") runCatching { reader.nextLine() }.getOrNull() else first
+                var line: String? = if (first == "H") runCatching { reader.nextLine(MAX_LINE_CHARS) }.getOrNull() else first
                 while (line != null) {
                     val input = line
                     if (input != "H") {
                         runCatching { injector.handle(input) }.onFailure { System.err.println("input failed: $it") }
                     }
-                    line = runCatching { reader.nextLine() }.getOrNull()
+                    line = runCatching { reader.nextLine(MAX_LINE_CHARS) }.getOrNull()
                 }
             } finally {
-                if (controlOut === writer) controlOut = null
-                if (displayTurnedOff) runCatching { setDisplayPower(true) }
-                shutdown()
+                if (controlOut === writer) {
+                    controlOut = null
+                    if (displayTurnedOff) runCatching { setDisplayPower(true) }
+                    shutdown()
+                }
             }
         }
     }
@@ -627,15 +646,18 @@ object InputServer {
 
     /**
      * Reads until `\n` (ignoring bare `\r` as a line break so embedded `\r`
-     * in typed text can never start a second command).
+     * in typed text can never start a second command), capped at [maxChars].
      */
-    private fun java.io.Reader.nextLine(): String? {
+    internal fun java.io.Reader.nextLine(maxChars: Int = MAX_LINE_CHARS): String? {
         val sb = StringBuilder()
         while (true) {
             val ch = read()
             if (ch < 0) return if (sb.isEmpty()) null else sb.toString()
             if (ch == '\n'.code) return sb.toString()
-            if (ch != '\r'.code) sb.append(ch.toChar())
+            if (ch != '\r'.code) {
+                if (sb.length >= maxChars) throw java.io.IOException("line too long")
+                sb.append(ch.toChar())
+            }
         }
     }
 
@@ -852,8 +874,9 @@ object InputServer {
             val lt = tokens[5].toIntOrNull() ?: return
             val rt = tokens[6].toIntOrNull() ?: return
 
-            if (display < 0) {
-                UhidBridge.sendGamepadReport(buttons, lx, ly, rx, ry, lt, rt)
+            if (display < 0 && UhidBridge.sendGamepadReport(buttons, lx, ly, rx, ry, lt, rt)) {
+                lastGamepadButtons = buttons
+                return
             }
 
             val now = SystemClock.uptimeMillis()
@@ -976,7 +999,7 @@ object InputServer {
             "cmd wifi start-softap",
             "cmd wifi stop-softap",
             // Pause for banking apps: seeing which app is in front.
-            "appops set app.nectarlink GET_USAGE_STATS allow",
+            "appops set $PKG GET_USAGE_STATS allow",
             // Fast starts right after an install or update.
             COMPILE_APP_COMMAND,
             // Start without asking: the camera or microphone a chosen PC asked for.

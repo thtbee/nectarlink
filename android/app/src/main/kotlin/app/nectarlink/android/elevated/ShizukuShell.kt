@@ -258,7 +258,13 @@ class ShizukuShell(context: Context) : Binder() {
     }
 
     private fun stopHelper() {
-        helper?.let { runCatching { it.destroyForcibly() } }
+        helper?.let { proc ->
+            runCatching {
+                if (!proc.waitFor(250, TimeUnit.MILLISECONDS)) {
+                    proc.destroyForcibly()
+                }
+            }
+        }
         helper = null
     }
 
