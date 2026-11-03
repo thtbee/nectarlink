@@ -293,6 +293,7 @@ download() {
 install_tarball_dependencies() {
     if has pacman; then
         admin pacman -S --needed --noconfirm libglvnd libx11 libxcb libxkbcommon wayland fontconfig freetype2 dbus \
+            fuse3 openh264 libpulse libxtst wl-clipboard xclip xdg-utils polkit curl \
             || note "Some libraries didn't install; NectarLink may not start until they do."
     else
         say "Make sure OpenGL, X11 or Wayland, fontconfig, freetype and D-Bus libraries are installed."
