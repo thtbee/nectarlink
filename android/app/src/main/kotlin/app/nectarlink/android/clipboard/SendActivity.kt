@@ -109,15 +109,6 @@ class SendActivity : ComponentActivity() {
         }
     }
 
-    private fun canCallerReadStream(uri: Uri, callerUid: Int): Boolean {
-        val auth = uri.authority ?: return false
-        val provider = runCatching { packageManager.resolveContentProvider(auth, 0) }.getOrNull() ?: return false
-        if (provider.applicationInfo.uid == applicationInfo.uid) return false
-        if (provider.applicationInfo.uid == callerUid) return true
-        return checkUriPermission(uri, 0, callerUid, Intent.FLAG_GRANT_READ_URI_PERMISSION) ==
-            PackageManager.PERMISSION_GRANTED
-    }
-
     private fun grantedUrisInIntent(intent: Intent): Set<Uri> = buildSet {
         intent.data?.let { add(it) }
         val clip = intent.clipData
@@ -128,9 +119,18 @@ class SendActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Only streams the sharing app granted us (Android adds the grant and the
+     * ClipData for every shared stream), and never from providers holding
+     * messages, contacts or settings, or our own: so another app can't make
+     * us send what it couldn't read itself. No check of the sharer's own
+     * access: MediaProvider enforces that inside, so Android can't answer it
+     * for a gallery sharing its photos, and refusing those would break the
+     * share sheet.
+     */
     private fun allowedIncomingStreams(intent: Intent, raw: List<Uri>): List<Uri> {
         val hasGrantFlag = (intent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0
-        val filtered = filterGrantedStreamUris(
+        return filterGrantedStreamUris(
             hasReadGrantFlag = hasGrantFlag,
             streams = raw,
             clipUris = grantedUrisInIntent(intent),
@@ -138,13 +138,6 @@ class SendActivity : ComponentActivity() {
             authorityOf = { it.authority },
             appPackage = packageName,
         )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val uid = launchedFromUid
-            if (uid > 0 && uid != Process.myUid() && !isSystemUid(uid)) {
-                return filtered.filter { canCallerReadStream(it, uid) }
-            }
-        }
-        return filtered
     }
 
     private fun parseSharePayload(intent: Intent): SharePayload? = when (intent.action) {
