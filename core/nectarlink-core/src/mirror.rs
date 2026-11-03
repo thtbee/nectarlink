@@ -316,11 +316,13 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
     }
     let _ = recv.stop(VarInt::from_u32(mirror::STOPPED));
     let _ = send.finish();
-    sink.ended();
     if let Some(row_id) = tl_row {
         shared.finish_timeline_session(row_id, started_at.elapsed().as_secs().max(1));
     }
-    shared.emit(NodeEvent::Mirroring { device: peer, session: mirroring, on: false });
+    if shared.clear_mirror_stop(&peer, mirroring, mirror::OP_VIDEO, &stopped) {
+        sink.ended();
+        shared.emit(NodeEvent::Mirroring { device: peer, session: mirroring, on: false });
+    }
 }
 
 /// A phone opened a sound stream (its header already read).
@@ -333,8 +335,13 @@ pub(crate) async fn receive_audio(
     // Sound comes with the screen, or on its own (`MirrorStart::sound_only`);
     // the app gives a sink for either.
     let listens = shared.we_offer(mirror::LISTEN);
-    let sink = listens.then(|| shared.platform.mirror_sink(&peer, mirror::SCREEN)).flatten();
-    let Some(sink) = sink.filter(|_| shared.toggle_on(&peer, TOGGLE)) else {
+    let allowed = if is_local_desktop(&shared) {
+        shared.toggle_on(&peer, TOGGLE)
+    } else {
+        shared.store.toggle(&peer, PC_MIRROR_TOGGLE).ok().flatten().unwrap_or(true)
+    };
+    let sink = (listens && allowed).then(|| shared.platform.mirror_sink(&peer, mirror::SCREEN)).flatten();
+    let Some(sink) = sink else {
         let _ = send.reset(VarInt::from_u32(mirror::STOPPED));
         let _ = recv.stop(VarInt::from_u32(mirror::STOPPED));
         return;
@@ -363,7 +370,9 @@ pub(crate) async fn receive_audio(
     }
     let _ = recv.stop(VarInt::from_u32(mirror::STOPPED));
     let _ = send.finish();
-    sink.audio_ended();
+    if shared.clear_mirror_stop(&peer, mirror::SCREEN, mirror::OP_AUDIO, &stopped) {
+        sink.audio_ended();
+    }
 }
 
 // ---- The phone ----
@@ -404,11 +413,15 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             } else if !shared.we_offer(needs) {
                 Envelope::error(ErrorCode::Unsupported, "this device doesn't share that")
             } else {
+                let requested_session = options.session;
                 match tokio::task::spawn_blocking(move || platform.mirror_requested(&peer, &options))
                     .await
                     .unwrap_or_else(|e| Err(e.to_string()))
                 {
-                    Ok(()) => Envelope::empty(types::OK),
+                    Ok(()) => {
+                        shared.record_outgoing_mirror_session(peer, requested_session);
+                        Envelope::empty(types::OK)
+                    }
                     Err(reason) => {
                         tracing::warn!(reason, "can't ask to share the screen");
                         if desktop {
@@ -425,6 +438,7 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let MirrorSession { session: mirroring } = env.body()?;
             // The PC's side: stop showing; the phone's: stop sharing.
             shared.stop_showing(&peer, mirroring);
+            shared.remove_outgoing_mirror_session(&peer, mirroring);
             if mirroring == mirror::SCREEN {
                 shared.pc_mirror_sessions.lock().unwrap_or_else(|e| e.into_inner()).remove(&peer);
                 // Watching stopped: the phone may come back to it for a while
@@ -475,7 +489,8 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let has_cap = shared.we_offer(needs);
             let allowed = mirror_on && remote_input_on && has_cap;
             if allowed && input.is_valid() {
-                platform.mirror_input(&peer, mirroring, input);
+                let _ =
+                    tokio::task::spawn_blocking(move || platform.mirror_input(&peer, mirroring, input)).await;
             } else if mirroring == mirror::SCREEN && mirror_on && input.is_valid() {
                 if desktop {
                     if !remote_input_on {
@@ -567,9 +582,11 @@ impl MirrorStream {
         if self.closed.load(Ordering::Acquire) {
             return MirrorSend::Closed;
         }
-        let mut resyncing = self.resyncing.lock().unwrap_or_else(|e| e.into_inner());
-        if *resyncing && kind == PacketKind::Frame && !self.audio {
-            return MirrorSend::NeedKeyframe;
+        {
+            let resyncing = self.resyncing.lock().unwrap_or_else(|e| e.into_inner());
+            if *resyncing && kind == PacketKind::Frame && !self.audio {
+                return MirrorSend::NeedKeyframe;
+            }
         }
         let sent = if kind == PacketKind::Config {
             self.queue.blocking_send((kind, time_us, data)).map_err(|_| ())
@@ -582,14 +599,14 @@ impl MirrorStream {
         match sent {
             Ok(()) => {
                 if kind == PacketKind::Keyframe {
-                    *resyncing = false;
+                    *self.resyncing.lock().unwrap_or_else(|e| e.into_inner()) = false;
                 }
                 MirrorSend::Queued
             }
             Err(()) if self.closed.load(Ordering::Acquire) => MirrorSend::Closed,
             Err(()) if self.audio => MirrorSend::Dropped,
             Err(()) => {
-                *resyncing = true;
+                *self.resyncing.lock().unwrap_or_else(|e| e.into_inner()) = true;
                 MirrorSend::NeedKeyframe
             }
         }
@@ -824,7 +841,13 @@ impl MirrorStream {
                         send.write_all(&header).await?;
                         send.write_all(&data).await
                     };
-                    if written.await.is_err() {
+                    // A write that can't finish means megabytes are already waiting: the
+                    // viewer is gone or the link is hopeless, and a stop mustn't wait on it.
+                    let write_res = tokio::select! {
+                        _ = stopped.notified() => break 'stream,
+                        res = tokio::time::timeout(Duration::from_secs(5), written) => res,
+                    };
+                    if !matches!(write_res, Ok(Ok(()))) {
                         break 'stream;
                     }
                 }
@@ -856,27 +879,64 @@ impl Shared {
         signal
     }
 
+    fn clear_mirror_stop(
+        &self,
+        peer: &DeviceId,
+        mirroring: u32,
+        op: &'static str,
+        signal: &Arc<tokio::sync::Notify>,
+    ) -> bool {
+        let mut stops = self.mirror_stops.lock().unwrap_or_else(|e| e.into_inner());
+        if stops.get(&(*peer, mirroring, op)).is_some_and(|cur| Arc::ptr_eq(cur, signal)) {
+            stops.remove(&(*peer, mirroring, op));
+            true
+        } else {
+            false
+        }
+    }
+
     /// Stops showing (and playing) a mirroring of `peer` here (kept until
     /// the readers see it).
     pub(crate) fn stop_showing(&self, peer: &DeviceId, mirroring: u32) {
-        let mut stops = self.mirror_stops.lock().unwrap_or_else(|e| e.into_inner());
+        let stops = self.mirror_stops.lock().unwrap_or_else(|e| e.into_inner());
         for op in [mirror::OP_VIDEO, mirror::OP_AUDIO] {
-            if let Some(signal) = stops.remove(&(*peer, mirroring, op)) {
+            if let Some(signal) = stops.get(&(*peer, mirroring, op)) {
                 signal.notify_one();
             }
         }
     }
 
-    /// Stops showing (and playing) all mirror sessions of `peer` here.
-    pub(crate) fn stop_showing_all(&self, peer: &DeviceId) {
-        let mut stops = self.mirror_stops.lock().unwrap_or_else(|e| e.into_inner());
-        let keys: Vec<(DeviceId, u32, &'static str)> =
-            stops.keys().filter(|(p, _, _)| p == peer).copied().collect();
-        for key in keys {
-            if let Some(signal) = stops.remove(&key) {
+    /// Stops showing (and playing) all mirror sessions of `peer` here and
+    /// returns the session IDs that were active.
+    pub(crate) fn stop_showing_all(&self, peer: &DeviceId) -> Vec<u32> {
+        let stops = self.mirror_stops.lock().unwrap_or_else(|e| e.into_inner());
+        let mut sessions = Vec::new();
+        for ((p, mirroring, _), signal) in stops.iter() {
+            if p == peer {
                 signal.notify_one();
+                if !sessions.contains(mirroring) {
+                    sessions.push(*mirroring);
+                }
             }
         }
+        sessions
+    }
+
+    pub(crate) fn record_outgoing_mirror_session(&self, peer: DeviceId, session: u32) {
+        self.outgoing_mirror_sessions.lock().unwrap_or_else(|e| e.into_inner()).insert((peer, session));
+    }
+
+    pub(crate) fn remove_outgoing_mirror_session(&self, peer: &DeviceId, session: u32) {
+        self.outgoing_mirror_sessions.lock().unwrap_or_else(|e| e.into_inner()).remove(&(*peer, session));
+    }
+
+    pub(crate) fn take_outgoing_mirror_sessions(&self, peer: &DeviceId) -> Vec<u32> {
+        let mut set = self.outgoing_mirror_sessions.lock().unwrap_or_else(|e| e.into_inner());
+        let sessions: Vec<u32> = set.iter().filter(|(p, _)| p == peer).map(|(_, s)| *s).collect();
+        for s in &sessions {
+            set.remove(&(*peer, *s));
+        }
+        sessions
     }
 }
 
@@ -1003,5 +1063,40 @@ mod tests {
         packets.recv().await;
         // No keyframe to wait for: the next one goes.
         assert_eq!(send(PacketKind::Frame), MirrorSend::Queued);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn config_packet_wait_does_not_block_resyncing_lock() {
+        let (queue, mut packets) = mpsc::channel(1);
+        let stream = Arc::new(MirrorStream {
+            queue,
+            closed: Arc::default(),
+            stop: Arc::default(),
+            resyncing: Mutex::new(false),
+            audio: false,
+        });
+        // Fill the 1-slot queue.
+        let s1 = stream.clone();
+        assert_eq!(
+            tokio::task::spawn_blocking(move || s1.send(PacketKind::Keyframe, 0, vec![1])).await.unwrap(),
+            MirrorSend::Queued
+        );
+        // Start a blocking Config send on a background thread while the queue is full.
+        let s2 = stream.clone();
+        let config_send = tokio::task::spawn_blocking(move || s2.send(PacketKind::Config, 0, vec![2]));
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        // Another caller must still be able to lock `resyncing` and return immediately.
+        let s3 = stream.clone();
+        let frame_res = tokio::time::timeout(
+            std::time::Duration::from_millis(200),
+            tokio::task::spawn_blocking(move || s3.send(PacketKind::Frame, 0, vec![3])),
+        )
+        .await
+        .expect("Frame send must not block on resyncing lock")
+        .unwrap();
+        assert_eq!(frame_res, MirrorSend::NeedKeyframe);
+        // Drain the queue so the Config send finishes.
+        packets.recv().await;
+        assert_eq!(config_send.await.unwrap(), MirrorSend::Queued);
     }
 }
