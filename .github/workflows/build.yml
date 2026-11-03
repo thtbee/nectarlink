@@ -63,6 +63,11 @@ jobs:
       - name: Build the installer
         shell: pwsh
         run: ./scripts/package.ps1
+      - name: Check it updates the last release, keeping its data
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/smoke-upgrade.ps1
       - name: Check it installs and uninstalls
         shell: pwsh
         run: ./scripts/smoke-installer.ps1
