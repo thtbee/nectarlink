@@ -21,7 +21,10 @@ class OpenWithPauseActivity : Activity() {
         super.onCreate(savedInstanceState)
         val pkg = intent.getStringExtra(EXTRA_PACKAGE)
         if (pkg != null && pkg in BankingPause.apps(this)) {
-            BankingPause.pause(applicationContext)
+            if (BankingPause.isReady(this) && app.nectarlink.android.ui.Preferences.isBackgroundServiceEnabled(this)) {
+                app.nectarlink.android.service.ConnectionService.start(applicationContext)
+                BankingPause.pause(applicationContext)
+            }
             packageManager.getLaunchIntentForPackage(pkg)?.let { launch ->
                 runCatching { startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                     .onFailure { Log.w(TAG, "couldn't open the banking app", it) }

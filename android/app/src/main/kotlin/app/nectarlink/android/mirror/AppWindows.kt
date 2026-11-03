@@ -280,6 +280,10 @@ class AppWindows(
 
         @Volatile private var instance: AppWindows? = null
 
+        fun closeAllCurrent() {
+            instance?.closeAll()
+        }
+
         /** The apps a PC may open in windows: launchable ones, by name, with small icons. */
         fun list(context: Context): List<PhoneApp> {
             val manager = context.packageManager

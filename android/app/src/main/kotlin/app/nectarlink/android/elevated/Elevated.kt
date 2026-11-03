@@ -206,7 +206,7 @@ object Elevated {
         // it's restarted: start then, if Elevated goes through it.
         runCatching {
             ShizukuElevated.watch {
-                if (usesShizuku() && !held && !running) scope.launch { start() }
+                if (usesShizuku() && !held && !running && !BankingPause.isPaused(context)) scope.launch { start() }
             }
         }.onFailure { Log.i(TAG, "can't watch for Shizuku", it) }
         scope.launch(Dispatchers.IO) {
@@ -796,6 +796,14 @@ object Elevated {
         held = true
         cancelRetry()
         lock.withLock { stopLocked() }
+    }
+
+    /** Stops the helper while paused for a banking app; [onNetworkChanged] starts it again when resumed. */
+    fun pauseForBanking() {
+        cancelRetry()
+        scope.launch(Dispatchers.IO) {
+            lock.withLock { stopLocked() }
+        }
     }
 
     private fun stopLocked() {

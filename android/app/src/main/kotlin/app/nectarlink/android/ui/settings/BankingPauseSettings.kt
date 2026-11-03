@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +49,8 @@ import app.nectarlink.android.banking.BankingPause
 import app.nectarlink.android.banking.OpenWithPauseActivity
 import app.nectarlink.android.elevated.Elevated
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** An app the user can choose: package, name and a small icon. */
@@ -57,11 +60,27 @@ private data class Choosable(val pkg: String, val label: String, val icon: Image
 @Composable
 internal fun BankingPauseAccess() {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var chosen by remember { mutableStateOf(BankingPause.apps(context)) }
     var canChange by remember { mutableStateOf(BankingPause.canChangeSettings(context)) }
     var usage by remember { mutableStateOf(BankingPause.hasUsageAccess(context)) }
     var picking by remember { mutableStateOf(false) }
     val paused by BankingPause.paused.collectAsStateWithLifecycle()
+
+    fun refreshUsageAccess() {
+        usage = BankingPause.hasUsageAccess(context)
+        if (!usage) {
+            scope.launch {
+                repeat(10) {
+                    delay(100)
+                    if (BankingPause.hasUsageAccess(context)) {
+                        usage = true
+                        return@launch
+                    }
+                }
+            }
+        }
+    }
     // Permissions can change in Settings while NectarLink is in the background.
     LifecycleResumeEffect(Unit) {
         canChange = BankingPause.canChangeSettings(context)
@@ -94,7 +113,7 @@ internal fun BankingPauseAccess() {
                     Button(onClick = {
                         // Through Elevated when it's running, else Android's own page.
                         if (!Elevated.grantUsageAccess()) openUsageAccessSettings(context)
-                        usage = BankingPause.hasUsageAccess(context)
+                        refreshUsageAccess()
                     }) { Text(stringResource(R.string.action_allow)) }
                 }
                 paused -> Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -134,7 +153,7 @@ internal fun BankingPauseAccess() {
                 // Elevated can let NectarLink see the app in front right away.
                 if (picked.isNotEmpty() && !BankingPause.hasUsageAccess(context)) {
                     Elevated.grantUsageAccess()
-                    usage = BankingPause.hasUsageAccess(context)
+                    refreshUsageAccess()
                 }
             },
             onCancel = { picking = false },

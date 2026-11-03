@@ -61,4 +61,12 @@ class PauseDeciderTest {
         assertNull(d.decide("com.launcher", apps, paused = false, nowMs = 0))
         assertNull(d.decide("com.launcher", emptySet(), paused = false, nowMs = 60_000))
     }
+
+    @Test
+    fun lockedOrScreenOffPackageResumesAfterCountdown() {
+        val d = PauseDecider(resumeAfterMs = 3_000)
+        assertNull(d.decide(PauseDecider.LOCKED_PACKAGE, apps, paused = true, nowMs = 0))
+        assertNull(d.decide(PauseDecider.LOCKED_PACKAGE, apps, paused = true, nowMs = 2_999))
+        assertEquals(Action.RESUME, d.decide(PauseDecider.LOCKED_PACKAGE, apps, paused = true, nowMs = 3_000))
+    }
 }
