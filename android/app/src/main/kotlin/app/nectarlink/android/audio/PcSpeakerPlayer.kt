@@ -44,8 +44,15 @@ class PcSpeakerPlayer(
     @Volatile
     private var queuedBytes: Int = 0
 
-    fun playFrame(sampleRate: Int, channels: Int, pcm: ByteArray) {
+    @Volatile
+    var activePcId: String? = null
+        private set
+
+    fun playFrame(sampleRate: Int, channels: Int, pcm: ByteArray, pcId: String? = null) {
         if (pcm.isEmpty() || sampleRate <= 0 || channels <= 0) return
+        if (pcId != null) {
+            activePcId = pcId
+        }
         activity.markActive()
         if (!_playing.value) {
             _playing.value = true
@@ -77,7 +84,14 @@ class PcSpeakerPlayer(
         }
     }
 
+    fun stopForPc(pcId: String) {
+        if (activePcId == pcId) {
+            stop()
+        }
+    }
+
     fun stop() {
+        activePcId = null
         activity.reset()
         _playing.value = false
         watchdogThread?.interrupt()

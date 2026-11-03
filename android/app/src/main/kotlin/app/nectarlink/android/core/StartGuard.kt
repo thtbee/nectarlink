@@ -8,15 +8,22 @@ import java.util.concurrent.atomic.AtomicInteger
  * after they began. Multiple start calls do not cancel each other.
  */
 internal class StartGuard {
-    private val stopCount = AtomicInteger(0)
+    private val seq = AtomicInteger(0)
+    @Volatile private var latestStoppedSeq = 0
 
-    class Token internal constructor(internal val stopAtStart: Int)
+    class Token internal constructor(internal val startSeq: Int)
 
-    fun beginStart(): Token = Token(stopCount.get())
+    fun beginStart(): Token = Token(seq.incrementAndGet())
 
-    fun stop() {
-        stopCount.incrementAndGet()
+    fun recordStop(): Int {
+        val s = seq.incrementAndGet()
+        latestStoppedSeq = s
+        return s
     }
 
-    fun isCancelled(token: Token): Boolean = stopCount.get() != token.stopAtStart
+    fun stop() {
+        recordStop()
+    }
+
+    fun isCancelled(token: Token): Boolean = token.startSeq < latestStoppedSeq
 }
