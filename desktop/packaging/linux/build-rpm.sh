@@ -52,6 +52,12 @@ for f in "${ELF_FILES[@]}"; do
 done
 declare -A NEEDED=()
 for f in "${ELF_FILES[@]}"; do
+    # Optional, loaded only when what they need is there: the FFmpeg video
+    # adapters (one per libavcodec version), Qt's GTK theme and its embedded
+    # (eglfs) display plugin.
+    case "${f}" in
+        */libnectarlink-video-ffmpeg*|*/platformthemes/*|*/libqeglfs*) continue ;;
+    esac
     while read -r lib; do
         [[ -n "${lib}" && -z "${BUNDLED[${lib}]:-}" ]] && NEEDED["${lib}"]=1
     done < <(readelf -d "${f}" 2>/dev/null | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p')
@@ -61,6 +67,9 @@ REQUIRES=""
 for lib in $(printf '%s\n' "${!NEEDED[@]}" | sort); do
     # The loader is required through libc itself.
     [[ "${lib}" == ld-linux* ]] && continue
+    # Qt ships inside the package; a Qt library it doesn't bundle is only
+    # linked by the QML plugin of a module the app doesn't import.
+    [[ "${lib}" == libQt6* ]] && continue
     REQUIRES+="Requires: ${lib}${LIB_SUFFIX}"$'\n'
 done
 if [[ -n "${GLIBC}" ]]; then
