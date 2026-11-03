@@ -12,9 +12,10 @@ use windows::{
         Media::{
             KernelStreaming::{KSCATEGORY_CAPTURE, KSCATEGORY_VIDEO, KSCATEGORY_VIDEO_CAMERA},
             MediaFoundation::{
-                IMFVirtualCamera, MF_VERSION, MFSTARTUP_NOSOCKET, MFStartup, MFVirtualCameraAccess,
-                MFVirtualCameraAccess_CurrentUser, MFVirtualCameraLifetime, MFVirtualCameraLifetime_Session,
-                MFVirtualCameraType, MFVirtualCameraType_SoftwareCameraSource,
+                IMFVirtualCamera, MF_VERSION, MFSTARTUP_NOSOCKET, MFShutdown, MFStartup,
+                MFVirtualCameraAccess, MFVirtualCameraAccess_CurrentUser, MFVirtualCameraLifetime,
+                MFVirtualCameraLifetime_Session, MFVirtualCameraType,
+                MFVirtualCameraType_SoftwareCameraSource,
             },
         },
         System::{
@@ -229,7 +230,7 @@ fn create_virtual_camera() -> Option<CreateVirtualCamera> {
 
 /// Active `IMFVirtualCamera` session handle.
 pub struct VirtualCameraHandle {
-    vcam: IMFVirtualCamera,
+    vcam: Option<IMFVirtualCamera>,
 }
 
 // SAFETY: `IMFVirtualCamera` is a thread-safe COM interface.
@@ -254,7 +255,7 @@ impl VirtualCameraHandle {
             let name = HSTRING::from(FRIENDLY_NAME);
             let source = HSTRING::from(CLSID_STR);
             let mut raw = std::ptr::null_mut();
-            create(
+            if let Err(e) = create(
                 MFVirtualCameraType_SoftwareCameraSource,
                 MFVirtualCameraLifetime_Session,
                 MFVirtualCameraAccess_CurrentUser,
@@ -265,11 +266,17 @@ impl VirtualCameraHandle {
                 &mut raw,
             )
             .ok()
-            .map_err(|e| e.to_string())?;
+            {
+                let _ = MFShutdown();
+                return Err(e.to_string());
+            }
             // SAFETY: on success the out parameter holds an owned IMFVirtualCamera reference.
             let vcam = IMFVirtualCamera::from_raw(raw);
-            vcam.Start(None).map_err(|e| e.to_string())?;
-            Ok(Self { vcam })
+            let handle = Self { vcam: Some(vcam) };
+            if let Some(vcam) = &handle.vcam {
+                vcam.Start(None).map_err(|e| e.to_string())?;
+            }
+            Ok(handle)
         }
     }
 }
@@ -277,8 +284,12 @@ impl VirtualCameraHandle {
 impl Drop for VirtualCameraHandle {
     fn drop(&mut self) {
         unsafe {
-            let _ = self.vcam.Stop();
-            let _ = self.vcam.Remove();
+            if let Some(vcam) = self.vcam.take() {
+                let _ = vcam.Stop();
+                let _ = vcam.Remove();
+                drop(vcam);
+            }
+            let _ = MFShutdown();
         }
     }
 }

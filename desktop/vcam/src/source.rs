@@ -6,13 +6,13 @@
 #![allow(unsafe_code, clippy::not_unsafe_ptr_arg_deref)]
 
 use std::sync::{
-    Arc, Mutex,
+    Arc, Mutex, Weak,
     atomic::{AtomicU32, Ordering},
 };
 
 use windows::{
     Win32::{
-        Foundation::{E_INVALIDARG, E_NOTIMPL, E_POINTER, ERROR_SET_NOT_FOUND, S_OK},
+        Foundation::{E_INVALIDARG, E_POINTER, ERROR_SET_NOT_FOUND, S_OK},
         Media::{
             KernelStreaming::{
                 IKsControl, IKsControl_Impl, KSCAMERAPROFILE_Legacy, KSIDENTIFIER, PINNAME_VIDEO_CAPTURE,
@@ -151,6 +151,43 @@ struct SourceInner {
     stream: Option<IMFMediaStream>,
 }
 
+// SAFETY: Media Foundation event queues, attribute stores, presentation
+// descriptors, and `VcamMediaStream` are thread-safe MTA COM objects, and all
+// access to `SourceInner` is serialized through `SourceCore::inner`'s `Mutex`.
+unsafe impl Send for SourceInner {}
+unsafe impl Sync for SourceInner {}
+
+struct SourceCore {
+    mapping_name: String,
+    inner: Mutex<SourceInner>,
+}
+
+impl SourceCore {
+    fn is_shutdown(&self) -> bool {
+        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        guard.state == SourceState::Shutdown
+    }
+
+    fn shutdown(&self) -> windows::core::Result<()> {
+        let mut guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        if guard.state == SourceState::Shutdown {
+            return Ok(());
+        }
+        guard.state = SourceState::Shutdown;
+        if let Some(stream) = guard.stream.take() {
+            let stream_impl: &VcamMediaStream = unsafe { stream.as_impl() };
+            let _ = stream_impl.on_shutdown();
+        }
+        unsafe { guard.events.Shutdown() }
+    }
+}
+
+impl Drop for SourceCore {
+    fn drop(&mut self) {
+        let _ = self.shutdown();
+    }
+}
+
 #[implement(
     IMFMediaSourceEx,
     IMFMediaSource,
@@ -161,17 +198,19 @@ struct SourceInner {
 )]
 pub struct VcamMediaSource {
     _guard: ObjectGuard,
-    mapping_name: String,
-    inner: Mutex<SourceInner>,
+    core: Arc<SourceCore>,
 }
 
 impl std::fmt::Debug for VcamMediaSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("VcamMediaSource").field("mapping_name", &self.mapping_name).finish()
+        f.debug_struct("VcamMediaSource").field("mapping_name", &self.core.mapping_name).finish()
     }
 }
 
 impl VcamMediaSource {
+    fn is_shutdown(&self) -> bool {
+        self.core.is_shutdown()
+    }
     /// Creates a new `IMFMediaSourceEx` reading frames from `mapping_name`.
     #[allow(unsafe_code)]
     pub fn new_with_mapping(mapping_name: impl Into<String>) -> windows::core::Result<IMFMediaSourceEx> {
@@ -216,8 +255,7 @@ impl VcamMediaSource {
             let pd = MFCreatePresentationDescriptor(Some(&sds))?;
             pd.SelectStream(0)?;
 
-            let source: IMFMediaSourceEx = Self {
-                _guard: ObjectGuard::new(),
+            let core = Arc::new(SourceCore {
                 mapping_name: mapping_name.clone(),
                 inner: Mutex::new(SourceInner {
                     state: SourceState::Stopped,
@@ -227,15 +265,14 @@ impl VcamMediaSource {
                     pd,
                     stream: None,
                 }),
-            }
-            .into();
+            });
 
-            let mf_source: IMFMediaSource = source.cast()?;
-            let stream = VcamMediaStream::create(&mf_source, &sd, mapping_name)?;
-            let src_impl: &VcamMediaSource = source.as_impl();
-            if let Ok(mut guard) = src_impl.inner.lock() {
+            let stream = VcamMediaStream::create(Arc::downgrade(&core), &sd, mapping_name)?;
+            if let Ok(mut guard) = core.inner.lock() {
                 guard.stream = Some(stream);
             }
+
+            let source: IMFMediaSourceEx = Self { _guard: ObjectGuard::new(), core }.into();
             Ok(source)
         }
     }
@@ -247,7 +284,7 @@ impl IMFMediaEventGenerator_Impl for VcamMediaSource_Impl {
         dwflags: MEDIA_EVENT_GENERATOR_GET_EVENT_FLAGS,
     ) -> windows::core::Result<IMFMediaEvent> {
         let events = {
-            let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+            let guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
             if guard.state == SourceState::Shutdown {
                 return Err(MF_E_SHUTDOWN.into());
             }
@@ -261,7 +298,7 @@ impl IMFMediaEventGenerator_Impl for VcamMediaSource_Impl {
         pcallback: Ref<'_, windows::Win32::Media::MediaFoundation::IMFAsyncCallback>,
         punkstate: Ref<'_, IUnknown>,
     ) -> windows::core::Result<()> {
-        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
         if guard.state == SourceState::Shutdown {
             return Err(MF_E_SHUTDOWN.into());
         }
@@ -272,7 +309,7 @@ impl IMFMediaEventGenerator_Impl for VcamMediaSource_Impl {
         &self,
         presult: Ref<'_, windows::Win32::Media::MediaFoundation::IMFAsyncResult>,
     ) -> windows::core::Result<IMFMediaEvent> {
-        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
         if guard.state == SourceState::Shutdown {
             return Err(MF_E_SHUTDOWN.into());
         }
@@ -286,7 +323,7 @@ impl IMFMediaEventGenerator_Impl for VcamMediaSource_Impl {
         hrstatus: HRESULT,
         pvvalue: *const PROPVARIANT,
     ) -> windows::core::Result<()> {
-        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
         if guard.state == SourceState::Shutdown {
             return Err(MF_E_SHUTDOWN.into());
         }
@@ -296,7 +333,7 @@ impl IMFMediaEventGenerator_Impl for VcamMediaSource_Impl {
 
 impl IMFMediaSource_Impl for VcamMediaSource_Impl {
     fn GetCharacteristics(&self) -> windows::core::Result<u32> {
-        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
         if guard.state == SourceState::Shutdown {
             return Err(MF_E_SHUTDOWN.into());
         }
@@ -305,7 +342,7 @@ impl IMFMediaSource_Impl for VcamMediaSource_Impl {
     }
 
     fn CreatePresentationDescriptor(&self) -> windows::core::Result<IMFPresentationDescriptor> {
-        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
         if guard.state == SourceState::Shutdown {
             return Err(MF_E_SHUTDOWN.into());
         }
@@ -327,7 +364,7 @@ impl IMFMediaSource_Impl for VcamMediaSource_Impl {
                 return Err(E_INVALIDARG.into());
             }
         }
-        let mut guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let mut guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
         if guard.state == SourceState::Shutdown {
             return Err(MF_E_SHUTDOWN.into());
         }
@@ -351,7 +388,7 @@ impl IMFMediaSource_Impl for VcamMediaSource_Impl {
     }
 
     fn Stop(&self) -> windows::core::Result<()> {
-        let mut guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let mut guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
         if guard.state == SourceState::Shutdown {
             return Err(MF_E_SHUTDOWN.into());
         }
@@ -365,7 +402,7 @@ impl IMFMediaSource_Impl for VcamMediaSource_Impl {
     }
 
     fn Pause(&self) -> windows::core::Result<()> {
-        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
         if guard.state == SourceState::Shutdown {
             return Err(MF_E_SHUTDOWN.into());
         }
@@ -373,22 +410,13 @@ impl IMFMediaSource_Impl for VcamMediaSource_Impl {
     }
 
     fn Shutdown(&self) -> windows::core::Result<()> {
-        let mut guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-        if guard.state == SourceState::Shutdown {
-            return Ok(());
-        }
-        guard.state = SourceState::Shutdown;
-        if let Some(stream) = guard.stream.take() {
-            let stream_impl: &VcamMediaStream = unsafe { stream.as_impl() };
-            let _ = stream_impl.on_shutdown();
-        }
-        unsafe { guard.events.Shutdown() }
+        self.core.shutdown()
     }
 }
 
 impl IMFMediaSourceEx_Impl for VcamMediaSource_Impl {
     fn GetSourceAttributes(&self) -> windows::core::Result<IMFAttributes> {
-        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
         if guard.state == SourceState::Shutdown {
             return Err(MF_E_SHUTDOWN.into());
         }
@@ -399,7 +427,7 @@ impl IMFMediaSourceEx_Impl for VcamMediaSource_Impl {
         if dwstreamidentifier != 0 {
             return Err(E_INVALIDARG.into());
         }
-        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
         if guard.state == SourceState::Shutdown {
             return Err(MF_E_SHUTDOWN.into());
         }
@@ -411,7 +439,7 @@ impl IMFMediaSourceEx_Impl for VcamMediaSource_Impl {
     }
 
     fn SetD3DManager(&self, manager: Ref<'_, IUnknown>) -> windows::core::Result<()> {
-        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
         let stream = guard.stream.as_ref().ok_or(MF_E_SHUTDOWN)?;
         let stream_impl: &VcamMediaStream = unsafe { stream.as_impl() };
         let mut inner = stream_impl.inner.lock().unwrap_or_else(|e| e.into_inner());
@@ -494,7 +522,7 @@ impl IMFSampleAllocatorControl_Impl for VcamMediaSource_Impl {
         }
         let pallocator = pallocator.ok()?;
         let allocator: IMFVideoSampleAllocator = pallocator.cast()?;
-        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        let guard = self.core.inner.lock().unwrap_or_else(|e| e.into_inner());
         let Some(stream) = guard.stream.as_ref() else {
             return Err(MF_E_SHUTDOWN.into());
         };
@@ -579,7 +607,7 @@ struct StreamInner {
     events: IMFMediaEventQueue,
     attrs: IMFAttributes,
     sd: IMFStreamDescriptor,
-    source: IMFMediaSource,
+    source: Weak<SourceCore>,
     mapping: Option<Arc<SharedFrameMapping>>,
     sample_allocator: Option<IMFVideoSampleAllocator>,
     owns_allocator: bool,
@@ -607,7 +635,7 @@ impl std::fmt::Debug for VcamMediaStream {
 
 impl VcamMediaStream {
     fn create(
-        source: &IMFMediaSource,
+        source: Weak<SourceCore>,
         sd: &IMFStreamDescriptor,
         mapping_name: String,
     ) -> windows::core::Result<IMFMediaStream> {
@@ -632,7 +660,7 @@ impl VcamMediaStream {
                     events,
                     attrs,
                     sd: sd.clone(),
-                    source: source.clone(),
+                    source,
                     mapping,
                     sample_allocator: None,
                     owns_allocator: false,
@@ -804,11 +832,19 @@ impl IMFMediaEventGenerator_Impl for VcamMediaStream_Impl {
 
 impl IMFMediaStream_Impl for VcamMediaStream_Impl {
     fn GetMediaSource(&self) -> windows::core::Result<IMFMediaSource> {
-        let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
-        if guard.shutdown {
+        let source_core = {
+            let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+            if guard.shutdown {
+                return Err(MF_E_SHUTDOWN.into());
+            }
+            guard.source.clone()
+        };
+        let core = source_core.upgrade().ok_or_else(|| windows::core::Error::from(MF_E_SHUTDOWN))?;
+        if core.is_shutdown() {
             return Err(MF_E_SHUTDOWN.into());
         }
-        Ok(guard.source.clone())
+        let source_ex: IMFMediaSourceEx = VcamMediaSource { _guard: ObjectGuard::new(), core }.into();
+        source_ex.cast()
     }
 
     fn GetStreamDescriptor(&self) -> windows::core::Result<IMFStreamDescriptor> {
@@ -820,6 +856,26 @@ impl IMFMediaStream_Impl for VcamMediaStream_Impl {
     }
 
     fn RequestSample(&self, punktoken: Ref<'_, IUnknown>) -> windows::core::Result<()> {
+        // Requests may arrive much faster than the advertised frame rate,
+        // especially with GPU output. Pace repeated frames against QPC
+        // without holding `self.inner` across `thread::sleep`.
+        let (due, sleep_dur) = {
+            let guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+            if guard.shutdown {
+                return Err(MF_E_SHUTDOWN.into());
+            }
+            if guard.state != MF_STREAM_STATE_RUNNING {
+                return Err(E_INVALIDARG.into());
+            }
+            let now = unsafe { MFGetSystemTime() };
+            let due = guard.last_sample_time.saturating_add(SAMPLE_DURATION_100NS);
+            let sleep_dur = (now < due).then(|| std::time::Duration::from_nanos((due - now) as u64 * 100));
+            (due, sleep_dur)
+        };
+        if let Some(dur) = sleep_dur {
+            std::thread::sleep(dur);
+        }
+
         let mut guard = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         if guard.shutdown {
             return Err(MF_E_SHUTDOWN.into());
@@ -869,15 +925,7 @@ impl IMFMediaStream_Impl for VcamMediaStream_Impl {
             };
             let sample = allocator.AllocateSample()?;
             let buffer = sample.GetBufferByIndex(0)?;
-            // Requests may arrive much faster than the advertised frame rate,
-            // especially with GPU output. Pace repeated frames against QPC;
-            // never stamp a rapidly generated sample far into the future.
-            let now = MFGetSystemTime();
-            let due = guard.last_sample_time.saturating_add(SAMPLE_DURATION_100NS);
-            if now < due {
-                std::thread::sleep(std::time::Duration::from_nanos((due - now) as u64 * 100));
-            }
-            let sample_time = MFGetSystemTime();
+            let sample_time = MFGetSystemTime().max(due);
             guard.last_sample_time = sample_time;
             let gpu_written = if subtype == MFVideoFormat_NV12 {
                 if let Some(reader) = &mut guard.gpu_reader {
@@ -935,86 +983,14 @@ impl IMFMediaStream_Impl for VcamMediaStream_Impl {
                             &mut buffer_length,
                         )?;
 
-                        let write_result = (|| -> windows::core::Result<()> {
-                            let stride = pitch.unsigned_abs() as usize;
-                            let row_bytes = if subtype == MFVideoFormat_NV12 {
-                                width as usize
-                            } else {
-                                width as usize * 4
-                            };
-                            let h = height as usize;
-                            if scanline0.is_null() || buffer_start.is_null() || stride < row_bytes {
-                                return Err(E_INVALIDARG.into());
-                            }
-                            if subtype == MFVideoFormat_NV12 {
-                                if !height.is_multiple_of(2) {
-                                    return Err(E_INVALIDARG.into());
-                                }
-                                if guard.nv12_scratch.len() < out_bytes {
-                                    guard.nv12_scratch.resize(out_bytes, 0);
-                                }
-                                let inner: &mut StreamInner = &mut guard;
-                                bgrx_to_nv12(
-                                    &inner.bgrx_scratch[..bgrx_len],
-                                    width,
-                                    height,
-                                    &mut inner.nv12_scratch[..out_bytes],
-                                );
-                            }
-                            let plane_bytes = stride
-                                .checked_mul(h)
-                                .ok_or_else(|| windows::core::Error::from(E_INVALIDARG))?;
-                            let required_length = if subtype == MFVideoFormat_NV12 {
-                                plane_bytes
-                                    .checked_add(
-                                        stride
-                                            .checked_mul(h / 2)
-                                            .ok_or_else(|| windows::core::Error::from(E_INVALIDARG))?,
-                                    )
-                                    .ok_or_else(|| windows::core::Error::from(E_INVALIDARG))?
-                            } else {
-                                plane_bytes
-                            };
-                            if (buffer_length as usize) < required_length {
-                                return Err(E_INVALIDARG.into());
-                            }
-
-                            for row in 0..h {
-                                let dst_row = if pitch >= 0 {
-                                    scanline0.add(row * stride)
-                                } else {
-                                    scanline0.offset((row as isize) * (pitch as isize))
-                                };
-                                if subtype == MFVideoFormat_NV12 {
-                                    let src_row = &guard.nv12_scratch
-                                        [row * width as usize..row * width as usize + row_bytes];
-                                    std::ptr::copy_nonoverlapping(src_row.as_ptr(), dst_row, row_bytes);
-                                } else {
-                                    let src_row = &guard.bgrx_scratch[row * row_bytes..(row + 1) * row_bytes];
-                                    std::ptr::copy_nonoverlapping(src_row.as_ptr(), dst_row, row_bytes);
-                                }
-                            }
-
-                            if subtype == MFVideoFormat_NV12 {
-                                let uv_plane = if pitch >= 0 {
-                                    scanline0.add(plane_bytes)
-                                } else {
-                                    buffer_start.add(plane_bytes + stride * (h / 2 - 1))
-                                };
-                                let source_uv = width as usize * h;
-                                for row in 0..(h / 2) {
-                                    let dst_row = if pitch >= 0 {
-                                        uv_plane.add(row * stride)
-                                    } else {
-                                        uv_plane.sub(row * stride)
-                                    };
-                                    let src_row = &guard.nv12_scratch[source_uv + row * width as usize
-                                        ..source_uv + (row + 1) * width as usize];
-                                    std::ptr::copy_nonoverlapping(src_row.as_ptr(), dst_row, width as usize);
-                                }
-                            }
-                            Ok(())
-                        })();
+                        let inner: &mut StreamInner = &mut guard;
+                        let write_result = write_locked_2d_buffer(
+                            subtype,
+                            (width, height),
+                            Locked2DBuffer { scanline0, pitch, buffer_start, buffer_length },
+                            &inner.bgrx_scratch[..bgrx_len],
+                            &mut inner.nv12_scratch,
+                        );
                         let unlock_result = buffer2d.Unlock2D();
                         write_result?;
                         unlock_result?;
@@ -1047,6 +1023,92 @@ impl IMFMediaStream_Impl for VcamMediaStream_Impl {
     }
 }
 
+struct Locked2DBuffer {
+    scanline0: *mut u8,
+    pitch: i32,
+    buffer_start: *mut u8,
+    buffer_length: u32,
+}
+
+unsafe fn write_locked_2d_buffer(
+    subtype: GUID,
+    (width, height): (u32, u32),
+    locked: Locked2DBuffer,
+    bgrx_src: &[u8],
+    nv12_scratch: &mut Vec<u8>,
+) -> windows::core::Result<()> {
+    let Locked2DBuffer { scanline0, pitch, buffer_start, buffer_length } = locked;
+    let stride = pitch.unsigned_abs() as usize;
+    let row_bytes = if subtype == MFVideoFormat_NV12 { width as usize } else { width as usize * 4 };
+    let h = height as usize;
+    if scanline0.is_null() || buffer_start.is_null() || pitch == 0 || stride < row_bytes {
+        return Err(E_INVALIDARG.into());
+    }
+    let out_bytes =
+        if subtype == MFVideoFormat_NV12 { (width as usize) * h * 3 / 2 } else { (width as usize) * h * 4 };
+    if subtype == MFVideoFormat_NV12 {
+        if pitch < 0 || !height.is_multiple_of(2) {
+            return Err(E_INVALIDARG.into());
+        }
+        if nv12_scratch.len() < out_bytes {
+            nv12_scratch.resize(out_bytes, 0);
+        }
+        bgrx_to_nv12(bgrx_src, width, height, &mut nv12_scratch[..out_bytes]);
+    }
+    let plane_bytes = stride.checked_mul(h).ok_or_else(|| windows::core::Error::from(E_INVALIDARG))?;
+    let required_length = if subtype == MFVideoFormat_NV12 {
+        plane_bytes
+            .checked_add(stride.checked_mul(h / 2).ok_or_else(|| windows::core::Error::from(E_INVALIDARG))?)
+            .ok_or_else(|| windows::core::Error::from(E_INVALIDARG))?
+    } else {
+        plane_bytes
+    };
+    let buf_start = buffer_start as usize;
+    let buf_len = buffer_length as usize;
+    let buf_end = buf_start.checked_add(buf_len).ok_or_else(|| windows::core::Error::from(E_INVALIDARG))?;
+    let scan0 = scanline0 as usize;
+    if buf_len < required_length {
+        return Err(E_INVALIDARG.into());
+    }
+    if pitch > 0 {
+        if scan0 < buf_start || scan0.checked_add(required_length).is_none_or(|end| end > buf_end) {
+            return Err(E_INVALIDARG.into());
+        }
+    } else {
+        let back_bytes = stride.checked_mul(h - 1).ok_or_else(|| windows::core::Error::from(E_INVALIDARG))?;
+        let lowest = scan0.checked_sub(back_bytes).ok_or_else(|| windows::core::Error::from(E_INVALIDARG))?;
+        let highest = scan0.checked_add(row_bytes).ok_or_else(|| windows::core::Error::from(E_INVALIDARG))?;
+        if lowest < buf_start || highest > buf_end {
+            return Err(E_INVALIDARG.into());
+        }
+    }
+
+    unsafe {
+        for row in 0..h {
+            let dst_row = if pitch > 0 { scanline0.add(row * stride) } else { scanline0.sub(row * stride) };
+            if subtype == MFVideoFormat_NV12 {
+                let src_row = &nv12_scratch[row * width as usize..row * width as usize + row_bytes];
+                std::ptr::copy_nonoverlapping(src_row.as_ptr(), dst_row, row_bytes);
+            } else {
+                let src_row = &bgrx_src[row * row_bytes..(row + 1) * row_bytes];
+                std::ptr::copy_nonoverlapping(src_row.as_ptr(), dst_row, row_bytes);
+            }
+        }
+
+        if subtype == MFVideoFormat_NV12 {
+            let uv_plane = scanline0.add(plane_bytes);
+            let source_uv = width as usize * h;
+            for row in 0..(h / 2) {
+                let dst_row = uv_plane.add(row * stride);
+                let src_row =
+                    &nv12_scratch[source_uv + row * width as usize..source_uv + (row + 1) * width as usize];
+                std::ptr::copy_nonoverlapping(src_row.as_ptr(), dst_row, width as usize);
+            }
+        }
+    }
+    Ok(())
+}
+
 impl IMFMediaStream2_Impl for VcamMediaStream_Impl {
     fn SetStreamState(&self, value: MF_STREAM_STATE) -> windows::core::Result<()> {
         match value {
@@ -1074,6 +1136,7 @@ impl IMFMediaStream2_Impl for VcamMediaStream_Impl {
 /// activation then creates (and caches) the source instance.
 #[implement(IMFActivate)]
 pub struct VcamMediaSourceActivate {
+    _guard: ObjectGuard,
     attrs: IMFAttributes,
     source: Mutex<Option<IMFMediaSourceEx>>,
 }
@@ -1091,7 +1154,7 @@ impl VcamMediaSourceActivate {
             MFCreateAttributes(&mut attrs, 8)?;
         }
         let attrs = attrs.ok_or_else(|| windows::core::Error::from(E_POINTER))?;
-        Ok(Self { attrs, source: Mutex::new(None) })
+        Ok(Self { _guard: ObjectGuard::new(), attrs, source: Mutex::new(None) })
     }
 }
 
@@ -1112,7 +1175,14 @@ impl IMFActivate_Impl for VcamMediaSourceActivate_Impl {
         }
 
         let mut source = self.source.lock().unwrap_or_else(|e| e.into_inner());
-        if source.is_none() {
+        let needs_create = match source.as_ref() {
+            Some(existing) => {
+                let src_impl: &VcamMediaSource = unsafe { existing.as_impl() };
+                src_impl.is_shutdown()
+            }
+            None => true,
+        };
+        if needs_create {
             let created = VcamMediaSource::new_with_mapping(DEFAULT_MAPPING_NAME)?;
             let source_attrs = unsafe { created.GetSourceAttributes() }?;
             merge_attributes(&self.attrs, &source_attrs)?;
@@ -1124,11 +1194,16 @@ impl IMFActivate_Impl for VcamMediaSourceActivate_Impl {
     }
 
     fn ShutdownObject(&self) -> windows::core::Result<()> {
-        Err(E_NOTIMPL.into())
+        let cached = self.source.lock().unwrap_or_else(|e| e.into_inner()).take();
+        if let Some(source) = cached {
+            unsafe { source.Shutdown()? };
+        }
+        Ok(())
     }
 
     fn DetachObject(&self) -> windows::core::Result<()> {
-        Err(E_NOTIMPL.into())
+        let _ = self.source.lock().unwrap_or_else(|e| e.into_inner()).take();
+        Ok(())
     }
 }
 
@@ -1385,6 +1460,78 @@ mod tests {
             assert_eq!(frame_size as u32, 2160);
             source.Shutdown().unwrap();
             let _ = MFShutdown();
+        }
+    }
+
+    #[test]
+    fn rejects_invalid_or_out_of_bounds_2d_buffer_layouts() {
+        let width = 4u32;
+        let height = 2u32;
+        let bgrx = vec![0xAAu8; (width * height * 4) as usize];
+        let mut nv12_scratch = Vec::new();
+        let mut buf = vec![0u8; 64];
+        let start = buf.as_mut_ptr();
+        let len = buf.len() as u32;
+
+        unsafe {
+            // Negative pitch on NV12 is rejected.
+            let err = write_locked_2d_buffer(
+                MFVideoFormat_NV12,
+                (width, height),
+                Locked2DBuffer {
+                    scanline0: start.add(16),
+                    pitch: -4,
+                    buffer_start: start,
+                    buffer_length: len,
+                },
+                &bgrx,
+                &mut nv12_scratch,
+            )
+            .unwrap_err();
+            assert_eq!(err.code(), E_INVALIDARG);
+
+            // Negative pitch on RGB32 with scanline0 == buffer_start would underflow before start.
+            let err = write_locked_2d_buffer(
+                MFVideoFormat_RGB32,
+                (width, height),
+                Locked2DBuffer { scanline0: start, pitch: -16, buffer_start: start, buffer_length: len },
+                &bgrx,
+                &mut nv12_scratch,
+            )
+            .unwrap_err();
+            assert_eq!(err.code(), E_INVALIDARG);
+
+            // Positive pitch with scanline0 near the end of the buffer is rejected.
+            let err = write_locked_2d_buffer(
+                MFVideoFormat_RGB32,
+                (width, height),
+                Locked2DBuffer {
+                    scanline0: start.add(48),
+                    pitch: 16,
+                    buffer_start: start,
+                    buffer_length: len,
+                },
+                &bgrx,
+                &mut nv12_scratch,
+            )
+            .unwrap_err();
+            assert_eq!(err.code(), E_INVALIDARG);
+
+            // Valid bottom-up RGB32 layout (scanline0 at row h - 1) succeeds.
+            write_locked_2d_buffer(
+                MFVideoFormat_RGB32,
+                (width, height),
+                Locked2DBuffer {
+                    scanline0: start.add(16),
+                    pitch: -16,
+                    buffer_start: start,
+                    buffer_length: 32,
+                },
+                &bgrx,
+                &mut nv12_scratch,
+            )
+            .unwrap();
+            assert!(buf[..32].iter().all(|&b| b == 0xAA));
         }
     }
 }

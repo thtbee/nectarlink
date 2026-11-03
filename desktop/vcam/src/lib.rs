@@ -90,9 +90,9 @@ mod tests {
                 MESourceStarted, MESourceStopped, MEStreamStarted, MEStreamStopped, MEUpdatedStream,
                 MF_DEVICESTREAM_ATTRIBUTE_FRAMESOURCE_TYPES, MF_DEVICESTREAM_FRAMESERVER_SHARED,
                 MF_DEVICESTREAM_STREAM_CATEGORY, MF_DEVICESTREAM_STREAM_ID, MF_E_INVALID_STATE_TRANSITION,
-                MF_EVENT_FLAG_NO_WAIT, MF_MT_FRAME_SIZE, MF_MT_SUBTYPE, MF_STREAM_STATE_RUNNING,
-                MF_STREAM_STATE_STOPPED, MFCreateVideoSampleAllocatorEx, MFFrameSourceTypes_Color,
-                MFVideoFormat_NV12, MFVideoFormat_RGB32,
+                MF_E_SHUTDOWN, MF_EVENT_FLAG_NO_WAIT, MF_MT_FRAME_SIZE, MF_MT_SUBTYPE,
+                MF_STREAM_STATE_RUNNING, MF_STREAM_STATE_STOPPED, MFCreateVideoSampleAllocatorEx,
+                MFFrameSourceTypes_Color, MFVideoFormat_NV12, MFVideoFormat_RGB32,
             },
         },
         System::Com::StructuredStorage::PROPVARIANT,
@@ -119,6 +119,10 @@ mod tests {
             let factory: IClassFactory = IClassFactory::from_raw(raw);
             let activate: windows::Win32::Media::MediaFoundation::IMFActivate =
                 factory.CreateInstance(None).unwrap();
+            drop(factory);
+            // The live IMFActivate alone must keep DllCanUnloadNow returning S_FALSE.
+            assert_eq!(DllCanUnloadNow(), S_FALSE);
+
             let source: windows::Win32::Media::MediaFoundation::IMFMediaSourceEx =
                 activate.ActivateObject().unwrap();
             let attrs = source.GetSourceAttributes().unwrap();
@@ -126,7 +130,31 @@ mod tests {
                 attrs.GetUINT32(&MF_DEVICESTREAM_ATTRIBUTE_FRAMESOURCE_TYPES).unwrap(),
                 MFFrameSourceTypes_Color.0 as u32
             );
+
+            // Shutting down the source directly and re-activating creates a fresh source.
             source.Shutdown().unwrap();
+            assert_eq!(source.GetCharacteristics().unwrap_err().code(), MF_E_SHUTDOWN);
+            drop(source);
+
+            let reactivated: windows::Win32::Media::MediaFoundation::IMFMediaSourceEx =
+                activate.ActivateObject().unwrap();
+            assert_eq!(reactivated.GetCharacteristics().unwrap(), 0x1);
+
+            // ShutdownObject shuts down and drops the cached source.
+            activate.ShutdownObject().unwrap();
+            assert_eq!(reactivated.GetCharacteristics().unwrap_err().code(), MF_E_SHUTDOWN);
+            drop(reactivated);
+
+            // DetachObject releases the cached reference without shutting down the source.
+            let detached: windows::Win32::Media::MediaFoundation::IMFMediaSourceEx =
+                activate.ActivateObject().unwrap();
+            activate.DetachObject().unwrap();
+            assert_eq!(detached.GetCharacteristics().unwrap(), 0x1);
+            // Dropping the detached source WITHOUT calling Shutdown() must not leak via a
+            // source <-> stream reference cycle.
+            let before_drop = source::ACTIVE_OBJECTS.load(Ordering::Relaxed);
+            drop(detached);
+            assert_eq!(source::ACTIVE_OBJECTS.load(Ordering::Relaxed), before_drop - 2);
         }
     }
 
