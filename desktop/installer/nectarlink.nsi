@@ -41,6 +41,7 @@ SetCompressor /SOLID zlib
 !include "x64.nsh"
 !include "LogicLib.nsh"
 !include "FileFunc.nsh"
+!include "WordFunc.nsh"
 
 ; APP names the install folder, registry keys and the firewall rule; DISPLAY is
 ; the name people see.
@@ -122,6 +123,7 @@ Function .onInit
     ${If} $INSTDIR == "$PROGRAMFILES64\${APP}"
       ReadRegStr $0 HKLM "Software\${APP}" "InstallDir"
       ${If} $0 != ""
+      ${AndIf} ${FileExists} "$0\${EXE}"
         StrCpy $INSTDIR $0
       ${EndIf}
     ${EndIf}
@@ -145,9 +147,24 @@ FunctionEnd
 Function un.onInit
   SetRegView 64
   SetShellVarContext all
-  ; The uninstaller came from the app's folder, so running the app from
-  ; there trusts nothing more than running the uninstaller did.
-  StrCpy $AdminOnly 1
+  StrCpy $AdminOnly 0
+  StrLen $0 "$PROGRAMFILES64\"
+  StrCpy $1 "$INSTDIR" $0
+  StrLen $0 "$PROGRAMFILES\"
+  StrCpy $2 "$INSTDIR" $0
+  ${If} $1 == "$PROGRAMFILES64\"
+  ${OrIf} $2 == "$PROGRAMFILES\"
+    StrCpy $AdminOnly 1
+  ${Else}
+    ReadRegStr $PreviousDir HKLM "Software\${APP}" "InstallDir"
+    ${If} $INSTDIR == $PreviousDir
+    ${AndIf} ${FileExists} "$INSTDIR\${EXE}"
+      ReadRegDWORD $AdminOnly HKLM "Software\${APP}" "AdminOnlyFolder"
+      ${If} $AdminOnly != 1
+        StrCpy $AdminOnly 0
+      ${EndIf}
+    ${EndIf}
+  ${EndIf}
   ${un.GetParameters} $R0
   ClearErrors
   ${un.GetOptions} $R0 "/PROGRESS=" $ProgressFile
@@ -217,6 +234,14 @@ FunctionEnd
 ; in it before then could have been put there by someone else, so it must be
 ; empty. Sets the error flag when it can't.
 Function LockFolder
+  ; Never follow a junction or symbolic link (FILE_ATTRIBUTE_REPARSE_POINT).
+  System::Call 'kernel32::GetFileAttributesW(w "$R1") i .r0'
+  IntOp $1 $0 & 0x400
+  ${If} $0 == -1
+  ${OrIf} $1 != 0
+    SetErrors
+    Return
+  ${EndIf}
   nsExec::Exec 'icacls "$R1" /setowner *S-1-5-32-544'
   Pop $0
   ${If} $0 == 0
@@ -298,6 +323,10 @@ Section "Install"
     StrCpy $AppDir "$PLUGINSDIR\app"
   ${Else}
     ReadRegStr $PreviousDir HKLM "Software\${APP}" "InstallDir"
+    ${If} $PreviousDir != ""
+    ${AndIfNot} ${FileExists} "$PreviousDir\${EXE}"
+      StrCpy $PreviousDir ""
+    ${EndIf}
     ; Program Files is admin-only. Elsewhere: the setup window's check
     ; (/ADMINONLY), or, for an update, what the last install found.
     StrCpy $AdminOnly 0
@@ -368,12 +397,18 @@ Section "Install"
   ; PowerShell, which security software can hold up without a word, leaving
   ; setup stuck at this step.
   !insertmacro Progress "step updates"
+  ; Shared folder for update downloads and channel choice: any signed-in user
+  ; on this PC may update them, and the update task checks the download's
+  ; SHA-256 in SystemTemp before running it.
+  CreateDirectory "$APPDATA\${APP}\updates"
+  nsExec::Exec 'icacls "$APPDATA\${APP}" /grant *S-1-5-32-545:(OI)(CI)M /T'
   ${If} $AdminOnly != 1
     ; Updates ask for permission in this folder (see the top of this file).
     nsExec::Exec 'schtasks /Delete /TN "Nectarlink Update" /F'
     Goto updates_done
   ${EndIf}
   InitPluginsDir
+  ${WordReplace} "$INSTDIR" "&" "&amp;" "+" $1
   FileOpen $0 "$PLUGINSDIR\update-task.xml" w
   FileWriteUTF16LE /BOM $0 '<?xml version="1.0" encoding="UTF-16"?>$\r$\n'
   FileWriteUTF16LE $0 '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">$\r$\n'
@@ -393,7 +428,7 @@ Section "Install"
   FileWriteUTF16LE $0 '    <ExecutionTimeLimit>PT30M</ExecutionTimeLimit>$\r$\n'
   FileWriteUTF16LE $0 '  </Settings>$\r$\n'
   FileWriteUTF16LE $0 '  <Actions Context="Author">$\r$\n'
-  FileWriteUTF16LE $0 '    <Exec><Command>"$INSTDIR\${EXE}"</Command><Arguments>--update-service</Arguments></Exec>$\r$\n'
+  FileWriteUTF16LE $0 '    <Exec><Command>"$1\${EXE}"</Command><Arguments>--update-service</Arguments></Exec>$\r$\n'
   FileWriteUTF16LE $0 '  </Actions>$\r$\n'
   FileWriteUTF16LE $0 '</Task>$\r$\n'
   FileClose $0
@@ -423,9 +458,12 @@ Section "Install"
 
   ; The Windows Share sheet needs the app's sparse package registered, which
   ; Windows allows for an unsigned one only with Developer Mode on. Why it
-  ; didn't register goes to sparse-package.log (#84).
+  ; didn't register goes to sparse-package.log (#84). The update task runs as
+  ; SYSTEM, which Windows doesn't allow to register per-user packages; the
+  ; app registers it when reopened after an update.
   Delete "$INSTDIR\sparse-package.log"
-  nsExec::Exec 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "try { Add-AppxPackage -Register \"$INSTDIR\AppxManifest.xml\" -ExternalLocation \"$INSTDIR\" -ErrorAction Stop } catch { $$_ | Out-File -Encoding utf8 \"$INSTDIR\sparse-package.log\" }"'
+  System::Call 'kernel32::SetEnvironmentVariableW(w "NECTARLINK_INSTDIR", w "$INSTDIR")'
+  nsExec::Exec 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "if (-not [Security.Principal.WindowsIdentity]::GetCurrent().IsSystem) { try { Add-AppxPackage -Register \"$$env:NECTARLINK_INSTDIR\AppxManifest.xml\" -ExternalLocation $$env:NECTARLINK_INSTDIR -ErrorAction Stop } catch { $$_ | Out-File -Encoding utf8 -LiteralPath \"$$env:NECTARLINK_INSTDIR\sparse-package.log\" } }"'
 
   WriteRegStr HKLM "Software\${APP}" "InstallDir" "$INSTDIR"
   WriteRegDWORD HKLM "Software\${APP}" "AdminOnlyFolder" $AdminOnly
@@ -459,7 +497,8 @@ Section "Uninstall"
   !insertmacro QuitRunningApp
   ; What the app set up for this user: Send to entries, sign-in start,
   ; notification registration.
-  ${If} ${FileExists} "$INSTDIR\${EXE}"
+  ${If} $AdminOnly == 1
+  ${AndIf} ${FileExists} "$INSTDIR\${EXE}"
     ExecWait '"$INSTDIR\${EXE}" --uninstall'
   ${EndIf}
 
@@ -467,6 +506,7 @@ Section "Uninstall"
   nsExec::Exec 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "try { Get-AppxPackage -Name \"Nectarlink.Desktop\" -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue } catch {}"'
   nsExec::Exec 'netsh advfirewall firewall delete rule name="${FIREWALL_RULE}"'
   nsExec::Exec 'schtasks /Delete /TN "Nectarlink Update" /F'
+  RMDir /r "$APPDATA\${APP}"
   Delete "$SMPROGRAMS\${DISPLAY}.lnk"
   Delete "$DESKTOP\${DISPLAY}.lnk"
   ; Only ever a folder of our own (a silent install can be pointed

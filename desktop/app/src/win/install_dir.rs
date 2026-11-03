@@ -50,6 +50,7 @@ const ACCESS_ALLOWED_ACE_TYPE: u8 = 0;
 const ACCESS_DENIED_ACE_TYPE: u8 = 1;
 const INHERIT_ONLY_ACE: u8 = 0x08;
 const DRIVE_FIXED: u32 = 3;
+const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
 
 /// Program Files, where the app goes unless the user picks somewhere else.
 pub fn default_dir() -> PathBuf {
@@ -91,6 +92,9 @@ pub fn check(chosen: &Path) -> Result<Placement, String> {
             "Setup",
             "That drive can't keep the app's files safe (it isn't NTFS). Choose another drive."
         ));
+    }
+    if dir.ancestors().filter(|p| p.exists()).any(is_reparse_point) {
+        return Err(tr!("Setup", "Setup can't use that folder. Choose another one."));
     }
     match std::fs::read_dir(&dir).map(|mut entries| entries.next().is_none()) {
         Ok(false) => {
@@ -151,10 +155,20 @@ pub(crate) fn admin_only(owner: &str, aces: &[Ace]) -> bool {
         })
 }
 
+/// Whether `path` itself (without following it) is a junction or symbolic link.
+fn is_reparse_point(path: &Path) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    std::fs::symlink_metadata(path)
+        .is_ok_and(|meta| meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0)
+}
+
 /// A folder's owner and permissions, as SID strings. `None` when they can't
-/// be read, or when there are no permissions at all (a null DACL lets
-/// everyone do everything).
+/// be read, when the entry is a junction or symbolic link, or when there are
+/// no permissions at all (a null DACL lets everyone do everything).
 fn security(folder: &Path) -> Option<(String, Vec<Ace>)> {
+    if is_reparse_point(folder) {
+        return None;
+    }
     let mut owner = PSID::default();
     let mut dacl: *mut ACL = std::ptr::null_mut();
     let mut sd = PSECURITY_DESCRIPTOR::default();
@@ -298,5 +312,25 @@ mod tests {
         if let Some(home) = dirs::home_dir() {
             assert!(!path_is_admin_only(&home.join("Apps").join(FOLDER_NAME)));
         }
+    }
+
+    #[test]
+    fn junctions_are_never_trusted_or_accepted() {
+        let base = tempfile::tempdir().unwrap();
+        let link = base.path().join("link");
+        let pf = default_dir().parent().unwrap().to_path_buf();
+        let status = std::process::Command::new("cmd.exe")
+            .args(["/c", "mklink", "/J"])
+            .arg(&link)
+            .arg(&pf)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .unwrap();
+        assert!(status.success());
+        assert!(is_reparse_point(&link));
+        assert!(security(&link).is_none());
+        assert!(check(&link.join("Apps")).is_err());
+        let _ = std::fs::remove_dir(&link);
     }
 }
