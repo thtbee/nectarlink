@@ -537,6 +537,8 @@ fn staging_file_path(shared: &Shared, peer: &DeviceId, offer: &StorageWriteOffer
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     offer.path.hash(&mut hasher);
     offer.size.hash(&mut hasher);
+    offer.modified.hash(&mut hasher);
+    offer.blake3.as_deref().unwrap_or("").hash(&mut hasher);
     let path_hash = hasher.finish();
     shared
         .incoming_dir()
@@ -586,6 +588,16 @@ pub(crate) async fn serve_write(
 
     let existing_len = tokio::fs::metadata(&part_path).await.map(|m| m.len()).unwrap_or(0);
     let have = if existing_len <= offer.size { existing_len } else { 0 };
+    let to_come = offer.size.saturating_sub(have);
+    if let Some(parent) = part_path.parent()
+        && crate::transfer::free_space(parent)
+            .is_some_and(|free| free < to_come.saturating_add(crate::transfer::SPACE_MARGIN))
+    {
+        let reply = Envelope::error(ErrorCode::Busy, "not enough space").reply_to(env.id);
+        let _ = write_frame(&mut send, &reply.to_cbor()).await;
+        let _ = send.finish();
+        return;
+    }
 
     let mut file = match tokio::fs::OpenOptions::new()
         .create(true)
@@ -658,6 +670,26 @@ pub(crate) async fn serve_write(
     if received != offer.size {
         // Keep the partial staging file so a retry with the same `id` resumes.
         return;
+    }
+
+    if let Some(expected) = offer.blake3.clone() {
+        let check_path = part_path.clone();
+        let ok = tokio::task::spawn_blocking(move || {
+            std::fs::File::open(&check_path)
+                .and_then(crate::transfer::hash_whole_file)
+                .map(|(_, _, actual)| actual.eq_ignore_ascii_case(&expected))
+        })
+        .await
+        .ok()
+        .and_then(std::result::Result::ok)
+        .unwrap_or(false);
+        if !ok {
+            let _ = tokio::fs::remove_file(&part_path).await;
+            let reply = Envelope::error(ErrorCode::BadMessage, "blake3 integrity check failed");
+            let _ = write_frame(&mut send, &reply.to_cbor()).await;
+            let _ = send.finish();
+            return;
+        }
     }
 
     let platform = shared.platform.clone();
@@ -845,8 +877,8 @@ pub(crate) async fn write_with_id(
         return Err(Error::Denied);
     }
 
-    let (std_file, size, file_mtime) =
-        tokio::task::spawn_blocking(move || -> Result<(std::fs::File, u64, Option<i64>)> {
+    let (std_file, size, file_mtime, digest) =
+        tokio::task::spawn_blocking(move || -> Result<(std::fs::File, u64, Option<i64>, String)> {
             let f = match source {
                 FileSource::Path(p) => std::fs::File::open(&p)?,
                 FileSource::File(f) => f,
@@ -860,12 +892,13 @@ pub(crate) async fn write_with_id(
                 .ok()
                 .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
                 .and_then(|d| i64::try_from(d.as_millis()).ok());
-            Ok((f, meta.len(), mtime))
+            let (f, size, digest) = crate::transfer::hash_whole_file(f)?;
+            Ok((f, size, mtime, digest))
         })
         .await
         .map_err(|e| Error::Internal(e.to_string()))??;
 
-    let offer = StorageWriteOffer { id, path, size, modified: modified.or(file_mtime) };
+    let offer = StorageWriteOffer { id, path, size, modified: modified.or(file_mtime), blake3: Some(digest) };
     if !offer.is_valid() {
         return Err(Error::Protocol("invalid storage write offer".into()));
     }
@@ -1025,6 +1058,9 @@ impl FolderStorage {
         let mut cur = canon_root.clone();
         for seg in rel.split('/') {
             cur.push(seg);
+            if self.is_blocked(&cur) {
+                return Err(StorageError::Denied);
+            }
             let meta = std::fs::symlink_metadata(&cur).map_err(|_| StorageError::NotFound)?;
             if meta.file_type().is_symlink() {
                 let target = std::fs::canonicalize(&cur).map_err(|_| StorageError::Denied)?;
@@ -1047,6 +1083,9 @@ impl FolderStorage {
         let mut cur = canon_root.clone();
         for seg in rel.split('/') {
             cur.push(seg);
+            if self.is_blocked(&cur) {
+                return Err(StorageError::Denied);
+            }
             if let Ok(meta) = std::fs::symlink_metadata(&cur)
                 && meta.file_type().is_symlink()
             {
@@ -1070,18 +1109,35 @@ impl FolderStorage {
             let Ok(name) = item.file_name().into_string() else {
                 continue;
             };
-            if !is_valid_storage_name(&name) || name.starts_with(".nectarlink") {
+            if !is_valid_storage_name(&name)
+                || name.starts_with(".nectarlink")
+                || name.ends_with(".nectarlink-part")
+            {
                 continue;
             }
             let item_path = item.path();
-            let Ok(canon) = std::fs::canonicalize(&item_path) else {
-                continue;
-            };
-            if self.ensure_inside(&canon_root, &canon).is_err() {
+            if self.is_blocked(&item_path) {
                 continue;
             }
-            let Ok(md) = std::fs::metadata(&canon) else {
+            let Ok(ft) = item.file_type() else {
                 continue;
+            };
+            let md = if ft.is_symlink() {
+                let Ok(canon) = std::fs::canonicalize(&item_path) else {
+                    continue;
+                };
+                if self.ensure_inside(&canon_root, &canon).is_err() {
+                    continue;
+                }
+                let Ok(md) = std::fs::metadata(&canon) else {
+                    continue;
+                };
+                md
+            } else {
+                let Ok(md) = item.metadata() else {
+                    continue;
+                };
+                md
             };
             let is_dir = md.is_dir();
             if !is_dir && !md.is_file() {
@@ -1125,7 +1181,8 @@ impl FolderStorage {
             // Another volume: copy beside the file, then swap it in, so a
             // failed copy leaves the file that was there untouched.
             let name = dest.file_name().unwrap_or_default().to_string_lossy();
-            let temp = dest.with_file_name(format!(".{name}.nectarlink-part"));
+            let temp = dest.with_file_name(format!(".nectarlink-part-{name}"));
+            let _ = std::fs::remove_file(&temp);
             let swapped = std::fs::copy(staged, &temp).and_then(|_| std::fs::rename(&temp, &dest));
             if let Err(e) = swapped {
                 let _ = std::fs::remove_file(&temp);
@@ -1300,5 +1357,20 @@ mod tests {
         std::fs::write(root_dir.path().join("Documents/photo.jpg"), b"jpeg").unwrap();
         storage.delete("Documents/photo.jpg", false).unwrap();
         assert!(trash_dir.path().join("photo.jpg").exists());
+
+        // Hidden `.nectarlink-part-*` and `*.nectarlink-part` files are excluded from listings.
+        std::fs::write(root_dir.path().join("Documents/.nectarlink-part-notes.txt"), b"part").unwrap();
+        std::fs::write(root_dir.path().join("Documents/.notes.txt.nectarlink-part"), b"part").unwrap();
+        let doc_entries = storage.list("Documents").unwrap();
+        assert_eq!(doc_entries.len(), 1);
+        assert_eq!(doc_entries[0].name, "notes.txt");
+
+        // Blocked prefixes inside root are rejected before creating parent directories.
+        let blocked_sub = root_dir.path().canonicalize().unwrap().join("Private");
+        std::fs::create_dir_all(&blocked_sub).unwrap();
+        let mut storage_with_block = FolderStorage::new(root_dir.path());
+        storage_with_block.blocked_prefixes.push(blocked_sub.clone());
+        assert_eq!(storage_with_block.mkdir("Private/Sub/Nested"), Err(StorageError::Denied));
+        assert!(!blocked_sub.join("Sub").exists(), "must not create directories inside a blocked prefix");
     }
 }
