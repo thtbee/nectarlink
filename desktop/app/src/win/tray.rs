@@ -26,6 +26,7 @@ use windows::{
             Threading::{AttachThreadInput, GetCurrentProcessId, GetCurrentThreadId},
         },
         UI::{
+            Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent},
             Input::KeyboardAndMouse::{
                 HOT_KEY_MODIFIERS, INPUT, INPUT_0, INPUT_MOUSE, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT,
                 MOD_SHIFT, MOD_WIN, MOUSEEVENTF_MOVE, MOUSEINPUT, RegisterHotKey, SendInput,
@@ -37,15 +38,15 @@ use windows::{
             },
             WindowsAndMessaging::{
                 AppendMenuW, BringWindowToTop, CreateIconIndirect, CreatePopupMenu, CreateWindowExW,
-                DefWindowProcW, DestroyIcon, DestroyMenu, DestroyWindow, GW_HWNDNEXT, GWL_EXSTYLE,
-                GetClassNameW, GetForegroundWindow, GetSystemMetrics, GetTopWindow, GetWindow,
-                GetWindowLongW, GetWindowTextW, GetWindowThreadProcessId, HICON, HMENU, ICONINFO, IsIconic,
-                IsWindow, IsWindowVisible, KillTimer, MF_GRAYED, MF_SEPARATOR, MF_STRING, PostMessageW,
+                DefWindowProcW, DestroyIcon, DestroyMenu, DestroyWindow, EVENT_SYSTEM_FOREGROUND,
+                GW_HWNDNEXT, GWL_EXSTYLE, GetClassNameW, GetForegroundWindow, GetSystemMetrics, GetTopWindow,
+                GetWindow, GetWindowLongW, GetWindowTextW, GetWindowThreadProcessId, HICON, HMENU, ICONINFO,
+                IsIconic, IsWindow, IsWindowVisible, MF_GRAYED, MF_SEPARATOR, MF_STRING, PostMessageW,
                 RegisterClassExW, RegisterWindowMessageW, SM_CXSMICON, SW_RESTORE, SendMessageW,
-                SetForegroundWindow, SetTimer, ShowWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
-                TrackPopupMenuEx, WINDOW_EX_STYLE, WM_APP, WM_CONTEXTMENU, WM_HOTKEY, WM_LBUTTONDBLCLK,
-                WM_NULL, WM_POWERBROADCAST, WM_SETTINGCHANGE, WM_TIMER, WNDCLASSEXW, WS_EX_NOACTIVATE,
-                WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+                SetForegroundWindow, ShowWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
+                TrackPopupMenuEx, WINDOW_EX_STYLE, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS, WM_APP,
+                WM_CONTEXTMENU, WM_HOTKEY, WM_LBUTTONDBLCLK, WM_NULL, WM_POWERBROADCAST, WM_SETTINGCHANGE,
+                WNDCLASSEXW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
             },
         },
     },
@@ -90,7 +91,6 @@ pub struct MenuLabels {
 const CALLBACK_MESSAGE: u32 = WM_APP + 1;
 const WM_UPDATE_HOTKEYS: u32 = WM_APP + 2;
 const WM_PASTE_MSG: u32 = 0x0302;
-const TIMER_TRACK_FG: usize = 1;
 const HOTKEY_PHOTO_ID: i32 = 101;
 const HOTKEY_SCAN_ID: i32 = 102;
 const HOTKEY_PALETTE_ID: i32 = 103;
@@ -125,6 +125,7 @@ thread_local! {
     static CAN_FIND_PHONE: Cell<bool> = const { Cell::new(false) };
     static TOOLTIP: RefCell<String> = const { RefCell::new(String::new()) };
     static ICON: Cell<HICON> = Cell::new(HICON::default());
+    static FG_HOOK: Cell<HWINEVENTHOOK> = Cell::new(HWINEVENTHOOK::default());
     static TASKBAR_CREATED: Cell<u32> = const { Cell::new(0) };
 }
 
@@ -514,7 +515,16 @@ impl Tray {
                 None,
             )?;
             TRAY_HWND.store(hwnd.0 as isize, Ordering::Release);
-            let _ = SetTimer(Some(hwnd), TIMER_TRACK_FG, 250, None);
+            let hook = SetWinEventHook(
+                EVENT_SYSTEM_FOREGROUND,
+                EVENT_SYSTEM_FOREGROUND,
+                None,
+                Some(foreground_event_proc),
+                0,
+                0,
+                WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS,
+            );
+            FG_HOOK.with(|h| h.set(hook));
             record_foreground_window();
             apply_hotkeys_on_window(hwnd);
             hwnd
@@ -547,13 +557,16 @@ impl Drop for Tray {
     fn drop(&mut self) {
         TRAY_HWND.store(0, Ordering::Release);
         let data = icon_data(self.hwnd);
-        // SAFETY: removing our own icon, hotkeys, timer, and destroying our own window/icon.
+        // SAFETY: removing our own icon, hotkeys, event hook, and destroying our own window/icon.
         unsafe {
             let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_PHOTO_ID);
             let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_SCAN_ID);
             let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_PALETTE_ID);
             let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_SHELF_ID);
-            let _ = KillTimer(Some(self.hwnd), TIMER_TRACK_FG);
+            let hook = FG_HOOK.with(|h| h.replace(HWINEVENTHOOK::default()));
+            if !hook.is_invalid() {
+                let _ = UnhookWinEvent(hook);
+            }
             let _ = Shell_NotifyIconW(NIM_DELETE, &data);
             let _ = DestroyWindow(self.hwnd);
             let icon = ICON.with(|i| i.replace(HICON::default()));
@@ -695,6 +708,18 @@ fn show_menu(hwnd: HWND, x: i32, y: i32) {
     }
 }
 
+unsafe extern "system" fn foreground_event_proc(
+    _hook: HWINEVENTHOOK,
+    _event: u32,
+    _hwnd: HWND,
+    _id_object: i32,
+    _id_child: i32,
+    _id_event_thread: u32,
+    _dwms_event_time: u32,
+) {
+    record_foreground_window();
+}
+
 unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     match msg {
         CALLBACK_MESSAGE => {
@@ -709,12 +734,6 @@ unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lpar
                     show_menu(hwnd, x, y);
                 }
                 _ => {}
-            }
-            LRESULT(0)
-        }
-        WM_TIMER => {
-            if wparam.0 == TIMER_TRACK_FG {
-                record_foreground_window();
             }
             LRESULT(0)
         }
