@@ -15,6 +15,10 @@ project. The full license texts are in the LICENSES/ directory.
   Protocol specification and documentation     CC-BY-4.0
   (docs/)
 
+  Other projects' code (third_party/)          Its own license, in its folder:
+                                               iroh-mdns-address-lookup is
+                                               MIT OR Apache-2.0
+
   Anything not listed above                    GPL-3.0-or-later, with the
                                                additional permission in
                                                LICENSES/APP-STORE-EXCEPTION.md

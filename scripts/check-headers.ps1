@@ -16,7 +16,9 @@ function Get-ExpectedLicense([string]$path) {
 
 try {
     $extensions = @(".rs", ".qml", ".cpp", ".h", ".hpp", ".ps1", ".sh", ".kt", ".kts")
+    # third_party/ is other projects' code under its own license (LICENSE).
     $files = @(git ls-files --cached --others --exclude-standard) |
+        Where-Object { $_ -notlike "third_party/*" } |
         Where-Object { $extensions -contains [System.IO.Path]::GetExtension($_) } |
         Where-Object { Test-Path $_ }
     $problems = 0
