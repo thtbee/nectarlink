@@ -236,6 +236,10 @@ pub(crate) struct Shared {
     pub(crate) runtime: tokio::runtime::Handle,
 }
 
+/// How long a receiver's resume that overtook its pause still counts: the
+/// two travel on different streams of one connection, so well under this.
+const EARLY_RESUME_WINDOW: Duration = Duration::from_secs(10);
+
 pub(crate) struct TransferControl {
     pub cancel: CancellationToken,
     pub paused: tokio::sync::watch::Sender<bool>,
@@ -243,6 +247,10 @@ pub(crate) struct TransferControl {
     pub direction: transfer::Direction,
     pub paused_transfer: Option<transfer::Transfer>,
     pub running: bool,
+    /// When the receiver's `files.resume` came in while this sender didn't
+    /// know it was paused yet: the resume travels on the control stream and
+    /// can overtake the paused transfer stream's reset.
+    pub early_resume: Option<std::time::Instant>,
 }
 
 impl std::fmt::Debug for Shared {
@@ -341,6 +349,7 @@ impl Shared {
                 direction: transfer::Direction::Incoming,
                 paused_transfer: None,
                 running: true,
+                early_resume: None,
             },
         );
     }
@@ -356,7 +365,15 @@ impl Shared {
         let running = direction == transfer::Direction::Incoming;
         lock(&self.transfers).insert(
             id.to_owned(),
-            TransferControl { cancel, paused, peer, direction, paused_transfer: None, running },
+            TransferControl {
+                cancel,
+                paused,
+                peer,
+                direction,
+                paused_transfer: None,
+                running,
+                early_resume: None,
+            },
         );
         rx
     }
@@ -383,6 +400,7 @@ impl Shared {
                 direction,
                 paused_transfer: None,
                 running: true,
+                early_resume: None,
             },
         );
         (cancel, rx)
@@ -394,13 +412,20 @@ impl Shared {
         }
     }
 
-    pub(crate) fn set_transfer_paused(&self, id: &str, is_paused: bool) {
-        if let Some(ctrl) = lock(&self.transfers).get_mut(id) {
-            let _ = ctrl.paused.send(is_paused);
-            if !is_paused {
-                ctrl.paused_transfer = None;
-            }
+    /// A send attempt ended paused, by this side or the receiver: stays
+    /// paused and returns true, unless the receiver already resumed it
+    /// ([`TransferControl::early_resume`]), when sending goes on.
+    pub(crate) fn transfer_paused_by_attempt(&self, id: &str) -> bool {
+        let mut transfers = lock(&self.transfers);
+        let Some(ctrl) = transfers.get_mut(id) else { return true };
+        if *ctrl.paused.borrow() {
+            return true;
         }
+        if ctrl.early_resume.take().is_some_and(|at| at.elapsed() < EARLY_RESUME_WINDOW) {
+            return false;
+        }
+        let _ = ctrl.paused.send(true);
+        true
     }
 
     pub(crate) fn mark_transfer_paused(&self, id: &str, transfer: transfer::Transfer) {
@@ -416,6 +441,9 @@ impl Shared {
         if let Some(ctrl) = lock(&self.transfers).get_mut(id)
             && (ctrl.peer == peer || ctrl.peer == DeviceId([0; 32]))
         {
+            if !*ctrl.paused.borrow() && ctrl.direction == transfer::Direction::Outgoing {
+                ctrl.early_resume = Some(std::time::Instant::now());
+            }
             let _ = ctrl.paused.send(false);
             ctrl.paused_transfer = None;
         }

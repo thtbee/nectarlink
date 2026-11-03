@@ -260,6 +260,8 @@ has a Stop button. Choosing another
   phones on all of its networks. Thanks to
   [@samsarajr](https://github.com/samsarajr) for the packet capture that
   found it ([#148](https://github.com/thtbee/nectarlink/issues/148)).
+- **A transfer paused and quickly resumed on the receiving device could stay
+  paused on the sending one** for good. It now carries on.
 - **App windows failed with "invalid mirroring options"** after Keep
   phone awake or Turn phone screen off was turned on in any mirror window,
   until the PC app restarted. Both settings now reach app windows once

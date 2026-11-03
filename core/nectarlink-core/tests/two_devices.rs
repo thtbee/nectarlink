@@ -5356,6 +5356,34 @@ async fn transfer_manual_pause_and_resume_both_sides() {
     phone.node.shutdown().await;
 }
 
+/// The receiver's resume travels on the control stream and its pause as the
+/// transfer stream's reset, so the resume can reach the sender first. The
+/// sender then mustn't stay paused once the reset comes in.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_resume_that_overtakes_its_pause_still_resumes() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    let src = tempfile::tempdir().unwrap();
+
+    let big = data(64 * 1024 * 1024, 91);
+    let id = pc.node.send_files(phone_id, vec![outgoing(src.path(), "overtaken.bin", &big)]).await.unwrap();
+    wait_transfer(&mut phone, &id, "receiving", |t| (t.state == TransferState::Running).then_some(())).await;
+
+    // In arrival order at the PC: the resume, then the pause.
+    phone.node.resume_transfer(&id);
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    phone.node.pause_transfer(&id);
+
+    let received = wait_transfer(&mut phone, &id, "received despite the late pause", saved).await;
+    assert_eq!(std::fs::read(&received[0]).unwrap(), big);
+    wait_transfer(&mut pc, &id, "sent despite the late pause", saved).await;
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn battery_signal_strength_and_peer_diagnostics_flow() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;

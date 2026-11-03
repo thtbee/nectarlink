@@ -921,8 +921,9 @@ pub(crate) async fn deliver_queued_files(
             Attempt::Done => break TransferState::Done { saved: Vec::new() },
             Attempt::Cancelled => break TransferState::Cancelled,
             Attempt::Paused => {
-                shared.set_transfer_paused(&item.id, true);
-                if reporter.transfer.state != TransferState::Paused {
+                if shared.transfer_paused_by_attempt(&item.id)
+                    && reporter.transfer.state != TransferState::Paused
+                {
                     reporter.set(TransferState::Paused);
                 }
             }
@@ -1206,8 +1207,9 @@ async fn send_until_done(
             Attempt::Cancelled => return TransferState::Cancelled,
             Attempt::Paused => {
                 give_up_at = Instant::now() + RETRY_FOR;
-                reporter.shared.set_transfer_paused(&reporter.transfer.id, true);
-                if reporter.transfer.state != TransferState::Paused {
+                if reporter.shared.transfer_paused_by_attempt(&reporter.transfer.id)
+                    && reporter.transfer.state != TransferState::Paused
+                {
                     reporter.set(TransferState::Paused);
                 }
             }
