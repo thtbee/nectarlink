@@ -124,7 +124,17 @@ mod imp {
     #[cfg(windows)]
     static ACTIVE_ROOTS: Mutex<Option<HashMap<DeviceId, Arc<ActiveRoot>>>> = Mutex::new(None);
     #[cfg(windows)]
+    static INTERNED_DEVICES: Mutex<Option<HashMap<DeviceId, usize>>> = Mutex::new(None);
+    #[cfg(windows)]
     static RECONCILING: Mutex<()> = Mutex::new(());
+
+    #[cfg(windows)]
+    fn intern_device_id(device: DeviceId) -> *const c_void {
+        let mut guard = lock(&INTERNED_DEVICES);
+        let map = guard.get_or_insert_with(HashMap::new);
+        let addr = *map.entry(device).or_insert_with(|| Box::into_raw(Box::new(device)) as usize);
+        addr as *const c_void
+    }
 
     #[cfg(windows)]
     fn active_roots() -> MutexGuard<'static, Option<HashMap<DeviceId, Arc<ActiveRoot>>>> {
@@ -585,9 +595,10 @@ mod imp {
             CF_CALLBACK_REGISTRATION { Type: CF_CALLBACK_TYPE_NONE, Callback: None },
         ];
 
-        // Keep the DeviceId in a heap allocation for the process lifetime so async
-        // cfapi callbacks always read a valid DeviceId and look up `ACTIVE_ROOTS`.
-        let ctx_ptr: *const c_void = Box::into_raw(Box::new(device)).cast();
+        // Keep one interned DeviceId allocation per paired device for the process
+        // lifetime so async cfapi callbacks always read a valid DeviceId and
+        // reconnects do not allocate a new Box each time.
+        let ctx_ptr = intern_device_id(device);
         let wide_root = to_wide_null(&root_path);
         // SAFETY: wide_root is null-terminated, callbacks ends with CF_CALLBACK_TYPE_NONE.
         let connection_key = unsafe {
@@ -1518,6 +1529,21 @@ mod imp {
             assert_ne!(folders[&a].to_lowercase(), folders[&b].to_lowercase());
             // A phone with a name of its own keeps its plain folder.
             assert_eq!(folders[&c], "Pixel 9");
+        }
+
+        #[cfg(windows)]
+        #[test]
+        fn interns_callback_context_per_device_id() {
+            let (a, b) = (DeviceId([7; 32]), DeviceId([8; 32]));
+            let ptr_a1 = intern_device_id(a);
+            let ptr_a2 = intern_device_id(a);
+            let ptr_b = intern_device_id(b);
+            assert_eq!(ptr_a1, ptr_a2);
+            assert_ne!(ptr_a1, ptr_b);
+            unsafe {
+                assert_eq!(*(ptr_a1 as *const DeviceId), a);
+                assert_eq!(*(ptr_b as *const DeviceId), b);
+            }
         }
     }
 }
