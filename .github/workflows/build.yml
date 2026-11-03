@@ -235,6 +235,9 @@ jobs:
               sh /dist/install.sh
               nectarlink-desktop --version
               sh /dist/install.sh --uninstall
+              # The shell remembers where it last ran the app, and dash
+              # reports that even once the file is gone.
+              hash -r
               ! command -v nectarlink-desktop'
           done
           docker run --rm -v "$PWD/dist:/dist:ro" ubuntu:24.04 sh -euc '
