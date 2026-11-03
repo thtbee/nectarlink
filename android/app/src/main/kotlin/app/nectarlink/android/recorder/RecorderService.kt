@@ -80,6 +80,15 @@ class RecorderService : Service() {
                 val pcId = intent.getStringExtra(EXTRA_PC)
                 if (!running && pcId != null) {
                     startRecordingSession(pcId)
+                } else if (running) {
+                    val s = _session.value
+                    val activePc = s.pcId ?: pcId.orEmpty()
+                    val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0
+                    runCatching {
+                        ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(activePc, s.paused, s.elapsedMs), type)
+                    }
+                } else {
+                    stopAfterForeground("")
                 }
             }
             ACTION_PAUSE -> if (running && !paused) {
@@ -101,9 +110,19 @@ class RecorderService : Service() {
         return START_NOT_STICKY
     }
 
+    private fun stopAfterForeground(pcId: String) {
+        createChannel(this)
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE else 0
+        runCatching {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(pcId, paused = false, elapsedMs = 0L), type)
+        }
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
     private fun startRecordingSession(pcId: String) {
         if (!hasPermission(this)) {
-            stopSelf()
+            stopAfterForeground(pcId)
             return
         }
         createChannel(this)
@@ -127,25 +146,33 @@ class RecorderService : Service() {
 
         val app = application as NectarlinkApplication
         encodeJob = scope.launch(Dispatchers.IO) {
-            val outFile = app.core.recordings.newRecordingFile()
-            val durationMs = recordM4a(outFile, pcId)
-            val finalMarkers = _session.value.markers
-            val savedId = if (outFile.exists() && outFile.length() > 0L) {
-                app.core.onRecordingFinished(pcId, outFile, durationMs, finalMarkers).id
-            } else {
-                null
+            var savedId: String? = null
+            try {
+                val outFile = app.core.recordings.newRecordingFile()
+                val durationMs = recordM4a(outFile, pcId)
+                val finalMarkers = _session.value.markers
+                savedId = if (outFile.exists() && outFile.length() > 0L) {
+                    app.core.onRecordingFinished(pcId, outFile, durationMs, finalMarkers).id
+                } else {
+                    null
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "recording failed", e)
+            } finally {
+                running = false
+                paused = false
+                _session.value = RecorderSession(
+                    active = false,
+                    paused = false,
+                    pcId = pcId,
+                    elapsedMs = 0L,
+                    level = 0f,
+                    markers = emptyList(),
+                    lastSavedId = savedId ?: _session.value.lastSavedId,
+                )
+                ServiceCompat.stopForeground(this@RecorderService, ServiceCompat.STOP_FOREGROUND_REMOVE)
+                stopSelf()
             }
-            _session.value = RecorderSession(
-                active = false,
-                paused = false,
-                pcId = pcId,
-                elapsedMs = 0L,
-                level = 0f,
-                markers = emptyList(),
-                lastSavedId = savedId,
-            )
-            ServiceCompat.stopForeground(this@RecorderService, ServiceCompat.STOP_FOREGROUND_REMOVE)
-            stopSelf()
         }
     }
 
@@ -167,80 +194,87 @@ class RecorderService : Service() {
             )
         }.getOrNull()
 
-        val codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
-        val format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, SAMPLE_RATE, CHANNELS).apply {
-            setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
-            setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE)
-            setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16_384)
-        }
-        codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-        codec.start()
-
-        outFile.parentFile?.mkdirs()
-        val muxer = MediaMuxer(outFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-        var trackIndex = -1
+        var codec: MediaCodec? = null
+        var muxer: MediaMuxer? = null
         var muxerStarted = false
-        val bufferInfo = MediaCodec.BufferInfo()
-
-        val pcmShorts = ShortArray(FRAME_SAMPLES)
+        var noiseSuppressor: NoiseSuppressor? = null
+        var agc: AutomaticGainControl? = null
         var totalSamples = 0L
-        var frameTick = 0
-
-        fun drainEncoder(endOfStream: Boolean) {
-            if (endOfStream) {
-                val inIdx = codec.dequeueInputBuffer(10_000L)
-                if (inIdx >= 0) {
-                    val ptsUs = (totalSamples * 1_000_000L) / SAMPLE_RATE
-                    codec.queueInputBuffer(inIdx, 0, 0, ptsUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                }
-            }
-            while (true) {
-                val outIdx = codec.dequeueOutputBuffer(bufferInfo, if (endOfStream) 10_000L else 0L)
-                when {
-                    outIdx == MediaCodec.INFO_TRY_AGAIN_LATER -> break
-                    outIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                        if (!muxerStarted) {
-                            trackIndex = muxer.addTrack(codec.outputFormat)
-                            muxer.start()
-                            muxerStarted = true
-                        }
-                    }
-                    outIdx >= 0 -> {
-                        val encoded = codec.getOutputBuffer(outIdx)
-                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
-                            bufferInfo.size = 0
-                        }
-                        if (bufferInfo.size > 0 && muxerStarted && encoded != null) {
-                            encoded.position(bufferInfo.offset)
-                            encoded.limit(bufferInfo.offset + bufferInfo.size)
-                            muxer.writeSampleData(trackIndex, encoded, bufferInfo)
-                        }
-                        codec.releaseOutputBuffer(outIdx, false)
-                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
-                    }
-                }
-            }
-        }
-
-        val noiseSuppressor = runCatching {
-            val sessionId = audioRecord?.audioSessionId ?: 0
-            if (sessionId != 0 && NoiseSuppressor.isAvailable()) {
-                NoiseSuppressor.create(sessionId)?.apply { enabled = true }
-            } else {
-                null
-            }
-        }.getOrNull()
-
-        val agc = runCatching {
-            val sessionId = audioRecord?.audioSessionId ?: 0
-            if (sessionId != 0 && AutomaticGainControl.isAvailable()) {
-                AutomaticGainControl.create(sessionId)?.apply { enabled = true }
-            } else {
-                null
-            }
-        }.getOrNull()
 
         try {
+            val activeCodec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC)
+            codec = activeCodec
+            val format = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC, SAMPLE_RATE, CHANNELS).apply {
+                setInteger(MediaFormat.KEY_AAC_PROFILE, MediaCodecInfo.CodecProfileLevel.AACObjectLC)
+                setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE)
+                setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 16_384)
+            }
+            activeCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            activeCodec.start()
+
+            outFile.parentFile?.mkdirs()
+            val activeMuxer = MediaMuxer(outFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            muxer = activeMuxer
+            var trackIndex = -1
+            val bufferInfo = MediaCodec.BufferInfo()
+
+            val pcmShorts = ShortArray(FRAME_SAMPLES)
+            var frameTick = 0
+
+            fun drainEncoder(endOfStream: Boolean) {
+                if (endOfStream) {
+                    val inIdx = activeCodec.dequeueInputBuffer(10_000L)
+                    if (inIdx >= 0) {
+                        val ptsUs = (totalSamples * 1_000_000L) / SAMPLE_RATE
+                        activeCodec.queueInputBuffer(inIdx, 0, 0, ptsUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                    }
+                }
+                while (true) {
+                    val outIdx = activeCodec.dequeueOutputBuffer(bufferInfo, if (endOfStream) 10_000L else 0L)
+                    when {
+                        outIdx == MediaCodec.INFO_TRY_AGAIN_LATER -> break
+                        outIdx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                            if (!muxerStarted) {
+                                trackIndex = activeMuxer.addTrack(activeCodec.outputFormat)
+                                activeMuxer.start()
+                                muxerStarted = true
+                            }
+                        }
+                        outIdx >= 0 -> {
+                            val encoded = activeCodec.getOutputBuffer(outIdx)
+                            if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
+                                bufferInfo.size = 0
+                            }
+                            if (bufferInfo.size > 0 && muxerStarted && encoded != null) {
+                                encoded.position(bufferInfo.offset)
+                                encoded.limit(bufferInfo.offset + bufferInfo.size)
+                                activeMuxer.writeSampleData(trackIndex, encoded, bufferInfo)
+                            }
+                            activeCodec.releaseOutputBuffer(outIdx, false)
+                            if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) break
+                        }
+                    }
+                }
+            }
+
+            noiseSuppressor = runCatching {
+                val sessionId = audioRecord?.audioSessionId ?: 0
+                if (sessionId != 0 && NoiseSuppressor.isAvailable()) {
+                    NoiseSuppressor.create(sessionId)?.apply { enabled = true }
+                } else {
+                    null
+                }
+            }.getOrNull()
+
+            agc = runCatching {
+                val sessionId = audioRecord?.audioSessionId ?: 0
+                if (sessionId != 0 && AutomaticGainControl.isAvailable()) {
+                    AutomaticGainControl.create(sessionId)?.apply { enabled = true }
+                } else {
+                    null
+                }
+            }.getOrNull()
+
             if (audioRecord?.state == AudioRecord.STATE_INITIALIZED) {
                 runCatching { audioRecord.startRecording() }
             }
@@ -282,16 +316,16 @@ class RecorderService : Service() {
                 val rms = sqrt(sumSq / count.coerceAtLeast(1)) / 32768.0
                 val meter = (rms * 4.5).toFloat().coerceIn(0f, 1f)
 
-                val inIdx = codec.dequeueInputBuffer(10_000L)
+                val inIdx = activeCodec.dequeueInputBuffer(10_000L)
                 if (inIdx >= 0) {
-                    val inBuf: ByteBuffer? = codec.getInputBuffer(inIdx)
+                    val inBuf: ByteBuffer? = activeCodec.getInputBuffer(inIdx)
                     if (inBuf != null) {
                         inBuf.clear()
                         inBuf.order(ByteOrder.nativeOrder())
                         val shortBuf = inBuf.asShortBuffer()
                         shortBuf.put(pcmShorts, 0, count)
                         val ptsUs = (totalSamples * 1_000_000L) / SAMPLE_RATE
-                        codec.queueInputBuffer(inIdx, 0, count * 2, ptsUs, 0)
+                        activeCodec.queueInputBuffer(inIdx, 0, count * 2, ptsUs, 0)
                     }
                 }
                 totalSamples += count
@@ -316,12 +350,12 @@ class RecorderService : Service() {
                 audioRecord?.release()
             }
             runCatching {
-                codec.stop()
-                codec.release()
+                codec?.stop()
+                codec?.release()
             }
             runCatching {
-                if (muxerStarted) muxer.stop()
-                muxer.release()
+                if (muxerStarted) muxer?.stop()
+                muxer?.release()
             }
         }
         return (totalSamples * 1_000L) / SAMPLE_RATE
@@ -398,7 +432,7 @@ class RecorderService : Service() {
     companion object {
         private const val TAG = "RecorderService"
         private const val CHANNEL = "recorder"
-        private const val NOTIFICATION_ID = 7
+        private const val NOTIFICATION_ID = 11
         private const val SAMPLE_RATE = 48_000
         private const val CHANNELS = 1
         private const val BIT_RATE = 128_000
@@ -420,6 +454,7 @@ class RecorderService : Service() {
                 PackageManager.PERMISSION_GRANTED
 
         fun start(context: Context, pcId: String) {
+            if (!hasPermission(context) || _session.value.active) return
             val intent = Intent(context, RecorderService::class.java)
                 .setAction(ACTION_START)
                 .putExtra(EXTRA_PC, pcId)

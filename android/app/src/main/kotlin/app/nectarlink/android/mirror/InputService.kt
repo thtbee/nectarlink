@@ -40,7 +40,7 @@ class InputService : AccessibilityService() {
     private val longPressRunnable = Runnable {
         if (stroke.isEmpty() || longPressFired) return@Runnable
         val (w, h) = screen()
-        val points = stroke.map { (px, py) -> px * w to py * h }
+        val points = stroke.map { (px, py) -> clampScreenPoint(px, py, w, h) }
         if (isStationaryTapOrHold(points, w)) {
             longPressFired = true
             val start = points.first()
@@ -117,8 +117,9 @@ class InputService : AccessibilityService() {
                 stroke.add(x to y)
                 if (!longPressFired) {
                     val (w, h) = screen()
-                    val start = stroke.first().let { it.first * w to it.second * h }
-                    if (hypot(x * w - start.first, y * h - start.second) >= TAP_SLOP_FRACTION * w) {
+                    val start = stroke.first().let { clampScreenPoint(it.first, it.second, w, h) }
+                    val cur = clampScreenPoint(x, y, w, h)
+                    if (hypot(cur.first - start.first, cur.second - start.second) >= TAP_SLOP_FRACTION * w) {
                         main.removeCallbacks(longPressRunnable)
                     }
                 }
@@ -129,7 +130,7 @@ class InputService : AccessibilityService() {
                 stroke.add(x to y)
                 val held = SystemClock.uptimeMillis() - downAt
                 val (w, h) = screen()
-                val points = stroke.map { (px, py) -> px * w to py * h }
+                val points = stroke.map { (px, py) -> clampScreenPoint(px, py, w, h) }
                 stroke.clear()
                 val wasLongPressFired = longPressFired
                 longPressFired = false
@@ -166,11 +167,17 @@ class InputService : AccessibilityService() {
         main.removeCallbacks(flushScroll)
         if (gestureInFlight) return
         val (w, h) = screen()
-        val x = scrollX * w
-        val y = scrollY * h
+        if (w < 2f || h < 2f) {
+            scrollDx = 0f
+            scrollDy = 0f
+            return
+        }
+        val (rawX, rawY) = clampScreenPoint(scrollX, scrollY, w, h)
+        val x = rawX.coerceIn(1f, (w - 1f).coerceAtLeast(1f))
+        val y = rawY.coerceIn(1f, (h - 1f).coerceAtLeast(1f))
         // Wheel down shows what's below: the finger moves up.
-        val dx = (-scrollDx * SCROLL_STEP_FRACTION * w).coerceIn(-x + 1, w - x - 1)
-        val dy = (-scrollDy * SCROLL_STEP_FRACTION * h).coerceIn(-y + 1, h - y - 1)
+        val dx = clampScrollDelta(x, -scrollDx * SCROLL_STEP_FRACTION * w, w)
+        val dy = clampScrollDelta(y, -scrollDy * SCROLL_STEP_FRACTION * h, h)
         scrollDx = 0f
         scrollDy = 0f
         if (abs(dx) < 1f && abs(dy) < 1f) return
@@ -448,4 +455,24 @@ internal fun filterDragPoints(
 
 internal fun swipeDurationMs(heldMs: Long): Long =
     heldMs.coerceIn(InputService.SWIPE_MIN_MS, InputService.SWIPE_MAX_MS)
+
+internal fun clampScreenPoint(normX: Float, normY: Float, screenW: Float, screenH: Float): Pair<Float, Float> {
+    val safeW = screenW.takeIf { it.isFinite() && it > 0f } ?: 1f
+    val safeH = screenH.takeIf { it.isFinite() && it > 0f } ?: 1f
+    val maxW = (safeW - 1f).coerceAtLeast(0f)
+    val maxH = (safeH - 1f).coerceAtLeast(0f)
+    val nx = if (normX.isFinite()) normX.coerceIn(0f, 1f) else 0f
+    val ny = if (normY.isFinite()) normY.coerceIn(0f, 1f) else 0f
+    return (nx * safeW).coerceIn(0f, maxW) to (ny * safeH).coerceIn(0f, maxH)
+}
+
+internal fun clampScrollDelta(pos: Float, rawDelta: Float, screenExtent: Float): Float {
+    val safeExtent = screenExtent.takeIf { it.isFinite() && it >= 2f } ?: return 0f
+    val maxExtent = (safeExtent - 1f).coerceAtLeast(1f)
+    val clampedPos = if (pos.isFinite()) pos.coerceIn(1f, maxExtent) else 1f
+    val minDelta = (-clampedPos + 1f).coerceAtMost(0f)
+    val maxDelta = (maxExtent - clampedPos).coerceAtLeast(0f)
+    val safeRaw = if (rawDelta.isFinite()) rawDelta else 0f
+    return safeRaw.coerceIn(minDelta, maxDelta)
+}
 
