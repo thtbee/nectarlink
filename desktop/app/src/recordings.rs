@@ -288,11 +288,16 @@ pub(crate) fn ffmpeg_args(src: &Path, dest: &Path, format: RecordingFormat) -> V
     args
 }
 
-/// Converts `src` (`.m4a`) to `dest` in `format` with ffmpeg on Linux.
+/// Converts `src` (`.m4a`) to `dest` in `format` on Linux, using in-process
+/// `libavcodec` + pure-Rust WAV/FLAC + `libmp3lame` first and falling back to
+/// the `ffmpeg` CLI only if needed.
 #[cfg(target_os = "linux")]
 pub fn convert_audio(src: &Path, dest: &Path, format: RecordingFormat) -> std::io::Result<()> {
     if matches!(format, RecordingFormat::M4a) {
         fs::copy(src, dest)?;
+        return Ok(());
+    }
+    if convert_audio_in_process(src, dest, format).is_some() {
         return Ok(());
     }
     let status = std::process::Command::new("ffmpeg")
@@ -303,12 +308,744 @@ pub fn convert_audio(src: &Path, dest: &Path, format: RecordingFormat) -> std::i
         .status()
         .map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
-                std::io::Error::other("converting recordings needs ffmpeg")
+                std::io::Error::other("converting recordings needs libavcodec or ffmpeg")
             } else {
                 e
             }
         })?;
     if status.success() { Ok(()) } else { Err(std::io::Error::other(format!("ffmpeg exited with {status}"))) }
+}
+
+#[cfg(target_os = "linux")]
+struct DemuxedM4a {
+    sample_rate: u32,
+    asc: [u8; 2],
+    frames: Vec<Vec<u8>>,
+}
+
+#[cfg(target_os = "linux")]
+fn default_aac_lc_asc(sample_rate: u32, channels: u8) -> [u8; 2] {
+    let freq_idx: u8 = match sample_rate {
+        96_000 => 0,
+        88_200 => 1,
+        64_000 => 2,
+        48_000 => 3,
+        44_100 => 4,
+        32_000 => 5,
+        24_000 => 6,
+        22_050 => 7,
+        16_000 => 8,
+        12_000 => 9,
+        11_025 => 10,
+        8_000 => 11,
+        7_350 => 12,
+        _ => 3,
+    };
+    let ch = channels.clamp(1, 2);
+    let b0 = (2u8 << 3) | ((freq_idx >> 1) & 0x07);
+    let b1 = ((freq_idx & 0x01) << 7) | ((ch & 0x0F) << 3);
+    [b0, b1]
+}
+
+#[cfg(target_os = "linux")]
+fn demux_m4a_aac(bytes: &[u8]) -> Option<DemuxedM4a> {
+    #[derive(Default)]
+    struct TrackTables {
+        sample_rate: u32,
+        channels: u8,
+        asc: Option<[u8; 2]>,
+        sample_sizes: Vec<u32>,
+        stsc: Vec<(u32, u32)>,
+        chunk_offsets: Vec<u64>,
+    }
+
+    fn parse_esds_asc(esds_body: &[u8]) -> Option<[u8; 2]> {
+        // Scan for DecoderSpecificInfo tag (0x05) inside esds body (after 4-byte FullBox header).
+        let data = esds_body.get(4..)?;
+        for i in 0..data.len() {
+            if data[i] == 0x05 {
+                let mut pos = i + 1;
+                let mut len = 0usize;
+                for _ in 0..4 {
+                    let b = *data.get(pos)?;
+                    pos += 1;
+                    len = (len << 7) | usize::from(b & 0x7F);
+                    if b & 0x80 == 0 {
+                        break;
+                    }
+                }
+                if (2..=16).contains(&len) && pos + 2 <= data.len() {
+                    let b0 = data[pos];
+                    let b1 = data[pos + 1];
+                    let obj_type = (b0 >> 3) & 0x1F;
+                    if (1..=5).contains(&obj_type) {
+                        return Some([b0, b1]);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn walk_boxes(data: &[u8], tables: &mut TrackTables) {
+        let mut pos = 0usize;
+        while pos + 8 <= data.len() {
+            let size32 =
+                u32::from_be_bytes([data[pos], data[pos + 1], data[pos + 2], data[pos + 3]]) as usize;
+            let fourcc = &data[pos + 4..pos + 8];
+            let (header_len, box_len) = if size32 == 1 {
+                if pos + 16 > data.len() {
+                    break;
+                }
+                let size64 = u64::from_be_bytes([
+                    data[pos + 8],
+                    data[pos + 9],
+                    data[pos + 10],
+                    data[pos + 11],
+                    data[pos + 12],
+                    data[pos + 13],
+                    data[pos + 14],
+                    data[pos + 15],
+                ]) as usize;
+                (16usize, size64)
+            } else if size32 == 0 {
+                (8usize, data.len() - pos)
+            } else {
+                (8usize, size32)
+            };
+            if box_len < header_len || pos + box_len > data.len() {
+                break;
+            }
+            let body = &data[pos + header_len..pos + box_len];
+            match fourcc {
+                b"moov" | b"trak" | b"mdia" | b"minf" | b"stbl" => walk_boxes(body, tables),
+                b"stsd" if body.len() >= 8 => walk_boxes(&body[8..], tables),
+                b"mp4a" if body.len() >= 28 => {
+                    tables.channels = u16::from_be_bytes([body[16], body[17]]).clamp(1, 2) as u8;
+                    let sr = u32::from_be_bytes([body[24], body[25], body[26], body[27]]) >> 16;
+                    if sr > 0 {
+                        tables.sample_rate = sr;
+                    }
+                    walk_boxes(&body[28..], tables);
+                }
+                b"esds" => {
+                    if let Some(asc) = parse_esds_asc(body) {
+                        tables.asc = Some(asc);
+                    }
+                }
+                b"stsz" if body.len() >= 12 => {
+                    let fixed_size = u32::from_be_bytes([body[4], body[5], body[6], body[7]]);
+                    let count = u32::from_be_bytes([body[8], body[9], body[10], body[11]]) as usize;
+                    if fixed_size > 0 {
+                        tables.sample_sizes = vec![fixed_size; count];
+                    } else if body.len() >= 12 + count.saturating_mul(4) {
+                        tables.sample_sizes = (0..count)
+                            .map(|i| {
+                                let o = 12 + i * 4;
+                                u32::from_be_bytes([body[o], body[o + 1], body[o + 2], body[o + 3]])
+                            })
+                            .collect();
+                    }
+                }
+                b"stsc" if body.len() >= 8 => {
+                    let count = u32::from_be_bytes([body[4], body[5], body[6], body[7]]) as usize;
+                    if body.len() >= 8 + count.saturating_mul(12) {
+                        tables.stsc = (0..count)
+                            .map(|i| {
+                                let o = 8 + i * 12;
+                                let first_chunk =
+                                    u32::from_be_bytes([body[o], body[o + 1], body[o + 2], body[o + 3]]);
+                                let spc =
+                                    u32::from_be_bytes([body[o + 4], body[o + 5], body[o + 6], body[o + 7]]);
+                                (first_chunk, spc)
+                            })
+                            .collect();
+                    }
+                }
+                b"stco" if body.len() >= 8 => {
+                    let count = u32::from_be_bytes([body[4], body[5], body[6], body[7]]) as usize;
+                    if body.len() >= 8 + count.saturating_mul(4) {
+                        tables.chunk_offsets = (0..count)
+                            .map(|i| {
+                                let o = 8 + i * 4;
+                                u64::from(u32::from_be_bytes([
+                                    body[o],
+                                    body[o + 1],
+                                    body[o + 2],
+                                    body[o + 3],
+                                ]))
+                            })
+                            .collect();
+                    }
+                }
+                b"co64" if body.len() >= 8 => {
+                    let count = u32::from_be_bytes([body[4], body[5], body[6], body[7]]) as usize;
+                    if body.len() >= 8 + count.saturating_mul(8) {
+                        tables.chunk_offsets = (0..count)
+                            .map(|i| {
+                                let o = 8 + i * 8;
+                                u64::from_be_bytes([
+                                    body[o],
+                                    body[o + 1],
+                                    body[o + 2],
+                                    body[o + 3],
+                                    body[o + 4],
+                                    body[o + 5],
+                                    body[o + 6],
+                                    body[o + 7],
+                                ])
+                            })
+                            .collect();
+                    }
+                }
+                _ => {}
+            }
+            pos += box_len;
+        }
+    }
+
+    let mut tables = TrackTables::default();
+    walk_boxes(bytes, &mut tables);
+    if tables.sample_sizes.is_empty() || tables.chunk_offsets.is_empty() {
+        return None;
+    }
+
+    let sample_rate = if tables.sample_rate > 0 { tables.sample_rate } else { 48_000 };
+    let channels = if tables.channels > 0 { tables.channels } else { 1 };
+    let asc = tables.asc.unwrap_or_else(|| default_aac_lc_asc(sample_rate, channels));
+
+    let mut frames = Vec::with_capacity(tables.sample_sizes.len());
+    let mut sample_idx = 0usize;
+    for (chunk_idx, &chunk_off) in tables.chunk_offsets.iter().enumerate() {
+        if sample_idx >= tables.sample_sizes.len() {
+            break;
+        }
+        let chunk_num = (chunk_idx + 1) as u32;
+        let samples_in_chunk = tables
+            .stsc
+            .iter()
+            .rev()
+            .find(|&&(first, _)| first <= chunk_num)
+            .map(|&(_, spc)| spc as usize)
+            .unwrap_or(tables.sample_sizes.len());
+        let mut off = chunk_off as usize;
+        for _ in 0..samples_in_chunk {
+            if sample_idx >= tables.sample_sizes.len() {
+                break;
+            }
+            let sz = tables.sample_sizes[sample_idx] as usize;
+            sample_idx += 1;
+            let end = off.checked_add(sz)?;
+            let slice = bytes.get(off..end)?;
+            frames.push(slice.to_vec());
+            off = end;
+        }
+    }
+
+    if frames.is_empty() {
+        return None;
+    }
+    Some(DemuxedM4a { sample_rate, asc, frames })
+}
+
+#[cfg(target_os = "linux")]
+struct AvAacDecoderApi {
+    avcodec_find_decoder_by_name: unsafe extern "C" fn(*const std::ffi::c_char) -> *const std::ffi::c_void,
+    avcodec_alloc_context3: unsafe extern "C" fn(*const std::ffi::c_void) -> *mut std::ffi::c_void,
+    avcodec_free_context: unsafe extern "C" fn(*mut *mut std::ffi::c_void),
+    avcodec_open2: unsafe extern "C" fn(
+        *mut std::ffi::c_void,
+        *const std::ffi::c_void,
+        *mut *mut std::ffi::c_void,
+    ) -> std::ffi::c_int,
+    avcodec_send_packet:
+        unsafe extern "C" fn(*mut std::ffi::c_void, *const std::ffi::c_void) -> std::ffi::c_int,
+    avcodec_receive_frame:
+        unsafe extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void) -> std::ffi::c_int,
+    av_frame_alloc: unsafe extern "C" fn() -> *mut std::ffi::c_void,
+    av_frame_free: unsafe extern "C" fn(*mut *mut std::ffi::c_void),
+    av_frame_unref: unsafe extern "C" fn(*mut std::ffi::c_void),
+    av_packet_alloc: unsafe extern "C" fn() -> *mut std::ffi::c_void,
+    av_packet_free: unsafe extern "C" fn(*mut *mut std::ffi::c_void),
+}
+
+#[cfg(target_os = "linux")]
+fn av_aac_decoder_api() -> Option<&'static AvAacDecoderApi> {
+    static API: std::sync::OnceLock<Option<AvAacDecoderApi>> = std::sync::OnceLock::new();
+    API.get_or_init(|| unsafe {
+        unsafe fn dlopen_any(candidates: &[&std::ffi::CStr]) -> *mut std::ffi::c_void {
+            for name in candidates {
+                let h = unsafe { libc::dlopen(name.as_ptr(), libc::RTLD_NOW | libc::RTLD_LOCAL) };
+                if !h.is_null() {
+                    return h;
+                }
+            }
+            std::ptr::null_mut()
+        }
+        unsafe fn sym<T: Copy>(handle: *mut std::ffi::c_void, name: &std::ffi::CStr) -> Option<T> {
+            let p = unsafe { libc::dlsym(handle, name.as_ptr()) };
+            if p.is_null() { None } else { Some(unsafe { std::mem::transmute_copy(&p) }) }
+        }
+
+        let avcodec = dlopen_any(&[
+            c"libavcodec.so.62",
+            c"libavcodec.so.61",
+            c"libavcodec.so.60",
+            c"libavcodec.so.59",
+            c"libavcodec.so",
+        ]);
+        let avutil = dlopen_any(&[
+            c"libavutil.so.60",
+            c"libavutil.so.59",
+            c"libavutil.so.58",
+            c"libavutil.so.57",
+            c"libavutil.so",
+        ]);
+        if avcodec.is_null() || avutil.is_null() {
+            return None;
+        }
+        Some(AvAacDecoderApi {
+            avcodec_find_decoder_by_name: sym(avcodec, c"avcodec_find_decoder_by_name")?,
+            avcodec_alloc_context3: sym(avcodec, c"avcodec_alloc_context3")?,
+            avcodec_free_context: sym(avcodec, c"avcodec_free_context")?,
+            avcodec_open2: sym(avcodec, c"avcodec_open2")?,
+            avcodec_send_packet: sym(avcodec, c"avcodec_send_packet")?,
+            avcodec_receive_frame: sym(avcodec, c"avcodec_receive_frame")?,
+            av_frame_alloc: sym(avutil, c"av_frame_alloc")?,
+            av_frame_free: sym(avutil, c"av_frame_free")?,
+            av_frame_unref: sym(avutil, c"av_frame_unref")?,
+            av_packet_alloc: sym(avcodec, c"av_packet_alloc")?,
+            av_packet_free: sym(avcodec, c"av_packet_free")?,
+        })
+    })
+    .as_ref()
+}
+
+#[cfg(target_os = "linux")]
+fn decode_m4a_to_pcm_s16le(m4a_bytes: &[u8]) -> Option<(u32, u8, Vec<i16>)> {
+    let demuxed = demux_m4a_aac(m4a_bytes)?;
+    let api = av_aac_decoder_api()?;
+
+    let obj_type = ((demuxed.asc[0] >> 3) & 0x1F).max(1);
+    let profile = (obj_type - 1) & 0x03;
+    let freq_idx = ((demuxed.asc[0] & 0x07) << 1) | ((demuxed.asc[1] >> 7) & 0x01);
+    let chan_cfg = ((demuxed.asc[1] >> 3) & 0x0F).clamp(1, 2);
+
+    unsafe {
+        let codec = (api.avcodec_find_decoder_by_name)(c"aac".as_ptr());
+        if codec.is_null() {
+            return None;
+        }
+        let ctx = (api.avcodec_alloc_context3)(codec);
+        if ctx.is_null() {
+            return None;
+        }
+        struct Guard {
+            api: &'static AvAacDecoderApi,
+            ctx: *mut std::ffi::c_void,
+            frame: *mut std::ffi::c_void,
+            pkt: *mut std::ffi::c_void,
+        }
+        impl Drop for Guard {
+            fn drop(&mut self) {
+                unsafe {
+                    if !self.frame.is_null() {
+                        (self.api.av_frame_free)(&mut self.frame);
+                    }
+                    if !self.pkt.is_null() {
+                        (self.api.av_packet_free)(&mut self.pkt);
+                    }
+                    if !self.ctx.is_null() {
+                        (self.api.avcodec_free_context)(&mut self.ctx);
+                    }
+                }
+            }
+        }
+        let mut g = Guard { api, ctx, frame: std::ptr::null_mut(), pkt: std::ptr::null_mut() };
+        if (api.avcodec_open2)(g.ctx, codec, std::ptr::null_mut()) < 0 {
+            return None;
+        }
+        g.frame = (api.av_frame_alloc)();
+        g.pkt = (api.av_packet_alloc)();
+        if g.frame.is_null() || g.pkt.is_null() {
+            return None;
+        }
+
+        let mut sample_rate = demuxed.sample_rate;
+        let channels = chan_cfg as usize;
+        let mut pcm_samples = Vec::new();
+
+        let drain_frames = |ctx: *mut std::ffi::c_void,
+                            frame: *mut std::ffi::c_void,
+                            sample_rate: &mut u32,
+                            pcm_samples: &mut Vec<i16>| {
+            loop {
+                if (api.avcodec_receive_frame)(ctx, frame) < 0 {
+                    break;
+                }
+                let nb_samples = *(frame.byte_add(0x70) as *const std::ffi::c_int);
+                let fmt = *(frame.byte_add(0x74) as *const std::ffi::c_int);
+                let sr = *(frame.byte_add(0x7c) as *const std::ffi::c_int);
+                if sr >= 8_000 {
+                    *sample_rate = sr as u32;
+                }
+                if nb_samples > 0 {
+                    let n = nb_samples as usize;
+                    let data_ptrs = std::slice::from_raw_parts(frame as *const *const u8, 8);
+                    match fmt {
+                        8 => {
+                            // AV_SAMPLE_FMT_FLTP (planar f32)
+                            for i in 0..n {
+                                for &plane_ptr in data_ptrs.iter().take(channels) {
+                                    let s = if !plane_ptr.is_null() {
+                                        let plane = std::slice::from_raw_parts(plane_ptr as *const f32, n);
+                                        (plane[i].clamp(-1.0, 1.0) * 32767.0) as i16
+                                    } else {
+                                        0
+                                    };
+                                    pcm_samples.push(s);
+                                }
+                            }
+                        }
+                        6 => {
+                            // AV_SAMPLE_FMT_S16P (planar i16)
+                            for i in 0..n {
+                                for &plane_ptr in data_ptrs.iter().take(channels) {
+                                    let s = if !plane_ptr.is_null() {
+                                        let plane = std::slice::from_raw_parts(plane_ptr as *const i16, n);
+                                        plane[i]
+                                    } else {
+                                        0
+                                    };
+                                    pcm_samples.push(s);
+                                }
+                            }
+                        }
+                        3 if !data_ptrs[0].is_null() => {
+                            // AV_SAMPLE_FMT_FLT (interleaved f32)
+                            let interleaved =
+                                std::slice::from_raw_parts(data_ptrs[0] as *const f32, n * channels);
+                            for &v in interleaved {
+                                pcm_samples.push((v.clamp(-1.0, 1.0) * 32767.0) as i16);
+                            }
+                        }
+                        1 if !data_ptrs[0].is_null() => {
+                            // AV_SAMPLE_FMT_S16 (interleaved i16)
+                            let interleaved =
+                                std::slice::from_raw_parts(data_ptrs[0] as *const i16, n * channels);
+                            pcm_samples.extend_from_slice(interleaved);
+                        }
+                        _ => {}
+                    }
+                }
+                (api.av_frame_unref)(frame);
+            }
+        };
+
+        let mut adts_buf = Vec::new();
+        for raw_frame in &demuxed.frames {
+            let full_len = (7 + raw_frame.len()) as u32;
+            let header: [u8; 7] = [
+                0xFF,
+                0xF1,
+                (profile << 6) | ((freq_idx & 0x0F) << 2) | ((chan_cfg >> 2) & 0x01),
+                ((chan_cfg & 0x03) << 6) | (((full_len >> 11) & 0x03) as u8),
+                ((full_len >> 3) & 0xFF) as u8,
+                (((full_len & 0x07) as u8) << 5) | 0x1F,
+                0xFC,
+            ];
+            adts_buf.clear();
+            adts_buf.extend_from_slice(&header);
+            adts_buf.extend_from_slice(raw_frame);
+
+            *(g.pkt.byte_add(0x18) as *mut *mut u8) = adts_buf.as_mut_ptr();
+            *(g.pkt.byte_add(0x20) as *mut std::ffi::c_int) = adts_buf.len() as std::ffi::c_int;
+            if (api.avcodec_send_packet)(g.ctx, g.pkt) >= 0 {
+                drain_frames(g.ctx, g.frame, &mut sample_rate, &mut pcm_samples);
+            }
+        }
+        *(g.pkt.byte_add(0x18) as *mut *mut u8) = std::ptr::null_mut();
+        *(g.pkt.byte_add(0x20) as *mut std::ffi::c_int) = 0;
+        let _ = (api.avcodec_send_packet)(g.ctx, std::ptr::null());
+        drain_frames(g.ctx, g.frame, &mut sample_rate, &mut pcm_samples);
+
+        if pcm_samples.is_empty() {
+            return None;
+        }
+        Some((sample_rate, chan_cfg, pcm_samples))
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn encode_wav_s16le(sample_rate: u32, channels: u8, samples: &[i16]) -> Vec<u8> {
+    let ch = u16::from(channels.clamp(1, 2));
+    let block_align = ch * 2;
+    let byte_rate = sample_rate * u32::from(block_align);
+    let data_len = (samples.len() * 2) as u32;
+    let mut wav = Vec::with_capacity(44 + samples.len() * 2);
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&36u32.saturating_add(data_len).to_le_bytes());
+    wav.extend_from_slice(b"WAVEfmt ");
+    wav.extend_from_slice(&16u32.to_le_bytes());
+    wav.extend_from_slice(&1u16.to_le_bytes());
+    wav.extend_from_slice(&ch.to_le_bytes());
+    wav.extend_from_slice(&sample_rate.to_le_bytes());
+    wav.extend_from_slice(&byte_rate.to_le_bytes());
+    wav.extend_from_slice(&block_align.to_le_bytes());
+    wav.extend_from_slice(&16u16.to_le_bytes());
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&data_len.to_le_bytes());
+    for &s in samples {
+        wav.extend_from_slice(&s.to_le_bytes());
+    }
+    wav
+}
+
+#[cfg(target_os = "linux")]
+fn encode_flac_verbatim(sample_rate: u32, channels: u8, samples: &[i16]) -> Vec<u8> {
+    fn crc8_flac(data: &[u8]) -> u8 {
+        let mut crc = 0u8;
+        for &b in data {
+            crc ^= b;
+            for _ in 0..8 {
+                crc = if crc & 0x80 != 0 { (crc << 1) ^ 0x07 } else { crc << 1 };
+            }
+        }
+        crc
+    }
+
+    fn crc16_flac(data: &[u8]) -> u16 {
+        let mut crc = 0u16;
+        for &b in data {
+            crc ^= u16::from(b) << 8;
+            for _ in 0..8 {
+                crc = if crc & 0x8000 != 0 { (crc << 1) ^ 0x8005 } else { crc << 1 };
+            }
+        }
+        crc
+    }
+
+    fn write_utf8_u32(val: u32, out: &mut Vec<u8>) {
+        if val < 0x80 {
+            out.push(val as u8);
+        } else if val < 0x800 {
+            out.push(0xC0 | ((val >> 6) as u8));
+            out.push(0x80 | ((val & 0x3F) as u8));
+        } else if val < 0x10000 {
+            out.push(0xE0 | ((val >> 12) as u8));
+            out.push(0x80 | (((val >> 6) & 0x3F) as u8));
+            out.push(0x80 | ((val & 0x3F) as u8));
+        } else {
+            out.push(0xF0 | ((val >> 18) as u8));
+            out.push(0x80 | (((val >> 12) & 0x3F) as u8));
+            out.push(0x80 | (((val >> 6) & 0x3F) as u8));
+            out.push(0x80 | ((val & 0x3F) as u8));
+        }
+    }
+
+    let ch = usize::from(channels.clamp(1, 2));
+    let total_frames = samples.len() / ch;
+    let block_size = 4096usize;
+    let mut out = Vec::new();
+    out.extend_from_slice(b"fLaC");
+
+    // Metadata block header: last-metadata-block = 1 (0x80) | STREAMINFO (0), length = 34.
+    out.extend_from_slice(&[0x80, 0x00, 0x00, 34]);
+    out.extend_from_slice(&(block_size as u16).to_be_bytes()); // min block size
+    out.extend_from_slice(&(block_size as u16).to_be_bytes()); // max block size
+    out.extend_from_slice(&[0u8; 6]); // min/max frame size (0 = unknown)
+    // 20 bits sample rate, 3 bits (channels - 1), 5 bits (bits_per_sample - 1 = 15), 36 bits total samples.
+    let sr = sample_rate.clamp(1, 655_350);
+    let ch_minus_1 = ((ch - 1) as u8) & 0x07;
+    let bps_minus_1 = 15u8; // 16-bit
+    let total_u64 = (total_frames as u64) & 0x0F_FFFF_FFFF;
+    let packed: u64 =
+        (u64::from(sr) << 44) | (u64::from(ch_minus_1) << 41) | (u64::from(bps_minus_1) << 36) | total_u64;
+    out.extend_from_slice(&packed.to_be_bytes());
+    out.extend_from_slice(&[0u8; 16]); // MD5 signature (0 = unset per RFC 9639)
+
+    let mut frame_buf = Vec::new();
+    let mut frame_number = 0u32;
+    let mut offset_frames = 0usize;
+    while offset_frames < total_frames {
+        let n = (total_frames - offset_frames).min(block_size);
+        frame_buf.clear();
+        // Sync code (14 bits: 0x3FFE) + reserved(0) + blocking_strategy(0 = fixed) -> 0xFF, 0xF8
+        frame_buf.push(0xFF);
+        frame_buf.push(0xF8);
+        // Block size: 0b0111 (16-bit (n-1) at end of header); Sample rate: 0b1100 (16-bit Hz at end of header)
+        frame_buf.push(0x7C);
+        // Channel assignment: (ch - 1) << 4 | sample size 16-bit (0b100 << 1) | reserved(0)
+        frame_buf.push((ch_minus_1 << 4) | 0x08);
+        write_utf8_u32(frame_number, &mut frame_buf);
+        frame_buf.extend_from_slice(&((n - 1) as u16).to_be_bytes());
+        frame_buf.extend_from_slice(&(sr.min(65535) as u16).to_be_bytes());
+        let hdr_crc = crc8_flac(&frame_buf);
+        frame_buf.push(hdr_crc);
+
+        for c in 0..ch {
+            // Subframe header: 0 (pad) | 000001 (VERBATIM) | 0 (no wasted bits) = 0x02
+            frame_buf.push(0x02);
+            for i in 0..n {
+                let s = samples[(offset_frames + i) * ch + c];
+                frame_buf.extend_from_slice(&s.to_be_bytes());
+            }
+        }
+        let ftr_crc = crc16_flac(&frame_buf);
+        frame_buf.extend_from_slice(&ftr_crc.to_be_bytes());
+        out.extend_from_slice(&frame_buf);
+
+        offset_frames += n;
+        frame_number += 1;
+    }
+
+    out
+}
+
+#[cfg(target_os = "linux")]
+struct LameApi {
+    lame_init: unsafe extern "C" fn() -> *mut std::ffi::c_void,
+    lame_set_in_samplerate: unsafe extern "C" fn(*mut std::ffi::c_void, std::ffi::c_int) -> std::ffi::c_int,
+    lame_set_num_channels: unsafe extern "C" fn(*mut std::ffi::c_void, std::ffi::c_int) -> std::ffi::c_int,
+    lame_set_vbr: unsafe extern "C" fn(*mut std::ffi::c_void, std::ffi::c_int) -> std::ffi::c_int,
+    lame_set_vbr_q: unsafe extern "C" fn(*mut std::ffi::c_void, std::ffi::c_int) -> std::ffi::c_int,
+    lame_init_params: unsafe extern "C" fn(*mut std::ffi::c_void) -> std::ffi::c_int,
+    lame_encode_buffer: unsafe extern "C" fn(
+        *mut std::ffi::c_void,
+        *const i16,
+        *const i16,
+        std::ffi::c_int,
+        *mut u8,
+        std::ffi::c_int,
+    ) -> std::ffi::c_int,
+    lame_encode_buffer_interleaved: unsafe extern "C" fn(
+        *mut std::ffi::c_void,
+        *const i16,
+        std::ffi::c_int,
+        *mut u8,
+        std::ffi::c_int,
+    ) -> std::ffi::c_int,
+    lame_encode_flush:
+        unsafe extern "C" fn(*mut std::ffi::c_void, *mut u8, std::ffi::c_int) -> std::ffi::c_int,
+    lame_close: unsafe extern "C" fn(*mut std::ffi::c_void) -> std::ffi::c_int,
+}
+
+#[cfg(target_os = "linux")]
+fn lame_api() -> Option<&'static LameApi> {
+    static API: std::sync::OnceLock<Option<LameApi>> = std::sync::OnceLock::new();
+    API.get_or_init(|| unsafe {
+        unsafe fn sym<T: Copy>(handle: *mut std::ffi::c_void, name: &std::ffi::CStr) -> Option<T> {
+            let p = unsafe { libc::dlsym(handle, name.as_ptr()) };
+            if p.is_null() { None } else { Some(unsafe { std::mem::transmute_copy(&p) }) }
+        }
+        let mut handle = std::ptr::null_mut();
+        for name in [c"libmp3lame.so.0", c"libmp3lame.so"] {
+            handle = libc::dlopen(name.as_ptr(), libc::RTLD_NOW | libc::RTLD_LOCAL);
+            if !handle.is_null() {
+                break;
+            }
+        }
+        if handle.is_null() {
+            return None;
+        }
+        Some(LameApi {
+            lame_init: sym(handle, c"lame_init")?,
+            lame_set_in_samplerate: sym(handle, c"lame_set_in_samplerate")?,
+            lame_set_num_channels: sym(handle, c"lame_set_num_channels")?,
+            lame_set_vbr: sym(handle, c"lame_set_VBR")?,
+            lame_set_vbr_q: sym(handle, c"lame_set_VBR_q")?,
+            lame_init_params: sym(handle, c"lame_init_params")?,
+            lame_encode_buffer: sym(handle, c"lame_encode_buffer")?,
+            lame_encode_buffer_interleaved: sym(handle, c"lame_encode_buffer_interleaved")?,
+            lame_encode_flush: sym(handle, c"lame_encode_flush")?,
+            lame_close: sym(handle, c"lame_close")?,
+        })
+    })
+    .as_ref()
+}
+
+#[cfg(target_os = "linux")]
+fn encode_mp3_with_lame(sample_rate: u32, channels: u8, samples: &[i16]) -> Option<Vec<u8>> {
+    let api = lame_api()?;
+    let ch = channels.clamp(1, 2) as usize;
+    let num_frames = samples.len() / ch;
+    if num_frames == 0 {
+        return None;
+    }
+
+    unsafe {
+        let gfp = (api.lame_init)();
+        if gfp.is_null() {
+            return None;
+        }
+        struct Guard {
+            api: &'static LameApi,
+            gfp: *mut std::ffi::c_void,
+        }
+        impl Drop for Guard {
+            fn drop(&mut self) {
+                unsafe {
+                    let _ = (self.api.lame_close)(self.gfp);
+                }
+            }
+        }
+        let g = Guard { api, gfp };
+        let _ = (api.lame_set_in_samplerate)(g.gfp, sample_rate as std::ffi::c_int);
+        let _ = (api.lame_set_num_channels)(g.gfp, ch as std::ffi::c_int);
+        let _ = (api.lame_set_vbr)(g.gfp, 4); // vbr_default
+        let _ = (api.lame_set_vbr_q)(g.gfp, 2); // -q:a 2
+        if (api.lame_init_params)(g.gfp) < 0 {
+            return None;
+        }
+
+        let mp3_cap = (num_frames * 5 / 4) + 7200;
+        let mut mp3_buf = vec![0u8; mp3_cap];
+        let written = if ch == 1 {
+            (api.lame_encode_buffer)(
+                g.gfp,
+                samples.as_ptr(),
+                std::ptr::null(),
+                num_frames as std::ffi::c_int,
+                mp3_buf.as_mut_ptr(),
+                mp3_cap as std::ffi::c_int,
+            )
+        } else {
+            (api.lame_encode_buffer_interleaved)(
+                g.gfp,
+                samples.as_ptr(),
+                num_frames as std::ffi::c_int,
+                mp3_buf.as_mut_ptr(),
+                mp3_cap as std::ffi::c_int,
+            )
+        };
+        if written < 0 {
+            return None;
+        }
+        let mut total = written as usize;
+        let flushed = (api.lame_encode_flush)(
+            g.gfp,
+            mp3_buf[total..].as_mut_ptr(),
+            (mp3_cap - total) as std::ffi::c_int,
+        );
+        if flushed > 0 {
+            total += flushed as usize;
+        }
+        mp3_buf.truncate(total);
+        if mp3_buf.is_empty() { None } else { Some(mp3_buf) }
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn convert_audio_in_process(src: &Path, dest: &Path, format: RecordingFormat) -> Option<()> {
+    let m4a_bytes = fs::read(src).ok()?;
+    let (sample_rate, channels, samples) = decode_m4a_to_pcm_s16le(&m4a_bytes)?;
+    let out_bytes = match format {
+        RecordingFormat::M4a => m4a_bytes,
+        RecordingFormat::Wav => encode_wav_s16le(sample_rate, channels, &samples),
+        RecordingFormat::Flac => encode_flac_verbatim(sample_rate, channels, &samples),
+        RecordingFormat::Mp3 => encode_mp3_with_lame(sample_rate, channels, &samples)?,
+    };
+    fs::write(dest, out_bytes).ok()
 }
 
 #[cfg(not(any(windows, target_os = "linux")))]
@@ -904,6 +1641,22 @@ mod tests {
             let marker_path = markers_path_for(&saved);
             assert!(marker_path.exists(), "marker file written next to {}", saved.display());
             assert_eq!(fs::read_to_string(&marker_path).unwrap(), "00:00.500  Start\n00:01.500  Marker 2\n");
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn in_process_audio_conversion_works_without_ffmpeg() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("source.m4a");
+        fs::write(&src, test_m4a(1)).unwrap();
+
+        for format in [RecordingFormat::Wav, RecordingFormat::Flac, RecordingFormat::Mp3] {
+            let dest = dir.path().join(format!("out.{}", format.as_str()));
+            convert_audio_in_process(&src, &dest, format)
+                .unwrap_or_else(|| panic!("in-process conversion to {} should succeed", format.as_str()));
+            let bytes = fs::read(&dest).unwrap();
+            assert!(bytes.len() > 100);
         }
     }
 }
