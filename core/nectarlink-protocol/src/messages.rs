@@ -2662,9 +2662,11 @@ impl PhotoNew {
     }
 }
 
-/// Whether a photo ID is 1-64 printable ASCII characters.
+/// Whether a photo ID is 1-64 printable ASCII characters without path separators or `..`.
 pub fn is_valid_photo_id(id: &str) -> bool {
-    (1..=photos::MAX_ID_BYTES).contains(&id.len()) && id.bytes().all(|b| b.is_ascii_graphic())
+    (1..=photos::MAX_ID_BYTES).contains(&id.len())
+        && !id.contains("..")
+        && id.bytes().all(|b| b.is_ascii_graphic() && b != b'/' && b != b'\\')
 }
 
 /// One album on the phone (`photos.albums.list`).
@@ -5162,6 +5164,10 @@ mod tests {
         assert!(!format!("{photo:?}").contains("Screenshot_"));
         assert!(!PhotoNew { id: String::new(), ..photo.clone() }.is_valid());
         assert!(!PhotoNew { id: "a b".into(), ..photo.clone() }.is_valid());
+        assert!(!PhotoNew { id: "../etc/passwd".into(), ..photo.clone() }.is_valid());
+        assert!(!PhotoNew { id: "a/b".into(), ..photo.clone() }.is_valid());
+        assert!(!PhotoNew { id: "a\\b".into(), ..photo.clone() }.is_valid());
+        assert!(!PhotoNew { id: "..".into(), ..photo.clone() }.is_valid());
         assert!(!PhotoNew { name: "../x.png".into(), ..photo.clone() }.is_valid());
         assert!(!PhotoNew { thumb: vec![0; photos::MAX_THUMB_BYTES + 1], ..photo }.is_valid());
     }

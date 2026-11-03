@@ -75,7 +75,7 @@ pub(crate) async fn albums(shared: &Shared, session: &Session) -> Result<Vec<Pho
         .request(env, crate::session::REQUEST_TIMEOUT)
         .await?
         .expect_body(types::PHOTOS_ALBUMS_LIST)?;
-    Ok(albums)
+    Ok(sanitize_albums(albums))
 }
 
 /// Lists a phone's photos and videos (`photos.list`), newest first.
@@ -89,12 +89,12 @@ pub(crate) async fn list(
     allowed(shared, &session.peer)?;
     let album = album.map(|a| a.trim().to_owned()).filter(|a| !a.is_empty());
     let (before, before_id) = before.map_or((None, None), |(date, id)| (Some(date), Some(id)));
-    let env = Envelope::new(
-        types::PHOTOS_LIST,
-        &PhotoListGet { album, before, before_id, limit: limit.clamp(1, photos::MAX_PAGE) },
-    )?;
+    let limit = limit.clamp(1, photos::MAX_PAGE);
+    let env = Envelope::new(types::PHOTOS_LIST, &PhotoListGet { album, before, before_id, limit })?;
     let PhotoItems { items } =
         session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect_body(types::PHOTOS_ITEMS)?;
+    let mut items = sanitize_items(items);
+    items.truncate(limit as usize);
     Ok(items)
 }
 
@@ -132,6 +132,8 @@ pub(crate) async fn thumbs(
         .request(env, crate::session::REQUEST_TIMEOUT)
         .await?
         .expect_body(types::PHOTOS_THUMBS_LIST)?;
+    let mut thumbs = sanitize_thumbs(thumbs);
+    thumbs.truncate(photos::MAX_THUMB_BATCH);
     Ok(thumbs)
 }
 
