@@ -548,22 +548,25 @@ async fn enqueue_outgoing(
         let clean_name = safe_file_name(&file.name);
         match file.source {
             FileSource::Path(path) => {
-                let opened_file = match std::fs::File::open(&path) {
-                    Ok(f) => f,
-                    Err(e) => {
+                let path_for_meta = path.clone();
+                let meta_res = tokio::task::spawn_blocking(move || -> std::io::Result<(u64, i64)> {
+                    let opened_file = std::fs::File::open(&path_for_meta)?;
+                    let meta = opened_file.metadata()?;
+                    Ok((meta.len(), crate::file_mtime_ms(&meta)))
+                })
+                .await
+                .map_err(|e| Error::Internal(e.to_string()));
+                let (size, mtime_ms) = match meta_res {
+                    Ok(Ok(v)) => v,
+                    Ok(Err(e)) => {
                         cleanup_staging_id(shared, &id);
                         return Err(e.into());
                     }
-                };
-                let meta = match opened_file.metadata() {
-                    Ok(m) => m,
                     Err(e) => {
                         cleanup_staging_id(shared, &id);
-                        return Err(e.into());
+                        return Err(e);
                     }
                 };
-                let size = meta.len();
-                let mtime_ms = crate::file_mtime_ms(&meta);
                 specs.push(crate::QueuedFileSpec {
                     path,
                     name: clean_name.clone(),
@@ -757,16 +760,25 @@ pub(crate) async fn deliver_queued_files(
         return;
     }
 
-    for spec in &specs {
-        if let Err(reason) = spec.verify_integrity() {
-            let _ = shared.store.mark_queue_failed(&item.id, &reason);
-            shared.emit(NodeEvent::QueueChanged);
-            let mut t = transfer;
-            t.state = TransferState::Failed(TransferFailure::Other(reason));
-            shared.emit(NodeEvent::Transfer(t));
-            shared.unregister_transfer(&item.id);
-            return;
+    let specs_to_verify = specs.clone();
+    let verify_err = tokio::task::spawn_blocking(move || {
+        for spec in &specs_to_verify {
+            if let Err(reason) = spec.verify_integrity() {
+                return Some(reason);
+            }
         }
+        None
+    })
+    .await
+    .unwrap_or_else(|e| Some(e.to_string()));
+    if let Some(reason) = verify_err {
+        let _ = shared.store.mark_queue_failed(&item.id, &reason);
+        shared.emit(NodeEvent::QueueChanged);
+        let mut t = transfer;
+        t.state = TransferState::Failed(TransferFailure::Other(reason));
+        shared.emit(NodeEvent::Transfer(t));
+        shared.unregister_transfer(&item.id);
+        return;
     }
 
     let toggle = if recording { RECORDINGS_TOGGLE } else { TOGGLE };
@@ -794,10 +806,19 @@ pub(crate) async fn deliver_queued_files(
                 source_targets.push(target);
             }
         }
-        let handle = match std::fs::File::open(path) {
-            Ok(h) => h,
-            Err(_) => {
-                let reason = format!("File was deleted before sending: {}", spec.name);
+        let path_to_hash = path.clone();
+        let name_for_err = spec.name.clone();
+        let res = tokio::task::spawn_blocking(move || -> std::result::Result<(u64, String), String> {
+            let handle = std::fs::File::open(&path_to_hash)
+                .map_err(|_| format!("File was deleted before sending: {name_for_err}"))?;
+            let (_handle, size, digest) =
+                hash_whole_file(handle).map_err(|_| format!("Cannot read source file: {name_for_err}"))?;
+            Ok((size, digest))
+        })
+        .await;
+        let (size, digest) = match res {
+            Ok(Ok(v)) => v,
+            Ok(Err(reason)) => {
                 let _ = shared.store.mark_queue_failed(&item.id, &reason);
                 shared.emit(NodeEvent::QueueChanged);
                 let mut t = transfer;
@@ -806,13 +827,8 @@ pub(crate) async fn deliver_queued_files(
                 shared.unregister_transfer(&item.id);
                 return;
             }
-        };
-        let name_for_err = spec.name.clone();
-        let res = tokio::task::spawn_blocking(move || hash_whole_file(handle)).await;
-        let (handle, size, digest) = match res {
-            Ok(Ok(v)) => v,
-            _ => {
-                let reason = format!("Cannot read source file: {name_for_err}");
+            Err(_) => {
+                let reason = format!("Cannot read source file: {}", spec.name);
                 let _ = shared.store.mark_queue_failed(&item.id, &reason);
                 shared.emit(NodeEvent::QueueChanged);
                 let mut t = transfer;
@@ -828,7 +844,7 @@ pub(crate) async fn deliver_queued_files(
             folder: spec.folder.clone(),
             blake3: Some(digest),
         };
-        opened.push((entry, tokio::fs::File::from_std(handle)));
+        opened.push((entry, OutgoingDataSource::Path(path.clone())));
     }
 
     let entries: Vec<FileEntry> = opened.iter().map(|(e, _)| e.clone()).collect();
@@ -1048,22 +1064,33 @@ async fn send_inner(
         if file.folder.as_deref().is_some_and(|f| !is_valid_folder(f)) {
             return Err(Error::Protocol("invalid folder name".into()));
         }
-        let handle = match file.source {
+        let (size, digest, data_source) = match file.source {
             FileSource::Path(path) => {
                 let target = outgoing_target_path(&path, file.folder.as_deref());
                 if !source_targets.contains(&target) {
                     source_targets.push(target);
                 }
-                std::fs::File::open(path)?
+                let path_to_hash = path.clone();
+                let (size, digest) =
+                    tokio::task::spawn_blocking(move || -> std::io::Result<(u64, String)> {
+                        let handle = std::fs::File::open(&path_to_hash)?;
+                        let (_handle, size, digest) = hash_whole_file(handle)?;
+                        Ok((size, digest))
+                    })
+                    .await
+                    .map_err(|e| Error::Internal(e.to_string()))??;
+                (size, digest, OutgoingDataSource::Path(path))
             }
-            FileSource::File(handle) => handle,
+            FileSource::File(handle) => {
+                let (handle, size, digest) = tokio::task::spawn_blocking(move || hash_whole_file(handle))
+                    .await
+                    .map_err(|e| Error::Internal(e.to_string()))??;
+                (size, digest, OutgoingDataSource::File(tokio::fs::File::from_std(handle)))
+            }
         };
-        let (handle, size, digest) = tokio::task::spawn_blocking(move || hash_whole_file(handle))
-            .await
-            .map_err(|e| Error::Internal(e.to_string()))??;
         let entry =
             FileEntry { name: safe_file_name(&file.name), size, folder: file.folder, blake3: Some(digest) };
-        opened.push((entry, tokio::fs::File::from_std(handle)));
+        opened.push((entry, data_source));
     }
     let entries: Vec<FileEntry> = opened.iter().map(|(entry, _)| entry.clone()).collect();
     let id = new_id();
@@ -1143,6 +1170,16 @@ async fn send_inner(
     Ok(id)
 }
 
+enum OutgoingDataSource {
+    Path(PathBuf),
+    File(tokio::fs::File),
+}
+
+enum ReadSource {
+    Path(PathBuf),
+    File(std::fs::File),
+}
+
 enum Attempt {
     Done,
     Cancelled,
@@ -1154,7 +1191,7 @@ enum Attempt {
 
 async fn send_until_done(
     reporter: &mut Reporter,
-    mut files: Vec<(FileEntry, tokio::fs::File)>,
+    mut files: Vec<(FileEntry, OutgoingDataSource)>,
     cancel: &CancellationToken,
     pause_rx: &mut tokio::sync::watch::Receiver<bool>,
 ) -> TransferState {
@@ -1247,7 +1284,7 @@ async fn wait_paused(rx: &mut tokio::sync::watch::Receiver<bool>) {
 async fn attempt(
     reporter: &mut Reporter,
     session: &Session,
-    files: &mut [(FileEntry, tokio::fs::File)],
+    files: &mut [(FileEntry, OutgoingDataSource)],
     cancel: &CancellationToken,
     pause_rx: &mut tokio::sync::watch::Receiver<bool>,
 ) -> Attempt {
@@ -1299,12 +1336,18 @@ async fn attempt(
     // What's left of each file, read on a thread of its own that keeps a
     // few blocks ready; it stops when this attempt ends and drops them.
     let mut plan = Vec::with_capacity(files.len());
-    for ((entry, file), have) in files.iter().zip(&have) {
+    for ((entry, source), have) in files.iter().zip(&have) {
         let start = (*have).min(entry.size);
-        let Ok(clone) = file.try_clone().await else {
-            return Attempt::Fatal(TransferFailure::Other("can't read a file".into()));
+        let read_source = match source {
+            OutgoingDataSource::Path(path) => ReadSource::Path(path.clone()),
+            OutgoingDataSource::File(file) => {
+                let Ok(clone) = file.try_clone().await else {
+                    return Attempt::Fatal(TransferFailure::Other("can't read a file".into()));
+                };
+                ReadSource::File(clone.into_std().await)
+            }
         };
-        plan.push((clone.into_std().await, start, entry.size - start));
+        plan.push((read_source, start, entry.size - start));
     }
     let (blocks, mut ready) = tokio::sync::mpsc::channel(READ_AHEAD);
     tokio::task::spawn_blocking(move || read_ahead(plan, &blocks));
@@ -1764,11 +1807,22 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
 /// Reads each file's remaining bytes, from where the receiver is, in
 /// blocks; stops early when the sending side is gone.
 fn read_ahead(
-    plan: Vec<(std::fs::File, u64, u64)>,
+    plan: Vec<(ReadSource, u64, u64)>,
     blocks: &tokio::sync::mpsc::Sender<std::result::Result<Bytes, TransferFailure>>,
 ) {
     use std::io::{Read, Seek, SeekFrom};
-    for (mut file, start, mut left) in plan {
+    for (source, start, mut left) in plan {
+        let mut file = match source {
+            ReadSource::Path(path) => match std::fs::File::open(&path) {
+                Ok(f) => f,
+                Err(e) => {
+                    let failure = TransferFailure::Other(format!("can't read a file: {}", e.kind()));
+                    let _ = blocks.blocking_send(Err(failure));
+                    return;
+                }
+            },
+            ReadSource::File(f) => f,
+        };
         if let Err(e) = file.seek(SeekFrom::Start(start)) {
             let failure = TransferFailure::Other(format!("can't read a file: {}", e.kind()));
             let _ = blocks.blocking_send(Err(failure));
@@ -2265,5 +2319,23 @@ mod tests {
     fn ids_are_valid() {
         assert!(nectarlink_protocol::messages::is_valid_transfer_id(&new_id()));
         assert_ne!(new_id(), new_id());
+    }
+
+    #[test]
+    fn read_ahead_opens_paths_on_demand() {
+        let dir = tempfile::tempdir().unwrap();
+        let a = dir.path().join("a.bin");
+        let b = dir.path().join("b.bin");
+        std::fs::write(&a, b"hello ").unwrap();
+        std::fs::write(&b, b"world").unwrap();
+        let plan = vec![(ReadSource::Path(a), 0, 6), (ReadSource::Path(b), 0, 5)];
+        let (tx, mut rx) = tokio::sync::mpsc::channel(4);
+        read_ahead(plan, &tx);
+        drop(tx);
+        let mut out = Vec::new();
+        while let Some(block) = rx.blocking_recv() {
+            out.extend_from_slice(&block.unwrap());
+        }
+        assert_eq!(out, b"hello world");
     }
 }
