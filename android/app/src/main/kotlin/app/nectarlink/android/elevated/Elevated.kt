@@ -338,6 +338,8 @@ object Elevated {
         }
     }
 
+    private enum class PairAttempt { Paired, WrongCode, NotPairingPort }
+
     /**
      * Pairs through the pairing port found on 127.0.0.1: any listening port
      * that isn't adbd's connection port. `null` when there is none (the
@@ -345,31 +347,44 @@ object Elevated {
      */
     private suspend fun pairOverLoopback(code: String): Boolean? {
         val deadline = System.currentTimeMillis() + DISCOVERY_MS
+        val ignoredPorts = HashSet<Int>()
         while (true) {
             val open = LoopbackAdb.openPorts()
             val connectPort = LoopbackAdb.connectPort(open)
-            val candidates = open.filter { it != connectPort }
+            val helperPort = helper?.first
+            val candidates = open.filter { it != connectPort && it != helperPort && it !in ignoredPorts }
             for (port in candidates) {
-                if (pairOnPort(port, code)) return true
+                when (pairOnPort(port, code)) {
+                    PairAttempt.Paired -> return true
+                    PairAttempt.WrongCode -> return false
+                    PairAttempt.NotPairingPort -> ignoredPorts += port
+                }
             }
-            if (candidates.isNotEmpty()) return false
             if (System.currentTimeMillis() >= deadline) return null
             delay(LOOPBACK_RETRY_MS)
         }
     }
 
     /** One pairing attempt, given up after [PAIR_MS] (a port that isn't adb's may never answer). */
-    private suspend fun pairOnPort(port: Int, code: String): Boolean {
-        val result = CompletableDeferred<Boolean>()
+    private suspend fun pairOnPort(port: Int, code: String): PairAttempt {
+        val result = CompletableDeferred<PairAttempt>()
+        val pairConn = Connection(context)
         thread(isDaemon = true, name = "adb-pair") {
-            result.complete(
-                runCatching { connection().pair(LoopbackAdb.HOST, port, code) }.getOrElse {
-                    Log.i(TAG, "no pairing on port $port", it)
-                    false
-                },
-            )
+            val outcome = try {
+                if (pairConn.pair(LoopbackAdb.HOST, port, code)) {
+                    PairAttempt.Paired
+                } else {
+                    PairAttempt.WrongCode
+                }
+            } catch (e: Throwable) {
+                Log.i(TAG, "no pairing on port $port", e)
+                PairAttempt.NotPairingPort
+            } finally {
+                runCatching { pairConn.close() }
+            }
+            result.complete(outcome)
         }
-        return withTimeoutOrNull(PAIR_MS) { result.await() } ?: false
+        return withTimeoutOrNull(PAIR_MS) { result.await() } ?: PairAttempt.NotPairingPort
     }
 
     /** The port a wireless debugging service is announced on, if it shows up soon. */
@@ -479,12 +494,14 @@ object Elevated {
             connectSocketLocked(port, token)
             Thread {
                 runCatching { output.lineSequence().forEach { line -> Log.d(TAG, "root-helper: $line") } }
-                input = null
-                rootActive = false
-                runCatching { socket?.close() }
-                if (_state.value == State.Running) _state.value = State.Waiting
-                onChange()
-                scheduleRetry()
+                if (rootProcess === proc) {
+                    input = null
+                    rootActive = false
+                    runCatching { socket?.close() }
+                    if (_state.value == State.Running) _state.value = State.Waiting
+                    onChange()
+                    scheduleRetry()
+                }
             }.start()
             true
         }.onFailure {
@@ -605,11 +622,13 @@ object Elevated {
         // Watches the helper: when its shell ends, Elevated stops.
         Thread {
             runCatching { output.lineSequence().forEach { line -> Log.d(TAG, "helper: $line") } }
-            input = null
-            runCatching { socket?.close() }
-            if (_state.value == State.Running) _state.value = if (isSetUp()) State.Waiting else State.NotSetUp
-            onChange()
-            scheduleRetry()
+            if (shell === stream) {
+                input = null
+                runCatching { socket?.close() }
+                if (_state.value == State.Running) _state.value = if (isSetUp()) State.Waiting else State.NotSetUp
+                onChange()
+                scheduleRetry()
+            }
         }.start()
     }
 
@@ -676,10 +695,15 @@ object Elevated {
         }
     }
 
+    internal fun isAllowedAttachSenderUid(uid: Int): Boolean =
+        uid == android.os.Process.SHELL_UID || uid == android.os.Process.ROOT_UID
+
     /** Attaches to an [InputServer] started directly from `adb shell`. */
     suspend fun attachFromShell(appContext: Context, port: Int, token: String): Boolean = withContext(Dispatchers.IO) {
+        if (port !in 1..65535 || !ShizukuShellRules.isToken(token)) return@withContext false
         if (!::context.isInitialized) init(appContext)
         lock.withLock {
+            if (running) return@withLock true
             runCatching { socket?.close() }
             runCatching { connectSocketLocked(port, token) }.onFailure {
                 Log.w(TAG, "couldn't attach to shell helper", it)
@@ -690,9 +714,12 @@ object Elevated {
     /** Receives the loopback port and token from an [InputServer] started via `adb shell`. */
     class AttachReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                if (!isAllowedAttachSenderUid(sentFromUid)) return
+            }
             val port = intent.getIntExtra("port", 0)
             val token = intent.getStringExtra("token").orEmpty()
-            if (port <= 0 || token.isEmpty()) return
+            if (port !in 1..65535 || !ShizukuShellRules.isToken(token)) return
             val pending = goAsync()
             val app = context.applicationContext
             scope.launch {
@@ -762,17 +789,37 @@ object Elevated {
     }
 
     private fun stopLocked() {
+        val wasScreenOff = screenOffRequested
         screenOffRequested = false
+        val writer = input
+        input = null
+        helper = null
+        if (wasScreenOff && writer != null) {
+            runCatching {
+                synchronized(writer) {
+                    writer.write("P 1\n")
+                    writer.flush()
+                }
+            }
+        }
+        runCatching { socket?.close() }
+        socket = null
+        if (wasScreenOff) {
+            // Let InputServer restore panel power and brightness before its process is torn down.
+            runCatching { Thread.sleep(150) }
+        }
         rootActive = false
         if (shizukuActive) ShizukuElevated.stop()
         shizukuActive = false
-        input = null
-        helper = null
-        runCatching { socket?.close() }
         runCatching { shell?.close() }
-        runCatching { rootProcess?.destroyForcibly() }
+        runCatching {
+            rootProcess?.let { proc ->
+                if (!proc.waitFor(200, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                    proc.destroyForcibly()
+                }
+            }
+        }
         runCatching { adb?.disconnect() }
-        socket = null
         shell = null
         rootProcess = null
         _state.value = if (isSetUp()) State.Waiting else State.NotSetUp
@@ -782,7 +829,6 @@ object Elevated {
     /** Forgets the pairing (the user turned Elevated off). */
     suspend fun forget() {
         cancelRetry()
-        screenOffRequested = false
         stop()
         prefs().edit {
             putBoolean(PAIRED, false)
@@ -806,8 +852,16 @@ object Elevated {
 
     /** The PC's input as real events; false if Elevated isn't running. */
     fun handle(event: MirrorInputEvent): Boolean {
-        val (w, h) = screen()
-        return handleOn(null, w, h, event)
+        if (input == null) return false
+        if (Thread.currentThread() === offMainThread) {
+            val (w, h) = screen()
+            return handleOn(null, w, h, event)
+        }
+        offMain.execute {
+            val (w, h) = screen()
+            handleOn(null, w, h, event)
+        }
+        return true
     }
 
     /**
@@ -963,20 +1017,25 @@ object Elevated {
     }
 
     /**
-     * Writes [line] to the helper. Android doesn't allow socket writes on
-     * the main thread (they throw, which read as the helper having gone);
-     * a line sent from there goes out on [offMain], in order.
+     * Writes [line] to the helper. Dispatched onto [offMain] in order unless
+     * already running there, so neither Android's main thread nor the core's
+     * Tokio worker threads block on loopback socket writes.
      */
     private fun send(writer: Writer, line: String): Boolean {
-        if (Looper.myLooper() == Looper.getMainLooper()) {
+        if (Thread.currentThread() !== offMainThread) {
             offMain.execute { sendNow(writer, line) }
             return true
         }
         return sendNow(writer, line)
     }
 
+    @Volatile private var offMainThread: Thread? = null
+
     private val offMain = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
-        Thread(r, "elevated-send").apply { isDaemon = true }
+        Thread(r, "elevated-send").apply {
+            isDaemon = true
+            offMainThread = this
+        }
     }
 
     private fun sendNow(writer: Writer, line: String): Boolean = try {
@@ -988,7 +1047,7 @@ object Elevated {
         true
     } catch (e: Exception) {
         Log.i(TAG, "the input helper went away", e)
-        input = null
+        if (input === writer) input = null
         false
     }
 

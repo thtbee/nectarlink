@@ -37,7 +37,7 @@ object PcAutoStart {
     private const val PENDING_MS = 15_000L
 
     /** The one shell command the helper runs for this (allowed by name in InputServer). */
-    const val OPEN_COMMAND = "am start -n app.nectarlink/app.nectarlink.android.service.PcStartActivity"
+    const val OPEN_COMMAND = "am start -n ${app.nectarlink.android.BuildConfig.APPLICATION_ID}/app.nectarlink.android.service.PcStartActivity"
 
     @Volatile private var pending: Pending? = null
     @Volatile private var loaded = false
