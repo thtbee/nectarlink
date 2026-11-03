@@ -177,7 +177,7 @@ pub(crate) fn start_phone_listener(shared: &Arc<Shared>, preferred_port: u16) ->
                 let bridge_port = bridge_addr.port();
 
                 let tunnel_cancel = node.cancel.child_token();
-                node.register_usb_bridge_port(bridge_port);
+                node.register_usb_bridge_port(bridge_port, pc_id);
                 node.on_usb_tunnel_accepted(pc_id, pc_name, bridge_addr, tunnel_cancel.clone());
 
                 if !matches!(
@@ -223,7 +223,7 @@ pub(crate) async fn connect_usb_tunnel(shared: &Arc<Shared>, forwarded_tcp: Sock
     let bridge_port = bridge_addr.port();
 
     let tunnel_cancel = shared.cancel.child_token();
-    shared.register_usb_bridge_port(bridge_port);
+    shared.register_usb_bridge_port(bridge_port, phone_id);
 
     let node = shared.clone();
     let relay_cancel = tunnel_cancel.clone();
@@ -234,7 +234,7 @@ pub(crate) async fn connect_usb_tunnel(shared: &Arc<Shared>, forwarded_tcp: Sock
         node.on_usb_tunnel_disconnected(phone_id, bridge_addr).await;
     });
 
-    shared.on_usb_tunnel_connected(phone_id, phone_name, bridge_addr, tunnel_cancel, true);
+    shared.on_usb_tunnel_connected(phone_id, phone_name, bridge_addr, tunnel_cancel, true, None, None);
     Ok(phone_id)
 }
 
@@ -443,32 +443,32 @@ async fn run_forwarded_session(
     let bridge_port = bridge_addr.port();
 
     let paired = shared.store.is_paired(&phone_id).unwrap_or(false);
-    let auto_pair = {
-        let mut profiles = target.profiles.lock().unwrap_or_else(|e| e.into_inner());
+    let auto_pair =
+        target.auto_pair && !target.profiles.lock().unwrap_or_else(|e| e.into_inner()).another_is_paired(target.phone_port);
+    let profiles = target.profiles.clone();
+    let phone_port = target.phone_port;
+    let on_verified: Box<dyn FnOnce() + Send> = Box::new(move || {
         if paired {
-            profiles.paired.insert(target.phone_port, phone_id);
+            profiles.lock().unwrap_or_else(|e| e.into_inner()).paired.insert(phone_port, phone_id);
         }
-        target.auto_pair && !profiles.another_is_paired(target.phone_port)
-    };
+    });
 
     let tunnel_cancel = cancel.child_token();
-    shared.register_usb_bridge_port(bridge_port);
-    shared
-        .usb_serials
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .insert(phone_id, (target.serial.clone(), target.adb_addr));
-    shared.on_usb_tunnel_connected(phone_id, phone_name, bridge_addr, tunnel_cancel.clone(), auto_pair);
+    shared.register_usb_bridge_port(bridge_port, phone_id);
+    shared.on_usb_tunnel_connected(
+        phone_id,
+        phone_name,
+        bridge_addr,
+        tunnel_cancel.clone(),
+        auto_pair,
+        Some((target.serial.clone(), target.adb_addr)),
+        Some(on_verified),
+    );
 
     let default_target = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), iroh_port);
     relay_tcp_udp(stream, udp, default_target, tunnel_cancel).await;
 
     target.profiles.lock().unwrap_or_else(|e| e.into_inner()).paired.remove(&target.phone_port);
-    shared.usb_serials.lock().unwrap_or_else(|e| e.into_inner()).remove(&phone_id);
-    // The cable is out: a helper started over it has stopped with it.
-    if let Some(helper) = shared.usb_helpers.lock().unwrap_or_else(|e| e.into_inner()).remove(&phone_id) {
-        helper.abort();
-    }
     shared.unregister_usb_bridge_port(bridge_port);
     shared.on_usb_tunnel_disconnected(phone_id, bridge_addr).await;
     true
