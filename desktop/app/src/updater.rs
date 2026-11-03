@@ -166,7 +166,17 @@ fn write_service_channel(_channel: Channel) {}
 /// between this repository's own builds, which the task checks as always.
 #[cfg(windows)]
 fn read_service_channel() -> Option<Channel> {
-    Channel::parse(&std::fs::read_to_string(service_channel_file()).ok()?)
+    let path = service_channel_file();
+    if !is_regular_file(&path) {
+        return None;
+    }
+    Channel::parse(&std::fs::read_to_string(path).ok()?)
+}
+
+#[cfg(any(windows, test))]
+fn is_regular_file(path: &Path) -> bool {
+    std::fs::symlink_metadata(path)
+        .is_ok_and(|meta| !meta.file_type().is_symlink() && meta.file_type().is_file())
 }
 
 #[cfg(not(windows))]
@@ -1042,7 +1052,7 @@ fn download_verified(update: &Update, dir: &Path) -> Result<PathBuf, String> {
     let path = dir.join(&update.installer_name);
     // Copied first and checked after, so what's checked is what runs.
     let staged = staging_dir().join(&update.installer_name);
-    if staged.is_file() && std::fs::copy(&staged, &path).is_ok() {
+    if is_regular_file(&staged) && std::fs::copy(&staged, &path).is_ok() {
         if sha256_file(&path).is_ok_and(|h| h == expected) {
             return Ok(path);
         }
@@ -1557,5 +1567,15 @@ mod tests {
         assert_eq!(listed_hash(&sums, "Nectarlink-9.0.0-x64-setup.exe"), Some(hash));
         assert_eq!(listed_hash(&sums, "missing.exe"), None);
         assert_eq!(listed_hash(&format!("{}  *x.exe", "C".repeat(64)), "x.exe"), Some("c".repeat(64)));
+    }
+
+    #[test]
+    fn only_regular_files_are_read_from_the_shared_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("update-channel");
+        assert!(!is_regular_file(&file));
+        assert!(!is_regular_file(dir.path()));
+        std::fs::write(&file, "nightly").unwrap();
+        assert!(is_regular_file(&file));
     }
 }
