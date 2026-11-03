@@ -311,11 +311,17 @@
             android:exported="true"
             android:permission="android.permission.DUMP" />
 
-        <!-- Telecom binds it while there are calls (CALL_COMPANION_APP). -->
+        <!-- Telecom binds it while there are calls (CALL_COMPANION_APP), apps'
+             own calls too (WhatsApp, Telegram...): only a companion that
+             gets them can answer them, as Telecom ignores acceptRingingCall
+             for a self-managed call. -->
         <service
             android:name=".calls.CallCompanion"
             android:exported="true"
             android:permission="android.permission.BIND_INCALL_SERVICE">
+            <meta-data
+                android:name="android.telecom.INCLUDE_SELF_MANAGED_CALLS"
+                android:value="true" />
             <intent-filter>
                 <action android:name="android.telecom.InCallService" />
             </intent-filter>

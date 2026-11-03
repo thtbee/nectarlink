@@ -68,13 +68,16 @@ class CallCompanion : InCallService() {
     private fun number(): String? =
         call?.details?.handle?.takeIf { it.scheme == "tel" }?.schemeSpecificPart?.takeIf { it.isNotBlank() }
 
-    /** The name Telecom found for the caller (Android 11+), when it has one. */
-    private fun name(): String? =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            call?.details?.contactDisplayName?.takeIf { it.isNotBlank() }
-        } else {
-            null
-        }
+    /**
+     * The name Telecom found for the caller (Android 11+), else the one the
+     * calling app gave (an app's own call, such as WhatsApp's, may have no
+     * number to look up).
+     */
+    private fun name(): String? {
+        val details = call?.details ?: return null
+        val contact = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) details.contactDisplayName else null
+        return contact?.takeIf { it.isNotBlank() } ?: details.callerDisplayName?.takeIf { it.isNotBlank() }
+    }
 
     private fun controls(): CallControls? {
         val call = call ?: return null
