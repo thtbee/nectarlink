@@ -545,7 +545,11 @@ class AppUpdater(context: Context) {
                     } else {
                         @Suppress("DEPRECATION")
                         intent.getParcelableExtra(Intent.EXTRA_INTENT)
-                    }?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) ?: return
+                    }?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    if (confirm == null) {
+                        updater.installFailed()
+                        return
+                    }
                     // Started by the user: Android's prompt opens now. In the background it
                     // can't, so a notification waits for the tap.
                     if (updater.prefs.getBoolean(LAST_AUTOMATIC, false)) {
@@ -578,10 +582,13 @@ class AppUpdater(context: Context) {
 
     /** "NectarLink 0.2.0 is ready", opening Android's install prompt when tapped. */
     internal fun notifyReady(confirm: Intent) {
+        val version = (_state.value as? State.Installing)?.update?.title(context).orEmpty()
+        // Return to Available so UpdateCard shows an actionable Update button instead of
+        // remaining wedged in Installing when the confirmation dialog could not open immediately.
+        installCancelled()
         if (!mayNotify()) return
         val manager = context.getSystemService(NotificationManager::class.java)
         channel(manager)
-        val version = (_state.value as? State.Installing)?.update?.title(context).orEmpty()
         val tap = PendingIntent.getActivity(context, READY_ID, confirm, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val notification = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
@@ -788,7 +795,7 @@ class AppUpdater(context: Context) {
             val parts = line.trim().split(Regex("\\s+"), limit = 2)
             val hash = parts.getOrNull(0)?.lowercase()
             val file = parts.getOrNull(1)?.trimStart('*')
-            hash?.takeIf { file == name && it.length == 64 }
+            hash?.takeIf { file == name && it.length == 64 && it.all { c -> c in '0'..'9' || c in 'a'..'f' } }
         }
 
         /**
