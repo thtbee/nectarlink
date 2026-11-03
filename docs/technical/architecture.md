@@ -125,7 +125,7 @@ NectarLink uses `iroh` (`1.3`) to run a single QUIC + TLS 1.3 endpoint per devic
 
 | Path | Discovery Mechanism | Transport Path | Latency & Bandwidth Profile |
 |---|---|---|---|
-| `ConnectionPath::Lan` | mDNS (`iroh-mdns-address-lookup`, service name `"nectarlink"`) + cached direct socket addresses from `peers.last_addrs` | Direct UDP QUIC between LAN IPv4/IPv6 sockets | Lowest latency, full Wi-Fi / Ethernet throughput |
+| `ConnectionPath::Lan` | mDNS (`iroh-mdns-address-lookup`, service name `"nectarlink"`; on PCs on every LAN interface, through a patched copy in `third_party/`) + cached direct socket addresses from `peers.last_addrs` | Direct UDP QUIC between LAN IPv4/IPv6 sockets | Lowest latency, full Wi-Fi / Ethernet throughput |
 | `ConnectionPath::Usb` | `core/nectarlink-core/src/adb.rs` device tracker (`127.0.0.1:5037`) forwarding to `127.0.0.1:53319` (`DEFAULT_USB_PORT`) | QUIC UDP datagrams framed over TCP (`NLQU` header in `src/usb.rs`) via `adb forward` | Zero Wi-Fi dependency, deterministic wired latency |
 | `ConnectionPath::Relay` | Opt-in **Connect over mobile data** (`away_mode = true`) enabling `n0_dns` Pkarr lookup and `RelayMode::Default` | End-to-end TLS 1.3 encrypted QUIC relayed via `iroh` DERP/relay servers | Works across cellular and different networks; subject to relay capability guards |
 

@@ -1,0 +1,26 @@
+# iroh-mdns-address-lookup 0.6.1 from crates.io with one NectarLink patch
+# (see NECTARLINK.md). Used through [patch.crates-io] in the workspace root.
+[package]
+name = "iroh-mdns-address-lookup"
+version = "0.6.1"
+edition = "2024"
+description = "mDNS-based address lookup for iroh"
+license = "MIT OR Apache-2.0"
+authors = ["n0 team"]
+repository = "https://github.com/n0-computer/iroh-address-lookups"
+rust-version = "1.91"
+publish = false
+
+[dependencies]
+data-encoding = "2.10"
+derive_more = { version = "2.1", features = ["debug"] }
+futures-util = "0.3"
+iroh = { version = "1.0.0", default-features = false }
+iroh-base = { version = "1.0.0", default-features = false, features = ["key"] }
+n0-error = "1.0.0"
+n0-future = "0.3.2"
+n0-watcher = "1"
+swarm-discovery = "0.6"
+tokio = { version = "1.49", features = ["rt", "sync"] }
+tokio-stream = { version = "0.1.15", features = ["sync"] }
+tracing = "0.1.44"

@@ -185,22 +185,32 @@ pub(crate) async fn start_host(shared: &Arc<Shared>) -> Result<PairingUri> {
     });
 
     let name = local_device(shared).name;
-    Ok(PairingUri { id: shared.id, secret, name, addrs: link_addrs(shared.direct_addrs().await) })
+    Ok(PairingUri {
+        id: shared.id,
+        secret,
+        name,
+        addrs: link_addrs(shared.direct_addrs().await, default_route_ip()),
+    })
 }
 
 /// Most addresses a pairing link carries; more only make the QR code denser.
 const MAX_LINK_ADDRS: usize = 3;
 
-/// Picks the addresses worth putting in a pairing link: private IPv4 first
-/// (what a phone on the same network almost always uses), then other IPv4,
-/// then at most one IPv6. Link-local IPv6 is useless without a scope ID.
-/// Discovery on the network finds the device even if none of these work.
-fn link_addrs(mut addrs: Vec<SocketAddr>) -> Vec<SocketAddr> {
+/// Picks the addresses worth putting in a pairing link: the one the default
+/// route leaves from (`preferred`), then private IPv4 (what a phone on the
+/// same network almost always uses), then other IPv4, then at most one IPv6.
+/// Among private ranges, home routers' `192.168/16` and `10/8` come before
+/// `172.16/12`, where Hyper-V, WSL and Docker put their adapters (#148).
+/// Link-local IPv6 is useless without a scope ID. Discovery on the network
+/// finds the device even if none of these work.
+fn link_addrs(mut addrs: Vec<SocketAddr>, preferred: Option<IpAddr>) -> Vec<SocketAddr> {
     let rank = |a: &SocketAddr| match a.ip() {
-        IpAddr::V4(v4) if v4.is_private() => 0,
-        IpAddr::V4(v4) if v4.is_loopback() || v4.is_link_local() => 3,
-        IpAddr::V4(_) => 1,
-        IpAddr::V6(_) => 2,
+        ip if Some(ip) == preferred => 0,
+        IpAddr::V4(v4) if v4.is_private() && v4.octets()[0] != 172 => 1,
+        IpAddr::V4(v4) if v4.is_private() => 2,
+        IpAddr::V4(v4) if v4.is_loopback() || v4.is_link_local() => 5,
+        IpAddr::V4(_) => 3,
+        IpAddr::V6(_) => 4,
     };
     let has_non_loopback = addrs.iter().any(|a| match a.ip() {
         IpAddr::V6(v6) => !v6.is_loopback() && !v6.is_unicast_link_local(),
@@ -538,6 +548,16 @@ fn fail(shared: &Shared, err: Error) -> Error {
     err
 }
 
+/// This device's address on the default route, the one that most likely
+/// reaches the LAN, if there's a default route. Connecting a UDP socket only
+/// picks a route; nothing is sent.
+fn default_route_ip() -> Option<IpAddr> {
+    let socket = std::net::UdpSocket::bind(("0.0.0.0", 0)).ok()?;
+    // TEST-NET-1 (RFC 5737): never local, so it takes the default route.
+    socket.connect(("192.0.2.1", 9)).ok()?;
+    Some(socket.local_addr().ok()?.ip()).filter(|ip| !ip.is_unspecified() && !ip.is_loopback())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -555,12 +575,49 @@ mod tests {
         .iter()
         .map(|a| a.parse().unwrap())
         .collect();
-        let picked: Vec<String> = link_addrs(addrs).iter().map(ToString::to_string).collect();
+        let picked: Vec<String> = link_addrs(addrs, None).iter().map(ToString::to_string).collect();
         assert_eq!(picked, ["192.168.1.20:5000", "100.64.0.1:5000", "[2001:db8:1::1]:5000"]);
         let loopback_only: Vec<SocketAddr> = ["127.0.0.1:5000".parse().unwrap()].into();
-        let fallback: Vec<String> = link_addrs(loopback_only).iter().map(ToString::to_string).collect();
+        let fallback: Vec<String> = link_addrs(loopback_only, None).iter().map(ToString::to_string).collect();
         assert_eq!(fallback, ["127.0.0.1:5000"]);
-        assert!(link_addrs(Vec::new()).is_empty());
+        assert!(link_addrs(Vec::new(), None).is_empty());
+    }
+
+    /// #148: three Hyper-V adapters used to fill every slot, leaving out Wi-Fi.
+    #[test]
+    fn pairing_links_keep_the_lan_address_beside_virtual_adapters() {
+        let addrs: Vec<SocketAddr> =
+            ["172.17.144.1:61845", "172.21.192.1:61845", "172.27.208.1:61845", "192.168.1.123:61845"]
+                .iter()
+                .map(|a| a.parse().unwrap())
+                .collect();
+        let picked = |preferred: Option<&str>| -> Vec<String> {
+            link_addrs(addrs.clone(), preferred.map(|p| p.parse().unwrap()))
+                .iter()
+                .map(ToString::to_string)
+                .collect()
+        };
+        // Without a default route, the home range still comes first.
+        assert_eq!(picked(None), ["192.168.1.123:61845", "172.17.144.1:61845", "172.21.192.1:61845"]);
+        // The default route's address leads, even in 172.16/12.
+        assert_eq!(
+            picked(Some("172.21.192.1")),
+            ["172.21.192.1:61845", "192.168.1.123:61845", "172.17.144.1:61845"]
+        );
+        // And a 10/8 LAN beats the adapters too.
+        let mut with_ten = addrs.clone();
+        with_ten.pop();
+        with_ten.push("10.0.0.5:61845".parse().unwrap());
+        let picked: Vec<String> = link_addrs(with_ten, None).iter().map(ToString::to_string).collect();
+        assert_eq!(picked[0], "10.0.0.5:61845");
+    }
+
+    #[test]
+    fn the_default_route_address_is_a_real_one() {
+        // No default route (an offline test machine) is fine too.
+        if let Some(ip) = default_route_ip() {
+            assert!(!ip.is_loopback() && !ip.is_unspecified(), "{ip}");
+        }
     }
 
     #[test]

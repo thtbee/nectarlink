@@ -11,6 +11,8 @@ members = [
     "tools/xtask",
     "spikes/s1-qt-rust",
 ]
+# Patched crates, used through [patch.crates-io] below.
+exclude = ["third_party"]
 
 [workspace.package]
 version = "0.1.4"
@@ -99,3 +101,7 @@ strip = "symbols"
 [profile.android]
 inherits = "release"
 strip = "debuginfo"
+
+# iroh's mDNS with one fix, until upstream has it: third_party/iroh-mdns-address-lookup/NECTARLINK.md.
+[patch.crates-io]
+iroh-mdns-address-lookup = { path = "third_party/iroh-mdns-address-lookup" }

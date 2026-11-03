@@ -4043,11 +4043,17 @@ fn start_lan_discovery(shared: &Arc<Shared>, name: &str) -> Result<()> {
 /// [`MDNS_SLOW`], in place of the one running. iroh can't drop a single
 /// address lookup, so a swap clears them all and puts the others back.
 fn install_mdns(shared: &Arc<Shared>, fast: bool) -> Result<()> {
-    let mdns = MdnsAddressLookup::builder()
-        .service_name("nectarlink")
-        .discovery_cadence(if fast { MDNS_FAST } else { MDNS_SLOW })
-        .build(shared.endpoint.id())
-        .map_err(crate::error::net)?;
+    let builder = MdnsAddressLookup::builder().service_name("nectarlink").discovery_cadence(if fast {
+        MDNS_FAST
+    } else {
+        MDNS_SLOW
+    });
+    // Every LAN interface, not just the one the OS picks for multicast, which
+    // on a PC is often a Hyper-V, WSL or VPN adapter (#148). Not on phones:
+    // mDNS on mobile data would only wake the radio.
+    #[cfg(not(target_os = "android"))]
+    let builder = builder.multicast_interfaces(is_mdns_interface);
+    let mdns = builder.build(shared.endpoint.id()).map_err(crate::error::net)?;
     let lookups = shared.endpoint.address_lookup().map_err(crate::error::net)?;
     let cancel = shared.cancel.child_token();
     let previous = lock(&shared.lan_discovery).replace((cancel.clone(), fast));
@@ -4107,6 +4113,17 @@ fn install_mdns(shared: &Arc<Shared>, fast: bool) -> Result<()> {
         }
     });
     Ok(())
+}
+
+/// Whether mDNS should run on the interface with this address: anything but
+/// loopback, link-local (no DHCP lease) and Tailscale, which carries no
+/// multicast. Public-numbered LANs stay in (#131).
+#[cfg(not(target_os = "android"))]
+fn is_mdns_interface(ip: std::net::Ipv4Addr) -> bool {
+    !ip.is_loopback()
+        && !ip.is_link_local()
+        && !ip.is_unspecified()
+        && !crate::session::is_tailnet_ip(std::net::IpAddr::V4(ip))
 }
 
 /// The internet lookups away mode uses, the same ones `bind_endpoint` sets

@@ -252,6 +252,14 @@ has a Stop button. Choosing another
 
 ### Fixed
 
+- **Pairing said "Couldn't reach the PC" on PCs with Hyper-V, WSL or a
+  VPN.** Their virtual network adapters could fill the pairing code and
+  leave out the PC's Wi-Fi or Ethernet address, and the PC listened for
+  nearby phones only on one of those adapters. The code now lists the
+  address the PC uses to reach your network first, and the PC looks for
+  phones on all of its networks. Thanks to
+  [@samsarajr](https://github.com/samsarajr) for the packet capture that
+  found it ([#148](https://github.com/thtbee/nectarlink/issues/148)).
 - **App windows failed with "invalid mirroring options"** after Keep
   phone awake or Turn phone screen off was turned on in any mirror window,
   until the PC app restarted. Both settings now reach app windows once
