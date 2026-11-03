@@ -125,12 +125,16 @@ bundle_private_qt_if_needed() {
         "libQt6WaylandEglClientHwIntegration.so*" \
         "libQt6WlShellIntegration.so*" \
         "libQt6ShaderTools.so*" \
+        "libQt6LabsFolderListModel.so*" \
         "libicui18n.so*" \
         "libicuuc.so*" \
         "libicudata.so*"
     do
         compgen -G "${qt_libs}/${pattern}" >/dev/null && cp -a "${qt_libs}"/${pattern} "${dest}/lib/" || true
     done
+    # Caught by the patterns above but unused, and they need Qt modules that
+    # aren't bundled (Sql, Test).
+    rm -f "${dest}"/lib/libQt6QmlLocalStorage.so* "${dest}"/lib/libQt6QuickTest.so*
 
     if [[ -n "${qt_plugins}" && -d "${qt_plugins}" ]]; then
         local plug_dir
@@ -171,6 +175,16 @@ QTEOF
 
 bundle_private_qt_if_needed
 
+# What the app and a bundled Qt load from the system: Qt itself needs EGL,
+# GLib and Kerberos (Qt Network), its X11 plugin the xcb libraries, its
+# Wayland plugin the Wayland ones. CI installs the .deb in a clean Ubuntu and
+# checks the bundled libraries and these plugins find everything.
+BASE_DEPENDS="libc6, libgcc-s1, libstdc++6, zlib1g, libzstd1, libbrotli1, libglib2.0-0t64 | libglib2.0-0, libgssapi-krb5-2, libdbus-1-3, libfontconfig1, libfreetype6, libgl1, libegl1, libxkbcommon0, libxkbcommon-x11-0, libx11-6, libx11-xcb1, libxcb1, libxcb-cursor0, libxcb-glx0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-randr0, libxcb-render0, libxcb-render-util0, libxcb-shape0, libxcb-shm0, libxcb-sync1, libxcb-util1, libxcb-xfixes0, libxcb-xkb1, libwayland-client0, libwayland-cursor0, libwayland-egl1"
+if [[ -n "${QT_DEPENDS}" ]]; then
+    # The system's Qt packages bring their own.
+    BASE_DEPENDS="libc6, libgcc-s1, libstdc++6, libgl1, libx11-6, libxcb1, libxkbcommon0, libwayland-client0, libfontconfig1, libfreetype6, libdbus-1-3"
+fi
+
 INSTALLED_SIZE="$(du -sk "${PKG_ROOT}/usr" | awk '{print $1}')"
 
 cat > "${PKG_ROOT}/DEBIAN/control" <<EOF
@@ -180,7 +194,7 @@ Section: net
 Priority: optional
 Architecture: ${DEB_ARCH}
 Installed-Size: ${INSTALLED_SIZE}
-Depends: libc6, libgcc-s1, libstdc++6, libgl1, libx11-6, libxcb1, libxkbcommon0, libwayland-client0, libfontconfig1, libfreetype6, libdbus-1-3${QT_DEPENDS}
+Depends: ${BASE_DEPENDS}${QT_DEPENDS}
 Recommends: fuse3, curl | wget, ffmpeg, gstreamer1.0-tools, gstreamer1.0-pipewire, gstreamer1.0-plugins-base, libopenh264-8 | libopenh264-7 | libopenh264-6 | libavcodec62 | libavcodec61 | libavcodec60, pipewire-bin | pulseaudio-utils, pipewire, wl-clipboard, xclip, xdg-utils, avahi-daemon, bluez, v4l2loopback-dkms, policykit-1 | pkexec
 Maintainer: thtbee <https://github.com/thtbee/nectarlink>
 Homepage: https://github.com/thtbee/nectarlink

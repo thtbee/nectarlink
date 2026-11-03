@@ -206,7 +206,19 @@ jobs:
           docker run --rm -v "$PWD/dist:/dist:ro" ubuntu:24.04 bash -euc '
             apt-get update -qq
             DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends /dist/*.deb >/dev/null
-            nectarlink-desktop --version'
+            nectarlink-desktop --version
+            # --version loads no platform plugin or QML module: check the
+            # bundled libraries, plugins and the QML modules the app imports
+            # (file dialogs need Qt.labs.folderlistmodel) find what they link.
+            cd /usr/lib/nectarlink
+            missing=$(for f in nectarlink-desktop lib/*.so.* plugins/*/*.so \
+                $(find qml/QtQml qml/QtQuick/Window qml/QtQuick/Shapes qml/QtQuick/Dialogs \
+                  qml/QtQuick/Effects qml/QtQuick/Layouts qml/QtQuick/Controls \
+                  qml/QtQuick/Templates qml/Qt/labs/folderlistmodel -name "*.so"); do
+              case "$f" in */platformthemes/*|*/libqeglfs*) continue ;; esac
+              LD_LIBRARY_PATH=/usr/lib/nectarlink/lib ldd "$f" | grep "not found" | sed "s|^|$f:|"
+            done | sort -u)
+            if [ -n "$missing" ]; then echo "$missing"; exit 1; fi'
           docker run --rm -v "$PWD/dist:/dist:ro" fedora:40 bash -euc '
             dnf install -y -q --nogpgcheck /dist/*.rpm >/dev/null
             nectarlink-desktop --version'

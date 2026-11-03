@@ -93,12 +93,16 @@ bundle_private_qt_if_needed() {
         "libQt6WaylandEglClientHwIntegration.so*" \
         "libQt6WlShellIntegration.so*" \
         "libQt6ShaderTools.so*" \
+        "libQt6LabsFolderListModel.so*" \
         "libicui18n.so*" \
         "libicuuc.so*" \
         "libicudata.so*"
     do
         compgen -G "${qt_libs}/${pattern}" >/dev/null && cp -a "${qt_libs}"/${pattern} "${BUNDLE_DIR}/lib/" || true
     done
+    # Caught by the patterns above but unused, and they need Qt modules that
+    # aren't bundled (Sql, Test).
+    rm -f "${BUNDLE_DIR}/lib"/libQt6QmlLocalStorage.so* "${BUNDLE_DIR}/lib"/libQt6QuickTest.so*
 
     if [[ -n "${qt_plugins}" && -d "${qt_plugins}" ]]; then
         local plug_dir

@@ -108,12 +108,16 @@ bundle_qt_runtime() {
         "libQt6WaylandEglClientHwIntegration.so*" \
         "libQt6WlShellIntegration.so*" \
         "libQt6ShaderTools.so*" \
+        "libQt6LabsFolderListModel.so*" \
         "libicui18n.so*" \
         "libicuuc.so*" \
         "libicudata.so*"
     do
         compgen -G "${qt_libs}/${pattern}" >/dev/null && cp -a "${qt_libs}"/${pattern} "${APPDIR}/usr/lib/" || true
     done
+    # Caught by the patterns above but unused, and they need Qt modules that
+    # aren't bundled (Sql, Test).
+    rm -f "${APPDIR}/usr/lib"/libQt6QmlLocalStorage.so* "${APPDIR}/usr/lib"/libQt6QuickTest.so*
 
     if [[ -n "${qt_plugins}" && -d "${qt_plugins}" ]]; then
         local plug_dir
