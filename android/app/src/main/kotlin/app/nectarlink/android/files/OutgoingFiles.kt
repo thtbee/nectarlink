@@ -8,14 +8,109 @@ import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import android.provider.OpenableColumns
+import android.system.Os
 import app.nectarlink.core.FileToSend
+import java.io.File
 
 /** Files the user picked or shared, as the core takes them: name and an open descriptor. */
 internal object OutgoingFiles {
+    /** Sensitive non-file system authorities that must never be exfiltrated via share or clipboard URIs. */
+    private val BLOCKED_AUTHORITIES = setOf(
+        "sms",
+        "mms",
+        "mms-sms",
+        "telephony",
+        "call_log",
+        "contacts",
+        "com.android.contacts",
+        "com.android.blockednumber",
+        "user_dictionary",
+        "settings",
+    )
+
+    internal fun isAllowedShareUri(scheme: String?, authority: String?, appPackage: String): Boolean {
+        if (!scheme.equals("content", ignoreCase = true)) return false
+        val cleanAuth = authority?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return false
+        if (cleanAuth in BLOCKED_AUTHORITIES) return false
+        if (cleanAuth == "${appPackage.lowercase()}.shizuku") return false
+        return true
+    }
+
+    internal fun isAppPrivatePath(
+        resolvedPath: String,
+        privateDirs: List<File>,
+        allowedSubdirs: List<File> = emptyList(),
+    ): Boolean {
+        val candPath = runCatching { File(resolvedPath).canonicalPath }.getOrDefault(File(resolvedPath).absolutePath)
+        for (allowed in allowedSubdirs) {
+            val ap = runCatching { allowed.canonicalPath }.getOrDefault(allowed.absolutePath)
+            if (candPath == ap || candPath.startsWith("$ap${File.separator}")) {
+                return false
+            }
+        }
+        for (priv in privateDirs) {
+            val pp = runCatching { priv.canonicalPath }.getOrDefault(priv.absolutePath)
+            if (candPath == pp || candPath.startsWith("$pp${File.separator}")) {
+                return true
+            }
+        }
+        return false
+    }
+
+    internal fun appPrivateDirs(context: Context): List<File> = buildList {
+        val pkg = context.packageName
+        add(File("/data/data/$pkg"))
+        add(File("/data/user/0/$pkg"))
+        context.dataDir?.let { add(it) }
+        context.filesDir?.let { add(it) }
+        context.noBackupFilesDir?.let { add(it) }
+        context.cacheDir?.let { add(it) }
+        context.codeCacheDir?.let { add(it) }
+        context.externalCacheDir?.let { add(it) }
+        context.getExternalFilesDir(null)?.let { add(it) }
+    }
+
+    internal fun isSafeOpenedFd(
+        context: Context,
+        pfd: ParcelFileDescriptor,
+        allowClipboardCache: Boolean = false,
+    ): Boolean {
+        val target = runCatching { Os.readlink("/proc/self/fd/${pfd.fd}") }.getOrNull() ?: return true
+        val allowed = if (allowClipboardCache) {
+            listOf(File(context.cacheDir, "clipboard"))
+        } else {
+            emptyList()
+        }
+        return !isAppPrivatePath(target, appPrivateDirs(context), allowed)
+    }
+
+    /** Closes detached file descriptors when a transfer is aborted before reaching the core. */
+    fun closeAll(files: List<FileToSend>) {
+        files.filterIsInstance<FileToSend.Fd>().forEach {
+            runCatching { ParcelFileDescriptor.adoptFd(it.fd).close() }
+        }
+    }
+
     /** Skips items that can't be opened (the result says how many were). */
-    fun open(context: Context, uris: List<Uri>): List<FileToSend> = uris.mapNotNull { uri ->
-        val fd = runCatching { context.contentResolver.openFileDescriptor(uri, "r") }.getOrNull() ?: return@mapNotNull null
-        FileToSend.Fd(name = displayName(context, uri), fd = fd.detachFd(), folder = null)
+    fun open(context: Context, uris: List<Uri>): List<FileToSend> {
+        if (uris.size > maxFiles) throw TooManyFiles()
+        val files = mutableListOf<FileToSend>()
+        try {
+            for (uri in uris) {
+                if (!isAllowedShareUri(uri.scheme, uri.authority, context.packageName)) continue
+                val fd = runCatching { context.contentResolver.openFileDescriptor(uri, "r") }.getOrNull() ?: continue
+                if (!isSafeOpenedFd(context, fd)) {
+                    runCatching { fd.close() }
+                    continue
+                }
+                val name = displayName(context, uri)
+                files += FileToSend.Fd(name = name, fd = fd.detachFd(), folder = null)
+            }
+        } catch (e: Exception) {
+            closeAll(files)
+            throw e
+        }
+        return files
     }
 
     /** Why a folder can't be sent. */
@@ -34,7 +129,7 @@ internal object OutgoingFiles {
             walk(context, tree, rootId, safeName(rootName ?: "Folder"), depth = 1, files)
         } catch (e: Exception) {
             // Close what was opened before giving up.
-            files.filterIsInstance<FileToSend.Fd>().forEach { runCatching { ParcelFileDescriptor.adoptFd(it.fd).close() } }
+            closeAll(files)
             throw e
         }
         return files

@@ -1,23 +1,28 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.notifications
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
+import android.os.ParcelFileDescriptor
 import android.provider.Telephony
 import android.service.notification.NotificationListenerService.Ranking
 import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
 import android.util.LruCache
 import androidx.core.app.NotificationCompat
+import androidx.core.graphics.drawable.IconCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.scale
+import app.nectarlink.android.files.OutgoingFiles
 import java.io.ByteArrayOutputStream
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.core.LivePoint
@@ -62,7 +67,7 @@ internal class NotificationReader(private val context: Context) {
             // Android won't let a listener dismiss these, so a PC's Clear all leaves them.
             ongoing = !sbn.isClearable,
             icon = icon(sbn.packageName),
-            image = image(sbn.key, n, content.title, content.text),
+            image = image(sbn.key, sbn.uid, n, content.title, content.text),
             live = live,
             conversation = conversation,
         )
@@ -194,8 +199,8 @@ internal class NotificationReader(private val context: Context) {
      * the last image in a conversation. `null` when there's none or it
      * can't be read (images in messages often aren't shared with listeners).
      */
-    private fun image(key: String, n: Notification, title: String?, text: String?): ByteArray? = runCatching {
-        val source = pictureSource(n) ?: return null
+    private fun image(key: String, postingUid: Int, n: Notification, title: String?, text: String?): ByteArray? = runCatching {
+        val source = pictureSource(n, postingUid) ?: return null
         // Apps reuse a key for new posts (X does), and a bitmap's size and
         // generation ID can repeat, so the post's text is part of the key too:
         // an update to the same post reuses its picture, a new post never does.
@@ -211,7 +216,55 @@ internal class NotificationReader(private val context: Context) {
     /** Where a picture comes from: an ID for caching, and how to load it. */
     private class Picture(val id: String, val owned: Bitmap?, val load: () -> Bitmap?)
 
-    private fun pictureSource(n: Notification): Picture? {
+    private fun canPostingAppReadUri(uri: Uri, postingUid: Int): Boolean {
+        val scheme = uri.scheme
+        if (scheme.equals("android.resource", ignoreCase = true)) return true
+        if (!scheme.equals("content", ignoreCase = true)) return false
+        val authority = uri.authority?.takeIf { it.isNotBlank() } ?: return false
+        val provider = runCatching { packages.resolveContentProvider(authority, 0) }.getOrNull() ?: return false
+        val hasExplicitGrant = context.checkUriPermission(
+            uri,
+            0,
+            postingUid,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION,
+        ) == PackageManager.PERMISSION_GRANTED
+        val readPerm = provider.readPermission
+        val holdsReadPerm = !readPerm.isNullOrEmpty() &&
+            context.checkPermission(readPerm, 0, postingUid) == PackageManager.PERMISSION_GRANTED
+        val mediaPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+        val holdsMediaPerm = context.checkPermission(mediaPerm, 0, postingUid) == PackageManager.PERMISSION_GRANTED
+        return canSenderReadUri(
+            scheme = scheme,
+            authority = authority,
+            appPackage = context.packageName,
+            appUid = context.applicationInfo.uid,
+            postingUid = postingUid,
+            providerUid = provider.applicationInfo.uid,
+            providerExported = provider.exported,
+            providerReadPerm = readPerm,
+            hasExplicitUriGrant = hasExplicitGrant,
+            holdsReadPerm = holdsReadPerm,
+            holdsMediaPerm = holdsMediaPerm,
+        )
+    }
+
+    private fun isSafeIcon(icon: Icon?, postingUid: Int): Boolean {
+        if (icon == null) return false
+        val compat = runCatching { IconCompat.createFromIcon(context, icon) }.getOrNull() ?: return false
+        return when (compat.type) {
+            IconCompat.TYPE_URI, IconCompat.TYPE_URI_ADAPTIVE_BITMAP -> {
+                val uri = runCatching { compat.uri }.getOrNull() ?: return false
+                canPostingAppReadUri(uri, postingUid)
+            }
+            else -> true
+        }
+    }
+
+    private fun pictureSource(n: Notification, postingUid: Int): Picture? {
         val extras = n.extras
         val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             extras.getParcelable(Notification.EXTRA_PICTURE, Bitmap::class.java)
@@ -229,7 +282,7 @@ internal class NotificationReader(private val context: Context) {
                 @Suppress("DEPRECATION")
                 extras.getParcelable(Notification.EXTRA_PICTURE_ICON) as? Icon
             }
-            if (icon != null) {
+            if (icon != null && isSafeIcon(icon, postingUid)) {
                 return Picture("icon:${icon.hashCode()}", null) { icon.loadDrawable(context)?.toBitmap() }
             }
         }
@@ -237,6 +290,7 @@ internal class NotificationReader(private val context: Context) {
             ?.messages
             ?.lastOrNull { it.dataMimeType?.startsWith("image/") == true && it.dataUri != null }
         val uri = message?.dataUri ?: return null
+        if (!canPostingAppReadUri(uri, postingUid)) return null
         return Picture(uri.toString(), null) { decode(uri) }
     }
 
@@ -244,13 +298,19 @@ internal class NotificationReader(private val context: Context) {
     private fun decode(uri: Uri): Bitmap? {
         val resolver = context.contentResolver
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return null
+        resolver.openFileDescriptor(uri, "r")?.use { pfd ->
+            if (!OutgoingFiles.isSafeOpenedFd(context, pfd)) return null
+            ParcelFileDescriptor.AutoCloseInputStream(pfd).use { BitmapFactory.decodeStream(it, null, bounds) }
+        } ?: return null
         val longest = maxOf(bounds.outWidth, bounds.outHeight)
         if (longest <= 0) return null
         var sample = 1
         while (longest / (sample * 2) >= IMAGE_PX) sample *= 2
         val options = BitmapFactory.Options().apply { inSampleSize = sample }
-        return resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+        return resolver.openFileDescriptor(uri, "r")?.use { pfd ->
+            if (!OutgoingFiles.isSafeOpenedFd(context, pfd)) return null
+            ParcelFileDescriptor.AutoCloseInputStream(pfd).use { BitmapFactory.decodeStream(it, null, options) }
+        }
     }
 
     /** A JPEG that fits the protocol's limit, smaller and softer if needed. */
@@ -321,7 +381,7 @@ internal class NotificationReader(private val context: Context) {
             } else {
                 val cacheKey = person.key ?: person.name?.toString().orEmpty()
                 personAvatars.getOrPut(cacheKey) {
-                    runCatching { avatarFromIcon(person.icon?.toIcon(context)) }.getOrNull()
+                    runCatching { avatarFromIcon(person.icon?.toIcon(context), sbn.uid) }.getOrNull()
                 }
             }
             NotificationChatMessage(
@@ -343,7 +403,7 @@ internal class NotificationReader(private val context: Context) {
             }
         }
 
-        val convAvatar = avatarFromIcon(n.getLargeIcon())
+        val convAvatar = avatarFromIcon(n.getLargeIcon(), sbn.uid)
             ?: rawMessages.lastOrNull { !it.selfSent && it.avatar != null }?.avatar
 
         buildConversation(
@@ -356,9 +416,9 @@ internal class NotificationReader(private val context: Context) {
     }.getOrNull()
 
     /** Scales and compresses a notification or person `Icon` to a `<= 16 KiB` JPEG. */
-    private fun avatarFromIcon(icon: Icon?): ByteArray? = runCatching {
-        if (icon == null) return null
-        val drawable = icon.loadDrawable(context) ?: return null
+    private fun avatarFromIcon(icon: Icon?, postingUid: Int): ByteArray? = runCatching {
+        if (!isSafeIcon(icon, postingUid)) return null
+        val drawable = icon!!.loadDrawable(context) ?: return null
         val w = drawable.intrinsicWidth.takeIf { it > 0 } ?: AVATAR_PX
         val h = drawable.intrinsicHeight.takeIf { it > 0 } ?: AVATAR_PX
         val scale = minOf(1f, AVATAR_PX.toFloat() / maxOf(w, h))
@@ -394,6 +454,31 @@ internal class NotificationReader(private val context: Context) {
         const val MAX_CHIP_CHARS = 16
         const val MAX_SEGMENTS = 16
         const val MAX_POINTS = 16
+
+        internal fun canSenderReadUri(
+            scheme: String?,
+            authority: String?,
+            appPackage: String,
+            appUid: Int,
+            postingUid: Int,
+            providerUid: Int?,
+            providerExported: Boolean,
+            providerReadPerm: String?,
+            hasExplicitUriGrant: Boolean,
+            holdsReadPerm: Boolean,
+            holdsMediaPerm: Boolean,
+        ): Boolean {
+            if (scheme.equals("android.resource", ignoreCase = true)) return true
+            if (!scheme.equals("content", ignoreCase = true)) return false
+            val cleanAuth = authority?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return false
+            if (!OutgoingFiles.isAllowedShareUri(scheme, cleanAuth, appPackage)) return false
+            if (cleanAuth == "${appPackage.lowercase()}.files") return false
+            if (providerUid == null || providerUid == appUid) return false
+            if (providerUid == postingUid) return true
+            if (hasExplicitUriGrant) return true
+            if (cleanAuth == "media") return holdsMediaPerm
+            return providerExported && !providerReadPerm.isNullOrEmpty() && holdsReadPerm
+        }
 
         internal fun buildConversation(
             styleTitle: String?,

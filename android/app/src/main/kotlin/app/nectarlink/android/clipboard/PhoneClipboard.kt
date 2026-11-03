@@ -9,8 +9,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
+import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.core.content.FileProvider
+import app.nectarlink.android.files.OutgoingFiles
 import java.io.File
 
 /**
@@ -147,7 +149,7 @@ object PhoneClipboard {
             .any { clip.description.getMimeType(it)?.startsWith("image/") == true }
         val candidates = (0 until clip.itemCount).map { i ->
             val item = clip.getItemAt(i)
-            val uri = item.uri
+            val uri = item.uri?.takeIf { OutgoingFiles.isAllowedShareUri(it.scheme, it.authority, context.packageName) }
             ClipCandidate(
                 text = item.text,
                 uri = uri,
@@ -188,14 +190,22 @@ object PhoneClipboard {
      * PNG and JPEG go as they are; other formats are converted to PNG.
      */
     fun readImage(context: Context, uri: Uri): ImageResult = runCatching {
+        if (!OutgoingFiles.isAllowedShareUri(uri.scheme, uri.authority, context.packageName)) {
+            return ImageResult.Unreadable
+        }
         val resolver = context.contentResolver
-        val size = resolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1
-        if (size > MAX_IMAGE_BYTES) return ImageResult.TooLarge
-        val bytes = resolver.openInputStream(uri)?.use { input ->
-            // Read one byte past the limit to notice a source that didn't say its size.
-            val buffer = input.readNBytesCompat(MAX_IMAGE_BYTES.toInt() + 1)
-            if (buffer.size > MAX_IMAGE_BYTES) return ImageResult.TooLarge
-            buffer
+        val bytes = resolver.openFileDescriptor(uri, "r")?.use { pfd ->
+            if (!OutgoingFiles.isSafeOpenedFd(context, pfd, allowClipboardCache = true)) {
+                return ImageResult.Unreadable
+            }
+            val size = pfd.statSize
+            if (size > MAX_IMAGE_BYTES) return ImageResult.TooLarge
+            ParcelFileDescriptor.AutoCloseInputStream(pfd).use { input ->
+                // Read one byte past the limit to notice a source that didn't say its size.
+                val buffer = input.readNBytesCompat(MAX_IMAGE_BYTES.toInt() + 1)
+                if (buffer.size > MAX_IMAGE_BYTES) return ImageResult.TooLarge
+                buffer
+            }
         } ?: return ImageResult.Unreadable
         when (val mime = resolver.getType(uri)) {
             "image/png", "image/jpeg" -> ImageResult.Ready(ImageData(mime, bytes))
