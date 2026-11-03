@@ -139,4 +139,67 @@ class PhoneStorageTest {
         // Only a whole first segment names a volume.
         assertEquals(internal to "SD cards/x", PhoneStorage.locate(volumes, "SD cards/x", internal))
     }
+
+    @Test
+    fun blocksDeletingOrMovingAncestorsOfBlockedDirectoriesAndSymlinksToBlockedTargets() {
+        val temp = Files.createTempDirectory("nectarlink-storage-ancestor-test").toFile()
+        try {
+            val root = File(temp, "shared").apply { mkdirs() }
+            val canonRoot = root.canonicalFile
+            val androidDir = File(root, "Android").apply { mkdirs() }
+            val androidData = File(androidDir, "data").apply { mkdirs() }
+            val appPrivate = File(androidData, "app.nectarlink/secret.txt").apply {
+                parentFile?.mkdirs()
+                writeText("keep")
+            }
+            val blocked = listOf(File(root, "Android/data"), File(root, "Android/obb"))
+
+            // `Android` contains `Android/data`, so `containsBlockedDir` is true and `deleteTreeSafely` refuses.
+            assertTrue(PhoneStorage.containsBlockedDir(androidDir.canonicalFile, blocked))
+            assertFalse(PhoneStorage.deleteTreeSafely(androidDir, canonRoot, blocked))
+            assertTrue(appPrivate.exists())
+
+            // If symlink creation is permitted, a symlink to `Android` cannot be used to resolve `link/data/sub`.
+            val linkToAndroid = File(root, "link_android")
+            val created = runCatching {
+                Files.createSymbolicLink(linkToAndroid.toPath(), androidDir.toPath())
+                true
+            }.getOrDefault(false)
+            if (created) {
+                try {
+                    PhoneStorage.resolveTargetInRoot(root, blocked, "link_android/data/new_folder/file.txt")
+                    fail("expected Denied when traversing symlink into non-existent child of blocked dir")
+                } catch (_: StorageFailure.Denied) {
+                }
+
+                // Deleting the symlink deletes the link itself, not the target directory.
+                val resolvedLink = PhoneStorage.resolveEntryInRoot(root, blocked, "link_android")
+                assertTrue(PhoneStorage.isSymlink(resolvedLink))
+                assertTrue(PhoneStorage.deleteTreeSafely(resolvedLink, canonRoot, blocked))
+                assertFalse(PhoneStorage.isSymlink(linkToAndroid))
+                assertTrue(androidDir.exists())
+                assertTrue(appPrivate.exists())
+            }
+        } finally {
+            temp.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun filterPersistedSafEntriesDropsAllWhenPersistedSetIsEmpty() {
+        val raw = setOf("Documents|content://tree/docs", "Music|content://tree/music")
+        assertTrue(
+            PhoneStorage.filterPersistedSafEntries(
+                rawEntries = raw,
+                persistedUris = emptySet(),
+                parseUri = { it },
+            ).isEmpty(),
+        )
+        val partial = PhoneStorage.filterPersistedSafEntries(
+            rawEntries = raw,
+            persistedUris = setOf("content://tree/music"),
+            parseUri = { it },
+        )
+        assertEquals(listOf("Music" to "content://tree/music"), partial)
+    }
 }
