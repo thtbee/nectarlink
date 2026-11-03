@@ -400,8 +400,12 @@ Section "Install"
   ; Shared folder for update downloads and channel choice: any signed-in user
   ; on this PC may update them, and the update task checks the download's
   ; SHA-256 in SystemTemp before running it.
+  ; Owned by administrators, and set on the folder alone: never /T, which
+  ; would follow a junction a user put inside to wherever it points. What
+  ; is created in it from now on inherits the grant.
   CreateDirectory "$APPDATA\${APP}\updates"
-  nsExec::Exec 'icacls "$APPDATA\${APP}" /grant *S-1-5-32-545:(OI)(CI)M /T'
+  nsExec::Exec 'icacls "$APPDATA\${APP}" /setowner *S-1-5-32-544'
+  nsExec::Exec 'icacls "$APPDATA\${APP}" /grant *S-1-5-32-545:(OI)(CI)M'
   ${If} $AdminOnly != 1
     ; Updates ask for permission in this folder (see the top of this file).
     nsExec::Exec 'schtasks /Delete /TN "Nectarlink Update" /F'
@@ -506,7 +510,14 @@ Section "Uninstall"
   nsExec::Exec 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "try { Get-AppxPackage -Name \"Nectarlink.Desktop\" -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue } catch {}"'
   nsExec::Exec 'netsh advfirewall firewall delete rule name="${FIREWALL_RULE}"'
   nsExec::Exec 'schtasks /Delete /TN "Nectarlink Update" /F'
-  RMDir /r "$APPDATA\${APP}"
+  ; Users can write here, so only our own files go, and the folders only
+  ; when empty: a recursive delete as administrator could follow a junction.
+  Delete "$APPDATA\${APP}\updates\*.exe"
+  Delete "$APPDATA\${APP}\updates\*.part"
+  Delete "$APPDATA\${APP}\update-channel"
+  Delete "$APPDATA\${APP}\update-feed.json"
+  RMDir "$APPDATA\${APP}\updates"
+  RMDir "$APPDATA\${APP}"
   Delete "$SMPROGRAMS\${DISPLAY}.lnk"
   Delete "$DESKTOP\${DISPLAY}.lnk"
   ; Only ever a folder of our own (a silent install can be pointed
