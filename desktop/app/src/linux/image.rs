@@ -878,6 +878,18 @@ fn decode_bmp(bytes: &[u8]) -> Option<Bitmap> {
     Some(Bitmap { width: width_u, height: height_u, bgra })
 }
 
+/// `QImage` decodes to ARGB32, which is BGRA in memory on little-endian CPUs.
+fn decode_with_qt(bytes: &[u8]) -> Option<Bitmap> {
+    let out = crate::bridge::native::ffi::decode_image(bytes);
+    let width = u32::from_le_bytes(out.get(0..4)?.try_into().ok()?);
+    let height = u32::from_le_bytes(out.get(4..8)?.try_into().ok()?);
+    let bgra = out.get(8..)?;
+    if width == 0 || height == 0 || bgra.len() != width as usize * height as usize * 4 {
+        return None;
+    }
+    Some(Bitmap { width, height, bgra: bgra.to_vec() })
+}
+
 fn decode_via_python_or_ffmpeg(bytes: &[u8]) -> Option<Bitmap> {
     use std::io::Write;
     use std::process::{Command, Stdio};
@@ -929,6 +941,12 @@ pub fn decode(bytes: &[u8]) -> Result<Bitmap> {
     }
     if let Some(jpg) = decode_baseline_jpeg(bytes) {
         return Ok(jpg);
+    }
+    // Compressed PNGs (nearly all), progressive JPEGs, WebP and GIF: Qt's
+    // decoders and the image format plugins every package ships. ffmpeg is
+    // optional, so it's only the last resort.
+    if let Some(bmp) = decode_with_qt(bytes) {
+        return Ok(bmp);
     }
     if let Some(bmp) = decode_via_python_or_ffmpeg(bytes) {
         return Ok(bmp);
@@ -1158,6 +1176,25 @@ mod tests {
         assert!(decode(&[]).is_err());
         assert!(decode(b"not an image").is_err());
         assert!(bmp_from_dib(&[0u8; 12]).is_none());
+    }
+
+    #[test]
+    fn decode_reads_a_compressed_png_without_ffmpeg() {
+        // 3x2 RGBA, zlib level 9 (fixed Huffman blocks, not stored ones).
+        const PNG: [u8; 88] = [
+            0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+            0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x02, 0x08, 0x06, 0x00, 0x00, 0x00, 0x9d, 0x74, 0x66,
+            0x1a, 0x00, 0x00, 0x00, 0x1f, 0x49, 0x44, 0x41, 0x54, 0x78, 0xda, 0x63, 0xf8, 0xcf, 0xc0, 0xf0,
+            0x1f, 0x0c, 0x19, 0xfe, 0x37, 0x30, 0x70, 0x89, 0xc8, 0xfd, 0x3f, 0x91, 0x62, 0xc4, 0xc0, 0xc8,
+            0xc4, 0xfc, 0x1f, 0x00, 0x81, 0x64, 0x09, 0x1a, 0x94, 0x68, 0x16, 0x5b, 0x00, 0x00, 0x00, 0x00,
+            0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+        ];
+        assert!(decode_stored_png(&PNG).is_none(), "the test image must need a real inflater");
+        let decoded = decode_with_qt(&PNG).expect("Qt decodes a compressed PNG");
+        assert_eq!((decoded.width, decoded.height), (3, 2));
+        // BGRA: red, then the half-transparent blue pixel.
+        assert_eq!(&decoded.bgra[0..4], &[0, 0, 255, 255]);
+        assert_eq!(&decoded.bgra[8..12], &[255, 0, 0, 128]);
     }
 
     #[test]
