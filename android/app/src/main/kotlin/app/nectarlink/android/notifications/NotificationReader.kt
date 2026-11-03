@@ -67,7 +67,7 @@ internal class NotificationReader(private val context: Context) {
             // Android won't let a listener dismiss these, so a PC's Clear all leaves them.
             ongoing = !sbn.isClearable,
             icon = icon(sbn.packageName),
-            image = image(sbn.key, sbn.uid, n, content.title, content.text),
+            image = image(sbn.key, postingUid(sbn), n, content.title, content.text),
             live = live,
             conversation = conversation,
         )
@@ -381,7 +381,7 @@ internal class NotificationReader(private val context: Context) {
             } else {
                 val cacheKey = person.key ?: person.name?.toString().orEmpty()
                 personAvatars.getOrPut(cacheKey) {
-                    runCatching { avatarFromIcon(person.icon?.toIcon(context), sbn.uid) }.getOrNull()
+                    runCatching { avatarFromIcon(person.icon?.toIcon(context), postingUid(sbn)) }.getOrNull()
                 }
             }
             NotificationChatMessage(
@@ -403,7 +403,7 @@ internal class NotificationReader(private val context: Context) {
             }
         }
 
-        val convAvatar = avatarFromIcon(n.getLargeIcon(), sbn.uid)
+        val convAvatar = avatarFromIcon(n.getLargeIcon(), postingUid(sbn))
             ?: rawMessages.lastOrNull { !it.selfSent && it.avatar != null }?.avatar
 
         buildConversation(
@@ -416,6 +416,20 @@ internal class NotificationReader(private val context: Context) {
     }.getOrNull()
 
     /** Scales and compresses a notification or person `Icon` to a `<= 16 KiB` JPEG. */
+    /**
+     * The posting app's UID, for checking what it may read. `sbn.uid` is
+     * Android 10+; before that the package's UID in our own user, and -1
+     * (nothing readable) for another profile's notifications.
+     */
+    private fun postingUid(sbn: StatusBarNotification): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            sbn.uid
+        } else if (sbn.user != android.os.Process.myUserHandle()) {
+            -1
+        } else {
+            runCatching { context.packageManager.getPackageUid(sbn.packageName, 0) }.getOrDefault(-1)
+        }
+
     private fun avatarFromIcon(icon: Icon?, postingUid: Int): ByteArray? = runCatching {
         if (!isSafeIcon(icon, postingUid)) return null
         val drawable = icon!!.loadDrawable(context) ?: return null
