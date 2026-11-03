@@ -350,7 +350,7 @@ impl Reporter {
     }
 }
 
-static PHOTO_TRANSFERS: std::sync::Mutex<Option<std::collections::HashSet<String>>> =
+static PHOTO_TRANSFERS: std::sync::Mutex<Option<std::collections::HashMap<String, Instant>>> =
     std::sync::Mutex::new(None);
 
 /// Marks an incoming transfer ID as a requested photo transfer (`photos.get`).
@@ -358,26 +358,28 @@ pub(crate) fn mark_photo_transfer(shared: &Shared, transfer_id: &str) {
     if shared.store.update_timeline_kind_by_ref(transfer_id, crate::TimelineKind::Photo).unwrap_or(false) {
         shared.emit(NodeEvent::TimelineChanged);
     } else {
-        PHOTO_TRANSFERS
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .get_or_insert_with(std::collections::HashSet::new)
-            .insert(transfer_id.to_owned());
+        let now = Instant::now();
+        let mut guard = PHOTO_TRANSFERS.lock().unwrap_or_else(|e| e.into_inner());
+        let map = guard.get_or_insert_with(std::collections::HashMap::new);
+        map.retain(|_, t| now.duration_since(*t) < RETRY_FOR);
+        map.insert(transfer_id.to_owned(), now);
     }
 }
 
-static QUIET_TRANSFERS: std::sync::Mutex<Option<std::collections::HashSet<String>>> =
+static QUIET_TRANSFERS: std::sync::Mutex<Option<std::collections::HashMap<String, Instant>>> =
     std::sync::Mutex::new(None);
 
 /// Marks an incoming transfer as quiet: it's saved like any other, but leaves
 /// nothing in the Timeline (a photo backup's downloads). An entry already
 /// recorded for it (the transfer finished before this) is removed.
 pub(crate) fn mark_quiet_transfer(shared: &Shared, transfer_id: &str) {
-    QUIET_TRANSFERS
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .get_or_insert_with(std::collections::HashSet::new)
-        .insert(transfer_id.to_owned());
+    let now = Instant::now();
+    {
+        let mut guard = QUIET_TRANSFERS.lock().unwrap_or_else(|e| e.into_inner());
+        let map = guard.get_or_insert_with(std::collections::HashMap::new);
+        map.retain(|_, t| now.duration_since(*t) < RETRY_FOR);
+        map.insert(transfer_id.to_owned(), now);
+    }
     if shared.store.delete_timeline_by_ref(transfer_id).unwrap_or(false) {
         // It had finished already, so nothing will take the mark.
         take_quiet_transfer(transfer_id);
@@ -388,19 +390,19 @@ pub(crate) fn mark_quiet_transfer(shared: &Shared, transfer_id: &str) {
 /// Whether a transfer that just finished was quiet, forgetting it. A failed
 /// one stays marked: it resumes under the same ID.
 fn take_quiet_transfer(transfer_id: &str) -> bool {
-    QUIET_TRANSFERS
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .as_mut()
-        .is_some_and(|set| set.remove(transfer_id))
+    let now = Instant::now();
+    QUIET_TRANSFERS.lock().unwrap_or_else(|e| e.into_inner()).as_mut().is_some_and(|map| {
+        map.retain(|_, t| now.duration_since(*t) < RETRY_FOR);
+        map.remove(transfer_id).is_some()
+    })
 }
 
 fn take_photo_transfer(transfer_id: &str) -> bool {
-    PHOTO_TRANSFERS
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .as_mut()
-        .is_some_and(|set| set.remove(transfer_id))
+    let now = Instant::now();
+    PHOTO_TRANSFERS.lock().unwrap_or_else(|e| e.into_inner()).as_mut().is_some_and(|map| {
+        map.retain(|_, t| now.duration_since(*t) < RETRY_FOR);
+        map.remove(transfer_id).is_some()
+    })
 }
 
 pub(crate) fn transfer_timeline_title(names: &[String]) -> String {
@@ -1155,6 +1157,11 @@ async fn send_inner(
     let mut reporter = Reporter::new(shared.clone(), transfer);
     reporter.set(TransferState::Waiting);
     tokio::spawn(async move {
+        if is_photo {
+            // Let the `photos.sending` reply go out on the control stream first
+            // so the requester can tag the transfer ID before it finishes.
+            tokio::task::yield_now().await;
+        }
         let state = send_until_done(&mut reporter, opened, &cancel, &mut pause_rx).await;
         if matches!(state, TransferState::Done { .. }) {
             let _ = reporter.shared.record_timeline(crate::timeline::NewTimelineEntry {
@@ -1621,7 +1628,7 @@ async fn refuse(send: &mut SendStream, code: ErrorCode, msg: &str) {
 
 /// A file's size and BLAKE3 digest (hex), read from the start; the file is
 /// handed back rewound, ready to send.
-fn hash_whole_file(mut f: std::fs::File) -> std::io::Result<(std::fs::File, u64, String)> {
+pub(crate) fn hash_whole_file(mut f: std::fs::File) -> std::io::Result<(std::fs::File, u64, String)> {
     use std::io::{Seek, SeekFrom};
     let size = f.metadata()?.len();
     f.seek(SeekFrom::Start(0))?;
@@ -1830,6 +1837,8 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
         },
         Err(state) => {
             if state == TransferState::Cancelled {
+                let _ = take_photo_transfer(&offer.id);
+                let _ = take_quiet_transfer(&offer.id);
                 let _ = tokio::fs::remove_dir_all(&dir).await;
                 if let Some(parent) = dir.parent() {
                     let _ = tokio::fs::remove_dir(parent).await;
@@ -2175,7 +2184,7 @@ pub(crate) fn mark_from_elsewhere(path: &Path) {
 }
 
 /// Room kept free beyond an incoming transfer's size.
-const SPACE_MARGIN: u64 = 64 * 1024 * 1024;
+pub(crate) const SPACE_MARGIN: u64 = 64 * 1024 * 1024;
 
 /// Bytes free for this user on the drive holding `path` (`None` when it
 /// can't tell, which never blocks a transfer).
@@ -2243,6 +2252,15 @@ pub(crate) fn clean_incoming(dir: &Path) {
                     }
                 }
                 let _ = std::fs::remove_dir(peer.path());
+            }
+            let _ = std::fs::remove_dir(&path);
+            continue;
+        }
+        if peer.file_name() == "localsend" {
+            for session in std::fs::read_dir(&path).into_iter().flatten().flatten() {
+                if is_stale(&session) {
+                    let _ = std::fs::remove_dir_all(session.path());
+                }
             }
             let _ = std::fs::remove_dir(&path);
             continue;
@@ -2359,6 +2377,38 @@ mod tests {
         std::fs::remove_file(&fresh).unwrap();
         clean_incoming(dir.path());
         assert!(!dir.path().join("storage").exists(), "emptied folders go");
+
+        let ls = dir.path().join("localsend");
+        let ls_fresh = ls.join("lss_fresh");
+        let ls_stale = ls.join("lss_stale");
+        std::fs::create_dir_all(&ls_fresh).unwrap();
+        std::fs::create_dir_all(&ls_stale).unwrap();
+        std::fs::File::options().write(true).open(&ls_stale).ok();
+        let _ = filetime_backdate_dir(&ls_stale, old);
+        clean_incoming(dir.path());
+        assert!(ls_fresh.exists(), "a recent LocalSend session stays intact");
+        std::fs::remove_dir_all(&ls_fresh).unwrap();
+        std::fs::remove_dir_all(&ls_stale).ok();
+        clean_incoming(dir.path());
+        assert!(!ls.exists(), "emptied localsend folder goes");
+    }
+
+    fn filetime_backdate_dir(path: &Path, time: std::time::SystemTime) -> std::io::Result<()> {
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::OpenOptionsExt;
+            const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+            let f = std::fs::OpenOptions::new()
+                .write(true)
+                .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
+                .open(path)?;
+            f.set_modified(time)
+        }
+        #[cfg(not(windows))]
+        {
+            let f = std::fs::File::open(path)?;
+            f.set_modified(time)
+        }
     }
 
     #[test]

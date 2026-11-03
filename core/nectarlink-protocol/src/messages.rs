@@ -4343,6 +4343,8 @@ pub struct StorageWriteOffer {
     pub size: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub modified: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blake3: Option<String>,
 }
 
 impl std::fmt::Debug for StorageWriteOffer {
@@ -4359,6 +4361,7 @@ impl StorageWriteOffer {
         is_valid_storage_id(&self.id)
             && is_valid_storage_path(&self.path)
             && self.modified.is_none_or(|m| m >= 0)
+            && self.blake3.as_deref().is_none_or(is_valid_blake3_hex)
     }
 }
 
@@ -5642,6 +5645,7 @@ mod tests {
             path: "Download/notes.txt".into(),
             size: 512,
             modified: Some(1_750_000_000_000),
+            blake3: None,
         };
         assert!(write.is_valid());
         assert!(!format!("{write:?}").contains("notes.txt"));

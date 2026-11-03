@@ -1036,10 +1036,6 @@ async fn handle_prepare_upload(
     let session_id = format!("lss_{}", random_token());
     let transfer_id = format!("ls_{}", random_token());
     let staging_dir = shared.incoming_dir().join("localsend").join(&session_id);
-    if tokio::fs::create_dir_all(&staging_dir).await.is_err() {
-        let _ = write_http_response(stream, 500, "Internal Server Error", None, &[]).await;
-        return;
-    }
 
     let mut sorted_files: Vec<FileDto> = req.files.into_values().collect();
     sorted_files.sort_by(|a, b| a.file_name.cmp(&b.file_name).then_with(|| a.id.cmp(&b.id)));
@@ -1076,6 +1072,15 @@ async fn handle_prepare_upload(
             uploaded: false,
             uploading: false,
         });
+    }
+
+    let fits = |at: &Path| {
+        crate::transfer::free_space(at)
+            .is_none_or(|free| free >= total_bytes.saturating_add(crate::transfer::SPACE_MARGIN))
+    };
+    if !fits(&shared.incoming_dir()) || !fits(&shared.downloads_dir) {
+        let _ = write_http_response(stream, 507, "Insufficient Storage", None, &[]).await;
+        return;
     }
 
     let transfer = Transfer {
@@ -1115,11 +1120,19 @@ async fn handle_prepare_upload(
 
     if !accepted {
         shared.unregister_transfer(&transfer_id);
-        let _ = tokio::fs::remove_dir_all(&staging_dir).await;
         let mut cancelled = transfer;
         cancelled.state = TransferState::Cancelled;
         shared.emit(NodeEvent::Transfer(cancelled));
         let _ = write_http_response(stream, 403, "Forbidden", None, &[]).await;
+        return;
+    }
+
+    if tokio::fs::create_dir_all(&staging_dir).await.is_err() {
+        shared.unregister_transfer(&transfer_id);
+        let mut failed = transfer;
+        failed.state = upload_failed("cannot create staging directory");
+        shared.emit(NodeEvent::Transfer(failed));
+        let _ = write_http_response(stream, 500, "Internal Server Error", None, &[]).await;
         return;
     }
 
@@ -1207,6 +1220,7 @@ async fn handle_upload(shared: &Arc<Shared>, stream: &mut ServerStream, head: &H
     };
 
     let Ok(mut out) = tokio::fs::File::create(&part_path).await else {
+        session_arc.lock().unwrap_or_else(|e| e.into_inner()).files[spec_idx].uploading = false;
         let _ = write_http_response(stream, 500, "Internal Server Error", None, &[]).await;
         return;
     };
@@ -1250,7 +1264,11 @@ async fn handle_upload(shared: &Arc<Shared>, stream: &mut ServerStream, head: &H
     let finalize_res = finalize_uploaded_file(shared, &session_arc, spec_idx).await;
     if finalize_res.is_err() {
         // The part file is still there: the sender may try this file again.
-        session_arc.lock().unwrap_or_else(|e| e.into_inner()).files[spec_idx].uploading = false;
+        {
+            let mut guard = session_arc.lock().unwrap_or_else(|e| e.into_inner());
+            guard.files[spec_idx].uploading = false;
+            guard.transfer.done = guard.transfer.done.saturating_sub(expected_size);
+        }
         let _ = write_http_response(stream, 500, "Internal Server Error", None, &[]).await;
         return;
     }
@@ -1909,7 +1927,7 @@ async fn read_http_body<S: AsyncRead + Unpin>(stream: &mut S, head: &HttpHead) -
             .await
             .map_err(|_| std::io::Error::new(ErrorKind::TimedOut, "HTTP body read timed out"))??;
         if n == 0 {
-            break;
+            return Err(std::io::Error::new(ErrorKind::UnexpectedEof, "unexpected EOF"));
         }
         out.extend_from_slice(&chunk[..n]);
     }
@@ -1930,7 +1948,7 @@ async fn read_chunked_vec<S: AsyncRead + Unpin>(
                 .await
                 .map_err(|_| std::io::Error::new(ErrorKind::TimedOut, "chunk header timeout"))??;
             if n == 0 {
-                return Ok(out);
+                return Err(std::io::Error::new(ErrorKind::UnexpectedEof, "unexpected EOF"));
             }
             buf.extend_from_slice(&tmp[..n]);
         }
@@ -1954,14 +1972,15 @@ async fn read_chunked_vec<S: AsyncRead + Unpin>(
                 .await
                 .map_err(|_| std::io::Error::new(ErrorKind::TimedOut, "chunk data timeout"))??;
             if n == 0 {
-                break;
+                return Err(std::io::Error::new(ErrorKind::UnexpectedEof, "unexpected EOF"));
             }
             buf.extend_from_slice(&tmp[..n]);
         }
-        let available = buf.len().min(chunk_size);
-        out.extend_from_slice(&buf[..available]);
-        let drain_len = buf.len().min(chunk_size + 2);
-        buf.drain(..drain_len);
+        if &buf[chunk_size..chunk_size + 2] != b"\r\n" {
+            return Err(std::io::Error::new(ErrorKind::InvalidData, "invalid chunk trailer"));
+        }
+        out.extend_from_slice(&buf[..chunk_size]);
+        buf.drain(..chunk_size + 2);
     }
     Ok(out)
 }
@@ -2074,16 +2093,24 @@ where
             // Consume trailing \r\n after chunk data.
             while buf.len() < 2 {
                 let mut tmp = [0u8; 16];
-                let Ok(Ok(n)) = tokio::time::timeout(IO_TIMEOUT, stream.read(&mut tmp)).await else {
-                    break;
+                let n = tokio::select! {
+                    _ = cancel.cancelled() => return Err(TransferState::Cancelled),
+                    r = tokio::time::timeout(IO_TIMEOUT, stream.read(&mut tmp)) => {
+                        match r {
+                            Ok(Ok(n)) => n,
+                            _ => return Err(TransferState::Failed(TransferFailure::Other("upload read error".into()))),
+                        }
+                    }
                 };
                 if n == 0 {
-                    break;
+                    return Err(TransferState::Failed(TransferFailure::Other("unexpected EOF".into())));
                 }
                 buf.extend_from_slice(&tmp[..n]);
             }
-            let drain_crlf = buf.len().min(2);
-            buf.drain(..drain_crlf);
+            if &buf[..2] != b"\r\n" {
+                return Err(TransferState::Failed(TransferFailure::Other("invalid chunk trailer".into())));
+            }
+            buf.drain(..2);
         }
     } else {
         if head.content_length.is_some_and(|len| len != expected_size) {
@@ -2636,6 +2663,14 @@ mod tests {
         assert!(res.is_err());
         let (res, _) = stream_upload(upload_head(None, true), b"3\r\nhel\r\n", 5).await;
         assert!(res.is_err());
+
+        // Corrupted chunk trailer (not \r\n) is rejected.
+        let (res, _) = stream_upload(upload_head(None, true), b"3\r\nhelXX2\r\nlo\r\n0\r\n\r\n", 5).await;
+        assert!(res.is_err());
+        let mut empty: &[u8] = &[];
+        assert!(read_chunked_vec(&mut empty, b"3\r\nhelXX0\r\n\r\n", 64).await.is_err());
+        assert!(read_chunked_vec(&mut empty, b"5\r\nhel", 64).await.is_err());
+        assert!(read_http_body(&mut empty, &upload_head(Some(5), false)).await.is_err());
     }
 
     #[test]
