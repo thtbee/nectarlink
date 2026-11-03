@@ -189,7 +189,7 @@ impl PowerAction {
 }
 
 impl Shared {
-    fn offers(&self, peer: &DeviceId, capability: &str) -> Result<bool> {
+    pub(crate) fn offers(&self, peer: &DeviceId, capability: &str) -> Result<bool> {
         Ok(self.store.get_peer(peer)?.is_some_and(|p| p.caps.contains(capability)))
     }
 }

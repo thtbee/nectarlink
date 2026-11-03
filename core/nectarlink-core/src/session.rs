@@ -529,6 +529,17 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
             let battery = env.body::<Battery>()?.sanitized();
             shared.emit(NodeEvent::Battery { device: peer, battery });
         }
+        types::EVENT_UPDATE => {
+            let hint = env.body::<nectarlink_protocol::messages::UpdateHint>()?;
+            match hint.sanitized() {
+                Some(hint) => shared.emit(NodeEvent::UpdateHint {
+                    device: peer,
+                    channel: hint.channel,
+                    version: hint.version,
+                }),
+                None => tracing::debug!(peer = %peer.short(), "ignored a malformed update hint"),
+            }
+        }
         types::EVENT_DEVICE => {
             let info = env.body::<DeviceInfo>()?.sanitized();
             shared.store.update_info(&peer, &info)?;

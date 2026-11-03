@@ -21,6 +21,7 @@ capability is missing.
 | `core.ping` | Answers `ping` | always offered |
 | `device.battery` | Sends `event.battery` | always offered |
 | `device.ring` | Rings on `device.ring`, even on silent | always offered |
+| `update.hint` | Sends and takes `event.update` (new NectarLink builds) | always offered |
 | `files.transfer` | Sends and receives files ([files service](files.md)) | app update |
 | `link.open` | Opens web links sent to it ([actions](actions.md)) | app update |
 | `task.notify` | Sends or shows watched PC task notifications ([actions](actions.md)) | app update |

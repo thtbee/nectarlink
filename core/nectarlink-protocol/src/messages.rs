@@ -16,6 +16,7 @@ pub mod types {
     pub const STREAM: &str = "stream";
     pub const EVENT_BATTERY: &str = "event.battery";
     pub const EVENT_DEVICE: &str = "event.device";
+    pub const EVENT_UPDATE: &str = "event.update";
     pub const DEVICE_RING: &str = "device.ring";
 
     pub const PAIR_REQUEST: &str = "pair.request";
@@ -2778,6 +2779,32 @@ pub struct PhotoSending {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PhotosChanged {}
 
+/// Capability: tells and hears of new NectarLink builds (`event.update`).
+pub const UPDATE_HINT: &str = "update.hint";
+
+/// Body of `event.update`: a new build of NectarLink is out on `channel`.
+/// A device that checks for updates (usually the PC, which is plugged in)
+/// tells its peers, so a phone needn't check on its own. Only a hint: the
+/// receiver checks the channel's feed itself before installing anything.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UpdateHint {
+    /// `stable` or `nightly`.
+    pub channel: String,
+    pub version: String,
+}
+
+impl UpdateHint {
+    /// The hint if it's well formed: a known channel, and a short version
+    /// of digits, letters, dots and dashes.
+    pub fn sanitized(self) -> Option<Self> {
+        let channel_ok = matches!(self.channel.as_str(), "stable" | "nightly");
+        let version_ok = !self.version.is_empty()
+            && self.version.len() <= 64
+            && self.version.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '+'));
+        (channel_ok && version_ok).then_some(self)
+    }
+}
+
 /// Body of `link.open`.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LinkOpen {
@@ -4341,6 +4368,19 @@ impl StorageChanged {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn update_hints_take_known_channels_and_plain_versions_only() {
+        let hint = |channel: &str, version: &str| {
+            UpdateHint { channel: channel.into(), version: version.into() }.sanitized()
+        };
+        assert!(hint("nightly", "0.1.5-nightly.7").is_some());
+        assert!(hint("stable", "0.1.5").is_some());
+        assert!(hint("beta", "0.1.5").is_none());
+        assert!(hint("stable", "").is_none());
+        assert!(hint("stable", "0.1.5; rm -rf /").is_none());
+        assert!(hint("stable", &"9".repeat(65)).is_none());
+    }
+
     #[test]
     fn sound_only_is_the_phones_sound_and_nothing_else() {
         let sound = MirrorStart {

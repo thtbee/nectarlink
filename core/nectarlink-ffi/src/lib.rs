@@ -602,6 +602,13 @@ pub enum Event {
         id: String,
         battery: Battery,
     },
+    /// A device heard of a new NectarLink build on `channel` ("stable" or
+    /// "nightly"): check that channel's feed now.
+    UpdateHint {
+        id: String,
+        channel: String,
+        version: String,
+    },
     /// A device asked this one to start (or stop) ringing.
     Ring {
         id: String,
@@ -2416,6 +2423,9 @@ impl Event {
             NodeEvent::PeerPowerChanged { device, power } => {
                 Event::PeerPowerChanged { id: device.to_string(), power: power.into() }
             }
+            NodeEvent::UpdateHint { device, channel, version } => {
+                Event::UpdateHint { id: device.to_string(), channel, version }
+            }
             NodeEvent::Battery { device, battery } => {
                 Event::Battery { id: device.to_string(), battery: battery.into() }
             }
@@ -3842,6 +3852,13 @@ impl NectarlinkNode {
     pub async fn update_battery(&self, battery: Battery) {
         let node = self.node.clone();
         self.run(async move { node.update_battery(battery.into()).await }).await;
+    }
+
+    /// Tells paired devices that `version` is out on `channel` (see
+    /// `Node::announce_update`).
+    pub async fn announce_update(&self, channel: String, version: String) {
+        let node = self.node.clone();
+        self.run(async move { node.announce_update(channel, version).await }).await;
     }
 
     pub async fn update_device_info(&self, info: DeviceInfo) {

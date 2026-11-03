@@ -761,6 +761,34 @@ async fn qr_pairing_connects_both_devices() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn update_hints_reach_peers_now_and_on_connect() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    // Heard before the phone connects: it gets it once they're connected.
+    pc.node.announce_update("stable".into(), "0.1.5".into()).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let pc_id = pc.node.device_id();
+    let hint = |e: &NodeEvent| match e {
+        NodeEvent::UpdateHint { device, channel, version } if *device == pc_id => {
+            Some((channel.clone(), version.clone()))
+        }
+        _ => None,
+    };
+    assert_eq!(wait_for(&mut phone, "stored hint", hint).await, ("stable".to_owned(), "0.1.5".to_owned()));
+
+    // Heard while connected: sent right away. A malformed one isn't sent.
+    pc.node.announce_update("beta".into(), "0.1.6".into()).await;
+    pc.node.announce_update("nightly".into(), "0.1.6-nightly.3".into()).await;
+    assert_eq!(
+        wait_for(&mut phone, "live hint", hint).await,
+        ("nightly".to_owned(), "0.1.6-nightly.3".to_owned())
+    );
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn ring_and_battery_flow_between_devices() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;
     let mut phone = device("Pixel", DeviceKind::Phone).await;
