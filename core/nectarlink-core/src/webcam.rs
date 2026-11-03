@@ -121,11 +121,11 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
     }
     let _ = recv.stop(VarInt::from_u32(webcam::STOPPED));
     let _ = send.finish();
-    sink.ended();
     if let Some(row_id) = tl_row {
         shared.finish_timeline_session(row_id, started_at.elapsed().as_secs().max(1));
     }
     if shared.clear_webcam_stop(&peer, &stopped) {
+        sink.ended();
         shared.emit(NodeEvent::Webcam { device: peer, on: false });
     }
 }
@@ -222,9 +222,8 @@ impl Shared {
     }
 
     pub(crate) fn stop_webcam(&self, peer: &DeviceId) {
-        if let Some(signal) = self.webcam_stops.lock().unwrap_or_else(|e| e.into_inner()).remove(peer) {
+        if let Some(signal) = self.webcam_stops.lock().unwrap_or_else(|e| e.into_inner()).get(peer).cloned() {
             signal.notify_one();
-            self.emit(NodeEvent::Webcam { device: *peer, on: false });
         }
     }
 }

@@ -102,8 +102,8 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
     }
     let _ = recv.stop(VarInt::from_u32(mic::STOPPED));
     let _ = send.finish();
-    sink.ended();
     if shared.clear_mic_stop(&peer, &stopped) {
+        sink.ended();
         shared.emit(NodeEvent::Mic { device: peer, on: false });
     }
 }
@@ -200,11 +200,10 @@ impl Shared {
 
     /// Stops the stream from `peer`, if one is open; whether one was.
     pub(crate) fn stop_mic(&self, peer: &DeviceId) -> bool {
-        let Some(signal) = self.mic_stops.lock().unwrap_or_else(|e| e.into_inner()).remove(peer) else {
+        let Some(signal) = self.mic_stops.lock().unwrap_or_else(|e| e.into_inner()).get(peer).cloned() else {
             return false;
         };
         signal.notify_one();
-        self.emit(NodeEvent::Mic { device: *peer, on: false });
         true
     }
 }
