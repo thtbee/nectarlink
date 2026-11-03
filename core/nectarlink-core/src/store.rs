@@ -638,6 +638,18 @@ impl Store {
 
     /// Adds or replaces a paired device.
     pub fn upsert_peer(&self, id: &DeviceId, info: &DeviceInfo, paired_at: i64) -> Result<()> {
+        self.upsert_peer_skipping(id, info, paired_at, &[])
+    }
+
+    /// Adds or replaces a paired device, leaving any peer in `skip_ids` (such as
+    /// currently online peers) untouched during duplicate-install cleanup.
+    pub fn upsert_peer_skipping(
+        &self,
+        id: &DeviceId,
+        info: &DeviceInfo,
+        paired_at: i64,
+        skip_ids: &[DeviceId],
+    ) -> Result<()> {
         let screen = encode_screen(info.screen.as_ref());
         self.with(|c| {
             c.execute(
@@ -663,7 +675,7 @@ impl Store {
                     valid_install_id(info)
                 ],
             )?;
-            cleanup_peers(c, Some(id))?;
+            cleanup_peers(c, Some(id), skip_ids)?;
             // A stale copy of this device may be gone, toggles and all.
             self.toggle_cache().clear();
             Ok(())
@@ -2471,7 +2483,7 @@ fn migrate(conn: &Connection) -> Result<()> {
         tx.commit()?;
         tracing::debug!(version, "applied storage migration");
     }
-    cleanup_peers(conn, None)?;
+    cleanup_peers(conn, None, &[])?;
     Ok(())
 }
 
@@ -2481,7 +2493,11 @@ fn migrate(conn: &Connection) -> Result<()> {
 /// Devices count as the same only when they report the same install ID. Name and model
 /// never do: two family phones of the same model often share a default name, and
 /// merging them would silently unpair one.
-fn cleanup_peers(conn: &Connection, keep_id: Option<&DeviceId>) -> rusqlite::Result<()> {
+fn cleanup_peers(
+    conn: &Connection,
+    keep_id: Option<&DeviceId>,
+    skip_ids: &[DeviceId],
+) -> rusqlite::Result<()> {
     struct PeerRow {
         id: DeviceId,
         kind: String,
@@ -2535,10 +2551,15 @@ fn cleanup_peers(conn: &Connection, keep_id: Option<&DeviceId>) -> rusqlite::Res
         };
         let winner_str = winner_id.to_string();
         for row in &group {
-            if row.id == winner_id {
+            if row.id == winner_id || skip_ids.contains(&row.id) {
                 continue;
             }
             let stale_str = row.id.to_string();
+            let _ = conn.execute(
+                "INSERT OR IGNORE INTO peer_toggles (peer, toggle, enabled)
+                 SELECT ?1, toggle, enabled FROM peer_toggles WHERE peer = ?2",
+                params![winner_id.as_bytes().as_slice(), row.id.as_bytes().as_slice()],
+            );
             let _ = conn.execute(
                 "UPDATE timeline SET device_id = ?1 WHERE device_id = ?2",
                 params![winner_id.as_bytes().as_slice(), row.id.as_bytes().as_slice()],
@@ -3346,9 +3367,29 @@ mod tests {
         let mut phone = info("Test Phone");
         phone.install_id = Some("0123456789abcdef0123456789abcdef".into());
         store.upsert_peer(&old, &phone, 100).unwrap();
+        store.set_toggle(&old, "clipboard", false).unwrap();
+        store.set_toggle(&old, "remote_input", true).unwrap();
         store.upsert_peer(&new, &phone, 200).unwrap();
         let ids: Vec<DeviceId> = store.list_peers().unwrap().into_iter().map(|p| p.id).collect();
         assert_eq!(ids, vec![new], "the new pairing wins");
+        assert_eq!(
+            store.toggle(&new, "clipboard").unwrap(),
+            Some(false),
+            "disabled privacy toggle is preserved across re-pairing"
+        );
+        assert_eq!(
+            store.toggle(&new, "remote_input").unwrap(),
+            Some(true),
+            "enabled toggle is preserved across re-pairing"
+        );
+
+        // An online peer in skip_ids is not deleted when another peer claims the same install_id.
+        let online_new = DeviceId([0x05; 32]);
+        store.upsert_peer_skipping(&online_new, &phone, 250, &[new]).unwrap();
+        let mut both: Vec<DeviceId> = store.list_peers().unwrap().into_iter().map(|p| p.id).collect();
+        both.sort_by_key(|id| id.0);
+        assert_eq!(both, vec![new, online_new], "skipped online peer is preserved");
+        store.remove_peer(&online_new).unwrap();
 
         // Malformed IDs are never stored, so they can't merge anything.
         let mut bad = info("Other Phone");
