@@ -1172,6 +1172,7 @@ impl Shared {
         // The same physical device paired again (after a reinstall it has a new identity):
         // move its history and queue to the new pairing and forget the old one. Only the
         // install ID decides; same-name devices (two family phones) stay separate.
+        let online_peers: Vec<DeviceId> = self.live_sessions().into_iter().map(|s| s.peer).collect();
         let replaced: Vec<DeviceId> = match info.install_id.as_deref() {
             Some(install_id) => self
                 .store
@@ -1180,7 +1181,7 @@ impl Shared {
                 .into_iter()
                 .filter(|old| {
                     old.id != peer
-                        && self.session(&old.id).is_none()
+                        && !online_peers.contains(&old.id)
                         && old.info.kind == info.kind
                         && old.info.install_id.as_deref() == Some(install_id)
                 })
@@ -1190,7 +1191,7 @@ impl Shared {
         };
         // Store the new pairing first: if that fails, the old one is untouched.
         // Storing it also moves the old entry's history and queue over.
-        self.store.upsert_peer(&peer, &info, paired_at)?;
+        self.store.upsert_peer_skipping(&peer, &info, paired_at, &online_peers)?;
         for old in replaced {
             let _ = self.store.reassign_timeline(&old, &peer);
             let _ = self.store.reassign_send_queue_peer(&old, &peer);
