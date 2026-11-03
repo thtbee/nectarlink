@@ -42,8 +42,6 @@ class PcWidgetProvider : AppWidgetProvider() {
         // Avoid overwriting a previously rendered widget with "No PC paired" while Core is still starting up.
         if (state != null && (state.devices.isNotEmpty() || state.status != app.nectarlink.android.core.CoreStatus.Starting)) {
             updateWidgets(context, appWidgetManager, appWidgetIds, state)
-        } else if (state != null) {
-            updateWidgets(context, appWidgetManager, appWidgetIds, state)
         }
     }
 
@@ -92,10 +90,11 @@ class PcWidgetProvider : AppWidgetProvider() {
                     ).show()
                 }
                 ACTION_MEDIA_PLAY_PAUSE -> {
-                    val playing = app.core.pcMedia.currentSummary?.playing == true
-                    app.core.pcMedia.pressed(if (playing) MediaAction.PAUSE else MediaAction.PLAY)
+                    val summary = app.core.pcMedia.currentSummary?.takeIf { it.pcId == pcId } ?: return
+                    app.core.pcMedia.pressed(if (summary.playing) MediaAction.PAUSE else MediaAction.PLAY)
                 }
                 ACTION_MEDIA_NEXT -> {
+                    if (app.core.pcMedia.currentSummary?.pcId != pcId) return
                     app.core.pcMedia.pressed(MediaAction.NEXT)
                 }
             }
@@ -178,7 +177,6 @@ class PcWidgetProvider : AppWidgetProvider() {
                 val app = context.applicationContext as? NectarlinkApplication
                 val mediaSummary = if (pc.online) {
                     app?.core?.pcMedia?.currentSummary?.takeIf { it.pcId == pc.id }
-                        ?: app?.core?.pcMedia?.currentSummary
                 } else {
                     null
                 }

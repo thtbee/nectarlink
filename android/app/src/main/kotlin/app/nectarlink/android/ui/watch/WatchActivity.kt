@@ -70,33 +70,70 @@ import kotlinx.coroutines.delay
  * few seconds. Nothing else goes to the PC.
  */
 class WatchActivity : ComponentActivity() {
+    private data class WatchTarget(
+        val pcId: String,
+        val pcName: String,
+        val player: String,
+        val title: String?,
+        val file: WatchFileOffer?,
+    )
+
+    private val targetState = mutableStateOf<WatchTarget?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        val pcId = intent.getStringExtra(EXTRA_PC)
-        val player = intent.getStringExtra(EXTRA_PLAYER)
-        if (pcId == null || player == null) {
+        val initial = parseTarget(intent)
+        if (initial == null) {
             finish()
             return
         }
-        val pcName = intent.getStringExtra(EXTRA_PC_NAME).orEmpty()
-        val title = intent.getStringExtra(EXTRA_TITLE)
-        val file = intent.getStringExtra(EXTRA_FILE_NAME)?.let { name ->
-            WatchFileOffer(
-                name = name,
-                size = intent.getLongExtra(EXTRA_FILE_SIZE, 0).toULong(),
-                positionMs = intent.getLongExtra(EXTRA_FILE_POSITION, 0).toULong(),
-            )
-        }
-        WatchOffers.dismiss(this, pcId)
+        targetState.value = initial
+        WatchOffers.dismiss(this, initial.pcId)
         val core = (application as NectarlinkApplication).core
         val preferences = Preferences(this)
         setContent {
             val appearance by preferences.appearance.collectAsStateWithLifecycle()
+            val target by targetState
+            val current = target ?: return@setContent
             NectarlinkTheme(appearance) {
-                WatchScreen(core, pcId, pcName, player, title, file, onClose = ::finish)
+                androidx.compose.runtime.key(current) {
+                    WatchScreen(
+                        core = core,
+                        pcId = current.pcId,
+                        pcName = current.pcName,
+                        player = current.player,
+                        title = current.title,
+                        file = current.file,
+                        onClose = ::finish,
+                    )
+                }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val updated = parseTarget(intent) ?: return
+        targetState.value = updated
+        WatchOffers.dismiss(this, updated.pcId)
+    }
+
+    private fun parseTarget(intent: Intent?): WatchTarget? {
+        val i = intent ?: return null
+        val pcId = i.getStringExtra(EXTRA_PC) ?: return null
+        val player = i.getStringExtra(EXTRA_PLAYER) ?: return null
+        val pcName = i.getStringExtra(EXTRA_PC_NAME).orEmpty()
+        val title = i.getStringExtra(EXTRA_TITLE)
+        val file = i.getStringExtra(EXTRA_FILE_NAME)?.let { name ->
+            WatchFileOffer(
+                name = name,
+                size = i.getLongExtra(EXTRA_FILE_SIZE, 0).toULong(),
+                positionMs = i.getLongExtra(EXTRA_FILE_POSITION, 0).toULong(),
+            )
+        }
+        return WatchTarget(pcId = pcId, pcName = pcName, player = player, title = title, file = file)
     }
 
     companion object {

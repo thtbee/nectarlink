@@ -104,10 +104,10 @@ import kotlinx.coroutines.withContext
  * requests a photo (`"photo"`) or document scan (`"scan"`).
  */
 class ContinuityCameraActivity : ComponentActivity() {
-    private var pcId: String = ""
-    private var requestId: String = ""
-    private var initialMode: String = "photo"
-    private var pcName: String = ""
+    private var pcId by mutableStateOf("")
+    private var requestId by mutableStateOf("")
+    private var initialMode by mutableStateOf("photo")
+    private var pcName by mutableStateOf("")
     private var completedOrCancelled = false
 
     private val cameraPermissionGranted = mutableStateOf(false)
@@ -159,29 +159,31 @@ class ContinuityCameraActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background,
                 ) {
                     if (hasCamera) {
-                        ContinuityCameraScreen(
-                            pcName = pcName,
-                            initialMode = initialMode,
-                            onSendResult = { mode, fileName, width, height, jpegBytes ->
-                                completedOrCancelled = true
-                                ContinuityCameraRequests.clearActive(pcId, requestId)
-                                ContinuityCameraRequests.dismissNotification(this@ContinuityCameraActivity, pcId)
-                                app.core.sendCameraCaptureResult(
-                                    pcId = pcId,
-                                    requestId = requestId,
-                                    mode = mode,
-                                    fileName = fileName,
-                                    mime = "image/jpeg",
-                                    width = width,
-                                    height = height,
-                                    data = jpegBytes,
-                                )
-                                finish()
-                            },
-                            onCancel = { reason ->
-                                cancelAndFinish(reason)
-                            },
-                        )
+                        androidx.compose.runtime.key(pcId, requestId) {
+                            ContinuityCameraScreen(
+                                pcName = pcName,
+                                initialMode = initialMode,
+                                onSendResult = { mode, fileName, width, height, jpegBytes ->
+                                    completedOrCancelled = true
+                                    ContinuityCameraRequests.clearActive(pcId, requestId)
+                                    ContinuityCameraRequests.dismissNotification(this@ContinuityCameraActivity, pcId)
+                                    app.core.sendCameraCaptureResult(
+                                        pcId = pcId,
+                                        requestId = requestId,
+                                        mode = mode,
+                                        fileName = fileName,
+                                        mime = "image/jpeg",
+                                        width = width,
+                                        height = height,
+                                        data = jpegBytes,
+                                    )
+                                    finish()
+                                },
+                                onCancel = { reason ->
+                                    cancelAndFinish(reason)
+                                },
+                            )
+                        }
                     } else {
                         Box(
                             modifier = Modifier

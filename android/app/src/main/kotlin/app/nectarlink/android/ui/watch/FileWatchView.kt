@@ -111,6 +111,7 @@ fun FileWatchView(
         }
         player.setOnCompletionListener { playback.playing = false }
         player.setOnPreparedListener { prepared ->
+            playback.player = prepared
             val at = playback.resumeAtMs ?: file.positionMs.toLong()
             if (at > 0) prepared.seekTo(at, MediaPlayer.SEEK_CLOSEST)
             prepared.start()
@@ -127,15 +128,21 @@ fun FileWatchView(
             Log.w(TAG, "can't open the PC's file", it)
             failed = true
         }
-        playback.player = player
         onDispose {
-            playback.resumeAtMs = runCatching { player.currentPosition.toLong() }.getOrNull()?.takeIf { it > 0 }
-                ?: playback.resumeAtMs
-            playback.player = null
+            val prepared = playback.player === player
+            if (prepared) {
+                playback.resumeAtMs = runCatching { player.currentPosition.toLong() }.getOrNull()?.takeIf { it > 0 }
+                    ?: playback.resumeAtMs
+                playback.player = null
+            }
             playback.playing = false
-            runCatching { player.stop() }
-            player.release()
+            // Close the network source first so an in-flight chunk read unblocks immediately
+            // instead of stalling MediaPlayer.release() on the main thread.
             source.close()
+            if (prepared) {
+                runCatching { player.stop() }
+            }
+            player.release()
         }
     }
 
@@ -144,6 +151,7 @@ fun FileWatchView(
         AndroidView(
             factory = { context ->
                 SurfaceView(context).apply {
+                    keepScreenOn = true
                     holder.addCallback(
                         object : SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: SurfaceHolder) {
