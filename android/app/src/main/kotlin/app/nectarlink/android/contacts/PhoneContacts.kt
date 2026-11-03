@@ -61,8 +61,18 @@ internal class PhoneContacts(context: Context, private val onChange: () -> Unit)
     )
 
     fun list(query: String?, offset: Int, limit: Int): List<Contact> {
-        check(canRead(context)) { "Contacts permission not granted" }
+        if (!canRead(context)) return emptyList()
         return try {
+            val q = query?.trim()?.takeIf { it.isNotEmpty() }
+            val qDigits = q?.filter(Char::isDigit).orEmpty()
+            val safeOffset = offset.coerceAtLeast(0)
+            val safeLimit = limit.coerceIn(1, MAX_PAGE)
+            val maxUnfiltered = if (q == null) safeOffset + safeLimit else Int.MAX_VALUE
+            val (selection, selectionArgs) = if (q != null && qDigits.isEmpty()) {
+                "${Phone.DISPLAY_NAME_PRIMARY} LIKE ? OR ${Phone.NUMBER} LIKE ?" to arrayOf("%$q%", "%$q%")
+            } else {
+                null to null
+            }
             val drafts = LinkedHashMap<Long, Draft>()
             val columns = arrayOf(
                 Phone.CONTACT_ID,
@@ -74,12 +84,15 @@ internal class PhoneContacts(context: Context, private val onChange: () -> Unit)
                 Phone.LABEL,
             )
             val order = "${Phone.STARRED} DESC, ${Phone.DISPLAY_NAME_PRIMARY} COLLATE LOCALIZED ASC, ${Phone.CONTACT_ID} ASC"
-            resolver.query(Phone.CONTENT_URI, columns, null, null, order)?.use { c ->
+            resolver.query(Phone.CONTENT_URI, columns, selection, selectionArgs, order)?.use { c ->
                 while (c.moveToNext()) {
                     val contactId = c.getLong(0)
                     val name = c.getString(1)?.trim().orEmpty()
                     val number = c.getString(4)?.trim().orEmpty()
                     if (name.isEmpty() || number.isEmpty()) continue
+                    if (q == null && !drafts.containsKey(contactId) && drafts.size >= maxUnfiltered) {
+                        break
+                    }
                     val draft = drafts.getOrPut(contactId) {
                         Draft(
                             id = contactId.toString(),
@@ -98,8 +111,6 @@ internal class PhoneContacts(context: Context, private val onChange: () -> Unit)
                     }
                 }
             }
-            val q = query?.trim()?.takeIf { it.isNotEmpty() }
-            val qDigits = q?.filter(Char::isDigit).orEmpty()
             val filtered = if (q == null) {
                 drafts.values.asSequence()
             } else {
@@ -112,8 +123,8 @@ internal class PhoneContacts(context: Context, private val onChange: () -> Unit)
                 }
             }
             filtered
-                .drop(offset.coerceAtLeast(0))
-                .take(limit.coerceIn(1, MAX_PAGE))
+                .drop(safeOffset)
+                .take(safeLimit)
                 .map { d ->
                     Contact(
                         id = d.id,

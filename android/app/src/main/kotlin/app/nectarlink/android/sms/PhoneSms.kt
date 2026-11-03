@@ -41,21 +41,27 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
 
     fun start() {
         if (observer != null || !canRead(context)) return
-        observer = object : ContentObserver(handler) {
-            // Sending or receiving touches several rows: say it once.
-            override fun onChange(selfChange: Boolean) {
-                handler.removeCallbacks(notify)
-                handler.postDelayed(notify, SETTLE_MS)
+        runCatching {
+            observer = object : ContentObserver(handler) {
+                // Sending or receiving touches several rows: say it once.
+                override fun onChange(selfChange: Boolean) {
+                    handler.removeCallbacks(notify)
+                    handler.postDelayed(notify, SETTLE_MS)
+                }
+            }.also { obs ->
+                // Which of these the messages store announces a change on differs
+                // between Android versions and SMS apps, so watch all three.
+                for (uri in WATCHED_URIS) resolver.registerContentObserver(Uri.parse(uri), true, obs)
             }
-        }.also { observer ->
-            // Which of these the messages store announces a change on differs
-            // between Android versions and SMS apps, so watch all three.
-            for (uri in WATCHED_URIS) resolver.registerContentObserver(Uri.parse(uri), true, observer)
+        }.onFailure {
+            observer?.let { obs -> runCatching { resolver.unregisterContentObserver(obs) } }
+            observer = null
+            Log.w(TAG, "couldn't watch messages", it)
         }
     }
 
     fun stop() {
-        observer?.let { resolver.unregisterContentObserver(it) }
+        observer?.let { obs -> runCatching { resolver.unregisterContentObserver(obs) } }
         observer = null
         handler.removeCallbacks(notify)
     }
