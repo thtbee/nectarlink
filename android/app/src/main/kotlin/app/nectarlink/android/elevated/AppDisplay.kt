@@ -155,7 +155,11 @@ class AppDisplay(
 
     private fun mimeForCodec(name: String): String = when (name.lowercase()) {
         "h265", "hevc" -> MediaFormat.MIMETYPE_VIDEO_HEVC
-        "av1" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) "video/av01" else MediaFormat.MIMETYPE_VIDEO_AVC
+        "av1" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            "video/av01"
+        } else {
+            throw UnsupportedOperationException("AV1 requires Android 10+")
+        }
         else -> MediaFormat.MIMETYPE_VIDEO_AVC
     }
 
