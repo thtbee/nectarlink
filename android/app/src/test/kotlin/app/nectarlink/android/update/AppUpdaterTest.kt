@@ -89,6 +89,8 @@ class AppUpdaterTest {
         assertEquals(hash, AppUpdater.listedHash(sums, "Nectarlink-9.0.0-android.apk"))
         assertNull(AppUpdater.listedHash(sums, "missing.apk"))
         assertEquals("c".repeat(64), AppUpdater.listedHash("${"C".repeat(64)} *x.apk", "x.apk"))
+        assertNull(AppUpdater.listedHash("${"z".repeat(64)}  x.apk", "x.apk"))
+        assertNull(AppUpdater.listedHash("${"../".repeat(21)}a  x.apk", "x.apk"))
     }
 
     @Test
