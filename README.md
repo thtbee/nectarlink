@@ -7,7 +7,7 @@
 **Your Android phone and your PC, working as one.**
 
 Notifications, messages, calls, clipboard, files, photos, screen mirroring and
-phone apps in windows, between Android and Windows 10 (2004+) or 11. Free and open source.
+phone apps in windows, between Android and Windows 10 (2004+), Windows 11 or Linux. Free and open source.
 Local-first, end-to-end encrypted, no account and no cloud.
 
 Hi, I'm Bee, and yes, a bee built an app called NectarLink. I build cool stuff
@@ -38,19 +38,18 @@ of new features I wanted that I think you'll enjoy having too.
 
 | | Download | Needs |
 |---|---|---|
-| **Windows (x64)** | [Installer (.exe)](https://github.com/thtbee/nectarlink/releases/download/v0.1.4/Nectarlink-0.1.4-x64-setup.exe) | Windows 10 (2004+) or 11, 64-bit Intel or AMD (Phone as webcam needs Windows 11) |
-| **Windows (ARM64)** | From the next release | Windows 11 on ARM (Snapdragon) |
-| **Linux (x86_64)** | From the next release: [one command](#on-linux), or a .deb, .rpm, AppImage or .tar.gz | Ubuntu 24.04 or newer, Debian 13, Fedora 40 or newer, 64-bit Intel or AMD |
-| **Android** | [App (.apk)](https://github.com/thtbee/nectarlink/releases/download/v0.1.4/Nectarlink-0.1.4-android.apk) | Android 8.0 or newer |
+| **Windows (x64)** | [Installer (.exe)](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-x64-setup.exe) | Windows 10 (2004+) or 11, 64-bit Intel or AMD (Phone as webcam needs Windows 11) |
+| **Windows (ARM64)** | [Installer (.exe)](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-arm64-setup.exe) | Windows 11 on ARM (Snapdragon) |
+| **Linux (x86_64)** | [One command](#on-linux), or a [.deb](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/nectarlink_0.1.5_amd64.deb), [.rpm](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/nectarlink-0.1.5-1.x86_64.rpm), [AppImage](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-x86_64.AppImage) or [.tar.gz](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-linux-x86_64.tar.gz) | Ubuntu 24.04 or newer, Debian 13, Fedora 40 or newer, 64-bit Intel or AMD |
+| **Android** | [App (.apk)](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-android.apk) | Android 8.0 or newer |
 
 The apps update themselves from GitHub Releases and check every download
 against its SHA-256 sums.
 
 ### On Linux
 
-From the next release, one command installs NectarLink with everything it
-needs, and shows each step as it goes. Until that release is out, the
-command below gives a 404: 0.1.4 has no Linux packages.
+One command installs NectarLink with everything it needs, and shows each
+step as it goes:
 
 ```bash
 curl -fsSL https://github.com/thtbee/nectarlink/releases/latest/download/install.sh | sh

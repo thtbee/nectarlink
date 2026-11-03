@@ -4,7 +4,7 @@ All notable changes to NectarLink. Versions follow
 [semantic versioning](https://semver.org); before 1.0, a minor version may
 change things that need a step from you, and its notes say so.
 
-## 0.1.5 (2026-11-03)
+## 0.1.5 (2026-11-05)
 
 The PC app on Linux and on Windows on ARM, Phone as microphone, Play on
 phone, your phone's sound on the PC, a Nightly channel, and the fixes for
