@@ -7314,3 +7314,90 @@ async fn elevated_over_usb_is_refused_without_a_usb_connection() {
     pc.node.shutdown().await;
     phone.node.shutdown().await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn spoofed_usb_hello_is_not_trusted_without_matching_quic_identity() {
+    use nectarlink_core::{ConnectionPath, DeviceId};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    async fn send_usb_hello(stream: &mut tokio::net::TcpStream, id: &DeviceId, name: &str) {
+        let json = format!(r#"{{"v":1,"id":"{id}","name":"{name}"}}"#);
+        let bytes = json.as_bytes();
+        let mut header = [0u8; 6];
+        header[..4].copy_from_slice(b"NLQU");
+        header[4..6].copy_from_slice(&(bytes.len() as u16).to_be_bytes());
+        stream.write_all(&header).await.unwrap();
+        stream.write_all(bytes).await.unwrap();
+        stream.flush().await.unwrap();
+    }
+
+    async fn read_usb_hello(stream: &mut tokio::net::TcpStream) {
+        let mut header = [0u8; 6];
+        stream.read_exact(&mut header).await.unwrap();
+        assert_eq!(&header[..4], b"NLQU");
+        let len = u16::from_be_bytes([header[4], header[5]]) as usize;
+        let mut payload = vec![0u8; len];
+        stream.read_exact(&mut payload).await.unwrap();
+    }
+
+    let mut phone = start_usb_device("Pixel", DeviceKind::Phone, Some(0), &[]).await;
+    let mut pc = start_usb_device("Desktop", DeviceKind::Desktop, None, &[]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    assert!(matches!(
+        phone.node.paired_devices().unwrap()[0].link,
+        LinkState::Online { path: ConnectionPath::Lan, .. }
+    ));
+
+    // 1. Phone side: a local TCP client sends a spoofed UsbHello claiming the paired PC's
+    //    DeviceId (and another claiming an unpaired DeviceId) without completing QUIC TLS.
+    let usb_port = phone.node.usb_port().expect("phone USB TCP listener");
+    let mut spoof_pc = tokio::net::TcpStream::connect(("127.0.0.1", usb_port)).await.unwrap();
+    send_usb_hello(&mut spoof_pc, &pc_id, "Spoofed PC").await;
+    read_usb_hello(&mut spoof_pc).await;
+
+    let fake_id = DeviceId([0x42; 32]);
+    let mut spoof_unpaired = tokio::net::TcpStream::connect(("127.0.0.1", usb_port)).await.unwrap();
+    send_usb_hello(&mut spoof_unpaired, &fake_id, "Spoofed Unpaired").await;
+    read_usb_hello(&mut spoof_unpaired).await;
+
+    // 2. PC side: a local TCP listener replies to connect_usb_tunnel with a spoofed UsbHello
+    //    claiming the paired phone's DeviceId, without forwarding QUIC traffic to the phone.
+    let fake_listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+    let fake_addr = fake_listener.local_addr().unwrap();
+    let server_task = tokio::spawn(async move {
+        let (mut s, _) = fake_listener.accept().await.unwrap();
+        read_usb_hello(&mut s).await;
+        send_usb_hello(&mut s, &phone_id, "Spoofed Phone").await;
+        tokio::time::sleep(Duration::from_secs(2)).await;
+    });
+    let claimed = pc.node.connect_usb_tunnel(fake_addr).await.unwrap();
+    assert_eq!(claimed, phone_id);
+
+    tokio::time::sleep(Duration::from_millis(400)).await;
+
+    // Neither side trusts the unauthenticated UsbHello: links stay on Lan and fake_id is not discovered.
+    assert!(
+        matches!(
+            phone.node.paired_devices().unwrap()[0].link,
+            LinkState::Online { path: ConnectionPath::Lan, .. }
+        ),
+        "phone session must remain on Lan when UsbHello is not backed by QUIC identity"
+    );
+    assert!(
+        matches!(
+            pc.node.paired_devices().unwrap()[0].link,
+            LinkState::Online { path: ConnectionPath::Lan, .. }
+        ),
+        "pc session must remain on Lan when UsbHello is not backed by QUIC identity"
+    );
+    assert!(
+        !phone.node.discovered_devices().iter().any(|d| d.id == fake_id),
+        "unauthenticated UsbHello must not emit or record DiscoveredDevice"
+    );
+
+    server_task.abort();
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}

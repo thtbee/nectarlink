@@ -175,7 +175,7 @@ pub(crate) struct Session {
     rtt_ms: AtomicU32,
     pub(crate) started: Instant,
     last_rx_ms: AtomicU64,
-    usb_bridge_ports: Arc<Mutex<std::collections::HashSet<u16>>>,
+    usb_bridge_ports: Arc<Mutex<HashMap<u16, DeviceId>>>,
     usb_peers: Arc<Mutex<HashMap<DeviceId, (std::net::SocketAddr, CancellationToken)>>>,
     /// Apps whose notification icon this peer already got.
     sent_icons: crate::notifications::SentIcons,
@@ -274,11 +274,26 @@ impl Session {
 
     fn is_usb_addr(&self, addr: &std::net::SocketAddr) -> bool {
         addr.ip().to_canonical().is_loopback()
-            && self.usb_bridge_ports.lock().unwrap_or_else(|e| e.into_inner()).contains(&addr.port())
+            && self.usb_bridge_ports.lock().unwrap_or_else(|e| e.into_inner()).get(&addr.port())
+                == Some(&self.peer)
     }
 
     fn has_usb_tunnel(&self) -> bool {
         self.usb_peers.lock().unwrap_or_else(|e| e.into_inner()).contains_key(&self.peer)
+    }
+
+    pub(crate) fn uses_usb_bridge_port(&self, port: u16) -> bool {
+        self.usb_peers
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(&self.peer)
+            .is_some_and(|(addr, _)| addr.port() == port)
+            || self.conn.paths().iter().any(|p| {
+                matches!(
+                    p.remote_addr(),
+                    iroh::TransportAddr::Ip(addr) if addr.port() == port && self.is_usb_addr(addr)
+                )
+            })
     }
 
     /// The path the connection currently uses.
