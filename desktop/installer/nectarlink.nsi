@@ -184,6 +184,34 @@ FunctionEnd
   ${Loop}
 !macroend
 
+; Windows' camera service (Frame Server) keeps the webcam's DLL, and the
+; runtime it needs, loaded from this folder for as long as it runs, so they
+; can't be overwritten or deleted: a silent install would skip them and keep
+; the old ones for good. A loaded DLL can still be renamed, so one that can't
+; be deleted is moved aside and deleted at the next restart (under its new
+; name, so a later install's file isn't); the service keeps its copy until
+; then.
+!macro MoveAsideInUse FILE
+  Delete "$INSTDIR\${FILE}"
+  ${If} ${FileExists} "$INSTDIR\${FILE}"
+    StrCpy $R2 0
+    ${Do}
+      IntOp $R2 $R2 + 1
+    ${LoopWhile} ${FileExists} "$INSTDIR\${FILE}.$R2.old"
+    Rename "$INSTDIR\${FILE}" "$INSTDIR\${FILE}.$R2.old"
+    Delete /REBOOTOK "$INSTDIR\${FILE}.$R2.old"
+  ${EndIf}
+!macroend
+
+!macro MoveAsideCameraFiles
+  ; Moved aside earlier and no longer loaded.
+  Delete "$INSTDIR\*.dll.*.old"
+  !insertmacro MoveAsideInUse "nectarlink_vcam.dll"
+  !insertmacro MoveAsideInUse "vcruntime140.dll"
+  !insertmacro MoveAsideInUse "vcruntime140_1.dll"
+  !insertmacro MoveAsideInUse "msvcp140.dll"
+!macroend
+
 ; Locks folder $R1 the way Program Files is: owned by administrators, which
 ; SYSTEM and administrators may change and everyone else only read. Anything
 ; in it before then could have been put there by someone else, so it must be
@@ -309,6 +337,7 @@ Section "Install"
     ; A clean copy: nothing left over from an older version.
     RMDir /r "$INSTDIR\qml"
     RMDir /r "$INSTDIR\platforms"
+    !insertmacro MoveAsideCameraFiles
     StrCpy $AppDir "$INSTDIR"
   ${EndIf}
 
@@ -441,13 +470,15 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\${DISPLAY}.lnk"
   Delete "$DESKTOP\${DISPLAY}.lnk"
   ; Only ever a folder of our own (a silent install can be pointed
-  ; anywhere with /D): never everything in, say, C:\.
+  ; anywhere with /D): never everything in, say, C:\. What the camera
+  ; service still has loaded goes at the next restart.
   ${GetFileName} "$INSTDIR" $0
   ${If} $0 == "${APP}"
-    RMDir /r "$INSTDIR"
+    !insertmacro MoveAsideCameraFiles
+    RMDir /r /REBOOTOK "$INSTDIR"
   ${Else}
     Delete "$INSTDIR\${EXE}"
-    Delete "$INSTDIR\nectarlink_vcam.dll"
+    !insertmacro MoveAsideInUse "nectarlink_vcam.dll"
     Delete "$INSTDIR\AppxManifest.xml"
     RMDir /r "$INSTDIR\Assets"
     Delete "$INSTDIR\sparse-package.log"

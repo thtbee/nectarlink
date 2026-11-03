@@ -370,6 +370,12 @@ has a Stop button. Choosing another
   Developer Mode on, because its package didn't register. It does now,
   and if Windows refuses it, `sparse-package.log` in the install folder
   says why ([#84](https://github.com/thtbee/nectarlink/issues/84)).
+- **An update could keep the old Phone as webcam driver.** While Windows'
+  camera service has it loaded, the file can't be replaced, and setup
+  quietly kept the old one, even after a restart. Setup now moves it
+  aside, so the new one takes over by the next restart at the latest.
+  Uninstalling removes it at the next restart instead of leaving it
+  behind.
 - **The Calls page showed "PC call audio connected"** on Windows, sometimes
   with a headset's name. Windows doesn't let apps carry a phone call's
   audio, so the panel is gone there; call audio stays on the phone

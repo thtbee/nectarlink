@@ -78,6 +78,16 @@ $scheduler = New-Object -ComObject Schedule.Service
 $scheduler.Connect()
 $task = try { $scheduler.GetFolder('\').GetTask('Nectarlink Update') } catch { $null }
 Check "the update task is there after the update" ($null -ne $task -and $task.Definition.Actions.Item(1).Path.Trim('"') -eq $exe)
+# Windows' camera service can hold the webcam DLL open; the update must still
+# put the new one in place rather than skip it.
+$staged = Join-Path (Split-Path $Setup) 'Nectarlink'
+if (Test-Path $staged) {
+    $stale = @(Get-ChildItem $staged -Recurse -File | Where-Object {
+        $installed = Join-Path $dir $_.FullName.Substring($staged.Length + 1)
+        -not (Test-Path $installed) -or (Get-FileHash $installed).Hash -ne (Get-FileHash $_.FullName).Hash
+    } | ForEach-Object { $_.Name })
+    Check "the update put every file in place$(if ($stale) { " (not: $($stale -join ', '))" })" ($stale.Count -eq 0)
+}
 RunOnce $newVersion
 Check "the update kept this PC's identity" ((Get-FileHash $identity -Algorithm SHA256).Hash -eq $identityHash)
 
@@ -85,7 +95,11 @@ Write-Host "Uninstalling"
 Start-Process (Join-Path $dir 'uninstall.exe') -ArgumentList '/S' -Wait
 $deadline = (Get-Date).AddSeconds(60)
 while ((Test-Path $dir) -and (Get-Date) -lt $deadline) { Start-Sleep 1 }
-Check "it uninstalls after the update" (-not (Test-Path $dir))
+# What the camera service still has loaded is deleted at the next restart.
+$pending = @((Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -ErrorAction SilentlyContinue).PendingFileRenameOperations |
+    Where-Object { $_ } | ForEach-Object { $_ -replace '^(\*\d+)?\\\?\?\\', '' })
+$left = @(Get-ChildItem $dir -Recurse -File -Force -ErrorAction SilentlyContinue | Where-Object { $pending -notcontains $_.FullName } | ForEach-Object { $_.Name })
+Check "it uninstalls after the update$(if ($left) { " (left: $($left -join ', '))" })" ($left.Count -eq 0)
 Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 Write-Host "Upgrade from $oldVersion passed."
 exit 0
