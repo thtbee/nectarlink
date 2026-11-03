@@ -46,6 +46,10 @@ Before opening a pull request, run the same checks as CI:
 ./scripts/check.ps1
 ```
 
+A pull request that changes only docs (Markdown, `docs/` apart from
+`docs/design/`, `LICENSES/`) skips CI's builds; the rule is in
+`.github/scripts/docs-only.sh`.
+
 The desktop app's shared QML components have tests in
 `desktop/app/tests/qml` (`tst_*.qml`, Qt Quick Test), which check.ps1 runs
 through `./scripts/qml-tests.ps1`. The Rust singletons the components read

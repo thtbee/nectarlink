@@ -20,6 +20,8 @@ on:
 
 permissions:
   contents: write
+  # Which CI runs passed, and what they built.
+  actions: read
 
 # One nightly at a time, in order; a running one is never cancelled.
 concurrency:
@@ -61,16 +63,31 @@ jobs:
             built=$(git rev-list -n 1 "$previous")
             [ "$built" = "$commit" ] && no "main hasn't changed since $previous"
             # Docs alone don't make a new build.
-            if ! git diff --name-only "$built" "$commit" | grep -qvE '^(docs/|.*\.md$|LICENSES/|\.github/ISSUE_TEMPLATE/)'; then
+            if git diff --name-only --no-renames "$built" "$commit" | bash .github/scripts/docs-only.sh; then
               no "only docs changed since $previous"
             fi
           fi
 
-          # CI must have passed on this very commit (a failure, or a run still
-          # going, waits for the next slot).
-          ci=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$commit&event=push" \
-            --jq '[.workflow_runs[] | select(.conclusion == "success")] | length')
-          [ "$ci" -gt 0 ] || no "CI hasn't passed on ${commit:0:7} yet"
+          # CI must have built and tested this commit, or one with only docs
+          # after it: CI skips its builds for a docs-only push, so a passing
+          # run on the newest commit alone doesn't mean its code was tested.
+          # The newest passing push run whose Windows app job ran is the last
+          # tested commit (a failure, or a run still going, waits for the
+          # next slot).
+          tested=""
+          for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=50" \
+            --jq '.workflow_runs[] | "\(.id):\(.head_sha)"'); do
+            built_here=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/${run%%:*}/jobs?per_page=100" \
+              --jq '[.jobs[] | select(.name == "Windows app (x64)" and .conclusion == "success")] | length')
+            if [ "$built_here" -gt 0 ]; then tested="${run#*:}"; break; fi
+          done
+          [ -n "$tested" ] || no "no CI run on main has built and tested the code yet"
+          if [ "$tested" != "$commit" ]; then
+            git merge-base --is-ancestor "$tested" "$commit" ||
+              no "the last tested commit, ${tested:0:7}, isn't on main any more"
+            git diff --name-only --no-renames "$tested" "$commit" | bash .github/scripts/docs-only.sh ||
+              no "CI hasn't built and tested the code at ${commit:0:7} yet"
+          fi
 
           # The version on the way: what Cargo.toml says, or the next patch
           # when that's already released.
