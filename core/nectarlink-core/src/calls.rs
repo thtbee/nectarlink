@@ -203,10 +203,16 @@ pub(crate) async fn log(
     if !shared.toggle_on(&session.peer, TOGGLE) {
         return Err(Error::Denied);
     }
-    let env =
-        Envelope::new(types::CALL_LOG, &CallLogGet { before, limit: limit.clamp(1, calls::MAX_LOG_PAGE) })?;
-    let CallLog { entries } =
+    let limit = limit.clamp(1, calls::MAX_LOG_PAGE);
+    let env = Envelope::new(types::CALL_LOG, &CallLogGet { before, limit })?;
+    let CallLog { mut entries } =
         session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect_body(types::CALL_LOG)?;
+    entries.truncate(limit as usize);
+    for e in &mut entries {
+        if e.photo.as_ref().is_some_and(|p| p.len() > calls::MAX_LOG_PHOTO_BYTES) {
+            e.photo = None;
+        }
+    }
     Ok(entries)
 }
 

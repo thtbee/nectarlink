@@ -47,9 +47,16 @@ fn allowed(shared: &Shared, peer: &DeviceId) -> Result<()> {
 
 pub(crate) async fn threads(shared: &Shared, session: &Session, limit: u32) -> Result<Vec<SmsThread>> {
     allowed(shared, &session.peer)?;
-    let env = Envelope::new(types::SMS_THREADS, &SmsThreadsGet { limit: limit.min(sms::MAX_PAGE) })?;
-    let SmsThreads { threads } =
+    let limit = limit.clamp(1, sms::MAX_PAGE);
+    let env = Envelope::new(types::SMS_THREADS, &SmsThreadsGet { limit })?;
+    let SmsThreads { mut threads } =
         session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect_body(types::SMS_THREADS)?;
+    threads.truncate(limit as usize);
+    for t in &mut threads {
+        if t.photo.as_ref().is_some_and(|p| p.len() > sms::MAX_PHOTO_BYTES) {
+            t.photo = None;
+        }
+    }
     Ok(threads)
 }
 
@@ -61,12 +68,11 @@ pub(crate) async fn messages(
     limit: u32,
 ) -> Result<Vec<SmsMessage>> {
     allowed(shared, &session.peer)?;
-    let env = Envelope::new(
-        types::SMS_MESSAGES,
-        &SmsMessagesGet { thread, before, limit: limit.min(sms::MAX_PAGE) },
-    )?;
-    let SmsMessages { messages } =
+    let limit = limit.clamp(1, sms::MAX_PAGE);
+    let env = Envelope::new(types::SMS_MESSAGES, &SmsMessagesGet { thread, before, limit })?;
+    let SmsMessages { mut messages } =
         session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect_body(types::SMS_MESSAGES)?;
+    messages.truncate(limit as usize);
     Ok(messages)
 }
 
@@ -102,6 +108,13 @@ pub(crate) async fn part(shared: &Shared, session: &Session, id: String) -> Resu
     let env = Envelope::new(types::SMS_PART, &SmsPartGet { id })?;
     let SmsPartData { mime, data } =
         session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect_body(types::SMS_PART)?;
+    if data.len() > sms::MAX_PART_BYTES {
+        return Err(Error::TooLarge);
+    }
+    let mime = mime.trim().to_owned();
+    if mime.is_empty() || mime.chars().any(char::is_control) {
+        return Err(Error::Protocol("invalid MMS part mime".into()));
+    }
     Ok((mime, data))
 }
 
