@@ -1,0 +1,163 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# A nightly: every two hours, when main has changed (more than docs) since the
+# last one and CI passed on it, builds everything as a release does
+# (build.yml) at version <next>-nightly.N, publishes it as a pre-release
+# named for a flower (nightly-name.py), and points the nightly channel's feed
+# at it (write-feed.py, publish-feed.sh), where installs on Nightly find it.
+# The last few nightlies are kept; older ones are removed.
+name: Nightly
+
+on:
+  schedule:
+    # Every two hours, off the hour, when GitHub's scheduler is busiest.
+    - cron: "17 */2 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Build even if nothing changed since the last nightly"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+# One nightly at a time, in order; a running one is never cancelled.
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Is a nightly due?
+    runs-on: ubuntu-latest
+    outputs:
+      due: ${{ steps.plan.outputs.due }}
+      version: ${{ steps.plan.outputs.version }}
+      number: ${{ steps.plan.outputs.number }}
+      name: ${{ steps.plan.outputs.name }}
+      commit: ${{ steps.plan.outputs.commit }}
+      previous: ${{ steps.plan.outputs.previous }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force || 'false' }}
+        run: |
+          set -euo pipefail
+          commit=$(git rev-parse HEAD)
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          no() { echo "::notice::no nightly: $1"; echo "due=false" >> "$GITHUB_OUTPUT"; exit 0; }
+
+          # The last nightly (newest first), and what it was built from.
+          previous=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,isPrerelease \
+            --jq '[.[] | select(.isPrerelease and (.tagName | test("^v[0-9]+\\.[0-9]+\\.[0-9]+-nightly\\.[0-9]+$")))][0].tagName // ""')
+          echo "previous=$previous" >> "$GITHUB_OUTPUT"
+          if [ -n "$previous" ] && [ "$FORCE" != "true" ]; then
+            git fetch -q origin "refs/tags/$previous:refs/tags/$previous"
+            built=$(git rev-list -n 1 "$previous")
+            [ "$built" = "$commit" ] && no "main hasn't changed since $previous"
+            # Docs alone don't make a new build.
+            if ! git diff --name-only "$built" "$commit" | grep -qvE '^(docs/|.*\.md$|LICENSES/|\.github/ISSUE_TEMPLATE/)'; then
+              no "only docs changed since $previous"
+            fi
+          fi
+
+          # CI must have passed on this very commit (a failure, or a run still
+          # going, waits for the next slot).
+          ci=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$commit&event=push" \
+            --jq '[.workflow_runs[] | select(.conclusion == "success")] | length')
+          [ "$ci" -gt 0 ] || no "CI hasn't passed on ${commit:0:7} yet"
+
+          # The version on the way: what Cargo.toml says, or the next patch
+          # when that's already released.
+          current=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          if gh release view "v$current" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft' 2>/dev/null | grep -qx false; then
+            IFS=. read -r major minor patch <<< "$current"
+            base="$major.$minor.$((patch + 1))"
+          else
+            base="$current"
+          fi
+          # The next number on the way to it (Android takes up to 998).
+          last=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName \
+            --jq "[.[].tagName | select(startswith(\"v$base-nightly.\")) | ltrimstr(\"v$base-nightly.\") | tonumber] | max // 0")
+          number=$((last + 1))
+          [ "$number" -le 998 ] || { echo "::error::998 nightlies on the way to $base; release it first"; exit 1; }
+          version="$base-nightly.$number"
+          name=$(python3 .github/scripts/nightly-name.py "$number")
+          {
+            echo "due=true"
+            echo "version=$version"
+            echo "number=$number"
+            echo "name=$name"
+          } >> "$GITHUB_OUTPUT"
+          echo "::notice::building $version ($name) from ${commit:0:7}"
+
+  build:
+    name: Build
+    needs: plan
+    if: needs.plan.outputs.due == 'true'
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+    secrets:
+      ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+
+  publish:
+    name: Publish the nightly
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.plan.outputs.version }}
+      NUMBER: ${{ needs.plan.outputs.number }}
+      NAME: ${{ needs.plan.outputs.name }}
+      COMMIT: ${{ needs.plan.outputs.commit }}
+      PREVIOUS: ${{ needs.plan.outputs.previous }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: files
+          merge-multiple: true
+      - uses: actions/checkout@v7
+        with:
+          path: source
+          sparse-checkout: .github/scripts
+      - name: Publish it as a pre-release
+        run: |
+          set -euo pipefail
+          cd files
+          sha256sum *.exe *.deb *.rpm *.AppImage *.tar.gz *.apk install.sh > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          compare=""
+          if [ -n "$PREVIOUS" ]; then
+            compare="What changed since the last nightly: https://github.com/$GITHUB_REPOSITORY/compare/$PREVIOUS...v$VERSION"
+          fi
+          printf '%s\n' \
+            "Nightly $NUMBER, **$NAME**: built from main at ${COMMIT:0:7} on $(date -u +%Y-%m-%d)." \
+            "" \
+            "A build for trying what's new before it's released, with the latest fixes and features and sometimes new bugs. NectarLink installs on the Nightly channel update to it by themselves; to get it, pick **Nightly** under Settings, Updates, in the PC app or on the phone." \
+            "" \
+            "$compare" > notes.md
+          gh release create "v$VERSION" *.exe *.deb *.rpm *.AppImage *.tar.gz *.apk install.sh SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --target "$COMMIT" --prerelease \
+            --title "Nightly $NUMBER · $NAME ($VERSION)" --notes-file notes.md
+      - name: Point the nightly feed at it
+        run: |
+          set -euo pipefail
+          python3 source/.github/scripts/write-feed.py nightly "v$VERSION" "$NAME" nightly.json
+          bash source/.github/scripts/publish-feed.sh nightly nightly.json
+      - name: Keep the last six nightlies
+        run: |
+          set -euo pipefail
+          gh release list --repo "$GITHUB_REPOSITORY" --limit 200 --json tagName,isPrerelease,createdAt \
+            --jq '[.[] | select(.isPrerelease and (.tagName | test("-nightly\\.[0-9]+$")))] | sort_by(.createdAt) | reverse | .[6:] | .[].tagName' |
+          while read -r tag; do
+            [ "$tag" = "v$VERSION" ] && continue
+            echo "removing $tag"
+            gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          done

@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# A release published (by a maintainer, from the release workflow's draft):
+# the stable channel's feed points at it, where installs on Stable find it
+# (write-feed.py, publish-feed.sh). Run by hand to point it at a given
+# release again.
+name: Channels
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "The release for the stable feed, e.g. v0.1.5"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: channels
+  cancel-in-progress: false
+
+jobs:
+  stable:
+    name: Point the stable feed at the release
+    # Releases only; nightlies point the nightly feed themselves.
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          sparse-checkout: |
+            Cargo.toml
+            .github/scripts
+      - name: Write and publish the feed
+        run: |
+          set -euo pipefail
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::$TAG isn't a release tag"
+            exit 1
+          fi
+          # The release's name ([workspace.metadata.release] in Cargo.toml), as in its title.
+          name=$(awk '/^\[workspace.metadata.release\]/{f=1;next} /^\[/{f=0} f && /^name = /{print $3}' Cargo.toml | tr -d '"')
+          python3 .github/scripts/write-feed.py stable "$TAG" "$name" stable.json
+          bash .github/scripts/publish-feed.sh stable stable.json

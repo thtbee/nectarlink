@@ -1,12 +1,15 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# A tag like v0.1.0 builds the Windows installer and the signed Android app,
-# and puts both on a draft GitHub release (with their SHA-256 sums, which
-# the apps' updaters check), for a maintainer to review and publish.
+# A tag like v0.1.0 builds the Windows installers, the Linux packages and the
+# signed Android app (build.yml), and puts them on a draft GitHub release
+# with their SHA-256 sums, which the apps' updaters check, for a maintainer
+# to review and publish. Publishing it updates the stable channel's feed
+# (channels.yml).
 name: Release
 
 on:
   push:
-    tags: ["v*"]
+    # Releases only: nightly tags (v1.2.3-nightly.N) are made by nightly.yml.
+    tags: ["v*", "!v*-nightly.*"]
 
 permissions:
   contents: write
@@ -19,253 +22,32 @@ jobs:
   version:
     name: The tag matches the version
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
     steps:
       - uses: actions/checkout@v7
-      - run: |
+      - id: check
+        run: |
           version=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
           if [ "v$version" != "${{ github.ref_name }}" ]; then
             echo "::error::tag ${{ github.ref_name }} but Cargo.toml says $version"
             exit 1
           fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
-  windows:
-    name: Windows installer (x64)
+  build:
+    name: Build
     needs: version
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: ${{ env.QT_VERSION }}
-          host: windows
-          target: desktop
-          arch: win64_msvc2022_64
-          cache: true
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
-      - name: Install NSIS
-        shell: pwsh
-        run: |
-          if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and
-              -not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
-            choco install nsis --yes --no-progress
-          }
-      - name: Build the installer
-        shell: pwsh
-        run: ./scripts/package.ps1
-      - name: Check it installs and uninstalls
-        shell: pwsh
-        run: ./scripts/smoke-installer.ps1
-      - uses: actions/upload-artifact@v7
-        with:
-          name: windows
-          path: target/package/*-setup.exe
-
-  windows-arm64:
-    name: Windows installer (ARM64)
-    needs: version
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install the pinned Rust toolchain and the ARM64 target
-        run: |
-          rustup show active-toolchain || rustup toolchain install
-          rustup target add aarch64-pc-windows-msvc
-      - name: Install Qt (ARM64, with the x64 host tools)
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: ${{ env.QT_VERSION }}
-          host: windows
-          target: desktop
-          arch: win64_msvc2022_arm64_cross_compiled
-          cache: true
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
-      - name: Install NSIS
-        shell: pwsh
-        run: |
-          if (-not (Get-Command makensis -ErrorAction SilentlyContinue) -and
-              -not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) {
-            choco install nsis --yes --no-progress
-          }
-      - name: Build the installer
-        shell: pwsh
-        run: ./scripts/package.ps1 -Arch arm64
-      - uses: actions/upload-artifact@v7
-        with:
-          name: windows-arm64
-          path: target/package/*-setup.exe
-
-  linux:
-    name: Linux packages (x86_64)
-    needs: version
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - name: Install system build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential pkg-config libgl1-mesa-dev libx11-dev libxcb1-dev \
-            libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libfontconfig1-dev \
-            libfreetype-dev libdbus-1-dev libxtst-dev libavcodec-dev libavutil-dev \
-            file desktop-file-utils appstream rpm shellcheck
-          pkg-config --exists libavcodec libavutil
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: ${{ env.QT_VERSION }}
-          host: linux
-          target: desktop
-          arch: linux_gcc_64
-          modules: qtshadertools qtwaylandcompositor
-          cache: true
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
-      - name: Install appimagetool and the AppImage runtime (pinned, checked)
-        run: |
-          curl -fsSL -o /tmp/appimagetool \
-            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
-          curl -fsSL -o /tmp/runtime-x86_64 \
-            https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64
-          sha256sum -c - <<'SUMS'
-          ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  /tmp/appimagetool
-          2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d  /tmp/runtime-x86_64
-          SUMS
-          chmod +x /tmp/appimagetool
-          sudo mv /tmp/appimagetool /usr/local/bin/appimagetool
-          echo "APPIMAGE_RUNTIME=/tmp/runtime-x86_64" >> "$GITHUB_ENV"
-      - name: Validate desktop entry and AppStream metadata
-        run: |
-          desktop-file-validate desktop/packaging/linux/nectarlink.desktop
-          appstreamcli validate --no-net desktop/packaging/linux/org.nectarlink.desktop.metainfo.xml
-      - name: Check the install script
-        run: shellcheck -s sh desktop/packaging/linux/install.sh
-      - name: Cache FFmpeg source archives
-        uses: actions/cache@v6
-        with:
-          path: ${{ runner.temp }}/ffmpeg-sources
-          key: ffmpeg-sources-${{ hashFiles('desktop/packaging/linux/build-ffmpeg-backends.sh') }}
-      - name: Build and package (.deb, .rpm, AppImage, tarball)
-        env:
-          APPIMAGE_EXTRACT_AND_RUN: "1"
-          FFMPEG_SOURCE_CACHE: ${{ runner.temp }}/ffmpeg-sources
-        run: |
-          cargo build --release -p nectarlink-desktop
-          bash ./desktop/packaging/linux/build-ffmpeg-backends.sh
-          ./desktop/packaging/linux/build-deb.sh
-          ./desktop/packaging/linux/build-rpm.sh
-          ./desktop/packaging/linux/build-appimage.sh
-          ./desktop/packaging/linux/build-tarball.sh
-          cp desktop/packaging/linux/install.sh dist/install.sh
-      - name: Check video adapters in each package
-        env:
-          APPIMAGE_EXTRACT_AND_RUN: "1"
-        run: |
-          dpkg-deb -c dist/*.deb > /tmp/nectarlink-deb-files
-          rpm -qlp dist/*.rpm > /tmp/nectarlink-rpm-files
-          tar -tzf dist/*.tar.gz > /tmp/nectarlink-tar-files
-          (cd /tmp && "$GITHUB_WORKSPACE"/dist/*.AppImage --appimage-extract 'usr/bin/libnectarlink-video-ffmpeg*.so')
-          for major in 7 8 9; do
-            adapter="libnectarlink-video-ffmpeg${major}.so"
-            grep -F "$adapter" /tmp/nectarlink-deb-files
-            grep -F "$adapter" /tmp/nectarlink-rpm-files
-            grep -F "$adapter" /tmp/nectarlink-tar-files
-            test -f "/tmp/squashfs-root/usr/bin/$adapter"
-          done
-      - name: Check that each package starts
-        # A package that doesn't start must not reach a release. The .deb goes
-        # into a clean Ubuntu 24.04, the oldest system the build supports.
-        run: |
-          docker run --rm -v "$PWD/dist:/dist:ro" ubuntu:24.04 bash -euc '
-            apt-get update -qq
-            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends /dist/*.deb >/dev/null
-            nectarlink-desktop --version'
-          docker run --rm -v "$PWD/dist:/dist:ro" fedora:40 bash -euc '
-            dnf install -y -q --nogpgcheck /dist/*.rpm >/dev/null
-            nectarlink-desktop --version'
-          APPIMAGE_EXTRACT_AND_RUN=1 ./dist/*.AppImage --version
-          mkdir -p /tmp/tarball && tar -xzf dist/*.tar.gz -C /tmp/tarball
-          /tmp/tarball/*/nectarlink-desktop --version
-      - name: Check that install.sh installs and removes each package
-        # The one-line install, from these files instead of GitHub: the .deb on
-        # Ubuntu, the .rpm on Fedora, and the tarball in a home folder.
-        run: |
-          (cd dist && sha256sum *.deb *.rpm *.tar.gz > SHA256SUMS.txt)
-          for image in ubuntu:24.04 fedora:40; do
-            docker run --rm -v "$PWD/dist:/dist:ro" -e NECTARLINK_ASSETS_DIR=/dist "$image" sh -euc '
-              sh /dist/install.sh
-              nectarlink-desktop --version
-              sh /dist/install.sh --uninstall
-              ! command -v nectarlink-desktop'
-          done
-          docker run --rm -v "$PWD/dist:/dist:ro" ubuntu:24.04 sh -euc '
-            useradd -m user
-            su user -c "NECTARLINK_ASSETS_DIR=/dist sh /dist/install.sh && ~/.local/bin/nectarlink-desktop --version"'
-          rm dist/SHA256SUMS.txt
-      - uses: actions/upload-artifact@v7
-        with:
-          name: linux
-          path: |
-            dist/*.deb
-            dist/*.rpm
-            dist/*.AppImage
-            dist/*.tar.gz
-            dist/install.sh
-
-  android:
-    name: Android app (signed)
-    needs: version
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Install the pinned Rust toolchain and the Android targets
-        run: |
-          rustup show active-toolchain || rustup toolchain install
-          rustup target add aarch64-linux-android armv7-linux-androideabi
-      - name: Install cargo-ndk
-        run: cargo install --locked cargo-ndk
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: android-actions/setup-android@v4
-        with:
-          cmdline-tools-version: "16111833"
-          packages: "platforms;android-37.0 ndk;30.0.16248370 build-tools;37.0.0"
-      - uses: gradle/actions/setup-gradle@v6
-      - name: The signing key
-        env:
-          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
-        run: |
-          if [ -z "$KEYSTORE" ]; then echo "::error::the ANDROID_KEYSTORE secret isn't set"; exit 1; fi
-          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/release.jks"
-      - name: Build
-        working-directory: android
-        env:
-          NECTARLINK_KEYSTORE: ${{ runner.temp }}/release.jks
-          NECTARLINK_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-        # Phones: 64-bit ARM, and 32-bit ARM for older ones.
-        run: ./gradlew --no-daemon assembleRelease -Pnectarlink.abis=arm64-v8a,armeabi-v7a
-      - name: Check the signature, and name the app
-        run: |
-          apk=android/app/build/outputs/apk/release/app-release.apk
-          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs "$apk"
-          mkdir -p out
-          cp "$apk" "out/Nectarlink-${GITHUB_REF_NAME#v}-android.apk"
-      - name: Forget the key
-        if: always()
-        run: rm -f "$RUNNER_TEMP/release.jks"
-      - uses: actions/upload-artifact@v7
-        with:
-          name: android
-          path: out/*.apk
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    secrets:
+      ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
 
   publish:
     name: Draft the release
-    needs: [windows, windows-arm64, linux, android]
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
