@@ -1262,7 +1262,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      */
     fun sendFiles(pcId: String, uris: List<Uri>, handoff: Boolean = false) {
         scope.launch(Dispatchers.IO) {
-            send(pcId, OutgoingFiles.open(context, uris), handoff)
+            val files = try {
+                OutgoingFiles.open(context, uris)
+            } catch (_: OutgoingFiles.TooManyFiles) {
+                _messages.tryEmit(context.getString(R.string.transfer_too_many))
+                return@launch
+            }
+            send(pcId, files, handoff)
         }
     }
 
@@ -1288,35 +1294,43 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             return
         }
         scope.launch(Dispatchers.IO) {
-            startJob?.join()
-            val node = node ?: return@launch
-            val wasOnline = _state.value.device(pcId)?.online == true
+            var handedToCore = false
             try {
-                val singleFileName = if (files.size == 1) {
-                    when (val f = files[0]) {
-                        is FileToSend.Fd -> f.name.takeIf { f.folder == null }
-                        is FileToSend.Path -> f.name.takeIf { f.folder == null }
+                startJob?.join()
+                val node = node ?: return@launch
+                val wasOnline = _state.value.device(pcId)?.online == true
+                try {
+                    val singleFileName = if (files.size == 1) {
+                        when (val f = files[0]) {
+                            is FileToSend.Fd -> f.name.takeIf { f.folder == null }
+                            is FileToSend.Path -> f.name.takeIf { f.folder == null }
+                        }
+                    } else {
+                        null
                     }
-                } else {
-                    null
-                }
-                val returnedId = if (handoff && singleFileName != null && app.nectarlink.core.isSafeHandoffDocument(singleFileName)) {
-                    node.sendHandoffFiles(pcId, files)
-                } else {
-                    node.sendFiles(pcId, files)
-                }
-                refreshSendQueue()
-                if (!wasOnline) {
+                    handedToCore = true
+                    val returnedId = if (handoff && singleFileName != null && app.nectarlink.core.isSafeHandoffDocument(singleFileName)) {
+                        node.sendHandoffFiles(pcId, files)
+                    } else {
+                        node.sendFiles(pcId, files)
+                    }
+                    refreshSendQueue()
+                    if (!wasOnline) {
+                        val name = _state.value.nameOf(pcId).orEmpty()
+                        val qid = runCatching { node.latestQueuedIdForPeer(pcId) }.getOrNull()
+                            ?: returnedId.takeIf { it.isNotBlank() }
+                        emitOfflineQueuedNotice(pcId, name, qid)
+                    }
+                } catch (e: NectarlinkException) {
                     val name = _state.value.nameOf(pcId).orEmpty()
-                    val qid = runCatching { node.latestQueuedIdForPeer(pcId) }.getOrNull()
-                        ?: returnedId.takeIf { it.isNotBlank() }
-                    emitOfflineQueuedNotice(pcId, name, qid)
+                    _messages.tryEmit(
+                        if (e is NectarlinkException.Denied) context.getString(R.string.transfer_off_for, name) else describe(e),
+                    )
                 }
-            } catch (e: NectarlinkException) {
-                val name = _state.value.nameOf(pcId).orEmpty()
-                _messages.tryEmit(
-                    if (e is NectarlinkException.Denied) context.getString(R.string.transfer_off_for, name) else describe(e),
-                )
+            } finally {
+                if (!handedToCore) {
+                    OutgoingFiles.closeAll(files)
+                }
             }
         }
     }

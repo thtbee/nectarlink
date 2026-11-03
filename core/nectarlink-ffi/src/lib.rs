@@ -2387,6 +2387,27 @@ fn file_to_send(file: FileToSend) -> Result<core::OutgoingFile> {
     })
 }
 
+/// Converts every item first so all valid descriptors are owned by `File` (and
+/// closed on drop) even when one item or a later check fails.
+fn files_to_send(files: Vec<FileToSend>) -> Result<Vec<core::OutgoingFile>> {
+    let mut out = Vec::with_capacity(files.len());
+    let mut first_err: Option<NectarlinkError> = None;
+    for f in files {
+        match file_to_send(f) {
+            Ok(outgoing) => out.push(outgoing),
+            Err(e) => {
+                if first_err.is_none() {
+                    first_err = Some(e);
+                }
+            }
+        }
+    }
+    if let Some(err) = first_err {
+        return Err(err);
+    }
+    Ok(out)
+}
+
 fn upgrade(u: core::features::Upgrade) -> Upgrade {
     let (action, target) = u.action.describe();
     Upgrade { action: action.into(), target, minutes: u.effort.minutes() }
@@ -3488,8 +3509,8 @@ impl NectarlinkNode {
     /// Sends files to a paired PC; returns the transfer's ID. Progress
     /// arrives as `Event::Transfer`.
     pub async fn send_files(&self, id: String, files: Vec<FileToSend>) -> Result<String> {
+        let files = files_to_send(files)?;
         let id = parse_id(&id)?;
-        let files = files.into_iter().map(file_to_send).collect::<Result<Vec<_>>>()?;
         let node = self.node.clone();
         self.run(async move { Ok(node.send_files(id, files).await?) }).await
     }
@@ -3497,8 +3518,8 @@ impl NectarlinkNode {
     /// Hands off a document to a paired PC and asks the PC to open it with the
     /// default application once it arrives (`docs/protocol/files.md`).
     pub async fn send_handoff_files(&self, id: String, files: Vec<FileToSend>) -> Result<String> {
+        let files = files_to_send(files)?;
         let id = parse_id(&id)?;
-        let files = files.into_iter().map(file_to_send).collect::<Result<Vec<_>>>()?;
         let node = self.node.clone();
         self.run(async move { Ok(node.send_handoff_files(id, files).await?) }).await
     }
@@ -3511,8 +3532,8 @@ impl NectarlinkNode {
         file: FileToSend,
         markers: Vec<RecordingMarker>,
     ) -> Result<String> {
-        let id = parse_id(&id)?;
         let file = file_to_send(file)?;
+        let id = parse_id(&id)?;
         let markers = markers.into_iter().map(Into::into).collect();
         let node = self.node.clone();
         self.run(async move { Ok(node.send_recording(id, file, markers).await?) }).await
