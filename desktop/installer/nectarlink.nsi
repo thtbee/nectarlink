@@ -147,9 +147,24 @@ FunctionEnd
 Function un.onInit
   SetRegView 64
   SetShellVarContext all
-  ; The uninstaller came from the app's folder, so running the app from
-  ; there trusts nothing more than running the uninstaller did.
-  StrCpy $AdminOnly 1
+  StrCpy $AdminOnly 0
+  StrLen $0 "$PROGRAMFILES64\"
+  StrCpy $1 "$INSTDIR" $0
+  StrLen $0 "$PROGRAMFILES\"
+  StrCpy $2 "$INSTDIR" $0
+  ${If} $1 == "$PROGRAMFILES64\"
+  ${OrIf} $2 == "$PROGRAMFILES\"
+    StrCpy $AdminOnly 1
+  ${Else}
+    ReadRegStr $PreviousDir HKLM "Software\${APP}" "InstallDir"
+    ${If} $INSTDIR == $PreviousDir
+    ${AndIf} ${FileExists} "$INSTDIR\${EXE}"
+      ReadRegDWORD $AdminOnly HKLM "Software\${APP}" "AdminOnlyFolder"
+      ${If} $AdminOnly != 1
+        StrCpy $AdminOnly 0
+      ${EndIf}
+    ${EndIf}
+  ${EndIf}
   ${un.GetParameters} $R0
   ClearErrors
   ${un.GetOptions} $R0 "/PROGRESS=" $ProgressFile
@@ -382,6 +397,11 @@ Section "Install"
   ; PowerShell, which security software can hold up without a word, leaving
   ; setup stuck at this step.
   !insertmacro Progress "step updates"
+  ; Shared folder for update downloads and channel choice: any signed-in user
+  ; on this PC may update them, and the update task checks the download's
+  ; SHA-256 in SystemTemp before running it.
+  CreateDirectory "$APPDATA\${APP}\updates"
+  nsExec::Exec 'icacls "$APPDATA\${APP}" /grant *S-1-5-32-545:(OI)(CI)M /T'
   ${If} $AdminOnly != 1
     ; Updates ask for permission in this folder (see the top of this file).
     nsExec::Exec 'schtasks /Delete /TN "Nectarlink Update" /F'
@@ -477,7 +497,8 @@ Section "Uninstall"
   !insertmacro QuitRunningApp
   ; What the app set up for this user: Send to entries, sign-in start,
   ; notification registration.
-  ${If} ${FileExists} "$INSTDIR\${EXE}"
+  ${If} $AdminOnly == 1
+  ${AndIf} ${FileExists} "$INSTDIR\${EXE}"
     ExecWait '"$INSTDIR\${EXE}" --uninstall'
   ${EndIf}
 
@@ -485,6 +506,7 @@ Section "Uninstall"
   nsExec::Exec 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "try { Get-AppxPackage -Name \"Nectarlink.Desktop\" -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue } catch {}"'
   nsExec::Exec 'netsh advfirewall firewall delete rule name="${FIREWALL_RULE}"'
   nsExec::Exec 'schtasks /Delete /TN "Nectarlink Update" /F'
+  RMDir /r "$APPDATA\${APP}"
   Delete "$SMPROGRAMS\${DISPLAY}.lnk"
   Delete "$DESKTOP\${DISPLAY}.lnk"
   ; Only ever a folder of our own (a silent install can be pointed
