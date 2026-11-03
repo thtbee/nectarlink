@@ -3844,6 +3844,39 @@ async fn phone_storage_lists_reads_ranges_writes_resumes_mutates_and_enforces_se
     assert_eq!(done.size, payload.len() as u64);
     assert_eq!(std::fs::read(storage_root.path().join("Documents/upload.bin")).unwrap(), payload);
 
+    // If a partial upload is interrupted and the source file's content changes (same size and ID),
+    // the second upload does not splice the stale prefix into the new content.
+    let payload_v1 = data(200 * 1024, 11);
+    let payload_v2 = data(200 * 1024, 22);
+    let changed_file = upload_src.path().join("changed.bin");
+    std::fs::write(&changed_file, &payload_v1).unwrap();
+    let _ = pc
+        .node
+        .storage_write_with_id(
+            phone_id,
+            "Documents/changed.bin",
+            &changed_file,
+            Some("resume-upload-changed".into()),
+            Some(80 * 1024),
+        )
+        .await;
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    std::fs::write(&changed_file, &payload_v2).unwrap();
+    with_timeout(
+        "write after content change",
+        pc.node.storage_write_with_id(
+            phone_id,
+            "Documents/changed.bin",
+            &changed_file,
+            Some("resume-upload-changed".into()),
+            None,
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(std::fs::read(storage_root.path().join("Documents/changed.bin")).unwrap(), payload_v2);
+    pc.node.storage_delete(phone_id, "Documents/changed.bin", true).await.unwrap();
+
     // `rename` moves the uploaded file into `Projects/renamed.bin`.
     with_timeout(
         "rename file",
