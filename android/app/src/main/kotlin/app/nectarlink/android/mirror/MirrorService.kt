@@ -74,7 +74,16 @@ class MirrorService : Service() {
         val isElevated = intent?.getBooleanExtra(EXTRA_ELEVATED, false) == true
         val consent = intent?.let { IntentCompat.getParcelableExtra(it, EXTRA_CONSENT, Intent::class.java) }
         if (pc == null || (!isElevated && consent == null) || projection != null || elevatedSocket != null || elevatedStarting) {
-            if (projection == null && elevatedSocket == null && !elevatedStarting) stopSelf()
+            if (projection == null && elevatedSocket == null && !elevatedStarting) {
+                createChannel(this)
+                val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    if (isElevated) ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE else ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+                } else {
+                    0
+                }
+                runCatching { ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(""), type) }
+                stopSharing()
+            }
             return START_NOT_STICKY
         }
         val core = (application as NectarlinkApplication).core
@@ -187,11 +196,21 @@ class MirrorService : Service() {
             codec,
         )
         elevatedStarting = false
+        if (!elevatedStarting && (pcId != pc || current !== this@MirrorService)) {
+            runCatching { socket?.close() }
+            return@launch
+        }
         if (socket == null) {
             main.post {
-                stopSharing()
-                MirrorRequests.show(this@MirrorService, request, pcName)
+                if (pcId == pc && current === this@MirrorService) {
+                    stopSharing()
+                    MirrorRequests.show(this@MirrorService, request, pcName)
+                }
             }
+            return@launch
+        }
+        if (pcId != pc || current !== this@MirrorService) {
+            runCatching { socket.close() }
             return@launch
         }
         elevatedSocket = socket
@@ -369,6 +388,7 @@ class MirrorService : Service() {
         stayAwake = false
         screenOff = false
         soundOnly = false
+        elevatedStarting = false
         _session.value = MirrorSession()
         StreamPower.set(this, StreamPower.SCREEN, streaming = false)
         elevatedDisplayListener?.let {
@@ -427,6 +447,7 @@ class MirrorService : Service() {
 
         /** Starts sharing with `request`'s PC, with the user's consent (from the capture prompt). */
         fun start(context: Context, request: MirrorRequest, result: Int, consent: Intent) {
+            if (current != null) return
             val intent = Intent(context, MirrorService::class.java)
                 .putExtra(EXTRA_PC, request.pcId)
                 .putExtra(EXTRA_CONSENT, consent)
@@ -446,7 +467,7 @@ class MirrorService : Service() {
          * the Elevated shell helper, without a `MediaProjection` consent prompt.
          */
         fun startElevated(context: Context, request: MirrorRequest): Boolean {
-            if (!app.nectarlink.android.elevated.Elevated.running) return false
+            if (!app.nectarlink.android.elevated.Elevated.running || current != null) return false
             val intent = Intent(context, MirrorService::class.java)
                 .putExtra(EXTRA_PC, request.pcId)
                 .putExtra(EXTRA_ELEVATED, true)

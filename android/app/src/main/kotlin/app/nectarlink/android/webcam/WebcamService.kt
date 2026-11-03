@@ -83,6 +83,7 @@ class WebcamService : LifecycleService() {
             ACTION_START -> {
                 val targetPc = intent.getStringExtra(EXTRA_PC)
                 if (targetPc == null || !hasPermission(this)) {
+                    enterForegroundForStop(targetPc.orEmpty())
                     stopStreaming()
                     return START_NOT_STICKY
                 }
@@ -90,6 +91,11 @@ class WebcamService : LifecycleService() {
                 val fps = intent.getIntExtra(EXTRA_FPS, 30).coerceIn(15, 60)
                 val camera = intent.getStringExtra(EXTRA_CAMERA) ?: _session.value.camera
                 if (encoder != null && pcId == targetPc) {
+                    val s = _session.value
+                    val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA else 0
+                    runCatching {
+                        ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(targetPc, s.width, s.height, camera), type)
+                    }
                     encoder?.setCamera(camera)
                     encoder?.setResolutionHeight(height)
                     return START_NOT_STICKY
@@ -250,6 +256,15 @@ class WebcamService : LifecycleService() {
             .build()
     }
 
+    private fun enterForegroundForStop(targetPc: String) {
+        if (current != null) return
+        createChannel(this)
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA else 0
+        runCatching {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(targetPc, 1280, 720, "back"), type)
+        }
+    }
+
     private fun stopStreaming() {
         val runningEncoder = encoder
         encoder = null
@@ -303,6 +318,7 @@ class WebcamService : LifecycleService() {
             fps: Int = 30,
             camera: String = _session.value.camera,
         ) {
+            if (!hasPermission(context)) return
             val intent = Intent(context, WebcamService::class.java)
                 .setAction(ACTION_START)
                 .putExtra(EXTRA_PC, pcId)
