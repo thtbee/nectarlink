@@ -483,80 +483,89 @@ private fun TouchpadSurface(
 
                     touchPoint = firstDown.position
 
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val changes = event.changes
-                        var pressedCount = 0
-                        var firstPressed: androidx.compose.ui.input.pointer.PointerInputChange? = null
-                        for (i in 0 until changes.size) {
-                            val c = changes[i]
-                            if (c.pressed) {
-                                if (firstPressed == null) firstPressed = c
-                                pressedCount++
-                            }
-                        }
-                        if (pressedCount == 0 || firstPressed == null) break
-
-                        if (pressedCount > maxPointers) {
-                            maxPointers = pressedCount
-                            if (dragStarted) {
-                                core.remoteButton(pcId, "left", "up", onStatus)
-                                dragStarted = false
-                                dragging = false
-                            }
-                            isDragHold = false
-                        }
-
-                        if (pressedCount == 1 && maxPointers == 1) {
-                            val change = firstPressed
-                            touchPoint = change.position
-                            val delta = change.positionChange()
-                            val dist = hypot(delta.x, delta.y)
-                            totalMoved += dist
-
-                            if (isDragHold && !dragStarted && totalMoved > tapSlop * 0.6f) {
-                                dragStarted = true
-                                dragging = true
-                                core.remoteButton(pcId, "left", "down", onStatus)
-                            }
-
-                            if (dist > 0.2f) {
-                                val scaledDx = delta.x * toReference * sensitivity
-                                val scaledDy = delta.y * toReference * sensitivity
-                                core.remoteMove(pcId, scaledDx, scaledDy)
-                                change.consume()
-                            }
-                        } else if (pressedCount >= 2) {
-                            touchPoint = firstPressed.position
-                            var avgDx = 0f
-                            var avgDy = 0f
+                    var completedNormally = false
+                    try {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val changes = event.changes
+                            var pressedCount = 0
+                            var firstPressed: androidx.compose.ui.input.pointer.PointerInputChange? = null
                             for (i in 0 until changes.size) {
                                 val c = changes[i]
                                 if (c.pressed) {
-                                    val d = c.positionChange()
-                                    avgDx += d.x
-                                    avgDy += d.y
-                                    c.consume()
+                                    if (firstPressed == null) firstPressed = c
+                                    pressedCount++
                                 }
                             }
-                            avgDx /= pressedCount
-                            avgDy /= pressedCount
-                            totalMoved += hypot(avgDx, avgDy)
+                            if (pressedCount == 0 || firstPressed == null) break
 
-                            scrollAccumX += avgDx * toReference
-                            scrollAccumY += avgDy * toReference
-                            val stepPx = 18f
-                            if (abs(scrollAccumX) >= stepPx || abs(scrollAccumY) >= stepPx) {
-                                val notchesX = -(scrollAccumX / 48f)
-                                val notchesY = -(scrollAccumY / 36f)
-                                scrollAccumX = 0f
-                                scrollAccumY = 0f
-                                core.remoteScroll(pcId, notchesX, notchesY, fast = true)
+                            if (pressedCount > maxPointers) {
+                                maxPointers = pressedCount
+                                if (dragStarted) {
+                                    core.remoteButton(pcId, "left", "up", onStatus)
+                                    dragStarted = false
+                                    dragging = false
+                                }
+                                isDragHold = false
+                            }
+
+                            if (pressedCount == 1 && maxPointers == 1) {
+                                val change = firstPressed
+                                touchPoint = change.position
+                                val delta = change.positionChange()
+                                val dist = hypot(delta.x, delta.y)
+                                totalMoved += dist
+
+                                if (isDragHold && !dragStarted && totalMoved > tapSlop * 0.6f) {
+                                    dragStarted = true
+                                    dragging = true
+                                    core.remoteButton(pcId, "left", "down", onStatus)
+                                }
+
+                                if (dist > 0.2f) {
+                                    val scaledDx = delta.x * toReference * sensitivity
+                                    val scaledDy = delta.y * toReference * sensitivity
+                                    core.remoteMove(pcId, scaledDx, scaledDy)
+                                    change.consume()
+                                }
+                            } else if (pressedCount >= 2) {
+                                touchPoint = firstPressed.position
+                                var avgDx = 0f
+                                var avgDy = 0f
+                                for (i in 0 until changes.size) {
+                                    val c = changes[i]
+                                    if (c.pressed) {
+                                        val d = c.positionChange()
+                                        avgDx += d.x
+                                        avgDy += d.y
+                                        c.consume()
+                                    }
+                                }
+                                avgDx /= pressedCount
+                                avgDy /= pressedCount
+                                totalMoved += hypot(avgDx, avgDy)
+
+                                scrollAccumX += avgDx * toReference
+                                scrollAccumY += avgDy * toReference
+                                val stepPx = 18f
+                                if (abs(scrollAccumX) >= stepPx || abs(scrollAccumY) >= stepPx) {
+                                    val notchesX = -(scrollAccumX / 48f)
+                                    val notchesY = -(scrollAccumY / 36f)
+                                    scrollAccumX = 0f
+                                    scrollAccumY = 0f
+                                    core.remoteScroll(pcId, notchesX, notchesY, fast = true)
+                                }
                             }
                         }
+                        completedNormally = true
+                    } finally {
+                        touchPoint = null
+                        if (!completedNormally && dragStarted) {
+                            dragStarted = false
+                            dragging = false
+                            core.remoteButton(pcId, "left", "up", onStatus)
+                        }
                     }
-
-                    touchPoint = null
                     val elapsed = System.currentTimeMillis() - downTime
                     if (dragStarted) {
                         core.remoteButton(pcId, "left", "up", onStatus)
@@ -1696,23 +1705,24 @@ private fun PresentationView(
                         laserYState.floatValue = initY
                         laserHeld = true
                         core.remoteLaser(pcId, true, initX, initY)
-
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val active = event.changes.firstOrNull { it.pressed } ?: break
-                            val d = active.positionChange()
-                            if (hypot(d.x, d.y) > 0.5f) {
-                                val nx = (active.position.x / w).coerceIn(0f, 1f)
-                                val ny = (active.position.y / h).coerceIn(0f, 1f)
-                                laserXState.floatValue = nx
-                                laserYState.floatValue = ny
-                                core.remoteLaser(pcId, true, nx, ny)
-                                active.consume()
+                        try {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val active = event.changes.firstOrNull { it.pressed } ?: break
+                                val d = active.positionChange()
+                                if (hypot(d.x, d.y) > 0.5f) {
+                                    val nx = (active.position.x / w).coerceIn(0f, 1f)
+                                    val ny = (active.position.y / h).coerceIn(0f, 1f)
+                                    laserXState.floatValue = nx
+                                    laserYState.floatValue = ny
+                                    core.remoteLaser(pcId, true, nx, ny)
+                                    active.consume()
+                                }
                             }
+                        } finally {
+                            laserHeld = false
+                            core.remoteLaser(pcId, false)
                         }
-
-                        laserHeld = false
-                        core.remoteLaser(pcId, false)
                     }
                 },
         ) {

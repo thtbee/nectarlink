@@ -542,6 +542,15 @@ fun PcMirrorView(
     }
 
     val decoderMutex = remember { Mutex() }
+    val codecLock = remember { Any() }
+    val activeCodec = remember { java.util.concurrent.atomic.AtomicReference<MediaCodec?>(null) }
+    fun stopAndReleaseActiveCodec() {
+        synchronized(codecLock) {
+            val c = activeCodec.getAndSet(null) ?: return
+            runCatching { c.stop() }
+            runCatching { c.release() }
+        }
+    }
     var useSoftwareDecoder by remember(pcId, effectiveCodec) { mutableStateOf(false) }
 
     // Hardware MediaCodec decode loop bound to the current Surface and normalized codec.
@@ -567,7 +576,6 @@ fun PcMirrorView(
             decoderMutex.withLock {
                 ensureActive()
                 var codec: MediaCodec? = null
-                val codecLock = Any()
                 try {
                     val created = createVideoDecoder(mime, preferSoftware = useSoftwareDecoder)
                     codec = created
@@ -587,9 +595,18 @@ fun PcMirrorView(
                         created.configure(plainFormat, targetSurface, null, 0)
                     }
                     ensureActive()
-                    created.start()
+                    synchronized(codecLock) {
+                        if (!targetSurface.isValid) {
+                            runCatching { created.release() }
+                            codec = null
+                            return@withLock
+                        }
+                        created.start()
+                        activeCodec.set(created)
+                    }
 
                     fun queueRaw(bytes: ByteArray, timeUs: Long, flags: Int): Boolean = synchronized(codecLock) {
+                        if (activeCodec.get() !== created || !targetSurface.isValid) return false
                         val inIdx = created.dequeueInputBuffer(10_000L)
                         if (inIdx < 0) return false
                         val inBuf = created.getInputBuffer(inIdx)
@@ -608,7 +625,7 @@ fun PcMirrorView(
                         var newlyRendered = false
                         val bufferInfo = MediaCodec.BufferInfo()
                         synchronized(codecLock) {
-                            while (targetSurface.isValid) {
+                            while (activeCodec.get() === created && targetSurface.isValid) {
                                 val outIdx = created.dequeueOutputBuffer(bufferInfo, 0L)
                                 if (outIdx >= 0) {
                                     created.releaseOutputBuffer(outIdx, true)
@@ -698,8 +715,12 @@ fun PcMirrorView(
                     }
                 } finally {
                     synchronized(codecLock) {
-                        runCatching { codec?.stop() }
-                        runCatching { codec?.release() }
+                        val c = codec
+                        if (c != null) {
+                            activeCodec.compareAndSet(c, null)
+                            runCatching { c.stop() }
+                            runCatching { c.release() }
+                        }
                     }
                 }
             }
@@ -789,91 +810,104 @@ fun PcMirrorView(
                         var scrollAccumX = 0f
                         var scrollAccumY = 0f
 
+                        var touchDownSent = false
                         if (touchStartedInVideo) {
+                            touchDownSent = true
                             core.sendPcMirrorInput(
                                 pcId,
                                 MirrorInputEvent.Touch(TouchPhase.DOWN, lastX, lastY),
                             )
                         }
 
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val changes = event.changes
-                            var pressedCount = 0
-                            var primaryChange: androidx.compose.ui.input.pointer.PointerInputChange? = null
-                            for (i in 0 until changes.size) {
-                                val c = changes[i]
-                                if (c.pressed) {
-                                    if (primaryChange == null) primaryChange = c
-                                    pressedCount++
+                        try {
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val changes = event.changes
+                                var pressedCount = 0
+                                var primaryChange: androidx.compose.ui.input.pointer.PointerInputChange? = null
+                                for (i in 0 until changes.size) {
+                                    val c = changes[i]
+                                    if (c.pressed) {
+                                        if (primaryChange == null) primaryChange = c
+                                        pressedCount++
+                                    }
                                 }
-                            }
-                            if (pressedCount > maxPointers) {
-                                maxPointers = pressedCount
-                            }
-                            if (pressedCount == 0 || primaryChange == null) {
-                                if (touchStartedInVideo && !twoFingerGesture) {
-                                    core.sendPcMirrorInput(
-                                        pcId,
-                                        MirrorInputEvent.Touch(TouchPhase.UP, lastX, lastY),
-                                    )
+                                if (pressedCount > maxPointers) {
+                                    maxPointers = pressedCount
                                 }
-                                break
-                            }
-                            if (pressedCount >= 2) {
-                                if (!twoFingerGesture) {
-                                    twoFingerGesture = true
-                                    if (touchStartedInVideo) {
+                                if (pressedCount == 0 || primaryChange == null) {
+                                    if (touchDownSent) {
+                                        touchDownSent = false
                                         core.sendPcMirrorInput(
                                             pcId,
                                             MirrorInputEvent.Touch(TouchPhase.UP, lastX, lastY),
                                         )
                                     }
+                                    break
                                 }
-                                val prev = primaryChange.previousPosition
-                                val cur = primaryChange.position
-                                val d = primaryChange.positionChange()
-                                totalMoved += hypot(d.x, d.y)
-                                scrollAccumY += (prev.y - cur.y) / scrollStepPx
-                                scrollAccumX += (cur.x - prev.x) / scrollStepPx
-                                if (abs(scrollAccumX) > 0.05f || abs(scrollAccumY) > 0.05f) {
-                                    didTwoFingerScroll = true
-                                    val sendDx = scrollAccumX.coerceIn(-10f, 10f)
-                                    val sendDy = scrollAccumY.coerceIn(-10f, 10f)
-                                    scrollAccumX = 0f
-                                    scrollAccumY = 0f
-                                    core.sendPcMirrorInput(
-                                        pcId,
-                                        MirrorInputEvent.Scroll(lastX, lastY, sendDx, sendDy),
-                                    )
-                                }
-                                for (i in 0 until changes.size) {
-                                    changes[i].consume()
-                                }
-                            } else if (!twoFingerGesture && touchStartedInVideo) {
-                                val cur = primaryChange.position
-                                val d = primaryChange.positionChange()
-                                totalMoved += hypot(d.x, d.y)
-                                val mapped = PcMirrorMath.mapTouchToNormalized(
-                                    touchX = cur.x,
-                                    touchY = cur.y,
-                                    viewport = viewport,
-                                    clampOutside = true,
-                                )
-                                if (mapped != null) {
-                                    val (nx, ny) = mapped
-                                    if (abs(nx - lastX) > 0.002f || abs(ny - lastY) > 0.002f) {
-                                        lastX = nx
-                                        lastY = ny
+                                if (pressedCount >= 2) {
+                                    if (!twoFingerGesture) {
+                                        twoFingerGesture = true
+                                        if (touchDownSent) {
+                                            touchDownSent = false
+                                            core.sendPcMirrorInput(
+                                                pcId,
+                                                MirrorInputEvent.Touch(TouchPhase.UP, lastX, lastY),
+                                            )
+                                        }
+                                    }
+                                    val prev = primaryChange.previousPosition
+                                    val cur = primaryChange.position
+                                    val d = primaryChange.positionChange()
+                                    totalMoved += hypot(d.x, d.y)
+                                    scrollAccumY += (prev.y - cur.y) / scrollStepPx
+                                    scrollAccumX += (cur.x - prev.x) / scrollStepPx
+                                    if (abs(scrollAccumX) > 0.05f || abs(scrollAccumY) > 0.05f) {
+                                        didTwoFingerScroll = true
+                                        val sendDx = scrollAccumX.coerceIn(-10f, 10f)
+                                        val sendDy = scrollAccumY.coerceIn(-10f, 10f)
+                                        scrollAccumX = 0f
+                                        scrollAccumY = 0f
                                         core.sendPcMirrorInput(
                                             pcId,
-                                            MirrorInputEvent.Touch(TouchPhase.MOVE, lastX, lastY),
+                                            MirrorInputEvent.Scroll(lastX, lastY, sendDx, sendDy),
                                         )
                                     }
+                                    for (i in 0 until changes.size) {
+                                        changes[i].consume()
+                                    }
+                                } else if (!twoFingerGesture && touchStartedInVideo) {
+                                    val cur = primaryChange.position
+                                    val d = primaryChange.positionChange()
+                                    totalMoved += hypot(d.x, d.y)
+                                    val mapped = PcMirrorMath.mapTouchToNormalized(
+                                        touchX = cur.x,
+                                        touchY = cur.y,
+                                        viewport = viewport,
+                                        clampOutside = true,
+                                    )
+                                    if (mapped != null) {
+                                        val (nx, ny) = mapped
+                                        if (abs(nx - lastX) > 0.002f || abs(ny - lastY) > 0.002f) {
+                                            lastX = nx
+                                            lastY = ny
+                                            core.sendPcMirrorInput(
+                                                pcId,
+                                                MirrorInputEvent.Touch(TouchPhase.MOVE, lastX, lastY),
+                                            )
+                                        }
+                                    }
+                                    for (i in 0 until changes.size) {
+                                        changes[i].consume()
+                                    }
                                 }
-                                for (i in 0 until changes.size) {
-                                    changes[i].consume()
-                                }
+                            }
+                        } finally {
+                            if (touchDownSent) {
+                                core.sendPcMirrorInput(
+                                    pcId,
+                                    MirrorInputEvent.Touch(TouchPhase.UP, lastX, lastY),
+                                )
                             }
                         }
 
@@ -935,7 +969,10 @@ fun PcMirrorView(
                                         return
                                     }
                                     activeSt = st
-                                    surface?.release()
+                                    val oldSurface = surface
+                                    surface = null
+                                    stopAndReleaseActiveCodec()
+                                    oldSurface?.release()
                                     surface = Surface(st)
                                 }
 
@@ -949,8 +986,10 @@ fun PcMirrorView(
                                     if (activeSt === st) {
                                         activeSt = null
                                     }
-                                    surface?.release()
+                                    val oldSurface = surface
                                     surface = null
+                                    stopAndReleaseActiveCodec()
+                                    oldSurface?.release()
                                     return true
                                 }
 

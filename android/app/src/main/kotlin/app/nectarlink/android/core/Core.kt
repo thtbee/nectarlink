@@ -846,7 +846,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 event.sampleRate.toInt(),
                 event.channels.toInt(),
                 event.pcm,
-                event.id,
+                event.device,
             )
             is Event.PcMirrorConfig -> {
                 _pcMirrorConfig.value = PcMirrorConfigState(

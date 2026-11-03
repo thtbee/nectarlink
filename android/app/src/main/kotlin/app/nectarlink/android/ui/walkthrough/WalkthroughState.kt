@@ -97,6 +97,7 @@ data class StartupWalkthroughResolution(
 fun resolveStartupWalkthrough(
     persistence: WalkthroughPersistence,
     hasPairedDevices: Boolean,
+    walkthroughAlreadyActive: Boolean = false,
 ): StartupWalkthroughResolution {
     if (persistence.completed) {
         return StartupWalkthroughResolution(
@@ -106,7 +107,7 @@ fun resolveStartupWalkthrough(
             showWhatsNewGuideBanner = !persistence.whatsNewGuideDismissed && hasPairedDevices,
         )
     }
-    if (persistence.currentStepIndex > 0) {
+    if (persistence.currentStepIndex > 0 || walkthroughAlreadyActive) {
         return StartupWalkthroughResolution(
             showWalkthrough = true,
             initialStep = persistence.currentStep,
