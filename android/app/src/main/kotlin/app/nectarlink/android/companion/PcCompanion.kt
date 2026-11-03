@@ -110,6 +110,34 @@ object PcCompanion {
         }
     }
 
+    /** Removes CompanionDeviceManager associations for a removed PC (or all when no PCs remain paired). */
+    fun disassociateForRemovedPc(context: Context, pcName: String?, noDevicesRemaining: Boolean) {
+        runCatching {
+            val cdm = context.getSystemService(CompanionDeviceManager::class.java) ?: return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                for (info in cdm.myAssociations) {
+                    val matchesName = !pcName.isNullOrBlank() && info.displayName?.toString() == pcName
+                    if (noDevicesRemaining || matchesName) {
+                        val addr = info.deviceMacAddress?.toString()
+                        if (!addr.isNullOrBlank()) {
+                            @Suppress("DEPRECATION")
+                            runCatching { cdm.stopObservingDevicePresence(addr) }
+                        }
+                        runCatching { cdm.disassociate(info.id) }
+                    }
+                }
+            } else if (noDevicesRemaining) {
+                @Suppress("DEPRECATION")
+                for (addr in cdm.associations) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        runCatching { cdm.stopObservingDevicePresence(addr) }
+                    }
+                    runCatching { cdm.disassociate(addr) }
+                }
+            }
+        }
+    }
+
     fun requestAssociation(
         activity: Activity,
         pcName: String,

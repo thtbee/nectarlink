@@ -118,8 +118,19 @@ class CoreStateTest {
         var state = CoreState().withDevices(listOf(pc("a", "Desk", 1)))
         state = state.reduce(Event.Ring("a", true))
         assertEquals("Desk", state.ringingFrom)
+        assertEquals("a", state.ringingPeer)
+
+        // Renaming the ringing PC updates ringingFrom and removing it still clears ringingFrom.
+        val renamedInfo = DeviceInfo("Office Desk", DeviceKind.DESKTOP, "windows", "10.0.26200", null, null)
+        state = state.reduce(Event.PeerInfoChanged("a", renamedInfo))
+        assertEquals("Office Desk", state.ringingFrom)
+        val removed = state.reduce(Event.DeviceRemoved("a"))
+        assertNull(removed.ringingFrom)
+        assertNull(removed.ringingPeer)
+
         state = state.reduce(Event.Ring("a", false))
         assertNull(state.ringingFrom)
+        assertNull(state.ringingPeer)
 
         val found = DiscoveredDevice("n", "Nearby PC")
         state = state.reduce(Event.Discovered(found)).reduce(Event.Discovered(found))

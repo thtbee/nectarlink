@@ -47,7 +47,13 @@ class PcCompanionService : CompanionDeviceService() {
         if (!app.nectarlink.android.ui.Preferences.isBackgroundServiceEnabled(appContext)) {
             return
         }
+        val core = (appContext as? NectarlinkApplication)?.core
+        val state = core?.state?.value
+        if (state != null && state.status is app.nectarlink.android.core.CoreStatus.Ready && state.devices.isEmpty()) {
+            PcCompanion.disassociateForRemovedPc(appContext, pcName = null, noDevicesRemaining = true)
+            return
+        }
         ConnectionService.start(appContext)
-        (appContext as? NectarlinkApplication)?.core?.reconnectNow()
+        core?.reconnectNow()
     }
 }
