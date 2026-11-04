@@ -10,10 +10,12 @@
 //! before updating the system clipboard so the watcher thread never echoes
 //! phone clipboard writes back to the phone.
 
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use super::image::{self, Bitmap};
 
@@ -176,6 +178,65 @@ where
     if let Err(e) = spawned {
         tracing::warn!(error = %e, "can't start Linux clipboard watcher");
     }
+    if is_wayland() && super::data_control::start(on_data_control_change) {
+        // What was already on the clipboard stays where it is. Qt couldn't see it.
+        seed_initial_clipboard();
+        return;
+    }
+    if wayland_helpers() {
+        let spawned = std::thread::Builder::new().name("clipboard-wayland".into()).spawn(wayland_watch_loop);
+        if let Err(e) = spawned {
+            tracing::warn!(error = %e, "can't start the Wayland clipboard watcher");
+        }
+    }
+}
+
+/// `read` waits on other apps, so not on the connection's own thread: our own
+/// clip would then wait on the thread that has to send it.
+fn on_data_control_change() {
+    let _ = std::thread::Builder::new().name("clipboard-changed".into()).spawn(|| {
+        if let Some(on_copy) = ON_COPY.get() {
+            let _ = report_if_changed(read(), on_copy);
+        }
+    });
+}
+
+/// Follows the clipboard while another app has focus, on compositors with only
+/// the older data-control protocol, which wl-clipboard knows.
+fn wayland_watch_loop() {
+    use std::os::unix::process::CommandExt;
+
+    loop {
+        let started = Instant::now();
+        let mut command = Command::new("wl-paste");
+        command.args(["--watch", "echo"]).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
+        // SAFETY: only async-signal-safe `prctl` runs between fork and exec. The
+        // signal follows this thread, which lives as long as the app.
+        unsafe {
+            command.pre_exec(|| {
+                libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
+                Ok(())
+            });
+        }
+        let Ok(mut child) = command.spawn() else {
+            NO_DATA_CONTROL.store(true, Ordering::Release);
+            return;
+        };
+        if let Some(stdout) = child.stdout.take() {
+            for _ in BufReader::new(stdout).lines().map_while(Result::ok) {
+                if let Some(on_copy) = ON_COPY.get() {
+                    let _ = report_if_changed(read(), on_copy);
+                }
+            }
+        }
+        let _ = child.wait();
+        if started.elapsed() < Duration::from_secs(2) {
+            tracing::info!("the compositor has no data-control; the clipboard follows only with focus");
+            NO_DATA_CONTROL.store(true, Ordering::Release);
+            return;
+        }
+        std::thread::sleep(Duration::from_secs(2));
+    }
 }
 
 fn watcher_loop() {
@@ -252,7 +313,35 @@ fn is_gnome_wayland() -> bool {
         && std::env::var("XDG_CURRENT_DESKTOP").ok().is_some_and(|d| d.to_ascii_lowercase().contains("gnome"))
 }
 
+static NO_DATA_CONTROL: AtomicBool = AtomicBool::new(false);
+
+/// Whether wl-clipboard handles the clipboard. On Wayland only the focused
+/// window can use it through Qt, which still reports success for a write from
+/// the background that goes nowhere. wl-clipboard works from the background
+/// where the compositor has the older data-control protocol; GNOME has none,
+/// and `wl-paste` there maps a surface that steals focus.
+fn wayland_helpers() -> bool {
+    static INSTALLED: OnceLock<bool> = OnceLock::new();
+    is_wayland()
+        && !is_gnome_wayland()
+        && !super::data_control::active()
+        && !NO_DATA_CONTROL.load(Ordering::Acquire)
+        && *INSTALLED.get_or_init(|| {
+            ["wl-copy", "wl-paste"].iter().all(|tool| {
+                Command::new(tool)
+                    .arg("--version")
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .status()
+                    .is_ok_and(|s| s.success())
+            })
+        })
+}
+
 fn query_os_targets() -> Option<(bool, String)> {
+    if let Some(targets) = super::data_control::targets() {
+        return Some((true, targets));
+    }
     // Never spawn `wl-paste` on GNOME Wayland where Mutter lacks data-control
     // and `wl-paste` maps a transient surface that steals window focus.
     if is_wayland()
@@ -273,6 +362,9 @@ fn query_os_targets() -> Option<(bool, String)> {
 }
 
 fn read_os_mime(wayland: bool, mime: &str) -> Option<Vec<u8>> {
+    if super::data_control::active() {
+        return super::data_control::read(mime);
+    }
     if wayland {
         let out = Command::new("wl-paste").args(["--no-newline", "--type", mime]).output().ok()?;
         out.status.success().then_some(out.stdout)
@@ -302,6 +394,11 @@ fn clean_valid_utf8_text(bytes: Vec<u8>) -> Option<String> {
 }
 
 fn read_os_plain_text(wayland: bool) -> Option<String> {
+    if super::data_control::active() {
+        return ["text/plain;charset=utf-8", "text/plain", "UTF8_STRING"]
+            .into_iter()
+            .find_map(|mime| clean_valid_utf8_text(super::data_control::read(mime)?));
+    }
     if wayland {
         for mime in ["text/plain;charset=utf-8", "text/plain", "UTF8_STRING"] {
             if let Ok(out) = Command::new("wl-paste").args(["--no-newline", "--type", mime]).output()
@@ -380,15 +477,18 @@ fn read_from_os(check_privacy: bool) -> Option<Clip> {
     let mut qt_html = String::new();
     let mut qt_rtf = String::new();
     let mut qt_png = Vec::new();
-    if crate::bridge::native::ffi::linux_clipboard_read(
-        check_privacy,
-        &mut is_private,
-        &mut has_files,
-        &mut qt_text,
-        &mut qt_html,
-        &mut qt_rtf,
-        &mut qt_png,
-    ) {
+    if !super::data_control::active()
+        && !wayland_helpers()
+        && crate::bridge::native::ffi::linux_clipboard_read(
+            check_privacy,
+            &mut is_private,
+            &mut has_files,
+            &mut qt_text,
+            &mut qt_html,
+            &mut qt_rtf,
+            &mut qt_png,
+        )
+    {
         if is_private {
             return Some(Clip::Private);
         }
@@ -586,6 +686,20 @@ fn write_text(text: &str, html: Option<&str>, rtf: Option<&str>, private: bool) 
         crate::mirror::note_remote_clipboard(text);
     }
 
+    if !cfg!(test)
+        && super::data_control::active()
+        && super::data_control::write(text_offers(text, html_owned.as_deref(), rtf_owned.as_deref(), private))
+    {
+        return Ok(());
+    }
+
+    if !cfg!(test) && wayland_helpers() {
+        let args: &[&str] = if private { &["--sensitive"] } else { &[] };
+        if pipe_to_cmd("wl-copy", args, text.as_bytes()).is_ok() {
+            return Ok(());
+        }
+    }
+
     if !cfg!(test) && has_display_server() {
         let html_str = html_owned.as_deref().unwrap_or("");
         let rtf_str = rtf_owned.as_deref().unwrap_or("");
@@ -620,6 +734,17 @@ pub fn write_image(mime: &str, bytes: &[u8]) -> Result<(), String> {
     *LAST_CLIP.lock().unwrap_or_else(|e| e.into_inner()) = Clip::Image(Image::Png(png.clone()));
 
     if !cfg!(test)
+        && super::data_control::active()
+        && super::data_control::write(vec![("image/png".to_owned(), png.clone())])
+    {
+        return Ok(());
+    }
+
+    if !cfg!(test) && wayland_helpers() && pipe_to_cmd("wl-copy", &["--type", "image/png"], &png).is_ok() {
+        return Ok(());
+    }
+
+    if !cfg!(test)
         && has_display_server()
         && !crate::bridge::native::ffi::linux_clipboard_write_image_png(&png)
     {
@@ -627,6 +752,32 @@ pub fn write_image(mime: &str, bytes: &[u8]) -> Result<(), String> {
             .or_else(|_| pipe_to_cmd("xclip", &["-selection", "clipboard", "-t", "image/png"], &png));
     }
     Ok(())
+}
+
+/// A text clip as the types other apps ask for, with the same privacy hints as
+/// a write through Qt.
+fn text_offers(text: &str, html: Option<&str>, rtf: Option<&str>, private: bool) -> Vec<(String, Vec<u8>)> {
+    let mut offers: Vec<(String, Vec<u8>)> = ["text/plain;charset=utf-8", "text/plain", "UTF8_STRING"]
+        .into_iter()
+        .map(|mime| (mime.to_owned(), text.as_bytes().to_vec()))
+        .collect();
+    if private {
+        offers.extend([
+            ("x-kde-passwordManagerHint".to_owned(), b"secret".to_vec()),
+            ("x-gnome-privacy-hint".to_owned(), b"1".to_vec()),
+            ("ExcludeClipboardContentFromMonitorProcessing".to_owned(), b"1".to_vec()),
+            ("Clipboard Viewer Ignore".to_owned(), b"1".to_vec()),
+        ]);
+        return offers;
+    }
+    if let Some(html) = html.filter(|h| !h.is_empty()) {
+        offers.push(("text/html".to_owned(), html.as_bytes().to_vec()));
+    }
+    if let Some(rtf) = rtf.filter(|r| !r.is_empty()) {
+        offers.push(("text/rtf".to_owned(), rtf.as_bytes().to_vec()));
+        offers.push(("application/rtf".to_owned(), rtf.as_bytes().to_vec()));
+    }
+    offers
 }
 
 fn pipe_to_cmd(program: &str, args: &[&str], bytes: &[u8]) -> std::io::Result<()> {
@@ -895,6 +1046,22 @@ pub(crate) fn decode_cf_rtf(bytes: &[u8]) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn text_offers_carry_rich_types_and_private_hints() {
+        let names = |offers: Vec<(String, Vec<u8>)>| offers.into_iter().map(|(m, _)| m).collect::<Vec<_>>();
+        let plain = names(super::text_offers("hi", None, None, false));
+        assert!(plain.contains(&"text/plain;charset=utf-8".to_owned()));
+        assert!(!plain.iter().any(|m| super::is_secret_mime_list(m)));
+
+        let rich = names(super::text_offers("hi", Some("<b>hi</b>"), Some("{\\rtf1}"), false));
+        assert!(rich.contains(&"text/html".to_owned()) && rich.contains(&"text/rtf".to_owned()));
+
+        // What a password manager marks private stays marked, and carries nothing richer.
+        let private = names(super::text_offers("pw", Some("<b>pw</b>"), None, true));
+        assert!(super::is_secret_mime_list(&private.join("\n")));
+        assert!(!private.contains(&"text/html".to_owned()));
+    }
+
     use super::*;
 
     static TEST_LOCK: Mutex<()> = Mutex::new(());

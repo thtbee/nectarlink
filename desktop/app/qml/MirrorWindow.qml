@@ -67,21 +67,13 @@ Window {
         if (phase === "showing")
             video.forceActiveFocus()
     }
-    // Keeps a spot on any monitor, including those left of or above the main one
-    // (negative coordinates), as long as enough of the title bar stays reachable.
+    WindowPlacement {
+        id: windowPlacement
+    }
     function placeOnScreen(px, py, w, h) {
-        const screens = Qt.application.screens
-        for (let i = 0; i < screens.length; i++) {
-            const s = screens[i]
-            if (px + w > s.virtualX + 80 && px < s.virtualX + s.width - 80
-                    && py >= s.virtualY && py < s.virtualY + s.height - 80) {
-                x = px
-                y = py
-                return
-            }
-        }
-        x = Math.max(Screen.virtualX, Math.min(Screen.virtualX + Screen.width - w, px))
-        y = Math.max(Screen.virtualY, Math.min(Screen.virtualY + Screen.height - h, py))
+        const spot = windowPlacement.spot(px, py, w, h, Qt.application.screens, Screen)
+        x = spot.x
+        y = spot.y
     }
 
     onActiveChanged: if (win.active) Mirror.syncClipboardOnFocus(win.mirrorKey)
