@@ -2272,7 +2272,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     /** Sends a normalized touch, scroll, key, or text event to a paired PC during reverse mirroring. */
     fun sendPcMirrorInput(id: String, input: app.nectarlink.core.MirrorInputEvent) {
-        enqueueRemoteOp { runCatching { it.sendPcMirrorInput(id, input) } }
+        enqueueRemoteOp { node ->
+            runCatching { node.sendPcMirrorInput(id, input) }
+                .onFailure { android.util.Log.w("Nectarlink", "screen input not sent", it) }
+        }
     }
 
     private fun remoteCommand(onStatus: ((RemoteAccess) -> Unit)?, block: suspend (NectarlinkNode) -> Unit) {

@@ -5897,15 +5897,9 @@ async fn reverse_mirror_requires_pc_consent_and_remote_input_toggle() {
     })
     .await;
 
-    // (c) `mirror_input` against a PC is refused unless `remote_input` is also on
-    // on both sides.
+    // (c) `remote_input` is the PC's to decide: the phone has no such switch of its
+    // own, so with it off on the PC the input is refused there and the PC asks.
     let touch = MirrorInput::Touch { action: TouchAction::Down, x: 0.5, y: 0.5 };
-    let input_denied_both_off = phone.node.mirror_input(pc_id, MIRROR_SCREEN, touch.clone()).await;
-    assert!(
-        matches!(input_denied_both_off, Err(Error::Denied)),
-        "expected Denied when remote_input is off on phone, got {input_denied_both_off:?}"
-    );
-    phone.node.set_device_toggle(pc_id, "remote_input", true).unwrap();
     phone.node.mirror_input(pc_id, MIRROR_SCREEN, touch.clone()).await.unwrap();
     wait_for(&mut pc, "pc remote input prompt event", |e| match e {
         NodeEvent::RemoteInputRequested { device } if *device == phone_id => Some(()),

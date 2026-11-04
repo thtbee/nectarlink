@@ -124,8 +124,9 @@ pub(crate) async fn input(
     let allowed = if is_local_desktop(shared) {
         shared.toggle_on(&session.peer, TOGGLE)
     } else {
+        // Whether this phone may control the PC is the PC's to say: it refuses,
+        // and asks its user, when `remote_input` is off there.
         shared.store.toggle(&session.peer, PC_MIRROR_TOGGLE)?.unwrap_or(true)
-            && shared.toggle_on(&session.peer, crate::remote::TOGGLE)
     };
     if !allowed {
         return Err(Error::Denied);
