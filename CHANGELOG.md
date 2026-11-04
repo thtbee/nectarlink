@@ -285,6 +285,11 @@ has a Stop button. Choosing another
 
 ### Fixed
 
+- **Messages on the PC.** A conversation opens at the latest message and stays
+  there as pictures load and after you send, one you read lately opens at once,
+  and one you've read here stops showing as unread. The phone keeps its own
+  count unless NectarLink is its default SMS app
+  ([#176](https://github.com/thtbee/nectarlink/issues/176)).
 - **Mirroring: lock the phone, and keep its sound on it.** A **Lock phone**
   button in the mirror window, and taps from the PC now reach the phone as
   finger touches, so a launcher's double tap can see them
