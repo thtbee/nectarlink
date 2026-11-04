@@ -6289,6 +6289,58 @@ async fn queue_cancel_waiting_and_mid_transfer_cleans_up_and_unpair_drops_queue(
     pc.node.shutdown().await;
 }
 
+/// Whether the database files hold `needle`, as someone reading the disk would see them.
+fn database_contains(dir: &std::path::Path, needle: &[u8]) -> bool {
+    ["nectarlink.db", "nectarlink.db-wal"].iter().any(|name| {
+        std::fs::read(dir.join(name)).is_ok_and(|bytes| bytes.windows(needle.len()).any(|w| w == needle))
+    })
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn clearing_removes_queued_clips_and_links_but_not_files() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &["clip.write", "link.open"]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    phone.node.shutdown().await;
+    wait_for(&mut pc, "phone offline", |e| match e {
+        NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+
+    let src = tempfile::tempdir().unwrap();
+    let path = src.path().join("keep.txt");
+    std::fs::write(&path, b"keep").unwrap();
+    pc.node
+        .send_files(
+            phone_id,
+            vec![OutgoingFile {
+                name: "keep.txt".into(),
+                folder: None,
+                source: FileSource::File(std::fs::File::open(&path).unwrap()),
+            }],
+        )
+        .await
+        .unwrap();
+    pc.node.send_clipboard(phone_id, "a-copied-secret".into()).await.unwrap();
+    pc.node.open_link(phone_id, "https://example.com/a-link".into()).await.unwrap();
+    assert_eq!(pc.node.send_queue(Some(phone_id)).unwrap().len(), 3);
+
+    // Clearing the clipboard history takes the clip, not the link or the file.
+    pc.node.clear_clipboard_history().unwrap();
+    let kinds: Vec<_> = pc.node.send_queue(Some(phone_id)).unwrap().iter().map(|i| i.title.clone()).collect();
+    assert_eq!(kinds.len(), 2, "{kinds:?}");
+    assert!(!kinds.iter().any(|t| t.contains("a-copied-secret")));
+
+    // Clearing everything takes the link too; the file the user chose to send stays.
+    pc.node.clear_all_local_data().unwrap();
+    let left = pc.node.send_queue(Some(phone_id)).unwrap();
+    assert_eq!(left.len(), 1);
+    assert_eq!(left[0].title, "keep.txt");
+    pc.node.shutdown().await;
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn queue_offline_no_busy_loop_timeline_only_on_delivery_and_clear_history_preserves_queue() {
     use nectarlink_core::{TimelineKind, TimelineQuery};
@@ -6323,11 +6375,16 @@ async fn queue_offline_no_busy_loop_timeline_only_on_delivery_and_clear_history_
         )
         .await
         .unwrap();
-    pc.node.send_clipboard(phone_id, "offline-clip-text".into()).await.unwrap();
-    pc.node.open_link(phone_id, "https://example.com/offline-link".into()).await.unwrap();
-
     let staging_dir = pc.dir.path().join("queue_staging").join(&file_id);
     assert!(staging_dir.exists());
+
+    // Clearing local history and caches leaves a file waiting to send, and its staged copy.
+    pc.node.clear_all_local_data().unwrap();
+    assert_eq!(pc.node.send_queue(Some(phone_id)).unwrap().len(), 1);
+    assert!(staging_dir.exists(), "clear_all_local_data must not delete queue_staging");
+
+    pc.node.send_clipboard(phone_id, "offline-clip-text".into()).await.unwrap();
+    pc.node.open_link(phone_id, "https://example.com/offline-link".into()).await.unwrap();
 
     // 1. Timeline must NOT record any Sent/Opened entries while items are still waiting in the queue.
     let tl_before = pc
@@ -6350,10 +6407,14 @@ async fn queue_offline_no_busy_loop_timeline_only_on_delivery_and_clear_history_
         "queue coordinator must stay idle while peer is offline, got {ticks_elapsed} ticks in 450ms"
     );
 
-    // 3. Clearing local history/cache must preserve send_queue and staged files.
-    pc.node.clear_all_local_data().unwrap();
-    assert_eq!(pc.node.send_queue(Some(phone_id)).unwrap().len(), 3);
-    assert!(staging_dir.exists(), "clear_all_local_data must not delete queue_staging");
+    // 3. What's waiting to send isn't readable in the database, though the queue shows it.
+    let queue = pc.node.send_queue(Some(phone_id)).unwrap();
+    assert!(queue.iter().any(|i| i.title == "offline-clip-text"));
+    assert!(!database_contains(pc.dir.path(), b"offline-clip-text"), "a queued clip is sealed on disk");
+    assert!(
+        !database_contains(pc.dir.path(), b"example.com/offline-link"),
+        "a queued link is sealed on disk"
+    );
 
     // 4. Bring phone online: all 3 items are delivered, staged files are deleted, and timeline records all 3.
     let mut phone = start_in(phone_dir, "Pixel", DeviceKind::Phone).await;

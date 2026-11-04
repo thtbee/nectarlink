@@ -49,6 +49,14 @@ Switch to **Presentation** mode when giving a talk or slideshow:
 - Tap **Start show** (`F5`), **End show** (`Esc`), or **Black screen** (`B`) to control PowerPoint, Google Slides, Keynote Web, or PDF presenters.
 - **Hold for laser pointer**: Press and hold the laser button to project a bright, accent-colored laser dot overlay onto your PC monitor that follows how you tilt your phone (via gyroscope) or drag your finger.
 
+#### Screen Mode
+
+With **Share PC screen to phone** and **Remote mouse, keyboard & Deck** on for this phone, **Screen** shows your PC's screen on the phone and controls it:
+
+- Drag on the touchpad below the picture to move the cursor. Tap to click, and use two fingers to right-click or scroll.
+- **Keyboard** opens a box above the phone's keyboard. What you type goes to the PC as you type it, **Send** presses Enter, and the key beside it deletes.
+- The quality button changes the stream's resolution.
+
 ### 2. Typing on Your Phone from Your PC Keyboard (Without Mirroring)
 
 When your phone is sitting on a stand next to your monitor and you just want to type a quick message or search on the phone using your physical PC keyboard without opening a screen-mirroring window:

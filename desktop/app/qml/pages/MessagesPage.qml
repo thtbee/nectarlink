@@ -721,19 +721,38 @@ Item {
             model: page.messages
             // The latest at the bottom; scrolling up loads older ones. Every refresh
             // replaces the whole list, which puts a list view back at the top, and
-            // pictures grow a bubble once loaded: stay where the reader was.
+            // pictures grow a bubble once loaded: stay where the reader was. By the
+            // message at the top of the view, since a list of bubbles of different
+            // heights only estimates how tall it is.
             property bool followLatest: true
-            property real keptBottomOffset: 0
+            property string keptId: ""
+            property real keptOffset: 0
             property string lastThreadId: ""
             function keepPlace() {
-                if (followLatest)
+                if (followLatest) {
                     positionViewAtEnd()
-                else
-                    contentY = Math.max(originY, contentHeight - keptBottomOffset)
+                    return
+                }
+                const index = page.messages.findIndex(m => m.id === keptId)
+                if (index < 0)
+                    return
+                positionViewAtIndex(index, ListView.Beginning)
+                const bubble = itemAtIndex(index)
+                if (bubble)
+                    contentY = bubble.y + keptOffset
             }
             function notePlace() {
-                followLatest = contentHeight - contentY - height <= 24
-                keptBottomOffset = contentHeight - contentY
+                // From originY, which moves as bubbles load. Closer than one wheel notch.
+                followLatest = originY + contentHeight + bottomMargin - contentY - height <= 8
+                // Bubbles have gaps between them: look a little lower if this hits one.
+                let index = indexAt(width / 2, contentY)
+                if (index < 0)
+                    index = indexAt(width / 2, contentY + spacing + 1)
+                const bubble = index >= 0 ? itemAtIndex(index) : null
+                if (bubble) {
+                    keptId = page.messages[index].id
+                    keptOffset = contentY - bubble.y
+                }
             }
             onModelChanged: {
                 if (Messages.thread !== lastThreadId) {
@@ -745,12 +764,15 @@ Item {
             }
             onContentHeightChanged: if (followLatest) Qt.callLater(positionViewAtEnd)
             onHeightChanged: if (followLatest) Qt.callLater(positionViewAtEnd)
+            // Before it ends, or the height changing as bubbles load pulls the reader
+            // back down mid-scroll.
+            onMovementStarted: followLatest = false
             onMovementEnded: notePlace()
             onFlickEnded: notePlace()
             onAtYBeginningChanged: {
                 if (atYBeginning && Messages.more && count > 0 && !Messages.loadingOlder) {
+                    notePlace()
                     followLatest = false
-                    keptBottomOffset = contentHeight - contentY
                     Messages.loadOlder()
                 }
             }

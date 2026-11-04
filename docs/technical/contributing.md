@@ -49,7 +49,7 @@ or for application and CLI files:
 
 ### QML (Windows Desktop)
 
-- Read colors, spacing, radii, and typography exclusively from the `Theme` singleton (`desktop/app/src/bridge/theme_tokens.rs`) rather than hardcoding hex literals.
+- Read colors, spacing, radii, and typography exclusively from the `Theme` singleton (`desktop/app/qml/Theme.qml`, built on the generated `Tokens.qml`) rather than hardcoding hex literals.
 - Gate continuous animations (`NumberAnimation`, `RotationAnimator`) on item visibility and active window state so minimized tray mode consumes `0.00%` CPU.
 
 ## Adding or Modifying a Capability
@@ -58,10 +58,10 @@ When introducing a new cross-device capability or extending an existing wire mes
 
 1. **Specification First (`docs/protocol/`)**: Document the capability ID, stream framing, CBOR message schemas, and error handling in [`docs/protocol/`](../protocol/v0.md) and register the capability in [`docs/protocol/capabilities.md`](../protocol/capabilities.md).
 2. **Protocol Constants & Types (`core/nectarlink-protocol`)**:
-   - Add the capability constant in `src/capabilities.rs` (and include it in `ALL` if advertised by default).
+   - Add the capability's name next to its message types in `src/messages.rs`, and list it in [`docs/protocol/capabilities.md`](../protocol/capabilities.md).
    - Define the serde-serializable structs in `src/messages.rs` using `#[serde(default)]` / `#[serde(skip_serializing_if = "Option::is_none")]` so wire changes remain backward-compatible.
 3. **Authorization Mapping (`core/nectarlink-core/src/features.rs`)**:
-   - Map the capability in `feature_for_capability` to an existing or new toggle in `DEVICE_TOGGLES`.
+   - Gate it on an existing or new toggle in `DEVICE_TOGGLES` (`Shared::toggle_on` in the handler), and add it to the matrix in `compute`.
    - Decide whether the feature is default-on or high-sensitivity opt-in (`default_enabled: false`), and whether it must be restricted over `ConnectionPath::Relay` (**Connect over mobile data** / `away_mode`).
 4. **Core & FFI Plumbing (`core/nectarlink-core`, `core/nectarlink-ffi`)**:
    - Implement the handler in `nectarlink-core` and enforce `self.capabilities.is_allowed(&peer, cap::...)` on both inbound and outbound paths.

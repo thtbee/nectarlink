@@ -27,7 +27,7 @@ The **Messages** page on your PC brings together your phone's SMS and MMS text t
 
 ### Sending Texts and Replying to Chat Apps
 
-1. Select any conversation in the list to open its message history on the right.
+1. Select any conversation in the list to open its message history on the right. It opens at the latest message. If you scroll up, it keeps your place as new messages arrive. What you've read on the PC stops showing as unread there, though the phone keeps its own count unless NectarLink is its default SMS app.
 2. Click the message composer at the bottom, type your message, and press **Enter** to send (or `Shift+Enter` to insert a new line).
    - In an **SMS/MMS thread**, your phone sends the text through your cellular carrier (automatically splitting long messages into multi-part SMS when needed) and writes the sent message to your phone's SMS database.
    - In a **Unified Conversation** (such as WhatsApp or Signal), your phone sends the reply through that app's active `RemoteInput` notification channel.

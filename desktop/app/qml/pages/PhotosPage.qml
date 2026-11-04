@@ -549,7 +549,7 @@ Item {
 
                 Button {
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: page.selectedCount > 0 && page.selectedCount <= 24
+                    visible: page.selectedCount > 0
                     variant: page.confirmDelete ? "fill" : "tonal"
                     size: "sm"
                     iconPath: Icons.trash

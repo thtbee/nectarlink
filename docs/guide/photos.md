@@ -45,7 +45,14 @@ You do not need to click Save before using a photo in another Windows program:
 ### Selecting and Saving Multiple Photos
 
 1. Hover over a photo tile and click its selection check mark (or hold `Shift` / `Ctrl` while clicking) to select multiple photos.
-2. In the selection bar at the top, click **Save selected** to download all chosen originals to `Downloads\Nectarlink` (or a folder you pick) in one batch.
+2. In the selection bar at the top, click **Save** to download all chosen originals to `Downloads\Nectarlink` (or the folder button to pick another) in one batch.
+
+### Deleting Photos from Your PC
+
+1. Select one or more photos or videos as above.
+2. Click **Delete**, then click **Move to the phone's trash?** to confirm.
+
+They go to the phone's trash, where you can still restore them, and leave your PC's view. This needs Android 11 or newer and **All files access** for NectarLink, since otherwise Android asks on the phone for each batch.
 
 ### New Photo and Screenshot Alerts on Your PC
 

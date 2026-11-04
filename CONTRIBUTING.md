@@ -39,7 +39,7 @@ parts, this includes the [app-store exception](LICENSES/APP-STORE-EXCEPTION.md).
 
 ## Building and checking
 
-The [README](README.md#building) lists the requirements and build commands.
+The [README](README.md#building-from-source) lists the requirements and build commands.
 Before opening a pull request, run the same checks as CI:
 
 ```powershell

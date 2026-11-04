@@ -336,7 +336,13 @@ pub fn setup_addon() {
     core_host::host().hub.changed(Changes::WEBCAM);
     vcam::run_elevated(vcam::REGISTER_ARG, |_ok| {
         let registered = vcam::is_registered();
-        let handle = if registered { VirtualCameraHandle::start().ok() } else { None };
+        let handle = if registered {
+            VirtualCameraHandle::start()
+                .inspect_err(|e| tracing::warn!(error = %e, "can't start IMFVirtualCamera session"))
+                .ok()
+        } else {
+            None
+        };
         state(|s| {
             s.addon_busy = false;
             s.addon_registered = registered;

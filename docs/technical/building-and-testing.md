@@ -90,7 +90,7 @@ target\release\nectarlink-desktop.exe --register-vcam
 [`tools/xtask`](../../tools/xtask/src/main.rs) generates platform design-system files from [`docs/design/tokens.json`](../../docs/design/tokens.json) and compiles the third-party license attribution bundle:
 
 ```powershell
-# Regenerate desktop/app/src/bridge/theme_tokens.rs and android/.../DesignTokens.kt
+# Regenerate desktop/app/qml/Tokens.qml and android/.../ui/theme/Tokens.kt
 cargo xtask tokens
 
 # Verify generated token files are up to date without modifying disk

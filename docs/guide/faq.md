@@ -64,6 +64,10 @@ Yes. Every Android permission is optional, and NectarLink's capability matrix ad
 
 When connected and idle in the background, NectarLink maintains a single lightweight QUIC connection with event-driven wakeups and zero polling loops, using less than 1 percent battery per hour in continuous connected soak tests. High-power features such as screen mirroring (`mirror`) and camera streaming (**Phone as webcam**) use hardware video encoders only while actively streaming and stop immediately when you close the window.
 
+### Does NectarLink work on Linux or Windows 7?
+
+Linux, yes, from 0.1.5: Ubuntu 24.04 or newer, Debian 13, Fedora 40 or newer and other distributions from 2024 on. See [Getting Started](getting-started.md) and what's different in [Known Limitations](known-limitations.md#on-linux). Windows needs Windows 10 version 2004 or newer, so Windows 7 and 8 aren't supported.
+
 ### How much RAM and CPU does the Windows app use in the background?
 
 When started minimized in the Windows system tray, NectarLink uses approximately **27 MB** of private commit memory (~5 to 10 MB active working set) and **0.0 percent** idle CPU. When you close the main window (`Stay in system tray`), NectarLink unloads the QML window tree and image caches to keep background memory usage minimal while staying ready to pop up notifications or open the `Shelf` and `Command Palette` in under 50 milliseconds.

@@ -1,6 +1,6 @@
 # Settings Reference
 
-This page explains every setting in the Windows 11 app and the Android app one by one, including its exact in-app label, default value, and what changing it does.
+This page explains every setting in the PC app (Windows and Linux) and the Android app one by one, including its exact in-app label, default value, and what changing it does.
 
 <p align="center">
   <img src="images/settings-appearance.png" alt="Categorized two-pane Settings screen in NectarLink for Windows" width="760">
@@ -48,7 +48,7 @@ Controls startup behavior, the system tray, `Nectar Island`, battery notificatio
 
 ### 3. Devices
 
-Lists your paired phones (with a device selector pill bar at the top when more than one phone is paired), a **Pair a new device** button, an **Unpair** button, and 18 per-device feature permission toggles grouped into three sections.
+Lists your paired phones (with a device selector pill bar at the top when more than one phone is paired), a **Pair a new device** button, an **Unpair** button, and 19 per-device feature permission toggles grouped into three sections.
 
 <p align="center">
   <img src="images/settings-devices.png" alt="Per-device feature permission toggles in Settings › Devices on Windows" width="760">
@@ -83,6 +83,7 @@ Lists your paired phones (with a device selector pill bar at the top when more t
 | **Screen mirroring** (`mirroring`) | **On** | Mirroring the phone's screen and opening phone apps in windows (`app window`) on this PC. |
 | **Share PC screen to phone** (`pc_mirror`) | **Off** | Allowing this phone to view this PC's screen (reverse mirroring) without showing a one-time consent dialog on every session. |
 | **Webcam** (`webcam`) | **On** | Using this phone's camera as a webcam and triggering Continuity Camera photo/document captures. |
+| **Phone as microphone** (`mic`) | **On** | Using this phone's microphone on this PC. Starting it from the PC still needs a tap on the phone. |
 | **Lock, sleep & wake PC** (`pc_actions`) | **On** | Allowing this phone to lock or sleep this PC and receive its MAC addresses for Wake-on-LAN. |
 | **Remote mouse, keyboard & Deck** (`remote_input`) | **Off** | Allowing this phone to move the PC cursor, type keystrokes, use presentation controls, and press standard `Deck` tiles. |
 | **Run Deck shell commands** (`commands`) | **Off** | Allowing this phone to trigger `Deck` tiles that execute custom shell commands on this PC. Only enable for a phone you trust. |

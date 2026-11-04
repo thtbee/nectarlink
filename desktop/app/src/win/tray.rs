@@ -43,8 +43,8 @@ use windows::{
                 IsWindow, IsWindowVisible, KillTimer, MF_GRAYED, MF_SEPARATOR, MF_STRING, PostMessageW,
                 RegisterClassExW, RegisterWindowMessageW, SM_CXSMICON, SW_RESTORE, SendMessageW,
                 SetForegroundWindow, SetTimer, ShowWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
-                TrackPopupMenuEx, WINDOW_EX_STYLE, WM_APP, WM_CONTEXTMENU, WM_HOTKEY, WM_NULL,
-                WM_POWERBROADCAST, WM_SETTINGCHANGE, WM_TIMER, WNDCLASSEXW, WS_EX_NOACTIVATE,
+                TrackPopupMenuEx, WINDOW_EX_STYLE, WM_APP, WM_CONTEXTMENU, WM_HOTKEY, WM_LBUTTONDBLCLK,
+                WM_NULL, WM_POWERBROADCAST, WM_SETTINGCHANGE, WM_TIMER, WNDCLASSEXW, WS_EX_NOACTIVATE,
                 WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
             },
         },
@@ -688,7 +688,7 @@ unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lpar
             // anchor point in wParam.
             let event = (lparam.0 & 0xFFFF) as u32;
             match event {
-                NIN_SELECT | NIN_KEYSELECT => emit(TrayEvent::Open),
+                NIN_SELECT | NIN_KEYSELECT | WM_LBUTTONDBLCLK => emit(TrayEvent::Open),
                 WM_CONTEXTMENU => {
                     let x = (wparam.0 & 0xFFFF) as i16 as i32;
                     let y = ((wparam.0 >> 16) & 0xFFFF) as i16 as i32;

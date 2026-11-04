@@ -14,8 +14,8 @@ Please include:
 
 - what the issue is and its impact,
 - steps to reproduce, or a proof of concept,
-- the affected versions (desktop app, Android app, Windows and Android
-  versions).
+- the affected versions (desktop app, Android app, and your Windows, Linux
+  and Android versions).
 
 ## What to expect
 

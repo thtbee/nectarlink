@@ -39,7 +39,7 @@ Separating task-oriented workflows from implementation internals keeps everyday 
 
 ### Configuration, Privacy, and Support
 
-- [Settings Reference](settings.md): Every setting in the Windows app (all 9 categories) and the Android app explained one by one.
+- [Settings Reference](settings.md): Every setting in the PC app (all 9 categories) and the Android app explained one by one.
 - [Privacy and Security](privacy-and-security.md): Plain-language overview of Ed25519 device identity keys, cryptographic pairing, QUIC TLS 1.3 end-to-end encryption, local-first networking, automatic update checks, opt-in **Connect over mobile data**, per-device permissions, consent prompts, and local data retention.
 - [Troubleshooting](troubleshooting.md): Running the `Connection Doctor`, resolving firewall, public network, VPN, and Wi-Fi AP isolation issues, configuring per-OEM Android battery settings, and fixing `Elevated` Wireless Debugging, USB transport, audio, and virtual camera issues.
 - [Frequently Asked Questions (FAQ)](faq.md): Direct answers to common questions about accounts, networks, battery usage, multiple devices, and platform support.
@@ -47,7 +47,7 @@ Separating task-oriented workflows from implementation internals keeps everyday 
 
 ## Glossary
 
-NectarLink uses consistent terms across the Windows app, the Android app, and this guide:
+NectarLink uses consistent terms across the PC app, the Android app, and this guide:
 
 | Term | Definition |
 | :--- | :--- |
@@ -64,6 +64,6 @@ NectarLink uses consistent terms across the Windows app, the Android app, and th
 | `island` (**Nectar Island**) | An optional compact pill at the top center of your PC monitor that displays live phone calls, file transfer progress, media playback, timers, and alerts. |
 | `Waiting to send` | A persistent queue panel on Home (both PC and Android) that holds files, clipboard items, links, and task alerts sent while the target device was offline, delivering them automatically in order as soon as the device reconnects. |
 | `Command Palette` | A keyboard-driven launcher on your PC (`Ctrl+Alt+Space`) for running any NectarLink action, sending text or files, starting mirroring, or jumping to settings from any application. |
-| `Connection Doctor` | A diagnostic tool in the Windows app (**Settings › Connection & About › Connection Doctor**) and Android app that checks firewall rules, network profile type, VPN routing, Wi-Fi AP isolation, and Android background battery restrictions. |
+| `Connection Doctor` | A diagnostic tool in the PC app (**Settings › Connection & About › Connection Doctor**) and Android app that checks firewall rules, network profile type, VPN routing, Wi-Fi AP isolation, and Android background battery restrictions. |
 | **Connect over mobile data** | An opt-in setting (**Settings › Connection & About › Connect over mobile data** on the PC and **Settings › Devices › Connect over mobile data** on Android, off by default on both) that allows paired devices to stay connected across different networks (such as LTE/5G and home broadband) using end-to-end encrypted relay packets when a direct LAN path is unavailable. |
 | `Handoff` | Sending an active web link, map location (`geo:` URI), video link with its current playback timestamp, or document to a paired device so it opens immediately in the default application on the receiving side. |
