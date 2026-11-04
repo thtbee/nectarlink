@@ -2542,6 +2542,551 @@
         <source>Close</source>
         <translation>Kapat</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone</source>
+        <translation>Telefon</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Notifications</source>
+        <translation>Bildirimler</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Mirror phone notifications to your PC with inline replies, action buttons, and dismissal sync.</source>
+        <translation>Telefon bildirimlerini yanıtlama, işlem düğmeleri ve birlikte kapatma ile bilgisayara yansıtır.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Notifications</source>
+        <translation>Ana sayfa › Bildirimler</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Notification Access on phone</source>
+        <translation>Telefonda bildirim erişimi</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Read and send SMS and MMS threads, or reply to notification-backed chat conversations.</source>
+        <translation>SMS ve MMS konuşmalarını okuyun ve gönderin ya da bildirimden gelen sohbetleri yanıtlayın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Messages</source>
+        <translation>Sol menü › Mesajlar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>SMS and Contacts permissions on phone</source>
+        <translation>Telefonda SMS ve Kişiler izinleri</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Calls</source>
+        <translation>Aramalar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Answer or decline incoming calls, browse call history and contacts, and dial from your PC.</source>
+        <translation>Gelen aramaları yanıtlayın veya reddedin, arama geçmişine ve kişilere göz atın, bilgisayardan arayın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Calls</source>
+        <translation>Sol menü › Aramalar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone, Call Log, and Contacts permissions on phone</source>
+        <translation>Telefonda Telefon, Arama kaydı ve Kişiler izinleri</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Now playing</source>
+        <translation>Şimdi çalıyor</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>See active track artwork and control playback between your phone and PC.</source>
+        <translation>Çalan parçanın kapağını görün, telefon ve bilgisayar arasında oynatmayı kontrol edin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Media player</source>
+        <translation>Ana sayfa › Medya oynatıcı</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Clipboard</source>
+        <translation>Pano</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Sync copied text, HTML, images, and files with a 50-item local clipboard history.</source>
+        <translation>Kopyalanan metin, HTML, görsel ve dosyaları 50 öğelik yerel pano geçmişiyle eşitleyin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Send clipboard</source>
+        <translation>Ana sayfa › Panoyu gönder</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Clipboard toggle on Home; Elevated or quick tile for background phone copy</source>
+        <translation>Ana sayfada Pano anahtarı; arka planda kopyalama için Elevated veya hızlı ayar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send files</source>
+        <translation>Dosya gönder</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send files, folders, and links to your phone over your local Wi-Fi network.</source>
+        <translation>Dosya, klasör ve bağlantıları yerel Wi-Fi ağı üzerinden telefona gönderin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Send files</source>
+        <translation>Ana sayfa › Dosya gönder</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send files toggle on Home</source>
+        <translation>Ana sayfada Dosya gönder anahtarı</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send queue</source>
+        <translation>Gönderim kuyruğu</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Queue files and links while your phone is away so they send automatically on reconnect.</source>
+        <translation>Telefon uzaktayken dosya ve bağlantıları sıraya alın; yeniden bağlanınca otomatik gönderilir.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Send queue</source>
+        <translation>Ana sayfa › Gönderim kuyruğu</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Always available on PC</source>
+        <translation>Bilgisayarda her zaman kullanılabilir</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Photos</source>
+        <translation>Fotoğraflar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Browse recent phone photos and screenshots on demand, copy to clipboard, or drag into apps.</source>
+        <translation>Telefondaki son fotoğraf ve ekran görüntülerine göz atın, panoya kopyalayın veya uygulamalara sürükleyin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Photos</source>
+        <translation>Sol menü › Fotoğraflar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Photos and Media permission on phone</source>
+        <translation>Telefonda Fotoğraf ve Medya izni</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Screen mirroring</source>
+        <translation>Ekran yansıtma</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Stream your phone display in a low-latency desktop window with mouse and keyboard input.</source>
+        <translation>Telefon ekranını düşük gecikmeyle bir pencerede, fare ve klavye ile kullanın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Mirror screen</source>
+        <translation>Ana sayfa › Ekranı yansıt</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>MediaProjection approval on phone; Assist or Elevated for touch input</source>
+        <translation>Telefonda ekran paylaşımı onayı; dokunma girişi için Assist veya Elevated</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>App streams</source>
+        <translation>Uygulama pencereleri</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Open individual Android apps in their own virtual display windows on your PC.</source>
+        <translation>Android uygulamalarını bilgisayarda kendi pencerelerinde açın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Apps</source>
+        <translation>Uygulamalar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Elevated (Wireless debugging) enabled on phone</source>
+        <translation>Telefonda Elevated (Kablosuz hata ayıklama) açık</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Reverse PC screen mirroring</source>
+        <translation>Bilgisayar ekranını telefona yansıtma</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Stream this PC monitor to your phone and control the cursor or laser pointer from your phone.</source>
+        <translation>Bu bilgisayarın ekranını telefona aktarın, imleci veya lazer işaretçiyi telefondan kontrol edin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone app › Home, and Settings › Devices</source>
+        <translation>Telefon uygulaması › Ana sayfa ve Ayarlar › Cihazlar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Opt-in Screen mirroring toggle on Home</source>
+        <translation>Ana sayfada isteğe bağlı Ekran yansıtma anahtarı</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone as webcam</source>
+        <translation>Web kamerası olarak telefon</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Use your phone camera as the NectarLink Virtual Camera in Zoom, Teams, Meet, and OBS.</source>
+        <translation>Telefon kamerasını Zoom, Teams, Meet ve OBS&apos;de NectarLink Sanal Kamera olarak kullanın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Phone as webcam</source>
+        <translation>Ana sayfa › Web kamerası olarak telefon</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Camera permission on phone and Virtual Camera registered on PC</source>
+        <translation>Telefonda Kamera izni ve bilgisayarda kayıtlı Sanal Kamera</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Continuity camera</source>
+        <translation>Süreklilik Kamerası</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Capture a photo or scan a document with your phone and paste it into the active PC window.</source>
+        <translation>Telefonla fotoğraf çekin veya belge tarayın ve bilgisayardaki etkin pencereye yapıştırın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Continuity Camera (Ctrl+Alt+C / Ctrl+Alt+D)</source>
+        <translation>Ana sayfa › Continuity Camera (Ctrl+Alt+C / Ctrl+Alt+D)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Camera permission on phone</source>
+        <translation>Telefonda Kamera izni</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone as speaker</source>
+        <translation>Hoparlör olarak telefon</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Stream PC system audio to your phone in real time.</source>
+        <translation>Bilgisayarın sesini gerçek zamanlı olarak telefona aktarın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Phone as speaker</source>
+        <translation>Ana sayfa › Hoparlör olarak telefon</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone as speaker enabled in Settings</source>
+        <translation>Ayarlarda Hoparlör olarak telefon açık</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Voice recorder</source>
+        <translation>Ses kaydedici</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Record voice notes on your phone and save them automatically to your PC in M4A, MP3, WAV, or FLAC.</source>
+        <translation>Telefonda ses notu kaydedin ve otomatik olarak bilgisayara M4A, MP3, WAV veya FLAC biçiminde kaydedin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › Files &amp; Sync › Voice recordings</source>
+        <translation>Ayarlar › Dosyalar ve Eşitleme › Ses kayıtları</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Microphone permission on phone</source>
+        <translation>Telefonda Mikrofon izni</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Deck</source>
+        <translation>Deck</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Control Now playing media, switch PC audio outputs, and customize shortcut tiles for your phone.</source>
+        <translation>Çalan medyayı kontrol edin, bilgisayarın ses çıkışlarını değiştirin, telefon için kısayol kutularını özelleştirin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Deck</source>
+        <translation>Sol menü › Deck</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Paired phone</source>
+        <translation>Eşlenmiş telefon</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Desk mode</source>
+        <translation>Masa modu</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Turn your phone or PC window into a glanceable desk display with clock, media, and live status.</source>
+        <translation>Telefonu veya bilgisayar penceresini saat, medya ve canlı durum gösteren bir masa ekranına dönüştürün.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Deck › Desk mode</source>
+        <translation>Sol menü › Deck › Masa modu</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Remote input</source>
+        <translation>Uzaktan giriş</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Use your phone as a wireless trackpad, keyboard, media remote, and presentation pointer.</source>
+        <translation>Telefonu kablosuz dokunmatik yüzey, klavye, medya kumandası ve sunum işaretçisi olarak kullanın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone app › Home › Control PC</source>
+        <translation>Telefon uygulaması › Ana sayfa › Bilgisayarı kontrol et</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Opt-in Remote input toggle on Home</source>
+        <translation>Ana sayfada isteğe bağlı Uzaktan giriş anahtarı</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Type on phone</source>
+        <translation>Telefona yaz</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send live keystrokes and pasted text from your PC keyboard to your phone without screen mirroring.</source>
+        <translation>Ekran yansıtmadan bilgisayar klavyesindeki tuş vuruşlarını ve yapıştırılan metni telefona gönderin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Type on phone</source>
+        <translation>Ana sayfa › Telefonda yaz</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Assist (Accessibility) or Elevated (Wireless debugging) on phone</source>
+        <translation>Telefonda Assist (Erişilebilirlik) veya Elevated (Kablosuz hata ayıklama)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone controls</source>
+        <translation>Telefon kontrolleri</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Toggle Do Not Disturb, ringer mode, flashlight, volume, brightness, Wi-Fi, Bluetooth, and Find my phone.</source>
+        <translation>Rahatsız Etmeyin, zil modu, el feneri, ses, parlaklık, Wi-Fi, Bluetooth ve Telefonumu bul.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Phone controls</source>
+        <translation>Ana sayfa › Telefon kontrolleri</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Elevated (Wireless debugging) required only for Wi-Fi and Bluetooth toggles</source>
+        <translation>Elevated (Kablosuz hata ayıklama) yalnızca Wi-Fi ve Bluetooth anahtarları için gerekir</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Drop shelf</source>
+        <translation>Bırakma rafı</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Slide-out top screen-edge shelf with your latest phone photo, clipboard items, and file drop zone.</source>
+        <translation>Ekranın üst kenarından açılan raf: son telefon fotoğrafı, pano öğeleri ve dosya bırakma alanı.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Top screen edge or Ctrl+Alt+S</source>
+        <translation>Ekranın üst kenarı veya Ctrl+Alt+S</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Nectar Island</source>
+        <translation>Nectar Island</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Compact floating pill at the top center of your monitor for calls, transfers, media, and alerts.</source>
+        <translation>Ekranın üst ortasında aramalar, aktarımlar, medya ve uyarılar için küçük kayan bir hap.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › General › Nectar Island</source>
+        <translation>Ayarlar › Genel › Nectar Island</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Nectar Island enabled in Settings</source>
+        <translation>Ayarlarda Nectar Island açık</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Timeline</source>
+        <translation>Zaman Çizelgesi</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Chronological history of shared files, photos, clipboard items, calls, and voice recordings.</source>
+        <translation>Paylaşılan dosya, fotoğraf, pano öğesi, arama ve ses kayıtlarının kronolojik geçmişi.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Top bar › Timeline</source>
+        <translation>Üst çubuk › Zaman çizelgesi</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Command palette</source>
+        <translation>Komut paleti</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Keyboard-first search over actions, contacts, message threads, mirrorable apps, and quick toggles.</source>
+        <translation>Eylemler, kişiler, mesaj konuşmaları, yansıtılabilir uygulamalar ve hızlı anahtarlarda klavye ile arama.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Top bar › Commands, or Ctrl+K (Ctrl+Alt+Space anywhere)</source>
+        <translation>Üst çubuk › Komutlar veya Ctrl+K (her yerde Ctrl+Alt+Boşluk)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Share PC folders</source>
+        <translation>Bilgisayar klasörlerini paylaş</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Share selected PC folders with your phone or sync folders in one-way or two-way mode.</source>
+        <translation>Seçili bilgisayar klasörlerini telefonla paylaşın veya tek ya da çift yönlü eşitleyin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › Files &amp; Sync › Synced folders</source>
+        <translation>Ayarlar › Dosyalar ve Eşitleme › Eşitlenen klasörler</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Opt-in Share PC folders toggle on Home</source>
+        <translation>Ana sayfada isteğe bağlı Bilgisayar klasörlerini paylaş anahtarı</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Wake PC</source>
+        <translation>Bilgisayarı uyandır</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Let your paired phone wake this PC from sleep over your local network using Wake-on-LAN.</source>
+        <translation>Eşlenmiş telefon bu bilgisayarı yerel ağ üzerinden Wake-on-LAN ile uykudan uyandırsın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › Connection &amp; About › Wake from your phone</source>
+        <translation>Ayarlar › Bağlantı ve Hakkında › Telefondan uyandır</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Network adapter with Wake-on-LAN enabled in Windows</source>
+        <translation>Windows&apos;ta Wake-on-LAN açık ağ bağdaştırıcısı</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Connection Doctor</source>
+        <translation>Bağlantı Doktoru</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Diagnose and fix Windows Firewall rules, network profile type, and local discovery issues.</source>
+        <translation>Windows Güvenlik Duvarı kurallarını, ağ profili türünü ve yerel keşif sorunlarını bulup düzeltin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › Connection &amp; About › Connection Doctor</source>
+        <translation>Ayarlar › Bağlantı ve Hakkında › Bağlantı Doktoru</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Read the full guide</source>
+        <translation>Tam kılavuzu oku</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Open the 7-step setup walkthrough</source>
+        <translation>7 adımlı kurulumu aç</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Search features guide</source>
+        <translation>Özellik kılavuzunda ara</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Filter by %1</source>
+        <translation>%1 ile filtrele</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Show me %1</source>
+        <translation>%1 göster</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Learn more about %1</source>
+        <translation>%1 hakkında daha fazla bilgi</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Read %1</source>
+        <translation>%1 oku</translation>
+    </message>
 </context>
 <context>
     <name>FolderSync</name>
@@ -9446,6 +9991,296 @@ Neler gerekir
         <location filename="../qml/pages/WalkthroughPage.qml" line="1752"/>
         <source>Open features guide</source>
         <translation>Özellik rehberini aç</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Messages and Calls</source>
+        <translation>Mesajlar ve Aramalar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Photos</source>
+        <translation>Fotoğraflar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Find my phone</source>
+        <translation>Telefonumu bul</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Welcome to NectarLink</source>
+        <translation>NectarLink&apos;e hoş geldiniz</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Your data stays on your devices</source>
+        <translation>Verileriniz cihazlarınızda kalır</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Install NectarLink on your phone</source>
+        <translation>NectarLink&apos;i telefonunuza yükleyin</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Pair your phone and PC</source>
+        <translation>Telefonu ve bilgisayarı eşleyin</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Choose what to share</source>
+        <translation>Neyin paylaşılacağını seçin</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Optional setup</source>
+        <translation>İsteğe bağlı kurulum</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>You are set</source>
+        <translation>Her şey hazır</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Your Android phone and your PC, working together on your local network.</source>
+        <translation>Android telefonunuz ve bilgisayarınız yerel ağınızda birlikte çalışır.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>No accounts, no cloud servers, and no telemetry.</source>
+        <translation>Hesap yok, bulut sunucusu yok, telemetri yok.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Get the Android app from GitHub Releases or install the APK over USB.</source>
+        <translation>Android uygulamasını GitHub Releases&apos;tan alın veya APK&apos;yı USB ile yükleyin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Scan the QR code from the NectarLink Android app, or pick your phone from nearby devices.</source>
+        <translation>QR kodunu NectarLink Android uygulamasından tarayın veya yakındaki cihazlardan telefonunuzu seçin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Safe features are on by default. Higher-trust access stays off until you turn it on.</source>
+        <translation>Güvenli özellikler varsayılan olarak açıktır. Daha fazla güven gerektiren erişim siz açana kadar kapalı kalır.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Three quick checks so notifications and discovery work reliably on your PC.</source>
+        <translation>Bildirimlerin ve keşfin bilgisayarda güvenilir çalışması için üç kısa kontrol.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Reopen it from Settings or the Command Palette.</source>
+        <translation>Ayarlar&apos;dan veya Komut paletinden yeniden açabilirsiniz.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Your phone</source>
+        <translation>Telefonunuz</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Checking firewall and local network...</source>
+        <translation>Güvenlik duvarı ve yerel ağ denetleniyor...</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Run a quick check to verify your firewall and local discovery.</source>
+        <translation>Güvenlik duvarınızı ve yerel keşfi doğrulamak için kısa bir denetim çalıştırın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Run a quick check to verify Windows Firewall and local discovery.</source>
+        <translation>Windows Güvenlik Duvarı&apos;nı ve yerel keşfi doğrulamak için kısa bir denetim çalıştırın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>All network and firewall checks passed.</source>
+        <translation>Tüm ağ ve güvenlik duvarı denetimleri geçti.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Step %1 of %2</source>
+        <translation>Adım %1 / %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Go to step %1: %2</source>
+        <translation>%1. adıma git: %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Skip setup walkthrough</source>
+        <translation>Kurulumu atla</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Reply to notifications, read SMS threads, and answer calls from your PC.</source>
+        <translation>Bilgisayardan bildirimleri yanıtlayın, SMS konuşmalarını okuyun ve aramaları cevaplayın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy text or images once, or drop files and folders at full Wi-Fi speed.</source>
+        <translation>Metin veya görselleri bir kez kopyalayın ya da dosya ve klasörleri tam Wi-Fi hızında bırakın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Stream your phone screen, use your phone as a webcam, or route PC audio.</source>
+        <translation>Telefon ekranını aktarın, telefonu web kamerası olarak kullanın veya bilgisayar sesini yönlendirin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Everything runs directly between your devices with zero cloud accounts.</source>
+        <translation>Her şey bulut hesabı olmadan doğrudan cihazlarınız arasında çalışır.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>No phone paired yet. You can pair in Step 4 or skip setup anytime.</source>
+        <translation>Henüz eşlenmiş telefon yok. 4. adımda eşleyebilir veya kurulumu istediğiniz zaman atlayabilirsiniz.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>All traffic between your phone and PC uses TLS 1.3 with device certificates pinned during pairing.</source>
+        <translation>Telefon ile bilgisayar arasındaki tüm trafik, eşleme sırasında sabitlenen cihaz sertifikalarıyla TLS 1.3 kullanır.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Device keys are protected by Windows DPAPI and the Android Keystore.</source>
+        <translation>Cihaz anahtarları Windows DPAPI ve Android Keystore ile korunur.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Pairing and transfers stay on your local network unless you turn on &quot;Connect over mobile data&quot;, and automatic update checks can be turned off in Settings.</source>
+        <translation>Eşleme ve aktarımlar, &quot;Mobil veri üzerinden bağlan&quot; seçeneğini açmadığınız sürece yerel ağınızda kalır; otomatik güncelleme denetimleri Ayarlar&apos;dan kapatılabilir.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Open Android release page in browser</source>
+        <translation>Android sürüm sayfasını tarayıcıda aç</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copied link</source>
+        <translation>Bağlantı kopyalandı</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy link</source>
+        <translation>Bağlantıyı kopyala</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy Android release URL</source>
+        <translation>Android sürüm adresini kopyala</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copied</source>
+        <translation>Kopyalandı</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy command</source>
+        <translation>Komutu kopyala</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy ADB install command</source>
+        <translation>ADB yükleme komutunu kopyala</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Enabled in desktop notification settings.</source>
+        <translation>Masaüstü bildirim ayarlarında açık.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Enabled in Windows Settings.</source>
+        <translation>Windows Ayarları&apos;nda açık.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Notifications are muted or Do Not Disturb is active.</source>
+        <translation>Bildirimler sessize alınmış veya Rahatsız Etmeyin açık.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Notifications are off for NectarLink in Windows Settings.</source>
+        <translation>Windows Ayarları&apos;nda NectarLink bildirimleri kapalı.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Open Windows notification settings</source>
+        <translation>Windows bildirim ayarlarını aç</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Recheck notification status</source>
+        <translation>Bildirim durumunu yeniden denetle</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Connection Doctor</source>
+        <translation>Bağlantı Doktoru</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Run firewall and network check</source>
+        <translation>Güvenlik duvarı ve ağ denetimini çalıştır</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Pair a phone anytime from Home</source>
+        <translation>Ana sayfadan istediğiniz zaman telefon eşleyin</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Your phone is linked and ready on your local network.</source>
+        <translation>Telefonunuz bağlandı ve yerel ağınızda hazır.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Open the NectarLink Android app whenever you are ready to scan the QR code.</source>
+        <translation>QR kodunu taramaya hazır olduğunuzda NectarLink Android uygulamasını açın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Press Ctrl+K from anywhere in the app to jump to features, send files, or run actions.</source>
+        <translation>Özelliklere gitmek, dosya göndermek veya eylem çalıştırmak için uygulamanın her yerinde Ctrl+K&apos;ye basın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Browse every feature in NectarLink, see what permissions it needs, and jump straight to it.</source>
+        <translation>NectarLink&apos;teki tüm özelliklere göz atın, gereken izinleri görün ve doğrudan özelliğe gidin.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Back to previous step</source>
+        <translation>Önceki adıma dön</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Finish setup and open Features guide</source>
+        <translation>Kurulumu bitir ve Özellik kılavuzunu aç</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Get started</source>
+        <translation>Başlayın</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Finish walkthrough</source>
+        <translation>Kurulumu bitir</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Next step</source>
+        <translation>Sonraki adım</translation>
     </message>
 </context>
 <context>

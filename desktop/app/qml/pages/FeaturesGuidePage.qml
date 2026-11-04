@@ -58,7 +58,7 @@ Item {
         let targetId = guide.deviceId.length > 0 ? guide.deviceId : (DeviceList.deviceIdAt(0) || "")
         if (guide.deviceId.length === 0 && targetId.length > 0) {
             guide.deviceId = targetId
-            guide.deviceName = DeviceList.deviceNameAt(0) || "Phone"
+            guide.deviceName = DeviceList.deviceNameAt(0) || qsTr("Phone")
         }
         if (targetId !== "") {
             let st = AppController.featureState(targetId, "files")
@@ -107,368 +107,368 @@ Item {
     readonly property var allFeatures: [
         {
             id: "notifications",
-            name: "Notifications",
+            name: qsTr("Notifications"),
             icon: Icons.bell,
             area: "notifications_calls",
             capKey: "notifications",
             toggleKey: "notifications",
-            summary: "Mirror phone notifications to your PC with inline replies, action buttons, and dismissal sync.",
-            whereLabel: "Home › Notifications",
-            needsLabel: "Notification Access on phone",
+            summary: qsTr("Mirror phone notifications to your PC with inline replies, action buttons, and dismissal sync."),
+            whereLabel: qsTr("Home › Notifications"),
+            needsLabel: qsTr("Notification Access on phone"),
             targetId: "home:notifications",
             docKey: "notifications"
         },
         {
             id: "messages",
-            name: "Messages",
+            name: qsTr("Messages"),
             icon: Icons.messages,
             area: "messages",
             capKey: "sms",
             toggleKey: "sms",
-            summary: "Read and send SMS and MMS threads, or reply to notification-backed chat conversations.",
-            whereLabel: "Left rail › Messages",
-            needsLabel: "SMS and Contacts permissions on phone",
+            summary: qsTr("Read and send SMS and MMS threads, or reply to notification-backed chat conversations."),
+            whereLabel: qsTr("Left rail › Messages"),
+            needsLabel: qsTr("SMS and Contacts permissions on phone"),
             targetId: "messages:main",
             docKey: "messages"
         },
         {
             id: "calls",
-            name: "Calls",
+            name: qsTr("Calls"),
             icon: Icons.call,
             area: "notifications_calls",
             capKey: "calls",
             toggleKey: "calls",
-            summary: "Answer or decline incoming calls, browse call history and contacts, and dial from your PC.",
-            whereLabel: "Left rail › Calls",
-            needsLabel: "Phone, Call Log, and Contacts permissions on phone",
+            summary: qsTr("Answer or decline incoming calls, browse call history and contacts, and dial from your PC."),
+            whereLabel: qsTr("Left rail › Calls"),
+            needsLabel: qsTr("Phone, Call Log, and Contacts permissions on phone"),
             targetId: "calls:main",
             docKey: "calls"
         },
         {
             id: "now_playing",
-            name: "Now playing",
+            name: qsTr("Now playing"),
             icon: Icons.music,
             area: "notifications_calls",
             capKey: "media_view",
             toggleKey: "media",
-            summary: "See active track artwork and control playback between your phone and PC.",
-            whereLabel: "Home › Media player",
-            needsLabel: "Notification Access on phone",
+            summary: qsTr("See active track artwork and control playback between your phone and PC."),
+            whereLabel: qsTr("Home › Media player"),
+            needsLabel: qsTr("Notification Access on phone"),
             targetId: "deck:main",
             docKey: "deck"
         },
         {
             id: "clipboard",
-            name: "Clipboard",
+            name: qsTr("Clipboard"),
             icon: Icons.clipboard,
             area: "clipboard_files",
             capKey: "clipboard_send",
             toggleKey: "clipboard",
-            summary: "Sync copied text, HTML, images, and files with a 50-item local clipboard history.",
-            whereLabel: "Home › Send clipboard",
-            needsLabel: "Clipboard toggle on Home; Elevated or quick tile for background phone copy",
+            summary: qsTr("Sync copied text, HTML, images, and files with a 50-item local clipboard history."),
+            whereLabel: qsTr("Home › Send clipboard"),
+            needsLabel: qsTr("Clipboard toggle on Home; Elevated or quick tile for background phone copy"),
             targetId: "home:clipboard",
             docKey: "clipboard"
         },
         {
             id: "transfers",
-            name: "Send files",
+            name: qsTr("Send files"),
             icon: Icons.send,
             area: "clipboard_files",
             capKey: "files",
             toggleKey: "files",
-            summary: "Send files, folders, and links to your phone over your local Wi-Fi network.",
-            whereLabel: "Home › Send files",
-            needsLabel: "Send files toggle on Home",
+            summary: qsTr("Send files, folders, and links to your phone over your local Wi-Fi network."),
+            whereLabel: qsTr("Home › Send files"),
+            needsLabel: qsTr("Send files toggle on Home"),
             targetId: "home:transfers",
             docKey: "transfers"
         },
         {
             id: "send_queue",
-            name: "Send queue",
+            name: qsTr("Send queue"),
             icon: Icons.send,
             area: "clipboard_files",
             capKey: "",
             toggleKey: "",
             pcLocal: true,
             localAlways: true,
-            summary: "Queue files and links while your phone is away so they send automatically on reconnect.",
-            whereLabel: "Home › Send queue",
-            needsLabel: "Always available on PC",
+            summary: qsTr("Queue files and links while your phone is away so they send automatically on reconnect."),
+            whereLabel: qsTr("Home › Send queue"),
+            needsLabel: qsTr("Always available on PC"),
             targetId: "home:transfers",
             docKey: "transfers"
         },
         {
             id: "photos",
-            name: "Photos",
+            name: qsTr("Photos"),
             icon: Icons.photo,
             area: "clipboard_files",
             capKey: "photos",
             toggleKey: "files",
-            summary: "Browse recent phone photos and screenshots on demand, copy to clipboard, or drag into apps.",
-            whereLabel: "Left rail › Photos",
-            needsLabel: "Photos and Media permission on phone",
+            summary: qsTr("Browse recent phone photos and screenshots on demand, copy to clipboard, or drag into apps."),
+            whereLabel: qsTr("Left rail › Photos"),
+            needsLabel: qsTr("Photos and Media permission on phone"),
             targetId: "photos:main",
             docKey: "photos"
         },
         {
             id: "mirroring",
-            name: "Screen mirroring",
+            name: qsTr("Screen mirroring"),
             icon: Icons.mirror,
             area: "mirroring_apps",
             capKey: "mirror_view",
             toggleKey: "pc_mirror",
-            summary: "Stream your phone display in a low-latency desktop window with mouse and keyboard input.",
-            whereLabel: "Home › Mirror screen",
-            needsLabel: "MediaProjection approval on phone; Assist or Elevated for touch input",
+            summary: qsTr("Stream your phone display in a low-latency desktop window with mouse and keyboard input."),
+            whereLabel: qsTr("Home › Mirror screen"),
+            needsLabel: qsTr("MediaProjection approval on phone; Assist or Elevated for touch input"),
             targetId: "home:mirror",
             docKey: "mirroring"
         },
         {
             id: "app_streams",
-            name: "App streams",
+            name: qsTr("App streams"),
             icon: Icons.apps,
             area: "mirroring_apps",
             capKey: "mirror_view",
             toggleKey: "",
-            summary: "Open individual Android apps in their own virtual display windows on your PC.",
-            whereLabel: "Apps",
-            needsLabel: "Elevated (Wireless debugging) enabled on phone",
+            summary: qsTr("Open individual Android apps in their own virtual display windows on your PC."),
+            whereLabel: qsTr("Apps"),
+            needsLabel: qsTr("Elevated (Wireless debugging) enabled on phone"),
             targetId: "apps:",
             docKey: "mirroring"
         },
         {
             id: "pc_mirror",
-            name: "Reverse PC screen mirroring",
+            name: qsTr("Reverse PC screen mirroring"),
             icon: Icons.desktop,
             area: "mirroring_apps",
             capKey: "pc_mirror",
             toggleKey: "pc_mirror",
-            summary: "Stream this PC monitor to your phone and control the cursor or laser pointer from your phone.",
-            whereLabel: "Phone app › Home, and Settings › Devices",
-            needsLabel: "Opt-in Screen mirroring toggle on Home",
+            summary: qsTr("Stream this PC monitor to your phone and control the cursor or laser pointer from your phone."),
+            whereLabel: qsTr("Phone app › Home, and Settings › Devices"),
+            needsLabel: qsTr("Opt-in Screen mirroring toggle on Home"),
             targetId: "home:pc_mirror",
             docKey: "pc-mirror"
         },
         {
             id: "webcam",
-            name: "Phone as webcam",
+            name: qsTr("Phone as webcam"),
             icon: Icons.video,
             area: "camera_audio",
             capKey: "webcam",
             toggleKey: "",
-            summary: "Use your phone camera as the NectarLink Virtual Camera in Zoom, Teams, Meet, and OBS.",
-            whereLabel: "Home › Phone as webcam",
-            needsLabel: "Camera permission on phone and Virtual Camera registered on PC",
+            summary: qsTr("Use your phone camera as the NectarLink Virtual Camera in Zoom, Teams, Meet, and OBS."),
+            whereLabel: qsTr("Home › Phone as webcam"),
+            needsLabel: qsTr("Camera permission on phone and Virtual Camera registered on PC"),
             targetId: "settings:camera_audio:webcam",
             docKey: "webcam"
         },
         {
             id: "continuity_camera",
-            name: "Continuity camera",
+            name: qsTr("Continuity camera"),
             icon: Icons.camera,
             area: "camera_audio",
             capKey: "webcam",
             toggleKey: "",
-            summary: "Capture a photo or scan a document with your phone and paste it into the active PC window.",
-            whereLabel: "Home › Continuity Camera (Ctrl+Alt+C / Ctrl+Alt+D)",
-            needsLabel: "Camera permission on phone",
+            summary: qsTr("Capture a photo or scan a document with your phone and paste it into the active PC window."),
+            whereLabel: qsTr("Home › Continuity Camera (Ctrl+Alt+C / Ctrl+Alt+D)"),
+            needsLabel: qsTr("Camera permission on phone"),
             targetId: "home:continuity",
             docKey: "continuity-camera"
         },
         {
             id: "speaker",
-            name: "Phone as speaker",
+            name: qsTr("Phone as speaker"),
             icon: Icons.speaker,
             area: "camera_audio",
             capKey: "",
             toggleKey: "",
             prefKey: "streamPcAudioToPhone",
-            summary: "Stream PC system audio to your phone in real time.",
-            whereLabel: "Home › Phone as speaker",
-            needsLabel: "Phone as speaker enabled in Settings",
+            summary: qsTr("Stream PC system audio to your phone in real time."),
+            whereLabel: qsTr("Home › Phone as speaker"),
+            needsLabel: qsTr("Phone as speaker enabled in Settings"),
             targetId: "settings:camera_audio:speaker",
             docKey: "speaker"
         },
         {
             id: "recordings",
-            name: "Voice recorder",
+            name: qsTr("Voice recorder"),
             icon: Icons.mic,
             area: "camera_audio",
             capKey: "files",
             toggleKey: "files",
-            summary: "Record voice notes on your phone and save them automatically to your PC in M4A, MP3, WAV, or FLAC.",
-            whereLabel: "Settings › Files & Sync › Voice recordings",
-            needsLabel: "Microphone permission on phone",
+            summary: qsTr("Record voice notes on your phone and save them automatically to your PC in M4A, MP3, WAV, or FLAC."),
+            whereLabel: qsTr("Settings › Files & Sync › Voice recordings"),
+            needsLabel: qsTr("Microphone permission on phone"),
             targetId: "settings:files_sync:recordings",
             docKey: "recordings"
         },
         {
             id: "deck",
-            name: "Deck",
+            name: qsTr("Deck"),
             icon: Icons.deck,
             area: "camera_audio",
             capKey: "media_view",
             toggleKey: "media",
-            summary: "Control Now playing media, switch PC audio outputs, and customize shortcut tiles for your phone.",
-            whereLabel: "Left rail › Deck",
-            needsLabel: "Paired phone",
+            summary: qsTr("Control Now playing media, switch PC audio outputs, and customize shortcut tiles for your phone."),
+            whereLabel: qsTr("Left rail › Deck"),
+            needsLabel: qsTr("Paired phone"),
             targetId: "deck:main",
             docKey: "deck"
         },
         {
             id: "desk_mode",
-            name: "Desk mode",
+            name: qsTr("Desk mode"),
             icon: Icons.history,
             area: "surfaces",
             capKey: "media_view",
             toggleKey: "media",
-            summary: "Turn your phone or PC window into a glanceable desk display with clock, media, and live status.",
-            whereLabel: "Left rail › Deck › Desk mode",
-            needsLabel: "Paired phone",
+            summary: qsTr("Turn your phone or PC window into a glanceable desk display with clock, media, and live status."),
+            whereLabel: qsTr("Left rail › Deck › Desk mode"),
+            needsLabel: qsTr("Paired phone"),
             targetId: "deck:main",
             docKey: "deck"
         },
         {
             id: "remote_input",
-            name: "Remote input",
+            name: qsTr("Remote input"),
             icon: Icons.laptop,
             area: "input_control",
             capKey: "remote_input",
             toggleKey: "remote_input",
-            summary: "Use your phone as a wireless trackpad, keyboard, media remote, and presentation pointer.",
-            whereLabel: "Phone app › Home › Control PC",
-            needsLabel: "Opt-in Remote input toggle on Home",
+            summary: qsTr("Use your phone as a wireless trackpad, keyboard, media remote, and presentation pointer."),
+            whereLabel: qsTr("Phone app › Home › Control PC"),
+            needsLabel: qsTr("Opt-in Remote input toggle on Home"),
             targetId: "home:remote_input",
             docKey: "remote-input"
         },
         {
             id: "type_on_phone",
-            name: "Type on phone",
+            name: qsTr("Type on phone"),
             icon: Icons.keyboard,
             area: "input_control",
             capKey: "mirror_control",
             toggleKey: "",
-            summary: "Send live keystrokes and pasted text from your PC keyboard to your phone without screen mirroring.",
-            whereLabel: "Home › Type on phone",
-            needsLabel: "Assist (Accessibility) or Elevated (Wireless debugging) on phone",
+            summary: qsTr("Send live keystrokes and pasted text from your PC keyboard to your phone without screen mirroring."),
+            whereLabel: qsTr("Home › Type on phone"),
+            needsLabel: qsTr("Assist (Accessibility) or Elevated (Wireless debugging) on phone"),
             targetId: "home:type_on_phone",
             docKey: "type-on-phone"
         },
         {
             id: "quick_actions",
-            name: "Phone controls",
+            name: qsTr("Phone controls"),
             icon: Icons.flashlight,
             area: "input_control",
             capKey: "find_device",
             toggleKey: "",
-            summary: "Toggle Do Not Disturb, ringer mode, flashlight, volume, brightness, Wi-Fi, Bluetooth, and Find my phone.",
-            whereLabel: "Home › Phone controls",
-            needsLabel: "Elevated (Wireless debugging) required only for Wi-Fi and Bluetooth toggles",
+            summary: qsTr("Toggle Do Not Disturb, ringer mode, flashlight, volume, brightness, Wi-Fi, Bluetooth, and Find my phone."),
+            whereLabel: qsTr("Home › Phone controls"),
+            needsLabel: qsTr("Elevated (Wireless debugging) required only for Wi-Fi and Bluetooth toggles"),
             targetId: "home:phone_controls",
             docKey: "phone-controls"
         },
         {
             id: "shelf",
-            name: "Drop shelf",
+            name: qsTr("Drop shelf"),
             icon: Icons.shelf,
             area: "surfaces",
             capKey: "",
             toggleKey: "",
             pcLocal: true,
             localAlways: true,
-            summary: "Slide-out top screen-edge shelf with your latest phone photo, clipboard items, and file drop zone.",
-            whereLabel: "Top screen edge or Ctrl+Alt+S",
-            needsLabel: "Always available on PC",
+            summary: qsTr("Slide-out top screen-edge shelf with your latest phone photo, clipboard items, and file drop zone."),
+            whereLabel: qsTr("Top screen edge or Ctrl+Alt+S"),
+            needsLabel: qsTr("Always available on PC"),
             targetId: "settings:shortcuts:shelf",
             docKey: "shelf"
         },
         {
             id: "nectar_island",
-            name: "Nectar Island",
+            name: qsTr("Nectar Island"),
             icon: Icons.island,
             area: "surfaces",
             capKey: "",
             toggleKey: "",
             pcLocal: true,
             prefKey: "nectarIsland",
-            summary: "Compact floating pill at the top center of your monitor for calls, transfers, media, and alerts.",
-            whereLabel: "Settings › General › Nectar Island",
-            needsLabel: "Nectar Island enabled in Settings",
+            summary: qsTr("Compact floating pill at the top center of your monitor for calls, transfers, media, and alerts."),
+            whereLabel: qsTr("Settings › General › Nectar Island"),
+            needsLabel: qsTr("Nectar Island enabled in Settings"),
             targetId: "settings:general:island",
             docKey: "nectar-island"
         },
         {
             id: "timeline",
-            name: "Timeline",
+            name: qsTr("Timeline"),
             icon: Icons.history,
             area: "surfaces",
             capKey: "",
             toggleKey: "",
             pcLocal: true,
             localAlways: true,
-            summary: "Chronological history of shared files, photos, clipboard items, calls, and voice recordings.",
-            whereLabel: "Top bar › Timeline",
-            needsLabel: "Always available on PC",
+            summary: qsTr("Chronological history of shared files, photos, clipboard items, calls, and voice recordings."),
+            whereLabel: qsTr("Top bar › Timeline"),
+            needsLabel: qsTr("Always available on PC"),
             targetId: "timeline:main",
             docKey: "timeline"
         },
         {
             id: "command_palette",
-            name: "Command palette",
+            name: qsTr("Command palette"),
             icon: Icons.search,
             area: "surfaces",
             capKey: "",
             toggleKey: "",
             pcLocal: true,
             localAlways: true,
-            summary: "Keyboard-first search over actions, contacts, message threads, mirrorable apps, and quick toggles.",
-            whereLabel: "Top bar › Commands, or Ctrl+K (Ctrl+Alt+Space anywhere)",
-            needsLabel: "Always available on PC",
+            summary: qsTr("Keyboard-first search over actions, contacts, message threads, mirrorable apps, and quick toggles."),
+            whereLabel: qsTr("Top bar › Commands, or Ctrl+K (Ctrl+Alt+Space anywhere)"),
+            needsLabel: qsTr("Always available on PC"),
             targetId: "settings:shortcuts:palette",
             docKey: "command-palette"
         },
         {
             id: "folder_sync",
-            name: "Share PC folders",
+            name: qsTr("Share PC folders"),
             icon: Icons.folder,
             area: "clipboard_files",
             capKey: "storage",
             toggleKey: "storage",
             pcLocal: true,
-            summary: "Share selected PC folders with your phone or sync folders in one-way or two-way mode.",
-            whereLabel: "Settings › Files & Sync › Synced folders",
-            needsLabel: "Opt-in Share PC folders toggle on Home",
+            summary: qsTr("Share selected PC folders with your phone or sync folders in one-way or two-way mode."),
+            whereLabel: qsTr("Settings › Files & Sync › Synced folders"),
+            needsLabel: qsTr("Opt-in Share PC folders toggle on Home"),
             targetId: "settings:files_sync:folder_sync",
             docKey: "folder-sync"
         },
         {
             id: "wol",
-            name: "Wake PC",
+            name: qsTr("Wake PC"),
             icon: Icons.power,
             area: "automation_network",
             capKey: "",
             toggleKey: "",
             pcLocal: true,
             wolCheck: true,
-            summary: "Let your paired phone wake this PC from sleep over your local network using Wake-on-LAN.",
-            whereLabel: "Settings › Connection & About › Wake from your phone",
-            needsLabel: "Network adapter with Wake-on-LAN enabled in Windows",
+            summary: qsTr("Let your paired phone wake this PC from sleep over your local network using Wake-on-LAN."),
+            whereLabel: qsTr("Settings › Connection & About › Wake from your phone"),
+            needsLabel: qsTr("Network adapter with Wake-on-LAN enabled in Windows"),
             targetId: "settings:connection:wol",
             docKey: "wol"
         },
         {
             id: "doctor",
-            name: "Connection Doctor",
+            name: qsTr("Connection Doctor"),
             icon: Icons.bolt,
             area: "automation_network",
             capKey: "",
             toggleKey: "",
             pcLocal: true,
             localAlways: true,
-            summary: "Diagnose and fix Windows Firewall rules, network profile type, and local discovery issues.",
-            whereLabel: "Settings › Connection & About › Connection Doctor",
-            needsLabel: "Always available on PC",
+            summary: qsTr("Diagnose and fix Windows Firewall rules, network profile type, and local discovery issues."),
+            whereLabel: qsTr("Settings › Connection & About › Connection Doctor"),
+            needsLabel: qsTr("Always available on PC"),
             targetId: "doctor:open",
             docKey: "doctor"
         }
@@ -607,7 +607,7 @@ Item {
                 }
 
                 Accessible.role: Accessible.Button
-                Accessible.name: "Read the full guide"
+                Accessible.name: qsTr("Read the full guide")
 
                 RowLayout {
                     id: fullGuideRow
@@ -634,7 +634,7 @@ Item {
                 iconPath: Icons.compass
                 variant: "tonal"
                 size: "sm"
-                Accessible.name: "Open the 7-step setup walkthrough"
+                Accessible.name: qsTr("Open the 7-step setup walkthrough")
                 onClicked: guide.restartWalkthroughRequested()
             }
         }
@@ -709,7 +709,7 @@ Item {
                         font.pixelSize: 13
                         selectByMouse: true
                         clip: true
-                        Accessible.name: "Search features guide"
+                        Accessible.name: qsTr("Search features guide")
                         onTextChanged: guide.searchQuery = text
 
                         Txt {
@@ -762,7 +762,7 @@ Item {
                         }
 
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Filter by " + modelData.label
+                        Accessible.name: qsTr("Filter by %1").arg(modelData.label)
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
@@ -894,7 +894,7 @@ Item {
                                 }
 
                                 Accessible.role: Accessible.Button
-                                Accessible.name: "Show me " + modelData.name
+                                Accessible.name: qsTr("Show me %1").arg(modelData.name)
 
                                 Txt {
                                     id: showLabel
@@ -922,7 +922,7 @@ Item {
                                 }
 
                                 Accessible.role: Accessible.Button
-                                Accessible.name: "Learn more about " + modelData.name
+                                Accessible.name: qsTr("Learn more about %1").arg(modelData.name)
 
                                 Txt {
                                     id: learnLabel
@@ -1094,7 +1094,7 @@ Item {
                         }
 
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Read " + modelData.label + " chapter"
+                        Accessible.name: qsTr("Read %1").arg(modelData.label + " chapter")
 
                         Txt {
                             id: tabTxt

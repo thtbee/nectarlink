@@ -78,39 +78,39 @@ FocusScope {
     })
 
     readonly property var defaultOnLabels: [
-        "Notifications",
-        "Clipboard",
-        "Send files",
-        "Now playing",
-        "Messages and Calls",
-        "Photos",
-        "Find my phone"
+        qsTr("Notifications"),
+        qsTr("Clipboard"),
+        qsTr("Send files"),
+        qsTr("Now playing"),
+        qsTr("Messages and Calls"),
+        qsTr("Photos"),
+        qsTr("Find my phone")
     ]
 
     readonly property var optInLabels: [
-        "Screen mirroring",
-        "Remote input",
-        "Share PC folders"
+        qsTr("Screen mirroring"),
+        qsTr("Remote input"),
+        qsTr("Share PC folders")
     ]
 
     readonly property var stepTitles: [
-        "Welcome to NectarLink",
-        "Your data stays on your devices",
-        "Install NectarLink on your phone",
-        "Pair your phone and PC",
-        "Choose what to share",
-        "Optional setup",
-        "You are set"
+        qsTr("Welcome to NectarLink"),
+        qsTr("Your data stays on your devices"),
+        qsTr("Install NectarLink on your phone"),
+        qsTr("Pair your phone and PC"),
+        qsTr("Choose what to share"),
+        qsTr("Optional setup"),
+        qsTr("You are set")
     ]
 
     readonly property var stepSubtitles: [
-        "Your Android phone and your PC, working together on your local network.",
-        "No accounts, no cloud servers, and no telemetry.",
-        "Get the Android app from GitHub Releases or install the APK over USB.",
-        "Scan the QR code from the NectarLink Android app, or pick your phone from nearby devices.",
-        "Safe features are on by default. Higher-trust access stays off until you turn it on.",
-        "Three quick checks so notifications and discovery work reliably on your PC.",
-        "Reopen it from Settings or the Command Palette."
+        qsTr("Your Android phone and your PC, working together on your local network."),
+        qsTr("No accounts, no cloud servers, and no telemetry."),
+        qsTr("Get the Android app from GitHub Releases or install the APK over USB."),
+        qsTr("Scan the QR code from the NectarLink Android app, or pick your phone from nearby devices."),
+        qsTr("Safe features are on by default. Higher-trust access stays off until you turn it on."),
+        qsTr("Three quick checks so notifications and discovery work reliably on your PC."),
+        qsTr("Reopen it from Settings or the Command Palette.")
     ]
 
     function refreshDeviceToggles() {
@@ -122,7 +122,7 @@ FocusScope {
             return
         }
         let id = DeviceList.deviceIdAt(0) || ""
-        let name = DeviceList.deviceNameAt(0) || "Your phone"
+        let name = DeviceList.deviceNameAt(0) || qsTr("Your phone")
         activeDeviceId = id
         activeDeviceName = name
         if (id === "")
@@ -186,18 +186,18 @@ FocusScope {
 
     readonly property string doctorSummaryLabel: {
         if (AppController.doctorBusy)
-            return "Checking firewall and local network..."
+            return qsTr("Checking firewall and local network...")
         if (parsedDoctorChecks.length === 0)
             return Qt.platform.os === "linux"
-                ? "Run a quick check to verify your firewall and local discovery."
-                : "Run a quick check to verify Windows Firewall and local discovery."
+                ? qsTr("Run a quick check to verify your firewall and local discovery.")
+                : qsTr("Run a quick check to verify Windows Firewall and local discovery.")
         let problems = 0
         for (let i = 0; i < parsedDoctorChecks.length; i++) {
             if (parsedDoctorChecks[i].outcome !== "ok")
                 problems++
         }
         return problems === 0
-            ? "All network and firewall checks passed."
+            ? qsTr("All network and firewall checks passed.")
             : (problems + (problems === 1 ? " item needs attention." : " items need attention."))
     }
 
@@ -287,7 +287,7 @@ FocusScope {
                 Layout.fillWidth: true
                 spacing: 6
                 Accessible.role: Accessible.ProgressBar
-                Accessible.name: "Step " + (walkthrough.currentStep + 1) + " of " + walkthrough.totalSteps
+                Accessible.name: qsTr("Step %1 of %2").arg(walkthrough.currentStep + 1).arg(walkthrough.totalSteps)
 
                 Repeater {
                     model: walkthrough.totalSteps
@@ -308,7 +308,7 @@ FocusScope {
                         }
 
                         Accessible.role: Accessible.Button
-                        Accessible.name: "Go to step " + (index + 1) + ": " + walkthrough.stepTitles[index]
+                        Accessible.name: qsTr("Go to step %1: %2").arg(index + 1).arg(walkthrough.stepTitles[index])
                         Accessible.onPressAction: walkthrough.step = index
                         MouseArea {
                             anchors.fill: parent
@@ -326,7 +326,7 @@ FocusScope {
                 variant: "tonal"
                 size: "sm"
                 visible: walkthrough.step < walkthrough.totalSteps - 1
-                Accessible.name: "Skip setup walkthrough"
+                Accessible.name: qsTr("Skip setup walkthrough")
                 onClicked: walkthrough.skipWalkthrough()
             }
         }
@@ -721,22 +721,22 @@ FocusScope {
                                         {
                                             icon: Icons.bell,
                                             title: qsTr("Notifications and Calls"),
-                                            body: "Reply to notifications, read SMS threads, and answer calls from your PC."
+                                            body: qsTr("Reply to notifications, read SMS threads, and answer calls from your PC.")
                                         },
                                         {
                                             icon: Icons.send,
                                             title: qsTr("Clipboard and Send files"),
-                                            body: "Copy text or images once, or drop files and folders at full Wi-Fi speed."
+                                            body: qsTr("Copy text or images once, or drop files and folders at full Wi-Fi speed.")
                                         },
                                         {
                                             icon: Icons.mirror,
                                             title: qsTr("Mirroring, Camera, and Audio"),
-                                            body: "Stream your phone screen, use your phone as a webcam, or route PC audio."
+                                            body: qsTr("Stream your phone screen, use your phone as a webcam, or route PC audio.")
                                         },
                                         {
                                             icon: Icons.lock,
                                             title: qsTr("Direct local QUIC link"),
-                                            body: "Everything runs directly between your devices with zero cloud accounts."
+                                            body: qsTr("Everything runs directly between your devices with zero cloud accounts.")
                                         }
                                     ]
 
@@ -828,7 +828,7 @@ FocusScope {
                                         Layout.fillWidth: true
                                         text: walkthrough.hasPairedDevice
                                             ? ("Paired with " + (walkthrough.activeDeviceName || "your phone") + ".")
-                                            : "No phone paired yet. You can pair in Step 4 or skip setup anytime."
+                                            : qsTr("No phone paired yet. You can pair in Step 4 or skip setup anytime.")
                                         role: "caption"
                                         color: Theme.surfaceContent
                                         elide: Text.ElideRight
@@ -848,17 +848,17 @@ FocusScope {
                                     {
                                         icon: Icons.lock,
                                         title: qsTr("End-to-end encrypted over QUIC"),
-                                        body: "All traffic between your phone and PC uses TLS 1.3 with device certificates pinned during pairing."
+                                        body: qsTr("All traffic between your phone and PC uses TLS 1.3 with device certificates pinned during pairing.")
                                     },
                                     {
                                         icon: Icons.shield,
                                         title: qsTr("Hardware-backed device keys"),
-                                        body: "Device keys are protected by Windows DPAPI and the Android Keystore."
+                                        body: qsTr("Device keys are protected by Windows DPAPI and the Android Keystore.")
                                     },
                                     {
                                         icon: Icons.wifi,
                                         title: qsTr("Local network by default"),
-                                        body: "Pairing and transfers stay on your local network unless you turn on \"Connect over mobile data\", and automatic update checks can be turned off in Settings."
+                                        body: qsTr("Pairing and transfers stay on your local network unless you turn on \"Connect over mobile data\", and automatic update checks can be turned off in Settings.")
                                     }
                                 ]
 
@@ -977,18 +977,18 @@ FocusScope {
                                             iconPath: Icons.openExternal
                                             variant: "tonal"
                                             size: "sm"
-                                            Accessible.name: "Open Android release page in browser"
+                                            Accessible.name: qsTr("Open Android release page in browser")
                                             onClicked: Qt.openUrlExternally("https://github.com/thtbee/nectarlink/releases/latest")
                                         }
 
                                         Button {
                                             id: copyUrlBtn
                                             property bool copied: false
-                                            text: copied ? "Copied link" : "Copy link"
+                                            text: copied ? qsTr("Copied link") : qsTr("Copy link")
                                             iconPath: copied ? Icons.check : Icons.copy
                                             variant: "outline"
                                             size: "sm"
-                                            Accessible.name: "Copy Android release URL"
+                                            Accessible.name: qsTr("Copy Android release URL")
                                             onClicked: {
                                                 AppController.copyText("https://github.com/thtbee/nectarlink/releases/latest")
                                                 copied = true
@@ -1069,11 +1069,11 @@ FocusScope {
                                         Button {
                                             id: copyAdbBtn
                                             property bool copied: false
-                                            text: copied ? "Copied" : "Copy command"
+                                            text: copied ? qsTr("Copied") : qsTr("Copy command")
                                             iconPath: copied ? Icons.check : Icons.copy
                                             variant: "tonal"
                                             size: "sm"
-                                            Accessible.name: "Copy ADB install command"
+                                            Accessible.name: qsTr("Copy ADB install command")
                                             onClicked: {
                                                 AppController.copyText(walkthrough.adbCommand)
                                                 copied = true
@@ -1471,11 +1471,11 @@ FocusScope {
                                             Layout.fillWidth: true
                                             text: AppController.toastsEnabled
                                                 ? (Qt.platform.os === "linux"
-                                                    ? "Enabled in desktop notification settings."
-                                                    : "Enabled in Windows Settings.")
+                                                    ? qsTr("Enabled in desktop notification settings.")
+                                                    : qsTr("Enabled in Windows Settings."))
                                                 : (Qt.platform.os === "linux"
-                                                    ? "Notifications are muted or Do Not Disturb is active."
-                                                    : "Notifications are off for NectarLink in Windows Settings.")
+                                                    ? qsTr("Notifications are muted or Do Not Disturb is active.")
+                                                    : qsTr("Notifications are off for NectarLink in Windows Settings."))
                                             role: "caption"
                                             color: Theme.surfaceContentVariant
                                             wrapMode: Text.WordWrap
@@ -1490,7 +1490,7 @@ FocusScope {
                                             variant: "tonal"
                                             size: "sm"
                                             visible: !AppController.toastsEnabled && Qt.platform.os === "windows"
-                                            Accessible.name: "Open Windows notification settings"
+                                            Accessible.name: qsTr("Open Windows notification settings")
                                             onClicked: Qt.openUrlExternally("ms-settings:notifications")
                                         }
 
@@ -1499,7 +1499,7 @@ FocusScope {
                                             iconPath: Icons.refresh
                                             variant: "text"
                                             size: "sm"
-                                            Accessible.name: "Recheck notification status"
+                                            Accessible.name: qsTr("Recheck notification status")
                                             onClicked: AppController.refreshToastsEnabled()
                                         }
                                     }
@@ -1623,12 +1623,12 @@ FocusScope {
                                         }
 
                                         Button {
-                                            text: AppController.doctorBusy ? "Checking..." : "Connection Doctor"
+                                            text: AppController.doctorBusy ? "Checking..." : qsTr("Connection Doctor")
                                             iconPath: Icons.bolt
                                             variant: "tonal"
                                             size: "sm"
                                             enabled: !AppController.doctorBusy
-                                            Accessible.name: "Run firewall and network check"
+                                            Accessible.name: qsTr("Run firewall and network check")
                                             onClicked: AppController.runDoctor()
                                         }
                                     }
@@ -1648,20 +1648,20 @@ FocusScope {
                                         icon: Icons.phone,
                                         title: walkthrough.hasPairedDevice
                                             ? ("Paired with " + (walkthrough.activeDeviceName || "your phone"))
-                                            : "Pair a phone anytime from Home",
+                                            : qsTr("Pair a phone anytime from Home"),
                                         body: walkthrough.hasPairedDevice
-                                            ? "Your phone is linked and ready on your local network."
-                                            : "Open the NectarLink Android app whenever you are ready to scan the QR code."
+                                            ? qsTr("Your phone is linked and ready on your local network.")
+                                            : qsTr("Open the NectarLink Android app whenever you are ready to scan the QR code.")
                                     },
                                     {
                                         icon: Icons.search,
                                         title: qsTr("Command Palette (Ctrl+K)"),
-                                        body: "Press Ctrl+K from anywhere in the app to jump to features, send files, or run actions."
+                                        body: qsTr("Press Ctrl+K from anywhere in the app to jump to features, send files, or run actions.")
                                     },
                                     {
                                         icon: Icons.book,
                                         title: qsTr("Features guide"),
-                                        body: "Browse every feature in NectarLink, see what permissions it needs, and jump straight to it."
+                                        body: qsTr("Browse every feature in NectarLink, see what permissions it needs, and jump straight to it.")
                                     }
                                 ]
 
@@ -1738,7 +1738,7 @@ FocusScope {
                 variant: "tonal"
                 size: "md"
                 visible: walkthrough.step > 0
-                Accessible.name: "Back to previous step"
+                Accessible.name: qsTr("Back to previous step")
                 onClicked: walkthrough.goBack()
             }
 
@@ -1750,18 +1750,18 @@ FocusScope {
                 variant: "tonal"
                 size: "md"
                 visible: walkthrough.step === walkthrough.totalSteps - 1
-                Accessible.name: "Finish setup and open Features guide"
+                Accessible.name: qsTr("Finish setup and open Features guide")
                 onClicked: walkthrough.finishAndOpenGuide()
             }
 
             Button {
                 text: walkthrough.step === walkthrough.totalSteps - 1
                     ? "Done"
-                    : (walkthrough.step === 0 ? "Get started" : "Next")
+                    : (walkthrough.step === 0 ? qsTr("Get started") : "Next")
                 iconPath: walkthrough.step === walkthrough.totalSteps - 1 ? Icons.check : Icons.chevronRight
                 variant: "fill"
                 size: "md"
-                Accessible.name: walkthrough.step === walkthrough.totalSteps - 1 ? "Finish walkthrough" : "Next step"
+                Accessible.name: walkthrough.step === walkthrough.totalSteps - 1 ? qsTr("Finish walkthrough") : qsTr("Next step")
                 onClicked: walkthrough.goNext()
             }
         }
