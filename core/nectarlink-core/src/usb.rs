@@ -27,7 +27,7 @@ use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     sync::{Arc, Mutex, atomic::Ordering},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use nectarlink_protocol::DeviceId;
@@ -54,6 +54,11 @@ const HELLO_TIMEOUT: Duration = Duration::from_secs(3);
 const ADB_RETRY_DELAY: Duration = Duration::from_secs(2);
 /// How often, at most, a profile port nothing answered on is tried again.
 const SPARE_PORT_MAX_DELAY: Duration = Duration::from_secs(30);
+/// How long a tunnel may send frames without getting any back before it is
+/// treated as dead. A tunnel whose far end stopped answering (a frozen app,
+/// a wedged adb) never closes by itself, so without this the worker would sit
+/// in it and never open a new one until the cable is replugged.
+const TUNNEL_SILENCE_LIMIT: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct UsbHello {
@@ -484,11 +489,27 @@ async fn relay_tcp_udp(
     default_target: SocketAddr,
     cancel: CancellationToken,
 ) {
+    relay_until_silent(stream, udp, default_target, cancel, TUNNEL_SILENCE_LIMIT).await;
+}
+
+/// [`relay_tcp_udp`] that also returns once frames have been sent for
+/// `silence_limit` without any coming back.
+async fn relay_until_silent(
+    stream: TcpStream,
+    udp: UdpSocket,
+    default_target: SocketAddr,
+    cancel: CancellationToken,
+    silence_limit: Duration,
+) {
     let (mut tcp_read, mut tcp_write) = stream.into_split();
     let udp_recv = Arc::new(udp);
     let udp_send = udp_recv.clone();
     let target = Arc::new(Mutex::new(default_target));
     let target_for_recv = target.clone();
+    // Since when frames have gone out with nothing coming back.
+    let unanswered: Arc<Mutex<Option<Instant>>> = Arc::default();
+    let unanswered_on_send = unanswered.clone();
+    let unanswered_on_recv = unanswered.clone();
 
     let udp_to_tcp = async move {
         let mut buf = vec![0u8; 65535];
@@ -500,6 +521,7 @@ async fn relay_tcp_udp(
             *target_for_recv.lock().unwrap_or_else(|e| e.into_inner()) = from;
             tcp_write.write_all(&(n as u16).to_be_bytes()).await?;
             tcp_write.write_all(&buf[..n]).await?;
+            unanswered_on_send.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(Instant::now);
         }
         #[allow(unreachable_code)]
         Ok::<(), std::io::Error>(())
@@ -510,6 +532,7 @@ async fn relay_tcp_udp(
         loop {
             let mut len_buf = [0u8; 2];
             tcp_read.read_exact(&mut len_buf).await?;
+            *unanswered_on_recv.lock().unwrap_or_else(|e| e.into_inner()) = None;
             let len = u16::from_be_bytes(len_buf) as usize;
             if len == 0 {
                 continue;
@@ -522,10 +545,22 @@ async fn relay_tcp_udp(
         Ok::<(), std::io::Error>(())
     };
 
+    let silent = async {
+        let check = (silence_limit / 4).clamp(Duration::from_millis(10), Duration::from_secs(5));
+        loop {
+            tokio::time::sleep(check).await;
+            let since = *unanswered.lock().unwrap_or_else(|e| e.into_inner());
+            if since.is_some_and(|t| t.elapsed() >= silence_limit) {
+                break;
+            }
+        }
+    };
+
     tokio::select! {
         _ = cancel.cancelled() => {}
         _ = udp_to_tcp => {}
         _ = tcp_to_udp => {}
+        _ = silent => tracing::info!("USB tunnel stopped answering; closing it"),
     }
 }
 
@@ -599,5 +634,72 @@ mod tests {
         assert!(auto_pairs("R58M123ABC"));
         assert!(auto_pairs("192.168.1.20:37099"));
         assert!(auto_pairs("adb-R58M123ABC-xyz._adb-tls-connect._tcp"));
+    }
+
+    /// A connected loopback TCP pair: (the relay's end, the far end).
+    async fn tcp_pair() -> (TcpStream, TcpStream) {
+        let listener = tokio::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+        let (near, far) = tokio::join!(TcpStream::connect(listener.local_addr().unwrap()), listener.accept());
+        (near.unwrap(), far.unwrap().0)
+    }
+
+    #[tokio::test]
+    async fn a_tunnel_whose_far_end_stops_answering_is_closed() {
+        let (near, _silent_far_end) = tcp_pair().await;
+        let udp = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+        let bridge = udp.local_addr().unwrap();
+        let relay = tokio::spawn(relay_until_silent(
+            near,
+            udp,
+            SocketAddr::from((Ipv4Addr::LOCALHOST, 9)),
+            CancellationToken::new(),
+            Duration::from_millis(300),
+        ));
+
+        let sender = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+        sender.send_to(b"ping", bridge).await.unwrap();
+
+        tokio::time::timeout(Duration::from_secs(5), relay)
+            .await
+            .expect("the silent tunnel should have been closed")
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_tunnel_that_keeps_answering_stays_open() {
+        let (near, mut far) = tcp_pair().await;
+        // The far end answers every frame with a frame.
+        tokio::spawn(async move {
+            let mut len = [0u8; 2];
+            while far.read_exact(&mut len).await.is_ok() {
+                let mut body = vec![0u8; u16::from_be_bytes(len) as usize];
+                if far.read_exact(&mut body).await.is_err() || far.write_all(&[0, 1, 7]).await.is_err() {
+                    return;
+                }
+            }
+        });
+        let udp = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+        let bridge = udp.local_addr().unwrap();
+        let mut relay = tokio::spawn(relay_until_silent(
+            near,
+            udp,
+            SocketAddr::from((Ipv4Addr::LOCALHOST, 9)),
+            CancellationToken::new(),
+            Duration::from_millis(300),
+        ));
+
+        let sender = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+        let sending = async {
+            for _ in 0..15 {
+                sender.send_to(b"ping", bridge).await.unwrap();
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+        };
+        sending.await;
+        assert!(
+            tokio::time::timeout(Duration::from_millis(50), &mut relay).await.is_err(),
+            "a tunnel that is being answered must not be closed"
+        );
+        relay.abort();
     }
 }
