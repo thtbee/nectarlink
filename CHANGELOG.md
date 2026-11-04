@@ -28,6 +28,9 @@ picks the right one. Installed copies update themselves.
 
 ### New
 
+- **Nix flake.** `nix run` starts the PC app on Linux, and `nix develop` gives a
+  development shell. Thanks to [@m-uvex](https://github.com/m-uvex)
+  ([#173](https://github.com/thtbee/nectarlink/pull/173)).
 - **Delete photos from the PC.** Select them on the Photos page and they go to
   the phone's trash, where you can still restore them. It needs All files
   access on the phone
