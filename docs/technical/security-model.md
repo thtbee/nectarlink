@@ -100,7 +100,8 @@ Each service's handler checks the peer's persisted toggle (`Shared::toggle_on`) 
 When a session is connected over `ConnectionPath::Relay` (**Connect over mobile data** / `away_mode`), `Node` applies additional transport-aware authorization:
 
 - Remote file system browsing and downloads are blocked on relay connections unless the user has enabled **both** the `storage` toggle and the opt-in `remote_files` toggle for that peer.
-- Relay discovery and relay servers remain completely disabled (`RelayMode::Disabled`) unless the user explicitly turns on **Connect over mobile data** (`away_mode`).
+- With **Connect over mobile data** (`away_mode`) off, the relay map is empty and no internet address lookup runs, so nothing is published or relayed. The switch applies while running, both ways (`apply_internet_services`). Turning it off closes non-LAN sessions, removes the relays and lookups, and refuses relay paths. iroh keeps its idle connection to the current home relay until the endpoint closes, so that one connection, carrying nothing, lasts until the next restart.
+- What's published while it's on holds the device's addresses, not its name (`WithoutName`).
 
 ## Runtime Consent Gates
 

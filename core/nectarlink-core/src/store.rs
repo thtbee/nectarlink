@@ -6,7 +6,7 @@ use std::{
     collections::{BTreeSet, HashMap},
     net::SocketAddr,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Arc, Mutex, MutexGuard, OnceLock},
 };
 
 use nectarlink_protocol::{
@@ -120,6 +120,16 @@ impl QueueKind {
     #[must_use]
     pub const fn is_clipboard(self) -> bool {
         matches!(self, QueueKind::Clipboard | QueueKind::ClipboardImage)
+    }
+
+    /// What this kind holds is the user's own content rather than a reference
+    /// to a file, so it's sealed in the database and gone when it expires.
+    #[must_use]
+    pub const fn is_sealed(self) -> bool {
+        matches!(
+            self,
+            QueueKind::Clipboard | QueueKind::ClipboardImage | QueueKind::Link | QueueKind::TaskNotify
+        )
     }
 
     #[must_use]
@@ -253,6 +263,18 @@ impl QueuePayload {
     }
 
     #[must_use]
+    /// What the database shows for this item: for sealed kinds a label that
+    /// says nothing about the content, and otherwise [`Self::title_and_detail`].
+    fn stored_title_and_detail(&self) -> (String, String) {
+        match self {
+            QueuePayload::Clipboard { .. } => ("Copied text".into(), "Clipboard text".into()),
+            QueuePayload::ClipboardImage { .. } => ("Copied image".into(), "Clipboard image".into()),
+            QueuePayload::Link { .. } => ("Link".into(), "Link".into()),
+            QueuePayload::TaskNotify { .. } => ("Task".into(), "Task".into()),
+            _ => self.title_and_detail(),
+        }
+    }
+
     pub fn title_and_detail(&self) -> (String, String) {
         match self {
             QueuePayload::Files { files } => {
@@ -591,10 +613,58 @@ pub(crate) struct PeerRecord {
     pub wake_info: Option<PcWakeInfo>,
 }
 
+/// How a sealed `payload_json` starts: the rest is base64 of the sealed JSON.
+const SEALED_PREFIX: &str = "sealed1:";
+
+/// Seals queued content with the platform's key protector, as the clipboard
+/// history is, so a copied password waiting to send isn't readable in the
+/// database. On a platform without a protector (Linux) this is only encoding.
+#[derive(Default)]
+struct QueueSeal(OnceLock<Arc<dyn crate::identity::KeyProtector>>);
+
+impl std::fmt::Debug for QueueSeal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("QueueSeal")
+    }
+}
+
+impl QueueSeal {
+    fn seal(&self, plain: &[u8]) -> Result<Vec<u8>> {
+        match self.0.get() {
+            Some(protector) => protector.protect(plain).map_err(|e| Error::Internal(e.to_string())),
+            None => Ok(plain.to_vec()),
+        }
+    }
+
+    fn open(&self, sealed: &[u8]) -> Option<Vec<u8>> {
+        match self.0.get() {
+            Some(protector) => protector.unprotect(sealed).ok(),
+            None => Some(sealed.to_vec()),
+        }
+    }
+
+    fn seal_json(&self, json: &str) -> Result<String> {
+        let sealed = self.seal(json.as_bytes())?;
+        Ok(format!("{SEALED_PREFIX}{}", data_encoding::BASE64.encode(&sealed)))
+    }
+
+    /// The payload in `stored`, sealed or from before sealing.
+    fn payload(&self, stored: &str) -> Option<QueuePayload> {
+        match stored.strip_prefix(SEALED_PREFIX) {
+            Some(encoded) => {
+                let sealed = data_encoding::BASE64.decode(encoded.as_bytes()).ok()?;
+                serde_json::from_slice(&self.open(&sealed)?).ok()
+            }
+            None => serde_json::from_str(stored).ok(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Store {
     conn: Mutex<Connection>,
     data_dir: Option<PathBuf>,
+    queue_seal: QueueSeal,
     /// Each device's toggles as stored, read once: they're checked on every
     /// message (each touch while mirroring), and change only when the user
     /// flips one. Filled and cleared while `conn` is held, so a write never
@@ -623,8 +693,78 @@ impl Store {
         conn.pragma_update(None, "busy_timeout", 5000)?;
         conn.pragma_update(None, "temp_store", "MEMORY")?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
+        // What's deleted is overwritten, not left in free pages.
+        conn.pragma_update(None, "secure_delete", "ON")?;
         migrate(&conn)?;
-        Ok(Store { conn: Mutex::new(conn), data_dir, toggles: Mutex::default() })
+        Ok(Store {
+            conn: Mutex::new(conn),
+            data_dir,
+            queue_seal: QueueSeal::default(),
+            toggles: Mutex::default(),
+        })
+    }
+
+    /// Seals queued content with `protector` from now on, and seals what
+    /// earlier versions left in the queue unsealed. Call once, at startup.
+    pub fn seal_queue_with(&self, protector: Arc<dyn crate::identity::KeyProtector>) -> Result<usize> {
+        let _ = self.queue_seal.0.set(protector);
+        self.with(|c| {
+            let rows: Vec<(String, String, Option<Vec<u8>>)> = {
+                let mut stmt = c.prepare(
+                    "SELECT id, payload_json, payload_blob FROM send_queue
+                     WHERE kind IN ('clipboard', 'clipboard_image', 'link', 'task_notify')
+                       AND payload_json NOT LIKE 'sealed1:%'",
+                )?;
+                stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+                    .collect::<rusqlite::Result<Vec<_>>>()?
+            };
+            let mut sealed = 0;
+            for (id, json, blob) in rows {
+                let Some(payload) = serde_json::from_str::<QueuePayload>(&json).ok() else { continue };
+                let (title, detail) = payload.stored_title_and_detail();
+                let Ok(stored) = self.queue_seal.seal_json(&json) else { continue };
+                let blob = match blob.map(|b| self.queue_seal.seal(&b)).transpose() {
+                    Ok(blob) => blob,
+                    Err(_) => continue,
+                };
+                c.execute(
+                    "UPDATE send_queue SET title = ?1, detail = ?2, payload_json = ?3, payload_blob = ?4
+                     WHERE id = ?5",
+                    params![title, detail, stored, blob, id],
+                )?;
+                sealed += 1;
+            }
+            if sealed > 0 {
+                // The old rows shouldn't linger in the log or in free pages.
+                let _ = c.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); VACUUM;");
+            }
+            Ok(sealed)
+        })
+    }
+
+    /// Removes queued items of `kinds` whatever their state, for clearing
+    /// what the user asked to forget. Returns how many went.
+    pub fn remove_queue_items_of_kinds(&self, kinds: &[QueueKind]) -> Result<usize> {
+        self.with(|c| {
+            let mut removed = 0;
+            for kind in kinds {
+                removed += c.execute("DELETE FROM send_queue WHERE kind = ?1", [kind.as_str()])?;
+            }
+            if removed > 0 {
+                let _ = c.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
+            }
+            Ok(removed)
+        })
+    }
+
+    /// Whether a queue item is still there: it may have been cleared while it was being sent.
+    pub fn has_queue_item(&self, id: &str) -> bool {
+        self.with(|c| {
+            c.query_row("SELECT 1 FROM send_queue WHERE id = ?1", [id], |_| Ok(()))
+                .optional()
+                .map(|r| r.is_some())
+        })
+        .unwrap_or(false)
     }
 
     fn with<T>(&self, f: impl FnOnce(&Connection) -> rusqlite::Result<T>) -> Result<T> {
@@ -836,7 +976,7 @@ impl Store {
         self.toggle_cache().remove(id);
         let dropped: Vec<(String, QueuePayload)> = rows
             .into_iter()
-            .filter_map(|(id, json)| serde_json::from_str::<QueuePayload>(&json).ok().map(|p| (id, p)))
+            .filter_map(|(id, json)| self.queue_seal.payload(&json).map(|p| (id, p)))
             .collect();
         // After the commit: files are only removed once nothing refers to them.
         for (id, payload) in &dropped {
@@ -1523,6 +1663,16 @@ impl Store {
         let (title, detail) = payload.title_and_detail();
         let (bytes_total, files_total) = payload.totals(payload_blob);
         let payload_json = serde_json::to_string(payload).map_err(|e| Error::Internal(e.to_string()))?;
+        // Sealed content goes to disk under a plain label: the real title is
+        // worked out from the payload when it's read back.
+        let sealed_blob;
+        let (stored_title, stored_detail, stored_json, stored_blob) = if kind.is_sealed() {
+            let (t, d) = payload.stored_title_and_detail();
+            sealed_blob = payload_blob.map(|b| self.queue_seal.seal(b)).transpose()?;
+            (t, d, self.queue_seal.seal_json(&payload_json)?, sealed_blob.as_deref())
+        } else {
+            (title.clone(), detail.clone(), payload_json, payload_blob)
+        };
         let peer_str = peer.to_string();
         let files = payload.files_vec();
 
@@ -1579,10 +1729,10 @@ impl Store {
                         kind.as_str(),
                         now_ms,
                         expires_at,
-                        title,
-                        detail,
-                        payload_json,
-                        payload_blob,
+                        stored_title,
+                        stored_detail,
+                        stored_json,
+                        stored_blob,
                         bytes_total as i64,
                         old_id
                     ],
@@ -1647,10 +1797,10 @@ impl Store {
                 kind.as_str(),
                 now_ms,
                 expires_at,
-                title,
-                detail,
-                payload_json,
-                payload_blob,
+                stored_title,
+                stored_detail,
+                stored_json,
+                stored_blob,
                 bytes_total as i64,
                 i64::from(files_total),
             ],
@@ -1697,6 +1847,13 @@ impl Store {
             let mut out = Vec::with_capacity(stale.len());
             for (id, kind_str) in stale {
                 let kind = QueueKind::from_str_opt(&kind_str).unwrap_or(QueueKind::Files);
+                // Nothing keeps a clip or link past its deadline, not even for Retry.
+                if kind.is_sealed() {
+                    if tx.execute("DELETE FROM send_queue WHERE id = ?1", [&id])? > 0 {
+                        out.push(id);
+                    }
+                    continue;
+                }
                 let msg = kind.expiry_error_message();
                 let updated = tx.execute(
                     "UPDATE send_queue
@@ -1731,7 +1888,7 @@ impl Store {
             };
             let mut out = Vec::with_capacity(rows.len());
             for raw in rows {
-                if let Some((item, _, _, _)) = decode_queue_row(c, raw, false) {
+                if let Some((item, _, _, _)) = decode_queue_row(c, &self.queue_seal, raw, false) {
                     out.push(item);
                 }
             }
@@ -1768,7 +1925,7 @@ impl Store {
                     raw_queue_row_with_blob,
                 )
                 .optional()?;
-            Ok(raw.and_then(|r| decode_queue_row(c, r, true)))
+            Ok(raw.and_then(|r| decode_queue_row(c, &self.queue_seal, r, true)))
         })
     }
 
@@ -1782,7 +1939,7 @@ impl Store {
                     raw_queue_row_with_blob,
                 )
                 .optional()?;
-            Ok(raw.and_then(|r| decode_queue_row(c, r, true)))
+            Ok(raw.and_then(|r| decode_queue_row(c, &self.queue_seal, r, true)))
         })
     }
 
@@ -1868,7 +2025,7 @@ impl Store {
                 .query_row("SELECT payload_json FROM send_queue WHERE id = ?1", [id], |r| r.get(0))
                 .optional()?;
             c.execute("DELETE FROM send_queue WHERE id = ?1", [id])?;
-            Ok(payload_json.and_then(|j| serde_json::from_str::<QueuePayload>(&j).ok()))
+            Ok(payload_json.and_then(|j| self.queue_seal.payload(&j)))
         })?;
         cleanup_staged_payload(self.data_dir.as_deref(), id, payload.as_ref());
         Ok(payload)
@@ -1985,7 +2142,7 @@ impl Store {
                 return Ok(None);
             };
             c.execute("DELETE FROM send_queue WHERE id = ?1", [id])?;
-            Ok(decode_queue_row(c, raw, false).map(|(item, payload, _, _)| (item, payload)))
+            Ok(decode_queue_row(c, &self.queue_seal, raw, false).map(|(item, payload, _, _)| (item, payload)))
         })?;
         if let Some((_, ref payload)) = removed {
             cleanup_staged_payload(self.data_dir.as_deref(), id, Some(payload));
@@ -2028,7 +2185,7 @@ impl Store {
             }
             Ok(rows
                 .into_iter()
-                .filter_map(|(id, json)| serde_json::from_str::<QueuePayload>(&json).ok().map(|p| (id, p)))
+                .filter_map(|(id, json)| self.queue_seal.payload(&json).map(|p| (id, p)))
                 .collect())
         })?;
         for (id, payload) in &removed {
@@ -2132,19 +2289,30 @@ fn lookup_peer_name_conn(c: &Connection, peer: &DeviceId) -> String {
 /// Decoded row from `send_queue`: `(item, payload, payload_blob, next_retry_ms)`.
 pub type DecodedQueueRow = (QueueItem, QueuePayload, Option<Vec<u8>>, i64);
 
-fn decode_queue_row(c: &Connection, raw: RawQueueRow, include_blob: bool) -> Option<DecodedQueueRow> {
+fn decode_queue_row(
+    c: &Connection,
+    seal: &QueueSeal,
+    mut raw: RawQueueRow,
+    include_blob: bool,
+) -> Option<DecodedQueueRow> {
     // A row this version can't read is left out of the queue; say so, so it
     // doesn't just vanish.
-    let decoded = raw
-        .peer_str
-        .parse::<DeviceId>()
-        .ok()
-        .zip(serde_json::from_str::<QueuePayload>(&raw.payload_json).ok());
+    let decoded = raw.peer_str.parse::<DeviceId>().ok().zip(seal.payload(&raw.payload_json));
     let Some((peer, payload)) = decoded else {
         tracing::warn!(id = %raw.id, "can't read a queued send; leaving it out of the queue");
         return None;
     };
     let kind = QueueKind::from_str_opt(&raw.kind_str).unwrap_or_else(|| payload.kind());
+    if raw.payload_json.starts_with(SEALED_PREFIX) {
+        (raw.title, raw.detail) = payload.title_and_detail();
+        if include_blob && let Some(sealed) = raw.payload_blob.take() {
+            let Some(blob) = seal.open(&sealed) else {
+                tracing::warn!(id = %raw.id, "can't open a queued image; leaving it out of the queue");
+                return None;
+            };
+            raw.payload_blob = Some(blob);
+        }
+    }
     let status = match raw.status_str.as_str() {
         "sending" => QueueStatus::Sending,
         "failed" => QueueStatus::Failed { error: raw.error_msg.unwrap_or_else(|| "Failed to send".into()) },
@@ -3607,7 +3775,7 @@ mod tests {
             QueueStatus::Expired { error: "Expired (camera requests expire after 2 minutes)".into() }
         );
 
-        // Advance 25 hours: Link and Clipboard items expire, while Files (7d) stays Waiting.
+        // Advance 25 hours: Link and Clipboard items expire and are removed, while Files (7d) stays Waiting.
         let expired_24h = store.expire_stale_queue_items(now_ms + 25 * 3600 * 1000).unwrap();
         assert_eq!(expired_24h, 3); // clip-a4, link-a1, clip-b1
         let file_item =
@@ -3624,11 +3792,12 @@ mod tests {
             QueueStatus::Expired { error: "Expired (waited more than 7 days)".into() }
         );
 
-        // 4. Re-pairing peer ID reassignment moves queued items to the new peer ID.
+        // 4. Re-pairing peer ID reassignment moves queued items to the new peer ID:
+        // the camera request and the file, as expired clips and links are gone.
         let moved = store.reassign_send_queue_peer(&peer_a, &peer_a_repaired).unwrap();
-        assert_eq!(moved, 4);
+        assert_eq!(moved, 2);
         assert!(store.list_send_queue(Some(&peer_a)).unwrap().is_empty());
-        assert_eq!(store.list_send_queue(Some(&peer_a_repaired)).unwrap().len(), 4);
+        assert_eq!(store.list_send_queue(Some(&peer_a_repaired)).unwrap().len(), 2);
 
         // Clear all finished (failed + expired) items.
         store.clear_finished_queue_items(None).unwrap();
@@ -3915,5 +4084,116 @@ mod tests {
             store.next_queue_wake_ms(&[offline_peer, online_peer]).unwrap(),
             Some(item_off.expires_at)
         );
+    }
+
+    /// A protector that visibly changes the bytes, so a test can tell sealed from plain.
+    struct Flip;
+    impl crate::identity::KeyProtector for Flip {
+        fn id(&self) -> u8 {
+            9
+        }
+        fn protect(&self, plain: &[u8]) -> std::io::Result<Vec<u8>> {
+            Ok(plain.iter().map(|b| b ^ 0x5a).collect())
+        }
+        fn unprotect(&self, sealed: &[u8]) -> std::io::Result<Vec<u8>> {
+            self.protect(sealed)
+        }
+    }
+
+    fn raw_queue_columns(store: &Store) -> Vec<(String, String, String, Option<Vec<u8>>)> {
+        store
+            .with(|c| {
+                let mut stmt =
+                    c.prepare("SELECT title, detail, payload_json, payload_blob FROM send_queue")?;
+                let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?;
+                rows.collect()
+            })
+            .unwrap()
+    }
+
+    #[test]
+    fn queued_clips_are_sealed_on_disk_and_read_back_whole() {
+        let store = Store::in_memory().unwrap();
+        store.seal_queue_with(Arc::new(Flip)).unwrap();
+        let peer = DeviceId([7; 32]);
+        store.upsert_peer(&peer, &info("Phone"), 1).unwrap();
+        let secret = "hunter2-the-password";
+        let payload = QueuePayload::Clipboard { text: secret.into(), html: None, rtf: None };
+        let item = store.enqueue_send_item("c1", &peer, &payload, None, 1000).unwrap();
+        assert_eq!(item.title, secret, "the caller still sees what it queued");
+
+        let (title, detail, json, _) = raw_queue_columns(&store).remove(0);
+        assert!(json.starts_with(SEALED_PREFIX));
+        for column in [&title, &detail, &json] {
+            assert!(!column.contains(secret), "the clip leaked into {column}");
+        }
+
+        let listed = store.list_send_queue(None).unwrap();
+        assert_eq!(listed[0].title, secret, "the queue shows it after opening it");
+        let (_, back, _, _) = store.get_queue_item("c1").unwrap().unwrap();
+        assert_eq!(back, payload);
+    }
+
+    #[test]
+    fn queued_images_are_sealed_and_files_are_left_alone() {
+        let store = Store::in_memory().unwrap();
+        store.seal_queue_with(Arc::new(Flip)).unwrap();
+        let peer = DeviceId([7; 32]);
+        store.upsert_peer(&peer, &info("Phone"), 1).unwrap();
+        let bytes = b"not really a png".to_vec();
+        let image = QueuePayload::ClipboardImage { mime: "image/png".into(), width: 1, height: 1 };
+        store.enqueue_send_item("i1", &peer, &image, Some(&bytes), 1000).unwrap();
+        assert_ne!(raw_queue_columns(&store)[0].3.as_deref(), Some(bytes.as_slice()));
+        let (_, _, blob, _) = store.get_queue_item("i1").unwrap().unwrap();
+        assert_eq!(blob.as_deref(), Some(bytes.as_slice()));
+    }
+
+    #[test]
+    fn clips_queued_before_sealing_are_sealed_at_startup() {
+        let store = Store::in_memory().unwrap();
+        let peer = DeviceId([7; 32]);
+        store.upsert_peer(&peer, &info("Phone"), 1).unwrap();
+        let secret = "from-an-older-version";
+        let payload = QueuePayload::Clipboard { text: secret.into(), html: None, rtf: None };
+        // No protector yet, and written the way an older version did.
+        store.enqueue_send_item("old", &peer, &payload, None, 1000).unwrap();
+        store
+            .with(|c| {
+                let json = serde_json::to_string(&payload).unwrap();
+                c.execute(
+                    "UPDATE send_queue SET title = ?1, payload_json = ?2 WHERE id = 'old'",
+                    params![secret, json],
+                )
+            })
+            .unwrap();
+        assert_eq!(store.seal_queue_with(Arc::new(Flip)).unwrap(), 1);
+        let (title, _, json, _) = raw_queue_columns(&store).remove(0);
+        assert!(!title.contains(secret) && !json.contains(secret));
+        assert_eq!(store.list_send_queue(None).unwrap()[0].title, secret);
+    }
+
+    #[test]
+    fn clips_are_removed_at_their_deadline_and_files_stay_for_retry() {
+        let store = Store::in_memory().unwrap();
+        store.seal_queue_with(Arc::new(Flip)).unwrap();
+        let peer = DeviceId([7; 32]);
+        store.upsert_peer(&peer, &info("Phone"), 1).unwrap();
+        let clip = QueuePayload::Clipboard { text: "x".into(), html: None, rtf: None };
+        store.enqueue_send_item("c", &peer, &clip, None, 1000).unwrap();
+        assert_eq!(store.expire_stale_queue_items(i64::MAX).unwrap(), 1);
+        assert!(!store.has_queue_item("c"));
+    }
+
+    #[test]
+    fn clearing_kinds_leaves_other_kinds() {
+        let store = Store::in_memory().unwrap();
+        let peer = DeviceId([7; 32]);
+        store.upsert_peer(&peer, &info("Phone"), 1).unwrap();
+        let clip = QueuePayload::Clipboard { text: "x".into(), html: None, rtf: None };
+        let link = QueuePayload::Link { url: "https://example.com".into(), title: None };
+        store.enqueue_send_item("c", &peer, &clip, None, 1000).unwrap();
+        store.enqueue_send_item("l", &peer, &link, None, 1000).unwrap();
+        assert_eq!(store.remove_queue_items_of_kinds(&[QueueKind::Clipboard]).unwrap(), 1);
+        assert!(!store.has_queue_item("c") && store.has_queue_item("l"));
     }
 }

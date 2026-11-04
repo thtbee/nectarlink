@@ -15,6 +15,7 @@ This is a review by the project, not an independent audit. It says what the code
 
 ### What isn't protected
 
+- **After turning off Connect over mobile data, one idle relay connection stays until the next restart.** Nothing is published, looked up or relayed by then, and non-LAN sessions are closed. iroh 1.3 only lets go of its home relay when the endpoint closes.
 - **On Linux the device key and clipboard history aren't sealed.** `identity.key` is stored with `0600` permissions and no platform protection, and the core logs that it is. Anything running as your user can read it, and so can anyone who reads the disk without full-disk encryption. A Secret Service option is under review for after 0.1.5 ([#189](https://github.com/thtbee/nectarlink/pull/189)).
 - **Windows DPAPI protects against other accounts and offline disks, not against programs running as you.** The same goes for anything else a program running as you can read.
 - **Release binaries aren't code-signed (Authenticode).** Trust in downloads rests on HTTPS to GitHub and the published checksums. Android APKs are signed, and updates must carry the same signature.
@@ -38,7 +39,9 @@ This is a review by the project, not an independent audit. It says what the code
 5. **ADB serials.** `is_serial_allowed` rejects malformed serials in everything that talks to `adb`, and `NECTARLINK_ADB_ONLY_SERIAL` limits a build to one device for testing.
 6. **Frame cap.** `read_frame` rejects a length over 1 MiB before allocating.
 7. **Per-device toggles.** See Surface 8 and the security model.
-8. **Sealed data at rest.** `identity.key` and the clipboard vault (`clipboard_history.enc`, `clipboard_images/*.enc`) go through the platform `KeyProtector`: DPAPI on Windows, Android Keystore AES-256-GCM on Android, and none on Linux (see above).
+8. **Sealed data at rest.** `identity.key`, the clipboard vault (`clipboard_history.enc`, `clipboard_images/*.enc`) and queued clips, images, links and task alerts in `send_queue` (`QueueSeal`, including their titles) go through the platform `KeyProtector`: DPAPI on Windows, Android Keystore AES-256-GCM on Android, and none on Linux (see above).
+
+**Reported and fixed:** a private report (GHSA-39f9-c5p5-8fwq) pointed out that queued clips were plain text in SQLite and survived clearing, and that turning off Connect over mobile data left internet services running until restart. Both were real. Queued content is now sealed, older rows are sealed at startup, `secure_delete` is on, clearing removes it, and it's removed at its deadline. The switch now applies while running, with the one limit above.
 
 ---
 

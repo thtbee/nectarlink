@@ -237,6 +237,8 @@ pub(crate) struct Shared {
     transfers: Mutex<HashMap<String, TransferControl>>,
     /// The node's runtime, for work started from non-async callers.
     pub(crate) runtime: tokio::runtime::Handle,
+    /// One Away mode change at a time.
+    away_switch: tokio::sync::Mutex<()>,
 }
 
 /// How long a receiver's resume that overtook its pause still counts: the
@@ -1586,6 +1588,9 @@ impl Node {
         let protector = config.key_protector.clone().unwrap_or_else(identity::default_protector);
         let secret = identity::load_or_create(&config.data_dir, protector.as_ref())?;
         let store = Store::open(&config.data_dir)?;
+        if let Err(e) = store.seal_queue_with(protector.clone()) {
+            tracing::warn!(error = %e, "can't seal the send queue");
+        }
         let _ = store.reset_interrupted_sending();
         let _ = store.expire_stale_queue_items(crate::now_unix_ms());
         let clipboard_history =
@@ -1692,6 +1697,7 @@ impl Node {
             downloads_dir: config.downloads_dir.clone().unwrap_or_else(|| config.data_dir.join("received")),
             transfers: Mutex::new(HashMap::new()),
             runtime: tokio::runtime::Handle::current(),
+            away_switch: tokio::sync::Mutex::new(()),
         });
 
         if config.lan_discovery {
@@ -1734,7 +1740,11 @@ impl Node {
 
     /// Enables or disables connecting over mobile data / non-LAN paths at runtime.
     pub fn set_away_mode(&self, enabled: bool) {
-        self.shared.away_mode.store(enabled, std::sync::atomic::Ordering::Relaxed);
+        let was = self.shared.away_mode.swap(enabled, std::sync::atomic::Ordering::Relaxed);
+        if was != enabled {
+            let shared = self.shared.clone();
+            self.shared.runtime.spawn(async move { apply_internet_services(&shared).await });
+        }
         if !enabled {
             for session in self.shared.live_sessions() {
                 if !self.shared.is_connection_allowed(&session.conn) {
@@ -2535,6 +2545,12 @@ impl Node {
     pub fn clear_clipboard_history(&self) -> Result<()> {
         self.shared.clipboard_history.clear()?;
         let _ = self.shared.store.delete_timeline_clips();
+        // Clips still waiting to send are clipboard history too.
+        let _ = self
+            .shared
+            .store
+            .remove_queue_items_of_kinds(&[crate::QueueKind::Clipboard, crate::QueueKind::ClipboardImage]);
+        self.shared.emit(NodeEvent::QueueChanged);
         self.shared.emit(NodeEvent::ClipboardHistoryChanged);
         self.shared.emit(NodeEvent::TimelineChanged);
         Ok(())
@@ -3867,6 +3883,15 @@ impl Node {
         self.shared.clipboard_history.clear()?;
         *self.shared.last_clip_suggestion.lock().unwrap_or_else(|e| e.into_inner()) = None;
         self.shared.store.clear_all_history_and_cache()?;
+        // Files waiting to send stay: they're only references, and the user
+        // chose to send them. What's copied or linked goes with everything else.
+        self.shared.store.remove_queue_items_of_kinds(&[
+            crate::QueueKind::Clipboard,
+            crate::QueueKind::ClipboardImage,
+            crate::QueueKind::Link,
+            crate::QueueKind::TaskNotify,
+        ])?;
+        self.shared.emit(NodeEvent::QueueChanged);
         self.shared.emit(NodeEvent::ClipboardHistoryChanged);
         self.shared.emit(NodeEvent::TimelineChanged);
         if let Ok(peers) = self.shared.store.list_peers() {
@@ -4062,15 +4087,15 @@ async fn bind_endpoint(
         .alpns(vec![ALPN_SESSION.to_vec(), ALPN_PAIR.to_vec()])
         .transport_config(transport);
     builder = if config.away_mode {
-        builder
-            .relay_mode(RelayMode::Default)
-            .address_lookup(PkarrPublisher::n0_dns())
-            .address_lookup(PkarrResolver::n0_dns())
-            .address_lookup(DnsAddressLookup::n0_dns())
+        builder.relay_mode(RelayMode::Default)
     } else {
         // LAN only: no relays, nothing published outside the network, and no
         // asking the router to open ports (UPnP, NAT-PMP, PCP) every few seconds.
-        builder.relay_mode(RelayMode::Disabled).portmapper_config(PortmapperConfig::Disabled)
+        // An empty relay map rather than none, so turning Away on later has a
+        // relay transport to fill: without one, only a restart could add relays.
+        builder
+            .relay_mode(RelayMode::Custom(iroh::RelayMap::empty()))
+            .portmapper_config(PortmapperConfig::Disabled)
     };
     if !config.away_mode {
         let v4_port = ports.map_or(0, |p| p.v4);
@@ -4087,7 +4112,61 @@ async fn bind_endpoint(
             builder = builder.bind_addr(SocketAddr::from(([0u16; 8], v6))).map_err(crate::error::net)?;
         }
     }
-    builder.bind().await.map_err(crate::error::net)
+    let endpoint = builder.bind().await.map_err(crate::error::net)?;
+    if config.away_mode {
+        add_internet_lookups(&endpoint)?;
+    }
+    Ok(endpoint)
+}
+
+/// Brings relays and internet lookups in line with Away mode, while running.
+/// Off, nothing is published or looked up and no relay is picked or used. iroh
+/// keeps its idle connection to the current home relay until the endpoint
+/// closes (`handle_net_report_report` holds on to it), which needs a restart.
+async fn apply_internet_services(shared: &Arc<Shared>) {
+    let _one_at_a_time = shared.away_switch.lock().await;
+    let on = shared.away_mode();
+    let relays = RelayMode::Default.relay_map();
+    let urls: Vec<iroh::RelayUrl> = relays.urls();
+    for url in urls {
+        if on {
+            if let Some(config) = relays.get(&url) {
+                shared.endpoint.insert_relay(url, config).await;
+            }
+        } else {
+            shared.endpoint.remove_relay(&url).await;
+        }
+    }
+    let running = lock(&shared.lan_discovery).as_ref().map(|(_, fast)| *fast);
+    let lookups = match running {
+        // Swapping mDNS clears the lookups and puts back what Away mode allows.
+        Some(fast) => install_mdns(shared, fast),
+        None => shared.endpoint.address_lookup().map_err(crate::error::net).and_then(|lookups| {
+            lookups.clear();
+            lookups.add(shared.memory.clone());
+            if on { add_internet_lookups(&shared.endpoint) } else { Ok(()) }
+        }),
+    };
+    if let Err(e) = lookups {
+        tracing::warn!(error = %e, "can't update address lookups");
+    }
+    shared.endpoint.network_change().await;
+    tracing::info!(on, "internet services updated");
+    if on {
+        shared.nudge_reconnect();
+    }
+}
+
+/// Publishes this device's addresses without the name that LAN discovery
+/// announces: on the LAN it's for nearby pairing, and nothing on the internet
+/// needs it.
+#[derive(Debug)]
+struct WithoutName<T>(T);
+
+impl<T: iroh::address_lookup::AddressLookup> iroh::address_lookup::AddressLookup for WithoutName<T> {
+    fn publish(&self, data: &iroh::address_lookup::EndpointData) {
+        self.0.publish(&iroh::address_lookup::EndpointData::new(data.addrs().cloned().collect()));
+    }
 }
 
 /// Announces this device on the LAN and watches for others.
@@ -4196,7 +4275,8 @@ fn is_mdns_interface(ip: std::net::Ipv4Addr) -> bool {
 fn add_internet_lookups(endpoint: &Endpoint) -> Result<()> {
     use iroh::address_lookup::AddressLookupBuilder;
     let lookups = endpoint.address_lookup().map_err(crate::error::net)?;
-    lookups.add(PkarrPublisher::n0_dns().into_address_lookup(endpoint).map_err(crate::error::net)?);
+    lookups
+        .add(WithoutName(PkarrPublisher::n0_dns().into_address_lookup(endpoint).map_err(crate::error::net)?));
     lookups.add(PkarrResolver::n0_dns().into_address_lookup(endpoint).map_err(crate::error::net)?);
     lookups.add(DnsAddressLookup::n0_dns().into_address_lookup(endpoint).map_err(crate::error::net)?);
     Ok(())
@@ -4341,7 +4421,10 @@ async fn deliver_queued_rpc(
     blob: Option<Vec<u8>>,
 ) {
     let peer = item.peer;
-    let _ = shared.store.mark_queue_sending(&item.id);
+    // Gone or no longer waiting (cleared, say): it must not go out now.
+    if !matches!(shared.store.mark_queue_sending(&item.id), Ok(true)) {
+        return;
+    }
     shared.emit(NodeEvent::QueueChanged);
 
     let outcome: Result<()> = match payload {
@@ -4357,9 +4440,13 @@ async fn deliver_queued_rpc(
                         Ok(reply) => match reply.expect(types::OK) {
                             Ok(()) => {
                                 let peer_name = shared.peer_name(&peer);
-                                if let Some((clip_id, evicted)) =
+                                // Cleared while it was on its way: don't bring it back.
+                                let recorded = if shared.store.has_queue_item(&item.id) {
                                     shared.clipboard_history.record_text_with_id(text, &peer_name, false)
-                                {
+                                } else {
+                                    None
+                                };
+                                if let Some((clip_id, evicted)) = recorded {
                                     shared.record_timeline_clip(
                                         peer, &peer_name, false, "text", clip_id, evicted,
                                     );
@@ -4435,5 +4522,124 @@ async fn deliver_queued_rpc(
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod away_tests {
+    use super::*;
+    use crate::config::NoopPlatform;
+    use iroh::Watcher as _;
+    use nectarlink_protocol::messages::{DeviceInfo, DeviceKind};
+
+    async fn node(dir: &tempfile::TempDir, away: bool) -> Node {
+        let mut config = NodeConfig::new(
+            dir.path().to_path_buf(),
+            DeviceInfo {
+                name: "Test".into(),
+                kind: DeviceKind::Desktop,
+                os: "windows".into(),
+                os_ver: "11".into(),
+                model: None,
+                accent: None,
+                screen: None,
+                install_id: None,
+            },
+            "0.0.0-test",
+        );
+        config.lan_discovery = false;
+        config.away_mode = away;
+        config.localsend_port = 0;
+        Node::start(config, Arc::new(NoopPlatform)).await.unwrap()
+    }
+
+    fn lookups(node: &Node) -> usize {
+        node.shared.endpoint.address_lookup().unwrap().len()
+    }
+
+    fn relays(node: &Node) -> usize {
+        node.shared.endpoint.home_relay_status().get().len()
+    }
+
+    /// Waits for the switch, which runs in the background.
+    async fn settled(node: &Node) {
+        for _ in 0..200 {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            if node.shared.away_switch.try_lock().is_ok() {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                if node.shared.away_switch.try_lock().is_ok() {
+                    return;
+                }
+            }
+        }
+        panic!("the switch never finished");
+    }
+
+    #[tokio::test]
+    async fn turning_away_off_stops_internet_services_without_a_restart() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let node = node(&dir, true).await;
+        let with_away = lookups(&node);
+        assert!(with_away > 1, "started with internet lookups");
+
+        node.set_away_mode(false);
+        settled(&node).await;
+        assert_eq!(lookups(&node), 1, "only the in-memory lookup is left");
+        node.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn turning_away_on_starts_internet_services_without_a_restart() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let node = node(&dir, false).await;
+        assert_eq!(lookups(&node), 1, "LAN only: nothing but the in-memory lookup");
+        assert_eq!(relays(&node), 0);
+
+        node.set_away_mode(true);
+        settled(&node).await;
+        assert!(lookups(&node) > 1, "internet lookups are on");
+
+        node.set_away_mode(false);
+        settled(&node).await;
+        assert_eq!(lookups(&node), 1);
+        node.shutdown().await;
+    }
+
+    /// Needs the internet: `cargo test -p nectarlink-core --lib -- --ignored away_switch`.
+    #[tokio::test]
+    #[ignore = "reaches the real relays"]
+    async fn away_switch_reaches_a_real_relay_while_running() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let node = node(&dir, false).await;
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        assert_eq!(relays(&node), 0, "LAN only reaches no relay");
+
+        node.set_away_mode(true);
+        let mut connected = false;
+        for _ in 0..60 {
+            tokio::time::sleep(Duration::from_millis(500)).await;
+            connected = relays(&node) > 0;
+            if connected {
+                break;
+            }
+        }
+        assert!(connected, "turning it on while running reaches a relay");
+        node.shutdown().await;
+    }
+
+    #[test]
+    fn what_is_published_has_no_device_name() {
+        use iroh::address_lookup::{AddressLookup, EndpointData};
+        #[derive(Debug, Clone, Default)]
+        struct Seen(Arc<Mutex<Option<EndpointData>>>);
+        impl AddressLookup for Seen {
+            fn publish(&self, data: &EndpointData) {
+                *self.0.lock().unwrap() = Some(data.clone());
+            }
+        }
+        let seen = Seen::default();
+        let data = EndpointData::new(Vec::new()).with_user_data("Bee's phone".parse().unwrap());
+        WithoutName(seen.clone()).publish(&data);
+        assert!(seen.0.lock().unwrap().as_ref().unwrap().user_data().is_none());
     }
 }

@@ -116,6 +116,10 @@ Whenever a user sends files, folders, links, clipboard payloads, voice recording
    - On startup, `Store::reset_interrupted_sending` resets any item left in `'sending'` state by a previous process crash back to `'waiting'` (`next_retry_ms = 0`).
    - The background queue coordinator (`node.rs`) never busy-polls SQLite: it computes the exact next wakeup deadline (`Store::next_queue_wake_ms`) across pending retry timers and TTL expirations, and awaits `std::future::pending()` when the queue is empty until woken by `queue_notify` (triggered on enqueue, retry, or peer session connection).
 
+### Sealed Queue Content (`QueueSeal`)
+
+Clipboard text and images, links and task alerts in `send_queue` are sealed with the platform `KeyProtector` before they reach SQLite: `payload_json` holds `sealed1:` and base64, `payload_blob` holds sealed bytes, and `title` and `detail` hold a plain label, with the real ones worked out when the row is read. Rows from older versions are sealed at startup, followed by `VACUUM`, and `secure_delete` is on. These kinds are deleted when they expire rather than kept as `expired`. Clearing clipboard history removes waiting clips, and clearing everything also removes waiting links and alerts. File items keep their names and paths in the clear, and stay for Retry.
+
 ## Encrypted Clipboard History (`clipboard_history.rs`)
 
 Recent clipboard items are persisted in `<data_dir>/clipboard_history.enc` and `<data_dir>/clipboard_images/<id>.enc`:

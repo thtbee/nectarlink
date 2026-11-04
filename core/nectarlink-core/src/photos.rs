@@ -98,18 +98,21 @@ pub(crate) async fn list(
     Ok(items)
 }
 
-/// Moves photos and videos to a phone's trash (`photos.delete`); returns how many went.
+/// Moves photos and videos to a phone's trash (`photos.delete`), in as many
+/// requests as it takes; returns how many went.
 pub(crate) async fn delete(shared: &Shared, session: &Session, mut ids: Vec<String>) -> Result<u32> {
     allowed(shared, &session.peer)?;
     ids.retain(|id| is_valid_photo_id(id));
-    ids.truncate(photos::MAX_THUMB_BATCH);
-    if ids.is_empty() {
-        return Ok(0);
+    let mut deleted = 0;
+    for batch in ids.chunks(photos::MAX_THUMB_BATCH) {
+        let env = Envelope::new(types::PHOTOS_DELETE, &PhotoDelete { ids: batch.to_vec() })?;
+        let PhotosDeleted { count } = session
+            .request(env, crate::session::REQUEST_TIMEOUT)
+            .await?
+            .expect_body(types::PHOTOS_DELETED)?;
+        deleted += count;
     }
-    let env = Envelope::new(types::PHOTOS_DELETE, &PhotoDelete { ids })?;
-    let PhotosDeleted { count } =
-        session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect_body(types::PHOTOS_DELETED)?;
-    Ok(count)
+    Ok(deleted)
 }
 
 /// Fetches small JPEG thumbnails for a batch of item IDs (`photos.thumbs`).
