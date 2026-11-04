@@ -1343,6 +1343,20 @@ pub fn on_event(event: &NodeEvent) {
         NodeEvent::LinkChanged { device: d, link: LinkState::Online { .. } } if Some(*d) == device => {
             load_threads();
         }
+        NodeEvent::DeviceRemoved(d) => {
+            // The files don't say which phone they came from, so all of them go
+            // and another open phone fetches its own again.
+            clear_cache();
+            if Some(*d) == device {
+                state(|s| *s = State { generation: s.generation.wrapping_add(1), ..State::default() });
+                changed();
+            } else if device.is_some() {
+                load_threads();
+                if state(|s| s.thread.is_some()) {
+                    load_messages(None);
+                }
+            }
+        }
         NodeEvent::LinkChanged { device: d, link: LinkState::Offline { .. } } if Some(*d) == device => {
             load_chat_threads();
             state(|s| {
