@@ -410,6 +410,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("PhotoBackup", "Waiting for %1"), // desktop/app/src/bridge/photo_backup.rs
     QT_TRANSLATE_NOOP("Photos", "%1 of %2 couldn't be moved to %3. They're in Downloads\\Nectarlink."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "Copied to clipboard."), // desktop/app/src/photos.rs
+    QT_TRANSLATE_NOOP("Photos", "Deleted %1 of %2."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "From %1"), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "New photo"), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "New screenshot"), // desktop/app/src/photos.rs
@@ -417,11 +418,10 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Photos", "Opening latest photo…"), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "Saved %1 items to %2."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "Saved %1 to %2."), // desktop/app/src/photos.rs
-    QT_TRANSLATE_NOOP("Photos", "The phone kept them. Deleting from the PC needs All files access on the phone (Android 11 or later)."),
-    QT_TRANSLATE_NOOP("Photos", "Deleted %1 of %2."),
     QT_TRANSLATE_NOOP("Photos", "That photo isn't on the phone anymore."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "The phone doesn't share photos or files with this PC."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "The phone isn't connected right now."), // desktop/app/src/photos.rs
+    QT_TRANSLATE_NOOP("Photos", "The phone kept them. Deleting from the PC needs All files access on the phone (Android 11 or later)."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "The photo couldn't be copied to the clipboard."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "The photo couldn't be copied. It's in Downloads\\Nectarlink."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("PlayOnPhone", "Connect your phone to play on it."), // desktop/app/src/play_on_phone.rs
