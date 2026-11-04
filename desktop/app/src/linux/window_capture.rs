@@ -230,7 +230,11 @@ fn compute_window_crop(crop: RECT, src_w: u32, src_h: u32) -> (u32, u32, u32, u3
 
 fn capture_x11_window_in_process(xid: usize, out: &mut Vec<u8>) -> Option<(u32, u32)> {
     with_x11_display(|api, dpy| unsafe {
-        let _prev_handler = (api.set_error_handler)(Some(ignore_x11_error));
+        // It's process-wide, and a window can vanish at any frame: set it once.
+        static ERROR_HANDLER: std::sync::Once = std::sync::Once::new();
+        ERROR_HANDLER.call_once(|| {
+            let _ = (api.set_error_handler)(Some(ignore_x11_error));
+        });
         let mut attrs: XWindowAttributes = std::mem::zeroed();
         if (api.get_window_attributes)(dpy, xid as std::ffi::c_ulong, &mut attrs) == 0
             || attrs.width < 32
@@ -253,17 +257,19 @@ fn capture_x11_window_in_process(xid: usize, out: &mut Vec<u8>) -> Option<(u32, 
         if img.is_null() {
             return None;
         }
-        if (*img).data.is_null() {
+        let bytes_per_line = (*img).bytes_per_line.max(0) as usize;
+        let bits = (*img).bits_per_pixel;
+        let bpp = bits.max(0) as usize / 8;
+        if (*img).data.is_null() || !matches!(bits, 24 | 32) || bytes_per_line < src_w as usize * bpp {
             if let Some(destroy) = (*img).f.destroy_image {
                 let _ = destroy(img);
             } else {
+                libc::free((*img).data.cast());
                 let _ = (api.free)(img.cast());
             }
             return None;
         }
 
-        let bytes_per_line = (*img).bytes_per_line.max(0) as usize;
-        let bpp = ((*img).bits_per_pixel.max(24) as usize) / 8;
         let needed = (src_w as usize).checked_mul(src_h as usize)?.checked_mul(4)?;
         out.resize(needed, 0);
 
