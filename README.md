@@ -285,6 +285,14 @@ cargo run -p nectarlink-desktop                                           # Wind
 cd android && ./gradlew assembleDebug                                     # Android app
 ```
 
+```powershell
+./scripts/package.ps1    # Windows installer: target\package\Nectarlink-<version>-x64-setup.exe
+./scripts/check.ps1      # every check CI runs; add -Android and -Arm64 for the full set
+```
+
+Releases are built by CI from a `v*` tag; see
+[docs/technical/releasing.md](docs/technical/releasing.md).
+
 ### With Nix
 
 Run or develop NectarLink using Nix flakes:
@@ -294,14 +302,6 @@ nix run                           # run desktop app
 nix run .#cli                     # run CLI client
 nix develop                       # enter development environment
 ```
-
-```powershell
-./scripts/package.ps1    # Windows installer: target\package\Nectarlink-<version>-x64-setup.exe
-./scripts/check.ps1      # every check CI runs; add -Android and -Arm64 for the full set
-```
-
-Releases are built by CI from a `v*` tag; see
-[docs/technical/releasing.md](docs/technical/releasing.md).
 
 ## Documentation
 

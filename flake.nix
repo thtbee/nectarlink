@@ -21,7 +21,7 @@
           ];
         in pkgs.rustPlatform.buildRustPackage {
           pname = "nectarlink";
-          version = "0.1.5";
+          version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).workspace.package.version;
           src = ./.;
 
           cargoLock = {
