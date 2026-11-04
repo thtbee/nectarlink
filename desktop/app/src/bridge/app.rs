@@ -390,6 +390,10 @@ pub mod qobject {
         /// A short message for the user (e.g. a command failed).
         #[qsignal]
         fn toast(self: Pin<&mut AppController>, message: QString);
+        /// The phone didn't take a change to one of its quick settings.
+        #[qsignal]
+        #[cxx_name = "phoneToggleFailed"]
+        fn phone_toggle_failed(self: Pin<&mut AppController>, device: QString, id: QString);
         /// A short message with a context action chip (e.g. a received clip).
         #[qsignal]
         fn toast_with_action(self: Pin<&mut AppController>, message: QString, action_label: QString);
@@ -1759,6 +1763,8 @@ impl qobject::AppController {
             s.set_toggles(device, Some(next))
         });
         let hotspot_on = id == "hotspot" && val == PhoneToggleValue::Bool(true);
+        let qt = self.qt_thread();
+        let failed_id = id.clone();
         core_host::spawn(async move {
             match node.set_phone_toggle(device, id, val).await {
                 // The phone's hotspot is on: join it, when a network is set for it.
@@ -1768,6 +1774,12 @@ impl qobject::AppController {
                     let latest = node.phone_toggles(device);
                     core_host::host().hub.update(|s| s.set_toggles(device, latest));
                     show_message(describe(&e));
+                    let _ = qt.queue(move |mut object| {
+                        object.as_mut().phone_toggle_failed(
+                            QString::from(&device.to_string()),
+                            QString::from(&failed_id),
+                        );
+                    });
                 }
             }
         });

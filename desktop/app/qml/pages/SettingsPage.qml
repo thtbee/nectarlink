@@ -174,6 +174,7 @@ Item {
         mirroring: qsTr("Screen mirroring"),
         pc_mirror: qsTr("Share PC screen to phone"),
         webcam: qsTr("Webcam"),
+        mic: qsTr("Phone as microphone"),
         storage: Qt.platform.os === "linux" ? qsTr("File manager integration") : qsTr("File Explorer integration"),
         remote_input: qsTr("Remote mouse, keyboard & Deck"),
         commands: qsTr("Run Deck shell commands"),
@@ -195,6 +196,7 @@ Item {
         mirroring: Icons.mirror,
         pc_mirror: Icons.laptop,
         webcam: Icons.video,
+        mic: Icons.mic,
         storage: Icons.folder,
         remote_input: Icons.deck,
         commands: Icons.terminal,
@@ -887,9 +889,13 @@ Item {
                                 width: appearanceBottomPair.colWidth
                                 iconPath: Icons.desktop
                                 title: qsTr("Mica backdrop")
-                                description: qsTr("Tint window with desktop wallpaper.")
+                                description: Qt.platform.os === "windows"
+                                    ? qsTr("Tint window with desktop wallpaper.")
+                                    : qsTr("Only on Windows 11.")
+                                opacity: Qt.platform.os === "windows" ? 1.0 : 0.5
                                 Toggle {
                                     label: qsTr("Mica backdrop")
+                                    enabled: Qt.platform.os === "windows"
                                     checked: Preferences.backdrop
                                     onToggled: (on) => Preferences.backdrop = on
                                 }

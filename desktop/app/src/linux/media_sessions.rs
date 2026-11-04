@@ -859,6 +859,33 @@ fn gdbus_player_call(bus_name: &str, method: &str, extra_args: &[&str]) -> bool 
     cmd.output().is_ok_and(|o| o.status.success())
 }
 
+fn gdbus_position_us(bus_name: &str) -> Option<i64> {
+    let output = Command::new("gdbus")
+        .args([
+            "call",
+            "--session",
+            "--dest",
+            bus_name,
+            "--object-path",
+            "/org/mpris/MediaPlayer2",
+            "--method",
+            "org.freedesktop.DBus.Properties.Get",
+            "org.mpris.MediaPlayer2.Player",
+            "Position",
+        ])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())?;
+    parse_gdbus_position(&String::from_utf8_lossy(&output.stdout))
+}
+
+/// Reads a position from `gdbus`'s `(<int64 1500000>,)`.
+fn parse_gdbus_position(output: &str) -> Option<i64> {
+    let (_, rest) = output.split_once("int64 ")?;
+    let end = rest.find(|c: char| !c.is_ascii_digit() && c != '-').unwrap_or(rest.len());
+    rest[..end].parse().ok()
+}
+
 /// Computes the relative MPRIS2 `Seek(Offset: x)` delta in microseconds from a
 /// target position (`target_us`) and current position (`current_us`).
 pub(crate) fn compute_seek_offset_us(target_us: i64, current_us: i64) -> i64 {
@@ -1033,8 +1060,12 @@ pub fn command(player: &str, action: MediaAction, position: Option<u64>) -> Resu
         MediaAction::Previous => gdbus_player_call(&target_bus, "Previous", &[]),
         MediaAction::Seek => {
             let target_us = i64::try_from(position.unwrap_or(0)).unwrap_or(0).saturating_mul(1000);
-            let offset_str = target_us.to_string();
-            gdbus_player_call(&target_bus, "Seek", &[&offset_str])
+            // `Seek` is relative: without the current position it would jump to
+            // the wrong place, so it doesn't jump at all.
+            gdbus_position_us(&target_bus).is_some_and(|current_us| {
+                let offset_str = compute_seek_offset_us(target_us, current_us).to_string();
+                gdbus_player_call(&target_bus, "Seek", &[&offset_str])
+            })
         }
     };
     if ok {
@@ -1212,6 +1243,10 @@ mod tests {
     #[test]
     fn parses_gdbus_getall_player_properties() {
         let gdbus_props = "({'PlaybackStatus': <'Playing'>, 'Position': <int64 30000000>, 'Metadata': <{'mpris:length': <int64 180000000>, 'mpris:artUrl': <'file:///home/user/Album%20Cover.png'>, 'xesam:title': <'Starlight'>, 'xesam:artist': <['Muse']>, 'xesam:album': <'Black Holes and Revelations'>}>, 'CanPlay': <true>, 'CanPause': <true>, 'CanSeek': <true>},)";
+        assert_eq!(parse_gdbus_position("(<int64 1500000>,)\n"), Some(1_500_000));
+        assert_eq!(parse_gdbus_position("(<<int64 7>>,)"), Some(7));
+        assert_eq!(parse_gdbus_position("(<'nope'>,)"), None);
+
         let player = parse_gdbus_player_properties("org.mpris.MediaPlayer2.vlc", gdbus_props)
             .expect("parse gdbus properties");
         assert_eq!(player.id, "vlc");

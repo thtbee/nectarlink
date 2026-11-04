@@ -402,14 +402,26 @@ impl Session {
 }
 
 /// Whether `mac` is the Wake-on-LAN address of a PC paired with this device.
-fn is_known_wake_mac(shared: &Shared, mac: &[u8; 6]) -> bool {
+/// 16-bit PCM the player can take: a sane rate, mono or stereo, and whole
+/// frames. A rate or layout out of range would play at the wrong speed, and
+/// a ragged length makes a misaligned write to the audio device.
+fn pcm_frame_ok(sample_rate: u32, channels: u8, len: usize) -> bool {
+    (8_000..=96_000).contains(&sample_rate)
+        && (1..=2).contains(&channels)
+        && len > 0
+        && len.is_multiple_of(2 * usize::from(channels))
+}
+
+/// The wake info a paired PC gave with `mac` among its addresses, if any.
+fn known_wake_info(shared: &Shared, mac: &[u8; 6]) -> Option<nectarlink_protocol::messages::PcWakeInfo> {
     let mac = nectarlink_protocol::messages::format_mac(mac);
     shared
         .store
         .list_peers()
         .unwrap_or_default()
-        .iter()
-        .any(|p| p.wake_info.as_ref().is_some_and(|w| w.macs.iter().any(|m| m.eq_ignore_ascii_case(&mac))))
+        .into_iter()
+        .filter_map(|p| p.wake_info)
+        .find(|w| w.macs.iter().any(|m| m.eq_ignore_ascii_case(&mac)))
 }
 
 /// The control stream goes out before media streams ([`crate::mirror`]):
@@ -613,9 +625,17 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         types::WAKE_RELAY => {
             let req = env.body::<WakeRelay>().ok();
             // Only for a PC paired with this device, by an address it gave as its own.
-            let known = req.as_ref().is_some_and(|r| is_known_wake_mac(shared, &r.mac));
-            if let Some(req) = req.filter(|_| known) {
-                let bcast = req.broadcast.as_deref().and_then(|s| s.parse().ok());
+            let info = req.as_ref().and_then(|r| known_wake_info(shared, &r.mac));
+            let known = info.is_some();
+            if let (Some(req), Some(info)) = (req, info) {
+                // Only to a subnet that PC gave as its own; anything else goes
+                // to this network's broadcast, never to an address a peer picks.
+                let bcast = req
+                    .broadcast
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|b| info.broadcasts.iter().any(|own| own.trim() == *b))
+                    .and_then(|b| b.parse().ok());
                 let _ = wake::send_magic_packet(req.mac, bcast);
             } else {
                 tracing::debug!(peer = %peer.short(), "refusing to wake an address no paired PC gave");
@@ -632,8 +652,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         types::AUDIO_PCM => {
             // A rate or layout out of range would play at the wrong speed: dropped.
             if let Ok(frame) = env.body::<AudioPcmFrame>()
-                && (8_000..=96_000).contains(&frame.sample_rate)
-                && (1..=2).contains(&frame.channels)
+                && pcm_frame_ok(frame.sample_rate, frame.channels, frame.pcm.len())
             {
                 shared.emit(NodeEvent::PcAudioFrame {
                     device: peer,
@@ -685,7 +704,7 @@ async fn datagrams(session: &Arc<Session>, shared: &Weak<Shared>) {
                     let sample_rate = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
                     let channels = bytes[8];
                     let pcm = bytes[10..].to_vec();
-                    if sample_rate > 0 && channels > 0 && !pcm.is_empty() {
+                    if pcm_frame_ok(sample_rate, channels, pcm.len()) {
                         shared.emit(NodeEvent::PcAudioFrame {
                             device: session.peer,
                             sample_rate,
@@ -772,7 +791,7 @@ async fn heartbeat(session: &Arc<Session>, shared: &Weak<Shared>) {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_lan_ip, is_lan_peer_ip, is_same_ipv6_subnet, is_tailnet_ip};
+    use super::{is_lan_ip, is_lan_peer_ip, is_same_ipv6_subnet, is_tailnet_ip, pcm_frame_ok};
     use std::net::{IpAddr, Ipv6Addr, SocketAddr};
 
     #[test]
@@ -842,5 +861,18 @@ mod tests {
         let phone_lte: Ipv6Addr = "2001:db8:1c2a:9911:1122:3344:5566:7788".parse().unwrap();
         assert!(is_same_ipv6_subnet(pc_wifi, phone_wifi));
         assert!(!is_same_ipv6_subnet(pc_wifi, phone_lte));
+    }
+
+    #[test]
+    fn pc_audio_frames_must_be_whole_16_bit_frames_at_a_sane_rate() {
+        assert!(pcm_frame_ok(48_000, 2, 960));
+        assert!(pcm_frame_ok(8_000, 1, 2));
+        assert!(!pcm_frame_ok(48_000, 2, 962), "half a stereo frame");
+        assert!(!pcm_frame_ok(48_000, 1, 3), "half a sample");
+        assert!(!pcm_frame_ok(48_000, 2, 0));
+        assert!(!pcm_frame_ok(7_999, 1, 2));
+        assert!(!pcm_frame_ok(4_000_000_000, 2, 4));
+        assert!(!pcm_frame_ok(48_000, 3, 6));
+        assert!(!pcm_frame_ok(48_000, 0, 4));
     }
 }

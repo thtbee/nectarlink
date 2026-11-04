@@ -413,8 +413,12 @@ fn this_device() -> DeviceInfo {
 pub async fn refresh_wake() {
     let wake = crate::win::wol::query_wake_status();
     let info = wake.info.clone();
+    // With no adapter up (Wi-Fi dropping as the PC goes to sleep, a network
+    // change in progress) there's nothing to read, not a PC that can't be
+    // woken: phones keep the addresses they have, which they need most then.
+    let any_up = !wake.adapters.is_empty();
     host().hub.update(|s| s.set_wake(wake));
-    if let Some(node) = node() {
+    if any_up && let Some(node) = node() {
         node.set_wake_info(info).await;
     }
 }

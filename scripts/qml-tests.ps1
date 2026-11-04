@@ -37,6 +37,7 @@ $singletons = @('Theme', 'Tokens', 'Icons')
 foreach ($name in $singletons) { Copy-Item (Join-Path $qml "$name.qml") $module }
 $components = Get-ChildItem (Join-Path $qml 'components') -Filter *.qml
 $components | Copy-Item -Destination $module
+Copy-Item (Join-Path $qml 'IslandWindow.qml') $module
 $stubs = Get-ChildItem (Join-Path $tests 'stubs') -Filter *.qml
 $stubs | Copy-Item -Destination $module
 
@@ -47,6 +48,7 @@ foreach ($name in $singletons + @($stubs | ForEach-Object BaseName)) {
 foreach ($component in $components) {
     $lines += "$($component.BaseName) 1.0 $($component.Name)"
 }
+$lines += 'IslandWindow 1.0 IslandWindow.qml'
 [System.IO.File]::WriteAllLines((Join-Path $module 'qmldir'), $lines)
 
 $env:PATH = "$(Join-Path $QtRoot 'bin');$env:PATH"

@@ -293,6 +293,7 @@ download() {
 install_tarball_dependencies() {
     if has pacman; then
         admin pacman -S --needed --noconfirm libglvnd libx11 libxcb libxkbcommon wayland fontconfig freetype2 dbus \
+            fuse3 openh264 libpulse libxtst wl-clipboard xclip xdg-utils polkit curl \
             || note "Some libraries didn't install; NectarLink may not start until they do."
     else
         say "Make sure OpenGL, X11 or Wayland, fontconfig, freetype and D-Bus libraries are installed."
@@ -446,7 +447,10 @@ remember_firewall() {
     [ -n "$TARGET_HOME" ] || return 0
     dir="${XDG_DATA_HOME:-$TARGET_HOME/.local/share}/Nectarlink"
     if [ "$(id -u)" -eq 0 ] && [ "$TARGET_USER" != "root" ]; then
-        su -s /bin/sh "$TARGET_USER" -c "mkdir -p '$dir' && printf '$DATA_PORT\n' > '$dir/firewall_verified'" 2>/dev/null || true
+        # The user's shell expands these, so a quote in the folder name stays a quote.
+        # shellcheck disable=SC2016
+        NL_DIR="$dir" NL_PORT="$DATA_PORT" su -s /bin/sh "$TARGET_USER" \
+            -c 'mkdir -p "$NL_DIR" && printf "%s\n" "$NL_PORT" > "$NL_DIR/firewall_verified"' 2>/dev/null || true
     elif [ "$(id -u)" -ne 0 ]; then
         if mkdir -p "$dir"; then printf '%s\n' "$DATA_PORT" > "$dir/firewall_verified" || true; fi
     fi

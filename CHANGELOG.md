@@ -105,7 +105,9 @@ picks the right one. Installed copies update themselves.
   windows, your PC's screen on the phone, the phone as webcam and
   microphone, and the phone as touchpad and keyboard. It works on GNOME
   and KDE, on Wayland and X11, and updates itself. A few features need a
-  package or a permission first; the Connection Doctor says which. Thanks
+  package or a permission first; the Connection Doctor says which. GNOME on
+  Wayland doesn't give background apps the clipboard, so there it syncs only
+  while NectarLink's window has focus. Thanks
   to Jochen Kirstätter for the port
   ([#34](https://github.com/thtbee/nectarlink/pull/34),
   [#38](https://github.com/thtbee/nectarlink/pull/38),
@@ -238,6 +240,12 @@ has a Stop button. Choosing another
   or folders in Nemo (Cinnamon) or Thunar (XFCE) as well as GNOME Files,
   Dolphin and Caja, and folders now work in all of them
   ([#49](https://github.com/thtbee/nectarlink/issues/49)).
+- **Smaller Linux installs.** The app no longer needs the ffmpeg program:
+  recordings add the phone's audio themselves. ffmpeg, the webcam driver
+  and NetworkManager are only suggested now; the one-command install still
+  adds the webcam driver. Thanks to
+  [@jochenkirstaetter](https://github.com/jochenkirstaetter)
+  ([#156](https://github.com/thtbee/nectarlink/pull/156)).
 - **Setup on Windows asks about the desktop shortcut and the folder.**
   Untick **Add a desktop shortcut** to skip it. Updates leave it as you
   had it, so one you deleted no longer comes back. **Change** next to
@@ -276,6 +284,29 @@ has a Stop button. Choosing another
   Jochen Kirstätter ([#26](https://github.com/thtbee/nectarlink/issues/26)).
 
 ### Fixed
+
+- **Mirroring: lock the phone, and keep its sound on it.** A **Lock phone**
+  button in the mirror window, and taps from the PC now reach the phone as
+  finger touches, so a launcher's double tap can see them
+  ([#153](https://github.com/thtbee/nectarlink/issues/153)). **Play the sound
+  on the phone** gives the sound back to the phone, not just mutes it here
+  ([#178](https://github.com/thtbee/nectarlink/issues/178)).
+- **Unpairing a phone clears what the PC kept from it.** Its messages, call
+  log, contacts, photo thumbnails and opened photos, and its transfers in the
+  list. Files you saved stay, and so do the Timeline and clipboard history.
+- **Nectar Island said "Transfer complete" when a transfer failed or was
+  cancelled.** A failed one now says so, and a cancelled one says nothing. A
+  paused one keeps showing its name and progress.
+- **Add-on, Off and Connect over mobile data labels did nothing when clicked.**
+  They open the right page of Settings.
+- **The setup walkthrough's Connection Doctor step** showed no results, and its
+  Messages switch didn't turn Messages on.
+- **Mirror windows came back on the wrong monitor** when it sits left of or
+  above the main one.
+- **The Instant Hotspot button stayed on** when the phone couldn't turn its
+  hotspot on.
+- **A custom install folder** that's a link to somewhere else is refused, and
+  sharing to NectarLink from other Windows apps keeps working after an update.
 
 - **Pairing said "Couldn't reach the PC" on PCs with Hyper-V, WSL or a
   VPN.** Their virtual network adapters could fill the pairing code and
@@ -396,6 +427,14 @@ has a Stop button. Choosing another
   ([#59](https://github.com/thtbee/nectarlink/pull/59)).
 - **A resumed transfer showed as paused** on the sending side until the
   other device answered.
+- **The phone forgot how to wake the PC** when the PC's network dropped,
+  as it does going to sleep: the PC told phones it had no wake addresses
+  and they deleted the ones they had. With no network adapter up, the PC
+  now leaves them alone.
+- **A file saved from the PC's shared folders could be cut short** and
+  still land in Downloads as if it were whole, if the file changed or the
+  PC stopped answering partway. The phone now saves it only once every
+  byte has arrived.
 - **Wake when PC is nearby** never found the PC: the Windows app didn't
   start its Bluetooth beacon, and the phone looked for the wrong bytes in
   it. Both are fixed, and the Linux app broadcasts the beacon too

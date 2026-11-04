@@ -23,8 +23,8 @@ use iroh::endpoint::{RecvStream, SendStream, VarInt};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, PacketKind,
     messages::{
-        MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorPower, MirrorResize, MirrorSession, MirrorStart,
-        PhoneApp, PhoneApps, StreamHeader, mirror, types,
+        MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorPower, MirrorResize, MirrorSession, MirrorSound,
+        MirrorStart, PhoneApp, PhoneApps, StreamHeader, mirror, types,
     },
     read_video_packet, video_packet_header, write_frame,
 };
@@ -124,8 +124,9 @@ pub(crate) async fn input(
     let allowed = if is_local_desktop(shared) {
         shared.toggle_on(&session.peer, TOGGLE)
     } else {
+        // Whether this phone may control the PC is the PC's to say: it refuses,
+        // and asks its user, when `remote_input` is off there.
         shared.store.toggle(&session.peer, PC_MIRROR_TOGGLE)?.unwrap_or(true)
-            && shared.toggle_on(&session.peer, crate::remote::TOGGLE)
     };
     if !allowed {
         return Err(Error::Denied);
@@ -176,6 +177,14 @@ pub(crate) async fn power(
     }
     let msg = MirrorPower { stay_awake, screen_off };
     session.send(Envelope::new(types::MIRROR_POWER, &msg)?).await
+}
+
+/// Sends the phone's sound here, or leaves it on the phone (not answered).
+pub(crate) async fn sound(shared: &Shared, session: &Session, on: bool) -> Result<()> {
+    if !shared.toggle_on(&session.peer, TOGGLE) {
+        return Err(Error::Denied);
+    }
+    session.send(Envelope::new(types::MIRROR_SOUND, &MirrorSound { on })?).await
 }
 
 /// The apps a phone can open in windows of their own, by name.
@@ -415,6 +424,12 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                 tokio::task::spawn_blocking(move || {
                     platform.mirror_resize_requested(&peer, resize.session, resize.width, resize.height);
                 });
+            }
+        }
+        types::MIRROR_SOUND => {
+            let MirrorSound { on } = env.body()?;
+            if shared.toggle_on(&peer, TOGGLE) && shared.we_offer(mirror::CAPTURE) {
+                tokio::task::spawn_blocking(move || platform.mirror_sound_requested(&peer, on));
             }
         }
         types::MIRROR_POWER => {

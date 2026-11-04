@@ -2721,6 +2721,9 @@ pub trait Platform: Send + Sync {
     fn mirror_resize_requested(&self, pc_id: String, session: u32, width: u32, height: u32);
     /// The PC updated `stay_awake` or `screen_off` while mirroring the screen (`session == 0`).
     fn mirror_power_requested(&self, pc_id: String, stay_awake: bool, screen_off: bool);
+    /// The PC wants the phone's sound sent to it, or left on the phone, while
+    /// mirroring the screen.
+    fn mirror_sound_requested(&self, pc_id: String, on: bool);
     /// The PC's mouse or keyboard on the mirrored screen (only while this
     /// phone offers `mirror.input`) or an app window. Return quickly.
     fn mirror_input(&self, pc_id: String, session: u32, input: MirrorInputEvent);
@@ -2935,6 +2938,9 @@ impl core::Platform for PlatformAdapter {
     }
     fn mirror_power_requested(&self, peer: &DeviceId, stay_awake: bool, screen_off: bool) {
         self.0.mirror_power_requested(peer.to_string(), stay_awake, screen_off);
+    }
+    fn mirror_sound_requested(&self, peer: &DeviceId, on: bool) {
+        self.0.mirror_sound_requested(peer.to_string(), on);
     }
     fn mirror_input(&self, peer: &DeviceId, session: u32, input: core::MirrorInput) {
         self.0.mirror_input(peer.to_string(), session, input.into());
@@ -4411,24 +4417,33 @@ impl NectarlinkNode {
             };
             let mut offset = 0u64;
             let chunk_len = 128 * 1024u64;
-            loop {
+            // Complete only once every byte the peer says the file has is
+            // here: a read that comes back short or empty before then (the
+            // file shrank, the peer stopped) is a failed download, not a
+            // smaller file.
+            let complete = loop {
                 let Ok((meta, chunk)) =
                     node.storage_read(peer_id, remote_path.clone(), offset, Some(chunk_len)).await
                 else {
-                    return false;
+                    break false;
                 };
-                if chunk.is_empty() {
-                    break;
+                if meta.size == 0 {
+                    break true;
                 }
-                if f.write_all(&chunk).await.is_err() {
-                    return false;
+                if chunk.is_empty() || f.write_all(&chunk).await.is_err() {
+                    break false;
                 }
                 offset += chunk.len() as u64;
-                if offset >= meta.size || (chunk.len() as u64) < chunk_len {
-                    break;
+                if offset >= meta.size {
+                    break true;
                 }
+            };
+            if complete && f.flush().await.is_ok() {
+                return true;
             }
-            f.flush().await.is_ok()
+            drop(f);
+            let _ = tokio::fs::remove_file(&local_dest).await;
+            false
         })
     }
 

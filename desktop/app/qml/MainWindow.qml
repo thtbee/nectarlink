@@ -996,7 +996,6 @@ NativeWindow {
                 item.deviceName = Qt.binding(() => window.currentDeviceName)
             item.completed.connect(() => { window.page = "home" })
             item.openGuideRequested.connect(() => { window.page = "guide" })
-            item.doctorRequested.connect(() => { AppController.runDoctor() })
         }
     }
 

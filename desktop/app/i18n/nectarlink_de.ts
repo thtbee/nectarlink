@@ -4426,6 +4426,11 @@ Voraussetzungen
         <translation>Übertragung abgeschlossen</translation>
     </message>
     <message>
+        <location filename="../qml/IslandWindow.qml"/>
+        <source>Transfer failed</source>
+        <translation>Übertragung fehlgeschlagen</translation>
+    </message>
+    <message>
         <location filename="../qml/IslandWindow.qml" line="229"/>
         <source>Transferring %1 file(s)…</source>
         <translation>%1 Datei(en) werden übertragen…</translation>
@@ -5396,6 +5401,16 @@ Voraussetzungen
         <location filename="../qml/MirrorWindow.qml" line="410"/>
         <source>Mute the phone&apos;s sound here</source>
         <translation>Ton des Geräts hier stummschalten</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml"/>
+        <source>Lock phone</source>
+        <translation>Gerät sperren</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml"/>
+        <source>Play the sound on the phone</source>
+        <translation>Ton auf dem Gerät abspielen</translation>
     </message>
     <message>
         <location filename="../qml/MirrorWindow.qml" line="446"/>
@@ -6918,6 +6933,11 @@ Voraussetzungen
         <location filename="../qml/pages/SettingsPage.qml" line="890"/>
         <source>Tint window with desktop wallpaper.</source>
         <translation>Fenster mit dem Desktop-Hintergrund tönen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml"/>
+        <source>Only on Windows 11.</source>
+        <translation>Nur unter Windows 11.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="920"/>

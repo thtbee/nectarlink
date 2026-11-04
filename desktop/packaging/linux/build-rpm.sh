@@ -87,14 +87,22 @@ BuildArch:      ${RPM_ARCH}
 AutoReqProv:    no
 ${REQUIRES}
 Recommends:     polkit
+Recommends:     curl
 Recommends:     xdg-utils
 Recommends:     wl-clipboard
 Recommends:     xclip
+Recommends:     libXtst
+Recommends:     pulseaudio-utils
 Recommends:     pipewire-utils
+Recommends:     pipewire-gstreamer
 Recommends:     gstreamer1-plugins-base
-Recommends:     avahi
+Recommends:     libavcodec-free
+Recommends:     openh264
 Recommends:     bluez
 Recommends:     fuse3
+Suggests:       v4l2loopback
+Suggests:       ffmpeg-free
+Suggests:       NetworkManager
 
 # Bundled Qt libraries are shipped as built: no stripping, debug packages
 # or build-id links.

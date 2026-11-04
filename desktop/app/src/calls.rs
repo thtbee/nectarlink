@@ -196,6 +196,7 @@ pub fn on_event(event: &NodeEvent) {
             stop_ringing(*device);
             finish(*device);
             note_call_ended(*device);
+            forget_page_data(*device);
         }
         // A call can arrive before what the phone can do with it: once the
         // PC may end it, its notification shows.
@@ -492,6 +493,28 @@ fn page_state<T>(f: impl FnOnce(&mut PageState) -> T) -> T {
 
 fn page_changed() {
     core_host::host().hub.changed(Changes::CALLS);
+}
+
+/// Clears an unpaired phone's call log and contacts. The saved photos don't say
+/// which phone they came from, so all of them go and another open phone fetches
+/// its own again.
+fn forget_page_data(device: DeviceId) {
+    if let Ok(entries) = std::fs::read_dir(crate::notifications::images_dir()) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with("call-") || name.starts_with("contact-") {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+    }
+    let open = page_state(|s| s.device);
+    if open == Some(device) {
+        page_state(|s| *s = PageState { generation: s.generation.wrapping_add(1), ..PageState::default() });
+        page_changed();
+    } else if open.is_some() {
+        reload();
+    }
 }
 
 /// Drops in-memory call logs and contacts while the window is closed to the

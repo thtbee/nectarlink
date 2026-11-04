@@ -794,8 +794,9 @@ unsafe fn extract_avframe_picture(frame: *const c_void, stream_colors: Option<Co
             });
         }
 
-        // AV_PIX_FMT_YUV420P = 0, AV_PIX_FMT_YUVJ420P = 12
-        if !data[1].is_null() && !data[2].is_null() {
+        // AV_PIX_FMT_YUV420P = 0, AV_PIX_FMT_YUVJ420P = 12. Anything else, such as
+        // 10-bit video, would read as garbage.
+        if matches!(format, 0 | 12) && !data[1].is_null() && !data[2].is_null() {
             let uv_stride = linesize[1].max(width / 2) as usize;
             let colors = stream_colors.unwrap_or(Colors { bt601: false, full_range: format == 12 });
             return i420_to_nv12_picture(data[0], data[1], data[2], w, h, y_stride, uv_stride, colors);

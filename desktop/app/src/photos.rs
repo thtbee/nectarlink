@@ -122,6 +122,20 @@ pub fn on_event(event: &NodeEvent) {
                 _ => {}
             }
         }
+        NodeEvent::DeviceRemoved(device) => {
+            if Some(*device) == page_device {
+                gallery_state(|g| {
+                    let save_folder = g.save_folder.take();
+                    let generation = g.generation.wrapping_add(1);
+                    *g = GalleryState { save_folder, generation, ..GalleryState::default() };
+                });
+                gallery_changed();
+            }
+            let dir = thumbs_dir(*device);
+            let _ = std::thread::Builder::new().name("photos-forget".into()).spawn(move || {
+                let _ = std::fs::remove_dir_all(dir);
+            });
+        }
         // A photo backup's downloads are its own (crate::photo_backup).
         NodeEvent::Transfer(t) if t.direction == Direction::Incoming && !crate::photo_backup::claims(t) => {
             finished(t)

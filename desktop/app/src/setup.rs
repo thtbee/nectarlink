@@ -276,8 +276,15 @@ pub fn install(
     placement: Option<&Placement>,
     on_event: impl FnMut(Event),
 ) -> Outcome {
+    let rechecked = match placement {
+        Some(p) => match crate::win::install_dir::check(&p.dir) {
+            Ok(fresh) => Some(fresh),
+            Err(reason) => return Outcome::Failed(reason),
+        },
+        None => None,
+    };
     let progress = progress_file("install");
-    let params = install_params(desktop_shortcut, placement, &progress);
+    let params = install_params(desktop_shortcut, rechecked.as_ref(), &progress);
     run_tracked(installer, &params, &progress, Duration::from_secs(600), true, on_event)
 }
 

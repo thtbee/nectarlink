@@ -235,9 +235,18 @@ jobs:
               sh /dist/install.sh
               nectarlink-desktop --version
               sh /dist/install.sh --uninstall
+              # The shell remembers where it last ran the app, and dash
+              # reports that even once the file is gone.
+              hash -r
               ! command -v nectarlink-desktop'
           done
+          # The tarball goes in a home folder and can't add system libraries;
+          # a desktop has them, a bare container doesn't. Installing the .deb
+          # and removing just it leaves exactly the libraries the app needs.
           docker run --rm -v "$PWD/dist:/dist:ro" ubuntu:24.04 sh -euc '
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends /dist/*.deb >/dev/null
+            apt-get remove -y -qq nectarlink >/dev/null
             useradd -m user
             su user -c "NECTARLINK_ASSETS_DIR=/dist sh /dist/install.sh && ~/.local/bin/nectarlink-desktop --version"'
           rm dist/SHA256SUMS.txt
