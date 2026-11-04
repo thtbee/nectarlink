@@ -41,7 +41,7 @@ This is a review by the project, not an independent audit. It says what the code
 7. **Per-device toggles.** See Surface 8 and the security model.
 8. **Sealed data at rest.** `identity.key`, the clipboard vault (`clipboard_history.enc`, `clipboard_images/*.enc`) and queued clips, images, links and task alerts in `send_queue` (`QueueSeal`, including their titles) go through the platform `KeyProtector`: DPAPI on Windows, Android Keystore AES-256-GCM on Android, and none on Linux (see above).
 
-**Reported and fixed:** a private report (GHSA-39f9-c5p5-8fwq) pointed out that queued clips were plain text in SQLite and survived clearing, and that turning off Connect over mobile data left internet services running until restart. Both were real. Queued content is now sealed, older rows are sealed at startup, `secure_delete` is on, clearing removes it, and it's removed at its deadline. The switch now applies while running, with the one limit above.
+**Reported and fixed:** a private report pointed out that queued clips were plain text in SQLite and survived clearing, and that turning off Connect over mobile data left internet services running until restart. Both were real. Queued content is now sealed, older rows are sealed at startup, `secure_delete` is on, clearing removes it, and it's removed at its deadline. The switch now applies while running, with the one limit above.
 
 ---
 
