@@ -293,6 +293,16 @@ cd android && ./gradlew assembleDebug                                     # Andr
 Releases are built by CI from a `v*` tag; see
 [docs/technical/releasing.md](docs/technical/releasing.md).
 
+### With Nix
+
+Run or develop NectarLink using Nix flakes:
+
+```sh
+nix run                           # run desktop app
+nix run .#cli                     # run CLI client
+nix develop                       # enter development environment
+```
+
 ## Documentation
 
 - [User guide](docs/guide/README.md): setup, pairing and every feature, on Windows and Android
