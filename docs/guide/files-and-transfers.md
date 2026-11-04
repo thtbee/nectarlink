@@ -76,6 +76,18 @@ You can browse your phone's internal storage or selected folders directly inside
 5. Browse folders at local speed using lightweight file placeholders. When you double-click a file to open it, Windows downloads its contents on demand with native progress bars and sync status icons. You can drag new files into the folder to upload them to your phone, create folders, rename files, and delete files (on Android 11+, deleted media files move to the phone's trash rather than being permanently erased).
 6. With **All files access**, an SD card or USB drive in the phone shows as a folder of its own (such as **SD card**) next to the internal storage's folders. Before Android 11, Android lets apps only read SD cards, so files there can be opened but not changed. With **Selected folders only**, pick a folder on the SD card in Android's picker instead.
 
+### Mounting Phone Storage on Linux
+
+On Linux, NectarLink mounts your phone's storage as a folder you can open in any file manager:
+
+1. Do steps 1 and 2 of the Windows instructions above on your phone (allow **All files access** or pick folders, then turn on **Browse this phone's storage** for your PC).
+2. On your PC, open **Settings › Devices**, select your phone, and turn on **File manager integration** (`storage`, off by default).
+3. NectarLink mounts the phone at `~/Nectarlink/<Phone name>` using FUSE, and adds a **<Phone name> (NectarLink)** bookmark to the sidebar of GTK file managers (GNOME Files, Thunar, Nemo) and KDE's Places panel (Dolphin).
+
+The mount needs `/dev/fuse` and the `fusermount3` (or `fusermount`) helper, which come with the `fuse3` package on most distributions. If they are missing, NectarLink logs `FUSE mount unavailable` and the folder stays empty.
+
+If the folder opens but listing it fails with **Permission denied**, the phone has not allowed storage access: repeat step 1. The mount belongs to your user, so run `ls` and other tools as yourself rather than with `sudo`.
+
 ### Browsing PC Files from Your Phone ("Your PC in your pocket")
 
 1. On your PC, open **Settings › Files & Sync** and turn on **Your PC in your pocket**, and make sure **File Explorer integration** (`storage`) is enabled for your phone in **Settings › Devices**.
