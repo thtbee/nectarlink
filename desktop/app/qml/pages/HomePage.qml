@@ -2342,9 +2342,13 @@ Item {
 
                     }
 
-                    // Internet radio, drawn as an analogue tuner.
-                    CarRadio {
+                    // Internet radio, drawn as an analogue tuner. Loaded by URL so a
+                    // build without Qt Multimedia only loses the radio, not Home.
+                    Loader {
                         width: parent.width
+                        visible: status === Loader.Ready
+                        source: Qt.resolvedUrl("../components/CarRadio.qml")
+                        onLoaded: item.width = Qt.binding(() => width)
                     }
                     }
                 }

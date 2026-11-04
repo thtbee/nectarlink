@@ -3408,6 +3408,7 @@ fn system_country() -> String {
 
 /// The first country listed for `zone` in a `zone.tab`-style table
 /// (`CC[,CC…]<TAB>coordinates<TAB>zone…`).
+#[cfg(any(target_os = "linux", test))]
 fn country_for_zone(tab: &str, zone: &str) -> Option<String> {
     tab.lines().filter(|l| !l.starts_with('#')).find_map(|line| {
         let mut cols = line.split('\t');
