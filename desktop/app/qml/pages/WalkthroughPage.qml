@@ -15,7 +15,6 @@ FocusScope {
 
     signal completed()
     signal openGuideRequested()
-    signal doctorRequested()
 
     readonly property int totalSteps: 7
     // Matches the APK name on the GitHub release (see .github/workflows/release.yml).
@@ -70,7 +69,7 @@ FocusScope {
         notifications: true,
         clipboard: true,
         files: true,
-        sms: true,
+        messages: true,
         calls: true,
         media: true,
         storage: false,
@@ -133,7 +132,7 @@ FocusScope {
             notifications: true,
             clipboard: true,
             files: true,
-            sms: true,
+            messages: true,
             calls: true,
             media: true,
             storage: false,
@@ -179,7 +178,7 @@ FocusScope {
         if (parsedDoctorChecks.length === 0)
             return false
         for (let i = 0; i < parsedDoctorChecks.length; i++) {
-            if (parsedDoctorChecks[i].status !== "ok")
+            if (parsedDoctorChecks[i].outcome !== "ok")
                 return false
         }
         return true
@@ -194,7 +193,7 @@ FocusScope {
                 : "Run a quick check to verify Windows Firewall and local discovery."
         let problems = 0
         for (let i = 0; i < parsedDoctorChecks.length; i++) {
-            if (parsedDoctorChecks[i].status !== "ok")
+            if (parsedDoctorChecks[i].outcome !== "ok")
                 problems++
         }
         return problems === 0
@@ -1340,7 +1339,7 @@ FocusScope {
                                                     { key: "clipboard", label: qsTr("Clipboard") },
                                                     { key: "files", label: qsTr("Send files") },
                                                     { key: "media", label: qsTr("Now playing") },
-                                                    { key: "sms", label: qsTr("Messages") },
+                                                    { key: "messages", label: qsTr("Messages") },
                                                     { key: "calls", label: qsTr("Calls") }
                                                 ]
 
@@ -1630,10 +1629,7 @@ FocusScope {
                                             size: "sm"
                                             enabled: !AppController.doctorBusy
                                             Accessible.name: "Run firewall and network check"
-                                            onClicked: {
-                                                AppController.runDoctor()
-                                                walkthrough.doctorRequested()
-                                            }
+                                            onClicked: AppController.runDoctor()
                                         }
                                     }
                                 }
