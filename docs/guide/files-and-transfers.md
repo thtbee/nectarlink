@@ -82,6 +82,9 @@ On Linux, NectarLink mounts your phone's storage as a folder you can open in any
 
 1. Do steps 1 and 2 of the Windows instructions above on your phone (allow **All files access** or pick folders, then turn on **Browse this phone's storage** for your PC).
 2. On your PC, open **Settings › Devices**, select your phone, and turn on **File manager integration** (`storage`, off by default).
+
+   ![The File manager integration toggle and Open button for a paired phone in Settings › Devices](images/linux-file-manager-integration.png)
+
 3. NectarLink mounts the phone at `~/Nectarlink/<Phone name>` using FUSE, and adds a **<Phone name> (NectarLink)** bookmark for file managers that read GTK bookmarks (`~/.config/gtk-3.0/bookmarks`) or KDE places (`~/.local/share/user-places.xbel`).
 
 The mount needs `/dev/fuse` and the `fusermount3` (or `fusermount`) helper, which usually come with your distribution's FUSE package. If they are missing, NectarLink logs `FUSE mount unavailable` and the folder stays empty.
