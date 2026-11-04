@@ -402,6 +402,14 @@ has a Stop button. Choosing another
   ([#59](https://github.com/thtbee/nectarlink/pull/59)).
 - **A resumed transfer showed as paused** on the sending side until the
   other device answered.
+- **The phone forgot how to wake the PC** when the PC's network dropped,
+  as it does going to sleep: the PC told phones it had no wake addresses
+  and they deleted the ones they had. With no network adapter up, the PC
+  now leaves them alone.
+- **A file saved from the PC's shared folders could be cut short** and
+  still land in Downloads as if it were whole, if the file changed or the
+  PC stopped answering partway. The phone now saves it only once every
+  byte has arrived.
 - **Wake when PC is nearby** never found the PC: the Windows app didn't
   start its Bluetooth beacon, and the phone looked for the wrong bytes in
   it. Both are fixed, and the Linux app broadcasts the beacon too
