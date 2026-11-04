@@ -122,6 +122,7 @@ import kotlinx.coroutines.delay
 
 enum class RemoteMode { Touchpad, AirMouse, Presentation, Screen }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RemoteScreen(
     device: Device,
@@ -332,7 +333,9 @@ fun RemoteScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
                 RemoteMode.Screen -> Column(
-                    modifier = Modifier.fillMaxSize(),
+                    // Above the keyboard while it's open: apps are drawn edge to edge
+                    // (Android 15 and later), so it would cover the typing field.
+                    modifier = Modifier.fillMaxSize().imePadding(),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     PcMirrorView(
@@ -344,7 +347,8 @@ fun RemoteScreen(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                     )
                     // The touchpad under the screen: watch the PC and move its pointer together.
-                    if (!screenFullScreen) {
+                    // While typing, the room goes to the screen and the field.
+                    if (!screenFullScreen && !WindowInsets.isImeVisible) {
                         TouchpadSurface(
                             pcId = device.id,
                             core = core,
@@ -480,6 +484,7 @@ private fun TouchpadSurface(
                     var scrollAccumY = 0f
                     var isDragHold = (downTime - lastSingleTapTime) <= doubleTapWindowMs
                     var dragStarted = false
+                    val ballistics = TouchpadBallistics()
 
                     touchPoint = firstDown.position
 
@@ -520,10 +525,14 @@ private fun TouchpadSurface(
                                 core.remoteButton(pcId, "left", "down", onStatus)
                             }
 
-                            if (dist > 0.2f) {
-                                val scaledDx = delta.x * toReference * sensitivity
-                                val scaledDy = delta.y * toReference * sensitivity
-                                core.remoteMove(pcId, scaledDx, scaledDy)
+                            if (dist > 0f) {
+                                val dtMs = change.uptimeMillis - change.previousUptimeMillis
+                                val gain = ballistics.gain(dist * toReference, dtMs)
+                                core.remoteMove(
+                                    pcId,
+                                    delta.x * toReference * gain * sensitivity,
+                                    delta.y * toReference * gain * sensitivity,
+                                )
                                 change.consume()
                             }
                         } else if (pressedCount >= 2) {

@@ -258,6 +258,20 @@ pub fn muted() -> bool {
 pub fn set_muted(muted: bool) {
     MUTED.store(muted, Ordering::Relaxed);
     core_host::host().hub.changed(Changes::MIRROR);
+    // Muted here, it plays on the phone instead (#178).
+    let Some(node) = core_host::node() else { return };
+    let phones: HashSet<DeviceId> = windows()
+        .into_iter()
+        .filter(|(window, _)| window.session == MIRROR_SCREEN)
+        .map(|(window, _)| window.device)
+        .collect();
+    core_host::spawn(async move {
+        for phone in phones {
+            if let Err(e) = node.mirror_sound(phone, !muted).await {
+                tracing::debug!(device = %phone.short(), error = %e, "can't move the phone's sound");
+            }
+        }
+    });
 }
 
 /// Whether `device`'s sound is coming in.
@@ -974,6 +988,9 @@ fn request(window: Window, mut options: MirrorStart) {
     if options.app.is_some() {
         options.stay_awake = false;
         options.screen_off = false;
+    }
+    if muted() {
+        options.audio = false;
     }
     let attempt = next_attempt(window);
     if window.session == MIRROR_SCREEN {

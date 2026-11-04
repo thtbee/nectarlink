@@ -997,6 +997,7 @@ object Elevated {
     private val keys = mapOf(
         "back" to KeyEvent.KEYCODE_BACK,
         "home" to KeyEvent.KEYCODE_HOME,
+        "lock" to KeyEvent.KEYCODE_SLEEP,
         "recents" to KeyEvent.KEYCODE_APP_SWITCH,
         "enter" to KeyEvent.KEYCODE_ENTER,
         "backspace" to KeyEvent.KEYCODE_DEL,

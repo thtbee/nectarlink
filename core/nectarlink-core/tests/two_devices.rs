@@ -165,6 +165,9 @@ impl Platform for RecordingPlatform {
     ) {
         self.mirror_asks.lock().unwrap().push(format!("resize {session} {width}x{height}"));
     }
+    fn mirror_sound_requested(&self, _peer: &nectarlink_core::DeviceId, on: bool) {
+        self.mirror_asks.lock().unwrap().push(format!("sound on={on}"));
+    }
     fn mirror_power_requested(&self, _peer: &nectarlink_core::DeviceId, stay_awake: bool, screen_off: bool) {
         self.mirror_asks.lock().unwrap().push(format!("power awake={stay_awake} off={screen_off}"));
     }
@@ -2011,6 +2014,8 @@ async fn the_phone_screen_streams_to_the_pc() {
 
     pc.node.mirror_keyframe(phone_id, 0).await;
     pc.node.mirror_power(phone_id, true, true).await.unwrap();
+    // Muted on the PC, the sound goes back to the phone.
+    pc.node.mirror_sound(phone_id, false).await.unwrap();
     // The PC's mouse on the phone's screen; nonsense never leaves the PC.
     use nectarlink_core::{MirrorInput, TouchAction};
     pc.node
@@ -2018,6 +2023,7 @@ async fn the_phone_screen_streams_to_the_pc() {
         .await
         .unwrap();
     pc.node.mirror_input(phone_id, 0, MirrorInput::Key { key: "back".into() }).await.unwrap();
+    pc.node.mirror_input(phone_id, 0, MirrorInput::Key { key: "lock".into() }).await.unwrap();
     assert!(pc.node.mirror_input(phone_id, 0, MirrorInput::Key { key: "power".into() }).await.is_err());
     // The PC stops watching: the phone hears it, and its stream closes.
     pc.node.mirror_stop(phone_id, 0).await;
@@ -2045,7 +2051,15 @@ async fn the_phone_screen_streams_to_the_pc() {
     }
     assert!(sound.is_closed(), "and its sound stream");
     // The phone records the stop after the streams close; under load that can lag a little.
-    let wanted = ["keyframe 0", "power awake=true off=true", "Touch(Down) on 0", "Key(back) on 0", "stop 0"];
+    let wanted = [
+        "keyframe 0",
+        "power awake=true off=true",
+        "sound on=false",
+        "Touch(Down) on 0",
+        "Key(back) on 0",
+        "Key(lock) on 0",
+        "stop 0",
+    ];
     let deadline = tokio::time::Instant::now() + WAIT;
     let asks = loop {
         let asks = phone.platform.mirror_asks.lock().unwrap().clone();
@@ -5897,15 +5911,9 @@ async fn reverse_mirror_requires_pc_consent_and_remote_input_toggle() {
     })
     .await;
 
-    // (c) `mirror_input` against a PC is refused unless `remote_input` is also on
-    // on both sides.
+    // (c) `remote_input` is the PC's to decide: the phone has no such switch of its
+    // own, so with it off on the PC the input is refused there and the PC asks.
     let touch = MirrorInput::Touch { action: TouchAction::Down, x: 0.5, y: 0.5 };
-    let input_denied_both_off = phone.node.mirror_input(pc_id, MIRROR_SCREEN, touch.clone()).await;
-    assert!(
-        matches!(input_denied_both_off, Err(Error::Denied)),
-        "expected Denied when remote_input is off on phone, got {input_denied_both_off:?}"
-    );
-    phone.node.set_device_toggle(pc_id, "remote_input", true).unwrap();
     phone.node.mirror_input(pc_id, MIRROR_SCREEN, touch.clone()).await.unwrap();
     wait_for(&mut pc, "pc remote input prompt event", |e| match e {
         NodeEvent::RemoteInputRequested { device } if *device == phone_id => Some(()),

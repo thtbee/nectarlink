@@ -5396,6 +5396,16 @@ Neler gerekir
         <translation>Telefonun sesini burada kapat</translation>
     </message>
     <message>
+        <location filename="../qml/MirrorWindow.qml"/>
+        <source>Lock phone</source>
+        <translation>Telefonu kilitle</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml"/>
+        <source>Play the sound on the phone</source>
+        <translation>Sesi telefonda çal</translation>
+    </message>
+    <message>
         <location filename="../qml/MirrorWindow.qml" line="446"/>
         <source>Release to send files to %1</source>
         <translation>Dosyaları %1 cihazına göndermek için bırakın</translation>
