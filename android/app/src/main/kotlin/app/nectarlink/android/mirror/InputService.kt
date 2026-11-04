@@ -233,6 +233,9 @@ class InputService : AccessibilityService() {
             "home" -> performGlobalAction(GLOBAL_ACTION_HOME)
             "recents" -> performGlobalAction(GLOBAL_ACTION_RECENTS)
             "notifications" -> performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
+            "lock" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
+            }
             "enter" -> focused()?.let { node ->
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     node.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)

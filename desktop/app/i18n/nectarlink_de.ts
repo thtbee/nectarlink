@@ -5403,6 +5403,16 @@ Voraussetzungen
         <translation>Ton des Geräts hier stummschalten</translation>
     </message>
     <message>
+        <location filename="../qml/MirrorWindow.qml"/>
+        <source>Lock phone</source>
+        <translation>Gerät sperren</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml"/>
+        <source>Play the sound on the phone</source>
+        <translation>Ton auf dem Gerät abspielen</translation>
+    </message>
+    <message>
         <location filename="../qml/MirrorWindow.qml" line="446"/>
         <source>Release to send files to %1</source>
         <translation>Loslassen, um Dateien an %1 zu senden</translation>
