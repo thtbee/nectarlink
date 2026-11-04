@@ -20,18 +20,21 @@ never sends commands, file paths, or URLs.
 | `pc.audio` | desktop | Reports active audio output devices in `deck.state` and accepts `pc.audio.set` requests (`media.pc_audio`) |
 
 - **Per-device toggles on the PC:**
-  - `remote_input` (**off by default**): required for all `deck.press` and `pc.audio.set` requests. When a paired phone presses a tile, adjusts PC audio, or calls `remote.check` while `remote_input` is off, the PC refuses with `DENIED` and emits a one-time consent prompt (`RemoteInputRequested`) for that phone.
+  - `remote_input` (**off by default**): required for all `deck.press` requests (and accepted alongside `pc_actions` for `pc.audio.set`). When a paired phone presses a tile or calls `remote.check` while `remote_input` is off, the PC refuses with `DENIED` and emits a one-time consent prompt (`RemoteInputRequested`) for that phone.
   - `commands` (**off by default**): additionally required for tiles whose `kind` is `"run_command"`. Even when `remote_input` is on, pressing a `"run_command"` tile while `commands` is off for that phone is refused with `DENIED`.
 
 ## 2. Messages
 
-All on the control stream.
+Control messages run on the control stream; low-latency PC speaker audio frames
+use QUIC datagrams (`NLPA`) with `audio.pcm` on the control stream as a
+fallback for larger frames.
 
 ```
 t = "deck.layout"   b = DeckLayout                              // PC → phone, no reply
 t = "deck.state"    b = DeckState                               // PC → phone, no reply
 t = "deck.press"    id = n  b = { tile: text }                  // phone → PC
 t = "pc.audio.set"  id = n  b = { volume?: uint, muted?: bool } // phone → PC
+t = "audio.pcm"     b = AudioPcmFrame                           // PC → phone, no reply
 t = "ok"            re = n
 ```
 
@@ -99,24 +102,38 @@ Errors:
 - `NOT_FOUND` when no tile with ID `tile` exists in the PC's current Deck layout.
 - `INTERNAL` when the platform action fails on the PC.
 
-### 2.4 `pc.audio.set`
+### 2.4 `pc.audio.set` and `audio.pcm`
 
 Sets the PC's master speaker volume (`0..=100`) and/or mute state via Windows
 Core Audio (`IAudioEndpointVolume`), then pushes the updated `deck.state`.
+Sentinel volume values `200` (`PHONE_SPEAKER_OFF`) and `201`
+(`PHONE_SPEAKER_ON`, with `muted` omitted) stop or start streaming the PC's
+loopback audio to the phone ("Use phone as speaker").
 
 ```
 PcAudioSet = {
-  volume?: uint,            // 0..=100
+  volume?: uint,            // 0..=100, or 200 (stop phone speaker) / 201 (start phone speaker)
   muted?:  bool,
+}
+
+AudioPcmFrame = {
+  sample_rate: uint,        // 8000..=96000 Hz
+  channels:    uint,        // 1..=2
+  pcm:         bytes,       // signed 16-bit little-endian interleaved PCM (<= 64 KiB, multiple of 2 * channels)
 }
 ```
 
-At least one of `volume` or `muted` must be present.
+At least one of `volume` or `muted` must be present in `PcAudioSet`. While
+phone speaker streaming is active, small PCM frames (`<= 960` bytes) are sent
+as QUIC datagrams (`[b"NLPA": 4B][sample_rate: u32 LE][channels: u8][0: u8][pcm]`),
+and larger frames fall back to `audio.pcm` on the control stream. The phone
+accepts incoming `audio.pcm` and `NLPA` frames only when its `media` toggle is
+enabled for the PC.
 
-Errors:
-- `BAD_MESSAGE` when both `volume` and `muted` are omitted or `volume > 100`.
+Errors for `pc.audio.set`:
+- `BAD_MESSAGE` when both `volume` and `muted` are omitted or `volume` is not in `0..=100 | 200 | 201`.
 - `UNSUPPORTED` when the PC does not offer `pc.audio` or `deck.actions`.
-- `DENIED` when `remote_input` is off for the phone.
+- `DENIED` when both `pc_actions` and `remote_input` are off for the phone (for volume/mute), or when `media` is off for `volume = 201`.
 - `INTERNAL` when the audio endpoint update fails on the PC.
 
 ### 2.5 Action kinds, icons, and colors

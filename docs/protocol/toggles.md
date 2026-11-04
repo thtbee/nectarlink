@@ -50,6 +50,7 @@ PhoneToggles = {
   brightness:  uint,          // screen brightness, 0..=100
   wifi:        bool,          // Wi-Fi is on
   bluetooth:   bool,          // Bluetooth is on
+  hotspot?:    bool,          // Wi-Fi hotspot / tethering is on
 }
 ```
 
@@ -65,7 +66,9 @@ Asks the phone to change one toggle:
 | `"volume"` | `uint` (`0..=100`) | `toggles.volume` |
 | `"brightness"` | `uint` (`0..=100`) | `toggles.brightness` |
 | `"wifi"` | `bool` | `toggles.wifi` |
+| `"hotspot"` | `bool` | `toggles.wifi` |
 | `"bluetooth"` | `bool` | `toggles.bluetooth` |
+| `"pc_active"` | `bool` | `toggles.read` (presence hint for silencing notifications while active at the PC; exempt from the `toggles` device toggle) |
 
 Errors:
 - `BAD_MESSAGE` when `id` is unknown or `value` has the wrong type or is out of range (`> 100` for `volume`/`brightness`, or an unknown ringer mode).
