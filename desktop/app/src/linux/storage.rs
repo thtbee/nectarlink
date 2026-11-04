@@ -1138,7 +1138,7 @@ fn fetch_dir_entries(state: &mut FuseState, dir_rel: &str) -> Result<Vec<Storage
     let entries = core_host::host()
         .runtime
         .block_on(async move { node.storage_list(device, &rel_owned).await })
-        .map_err(|_| -libc::EIO)?;
+        .map_err(|e| storage_errno(&e))?;
     for entry in &entries {
         let name = entry.name.trim_matches('/');
         if !name.is_empty() && name != "." && name != ".." && !name.contains('/') {
@@ -1185,7 +1185,7 @@ fn read_remote_slice(device: DeviceId, rel_path: &str, offset: u64, size: usize)
         let (_, mut recv) = node
             .storage_read_stream(device, &rel_owned, offset, Some(max_len))
             .await
-            .map_err(|_| -libc::EIO)?;
+            .map_err(|e| storage_errno(&e))?;
         let mut out = Vec::with_capacity(size.min(128 * 1024));
         while out.len() < size {
             let want = (size - out.len()).min(STREAM_READ_CHUNK_BYTES);
@@ -1211,6 +1211,25 @@ fn io_errno(error: &std::io::Error) -> i32 {
     -error.raw_os_error().unwrap_or(libc::EIO)
 }
 
+/// The errno a failed phone request reports to the file manager, so "the
+/// phone is offline" and "the phone refused" don't both read as an I/O error.
+/// Logs only the kind of failure, never a path or file name.
+fn storage_errno(error: &nectarlink_core::Error) -> i32 {
+    use nectarlink_core::Error;
+    let (errno, kind) = match error {
+        Error::Offline | Error::NotPaired => (libc::ENOTCONN, "offline"),
+        Error::Denied | Error::Declined => (libc::EACCES, "denied"),
+        Error::NotFound => (libc::ENOENT, "not found"),
+        Error::Timeout => (libc::ETIMEDOUT, "timed out"),
+        Error::Unsupported => (libc::EOPNOTSUPP, "unsupported"),
+        Error::TooLarge => (libc::EFBIG, "too large"),
+        Error::Io(e) => (e.raw_os_error().unwrap_or(libc::EIO), "i/o"),
+        _ => (libc::EIO, "other"),
+    };
+    tracing::debug!(errno, kind, "phone storage request failed");
+    -errno
+}
+
 fn new_spool() -> Result<Spool, i32> {
     Spool::create(&core_host::host().data_dir.join("fuse-stage")).map_err(|e| io_errno(&e))
 }
@@ -1224,7 +1243,7 @@ fn upload_file(device: DeviceId, rel_path: &str, source: &Path) -> Result<(), i3
     let res = core_host::host()
         .runtime
         .block_on(async move { node.storage_write(device, &rel_owned, &source).await });
-    res.map(|_| ()).map_err(|_| -libc::EIO)
+    res.map(|_| ()).map_err(|e| storage_errno(&e))
 }
 
 /// The phone's copy of a file, on disk. A failed read is an error rather than an
@@ -1237,7 +1256,7 @@ fn download_to_spool(device: DeviceId, rel_path: &str) -> Result<Spool, i32> {
     let rel_owned = rel_path.to_owned();
     core_host::host().runtime.block_on(async {
         let (_, mut recv) =
-            node.storage_read_stream(device, &rel_owned, 0, None).await.map_err(|_| -libc::EIO)?;
+            node.storage_read_stream(device, &rel_owned, 0, None).await.map_err(|e| storage_errno(&e))?;
         loop {
             match recv.read_chunk(STREAM_READ_CHUNK_BYTES).await {
                 Ok(Some(chunk)) if chunk.is_empty() => return Ok(()),
@@ -2147,6 +2166,18 @@ pub fn unregister_all() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn phone_failures_map_to_distinct_errnos() {
+        use nectarlink_core::Error;
+        assert_eq!(storage_errno(&Error::Offline), -libc::ENOTCONN);
+        assert_eq!(storage_errno(&Error::Denied), -libc::EACCES);
+        assert_eq!(storage_errno(&Error::NotFound), -libc::ENOENT);
+        assert_eq!(storage_errno(&Error::Timeout), -libc::ETIMEDOUT);
+        assert_eq!(storage_errno(&Error::Internal("x".into())), -libc::EIO);
+        let io = Error::Io(std::io::Error::from_raw_os_error(libc::ENOSPC));
+        assert_eq!(storage_errno(&io), -libc::ENOSPC);
+    }
 
     #[test]
     fn gtk_bookmark_formatting_upsert_and_removal_preserve_unrelated_entries() {
