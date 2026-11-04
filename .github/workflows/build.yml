@@ -136,7 +136,7 @@ jobs:
             build-essential pkg-config libgl1-mesa-dev libx11-dev libxcb1-dev \
             libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libfontconfig1-dev \
             libfreetype-dev libdbus-1-dev libxtst-dev libavcodec-dev libavutil-dev \
-            file desktop-file-utils appstream rpm shellcheck
+            qt6-l10n-tools file desktop-file-utils appstream rpm shellcheck
           pkg-config --exists libavcodec libavutil
       - name: Install Qt
         uses: jurplel/install-qt-action@v4

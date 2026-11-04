@@ -15,7 +15,10 @@ build_adapter() {
     local version="$1" checksum="$2" major="${1%%.*}"
     local archive="${cache}/ffmpeg-${version}.tar.xz"
     if [[ ! -f "${archive}" ]] || ! echo "${checksum}  ${archive}" | sha256sum -c --status; then
-        curl -fsSL "https://ffmpeg.org/releases/ffmpeg-${version}.tar.xz" -o "${archive}.tmp"
+        curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 \
+            "https://ffmpeg.org/releases/ffmpeg-${version}.tar.xz" -o "${archive}.tmp" ||
+        curl -fsSL --retry 3 --retry-all-errors --connect-timeout 15 \
+            "https://ftp.osuosl.org/pub/blfs/conglomeration/ffmpeg/ffmpeg-${version}.tar.xz" -o "${archive}.tmp"
         echo "${checksum}  ${archive}.tmp" | sha256sum -c -
         mv "${archive}.tmp" "${archive}"
     fi
