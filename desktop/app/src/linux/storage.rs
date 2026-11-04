@@ -7,8 +7,10 @@
 use std::{
     collections::{HashMap, HashSet},
     fs,
-    io::Write,
-    os::fd::{AsRawFd, FromRawFd, OwnedFd},
+    os::{
+        fd::{AsRawFd, FromRawFd, OwnedFd},
+        unix::fs::{FileExt, OpenOptionsExt},
+    },
     path::{Component, Path, PathBuf},
     process::{Command, Stdio},
     sync::{
@@ -22,11 +24,13 @@ use nectarlink_core::{DeviceId, LinkState, NodeEvent, StorageEntry};
 
 use crate::core_host;
 use crate::state::{Changes, CoreStatus};
-use crate::storage::{base_sync_dir, relative_path_under_root, sanitize_folder_name};
+use crate::storage::{base_sync_dir, folder_names, relative_path_under_root, sanitize_folder_name};
 
 const FUSE_KERNEL_VERSION: u32 = 7;
 const FUSE_KERNEL_MINOR_VERSION: u32 = 27;
 const FUSE_ROOT_ID: u64 = 1;
+/// How long a mount that stopped working waits before another try.
+const MOUNT_RETRY_AFTER: Duration = Duration::from_secs(30);
 
 const FUSE_ASYNC_READ: u32 = 1 << 0;
 const FUSE_ATOMIC_O_TRUNC: u32 = 1 << 3;
@@ -577,13 +581,64 @@ struct InodeMeta {
     modified_ms: i64,
 }
 
+/// A file being written through the mount, kept on disk until it's uploaded:
+/// a phone holds videos larger than this PC's memory.
+#[derive(Debug)]
+struct Spool {
+    file: fs::File,
+    path: PathBuf,
+    len: u64,
+}
+
+impl Spool {
+    fn create(dir: &Path) -> std::io::Result<Self> {
+        fs::create_dir_all(dir)?;
+        let seq = STAGE_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let path = dir.join(format!("upload-{}-{seq}.tmp", std::process::id()));
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW)
+            .open(&path)?;
+        Ok(Self { file, path, len: 0 })
+    }
+
+    fn write_at(&mut self, offset: u64, bytes: &[u8]) -> std::io::Result<()> {
+        self.file.write_all_at(bytes, offset)?;
+        self.len = self.len.max(offset.saturating_add(bytes.len() as u64));
+        Ok(())
+    }
+
+    /// Up to `want` bytes at `offset`; fewer at the end of the file.
+    fn read_at(&self, offset: u64, want: usize) -> std::io::Result<Vec<u8>> {
+        let want = (want as u64).min(self.len.saturating_sub(offset)) as usize;
+        let mut out = vec![0; want];
+        self.file.read_exact_at(&mut out, offset)?;
+        Ok(out)
+    }
+
+    fn set_len(&mut self, len: u64) -> std::io::Result<()> {
+        self.file.set_len(len)?;
+        self.len = len;
+        Ok(())
+    }
+}
+
+impl Drop for Spool {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
+    }
+}
+
 #[derive(Debug)]
 struct OpenFileHandle {
     nodeid: u64,
     rel_path: String,
     dirty: bool,
-    buffer: Vec<u8>,
-    loaded_full: bool,
+    /// The file's contents once it has been truncated or written to.
+    spool: Option<Spool>,
     read_cache_offset: u64,
     read_cache_data: Vec<u8>,
 }
@@ -645,6 +700,42 @@ impl FuseState {
         };
         self.meta_by_ino.insert(ino, meta);
         ino
+    }
+
+    /// Moves a renamed file or folder, and everything under it, to its new path,
+    /// so open files and paths the kernel still holds keep working.
+    fn rename_path(&mut self, old_rel: &str, new_rel: &str) {
+        if let Some(replaced) = self.path_to_ino.remove(new_rel) {
+            self.ino_to_path.remove(&replaced);
+            self.meta_by_ino.remove(&replaced);
+        }
+        let moved = |path: &str| {
+            let rest = path.strip_prefix(old_rel)?;
+            (rest.is_empty() || rest.starts_with('/')).then(|| format!("{new_rel}{rest}"))
+        };
+        let renames: Vec<(String, u64, String)> = self
+            .path_to_ino
+            .iter()
+            .filter_map(|(path, ino)| moved(path).map(|new_path| (path.clone(), *ino, new_path)))
+            .collect();
+        for (path, ino, new_path) in renames {
+            self.path_to_ino.remove(&path);
+            self.ino_to_path.insert(ino, new_path.clone());
+            self.path_to_ino.insert(new_path, ino);
+        }
+        for handle in self.handles.values_mut() {
+            if let Some(new_path) = moved(&handle.rel_path) {
+                handle.rel_path = new_path;
+            }
+        }
+    }
+
+    /// The size of a file with unsaved writes, which the phone doesn't know yet.
+    fn unsaved_len(&self, ino: u64) -> Option<u64> {
+        self.handles
+            .values()
+            .filter(|h| h.nodeid == ino && h.dirty)
+            .find_map(|h| h.spool.as_ref().map(|spool| spool.len))
     }
 
     fn build_attr(&self, ino: u64, meta: &InodeMeta) -> FuseAttr {
@@ -715,9 +806,20 @@ struct MountedDevice {
     stop: Arc<AtomicBool>,
     fuse_state: Arc<Mutex<FuseState>>,
     worker: Mutex<Option<std::thread::JoinHandle<()>>>,
+    /// When the mount stopped working on its own: it failed to start, or
+    /// something else unmounted it.
+    died_at: Mutex<Option<Instant>>,
 }
 
 impl MountedDevice {
+    fn retry_due(&self) -> bool {
+        lock(&self.died_at).is_some_and(|at| at.elapsed() >= MOUNT_RETRY_AFTER)
+    }
+
+    fn is_dead(&self) -> bool {
+        lock(&self.died_at).is_some()
+    }
+
     fn invalidate_cache(&self) {
         lock(&self.fuse_state).invalidate_all();
     }
@@ -747,7 +849,7 @@ fn get_mounted_device(device: &DeviceId) -> Option<Arc<MountedDevice>> {
 }
 
 pub fn mounted_path_for(device: &DeviceId) -> Option<PathBuf> {
-    get_mounted_device(device).map(|m| m.mount_path.clone())
+    get_mounted_device(device).filter(|m| !m.is_dead()).map(|m| m.mount_path.clone())
 }
 
 pub fn sync_root_path_for(device: &DeviceId) -> Option<PathBuf> {
@@ -1062,7 +1164,8 @@ fn refresh_inode_meta(state: &mut FuseState, ino: u64) -> Result<InodeMeta, i32>
     if let Ok(entries) = fetch_dir_entries(state, parent_rel)
         && let Some(found) = entries.iter().find(|e| e.name.trim_matches('/') == file_name)
     {
-        let meta = InodeMeta { is_dir: found.is_dir, size: found.size, modified_ms: found.modified };
+        let size = state.unsaved_len(ino).unwrap_or(found.size);
+        let meta = InodeMeta { is_dir: found.is_dir, size, modified_ms: found.modified };
         state.meta_by_ino.insert(ino, meta.clone());
         return Ok(meta);
     }
@@ -1104,38 +1207,105 @@ fn read_remote_slice(device: DeviceId, rel_path: &str, offset: u64, size: usize)
     })
 }
 
-fn flush_dirty_handle(device: DeviceId, rel_path: &str, data: &[u8]) -> Result<(), i32> {
-    use std::os::unix::fs::OpenOptionsExt;
+fn io_errno(error: &std::io::Error) -> i32 {
+    -error.raw_os_error().unwrap_or(libc::EIO)
+}
 
+fn new_spool() -> Result<Spool, i32> {
+    Spool::create(&core_host::host().data_dir.join("fuse-stage")).map_err(|e| io_errno(&e))
+}
+
+fn upload_file(device: DeviceId, rel_path: &str, source: &Path) -> Result<(), i32> {
     let Some(node) = core_host::node() else {
         return Err(-libc::ENOTCONN);
     };
-    let stage_dir = core_host::host().data_dir.join("fuse-stage");
-    let _ = fs::create_dir_all(&stage_dir);
-    let seq = STAGE_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let stage_file = stage_dir.join(format!("upload-{}-{seq}.tmp", std::process::id()));
-
-    let write_res = OpenOptionsExt::mode(
-        fs::OpenOptions::new().write(true).create(true).truncate(true).custom_flags(libc::O_NOFOLLOW),
-        0o600,
-    )
-    .open(&stage_file)
-    .and_then(|mut f| {
-        f.write_all(data)?;
-        f.flush()
-    });
-    if write_res.is_err() {
-        let _ = fs::remove_file(&stage_file);
-        return Err(-libc::EIO);
-    }
-
     let rel_owned = rel_path.to_owned();
-    let stage_clone = stage_file.clone();
+    let source = source.to_owned();
     let res = core_host::host()
         .runtime
-        .block_on(async move { node.storage_write(device, &rel_owned, &stage_clone).await });
-    let _ = fs::remove_file(&stage_file);
+        .block_on(async move { node.storage_write(device, &rel_owned, &source).await });
     res.map(|_| ()).map_err(|_| -libc::EIO)
+}
+
+/// The phone's copy of a file, on disk. A failed read is an error rather than an
+/// empty file, which an upload would then save over the real one.
+fn download_to_spool(device: DeviceId, rel_path: &str) -> Result<Spool, i32> {
+    let Some(node) = core_host::node() else {
+        return Err(-libc::ENOTCONN);
+    };
+    let mut spool = new_spool()?;
+    let rel_owned = rel_path.to_owned();
+    core_host::host().runtime.block_on(async {
+        let (_, mut recv) =
+            node.storage_read_stream(device, &rel_owned, 0, None).await.map_err(|_| -libc::EIO)?;
+        loop {
+            match recv.read_chunk(STREAM_READ_CHUNK_BYTES).await {
+                Ok(Some(chunk)) if chunk.is_empty() => return Ok(()),
+                Ok(Some(chunk)) => spool.write_at(spool.len, &chunk).map_err(|e| io_errno(&e))?,
+                Ok(None) => return Ok(()),
+                Err(_) => return Err(-libc::EIO),
+            }
+        }
+    })?;
+    Ok(spool)
+}
+
+/// Gives an open file its spool, starting from the phone's copy, before the first
+/// change that keeps what's already there.
+fn load_for_writing(state_arc: &Arc<Mutex<FuseState>>, fh: u64) -> Result<(), i32> {
+    let (device, rel_path, size) = {
+        let state = lock(state_arc);
+        let Some(h) = state.handles.get(&fh) else {
+            return Err(-libc::EBADF);
+        };
+        if h.spool.is_some() {
+            return Ok(());
+        }
+        let size = state.meta_by_ino.get(&h.nodeid).map_or(0, |m| m.size);
+        (state.device, h.rel_path.clone(), size)
+    };
+    let spool = if size > 0 { download_to_spool(device, &rel_path)? } else { new_spool()? };
+    let mut state = lock(state_arc);
+    let Some(h) = state.handles.get_mut(&fh) else {
+        return Err(-libc::EBADF);
+    };
+    h.spool = Some(spool);
+    Ok(())
+}
+
+/// Resizes `ino`'s open handles or, with none open, the phone's file itself.
+fn truncate_file(state_arc: &Arc<Mutex<FuseState>>, ino: u64, rel_path: &str, size: u64) -> Result<(), i32> {
+    let (device, handles) = {
+        let state = lock(state_arc);
+        let handles: Vec<u64> =
+            state.handles.iter().filter(|(_, h)| h.nodeid == ino).map(|(fh, _)| *fh).collect();
+        (state.device, handles)
+    };
+    if handles.is_empty() {
+        let mut spool = if size == 0 { new_spool()? } else { download_to_spool(device, rel_path)? };
+        spool.set_len(size).map_err(|e| io_errno(&e))?;
+        upload_file(device, rel_path, &spool.path)?;
+        let (parent_rel, _) = parent_and_name(rel_path);
+        lock(state_arc).invalidate_dir(parent_rel);
+        return Ok(());
+    }
+    for fh in handles {
+        if size == 0 {
+            let spool = new_spool()?;
+            if let Some(h) = lock(state_arc).handles.get_mut(&fh) {
+                h.spool = Some(spool);
+            }
+        } else {
+            load_for_writing(state_arc, fh)?;
+        }
+        if let Some(h) = lock(state_arc).handles.get_mut(&fh)
+            && let Some(spool) = h.spool.as_mut()
+        {
+            spool.set_len(size).map_err(|e| io_errno(&e))?;
+            h.dirty = true;
+        }
+    }
+    Ok(())
 }
 
 fn handle_fuse_request(
@@ -1207,7 +1377,13 @@ fn handle_fuse_request(
             };
             let child_rel = join_rel_path(&parent_rel, child_name);
             if let Some(found) = entries.iter().find(|e| e.name.trim_matches('/') == child_name) {
-                let meta = InodeMeta { is_dir: found.is_dir, size: found.size, modified_ms: found.modified };
+                let mut meta =
+                    InodeMeta { is_dir: found.is_dir, size: found.size, modified_ms: found.modified };
+                if let Some(&ino) = state.path_to_ino.get(&child_rel)
+                    && let Some(len) = state.unsaved_len(ino)
+                {
+                    meta.size = len;
+                }
                 let ino = state.intern_path(&child_rel, meta.clone());
                 let out = state.entry_out(ino, &meta);
                 send_fuse_reply(fuse_fd, hdr.unique, 0, as_bytes(&out));
@@ -1236,38 +1412,20 @@ fn handle_fuse_request(
                 send_fuse_reply(fuse_fd, hdr.unique, -libc::EINVAL, &[]);
                 return true;
             };
-            let mut state = lock(state_arc);
-            let Some(rel_path) = state.ino_to_path.get(&hdr.nodeid).cloned() else {
+            let Some(rel_path) = lock(state_arc).ino_to_path.get(&hdr.nodeid).cloned() else {
                 send_fuse_reply(fuse_fd, hdr.unique, -libc::ENOENT, &[]);
                 return true;
             };
             if (setattr_in.valid & FATTR_SIZE) != 0 {
-                let new_size = setattr_in.size as usize;
-                let mut touched_handle = false;
-                for h in state.handles.values_mut() {
-                    if h.nodeid == hdr.nodeid {
-                        h.buffer.resize(new_size, 0);
-                        h.loaded_full = true;
-                        h.dirty = true;
-                        touched_handle = true;
-                    }
+                if let Err(err) = truncate_file(state_arc, hdr.nodeid, &rel_path, setattr_in.size) {
+                    send_fuse_reply(fuse_fd, hdr.unique, err, &[]);
+                    return true;
                 }
-                if !touched_handle && new_size == 0 {
-                    let dev = state.device;
-                    let (parent_rel, _) = parent_and_name(&rel_path);
-                    let parent_owned = parent_rel.to_owned();
-                    drop(state);
-                    if let Err(err) = flush_dirty_handle(dev, &rel_path, &[]) {
-                        send_fuse_reply(fuse_fd, hdr.unique, err, &[]);
-                        return true;
-                    }
-                    state = lock(state_arc);
-                    state.invalidate_dir(&parent_owned);
-                }
-                if let Some(meta) = state.meta_by_ino.get_mut(&hdr.nodeid) {
+                if let Some(meta) = lock(state_arc).meta_by_ino.get_mut(&hdr.nodeid) {
                     meta.size = setattr_in.size;
                 }
             }
+            let state = lock(state_arc);
             let meta = state.meta_by_ino.get(&hdr.nodeid).cloned().unwrap_or(InodeMeta {
                 is_dir: false,
                 size: 0,
@@ -1306,7 +1464,8 @@ fn handle_fuse_request(
             };
             let mut dirents: Vec<(u64, u32, String)> = Vec::with_capacity(entries.len() + 2);
             dirents.push((hdr.nodeid, DT_DIR, ".".into()));
-            dirents.push((FUSE_ROOT_ID, DT_DIR, "..".into()));
+            let parent_ino = state.path_to_ino.get(parent_and_name(&dir_rel).0).copied();
+            dirents.push((parent_ino.unwrap_or(FUSE_ROOT_ID), DT_DIR, "..".into()));
             for entry in entries {
                 let name = entry.name.trim_matches('/');
                 if name.is_empty() || name == "." || name == ".." || name.contains('/') {
@@ -1337,6 +1496,17 @@ fn handle_fuse_request(
             if truncate && let Some(meta) = state.meta_by_ino.get_mut(&hdr.nodeid) {
                 meta.size = 0;
             }
+            let spool = if truncate {
+                match new_spool() {
+                    Ok(spool) => Some(spool),
+                    Err(err) => {
+                        send_fuse_reply(fuse_fd, hdr.unique, err, &[]);
+                        return true;
+                    }
+                }
+            } else {
+                None
+            };
             let fh = state.next_fh;
             state.next_fh += 1;
             state.handles.insert(
@@ -1345,8 +1515,7 @@ fn handle_fuse_request(
                     nodeid: hdr.nodeid,
                     rel_path,
                     dirty: truncate,
-                    buffer: Vec::new(),
-                    loaded_full: truncate,
+                    spool,
                     read_cache_offset: 0,
                     read_cache_data: Vec::new(),
                 },
@@ -1364,12 +1533,13 @@ fn handle_fuse_request(
             let state = lock(state_arc);
             let device = state.device;
             if let Some(h) = state.handles.get(&read_in.fh) {
-                if h.loaded_full {
-                    let start = (offset as usize).min(h.buffer.len());
-                    let end = start.saturating_add(want).min(h.buffer.len());
-                    let slice = h.buffer[start..end].to_vec();
+                if let Some(spool) = &h.spool {
+                    let read = spool.read_at(offset, want);
                     drop(state);
-                    send_fuse_reply(fuse_fd, hdr.unique, 0, &slice);
+                    match read {
+                        Ok(slice) => send_fuse_reply(fuse_fd, hdr.unique, 0, &slice),
+                        Err(e) => send_fuse_reply(fuse_fd, hdr.unique, io_errno(&e), &[]),
+                    }
                     return true;
                 }
                 if offset >= h.read_cache_offset {
@@ -1436,6 +1606,13 @@ fn handle_fuse_request(
             let entry = state.entry_out(ino, &meta);
 
             if is_create {
+                let spool = match new_spool() {
+                    Ok(spool) => spool,
+                    Err(err) => {
+                        send_fuse_reply(fuse_fd, hdr.unique, err, &[]);
+                        return true;
+                    }
+                };
                 let fh = state.next_fh;
                 state.next_fh += 1;
                 state.handles.insert(
@@ -1444,8 +1621,7 @@ fn handle_fuse_request(
                         nodeid: ino,
                         rel_path: child_rel,
                         dirty: true,
-                        buffer: Vec::new(),
-                        loaded_full: true,
+                        spool: Some(spool),
                         read_cache_offset: 0,
                         read_cache_data: Vec::new(),
                     },
@@ -1461,7 +1637,8 @@ fn handle_fuse_request(
                 let dev = state.device;
                 state.invalidate_dir(&parent_rel);
                 drop(state);
-                if let Err(err) = flush_dirty_handle(dev, &child_rel, &[]) {
+                let saved = new_spool().and_then(|empty| upload_file(dev, &child_rel, &empty.path));
+                if let Err(err) = saved {
                     send_fuse_reply(fuse_fd, hdr.unique, err, &[]);
                     return true;
                 }
@@ -1481,41 +1658,25 @@ fn handle_fuse_request(
             }
             let write_bytes = &body[data_offset..data_offset + write_len];
 
-            let mut state = lock(state_arc);
-            let need_initial_fetch = state.handles.get(&write_in.fh).and_then(|h| {
-                if !h.loaded_full {
-                    let existing_size = state.meta_by_ino.get(&h.nodeid).map_or(0, |m| m.size as usize);
-                    if existing_size > 0 {
-                        return Some((state.device, h.rel_path.clone(), existing_size));
-                    }
-                }
-                None
-            });
-            if let Some((dev, rel_path, existing_size)) = need_initial_fetch {
-                drop(state);
-                let existing = read_remote_slice(dev, &rel_path, 0, existing_size).unwrap_or_default();
-                state = lock(state_arc);
-                if let Some(h) = state.handles.get_mut(&write_in.fh)
-                    && !h.loaded_full
-                {
-                    h.buffer = existing;
-                    h.loaded_full = true;
-                }
+            if let Err(err) = load_for_writing(state_arc, write_in.fh) {
+                send_fuse_reply(fuse_fd, hdr.unique, err, &[]);
+                return true;
             }
-
+            let mut state = lock(state_arc);
             let Some(h) = state.handles.get_mut(&write_in.fh) else {
                 send_fuse_reply(fuse_fd, hdr.unique, -libc::EBADF, &[]);
                 return true;
             };
-            h.loaded_full = true;
-            let start = write_in.offset as usize;
-            let end = start.saturating_add(write_len);
-            if h.buffer.len() < end {
-                h.buffer.resize(end, 0);
+            let Some(spool) = h.spool.as_mut() else {
+                send_fuse_reply(fuse_fd, hdr.unique, -libc::EBADF, &[]);
+                return true;
+            };
+            if let Err(e) = spool.write_at(write_in.offset, write_bytes) {
+                send_fuse_reply(fuse_fd, hdr.unique, io_errno(&e), &[]);
+                return true;
             }
-            h.buffer[start..end].copy_from_slice(write_bytes);
+            let new_len = spool.len;
             h.dirty = true;
-            let new_len = h.buffer.len() as u64;
             let ino = h.nodeid;
             if let Some(meta) = state.meta_by_ino.get_mut(&ino) {
                 meta.size = new_len;
@@ -1536,16 +1697,15 @@ fn handle_fuse_request(
             let mut state = lock(state_arc);
             let dev = state.device;
             let pending = state.handles.get_mut(&fh).and_then(|h| {
-                if h.dirty {
-                    h.dirty = false;
-                    Some((dev, h.rel_path.clone(), h.buffer.clone()))
-                } else {
-                    None
-                }
+                let path = h.spool.as_ref().filter(|_| h.dirty)?.path.clone();
+                h.dirty = false;
+                Some((dev, h.rel_path.clone(), path))
             });
             drop(state);
-            if let Some((dev, rel_path, data)) = pending {
-                if let Err(err) = flush_dirty_handle(dev, &rel_path, &data) {
+            // Requests are handled one at a time, so nothing writes to the spool
+            // while it uploads.
+            if let Some((dev, rel_path, path)) = pending {
+                if let Err(err) = upload_file(dev, &rel_path, &path) {
                     let mut st = lock(state_arc);
                     if let Some(h) = st.handles.get_mut(&fh) {
                         h.dirty = true;
@@ -1569,8 +1729,12 @@ fn handle_fuse_request(
             drop(state);
             if let Some(h) = removed
                 && h.dirty
+                && let Some(spool) = &h.spool
             {
-                let _ = flush_dirty_handle(dev, &h.rel_path, &h.buffer);
+                // Nothing can receive an error by now: the file has been closed.
+                if let Err(err) = upload_file(dev, &h.rel_path, &spool.path) {
+                    tracing::warn!(err, "couldn't save a file to the phone");
+                }
                 let (parent_rel, _) = parent_and_name(&h.rel_path);
                 lock(state_arc).invalidate_dir(parent_rel);
             }
@@ -1702,10 +1866,7 @@ fn handle_fuse_request(
             let mut state = lock(state_arc);
             state.invalidate_dir(&old_parent);
             state.invalidate_dir(&new_parent);
-            if let Some(ino) = state.path_to_ino.remove(&old_rel) {
-                state.ino_to_path.insert(ino, new_rel.clone());
-                state.path_to_ino.insert(new_rel, ino);
-            }
+            state.rename_path(&old_rel, &new_rel);
             send_fuse_reply(fuse_fd, hdr.unique, 0, &[]);
         }
         _ => {
@@ -1724,6 +1885,7 @@ fn mount_worker(mounted: &Arc<MountedDevice>) {
             path = %mounted.mount_path.display(),
             "FUSE mount unavailable (ensure /dev/fuse and fusermount3 are installed)"
         );
+        *lock(&mounted.died_at) = Some(Instant::now());
         return;
     };
 
@@ -1780,11 +1942,14 @@ fn mount_worker(mounted: &Arc<MountedDevice>) {
 
     drop(fuse_fd);
     unmount_fuse_path(&mounted.mount_path);
+    *lock(&mounted.died_at) = Some(Instant::now());
 }
 
 pub fn start() {
     SHUTTING_DOWN.store(false, Ordering::Release);
     drop(mounts());
+    // Unsaved files from a run that didn't get to clean up.
+    let _ = fs::remove_dir_all(core_host::host().data_dir.join("fuse-stage"));
     core_host::host().hub.subscribe(
         Changes::DEVICES | Changes::STATUS | Changes::CAPABILITIES | Changes::TOGGLES,
         || {
@@ -1811,18 +1976,22 @@ pub fn sync() {
             .map(|d| (d.id, d.info.name.clone(), matches!(d.link, LinkState::Online { .. })))
             .collect::<Vec<_>>()
     });
-    let mut desired: Vec<(DeviceId, String, bool)> = Vec::new();
+    let mut folders = folder_names(devices.iter().map(|(id, name, _)| (*id, name.as_str())));
+    let mut desired: Vec<DesiredMount> = Vec::new();
     let mut disabled: Vec<(DeviceId, String)> = Vec::new();
     for (id, name, online) in devices {
-        let enabled = node
-            .device_toggles(id)
-            .ok()
-            .and_then(|t| t.into_iter().find(|(k, _)| *k == "storage").map(|(_, on)| on))
-            .unwrap_or(false);
+        // Not being able to read the setting isn't the setting being off: leave
+        // the mount and its open files alone.
+        let Ok(toggles) = node.device_toggles(id) else {
+            tracing::debug!(device = %id.short(), "can't read storage permission; skipping this sync");
+            return;
+        };
+        let enabled = toggles.into_iter().find(|(k, _)| *k == "storage").is_some_and(|(_, on)| on);
+        let folder = folders.remove(&id).unwrap_or_else(|| sanitize_folder_name(&name));
         if enabled {
-            desired.push((id, name, online));
+            desired.push(DesiredMount { device: id, name, folder, online });
         } else {
-            disabled.push((id, name));
+            disabled.push((id, folder));
         }
     }
 
@@ -1832,26 +2001,33 @@ pub fn sync() {
     });
 }
 
-fn reconcile(desired: &[(DeviceId, String, bool)], disabled: &[(DeviceId, String)]) {
+struct DesiredMount {
+    device: DeviceId,
+    name: String,
+    folder: String,
+    online: bool,
+}
+
+fn reconcile(desired: &[DesiredMount], disabled: &[(DeviceId, String)]) {
     if SHUTTING_DOWN.load(Ordering::Acquire) {
         return;
     }
     let Some(base) = base_sync_dir() else { return };
 
-    for (id, name) in disabled {
-        unmount_device(*id, Some(name), true);
+    for (id, folder) in disabled {
+        unmount_device(*id, Some(folder), true);
     }
 
-    let desired_ids: HashSet<DeviceId> = desired.iter().map(|(id, _, _)| *id).collect();
+    let desired_ids: HashSet<DeviceId> = desired.iter().map(|d| d.device).collect();
     let stale: Vec<DeviceId> = mounts().keys().filter(|id| !desired_ids.contains(id)).copied().collect();
     for id in stale {
         unmount_device(id, None, true);
     }
 
-    for (device, name, online) in desired {
-        let folder_name = sanitize_folder_name(name);
-        let mount_path = base.join(&folder_name);
-        if get_mounted_device(device).is_none() {
+    for DesiredMount { device, name, folder, online } in desired {
+        let mount_path = base.join(folder);
+        let existing = get_mounted_device(device);
+        if existing.as_ref().is_none_or(|m| m.retry_due()) {
             clear_stale_mount(&mount_path);
         }
         if let Err(e) = fs::create_dir_all(&mount_path) {
@@ -1860,15 +2036,15 @@ fn reconcile(desired: &[(DeviceId, String, bool)], disabled: &[(DeviceId, String
         }
         register_sidebar_bookmarks(&mount_path, name);
 
-        let existing = get_mounted_device(device);
         if let Some(mounted) = existing {
-            if mounted.mount_path == mount_path && mounted.device_name == *name {
+            let unchanged = mounted.mount_path == mount_path && mounted.device_name == *name;
+            if unchanged && !mounted.retry_due() {
                 if *online {
                     mounted.invalidate_cache();
                 }
                 continue;
             }
-            unmount_device(*device, None, true);
+            unmount_device(*device, None, !unchanged);
         }
 
         let stop = Arc::new(AtomicBool::new(false));
@@ -1880,6 +2056,7 @@ fn reconcile(desired: &[(DeviceId, String, bool)], disabled: &[(DeviceId, String
             stop,
             fuse_state,
             worker: Mutex::new(None),
+            died_at: Mutex::new(None),
         });
         let worker_mount = Arc::clone(&mounted);
         if let Ok(handle) = std::thread::Builder::new()
@@ -1892,7 +2069,7 @@ fn reconcile(desired: &[(DeviceId, String, bool)], disabled: &[(DeviceId, String
     }
 }
 
-fn unmount_device(device: DeviceId, fallback_name: Option<&str>, remove_bookmarks: bool) {
+fn unmount_device(device: DeviceId, fallback_folder: Option<&str>, remove_bookmarks: bool) {
     let removed = mounts().remove(&device);
     if let Some(mounted) = removed {
         mounted.stop_and_join();
@@ -1900,10 +2077,10 @@ fn unmount_device(device: DeviceId, fallback_name: Option<&str>, remove_bookmark
             unregister_sidebar_bookmarks(&mounted.mount_path);
         }
     } else if remove_bookmarks
-        && let Some(name) = fallback_name
+        && let Some(folder) = fallback_folder
         && let Some(base) = base_sync_dir()
     {
-        let mount_path = base.join(sanitize_folder_name(name));
+        let mount_path = base.join(folder);
         unregister_sidebar_bookmarks(&mount_path);
     }
 }
@@ -2060,6 +2237,102 @@ mod tests {
         assert!(is_listed_mount(mounts, Path::new("/home/bee/Nectarlink/Pixel 9")));
         assert!(!is_listed_mount(mounts, Path::new("/home/bee/Nectarlink/Galaxy")));
         assert!(!is_listed_mount(mounts, Path::new("/run/user/1000/doc")), "only NectarLink's own mounts");
+    }
+
+    fn test_spool_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("nl-spool-{name}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        dir
+    }
+
+    #[test]
+    fn a_spool_reads_back_writes_and_resizes_without_holding_the_file_in_memory() {
+        let dir = test_spool_dir("rw");
+        let mut spool = Spool::create(&dir).unwrap();
+        spool.write_at(0, b"hello").unwrap();
+        spool.write_at(10, b"world").unwrap();
+        assert_eq!(spool.len, 15);
+        assert_eq!(spool.read_at(3, 4).unwrap(), b"lo\0\0");
+        assert_eq!(spool.read_at(13, 100).unwrap(), b"ld", "stops at the end");
+        assert!(spool.read_at(99, 10).unwrap().is_empty(), "past the end");
+        spool.set_len(2).unwrap();
+        assert_eq!(spool.read_at(0, 100).unwrap(), b"he");
+        // Far past any PC's memory, and it costs nothing until written.
+        spool.set_len(1 << 40).unwrap();
+        assert_eq!(spool.read_at((1 << 40) - 1, 8).unwrap(), [0]);
+        let path = spool.path.clone();
+        assert!(path.exists());
+        drop(spool);
+        assert!(!path.exists(), "dropped with its handle");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    fn handle(nodeid: u64, rel_path: &str) -> OpenFileHandle {
+        OpenFileHandle {
+            nodeid,
+            rel_path: rel_path.to_owned(),
+            dirty: false,
+            spool: None,
+            read_cache_offset: 0,
+            read_cache_data: Vec::new(),
+        }
+    }
+
+    fn file_meta() -> InodeMeta {
+        InodeMeta { is_dir: false, size: 1, modified_ms: 0 }
+    }
+
+    fn test_state() -> FuseState {
+        FuseState::new(DeviceId([1; 32]))
+    }
+
+    #[test]
+    fn renaming_a_folder_moves_what_is_inside_it() {
+        let mut state = test_state();
+        let folder = state.intern_path("DCIM", file_meta());
+        let inside = state.intern_path("DCIM/Camera/a.jpg", file_meta());
+        let lookalike = state.intern_path("DCIM2/b.jpg", file_meta());
+        state.handles.insert(1, handle(inside, "DCIM/Camera/a.jpg"));
+
+        state.rename_path("DCIM", "Pictures");
+
+        assert_eq!(state.ino_to_path[&folder], "Pictures");
+        assert_eq!(state.ino_to_path[&inside], "Pictures/Camera/a.jpg");
+        assert_eq!(state.path_to_ino["Pictures/Camera/a.jpg"], inside);
+        assert_eq!(state.handles[&1].rel_path, "Pictures/Camera/a.jpg");
+        assert_eq!(state.ino_to_path[&lookalike], "DCIM2/b.jpg", "only that folder");
+        assert!(!state.path_to_ino.contains_key("DCIM"));
+    }
+
+    #[test]
+    fn renaming_over_a_file_forgets_the_old_file() {
+        let mut state = test_state();
+        let moved = state.intern_path("new.tmp", file_meta());
+        let replaced = state.intern_path("note.txt", file_meta());
+
+        state.rename_path("new.tmp", "note.txt");
+
+        assert_eq!(state.path_to_ino["note.txt"], moved);
+        assert!(!state.ino_to_path.contains_key(&replaced));
+    }
+
+    #[test]
+    fn unsaved_writes_decide_the_reported_size() {
+        let dir = test_spool_dir("len");
+        let mut state = test_state();
+        let ino = state.intern_path("a.bin", file_meta());
+        assert_eq!(state.unsaved_len(ino), None);
+        let mut spool = Spool::create(&dir).unwrap();
+        spool.write_at(0, &[0; 9]).unwrap();
+        let mut open = handle(ino, "a.bin");
+        open.spool = Some(spool);
+        open.dirty = true;
+        state.handles.insert(1, open);
+        assert_eq!(state.unsaved_len(ino), Some(9));
+        state.handles.get_mut(&1).unwrap().dirty = false;
+        assert_eq!(state.unsaved_len(ino), None, "saved: the phone knows");
+        state.handles.clear();
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

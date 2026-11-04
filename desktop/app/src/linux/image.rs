@@ -859,7 +859,11 @@ fn decode_bmp(bytes: &[u8]) -> Option<Bitmap> {
     let width = i32::from_le_bytes(bytes[18..22].try_into().ok()?);
     let height_raw = i32::from_le_bytes(bytes[22..26].try_into().ok()?);
     let bpp = u16::from_le_bytes(bytes[28..30].try_into().ok()?);
-    if width <= 0 || height_raw == 0 || (bpp != 24 && bpp != 32) || !fits(width as u32, height_raw.unsigned_abs()) {
+    if width <= 0
+        || height_raw == 0
+        || (bpp != 24 && bpp != 32)
+        || !fits(width as u32, height_raw.unsigned_abs())
+    {
         return None;
     }
     let top_down = height_raw < 0;
