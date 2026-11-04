@@ -31,6 +31,7 @@ concurrency:
 jobs:
   plan:
     name: Is a nightly due?
+    if: github.event_name != 'schedule' || github.repository == 'thtbee/nectarlink'
     runs-on: ubuntu-latest
     outputs:
       due: ${{ steps.plan.outputs.due }}

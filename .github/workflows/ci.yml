@@ -283,7 +283,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends -o Dir::Cache::Archives="$HOME/apt-archives" \
             libgl1-mesa-dev libxkbcommon-dev libvulkan-dev libx11-dev \
-            ffmpeg libavcodec-dev libavutil-dev libopenh264-dev
+            ffmpeg libavcodec-dev libavutil-dev libopenh264-dev qt6-l10n-tools
           # Drop what the mirror no longer has, so the cache doesn't grow.
           sudo apt-get autoclean -o Dir::Cache::Archives="$HOME/apt-archives"
           sudo chown -R "$USER" ~/apt-archives
@@ -335,7 +335,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends -o Dir::Cache::Archives="$HOME/apt-archives" \
             libgl1-mesa-dev libxkbcommon-dev libvulkan-dev libx11-dev \
-            ffmpeg libavcodec-dev libavutil-dev libopenh264-dev
+            ffmpeg libavcodec-dev libavutil-dev libopenh264-dev qt6-l10n-tools
           # Drop what the mirror no longer has, so the cache doesn't grow.
           sudo apt-get autoclean -o Dir::Cache::Archives="$HOME/apt-archives"
           sudo chown -R "$USER" ~/apt-archives
