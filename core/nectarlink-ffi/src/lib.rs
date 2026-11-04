@@ -2721,6 +2721,9 @@ pub trait Platform: Send + Sync {
     fn mirror_resize_requested(&self, pc_id: String, session: u32, width: u32, height: u32);
     /// The PC updated `stay_awake` or `screen_off` while mirroring the screen (`session == 0`).
     fn mirror_power_requested(&self, pc_id: String, stay_awake: bool, screen_off: bool);
+    /// The PC wants the phone's sound sent to it, or left on the phone, while
+    /// mirroring the screen.
+    fn mirror_sound_requested(&self, pc_id: String, on: bool);
     /// The PC's mouse or keyboard on the mirrored screen (only while this
     /// phone offers `mirror.input`) or an app window. Return quickly.
     fn mirror_input(&self, pc_id: String, session: u32, input: MirrorInputEvent);
@@ -2935,6 +2938,9 @@ impl core::Platform for PlatformAdapter {
     }
     fn mirror_power_requested(&self, peer: &DeviceId, stay_awake: bool, screen_off: bool) {
         self.0.mirror_power_requested(peer.to_string(), stay_awake, screen_off);
+    }
+    fn mirror_sound_requested(&self, peer: &DeviceId, on: bool) {
+        self.0.mirror_sound_requested(peer.to_string(), on);
     }
     fn mirror_input(&self, peer: &DeviceId, session: u32, input: core::MirrorInput) {
         self.0.mirror_input(peer.to_string(), session, input.into());

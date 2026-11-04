@@ -72,6 +72,7 @@ pub mod types {
     pub const MIRROR_START: &str = "mirror.start";
     pub const MIRROR_STOP: &str = "mirror.stop";
     pub const MIRROR_POWER: &str = "mirror.power";
+    pub const MIRROR_SOUND: &str = "mirror.sound";
     pub const MIRROR_KEYFRAME: &str = "mirror.keyframe";
     pub const MIRROR_RESIZE: &str = "mirror.resize";
     pub const MIRROR_INPUT: &str = "mirror.input";
@@ -1458,6 +1459,13 @@ pub struct MirrorPower {
     pub screen_off: bool,
 }
 
+/// Body of `mirror.sound`: send the phone's sound to the PC, or leave it on the
+/// phone, while mirroring its screen. Phones from before this ignore it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorSound {
+    pub on: bool,
+}
+
 /// Which mirroring a `mirror.stop`, `mirror.keyframe` or `mirror.input` is
 /// about (its body, or part of it; missing means the screen).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -1556,6 +1564,8 @@ pub mod mirror_keys {
     pub const COPY: &str = "copy";
     pub const CUT: &str = "cut";
     pub const SELECT_ALL: &str = "select_all";
+    /// Locks the phone. Phones from before this drop it.
+    pub const LOCK: &str = "lock";
     pub const ALL: &[&str] = &[
         BACK,
         HOME,
@@ -1574,6 +1584,7 @@ pub mod mirror_keys {
         COPY,
         CUT,
         SELECT_ALL,
+        LOCK,
     ];
 }
 
