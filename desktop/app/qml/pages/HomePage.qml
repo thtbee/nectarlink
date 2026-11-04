@@ -1951,6 +1951,14 @@ Item {
                 property bool confirmWifiOff: false
                 property bool hotspotActive: false
                 property var hoveredLockedFeature: null
+                // The phone doesn't report its hotspot, so this is only ever what was asked.
+                Connections {
+                    target: AppController
+                    function onPhoneToggleFailed(device, id) {
+                        if (device === home.deviceId && id === "hotspot")
+                            phoneControls.hotspotActive = !phoneControls.hotspotActive
+                    }
+                }
                 readonly property var state: {
                     if (AppController.phoneTogglesRevision < 0)
                         return null

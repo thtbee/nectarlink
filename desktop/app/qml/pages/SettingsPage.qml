@@ -887,9 +887,13 @@ Item {
                                 width: appearanceBottomPair.colWidth
                                 iconPath: Icons.desktop
                                 title: qsTr("Mica backdrop")
-                                description: qsTr("Tint window with desktop wallpaper.")
+                                description: Qt.platform.os === "windows"
+                                    ? qsTr("Tint window with desktop wallpaper.")
+                                    : qsTr("Only on Windows 11.")
+                                opacity: Qt.platform.os === "windows" ? 1.0 : 0.5
                                 Toggle {
                                     label: qsTr("Mica backdrop")
+                                    enabled: Qt.platform.os === "windows"
                                     checked: Preferences.backdrop
                                     onToggled: (on) => Preferences.backdrop = on
                                 }
