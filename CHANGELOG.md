@@ -292,6 +292,21 @@ has a Stop button. Choosing another
 
 ### Fixed
 
+- **Pause for banking apps could leave NectarLink's accessibility service on.**
+  Android can store the service's name in a short form, and Pause didn't
+  recognise it, so it turned debugging off but not the service, and banking
+  apps that check for it still refused to open
+  ([#147](https://github.com/thtbee/nectarlink/issues/147)).
+- **A USB connection that stopped answering recovers by itself.** Before, the
+  phone stayed offline until you replugged the cable. Thanks to
+  [@TheGeekyM](https://github.com/TheGeekyM)
+  ([#191](https://github.com/thtbee/nectarlink/pull/191)).
+- **Phone storage on Linux says why it can't list files,** such as Permission
+  denied when storage access isn't granted on the phone, instead of an
+  input/output error. Thanks to [@TheGeekyM](https://github.com/TheGeekyM), who
+  also wrote up how the mount works
+  ([#185](https://github.com/thtbee/nectarlink/pull/185),
+  [#186](https://github.com/thtbee/nectarlink/pull/186)).
 - **Messages on the PC.** A conversation opens at the latest message and stays
   there as pictures load and after you send, one you read lately opens at once,
   and one you've read here stops showing as unread. The phone keeps its own

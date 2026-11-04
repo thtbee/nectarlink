@@ -175,18 +175,18 @@ object BankingPause {
 
     private fun isAccessibilityEnabled(context: Context): Boolean {
         val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-        return enabled?.split(':')?.any { it.equals(accessibilityComponent(context), ignoreCase = true) } == true
+        return AccessibilityServices.contains(enabled, accessibilityComponent(context))
     }
 
     private fun setAccessibility(context: Context, on: Boolean) {
         val resolver = context.contentResolver
         val ours = accessibilityComponent(context)
-        val others = Settings.Secure.getString(resolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-            ?.split(':')
-            ?.filter { it.isNotBlank() && !it.equals(ours, ignoreCase = true) }
-            .orEmpty()
+        val others = AccessibilityServices.without(
+            Settings.Secure.getString(resolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES),
+            ours,
+        )
         val services = if (on) others + ours else others
-        Settings.Secure.putString(resolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, services.joinToString(":"))
+        Settings.Secure.putString(resolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES, AccessibilityServices.join(services))
         Settings.Secure.putInt(resolver, Settings.Secure.ACCESSIBILITY_ENABLED, if (services.isEmpty()) 0 else 1)
     }
 

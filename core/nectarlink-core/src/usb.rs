@@ -26,7 +26,10 @@
 use std::{
     collections::HashMap,
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::{Arc, Mutex, atomic::Ordering},
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
     time::{Duration, Instant},
 };
 
@@ -510,6 +513,10 @@ async fn relay_until_silent(
     let unanswered: Arc<Mutex<Option<Instant>>> = Arc::default();
     let unanswered_on_send = unanswered.clone();
     let unanswered_on_recv = unanswered.clone();
+    // A frame on its way out: it can sit forever on a far end that stopped reading,
+    // so an answer that arrives meanwhile restarts the wait instead of ending it.
+    let writing = Arc::new(AtomicBool::new(false));
+    let writing_on_recv = writing.clone();
 
     let udp_to_tcp = async move {
         let mut buf = vec![0u8; 65535];
@@ -519,9 +526,11 @@ async fn relay_until_silent(
                 continue;
             }
             *target_for_recv.lock().unwrap_or_else(|e| e.into_inner()) = from;
+            writing.store(true, Ordering::Relaxed);
+            unanswered_on_send.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(Instant::now);
             tcp_write.write_all(&(n as u16).to_be_bytes()).await?;
             tcp_write.write_all(&buf[..n]).await?;
-            unanswered_on_send.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(Instant::now);
+            writing.store(false, Ordering::Relaxed);
         }
         #[allow(unreachable_code)]
         Ok::<(), std::io::Error>(())
@@ -532,7 +541,8 @@ async fn relay_until_silent(
         loop {
             let mut len_buf = [0u8; 2];
             tcp_read.read_exact(&mut len_buf).await?;
-            *unanswered_on_recv.lock().unwrap_or_else(|e| e.into_inner()) = None;
+            *unanswered_on_recv.lock().unwrap_or_else(|e| e.into_inner()) =
+                writing_on_recv.load(Ordering::Relaxed).then(Instant::now);
             let len = u16::from_be_bytes(len_buf) as usize;
             if len == 0 {
                 continue;
@@ -572,17 +582,16 @@ mod tests {
     static PORTS: Mutex<()> = Mutex::new(());
 
     /// A port with the next `USB_PORT_COUNT` ports after it free on loopback right now.
+    /// From below the ephemeral ranges, where the other tests' sockets can't take one
+    /// between this check and the test's bind.
     fn free_port_range() -> u16 {
-        loop {
-            let base =
-                std::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap().local_addr().unwrap().port();
-            let Some(last) = base.checked_add(USB_PORT_COUNT) else { continue };
-            let all_free =
-                (base..=last).all(|p| std::net::TcpListener::bind((Ipv4Addr::LOCALHOST, p)).is_ok());
-            if all_free {
-                return base;
-            }
-        }
+        (20_000u16..32_000)
+            .step_by(usize::from(USB_PORT_COUNT) + 1)
+            .find(|&base| {
+                (base..=base + USB_PORT_COUNT)
+                    .all(|p| std::net::TcpListener::bind((Ipv4Addr::LOCALHOST, p)).is_ok())
+            })
+            .expect("a free port range")
     }
 
     fn port_of(listener: &std::net::TcpListener) -> u16 {
@@ -663,6 +672,37 @@ mod tests {
             .await
             .expect("the silent tunnel should have been closed")
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_tunnel_stuck_writing_after_its_last_answer_is_closed() {
+        let (near, mut far) = tcp_pair().await;
+        let udp = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+        let bridge = udp.local_addr().unwrap();
+        let relay = tokio::spawn(relay_until_silent(
+            near,
+            udp,
+            SocketAddr::from((Ipv4Addr::LOCALHOST, 9)),
+            CancellationToken::new(),
+            Duration::from_millis(600),
+        ));
+
+        // The far end stops reading, so the relay's writes fill the socket and block.
+        let sender = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+        let frame = vec![0u8; 32 * 1024];
+        let flood = tokio::spawn(async move {
+            loop {
+                let _ = sender.send_to(&frame, bridge).await;
+                tokio::time::sleep(Duration::from_millis(1)).await;
+            }
+        });
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        // Its last word clears the clock while the relay is already stuck in a write.
+        far.write_all(&[0, 1, 7]).await.unwrap();
+
+        let closed = tokio::time::timeout(Duration::from_secs(5), relay).await;
+        flood.abort();
+        closed.expect("a tunnel stuck writing should have been closed").unwrap();
     }
 
     #[tokio::test]
