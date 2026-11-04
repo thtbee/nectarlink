@@ -679,26 +679,32 @@ mod tests {
         let (near, mut far) = tcp_pair().await;
         let udp = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
         let bridge = udp.local_addr().unwrap();
+        // Answers need somewhere to go: Windows reports a closed port on the socket itself.
+        let sink = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
         let relay = tokio::spawn(relay_until_silent(
             near,
             udp,
-            SocketAddr::from((Ipv4Addr::LOCALHOST, 9)),
+            sink.local_addr().unwrap(),
             CancellationToken::new(),
             Duration::from_millis(600),
         ));
 
         // The far end stops reading, so the relay's writes fill the socket and block.
+        // (Under 9 KiB: macOS refuses larger datagrams by default.)
         let sender = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
-        let frame = vec![0u8; 32 * 1024];
+        let frame = vec![0u8; 8 * 1024];
         let flood = tokio::spawn(async move {
             loop {
                 let _ = sender.send_to(&frame, bridge).await;
-                tokio::time::sleep(Duration::from_millis(1)).await;
+                tokio::task::yield_now().await;
             }
         });
-        tokio::time::sleep(Duration::from_millis(300)).await;
-        // Its last word clears the clock while the relay is already stuck in a write.
-        far.write_all(&[0, 1, 7]).await.unwrap();
+        // It keeps answering while that happens, so the tunnel isn't silent yet. Its
+        // last word lands while the relay is stuck in a write.
+        for _ in 0..8 {
+            far.write_all(&[0, 1, 7]).await.unwrap();
+            tokio::time::sleep(Duration::from_millis(200)).await;
+        }
 
         let closed = tokio::time::timeout(Duration::from_secs(5), relay).await;
         flood.abort();
