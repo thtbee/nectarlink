@@ -285,6 +285,11 @@ has a Stop button. Choosing another
 
 ### Fixed
 
+- **Messages on the PC.** A conversation opens at the latest message and stays
+  there as pictures load and after you send, one you read lately opens at once,
+  and one you've read here stops showing as unread. The phone keeps its own
+  count unless NectarLink is its default SMS app
+  ([#176](https://github.com/thtbee/nectarlink/issues/176)).
 - **Unpairing a phone clears what the PC kept from it.** Its messages, call
   log, contacts, photo thumbnails and opened photos, and its transfers in the
   list. Files you saved stay, and so do the Timeline and clipboard history.

@@ -719,30 +719,38 @@ Item {
             bottomMargin: 8
             boundsBehavior: Flickable.StopAtBounds
             model: page.messages
-            // The latest at the bottom; scrolling up loads older ones.
-            property int lastCount: 0
+            // The latest at the bottom; scrolling up loads older ones. Every refresh
+            // replaces the whole list, which puts a list view back at the top, and
+            // pictures grow a bubble once loaded: stay where the reader was.
+            property bool followLatest: true
+            property real keptBottomOffset: 0
             property string lastThreadId: ""
-            property real savedBottomOffset: -1
-            onCountChanged: {
-                const threadSwitched = Messages.thread !== lastThreadId
-                lastThreadId = Messages.thread
-                if (threadSwitched || lastCount === 0) {
-                    savedBottomOffset = -1
-                    Qt.callLater(positionViewAtEnd)
-                } else if (savedBottomOffset >= 0 && count > lastCount) {
-                    const off = savedBottomOffset
-                    savedBottomOffset = -1
-                    Qt.callLater(() => {
-                        contentY = Math.max(originY, contentHeight - off)
-                    })
-                } else if (count > lastCount) {
-                    Qt.callLater(positionViewAtEnd)
-                }
-                lastCount = count
+            function keepPlace() {
+                if (followLatest)
+                    positionViewAtEnd()
+                else
+                    contentY = Math.max(originY, contentHeight - keptBottomOffset)
             }
+            function notePlace() {
+                followLatest = contentHeight - contentY - height <= 24
+                keptBottomOffset = contentHeight - contentY
+            }
+            onModelChanged: {
+                if (Messages.thread !== lastThreadId) {
+                    lastThreadId = Messages.thread
+                    followLatest = true
+                }
+                forceLayout()
+                keepPlace()
+            }
+            onContentHeightChanged: if (followLatest) Qt.callLater(positionViewAtEnd)
+            onHeightChanged: if (followLatest) Qt.callLater(positionViewAtEnd)
+            onMovementEnded: notePlace()
+            onFlickEnded: notePlace()
             onAtYBeginningChanged: {
                 if (atYBeginning && Messages.more && count > 0 && !Messages.loadingOlder) {
-                    savedBottomOffset = contentHeight - contentY
+                    followLatest = false
+                    keptBottomOffset = contentHeight - contentY
                     Messages.loadOlder()
                 }
             }
@@ -901,9 +909,10 @@ Item {
                 anchors.right: sendButton.left
                 anchors.rightMargin: 8
                 anchors.top: parent.top
-                anchors.topMargin: 11
+                // A single line sits in the middle of the box.
+                anchors.topMargin: Math.max(11, (composer.height - input.contentHeight) / 2)
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 11
+                anchors.bottomMargin: Math.max(11, (composer.height - input.contentHeight) / 2)
                 contentHeight: input.contentHeight
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds

@@ -108,9 +108,18 @@ struct State {
     app_filter: String,
     /// Staged MMS image attachment for the current SMS composer.
     staged_attachment: Option<StagedAttachment>,
+    /// Conversations read lately, so opening one again is instant while the
+    /// phone is asked for what's new. The most recent is last.
+    recent: Vec<(String, Vec<SmsMessage>)>,
+    /// When each conversation was last read here, by thread ID. Android lets only
+    /// the default SMS app mark texts read, so the phone keeps counting them.
+    seen: HashMap<String, i64>,
     /// Bumped when the phone changes, so late answers are dropped.
     generation: u64,
 }
+
+/// How many conversations [`State::recent`] keeps.
+const RECENT_CONVERSATIONS: usize = 16;
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
 
@@ -174,8 +183,47 @@ pub fn clear_cache() {
         s.staged_attachment = None;
         s.more = false;
         s.loading_older = false;
+        s.recent.clear();
+        s.seen.clear();
     });
     changed();
+}
+
+fn seen_file(device: DeviceId) -> PathBuf {
+    // Named like the rest of this cache, so clearing it clears this too.
+    files_dir().join(format!("sms-seen-{device}.json"))
+}
+
+fn load_seen(device: DeviceId) -> HashMap<String, i64> {
+    std::fs::read(seen_file(device)).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+}
+
+/// Remembers reading `thread`'s messages up to `date`.
+fn note_seen(s: &mut State, thread: &str, date: i64) -> Option<(DeviceId, HashMap<String, i64>)> {
+    if s.seen.get(thread).is_some_and(|seen| *seen >= date) {
+        return None;
+    }
+    s.seen.insert(thread.to_owned(), date);
+    Some((s.device?, s.seen.clone()))
+}
+
+fn save_seen(device: DeviceId, seen: &HashMap<String, i64>) {
+    let Ok(bytes) = serde_json::to_vec(seen) else { return };
+    let _ = std::fs::create_dir_all(files_dir());
+    if let Err(e) = std::fs::write(seen_file(device), bytes) {
+        tracing::debug!(error = %e, "can't save which texts were read");
+    }
+}
+
+/// Puts `messages`, the conversation being left, among the recent ones.
+fn remember_recent(s: &mut State, thread: String, messages: Vec<SmsMessage>) {
+    s.recent.retain(|(t, _)| *t != thread);
+    if !messages.is_empty() {
+        s.recent.push((thread, messages));
+    }
+    if s.recent.len() > RECENT_CONVERSATIONS {
+        s.recent.remove(0);
+    }
 }
 
 /// Returns `(cached_sms_threads, cached_sms_messages, attachment_bytes)` for the
@@ -234,7 +282,11 @@ pub fn view() -> View {
         let mut combined: Vec<(i64, String, Value)> = Vec::new();
         if s.app_filter.is_empty() || s.app_filter == "sms" {
             for t in &s.threads {
-                combined.push((t.date, t.id.clone(), thread_json(t, s.photos.get(&t.id))));
+                let mut json = thread_json(t, s.photos.get(&t.id));
+                if s.seen.get(&t.id).is_some_and(|seen| *seen >= t.date) {
+                    json["unread"] = json!(0);
+                }
+                combined.push((t.date, t.id.clone(), json));
             }
         }
         if s.app_filter != "sms" {
@@ -500,7 +552,12 @@ pub fn open_device(device: DeviceId) {
     let same = state(|s| {
         let same = s.device == Some(device);
         if !same {
-            *s = State { device: Some(device), generation: s.generation + 1, ..State::default() };
+            *s = State {
+                device: Some(device),
+                generation: s.generation + 1,
+                seen: load_seen(device),
+                ..State::default()
+            };
         }
         same
     });
@@ -658,18 +715,28 @@ fn save_chat_assets(
 /// Opens a conversation: its latest messages.
 pub fn open_thread(thread: String) {
     let is_chat = thread.starts_with("chat:");
-    let device = state(|s| {
+    let (device, seen) = state(|s| {
         s.compose_to = None;
         s.compose_name = None;
         if s.thread.as_deref() != Some(&thread) {
-            s.thread = Some(thread.clone());
-            s.messages.clear();
+            let left = s.thread.replace(thread.clone());
+            let messages = std::mem::take(&mut s.messages);
+            if let Some(left) = left.filter(|t| !t.starts_with("chat:")) {
+                remember_recent(s, left, messages);
+            }
+            if let Some(at) = s.recent.iter().position(|(t, _)| *t == thread) {
+                s.messages = s.recent.remove(at).1;
+            }
             s.chat_messages.clear();
             s.more = false;
             s.staged_attachment = None;
         }
-        s.device
+        let date = s.threads.iter().find(|t| t.id == thread).map(|t| t.date);
+        (s.device, date.and_then(|date| note_seen(s, &thread, date)))
     });
+    if let Some((device, seen)) = seen {
+        std::thread::spawn(move || save_seen(device, &seen));
+    }
     if is_chat {
         if let (Some(device), Some(node)) = (device, core_host::node()) {
             let _ = node.mark_chat_thread_read(device, &thread);
@@ -1390,6 +1457,39 @@ fn open_pending() {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn recent_conversations_are_bounded_and_keep_the_latest() {
+        let mut s = super::State::default();
+        let message = |id: &str| super::SmsMessage {
+            id: id.into(),
+            thread: "t".into(),
+            address: "a".into(),
+            body: "b".into(),
+            date: 1,
+            outgoing: false,
+            status: None,
+            parts: Vec::new(),
+        };
+        for i in 0..(super::RECENT_CONVERSATIONS + 3) {
+            super::remember_recent(&mut s, i.to_string(), vec![message("m")]);
+        }
+        assert_eq!(s.recent.len(), super::RECENT_CONVERSATIONS);
+        assert!(!s.recent.iter().any(|(t, _)| t == "0"), "the oldest went");
+        super::remember_recent(&mut s, "5".into(), vec![message("new")]);
+        assert_eq!(s.recent.last().unwrap().0, "5", "reading one again makes it the latest");
+        assert_eq!(s.recent.iter().filter(|(t, _)| t == "5").count(), 1);
+    }
+
+    #[test]
+    fn a_conversation_read_here_stops_counting_until_something_newer_arrives() {
+        let mut s = super::State::default();
+        assert!(super::note_seen(&mut s, "t", 100).is_none(), "no phone open, nothing to save");
+        assert_eq!(s.seen["t"], 100);
+        assert!(super::note_seen(&mut s, "t", 100).is_none(), "already known");
+        super::note_seen(&mut s, "t", 200);
+        assert_eq!(s.seen["t"], 200);
+    }
+
     use super::*;
 
     fn thread(addresses: &[&str], names: &[&str]) -> SmsThread {
