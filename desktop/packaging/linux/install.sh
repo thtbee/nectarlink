@@ -447,6 +447,8 @@ remember_firewall() {
     [ -n "$TARGET_HOME" ] || return 0
     dir="${XDG_DATA_HOME:-$TARGET_HOME/.local/share}/Nectarlink"
     if [ "$(id -u)" -eq 0 ] && [ "$TARGET_USER" != "root" ]; then
+        # The user's shell expands these, so a quote in the folder name stays a quote.
+        # shellcheck disable=SC2016
         NL_DIR="$dir" NL_PORT="$DATA_PORT" su -s /bin/sh "$TARGET_USER" \
             -c 'mkdir -p "$NL_DIR" && printf "%s\n" "$NL_PORT" > "$NL_DIR/firewall_verified"' 2>/dev/null || true
     elif [ "$(id -u)" -ne 0 ]; then
