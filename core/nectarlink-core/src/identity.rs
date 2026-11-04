@@ -65,14 +65,14 @@ pub(crate) fn load_or_create(dir: &Path, protector: &dyn KeyProtector) -> Result
         Ok(bytes) => {
             let key = match decode(&bytes, protector) {
                 Ok(key) => key,
-                // A key written by an earlier macOS build, before this
-                // platform had a protector (method 0), is upgraded in place so
-                // the device keeps its identity and doesn't have to pair again.
-                // Only macOS does this. On Windows a method-0 file must stay
-                // refused: re-sealing one under DPAPI would adopt a plain key
-                // dropped into the data folder as this PC's identity, and
-                // whoever wrote it would hold the private key.
-                #[cfg(target_os = "macos")]
+                // A key written by an earlier macOS or Linux build, before
+                // that platform had a protector (method 0), is upgraded in
+                // place so the device keeps its identity and doesn't have to
+                // pair again. Only macOS and Linux do this. On Windows a
+                // method-0 file must stay refused: re-sealing one under DPAPI
+                // would adopt a plain key dropped into the data folder as this
+                // PC's identity, and whoever wrote it would hold the private key.
+                #[cfg(any(target_os = "macos", target_os = "linux"))]
                 Err(_) if protector.id() != 0 && bytes.get(MAGIC.len()) == Some(&0) => {
                     let key = decode(&bytes, &PlainKeyProtector)?;
                     write_atomically(&path, &encode(&key, protector)?)?;
@@ -628,9 +628,9 @@ mod tests {
         assert!(!file.windows(raw.len()).any(|w| w == raw), "plaintext key found on disk");
     }
 
-    /// The in-place upgrade is macOS-only (see `load_or_create`), so this test
-    /// is too: on Windows and Linux the same file must stay refused.
-    #[cfg(target_os = "macos")]
+    /// The in-place upgrade is macOS and Linux only (see `load_or_create`), so
+    /// this test is too: on Windows the same file must stay refused.
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
     #[test]
     fn upgrades_a_plain_key_in_place_and_keeps_the_identity() {
         let dir = tempfile::tempdir().unwrap();
@@ -651,10 +651,10 @@ mod tests {
         );
     }
 
-    /// Windows and Linux must keep refusing a method-`0` file. Re-sealing it
+    /// Windows and Android must keep refusing a method-`0` file. Re-sealing it
     /// under the platform protector would turn a plain key dropped into the
     /// data folder into this device's trusted identity.
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     #[test]
     fn a_plain_key_file_is_not_adopted_elsewhere() {
         let dir = tempfile::tempdir().unwrap();
@@ -674,6 +674,16 @@ mod tests {
         wrong_method.extend_from_slice(&[0; 32]);
         fs::write(dir.path().join(FILE_NAME), wrong_method).unwrap();
         assert!(matches!(load_or_create(dir.path(), &PlainKeyProtector), Err(Error::Storage(_))));
+    }
+
+    #[test]
+    fn a_sealed_key_is_not_opened_without_its_protector() {
+        let dir = tempfile::tempdir().unwrap();
+        load_or_create(dir.path(), &TestProtector).unwrap();
+        // Nothing is overwritten when the protector is gone: the error says why.
+        let before = fs::read(dir.path().join(FILE_NAME)).unwrap();
+        assert!(matches!(load_or_create(dir.path(), &PlainKeyProtector), Err(Error::Storage(_))));
+        assert_eq!(fs::read(dir.path().join(FILE_NAME)).unwrap(), before);
     }
 
     #[test]

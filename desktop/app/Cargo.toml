@@ -121,6 +121,7 @@ windows = { workspace = true, features = [
 libc = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
+ring = "0.17"
 zbus.workspace = true
 wayland-client = "0.31"
 wayland-protocols = { version = "0.32", features = ["client", "staging"] }

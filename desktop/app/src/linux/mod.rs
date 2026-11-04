@@ -21,6 +21,7 @@ pub mod image;
 pub mod input;
 pub mod jumplist;
 pub mod keymap;
+pub mod keyring;
 pub mod media_sessions;
 pub mod mp4;
 pub mod net;

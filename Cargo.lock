@@ -2504,6 +2504,7 @@ dependencies = [
  "nectarlink-vcam",
  "pkg-config",
  "qrcode",
+ "ring",
  "serde",
  "serde_json",
  "sha2",
