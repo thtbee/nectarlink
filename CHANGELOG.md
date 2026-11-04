@@ -28,6 +28,10 @@ picks the right one. Installed copies update themselves.
 
 ### New
 
+- **Delete photos from the PC.** Select them on the Photos page and they go to
+  the phone's trash, where you can still restore them. It needs All files
+  access on the phone
+  ([#174](https://github.com/thtbee/nectarlink/issues/174)).
 - **SD cards in File Explorer.** With All files access, an SD card or USB
   drive in the phone shows as a folder of its own (such as **SD card**)
   beside the internal storage's folders. Before Android 11, Android lets

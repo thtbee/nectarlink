@@ -56,6 +56,8 @@ pub mod types {
     pub const PHOTOS_GET: &str = "photos.get";
     pub const PHOTOS_SENDING: &str = "photos.sending";
     pub const PHOTOS_CHANGED: &str = "photos.changed";
+    pub const PHOTOS_DELETE: &str = "photos.delete";
+    pub const PHOTOS_DELETED: &str = "photos.deleted";
     pub const CALL_STATE: &str = "call.state";
     pub const CALL_ACTION: &str = "call.action";
     pub const CALL_LOG: &str = "call.log";
@@ -2748,6 +2750,18 @@ pub struct PhotoItems {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PhotoThumbsGet {
     pub ids: Vec<String>,
+}
+
+/// Body of `photos.delete`: move these to the phone's trash.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotoDelete {
+    pub ids: Vec<String>,
+}
+
+/// Body of `photos.deleted`: how many of them went.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhotosDeleted {
+    pub count: u32,
 }
 
 /// One thumbnail in `photos.thumbs.list`.

@@ -20,6 +20,9 @@ Item {
     // Multi-select state: map of itemId -> true, and ordered array of selected IDs.
     property var selectedMap: ({})
     property var selectedIds: []
+    // Delete asks once more: it reaches the phone's own gallery.
+    property bool confirmDelete: false
+    onSelectedIdsChanged: confirmDelete = false
     readonly property int selectedCount: selectedIds.length
     property bool selectMode: false
     property int lastClickedIndex: -1
@@ -542,6 +545,24 @@ Item {
                     text: qsTr("Open")
                     enabled: !Photos.saving
                     onClicked: Photos.openItem(page.selectedIds[0])
+                }
+
+                Button {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: page.selectedCount > 0 && page.selectedCount <= 24
+                    variant: page.confirmDelete ? "fill" : "tonal"
+                    size: "sm"
+                    iconPath: Icons.trash
+                    text: page.confirmDelete ? qsTr("Move to the phone's trash?") : qsTr("Delete")
+                    enabled: !Photos.saving
+                    onClicked: {
+                        if (!page.confirmDelete) {
+                            page.confirmDelete = true
+                            return
+                        }
+                        Photos.deleteItems(page.selectedIds)
+                        page.clearSelection()
+                    }
                 }
 
                 Button {

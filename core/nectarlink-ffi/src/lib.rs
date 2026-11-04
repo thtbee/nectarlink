@@ -2691,6 +2691,8 @@ pub trait Platform: Send + Sync {
     /// A PC asked for small JPEG thumbnails (at most 32 KiB each) for
     /// these gallery item IDs.
     fn photo_thumbs(&self, ids: Vec<String>) -> Vec<PhotoThumb>;
+    /// A PC asked to move these gallery items to the trash. Returns how many went.
+    fn photo_delete(&self, ids: Vec<String>) -> u32;
     /// A PC asked to answer, decline or silence call `id` (the call in
     /// progress). False if the phone couldn't.
     fn call_command(&self, id: String, command: CallCommand) -> bool;
@@ -3162,6 +3164,9 @@ impl core::Platform for PlatformAdapter {
                 album: i.album,
             })
             .collect())
+    }
+    fn photo_delete(&self, ids: &[String]) -> Result<u32, String> {
+        Ok(self.0.photo_delete(ids.to_vec()))
     }
     fn photo_thumbs(&self, ids: &[String]) -> Result<Vec<core::PhotoThumb>, String> {
         Ok(self

@@ -6071,6 +6071,16 @@ What it needs
         <translation>已将 %1 保存到 %2。</translation>
     </message>
     <message>
+        <location filename="rust_strings.h"/>
+        <source>The phone kept them. Deleting from the PC needs All files access on the phone (Android 11 or later).</source>
+        <translation>手机保留了这些项目。从电脑删除需要手机开启“所有文件访问权限”（Android 11 或更高版本）。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h"/>
+        <source>Deleted %1 of %2.</source>
+        <translation>已删除 %1 个，共 %2 个。</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="420"/>
         <source>That photo isn&apos;t on the phone anymore.</source>
         <translation>该照片已不在手机上。</translation>
@@ -6290,6 +6300,11 @@ What it needs
         <location filename="../qml/pages/PhotosPage.qml" line="850"/>
         <source>Save to folder…</source>
         <translation>保存到文件夹…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/PhotosPage.qml"/>
+        <source>Move to the phone&apos;s trash?</source>
+        <translation>移到手机回收站？</translation>
     </message>
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="610"/>

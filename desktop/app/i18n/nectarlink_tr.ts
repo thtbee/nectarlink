@@ -6067,6 +6067,16 @@ Neler gerekir
         <translation>%1, %2 konumuna kaydedildi.</translation>
     </message>
     <message>
+        <location filename="rust_strings.h"/>
+        <source>The phone kept them. Deleting from the PC needs All files access on the phone (Android 11 or later).</source>
+        <translation>Telefon bunları sakladı. Bilgisayardan silmek için telefonda Tüm dosyalara erişim gerekir (Android 11 veya üstü).</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h"/>
+        <source>Deleted %1 of %2.</source>
+        <translation>%2 öğeden %1 tanesi silindi.</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="420"/>
         <source>That photo isn&apos;t on the phone anymore.</source>
         <translation>Bu fotoğraf artık telefonda değil.</translation>
@@ -6286,6 +6296,11 @@ Neler gerekir
         <location filename="../qml/pages/PhotosPage.qml" line="850"/>
         <source>Save to folder…</source>
         <translation>Klasöre kaydet…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/PhotosPage.qml"/>
+        <source>Move to the phone&apos;s trash?</source>
+        <translation>Telefonun çöp kutusuna taşınsın mı?</translation>
     </message>
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="610"/>

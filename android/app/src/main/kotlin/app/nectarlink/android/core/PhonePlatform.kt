@@ -125,6 +125,8 @@ internal class PhonePlatform(
     override fun photoList(album: String?, before: Long?, beforeId: String, limit: UInt): List<PhotoItem> =
         RecentPhotos.list(context, album, before, beforeId, limit.toInt())
 
+    override fun photoDelete(ids: List<String>): UInt = RecentPhotos.moveToTrash(context, ids).toUInt()
+
     override fun photoThumbs(ids: List<String>): List<PhotoThumb> = RecentPhotos.thumbs(context, ids)
 
     override fun callCommand(id: String, command: CallCommand): Boolean = calls().command(id, command)
