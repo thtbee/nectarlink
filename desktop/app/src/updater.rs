@@ -173,7 +173,6 @@ fn read_service_channel() -> Option<Channel> {
     Channel::parse(&std::fs::read_to_string(path).ok()?)
 }
 
-#[cfg(any(windows, test))]
 fn is_regular_file(path: &Path) -> bool {
     std::fs::symlink_metadata(path)
         .is_ok_and(|meta| !meta.file_type().is_symlink() && meta.file_type().is_file())
