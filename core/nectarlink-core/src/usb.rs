@@ -443,8 +443,8 @@ async fn run_forwarded_session(
     let bridge_port = bridge_addr.port();
 
     let paired = shared.store.is_paired(&phone_id).unwrap_or(false);
-    let auto_pair =
-        target.auto_pair && !target.profiles.lock().unwrap_or_else(|e| e.into_inner()).another_is_paired(target.phone_port);
+    let auto_pair = target.auto_pair
+        && !target.profiles.lock().unwrap_or_else(|e| e.into_inner()).another_is_paired(target.phone_port);
     let profiles = target.profiles.clone();
     let phone_port = target.phone_port;
     let on_verified: Box<dyn FnOnce() + Send> = Box::new(move || {

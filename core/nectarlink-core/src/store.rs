@@ -1922,70 +1922,140 @@ impl Store {
     /// Resets a `'failed'` or `'expired'` queue item back to `'waiting'` with `attempts = 0`,
     /// `next_retry_ms = 0`, and a fresh `expires_at` window starting at `now_ms`.
     pub fn retry_queue_item(&self, id: &str, now_ms: i64) -> Result<bool> {
-        self.with(|c| {
-            let row: Option<(String, String)> = c
-                .query_row("SELECT kind, status FROM send_queue WHERE id = ?1", [id], |r| {
-                    Ok((r.get(0)?, r.get(1)?))
-                })
-                .optional()?;
-            let Some((kind_str, status_str)) = row else {
-                return Ok(false);
-            };
-            if status_str != "failed" && status_str != "expired" {
-                return Ok(false);
+        let conn = self.conn.lock().map_err(|_| Error::Internal("store lock poisoned".into()))?;
+        let tx = conn.unchecked_transaction()?;
+        let row: Option<(String, String, String, i64)> = tx
+            .query_row("SELECT peer_id, kind, status, bytes_total FROM send_queue WHERE id = ?1", [id], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
+            })
+            .optional()?;
+        let Some((peer_str, kind_str, status_str, bytes_total_raw)) = row else {
+            return Ok(false);
+        };
+        if status_str != "failed" && status_str != "expired" {
+            return Ok(false);
+        }
+        let kind = QueueKind::from_str_opt(&kind_str).unwrap_or(QueueKind::Files);
+        let bytes_total = u64::try_from(bytes_total_raw.max(0)).unwrap_or(0);
+        if kind.is_clipboard() {
+            tx.execute(
+                "DELETE FROM send_queue
+                 WHERE peer_id = ?1 AND status = 'waiting'
+                   AND kind IN ('clipboard', 'clipboard_image')
+                   AND id != ?2",
+                params![peer_str, id],
+            )?;
+        }
+        let active_count: i64 = tx.query_row(
+            "SELECT COUNT(*) FROM send_queue WHERE status IN ('waiting', 'sending')",
+            [],
+            |r| r.get(0),
+        )?;
+        if usize::try_from(active_count.max(0)).unwrap_or(usize::MAX) >= MAX_QUEUE_ACTIVE_ITEMS {
+            return Err(Error::QueueFull(format!(
+                "Queue is full ({MAX_QUEUE_ACTIVE_ITEMS} items waiting). Send or clear existing queued items first."
+            )));
+        }
+        if kind.is_file_based() || kind == QueueKind::ClipboardImage {
+            let active_file_bytes: i64 = tx.query_row(
+                "SELECT COALESCE(SUM(bytes_total), 0) FROM send_queue
+                 WHERE status IN ('waiting', 'sending')
+                   AND kind IN ('files', 'folder', 'handoff_document', 'recording', 'clipboard_image')",
+                [],
+                |r| r.get(0),
+            )?;
+            let current_bytes = u64::try_from(active_file_bytes.max(0)).unwrap_or(u64::MAX);
+            if current_bytes.saturating_add(bytes_total) > MAX_QUEUE_ACTIVE_BYTES {
+                return Err(Error::QueueFull(
+                    "Queue is full (10 GB of files waiting). Send or clear existing queued items first."
+                        .into(),
+                ));
             }
-            let kind = QueueKind::from_str_opt(&kind_str).unwrap_or(QueueKind::Files);
-            let expires_at = now_ms.saturating_add(kind.ttl_ms());
-            c.execute(
-                "UPDATE send_queue
-                 SET status = 'waiting', attempts = 0, next_retry_ms = 0,
-                     expires_at = ?2, error_msg = NULL, bytes_done = 0, files_done = 0
-                 WHERE id = ?1",
-                params![id, expires_at],
-            )
-            .map(|n| n > 0)
-        })
+        }
+        let expires_at = now_ms.saturating_add(kind.ttl_ms());
+        let updated = tx.execute(
+            "UPDATE send_queue
+             SET status = 'waiting', attempts = 0, next_retry_ms = 0,
+                 expires_at = ?2, error_msg = NULL, bytes_done = 0, files_done = 0
+             WHERE id = ?1",
+            params![id, expires_at],
+        )?;
+        tx.commit()?;
+        Ok(updated > 0)
     }
 
     /// Resets all `'failed'` and `'expired'` items (for `peer` when `Some`, or all peers when `None`)
     /// back to `'waiting'` with fresh TTLs. Returns the count of reset items.
     pub fn retry_all_failed_queue_items(&self, peer: Option<&DeviceId>, now_ms: i64) -> Result<u32> {
-        self.with(|c| {
-            let rows: Vec<(String, String)> = if let Some(p) = peer {
-                let peer_str = p.to_string();
-                let mut stmt = c.prepare_cached(
-                    "SELECT id, kind FROM send_queue
-                     WHERE peer_id = ?1 AND status IN ('failed', 'expired')",
+        let conn = self.conn.lock().map_err(|_| Error::Internal("store lock poisoned".into()))?;
+        let rows: Vec<(String, String, String, i64)> = if let Some(p) = peer {
+            let peer_str = p.to_string();
+            let mut stmt = conn.prepare_cached(
+                "SELECT id, peer_id, kind, bytes_total FROM send_queue
+                 WHERE peer_id = ?1 AND status IN ('failed', 'expired')
+                 ORDER BY seq ASC",
+            )?;
+            let mapped = stmt.query_map([&peer_str], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?;
+            mapped.collect::<rusqlite::Result<Vec<_>>>()?
+        } else {
+            let mut stmt = conn.prepare_cached(
+                "SELECT id, peer_id, kind, bytes_total FROM send_queue
+                 WHERE status IN ('failed', 'expired')
+                 ORDER BY seq ASC",
+            )?;
+            let mapped = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?;
+            mapped.collect::<rusqlite::Result<Vec<_>>>()?
+        };
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        let tx = conn.unchecked_transaction()?;
+        let mut count = 0u32;
+        for (id, peer_str, kind_str, bytes_total_raw) in rows {
+            let kind = QueueKind::from_str_opt(&kind_str).unwrap_or(QueueKind::Files);
+            let bytes_total = u64::try_from(bytes_total_raw.max(0)).unwrap_or(0);
+            if kind.is_clipboard() {
+                tx.execute(
+                    "DELETE FROM send_queue
+                     WHERE peer_id = ?1 AND status = 'waiting'
+                       AND kind IN ('clipboard', 'clipboard_image')
+                       AND id != ?2",
+                    params![peer_str, id],
                 )?;
-                let mapped = stmt.query_map([&peer_str], |r| Ok((r.get(0)?, r.get(1)?)))?;
-                mapped.collect::<rusqlite::Result<Vec<_>>>()?
-            } else {
-                let mut stmt = c.prepare_cached(
-                    "SELECT id, kind FROM send_queue WHERE status IN ('failed', 'expired')",
-                )?;
-                let mapped = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?;
-                mapped.collect::<rusqlite::Result<Vec<_>>>()?
-            };
-            if rows.is_empty() {
-                return Ok(0);
             }
-            let tx = c.unchecked_transaction()?;
-            let mut count = 0u32;
-            for (id, kind_str) in rows {
-                let kind = QueueKind::from_str_opt(&kind_str).unwrap_or(QueueKind::Files);
-                let expires_at = now_ms.saturating_add(kind.ttl_ms());
-                let updated = tx.execute(
-                    "UPDATE send_queue
-                     SET status = 'waiting', attempts = 0, next_retry_ms = 0,
-                         expires_at = ?2, error_msg = NULL, bytes_done = 0, files_done = 0
-                     WHERE id = ?1",
-                    params![id, expires_at],
-                )?;
-                count = count.saturating_add(u32::try_from(updated).unwrap_or(0));
+            let active_count: i64 = tx.query_row(
+                "SELECT COUNT(*) FROM send_queue WHERE status IN ('waiting', 'sending')",
+                [],
+                |r| r.get(0),
+            )?;
+            if usize::try_from(active_count.max(0)).unwrap_or(usize::MAX) >= MAX_QUEUE_ACTIVE_ITEMS {
+                break;
             }
-            tx.commit()?;
-            Ok(count)
-        })
+            if kind.is_file_based() || kind == QueueKind::ClipboardImage {
+                let active_file_bytes: i64 = tx.query_row(
+                    "SELECT COALESCE(SUM(bytes_total), 0) FROM send_queue
+                     WHERE status IN ('waiting', 'sending')
+                       AND kind IN ('files', 'folder', 'handoff_document', 'recording', 'clipboard_image')",
+                    [],
+                    |r| r.get(0),
+                )?;
+                let current_bytes = u64::try_from(active_file_bytes.max(0)).unwrap_or(u64::MAX);
+                if current_bytes.saturating_add(bytes_total) > MAX_QUEUE_ACTIVE_BYTES {
+                    continue;
+                }
+            }
+            let expires_at = now_ms.saturating_add(kind.ttl_ms());
+            let updated = tx.execute(
+                "UPDATE send_queue
+                 SET status = 'waiting', attempts = 0, next_retry_ms = 0,
+                     expires_at = ?2, error_msg = NULL, bytes_done = 0, files_done = 0
+                 WHERE id = ?1",
+                params![id, expires_at],
+            )?;
+            count = count.saturating_add(u32::try_from(updated).unwrap_or(0));
+        }
+        tx.commit()?;
+        Ok(count)
     }
 
     /// Deletes a queue item by `id`, cleans up any staged files, and returns its `(QueueItem, QueuePayload)`.
@@ -3956,5 +4026,44 @@ mod tests {
             store.next_queue_wake_ms(&[offline_peer, online_peer]).unwrap(),
             Some(item_off.expires_at)
         );
+    }
+
+    #[test]
+    fn retry_queue_item_enforces_limits_and_deduplicates_clipboard() {
+        let store = Store::in_memory().unwrap();
+        let peer = DeviceId([0x88; 32]);
+        store.upsert_peer(&peer, &info("Pixel 9"), 100).unwrap();
+        let now_ms = 1_760_000_000_000i64;
+
+        store
+            .enqueue_send_item(
+                "clip-failed",
+                &peer,
+                &QueuePayload::Clipboard { text: "old".into(), html: None, rtf: None },
+                None,
+                now_ms,
+            )
+            .unwrap();
+        store.mark_queue_failed("clip-failed", "offline").unwrap();
+
+        store
+            .enqueue_send_item(
+                "clip-waiting",
+                &peer,
+                &QueuePayload::Clipboard { text: "new".into(), html: None, rtf: None },
+                None,
+                now_ms + 1,
+            )
+            .unwrap();
+
+        assert!(store.retry_queue_item("clip-failed", now_ms + 2).unwrap());
+        let waiting: Vec<_> = store
+            .list_send_queue(Some(&peer))
+            .unwrap()
+            .into_iter()
+            .filter(|i| i.status == QueueStatus::Waiting)
+            .collect();
+        assert_eq!(waiting.len(), 1);
+        assert_eq!(waiting[0].id, "clip-failed");
     }
 }

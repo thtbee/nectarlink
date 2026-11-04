@@ -571,9 +571,16 @@ impl Shared {
         self.we_offer(PC_AUDIO)
     }
 
+    fn deck_allowed(&self, peer: &DeviceId) -> bool {
+        self.toggle_on(peer, INPUT_TOGGLE) || self.toggle_on(peer, crate::actions::POWER_TOGGLE)
+    }
+
     /// Sends this PC's Deck layout and live state to `session` if this device
     /// offers `deck.actions` or `pc.audio`.
     pub(crate) async fn send_deck(&self, session: &Arc<Session>) {
+        if !self.deck_allowed(&session.peer) {
+            return;
+        }
         if self.offers_deck() {
             let layout = self.deck.local_layout();
             if let Ok(env) = Envelope::new(types::DECK_LAYOUT, &layout) {
@@ -596,7 +603,9 @@ impl Shared {
             && let Ok(env) = Envelope::new(types::DECK_LAYOUT, &clean)
         {
             for session in self.live_sessions() {
-                let _ = session.send(env.clone()).await;
+                if self.deck_allowed(&session.peer) {
+                    let _ = session.send(env.clone()).await;
+                }
             }
         }
         Ok(())
@@ -612,7 +621,9 @@ impl Shared {
             && let Ok(env) = Envelope::new(types::DECK_STATE, &clean)
         {
             for session in self.live_sessions() {
-                let _ = session.send(env.clone()).await;
+                if self.deck_allowed(&session.peer) {
+                    let _ = session.send(env.clone()).await;
+                }
             }
         }
         Ok(())

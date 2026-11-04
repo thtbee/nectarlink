@@ -486,6 +486,9 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let task: TaskNotify = env.body()?;
             let reply = match task.sanitized() {
                 None => Envelope::error(ErrorCode::BadMessage, "invalid task notification"),
+                Some(task) if task.active && !shared.notifications_allowed(&peer) => {
+                    Envelope::error(ErrorCode::Denied, "notifications are off for this device")
+                }
                 Some(task) => {
                     let platform = shared.platform.clone();
                     match tokio::task::spawn_blocking(move || platform.task_notify(&peer, &task))

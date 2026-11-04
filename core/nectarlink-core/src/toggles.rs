@@ -136,7 +136,7 @@ pub(crate) async fn set(
     if !req.is_valid() {
         return Err(Error::Protocol("invalid phone toggle or value".into()));
     }
-    if !shared.toggle_on(&session.peer, TOGGLE) {
+    if req.id != toggle_ids::PC_ACTIVE && !shared.toggle_on(&session.peer, TOGGLE) {
         return Err(Error::Denied);
     }
     let Some(cap) = required_capability(&req.id) else {
@@ -180,7 +180,7 @@ async fn run_set(shared: &Arc<Shared>, peer: &DeviceId, req: PhoneToggleSet) -> 
     if !req.is_valid() {
         return Envelope::error(ErrorCode::BadMessage, "invalid toggle or value");
     }
-    if !shared.toggle_on(peer, TOGGLE) {
+    if req.id != toggle_ids::PC_ACTIVE && !shared.toggle_on(peer, TOGGLE) {
         return Envelope::error(ErrorCode::Denied, "toggles are off for this device");
     }
     let Some(cap) = required_capability(&req.id) else {
