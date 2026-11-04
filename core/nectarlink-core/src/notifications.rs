@@ -35,6 +35,8 @@ pub const SHOW: &str = "notify.show";
 
 /// A snapshot stays well under the 1 MiB frame limit (v0 §3).
 const SNAPSHOT_BUDGET: usize = 768 * 1024;
+/// Maximum cached app icons in memory.
+const MAX_CACHED_ICONS: usize = 256;
 
 /// Why the phone couldn't dismiss a notification or run its action.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,12 +86,30 @@ impl Feed {
     /// for `(peer, app)` when `incoming` is `None`.
     fn peer_icon(&self, peer: DeviceId, app: &str, incoming: Option<&[u8]>) -> Option<Vec<u8>> {
         let mut state = self.lock();
+        let key = (peer, app.to_owned());
         if let Some(icon) = incoming {
-            state.peer_icons.insert((peer, app.to_owned()), icon.to_vec());
+            if !state.peer_icons.contains_key(&key)
+                && state.peer_icons.len() >= MAX_CACHED_ICONS
+                && let Some(evict) = state.peer_icons.keys().next().cloned()
+            {
+                state.peer_icons.remove(&evict);
+            }
+            state.peer_icons.insert(key, icon.to_vec());
             Some(icon.to_vec())
         } else {
-            state.peer_icons.get(&(peer, app.to_owned())).cloned()
+            state.peer_icons.get(&key).cloned()
         }
+    }
+
+    pub(crate) fn clear_peer(&self, peer: &DeviceId) {
+        self.lock().peer_icons.retain(|(p, _), _| p != peer);
+    }
+
+    pub(crate) fn clear_all(&self) {
+        let mut state = self.lock();
+        state.items.clear();
+        state.icons.clear();
+        state.peer_icons.clear();
     }
 
     /// Stores a notification (its icon separately); returns it without the
@@ -99,7 +119,21 @@ impl Feed {
         let mut state = self.lock();
         state.active = true;
         if let Some(icon) = n.icon.take() {
+            if !state.icons.contains_key(&n.app)
+                && state.icons.len() >= MAX_CACHED_ICONS
+                && let Some(evict) = state.icons.keys().next().cloned()
+            {
+                state.icons.remove(&evict);
+            }
             state.icons.insert(n.app.clone(), icon);
+        }
+        while state.items.len() >= SNAPSHOT_ITEMS && !state.items.contains_key(&n.key) {
+            if let Some(oldest) = state.items.iter().min_by_key(|(_, item)| item.when).map(|(k, _)| k.clone())
+            {
+                state.items.remove(&oldest);
+            } else {
+                break;
+            }
         }
         state.items.insert(n.key.clone(), n.clone());
         Some(n)
@@ -255,6 +289,7 @@ impl Shared {
         let snapshot = if self.notifications_allowed(&session.peer) {
             self.notifications.snapshot(session)
         } else {
+            session.sent_icons().clear();
             NotifySnapshot { items: Vec::new() }
         };
         if let Ok(env) = Envelope::new(types::NOTIFY_SNAPSHOT, &snapshot) {
@@ -362,13 +397,21 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         }
         types::NOTIFY_REMOVED => {
             let NotifyKey { key } = env.body()?;
-            if let Ok(Some(thread)) = shared.store.mark_chat_notification_removed(&peer, &key) {
-                shared.emit(NodeEvent::SmsChanged { device: peer, thread: Some(thread) });
+            if shared.notifications_allowed(&peer)
+                && !key.is_empty()
+                && key.len() <= nectarlink_protocol::messages::notify_limits::KEY_BYTES
+            {
+                if let Ok(Some(thread)) = shared.store.mark_chat_notification_removed(&peer, &key) {
+                    shared.emit(NodeEvent::SmsChanged { device: peer, thread: Some(thread) });
+                }
+                shared.emit(NodeEvent::NotificationRemoved { device: peer, key });
             }
-            shared.emit(NodeEvent::NotificationRemoved { device: peer, key });
         }
         // ---- On the phone ----
-        types::NOTIFY_SYNC => shared.send_notification_snapshot(session).await,
+        types::NOTIFY_SYNC => {
+            session.sent_icons().clear();
+            shared.send_notification_snapshot(session).await;
+        }
         types::NOTIFY_HOLD => {
             let NotifyHold { held } = env.body()?;
             session.hold_notifications(held);

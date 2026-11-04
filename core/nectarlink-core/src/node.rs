@@ -973,6 +973,7 @@ impl Shared {
         });
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn on_usb_tunnel_connected(
         self: &Arc<Self>,
         peer: DeviceId,
@@ -1268,6 +1269,7 @@ impl Shared {
         self.clear_remote_ring(*peer, None);
         let peer_id = *peer;
         self.stop_local_ring_if(move |ring| ring.peer == peer_id).await;
+        self.notifications.clear_peer(peer);
         self.stop_webcam(peer);
         // The session was removed above, so `on_session_end` won't clear these:
         // a one-time "show my screen" must not outlive the pairing.
@@ -2322,12 +2324,16 @@ impl Node {
         if toggle == crate::toggles::TOGGLE {
             self.shared.toggles_toggled(peer, enabled);
         }
-        if toggle == crate::actions::POWER_TOGGLE
+        if (toggle == crate::actions::POWER_TOGGLE || toggle == crate::deck::INPUT_TOGGLE)
             && let Some(session) = self.shared.session(&peer)
         {
             let shared = self.shared.clone();
+            let is_power = toggle == crate::actions::POWER_TOGGLE;
             self.shared.runtime.spawn(async move {
-                crate::actions::send_wake_info(&shared, &session).await;
+                if is_power {
+                    crate::actions::send_wake_info(&shared, &session).await;
+                }
+                shared.send_deck(&session).await;
             });
         }
         if toggle == crate::storage::TOGGLE {
@@ -3628,12 +3634,9 @@ impl Node {
             let mut hist = lock(&self.shared.notification_history);
             hist.retain(|n| n.key != clean.key);
             hist.push(clean);
+            hist.sort_by(|a, b| b.when.cmp(&a.when).then_with(|| a.key.cmp(&b.key)));
             // Kept in memory with icons and pictures: drop the oldest past the cap.
-            if hist.len() > NOTIFICATION_HISTORY_MAX
-                && let Some(oldest) = hist.iter().enumerate().min_by_key(|(_, n)| n.when).map(|(i, _)| i)
-            {
-                hist.remove(oldest);
-            }
+            hist.truncate(NOTIFICATION_HISTORY_MAX);
         }
         self.shared.notification_posted(notification).await;
     }
@@ -4185,6 +4188,8 @@ impl Node {
     pub fn clear_all_local_data(&self) -> Result<()> {
         self.shared.clipboard_history.clear()?;
         *self.shared.last_clip_suggestion.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        lock(&self.shared.notification_history).clear();
+        self.shared.notifications.clear_all();
         self.shared.store.clear_all_history_and_cache()?;
         // Files waiting to send stay: they're only references, and the user
         // chose to send them. What's copied or linked goes with everything else.

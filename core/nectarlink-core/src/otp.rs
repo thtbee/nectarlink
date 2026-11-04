@@ -3,12 +3,16 @@
 //!
 //! Codes are detected locally and never logged or stored in clipboard history.
 
+/// Maximum text length scanned for one-time codes (avoids misclassifying large
+/// source files or log clips copied to the clipboard).
+const MAX_OTP_TEXT_BYTES: usize = 1024;
+
 /// Extracts a 4-8 digit one-time code (or prefixed/hyphenated format like
 /// `"G-123456"` or `"123-456"`) when it appears near an OTP keyword in English
 /// or common languages, while ignoring dates, times, currency amounts, phone
 /// numbers, and order/card/account numbers.
 pub fn one_time_code(body: &str) -> Option<String> {
-    if body.is_empty() {
+    if body.is_empty() || body.len() > MAX_OTP_TEXT_BYTES {
         return None;
     }
     let chars: Vec<char> = body.chars().collect();
@@ -894,5 +898,9 @@ mod tests {
                 let _ = is_bare_code(s.trim());
             }
         }
+
+        let long_log = format!("{} verification code 123456", "a".repeat(2048));
+        assert_eq!(one_time_code(&long_log), None);
+        assert!(!is_otp_clip(&long_log));
     }
 }

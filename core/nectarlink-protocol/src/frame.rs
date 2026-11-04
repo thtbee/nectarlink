@@ -56,8 +56,25 @@ pub fn decode_frame(buf: &[u8]) -> Result<Option<(&[u8], usize)>, ProtocolError>
 
 /// Writes one frame to an async writer.
 pub async fn write_frame<W: AsyncWrite + Unpin>(writer: &mut W, payload: &[u8]) -> Result<(), ProtocolError> {
-    let frame = encode_frame(payload)?;
-    writer.write_all(&frame).await?;
+    if payload.len() > MAX_FRAME_LEN {
+        return Err(ProtocolError::FrameTooLarge(payload.len()));
+    }
+    let mut prefix = [0u8; MAX_PREFIX_LEN];
+    let mut prefix_len = 0;
+    let mut rem = payload.len();
+    loop {
+        let byte = (rem & 0x7f) as u8;
+        rem >>= 7;
+        if rem == 0 {
+            prefix[prefix_len] = byte;
+            prefix_len += 1;
+            break;
+        }
+        prefix[prefix_len] = byte | 0x80;
+        prefix_len += 1;
+    }
+    writer.write_all(&prefix[..prefix_len]).await?;
+    writer.write_all(payload).await?;
     Ok(())
 }
 

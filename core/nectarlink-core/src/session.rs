@@ -414,14 +414,14 @@ impl Session {
         self.cancel.cancel();
     }
 
-    fn complete(&self, env: Envelope) -> bool {
-        let Some(re) = env.re else { return false };
+    fn complete(&self, env: Envelope) -> std::result::Result<(), Envelope> {
+        let Some(re) = env.re else { return Err(env) };
         match self.pending.lock().unwrap_or_else(|e| e.into_inner()).remove(&re) {
             Some(tx) => {
                 let _ = tx.send(env);
-                true
+                Ok(())
             }
-            None => false,
+            None => Err(env),
         }
     }
 }
@@ -494,9 +494,14 @@ async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shar
                 continue;
             }
         };
-        if env.re.is_some() && session.complete(env.clone()) {
-            continue;
-        }
+        let env = if env.re.is_some() {
+            match session.complete(env) {
+                Ok(()) => continue,
+                Err(env) => env,
+            }
+        } else {
+            env
+        };
         let Some(shared) = shared.upgrade() else { return };
         if is_background_rpc(&env.t) {
             // Waiting for a slot would hold up heartbeats behind slow
@@ -552,6 +557,7 @@ fn is_background_rpc(t: &str) -> bool {
             | types::STORAGE_MKDIR
             | types::STORAGE_RENAME
             | types::STORAGE_DELETE
+            | types::WAKE_RELAY
     )
 }
 
@@ -647,20 +653,27 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
             && crate::transfer::handle_control(shared, peer, &env).await? => {}
         types::WAKE_RELAY => {
             let req = env.body::<WakeRelay>().ok();
-            // Only for a PC paired with this device, by an address it gave as its own.
-            let info = req.as_ref().and_then(|r| known_wake_info(shared, &r.mac));
-            let known = info.is_some();
-            if let (Some(req), Some(info)) = (req, info) {
-                // Only to a subnet that PC gave as its own; anything else goes
-                // to this network's broadcast, never to an address a peer picks.
-                let bcast = req
-                    .broadcast
-                    .as_deref()
-                    .map(str::trim)
-                    .filter(|b| info.broadcasts.iter().any(|own| own.trim() == *b))
-                    .and_then(|b| b.parse().ok());
-                let _ = wake::send_magic_packet(req.mac, bcast);
-            } else {
+            let shared_clone = shared.clone();
+            let known = tokio::task::spawn_blocking(move || {
+                // Only for a PC paired with this device, by an address it gave as its own.
+                let info = req.as_ref().and_then(|r| known_wake_info(&shared_clone, &r.mac));
+                let known = info.is_some();
+                if let (Some(req), Some(info)) = (req, info) {
+                    // Only to a subnet that PC gave as its own; anything else goes
+                    // to this network's broadcast, never to an address a peer picks.
+                    let bcast = req
+                        .broadcast
+                        .as_deref()
+                        .map(str::trim)
+                        .filter(|b| info.broadcasts.iter().any(|own| own.trim() == *b))
+                        .and_then(|b| b.parse().ok());
+                    let _ = wake::send_magic_packet(req.mac, bcast);
+                }
+                known
+            })
+            .await
+            .unwrap_or(false);
+            if !known {
                 tracing::debug!(peer = %peer.short(), "refusing to wake an address no paired PC gave");
             }
             if env.id.is_some() {
@@ -674,7 +687,8 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         }
         types::AUDIO_PCM => {
             // A rate or layout out of range would play at the wrong speed: dropped.
-            if let Ok(frame) = env.body::<AudioPcmFrame>()
+            if shared.toggle_on(&peer, crate::media::TOGGLE)
+                && let Ok(frame) = env.body::<AudioPcmFrame>()
                 && pcm_frame_ok(frame.sample_rate, frame.channels, frame.pcm.len())
             {
                 shared.emit(NodeEvent::PcAudioFrame {
@@ -727,7 +741,9 @@ async fn datagrams(session: &Arc<Session>, shared: &Weak<Shared>) {
                     let sample_rate = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
                     let channels = bytes[8];
                     let pcm = bytes[10..].to_vec();
-                    if pcm_frame_ok(sample_rate, channels, pcm.len()) {
+                    if shared.toggle_on(&session.peer, crate::media::TOGGLE)
+                        && pcm_frame_ok(sample_rate, channels, pcm.len())
+                    {
                         shared.emit(NodeEvent::PcAudioFrame {
                             device: session.peer,
                             sample_rate,

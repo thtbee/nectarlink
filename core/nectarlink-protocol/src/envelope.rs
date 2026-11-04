@@ -61,6 +61,12 @@ impl Envelope {
         value.deserialized().map_err(|e| ProtocolError::BadMessage(format!("{}: {e}", self.t)))
     }
 
+    /// Decodes the body by taking ownership of `self.b` without cloning it.
+    pub fn body_owned<T: DeserializeOwned>(&mut self) -> Result<T, ProtocolError> {
+        let value = self.b.take().unwrap_or(Value::Map(Vec::new()));
+        value.deserialized().map_err(|e| ProtocolError::BadMessage(format!("{}: {e}", self.t)))
+    }
+
     /// Checks the message type, turning a peer `error` into
     /// [`ProtocolError::Remote`].
     pub fn expect(&self, expected: &'static str) -> Result<(), ProtocolError> {

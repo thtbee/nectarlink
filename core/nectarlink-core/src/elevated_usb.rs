@@ -115,9 +115,7 @@ async fn launch(
     let still_active = {
         let serials = shared.usb_serials.lock().unwrap_or_else(|e| e.into_inner());
         !shared.cancel.is_cancelled()
-            && serials
-                .get(&peer)
-                .is_some_and(|(s, a, p)| s == serial && *a == adb_addr && *p == bridge_port)
+            && serials.get(&peer).is_some_and(|(s, a, p)| s == serial && *a == adb_addr && *p == bridge_port)
     };
     if !still_active {
         keep.abort();
