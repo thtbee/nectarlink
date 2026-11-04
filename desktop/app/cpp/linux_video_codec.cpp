@@ -6,6 +6,7 @@
 
 extern "C" {
 #include <libavcodec/avcodec.h>
+#include <libavutil/channel_layout.h>
 #include <libavutil/dict.h>
 #include <libavutil/hwcontext.h>
 #include <libavutil/opt.h>
@@ -85,6 +86,7 @@ struct Api
     decltype(&av_strerror) error_string;
     decltype(&av_dict_set) dict_set;
     decltype(&av_dict_free) dict_free;
+    decltype(&av_channel_layout_default) channel_layout_default;
 
     Api()
     {
@@ -127,6 +129,7 @@ struct Api
         LOAD_UTIL(error_string, av_strerror);
         LOAD_UTIL(dict_set, av_dict_set);
         LOAD_UTIL(dict_free, av_dict_free);
+        LOAD_UTIL(channel_layout_default, av_channel_layout_default);
 #undef LOAD_CODEC
 #undef LOAD_UTIL
     }
@@ -562,6 +565,194 @@ struct DecoderSelection
         return *current;
     }
 };
+
+struct AacEncoder
+{
+    const Api& functions = api();
+    AVCodecContext* context = nullptr;
+    AVFrame* frame = nullptr;
+    AVPacket* packet = nullptr;
+    int channels = 0;
+    int frame_size = 1024;
+    std::vector<int16_t> pending;
+    size_t pending_offset = 0;
+    bool flushing = false;
+    bool eof_sent = false;
+    int64_t next_pts = 0;
+
+    AacEncoder(int sample_rate, int channel_count) : channels(std::clamp(channel_count, 1, 2))
+    {
+        if (sample_rate <= 0) throw std::runtime_error("Invalid AAC sample rate");
+        const AVCodec* codec = functions.find_encoder("aac");
+        if (!codec) throw std::runtime_error("AAC encoder is unavailable");
+        context = functions.alloc_context(codec);
+        if (!context) throw std::bad_alloc();
+        context->sample_fmt = AV_SAMPLE_FMT_FLTP;
+        context->sample_rate = sample_rate;
+        context->bit_rate = 128000;
+        context->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+        functions.channel_layout_default(&context->ch_layout, channels);
+        functions.check(functions.open(context, codec, nullptr), "Open AAC encoder");
+        frame_size = context->frame_size > 0 ? context->frame_size : 1024;
+        frame = functions.frame_alloc();
+        packet = functions.packet_alloc();
+        if (!frame || !packet) throw std::bad_alloc();
+        frame->nb_samples = frame_size;
+        frame->format = context->sample_fmt;
+        frame->sample_rate = sample_rate;
+        functions.channel_layout_default(&frame->ch_layout, channels);
+        functions.check(functions.frame_buffer(frame, 0), "Allocate AAC frame");
+    }
+
+    ~AacEncoder()
+    {
+        functions.packet_free(&packet);
+        functions.frame_free(&frame);
+        functions.free_context(&context);
+    }
+
+    void send(const int16_t* pcm, size_t frames)
+    {
+        if (!pcm || frames == 0) {
+            flushing = true;
+            return;
+        }
+        pending.insert(pending.end(), pcm, pcm + frames * static_cast<size_t>(channels));
+    }
+
+    int receive(const uint8_t** bytes, size_t* length)
+    {
+        for (;;) {
+            functions.packet_unref(packet);
+            const int result = functions.receive(context, packet);
+            if (result >= 0) {
+                *bytes = packet->data;
+                *length = static_cast<size_t>(packet->size);
+                return 1;
+            }
+            if (result != AVERROR(EAGAIN)) {
+                if (result == AVERROR_EOF) return 0;
+                functions.check(result, "Receive AAC packet");
+            }
+            const size_t available_frames =
+                (pending.size() - pending_offset) / static_cast<size_t>(channels);
+            if (available_frames >= static_cast<size_t>(frame_size)
+                || (flushing && available_frames > 0)) {
+                const size_t chunk = std::min(available_frames, static_cast<size_t>(frame_size));
+                functions.check(functions.frame_writable(frame), "Make AAC frame writable");
+                for (int c = 0; c < channels; ++c) {
+                    auto* plane = reinterpret_cast<float*>(frame->data[c]);
+                    for (size_t i = 0; i < static_cast<size_t>(frame_size); ++i) {
+                        if (i < chunk) {
+                            const int16_t s = pending[pending_offset + i * static_cast<size_t>(channels) + c];
+                            plane[i] = static_cast<float>(s) / 32768.0f;
+                        } else {
+                            plane[i] = 0.0f;
+                        }
+                    }
+                }
+                frame->pts = next_pts;
+                next_pts += static_cast<int64_t>(chunk);
+                pending_offset += chunk * static_cast<size_t>(channels);
+                if (pending_offset == pending.size()) {
+                    pending.clear();
+                    pending_offset = 0;
+                }
+                functions.check(functions.send(context, frame), "Encode AAC frame");
+                continue;
+            }
+            if (flushing && !eof_sent) {
+                eof_sent = true;
+                functions.check(functions.send(context, nullptr), "Flush AAC encoder");
+                continue;
+            }
+            return 0;
+        }
+    }
+};
+
+struct AacDecoder
+{
+    const Api& functions = api();
+    AVCodecContext* context = nullptr;
+    AVFrame* frame = nullptr;
+    AVPacket* packet = nullptr;
+    std::vector<int16_t> samples;
+
+    AacDecoder()
+    {
+        const AVCodec* codec = functions.find_decoder("aac");
+        if (!codec) throw std::runtime_error("AAC decoder is unavailable");
+        context = functions.alloc_context(codec);
+        if (!context) throw std::bad_alloc();
+        functions.check(functions.open(context, codec, nullptr), "Open AAC decoder");
+        frame = functions.frame_alloc();
+        packet = functions.packet_alloc();
+        if (!frame || !packet) throw std::bad_alloc();
+    }
+
+    ~AacDecoder()
+    {
+        functions.packet_free(&packet);
+        functions.frame_free(&frame);
+        functions.free_context(&context);
+    }
+
+    void send(const uint8_t* bytes, size_t length)
+    {
+        if (!bytes || length == 0) {
+            functions.check(functions.send_packet(context, nullptr), "Flush AAC decoder");
+            return;
+        }
+        if (length > static_cast<size_t>(std::numeric_limits<int>::max()))
+            throw std::runtime_error("AAC packet is too large");
+        functions.packet_unref(packet);
+        functions.check(functions.new_packet(packet, static_cast<int>(length)), "Allocate AAC packet");
+        std::memcpy(packet->data, bytes, length);
+        functions.check(functions.send_packet(context, packet), "Submit AAC packet");
+    }
+
+    int receive(const int16_t** pcm, size_t* frames, int* sample_rate, int* channels)
+    {
+        functions.frame_unref(frame);
+        const int result = functions.receive_frame(context, frame);
+        if (result == AVERROR(EAGAIN) || result == AVERROR_EOF) return 0;
+        functions.check(result, "Receive decoded AAC frame");
+        const int n = frame->nb_samples;
+        const int ch = std::clamp(frame->ch_layout.nb_channels, 1, 2);
+        if (n <= 0) return 0;
+        samples.resize(static_cast<size_t>(n) * static_cast<size_t>(ch));
+        if (frame->format == AV_SAMPLE_FMT_FLTP) {
+            for (int i = 0; i < n; ++i) {
+                for (int c = 0; c < ch; ++c) {
+                    const auto* plane = reinterpret_cast<const float*>(frame->data[c]);
+                    const float v = plane ? std::clamp(plane[i], -1.0f, 1.0f) : 0.0f;
+                    samples[static_cast<size_t>(i * ch + c)] = static_cast<int16_t>(v * 32767.0f);
+                }
+            }
+        } else if (frame->format == AV_SAMPLE_FMT_S16P) {
+            for (int i = 0; i < n; ++i) {
+                for (int c = 0; c < ch; ++c) {
+                    const auto* plane = reinterpret_cast<const int16_t*>(frame->data[c]);
+                    samples[static_cast<size_t>(i * ch + c)] = plane ? plane[i] : 0;
+                }
+            }
+        } else if (frame->format == AV_SAMPLE_FMT_FLT && frame->data[0]) {
+            const auto* src = reinterpret_cast<const float*>(frame->data[0]);
+            for (size_t i = 0; i < samples.size(); ++i)
+                samples[i] = static_cast<int16_t>(std::clamp(src[i], -1.0f, 1.0f) * 32767.0f);
+        } else if (frame->format == AV_SAMPLE_FMT_S16 && frame->data[0]) {
+            std::memcpy(samples.data(), frame->data[0], samples.size() * sizeof(int16_t));
+        } else {
+            throw std::runtime_error("Unsupported decoded AAC sample format");
+        }
+        *pcm = samples.data();
+        *frames = static_cast<size_t>(n);
+        *sample_rate = frame->sample_rate;
+        *channels = ch;
+        return 1;
+    }
+};
 } // namespace
 
 extern "C" void* nectarlink_video_encoder_create(bool hevc, int width, int height, int fps, int bitrate,
@@ -741,4 +932,80 @@ extern "C" void nectarlink_video_decoder_flush(void* pointer)
     decoder.functions.frame_unref(decoder.hardware);
     decoder.functions.frame_unref(decoder.software);
     decoder.functions.packet_unref(decoder.packet);
+}
+
+extern "C" void* nectarlink_video_aac_encoder_create(int sample_rate, int channels, char* error, size_t capacity)
+{
+    try {
+        return new AacEncoder(sample_rate, channels);
+    } catch (const std::exception& failure) {
+        report(error, capacity, failure);
+        return nullptr;
+    }
+}
+
+extern "C" void nectarlink_video_aac_encoder_destroy(void* encoder)
+{
+    delete static_cast<AacEncoder*>(encoder);
+}
+
+extern "C" int nectarlink_video_aac_encoder_send(void* encoder, const int16_t* pcm, size_t frames,
+                                                 char* error, size_t capacity)
+{
+    try {
+        static_cast<AacEncoder*>(encoder)->send(pcm, frames);
+        return 0;
+    } catch (const std::exception& failure) {
+        report(error, capacity, failure);
+        return -1;
+    }
+}
+
+extern "C" int nectarlink_video_aac_encoder_receive(void* encoder, const uint8_t** bytes, size_t* length,
+                                                    char* error, size_t capacity)
+{
+    try {
+        return static_cast<AacEncoder*>(encoder)->receive(bytes, length);
+    } catch (const std::exception& failure) {
+        report(error, capacity, failure);
+        return -1;
+    }
+}
+
+extern "C" void* nectarlink_video_aac_decoder_create(char* error, size_t capacity)
+{
+    try {
+        return new AacDecoder();
+    } catch (const std::exception& failure) {
+        report(error, capacity, failure);
+        return nullptr;
+    }
+}
+
+extern "C" void nectarlink_video_aac_decoder_destroy(void* decoder)
+{
+    delete static_cast<AacDecoder*>(decoder);
+}
+
+extern "C" int nectarlink_video_aac_decoder_send(void* decoder, const uint8_t* bytes, size_t length,
+                                                 char* error, size_t capacity)
+{
+    try {
+        static_cast<AacDecoder*>(decoder)->send(bytes, length);
+        return 0;
+    } catch (const std::exception& failure) {
+        report(error, capacity, failure);
+        return -1;
+    }
+}
+
+extern "C" int nectarlink_video_aac_decoder_receive(void* decoder, const int16_t** pcm, size_t* frames,
+                                                    int* sample_rate, int* channels, char* error, size_t capacity)
+{
+    try {
+        return static_cast<AacDecoder*>(decoder)->receive(pcm, frames, sample_rate, channels);
+    } catch (const std::exception& failure) {
+        report(error, capacity, failure);
+        return -1;
+    }
 }

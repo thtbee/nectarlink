@@ -4,8 +4,9 @@
 //! Video frames arrive as Annex-B H.264 access units and are muxed into an
 //! ISO-BMFF (`.mp4`) container (`ftyp` + `moov` + `mdat` with `avc1`/`avcC`
 //! sample entries) without re-encoding. When phone audio (16-bit PCM) is
-//! present and `ffmpeg` is available on `PATH`, the recorded PCM track is
-//! encoded to AAC and muxed alongside the H.264 video stream.
+//! present, the recorded PCM track is encoded to AAC in-process via
+//! `libavcodec` (falling back to `ffmpeg` on `PATH` if `libavcodec` is
+//! unavailable) and muxed alongside the H.264 video stream.
 
 use std::{
     fs::{self, File},
@@ -375,6 +376,11 @@ impl MirrorRecorder {
             let _ = fs::create_dir_all(parent);
         }
 
+        let audio_cfg =
+            self.audio_cfg.filter(|&(rate, channels)| !self.audio_pcm.is_empty() && rate > 0 && channels > 0);
+        let encoded_audio =
+            audio_cfg.and_then(|(rate, channels)| encode_pcm_to_aac(rate, channels, &self.audio_pcm));
+
         let write_res = write_mp4_container(
             &self.path,
             &self.payload_tmp_path,
@@ -384,14 +390,13 @@ impl MirrorRecorder {
             self.fps,
             &self.sps_pps,
             &self.frames,
+            encoded_audio.as_ref(),
         );
         let _ = fs::remove_file(&self.payload_tmp_path);
         write_res?;
 
-        if !self.audio_pcm.is_empty()
-            && let Some((rate, channels)) = self.audio_cfg
-            && rate > 0
-            && channels > 0
+        if encoded_audio.is_none()
+            && let Some((rate, channels)) = audio_cfg
         {
             mux_audio_with_ffmpeg(&self.path, rate, channels, &self.audio_pcm);
         }
@@ -498,6 +503,127 @@ fn mp4_full_box(fourcc: &[u8; 4], version: u8, flags: u32, body: &[u8]) -> Vec<u
     out
 }
 
+struct EncodedAacTrack {
+    sample_rate: u32,
+    channels: u8,
+    frame_sizes: Vec<u32>,
+    payload: Vec<u8>,
+}
+
+#[cfg(linux_ffmpeg_video)]
+unsafe extern "C" {
+    fn nectarlink_video_aac_encoder_create(
+        sample_rate: std::ffi::c_int,
+        channels: std::ffi::c_int,
+        error: *mut std::ffi::c_char,
+        capacity: usize,
+    ) -> *mut std::ffi::c_void;
+    fn nectarlink_video_aac_encoder_destroy(encoder: *mut std::ffi::c_void);
+    fn nectarlink_video_aac_encoder_send(
+        encoder: *mut std::ffi::c_void,
+        pcm: *const i16,
+        frames: usize,
+        error: *mut std::ffi::c_char,
+        capacity: usize,
+    ) -> std::ffi::c_int;
+    fn nectarlink_video_aac_encoder_receive(
+        encoder: *mut std::ffi::c_void,
+        bytes: *mut *const u8,
+        length: *mut usize,
+        error: *mut std::ffi::c_char,
+        capacity: usize,
+    ) -> std::ffi::c_int;
+}
+
+/// Encodes 16-bit signed little-endian interleaved PCM (`pcm_s16le`) into raw AAC-LC packets
+/// in-process using the FFmpeg ABI adapter (`linux_video_codec.cpp`).
+#[cfg(linux_ffmpeg_video)]
+fn encode_pcm_to_aac(rate: u32, channels: u8, pcm_s16le: &[u8]) -> Option<EncodedAacTrack> {
+    let ch = channels.clamp(1, 2) as usize;
+    let total_pcm_frames = pcm_s16le.len() / (ch * 2);
+    if total_pcm_frames == 0 || rate == 0 {
+        return None;
+    }
+    let samples: Vec<i16> = pcm_s16le
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .copied()
+        .take(total_pcm_frames * ch)
+        .map(i16::from_le_bytes)
+        .collect();
+
+    unsafe {
+        let mut error = [0 as std::ffi::c_char; 256];
+        let enc = nectarlink_video_aac_encoder_create(
+            rate as std::ffi::c_int,
+            ch as std::ffi::c_int,
+            error.as_mut_ptr(),
+            error.len(),
+        );
+        if enc.is_null() {
+            return None;
+        }
+        struct Guard(*mut std::ffi::c_void);
+        impl Drop for Guard {
+            fn drop(&mut self) {
+                unsafe { nectarlink_video_aac_encoder_destroy(self.0) };
+            }
+        }
+        let guard = Guard(enc);
+        if nectarlink_video_aac_encoder_send(
+            guard.0,
+            samples.as_ptr(),
+            total_pcm_frames,
+            error.as_mut_ptr(),
+            error.len(),
+        ) < 0
+            || nectarlink_video_aac_encoder_send(
+                guard.0,
+                std::ptr::null(),
+                0,
+                error.as_mut_ptr(),
+                error.len(),
+            ) < 0
+        {
+            return None;
+        }
+
+        let mut frame_sizes = Vec::new();
+        let mut payload = Vec::new();
+        loop {
+            let mut ptr: *const u8 = std::ptr::null();
+            let mut len = 0usize;
+            let status = nectarlink_video_aac_encoder_receive(
+                guard.0,
+                &mut ptr,
+                &mut len,
+                error.as_mut_ptr(),
+                error.len(),
+            );
+            if status < 0 {
+                return None;
+            }
+            if status == 0 {
+                break;
+            }
+            if !ptr.is_null() && len > 0 {
+                frame_sizes.push(len as u32);
+                payload.extend_from_slice(std::slice::from_raw_parts(ptr, len));
+            }
+        }
+        if frame_sizes.is_empty() || payload.is_empty() {
+            return None;
+        }
+        Some(EncodedAacTrack { sample_rate: rate, channels: ch as u8, frame_sizes, payload })
+    }
+}
+
+#[cfg(not(linux_ffmpeg_video))]
+fn encode_pcm_to_aac(_rate: u32, _channels: u8, _pcm_s16le: &[u8]) -> Option<EncodedAacTrack> {
+    None
+}
+
 #[allow(clippy::too_many_arguments)]
 fn write_mp4_container(
     path: &Path,
@@ -508,6 +634,7 @@ fn write_mp4_container(
     fps: u32,
     sps_pps: &[u8],
     frames: &[RecordedFrame],
+    audio_track: Option<&EncodedAacTrack>,
 ) -> Result<(), String> {
     let default_delta = (TIMESCALE / fps.max(1)).max(1);
     let mut sample_sizes = Vec::with_capacity(frames.len());
@@ -534,6 +661,9 @@ fn write_mp4_container(
         sync_samples.push(1);
     }
 
+    let audio_payload_bytes = audio_track.map_or(0u64, |a| a.payload.len() as u64);
+    let total_mdat_payload = payload_bytes.saturating_add(audio_payload_bytes);
+
     let (sps, pps) = extract_sps_and_pps_vecs(sps_pps);
     let ftyp = build_ftyp();
     let dummy_moov = build_moov(
@@ -545,10 +675,13 @@ fn write_mp4_container(
         &sync_samples,
         &sample_sizes,
         0,
+        audio_track,
+        0,
     );
-    let use_large_mdat = payload_bytes + 8 > u64::from(u32::MAX);
+    let use_large_mdat = total_mdat_payload + 8 > u64::from(u32::MAX);
     let mdat_header_len = if use_large_mdat { 16 } else { 8 };
-    let chunk_offset = (ftyp.len() + dummy_moov.len() + mdat_header_len) as u32;
+    let video_chunk_offset = (ftyp.len() + dummy_moov.len() + mdat_header_len) as u32;
+    let audio_chunk_offset = video_chunk_offset.saturating_add(payload_bytes as u32);
     let moov = build_moov(
         width.max(1) as u16,
         height.max(1) as u16,
@@ -557,7 +690,9 @@ fn write_mp4_container(
         &sample_deltas,
         &sync_samples,
         &sample_sizes,
-        chunk_offset,
+        video_chunk_offset,
+        audio_track,
+        audio_chunk_offset,
     );
 
     let mut payload_reader = File::open(payload_tmp_path)
@@ -568,13 +703,16 @@ fn write_mp4_container(
     if use_large_mdat {
         file.write_all(&1u32.to_be_bytes()).map_err(|e| e.to_string())?;
         file.write_all(b"mdat").map_err(|e| e.to_string())?;
-        file.write_all(&(payload_bytes + 16).to_be_bytes()).map_err(|e| e.to_string())?;
+        file.write_all(&(total_mdat_payload + 16).to_be_bytes()).map_err(|e| e.to_string())?;
     } else {
-        let total = (payload_bytes as u32).saturating_add(8);
+        let total = (total_mdat_payload as u32).saturating_add(8);
         file.write_all(&total.to_be_bytes()).map_err(|e| e.to_string())?;
         file.write_all(b"mdat").map_err(|e| e.to_string())?;
     }
     std::io::copy(&mut payload_reader, &mut file).map_err(|e| e.to_string())?;
+    if let Some(audio) = audio_track {
+        file.write_all(&audio.payload).map_err(|e| e.to_string())?;
+    }
     file.flush().map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -615,9 +753,12 @@ fn build_moov(
     sync_samples: &[u32],
     sample_sizes: &[u32],
     chunk_offset: u32,
+    audio_track: Option<&EncodedAacTrack>,
+    audio_chunk_offset: u32,
 ) -> Vec<u8> {
     let total_duration: u32 = sample_deltas.iter().copied().fold(0u32, u32::saturating_add).max(1);
-    let mvhd = build_mvhd(total_duration);
+    let next_track_id = if audio_track.is_some() { 3 } else { 2 };
+    let mvhd = build_mvhd(total_duration, next_track_id);
     let trak = build_trak(
         width,
         height,
@@ -629,13 +770,15 @@ fn build_moov(
         sample_sizes,
         chunk_offset,
     );
-    let mut body = Vec::with_capacity(mvhd.len() + trak.len());
+    let audio_trak = audio_track.map(|a| build_audio_trak(a, audio_chunk_offset)).unwrap_or_default();
+    let mut body = Vec::with_capacity(mvhd.len() + trak.len() + audio_trak.len());
     body.extend_from_slice(&mvhd);
     body.extend_from_slice(&trak);
+    body.extend_from_slice(&audio_trak);
     mp4_box(b"moov", &body)
 }
 
-fn build_mvhd(duration: u32) -> Vec<u8> {
+fn build_mvhd(duration: u32, next_track_id: u32) -> Vec<u8> {
     let mut body = Vec::with_capacity(96);
     body.extend_from_slice(&0u32.to_be_bytes()); // creation_time
     body.extend_from_slice(&0u32.to_be_bytes()); // modification_time
@@ -649,8 +792,139 @@ fn build_mvhd(duration: u32) -> Vec<u8> {
         body.extend_from_slice(&val.to_be_bytes());
     }
     body.extend_from_slice(&[0u8; 24]); // pre_defined
-    body.extend_from_slice(&2u32.to_be_bytes()); // next_track_ID
+    body.extend_from_slice(&next_track_id.to_be_bytes()); // next_track_ID
     mp4_full_box(b"mvhd", 0, 0, &body)
+}
+
+fn aac_lc_audio_specific_config(sample_rate: u32, channels: u8) -> [u8; 2] {
+    let freq_idx: u8 = match sample_rate {
+        96_000 => 0,
+        88_200 => 1,
+        64_000 => 2,
+        48_000 => 3,
+        44_100 => 4,
+        32_000 => 5,
+        24_000 => 6,
+        22_050 => 7,
+        16_000 => 8,
+        12_000 => 9,
+        11_025 => 10,
+        8_000 => 11,
+        7_350 => 12,
+        _ => 3,
+    };
+    let ch = channels.clamp(1, 2);
+    let b0 = (2u8 << 3) | ((freq_idx >> 1) & 0x07);
+    let b1 = ((freq_idx & 0x01) << 7) | ((ch & 0x0F) << 3);
+    [b0, b1]
+}
+
+fn build_audio_trak(audio: &EncodedAacTrack, chunk_offset: u32) -> Vec<u8> {
+    let num_frames = audio.frame_sizes.len() as u32;
+    let audio_samples = num_frames.saturating_mul(1024).max(1);
+    let mvhd_duration = ((u64::from(audio_samples) * u64::from(TIMESCALE))
+        / u64::from(audio.sample_rate.max(1)))
+    .max(1) as u32;
+
+    let mut tkhd_body = Vec::with_capacity(80);
+    tkhd_body.extend_from_slice(&0u32.to_be_bytes()); // creation_time
+    tkhd_body.extend_from_slice(&0u32.to_be_bytes()); // modification_time
+    tkhd_body.extend_from_slice(&2u32.to_be_bytes()); // track_ID = 2
+    tkhd_body.extend_from_slice(&0u32.to_be_bytes()); // reserved
+    tkhd_body.extend_from_slice(&mvhd_duration.to_be_bytes());
+    tkhd_body.extend_from_slice(&[0u8; 8]); // reserved
+    tkhd_body.extend_from_slice(&0u16.to_be_bytes()); // layer
+    tkhd_body.extend_from_slice(&0u16.to_be_bytes()); // alternate_group
+    tkhd_body.extend_from_slice(&0x0100u16.to_be_bytes()); // volume = 1.0
+    tkhd_body.extend_from_slice(&0u16.to_be_bytes()); // reserved
+    for val in [0x0001_0000u32, 0, 0, 0, 0x0001_0000, 0, 0, 0, 0x4000_0000] {
+        tkhd_body.extend_from_slice(&val.to_be_bytes());
+    }
+    tkhd_body.extend_from_slice(&0u32.to_be_bytes()); // width = 0
+    tkhd_body.extend_from_slice(&0u32.to_be_bytes()); // height = 0
+    let tkhd = mp4_full_box(b"tkhd", 0, 0x0000_0003, &tkhd_body);
+
+    let mut mdhd_body = Vec::with_capacity(20);
+    mdhd_body.extend_from_slice(&0u32.to_be_bytes());
+    mdhd_body.extend_from_slice(&0u32.to_be_bytes());
+    mdhd_body.extend_from_slice(&audio.sample_rate.to_be_bytes());
+    mdhd_body.extend_from_slice(&audio_samples.to_be_bytes());
+    mdhd_body.extend_from_slice(&0x55C4u16.to_be_bytes()); // "und"
+    mdhd_body.extend_from_slice(&0u16.to_be_bytes());
+    let mdhd = mp4_full_box(b"mdhd", 0, 0, &mdhd_body);
+
+    let mut hdlr_body = Vec::with_capacity(32);
+    hdlr_body.extend_from_slice(&0u32.to_be_bytes());
+    hdlr_body.extend_from_slice(b"soun");
+    hdlr_body.extend_from_slice(&[0u8; 12]);
+    hdlr_body.extend_from_slice(b"SoundHandler\0");
+    let hdlr = mp4_full_box(b"hdlr", 0, 0, &hdlr_body);
+
+    let smhd = mp4_full_box(b"smhd", 0, 0, &[0u8; 4]);
+    let url = mp4_full_box(b"url ", 0, 1, &[]);
+    let mut dref_body = Vec::with_capacity(4 + url.len());
+    dref_body.extend_from_slice(&1u32.to_be_bytes());
+    dref_body.extend_from_slice(&url);
+    let dinf = mp4_box(b"dinf", &mp4_full_box(b"dref", 0, 0, &dref_body));
+
+    let asc = aac_lc_audio_specific_config(audio.sample_rate, audio.channels);
+    let esds_body: [u8; 27] = [
+        0x03, 25, 0x00, 0x02, 0x00, 0x04, 17, 0x40, 0x15, 0x00, 0x00, 0x00, 0x00, 0x01, 0xF4, 0x00, 0x00,
+        0x01, 0xF4, 0x00, 0x05, 2, asc[0], asc[1], 0x06, 1, 0x02,
+    ];
+    let esds = mp4_full_box(b"esds", 0, 0, &esds_body);
+
+    let mut mp4a_body = Vec::with_capacity(28 + esds.len());
+    mp4a_body.extend_from_slice(&[0u8; 6]);
+    mp4a_body.extend_from_slice(&1u16.to_be_bytes()); // data_reference_index
+    mp4a_body.extend_from_slice(&[0u8; 8]);
+    mp4a_body.extend_from_slice(&u16::from(audio.channels.clamp(1, 2)).to_be_bytes());
+    mp4a_body.extend_from_slice(&16u16.to_be_bytes()); // sampleSize = 16
+    mp4a_body.extend_from_slice(&0u16.to_be_bytes());
+    mp4a_body.extend_from_slice(&0u16.to_be_bytes());
+    mp4a_body.extend_from_slice(&(audio.sample_rate.min(65535) << 16).to_be_bytes());
+    mp4a_body.extend_from_slice(&esds);
+    let mp4a = mp4_box(b"mp4a", &mp4a_body);
+
+    let mut stsd_body = Vec::with_capacity(4 + mp4a.len());
+    stsd_body.extend_from_slice(&1u32.to_be_bytes());
+    stsd_body.extend_from_slice(&mp4a);
+    let stsd = mp4_full_box(b"stsd", 0, 0, &stsd_body);
+
+    let mut stts_body = Vec::with_capacity(12);
+    stts_body.extend_from_slice(&1u32.to_be_bytes());
+    stts_body.extend_from_slice(&num_frames.to_be_bytes());
+    stts_body.extend_from_slice(&1024u32.to_be_bytes());
+    let stts = mp4_full_box(b"stts", 0, 0, &stts_body);
+
+    let stsc = build_stsc(num_frames);
+    let stsz = build_stsz(&audio.frame_sizes);
+    let stco = build_stco(chunk_offset);
+
+    let mut stbl_body = Vec::new();
+    stbl_body.extend_from_slice(&stsd);
+    stbl_body.extend_from_slice(&stts);
+    stbl_body.extend_from_slice(&stsc);
+    stbl_body.extend_from_slice(&stsz);
+    stbl_body.extend_from_slice(&stco);
+    let stbl = mp4_box(b"stbl", &stbl_body);
+
+    let mut minf_body = Vec::new();
+    minf_body.extend_from_slice(&smhd);
+    minf_body.extend_from_slice(&dinf);
+    minf_body.extend_from_slice(&stbl);
+    let minf = mp4_box(b"minf", &minf_body);
+
+    let mut mdia_body = Vec::new();
+    mdia_body.extend_from_slice(&mdhd);
+    mdia_body.extend_from_slice(&hdlr);
+    mdia_body.extend_from_slice(&minf);
+    let mdia = mp4_box(b"mdia", &mdia_body);
+
+    let mut trak_body = Vec::new();
+    trak_body.extend_from_slice(&tkhd);
+    trak_body.extend_from_slice(&mdia);
+    mp4_box(b"trak", &trak_body)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1006,5 +1280,46 @@ mod tests {
         assert!(contains_subslice(&bytes, b"mdat"), "missing mdat box");
         assert!(contains_subslice(&bytes, b"avc1"), "missing avc1 sample entry");
         assert!(contains_subslice(&bytes, b"avcC"), "missing avcC config box");
+    }
+
+    #[cfg(linux_ffmpeg_video)]
+    #[test]
+    fn recorder_muxes_aac_audio_track_without_ffmpeg() {
+        let dir = tempfile::tempdir().unwrap();
+        let mp4_path = dir.path().join("synthetic_with_audio.mp4");
+
+        // 0.25 seconds of 48 kHz stereo s16le 440 Hz sine wave (12,000 stereo frames = 48,000 bytes).
+        let mut pcm_bytes = Vec::with_capacity(12_000 * 4);
+        for i in 0..12_000 {
+            let t = i as f32 / 48_000.0;
+            let s = ((t * 440.0 * std::f32::consts::TAU).sin() * 12_000.0) as i16;
+            pcm_bytes.extend_from_slice(&s.to_le_bytes());
+            pcm_bytes.extend_from_slice(&s.to_le_bytes());
+        }
+
+        let encoded = encode_pcm_to_aac(48_000, 2, &pcm_bytes)
+            .expect("in-process libavcodec AAC encoder should encode PCM");
+        assert_eq!(encoded.sample_rate, 48_000);
+        assert_eq!(encoded.channels, 2);
+        assert!(!encoded.frame_sizes.is_empty());
+        assert!(!encoded.payload.is_empty());
+
+        let mut rec = MirrorRecorder::new(mp4_path.clone(), 320, 240, 30, Some((48_000, 2)));
+        let sps_pps = [
+            0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0xC0, 0x1F, 0xDA, 0x01, 0x40, 0x16, 0xEC, 0x04, 0x40, 0x00,
+            0x00, 0x00, 0x01, 0x68, 0xCE, 0x3C, 0x80,
+        ];
+        rec.on_packet(false, 0, &sps_pps).unwrap();
+        let mut idr = vec![0x00, 0x00, 0x00, 0x01, 0x65];
+        idr.extend_from_slice(&[0x88u8; 64]);
+        rec.on_packet(true, 33_333, &idr).unwrap();
+        rec.on_audio(0, &pcm_bytes).unwrap();
+
+        let saved = rec.finish().unwrap();
+        let bytes = fs::read(&saved).unwrap();
+        assert!(contains_subslice(&bytes, b"avc1"), "missing video avc1 sample entry");
+        assert!(contains_subslice(&bytes, b"mp4a"), "missing audio mp4a sample entry");
+        assert!(contains_subslice(&bytes, b"esds"), "missing audio esds descriptor box");
+        assert!(contains_subslice(&bytes, b"soun"), "missing soun handler box");
     }
 }
