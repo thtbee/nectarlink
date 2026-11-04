@@ -649,8 +649,25 @@ object InputServer {
                 "M" -> MotionEvent.ACTION_MOVE
                 else -> MotionEvent.ACTION_UP
             }
-            val event = MotionEvent.obtain(downTime, now, kind, x, y, 0)
-            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            // A finger, as a real touch is: a launcher's double tap, say, can look for one.
+            val properties = arrayOf(
+                MotionEvent.PointerProperties().apply {
+                    id = 0
+                    toolType = MotionEvent.TOOL_TYPE_FINGER
+                },
+            )
+            val coords = arrayOf(
+                MotionEvent.PointerCoords().apply {
+                    this.x = x
+                    this.y = y
+                    pressure = if (kind == MotionEvent.ACTION_UP) 0f else 1f
+                    size = 1f
+                },
+            )
+            val event = MotionEvent.obtain(
+                downTime, now, kind, 1, properties, coords, 0, 0, 1f, 1f, 0, 0,
+                InputDevice.SOURCE_TOUCHSCREEN, 0,
+            )
             send(event)
             event.recycle()
         }

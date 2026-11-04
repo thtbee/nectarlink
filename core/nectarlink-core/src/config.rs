@@ -312,6 +312,10 @@ pub trait Platform: Send + Sync + 'static {
     ) {
     }
 
+    /// The PC wants this phone's sound sent to it, or left on the phone, while
+    /// mirroring its screen.
+    fn mirror_sound_requested(&self, _peer: &nectarlink_protocol::DeviceId, _on: bool) {}
+
     /// The PC changed `stay_awake` or `screen_off` while mirroring this phone's
     /// screen (`session == 0`).
     fn mirror_power_requested(

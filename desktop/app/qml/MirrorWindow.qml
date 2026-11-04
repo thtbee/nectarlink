@@ -346,7 +346,7 @@ Window {
         radius: 20
         color: Qt.rgba(0, 0, 0, 0.68)
         visible: win.phase === "showing" && video.frameSize.width > 0
-        readonly property bool toolbarHasFocus: copyShotBtn.activeFocus || saveShotBtn.activeFocus
+        readonly property bool toolbarHasFocus: lockBtn.activeFocus || copyShotBtn.activeFocus || saveShotBtn.activeFocus
             || recordBtn.activeFocus || stayAwakeBtn.activeFocus || screenOffBtn.activeFocus || soundBtn.activeFocus
         opacity: topZoneHover.hovered || toolbarHover.hovered || toolbarWakeTimer.running
             || win.info.recording === true || win.info.screenOff === true || toolbarHasFocus ? 1 : 0
@@ -410,11 +410,20 @@ Window {
                 onClicked: Mirror.setScreenOff(win.mirrorKey, !(win.info.screenOff === true))
             }
             IconButton {
+                id: lockBtn
+                visible: win.canControl
+                iconPath: Icons.lock
+                iconColor: "white"
+                label: qsTr("Lock phone")
+                onClicked: Mirror.press(win.mirrorKey, "lock")
+            }
+            IconButton {
                 id: soundBtn
-                visible: win.info.sound === true
+                // Muted, no sound comes in: this brings it back.
+                visible: win.info.sound === true || (Mirror.muted && !win.info.app)
                 iconPath: Mirror.muted ? Icons.soundOff : Icons.speaker
                 iconColor: "white"
-                label: Mirror.muted ? qsTr("Play the phone's sound here") : qsTr("Mute the phone's sound here")
+                label: Mirror.muted ? qsTr("Play the phone's sound here") : qsTr("Play the sound on the phone")
                 onClicked: Mirror.toggleSound()
             }
         }
@@ -432,7 +441,7 @@ Window {
         radius: 16
         color: Qt.rgba(0, 0, 0, 0.68)
         visible: opacity > 0
-        opacity: Mirror.muted && win.info.sound === true && toolbar.visible && toolbar.opacity === 0 ? 1 : 0
+        opacity: Mirror.muted && !win.info.app && toolbar.visible && toolbar.opacity === 0 ? 1 : 0
         Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast } }
         IconButton {
             anchors.centerIn: parent

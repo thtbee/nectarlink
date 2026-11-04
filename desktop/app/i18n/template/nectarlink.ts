@@ -5120,6 +5120,16 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../../qml/MirrorWindow.qml"/>
+        <source>Lock phone</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/MirrorWindow.qml"/>
+        <source>Play the sound on the phone</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../../qml/MirrorWindow.qml" line="446"/>
         <source>Release to send files to %1</source>
         <translation type="unfinished"></translation>

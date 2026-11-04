@@ -5400,6 +5400,16 @@ What it needs
         <translation>在本机静音手机声音</translation>
     </message>
     <message>
+        <location filename="../qml/MirrorWindow.qml"/>
+        <source>Lock phone</source>
+        <translation>锁定手机</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml"/>
+        <source>Play the sound on the phone</source>
+        <translation>在手机上播放声音</translation>
+    </message>
+    <message>
         <location filename="../qml/MirrorWindow.qml" line="446"/>
         <source>Release to send files to %1</source>
         <translation>松开即可发送文件到 %1</translation>

@@ -483,6 +483,23 @@ class MirrorService : Service() {
         }
 
         /** Updates keep-awake and screen-off state while mirroring to [pcId]. */
+        /** Sends the sound to the PC, or stops so the phone plays it again (#178). */
+        fun setSound(pcId: String, on: Boolean) {
+            val service = current ?: return
+            service.main.post {
+                if (service.pcId != pcId || service.soundOnly) return@post
+                if (on) {
+                    if (service.sound == null) {
+                        val core = (service.application as NectarlinkApplication).core
+                        service.scope.launch { service.startSound(core, pcId) }
+                    }
+                } else {
+                    service.sound?.stop()
+                    service.sound = null
+                }
+            }
+        }
+
         fun setPower(pcId: String, stayAwake: Boolean, screenOff: Boolean) {
             val service = current ?: return
             service.main.post {

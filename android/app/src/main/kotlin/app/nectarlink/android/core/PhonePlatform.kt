@@ -171,6 +171,8 @@ internal class PhonePlatform(
         appWindows.setPower(pcId, stayAwake, screenOff)
     }
 
+    override fun mirrorSoundRequested(pcId: String, on: Boolean) = MirrorService.setSound(pcId, on)
+
     override fun mirrorStopRequested(pcId: String, session: UInt) {
         if (session != SCREEN) return appWindows.close(pcId, session)
         onKeyboardFromPc(pcId, false)

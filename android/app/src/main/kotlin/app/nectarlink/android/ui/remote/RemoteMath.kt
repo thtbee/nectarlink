@@ -203,3 +203,29 @@ class UtteranceJoiner {
         }
     }
 }
+
+/**
+ * How far the pointer goes for how fast the finger moves, like a laptop's
+ * touchpad: slow moves land on small targets, quick ones cross the screen.
+ * Speed is smoothed so the pointer never lurches when a frame arrives late.
+ */
+internal class TouchpadBallistics {
+    private var speed = -1f
+
+    /** The multiplier for a move of [distance] reference pixels over [dtMs] milliseconds. */
+    fun gain(distance: Float, dtMs: Long): Float {
+        val instant = distance / dtMs.coerceAtLeast(MIN_FRAME_MS)
+        speed = if (speed < 0f) instant else speed + SMOOTHING * (instant - speed)
+        val t = ((speed - SLOW_PX_PER_MS) / (FAST_PX_PER_MS - SLOW_PX_PER_MS)).coerceIn(0f, 1f)
+        return SLOW_GAIN + (FAST_GAIN - SLOW_GAIN) * (t * t * (3f - 2f * t))
+    }
+
+    private companion object {
+        const val MIN_FRAME_MS = 4L
+        const val SMOOTHING = 0.35f
+        const val SLOW_PX_PER_MS = 0.4f
+        const val FAST_PX_PER_MS = 6f
+        const val SLOW_GAIN = 0.75f
+        const val FAST_GAIN = 2.6f
+    }
+}

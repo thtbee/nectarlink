@@ -2727,6 +2727,12 @@ impl Node {
         crate::mirror::power(&self.shared, &session, stay_awake, screen_off).await
     }
 
+    /// Sends a mirrored phone's sound to this PC, or leaves it on the phone.
+    pub async fn mirror_sound(&self, peer: DeviceId, on: bool) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::mirror::sound(&self.shared, &session, on).await
+    }
+
     /// The PC's mouse and keyboard on a phone's mirrored screen or app window.
     pub async fn mirror_input(
         &self,

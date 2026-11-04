@@ -289,6 +289,12 @@ has a Stop button. Choosing another
 
 ### Fixed
 
+- **Mirroring: lock the phone, and keep its sound on it.** A **Lock phone**
+  button in the mirror window, and taps from the PC now reach the phone as
+  finger touches, so a launcher's double tap can see them
+  ([#153](https://github.com/thtbee/nectarlink/issues/153)). **Play the sound
+  on the phone** gives the sound back to the phone, not just mutes it here
+  ([#178](https://github.com/thtbee/nectarlink/issues/178)).
 - **Unpairing a phone clears what the PC kept from it.** Its messages, call
   log, contacts, photo thumbnails and opened photos, and its transfers in the
   list. Files you saved stay, and so do the Timeline and clipboard history.
