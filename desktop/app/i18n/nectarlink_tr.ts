@@ -4424,6 +4424,11 @@ Neler gerekir
         <translation>Aktarım tamamlandı</translation>
     </message>
     <message>
+        <location filename="../qml/IslandWindow.qml"/>
+        <source>Transfer failed</source>
+        <translation>Aktarım başarısız</translation>
+    </message>
+    <message>
         <location filename="../qml/IslandWindow.qml" line="229"/>
         <source>Transferring %1 file(s)…</source>
         <translation>%1 dosya aktarılıyor…</translation>
@@ -6910,6 +6915,11 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="890"/>
         <source>Tint window with desktop wallpaper.</source>
         <translation>Pencereyi masaüstü duvar kağıdıyla renklendir.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml"/>
+        <source>Only on Windows 11.</source>
+        <translation>Yalnızca Windows 11'de.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="920"/>

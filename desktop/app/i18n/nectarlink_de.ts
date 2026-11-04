@@ -4426,6 +4426,11 @@ Voraussetzungen
         <translation>Übertragung abgeschlossen</translation>
     </message>
     <message>
+        <location filename="../qml/IslandWindow.qml"/>
+        <source>Transfer failed</source>
+        <translation>Übertragung fehlgeschlagen</translation>
+    </message>
+    <message>
         <location filename="../qml/IslandWindow.qml" line="229"/>
         <source>Transferring %1 file(s)…</source>
         <translation>%1 Datei(en) werden übertragen…</translation>
@@ -6918,6 +6923,11 @@ Voraussetzungen
         <location filename="../qml/pages/SettingsPage.qml" line="890"/>
         <source>Tint window with desktop wallpaper.</source>
         <translation>Fenster mit dem Desktop-Hintergrund tönen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml"/>
+        <source>Only on Windows 11.</source>
+        <translation>Nur unter Windows 11.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="920"/>

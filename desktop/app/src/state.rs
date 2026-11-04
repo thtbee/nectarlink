@@ -425,6 +425,11 @@ impl AppState {
                 if self.last_dismissed.len() != kept.1 {
                     changes |= Changes::NOTIFICATIONS;
                 }
+                let transfers = self.transfers.len();
+                self.transfers.retain(|t| t.transfer.device != *id);
+                if self.transfers.len() != transfers {
+                    changes |= Changes::TRANSFERS;
+                }
                 let queue_len = self.send_queue.len();
                 self.send_queue.retain(|q| q.peer != *id);
                 if self.send_queue.len() != queue_len {
@@ -660,6 +665,8 @@ impl AppState {
                     view.transfer = transfer;
                 }
             }
+            // Unpairing cancels a phone's transfers after removing their rows.
+            None if transfer.state == TransferState::Cancelled => return Changes::NONE,
             None => self.transfers.insert(0, TransferView { transfer, rate: 0.0, sampled: now }),
         }
         // Keep every unfinished transfer and the latest finished ones.
@@ -1428,7 +1435,7 @@ mod tests {
         assert_eq!(s.clear_finished_transfers(), Changes::TRANSFERS);
         assert_eq!(s.transfers.len(), 1, "the waiting one stays");
         for i in 0..(MAX_FINISHED_TRANSFERS + 5) {
-            s.update_transfer(transfer(&i.to_string(), 1000, TransferState::Cancelled), t0);
+            s.update_transfer(transfer(&i.to_string(), 1000, TransferState::Done { saved: Vec::new() }), t0);
         }
         assert_eq!(s.transfers.len(), MAX_FINISHED_TRANSFERS + 1);
     }
@@ -1647,6 +1654,27 @@ mod tests {
         assert_eq!(keys(&s), ["b", "a"]);
         assert!(s.history.is_empty());
         assert!(s.last_dismissed_label.is_empty());
+    }
+
+    #[test]
+    fn unpairing_a_phone_removes_its_transfers_for_good() {
+        let mut s = AppState::default();
+        let phone = DeviceId([1; 32]);
+        s.apply(&NodeEvent::Transfer(transfer("t1", 450, TransferState::Running)));
+        let mut other = transfer("t2", 450, TransferState::Running);
+        other.device = DeviceId([2; 32]);
+        s.apply(&NodeEvent::Transfer(other));
+
+        assert!(s.apply(&NodeEvent::DeviceRemoved(phone)).intersects(Changes::TRANSFERS));
+        assert_eq!(s.transfers.len(), 1);
+        assert_eq!(s.transfers[0].transfer.id, "t2");
+
+        // Unpairing cancels it, and that news arrives after the row has gone.
+        assert_eq!(
+            s.apply(&NodeEvent::Transfer(transfer("t1", 450, TransferState::Cancelled))),
+            Changes::NONE
+        );
+        assert_eq!(s.transfers.len(), 1);
     }
 
     #[test]

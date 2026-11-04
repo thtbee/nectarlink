@@ -11,11 +11,15 @@ QtObject {
     property string phoneColors: ""
     property string wallpaperColors: ""
     property string currentPage: "home"
-    property string settingsSection: ""
+    property string highlightTarget: ""
     property bool doctorBusy: false
     property var doctorChecks: []
     property var commandPaletteResults: []
     property double commandPaletteOpenMs: 0
+    signal activateRequested()
+    function workArea() { return null }
+    function triggerHighlight(target) { highlightTarget = target }
+    function styleShelfWindow(window) {}
     function featureState(feature) { return "" }
     function closeCommandPalette() {}
     function noteCommandPaletteShown() {}

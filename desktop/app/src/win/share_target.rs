@@ -78,6 +78,36 @@ pub fn parse_targets(targets: &[String]) -> SharedPayload {
     payload
 }
 
+/// Registers the installed `AppxManifest.xml` for this Windows user when the
+/// app starts after a silent update (the update task runs as SYSTEM, which
+/// Windows does not allow to register per-user packages).
+pub fn register_sparse_package() {
+    let Ok(exe) = std::env::current_exe() else { return };
+    let Some(dir) = exe.parent().map(Path::to_path_buf) else { return };
+    if !dir.join("AppxManifest.xml").is_file() {
+        return;
+    }
+    std::thread::spawn(move || {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let _ = std::process::Command::new("powershell.exe")
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                "try { Add-AppxPackage -Register \"$env:NECTARLINK_INSTDIR\\AppxManifest.xml\" -ExternalLocation $env:NECTARLINK_INSTDIR -ErrorAction SilentlyContinue } catch {}",
+            ])
+            .env("NECTARLINK_INSTDIR", &dir)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+    });
+}
+
 /// Checks if the current process was activated by the Windows Share sheet
 /// (`ActivationKind::ShareTarget`). If so, reads the shared storage items,
 /// link, text, or bitmap, marks the share operation completed, and returns

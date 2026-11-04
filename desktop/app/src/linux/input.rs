@@ -1519,8 +1519,10 @@ fn query_idle_ms() -> Option<u64> {
         return None;
     }
 
-    // 1. On X11, prefer `xprintidle` first (always returns milliseconds).
+    // 1. On X11, prefer `xprintidle` first (always returns milliseconds). Under
+    // Wayland it would ask XWayland, which sees no input from native windows.
     if has_x11_display()
+        && !has_wayland_display()
         && let Ok(out) = Command::new("xprintidle").stdin(Stdio::null()).stderr(Stdio::null()).output()
         && out.status.success()
         && let Some(ms) = parse_idle_output_ms(&String::from_utf8_lossy(&out.stdout), false)

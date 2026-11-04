@@ -362,6 +362,7 @@ Item {
                         text: qsTr("Clear timeline")
                         onClicked: {
                             page.confirmClearAll = false
+                            page.deviceMenuOpen = false
                             TimelineModel.clearAll()
                         }
                     }

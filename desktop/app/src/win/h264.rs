@@ -1115,20 +1115,23 @@ mod tests {
         if !gpu.on_gpu() {
             return;
         }
+        // Pictures are compared in order, not unit by unit: a busy GPU
+        // decoder can hand a picture back one unit later than software.
+        let (mut queued_a, mut queued_b) =
+            (std::collections::VecDeque::new(), std::collections::VecDeque::new());
         let mut compared = 0;
         for (i, unit) in units.iter().enumerate() {
-            let a = software.decode(unit, i as u64 * 33_333).unwrap();
-            let b = gpu.decode(unit, i as u64 * 33_333).unwrap();
+            queued_a.extend(software.decode(unit, i as u64 * 33_333).unwrap());
+            queued_b.extend(gpu.decode(unit, i as u64 * 33_333).unwrap());
             assert!(gpu.on_gpu(), "{codec}: fell back to software at unit {i}");
-            assert_eq!(a.len(), b.len(), "{codec} unit {i}");
-            for (a, b) in a.iter().zip(&b) {
+            while let (Some(a), Some(b)) = (queued_a.front(), queued_b.front()) {
                 assert_eq!((a.width, a.height), (b.width, b.height));
                 let (w, h) = (a.width as usize, a.height as usize);
                 for row in 0..h {
                     assert_eq!(
                         a.nv12[row * a.stride..][..w],
                         b.nv12[row * b.stride..][..w],
-                        "{codec} unit {i} luma row {row}"
+                        "{codec} picture {compared} luma row {row}"
                     );
                 }
                 let (ca, cb) = (a.stride * a.plane_rows, b.stride * b.plane_rows);
@@ -1136,13 +1139,22 @@ mod tests {
                     assert_eq!(
                         a.nv12[ca + row * a.stride..][..w],
                         b.nv12[cb + row * b.stride..][..w],
-                        "{codec} unit {i} chroma row {row}"
+                        "{codec} picture {compared} chroma row {row}"
                     );
                 }
+                queued_a.pop_front();
+                queued_b.pop_front();
                 compared += 1;
             }
         }
         assert!(compared > 0, "{codec}: no pictures to compare");
+        // Whatever one decoder still holds back at the end of the stream.
+        assert!(
+            queued_a.len() + queued_b.len() <= 2,
+            "{codec}: {} pictures from software and {} from the GPU left over",
+            queued_a.len(),
+            queued_b.len()
+        );
     }
 
     #[test]

@@ -67,6 +67,23 @@ Window {
         if (phase === "showing")
             video.forceActiveFocus()
     }
+    // Keeps a spot on any monitor, including those left of or above the main one
+    // (negative coordinates), as long as enough of the title bar stays reachable.
+    function placeOnScreen(px, py, w, h) {
+        const screens = Qt.application.screens
+        for (let i = 0; i < screens.length; i++) {
+            const s = screens[i]
+            if (px + w > s.virtualX + 80 && px < s.virtualX + s.width - 80
+                    && py >= s.virtualY && py < s.virtualY + s.height - 80) {
+                x = px
+                y = py
+                return
+            }
+        }
+        x = Math.max(Screen.virtualX, Math.min(Screen.virtualX + Screen.width - w, px))
+        y = Math.max(Screen.virtualY, Math.min(Screen.virtualY + Screen.height - h, py))
+    }
+
     onActiveChanged: if (win.active) Mirror.syncClipboardOnFocus(win.mirrorKey)
 
     onFrameChanged: {
@@ -81,8 +98,7 @@ Window {
             width = w
             height = h
             if (info.savedX !== null && info.savedX !== undefined && info.savedY !== null && info.savedY !== undefined) {
-                x = Math.max(0, Math.min(availW - w, info.savedX))
-                y = Math.max(0, Math.min(availH - h, info.savedY))
+                placeOnScreen(info.savedX, info.savedY, w, h)
             }
             sized = true
             Qt.callLater(() => { win.readyForResize = true })
@@ -96,8 +112,7 @@ Window {
             const turnedH = Math.max(240, Math.min(Math.round(availH * 0.95), width))
             width = turnedW
             height = turnedH
-            x = Math.max(0, Math.min(availW - turnedW, x))
-            y = Math.max(0, Math.min(availH - turnedH, y))
+            placeOnScreen(x, y, turnedW, turnedH)
             return
         }
         const maxH = availH * 0.85

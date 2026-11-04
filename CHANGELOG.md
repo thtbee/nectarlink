@@ -283,6 +283,23 @@ has a Stop button. Choosing another
 
 ### Fixed
 
+- **Unpairing a phone clears what the PC kept from it.** Its messages, call
+  log, contacts, photo thumbnails and opened photos, and its transfers in the
+  list. Files you saved stay, and so do the Timeline and clipboard history.
+- **Nectar Island said "Transfer complete" when a transfer failed or was
+  cancelled.** A failed one now says so, and a cancelled one says nothing. A
+  paused one keeps showing its name and progress.
+- **Add-on, Off and Connect over mobile data labels did nothing when clicked.**
+  They open the right page of Settings.
+- **The setup walkthrough's Connection Doctor step** showed no results, and its
+  Messages switch didn't turn Messages on.
+- **Mirror windows came back on the wrong monitor** when it sits left of or
+  above the main one.
+- **The Instant Hotspot button stayed on** when the phone couldn't turn its
+  hotspot on.
+- **A custom install folder** that's a link to somewhere else is refused, and
+  sharing to NectarLink from other Windows apps keeps working after an update.
+
 - **Pairing said "Couldn't reach the PC" on PCs with Hyper-V, WSL or a
   VPN.** Their virtual network adapters could fill the pairing code and
   leave out the PC's Wi-Fi or Ethernet address, and the PC listened for

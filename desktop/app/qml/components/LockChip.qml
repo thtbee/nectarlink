@@ -214,20 +214,17 @@ Rectangle {
         onClicked: {
             if (chip.lockKind === "enableAddon") {
                 helpTooltip.shown = false
-                AppController.settingsSection = 3
-                AppController.currentPage = "settings"
+                AppController.triggerHighlight("settings:camera_audio")
                 return
             }
             if (chip.lockKind === "enableToggle") {
                 helpTooltip.shown = false
-                AppController.settingsSection = 1
-                AppController.currentPage = "settings"
+                AppController.triggerHighlight("settings:devices")
                 return
             }
             if (chip.lockKind === "enablePath") {
                 helpTooltip.shown = false
-                AppController.settingsSection = 8
-                AppController.currentPage = "settings"
+                AppController.triggerHighlight("settings:connection")
                 return
             }
             if (chip.helpText.length > 0) {

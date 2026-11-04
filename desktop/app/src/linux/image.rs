@@ -18,6 +18,15 @@ const LCS_SRGB: u32 = 0x7352_4742;
 
 const PNG_SIG: [u8; 8] = [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
 
+/// The largest picture decoded here (400 MB of pixels). Images come from paired
+/// devices and a JPEG's header alone can ask for 17 GB, which would abort the
+/// app when the allocation fails.
+const MAX_PIXELS: u64 = 100_000_000;
+
+fn fits(width: u32, height: u32) -> bool {
+    u64::from(width) * u64::from(height) <= MAX_PIXELS
+}
+
 const ZIGZAG: [usize; 64] = [
     0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7,
     14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39,
@@ -653,7 +662,7 @@ fn decode_baseline_jpeg(bytes: &[u8]) -> Option<Bitmap> {
                 }
             }
             0xDA => {
-                if seg.len() < 10 || seg[0] != 3 || width == 0 || height == 0 {
+                if seg.len() < 10 || seg[0] != 3 || width == 0 || height == 0 || !fits(width, height) {
                     return None;
                 }
                 for c in 0..3 {
@@ -812,7 +821,7 @@ fn decode_stored_png(bytes: &[u8]) -> Option<Bitmap> {
             _ => {}
         }
     }
-    if width == 0 || height == 0 || idat.is_empty() {
+    if width == 0 || height == 0 || idat.is_empty() || !fits(width, height) {
         return None;
     }
     let raw = decode_stored_zlib(&idat)?;
@@ -850,7 +859,11 @@ fn decode_bmp(bytes: &[u8]) -> Option<Bitmap> {
     let width = i32::from_le_bytes(bytes[18..22].try_into().ok()?);
     let height_raw = i32::from_le_bytes(bytes[22..26].try_into().ok()?);
     let bpp = u16::from_le_bytes(bytes[28..30].try_into().ok()?);
-    if width <= 0 || height_raw == 0 || (bpp != 24 && bpp != 32) {
+    if width <= 0
+        || height_raw == 0
+        || (bpp != 24 && bpp != 32)
+        || !fits(width as u32, height_raw.unsigned_abs())
+    {
         return None;
     }
     let top_down = height_raw < 0;
@@ -1169,6 +1182,18 @@ mod tests {
         let scaled = scale_to(&large, 50);
         assert_eq!(scaled.width, 50);
         assert_eq!(scaled.height, 25);
+    }
+
+    #[test]
+    fn a_jpeg_claiming_a_huge_size_is_refused_before_allocating() {
+        assert!(fits(10_000, 10_000));
+        assert!(!fits(10_001, 10_000));
+        assert!(!fits(65_535, 65_535));
+        // SOF0 claiming 65535 x 65535, three components, then SOS.
+        let mut jpeg = vec![0xFF, 0xD8, 0xFF, 0xC0, 0x00, 0x11, 0x08, 0xFF, 0xFF, 0xFF, 0xFF, 0x03];
+        jpeg.extend_from_slice(&[1, 0x11, 0, 2, 0x11, 0, 3, 0x11, 0]);
+        jpeg.extend_from_slice(&[0xFF, 0xDA, 0x00, 0x0C, 0x03, 1, 0, 2, 0, 3, 0, 0, 63, 0]);
+        assert!(decode_baseline_jpeg(&jpeg).is_none());
     }
 
     #[test]
