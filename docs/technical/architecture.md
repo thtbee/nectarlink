@@ -6,7 +6,7 @@ NectarLink is built around a shared Rust core library (`nectarlink-core`) that i
 
 ```text
 +-------------------------------------------------------------------------------+
-| Windows PC                                                                    |
+| Windows or Linux PC                                                           |
 |                                                                               |
 |  +-------------------------------------------------------------------------+  |
 |  | desktop/app (nectarlink-desktop)                                        |  |
@@ -57,7 +57,7 @@ NectarLink is built around a shared Rust core library (`nectarlink-core`) that i
 Pure wire-protocol crate with no runtime IO or platform dependencies beyond `tokio::io::{AsyncRead, AsyncWrite}` for stream framing.
 
 - **Envelope and Framing (`src/frame.rs`, `src/messages.rs`)**: Implements unsigned LEB128 length-prefixed CBOR `Envelope` encoding (`ciborium`), with a 1 MiB frame ceiling (`MAX_FRAME_LEN = 1,048,576` bytes).
-- **Capabilities (`src/capabilities.rs`)**: Defines the canonical string identifiers for all v0 protocol capabilities (`msg.v0`, `clip.v0`, `files.v0`, `mirror.v0`, `webcam.v0`, `storage.v0`, `sms.v0`, `calls.v0`, `contacts.v0`, `media.v0`, `photos.v0`, `recorder.v0`, `toggles.v0`, `actions.v0`, `deck.v0`, `remote.v0`, `remote.input.v0`, `mirror.pc.v0`, `mirror.apps.v0`, `mirror.audio.v0`, `commands.v0`, and `localsend.v2`).
+- **Capabilities (`src/messages.rs`)**: Each service's capability names (`files.transfer`, `sms.read`, `mirror.capture` and so on) live with its message types. [`docs/protocol/capabilities.md`](../protocol/capabilities.md) lists them all.
 - **Pairing Primitives (`src/pairing.rs`)**: Defines the `nectarlink://pair` URI parser/serializer, `ALPN_PAIR` (`"nectarlink-pair/0"`), `ALPN_SESSION` (`"nectarlink/0"`), QR HMAC proof calculation, and 6-digit Short Authentication String (SAS) derivation.
 - **Video Packetizer (`src/video.rs`)**: Encodes and decodes real-time video packets (`VideoKind::Config`, `VideoKind::Frame`, `VideoKind::Keyframe`) with microsecond timestamps and an 8 MiB packet limit (`MAX_VIDEO_PACKET`).
 
@@ -66,7 +66,7 @@ Pure wire-protocol crate with no runtime IO or platform dependencies beyond `tok
 The central networking, USB/ADB transport, persistence, and feature runtime.
 
 - **Node and Session Engine (`src/node.rs`, `src/session.rs`)**: Manages the `iroh::Endpoint`, accepts incoming `ALPN_PAIR` and `ALPN_SESSION` connections, runs the `hello` / `hello.update` capability handshake, maintains per-peer connection state, and multiplexes control messages, bulk streams, and QUIC datagrams.
-- **Zero-Shell-Out ADB & USB Tunnel (`src/adb.rs`, `src/usb.rs`)**: Speaks the ADB host protocol directly over TCP (`127.0.0.1:5037`) to track attached USB Android devices via `host:track-devices` without spawning `adb.exe` subprocesses per poll, configures port forwards (`host-serial:<serial>:forward:tcp:0;tcp:53319`), and opens a TCP-carried UDP tunnel (`NLQU` header) so `iroh` QUIC datagrams traverse the USB cable with full TLS 1.3 encryption and congestion control.
+- **Zero-Shell-Out ADB & USB Tunnel (`core/nectarlink-adb`, `src/usb.rs`)**: Speaks the ADB host protocol directly over TCP (`127.0.0.1:5037`) to track attached USB Android devices via `host:track-devices` without spawning `adb.exe` subprocesses per poll, configures port forwards (`host-serial:<serial>:forward:tcp:0;tcp:53319`), and opens a TCP-carried UDP tunnel (`NLQU` header) so `iroh` QUIC datagrams traverse the USB cable with full TLS 1.3 encryption and congestion control.
 - **Persistence (`src/store.rs`)**: Embedded SQLite database (`nectarlink.db`, schema version 7) storing paired devices, per-device capability toggles, key-value settings, unified timeline entries, `MessagingStyle` chat threads/messages, and the persistent FIFO send queue (`send_queue`).
 - **Resumable Transfers (`src/transfer.rs`)**: Implements `files.v0` multi-file transfers with BLAKE3 integrity verification (`blake3`), `.part` byte-offset resume, pause/resume/cancel semantics, and automatic queueing when a peer is offline or mid-disconnect.
 - **Perceptual Color Engine (`src/palette.rs`)**: Extracts Material You HCT + OKLab 15-role light and dark color palettes (`ThemeScheme`) from album cover art.
@@ -87,37 +87,36 @@ Command-line binary (`nectarlink`) in top-level `cli/` for headless operation, s
 
 ### 5. `desktop/app` (`nectarlink-desktop`)
 
-The Windows desktop client combining a Rust service host with a Qt 6.12 Quick/QML user interface bridged via `cxx-qt` `0.10`.
+The desktop client for Windows and Linux, combining a Rust service host with a Qt 6.12 Quick/QML user interface bridged via `cxx-qt` `0.10`.
 
-- **Qt Bridges (`desktop/app/src/bridge/`)**:
-  - `node_bridge.rs`: Main UI controller exposing connection state, device list, timeline, notifications, SMS, calls, photos, storage browser, clipboard, and send queue models to QML.
-  - `theme_tokens.rs`: Design system typography, spacing, elevation, and dynamic OKLab media palette bindings.
-  - `mirror_item.rs` (`MirrorDisplay` `QQuickItem`): Hardware-accelerated D3D11/Media Foundation H.264/H.265 video decoder and QQuick rendering node for phone screen mirroring and remote app windows.
-- **Windows Platform Modules (`desktop/app/src/`)**:
-  - `audio_out.rs` and `pc_audio.rs`: Low-latency WASAPI audio playback (for phone audio mirroring) and WASAPI loopback capture (for streaming PC system audio to the phone).
-  - `pc_mirror.rs` and `remote_input.rs`: DXGI Desktop Duplication screen capture with Media Foundation H.264 encoding, plus Win32 `SendInput` synthesis for remote trackpad/keyboard control.
-  - `media.rs`: Windows `GlobalSystemMediaTransportControlsSessionManager` (SMTC) integration for bidirectional Now Playing metadata and transport controls.
-  - `ble_proximity.rs`: Windows WinRT BLE watcher and GATT advertisement reader for RSSI-smoothed proximity presence and auto-lock.
+- **Qt Bridges (`desktop/app/src/bridge/`)**: One bridge per area (`app.rs`, `devices.rs`, `messages.rs`, `calls.rs`, `photos.rs`, `media.rs`, `mirror.rs`, `transfers.rs`, `prefs.rs` and others) exposes state and actions to QML. Design tokens come from `qml/Tokens.qml` and `qml/Theme.qml`.
+- **Platform Modules (`desktop/app/src/win/`, `desktop/app/src/linux/`)**: The same interface on each system: audio, clipboard, input, tray, video, storage integration and so on. `crate::win` resolves to the module for the system being built.
+- **Shared Desktop Modules (`desktop/app/src/`)**:
+  - `mirror.rs`: Phone screen mirroring and app windows, with hardware video decoding.
+  - `pc_audio_stream.rs`, `phone_sound.rs` and `phone_mic.rs`: PC sound to the phone, the phone's sound on the PC, and the phone as a microphone.
+  - `pc_mirror.rs` and `remote.rs`: Sharing the PC's screen with a phone (DXGI Desktop Duplication on Windows, the screen capture portal or X11 on Linux), and input from a phone (`SendInput` on Windows; `/dev/uinput`, the portal or XTest on Linux).
+  - `media.rs`, `win/smtc.rs` and `win/media_sessions.rs`: Now Playing metadata and transport controls, in both directions (SMTC on Windows, MPRIS on Linux).
+  - `win/ble_beacon.rs`: Bluetooth LE beacon for waking the phone's connection.
   - `local_api.rs`: Opt-in localhost HTTP/SSE server (`127.0.0.1:53320`) for CLI, PowerToys, Raycast, and Stream Deck integrations.
-  - `share_target.rs` and `shell_integration.rs`: Windows Share Target activation and Explorer context-menu verb registration (`Send to Phone with NectarLink`).
+  - `win/share_target.rs` and `send_to.rs`: Windows Share Target activation, and files sent from File Explorer's or a Linux file manager's **Send to**.
   - `setup.rs` (with `bridge/setup.rs` and `qml/setup/`): The installer's and uninstaller's window. The NSIS installer (`desktop/installer/nectarlink.nsi`) unpacks the app and starts it with `--setup`; the uninstall entry starts the installed app with `--remove`. The window runs the NSIS installer or uninstaller silently with administrator rights and shows its progress.
-  - `updater.rs`: Automatic release update checker (`https://api.github.com/repos/thtbee/nectarlink/releases/latest`) and SHA-256 verified silent NSIS installer runner on installed desktop copies.
+  - `updater.rs` and `feed.rs`: Update checks against the channel feed (see the [security model](security-model.md#automatic-updates-and-release-verification)), SHA-256 verified downloads, and the installer or package for the kind of install.
 
 ### 6. `desktop/vcam` (`nectarlink-vcam`)
 
 A standalone Windows Media Foundation virtual camera COM DLL (`nectarlink_vcam.dll`) registered via `IMFVirtualCamera` or DirectShow/Media Foundation class factories.
 
 - Communicates with `nectarlink-desktop` across a lock-free sequence-numbered shared memory region (`Global\NectarlinkVcamFrame_v2`, `Local\NectarlinkVcamFrame_v2`, or `Local\NectarlinkVirtualCamera_v2` defined in `desktop/vcam/src/shm.rs`).
-- Supports `RGB32` (`PIXEL_FORMAT_RGB32 = 0`) and `NV12` (`PIXEL_FORMAT_NV12 = 1`) frames up to `3840x2160` (`MAX_WIDTH = 3840`, `MAX_HEIGHT = 2160`, `MAX_FRAME_BYTES = 33,177,600`) with a 64-byte `SharedHeader` (signature `0x4E4C5643` / `"NLVC"`, `VERSION = 2`).
+- Supports `RGB32` (`PIXEL_FORMAT_RGB32 = 0`) and `NV12` (`PIXEL_FORMAT_NV12 = 1`) frames up to `3840x2160` (`MAX_WIDTH = 3840`, `MAX_HEIGHT = 2160`, `MAX_FRAME_BYTES = 33,177,600`) with a 64-byte `SharedHeader` (signature `0x4E4C5643` / `"NLVC"`, `VERSION = 1`).
 - Writers update payload bytes between odd and even sequence numbers (`seq`), allowing camera consumers (Zoom, Teams, Meet, OBS) to read frames without cross-process mutexes.
 
 ### 7. `android/app` (`app.nectarlink.android`)
 
 The Android application written in Kotlin with Jetpack Compose (`compileSdk = 37`, `targetSdk = 37`, `minSdk = 26`).
 
-- **Foreground Service (`service/ConnectionService.kt`)**: Hosts the `NectarlinkNode` singleton, maintains wake/Wi-Fi locks as needed, and coordinates feature handlers (`SmsHandler`, `CallHelper`, `ContactsHelper`, `MediaSessionHelper`, `PhotosHelper`, `StorageHelper`, `AudioRecorderHelper`, `TogglesHelper`, `WebcamStreamer`, `ScreenMirrorStreamer`, `PcMirrorClient`, `AudioMirrorPlayer`).
-- **Notification Listener (`service/NotificationBridge.kt`)**: Implements `NotificationListenerService` to stream active notifications, `MessagingStyle` conversation threads, inline replies, and action invocations.
-- **Elevated Helper (`elevated/Elevated.kt`, `elevated/InputServer.kt`, `elevated/AppDisplay.kt`, `elevated/AdbMdns.kt`)**: An optional privileged helper process launched via `app_process` (`app.nectarlink.android.elevated.InputServer <token>`) under `shell` (`UID 2000` via on-device Wireless Debugging TLS pairing or USB ADB). It binds a loopback TCP socket (`127.0.0.1:<ephemeral_port>`) and requires a 24-byte (48-hex-char) per-session `SecureRandom` token on the first line (verified in constant time with `MessageDigest.isEqual`), injects touch/key/scroll events through `android.hardware.input.IInputManager` and `/dev/uhid`, and creates virtual displays (`DisplayManager.createVirtualDisplay` in `AppDisplay.kt`) for per-app window streaming (`mirror.apps.v0`).
+- **Foreground Service (`service/ConnectionService.kt`)**: Hosts the `NectarlinkNode` singleton, maintains wake/Wi-Fi locks as needed, and coordinates the feature handlers, one package per area (`sms`, `calls`, `contacts`, `media`, `photos`, `storage`, `recorder`, `toggles`, `webcam`, `mirror`).
+- **Notification Listener (`notifications/NotificationListener.kt`)**: Implements `NotificationListenerService` to stream active notifications, `MessagingStyle` conversation threads, inline replies, and action invocations.
+- **Elevated Helper (`elevated/Elevated.kt`, `elevated/InputServer.kt`, `elevated/AppDisplay.kt`, `elevated/LoopbackAdb.kt`, `elevated/ShizukuShell.kt`)**: An optional privileged helper process launched via `app_process` (`app.nectarlink.android.elevated.InputServer <token>`) under `shell` (`UID 2000` via on-device Wireless Debugging TLS pairing or USB ADB). It binds a loopback TCP socket (`127.0.0.1:<ephemeral_port>`) and requires a 24-byte (48-hex-char) per-session `SecureRandom` token on the first line (verified in constant time with `MessageDigest.isEqual`), injects touch/key/scroll events through `android.hardware.input.IInputManager` and `/dev/uhid`, and creates virtual displays (`DisplayManager.createVirtualDisplay` in `AppDisplay.kt`) for per-app window streaming (`mirror.apps.v0`).
 
 ## Discovery and Transport Architecture
 
@@ -126,7 +125,7 @@ NectarLink uses `iroh` (`1.3`) to run a single QUIC + TLS 1.3 endpoint per devic
 | Path | Discovery Mechanism | Transport Path | Latency & Bandwidth Profile |
 |---|---|---|---|
 | `ConnectionPath::Lan` | mDNS (`iroh-mdns-address-lookup`, service name `"nectarlink"`; on PCs on every LAN interface, through a patched copy in `third_party/`) + cached direct socket addresses from `peers.last_addrs` | Direct UDP QUIC between LAN IPv4/IPv6 sockets | Lowest latency, full Wi-Fi / Ethernet throughput |
-| `ConnectionPath::Usb` | `core/nectarlink-core/src/adb.rs` device tracker (`127.0.0.1:5037`) forwarding to `127.0.0.1:53319` (`DEFAULT_USB_PORT`) | QUIC UDP datagrams framed over TCP (`NLQU` header in `src/usb.rs`) via `adb forward` | Zero Wi-Fi dependency, deterministic wired latency |
+| `ConnectionPath::Usb` | `core/nectarlink-adb` device tracker (`127.0.0.1:5037`) forwarding to `127.0.0.1:53319` (`DEFAULT_USB_PORT`) | QUIC UDP datagrams framed over TCP (`NLQU` header in `src/usb.rs`) via `adb forward` | Zero Wi-Fi dependency, deterministic wired latency |
 | `ConnectionPath::Relay` | Opt-in **Connect over mobile data** (`away_mode = true`) enabling `n0_dns` Pkarr lookup and `RelayMode::Default` | End-to-end TLS 1.3 encrypted QUIC relayed via `iroh` DERP/relay servers | Works across cellular and different networks; subject to relay capability guards |
 
 ### QUIC Transport Parameters

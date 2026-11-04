@@ -9,11 +9,11 @@ For the full audit record and vulnerability remediation history, see [`docs/SECU
 | Adversary / Environment | Assumed Capabilities | Mitigations |
 |---|---|---|
 | Untrusted LAN / Public Wi-Fi | Can eavesdrop, replay, inject, or MITM UDP/TCP packets; can broadcast spoofed mDNS records | QUIC + TLS 1.3 (`iroh`) with mutual Ed25519 certificate verification; pairing requires either an out-of-band 128-bit QR secret (`HMAC-SHA256`) or a commitment-bound 6-digit SAS confirmed on both screens |
-| Compromised Relay Server (**Connect over mobile data** / `away_mode`) | Can observe outer UDP packet sizes/timing and drop traffic | End-to-end TLS 1.3 termination between peer `DeviceId` keys; relay never possesses session keys; high-risk capabilities (`storage` without `remote_files`) are blocked on `ConnectionPath::Relay` |
-| Malicious Web Page on Local PC | Can send cross-origin `fetch` / `XMLHttpRequest` / `WebSocket` requests to `127.0.0.1:53320` | Local HTTP API is disabled by default; requires a 256-bit Bearer token in `Authorization` header (constant-time verified) and rejects any request carrying an `Origin` header or `Sec-Fetch-Mode: cors` / `no-cors` |
+| Compromised Relay Server (**Connect over mobile data** / `away_mode`) | Can observe outer UDP packet sizes/timing and drop traffic | End-to-end TLS 1.3 termination between peer `DeviceId` keys; relay never possesses session keys; `storage` without `remote_files` is blocked on `ConnectionPath::Relay` |
+| Malicious Web Page on Local PC | Can send cross-origin `fetch` / `XMLHttpRequest` / `WebSocket` requests to `127.0.0.1:53320` | Local HTTP API is disabled by default; requires a 256-bit Bearer token in the `Authorization` header (constant-time verified) and rejects any request carrying an `Origin` header |
 | Unprivileged Local App on Android | Can attempt to connect to local ports or read app storage | Elevated helper (`InputServer`) binds `127.0.0.1:<ephemeral_port>` and requires a 192-bit (24-byte / 48-hex-char) per-session `SecureRandom` token on the first line, verified in constant time (`MessageDigest.isEqual`) before accepting any commands |
 | Another App Reaching NectarLink's Shizuku Service (Elevated through Shizuku, `elevated/ShizukuShell.kt`) | Gets hold of the Binder of the process Shizuku runs for NectarLink, as the shell user, and asks it to run commands | Shizuku hands that Binder only to NectarLink, and `ShizukuShell` answers only NectarLink's own UID and Shizuku's. It runs nothing it's given as a command line: only the grants Elevated needs for NectarLink's own package (`pm grant`, `appops set … allow`, `cmd notification allow_listener|allow_dnd`, checked word by word) as argument lists, and `InputServer` from NectarLink's own APK with a 48-hex token. It isn't used when Shizuku runs as root, and its process ends with NectarLink's |
-| Offline Disk Inspection | Read access to `%LOCALAPPDATA%\Nectarlink` or Android app data directory | Private identity key (`identity.key`) and clipboard vault (`clipboard_history.enc`, `clipboard_images/*.enc`) are sealed using Windows DPAPI (`CryptProtectData`, tied to the Windows user logon credential) or Android Keystore AES-256-GCM (hardware-backed when supported by the device) |
+| Offline Disk Inspection | Read access to the data folder (`%LOCALAPPDATA%\Nectarlink`, `~/.local/share/Nectarlink` or Android's app data directory) | Private identity key (`identity.key`) and clipboard vault (`clipboard_history.enc`, `clipboard_images/*.enc`) are sealed using Windows DPAPI (`CryptProtectData`, tied to the Windows user logon credential) or Android Keystore AES-256-GCM (hardware-backed when supported by the device). **On Linux they aren't sealed:** they rely on `0600` permissions, so use full-disk encryption if this matters to you |
 | Paired Device Exceeding Intended Access | Attempts to invoke disabled capabilities, traverse outside shared paths, or start silent screen/input capture | Inbound dispatch enforces `CapabilityMatrix::is_allowed` per peer, canonicalizes file paths, and gates sensitive sessions (`pc_mirror`, `remote_input`, first-time `storage`, `webcam`) behind explicit user confirmation |
 
 ## Cryptographic Device Identity
@@ -24,11 +24,12 @@ Implemented in `core/nectarlink-core/src/identity.rs`.
 - The corresponding 32-byte Ed25519 public key (`iroh::EndpointId`) serves as the canonical `DeviceId` (rendered in logs and URIs as z-base-32, with a 16-character `short()` prefix for UI display).
 - On disk, `identity.key` is stored with a 5-byte header:
   - Bytes `0..4`: Signature `NLK1` (`b"NLK1"`).
-  - Byte `4`: `KeyProtector` ID (`0` = `PlainKeyProtector` for headless CLI/tests, `1` = OS key protector).
+  - Byte `4`: `KeyProtector` ID (`0` = `PlainKeyProtector`, used on Linux and by the headless CLI and tests, `1` = OS key protector).
   - Bytes `5..`: Sealed ciphertext.
 - **Windows OS Account Protection (`DpapiKeyProtector`)**: Calls Win32 `CryptProtectData` and `CryptUnprotectData` (`CRYPTPROTECT_UI_FORBIDDEN`) bound to the current Windows user logon credential with domain separation entropy `b"nectarlink/identity/v1"`.
 - **Android Keystore Protection (`KeystoreKeyProtector.kt`)**: Generates a non-exportable 256-bit AES-GCM key (`alias = "nectarlink.identity.v1"`) inside `AndroidKeyStore` (`PURPOSE_ENCRYPT | PURPOSE_DECRYPT`, `BLOCK_MODE_GCM`, `ENCRYPTION_PADDING_NONE`, which may be hardware-backed on devices with StrongBox or TEE) and seals secrets as `12-byte IV || ciphertext || 128-bit auth tag`.
-- On Windows and Android, file permissions are restricted to the owner immediately upon creation. Legacy raw 32-byte key files are transparently migrated into `NLK1` sealed format on first load.
+- **Linux**: there's no platform protection yet. `identity.key` is created with `0600` permissions and stored unsealed, and the core logs `device key is stored without platform protection`.
+- Legacy raw 32-byte key files are migrated into the `NLK1` format on first load.
 
 ## Pairing Protocols (`ALPN_PAIR = "nectarlink-pair/0"`)
 
@@ -68,7 +69,7 @@ When pairing via mDNS discovery or manual IP without scanning a QR code, both de
    - Joiner reveals `pair.reveal { nonce: nA }`.
    - Host verifies `SHA-256(nA) == commit` in constant time (`subtle::ConstantTimeEq`).
 3. **SAS Calculation**: Both sides compute a 6-digit numeric code:
-   - `SAS = (u32_be(HMAC-SHA256(nA || nB, "nectarlink-sas-v0" || idA || idB)[0..4]) & 0x7fff_ffff) mod 1,000,000` (where `idA` is the initiator's 32-byte Ed25519 public key and `idB` is the responder's 32-byte Ed25519 public key; `derive_sas_bound` also supports binding the TLS 1.3 session exporter `EXPORTER-nectarlink-pair-v0`).
+   - `SAS = (u32_be(HMAC-SHA256(nA || nB, "nectarlink-sas-v0" || idA || idB)[0..4]) & 0x7fff_ffff) mod 1,000,000` (where `idA` is the initiator's 32-byte Ed25519 public key and `idB` is the responder's). The IDs are the ones TLS verified, so a man in the middle, who holds a different key, changes the input on at least one side.
 4. **Two-Sided User Confirmation**: Both devices display the 6-digit code and require explicit user approval (`pair.confirm { accept: true }`). Neither side writes the peer to SQLite until `pair.done` completes the two-phase commit.
 
 ## Session Authentication (`ALPN_SESSION = "nectarlink/0"`)
@@ -81,44 +82,44 @@ Every operational session connects over `ALPN_SESSION` (`"nectarlink/0"`):
 
 ## Authorization and the `CapabilityMatrix`
 
-Implemented in `core/nectarlink-core/src/features.rs`. Every paired device has an independent set of 18 feature toggles stored in the `peer_toggles` SQLite table (`DEVICE_TOGGLES`).
+Implemented in `core/nectarlink-core/src/features.rs`. Every paired device has an independent set of 19 feature toggles stored in the `peer_toggles` SQLite table (`DEVICE_TOGGLES`).
 
 ### Default-On vs Opt-In Toggles
 
 | Category | Toggle Keys | Default State |
 |---|---|---|
-| Standard Continuity (13) | `notifications`, `messages`, `calls`, `contacts`, `clipboard`, `files`, `media`, `photos`, `recordings`, `toggles`, `pc_actions`, `mirroring`, `webcam` | Enabled (`true`) upon pairing |
+| Standard Continuity (14) | `notifications`, `messages`, `calls`, `contacts`, `clipboard`, `files`, `media`, `photos`, `recordings`, `toggles`, `pc_actions`, `mirroring`, `webcam`, `mic` | Enabled (`true`) upon pairing |
 | High-Sensitivity / Opt-In (5) | `storage`, `pc_mirror`, `remote_input`, `commands`, `remote_files` | Disabled (`false`) upon pairing; must be explicitly enabled by the user |
 
 ### Inbound Enforcement
 
-`CapabilityMatrix::is_allowed(peer, capability)` maps every incoming wire capability (`cap::SMS`, `cap::STORAGE`, `cap::MIRROR_PC`, `cap::REMOTE_INPUT`, `cap::COMMANDS`, etc.) to its governing toggle key (`feature_for_capability`) and checks the peer's persisted policy before executing any handler. Outbound operations similarly call `check_toggle` before opening streams.
+Each service's handler checks the peer's persisted toggle (`Shared::toggle_on`) before doing anything, and denies the request when it's off. `CapabilityMatrix` in `features.rs` works out what each device can offer, for the UI and for what's advertised.
 
 ### Relay Restrictions (**Connect over mobile data** / `away_mode`)
 
 When a session is connected over `ConnectionPath::Relay` (**Connect over mobile data** / `away_mode`), `Node` applies additional transport-aware authorization:
 
-- Remote file system browsing and downloads (`storage.v0`) are blocked on relay connections unless the user has enabled **both** the `storage` toggle and the opt-in `remote_files` toggle for that peer.
+- Remote file system browsing and downloads are blocked on relay connections unless the user has enabled **both** the `storage` toggle and the opt-in `remote_files` toggle for that peer.
 - Relay discovery and relay servers remain completely disabled (`RelayMode::Disabled`) unless the user explicitly turns on **Connect over mobile data** (`away_mode`).
 
 ## Runtime Consent Gates
 
 Even when a capability toggle is enabled, sensitive operations require interactive user confirmation:
 
-1. **Reverse PC Screen Mirroring (`mirror.pc.v0`)**: When a phone requests to view the PC screen, the desktop app emits `NodeEvent::PcMirrorRequested` and blocks streaming until the user approves the prompt (`set_pc_mirror_session_allowed`). While active, the desktop displays a persistent top banner with a one-click **Stop Sharing** button (`stop_pc_mirror`).
-2. **Remote Input Control (`remote.input.v0`)**: Synthesizing mouse and keyboard input on the PC requires both the opt-in `remote_input` toggle and interactive session approval (`NodeEvent::RemoteInputRequested`).
-3. **Phone Storage Browser (`storage.v0`)**: First-time remote browsing of phone shared storage triggers an on-phone confirmation prompt (`storage_prompted` state) in addition to Android's system `MANAGE_EXTERNAL_STORAGE` permission.
-4. **Phone-as-Webcam (`webcam.v0`)**: Starting a camera stream from the PC notifies the phone and allows the phone user to stop or flip the camera at any time.
-5. **LocalSend Incoming Files (`localsend.v2`)**: Unauthenticated LAN LocalSend peers never bypass pairing; every incoming LocalSend offer enters `TransferState::Requested` and waits for explicit user acceptance before writing files to the Downloads directory.
+1. **Reverse PC Screen Mirroring**: When a phone requests to view the PC screen, the desktop app emits `NodeEvent::PcMirrorRequested` and blocks streaming until the user approves the prompt (`set_pc_mirror_session_allowed`). While active, the desktop displays a persistent top banner with a one-click **Stop Sharing** button (`stop_pc_mirror`).
+2. **Remote Input Control**: Synthesizing mouse and keyboard input on the PC requires the opt-in `remote_input` toggle on the PC. A phone asking while it's off prompts the PC once (`NodeEvent::RemoteInputRequested`).
+3. **Phone Storage Browser**: It needs the `storage` toggle on both devices, and Android's own storage permission on the phone: All files access, or the folders you picked.
+4. **Phone-as-Webcam and Phone as microphone (`mic`)**: Starting either from the PC needs a tap on the phone, except for a PC chosen under **Start the camera and microphone without asking** (`Elevated`, off by default). The phone can stop them at any time.
+5. **LocalSend Incoming Files**: Unauthenticated LAN LocalSend peers never bypass pairing; every incoming LocalSend offer enters `TransferState::Requested` and waits for explicit user acceptance before writing files to the Downloads directory.
 
 ## File System and Path Traversal Protections
 
-- **Incoming Transfers (`core/nectarlink-core/src/transfer.rs`)**: `sanitize_relative_path` strips leading slashes, drive prefixes, `.` components, and rejects any path containing `..` (`Component::ParentDir`), confining all writes to `<download_dir>` and `<data_dir>/incoming/<peer>/<transfer_id>/`.
-- **Storage Browser (`android/app/.../StorageHelper.kt`)**: Resolves every requested path via `File(root, rel).canonicalFile` and verifies that `canonical.path` starts with the canonical `/storage/emulated/0` root prefix, blocking symlink escapes into `/data/data/app.nectarlink.android`.
+- **Incoming Transfers (`core/nectarlink-core/src/transfer.rs`)**: `is_valid_file_name` and `is_valid_folder` reject separators in names, control characters, `.` and `..`. `safe_file_name` keeps only the last path component, and `storable_name` removes what Windows treats specially (`<>:"|?*`, trailing dots and spaces, reserved device names), segment by segment, so writes stay inside the download folder.
+- **Storage Browser (`android/app/.../storage/PhoneStorage.kt`)**: Resolves every requested path canonically and checks it's inside the storage root and outside the blocked folders, so symlinks can't escape. `/data`, `Android/data`, `Android/obb` and NectarLink's own folders are never exposed.
 
 ## Automatic Updates and Release Verification
 
-Implemented in `desktop/app/src/updater.rs` (`feed.rs`, `update_relay.rs`, `win/http.rs`), `desktop/installer/nectarlink.nsi` (the task's definition) and `android/app/src/main/kotlin/app/nectarlink/android/update/AppUpdater.kt`.
+Implemented in `desktop/app/src/updater.rs` (`feed.rs`, `update_relay.rs`, `win/http.rs`, `linux/http.rs`), `desktop/installer/nectarlink.nsi` (the task's definition) and `android/app/src/main/kotlin/app/nectarlink/android/update/AppUpdater.kt`.
 
 - **Endpoint**: Both apps read their channel's feed, `https://raw.githubusercontent.com/thtbee/nectarlink/channels/<stable|nightly>.json`, written by the release and nightly workflows, with a conditional request (`If-None-Match`). Until a feed is published they query `https://api.github.com/repos/thtbee/nectarlink/releases/latest` instead. Both over HTTPS with the OS TLS stack (`WinHTTP`, `curl` on Linux, `HttpURLConnection`). Only `https://` URLs are fetched, redirects stay on HTTPS, and responses are size-capped while they are read. No device identifiers or telemetry are sent.
 - **Feeds**: a feed is accepted only with schema 1, the channel it was fetched for, and a version of that channel (a stable feed lists releases only, a nightly one nightlies only). Its files are kept only when their address starts with `https://github.com/thtbee/nectarlink/releases/download/`, their name is a plain file name, and they carry a 64-digit SHA-256; the download is rejected unless it matches. So a feed can't point an updater anywhere but this repository's own release files, which is the same trust as the release listing it replaces.
@@ -129,7 +130,8 @@ Implemented in `desktop/app/src/updater.rs` (`feed.rs`, `update_relay.rs`, `win/
 - **Windows, when**: with **Install updates automatically** on, the app starts the task once nobody has used the PC for 10 minutes and nothing would be interrupted (mirroring, an app window, a transfer, a call, screen sharing, the webcam). It first starts a hidden relauncher, which reopens the app once the new version's `DisplayVersion` is in the uninstall key and the installer has exited, then quits. Without the task (copies installed before it existed) **Update** runs the installer with the usual UAC prompt.
 - **Android**: with **Install updates automatically** on, the connection service checks in the background at most once a day and installs through `PackageInstaller` with `USER_ACTION_NOT_REQUIRED` (Android 12+, `UPDATE_PACKAGES_WITHOUT_USER_ACTION`). Android skips the prompt only when NectarLink installed the current version itself; otherwise the user confirms from a notification.
 - **Opt-out**: **Check for updates** and **Install updates automatically** in Settings on both apps. With checks off, nothing is fetched.
-- **Not yet**: release binaries are not code-signed (Authenticode) yet, so trust rests on HTTPS to GitHub and the release's checksums.
+- **Linux**: an install only takes its own kind of file (a `.deb` for a `.deb` install, and so on), checked against the same feed and hashes.
+- **Not yet**: Windows binaries are not code-signed (Authenticode), so trust rests on HTTPS to GitHub and the release's checksums.
 
 ## Localhost HTTP API Isolation
 
@@ -137,5 +139,5 @@ Implemented in `desktop/app/src/local_api.rs`.
 
 - **Default State**: Disabled (`local_api_enabled: false`).
 - **Network Binding**: Binds strictly to `127.0.0.1:53320` (`DEFAULT_API_PORT`), never `0.0.0.0`.
-- **Token Authentication**: Generates a 32-byte (64-hex-char) random token from the system CSPRNG (WinRT `CryptographicBuffer`, falling back to CNG `BCryptGenRandom`; the API stays off if neither answers) stored in `<data_dir>/api-token.json`. Every request must supply `Authorization: Bearer <token>` or `?token=<token>`, checked using a constant-time byte comparison (`constant_time_eq`).
-- **Browser Drive-By Defense**: `has_browser_origin` inspects HTTP headers before routing and returns `403 Forbidden` if either `Origin` is present or `Sec-Fetch-Mode` is `cors` or `no-cors`, preventing websites opened in a local browser from probing or invoking the API.
+- **Token Authentication**: Generates a 32-byte (64-hex-char) random token from the system CSPRNG (`secure_random`: WinRT `CryptographicBuffer` falling back to CNG `BCryptGenRandom` on Windows, `/dev/urandom` on Linux; the API stays off if none answers) stored in `<data_dir>/api-token.json`. Every request must supply `Authorization: Bearer <token>`, checked using a constant-time byte comparison (`constant_time_eq`).
+- **Browser Drive-By Defense**: Any request with an `Origin` header gets `403 Forbidden` before routing, and a page can't send the `Authorization` header without the token anyway.

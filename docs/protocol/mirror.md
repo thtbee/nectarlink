@@ -69,6 +69,9 @@ means 0, so PCs and phones that predate sessions work as before.
   offered it with `media.watch` ([media.md](media.md) §4).
 - `mirror.stop` (either way): stop. The PC stops reading the video stream;
   the phone stops sharing, restores normal display power, and finishes it.
+- `mirror.sound` (PC → phone, `on`): stop sending the phone's sound to the PC
+  so the phone plays it again, or start again. A phone from before this
+  message answers `UNSUPPORTED`.
 - `mirror.power` (PC → phone): update `stay_awake` and `screen_off` while
   mirroring the phone's screen (`session` 0). Not answered.
 - `mirror.keyframe` (PC → phone): the decoder lost its place; send a
@@ -128,7 +131,7 @@ bottom), so they hold at any size and rotation.
   comes up.
 - `scroll`: the mouse wheel at a point, in notches (positive: down or
   right); the phone swipes the other way.
-- `key`: `back`, `home`, `recents`, `notifications`, `enter`, `backspace`,
+- `key`: `back`, `home`, `recents`, `notifications`, `lock`, `enter`, `backspace`,
   `delete`, `left`, `right`, `up`, `down`, `tab`, `copy`, `cut`,
   `select_all`, `keyboard_on` or `keyboard_off`. Others are dropped (so
   phones from before `copy`, `cut` and `select_all` ignore them). `copy`,

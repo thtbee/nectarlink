@@ -53,23 +53,23 @@ The budgets above are enforced through architectural choices across the Rust cor
 
 The Qt `QGuiApplication` and QML engine initialize on the main thread while `nectarlink_core::Node::start` (SQLite migration, DPAPI unsealing, `iroh` QUIC socket binding, mDNS discovery, and ADB watcher startup) runs concurrently on the background Tokio runtime. The first QML frame paints in `~310 ms` before network sockets finish binding, and the `NodeBridge` attaches via an asynchronous channel once ready.
 
-### 2. Lazy QML Page Loading (`Loader` Pattern in `Main.qml`)
+### 2. Lazy QML Loading (`Loader` Pattern in `App.qml`)
 
-Rather than instantiating all 14 feature views at startup, `desktop/app/qml/Main.qml` keeps only the primary **Overview** surface resident and loads secondary pages (`MessagesPage`, `CallsPage`, `PhotosPage`, `FilesPage`, `StoragePage`, `MirrorPage`, `WebcamPage`, `ClipboardPage`, `DeckPage`, `NotificationsPage`, `SettingsPage`, `PairWizardModal`) on demand through QML `Loader` components.
+Rather than instantiating every page at startup, `desktop/app/qml/App.qml` loads the main window only when it is shown, and `MainWindow.qml` loads pages (`MessagesPage`, `CallsPage`, `PhotosPage`, `SettingsPage` and the rest) when they are opened on demand through QML `Loader` components.
 
 ### 3. Tray Working-Set Trimming (`hide_to_tray`)
 
-When the user closes the window to the system tray (`desktop/app/src/bridge/node_bridge.rs`):
+When the user closes the window to the system tray (`trim_working_set` in `desktop/app/src/bridge/app.rs`):
 
 - QML releases cached GPU textures and offscreen buffers (`releaseResources()`).
-- The process invokes Win32 `K32EmptyWorkingSet(GetCurrentProcess())`, trimming the resident working set from `~165 MB` down to **`14.2 MB`** while keeping the background Tokio QUIC node responsive.
+- On Windows the process calls `SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1)` (`desktop/app/cpp/app_helpers.cpp`), trimming the resident working set from `~165 MB` down to **`14.2 MB`** while keeping the background Tokio QUIC node responsive.
 
 ### 4. Event-Driven Zero-Polling Subsystems
 
 To keep tray idle CPU at **`0.00%`**:
 
 - **Send Queue Coordinator (`core/nectarlink-core/src/node.rs`)**: Uses `tokio::sync::Notify` (`queue_notify`) plus calculated `tokio::time::sleep_until` deadlines (`Store::next_queue_wake_ms`); when no items are waiting, the task parks indefinitely on `std::future::pending()`.
-- **ADB USB Watcher (`core/nectarlink-core/src/adb.rs` & `src/usb.rs`)**: Maintains a single long-lived TCP connection to `127.0.0.1:5037` using the event-driven `host:track-devices` stream instead of spawning `adb.exe` on a timer.
+- **ADB USB Watcher (`core/nectarlink-adb` & `core/nectarlink-core/src/usb.rs`)**: Maintains a single long-lived TCP connection to `127.0.0.1:5037` using the event-driven `host:track-devices` stream instead of spawning `adb.exe` on a timer.
 - **QML Animations**: Indeterminate spinners and pulse animations in QML bind `running` to item visibility and active window state so Qt's scene graph ticks `0` frames per second when minimized or on another tab.
 
 ### 5. Off-UI-Thread Android Service Startup (`MainActivity.kt` & `ConnectionService.kt`)

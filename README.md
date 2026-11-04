@@ -229,8 +229,8 @@ Windows backdrop; and **Graphite**, ink on paper. All in light and dark.
 
 - **One core, two apps.** Protocol, pairing, sessions, the trust store and the
   capability matrix live in Rust (`core/`) and run unchanged on both platforms.
-- **Native on both sides.** A Windows 11 app built with Qt Quick and Rust, and
-  an Android app built with Jetpack Compose.
+- **Native on both sides.** A desktop app for Windows and Linux built with Qt
+  Quick and Rust, and an Android app built with Jetpack Compose.
 - **Capability matrix.** Both apps work out which features a pair of devices
   supports and what would enable the rest, so the interface never offers
   something that can't work.
@@ -305,7 +305,7 @@ nix develop                       # enter development environment
 
 ## Documentation
 
-- [User guide](docs/guide/README.md): setup, pairing and every feature, on Windows and Android
+- [User guide](docs/guide/README.md): setup, pairing and every feature, on Windows, Linux and Android
 - [Technical documentation](docs/technical/README.md): architecture, security model, protocol, storage, performance and builds
 - [Protocol v0](docs/protocol/v0.md) and the [capability registry](docs/protocol/capabilities.md)
 - [Architecture decision records](docs/adr) and the [design system](docs/design/README.md)
@@ -332,7 +332,7 @@ open a public issue.
 
 ## License
 
-- Windows and Android apps, CLI: [GPL-3.0-or-later](LICENSES/GPL-3.0-or-later.txt),
+- Desktop and Android apps, CLI: [GPL-3.0-or-later](LICENSES/GPL-3.0-or-later.txt),
   with an [app-store exception](LICENSES/APP-STORE-EXCEPTION.md)
 - Core libraries: [MPL-2.0](LICENSES/MPL-2.0.txt)
 - Protocol specification and documentation: [CC BY 4.0](LICENSES/CC-BY-4.0.txt)

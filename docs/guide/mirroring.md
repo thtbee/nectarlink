@@ -48,7 +48,8 @@ The `mirror` window header includes quick controls and keyboard shortcuts:
 | **Record video (MP4)** | `Ctrl+R` | Records the live mirror stream and phone audio to an `.mp4` file in `Downloads\Nectarlink` using lossless H.264 stream passthrough (zero video re-encoding overhead on your PC). Press `Ctrl+R` again to stop and save. |
 | **Keep phone awake** | Toolbar icon | Prevents your phone's screen timeout from locking the device while mirroring is active. |
 | **Turn phone screen off** | Toolbar icon (`Elevated`) | Blanks your phone's physical OLED/LCD display while the `mirror` window continues running on your PC, and turns the physical display back on automatically when mirroring stops. |
-| **Mute / unmute audio** | Toolbar icon | Toggles phone audio playback on the PC. |
+| **Lock phone** | Toolbar icon | Locks the phone, as its power button would. Shows when you can control the phone. |
+| **Play the sound on the phone / here** | Toolbar icon | Stops sending the phone's sound to the PC so the phone plays it again, or brings it back to the PC. While it's on the phone, new mirroring leaves it there. |
 
 ### Opening Phone Apps in Their Own PC Windows (`app window`)
 

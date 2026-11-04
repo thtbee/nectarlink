@@ -43,7 +43,7 @@ Configured in `core/nectarlink-core/src/store.rs` with `PRAGMA journal_mode = WA
 
 ## Unified Conversations (`chat_threads` & `chat_messages`)
 
-When an Android notification uses `Notification.MessagingStyle` (such as WhatsApp, Signal, Telegram, Messages, Discord, or Slack), `NotificationBridge.kt` extracts the conversation metadata, participant messages, and `RemoteInput` reply capability.
+When an Android notification uses `Notification.MessagingStyle` (such as WhatsApp, Signal, Telegram, Messages, Discord, or Slack), `NotificationReader.kt` extracts the conversation metadata, participant messages, and `RemoteInput` reply capability.
 
 - `Store::upsert_chat_from_notification` upserts the thread header in `chat_threads` and deduplicates message turns in `chat_messages` by `(peer, thread_id, msg_key)`.
 - When the user replies from the desktop **Conversations** view (`chat.send`), the outgoing reply is appended with `is_self = 1` and routed to the Android `RemoteInput` pending intent.

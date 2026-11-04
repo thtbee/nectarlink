@@ -115,6 +115,16 @@ files are off for the PC.
 Sent (debounced) when the phone's photo or video library changes so
 connected PCs can refresh their album and item lists. It isn't answered.
 
+### 2.7 `photos.delete`
+
+PC to phone: move these items to the phone's trash, where they can still be
+restored. `ids` holds up to 200 items. The phone answers `photos.deleted` with
+`count`, how many went. Items it couldn't move stay and aren't counted. Moving
+without a prompt needs Android 11 or newer and All files access, so otherwise
+`count` is 0.
+
+Errors: `DENIED` when photos are off for the PC.
+
 ## 3. Privacy
 
 - Nothing is sent before the user gives the phone app access to photos and
