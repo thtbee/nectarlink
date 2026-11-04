@@ -1,58 +1,58 @@
 {
   "schema": 1,
   "channel": "nightly",
-  "version": "0.1.5-nightly.1",
-  "name": "Golden Lavender",
-  "published": "2026-11-04T00:58:12Z",
-  "notes": "https://github.com/thtbee/nectarlink/releases/tag/v0.1.5-nightly.1",
+  "version": "0.1.5-nightly.2",
+  "name": "Honey Heather",
+  "published": "2026-11-04T11:34:55Z",
+  "notes": "https://github.com/thtbee/nectarlink/releases/tag/v0.1.5-nightly.2",
   "files": [
     {
-      "name": "Nectarlink-0.1.5-nightly.1-android.apk",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.1/Nectarlink-0.1.5-nightly.1-android.apk",
-      "sha256": "e7e1b27382b1b4c7837820676280a09f4bf6ace59d04397cee79824380b67b38",
-      "size": 52534514
+      "name": "Nectarlink-0.1.5-nightly.2-android.apk",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.2/Nectarlink-0.1.5-nightly.2-android.apk",
+      "sha256": "7f0375739cf93bf7fb1a9f303740422160bf6980486e1fe99b21dba9db295627",
+      "size": 52534518
     },
     {
-      "name": "Nectarlink-0.1.5-nightly.1-arm64-setup.exe",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.1/Nectarlink-0.1.5-nightly.1-arm64-setup.exe",
-      "sha256": "e32438b06ee55b4419ecd86d200a191e5f42d0f869c6ec85982d06b1309fe936",
-      "size": 38290829
+      "name": "Nectarlink-0.1.5-nightly.2-arm64-setup.exe",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.2/Nectarlink-0.1.5-nightly.2-arm64-setup.exe",
+      "sha256": "f953ab73b076d7cb8a769d3eed318fc247c8c684c63acfd994e58d23e313e120",
+      "size": 38307703
     },
     {
-      "name": "Nectarlink-0.1.5-nightly.1-linux-x86_64.tar.gz",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.1/Nectarlink-0.1.5-nightly.1-linux-x86_64.tar.gz",
-      "sha256": "921624ea13806759b15ab15caa355451b294e2b69a732a8b2ae8ecd4d2b1fbc4",
-      "size": 68857816
+      "name": "Nectarlink-0.1.5-nightly.2-linux-x86_64.tar.gz",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.2/Nectarlink-0.1.5-nightly.2-linux-x86_64.tar.gz",
+      "sha256": "a91468433942e2c47869693a05b7550a35354ac57f62ccc99e3fdb2ceb23ac18",
+      "size": 68941328
     },
     {
-      "name": "Nectarlink-0.1.5-nightly.1-x64-setup.exe",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.1/Nectarlink-0.1.5-nightly.1-x64-setup.exe",
-      "sha256": "d044f457212abf2b95dcc65dbcdd8cc3b9c168b1ce725f32e0a352ec44471dc5",
-      "size": 41692037
+      "name": "Nectarlink-0.1.5-nightly.2-x64-setup.exe",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.2/Nectarlink-0.1.5-nightly.2-x64-setup.exe",
+      "sha256": "3f48aee70e79d230f2d68457bd3e9658cb61639e8657d314956720b7b679c41f",
+      "size": 41711312
     },
     {
-      "name": "Nectarlink-0.1.5-nightly.1-x86_64.AppImage",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.1/Nectarlink-0.1.5-nightly.1-x86_64.AppImage",
-      "sha256": "fb577671091e2d8017f8dde3f7b092f515d164badc4a80105736e0d31ff51a06",
-      "size": 62437880
+      "name": "Nectarlink-0.1.5-nightly.2-x86_64.AppImage",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.2/Nectarlink-0.1.5-nightly.2-x86_64.AppImage",
+      "sha256": "33734f0cf885a4f520f099e3971c3db9858e526ac9fd4c7adf7c7fa21c1236eb",
+      "size": 62474744
     },
     {
       "name": "install.sh",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.1/install.sh",
-      "sha256": "5d09a94b8a37d16dde843feeda0a054995825ded1dbff38e71d2a42142d2e411",
-      "size": 23366
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.2/install.sh",
+      "sha256": "b7cdc18c1789d75e26c8d972985da2fd78bd7117eebf0d384d096760c4203821",
+      "size": 23634
     },
     {
-      "name": "nectarlink-0.1.5-nightly.1-1.x86_64.rpm",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.1/nectarlink-0.1.5-nightly.1-1.x86_64.rpm",
-      "sha256": "38ca992a64be4c5ebe87f0db659bb9e3eb15dca7267422af7b2201d2ccb68040",
-      "size": 68467244
+      "name": "nectarlink-0.1.5-nightly.2-1.x86_64.rpm",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.2/nectarlink-0.1.5-nightly.2-1.x86_64.rpm",
+      "sha256": "e6291e691cefb6679ab0a250ac0db4d66f60b6b5ce4b7e69e7214bcd44ab684e",
+      "size": 68537578
     },
     {
-      "name": "nectarlink_0.1.5-nightly.1_amd64.deb",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.1/nectarlink_0.1.5-nightly.1_amd64.deb",
-      "sha256": "41653c34bd40c53b2b898bf50931c6dffd4b506ffa47d8a443887140826ef028",
-      "size": 50335962
+      "name": "nectarlink_0.1.5-nightly.2_amd64.deb",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5-nightly.2/nectarlink_0.1.5-nightly.2_amd64.deb",
+      "sha256": "2fc4c9f45d804d31ce3d5d22d1db3603d0fd3adf93eb7999854ec7491f1f5a7d",
+      "size": 50385544
     }
   ]
 }
