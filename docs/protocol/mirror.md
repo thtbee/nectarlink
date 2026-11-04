@@ -103,7 +103,8 @@ u64 time      // capture time in microseconds, big-endian (only differences mean
 ```
 
 - **config**: the stream's format, CBOR `{ codec: "h264" | "h265", width: uint,
-  height: uint }`. First, and again whenever it changes (the phone turned).
+  height: uint, ? session: uint, ? app_name: text }`. First, and again whenever
+  it changes (the phone turned).
 - **frame**: one H.264 or H.265 access unit (Annex B) that depends on earlier ones.
 - **keyframe**: an access unit that starts fresh (an IDR/IRAP picture), with
   the codec's parameter sets before it (SPS/PPS for H.264; VPS/SPS/PPS for H.265).

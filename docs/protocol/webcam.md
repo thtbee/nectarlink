@@ -82,7 +82,7 @@ The phone opens a bidirectional stream to the PC and writes the stream header:
 Followed by a sequence of framed video packets (`core/nectarlink-protocol/src/video.rs`):
 
 ```
-[kind: u8][timestamp_us: u64 big-endian][length: u32 big-endian][payload: length bytes]
+[length: u32 big-endian][kind: u8][timestamp_us: u64 big-endian][payload: length bytes]
 ```
 
 | `kind` | Name | Payload |

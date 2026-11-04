@@ -26,11 +26,14 @@ requests answered with `ok` or `error`; `pc.wake_info` is a one-way event (no
 `id`, no reply).
 
 ```
-t = "pc.power"      id = n   b = { action: "lock" | "sleep" }
-t = "link.open"     id = n   b = { url: text, title?: text }
-t = "task.notify"   id = n   b = { id: text, title: text, active: bool, elapsed_ms: uint, exit_code?: int }
-t = "ok"            re = n
-t = "pc.wake_info"           b = { macs: [text, ...], broadcasts?: [text, ...] }
+t = "pc.power"           id = n   b = { action: "lock" | "sleep" }
+t = "link.open"          id = n   b = { url: text, title?: text }
+t = "task.notify"        id = n   b = { id: text, title: text, active: bool, elapsed_ms: uint, exit_code?: int }
+t = "wake.relay"         id = n   b = { mac: bytes(6), broadcast?: text }
+t = "elevated.usb"       id = n   b = { apk: text, token: text, grants?: [text] }
+t = "elevated.usb.ready" re = n   b = { port: uint }
+t = "ok"                 re = n
+t = "pc.wake_info"                b = { macs: [text, ...], broadcasts?: [text, ...] }
 ```
 
 ### 2.1 `pc.power`
@@ -92,7 +95,10 @@ survives restarts. To wake an offline PC, the phone sends the standard
 102-byte Wake-on-LAN magic packet (`6 × 0xFF` followed by the 6-byte MAC
 repeated 16 times) over UDP to ports `9` and `7`, addressed to each stored
 subnet broadcast address and `255.255.255.255`, repeated a few times over
-~2 seconds.
+~2 seconds. When the phone is away from the LAN, it can also ask another
+online device on the PC's network to broadcast the magic packet on its
+behalf via `wake.relay { mac, broadcast? }`; the relay only honours `mac`
+and `broadcast` values that match a paired PC's stored `pc.wake_info`.
 
 ### 2.4 `task.notify` ("Ping me when it's done")
 
@@ -116,6 +122,16 @@ notification (promoted to an Android 16+ Live Update with
 becomes `false` with an `exit_code`, the phone replaces that notification in
 place with a high-importance completion alert (`"<title> finished"` or
 `"<title> failed (exit <code>)"`, body `"Took 4m 12s · <PC name>"`).
+
+### 2.5 `elevated.usb` (USB Elevated helper launch)
+
+When a phone is connected to a paired PC over an authenticated USB ADB tunnel,
+it can send `elevated.usb { apk, token, grants? }` to ask the PC to grant the
+listed `android.permission.*` permissions via `pm grant` and start the phone
+app's `ElevatedHelperMain` entry point via `adb shell app_process`. Once the
+helper prints `NECTARLINK_ELEVATED_READY <port>`, the PC replies with
+`elevated.usb.ready { port }` and holds the ADB shell open until the USB
+tunnel disconnects.
 
 ## 3. Rules
 
