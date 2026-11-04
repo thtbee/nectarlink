@@ -83,6 +83,21 @@ jobs:
           cargo xtask tokens --check
           cargo xtask strings --check
 
+  # A skipped job counts as passed, but a skipped matrix job reports once, as
+  # "Core (${{ matrix.os }})", so the "Core (<os>)" checks main requires never
+  # appear and a docs-only pull request can't merge. On a docs-only change
+  # this reports them, with nothing to build.
+  core-docs-only:
+    name: Core (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.code != 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - run: echo "Only docs changed; nothing to build or test."
+
   # The Windows app's lints and tests, and its release build and installer,
   # run side by side: each takes about as long as the other.
   desktop-checks:
