@@ -16,6 +16,16 @@ Item {
     // notifications and dock inside a phone frame, with a Live switch for the
     // real screen). False brings back the original hero, tiles and feed.
     readonly property bool phoneLayout: true
+    // Whether Qt Multimedia (which the radio needs) is installed. Asked
+    // quietly: a failed import throws here instead of logging a warning.
+    readonly property bool radioAvailable: {
+        try {
+            Qt.createQmlObject("import QtQuick; import QtMultimedia; QtObject {}", page, "radioProbe").destroy()
+            return true
+        } catch (e) {
+            return false
+        }
+    }
     property bool active: true
     property int current: AppController.currentDevice
     Connections {
@@ -2342,10 +2352,11 @@ Item {
 
                     }
 
-                    // Internet radio, drawn as an analogue tuner. Loaded by URL so a
-                    // build without Qt Multimedia only loses the radio, not Home.
+                    // Internet radio, drawn as an analogue tuner. Only where Qt
+                    // Multimedia is installed: otherwise there's no radio, and no warning.
                     Loader {
                         width: parent.width
+                        active: page.radioAvailable
                         visible: status === Loader.Ready
                         source: Qt.resolvedUrl("../components/CarRadio.qml")
                         onLoaded: item.width = Qt.binding(() => width)
