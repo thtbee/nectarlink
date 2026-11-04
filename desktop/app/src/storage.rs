@@ -1130,10 +1130,16 @@ mod imp {
             let status = match node.storage_delete(root.device, &rel_path, true).await {
                 Ok(()) => STATUS_SUCCESS,
                 Err(nectarlink_core::Error::Offline) => STATUS_CLOUD_NETWORK_UNAVAILABLE,
-                Err(nectarlink_core::Error::Denied) => STATUS_ACCESS_DENIED,
+                // With neither All files access nor a folder picked, the phone can't.
+                Err(nectarlink_core::Error::Denied | nectarlink_core::Error::Unsupported) => {
+                    STATUS_ACCESS_DENIED
+                }
                 // Already gone from the phone: deleted, as asked.
                 Err(nectarlink_core::Error::NotFound) => STATUS_SUCCESS,
-                Err(_) => STATUS_CLOUD_UNSUCCESSFUL,
+                Err(e) => {
+                    tracing::warn!(error = %e, "the phone couldn't delete a file");
+                    STATUS_CLOUD_UNSUCCESSFUL
+                }
             };
             ack_delete(connection_key, transfer_key, request_key, status);
         });
