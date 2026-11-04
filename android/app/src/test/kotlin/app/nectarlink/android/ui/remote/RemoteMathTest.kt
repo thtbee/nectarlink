@@ -9,6 +9,33 @@ import kotlin.math.abs
 
 class RemoteMathTest {
     @Test
+    fun slowMovesAreFineAndQuickOnesCoverGround() {
+        val slow = TouchpadBallistics().gain(distance = 1f, dtMs = 8)
+        val medium = TouchpadBallistics().gain(distance = 12f, dtMs = 8)
+        val fast = TouchpadBallistics().gain(distance = 80f, dtMs = 8)
+        assertTrue("slow $slow is finer than 1:1", slow < 1f)
+        assertTrue("medium $medium is between", medium > slow && medium < fast)
+        assertTrue("fast $fast goes further", fast > 2f)
+    }
+
+    @Test
+    fun aLateOrInstantFrameDoesNotLurch() {
+        val ballistics = TouchpadBallistics()
+        repeat(10) { ballistics.gain(distance = 2f, dtMs = 8) }
+        val steady = ballistics.gain(distance = 2f, dtMs = 8)
+        // Two frames landing together: no time between them, then one big move.
+        val instant = ballistics.gain(distance = 2f, dtMs = 0)
+        val burst = ballistics.gain(distance = 16f, dtMs = 8)
+        assertTrue(instant.isFinite() && burst.isFinite())
+        assertTrue("burst $burst stays near steady $steady", burst - steady < 0.8f)
+    }
+
+    @Test
+    fun theSmallestMoveStillMoves() {
+        assertTrue(TouchpadBallistics().gain(distance = 0.1f, dtMs = 8) > 0f)
+    }
+
+    @Test
     fun deadZoneSuppressesHandTremorAndRampsSmoothly() {
         val (zeroX, zeroY) = AirMouseFilter.applyDeadZone(0.02f, -0.02f, deadZone = 0.04f)
         assertEquals(0f, zeroX, 1e-6f)
