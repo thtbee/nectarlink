@@ -58,7 +58,14 @@ pub fn default_protector() -> Arc<dyn KeyProtector> {
 pub(crate) fn load_or_create(dir: &Path, protector: &dyn KeyProtector) -> Result<SecretKey> {
     let path = dir.join(FILE_NAME);
     match fs::read(&path) {
-        Ok(bytes) => decode(&bytes, protector),
+        Ok(bytes) => {
+            let (key, legacy) = decode(&bytes, protector)?;
+            if legacy {
+                // Stored without protection by an older build: seal it now.
+                write_atomically(&path, &encode(&key, protector)?)?;
+            }
+            Ok(key)
+        }
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
             let key = SecretKey::generate();
             if protector.id() == 0 {
@@ -81,20 +88,24 @@ fn encode(key: &SecretKey, protector: &dyn KeyProtector) -> Result<Vec<u8>> {
     Ok(out)
 }
 
-fn decode(bytes: &[u8], protector: &dyn KeyProtector) -> Result<SecretKey> {
+/// Returns the key, and whether the file held it without protection while
+/// `protector` can now seal it (the caller re-seals it).
+fn decode(bytes: &[u8], protector: &dyn KeyProtector) -> Result<(SecretKey, bool)> {
     let corrupt = || Error::Storage("the device key file is corrupt".into());
     let rest = bytes.strip_prefix(MAGIC.as_slice()).ok_or_else(corrupt)?;
     let (&method, sealed) = rest.split_first().ok_or_else(corrupt)?;
-    if method != protector.id() {
+    let legacy = method == PlainKeyProtector.id() && protector.id() != PlainKeyProtector.id();
+    if method != protector.id() && !legacy {
         return Err(Error::Storage(format!(
             "the device key is protected with method {method}, but this build uses {}",
             protector.id()
         )));
     }
+    let reader: &dyn KeyProtector = if legacy { &PlainKeyProtector } else { protector };
     let plain =
-        protector.unprotect(sealed).map_err(|e| Error::Storage(format!("cannot unlock device key: {e}")))?;
+        reader.unprotect(sealed).map_err(|e| Error::Storage(format!("cannot unlock device key: {e}")))?;
     let bytes: [u8; 32] = plain.as_slice().try_into().map_err(|_| corrupt())?;
-    Ok(SecretKey::from_bytes(&bytes))
+    Ok((SecretKey::from_bytes(&bytes), legacy))
 }
 
 /// Writes via a temporary file and rename, so a crash never leaves a
@@ -261,6 +272,46 @@ mod tests {
         wrong_method.extend_from_slice(&[0; 32]);
         fs::write(dir.path().join(FILE_NAME), wrong_method).unwrap();
         assert!(matches!(load_or_create(dir.path(), &PlainKeyProtector), Err(Error::Storage(_))));
+    }
+
+    /// Seals by XOR with a non-zero byte, under a method id other than 0.
+    struct SealingProtector;
+
+    impl KeyProtector for SealingProtector {
+        fn id(&self) -> u8 {
+            7
+        }
+        fn protect(&self, plaintext: &[u8]) -> io::Result<Vec<u8>> {
+            Ok(plaintext.iter().map(|b| b ^ 0x5a).collect())
+        }
+        fn unprotect(&self, ciphertext: &[u8]) -> io::Result<Vec<u8>> {
+            Ok(ciphertext.iter().map(|b| b ^ 0x5a).collect())
+        }
+    }
+
+    #[test]
+    fn an_unprotected_key_is_sealed_when_a_protector_becomes_available() {
+        let dir = tempfile::tempdir().unwrap();
+        let before = load_or_create(dir.path(), &PlainKeyProtector).unwrap();
+        let path = dir.path().join(FILE_NAME);
+        assert_eq!(fs::read(&path).unwrap()[MAGIC.len()], 0);
+
+        let after = load_or_create(dir.path(), &SealingProtector).unwrap();
+        assert_eq!(before.public(), after.public(), "same identity after sealing");
+        let file = fs::read(&path).unwrap();
+        assert_eq!(file[MAGIC.len()], 7, "re-sealed under the new method");
+        assert!(!file.windows(32).any(|w| w == before.to_bytes()), "plain key no longer on disk");
+        assert_eq!(load_or_create(dir.path(), &SealingProtector).unwrap().public(), before.public());
+    }
+
+    #[test]
+    fn a_sealed_key_is_not_opened_without_its_protector() {
+        let dir = tempfile::tempdir().unwrap();
+        load_or_create(dir.path(), &SealingProtector).unwrap();
+        // Nothing is overwritten when the protector is gone: the error says why.
+        let before = fs::read(dir.path().join(FILE_NAME)).unwrap();
+        assert!(matches!(load_or_create(dir.path(), &PlainKeyProtector), Err(Error::Storage(_))));
+        assert_eq!(fs::read(dir.path().join(FILE_NAME)).unwrap(), before);
     }
 
     #[test]
