@@ -166,13 +166,14 @@ and dark.
   Nothing goes through a server, and there's no account.
 - **End-to-end encrypted.** Every connection is QUIC with TLS 1.3, authenticated
   with device keys exchanged when you pair. Keys are protected by Windows DPAPI
-  and the Android Keystore.
+  and the Android Keystore. On Linux, for now, only by file permissions.
 - **You decide what's shared.** Each paired device has its own feature
   switches. Remote control of the PC, shell commands and phone storage are off
   until you allow them.
-- **The only internet traffic** is the update check against GitHub Releases
-  (which you can turn off), and, if you turn it on, **Connect over mobile
-  data**, which relays encrypted traffic it can't read.
+- **The only internet traffic** is the update check against GitHub (which you
+  can turn off), and, if you turn it on, **Connect over mobile data**, which
+  relays encrypted traffic it can't read. Voice typing uses your phone's own
+  speech recognizer, which may use its provider's servers.
 
 Details: [Privacy and security](docs/guide/privacy-and-security.md) and the
 [security model](docs/technical/security-model.md).
