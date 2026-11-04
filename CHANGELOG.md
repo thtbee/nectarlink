@@ -292,6 +292,7 @@ has a Stop button. Choosing another
 
 ### Fixed
 
+- **The Connection Doctor could say NectarLink isn't allowed through Windows Firewall** when it was. It couldn't read any firewall rule, so it never saw the one allowing NectarLink, and its **Allow** button seemed to fail too. Thanks to [@Codlight](https://github.com/Codlight) for sticking with this ([#160](https://github.com/thtbee/nectarlink/discussions/160)).
 - **Clips waiting to send are protected.** Text, images and links waiting for a device to come online were readable in the app's database, and stayed after you cleared your history. They're now encrypted like clipboard history (on Windows and Android), removed when they expire, and removed when you clear clipboard history or everything.
 - **Connect over mobile data takes effect right away, both ways.** It used to need a restart: turned on, it did nothing until then, and turned off, it kept publishing your device's addresses until then. Your device's name is also no longer published. After turning it off, one idle connection to the relay, carrying nothing, stays until the next restart.
 - **Delete works on any number of photos.** More than 24 at once used to hide the button.

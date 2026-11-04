@@ -25,7 +25,7 @@ use windows::{
             WinSock::AF_UNSPEC,
         },
         System::{
-            Com::{CLSCTX_INPROC_SERVER, CoCreateInstance},
+            Com::{CLSCTX_INPROC_SERVER, CoCreateInstance, IDispatch},
             Ole::IEnumVARIANT,
             Threading::WaitForSingleObject,
             Variant::{VARIANT, VariantClear},
@@ -35,7 +35,7 @@ use windows::{
             WindowsAndMessaging::SW_HIDE,
         },
     },
-    core::{HSTRING, IUnknown, Interface, PCWSTR, w},
+    core::{HSTRING, Interface, PCWSTR, w},
 };
 
 use super::with_com;
@@ -83,15 +83,18 @@ pub fn firewall(exe: &Path) -> windows::core::Result<Firewall> {
             let mut result = Firewall { on, ..Firewall::default() };
             let rules = policy.Rules()?;
             let all: IEnumVARIANT = rules._NewEnum()?.cast()?;
+            let mut read = 0;
             loop {
                 let mut item = [VARIANT::default()];
                 let mut fetched = 0;
                 if all.Next(&mut item, &mut fetched).is_err() || fetched == 0 {
                     break;
                 }
-                let rule = IUnknown::try_from(&item[0]).ok().and_then(|u| u.cast::<INetFwRule>().ok());
+                // The collection hands out rules as IDispatch VARIANTs.
+                let rule = IDispatch::try_from(&item[0]).ok().and_then(|d| d.cast::<INetFwRule>().ok());
                 let _ = VariantClear(&mut item[0]);
                 let Some(rule) = rule else { continue };
+                read += 1;
                 let applies = rule.Enabled().is_ok_and(|e| e.as_bool())
                     && rule.Direction().is_ok_and(|d| d == NET_FW_RULE_DIR_IN)
                     && rule.Profiles().is_ok_and(|p| p & profiles != 0)
@@ -104,6 +107,11 @@ pub fn firewall(exe: &Path) -> windows::core::Result<Firewall> {
                     Ok(a) if a == NET_FW_ACTION_BLOCK => result.blocked = true,
                     _ => {}
                 }
+            }
+            // Windows always has rules. None read means the answer can't be
+            // trusted, and "not allowed" would send people chasing nothing.
+            if read == 0 {
+                return Err(windows::Win32::Foundation::E_FAIL.into());
             }
             Ok(result)
         }
