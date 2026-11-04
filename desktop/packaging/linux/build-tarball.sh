@@ -175,7 +175,9 @@ done
 for dir in lib plugins qml; do
     if [[ -d "${SELF_DIR}/${dir}" ]]; then
         rm -rf "${PREFIX:?}/${dir}"
-        cp -a "${SELF_DIR}/${dir}" "${PREFIX}/${dir}"
+        # Owned by whoever installs: root's copy must not stay writable by the
+        # user who unpacked it, since every user on the PC runs these libraries.
+        cp -a --no-preserve=ownership "${SELF_DIR}/${dir}" "${PREFIX}/${dir}"
     fi
 done
 for qm in "${SELF_DIR}"/nectarlink_*.qm; do
@@ -236,5 +238,6 @@ OUT_DIR="${OUT_DIR:-${REPO_ROOT}/dist}"
 mkdir -p "${OUT_DIR}"
 OUT_TAR="${OUT_DIR}/${BUNDLE_NAME}.tar.gz"
 
-tar -C "${STAGE_DIR}" -czf "${OUT_TAR}" "${BUNDLE_NAME}"
+# As root: the updater unpacks this as root, and tar then keeps the owner recorded.
+tar --owner=0 --group=0 --numeric-owner -C "${STAGE_DIR}" -czf "${OUT_TAR}" "${BUNDLE_NAME}"
 echo "Built ${OUT_TAR}"
