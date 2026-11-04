@@ -105,7 +105,9 @@ picks the right one. Installed copies update themselves.
   windows, your PC's screen on the phone, the phone as webcam and
   microphone, and the phone as touchpad and keyboard. It works on GNOME
   and KDE, on Wayland and X11, and updates itself. A few features need a
-  package or a permission first; the Connection Doctor says which. Thanks
+  package or a permission first; the Connection Doctor says which. GNOME on
+  Wayland doesn't give background apps the clipboard, so there it syncs only
+  while NectarLink's window has focus. Thanks
   to Jochen Kirstätter for the port
   ([#34](https://github.com/thtbee/nectarlink/pull/34),
   [#38](https://github.com/thtbee/nectarlink/pull/38),

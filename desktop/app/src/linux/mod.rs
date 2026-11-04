@@ -11,6 +11,7 @@ pub mod ble_beacon;
 pub mod browser;
 pub mod bt_hfp;
 pub mod clipboard;
+pub mod data_control;
 pub mod doctor;
 pub mod elevated;
 pub mod h264;
