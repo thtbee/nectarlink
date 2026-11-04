@@ -251,6 +251,12 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't share photos".into())
     }
 
+    /// Move these photos and videos to this phone's trash (`photos.delete`).
+    /// Returns how many went: Android may not allow it.
+    fn photo_delete(&self, _ids: &[String]) -> Result<u32, String> {
+        Err("this device doesn't share photos".into())
+    }
+
     /// Open a photo or video on this phone for sending it to a PC that asked
     /// (`photos.get`). `Err` (a reason for logs) when it's gone.
     fn open_photo(&self, _id: &str) -> Result<crate::OutgoingFile, String> {

@@ -6065,6 +6065,16 @@ Voraussetzungen
         <translation>%1 unter %2 gespeichert.</translation>
     </message>
     <message>
+        <location filename="rust_strings.h"/>
+        <source>The phone kept them. Deleting from the PC needs All files access on the phone (Android 11 or later).</source>
+        <translation>Das Gerät hat sie behalten. Zum Löschen vom PC aus braucht das Gerät den Zugriff auf alle Dateien (Android 11 oder neuer).</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h"/>
+        <source>Deleted %1 of %2.</source>
+        <translation>%1 von %2 gelöscht.</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="420"/>
         <source>That photo isn&apos;t on the phone anymore.</source>
         <translation>Dieses Foto befindet sich nicht mehr auf dem Gerät.</translation>
@@ -6284,6 +6294,11 @@ Voraussetzungen
         <location filename="../qml/pages/PhotosPage.qml" line="850"/>
         <source>Save to folder…</source>
         <translation>In Ordner speichern…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/PhotosPage.qml"/>
+        <source>Move to the phone&apos;s trash?</source>
+        <translation>In den Papierkorb des Geräts?</translation>
     </message>
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="610"/>

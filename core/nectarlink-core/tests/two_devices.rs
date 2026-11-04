@@ -473,6 +473,9 @@ impl Platform for RecordingPlatform {
             .take(limit as usize)
             .collect())
     }
+    fn photo_delete(&self, ids: &[String]) -> Result<u32, String> {
+        Ok(ids.iter().filter(|id| id.as_str() != "gone").count() as u32)
+    }
     fn photo_thumbs(&self, ids: &[String]) -> Result<Vec<nectarlink_core::PhotoThumb>, String> {
         use nectarlink_core::PhotoThumb;
         Ok(ids
@@ -2678,6 +2681,9 @@ async fn gallery_albums_paging_thumbs_download_and_toggles() {
         .unwrap();
     assert_eq!(shots.iter().map(|i| i.id.as_str()).collect::<Vec<_>>(), ["media:3", "media:0"]);
 
+    // Deleting asks the phone and reports how many went; nonsense IDs never leave the PC.
+    let ids = vec!["media:4".to_owned(), "gone".to_owned(), "../bad id".to_owned()];
+    assert_eq!(pc.node.photos_delete(phone_id, ids).await.unwrap(), 1);
     // Batch thumbnails (oversized or missing ones are skipped without failing the batch).
     let thumbs = with_timeout(
         "thumbs",

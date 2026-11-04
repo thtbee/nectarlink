@@ -3175,6 +3175,12 @@ impl Node {
         crate::photos::thumbs(&self.shared, &session, ids).await
     }
 
+    /// Moves photos and videos to a phone's trash; returns how many went.
+    pub async fn photos_delete(&self, peer: DeviceId, ids: Vec<String>) -> Result<u32> {
+        let session = self.connected(&peer)?;
+        crate::photos::delete(&self.shared, &session, ids).await
+    }
+
     /// Asks a phone for a photo or video; returns the ID of the transfer
     /// that brings it (reported like any other).
     pub async fn fetch_photo(&self, peer: DeviceId, id: String) -> Result<String> {

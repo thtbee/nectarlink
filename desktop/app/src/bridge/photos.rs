@@ -126,6 +126,9 @@ pub mod qobject {
         #[cxx_name = "copyItem"]
         fn copy_item(self: &Photos, id: &QString);
         #[qinvokable]
+        #[cxx_name = "deleteItems"]
+        fn delete_items(self: &Photos, ids: &QStringList);
+        #[qinvokable]
         #[cxx_name = "saveItems"]
         fn save_items(self: &Photos, ids: &QStringList, folder_url: &QString);
         #[qinvokable]
@@ -378,6 +381,12 @@ impl qobject::Photos {
 
     pub fn copy_item(&self, id: &QString) {
         photos::copy_item(String::from(id));
+    }
+
+    pub fn delete_items(&self, ids: &QStringList) {
+        let list: Vec<String> =
+            QList::<QString>::from(ids).iter().map(String::from).filter(|id| !id.is_empty()).collect();
+        photos::delete_items(list);
     }
 
     pub fn save_items(&self, ids: &QStringList, folder_url: &QString) {

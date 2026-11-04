@@ -326,6 +326,25 @@ internal class RecentPhotos(
             }
         }
 
+        /**
+         * Moves photos and videos a PC asked to delete to the trash, where they can
+         * still be restored. Without All files access, Android would ask on the
+         * phone for each batch: those stay. Returns how many went.
+         */
+        fun moveToTrash(context: Context, ids: List<String>): Int {
+            if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) return 0
+            if (!android.os.Environment.isExternalStorageManager()) return 0
+            val trashed = android.content.ContentValues().apply { put(MediaStore.MediaColumns.IS_TRASHED, 1) }
+            return ids.take(MAX_BATCH).count { rawId ->
+                val (collection, mediaId, _) = parseId(rawId) ?: return@count false
+                runCatching {
+                    context.contentResolver.update(
+                        ContentUris.withAppendedId(collection, mediaId), trashed, null, null,
+                    ) > 0
+                }.getOrDefault(false)
+            }
+        }
+
         /** Opens a photo or video a PC asked for; `null` when it's gone or not one of ours. */
         fun open(context: Context, id: String): FileToSend? {
             if (!hasAccess(context)) return null

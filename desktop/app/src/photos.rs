@@ -1352,6 +1352,28 @@ pub fn set_save_folder(folder: Option<PathBuf>) {
 
 /// Downloads and saves `ids` to `folder` (or the remembered `save_folder`, or
 /// default `Downloads\Nectarlink`).
+/// Moves photos and videos to the phone's trash.
+pub fn delete_items(ids: Vec<String>) {
+    let asked = ids.len();
+    let Some(device) = gallery_state(|s| s.device) else { return };
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        match node.photos_delete(device, ids).await {
+            Ok(count) if count as usize >= asked => {}
+            Ok(0) => show_message(tr!(
+                "Photos",
+                "The phone kept them. Deleting from the PC needs All files access on the phone (Android 11 or later)."
+            )),
+            Ok(count) => show_message(tr!("Photos", "Deleted %1 of %2.", count, asked)),
+            Err(Error::Denied) => {
+                show_message(tr!("Photos", "The phone doesn't share photos or files with this PC."))
+            }
+            Err(e) => show_message(describe(&e)),
+        }
+        reload_quiet();
+    });
+}
+
 pub fn save_items(ids: Vec<String>, folder: Option<PathBuf>) {
     let ids: Vec<String> = ids.into_iter().filter(|id| !id.is_empty()).collect();
     if ids.is_empty() {

@@ -9,9 +9,9 @@ use std::sync::Arc;
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
     messages::{
-        PhotoAlbum, PhotoAlbumsGet, PhotoAlbumsList, PhotoGet, PhotoItem, PhotoItems, PhotoListGet, PhotoNew,
-        PhotoSending, PhotoThumb, PhotoThumbsGet, PhotoThumbsList, PhotosChanged, is_valid_photo_id, photos,
-        types,
+        PhotoAlbum, PhotoAlbumsGet, PhotoAlbumsList, PhotoDelete, PhotoGet, PhotoItem, PhotoItems,
+        PhotoListGet, PhotoNew, PhotoSending, PhotoThumb, PhotoThumbsGet, PhotoThumbsList, PhotosChanged,
+        PhotosDeleted, is_valid_photo_id, photos, types,
     },
 };
 
@@ -98,6 +98,20 @@ pub(crate) async fn list(
     Ok(items)
 }
 
+/// Moves photos and videos to a phone's trash (`photos.delete`); returns how many went.
+pub(crate) async fn delete(shared: &Shared, session: &Session, mut ids: Vec<String>) -> Result<u32> {
+    allowed(shared, &session.peer)?;
+    ids.retain(|id| is_valid_photo_id(id));
+    ids.truncate(photos::MAX_THUMB_BATCH);
+    if ids.is_empty() {
+        return Ok(0);
+    }
+    let env = Envelope::new(types::PHOTOS_DELETE, &PhotoDelete { ids })?;
+    let PhotosDeleted { count } =
+        session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect_body(types::PHOTOS_DELETED)?;
+    Ok(count)
+}
+
 /// Fetches small JPEG thumbnails for a batch of item IDs (`photos.thumbs`).
 pub(crate) async fn thumbs(
     shared: &Shared,
@@ -177,6 +191,26 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             if shows && shared.toggle_on(&peer, TOGGLE) {
                 shared.emit(NodeEvent::PhotosChanged { device: peer });
             }
+            Ok(true)
+        }
+        types::PHOTOS_DELETE => {
+            let PhotoDelete { mut ids } = env.body()?;
+            ids.retain(|id| is_valid_photo_id(id));
+            ids.truncate(photos::MAX_THUMB_BATCH);
+            let reply = if shared.toggle_on(&peer, TOGGLE) {
+                let platform = shared.platform.clone();
+                let done = tokio::task::spawn_blocking(move || platform.photo_delete(&ids)).await;
+                match done.unwrap_or_else(|e| Err(e.to_string())) {
+                    Ok(count) => Envelope::new(types::PHOTOS_DELETED, &PhotosDeleted { count })?,
+                    Err(reason) => {
+                        tracing::warn!(reason, "can't delete photos");
+                        Envelope::error(ErrorCode::Internal, "the phone couldn't delete them")
+                    }
+                }
+            } else {
+                Envelope::error(ErrorCode::Denied, "photos are off for this device")
+            };
+            session.send(reply.reply_to(env.id)).await?;
             Ok(true)
         }
         types::PHOTOS_ALBUMS | types::PHOTOS_LIST | types::PHOTOS_THUMBS => {
