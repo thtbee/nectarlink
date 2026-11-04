@@ -54,6 +54,8 @@ Window {
     property real activeTransferRate: 0
     property bool activeTransferIncoming: false
     property bool transferJustFinished: false
+    property bool transferFailed: false
+    readonly property color transferEndColor: transferFailed ? "#F87171" : "#4ADE80"
 
     // ---- Transient notification toast (only when a new phone notification arrives) ----
     property bool notificationToastActive: false
@@ -84,17 +86,38 @@ Window {
         repeat: false
         onTriggered: {
             islandWin.transferJustFinished = false
+            islandWin.transferFailed = false
             islandWin.finishedTransferTitle = ""
         }
     }
 
+    // Rows change before `active` does, so by the time this runs every transfer
+    // that just ended has been through noteTransferEnded(). Nothing is shown when
+    // they were all cancelled.
     property int lastActiveTransfers: TransferList.active
     onLastActiveTransfersChanged: {
-        if (lastActiveTransfers === 0 && activeTransferTitle.length > 0)
-            finishedTransferTitle = activeTransferTitle
-        if (lastActiveTransfers === 0 && finishedTransferTitle.length > 0) {
+        if (lastActiveTransfers > 0) {
+            // A new transfer replaces a banner still showing, and starts afresh.
+            if (transferJustFinished) {
+                transferDoneTimer.stop()
+                transferJustFinished = false
+                transferFailed = false
+                finishedTransferTitle = ""
+            }
+            return
+        }
+        if (finishedTransferTitle.length > 0) {
             transferJustFinished = true
             transferDoneTimer.restart()
+        }
+    }
+
+    function noteTransferEnded(status, title) {
+        if (status === "failed") {
+            transferFailed = true
+            finishedTransferTitle = title
+        } else if (status === "done" && !transferFailed) {
+            finishedTransferTitle = title
         }
     }
 
@@ -143,7 +166,7 @@ Window {
         for (let i = 0; i < count; i++) {
             const item = transferRepeater.itemAt(i)
             if (!item) continue
-            if (item.status === "running" || item.status === "waiting" || item.status === "requested") {
+            if (item.status === "running" || item.status === "waiting" || item.status === "requested" || item.status === "paused") {
                 found = item
                 break
             }
@@ -155,8 +178,6 @@ Window {
             activeTransferRate = found.rate || 0
             activeTransferIncoming = found.incoming
         } else if (!transferJustFinished) {
-            if (activeTransferTitle.length > 0)
-                finishedTransferTitle = activeTransferTitle
             activeTransferId = ""
             activeTransferTitle = ""
             activeTransferProgress = 0
@@ -223,7 +244,7 @@ Window {
             return PhoneCall.caller.length > 0 ? PhoneCall.caller : qsTr("Phone call")
         if (mode === "transfer") {
             if (transferJustFinished && TransferList.active === 0)
-                return qsTr("Transfer complete")
+                return transferFailed ? qsTr("Transfer failed") : qsTr("Transfer complete")
             return activeTransferTitle.length > 0
                 ? activeTransferTitle
                 : qsTr("Transferring %1 file(s)…").arg(TransferList.active)
@@ -281,7 +302,7 @@ Window {
         // Hidden repeaters inside Item scope so QtQuick instantiates delegates cleanly
         Repeater {
             id: mediaRepeater
-            model: MediaList
+            model: Preferences.nectarIsland ? MediaList : null
             onItemAdded: islandWin.recomputeMedia()
             onItemRemoved: islandWin.recomputeMedia()
             delegate: Item {
@@ -316,7 +337,7 @@ Window {
 
         Repeater {
             id: transferRepeater
-            model: TransferList
+            model: Preferences.nectarIsland ? TransferList : null
             onItemAdded: islandWin.recomputeTransfer()
             onItemRemoved: islandWin.recomputeTransfer()
             delegate: Item {
@@ -328,7 +349,14 @@ Window {
                 required property bool incoming
                 required property string status
                 visible: false
-                onStatusChanged: islandWin.recomputeTransfer()
+                // Creating a row sets its status too, and an old row says nothing new.
+                property bool created: false
+                Component.onCompleted: created = true
+                onStatusChanged: {
+                    if (created)
+                        islandWin.noteTransferEnded(status, title)
+                    islandWin.recomputeTransfer()
+                }
                 onProgressChanged: islandWin.recomputeTransfer()
                 onRateChanged: islandWin.recomputeTransfer()
                 onTitleChanged: islandWin.recomputeTransfer()
@@ -472,7 +500,7 @@ Window {
                                 }
                             }
                             ShapePath {
-                                strokeColor: islandWin.transferJustFinished ? "#4ADE80" : Theme.primary
+                                strokeColor: islandWin.transferJustFinished ? islandWin.transferEndColor : Theme.primary
                                 fillColor: "transparent"
                                 strokeWidth: 2.6
                                 capStyle: ShapePath.RoundCap
@@ -488,8 +516,9 @@ Window {
                         Icon {
                             anchors.centerIn: parent
                             width: 11; height: 11
-                            path: islandWin.transferJustFinished ? Icons.check : Icons.send
-                            color: islandWin.transferJustFinished ? "#4ADE80" : "#FFFFFF"
+                            path: !islandWin.transferJustFinished ? Icons.send
+                                : (islandWin.transferFailed ? Icons.close : Icons.check)
+                            color: islandWin.transferJustFinished ? islandWin.transferEndColor : "#FFFFFF"
                         }
                     }
 
@@ -728,7 +757,7 @@ Window {
                                 }
                             }
                             ShapePath {
-                                strokeColor: islandWin.transferJustFinished ? "#4ADE80" : Theme.primary
+                                strokeColor: islandWin.transferJustFinished ? islandWin.transferEndColor : Theme.primary
                                 fillColor: "transparent"
                                 strokeWidth: 3.4
                                 capStyle: ShapePath.RoundCap
@@ -747,7 +776,7 @@ Window {
                             weight: Font.Bold
                             color: "#FFFFFF"
                             text: islandWin.transferJustFinished
-                                ? "100%"
+                                ? (islandWin.transferFailed ? "!" : "100%")
                                 : (Math.round(islandWin.activeTransferProgress * 100) + "%")
                         }
                     }
@@ -811,7 +840,7 @@ Window {
                         Rectangle {
                             height: parent.height
                             radius: parent.radius
-                            color: islandWin.mode === "transfer" && islandWin.transferJustFinished ? "#4ADE80" : Theme.primary
+                            color: islandWin.mode === "transfer" && islandWin.transferJustFinished ? islandWin.transferEndColor : Theme.primary
                             width: {
                                 if (islandWin.mode === "transfer")
                                     return parent.width * (islandWin.transferJustFinished ? 1.0 : Math.max(0.04, islandWin.activeTransferProgress))

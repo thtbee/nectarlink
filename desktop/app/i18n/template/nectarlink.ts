@@ -4148,6 +4148,11 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../../qml/IslandWindow.qml"/>
+        <source>Transfer failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../../qml/IslandWindow.qml" line="229"/>
         <source>Transferring %1 file(s)…</source>
         <translation type="unfinished"></translation>
@@ -6633,6 +6638,11 @@ What it needs
     <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="890"/>
         <source>Tint window with desktop wallpaper.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml"/>
+        <source>Only on Windows 11.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

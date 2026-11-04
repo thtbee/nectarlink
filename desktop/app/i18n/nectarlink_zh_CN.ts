@@ -4424,6 +4424,11 @@ What it needs
         <translation>传输完成</translation>
     </message>
     <message>
+        <location filename="../qml/IslandWindow.qml"/>
+        <source>Transfer failed</source>
+        <translation>传输失败</translation>
+    </message>
+    <message>
         <location filename="../qml/IslandWindow.qml" line="229"/>
         <source>Transferring %1 file(s)…</source>
         <translation>正在传输 %1 个文件…</translation>
@@ -6914,6 +6919,11 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="890"/>
         <source>Tint window with desktop wallpaper.</source>
         <translation>用桌面壁纸为窗口着色。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml"/>
+        <source>Only on Windows 11.</source>
+        <translation>仅限 Windows 11。</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="920"/>
