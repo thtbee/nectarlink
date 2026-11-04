@@ -238,6 +238,12 @@ has a Stop button. Choosing another
   or folders in Nemo (Cinnamon) or Thunar (XFCE) as well as GNOME Files,
   Dolphin and Caja, and folders now work in all of them
   ([#49](https://github.com/thtbee/nectarlink/issues/49)).
+- **Smaller Linux installs.** The app no longer needs the ffmpeg program:
+  recordings add the phone's audio themselves. ffmpeg, the webcam driver
+  and NetworkManager are only suggested now; the one-command install still
+  adds the webcam driver. Thanks to
+  [@jochenkirstaetter](https://github.com/jochenkirstaetter)
+  ([#156](https://github.com/thtbee/nectarlink/pull/156)).
 - **Setup on Windows asks about the desktop shortcut and the folder.**
   Untick **Add a desktop shortcut** to skip it. Updates leave it as you
   had it, so one you deleted no longer comes back. **Change** next to
