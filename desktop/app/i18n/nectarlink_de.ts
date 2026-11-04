@@ -2542,6 +2542,551 @@
         <source>Close</source>
         <translation>Schließen</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone</source>
+        <translation>Gerät</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Notifications</source>
+        <translation>Benachrichtigungen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Mirror phone notifications to your PC with inline replies, action buttons, and dismissal sync.</source>
+        <translation>Spiegelt Benachrichtigungen des Geräts auf den PC, mit direkter Antwort, Aktionsschaltflächen und gemeinsamem Schließen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Notifications</source>
+        <translation>Start › Benachrichtigungen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Notification Access on phone</source>
+        <translation>Benachrichtigungszugriff auf dem Gerät</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Read and send SMS and MMS threads, or reply to notification-backed chat conversations.</source>
+        <translation>SMS- und MMS-Unterhaltungen lesen und senden oder auf Chats aus Benachrichtigungen antworten.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Messages</source>
+        <translation>Seitenleiste › Nachrichten</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>SMS and Contacts permissions on phone</source>
+        <translation>SMS- und Kontakte-Berechtigung auf dem Gerät</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Calls</source>
+        <translation>Anrufe</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Answer or decline incoming calls, browse call history and contacts, and dial from your PC.</source>
+        <translation>Anrufe annehmen oder ablehnen, Anrufliste und Kontakte durchsuchen und vom PC aus wählen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Calls</source>
+        <translation>Seitenleiste › Anrufe</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone, Call Log, and Contacts permissions on phone</source>
+        <translation>Telefon-, Anrufliste- und Kontakte-Berechtigung auf dem Gerät</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Now playing</source>
+        <translation>Aktuelle Wiedergabe</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>See active track artwork and control playback between your phone and PC.</source>
+        <translation>Cover des laufenden Titels sehen und die Wiedergabe auf Gerät und PC steuern.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Media player</source>
+        <translation>Start › Mediaplayer</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Clipboard</source>
+        <translation>Zwischenablage</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Sync copied text, HTML, images, and files with a 50-item local clipboard history.</source>
+        <translation>Kopierten Text, HTML, Bilder und Dateien abgleichen, mit einem lokalen Verlauf von 50 Einträgen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Send clipboard</source>
+        <translation>Start › Zwischenablage senden</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Clipboard toggle on Home; Elevated or quick tile for background phone copy</source>
+        <translation>Schalter Zwischenablage auf der Startseite; Elevated oder Schnelleinstellung für Kopieren im Hintergrund</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send files</source>
+        <translation>Dateien senden</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send files, folders, and links to your phone over your local Wi-Fi network.</source>
+        <translation>Dateien, Ordner und Links über das lokale WLAN an das Gerät senden.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Send files</source>
+        <translation>Start › Dateien senden</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send files toggle on Home</source>
+        <translation>Schalter Dateien senden auf der Startseite</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send queue</source>
+        <translation>Warteschlange</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Queue files and links while your phone is away so they send automatically on reconnect.</source>
+        <translation>Dateien und Links einreihen, solange das Gerät nicht da ist; sie gehen beim Wiederverbinden automatisch raus.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Send queue</source>
+        <translation>Start › Warteschlange</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Always available on PC</source>
+        <translation>Auf dem PC immer verfügbar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Photos</source>
+        <translation>Fotos</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Browse recent phone photos and screenshots on demand, copy to clipboard, or drag into apps.</source>
+        <translation>Aktuelle Fotos und Screenshots des Geräts bei Bedarf ansehen, kopieren oder in Apps ziehen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Photos</source>
+        <translation>Seitenleiste › Fotos</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Photos and Media permission on phone</source>
+        <translation>Fotos- und Medien-Berechtigung auf dem Gerät</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Screen mirroring</source>
+        <translation>Bildschirmspiegelung</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Stream your phone display in a low-latency desktop window with mouse and keyboard input.</source>
+        <translation>Den Bildschirm des Geräts mit geringer Verzögerung in einem Fenster anzeigen, mit Maus und Tastatur.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Mirror screen</source>
+        <translation>Start › Bildschirm spiegeln</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>MediaProjection approval on phone; Assist or Elevated for touch input</source>
+        <translation>Freigabe der Bildschirmaufnahme auf dem Gerät; Assist oder Elevated für Eingaben</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>App streams</source>
+        <translation>App-Fenster</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Open individual Android apps in their own virtual display windows on your PC.</source>
+        <translation>Einzelne Android-Apps in eigenen Fenstern auf dem PC öffnen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Apps</source>
+        <translation>Apps</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Elevated (Wireless debugging) enabled on phone</source>
+        <translation>Elevated (Drahtloses Debugging) auf dem Gerät aktiv</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Reverse PC screen mirroring</source>
+        <translation>PC-Bildschirm auf dem Gerät</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Stream this PC monitor to your phone and control the cursor or laser pointer from your phone.</source>
+        <translation>Den Bildschirm dieses PCs auf das Gerät übertragen und Mauszeiger oder Laserpointer von dort steuern.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone app › Home, and Settings › Devices</source>
+        <translation>App auf dem Gerät › Start und Einstellungen › Geräte</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Opt-in Screen mirroring toggle on Home</source>
+        <translation>Schalter Bildschirm spiegeln auf der Startseite (einzuschalten)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone as webcam</source>
+        <translation>Gerät als Webcam</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Use your phone camera as the NectarLink Virtual Camera in Zoom, Teams, Meet, and OBS.</source>
+        <translation>Die Kamera des Geräts als virtuelle NectarLink-Kamera in Zoom, Teams, Meet und OBS nutzen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Phone as webcam</source>
+        <translation>Start › Gerät als Webcam</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Camera permission on phone and Virtual Camera registered on PC</source>
+        <translation>Kamera-Berechtigung auf dem Gerät und virtuelle Kamera auf dem PC eingerichtet</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Continuity camera</source>
+        <translation>Übergabekamera</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Capture a photo or scan a document with your phone and paste it into the active PC window.</source>
+        <translation>Mit dem Gerät ein Foto machen oder ein Dokument scannen und in das aktive PC-Fenster einfügen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Continuity Camera (Ctrl+Alt+C / Ctrl+Alt+D)</source>
+        <translation>Start › Continuity Camera (Strg+Alt+C / Strg+Alt+D)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Camera permission on phone</source>
+        <translation>Kamera-Berechtigung auf dem Gerät</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone as speaker</source>
+        <translation>Gerät als Lautsprecher</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Stream PC system audio to your phone in real time.</source>
+        <translation>Den Ton des PCs in Echtzeit auf das Gerät übertragen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Phone as speaker</source>
+        <translation>Start › Gerät als Lautsprecher</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone as speaker enabled in Settings</source>
+        <translation>Gerät als Lautsprecher in den Einstellungen aktiv</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Voice recorder</source>
+        <translation>Sprachrekorder</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Record voice notes on your phone and save them automatically to your PC in M4A, MP3, WAV, or FLAC.</source>
+        <translation>Sprachnotizen auf dem Gerät aufnehmen und automatisch als M4A, MP3, WAV oder FLAC auf dem PC speichern.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › Files &amp; Sync › Voice recordings</source>
+        <translation>Einstellungen › Dateien &amp; Sync › Sprachaufnahmen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Microphone permission on phone</source>
+        <translation>Mikrofon-Berechtigung auf dem Gerät</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Deck</source>
+        <translation>Deck</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Control Now playing media, switch PC audio outputs, and customize shortcut tiles for your phone.</source>
+        <translation>Laufende Medien steuern, Audioausgänge des PCs wechseln und Schaltflächen für das Gerät anpassen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Deck</source>
+        <translation>Seitenleiste › Deck</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Paired phone</source>
+        <translation>Gekoppeltes Gerät</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Desk mode</source>
+        <translation>Schreibtischmodus</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Turn your phone or PC window into a glanceable desk display with clock, media, and live status.</source>
+        <translation>Gerät oder PC-Fenster als Schreibtischanzeige mit Uhr, Medien und Live-Status nutzen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Deck › Desk mode</source>
+        <translation>Seitenleiste › Deck › Schreibtischmodus</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Remote input</source>
+        <translation>Ferneingabe</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Use your phone as a wireless trackpad, keyboard, media remote, and presentation pointer.</source>
+        <translation>Das Gerät als kabelloses Touchpad, Tastatur, Medienfernbedienung und Präsentations-Pointer nutzen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone app › Home › Control PC</source>
+        <translation>App auf dem Gerät › Start › PC steuern</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Opt-in Remote input toggle on Home</source>
+        <translation>Schalter Fernsteuerung auf der Startseite (einzuschalten)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Type on phone</source>
+        <translation>Auf dem Gerät tippen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send live keystrokes and pasted text from your PC keyboard to your phone without screen mirroring.</source>
+        <translation>Tastenanschläge und eingefügten Text von der PC-Tastatur ohne Bildschirmspiegelung an das Gerät senden.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Type on phone</source>
+        <translation>Start › Auf dem Gerät tippen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Assist (Accessibility) or Elevated (Wireless debugging) on phone</source>
+        <translation>Assist (Bedienungshilfen) oder Elevated (Drahtloses Debugging) auf dem Gerät</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone controls</source>
+        <translation>Gerätesteuerung</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Toggle Do Not Disturb, ringer mode, flashlight, volume, brightness, Wi-Fi, Bluetooth, and Find my phone.</source>
+        <translation>Nicht stören, Klingelmodus, Taschenlampe, Lautstärke, Helligkeit, WLAN, Bluetooth und Gerät suchen steuern.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Phone controls</source>
+        <translation>Start › Gerätesteuerung</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Elevated (Wireless debugging) required only for Wi-Fi and Bluetooth toggles</source>
+        <translation>Elevated (Drahtloses Debugging) nur für WLAN und Bluetooth nötig</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Drop shelf</source>
+        <translation>Shelf</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Slide-out top screen-edge shelf with your latest phone photo, clipboard items, and file drop zone.</source>
+        <translation>Ablage am oberen Bildschirmrand mit dem neuesten Foto, Einträgen der Zwischenablage und Dateiablage.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Top screen edge or Ctrl+Alt+S</source>
+        <translation>Oberer Bildschirmrand oder Strg+Alt+S</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Nectar Island</source>
+        <translation>Nectar Island</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Compact floating pill at the top center of your monitor for calls, transfers, media, and alerts.</source>
+        <translation>Kleine schwebende Leiste oben in der Bildschirmmitte für Anrufe, Übertragungen, Medien und Hinweise.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › General › Nectar Island</source>
+        <translation>Einstellungen › Allgemein › Nectar Island</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Nectar Island enabled in Settings</source>
+        <translation>Nectar Island in den Einstellungen aktiv</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Timeline</source>
+        <translation>Zeitverlauf</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Chronological history of shared files, photos, clipboard items, calls, and voice recordings.</source>
+        <translation>Chronologischer Verlauf von geteilten Dateien, Fotos, Zwischenablage, Anrufen und Sprachaufnahmen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Top bar › Timeline</source>
+        <translation>Obere Leiste › Zeitachse</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Command palette</source>
+        <translation>Befehlspalette</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Keyboard-first search over actions, contacts, message threads, mirrorable apps, and quick toggles.</source>
+        <translation>Suche per Tastatur über Aktionen, Kontakte, Unterhaltungen, spiegelbare Apps und Schnellschalter.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Top bar › Commands, or Ctrl+K (Ctrl+Alt+Space anywhere)</source>
+        <translation>Obere Leiste › Befehle oder Strg+K (überall Strg+Alt+Leertaste)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Share PC folders</source>
+        <translation>PC-Ordner freigeben</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Share selected PC folders with your phone or sync folders in one-way or two-way mode.</source>
+        <translation>Ausgewählte PC-Ordner mit dem Gerät teilen oder in eine oder beide Richtungen synchronisieren.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › Files &amp; Sync › Synced folders</source>
+        <translation>Einstellungen › Dateien &amp; Sync › Synchronisierte Ordner</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Opt-in Share PC folders toggle on Home</source>
+        <translation>Schalter PC-Ordner teilen auf der Startseite (einzuschalten)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Wake PC</source>
+        <translation>PC aufwecken</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Let your paired phone wake this PC from sleep over your local network using Wake-on-LAN.</source>
+        <translation>Das gekoppelte Gerät weckt diesen PC per Wake-on-LAN über das lokale Netzwerk.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › Connection &amp; About › Wake from your phone</source>
+        <translation>Einstellungen › Verbindung &amp; Info › Vom Gerät aufwecken</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Network adapter with Wake-on-LAN enabled in Windows</source>
+        <translation>Netzwerkadapter mit aktiviertem Wake-on-LAN in Windows</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Connection Doctor</source>
+        <translation>Verbindungs-Doktor</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Diagnose and fix Windows Firewall rules, network profile type, and local discovery issues.</source>
+        <translation>Firewall-Regeln, Netzwerkprofil und Probleme bei der lokalen Erkennung prüfen und beheben.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › Connection &amp; About › Connection Doctor</source>
+        <translation>Einstellungen › Verbindung &amp; Info › Verbindungsdoktor</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Read the full guide</source>
+        <translation>Die vollständige Anleitung lesen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Open the 7-step setup walkthrough</source>
+        <translation>Die Einrichtung in 7 Schritten öffnen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Search features guide</source>
+        <translation>Funktionsübersicht durchsuchen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Filter by %1</source>
+        <translation>Nach %1 filtern</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Show me %1</source>
+        <translation>%1 zeigen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Learn more about %1</source>
+        <translation>Mehr über %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Read %1</source>
+        <translation>%1 lesen</translation>
+    </message>
 </context>
 <context>
     <name>FolderSync</name>
@@ -9458,6 +10003,296 @@ Voraussetzungen
         <location filename="../qml/pages/WalkthroughPage.qml" line="1752"/>
         <source>Open features guide</source>
         <translation>Funktionsübersicht öffnen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Messages and Calls</source>
+        <translation>Nachrichten und Anrufe</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Photos</source>
+        <translation>Fotos</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Find my phone</source>
+        <translation>Mein Gerät finden</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Welcome to NectarLink</source>
+        <translation>Willkommen bei NectarLink</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Your data stays on your devices</source>
+        <translation>Deine Daten bleiben auf deinen Geräten</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Install NectarLink on your phone</source>
+        <translation>NectarLink auf dem Gerät installieren</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Pair your phone and PC</source>
+        <translation>Gerät und PC koppeln</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Choose what to share</source>
+        <translation>Auswählen, was geteilt wird</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Optional setup</source>
+        <translation>Optionale Einrichtung</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>You are set</source>
+        <translation>Alles bereit</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Your Android phone and your PC, working together on your local network.</source>
+        <translation>Dein Android-Gerät und dein PC arbeiten im lokalen Netzwerk zusammen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>No accounts, no cloud servers, and no telemetry.</source>
+        <translation>Keine Konten, keine Cloud-Server, keine Telemetrie.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Get the Android app from GitHub Releases or install the APK over USB.</source>
+        <translation>Die Android-App von GitHub Releases laden oder die APK per USB installieren.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Scan the QR code from the NectarLink Android app, or pick your phone from nearby devices.</source>
+        <translation>Den QR-Code mit der NectarLink-App scannen oder das Gerät aus der Liste in der Nähe wählen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Safe features are on by default. Higher-trust access stays off until you turn it on.</source>
+        <translation>Unbedenkliche Funktionen sind an. Zugriff, der mehr Vertrauen braucht, bleibt aus, bis du ihn einschaltest.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Three quick checks so notifications and discovery work reliably on your PC.</source>
+        <translation>Drei kurze Prüfungen, damit Benachrichtigungen und Erkennung auf dem PC zuverlässig funktionieren.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Reopen it from Settings or the Command Palette.</source>
+        <translation>Wieder öffnen über die Einstellungen oder die Befehlspalette.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Your phone</source>
+        <translation>Dein Gerät</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Checking firewall and local network...</source>
+        <translation>Firewall und lokales Netzwerk werden geprüft …</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Run a quick check to verify your firewall and local discovery.</source>
+        <translation>Kurz prüfen, ob Firewall und lokale Erkennung stimmen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Run a quick check to verify Windows Firewall and local discovery.</source>
+        <translation>Kurz prüfen, ob Windows-Firewall und lokale Erkennung stimmen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>All network and firewall checks passed.</source>
+        <translation>Alle Netzwerk- und Firewall-Prüfungen waren erfolgreich.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Step %1 of %2</source>
+        <translation>Schritt %1 von %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Go to step %1: %2</source>
+        <translation>Zu Schritt %1: %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Skip setup walkthrough</source>
+        <translation>Einrichtung überspringen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Reply to notifications, read SMS threads, and answer calls from your PC.</source>
+        <translation>Vom PC auf Benachrichtigungen antworten, SMS lesen und Anrufe annehmen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy text or images once, or drop files and folders at full Wi-Fi speed.</source>
+        <translation>Text oder Bilder einmal kopieren oder Dateien und Ordner mit voller WLAN-Geschwindigkeit ablegen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Stream your phone screen, use your phone as a webcam, or route PC audio.</source>
+        <translation>Den Bildschirm des Geräts übertragen, es als Webcam nutzen oder PC-Ton umleiten.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Everything runs directly between your devices with zero cloud accounts.</source>
+        <translation>Alles läuft direkt zwischen deinen Geräten, ganz ohne Cloud-Konto.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>No phone paired yet. You can pair in Step 4 or skip setup anytime.</source>
+        <translation>Noch kein Gerät gekoppelt. Du kannst in Schritt 4 koppeln oder die Einrichtung jederzeit überspringen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>All traffic between your phone and PC uses TLS 1.3 with device certificates pinned during pairing.</source>
+        <translation>Der gesamte Verkehr zwischen Gerät und PC nutzt TLS 1.3 mit beim Koppeln festgelegten Gerätezertifikaten.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Device keys are protected by Windows DPAPI and the Android Keystore.</source>
+        <translation>Geräteschlüssel werden durch Windows DPAPI und den Android Keystore geschützt.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Pairing and transfers stay on your local network unless you turn on &quot;Connect over mobile data&quot;, and automatic update checks can be turned off in Settings.</source>
+        <translation>Kopplung und Übertragungen bleiben im lokalen Netzwerk, solange du „Über mobile Daten verbinden“ nicht einschaltest. Automatische Update-Prüfungen lassen sich in den Einstellungen ausschalten.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Open Android release page in browser</source>
+        <translation>Android-Release-Seite im Browser öffnen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copied link</source>
+        <translation>Link kopiert</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy link</source>
+        <translation>Link kopieren</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy Android release URL</source>
+        <translation>Android-Release-URL kopieren</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copied</source>
+        <translation>Kopiert</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy command</source>
+        <translation>Befehl kopieren</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy ADB install command</source>
+        <translation>ADB-Installationsbefehl kopieren</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Enabled in desktop notification settings.</source>
+        <translation>In den Benachrichtigungseinstellungen des Desktops aktiv.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Enabled in Windows Settings.</source>
+        <translation>In den Windows-Einstellungen aktiv.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Notifications are muted or Do Not Disturb is active.</source>
+        <translation>Benachrichtigungen sind stumm oder „Nicht stören“ ist aktiv.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Notifications are off for NectarLink in Windows Settings.</source>
+        <translation>Benachrichtigungen für NectarLink sind in den Windows-Einstellungen aus.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Open Windows notification settings</source>
+        <translation>Windows-Benachrichtigungseinstellungen öffnen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Recheck notification status</source>
+        <translation>Benachrichtigungsstatus erneut prüfen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Connection Doctor</source>
+        <translation>Verbindungs-Doktor</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Run firewall and network check</source>
+        <translation>Firewall und Netzwerk prüfen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Pair a phone anytime from Home</source>
+        <translation>Geräte lassen sich jederzeit auf der Startseite koppeln</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Your phone is linked and ready on your local network.</source>
+        <translation>Dein Gerät ist verbunden und im lokalen Netzwerk bereit.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Open the NectarLink Android app whenever you are ready to scan the QR code.</source>
+        <translation>Öffne die NectarLink-App, sobald du den QR-Code scannen möchtest.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Press Ctrl+K from anywhere in the app to jump to features, send files, or run actions.</source>
+        <translation>Strg+K drücken, um überall in der App zu Funktionen zu springen, Dateien zu senden oder Aktionen auszuführen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Browse every feature in NectarLink, see what permissions it needs, and jump straight to it.</source>
+        <translation>Alle Funktionen von NectarLink ansehen, die nötigen Berechtigungen prüfen und direkt hinspringen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Back to previous step</source>
+        <translation>Zurück zum vorherigen Schritt</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Finish setup and open Features guide</source>
+        <translation>Einrichtung abschließen und Funktionsübersicht öffnen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Get started</source>
+        <translation>Loslegen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Finish walkthrough</source>
+        <translation>Einrichtung abschließen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Next step</source>
+        <translation>Nächster Schritt</translation>
     </message>
 </context>
 <context>

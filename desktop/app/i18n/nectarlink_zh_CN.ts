@@ -2542,6 +2542,551 @@
         <source>Close</source>
         <translation>关闭</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone</source>
+        <translation>手机</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Notifications</source>
+        <translation>通知</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Mirror phone notifications to your PC with inline replies, action buttons, and dismissal sync.</source>
+        <translation>将手机通知同步到电脑，支持直接回复、操作按钮和同步清除。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Notifications</source>
+        <translation>主页 › 通知</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Notification Access on phone</source>
+        <translation>手机上的通知访问权限</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Read and send SMS and MMS threads, or reply to notification-backed chat conversations.</source>
+        <translation>读取和发送短信、彩信会话，或回复来自通知的聊天。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Messages</source>
+        <translation>左侧栏 › 信息</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>SMS and Contacts permissions on phone</source>
+        <translation>手机上的短信和通讯录权限</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Calls</source>
+        <translation>通话</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Answer or decline incoming calls, browse call history and contacts, and dial from your PC.</source>
+        <translation>接听或拒接来电，浏览通话记录和联系人，并从电脑拨号。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Calls</source>
+        <translation>左侧栏 › 通话</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone, Call Log, and Contacts permissions on phone</source>
+        <translation>手机上的电话、通话记录和通讯录权限</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Now playing</source>
+        <translation>正在播放</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>See active track artwork and control playback between your phone and PC.</source>
+        <translation>查看当前曲目封面，并在手机和电脑之间控制播放。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Media player</source>
+        <translation>主页 › 媒体播放器</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Clipboard</source>
+        <translation>剪贴板</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Sync copied text, HTML, images, and files with a 50-item local clipboard history.</source>
+        <translation>同步复制的文本、HTML、图片和文件，并保留 50 条本地剪贴板历史。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Send clipboard</source>
+        <translation>主页 › 发送剪贴板</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Clipboard toggle on Home; Elevated or quick tile for background phone copy</source>
+        <translation>主页上的剪贴板开关；后台复制需要 Elevated 或快捷设置图块</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send files</source>
+        <translation>发送文件</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send files, folders, and links to your phone over your local Wi-Fi network.</source>
+        <translation>通过本地 Wi-Fi 网络向手机发送文件、文件夹和链接。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Send files</source>
+        <translation>主页 › 发送文件</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send files toggle on Home</source>
+        <translation>主页上的发送文件开关</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send queue</source>
+        <translation>发送队列</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Queue files and links while your phone is away so they send automatically on reconnect.</source>
+        <translation>手机不在时将文件和链接加入队列，重新连接后自动发送。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Send queue</source>
+        <translation>主页 › 发送队列</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Always available on PC</source>
+        <translation>在电脑上始终可用</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Photos</source>
+        <translation>照片</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Browse recent phone photos and screenshots on demand, copy to clipboard, or drag into apps.</source>
+        <translation>按需浏览手机最近的照片和截图，复制到剪贴板或拖入应用。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Photos</source>
+        <translation>左侧栏 › 照片</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Photos and Media permission on phone</source>
+        <translation>手机上的照片和媒体权限</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Screen mirroring</source>
+        <translation>屏幕镜像</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Stream your phone display in a low-latency desktop window with mouse and keyboard input.</source>
+        <translation>在低延迟的桌面窗口中显示手机屏幕，并可用鼠标和键盘操作。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Mirror screen</source>
+        <translation>主页 › 镜像屏幕</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>MediaProjection approval on phone; Assist or Elevated for touch input</source>
+        <translation>手机上批准屏幕共享；触控输入需要 Assist 或 Elevated</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>App streams</source>
+        <translation>应用窗口</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Open individual Android apps in their own virtual display windows on your PC.</source>
+        <translation>在电脑上以独立窗口打开单个安卓应用。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Apps</source>
+        <translation>应用</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Elevated (Wireless debugging) enabled on phone</source>
+        <translation>手机上已启用 Elevated（无线调试）</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Reverse PC screen mirroring</source>
+        <translation>在手机上查看电脑屏幕</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Stream this PC monitor to your phone and control the cursor or laser pointer from your phone.</source>
+        <translation>将此电脑的屏幕传输到手机，并从手机控制光标或激光笔。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone app › Home, and Settings › Devices</source>
+        <translation>手机应用 › 主页，以及设置 › 设备</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Opt-in Screen mirroring toggle on Home</source>
+        <translation>主页上的屏幕镜像开关（需手动开启）</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone as webcam</source>
+        <translation>手机作为摄像头</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Use your phone camera as the NectarLink Virtual Camera in Zoom, Teams, Meet, and OBS.</source>
+        <translation>在 Zoom、Teams、Meet 和 OBS 中将手机摄像头用作 NectarLink 虚拟摄像头。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Phone as webcam</source>
+        <translation>主页 › 手机用作摄像头</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Camera permission on phone and Virtual Camera registered on PC</source>
+        <translation>手机上的相机权限，以及电脑上已注册的虚拟摄像头</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Continuity camera</source>
+        <translation>接续相机</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Capture a photo or scan a document with your phone and paste it into the active PC window.</source>
+        <translation>用手机拍照或扫描文档，并粘贴到电脑当前窗口。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Continuity Camera (Ctrl+Alt+C / Ctrl+Alt+D)</source>
+        <translation>主页 › Continuity Camera（Ctrl+Alt+C / Ctrl+Alt+D）</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Camera permission on phone</source>
+        <translation>手机上的相机权限</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone as speaker</source>
+        <translation>手机作为扬声器</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Stream PC system audio to your phone in real time.</source>
+        <translation>将电脑系统声音实时传输到手机。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Phone as speaker</source>
+        <translation>主页 › 手机用作扬声器</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone as speaker enabled in Settings</source>
+        <translation>已在设置中启用手机用作扬声器</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Voice recorder</source>
+        <translation>录音机</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Record voice notes on your phone and save them automatically to your PC in M4A, MP3, WAV, or FLAC.</source>
+        <translation>在手机上录制语音备忘，并以 M4A、MP3、WAV 或 FLAC 格式自动保存到电脑。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › Files &amp; Sync › Voice recordings</source>
+        <translation>设置 › 文件与同步 › 语音录音</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Microphone permission on phone</source>
+        <translation>手机上的麦克风权限</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Deck</source>
+        <translation>面板</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Control Now playing media, switch PC audio outputs, and customize shortcut tiles for your phone.</source>
+        <translation>控制正在播放的媒体，切换电脑音频输出，并自定义手机上的快捷磁贴。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Deck</source>
+        <translation>左侧栏 › Deck</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Paired phone</source>
+        <translation>已配对的手机</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Desk mode</source>
+        <translation>桌面模式</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Turn your phone or PC window into a glanceable desk display with clock, media, and live status.</source>
+        <translation>将手机或电脑窗口变成显示时钟、媒体和实时状态的桌面显示屏。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Left rail › Deck › Desk mode</source>
+        <translation>左侧栏 › Deck › 桌面模式</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Remote input</source>
+        <translation>远程输入</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Use your phone as a wireless trackpad, keyboard, media remote, and presentation pointer.</source>
+        <translation>将手机用作无线触控板、键盘、媒体遥控器和演示笔。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone app › Home › Control PC</source>
+        <translation>手机应用 › 主页 › 控制电脑</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Opt-in Remote input toggle on Home</source>
+        <translation>主页上的远程输入开关（需手动开启）</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Type on phone</source>
+        <translation>在手机上输入</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Send live keystrokes and pasted text from your PC keyboard to your phone without screen mirroring.</source>
+        <translation>无需镜像屏幕，即可将电脑键盘的按键和粘贴的文字实时发送到手机。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Type on phone</source>
+        <translation>主页 › 在手机上输入</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Assist (Accessibility) or Elevated (Wireless debugging) on phone</source>
+        <translation>手机上的 Assist（无障碍）或 Elevated（无线调试）</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Phone controls</source>
+        <translation>手机控制</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Toggle Do Not Disturb, ringer mode, flashlight, volume, brightness, Wi-Fi, Bluetooth, and Find my phone.</source>
+        <translation>切换勿扰、响铃模式、手电筒、音量、亮度、Wi-Fi、蓝牙和查找手机。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Home › Phone controls</source>
+        <translation>主页 › 手机控制</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Elevated (Wireless debugging) required only for Wi-Fi and Bluetooth toggles</source>
+        <translation>仅 Wi-Fi 和蓝牙开关需要 Elevated（无线调试）</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Drop shelf</source>
+        <translation>收纳架</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Slide-out top screen-edge shelf with your latest phone photo, clipboard items, and file drop zone.</source>
+        <translation>从屏幕顶部滑出的架子，包含手机最新照片、剪贴板内容和文件投放区。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Top screen edge or Ctrl+Alt+S</source>
+        <translation>屏幕顶部边缘或 Ctrl+Alt+S</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Nectar Island</source>
+        <translation>Nectar 岛</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Compact floating pill at the top center of your monitor for calls, transfers, media, and alerts.</source>
+        <translation>显示器顶部中央的小型悬浮胶囊，用于通话、传输、媒体和提醒。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › General › Nectar Island</source>
+        <translation>设置 › 常规 › Nectar Island</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Nectar Island enabled in Settings</source>
+        <translation>已在设置中启用 Nectar Island</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Timeline</source>
+        <translation>时间线</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Chronological history of shared files, photos, clipboard items, calls, and voice recordings.</source>
+        <translation>按时间排列的共享文件、照片、剪贴板内容、通话和语音录音记录。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Top bar › Timeline</source>
+        <translation>顶栏 › 时间线</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Command palette</source>
+        <translation>命令面板</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Keyboard-first search over actions, contacts, message threads, mirrorable apps, and quick toggles.</source>
+        <translation>用键盘搜索操作、联系人、信息会话、可镜像的应用和快捷开关。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Top bar › Commands, or Ctrl+K (Ctrl+Alt+Space anywhere)</source>
+        <translation>顶栏 › 命令，或 Ctrl+K（任意位置 Ctrl+Alt+空格）</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Share PC folders</source>
+        <translation>共享电脑文件夹</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Share selected PC folders with your phone or sync folders in one-way or two-way mode.</source>
+        <translation>与手机共享选定的电脑文件夹，或单向、双向同步文件夹。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › Files &amp; Sync › Synced folders</source>
+        <translation>设置 › 文件与同步 › 同步文件夹</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Opt-in Share PC folders toggle on Home</source>
+        <translation>主页上的共享电脑文件夹开关（需手动开启）</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Wake PC</source>
+        <translation>唤醒电脑</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Let your paired phone wake this PC from sleep over your local network using Wake-on-LAN.</source>
+        <translation>让已配对的手机通过本地网络的 Wake-on-LAN 唤醒此电脑。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › Connection &amp; About › Wake from your phone</source>
+        <translation>设置 › 连接与关于 › 从手机唤醒</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Network adapter with Wake-on-LAN enabled in Windows</source>
+        <translation>在 Windows 中启用了 Wake-on-LAN 的网络适配器</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Connection Doctor</source>
+        <translation>连接诊断</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Diagnose and fix Windows Firewall rules, network profile type, and local discovery issues.</source>
+        <translation>诊断并修复 Windows 防火墙规则、网络配置文件类型和本地发现问题。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Settings › Connection &amp; About › Connection Doctor</source>
+        <translation>设置 › 连接与关于 › 连接诊断</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Read the full guide</source>
+        <translation>阅读完整指南</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Open the 7-step setup walkthrough</source>
+        <translation>打开 7 步设置向导</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Search features guide</source>
+        <translation>搜索功能指南</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Filter by %1</source>
+        <translation>按%1筛选</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Show me %1</source>
+        <translation>显示%1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Learn more about %1</source>
+        <translation>了解%1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/FeaturesGuidePage.qml"/>
+        <source>Read %1</source>
+        <translation>阅读%1</translation>
+    </message>
 </context>
 <context>
     <name>FolderSync</name>
@@ -9454,6 +9999,296 @@ What it needs
         <location filename="../qml/pages/WalkthroughPage.qml" line="1752"/>
         <source>Open features guide</source>
         <translation>打开功能指南</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Messages and Calls</source>
+        <translation>信息和通话</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Photos</source>
+        <translation>照片</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Find my phone</source>
+        <translation>查找我的手机</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Welcome to NectarLink</source>
+        <translation>欢迎使用 NectarLink</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Your data stays on your devices</source>
+        <translation>你的数据留在你的设备上</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Install NectarLink on your phone</source>
+        <translation>在手机上安装 NectarLink</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Pair your phone and PC</source>
+        <translation>配对手机和电脑</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Choose what to share</source>
+        <translation>选择要共享的内容</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Optional setup</source>
+        <translation>可选设置</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>You are set</source>
+        <translation>一切就绪</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Your Android phone and your PC, working together on your local network.</source>
+        <translation>你的安卓手机和电脑在本地网络上协同工作。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>No accounts, no cloud servers, and no telemetry.</source>
+        <translation>没有账户、没有云服务器、没有遥测。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Get the Android app from GitHub Releases or install the APK over USB.</source>
+        <translation>从 GitHub Releases 获取安卓应用，或通过 USB 安装 APK。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Scan the QR code from the NectarLink Android app, or pick your phone from nearby devices.</source>
+        <translation>用 NectarLink 安卓应用扫描二维码，或从附近设备中选择你的手机。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Safe features are on by default. Higher-trust access stays off until you turn it on.</source>
+        <translation>安全功能默认开启。需要更高信任的访问在你开启前保持关闭。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Three quick checks so notifications and discovery work reliably on your PC.</source>
+        <translation>三项快速检查，确保通知和发现在电脑上可靠工作。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Reopen it from Settings or the Command Palette.</source>
+        <translation>可从设置或命令面板重新打开。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Your phone</source>
+        <translation>你的手机</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Checking firewall and local network...</source>
+        <translation>正在检查防火墙和本地网络…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Run a quick check to verify your firewall and local discovery.</source>
+        <translation>运行快速检查以确认防火墙和本地发现正常。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Run a quick check to verify Windows Firewall and local discovery.</source>
+        <translation>运行快速检查以确认 Windows 防火墙和本地发现正常。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>All network and firewall checks passed.</source>
+        <translation>所有网络和防火墙检查均已通过。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Step %1 of %2</source>
+        <translation>第 %1 步，共 %2 步</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Go to step %1: %2</source>
+        <translation>转到第 %1 步：%2</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Skip setup walkthrough</source>
+        <translation>跳过设置向导</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Reply to notifications, read SMS threads, and answer calls from your PC.</source>
+        <translation>在电脑上回复通知、阅读短信和接听电话。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy text or images once, or drop files and folders at full Wi-Fi speed.</source>
+        <translation>复制一次文本或图片，或以 Wi-Fi 全速拖放文件和文件夹。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Stream your phone screen, use your phone as a webcam, or route PC audio.</source>
+        <translation>传输手机屏幕，将手机用作摄像头，或转发电脑音频。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Everything runs directly between your devices with zero cloud accounts.</source>
+        <translation>一切都直接在你的设备之间运行，无需任何云账户。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>No phone paired yet. You can pair in Step 4 or skip setup anytime.</source>
+        <translation>尚未配对手机。你可以在第 4 步配对，或随时跳过设置。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>All traffic between your phone and PC uses TLS 1.3 with device certificates pinned during pairing.</source>
+        <translation>手机和电脑之间的所有流量都使用 TLS 1.3，并在配对时固定设备证书。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Device keys are protected by Windows DPAPI and the Android Keystore.</source>
+        <translation>设备密钥由 Windows DPAPI 和 Android Keystore 保护。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Pairing and transfers stay on your local network unless you turn on &quot;Connect over mobile data&quot;, and automatic update checks can be turned off in Settings.</source>
+        <translation>除非你开启“通过移动数据连接”，否则配对和传输都留在本地网络；自动检查更新可在设置中关闭。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Open Android release page in browser</source>
+        <translation>在浏览器中打开安卓发布页面</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copied link</source>
+        <translation>已复制链接</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy link</source>
+        <translation>复制链接</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy Android release URL</source>
+        <translation>复制安卓发布页面地址</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copied</source>
+        <translation>已复制</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy command</source>
+        <translation>复制命令</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Copy ADB install command</source>
+        <translation>复制 ADB 安装命令</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Enabled in desktop notification settings.</source>
+        <translation>已在桌面通知设置中启用。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Enabled in Windows Settings.</source>
+        <translation>已在 Windows 设置中启用。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Notifications are muted or Do Not Disturb is active.</source>
+        <translation>通知已静音或勿扰模式已开启。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Notifications are off for NectarLink in Windows Settings.</source>
+        <translation>Windows 设置中已关闭 NectarLink 的通知。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Open Windows notification settings</source>
+        <translation>打开 Windows 通知设置</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Recheck notification status</source>
+        <translation>重新检查通知状态</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Connection Doctor</source>
+        <translation>连接诊断</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Run firewall and network check</source>
+        <translation>运行防火墙和网络检查</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Pair a phone anytime from Home</source>
+        <translation>随时可从主页配对手机</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Your phone is linked and ready on your local network.</source>
+        <translation>你的手机已连接，并在本地网络上准备就绪。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Open the NectarLink Android app whenever you are ready to scan the QR code.</source>
+        <translation>准备好扫描二维码时，打开 NectarLink 安卓应用。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Press Ctrl+K from anywhere in the app to jump to features, send files, or run actions.</source>
+        <translation>在应用内任意位置按 Ctrl+K，即可跳转到功能、发送文件或执行操作。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Browse every feature in NectarLink, see what permissions it needs, and jump straight to it.</source>
+        <translation>浏览 NectarLink 的所有功能，查看所需权限，并直接跳转。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Back to previous step</source>
+        <translation>返回上一步</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Finish setup and open Features guide</source>
+        <translation>完成设置并打开功能指南</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Get started</source>
+        <translation>开始</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Finish walkthrough</source>
+        <translation>完成向导</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/WalkthroughPage.qml"/>
+        <source>Next step</source>
+        <translation>下一步</translation>
     </message>
 </context>
 <context>
