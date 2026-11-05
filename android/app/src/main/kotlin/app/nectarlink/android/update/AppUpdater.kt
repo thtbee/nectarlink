@@ -133,9 +133,14 @@ class AppUpdater(context: Context) {
         _autoInstall.value = on
     }
 
-    private val _channel = MutableStateFlow(Channel.parse(prefs.getString(UPDATE_CHANNEL, null)) ?: channelOf(BuildConfig.VERSION_NAME))
+    // Kept from the first run: going by the version alone, a nightly install would leave
+    // Nightly as soon as it took a release.
+    private val _channel = MutableStateFlow(
+        Channel.parse(prefs.getString(UPDATE_CHANNEL, null))
+            ?: channelOf(BuildConfig.VERSION_NAME).also { own -> prefs.edit { putString(UPDATE_CHANNEL, own.key) } },
+    )
 
-    /** The channel picked in Settings, or the build's own (a nightly install follows Nightly). */
+    /** The channel picked in Settings, or the one the first build run here came from. */
     val channel: StateFlow<Channel> = _channel.asStateFlow()
 
     /** Follows `channel` from now on, and checks it now. */
