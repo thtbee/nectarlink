@@ -1150,6 +1150,66 @@ async fn a_phone_stopped_and_started_again_in_the_same_process_reconnects() {
     }
 }
 
+/// Each packet is reported back to the sender, and well past what a device
+/// from before reports reads (64 bytes): the stream carries on.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_video_stream_outlasts_its_reports() {
+    use nectarlink_core::{MirrorSend, PacketKind};
+
+    let pc_offers = [nectarlink_core::MIRROR_VIEW];
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &pc_offers).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::MIRROR_CAPTURE]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let options = nectarlink_core::MirrorStart {
+        max_size: 1280,
+        fps: 30,
+        bitrate: 4_000_000,
+        audio: false,
+        session: 0,
+        app: None,
+        stay_awake: false,
+        screen_off: false,
+        watch: None,
+        sound_only: false,
+    };
+    with_timeout("start", pc.node.mirror_start(phone_id, options)).await.unwrap();
+    let stream = Arc::new(with_timeout("open", phone.node.mirror_open(pc_id)).await.unwrap());
+    let config = nectarlink_core::MirrorConfig { codec: "h264".into(), width: 1280, height: 720, session: 0 };
+    let sender = stream.clone();
+    tokio::task::spawn_blocking(move || {
+        assert_eq!(sender.send(PacketKind::Config, 0, config.to_cbor()), MirrorSend::Queued);
+        assert_eq!(sender.send(PacketKind::Keyframe, 0, vec![0; 2_000]), MirrorSend::Queued);
+    })
+    .await
+    .unwrap();
+    wait_for(&mut pc, "showing", |e| matches!(e, NodeEvent::Mirroring { on: true, .. }).then_some(())).await;
+
+    let screen = pc.platform.screen.clone();
+    let packets = 300u64;
+    let sender = stream.clone();
+    tokio::task::spawn_blocking(move || {
+        for time in 1..=packets {
+            while sender.send(PacketKind::Frame, time, vec![0; 500]) != MirrorSend::Queued {
+                assert!(!sender.is_closed(), "the stream ended at {time}");
+                sender.send(PacketKind::Keyframe, time, vec![0; 500]);
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+    })
+    .await
+    .unwrap();
+    let deadline = tokio::time::Instant::now() + WAIT;
+    let last = format!("frame {packets} 500");
+    while !screen.got.lock().unwrap().contains(&last) && tokio::time::Instant::now() < deadline {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert!(screen.got.lock().unwrap().contains(&last), "the last frame arrives");
+    assert!(!stream.is_closed());
+    assert_eq!(stream.link_rate(), None, "a clear link never makes it wait");
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn mirror_open_waits_for_a_connection_that_is_coming_back() {
     let pc_offers = [nectarlink_core::MIRROR_VIEW, nectarlink_core::MIRROR_LISTEN];

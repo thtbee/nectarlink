@@ -87,6 +87,7 @@ const BASE_CAPABILITIES: &[&str] = &[
     "link.open",
     "task.notify",
     nectarlink_protocol::messages::UPDATE_HINT,
+    nectarlink_protocol::messages::mirror::PACE,
 ];
 
 /// This device's mutable description, sent to peers.

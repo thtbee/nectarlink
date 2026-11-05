@@ -58,6 +58,7 @@ capability is missing.
 | `photos.read` | Announces new photos and screenshots, lists albums and items, serves thumbnails, and sends files on request ([photos](photos.md)) | photos permission |
 | `elevated.usb` | Starts a USB-connected phone's Elevated helper over adb ([Elevated over USB](elevated-usb.md)) | adb on the PC |
 | `mirror.capture` | Streams its screen (with the system's capture prompt at Basic; [mirroring](mirror.md)) | app update |
+| `mirror.pace` | Reports video packets as they arrive, and paces what it sends by those reports ([mirroring](mirror.md) §3) | app update |
 | `mirror.decode.hevc` | Decodes H.265 screen-mirroring streams | app update |
 | `mirror.input` | Accepts touch, key and scroll input while mirrored | Assist |
 | `mirror.virtual_display` | Runs apps on displays of their own, shown in windows on the PC ([mirroring](mirror.md)) | Elevated, Android 11+ |

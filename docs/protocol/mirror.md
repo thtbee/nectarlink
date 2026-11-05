@@ -17,6 +17,7 @@ windows of their own (§6).
 | `mirror.capture` | phone | Shares its screen when its user agrees |
 | `mirror.view` | PC | Shows a phone's screen |
 | `mirror.decode.hevc` | PC or phone | Decodes H.265 screen-mirroring streams |
+| `mirror.pace` | PC or phone | Reports video packets as they arrive, and paces what it sends by those reports (§3) |
 | `mirror.input` | phone | Takes the PC's mouse and keyboard while mirrored (Assist: an accessibility service the user turns on; Elevated: injected input) |
 | `mirror.audio.playback` | phone | Shares the sound of apps that allow it while mirrored (Android 10+) |
 | `mirror.audio` | phone | Shares all its sound while mirrored (planned, Elevated) |
@@ -84,8 +85,13 @@ means 0, so PCs and phones that predate sessions work as before.
 
 The phone opens a bidirectional stream with the header
 `{ svc: "mirror", op: "video", v: 1 }` (v0 §4), then writes packets until
-it stops. The PC writes nothing; it finishes its side, or stops reading,
-to end the stream.
+it stops. The PC finishes its side, or stops reading, to end the stream.
+It writes nothing else, unless both devices offer `mirror.pace`: then it
+writes one byte (any value) per packet it has read, config packets included,
+and the phone keeps its video from getting more than 250 ms ahead of those
+reports beyond a round trip. A device from before `mirror.pace` must not be
+sent reports: it reads at most 64 bytes back, then takes the stream as ended.
+A PC sharing its screen with a phone does the same, the other way round.
 
 Each packet is:
 
@@ -230,6 +236,13 @@ full it drops the picture and every one after it until a keyframe, and asks
 its encoder for one. The PC likewise decodes everything it gets but shows
 only the newest picture when it's behind, and asks for a keyframe when a
 picture doesn't decode.
+
+That queue fills only once QUIC stops taking data, and QUIC takes many
+seconds of video on a slow link. So with `mirror.pace` (§3) the phone also
+stops writing when it gets too far ahead of the PC's reports, until all that's
+on its way has arrived; that wait also measures what the link carries, which
+sets the encoder's bitrate. A frame with a keyframe queued behind it is
+skipped.
 
 Sound works the same way without keyframes: a packet that doesn't fit is
 dropped on its own. The PC plays from a short buffer (about 40 ms),
