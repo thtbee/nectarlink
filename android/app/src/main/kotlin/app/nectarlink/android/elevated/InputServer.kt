@@ -692,19 +692,17 @@ object InputServer {
         }
 
         private fun key(code: Int) {
-            val hidSent = if (display < 0) UhidBridge.sendKeyTap(code) else false
-            if (!hidSent) {
-                val now = SystemClock.uptimeMillis()
-                for (action in intArrayOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP)) {
-                    send(KeyEvent(now, now, action, code, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD))
-                }
+            // Injected, not through a virtual keyboard: adding one changes the phone's
+            // configuration, which restarts apps that don't handle that (Snapchat).
+            val now = SystemClock.uptimeMillis()
+            for (action in intArrayOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP)) {
+                send(KeyEvent(now, now, action, code, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD))
             }
         }
 
         /**
-         * A key with modifiers (`Y <code> <meta>`), Ctrl+A say. Injected, since
-         * the virtual HID keyboard sends no modifiers. A helper from before
-         * this ignores the line.
+         * A key with modifiers (`Y <code> <meta>`), Ctrl+A say. A helper from
+         * before this ignores the line.
          */
         private fun shortcut(code: Int, meta: Int) {
             val now = SystemClock.uptimeMillis()
@@ -892,9 +890,9 @@ object InputServer {
     }
 
     /**
-     * Kernel `/dev/uhid` bridge for registering virtual USB HID keyboard and
-     * gamepad peripherals in the `shell` user context (which belongs to GID
-     * `uhid` / `input` on stock Android). Falls back gracefully to
+     * Kernel `/dev/uhid` bridge for registering a virtual USB HID gamepad in
+     * the `shell` user context (which belongs to GID `uhid` / `input` on stock
+     * Android). Falls back gracefully to
      * `InputManager.injectInputEvent` if `/dev/uhid` is restricted by SELinux.
      */
     private object UhidBridge {
@@ -903,41 +901,6 @@ object InputServer {
         private const val UHID_INPUT2 = 12
         private const val UHID_EVENT_SIZE = 4380
         private const val BUS_USB = 0x03
-
-        // While a hardware keyboard is attached Android hides the on-screen
-        // one, so the virtual keyboard only stays while the PC is typing.
-        private const val KEYBOARD_IDLE_MS = 10_000L
-        private val idle = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r ->
-            Thread(r, "nectarlink-uhid-idle").apply { isDaemon = true }
-        }
-        private var idleClose: java.util.concurrent.ScheduledFuture<*>? = null
-
-        // Standard 8-byte boot HID keyboard report descriptor.
-        private val KEYBOARD_RD = byteArrayOf(
-            0x05, 0x01, // Usage Page (Generic Desktop)
-            0x09, 0x06, // Usage (Keyboard)
-            0xA1.toByte(), 0x01, // Collection (Application)
-            0x05, 0x07, //   Usage Page (Key Codes)
-            0x19, 0xE0.toByte(), //   Usage Minimum (224)
-            0x29, 0xE7.toByte(), //   Usage Maximum (231)
-            0x15, 0x00, //   Logical Minimum (0)
-            0x25, 0x01, //   Logical Maximum (1)
-            0x75, 0x01, //   Report Size (1)
-            0x95.toByte(), 0x08, //   Report Count (8)
-            0x81.toByte(), 0x02, //   Input (Data, Variable, Absolute)
-            0x95.toByte(), 0x01, //   Report Count (1)
-            0x75, 0x08, //   Report Size (8)
-            0x81.toByte(), 0x01, //   Input (Constant)
-            0x95.toByte(), 0x06, //   Report Count (6)
-            0x75, 0x08, //   Report Size (8)
-            0x15, 0x00, //   Logical Minimum (0)
-            0x25, 0x65, //   Logical Maximum (101)
-            0x05, 0x07, //   Usage Page (Key Codes)
-            0x19, 0x00, //   Usage Minimum (0)
-            0x29, 0x65, //   Usage Maximum (101)
-            0x81.toByte(), 0x00, //   Input (Data, Array)
-            0xC0.toByte(), // End Collection
-        )
 
         // 12-byte HID gamepad report descriptor:
         // [buttonsLo, buttonsHi, lxLo, lxHi, lyLo, lyHi, rxLo, rxHi, ryLo, ryHi, lt, rt]
@@ -973,9 +936,6 @@ object InputServer {
             0x81.toByte(), 0x02, //   Input (Data, Variable, Absolute)
             0xC0.toByte(), // End Collection
         )
-
-        @Volatile private var keyboardFd: java.io.RandomAccessFile? = null
-        @Volatile private var keyboardAttempted = false
 
         @Volatile private var gamepadFd: java.io.RandomAccessFile? = null
         @Volatile private var gamepadAttempted = false
@@ -1014,34 +974,6 @@ object InputServer {
             true
         }.getOrDefault(false)
 
-        @Synchronized
-        fun sendKeyTap(androidKeyCode: Int): Boolean {
-            val usage = androidKeyCodeToHidUsage(androidKeyCode) ?: return false
-            val created = !keyboardAttempted
-            if (created) {
-                keyboardAttempted = true
-                keyboardFd = openDevice("NectarLink Virtual Keyboard", 0x4EE7, KEYBOARD_RD)
-            }
-            val fd = keyboardFd ?: return false
-            idleClose?.cancel(false)
-            idleClose = idle.schedule({ closeKeyboard() }, KEYBOARD_IDLE_MS, java.util.concurrent.TimeUnit.MILLISECONDS)
-            // A device that was just created may not be registered in time for
-            // its first report: that key goes the injected way.
-            if (created) return false
-            val down = ByteArray(8).apply { this[2] = usage.toByte() }
-            val up = ByteArray(8)
-            return writeInputReport(fd, down) && writeInputReport(fd, up)
-        }
-
-        /** Removes the virtual keyboard; the next key from the PC adds it again. */
-        @Synchronized
-        private fun closeKeyboard() {
-            keyboardFd?.let(::destroy)
-            keyboardFd = null
-            keyboardAttempted = false
-            idleClose = null
-        }
-
         private fun destroy(fd: java.io.RandomAccessFile) {
             runCatching {
                 val buf = java.nio.ByteBuffer.allocate(4).order(java.nio.ByteOrder.LITTLE_ENDIAN)
@@ -1072,27 +1004,8 @@ object InputServer {
 
         @Synchronized
         fun closeAll() {
-            idleClose?.cancel(false)
-            idleClose = null
-            listOfNotNull(keyboardFd, gamepadFd).forEach(::destroy)
-            keyboardFd = null
+            gamepadFd?.let(::destroy)
             gamepadFd = null
-        }
-
-        private fun androidKeyCodeToHidUsage(keyCode: Int): Int? = when (keyCode) {
-            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z -> 0x04 + (keyCode - KeyEvent.KEYCODE_A)
-            in KeyEvent.KEYCODE_1..KeyEvent.KEYCODE_9 -> 0x1E + (keyCode - KeyEvent.KEYCODE_1)
-            KeyEvent.KEYCODE_0 -> 0x27
-            KeyEvent.KEYCODE_ENTER -> 0x28
-            KeyEvent.KEYCODE_ESCAPE -> 0x29
-            KeyEvent.KEYCODE_DEL -> 0x2A
-            KeyEvent.KEYCODE_TAB -> 0x2B
-            KeyEvent.KEYCODE_SPACE -> 0x2C
-            KeyEvent.KEYCODE_DPAD_RIGHT -> 0x4F
-            KeyEvent.KEYCODE_DPAD_LEFT -> 0x50
-            KeyEvent.KEYCODE_DPAD_DOWN -> 0x51
-            KeyEvent.KEYCODE_DPAD_UP -> 0x52
-            else -> null
         }
     }
 }

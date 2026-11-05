@@ -152,7 +152,7 @@ Android groups app capabilities into tiers of system access. NectarLink is desig
 | **PC-to-phone clipboard sync** | Automatic | Automatic | Automatic |
 | **Phone-to-PC clipboard sync** | Manual (Quick Settings tile, share sheet, or app button) | Manual (Quick Settings tile, share sheet, or app button) | **Automatic in the background** |
 | **Screen mirroring (view video & audio on PC)** | Yes (Android prompts each time) | Yes (Android prompts each time) | **Prompt-free startup** (`PROJECT_MEDIA` granted automatically) |
-| **Control phone from PC mouse & keyboard during mirroring** | View-only | Tap, swipe, scroll, basic text entry | **Real-time touch dragging, UHID physical keyboard layouts, XInput gamepad, stylus pressure/tilt** |
+| **Control phone from PC mouse & keyboard during mirroring** | View-only | Tap, swipe, scroll, basic text entry | **Real-time touch dragging, XInput gamepad, stylus pressure/tilt** |
 | **Turn off physical phone screen while mirroring** | No | No | **Yes** |
 | **Phone apps in individual PC windows (`app window`)** | No | No | **Yes** (Android 11+) |
 | **In-call mute, hold, speakerphone & keypad from PC** | Answer, decline, hang up, volume | Answer, decline, hang up, volume | **Yes** (Android 12+) |
