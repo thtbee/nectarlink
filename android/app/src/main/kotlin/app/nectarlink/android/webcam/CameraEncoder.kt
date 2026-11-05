@@ -426,7 +426,7 @@ internal class CameraEncoder(
             }
             val startedCodec = if (encoderName != null) MediaCodec.createByCodecName(encoderName) else MediaCodec.createEncoderByType(mime)
             codec = startedCodec
-            startedCodec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+            configureEncoder(startedCodec, format)
             val surface = startedCodec.createInputSurface()
             codecSurface = surface
             startedCodec.start()
@@ -451,6 +451,24 @@ internal class CameraEncoder(
             runCatching { codecSurface?.release() }
             Log.w(TAG, "can't start $codecName encoder for ${outWidth}x${outHeight}", e)
         }.getOrNull()
+    }
+
+    /**
+     * Configures [codec], without the low latency keys if it refuses them: some
+     * encoders (Qualcomm's OMX ones on Huawei's EMUI) fail outright rather than
+     * ignore a mode they don't have, and a little more latency beats no webcam.
+     */
+    private fun configureEncoder(codec: MediaCodec, format: MediaFormat) {
+        try {
+            codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+        } catch (e: RuntimeException) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) throw e
+            Log.i(TAG, "${codec.name} refused low latency; trying without it")
+            codec.reset()
+            format.removeKey(MediaFormat.KEY_LOW_LATENCY)
+            format.removeKey(MediaFormat.KEY_LATENCY)
+            codec.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+        }
     }
 
     private inner class ActiveCodec(
