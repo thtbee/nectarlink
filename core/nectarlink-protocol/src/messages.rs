@@ -1357,6 +1357,9 @@ pub mod mirror {
     pub const AUDIO_PLAYBACK: &str = "mirror.audio.playback";
     /// Offered by PCs that play a mirrored phone's sound.
     pub const LISTEN: &str = "mirror.listen";
+    /// Offered by devices that report each video packet as it arrives, and
+    /// use those reports to keep what they send from getting ahead of the link.
+    pub const PACE: &str = "mirror.pace";
     /// Offered by phones that share their sound on its own, without the
     /// screen (`MirrorStart::sound_only`).
     pub const SOUND: &str = "mirror.sound";

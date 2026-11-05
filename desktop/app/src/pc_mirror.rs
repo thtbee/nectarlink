@@ -71,9 +71,10 @@ mod imp {
     #[cfg(any(windows, target_os = "linux"))]
     const FIND_WINDOW: Duration = Duration::from_secs(5);
 
-    /// The lowest bitrate the stream backs off to on a slow link.
+    /// The lowest bitrate the stream backs off to on a slow link (encoders
+    /// go no lower).
     #[cfg(any(windows, target_os = "linux"))]
-    const MIN_BITRATE: u32 = 600_000;
+    const MIN_BITRATE: u32 = 500_000;
 
     /// What a sharing session sent in the last stats window.
     #[cfg(any(windows, target_os = "linux"))]
@@ -2413,6 +2414,7 @@ mod imp {
         let mut last_reinit = Instant::now() - Duration::from_secs(5);
         let mut last_drop: Option<Instant> = None;
         let mut last_rate_change = Instant::now();
+        let mut link_measured = false;
         let mut stats = Stats::default();
         let mut stats_since = Instant::now();
         // Play on phone: the player's picture instead of the screen, and the
@@ -2542,8 +2544,10 @@ mod imp {
                                     stats.dropped += 1;
                                     last_drop = Some(Instant::now());
                                     force_keyframe.store(true, Ordering::SeqCst);
-                                    // The link is slower than the stream: ask for less, at most every 2 s.
-                                    if last_rate_change.elapsed() >= Duration::from_secs(2) {
+                                    // The link is slower than the stream: ask for less, at most every
+                                    // 2 s. A phone that reports what it gets lets this be measured instead.
+                                    if !link_measured && last_rate_change.elapsed() >= Duration::from_secs(2)
+                                    {
                                         let lower = (bitrate / 4 * 3).max(MIN_BITRATE);
                                         if lower < bitrate && enc.set_bitrate(lower) {
                                             bitrate = lower;
@@ -2559,6 +2563,21 @@ mod imp {
                         }
                         if send_failed {
                             break;
+                        }
+                        // Video got ahead of the link, which says how much it carries. Leave
+                        // room for sound and keyframes, and at most halve it: one bad moment
+                        // on Wi-Fi shouldn't leave the picture blurry for a minute.
+                        if let Some(rate) = sender.link_rate() {
+                            link_measured = true;
+                            last_drop = Some(Instant::now());
+                            if last_rate_change.elapsed() >= Duration::from_secs(1) {
+                                let room = u32::try_from(rate / 10 * 7).unwrap_or(u32::MAX);
+                                let lower = room.max(bitrate / 2).max(MIN_BITRATE);
+                                if lower < bitrate && enc.set_bitrate(lower) {
+                                    bitrate = lower;
+                                    last_rate_change = Instant::now();
+                                }
+                            }
                         }
                         // Clean for 10 s: step the bitrate back up toward what the phone asked for.
                         let clean = last_drop.is_none_or(|t| t.elapsed() >= Duration::from_secs(10));

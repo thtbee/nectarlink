@@ -14,10 +14,12 @@
 //! others for apps the phone runs on displays of their own (Elevated), each
 //! in a window of its own on the PC.
 
+use std::collections::VecDeque;
 use std::sync::{
     Arc, Mutex,
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
 };
+use std::time::{Duration, Instant};
 
 use iroh::endpoint::{RecvStream, SendStream, VarInt};
 use nectarlink_protocol::{
@@ -49,8 +51,18 @@ fn pc_mirror_allowed(shared: &Shared, peer: &DeviceId) -> bool {
 /// Packets waiting to go out, at most. Beyond this the network is behind:
 /// sending more would only add delay.
 const QUEUE: usize = 4;
+/// The same for a stream that's held back (`Pacer`): enough to ride out a
+/// short wait, as overflowing costs a keyframe, which is what's slow to send.
+const PACED_QUEUE: usize = 8;
 /// Sound packets waiting to go out, at most (each is a few milliseconds).
 const AUDIO_QUEUE: usize = 24;
+/// Video stops going out once the oldest packet not yet reported received is
+/// this much later than a round trip takes. QUIC would take megabytes more, and
+/// on a slow link that's many seconds between moving the pointer and seeing it.
+const MAX_LAG: Duration = Duration::from_millis(250);
+/// How long a measured round trip stays in use: long enough to span a busy
+/// spell, short enough to notice a move from Wi-Fi to a relay.
+const TRIP_MEMORY: Duration = Duration::from_secs(10);
 /// Icons in a `mirror.apps` answer, at most, in bytes: the rest go without
 /// (the answer stays well inside a frame).
 const ICONS_BUDGET: usize = 768 * 1024;
@@ -271,6 +283,13 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
     });
     shared.emit(NodeEvent::Mirroring { device: peer, session: mirroring, on: true });
     sink.config(config);
+    // Reports what arrived, for a sender that uses it (`Pacer`). They go ahead
+    // of anything else this side is sending, or they'd measure that instead.
+    let reports = peer_reports(&shared, &peer);
+    let _ = send.set_priority(AUDIO_PRIORITY);
+    if reports {
+        let _ = send.write_all(&[1]).await;
+    }
     loop {
         let packet = tokio::select! {
             _ = stopped.notified() => break,
@@ -290,6 +309,9 @@ pub(crate) async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendS
                 tracing::debug!(error = %e, "mirroring stream ended");
                 break;
             }
+        }
+        if reports && send.write_all(&[1]).await.is_err() {
+            break;
         }
     }
     let _ = recv.stop(VarInt::from_u32(mirror::STOPPED));
@@ -533,6 +555,9 @@ pub struct MirrorStream {
     resyncing: Mutex<bool>,
     /// Sound: each packet stands alone, so a dropped one needs no keyframe.
     audio: bool,
+    /// What the link was last measured to carry, in bits per second; 0 for
+    /// nothing new (`link_rate`).
+    link_rate: Arc<AtomicU64>,
 }
 
 impl MirrorStream {
@@ -579,6 +604,97 @@ impl MirrorStream {
     pub fn is_closed(&self) -> bool {
         self.closed.load(Ordering::Acquire) || self.queue.is_closed()
     }
+
+    /// What the link was last measured to carry, in bits per second, once,
+    /// when video got too far ahead of it. Never from a device that doesn't
+    /// report what it receives.
+    pub fn link_rate(&self) -> Option<u64> {
+        Some(self.link_rate.swap(0, Ordering::AcqRel)).filter(|rate| *rate > 0)
+    }
+}
+
+/// Keeps video from getting ahead of what the other side has received, from
+/// its one-byte report per packet. Works at any bitrate and through any queue
+/// on the way, a relay's included, which QUIC's own windows can't see.
+#[derive(Debug, Default)]
+struct Pacer {
+    /// Written and not yet reported: when, and how many bytes.
+    in_flight: VecDeque<(Instant, usize)>,
+    in_flight_bytes: u64,
+    /// Recent times from writing a packet to its report, the shortest first:
+    /// the shortest is close to a round trip with nothing queued.
+    trips: VecDeque<(Instant, Duration)>,
+    /// Too far ahead: writes nothing until all of it has arrived. This is also
+    /// what keeps `trips` honest, as the next packet finds the way clear.
+    draining: Option<Drain>,
+}
+
+/// A wait for what's on its way to arrive, which also measures the link: it's
+/// been busy with these bytes since the first of them was written.
+#[derive(Debug)]
+struct Drain {
+    since: Instant,
+    bytes: u64,
+}
+
+impl Pacer {
+    fn written(&mut self, now: Instant, bytes: usize) {
+        self.in_flight.push_back((now, bytes));
+        self.in_flight_bytes += bytes as u64;
+    }
+
+    /// `reports` more packets arrived. Returns what the link carries, in bits
+    /// per second, if that ended a wait.
+    fn reported(&mut self, now: Instant, reports: usize) -> Option<u64> {
+        for _ in 0..reports {
+            let Some((written, bytes)) = self.in_flight.pop_front() else { break };
+            self.in_flight_bytes -= bytes as u64;
+            let trip = now.saturating_duration_since(written);
+            while self.trips.back().is_some_and(|(_, t)| *t >= trip) {
+                self.trips.pop_back();
+            }
+            self.trips.push_back((now, trip));
+        }
+        while self.trips.len() > 1
+            && self.trips.front().is_some_and(|(at, _)| now.saturating_duration_since(*at) > TRIP_MEMORY)
+        {
+            self.trips.pop_front();
+        }
+        if !self.in_flight.is_empty() {
+            return None;
+        }
+        let drain = self.draining.take()?;
+        // Less a round trip: the last report took that on top of the link's time.
+        let queued = now.saturating_duration_since(drain.since).saturating_sub(self.round_trip());
+        Some(drain.bytes * 8 * 1000 / (queued.as_millis() as u64).max(50))
+    }
+
+    fn round_trip(&self) -> Duration {
+        self.trips.front().map_or(Duration::ZERO, |(_, trip)| *trip)
+    }
+
+    /// Whether to hold video back for now. Nothing's known until the first
+    /// report, which arrives within a round trip.
+    fn hold(&mut self, now: Instant) -> bool {
+        if self.draining.is_some() {
+            return true;
+        }
+        let Some((oldest, _)) = self.in_flight.front() else { return false };
+        if self.trips.is_empty()
+            || now.saturating_duration_since(*oldest).saturating_sub(self.round_trip()) <= MAX_LAG
+        {
+            return false;
+        }
+        self.draining = Some(Drain { since: *oldest, bytes: self.in_flight_bytes });
+        true
+    }
+
+    /// When the wait for the oldest packet will have gone on too long, for a
+    /// link with nothing coming back to wake the sender.
+    fn next_check(&self) -> Option<Instant> {
+        let (oldest, _) = self.in_flight.front()?;
+        (self.draining.is_none() && !self.trips.is_empty()).then(|| *oldest + self.round_trip() + MAX_LAG)
+    }
 }
 
 /// Opens a video stream to a PC that asked for the screen, or (`audio`) a
@@ -596,6 +712,7 @@ pub(crate) async fn open(shared: &Arc<Shared>, session: &Session, audio: bool) -
     let op = if audio { mirror::OP_AUDIO } else { mirror::OP_VIDEO };
     let header = StreamHeader { svc: mirror::SERVICE.into(), op: op.into(), v: mirror::VERSION };
     write_frame(&mut send, &Envelope::new(types::STREAM, &header)?.to_cbor()).await?;
+    let paced = !audio && peer_reports(shared, &session.peer);
     let on_end = if !audio {
         shared
             .record_timeline(crate::timeline::NewTimelineEntry {
@@ -615,7 +732,25 @@ pub(crate) async fn open(shared: &Arc<Shared>, session: &Session, audio: bool) -
     } else {
         None
     };
-    Ok(MirrorStream::spawn_stream(send, recv, audio, on_end))
+    Ok(MirrorStream::spawn_stream(send, recv, audio, paced, on_end))
+}
+
+/// Removes what a keyframe in `batch` replaces: sending it would only delay the
+/// keyframe, and start another wait. A format change stays, as what follows
+/// is in that format.
+fn skip_to_keyframe(batch: &mut Vec<(PacketKind, u64, Vec<u8>)>) {
+    let Some(key) = batch.iter().rposition(|p| p.0 == PacketKind::Keyframe) else { return };
+    let mut index = 0;
+    batch.retain(|p| {
+        index += 1;
+        index > key || p.0 == PacketKind::Config
+    });
+}
+
+/// Whether this device reports video packets as they arrive. Anything else
+/// mustn't be sent reports: it would take them for the end of the stream.
+fn peer_reports(shared: &Shared, peer: &DeviceId) -> bool {
+    shared.store.get_peer(peer).ok().flatten().is_some_and(|record| record.caps.contains(mirror::PACE))
 }
 
 /// Send priorities: sound before video, as a gap in it is the more
@@ -628,38 +763,70 @@ impl MirrorStream {
         mut send: SendStream,
         mut recv: RecvStream,
         audio: bool,
+        paced: bool,
         on_end: Option<(Arc<Shared>, i64, std::time::Instant)>,
     ) -> MirrorStream {
         // Sound and video go out as soon as they're written; sound first.
         let _ = send.set_priority(if audio { AUDIO_PRIORITY } else { VIDEO_PRIORITY });
-        let (queue, mut packets) =
-            mpsc::channel::<(PacketKind, u64, Vec<u8>)>(if audio { AUDIO_QUEUE } else { QUEUE });
+        let depth = match (audio, paced) {
+            (true, _) => AUDIO_QUEUE,
+            (false, true) => PACED_QUEUE,
+            (false, false) => QUEUE,
+        };
+        let (queue, mut packets) = mpsc::channel::<(PacketKind, u64, Vec<u8>)>(depth);
         let closed = Arc::new(AtomicBool::new(false));
         let done = closed.clone();
         let stop = Arc::new(tokio::sync::Notify::new());
         let stopped = stop.clone();
+        let link_rate = Arc::new(AtomicU64::new(0));
+        let measured = link_rate.clone();
         tokio::spawn(async move {
-            let mut ended = Box::pin(async move {
-                // The PC stops reading (STOP_SENDING) when it's done watching.
-                let _ = recv.read_to_end(64).await;
-            });
-            loop {
+            let mut pacer = paced.then(Pacer::default);
+            let mut reports = [0u8; 256];
+            'stream: loop {
+                let now = Instant::now();
+                let hold = pacer.as_mut().is_some_and(|p| p.hold(now));
+                let check = pacer.as_ref().and_then(Pacer::next_check);
                 let next = tokio::select! {
-                    _ = &mut ended => break,
                     _ = stopped.notified() => break,
-                    next = packets.recv() => next,
+                    // Each byte is a packet received. The other side stops
+                    // reading (STOP_SENDING) when it's done watching.
+                    read = recv.read(&mut reports) => match read {
+                        Ok(Some(count)) => {
+                            let rate = pacer.as_mut().and_then(|p| p.reported(Instant::now(), count));
+                            if let Some(rate) = rate {
+                                measured.store(rate.max(1), Ordering::Release);
+                            }
+                            continue;
+                        }
+                        Ok(None) | Err(_) => break,
+                    },
+                    () = tokio::time::sleep_until(check.unwrap_or(now).into()), if check.is_some() => continue,
+                    next = packets.recv(), if !hold => next,
                 };
-                let Some((kind, time, data)) = next else { break };
+                let Some(first) = next else { break };
                 if done.load(Ordering::Acquire) {
                     break;
                 }
-                let Ok(header) = video_packet_header(kind, time, data.len()) else { continue };
-                let written = async {
-                    send.write_all(&header).await?;
-                    send.write_all(&data).await
-                };
-                if written.await.is_err() {
-                    break;
+                let mut batch = vec![first];
+                if pacer.is_some() {
+                    while let Ok(packet) = packets.try_recv() {
+                        batch.push(packet);
+                    }
+                    skip_to_keyframe(&mut batch);
+                }
+                for (kind, time, data) in batch {
+                    let Ok(header) = video_packet_header(kind, time, data.len()) else { continue };
+                    if let Some(pacer) = &mut pacer {
+                        pacer.written(Instant::now(), header.len() + data.len());
+                    }
+                    let written = async {
+                        send.write_all(&header).await?;
+                        send.write_all(&data).await
+                    };
+                    if written.await.is_err() {
+                        break 'stream;
+                    }
                 }
             }
             done.store(true, Ordering::Release);
@@ -668,7 +835,7 @@ impl MirrorStream {
                 shared.finish_timeline_session(row_id, started_at.elapsed().as_secs().max(1));
             }
         });
-        MirrorStream { queue, closed, stop, resyncing: Mutex::new(false), audio }
+        MirrorStream { queue, closed, stop, resyncing: Mutex::new(false), audio, link_rate }
     }
 }
 
@@ -717,6 +884,83 @@ impl Shared {
 mod tests {
     use super::*;
 
+    const fn ms(n: u64) -> Duration {
+        Duration::from_millis(n)
+    }
+
+    #[test]
+    fn video_is_held_only_once_it_is_too_far_ahead() {
+        let t = Instant::now();
+        let mut pacer = Pacer::default();
+        pacer.written(t, 100);
+        assert!(!pacer.hold(t + ms(900)), "nothing's known before the first report");
+        assert_eq!(pacer.reported(t + ms(100), 1), None);
+        assert_eq!(pacer.round_trip(), ms(100));
+
+        pacer.written(t + ms(1000), 1000);
+        assert!(!pacer.hold(t + ms(1000 + 100 + 250)), "a round trip plus what's allowed");
+        assert_eq!(pacer.next_check(), Some(t + ms(1000 + 100 + 250)));
+        assert!(pacer.hold(t + ms(1000 + 100 + 251)));
+        assert_eq!(pacer.next_check(), None, "a report ends this wait");
+    }
+
+    #[test]
+    fn a_wait_lasts_until_everything_arrived_and_measures_the_link() {
+        let t = Instant::now();
+        let mut pacer = Pacer::default();
+        pacer.written(t, 100);
+        pacer.reported(t + ms(100), 1);
+
+        // Two 50 kB packets, on a link that takes 1.3 s over them and 100 ms back.
+        pacer.written(t + ms(1000), 50_000);
+        pacer.written(t + ms(1001), 50_000);
+        assert!(pacer.hold(t + ms(1400)));
+        assert_eq!(pacer.reported(t + ms(1600), 1), None);
+        assert!(pacer.hold(t + ms(1700)), "half of it hasn't arrived");
+        let rate = pacer.reported(t + ms(2400), 1).expect("measured");
+        assert_eq!(rate, 100_000 * 8 * 1000 / 1300);
+        assert!(!pacer.hold(t + ms(2400)));
+        assert_eq!(pacer.round_trip(), ms(100), "still the shortest seen");
+    }
+
+    #[test]
+    fn a_slower_path_replaces_the_round_trip_it_remembers() {
+        let t = Instant::now();
+        let mut pacer = Pacer::default();
+        pacer.written(t, 100);
+        pacer.reported(t + ms(5), 1);
+        assert_eq!(pacer.round_trip(), ms(5));
+        // Wi-Fi went away: everything takes 300 ms now, through a relay.
+        let later = t + TRIP_MEMORY + ms(100);
+        pacer.written(later, 100);
+        pacer.reported(later + ms(300), 1);
+        assert_eq!(pacer.round_trip(), ms(300));
+    }
+
+    #[test]
+    fn a_queued_keyframe_replaces_what_is_ahead_of_it() {
+        let kinds = |kinds: &[PacketKind]| -> Vec<PacketKind> {
+            let mut batch: Vec<_> = kinds.iter().map(|k| (*k, 0, Vec::new())).collect();
+            skip_to_keyframe(&mut batch);
+            batch.into_iter().map(|p| p.0).collect()
+        };
+        use PacketKind::{Config, Frame, Keyframe};
+        assert_eq!(kinds(&[Frame, Frame]), [Frame, Frame], "nothing replaces these");
+        assert_eq!(kinds(&[Frame, Keyframe, Frame]), [Keyframe, Frame]);
+        assert_eq!(kinds(&[Keyframe, Frame, Keyframe]), [Keyframe], "the last one does");
+        assert_eq!(kinds(&[Frame, Config, Frame, Keyframe]), [Config, Keyframe], "format changes stay");
+    }
+
+    #[test]
+    fn reports_of_more_than_was_sent_are_ignored() {
+        let t = Instant::now();
+        let mut pacer = Pacer::default();
+        pacer.written(t, 100);
+        assert_eq!(pacer.reported(t + ms(10), 50), None);
+        assert_eq!((pacer.in_flight.len(), pacer.in_flight_bytes), (0, 0));
+        assert!(!pacer.hold(t + ms(5000)));
+    }
+
     #[tokio::test(flavor = "multi_thread")]
     async fn a_full_queue_drops_frames_until_a_keyframe() {
         let (queue, mut packets) = mpsc::channel(2);
@@ -726,6 +970,7 @@ mod tests {
             stop: Arc::default(),
             resyncing: Mutex::new(false),
             audio: false,
+            link_rate: Arc::default(),
         };
         let send = |kind| tokio::task::block_in_place(|| stream.send(kind, 0, vec![1]));
         assert_eq!(send(PacketKind::Keyframe), MirrorSend::Queued);
@@ -750,6 +995,7 @@ mod tests {
             stop: Arc::default(),
             resyncing: Mutex::new(false),
             audio: true,
+            link_rate: Arc::default(),
         };
         let send = |kind| tokio::task::block_in_place(|| stream.send(kind, 0, vec![1]));
         assert_eq!(send(PacketKind::Frame), MirrorSend::Queued);

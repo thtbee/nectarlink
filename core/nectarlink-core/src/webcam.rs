@@ -197,7 +197,7 @@ pub(crate) async fn open(shared: &Arc<Shared>, session: &Session) -> Result<Mirr
             ref_id: None,
         })
         .map(|id| (shared.clone(), id, std::time::Instant::now()));
-    Ok(MirrorStream::spawn_stream(send, recv, false, on_end))
+    Ok(MirrorStream::spawn_stream(send, recv, false, false, on_end))
 }
 
 impl Shared {

@@ -292,6 +292,7 @@ has a Stop button. Choosing another
 
 ### Fixed
 
+- **The Screen tab lagged further and further behind on a slow connection, such as over a relay.** The PC sent more video than the link could carry and it queued on the way, so what you did showed up seconds later, and eventually the stream stopped. The phone now reports what has arrived, and the PC holds video back and lowers the bitrate to what the link carries. In a test at 700 kbit/s, frames that reached 16 seconds old now stay around half a second old. Mirroring your phone to the PC gets the same limit on delay. Both devices need this version.
 - **A file resumed over a shaky connection could fail its integrity check.** When a connection dropped and came straight back, the old and new attempts could both write to the same partial file. They now take turns, and a resumed file is checked as it is on disk before it's saved.
 - **Phone as webcam on phones whose encoder has no low latency mode.** The camera opened and closed again, because the encoder refused to start. NectarLink now starts it without that mode. Thanks to [@i5alidx](https://github.com/i5alidx) for finding the cause ([#202](https://github.com/thtbee/nectarlink/issues/202)).
 - **The Connection Doctor could say NectarLink isn't allowed through Windows Firewall** when it was. It couldn't read any firewall rule, so it never saw the one allowing NectarLink, and its **Allow** button seemed to fail too. Thanks to [@Codlight](https://github.com/Codlight) for sticking with this ([#160](https://github.com/thtbee/nectarlink/discussions/160)).
