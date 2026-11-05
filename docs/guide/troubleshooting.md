@@ -95,6 +95,7 @@ If plugging your phone into your PC with a USB cable does not trigger USB auto-p
 ### Mirroring Is View-Only (Mouse Clicks Do Nothing)
 
 - At the `Standard` power level, Android does not allow apps to inject touch or key events into other apps. To control your phone with your PC mouse and keyboard during mirroring, enable either **`Assist`** (**Settings › Permissions › Control from your PC › Use your PC's mouse and keyboard**) or **`Elevated`** (**Real touch and keys (Wireless debugging)**) on your phone.
+- **On Xiaomi, Redmi and POCO phones with `Elevated`:** if the picture works but clicks and typing do nothing, and no banner asks you to turn on control, open **Developer options** and turn on **USB debugging (Security settings)**. The phone blocks simulated input without it.
 
 ### Mirror Window Shows a Black Screen
 

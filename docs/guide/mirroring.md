@@ -37,6 +37,8 @@ Once `Assist` or `Elevated` is enabled on your phone:
 - **Clipboard and file drop inside the mirror**: Pressing `Ctrl+C` or `Ctrl+V` while the `mirror` window is focused syncs your clipboard, and dragging files from Windows File Explorer onto the `mirror` window sends them straight to `Download/Nectarlink` on your phone.
 - **Stylus / Pen**: Windows Ink pen pressure, tilt, and barrel buttons are forwarded to the phone screen at `Elevated`.
 
+On Xiaomi, Redmi and POCO phones, `Elevated` control also needs **USB debugging (Security settings)** turned on in **Developer options**.
+
 ### Mirror Toolbar and Keyboard Shortcuts
 
 The `mirror` window header includes quick controls and keyboard shortcuts:

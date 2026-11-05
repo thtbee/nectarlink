@@ -180,6 +180,8 @@ You can set up `Elevated` directly on your phone in about two minutes on Android
 6. Do not close that dialog. Pull down the notification shade at the top of your screen, find NectarLink's **Pair NectarLink with Wireless debugging** notification, tap **Enter code**, type the 6-digit code, and send it.
 7. NectarLink pairs with Wireless Debugging and starts the `Elevated` helper immediately. After this one-time pairing, NectarLink automatically restarts `Elevated` in the background whenever you reconnect to Wi-Fi or reboot your phone.
 
+**On Xiaomi, Redmi and POCO phones**, also turn on **USB debugging (Security settings)** in **Developer options**. Without it, the phone ignores taps and typing from your PC, even though mirroring works.
+
 ### Alternative: Automatic `Elevated` via USB Cable
 
 This needs `adb` running on the PC, as in [Method 3](#method-3-plug-in-a-usb-cable-auto-pair).
