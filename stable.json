@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "channel": "stable",
+  "version": "0.1.5",
+  "name": "Pollen",
+  "published": "2026-11-05T17:47:11Z",
+  "notes": "https://github.com/thtbee/nectarlink/releases/tag/v0.1.5",
+  "files": [
+    {
+      "name": "Nectarlink-0.1.5-android.apk",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-android.apk",
+      "sha256": "df48e7fe059569fcfd2a38799b828fa4005af2e53b7c1c76fa81d077922df4b6",
+      "size": 52681958
+    },
+    {
+      "name": "Nectarlink-0.1.5-arm64-setup.exe",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-arm64-setup.exe",
+      "sha256": "1418c0e63355ef527e4135ecca7b220664e1e679916f313b366786afd3f23452",
+      "size": 38393242
+    },
+    {
+      "name": "Nectarlink-0.1.5-linux-x86_64.tar.gz",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-linux-x86_64.tar.gz",
+      "sha256": "2df6432710de457f7dfad293f2e45c4698b19b0952e9af5cd426625e12ddc8a1",
+      "size": 69538605
+    },
+    {
+      "name": "Nectarlink-0.1.5-x64-setup.exe",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-x64-setup.exe",
+      "sha256": "9db9066b7024283a22db0ea026cd52584a0646a888239c559c0417eac6f32ac4",
+      "size": 41818014
+    },
+    {
+      "name": "Nectarlink-0.1.5-x86_64.AppImage",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-x86_64.AppImage",
+      "sha256": "2ee3227edd5490363790c0149695ab6e9ce771ee41b58f1cea0d6d8a2a3e8658",
+      "size": 62839288
+    },
+    {
+      "name": "install.sh",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5/install.sh",
+      "sha256": "b7cdc18c1789d75e26c8d972985da2fd78bd7117eebf0d384d096760c4203821",
+      "size": 23634
+    },
+    {
+      "name": "nectarlink-0.1.5-1.x86_64.rpm",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5/nectarlink-0.1.5-1.x86_64.rpm",
+      "sha256": "b8a82ebca67128595f34c776f85cb52ada99028651795bd4d023cbd68a7e7a65",
+      "size": 68926287
+    },
+    {
+      "name": "nectarlink_0.1.5_amd64.deb",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.5/nectarlink_0.1.5_amd64.deb",
+      "sha256": "c516907e76e61fa5ad18048e93836a289974a46e7f2a8ff6fade79234ea9be6d",
+      "size": 50626074
+    }
+  ]
+}
