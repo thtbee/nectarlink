@@ -292,6 +292,7 @@ has a Stop button. Choosing another
 
 ### Fixed
 
+- **A file resumed over a shaky connection could fail its integrity check.** When a connection dropped and came straight back, the old and new attempts could both write to the same partial file. They now take turns, and a resumed file is checked as it is on disk before it's saved.
 - **Phone as webcam on phones whose encoder has no low latency mode.** The camera opened and closed again, because the encoder refused to start. NectarLink now starts it without that mode. Thanks to [@i5alidx](https://github.com/i5alidx) for finding the cause ([#202](https://github.com/thtbee/nectarlink/issues/202)).
 - **The Connection Doctor could say NectarLink isn't allowed through Windows Firewall** when it was. It couldn't read any firewall rule, so it never saw the one allowing NectarLink, and its **Allow** button seemed to fail too. Thanks to [@Codlight](https://github.com/Codlight) for sticking with this ([#160](https://github.com/thtbee/nectarlink/discussions/160)).
 - **Clips waiting to send are protected.** Text, images and links waiting for a device to come online were readable in the app's database, and stayed after you cleared your history. They're now encrypted like clipboard history (on Windows and Android), removed when they expire, and removed when you clear clipboard history or everything.
