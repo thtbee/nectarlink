@@ -80,7 +80,7 @@ for the details.
 1. Install NectarLink on your PC and on your phone.
 2. On the PC, the setup walkthrough shows a QR code. Scan it with the phone
    (from the NectarLink app or any camera app), or pick the PC from the phone's
-   list of nearby devices and compare a 6-digit code. A USB cable works too.
+   list of nearby devices and compare a 6-digit code. A USB cable works too, with Android's `adb` running on the PC.
 3. Allow what you want to share. Every feature has its own switch per device,
    and the sensitive ones are off until you turn them on.
 4. Optional: set up **Wireless debugging** once in the phone app for the

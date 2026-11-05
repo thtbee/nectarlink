@@ -59,7 +59,8 @@ picks the right one. Installed copies update themselves.
   ([#67](https://github.com/thtbee/nectarlink/pull/67)).
 - **Elevated over USB.** Plug the phone into the PC with USB debugging
   allowed and Elevated starts by itself, without setting up Wireless
-  debugging. It runs while the cable is in. The PC only starts NectarLink's
+  debugging. It runs while the cable is in, and needs Android's `adb` running on the PC
+  (Google's platform-tools, then `adb start-server`). The PC only starts NectarLink's
   own helper, on the phone that asked
   ([#70](https://github.com/thtbee/nectarlink/issues/70)).
 - **Mirroring wakes the phone's screen.** With Elevated, starting mirroring

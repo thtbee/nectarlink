@@ -125,7 +125,7 @@ NectarLink supports three ways to `pair` your phone and PC. All three methods es
 
 ### Method 3: Plug in a USB Cable (Auto-Pair)
 
-If you have USB debugging (`adb`) enabled on your phone, NectarLink detects the phone as soon as you plug it into your PC with a USB cable.
+If you have USB debugging (`adb`) enabled on your phone, NectarLink detects the phone as soon as you plug it into your PC with a USB cable. USB needs Android's `adb` on the PC with its server running: install Google's platform-tools and run `adb start-server` after each restart (Android Studio and scrcpy also start it). NectarLink doesn't start it itself.
 
 <p align="center">
   <img src="images/usb-autopair.png" alt="USB auto-pair confirmation with 6-digit verification code on PC" width="760">
@@ -181,5 +181,7 @@ You can set up `Elevated` directly on your phone in about two minutes on Android
 7. NectarLink pairs with Wireless Debugging and starts the `Elevated` helper immediately. After this one-time pairing, NectarLink automatically restarts `Elevated` in the background whenever you reconnect to Wi-Fi or reboot your phone.
 
 ### Alternative: Automatic `Elevated` via USB Cable
+
+This needs `adb` running on the PC, as in [Method 3](#method-3-plug-in-a-usb-cable-auto-pair).
 
 If you connect your phone to your PC with a USB cable and have **USB debugging** enabled in Developer options, NectarLink on your PC can start the `Elevated` helper on your phone over `adb` automatically without needing the Wi-Fi pairing code step.
