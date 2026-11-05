@@ -11,7 +11,7 @@ NectarLink streams your phone's screen to your PC in a dedicated window at up to
 | Feature | Requirements |
 | :--- | :--- |
 | **View phone screen and audio on PC (`mirror`)** | `Standard` power level. **Screen mirroring** toggle enabled in PC **Settings › Devices** (on by default). At `Standard` or `Assist`, Android displays a system **Start recording or casting** prompt on your phone each time mirroring starts. With `Elevated`, NectarLink grants `PROJECT_MEDIA` automatically so mirroring starts without a phone prompt. |
-| **Tap, swipe, scroll, and type from PC** | `Assist` (Android Accessibility Service enabled in **Settings › Permissions › Control from your PC**) or `Elevated` (Wireless Debugging). `Elevated` adds real-time touch dragging, UHID physical keyboard layouts, XInput gamepad passthrough, and stylus pressure/tilt. |
+| **Tap, swipe, scroll, and type from PC** | `Assist` (Android Accessibility Service enabled in **Settings › Permissions › Control from your PC**) or `Elevated` (Wireless Debugging). `Elevated` adds real-time touch dragging, XInput gamepad passthrough, and stylus pressure/tilt. |
 | **Turn off physical phone screen while mirroring** | `Elevated` power level. |
 | **Phone apps in individual PC windows (`app window`)** | `Elevated` power level on Android 11 or newer. |
 | **Reverse mirroring (PC screen on phone)** | Per-device **Share PC screen to phone** (`pc_mirror`) toggle in PC **Settings › Devices** (off by default), or one-time approval on the PC's consent dialog when requested from the phone. Controlling the PC from the reverse-mirror view also requires **Remote mouse, keyboard & Deck** (`remote_input`, off by default). |
@@ -33,7 +33,7 @@ Once `Assist` or `Elevated` is enabled on your phone:
 - **Mouse wheel / two-finger trackpad scroll**: Scrolls vertically or horizontally under the cursor.
 - **Right-click**: Triggers Android **Back**.
 - **Middle-click**: Triggers Android **Home**.
-- **Keyboard typing and shortcuts**: Type directly into any focused Android field. At `Elevated` (when `/dev/uhid` is permitted by your phone's kernel/SELinux policy), NectarLink registers a virtual physical HID keyboard and gamepad so non-US keyboard layouts, key combinations, and connected Xbox/XInput controllers work natively inside Android apps and games.
+- **Keyboard typing and shortcuts**: Type directly into any focused Android field. At `Elevated` (when `/dev/uhid` is permitted by your phone's kernel/SELinux policy), NectarLink registers a virtual gamepad so connected Xbox/XInput controllers work natively inside Android apps and games.
 - **Clipboard and file drop inside the mirror**: Pressing `Ctrl+C` or `Ctrl+V` while the `mirror` window is focused syncs your clipboard, and dragging files from Windows File Explorer onto the `mirror` window sends them straight to `Download/Nectarlink` on your phone.
 - **Stylus / Pen**: Windows Ink pen pressure, tilt, and barrel buttons are forwarded to the phone screen at `Elevated`.
 
@@ -106,4 +106,4 @@ You can also view (and optionally control) your PC's desktop from your phone:
 
 - **`FLAG_SECURE` Protected Content**: Android apps that set the `FLAG_SECURE` window flag (such as banking apps, password managers, and DRM-protected video streaming apps like Netflix) render black inside `Standard` and `Assist` `MediaProjection` streams by Android OS design.
 - **Audio Capture Rules and `REMOTE_SUBMIX`**: Standard Android 10+ `AudioPlaybackCapture` captures apps that allow playback capture (`USAGE_MEDIA`, `USAGE_GAME`). Apps that opt out of playback capture in their manifest cannot be captured at `Standard` or `Assist`. At `Elevated`, NectarLink attempts internal audio capture via `REMOTE_SUBMIX` (`UID 2000`), which works on AOSP/Pixel builds but may be blocked by custom SELinux policies on some OEM ROMs (falling back automatically to standard playback capture).
-- **UHID Kernel/SELinux Access**: Virtual physical keyboard (`--uhid-key`) and gamepad (`--uhid-gamepad`) injection at `Elevated` open `/dev/uhid` as `shell` (`UID 2000`). On OEM ROMs whose SELinux policy denies `shell` access to `/dev/uhid`, NectarLink falls back automatically to standard Android `InputManager` key and motion injection.
+- **UHID Kernel/SELinux Access**: The virtual gamepad at `Elevated` opens `/dev/uhid` as `shell` (`UID 2000`). On OEM ROMs whose SELinux policy denies `shell` access to `/dev/uhid`, NectarLink falls back automatically to standard Android `InputManager` key and motion injection.

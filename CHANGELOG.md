@@ -4,6 +4,16 @@ All notable changes to NectarLink. Versions follow
 [semantic versioning](https://semver.org); before 1.0, a minor version may
 change things that need a step from you, and its notes say so.
 
+## 0.1.6 (unreleased)
+
+### Fixed
+
+- **Pressing Enter or Backspace from the PC threw some apps back to their first
+  screen,** Snapchat's camera for one. With Elevated these keys went through a
+  virtual USB keyboard, and adding one can make Android restart an app. They're
+  now sent like any other typed key, and the phone's own keyboard is no longer
+  hidden after you press one.
+
 ## 0.1.5 (2026-11-05)
 
 The PC app on Linux and on Windows on ARM, Phone as microphone, Play on
