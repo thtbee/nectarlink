@@ -358,11 +358,6 @@ has a Stop button. Choosing another
   phone also answers LocalSend, so it was listed under LocalSend nearby as
   well, with a second Send files. Paired devices are left out of that list,
   on the PC and on the phone.
-- **WhatsApp and other apps' calls can be answered from the PC.** With
-  Elevated, Answer, Decline and the in-call controls now work on calls in
-  apps that use Android's calling (WhatsApp, Telegram...), and the PC shows
-  who's calling instead of "Unknown caller". Before, Android ignored the
-  answer and the call rang until it was missed.
 - **App windows stayed empty when the phone's screen was off.** Android
   started their display asleep too, so the app never drew. Opening one now
   wakes the phone's screen first, as mirroring does
