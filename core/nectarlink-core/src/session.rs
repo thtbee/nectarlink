@@ -756,6 +756,7 @@ async fn heartbeat(session: &Arc<Session>, shared: &Weak<Shared>) {
             return;
         }
         let sent_at = Instant::now();
+        let received = received_bytes(session);
         let ts = sent_at.duration_since(started).as_millis() as u64;
         let Ok(ping) = Envelope::new(types::PING, &Ping { ts }) else { continue };
         match session.request(ping, HEARTBEAT_TIMEOUT).await {
@@ -770,6 +771,9 @@ async fn heartbeat(session: &Arc<Session>, shared: &Weak<Shared>) {
             }
             Ok(_) => {}
             Err(_) if session.rx_since(sent_at) => {}
+            // No answer, but the peer's packets are arriving: a slow link is full
+            // of what's being sent, and the answer is queued behind it.
+            Err(_) if received_bytes(session) > received => {}
             Err(e) => {
                 // Retry once; if still unreachable and no frames arrived, close.
                 let retry_ts = started.elapsed().as_millis() as u64;
@@ -779,7 +783,7 @@ async fn heartbeat(session: &Arc<Session>, shared: &Weak<Shared>) {
                 } else {
                     session.rx_since(sent_at)
                 };
-                if !alive {
+                if !alive && received_bytes(session) <= received {
                     tracing::info!(peer = %session.peer.short(), error = %e, "heartbeat timed out; closing dead session");
                     session.close(CLOSE_NORMAL, b"heartbeat timeout");
                     return;
@@ -787,6 +791,12 @@ async fn heartbeat(session: &Arc<Session>, shared: &Weak<Shared>) {
             }
         }
     }
+}
+
+/// All that has arrived on this connection, acknowledgements included:
+/// nothing does from a peer that's gone.
+fn received_bytes(session: &Session) -> u64 {
+    session.conn.stats().udp_rx.bytes
 }
 
 #[cfg(test)]
