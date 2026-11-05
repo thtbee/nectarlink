@@ -80,6 +80,32 @@ Window {
         }
     }
 
+    // QSG_RENDER_LOOP=basic advances QML's animation clock only while a window
+    // renders; with the main window closed (App.qml) the Island is alone, so
+    // its clock freezes. A wall-clock timer repaints each frame to re-advance
+    // it, but only while something is really moving: the looping equalizer or
+    // scrolling title, or a transition. A still pill is left alone.
+    readonly property bool animating:
+        (mode === "media" && mediaPlaying && !expanded && !Theme.reduceMotion)
+        || compactTitleClip.shouldMarquee
+        || transitionSettle.running
+
+    // Holds `animating` true through the drop-in and expand/collapse Behaviors,
+    // which would otherwise snap while the clock is frozen.
+    Timer {
+        id: transitionSettle
+        interval: 320
+        repeat: false
+    }
+    onExpandedChanged: if (!Theme.reduceMotion) transitionSettle.restart()
+
+    Timer {
+        running: islandWin.visible && islandWin.animating
+        interval: 16
+        repeat: true
+        onTriggered: islandWin.update()
+    }
+
     Timer {
         id: transferDoneTimer
         interval: 3200
@@ -209,8 +235,10 @@ Window {
     onVisibleChanged: {
         if (visible) {
             Qt.callLater(() => AppController.styleShelfWindow())
-            if (!Theme.reduceMotion)
+            if (!Theme.reduceMotion) {
                 dropInAnim.restart()
+                transitionSettle.restart()
+            }
         }
     }
 
