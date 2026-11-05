@@ -843,6 +843,7 @@ pub(crate) async fn deliver_queued_files(
     let mut reporter = Reporter::with_queue(shared.clone(), transfer, &file_sizes);
     let shutdown = shared.cancel.clone();
     let mut attempts = item.attempts;
+    let mut furthest = 0;
     const RETRY_BACKOFF_MS: [i64; 5] = [1_000, 2_000, 4_000, 8_000, 15_000];
 
     let mut store_errors = 0u32;
@@ -943,6 +944,12 @@ pub(crate) async fn deliver_queued_files(
                     shared.mark_transfer_idle(&item.id);
                     return;
                 } else {
+                    // Only attempts that get nowhere count: on a poor link a big file
+                    // can take many, each getting further.
+                    if reporter.transfer.done > furthest {
+                        furthest = reporter.transfer.done;
+                        attempts = 0;
+                    }
                     attempts += 1;
                     if attempts >= 5 {
                         break TransferState::Failed(TransferFailure::Other(
@@ -1360,6 +1367,21 @@ async fn attempt(
     }
     if send.finish().is_err() {
         return Attempt::Retry;
+    }
+    // Written isn't sent: QUIC holds megabytes, which take minutes on a slow link.
+    // The receiver's answer can only be due once it has them. A connection
+    // that dies ends this wait, as does the receiver stopping the stream.
+    tokio::select! {
+        _ = cancel.cancelled() => {
+            let _ = send.reset(VarInt::from_u32(files::CANCELLED));
+            return Attempt::Cancelled;
+        }
+        _ = wait_paused(pause_rx) => {
+            let _ = send.reset(VarInt::from_u32(files::PAUSED));
+            let _ = recv.stop(VarInt::from_u32(files::PAUSED));
+            return Attempt::Paused;
+        }
+        _ = send.stopped() => {}
     }
     match read_reply(&mut recv, cancel, pause_rx).await {
         Reply::Envelope(env) if env.t == files::DONE => Attempt::Done,
