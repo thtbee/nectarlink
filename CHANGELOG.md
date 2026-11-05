@@ -292,6 +292,7 @@ has a Stop button. Choosing another
 
 ### Fixed
 
+- **A nightly install stays on Nightly after taking a release.** One that never had its channel picked would quietly move to Stable. The channel is now remembered from the first run.
 - **The Screen tab kept streaming the PC's screen after you left the app.** It carried on using data and the PC's CPU with the phone on something else or locked. It now stops when you leave and picks up when you come back.
 - **Files on a slow connection, such as over a relay, kept dropping the connection and could fail with "Transfer failed after 5 attempts".** The sender only waited 30 seconds for the other device to confirm a file, however much of it was still on its way, and NectarLink's regular check on the connection closed connections that were working but full. Both now wait while data is still moving, and a transfer that's making progress no longer runs out of attempts.
 - **The Screen tab lagged further and further behind on a slow connection, such as over a relay.** The PC sent more video than the link could carry and it queued on the way, so what you did showed up seconds later, and eventually the stream stopped. The phone now reports what has arrived, and the PC holds video back and lowers the bitrate to what the link carries. In a test at 700 kbit/s, frames that reached 16 seconds old now stay around half a second old. Mirroring your phone to the PC gets the same limit on delay. Both devices need this version.

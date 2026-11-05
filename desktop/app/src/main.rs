@@ -630,9 +630,18 @@ fn main() -> ExitCode {
         startup::start(settings.start_with_windows);
         updater::set_auto(settings.auto_update);
         updater::set_auto_install(settings.install_updates);
-        if let Some(channel) = version::Channel::parse(&settings.update_channel) {
-            updater::set_channel(channel);
-        }
+        // Kept from the first run: going by the version alone, a nightly install
+        // would leave Nightly as soon as it took a release.
+        let channel = version::Channel::parse(&settings.update_channel).unwrap_or_else(|| {
+            let own = updater::channel();
+            let mut saved = settings::Settings::load(&data_dir);
+            saved.update_channel = own.as_str().into();
+            if let Err(e) = saved.save(&data_dir) {
+                tracing::warn!(error = %e, "can't save settings");
+            }
+            own
+        });
+        updater::set_channel(channel);
         updater::start();
         match (updater::note_running_version(&data_dir), options.updated) {
             (Some(previous), _) => {

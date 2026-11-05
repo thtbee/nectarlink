@@ -119,8 +119,8 @@ pub fn available() -> Option<Update> {
     found().clone()
 }
 
-/// The channel this install follows: as picked in Settings, or the one its
-/// build came from (a nightly install follows Nightly until told otherwise).
+/// The channel this install follows: from Settings, where it's kept from the
+/// first run, or until then the one its build came from.
 pub fn channel() -> Channel {
     CHANNEL
         .lock()
