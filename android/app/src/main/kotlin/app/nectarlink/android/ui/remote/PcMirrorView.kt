@@ -96,7 +96,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.currentStateAsState
 import app.nectarlink.android.R
 import app.nectarlink.android.core.Core
 import app.nectarlink.android.ui.theme.LocalReducedMotion
@@ -525,8 +528,23 @@ fun PcMirrorView(
     val maxSize = if (highQuality) 1920 else 1280
     val bitrate = if (highQuality) 8_000_000 else 4_000_000
 
-    LaunchedEffect(pcId, maxSize, bitrate) {
+    // Nobody's watching once the phone is on something else or its screen is off, and video
+    // costs the PC its CPU and the phone its data. Play on phone keeps going: its sound does.
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    val showing = watch != null || lifecycleState.isAtLeast(Lifecycle.State.STARTED)
+    var asked by remember(pcId) { mutableStateOf(false) }
+
+    LaunchedEffect(pcId, maxSize, bitrate, showing) {
         hasRenderedFrame = false
+        if (!showing) {
+            if (asked) {
+                android.util.Log.i("PcMirrorView", "stopPcMirror, not on screen")
+                core.stopPcMirror(pcId)
+                asked = false
+            }
+            return@LaunchedEffect
+        }
+        asked = true
         android.util.Log.i(
             "PcMirrorView",
             "startPcMirror maxSize=$maxSize fps=30 bitrate=$bitrate",
