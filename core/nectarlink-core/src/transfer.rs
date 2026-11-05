@@ -1589,6 +1589,26 @@ fn hash_file_prefix(path: &Path, mut left: u64) -> std::io::Result<blake3::Hashe
     Ok(hasher)
 }
 
+/// Holds an incoming transfer's turn on its part files (`Shared::incoming_turn`).
+pub(crate) struct IncomingTurn {
+    pub(crate) shared: Arc<Shared>,
+    pub(crate) id: String,
+    /// Fires when a newer attempt at this transfer arrives.
+    pub(crate) stop: CancellationToken,
+    pub(crate) held: Option<tokio::sync::OwnedMutexGuard<()>>,
+}
+
+impl Drop for IncomingTurn {
+    fn drop(&mut self) {
+        let mut turns = self.shared.incoming_turns.lock().unwrap_or_else(|e| e.into_inner());
+        self.held = None;
+        // Nobody else holds or waits for it: the entry can go.
+        if turns.get(&self.id).is_some_and(|(lock, _)| Arc::strong_count(lock) == 1) {
+            turns.remove(&self.id);
+        }
+    }
+}
+
 async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut recv: RecvStream) {
     let offer = match tokio::time::timeout(REPLY_TIMEOUT, read_frame(&mut recv)).await {
         Ok(Ok(Some(bytes))) => {
@@ -1615,6 +1635,8 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
         return refuse(&mut send, ErrorCode::Internal, "can't store files").await;
     }
     let part = |i: usize| dir.join(format!("{i}.part"));
+    // Before looking at what's on disk: the attempt before this one may still be writing.
+    let turn = shared.incoming_turn(&offer.id).await;
     let mut have = Vec::with_capacity(offer.files.len());
     for (i, file) in offer.files.iter().enumerate() {
         let p = part(i);
@@ -1682,6 +1704,7 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
         &mut recv,
         &cancel,
         &mut pause_rx,
+        &turn.stop,
     )
     .await
     {
@@ -1803,6 +1826,7 @@ async fn receive_bytes(
     recv: &mut RecvStream,
     cancel: &CancellationToken,
     pause_rx: &mut tokio::sync::watch::Receiver<bool>,
+    superseded: &CancellationToken,
 ) -> std::result::Result<(), TransferState> {
     let mut done: u64 = have.iter().sum();
     for (i, (file, have)) in offer.files.iter().zip(have).enumerate() {
@@ -1851,6 +1875,13 @@ async fn receive_bytes(
                     let _ = send.reset(VarInt::from_u32(files::CANCELLED));
                     return Err(TransferState::Cancelled);
                 }
+                // A newer attempt at this transfer is waiting for the part file.
+                _ = superseded.cancelled() => {
+                    if write_out(&mut out, &mut pending, recv).await.is_ok() {
+                        reporter.progress(done);
+                    }
+                    return Err(TransferState::Waiting);
+                }
                 _ = wait_paused(pause_rx) => {
                     if write_out(&mut out, &mut pending, recv).await.is_ok() {
                         reporter.progress(done);
@@ -1897,6 +1928,22 @@ async fn receive_bytes(
             if !actual.as_str().eq_ignore_ascii_case(expected) {
                 refuse(send, ErrorCode::BadMessage, "blake3 integrity check failed").await;
                 return Err(TransferState::Failed(TransferFailure::Integrity));
+            }
+            // A resumed file was hashed partly from disk and partly as it
+            // arrived: check what's actually there before it's saved.
+            if *have > 0 {
+                let (p, size, want) = (part_path.clone(), file.size, expected.to_owned());
+                let on_disk = tokio::task::spawn_blocking(move || {
+                    hash_file_prefix(&p, size).map(|h| h.finalize().to_hex().to_string())
+                })
+                .await
+                .ok()
+                .and_then(std::result::Result::ok)
+                .is_some_and(|actual| actual.eq_ignore_ascii_case(&want));
+                if !on_disk {
+                    refuse(send, ErrorCode::BadMessage, "blake3 integrity check failed").await;
+                    return Err(TransferState::Failed(TransferFailure::Integrity));
+                }
             }
         }
     }

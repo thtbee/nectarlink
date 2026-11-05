@@ -166,6 +166,10 @@ pub(crate) struct Shared {
     /// The running mDNS's task and whether it asks often (`install_mdns`);
     /// `None` without LAN discovery.
     lan_discovery: Mutex<Option<(CancellationToken, bool)>>,
+    /// Per incoming transfer: whose turn it is on its part files, and how to
+    /// tell the one running to stop.
+    #[allow(clippy::type_complexity)]
+    pub(crate) incoming_turns: Mutex<HashMap<String, (Arc<tokio::sync::Mutex<()>>, CancellationToken)>>,
     /// Consecutive direct/QUIC dial failures per peer since last connected.
     dial_failures: Mutex<HashMap<DeviceId, u32>>,
     /// The last capability matrix emitted per device, to emit only changes.
@@ -357,6 +361,24 @@ impl Shared {
                 early_resume: None,
             },
         );
+    }
+
+    /// Waits for this incoming transfer's turn: one that's still running (its
+    /// connection just dropped, and it may still be writing) is told to stop,
+    /// and this returns once it has. Two receivers on one part file would
+    /// scramble it. The turn lasts as long as the returned guard.
+    pub(crate) async fn incoming_turn(self: &Arc<Self>, id: &str) -> transfer::IncomingTurn {
+        let (lock, stop) = {
+            let mut turns = lock(&self.incoming_turns);
+            let entry = turns
+                .entry(id.to_owned())
+                .or_insert_with(|| (Arc::new(tokio::sync::Mutex::new(())), CancellationToken::new()));
+            entry.1.cancel();
+            entry.1 = CancellationToken::new();
+            (entry.0.clone(), entry.1.clone())
+        };
+        let held = lock.lock_owned().await;
+        transfer::IncomingTurn { shared: self.clone(), id: id.to_owned(), stop, held: Some(held) }
     }
 
     pub(crate) fn register_transfer_control(
@@ -1660,6 +1682,7 @@ impl Node {
             paired_localsend: Mutex::new(HashMap::new()),
             update_hints: Mutex::new(HashMap::new()),
             lan_discovery: Mutex::new(None),
+            incoming_turns: Mutex::new(HashMap::new()),
             dial_failures: Mutex::new(HashMap::new()),
             matrices: Mutex::new(HashMap::new()),
             away_mode: std::sync::atomic::AtomicBool::new(config.away_mode),
@@ -4624,6 +4647,36 @@ mod away_tests {
             }
         }
         assert!(connected, "turning it on while running reaches a relay");
+        node.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn a_new_attempt_at_a_transfer_waits_for_the_old_one_to_stop() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let node = node(&dir, false).await;
+        let shared = node.shared.clone();
+
+        let first = shared.incoming_turn("t1").await;
+        assert!(!first.stop.is_cancelled());
+        let waiting = {
+            let shared = shared.clone();
+            tokio::spawn(async move { shared.incoming_turn("t1").await })
+        };
+
+        // The old attempt is told to stop, and the new one doesn't start until it has.
+        tokio::time::timeout(Duration::from_secs(5), first.stop.cancelled()).await.unwrap();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        assert!(!waiting.is_finished(), "two attempts on one part file");
+
+        // Another transfer isn't held up by it.
+        let other = tokio::time::timeout(Duration::from_secs(5), shared.incoming_turn("t2")).await.unwrap();
+        drop(other);
+
+        drop(first);
+        let second = tokio::time::timeout(Duration::from_secs(5), waiting).await.unwrap().unwrap();
+        assert!(!second.stop.is_cancelled());
+        drop(second);
+        assert!(lock(&shared.incoming_turns).is_empty(), "nothing left behind");
         node.shutdown().await;
     }
 
