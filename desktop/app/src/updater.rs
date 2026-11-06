@@ -777,7 +777,7 @@ pub fn stage(update: &Update, progress: impl FnMut(u64, u64)) -> Result<PathBuf,
 fn install_with_task(shown: bool) -> Result<(), String> {
     let update = available().ok_or("no update")?;
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-    spawn_relauncher(&exe, &update.version, shown)?;
+    spawn_relauncher(&exe, env!("CARGO_PKG_VERSION"), shown)?;
     let mut cmd = std::process::Command::new("schtasks.exe");
     cmd.args(["/Run", "/TN", TASK]).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
     #[cfg(windows)]
@@ -791,8 +791,10 @@ fn install_with_task(shown: bool) -> Result<(), String> {
     Ok(())
 }
 
-/// A hidden PowerShell that waits (up to ten minutes) until `version` is
-/// installed and the installer has finished, then opens the app again.
+/// A hidden PowerShell that waits (up to ten minutes) until something other
+/// than `version`, the one running now, is installed and the installer has
+/// finished, then opens the app again. Not a particular new version: the task
+/// installs the latest, which can be newer than the one this copy knew about.
 #[cfg(windows)]
 fn spawn_relauncher(exe: &Path, version: &str, shown: bool) -> Result<(), String> {
     // Both come from this program (its own path, and a version the release
@@ -853,7 +855,7 @@ fn relauncher_script(exe: &str, version: &str, arguments: &str) -> String {
          while ((Get-Date) -lt $deadline) {{\n\
            $installed = (Get-ItemProperty -Path $key -Name DisplayVersion -ErrorAction SilentlyContinue).DisplayVersion\n\
            $running = Get-Process -ErrorAction SilentlyContinue | Where-Object {{ $_.Name -like 'Nectarlink-*-setup' }}\n\
-           if ($installed -eq '{version}' -and -not $running) {{ break }}\n\
+           if ($installed -and $installed -ne '{version}' -and -not $running) {{ break }}\n\
            $logged = Get-Item -LiteralPath $log -ErrorAction SilentlyContinue\n\
            if ($logged -and $logged.LastWriteTime -gt $since -and -not $running) {{\n\
              $last = Get-Content -LiteralPath $log -Tail 1 -ErrorAction SilentlyContinue\n\
@@ -1396,13 +1398,14 @@ mod tests {
     }
 
     #[test]
-    fn the_relauncher_waits_for_the_version_then_opens_the_app() {
+    fn the_relauncher_waits_for_another_version_then_opens_the_app() {
         let script = relauncher_script(
             r"C:\Program Files\Nectarlink\nectarlink-desktop.exe",
             "0.2.0",
             "--minimized --updated",
         );
-        assert!(script.contains("$installed -eq '0.2.0'"));
+        // Any other version counts: the task installs the latest, not the one asked for.
+        assert!(script.contains("$installed -and $installed -ne '0.2.0'"));
         assert!(script.contains("Nectarlink-*-setup"));
         assert!(script.contains(
             r"Start-Process -FilePath 'C:\Program Files\Nectarlink\nectarlink-desktop.exe' -ArgumentList '--minimized --updated'"
