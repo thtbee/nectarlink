@@ -421,6 +421,13 @@ Window {
                 cursorShape: Qt.PointingHandCursor
             }
 
+            // Wayland ignores where we ask to put the window, so let it be dragged.
+            DragHandler {
+                target: null
+                enabled: Qt.platform.pluginName === "wayland"
+                onActiveChanged: if (active) islandWin.startSystemMove()
+            }
+
             TapHandler {
                 onTapped: (eventPoint) => {
                     if (compactMediaControls.visible) {

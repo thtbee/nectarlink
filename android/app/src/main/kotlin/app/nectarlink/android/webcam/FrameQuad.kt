@@ -11,7 +11,6 @@ internal class FrameQuad(
     private val srcHeight: Int,
     private val dstWidth: Int,
     private val dstHeight: Int,
-    private val fitCenter: Boolean = true,
 ) {
     val buffer: FloatBuffer = ByteBuffer.allocateDirect(16 * 4)
         .order(ByteOrder.nativeOrder()).asFloatBuffer()
@@ -32,17 +31,9 @@ internal class FrameQuad(
         val height = if (normalized % 180 != 0) uvWidth else uvHeight
         val aspect = (width / height.coerceAtLeast(1f)).coerceAtLeast(0.01f)
         val targetAspect = (dstWidth.toFloat() / dstHeight.coerceAtLeast(1)).coerceAtLeast(0.01f)
-        val scaleX = if (fitCenter) {
-            if (aspect > targetAspect) 1f else aspect / targetAspect
-        } else {
-            if (aspect > targetAspect) aspect / targetAspect else 1f
-        }
+        val scaleX = if (aspect > targetAspect) 1f else aspect / targetAspect
         val sx = scaleX * (if (mirror) -1f else 1f)
-        val sy = if (fitCenter) {
-            if (aspect > targetAspect) targetAspect / aspect else 1f
-        } else {
-            if (aspect > targetAspect) 1f else targetAspect / aspect
-        }
+        val sy = if (aspect > targetAspect) targetAspect / aspect else 1f
         val uvs = when (normalized) {
             90 -> UV_90
             180 -> UV_180

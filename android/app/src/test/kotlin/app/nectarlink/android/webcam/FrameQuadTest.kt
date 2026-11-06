@@ -52,17 +52,4 @@ class FrameQuadTest {
         assertArrayEquals(floatArrayOf(-1f, -0.5f, 0f, 0f, 1f, -0.5f, 1f, 0f,
             -1f, 0.5f, 0f, 1f, 1f, 0.5f, 1f, 1f), FloatArray(16).also { quad.buffer.duplicate().get(it) }, 0.00001f)
     }
-
-    @Test
-    fun `preview fills the viewport by cropping while encoder geometry still fits`() {
-        val wide = FrameQuad(3840, 1080, 1920, 1080, fitCenter = false)
-        wide.update(0, false, false)
-        assertArrayEquals(floatArrayOf(-2f, -1f, 0f, 0f, 2f, -1f, 1f, 0f,
-            -2f, 1f, 0f, 1f, 2f, 1f, 1f, 1f), FloatArray(16).also { wide.buffer.duplicate().get(it) }, 0.00001f)
-        val portrait = FrameQuad(1080, 1920, 1920, 1080, fitCenter = false)
-        portrait.update(0, false, false)
-        val actual = FloatArray(16).also { portrait.buffer.duplicate().get(it) }
-        assertArrayEquals(floatArrayOf(-1f, -256f / 81f, 0f, 0f, 1f, -256f / 81f, 1f, 0f,
-            -1f, 256f / 81f, 0f, 1f, 1f, 256f / 81f, 1f, 1f), actual, 0.00001f)
-    }
 }

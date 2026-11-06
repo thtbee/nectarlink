@@ -203,7 +203,7 @@ internal class GlSurfacePipe(
                 previewWindow = EGL14.eglCreateWindowSurface(eglDisplay, eglConfig, target.surface, intArrayOf(EGL14.EGL_NONE), 0)
                 if (previewWindow === EGL14.EGL_NO_SURFACE) return
                 previewWindowTarget = target
-                previewQuad = FrameQuad(srcWidth, srcHeight, target.width, target.height, fitCenter = false)
+                previewQuad = FrameQuad(srcWidth, srcHeight, target.width, target.height)
             }
             val localQuad = previewQuad ?: return
             localQuad.update(effectiveRot, stSwapsAxes, mirrorHorizontally && !stSwapsAxes)
