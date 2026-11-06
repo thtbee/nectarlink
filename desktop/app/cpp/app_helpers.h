@@ -16,6 +16,7 @@ std::unique_ptr<QGuiApplication> create_qt_app();
 void prepare_qt(rust::Str log_dir);
 void prepare_qt_without_log();
 void prepare_qt_for_ui_check();
+void set_ui_scale(int32_t percent);
 int32_t qml_problem_count();
 
 // Adds one size of the app icon (straight-alpha RGBA, size x size).

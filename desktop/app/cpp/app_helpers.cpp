@@ -160,6 +160,12 @@ void prepare_qt(rust::Str log_dir)
     prepare_qt_without_log();
 }
 
+void set_ui_scale(int32_t percent)
+{
+    if (percent > 100 && percent <= 200 && !qEnvironmentVariableIsSet("QT_SCALE_FACTOR"))
+        qputenv("QT_SCALE_FACTOR", QByteArray::number(percent / 100.0));
+}
+
 void prepare_qt_for_ui_check()
 {
     qInstallMessageHandler(uiCheckMessageHandler);
