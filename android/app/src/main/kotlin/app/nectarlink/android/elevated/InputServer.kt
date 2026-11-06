@@ -12,6 +12,7 @@ import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.security.MessageDigest
+import kotlin.concurrent.thread
 
 /**
  * Elevated input: runs as the shell user (started through the phone's own
@@ -48,6 +49,10 @@ internal const val COMPILE_APP_COMMAND = "cmd package compile -m speed-profile $
 object InputServer {
     private const val POWER_MODE_OFF = 0
     private const val POWER_MODE_NORMAL = 2
+    private const val STREAM_MUSIC = 3
+    private const val DEVICE_OUT_REMOTE_SUBMIX = 0x8000
+    private const val SUBMIX_POLL_MS = 500L
+    private const val SUBMIX_PRESS_MS = 40L
     // The installed package, so a build with an applicationIdSuffix (".dev")
     // grants itself and gets the attach broadcast, not the release app.
     private const val PKG = app.nectarlink.android.BuildConfig.APPLICATION_ID
@@ -308,7 +313,7 @@ object InputServer {
             if (!MessageDigest.isEqual(given.toByteArray(), token.toByteArray())) return
             val first = runCatching { reader.nextLine() }.getOrNull()
             if (first != null && first.startsWith("V ")) return appWindow(client, first, reader)
-            if (first == "A") return streamDeviceAudio(client.getOutputStream())
+            if (first == "A") return streamDeviceAudio(client.getOutputStream(), injector)
             val writer = java.io.OutputStreamWriter(client.getOutputStream(), Charsets.UTF_8)
             controlOut = writer
             try {
@@ -335,7 +340,7 @@ object InputServer {
      * socket closes.
      */
     @android.annotation.SuppressLint("MissingPermission", "PrivateApi", "DiscouragedPrivateApi")
-    private fun streamDeviceAudio(out: java.io.OutputStream) {
+    private fun streamDeviceAudio(out: java.io.OutputStream, injector: Injector) {
         val rate = 48_000
         val channelMask = android.media.AudioFormat.CHANNEL_IN_STEREO
         val encoding = android.media.AudioFormat.ENCODING_PCM_16BIT
@@ -391,6 +396,9 @@ object InputServer {
         val recorder = openRecorder() ?: return
         try {
             recorder.startRecording()
+            thread(isDaemon = true, name = "submix-volume") {
+                raiseSubmixVolume(injector) { recorder.recordingState == android.media.AudioRecord.RECORDSTATE_RECORDING }
+            }
             val buf = ByteArray(frameBytes)
             while (true) {
                 val n = recorder.read(buf, 0, buf.size)
@@ -404,6 +412,37 @@ object InputServer {
             runCatching { recorder.stop() }
             runCatching { recorder.release() }
         }
+    }
+
+    /**
+     * The remote submix has a volume of its own, separate from the speaker's
+     * and low by default, so the PC would barely hear anything. Raises it once,
+     * with the volume key (the volume calls are ignored from here on Android
+     * 17), and only while the sound really goes to the submix: anywhere else
+     * this would turn up the phone's speaker.
+     */
+    @android.annotation.SuppressLint("PrivateApi", "DiscouragedPrivateApi")
+    private fun raiseSubmixVolume(injector: Injector, recording: () -> Boolean) {
+        runCatching {
+            val binder = Class.forName("android.os.ServiceManager")
+                .getMethod("getService", String::class.java).invoke(null, "audio") as android.os.IBinder
+            val audio = Class.forName("android.media.IAudioService\$Stub")
+                .getMethod("asInterface", android.os.IBinder::class.java).invoke(null, binder)!!
+            fun read(method: String) =
+                audio.javaClass.getMethod(method, Int::class.javaPrimitiveType).invoke(audio, STREAM_MUSIC) as Int
+            // The sound moves to the submix once something plays, which may be later.
+            while (recording() && read("getDeviceMaskForStream") and DEVICE_OUT_REMOTE_SUBMIX == 0) {
+                Thread.sleep(SUBMIX_POLL_MS)
+            }
+            val max = read("getStreamMaxVolume")
+            var presses = 0
+            while (recording() && read("getDeviceMaskForStream") and DEVICE_OUT_REMOTE_SUBMIX != 0 &&
+                read("getStreamVolume") < max && presses++ <= max
+            ) {
+                injector.pressKey(KeyEvent.KEYCODE_VOLUME_UP)
+                Thread.sleep(SUBMIX_PRESS_MS)
+            }
+        }.onFailure { System.err.println("can't raise the submix volume: $it") }
     }
 
     /** Turns the physical screen panel on or off while keeping the display pipeline alive for capture. */
@@ -690,6 +729,8 @@ object InputServer {
             send(event)
             event.recycle()
         }
+
+        fun pressKey(code: Int) = key(code)
 
         private fun key(code: Int) {
             // Injected, not through a virtual keyboard: adding one changes the phone's
