@@ -445,22 +445,25 @@ object InputServer {
         }.onFailure { System.err.println("can't raise the submix volume: $it") }
     }
 
+    /** Brightness 0, remembering what it was, for a panel that can't be turned off. */
+    private fun dimScreen() {
+        if (savedBrightness == null) {
+            savedBrightness = runCatching {
+                val proc = Runtime.getRuntime().exec(arrayOf("settings", "get", "system", "screen_brightness"))
+                val out = proc.inputStream.bufferedReader().use { it.readText().trim().toIntOrNull() }
+                proc.waitFor()
+                out
+            }.getOrNull()
+        }
+        runCatching {
+            Runtime.getRuntime().exec(arrayOf("settings", "put", "system", "screen_brightness", "0")).waitFor()
+        }
+    }
+
     /** Turns the physical screen panel on or off while keeping the display pipeline alive for capture. */
     @android.annotation.SuppressLint("PrivateApi", "DiscouragedPrivateApi", "BlockedPrivateApi")
     private fun setDisplayPower(on: Boolean) {
-        if (!on) {
-            displayTurnedOff = true
-            if (savedBrightness == null) {
-                savedBrightness = runCatching {
-                    val proc = Runtime.getRuntime().exec(arrayOf("settings", "get", "system", "screen_brightness"))
-                    val out = proc.inputStream.bufferedReader().use { it.readText().trim().toIntOrNull() }
-                    proc.waitFor()
-                    out
-                }.getOrNull()
-            }
-        } else {
-            displayTurnedOff = false
-        }
+        displayTurnedOff = !on
         // Android 15 has a call for this; before it, SurfaceControl. Either
         // failing used to leave only the brightness at 0, a dim but lit panel (#122).
         val how = when {
@@ -473,10 +476,10 @@ object InputServer {
             else "can't turn the phone's screen ${if (on) "on" else "off"}",
         )
         if (!on) {
-            runCatching {
-                Runtime.getRuntime().exec(arrayOf("settings", "put", "system", "screen_brightness", "0")).waitFor()
-            }
-        } else if (on) {
+            // Only when the panel is still on: on Android 16 this write wakes
+            // a panel that just went off, leaving it dim but lit (#217).
+            if (how == null) dimScreen()
+        } else {
             val saved = savedBrightness
             if (saved != null) {
                 savedBrightness = null
