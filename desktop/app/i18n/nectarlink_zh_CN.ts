@@ -6838,7 +6838,7 @@ What it needs
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="556"/>
         <source>Delete</source>
-        <translation type="unfinished">删除</translation>
+        <translation>删除</translation>
     </message>
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="576"/>
