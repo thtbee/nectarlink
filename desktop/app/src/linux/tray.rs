@@ -28,6 +28,7 @@ pub enum TrayEvent {
     FindPhone,
     /// Open the link on the clipboard on the phone.
     OpenLinkOnPhone,
+    ToggleNotificationsPause,
     Quit,
     /// The PC woke from sleep.
     Resumed,
@@ -46,6 +47,8 @@ pub struct MenuLabels {
     pub scan_document: String,
     pub find_phone: String,
     pub open_link: String,
+    pub pause_notifications: String,
+    pub resume_notifications: String,
     pub quit: String,
 }
 
@@ -1388,6 +1391,7 @@ pub(crate) fn parse_tray_helper_action(line: &str) -> Option<TrayEvent> {
         "SCAN_DOCUMENT" => Some(TrayEvent::ScanDocument),
         "FIND_PHONE" => Some(TrayEvent::FindPhone),
         "OPEN_LINK" => Some(TrayEvent::OpenLinkOnPhone),
+        "PAUSE_NOTIFICATIONS" => Some(TrayEvent::ToggleNotificationsPause),
         "QUIT" => Some(TrayEvent::Quit),
         _ => None,
     }
@@ -1443,6 +1447,7 @@ impl Tray {
                 &labels.scan_document,
                 &labels.find_phone,
                 &labels.open_link,
+                &labels.pause_notifications,
                 &labels.quit,
             );
             let stop_clone = Arc::clone(&stop);
@@ -1500,6 +1505,13 @@ impl Tray {
         if !cfg!(test) {
             crate::bridge::native::ffi::linux_tray_set_tooltip(text);
         }
+    }
+
+    /// Says Pause or Resume in the menu, whichever comes next.
+    pub fn set_notifications_paused(&self, paused: bool) {
+        let labels = self.labels.lock().unwrap_or_else(|e| e.into_inner());
+        let label = if paused { &labels.resume_notifications } else { &labels.pause_notifications };
+        crate::bridge::native::ffi::linux_tray_set_pause_label(label);
     }
 
     /// Whether "Find my phone" is offered (a phone is paired).
@@ -1641,6 +1653,8 @@ mod tests {
             scan_document: "Scan document".into(),
             find_phone: "Find phone".into(),
             open_link: "Open link".into(),
+            pause_notifications: "Pause".into(),
+            resume_notifications: "Resume".into(),
             quit: "Quit".into(),
         };
         let tray = Tray::create("NectarLink", labels, |_| {}).expect("create tray");

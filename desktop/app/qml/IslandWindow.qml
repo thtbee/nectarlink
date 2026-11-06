@@ -70,7 +70,8 @@ Window {
         target: NotificationList
         function onCountChanged() {
             const cur = NotificationList.count
-            if (cur > islandWin.lastNotificationCount && Preferences.nectarIslandNotifications) {
+            if (cur > islandWin.lastNotificationCount && Preferences.nectarIslandNotifications
+                && !AppController.notificationsPaused) {
                 islandWin.notificationToastActive = true
                 notificationToastTimer.restart()
             } else if (cur === 0) {

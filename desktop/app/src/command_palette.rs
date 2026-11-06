@@ -196,6 +196,10 @@ pub fn execute(id: &str) -> Option<PaletteUiAction> {
         crate::continuity_camera::start("scan");
         return None;
     }
+    if id == "action:pause_notifications" {
+        crate::bridge::app::toggle_notifications_pause();
+        return None;
+    }
     if id == "action:open_link" {
         crate::links::open_copied_link_on_phone();
         return None;
@@ -632,6 +636,21 @@ fn build_candidates() -> Vec<PaletteCandidate> {
             "open copied link url browser web video youtube map address handoff phone".to_owned(),
         ),
     };
+    out.push(PaletteCandidate {
+        id: "action:pause_notifications".into(),
+        title: if crate::notifications::paused() {
+            tr!("CommandPalette", "Resume phone notifications")
+        } else {
+            tr!("CommandPalette", "Pause phone notifications")
+        },
+        subtitle: tr!("CommandPalette", "Stop pop-ups for a while. They still collect on Home."),
+        category: "Actions".into(),
+        icon: "bell".into(),
+        badge: String::new(),
+        shortcut: String::new(),
+        keywords: "pause resume mute quiet silence notifications pop-ups presenting screen sharing".into(),
+        base_boost: 60,
+    });
     out.push(PaletteCandidate {
         id: "action:open_link".into(),
         title: link_title,

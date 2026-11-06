@@ -12,6 +12,12 @@ change things that need a step from you, and its notes say so.
   that phone, and Settings › Devices has the same switch, so mirroring and app
   windows start with the screen off, barely lighting it up
   ([#217](https://github.com/thtbee/nectarlink/issues/217)).
+- **Pause phone notifications.** From the tray, Home or the command palette, for when
+  you're presenting or sharing your screen. They still collect on Home
+  ([#218](https://github.com/thtbee/nectarlink/issues/218)).
+- **Quiet while this PC is locked.** A setting under Notifications: no pop-ups while
+  it's locked, on Windows and Linux
+  ([#219](https://github.com/thtbee/nectarlink/issues/219)).
 - **App size.** Settings › Appearance makes the PC app bigger, up to 150%, after a
   restart ([#221](https://github.com/thtbee/nectarlink/issues/221)).
 

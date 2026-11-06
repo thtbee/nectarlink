@@ -30,6 +30,10 @@ static AUTO_COPY_OTP: AtomicBool = AtomicBool::new(false);
 
 /// Whether phone Do Not Disturb quiets phone notification pop-ups on the PC.
 static SYNC_DND: AtomicBool = AtomicBool::new(false);
+/// Pop-ups are paused for now, from the tray, Home or the command palette.
+static PAUSED: AtomicBool = AtomicBool::new(false);
+/// No pop-ups while this PC is locked.
+static QUIET_WHEN_LOCKED: AtomicBool = AtomicBool::new(false);
 
 /// Keys that have a toast, per device, so a snapshot can remove the toasts
 /// of notifications that went away meanwhile.
@@ -66,6 +70,24 @@ pub fn set_auto_copy_otp(on: bool) {
 
 pub fn auto_copy_otp_enabled() -> bool {
     AUTO_COPY_OTP.load(Ordering::Relaxed)
+}
+
+pub fn paused() -> bool {
+    PAUSED.load(Ordering::Relaxed)
+}
+
+pub fn set_paused(on: bool) {
+    PAUSED.store(on, Ordering::Relaxed);
+}
+
+pub fn set_quiet_when_locked(on: bool) {
+    QUIET_WHEN_LOCKED.store(on, Ordering::Relaxed);
+}
+
+/// Whether a notification stays in the feed without popping up. `locked` is
+/// asked only when it matters: finding out can take a moment.
+fn stays_quiet(paused: bool, quiet_when_locked: bool, locked: impl FnOnce() -> bool) -> bool {
+    paused || (quiet_when_locked && locked())
 }
 
 pub fn set_sync_dnd(on: bool) {
@@ -374,6 +396,9 @@ fn show(device: DeviceId, n: &Notification) {
     if rule != AppRule::Show || (SYNC_DND.load(Ordering::Relaxed) && phone_dnd) {
         return;
     }
+    if stays_quiet(paused(), QUIET_WHEN_LOCKED.load(Ordering::Relaxed), crate::win::session_locked) {
+        return;
+    }
     let progress = live_toast_progress(n);
     let id = (device, n.key.clone());
     if let Some(prog) = &progress {
@@ -619,6 +644,14 @@ mod tests {
             live: None,
             conversation: None,
         }
+    }
+
+    #[test]
+    fn paused_or_locked_notifications_stay_quiet() {
+        assert!(stays_quiet(true, false, || false));
+        assert!(stays_quiet(false, true, || true));
+        assert!(!stays_quiet(false, true, || false));
+        assert!(!stays_quiet(false, false, || panic!("no need to ask if it is locked")));
     }
 
     #[test]

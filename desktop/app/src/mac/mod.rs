@@ -73,6 +73,11 @@ pub fn on_battery() -> bool {
         .is_ok_and(|out| String::from_utf8_lossy(&out.stdout).contains("'Battery Power'"))
 }
 
+/// Not known here yet, so notifications keep popping up.
+pub fn session_locked() -> bool {
+    false
+}
+
 pub fn is_laptop() -> bool {
     let output = std::process::Command::new("pmset").arg("-g").arg("batt").output().ok();
     if let Some(out) = output {

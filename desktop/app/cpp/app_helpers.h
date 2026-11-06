@@ -82,8 +82,10 @@ void linux_tray_setup(
     rust::Str scan_document_label,
     rust::Str find_phone_label,
     rust::Str open_link_label,
+    rust::Str pause_notifications_label,
     rust::Str quit_label);
 void linux_tray_set_tooltip(rust::Str tooltip);
+void linux_tray_set_pause_label(rust::Str label);
 void linux_tray_set_find_phone_enabled(bool enabled);
 void linux_tray_teardown();
 rust::String linux_tray_wait_action(uint32_t timeout_ms);

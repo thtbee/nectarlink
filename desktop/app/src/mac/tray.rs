@@ -11,6 +11,7 @@ pub enum TrayEvent {
     ScanDocument,
     FindPhone,
     OpenLinkOnPhone,
+    ToggleNotificationsPause,
     Quit,
     Resumed,
     AppearanceChanged,
@@ -26,6 +27,8 @@ pub struct MenuLabels {
     pub scan_document: String,
     pub find_phone: String,
     pub open_link: String,
+    pub pause_notifications: String,
+    pub resume_notifications: String,
     pub quit: String,
 }
 
@@ -41,6 +44,8 @@ impl Tray {
     }
 
     pub fn set_tooltip(&self, _text: &str) {}
+
+    pub fn set_notifications_paused(&self, _paused: bool) {}
 
     pub fn set_find_phone_enabled(&self, _enabled: bool) {}
 }

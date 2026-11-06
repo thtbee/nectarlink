@@ -268,6 +268,23 @@ pub(crate) fn parse_system_dark_sources(
     true
 }
 
+/// Whether logind says this session is locked. False where it can't say.
+pub fn session_locked() -> bool {
+    non_tokio(|| {
+        let locked = || -> zbus::Result<bool> {
+            let conn = zbus::blocking::Connection::system()?;
+            let session = zbus::blocking::Proxy::new(
+                &conn,
+                "org.freedesktop.login1",
+                "/org/freedesktop/login1/session/auto",
+                "org.freedesktop.login1.Session",
+            )?;
+            session.get_property("LockedHint")
+        };
+        locked().unwrap_or(false)
+    })
+}
+
 /// Runs `f` outside any active Tokio runtime context so `zbus::blocking` calls
 /// (which use `zbus`'s internal Tokio `Runtime::block_on` when compiled with
 /// the `tokio` feature) never panic with "Cannot start a runtime from within a
