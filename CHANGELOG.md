@@ -35,7 +35,8 @@ change things that need a step from you, and its notes say so.
   can't act as this Mac. An existing key file is re-sealed in place on first
   launch and keeps its `DeviceId`, so no re-pairing is needed. Clipboard history
   and unsent queue items written by an earlier macOS build can't be opened with
-  the new key, so they start empty once.
+  the new key, so they start empty once. Thanks to
+  [@aydinoglucagan-sudo](https://github.com/aydinoglucagan-sudo).
 
 ### Fixed
 
