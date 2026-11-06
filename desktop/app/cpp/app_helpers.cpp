@@ -671,6 +671,8 @@ std::unique_ptr<QGuiApplication> create_qt_app()
     static char *s_argv[] = { s_arg0, nullptr };
 #ifdef __linux__
     auto app = std::unique_ptr<QGuiApplication>(new QApplication(s_argc, s_argv));
+    // On Wayland this is the app id, which is how the dock finds our icon and name.
+    QGuiApplication::setDesktopFileName(QStringLiteral("nectarlink"));
     QObject::connect(app.get(), &QCoreApplication::aboutToQuit, app.get(), []() {
         qtEventLoopRunning().store(false, std::memory_order_release);
     });

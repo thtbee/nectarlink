@@ -41,7 +41,9 @@ The `Shelf` is a lightweight edge panel on your PC that gives you instant drag-a
 
 ### 2. `Nectar Island`
 
-`Nectar Island` is an optional compact pill at the top center of your primary monitor that surfaces live phone activity without covering your workspace in notification popups:
+`Nectar Island` is an optional compact pill at the top center of your primary monitor that surfaces live phone activity without covering your workspace in notification popups. On Linux with Wayland, the desktop decides where it opens, which on GNOME may not be the top of the screen; drag the pill to move it, and the `Shelf` by its header.
+
+To set it up:
 
 1. Turn on **Nectar Island** in PC **Settings › General** (it is **off by default**).
 2. In the **Island triggers** row right below it, choose which activities appear in the pill:

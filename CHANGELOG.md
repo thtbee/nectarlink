@@ -13,6 +13,14 @@ change things that need a step from you, and its notes say so.
   virtual USB keyboard, and adding one can make Android restart an app. They're
   now sent like any other typed key, and the phone's own keyboard is no longer
   hidden after you press one.
+- **On Wayland the dock showed a gear and "nectarlink-desktop"** instead of
+  NectarLink's icon and name.
+- **Switches under Photo backup could miss a click** while photos were copying.
+  Each copied file rebuilt the row.
+- **The phone's webcam preview cut off a portrait picture,** though the PC got all
+  of it. The preview now shows what's being sent.
+- **The Shelf and Nectar Island couldn't be moved on Wayland,** where apps can't
+  place their own windows. Drag the Shelf by its header, or the Island by the pill.
 
 ## 0.1.5 (2026-11-05)
 

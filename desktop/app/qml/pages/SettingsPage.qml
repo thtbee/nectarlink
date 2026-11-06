@@ -159,6 +159,10 @@ Item {
 
     visible: active
 
+    readonly property var backupPhones: {
+        try { return JSON.parse(PhotoBackup.phones || "[]") } catch (e) { return [] }
+    }
+    readonly property string backupPhoneIds: backupPhones.map((p) => p.id).join(",")
     readonly property var toggleNames: ({
         notifications: qsTr("Notifications"),
         messages: qsTr("Messages"),
@@ -2232,28 +2236,31 @@ Item {
                             description: qsTr("Copies new photos from every album into a folder on this PC, by year and month. Nothing is deleted, here or on the phone. Needs only the phone's photos permission.")
                         }
                         Repeater {
-                            model: { try { return JSON.parse(PhotoBackup.phones || "[]") } catch (e) { return [] } }
+                            // By id: the status changes with every file copied, and rebuilding
+                            // the rows would drop a click on a switch.
+                            model: page.backupPhoneIds ? page.backupPhoneIds.split(",") : []
                             delegate: Column {
                                 id: backupDelegate
-                                required property var modelData
+                                required property string modelData
+                                readonly property var phone: page.backupPhones.find((p) => p.id === modelData) || ({})
                                 width: parent.width
                                 Divider { width: parent.width }
                                 ListRow {
                                     width: parent.width
                                     iconPath: Icons.phone
-                                    title: backupDelegate.modelData.name
-                                    description: backupDelegate.modelData.status
+                                    title: backupDelegate.phone.name
+                                    description: backupDelegate.phone.status
                                     Toggle {
-                                        label: qsTr("Back up photos from %1").arg(backupDelegate.modelData.name)
-                                        checked: Boolean(backupDelegate.modelData.enabled)
-                                        onToggled: (on) => PhotoBackup.setEnabled(backupDelegate.modelData.id, on)
+                                        label: qsTr("Back up photos from %1").arg(backupDelegate.phone.name)
+                                        checked: Boolean(backupDelegate.phone.enabled)
+                                        onToggled: (on) => PhotoBackup.setEnabled(backupDelegate.phone.id, on)
                                     }
                                 }
                                 ListRow {
                                     width: parent.width
-                                    visible: Boolean(backupDelegate.modelData.enabled)
+                                    visible: Boolean(backupDelegate.phone.enabled)
                                     iconPath: Icons.folder
-                                    title: backupDelegate.modelData.folder
+                                    title: backupDelegate.phone.folder
                                     description: qsTr("Backup folder")
                                     Row {
                                         spacing: 8
@@ -2262,7 +2269,7 @@ Item {
                                             variant: "text"
                                             size: "sm"
                                             text: qsTr("Open")
-                                            onClicked: PhotoBackup.openFolder(backupDelegate.modelData.id)
+                                            onClicked: PhotoBackup.openFolder(backupDelegate.phone.id)
                                         }
                                         Button {
                                             anchors.verticalCenter: parent.verticalCenter
@@ -2270,7 +2277,7 @@ Item {
                                             size: "sm"
                                             text: qsTr("Choose folder")
                                             onClicked: {
-                                                photoBackupFolderPicker.deviceId = backupDelegate.modelData.id
+                                                photoBackupFolderPicker.deviceId = backupDelegate.phone.id
                                                 photoBackupFolderPicker.open()
                                             }
                                         }
@@ -2278,7 +2285,7 @@ Item {
                                 }
                                 ListRow {
                                     width: parent.width
-                                    visible: Boolean(backupDelegate.modelData.enabled)
+                                    visible: Boolean(backupDelegate.phone.enabled)
                                     iconPath: Icons.video
                                     title: qsTr("Include videos")
                                     description: qsTr("Videos can be large. Copied one at a time, so a lost connection costs at most one file.")
@@ -2290,14 +2297,14 @@ Item {
                                             size: "sm"
                                             iconPath: Icons.refresh
                                             text: qsTr("Back up now")
-                                            enabled: Boolean(backupDelegate.modelData.online)
-                                            onClicked: PhotoBackup.backUpNow(backupDelegate.modelData.id)
+                                            enabled: Boolean(backupDelegate.phone.online)
+                                            onClicked: PhotoBackup.backUpNow(backupDelegate.phone.id)
                                         }
                                         Toggle {
                                             anchors.verticalCenter: parent.verticalCenter
                                             label: qsTr("Include videos")
-                                            checked: Boolean(backupDelegate.modelData.videos)
-                                            onToggled: (on) => PhotoBackup.setVideos(backupDelegate.modelData.id, on)
+                                            checked: Boolean(backupDelegate.phone.videos)
+                                            onToggled: (on) => PhotoBackup.setVideos(backupDelegate.phone.id, on)
                                         }
                                     }
                                 }

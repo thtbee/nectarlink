@@ -277,6 +277,13 @@ Window {
                     width: parent.width
                     height: 36
 
+                    // Wayland ignores where we ask to put the window, so let it be dragged.
+                    DragHandler {
+                        target: null
+                        enabled: Qt.platform.pluginName === "wayland"
+                        onActiveChanged: if (active) shelfWin.startSystemMove()
+                    }
+
                     Row {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
