@@ -17,7 +17,7 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
-- **Pairing could fail over Tailscale on PCs with Hyper-V, WSL or Docker,** since their
+- **Pairing could fail over Tailscale on PCs with Hyper-V, WSL, Docker or VMware,** since their
   adapters could push the Tailscale address out of the pairing code.
 - **Phone sound on this PC turned itself off after a second** on phones that refuse
   Elevated's sound capture. The phone now asks you instead, as it does without
