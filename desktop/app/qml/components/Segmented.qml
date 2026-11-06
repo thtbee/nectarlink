@@ -2,7 +2,8 @@
 import QtQuick
 import app.nectarlink
 
-// A segmented choice: `options` is a list of { value, label }.
+// A segmented choice: `options` is a list of { value, label }. A value can be a
+// number, as in the app size: `value` holds it as text, so they're compared as text.
 Rectangle {
     id: segmented
     property var options: []
@@ -12,7 +13,7 @@ Rectangle {
     readonly property int selectedIndex: {
         const opts = options || []
         for (let i = 0; i < opts.length; i++) {
-            if (opts[i].value === value)
+            if (String(opts[i].value) === value)
                 return i
         }
         return -1
@@ -70,7 +71,7 @@ Rectangle {
                 id: option
                 required property var modelData
                 required property int index
-                readonly property bool selected: modelData.value === segmented.value
+                readonly property bool selected: String(modelData.value) === segmented.value
                 width: label.implicitWidth + 26
                 height: segmented.height - 6
                 activeFocusOnTab: true

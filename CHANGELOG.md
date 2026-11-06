@@ -85,6 +85,8 @@ what people reported since 0.1.4.
 - Turning the phone's screen off keeps it off on Android 16. Setting the brightness to 0
   right after could wake it again, dim but lit
   ([#217](https://github.com/thtbee/nectarlink/issues/217)).
+- Settings shows which App size and Full charge target are selected
+  ([#260](https://github.com/thtbee/nectarlink/issues/260)).
 
 ### Downloads
 
