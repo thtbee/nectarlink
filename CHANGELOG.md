@@ -496,6 +496,8 @@ has a Stop button. Choosing another
   as too fast. The PC now takes typing at full speed, and the phone
   resends anything an older PC turns away
   ([#52](https://github.com/thtbee/nectarlink/issues/52)).
+- **The Windows app could stay closed after updating itself** if a newer version
+  had come out since it last checked, leaving the phone offline.
 - **Phone as webcam never showed up in other apps.** Windows couldn't
   start NectarLink's camera, though Settings said it was ready. It now
   appears as **NectarLink Webcam** in Zoom, Teams, OBS, the Camera app
