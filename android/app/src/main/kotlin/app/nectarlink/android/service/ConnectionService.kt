@@ -243,12 +243,15 @@ class ConnectionService : LifecycleService() {
             )
             builder.addAction(0, getString(R.string.action_send_clipboard), sendClip)
             builder.addAction(0, getString(R.string.action_send_files), sendFiles)
+        } else {
+            // Waiting for a PC is when turning this off makes sense. While one is
+            // connected, Settings still has it.
+            val stopService = PendingIntent.getService(
+                this, 4, Intent(this, ConnectionService::class.java).setAction(ACTION_STOP_SERVICE),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            builder.addAction(0, getString(R.string.action_stop_service), stopService)
         }
-        val stopService = PendingIntent.getService(
-            this, 4, Intent(this, ConnectionService::class.java).setAction(ACTION_STOP_SERVICE),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        builder.addAction(0, getString(R.string.action_stop_service), stopService)
         return builder.build()
     }
 
