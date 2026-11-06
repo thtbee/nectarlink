@@ -64,6 +64,7 @@ change things that need a step from you, and its notes say so.
 The PC app on Linux and on Windows on ARM, Phone as microphone, Play on
 phone, your phone's sound on the PC, a Nightly channel, and the fixes for
 what people reported since 0.1.4.
+- The phone's list of the PC's audio outputs scrolls, so a PC with many of them shows them all.
 
 ### Downloads
 
