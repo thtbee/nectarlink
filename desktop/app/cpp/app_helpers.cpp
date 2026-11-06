@@ -108,12 +108,13 @@ std::atomic<int> &qmlProblems()
 }
 
 // A warning or error from QML: a component that didn't load, a binding or
-// a script that failed.
+// a script that failed. Also NativeWindow's, which CI should fail on too.
 bool isQmlProblem(QtMsgType type, const QMessageLogContext &ctx, const QString &msg)
 {
     if (type != QtWarningMsg && type != QtCriticalMsg && type != QtFatalMsg)
         return false;
-    return (ctx.file && QByteArray(ctx.file).startsWith("qrc:/")) || msg.contains(QStringLiteral("qrc:/"));
+    return (ctx.file && QByteArray(ctx.file).startsWith("qrc:/")) || msg.contains(QStringLiteral("qrc:/"))
+        || msg.startsWith(QStringLiteral("NativeWindow:"));
 }
 
 // `--ui-check`: messages go to stderr, not the log file, and QML problems

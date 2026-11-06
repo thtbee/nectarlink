@@ -16,6 +16,7 @@
 #include <dwmapi.h>
 #include <dxgi1_3.h>
 #include <windowsx.h>
+#include <cwchar>
 #elif defined(__linux__)
 #include <QtGui/QCursor>
 #include <QtGui/QGuiApplication>
@@ -37,6 +38,24 @@ constexpr int kBackdropAcrylic = 3;          // DWMSBT_TRANSIENTWINDOW (Desktop 
 constexpr COLORREF kColorNone = 0xFFFFFFFE;  // DWMWA_COLOR_NONE
 
 constexpr DWORD kFirstWindows11Build = 22000;
+
+// With ExpandedClientAreaHint, Qt adds a child window that paints a title bar
+// of its own: an opaque strip with the icon, the title and the buttons. The
+// app draws its own, and on Windows 11 23H2 Qt's strip shows over it.
+bool hideQtTitleBar(HWND hwnd)
+{
+    HWND bar = nullptr;
+    EnumChildWindows(hwnd, [](HWND child, LPARAM found) -> BOOL {
+        wchar_t name[16] {};
+        if (!GetClassNameW(child, name, 16) || wcscmp(name, L"_q_titlebar") != 0)
+            return TRUE;
+        *reinterpret_cast<HWND *>(found) = child;
+        return FALSE;
+    }, reinterpret_cast<LPARAM>(&bar));
+    if (bar)
+        ShowWindow(bar, SW_HIDE);
+    return bar != nullptr;
+}
 
 // The real Windows build: GetVersionEx lies without a manifest entry, and
 // RtlGetVersion doesn't.
@@ -602,6 +621,8 @@ void NativeWindow::applyFrame()
     // Windows 10 has no system backdrop or caption color: skip both, and the
     // QML side keeps the window opaque there (see systemBackdropSupported).
     if (systemBackdropSupported()) {
+        if (!hideQtTitleBar(hwnd))
+            qWarning("NativeWindow: Qt's title bar window wasn't found, so it can't be hidden");
         const int backdrop = m_backdrop ? (m_acrylic ? kBackdropAcrylic : kBackdropMica) : kBackdropNone;
         DwmSetWindowAttribute(hwnd, kSystemBackdropType, &backdrop, sizeof(backdrop));
         const COLORREF none = kColorNone;
