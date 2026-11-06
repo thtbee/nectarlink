@@ -6842,7 +6842,7 @@ Voraussetzungen
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="556"/>
         <source>Delete</source>
-        <translation type="unfinished">Löschen</translation>
+        <translation>Löschen</translation>
     </message>
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="576"/>

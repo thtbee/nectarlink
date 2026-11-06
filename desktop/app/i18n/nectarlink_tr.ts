@@ -6834,7 +6834,7 @@ Neler gerekir
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="556"/>
         <source>Delete</source>
-        <translation type="unfinished">Sil</translation>
+        <translation>Sil</translation>
     </message>
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="576"/>
