@@ -135,6 +135,7 @@ import android.app.DownloadManager
 import android.content.Intent
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.FileProvider
@@ -2102,7 +2103,10 @@ internal fun PcAudioOutputsDialog(
         containerColor = glassModalContainerColor(),
         title = { Text(stringResource(R.string.pc_audio_outputs_title, pcName)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
                 Text(
                     stringResource(R.string.pc_audio_outputs_hint, pcName),
                     style = MaterialTheme.typography.bodySmall,
