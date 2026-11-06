@@ -40,6 +40,7 @@ jobs:
       name: ${{ steps.plan.outputs.name }}
       commit: ${{ steps.plan.outputs.commit }}
       previous: ${{ steps.plan.outputs.previous }}
+      changes: ${{ steps.plan.outputs.changes }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -112,6 +113,15 @@ jobs:
             echo "number=$number"
             echo "name=$name"
           } >> "$GITHUB_OUTPUT"
+          # What changed, for the notes. Each line starts with "- ", so none can end this.
+          if [ -n "$previous" ]; then
+            git fetch -q origin "refs/tags/$previous:refs/tags/$previous"
+            {
+              echo "changes<<END_OF_CHANGES"
+              python3 .github/scripts/nightly-changes.py "$previous" "$commit"
+              echo "END_OF_CHANGES"
+            } >> "$GITHUB_OUTPUT"
+          fi
           echo "::notice::building $version ($name) from ${commit:0:7}"
 
   build:
@@ -136,6 +146,7 @@ jobs:
       NAME: ${{ needs.plan.outputs.name }}
       COMMIT: ${{ needs.plan.outputs.commit }}
       PREVIOUS: ${{ needs.plan.outputs.previous }}
+      CHANGES: ${{ needs.plan.outputs.changes }}
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -153,12 +164,18 @@ jobs:
           cat SHA256SUMS.txt
           compare=""
           if [ -n "$PREVIOUS" ]; then
-            compare="What changed since the last nightly: https://github.com/$GITHUB_REPOSITORY/compare/$PREVIOUS...v$VERSION"
+            compare="All the commits since the last nightly: https://github.com/$GITHUB_REPOSITORY/compare/$PREVIOUS...v$VERSION"
+          fi
+          changes=""
+          if [ -n "$CHANGES" ]; then
+            changes=$(printf '## Changes since the last nightly\n\n%s\n\n' "$CHANGES")
           fi
           printf '%s\n' \
             "Nightly $NUMBER, **$NAME**: built from main at ${COMMIT:0:7} on $(date -u +%Y-%m-%d)." \
             "" \
             "A build for trying what's new before it's released, with the latest fixes and features and sometimes new bugs. NectarLink installs on the Nightly channel update to it by themselves; to get it, pick **Nightly** under Settings, Updates, in the PC app or on the phone." \
+            "" \
+            "$changes" \
             "" \
             "$compare" > notes.md
           gh release create "v$VERSION" *.exe *.deb *.rpm *.AppImage *.tar.gz *.apk install.sh SHA256SUMS.txt \
