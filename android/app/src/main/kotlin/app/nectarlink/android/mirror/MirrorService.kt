@@ -342,10 +342,23 @@ class MirrorService : Service() {
                 endSharing()
                 return@post
             }
-            sound = SoundCapture(running, stream) { endSharing() }.also { it.start() }
+            val capture = SoundCapture(running, stream) {
+                // Some phones refuse the helper's capture. Screen-capture consent
+                // still works. Not when this was stopped on purpose: `sound` is gone then.
+                val current = sound
+                if (soundOnly && running == null && current != null && !current.sentSound) askForSound(pc)
+                endSharing()
+            }
+            sound = capture
+            capture.start()
             // Only the sound, so it's heard on the PC instead of the phone (#94).
             if (soundOnly && sound?.usesPlaybackCapture == true) PhoneQuiet.start(this)
         }
+    }
+
+    private fun askForSound(pc: String) {
+        val request = MirrorRequest(pc, 1280, 30, 4_000_000, audio = true, soundOnly = true)
+        MirrorRequests.show(this, request, "")
     }
 
     private fun notification(pcName: String): Notification {

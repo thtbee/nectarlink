@@ -228,8 +228,9 @@ impl MirrorSink for Sink {
 
     fn audio_ended(&self) {
         self.player.lock().unwrap_or_else(|e| e.into_inner()).take();
-        // The phone stopped, or the connection dropped.
-        if active().is_some_and(|(d, _)| d == self.device) {
+        // The phone stopped, or the connection dropped. No sound yet isn't an
+        // answer: a phone that can't capture it directly asks its user instead.
+        if active() == Some((self.device, Phase::Playing)) {
             set_active(None);
         }
     }
