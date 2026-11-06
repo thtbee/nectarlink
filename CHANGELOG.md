@@ -29,6 +29,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- A second title bar no longer covers the top of the window on Windows 11 23H2
+  ([#227](https://github.com/thtbee/nectarlink/issues/227),
+  [#209](https://github.com/thtbee/nectarlink/issues/209)).
 - **Pairing could fail over Tailscale on PCs with Hyper-V, WSL, Docker or VMware,** since their
   adapters could push the Tailscale address out of the pairing code.
 - **Phone sound on this PC turned itself off after a second** on phones that refuse
