@@ -3,10 +3,7 @@
 //! phone acting as a touchpad, keyboard or presentation remote
 //! (`docs/protocol/remote.md`).
 
-use std::{
-    sync::Mutex,
-    time::Duration,
-};
+use std::{sync::Mutex, time::Duration};
 
 use nectarlink_core::{ButtonAction, KeyMod, MouseButton, PowerAction, SlideAction, TouchAction};
 use windows::Win32::UI::{
