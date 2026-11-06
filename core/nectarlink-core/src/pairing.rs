@@ -201,15 +201,16 @@ const MAX_LINK_ADDRS: usize = 3;
 /// same network almost always uses), then other IPv4, then at most one IPv6.
 /// Among private ranges, home routers' `192.168/16` and `10/8` come before
 /// `172.16/12`, where Hyper-V, WSL and Docker put their adapters (#148). A
-/// tailnet address comes before those too: on a network that keeps devices
-/// apart, it's the only one that works.
+/// tailnet address comes right after the preferred one: on a network that
+/// keeps devices apart it's the only one that works, and VMware's adapters
+/// use `192.168/16`, so they'd crowd it out otherwise.
 /// Link-local IPv6 is useless without a scope ID. Discovery on the network
 /// finds the device even if none of these work.
 fn link_addrs(mut addrs: Vec<SocketAddr>, preferred: Option<IpAddr>) -> Vec<SocketAddr> {
     let rank = |a: &SocketAddr| match a.ip() {
         ip if Some(ip) == preferred => 0,
-        IpAddr::V4(v4) if v4.is_private() && v4.octets()[0] != 172 => 1,
-        ip if crate::session::is_tailnet_ip(ip) => 2,
+        ip if crate::session::is_tailnet_ip(ip) => 1,
+        IpAddr::V4(v4) if v4.is_private() && v4.octets()[0] != 172 => 2,
         IpAddr::V4(v4) if v4.is_private() => 3,
         IpAddr::V4(v4) if v4.is_loopback() || v4.is_link_local() => 6,
         IpAddr::V4(_) => 4,
@@ -579,7 +580,7 @@ mod tests {
         .map(|a| a.parse().unwrap())
         .collect();
         let picked: Vec<String> = link_addrs(addrs, None).iter().map(ToString::to_string).collect();
-        assert_eq!(picked, ["192.168.1.20:5000", "100.64.0.1:5000", "[2001:db8:1::1]:5000"]);
+        assert_eq!(picked, ["100.64.0.1:5000", "192.168.1.20:5000", "[2001:db8:1::1]:5000"]);
         let loopback_only: Vec<SocketAddr> = ["127.0.0.1:5000".parse().unwrap()].into();
         let fallback: Vec<String> = link_addrs(loopback_only, None).iter().map(ToString::to_string).collect();
         assert_eq!(fallback, ["127.0.0.1:5000"]);
@@ -600,7 +601,20 @@ mod tests {
         .map(|a| a.parse().unwrap())
         .collect();
         let picked: Vec<String> = link_addrs(addrs, None).iter().map(ToString::to_string).collect();
-        assert_eq!(picked, ["192.168.1.123:61845", "100.67.18.105:61845", "[fd7a:115c:a1e0::1]:61845"]);
+        assert_eq!(picked, ["100.67.18.105:61845", "[fd7a:115c:a1e0::1]:61845", "192.168.1.123:61845"]);
+    }
+
+    /// VMware's VMnet1 and VMnet8 are `192.168` too, beside the Wi-Fi the route leaves from.
+    #[test]
+    fn pairing_links_keep_the_tailnet_address_beside_vmware() {
+        let addrs: Vec<SocketAddr> =
+            ["192.168.56.1:61845", "192.168.80.1:61845", "100.67.18.105:61845", "10.20.30.40:61845"]
+                .iter()
+                .map(|a| a.parse().unwrap())
+                .collect();
+        let wifi = "10.20.30.40".parse().ok();
+        let picked: Vec<String> = link_addrs(addrs, wifi).iter().map(ToString::to_string).collect();
+        assert_eq!(picked, ["10.20.30.40:61845", "100.67.18.105:61845", "192.168.56.1:61845"]);
     }
 
     /// #148: three Hyper-V adapters used to fill every slot, leaving out Wi-Fi.
