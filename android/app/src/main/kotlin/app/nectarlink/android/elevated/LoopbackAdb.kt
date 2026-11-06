@@ -2,16 +2,22 @@
 package app.nectarlink.android.elevated
 
 import android.os.Build
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.DataInputStream
+import java.net.BindException
 import java.net.InetSocketAddress
+import java.net.ServerSocket
 import java.net.Socket
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 
 /**
  * Finds wireless debugging's ports on this phone without searching the
@@ -42,15 +48,49 @@ internal object LoopbackAdb {
         val ports = EPHEMERAL.filterNot { it in OWN }
         coroutineScope {
             ports.chunked(ports.size / SCANNERS + 1)
-                .map { chunk -> async { chunk.filter(::isOpen) } }
+                .map { chunk -> async { chunk.filter(::isTaken) } }
                 .awaitAll()
                 .flatten()
+                .filter(::isOpen)
         }
+    }
+
+    /**
+     * Runs [attempt] on every port at once, each on its own thread, and tells
+     * if one succeeded within [timeoutMs]. Attempts that never return are left behind.
+     */
+    suspend fun anySucceeds(ports: List<Int>, timeoutMs: Long, attempt: (Int) -> Boolean): Boolean {
+        val result = CompletableDeferred<Boolean>()
+        val left = AtomicInteger(ports.size)
+        for (port in ports) {
+            thread(isDaemon = true, name = "adb-pair") {
+                if (attempt(port)) result.complete(true)
+                else if (left.decrementAndGet() == 0) result.complete(false)
+            }
+        }
+        return withTimeoutOrNull(timeoutMs) { result.await() } ?: false
     }
 
     /** adbd's port for connecting (it answers an adb hello), among [open]. */
     suspend fun connectPort(open: List<Int>): Int? = withContext(Dispatchers.IO) {
         open.firstOrNull(::answersLikeAdbd)
+    }
+
+    /**
+     * Whether something holds [port], by trying to take it. Android reports
+     * every connect() to the system, so connecting to the whole range floods
+     * its binder and other apps start failing. Binding reports nothing.
+     */
+    private fun isTaken(port: Int): Boolean = try {
+        ServerSocket().use {
+            it.reuseAddress = false
+            it.bind(InetSocketAddress(HOST, port), 1)
+        }
+        false
+    } catch (_: BindException) {
+        true
+    } catch (_: java.io.IOException) {
+        false
     }
 
     private fun isOpen(port: Int): Boolean = runCatching {

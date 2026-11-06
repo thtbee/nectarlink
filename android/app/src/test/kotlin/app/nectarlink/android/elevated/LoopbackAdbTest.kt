@@ -69,4 +69,29 @@ class LoopbackAdbTest {
             }
         }
     }
+
+    @Test
+    fun `a port that never answers doesn't hide the one that pairs`() = runBlocking {
+        val never = java.util.concurrent.CountDownLatch(1)
+        val paired = LoopbackAdb.anySucceeds(listOf(1, 2), 5_000) { port ->
+            if (port == 1) never.await()
+            port == 2
+        }
+        never.countDown()
+        assertTrue(paired)
+    }
+
+    @Test
+    fun `pairing fails as soon as every port has said no`() = runBlocking {
+        val started = System.currentTimeMillis()
+        assertFalse(LoopbackAdb.anySucceeds(listOf(1, 2), 5_000) { false })
+        assertTrue(System.currentTimeMillis() - started < 4_000)
+    }
+
+    @Test
+    fun `pairing gives up when no port answers in time`() = runBlocking {
+        val never = java.util.concurrent.CountDownLatch(1)
+        assertFalse(LoopbackAdb.anySucceeds(listOf(1), 100) { never.await(); true })
+        never.countDown()
+    }
 }
