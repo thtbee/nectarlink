@@ -5,7 +5,7 @@
 
 use std::{
     sync::Mutex,
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use nectarlink_core::{ButtonAction, KeyMod, MouseButton, PowerAction, SlideAction, TouchAction};
@@ -239,18 +239,16 @@ pub fn type_text(text: &str) {
     // Windows 11) can turn a batch into its last letter ("great" as "ttttt").
     for (i, keystroke) in keystrokes(text).iter().enumerate() {
         if i > 0 {
-            let next = Instant::now() + BETWEEN_CHARACTERS;
-            while Instant::now() < next {
-                std::thread::yield_now();
-            }
+            std::thread::sleep(BETWEEN_CHARACTERS);
         }
         send_inputs(keystroke);
     }
 }
 
-/// How long the app gets to read one typed character before the next. A wait
-/// this short is spun: `sleep` can take 15 ms on Windows, too slow for a paste.
-const BETWEEN_CHARACTERS: Duration = Duration::from_millis(2);
+/// How long the app gets to read one typed character before the next. In
+/// Notepad on Windows 11, up to 6 ms still garbled words and 12 ms dropped a
+/// letter; 16 ms was clean. It can't grow much: see the test below.
+const BETWEEN_CHARACTERS: Duration = Duration::from_millis(16);
 
 /// The input events of each character in `text`, press and release together.
 fn keystrokes(text: &str) -> Vec<Vec<INPUT>> {
@@ -414,6 +412,12 @@ pub fn is_user_active_within_ms(max_idle_ms: u32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_longest_text_is_typed_before_the_phone_gives_up() {
+        // The phone sends at most 256 bytes at a time and waits 5 s for the answer.
+        assert!(BETWEEN_CHARACTERS * 256 < Duration::from_millis(4_500));
+    }
 
     #[test]
     fn text_is_typed_one_character_at_a_time() {

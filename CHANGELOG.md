@@ -68,6 +68,9 @@ The PC app on Linux and on Windows on ARM, Phone as microphone, Play on
 phone, your phone's sound on the PC, a Nightly channel, and the fixes for
 what people reported since 0.1.4.
 - The phone's list of the PC's audio outputs scrolls, so a PC with many of them shows them all.
+- Voice typing comes through right in Notepad on Windows 11. Words could still turn into
+  repeats of one letter, because the PC typed faster than Notepad could read
+  ([#52](https://github.com/thtbee/nectarlink/issues/52)).
 
 ### Downloads
 
