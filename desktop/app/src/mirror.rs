@@ -187,6 +187,18 @@ struct State {
 }
 
 impl State {
+    /// Sets what `device`'s screen starts as, unless a window is already open.
+    fn reset_screen_off(&mut self, device: &DeviceId) {
+        if self.mirroring(device) {
+            return;
+        }
+        if crate::settings::keep_screen_off_phones().contains(&device.to_string()) {
+            self.screen_off.insert(*device);
+        } else {
+            self.screen_off.remove(device);
+        }
+    }
+
     /// Whether `device` has a window open or opening (the screen or an app).
     fn mirroring(&self, device: &DeviceId) -> bool {
         self.windows
@@ -328,6 +340,7 @@ pub fn set_screen_off(window: Window, on: bool) {
         }
         s.stay_awake.contains(&window.device)
     });
+    remember_screen_off(window.device, on);
     set_notice(window, if on { "Phone screen turned off" } else { "Phone screen turned back on" });
     core_host::host().hub.changed(Changes::MIRROR);
     let Some(node) = core_host::node() else { return };
@@ -336,6 +349,24 @@ pub fn set_screen_off(window: Window, on: bool) {
             tracing::debug!(error = %e, "mirror.power didn't reach the phone");
         }
     });
+}
+
+/// Saves whether `device`'s screen stays off from the start of each mirroring
+/// or app window. The toolbar button and Settings > Devices both set this.
+pub fn remember_screen_off(device: DeviceId, on: bool) {
+    let phones = crate::settings::with_keep_screen_off(
+        crate::settings::keep_screen_off_phones(),
+        &device.to_string(),
+        on,
+    );
+    crate::settings::set_keep_screen_off_phones(phones.clone());
+    let dir = core_host::host().data_dir.clone();
+    let mut saved = crate::settings::Settings::load(&dir);
+    saved.keep_screen_off = phones;
+    if let Err(e) = saved.save(&dir) {
+        tracing::warn!(error = %e, "can't save settings");
+    }
+    core_host::host().hub.changed(Changes::MIRROR);
 }
 
 /// Short status banner for `window` if shown within the last 3 seconds.
@@ -793,10 +824,8 @@ pub fn start(device: DeviceId) {
     let window = Window::screen(device);
     ffi::video_clear(&window.key());
     let (stay_awake, screen_off) = state(|s| {
-        // The phone's screen starts on, unless app windows already turned it off.
-        if !s.mirroring(&device) {
-            s.screen_off.remove(&device);
-        }
+        // The phone's screen starts as it's set to, unless app windows already turned it off.
+        s.reset_screen_off(&device);
         s.windows.insert(window, Shown { phase: Phase::Asking, app: None, pkg: None });
         power(s, &device)
     });
@@ -891,9 +920,7 @@ pub fn start_app(device: DeviceId, pkg: String, label: String) {
             .map(|(w, _)| *w);
         let window =
             ended.unwrap_or_else(|| Window { device, session: NEXT_SESSION.fetch_add(1, Ordering::Relaxed) });
-        if !s.mirroring(&device) {
-            s.screen_off.remove(&device);
-        }
+        s.reset_screen_off(&device);
         s.windows.insert(window, Shown { phase: Phase::Asking, app: Some(label), pkg: Some(pkg.clone()) });
         Some((window, power(s, &device)))
     });
@@ -919,9 +946,7 @@ pub fn reopen(window: Window) {
         return;
     }
     let pkg = state(|s| {
-        if !s.mirroring(&window.device) {
-            s.screen_off.remove(&window.device);
-        }
+        s.reset_screen_off(&window.device);
         let shown = s.windows.get_mut(&window)?;
         let pkg = shown.pkg.clone()?;
         shown.phase = Phase::Asking;

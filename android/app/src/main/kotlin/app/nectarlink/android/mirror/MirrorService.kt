@@ -176,6 +176,8 @@ class MirrorService : Service() {
         val (initW, initH, initDpi) = ScreenEncoder.computeScreenSize(this@MirrorService, request.maxSize)
         // With the screen off (phone in a pocket) there's nothing to show yet.
         app.nectarlink.android.elevated.Elevated.wakeScreen()
+        // Straight off when it's meant to stay off, so it barely lights up.
+        if (request.screenOff) app.nectarlink.android.elevated.Elevated.setScreenOff(true)
         val preferredCodec = core.mirrorCodecs(pc).firstOrNull() ?: "h264"
         val codec = ScreenEncoder.selectCodec(preferredCodec)
         val socket = app.nectarlink.android.elevated.Elevated.openScreen(
@@ -188,6 +190,7 @@ class MirrorService : Service() {
         )
         elevatedStarting = false
         if (socket == null) {
+            if (request.screenOff) app.nectarlink.android.elevated.Elevated.setScreenOff(false)
             main.post {
                 stopSharing()
                 MirrorRequests.show(this@MirrorService, request, pcName)

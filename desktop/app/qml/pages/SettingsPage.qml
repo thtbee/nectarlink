@@ -1479,6 +1479,17 @@ Item {
                                     }
                                 }
                             }
+                            ListRow {
+                                width: parent.width
+                                iconPath: Icons.screenOff
+                                title: qsTr("Keep phone screen off")
+                                description: qsTr("Mirroring and app windows start with this phone's screen off. Needs Elevated.")
+                                Toggle {
+                                    label: qsTr("Keep phone screen off")
+                                    checked: JSON.parse(Mirror.keepScreenOffPhones || "[]").indexOf(deviceCard.deviceId) >= 0
+                                    onToggled: (on) => Mirror.setKeepScreenOff(deviceCard.deviceId, on)
+                                }
+                            }
                             Repeater {
                                 model: page.toggleGroups
                                 delegate: Column {
