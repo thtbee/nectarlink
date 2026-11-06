@@ -26,7 +26,6 @@ import io.github.muntashirakon.adb.AbsAdbConnectionManager
 import io.github.muntashirakon.adb.AdbPairingRequiredException
 import io.github.muntashirakon.adb.AdbStream
 import io.github.muntashirakon.adb.android.AdbMdns
-import kotlin.concurrent.thread
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -349,28 +348,24 @@ object Elevated {
             val open = LoopbackAdb.openPorts()
             val connectPort = LoopbackAdb.connectPort(open)
             val candidates = open.filter { it != connectPort }
-            for (port in candidates) {
-                if (pairOnPort(port, code)) return true
+            if (candidates.isNotEmpty()) {
+                return LoopbackAdb.anySucceeds(candidates, PAIR_MS) { port -> pairOnPort(port, code) }
             }
-            if (candidates.isNotEmpty()) return false
             if (System.currentTimeMillis() >= deadline) return null
             delay(LOOPBACK_RETRY_MS)
         }
     }
 
-    /** One pairing attempt, given up after [PAIR_MS] (a port that isn't adb's may never answer). */
-    private suspend fun pairOnPort(port: Int, code: String): Boolean {
-        val result = CompletableDeferred<Boolean>()
-        thread(isDaemon = true, name = "adb-pair") {
-            result.complete(
-                runCatching { connection().pair(LoopbackAdb.HOST, port, code) }.getOrElse {
-                    Log.i(TAG, "no pairing on port $port", it)
-                    false
-                },
-            )
+    /**
+     * One pairing attempt on a connection of its own: the library holds a lock
+     * while pairing, with no timeout, so a port that never answers would block
+     * every attempt sharing that connection.
+     */
+    private fun pairOnPort(port: Int, code: String): Boolean =
+        runCatching { Connection(context).pair(LoopbackAdb.HOST, port, code) }.getOrElse {
+            Log.i(TAG, "no pairing on port $port", it)
+            false
         }
-        return withTimeoutOrNull(PAIR_MS) { result.await() } ?: false
-    }
 
     /** The port a wireless debugging service is announced on, if it shows up soon. */
     private suspend fun discover(service: String): Int? {
@@ -1028,7 +1023,7 @@ object Elevated {
     private const val ADB_WIFI = "adb_wifi_enabled"
     private const val DISCOVERY_MS = 10_000L
     private const val LOOPBACK_RETRY_MS = 700L
-    private const val PAIR_MS = 4_000L
+    private const val PAIR_MS = 6_000L
     private const val CONNECT_MS = 10_000L
     /** How long a `su` command may take; the first one waits for the root manager's prompt. */
     private const val SU_WAIT_S = 30L

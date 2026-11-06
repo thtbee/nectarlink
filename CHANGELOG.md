@@ -29,6 +29,11 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- Elevated pairs on Android 17 with the right code. Another app listening on the phone
+  could make it say the code didn't work
+  ([#94](https://github.com/thtbee/nectarlink/issues/94)).
+- Starting Elevated on Android 17 no longer overloads the phone. Looking for wireless
+  debugging connected to every local port, which could make other apps fail.
 - A second title bar no longer covers the top of the window on Windows 11 23H2
   ([#227](https://github.com/thtbee/nectarlink/issues/227),
   [#209](https://github.com/thtbee/nectarlink/issues/209)).
