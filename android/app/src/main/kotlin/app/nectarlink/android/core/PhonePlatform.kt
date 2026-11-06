@@ -188,7 +188,13 @@ internal class PhonePlatform(
     }
 
     // Real events when Elevated runs; gestures through the accessibility service otherwise.
-    override fun mirrorInput(pcId: String, session: UInt, input: MirrorInputEvent) {
+    override fun mirrorInput(pcId: String, session: UInt, requested: MirrorInputEvent) {
+        // Send needs the accessibility service. Without it, it's a plain Enter.
+        var input = requested
+        if (requested is MirrorInputEvent.Key && requested.key == "send") {
+            if (InputService.pressSend()) return
+            input = MirrorInputEvent.Key("enter")
+        }
         if (session != SCREEN) return appWindows.input(pcId, session, input)
         if (input is MirrorInputEvent.Key) {
             when (input.key) {

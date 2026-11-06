@@ -1210,6 +1210,20 @@ Item {
 
                         Divider { width: parent.width }
 
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.keyboard
+                            title: qsTr("Enter sends messages")
+                            description: qsTr("In mirroring and app windows, Enter presses the app's Send and Ctrl+Enter makes a new line. Needs Assist on the phone.")
+                            Toggle {
+                                label: qsTr("Enter sends messages")
+                                checked: Preferences.enterSends
+                                onToggled: (on) => Preferences.enterSends = on
+                            }
+                        }
+
+                        Divider { width: parent.width }
+
                         // Row 3: Sync clipboard to phone
                         ListRow {
                             width: parent.width

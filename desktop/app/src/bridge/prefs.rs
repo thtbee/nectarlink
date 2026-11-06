@@ -65,6 +65,8 @@ pub mod qobject {
         #[qproperty(QString, language)]
         /// Quiet phone notification pop-ups on the PC while the phone is in Do Not Disturb.
         #[qproperty(bool, sync_dnd)]
+        /// In mirroring and app windows, Enter sends and Ctrl+Enter makes a new line.
+        #[qproperty(bool, enter_sends)]
         /// No pop-ups for phone notifications while this PC is locked.
         #[qproperty(bool, quiet_when_locked)]
         /// Paired phones in Explorer's "Send to" menu.
@@ -320,6 +322,7 @@ pub struct PreferencesRust {
     mute_while_watched: bool,
     language: QString,
     sync_dnd: bool,
+    enter_sends: bool,
     quiet_when_locked: bool,
     send_to_menu: bool,
     start_with_windows: bool,
@@ -408,6 +411,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         crate::calls::set_pause_media_on_call(settings.pause_media_on_call);
         self.as_mut().set_sync_dnd(settings.sync_dnd);
         crate::notifications::set_sync_dnd(settings.sync_dnd);
+        self.as_mut().set_enter_sends(settings.enter_sends);
         self.as_mut().set_quiet_when_locked(settings.quiet_when_locked);
         crate::notifications::set_quiet_when_locked(settings.quiet_when_locked);
         self.as_mut().set_send_to_menu(settings.send_to_menu);
@@ -544,6 +548,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
                 p.save();
             })
             .release();
+        self.as_mut().on_enter_sends_changed(|p| p.save()).release();
         self.as_mut()
             .on_sync_dnd_changed(|p| {
                 crate::notifications::set_sync_dnd(p.sync_dnd);
@@ -1081,6 +1086,7 @@ impl qobject::Preferences {
             mute_while_watched: p.mute_while_watched,
             language: String::from(&p.language),
             sync_dnd: p.sync_dnd,
+            enter_sends: p.enter_sends,
             quiet_when_locked: p.quiet_when_locked,
             send_to_menu: p.send_to_menu,
             auto_update: p.auto_update,

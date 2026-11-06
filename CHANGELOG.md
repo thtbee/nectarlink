@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Enter sends messages.** An option under Settings › General: in mirroring and app
+  windows, Enter presses the app's Send and Ctrl+Enter makes a new line. It needs
+  Assist on the phone, and both devices on this version
+  ([#220](https://github.com/thtbee/nectarlink/issues/220)).
 - **A bigger touchpad in landscape.** Control PC's Touchpad takes the phone's screen
   when it's sideways, with its buttons underneath. **More** brings the rest back.
 - **Keep the phone's screen off.** The toolbar's screen-off button now stays set for
