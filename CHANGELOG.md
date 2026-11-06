@@ -13,6 +13,8 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Pairing could fail over Tailscale on PCs with Hyper-V, WSL or Docker,** since their
+  adapters could push the Tailscale address out of the pairing code.
 - **Pressing Enter or Backspace from the PC threw some apps back to their first
   screen,** Snapchat's camera for one. With Elevated these keys went through a
   virtual USB keyboard, and adding one can make Android restart an app. They're
