@@ -200,17 +200,20 @@ const MAX_LINK_ADDRS: usize = 3;
 /// route leaves from (`preferred`), then private IPv4 (what a phone on the
 /// same network almost always uses), then other IPv4, then at most one IPv6.
 /// Among private ranges, home routers' `192.168/16` and `10/8` come before
-/// `172.16/12`, where Hyper-V, WSL and Docker put their adapters (#148).
+/// `172.16/12`, where Hyper-V, WSL and Docker put their adapters (#148). A
+/// tailnet address comes before those too: on a network that keeps devices
+/// apart, it's the only one that works.
 /// Link-local IPv6 is useless without a scope ID. Discovery on the network
 /// finds the device even if none of these work.
 fn link_addrs(mut addrs: Vec<SocketAddr>, preferred: Option<IpAddr>) -> Vec<SocketAddr> {
     let rank = |a: &SocketAddr| match a.ip() {
         ip if Some(ip) == preferred => 0,
         IpAddr::V4(v4) if v4.is_private() && v4.octets()[0] != 172 => 1,
-        IpAddr::V4(v4) if v4.is_private() => 2,
-        IpAddr::V4(v4) if v4.is_loopback() || v4.is_link_local() => 5,
-        IpAddr::V4(_) => 3,
-        IpAddr::V6(_) => 4,
+        ip if crate::session::is_tailnet_ip(ip) => 2,
+        IpAddr::V4(v4) if v4.is_private() => 3,
+        IpAddr::V4(v4) if v4.is_loopback() || v4.is_link_local() => 6,
+        IpAddr::V4(_) => 4,
+        IpAddr::V6(_) => 5,
     };
     let has_non_loopback = addrs.iter().any(|a| match a.ip() {
         IpAddr::V6(v6) => !v6.is_loopback() && !v6.is_unicast_link_local(),
@@ -581,6 +584,23 @@ mod tests {
         let fallback: Vec<String> = link_addrs(loopback_only, None).iter().map(ToString::to_string).collect();
         assert_eq!(fallback, ["127.0.0.1:5000"]);
         assert!(link_addrs(Vec::new(), None).is_empty());
+    }
+
+    /// Virtual adapters used to fill the slots after Wi-Fi, leaving out Tailscale.
+    #[test]
+    fn pairing_links_keep_the_tailnet_address_beside_virtual_adapters() {
+        let addrs: Vec<SocketAddr> = [
+            "172.17.144.1:61845",
+            "172.21.192.1:61845",
+            "100.67.18.105:61845",
+            "192.168.1.123:61845",
+            "[fd7a:115c:a1e0::1]:61845",
+        ]
+        .iter()
+        .map(|a| a.parse().unwrap())
+        .collect();
+        let picked: Vec<String> = link_addrs(addrs, None).iter().map(ToString::to_string).collect();
+        assert_eq!(picked, ["192.168.1.123:61845", "100.67.18.105:61845", "[fd7a:115c:a1e0::1]:61845"]);
     }
 
     /// #148: three Hyper-V adapters used to fill every slot, leaving out Wi-Fi.
