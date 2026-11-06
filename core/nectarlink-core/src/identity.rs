@@ -628,6 +628,9 @@ mod tests {
         assert!(!file.windows(raw.len()).any(|w| w == raw), "plaintext key found on disk");
     }
 
+    /// The in-place upgrade is macOS-only (see `load_or_create`), so this test
+    /// is too: on Windows and Linux the same file must stay refused.
+    #[cfg(target_os = "macos")]
     #[test]
     fn upgrades_a_plain_key_in_place_and_keeps_the_identity() {
         let dir = tempfile::tempdir().unwrap();
