@@ -139,9 +139,10 @@ bottom), so they hold at any size and rotation.
   right); the phone swipes the other way.
 - `key`: `back`, `home`, `recents`, `notifications`, `lock`, `enter`, `backspace`,
   `delete`, `left`, `right`, `up`, `down`, `tab`, `copy`, `cut`,
-  `select_all`, `keyboard_on` or `keyboard_off`. Others are dropped (so
+  `select_all`, `send`, `keyboard_on` or `keyboard_off`. Others are dropped (so
   phones from before `copy`, `cut` and `select_all` ignore them). `copy`,
-  `cut` and `select_all` act on the focused text field. `keyboard_on` and `keyboard_off` mark
+  `cut` and `select_all` act on the focused text field. `send` presses the focused field's action through the
+  accessibility service, or is a plain `enter` without it. `keyboard_on` and `keyboard_off` mark
   when a PC starts or stops typing on the phone (`session` 0) without
   opening a video stream; the phone shows a banner with a button to stop it
   (which sends `mirror.stop` for `session` 0 back to the PC).

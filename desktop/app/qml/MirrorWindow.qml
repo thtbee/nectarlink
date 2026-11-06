@@ -257,6 +257,15 @@ Window {
             }
             if (!win.canControl)
                 return
+            if (Preferences.enterSends && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
+                // A plain Enter presses the app's Send; with a modifier, a new line.
+                if (event.modifiers & (Qt.ControlModifier | Qt.ShiftModifier))
+                    Mirror.text(win.mirrorKey, "\n")
+                else
+                    Mirror.press(win.mirrorKey, "send")
+                event.accepted = true
+                return
+            }
             const keys = {}
             keys[Qt.Key_Escape] = "back"
             keys[Qt.Key_Back] = "back"

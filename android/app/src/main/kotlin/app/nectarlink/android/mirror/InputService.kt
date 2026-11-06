@@ -339,6 +339,11 @@ class InputService : AccessibilityService() {
             node.className == "android.widget.EditText" ||
             node.actionList.any { it.id == AccessibilityNodeInfo.ACTION_SET_TEXT }
 
+    private fun pressAction(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
+        return focused()?.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id) == true
+    }
+
     private fun focused(): AccessibilityNodeInfo? {
         findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.takeIf { isNodeEditable(it) }?.let { return it }
         findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY)?.takeIf { isNodeEditable(it) }?.let { return it }
@@ -384,6 +389,9 @@ class InputService : AccessibilityService() {
         val running: Boolean get() = instance != null
 
         /** The PC's input; ignored while the service is off. */
+        /** Presses the focused field's action, like Send. False if that isn't possible here. */
+        fun pressSend(): Boolean = instance?.pressAction() == true
+
         fun handle(input: MirrorInputEvent) {
             val service = instance ?: return
             service.main.post { service.handle(input) }

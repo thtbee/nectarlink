@@ -418,6 +418,9 @@ pub struct Settings {
     /// Quiet phone notification pop-ups on the PC while the phone is in Do Not Disturb.
     #[serde(alias = "sync_dnd")]
     pub sync_dnd: bool,
+    /// In mirroring and app windows, Enter sends and Ctrl+Enter makes a new line.
+    #[serde(default, alias = "enter_sends")]
+    pub enter_sends: bool,
     /// No pop-ups for phone notifications while this PC is locked.
     #[serde(default, alias = "quiet_when_locked")]
     pub quiet_when_locked: bool,
@@ -602,6 +605,7 @@ impl Default for Settings {
             mute_while_watched: true,
             language: String::new(),
             sync_dnd: false,
+            enter_sends: false,
             quiet_when_locked: false,
             send_to_menu: true,
             auto_update: true,
@@ -846,6 +850,7 @@ mod tests {
             mute_while_watched: false,
             language: "zh_CN".into(),
             sync_dnd: true,
+            enter_sends: true,
             quiet_when_locked: true,
             send_to_menu: false,
             auto_update: false,

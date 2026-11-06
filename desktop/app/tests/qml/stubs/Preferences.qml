@@ -7,6 +7,7 @@ QtObject {
     property string theme: "bloom"
     property string colorMode: "light"
     property bool amoled: false
+    property bool enterSends: false
     property bool quietWhenLocked: false
     property int uiScale: 100
     property bool combMotion: false
