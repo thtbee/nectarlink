@@ -21,6 +21,9 @@ change things that need a step from you, and its notes say so.
   of it. The preview now shows what's being sent.
 - **The Shelf and Nectar Island couldn't be moved on Wayland,** where apps can't
   place their own windows. Drag the Shelf by its header, or the Island by the pill.
+- **Text from the phone could come out as one letter repeated in some Windows
+  apps,** such as "ttttt" for "great" in Notepad, most often with voice typing
+  ([#52](https://github.com/thtbee/nectarlink/issues/52)).
 
 ## 0.1.5 (2026-11-05)
 

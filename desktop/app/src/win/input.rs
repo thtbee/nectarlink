@@ -3,7 +3,10 @@
 //! phone acting as a touchpad, keyboard or presentation remote
 //! (`docs/protocol/remote.md`).
 
-use std::sync::Mutex;
+use std::{
+    sync::Mutex,
+    time::{Duration, Instant},
+};
 
 use nectarlink_core::{ButtonAction, KeyMod, MouseButton, PowerAction, SlideAction, TouchAction};
 use windows::Win32::UI::{
@@ -232,26 +235,46 @@ pub fn scroll(dx: f32, dy: f32) {
 /// Types arbitrary Unicode text via `KEYEVENTF_UNICODE` (including surrogate
 /// pairs for non-BMP characters like emoji).
 pub fn type_text(text: &str) {
-    let mut inputs = Vec::with_capacity(text.len() * 2);
+    // One character at a time: an app that reads a packet key late (Notepad on
+    // Windows 11) can turn a batch into its last letter ("great" as "ttttt").
+    for (i, keystroke) in keystrokes(text).iter().enumerate() {
+        if i > 0 {
+            let next = Instant::now() + BETWEEN_CHARACTERS;
+            while Instant::now() < next {
+                std::thread::yield_now();
+            }
+        }
+        send_inputs(keystroke);
+    }
+}
+
+/// How long the app gets to read one typed character before the next. A wait
+/// this short is spun: `sleep` can take 15 ms on Windows, too slow for a paste.
+const BETWEEN_CHARACTERS: Duration = Duration::from_millis(2);
+
+/// The input events of each character in `text`, press and release together.
+fn keystrokes(text: &str) -> Vec<Vec<INPUT>> {
+    let mut keystrokes = Vec::with_capacity(text.len());
     for ch in text.chars() {
         if ch == '\r' {
             continue;
         }
         if ch == '\n' {
-            inputs.push(vk_input(VK_RETURN, false, false));
-            inputs.push(vk_input(VK_RETURN, false, true));
+            keystrokes.push(vec![vk_input(VK_RETURN, false, false), vk_input(VK_RETURN, false, true)]);
             continue;
         }
         let mut buf = [0u16; 2];
         let units = ch.encode_utf16(&mut buf);
+        let mut keystroke = Vec::with_capacity(units.len() * 2);
         for &unit in units.iter() {
-            inputs.push(unicode_input(unit, false));
+            keystroke.push(unicode_input(unit, false));
         }
         for &unit in units.iter().rev() {
-            inputs.push(unicode_input(unit, true));
+            keystroke.push(unicode_input(unit, true));
         }
+        keystrokes.push(keystroke);
     }
-    send_inputs(&inputs);
+    keystrokes
 }
 
 /// Resolves a protocol key or shortcut name into `(VIRTUAL_KEY, is_extended, extra_mods)`.
@@ -391,6 +414,16 @@ pub fn is_user_active_within_ms(max_idle_ms: u32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn text_is_typed_one_character_at_a_time() {
+        let sizes = |text: &str| keystrokes(text).iter().map(Vec::len).collect::<Vec<_>>();
+        assert_eq!(sizes("great"), [2, 2, 2, 2, 2]);
+        // An emoji is two UTF-16 units, kept together; a line break is Enter.
+        assert_eq!(sizes("a\u{1F600}"), [2, 4]);
+        assert_eq!(sizes("a\r\nb"), [2, 2, 2]);
+        assert!(keystrokes("").is_empty());
+    }
 
     #[test]
     fn resolves_named_keys_and_shortcuts() {
