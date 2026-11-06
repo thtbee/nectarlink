@@ -418,6 +418,9 @@ pub struct Settings {
     /// Quiet phone notification pop-ups on the PC while the phone is in Do Not Disturb.
     #[serde(alias = "sync_dnd")]
     pub sync_dnd: bool,
+    /// No pop-ups for phone notifications while this PC is locked.
+    #[serde(default, alias = "quiet_when_locked")]
+    pub quiet_when_locked: bool,
     /// Paired phones in Explorer's "Send to" menu.
     #[serde(alias = "send_to_menu")]
     pub send_to_menu: bool,
@@ -599,6 +602,7 @@ impl Default for Settings {
             mute_while_watched: true,
             language: String::new(),
             sync_dnd: false,
+            quiet_when_locked: false,
             send_to_menu: true,
             auto_update: true,
             install_updates: true,
@@ -842,6 +846,7 @@ mod tests {
             mute_while_watched: false,
             language: "zh_CN".into(),
             sync_dnd: true,
+            quiet_when_locked: true,
             send_to_menu: false,
             auto_update: false,
             install_updates: false,

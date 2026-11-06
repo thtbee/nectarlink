@@ -1652,7 +1652,20 @@ Item {
                             muted: true
                             text: feed.count > 0 ? qsTr("Notifications · %1").arg(feed.count) : qsTr("Notifications")
                         }
+                        Button {
+                            anchors.right: historyButton.visible
+                                ? historyButton.left
+                                : (clearAll.visible ? clearAll.left : parent.right)
+                            anchors.rightMargin: historyButton.visible || clearAll.visible ? 8 : 0
+                            anchors.verticalCenter: parent.verticalCenter
+                            variant: AppController.notificationsPaused ? "tonal" : "text"
+                            size: "sm"
+                            iconPath: Icons.bell
+                            text: AppController.notificationsPaused ? qsTr("Resume pop-ups") : qsTr("Pause pop-ups")
+                            onClicked: AppController.toggleNotificationsPaused()
+                        }
                         IconButton {
+                            id: historyButton
                             anchors.right: clearAll.visible ? clearAll.left : parent.right
                             anchors.rightMargin: clearAll.visible ? 8 : 0
                             anchors.verticalCenter: parent.verticalCenter

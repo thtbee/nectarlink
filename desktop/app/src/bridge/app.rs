@@ -49,6 +49,8 @@ pub mod qobject {
         /// Bumped whenever any capability matrix changes, so bindings that
         /// call `featureState` re-evaluate.
         #[qproperty(i32, caps_revision)]
+        /// Pop-ups for phone notifications are paused.
+        #[qproperty(bool, notifications_paused)]
         /// Bumped when a device toggle is changed from this PC.
         #[qproperty(i32, toggles_revision)]
         /// Bumped whenever a phone's quick settings toggles change.
@@ -220,6 +222,9 @@ pub mod qobject {
         /// ones (notifications, media).
         #[qinvokable]
         fn sync_now(self: Pin<&mut AppController>);
+        /// Pauses or resumes pop-ups for phone notifications.
+        #[qinvokable]
+        fn toggle_notifications_paused(self: Pin<&mut AppController>);
         #[qinvokable]
         fn unpair(self: Pin<&mut AppController>, device: &QString);
 
@@ -426,6 +431,7 @@ pub struct AppControllerRust {
     device_id: QString,
     has_devices: bool,
     caps_revision: i32,
+    notifications_paused: bool,
     toggles_revision: i32,
     phone_toggles_revision: i32,
     ringing_from: QString,
@@ -631,6 +637,13 @@ pub fn is_quit_requested() -> bool {
 pub fn request_activation() {
     if let Some(qt) = controller() {
         let _ = qt.queue(|object| object.activate_requested());
+    }
+}
+
+/// Pauses or resumes pop-ups for phone notifications (from any thread).
+pub(crate) fn toggle_notifications_pause() {
+    if let Some(qt) = controller() {
+        let _ = qt.queue(|object| object.toggle_notifications_paused());
     }
 }
 
@@ -848,6 +861,8 @@ impl cxx_qt::Initialize for qobject::AppController {
             scan_document: tr!("App", "Scan document with phone"),
             find_phone: tr!("App", "Find my phone"),
             open_link: tr!("App", "Open copied link on phone"),
+            pause_notifications: tr!("App", "Pause phone notifications"),
+            resume_notifications: tr!("App", "Resume phone notifications"),
             quit: tr!("App", "Quit NectarLink"),
         };
         match tray::Tray::create("NectarLink", labels, move |event| on_tray_event(&qt, event)) {
@@ -1027,6 +1042,7 @@ fn on_tray_event(qt: &CxxQtThread<qobject::AppController>, event: tray::TrayEven
         tray::TrayEvent::TakePhoto => crate::continuity_camera::start("photo"),
         tray::TrayEvent::ScanDocument => crate::continuity_camera::start("scan"),
         tray::TrayEvent::OpenLinkOnPhone => crate::links::open_copied_link_on_phone(),
+        tray::TrayEvent::ToggleNotificationsPause => toggle_notifications_pause(),
         tray::TrayEvent::Quit => {
             let _ = qt.queue(|object| object.quit_requested());
         }
@@ -1548,6 +1564,15 @@ impl qobject::AppController {
     pub fn ring(self: Pin<&mut Self>, device: &QString, on: bool) {
         if let Some(id) = super::parse_device(device) {
             ring_device(id, on);
+        }
+    }
+
+    pub fn toggle_notifications_paused(mut self: Pin<&mut Self>) {
+        let paused = !crate::notifications::paused();
+        crate::notifications::set_paused(paused);
+        self.as_mut().set_notifications_paused(paused);
+        if let Some(tray) = self.rust().tray.as_ref() {
+            tray.set_notifications_paused(paused);
         }
     }
 

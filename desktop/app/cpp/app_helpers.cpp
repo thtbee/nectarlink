@@ -597,6 +597,7 @@ struct LinuxTrayState {
     QPointer<QAction> scanDocumentAction;
     QPointer<QAction> findPhoneAction;
     QPointer<QAction> openLinkAction;
+    QPointer<QAction> pauseAction;
     bool phoneActionsEnabled = false;
     std::mutex mutex;
     std::condition_variable cv;
@@ -709,6 +710,7 @@ void linux_tray_setup(
     rust::Str scan_document_label,
     rust::Str find_phone_label,
     rust::Str open_link_label,
+    rust::Str pause_notifications_label,
     rust::Str quit_label)
 {
 #ifdef __linux__
@@ -721,6 +723,7 @@ void linux_tray_setup(
     const QString scanStr = QString::fromUtf8(scan_document_label.data(), static_cast<qsizetype>(scan_document_label.size()));
     const QString findPhoneStr = QString::fromUtf8(find_phone_label.data(), static_cast<qsizetype>(find_phone_label.size()));
     const QString openLinkStr = QString::fromUtf8(open_link_label.data(), static_cast<qsizetype>(open_link_label.size()));
+    const QString pauseStr = QString::fromUtf8(pause_notifications_label.data(), static_cast<qsizetype>(pause_notifications_label.size()));
     const QString quitStr = QString::fromUtf8(quit_label.data(), static_cast<qsizetype>(quit_label.size()));
 
     runOnQtMainThread([=]() {
@@ -764,6 +767,9 @@ void linux_tray_setup(
         openLink->setEnabled(enabled);
         QObject::connect(openLink, &QAction::triggered, menu, []() { pushTrayAction("OPEN_LINK"); });
 
+        QAction *pause = menu->addAction(pauseStr);
+        QObject::connect(pause, &QAction::triggered, menu, []() { pushTrayAction("PAUSE_NOTIFICATIONS"); });
+
         menu->addSeparator();
         QObject::connect(menu->addAction(quitStr), &QAction::triggered, menu, []() { pushTrayAction("QUIT"); });
 
@@ -786,6 +792,7 @@ void linux_tray_setup(
         st.scanDocumentAction = scanDoc;
         st.findPhoneAction = findPhone;
         st.openLinkAction = openLink;
+        st.pauseAction = pause;
     });
 #else
     (void)icon_path;
@@ -797,7 +804,21 @@ void linux_tray_setup(
     (void)scan_document_label;
     (void)find_phone_label;
     (void)open_link_label;
+    (void)pause_notifications_label;
     (void)quit_label;
+#endif
+}
+
+void linux_tray_set_pause_label(rust::Str label)
+{
+#ifdef __linux__
+    const QString text = QString::fromUtf8(label.data(), static_cast<qsizetype>(label.size()));
+    runOnQtMainThread([text]() {
+        if (auto *action = linuxTray().pauseAction.data())
+            action->setText(text);
+    });
+#else
+    (void)label;
 #endif
 }
 

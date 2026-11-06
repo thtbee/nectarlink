@@ -114,6 +114,27 @@ pub fn os_version() -> String {
     format!("{major}.{minor}.{build}")
 }
 
+/// Whether the session is locked: another desktop takes the input then.
+pub fn session_locked() -> bool {
+    #[link(name = "user32")]
+    unsafe extern "system" {
+        fn OpenInputDesktop(flags: u32, inherit: i32, access: u32) -> isize;
+        fn SwitchDesktop(desktop: isize) -> i32;
+        fn CloseDesktop(desktop: isize) -> i32;
+    }
+    const DESKTOP_SWITCHDESKTOP: u32 = 0x0100;
+    // SAFETY: plain calls; the handle is checked, used here and closed.
+    unsafe {
+        let desktop = OpenInputDesktop(0, 0, DESKTOP_SWITCHDESKTOP);
+        if desktop == 0 {
+            return true;
+        }
+        let ours = SwitchDesktop(desktop) != 0;
+        CloseDesktop(desktop);
+        !ours
+    }
+}
+
 /// Whether this PC runs on a battery (so phones can show a laptop).
 pub fn is_laptop() -> bool {
     let mut status = SYSTEM_POWER_STATUS::default();

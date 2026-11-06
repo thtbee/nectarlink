@@ -22,7 +22,9 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("App", "No phone is paired yet."), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Open NectarLink"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Open copied link on phone"), // desktop/app/src/bridge/app.rs
+    QT_TRANSLATE_NOOP("App", "Pause phone notifications"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Quit NectarLink"), // desktop/app/src/bridge/app.rs
+    QT_TRANSLATE_NOOP("App", "Resume phone notifications"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Scan document with phone"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Send cancelled"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Sending to %1…"), // desktop/app/src/bridge/app.rs
@@ -104,6 +106,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("CommandPalette", "Open voice recordings folder for %1"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Opened Recordings folder. Start a voice note in NectarLink on %1 to send it here."), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Pair a new phone"), // desktop/app/src/command_palette.rs
+    QT_TRANSLATE_NOOP("CommandPalette", "Pause phone notifications"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Place a phone call or open in dialer"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Place call on %1"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Quick Toggles"), // desktop/app/src/command_palette.rs
@@ -112,6 +115,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("CommandPalette", "Recent Activity"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Reconnect paired phones and refresh notifications and media"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Record voice"), // desktop/app/src/command_palette.rs
+    QT_TRANSLATE_NOOP("CommandPalette", "Resume phone notifications"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Ringer: Silent"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Ringer: Sound"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Ringer: Vibrate"), // desktop/app/src/command_palette.rs
@@ -132,6 +136,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("CommandPalette", "Start a new message conversation"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Starting phone webcam…"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Stop phone webcam"), // desktop/app/src/command_palette.rs
+    QT_TRANSLATE_NOOP("CommandPalette", "Stop pop-ups for a while. They still collect on Home."), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Stop typing on phone"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Stopped phone webcam."), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Stream %1's camera into the NectarLink virtual webcam"), // desktop/app/src/command_palette.rs

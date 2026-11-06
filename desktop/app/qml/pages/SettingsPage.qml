@@ -1989,6 +1989,19 @@ Item {
                     Column {
                         width: parent.width
 
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.bell
+                            title: qsTr("Quiet while this PC is locked")
+                            description: qsTr("No pop-ups while it's locked. Notifications still collect on Home.")
+                            Toggle {
+                                label: qsTr("Quiet while this PC is locked")
+                                checked: Preferences.quietWhenLocked
+                                onToggled: (on) => Preferences.quietWhenLocked = on
+                            }
+                        }
+                        Divider { width: parent.width }
+
                         // Row 1: Follow phone Do not disturb | Forward PC notifications
                         Item {
                             id: notifPairRow
