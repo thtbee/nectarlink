@@ -45,6 +45,11 @@ class SoundCapture(
     var usesPlaybackCapture = false
         private set
 
+    /** Whether any sound got as far as being sent. */
+    @Volatile
+    var sentSound = false
+        private set
+
     @SuppressLint("MissingPermission")
     fun start() {
         val proj = projection
@@ -97,6 +102,7 @@ class SoundCapture(
     private fun runRecord(record: AudioRecord) {
         try {
             record.startRecording()
+            sentSound = true
             if (stream.send(VideoPacketKind.CONFIG, 0u, mirrorAudioConfig(RATE.toUInt(), CHANNELS.toUByte())) == MirrorSendResult.CLOSED) return
             val started = SystemClock.elapsedRealtimeNanos()
             val packet = ByteArray(PACKET_BYTES)
@@ -146,6 +152,7 @@ class SoundCapture(
                 if (!running) return
                 if (!configSent) {
                     configSent = true
+                    sentSound = true
                     started = SystemClock.elapsedRealtimeNanos()
                     if (stream.send(VideoPacketKind.CONFIG, 0u, mirrorAudioConfig(RATE.toUInt(), CHANNELS.toUByte())) == MirrorSendResult.CLOSED) return
                 }
