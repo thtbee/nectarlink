@@ -1,0 +1,1396 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="app_name">NectarLink</string>
+
+    <!-- Pairing -->
+    <string name="pair_title">Parear com o PC</string>
+    <string name="pair_show_title">Parear um celular ou tablet</string>
+    <string name="pair_show_hint">No outro celular ou tablet, abra o NectarLink, toque em Parear e escaneie este código.</string>
+    <string name="pair_show_qr_desc">Código de pareamento para outro celular ou tablet</string>
+    <string name="action_show_code">Parear um celular ou tablet</string>
+    <string name="pair_scan_hint">No PC, abra o NectarLink e aponte a câmera para o código exibido. No outro celular ou tablet, o código aparece em Parear um celular ou tablet.</string>
+    <string name="pair_nearby_title">Parear com um dispositivo próximo</string>
+    <string name="pair_nearby_hint">Abra o NectarLink no PC e deixe a tela de pareamento aberta. Ele vai aparecer aqui.</string>
+    <string name="pair_looking">Procurando PCs…</string>
+    <string name="pair_joining">Pareando…</string>
+    <string name="pair_connecting">Conectando a %1$s…</string>
+    <string name="pair_waiting">Aguardando %1$s…</string>
+    <string name="pair_check_code">Confira o código</string>
+    <string name="pair_compare_hint">Confira se %1$s mostra o mesmo código. Assim, outra pessoa não consegue parear antes de você.</string>
+    <string name="pair_done_title">Pareado</string>
+    <string name="pair_done">%1$s está pareado com este celular.</string>
+    <string name="pair_failed_title">Não foi possível parear</string>
+    <string name="pair_failed_rejected">Os códigos não conferiram, então nada foi pareado.</string>
+    <string name="pair_failed_declined">Um dos dispositivos recusou o pareamento.</string>
+    <string name="pair_failed_expired">O código expirou. Gere outro no PC.</string>
+    <string name="pair_failed_unreachable">Não foi possível acessar o PC. Confira se os dois estão na mesma rede.</string>
+    <string name="pair_failed_other">Esse não é um código de pareamento do NectarLink ou algo deu errado.</string>
+    <string name="your_pc">seu PC</string>
+    <string name="camera_permission_needed">O NectarLink precisa acessar a câmera para ler o código de pareamento. Nada é gravado.</string>
+
+    <!-- Home -->
+    <string name="home_title">Início</string>
+    <string name="link_online">Conectado</string>
+    <string name="link_online_rtt">Conectado · %1$d ms</string>
+    <string name="link_usb">Via USB</string>
+    <string name="link_usb_rtt">Via USB · %1$d ms</string>
+    <string name="link_away">Conectado à distância</string>
+    <string name="link_connecting">Conectando…</string>
+    <string name="link_offline_seen">Offline · visto por último: %1$s</string>
+    <string name="link_offline_now">Offline · visto agora</string>
+    <string name="link_never">Ainda não conectado</string>
+    <string name="link_not_reconnecting">Reconexão desativada</string>
+    <string name="battery_level">%1$d%%</string>
+    <string name="battery_charging">%1$d%% · carregando</string>
+    <string name="ringing_title">%1$s está fazendo seu celular tocar</string>
+    <string name="ringing_title_unknown">Seu PC está fazendo seu celular tocar</string>
+    <string name="connected">Conectado</string>
+    <string name="not_connected">Não conectado</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Configurações</string>
+    <string name="settings_appearance">Aparência</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_mode">Modo</string>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_language_more">Mais</string>
+    <string name="settings_dynamic_color">Cores do papel de parede</string>
+    <string name="settings_dynamic_color_hint">Usar as cores do papel de parede.</string>
+    <string name="settings_devices">PCs</string>
+    <string name="settings_about">Sobre</string>
+    <string name="settings_notifications">Notificações</string>
+    <string name="notifications_title">Mostrar notificações no PC</string>
+    <string name="notifications_on">Ativado. As notificações aparecem nos PCs pareados. Você pode responder ou dispensá-las por lá.</string>
+    <string name="notifications_off">O NectarLink precisa do Acesso a notificações para mostrar no PC as notificações deste celular.</string>
+    <string name="notifications_restricted">A opção está desativada? Abra Informações do app, toque em ⋮, escolha “Permitir configurações restritas” e tente de novo.</string>
+    <string name="action_allow">Permitir</string>
+    <string name="clip_share_label">Enviar para PC</string>
+    <string name="channel_transfers">Transferências de arquivos</string>
+    <string name="channel_received">Arquivos recebidos</string>
+    <string name="channel_pc_media">Mídia no seu PC</string>
+    <string name="media_on">%1$s em %2$s</string>
+    <string name="media_play">Reproduzir</string>
+    <string name="media_pause">Pausar</string>
+    <string name="media_next">Próximo</string>
+    <string name="media_previous">Anterior</string>
+    <string name="action_send_files">Enviar arquivos</string>
+    <string name="action_send_folder">Enviar uma pasta</string>
+    <string name="input_service_label">NectarLink: controle pelo PC</string>
+    <string name="input_service_description">Permite que o mouse e o teclado do PC toquem, deslizem e digitem neste celular enquanto você compartilha a tela com um PC pareado. Ele não lê mais nada.</string>
+    <string name="settings_control">Controle pelo PC</string>
+    <string name="control_title">Usar o mouse e o teclado do PC</string>
+    <string name="control_on">Ativado. Com a tela do celular espelhada no PC, você pode tocar, deslizar e digitar por lá.</string>
+    <string name="control_off">Toque, deslize e digite pelo PC enquanto ele mostra esta tela. Ative o NectarLink em Acessibilidade.</string>
+    <string name="dnd_access_title">Não perturbe e modo silencioso</string>
+    <string name="dnd_access_on">Ativado. O PC pode ativar ou desativar o Não perturbe e silenciar o toque do celular.</string>
+    <string name="dnd_access_off">Permita que o PC ative ou desative o Não perturbe e silencie o toque do celular.</string>
+    <string name="write_settings_title">Brilho da tela</string>
+    <string name="write_settings_on">Ativado: o PC pode ajustar o brilho da tela deste celular.</string>
+    <string name="write_settings_off">Permita que o PC ajuste o brilho da tela deste celular.</string>
+    <string name="local_network_title">Acessar o PC nesta rede</string>
+    <string name="local_network_text">O Android pede sua autorização antes de um app se comunicar com dispositivos da rede. O NectarLink precisa dessa permissão para acessar seu PC.</string>
+    <string name="channel_elevated">Configuração da depuração por Wi-Fi</string>
+    <string name="elevated_title">Toque e teclas de verdade (depuração por Wi-Fi)</string>
+    <string name="elevated_not_set_up">Toque em tempo real, todas as teclas e, nas chamadas, silenciar, colocar em espera e teclado numérico pelo PC. Usa a Depuração por Wi-Fi do próprio Android.</string>
+    <string name="elevated_waiting">Aguardando a depuração por Wi-Fi. Ative nas Opções do desenvolvedor.</string>
+    <string name="elevated_starting">Iniciando…</string>
+    <string name="elevated_running">Ativado: o mouse e o teclado do PC funcionam como uma tela touch e um teclado de verdade.</string>
+    <string name="elevated_failed">Não foi possível iniciar. Confira se a depuração por Wi-Fi está ativada e tente de novo.</string>
+    <string name="elevated_not_paired">O celular esqueceu o pareamento do NectarLink. Configure de novo.</string>
+    <string name="elevated_set_up">Configurar</string>
+    <string name="elevated_use_root">Usar root</string>
+    <string name="elevated_root_hint">Este celular tem root, então o Elevated pode ser iniciado pelo root: sem pareamento, e ele volta sozinho depois de reiniciar ou fora do Wi-Fi. As permissões são as mesmas da depuração por Wi-Fi.</string>
+    <string name="elevated_running_root">Ativado pelo root: o mouse e o teclado do PC funcionam como uma tela touch e um teclado de verdade.</string>
+    <string name="elevated_root_failed">O root não foi permitido, ou o seu gerenciador de root não consegue iniciar o auxiliar do NectarLink como usuário shell. Você pode configurar pela depuração por Wi-Fi.</string>
+    <string name="elevated_use_shizuku">Usar Shizuku</string>
+    <string name="elevated_shizuku_hint">O Shizuku está instalado, então o Elevated pode ser iniciado por ele: sem pareamento próprio, e continua funcionando fora do Wi-Fi enquanto o Shizuku estiver rodando. As permissões são as mesmas da depuração por Wi-Fi.</string>
+    <string name="elevated_running_shizuku">Ativado pelo Shizuku: o mouse e o teclado do PC funcionam como uma tela touch e um teclado de verdade.</string>
+    <string name="elevated_shizuku_waiting">Aguardando o Shizuku. Inicie-o no app Shizuku e abra o NectarLink.</string>
+    <string name="elevated_shizuku_not_running">O Shizuku não está em execução. Inicie-o no app Shizuku e tente de novo.</string>
+    <string name="elevated_shizuku_denied">O Shizuku não autorizou o NectarLink. Permita o acesso no Shizuku (e atualize o app se estiver desatualizado) e tente de novo.</string>
+    <string name="elevated_shizuku_root">O Shizuku está rodando com root, e o Elevated só inicia o auxiliar como usuário shell. Inicie o Shizuku pela depuração por Wi-Fi ou use root.</string>
+    <string name="elevated_open_shizuku">Abrir Shizuku</string>
+    <string name="elevated_turn_off">Desligar</string>
+    <string name="elevated_try_again">Tentar de novo</string>
+    <string name="elevated_steps_title">Configurar a depuração por Wi-Fi</string>
+    <string name="elevated_steps">Códigos de uso único em notificações que o Android esconde por serem sensíveis também chegam ao PC.\n\n1. Ative as Opções do desenvolvedor: em Configurações › Sobre o telefone, toque 7 vezes em Número da versão.\n2. Em Opções do desenvolvedor, ative a Depuração por Wi-Fi (conectado a um Wi-Fi), abra a opção e toque em Parear o dispositivo com um código de pareamento.\n3. Digite o código de 6 dígitos na notificação do NectarLink, sem fechar a janela do código.</string>
+    <string name="elevated_open_developer">Abrir as Opções do desenvolvedor</string>
+    <string name="elevated_pair_title">Parear o NectarLink pela depuração por Wi-Fi</string>
+    <string name="elevated_pair_text">Em Depuração por Wi-Fi, toque em Parear o dispositivo com um código de pareamento e digite o código aqui.</string>
+    <string name="elevated_pair_action">Digitar código</string>
+    <string name="elevated_pair_hint">Código de pareamento de 6 dígitos</string>
+    <string name="elevated_pairing">Pareando…</string>
+    <string name="elevated_no_dialog">O código de pareamento não está aparecendo. Em Depuração por Wi-Fi, toque em Parear o dispositivo com um código de pareamento e digite o código aqui.</string>
+    <string name="elevated_wrong_code">Esse código não deu certo. Confira e digite de novo.</string>
+    <string name="channel_mirroring">Compartilhamento de tela</string>
+    <string name="channel_mirror_requests">Pedidos de compartilhamento de tela</string>
+    <string name="mirror_request_title">%1$s quer ver sua tela</string>
+    <string name="mirror_request_title_sound">%1$s quer tocar o som do seu celular</string>
+    <string name="mirror_request_text">Toque para compartilhar. Você pode parar quando quiser.</string>
+    <string name="mirror_request_text_sound">Toque para compartilhar o áudio. O Android vai pedir para compartilhar a tela, mas só o som será enviado ao PC.</string>
+    <string name="mirror_sharing">Compartilhando sua tela com %1$s</string>
+    <string name="mirror_sharing_sound">Compartilhando o som do seu celular com %1$s</string>
+    <string name="action_stop">Parar</string>
+    <plurals name="app_windows_title">
+        <item quantity="one">%1$d app está aberto em uma janela em um PC</item>
+        <item quantity="other">%1$d apps estão abertos em janelas em um PC</item>
+    </plurals>
+    <string name="app_windows_text">Aparecem em %1$s, mas rodam aqui, ao lado do que está na sua tela.</string>
+    <string name="action_close_all">Fechar tudo</string>
+    <string name="settings_calls_and_contacts">Chamadas, contatos e mensagens</string>
+    <string name="sms_title">Mensagens pelo PC</string>
+    <string name="sms_on">Ativado. As conversas aparecem no PC, onde você pode ler e enviar mensagens.</string>
+    <string name="sms_off">Leia e envie mensagens pelo PC. Precisa de acesso às mensagens e aos contatos.</string>
+    <string name="calls_title">Chamadas no PC</string>
+    <string name="calls_on">Ativado. O PC mostra chamadas recebidas e recentes e permite iniciar ou atender chamadas.</string>
+    <string name="calls_off">Veja quem está ligando e inicie ou atenda chamadas pelo PC. O áudio continua no celular. Precisa de acesso às chamadas, ao histórico e aos contatos.</string>
+    <string name="contacts_title">Contatos no seu PC</string>
+    <string name="contacts_on">Ativado. Seus contatos ficam disponíveis nas áreas de Chamadas e Mensagens do PC.</string>
+    <string name="contacts_off">Busque contatos e ligue ou envie mensagens pelo PC. Precisa de acesso aos contatos.</string>
+    <string name="settings_photos">Fotos e vídeos</string>
+    <string name="photos_title">Fotos e vídeos no seu PC</string>
+    <string name="photos_on">Ativado. Suas fotos, capturas de tela e vídeos ficam disponíveis no PC.</string>
+    <string name="photos_partial">Só algumas fotos estão compartilhadas. Permita o acesso a todas para ver a galeria inteira no PC.</string>
+    <string name="photos_off">Veja fotos e vídeos pelo PC e receba as novas capturas de tela na hora. Precisa de acesso a fotos e vídeos.</string>
+    <string name="action_select_photos">Permitir acesso a todas</string>
+    <string name="transfer_too_many">Essa pasta tem muitos arquivos para enviar de uma vez.</string>
+    <string name="transfers_title">Transferências</string>
+    <string name="transfer_sending">Enviando para %1$s</string>
+    <string name="transfer_receiving">Recebendo de %1$s</string>
+    <string name="transfer_waiting">Aguardando %1$s</string>
+    <string name="transfer_pause">Pausar</string>
+    <string name="transfer_resume">Retomar</string>
+    <string name="transfer_paused_progress">Pausado · %1$s / %2$s</string>
+    <string name="transfer_received_from">De %1$s · em Download/Nectarlink</string>
+    <string name="transfer_sent_to">Enviado para %1$s</string>
+    <string name="transfer_cancelled">Cancelado</string>
+    <string name="transfer_denied">%1$s não aceita arquivos deste celular.</string>
+    <string name="transfer_unreachable">Não foi possível acessar %1$s.</string>
+    <string name="transfer_no_space">Não há espaço suficiente.</string>
+    <string name="transfer_failed_integrity">O arquivo falhou na verificação de integridade. A parte recebida foi mantida para continuar depois.</string>
+    <string name="transfer_failed">Não foi possível concluir a transferência.</string>
+    <string name="transfer_nothing">Esses arquivos não podem ser abertos.</string>
+    <string name="transfer_off_for">O compartilhamento de arquivos está desativado para %1$s.</string>
+    <string name="transfer_pick_pc">Enviar para qual PC?</string>
+    <string name="clip_tile_label">Enviar item copiado</string>
+    <string name="action_send_clipboard">Enviar item copiado</string>
+    <string name="clip_sent_to">Enviado para %1$s</string>
+    <string name="clip_no_pc">Nenhum PC está conectado agora.</string>
+    <string name="clip_off_for">O compartilhamento da área de transferência está desativado para %1$s.</string>
+    <string name="clip_too_large">O texto é grande demais para enviar de uma vez.</string>
+    <string name="clip_private">O app marcou o que você copiou como privado, então nada foi enviado.</string>
+    <string name="clip_empty">Não há texto nem imagem na área de transferência.</string>
+    <string name="clip_image_too_large">Essa imagem é muito grande para enviar.</string>
+    <string name="clip_image_unreadable">Essa imagem não pode ser lida.</string>
+    <string name="clip_image_unsupported">Atualize o NectarLink em %1$s para enviar imagens.</string>
+    <string name="clip_nothing_shared">Não há texto para enviar.</string>
+    <string name="clipboard_history_title">Histórico da área de transferência</string>
+    <string name="clipboard_history_subtitle">Os últimos 50 itens trocados com seus PCs, guardados com criptografia neste celular.</string>
+    <string name="clipboard_history_just_now">agora mesmo</string>
+    <string name="clipboard_history_empty">Nada por aqui ainda. O que for compartilhado com seus PCs aparece aqui.</string>
+    <string name="clipboard_history_search">Buscar no histórico da área de transferência</string>
+    <string name="clipboard_history_no_match">Nada encontrado para “%1$s”.</string>
+    <string name="clipboard_history_from">De %1$s</string>
+    <string name="clipboard_history_sent_to">Enviado para %1$s</string>
+    <string name="clipboard_history_image">Imagem</string>
+    <string name="clipboard_history_copy">Copiar</string>
+    <string name="clipboard_history_copied">Copiado para a área de transferência</string>
+    <string name="clipboard_history_pin">Fixar</string>
+    <string name="clipboard_history_unpin">Desafixar</string>
+    <string name="clipboard_history_delete">Excluir</string>
+    <string name="clipboard_history_clear">Limpar histórico</string>
+    <string name="clipboard_history_done">Concluído</string>
+    <string name="settings_clipboard_title">Área de transferência</string>
+    <string name="settings_clipboard_suggestions">Sugerir ações para o texto copiado</string>
+    <string name="settings_clipboard_suggestions_hint">Sugere ações para textos vindos do PC: abrir links e mapas, ligar, rastrear encomendas e mandar e-mail.</string>
+    <string name="clip_received_from">Copiado de %1$s</string>
+    <string name="clip_action_open">Abrir</string>
+    <string name="clip_action_maps">Abrir no Maps</string>
+    <string name="clip_action_call">Ligar</string>
+    <string name="clip_action_track">Rastrear</string>
+    <string name="clip_action_email">E-mail</string>
+    <string name="background_title">Continue conectado em segundo plano</string>
+    <string name="background_text">O Android está pausando o NectarLink para economizar bateria, então o PC não consegue se conectar. Permita que o app continue em segundo plano.</string>
+    <string name="background_on">Pode ficar conectado em segundo plano</string>
+    <string name="settings_background_title">Segundo plano e bateria</string>
+    <string name="settings_run_in_background">Manter em segundo plano</string>
+    <string name="settings_run_in_background_hint">Mantém este celular acessível pelo PC. Se desativar, o NectarLink só se conecta enquanto estiver aberto e a notificação desaparece.</string>
+    <string name="home_background_off_title">Conexão em segundo plano desativada</string>
+    <string name="home_background_off_text">O NectarLink só se conecta enquanto o app está aberto. Ative esta opção para manter o celular acessível pelo PC.</string>
+    <string name="battery_open_oem_settings">Configurações de bateria</string>
+    <string name="battery_guide_samsung">Em celulares Samsung: abra Informações do app › Bateria › selecione Sem restrições e, em Assistência do aparelho › Bateria › Limites de uso em segundo plano, confira se o NectarLink nunca é suspenso.</string>
+    <string name="battery_guide_xiaomi">Em celulares Xiaomi / HyperOS / MIUI: ative a Inicialização automática do NectarLink. Em Informações do app › Economia de bateria, selecione Sem restrições.</string>
+    <string name="battery_guide_oneplus">Em celulares OnePlus / OxygenOS: abra Informações do app › Uso da bateria › ative Permitir atividade em segundo plano e Permitir inicialização automática.</string>
+    <string name="battery_guide_oppo_realme">Em celulares Oppo / Realme: abra Informações do app › Uso da bateria › ative Permitir atividade em segundo plano e Permitir inicialização automática.</string>
+    <string name="battery_guide_vivo">Em celulares Vivo / Funtouch / OriginOS: abra Informações do app › Bateria › selecione Sem restrições (alto consumo de bateria em segundo plano) e permita a inicialização automática.</string>
+    <string name="battery_guide_huawei">Em celulares Huawei / Honor: abra Inicialização de apps (Gerenciador do telefone) › desative Gerenciar automaticamente para o NectarLink e mantenha Inicialização automática, Inicialização secundária e Executar em segundo plano ativadas.</string>
+    <string name="battery_guide_pixel">Em celulares Pixel: abra Informações do app › Uso da bateria do app › toque em Permitir uso em segundo plano e selecione Sem restrições.</string>
+    <string name="action_manage">Gerenciar</string>
+    <string name="action_app_info">Informações do app</string>
+    <string name="theme_hive">Hive</string>
+    <string name="hive_invite_title">Conheça o tema Hive</string>
+    <string name="hive_invite_text">Mel sobre um fundo grafite ou cor de cera quente, com um favo animado ao fundo. Você pode mudar o tema quando quiser em Configurações.</string>
+    <string name="hive_invite_try">Conhecer o Hive</string>
+    <string name="hive_invite_dismiss">Agora não</string>
+    <string name="star_channel">Projeto NectarLink</string>
+    <string name="star_title">Está curtindo o NectarLink?</string>
+    <string name="star_text">Toque para dar uma estrela no GitHub. Isso ajuda outras pessoas a encontrar o app.</string>
+    <string name="settings_comb_motion">Favo animado</string>
+    <string name="settings_comb_motion_hint">O favo respira e pulsa. Ele fica parado quando Remover animações ou a Economia de bateria estão ativadas.</string>
+    <string name="theme_bloom">Bloom</string>
+    <string name="theme_graphite">Grafite</string>
+    <string name="mode_system">Sistema</string>
+    <string name="mode_light">Claro</string>
+    <string name="mode_dark">Escuro</string>
+    <string name="about_version">NectarLink %1$s</string>
+    <string name="unpair_title">Desparear %1$s?</string>
+    <string name="unpair_text">Os dois dispositivos vão esquecer um ao outro. Você pode pareá-los de novo quando quiser.</string>
+    <string name="core_failed">O NectarLink não conseguiu iniciar: %1$s</string>
+
+    <!-- Actions -->
+    <string name="action_pair">Parear</string>
+    <string name="action_pair_nearby">Parear com um dispositivo próximo</string>
+    <string name="action_scan_instead">Escanear um código</string>
+    <string name="action_codes_match">Os códigos conferem</string>
+    <string name="action_codes_differ">Os códigos não conferem</string>
+    <string name="action_try_again">Tentar de novo</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_allow_camera">Permitir câmera</string>
+    <string name="action_ring_pc">Fazer o PC tocar</string>
+    <string name="action_stop_ringing">Parar de tocar</string>
+    <string name="action_stop_service">Desligar</string>
+    <string name="action_turn_on">Ligar</string>
+    <string name="action_ring_device">Fazer tocar</string>
+    <string name="peer_kind_phone">Celular</string>
+    <string name="peer_kind_tablet">Tablet</string>
+    <string name="action_unpair">Desparear</string>
+    <string name="action_pair_new">Parear outro PC</string>
+    <string name="action_refresh">Atualizar</string>
+    <string name="action_update">Atualizar</string>
+    <string name="update_title">O NectarLink %1$s está disponível</string>
+    <string name="update_text">Receba as melhorias e correções mais recentes.</string>
+    <string name="update_downloading">Baixando…</string>
+    <string name="update_downloading_progress">Baixando · %1$s de %2$s</string>
+    <string name="update_waiting_network">Aguardando conexão. O download vai continuar de onde parou.</string>
+    <string name="update_installing">Instalando. O Android pode pedir sua confirmação.</string>
+    <string name="update_not_allowed">Permita que o NectarLink instale as atualizações. O processo continua quando você voltar.</string>
+    <string name="update_damaged">O arquivo baixado foi corrompido e não foi instalado. Tente de novo.</string>
+    <string name="update_offline">Não foi possível baixar a atualização. Tente de novo quando estiver conectado à internet.</string>
+    <string name="update_install_failed">O Android não instalou a atualização. Tente de novo.</string>
+    <string name="update_whats_new">Novidades</string>
+    <string name="update_check">Verificar atualizações</string>
+    <string name="update_checking">Verificando atualizações…</string>
+    <string name="update_up_to_date_version">O NectarLink %1$s está atualizado.</string>
+    <string name="update_current_version">Você está com o NectarLink %1$s.</string>
+    <string name="update_check_failed">Não foi possível verificar se há atualizações. Confira sua conexão com a internet.</string>
+    <string name="action_lock_pc">Bloquear PC</string>
+    <string name="action_sleep_pc">Suspender</string>
+    <string name="action_wake_pc">Acordar</string>
+    <string name="action_disconnect">Desconectar</string>
+    <string name="action_stop_reconnecting">Parar de tentar reconectar</string>
+    <string name="action_reconnect">Reconectar</string>
+    <string name="wake_waking">Acordando %1$s…</string>
+    <string name="wake_timeout_title">%1$s ainda não acordou</string>
+    <string name="wake_timeout_text">Confira se:\n• O Wake-on-LAN está ativado na BIOS/UEFI e nas configurações do adaptador de rede no Windows (Gerenciamento de Energia e Wake on Magic Packet).\n• %1$s está no cabo de rede, se foi desligado (acordar pelo Wi-Fi quase nunca funciona com o PC desligado).\n• Este celular está na mesma rede que %1$s.</string>
+    <string name="wake_not_ready">Conecte-se a %1$s uma vez para que o celular reconheça o endereço de rede dele.</string>
+    <string name="pc_locked">%1$s foi bloqueado.</string>
+    <string name="pc_sleeping">%1$s está entrando em suspensão.</string>
+    <string name="pc_actions_off">As ações de bloquear e suspender estão desativadas para este celular em %1$s.</string>
+    <string name="channel_links">Links do PC</string>
+    <!-- Play on phone: what a PC plays, streamed to the phone. -->
+    <string name="watch_offer_title">Assistir de %1$s</string>
+    <string name="watch_offer_untitled">O que está tocando no seu PC</string>
+    <string name="watch_back_10">Voltar 10 segundos</string>
+    <string name="watch_forward_10">Avançar 10 segundos</string>
+    <string name="watch_seek">Posição</string>
+    <string name="watch_file_failed">Não foi possível reproduzir este vídeo.</string>
+    <string name="watch_offer_action">Assistir</string>
+    <string name="watch_from">De %1$s</string>
+    <string name="watch_close">Fechar</string>
+    <string name="link_from">Link de %1$s</string>
+    <string name="link_opened_on">Aberto em %1$s</string>
+    <string name="link_pick_pc">Abrir em qual PC?</string>
+    <string name="channel_pc_tasks">Tarefas no seu PC</string>
+    <string name="channel_pc_tasks_running">Tarefas em execução no seu PC</string>
+    <string name="task_running_on">Em execução em %1$s</string>
+
+    <!-- Notifications -->
+    <string name="channel_connection">Conexão</string>
+    <string name="channel_ringing">Localizar meu celular</string>
+    <string name="notification_connected_to">Conectado a %1$s</string>
+    <plurals name="notification_connected_pcs">
+        <item quantity="one">Conectado a %1$d PC</item>
+        <item quantity="other">Conectado a %1$d PCs</item>
+    </plurals>
+    <string name="notification_waiting">Aguardando seu PC</string>
+    <string name="notification_not_paired">Ainda não pareado com um PC</string>
+    <plurals name="transfer_files">
+        <item quantity="one">%1$d arquivo</item>
+        <item quantity="other">%1$d arquivos</item>
+    </plurals>
+    <plurals name="transfer_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d itens</item>
+    </plurals>
+
+    <!-- Remote input (touchpad, air mouse, keyboard, voice typing & presentation) -->
+    <string name="action_remote_pc">Controlar o PC</string>
+    <string name="action_back">Voltar</string>
+    <string name="settings_remote">Controlar o PC</string>
+    <string name="settings_volume_keys_control_pc">Botões de volume controlam o PC</string>
+    <string name="settings_volume_keys_control_pc_hint">Enquanto o PC toca música ou vídeo, os botões de volume do celular mudam o volume do PC.</string>
+    <string name="settings_touchpad_sensitivity">Velocidade do touchpad</string>
+    <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
+    <string name="remote_mode_touchpad">Touchpad</string>
+    <string name="remote_mode_air">Mouse aéreo</string>
+    <string name="remote_mode_presentation">Apresentação</string>
+    <string name="remote_touchpad_hint">Arraste para mover · toque para clicar · use dois dedos para clicar com o botão direito ou rolar · toque duas vezes e mantenha pressionado para arrastar</string>
+    <string name="remote_air_hold">Mantenha pressionado para apontar para %1$s</string>
+    <string name="remote_air_active">Movendo o ponteiro em %1$s · incline o celular ou toque para clicar</string>
+    <string name="remote_air_hint">Mantenha o dedo na área de controle e incline o celular para mover o ponteiro · toque para clicar · solte para parar</string>
+    <string name="remote_air_no_gyro_title">Este celular não tem giroscópio</string>
+    <string name="remote_air_no_gyro_text">O mouse aéreo usa o giroscópio para acompanhar a inclinação do celular. Use o modo Touchpad.</string>
+    <string name="remote_left_click">Clique esquerdo</string>
+    <string name="remote_right_click">Clique direito</string>
+    <string name="remote_middle_click">Clique do meio</string>
+    <string name="remote_keyboard">Teclado</string>
+    <string name="remote_more_controls">Mais</string>
+    <string name="remote_touchpad_only">Somente touchpad</string>
+    <string name="remote_type_placeholder">Digite em %1$s…</string>
+    <string name="remote_dictate">Ditar</string>
+    <string name="remote_dictate_stop">Parar</string>
+    <string name="remote_dictate_hint">Toque ou segure Ditar para falar em %1$s</string>
+    <string name="remote_dictate_listening">Ouvindo para digitar em %1$s…</string>
+    <string name="remote_dictate_typing">Digitando em %1$s…</string>
+    <string name="remote_dictate_typed">Digitado em %1$s: “%2$s”</string>
+    <string name="remote_dictate_no_recognizer">Este celular não tem reconhecimento de fala instalado.</string>
+    <string name="remote_dictate_no_speech">Não ouvi nada. Toque ou segure Ditar para tentar de novo.</string>
+    <string name="remote_dictate_error">O reconhecimento de fala não terminou. Toque ou segure Ditar para tentar de novo.</string>
+    <string name="remote_dictate_permission_needed">O NectarLink precisa de acesso ao microfone para ditar em %1$s.</string>
+    <string name="remote_denied_title">Permita o controle em %1$s</string>
+    <string name="remote_denied_text">Em %1$s, permita o controle deste celular no aviso do NectarLink ou em Configurações › Dispositivos.</string>
+    <string name="remote_offline_text">%1$s não está conectado agora.</string>
+    <string name="remote_unsupported_text">Atualize o NectarLink em %1$s para controlá-lo por este celular.</string>
+    <string name="remote_slide_next">Próximo slide</string>
+    <string name="remote_slide_prev">Anterior</string>
+    <string name="remote_slide_start">Iniciar apresentação</string>
+    <string name="remote_slide_stop">Encerrar apresentação</string>
+    <string name="remote_slide_black">Tela preta</string>
+    <string name="remote_laser_hold">Segure para usar o apontador laser</string>
+    <string name="remote_laser_active">Apontador laser em %1$s · incline o celular ou arraste aqui</string>
+    <string name="remote_volume_hint">Os botões de volume também mudam os slides enquanto esta tela está aberta.</string>
+    <string name="remote_mode_screen">Tela</string>
+    <string name="pc_mirror_connecting">Conectando a %1$s…</string>
+    <string name="pc_mirror_fullscreen">Tela inteira</string>
+    <string name="pc_mirror_exit_fullscreen">Sair da tela inteira</string>
+    <string name="pc_mirror_right_click">Clique direito</string>
+    <string name="pc_mirror_task_view">Visão de Tarefas</string>
+    <string name="pc_mirror_keyboard">Teclado</string>
+    <string name="pc_mirror_hide_keyboard">Ocultar teclas</string>
+    <string name="pc_mirror_send_text">Enviar</string>
+    <string name="pc_mirror_backspace">Backspace</string>
+    <string name="pc_mirror_quality_720p">720p</string>
+    <string name="pc_mirror_quality_1080p">1080p</string>
+    <string name="pc_mirror_quality_desc">Qualidade da transmissão: %1$s</string>
+    <string name="pc_mirror_viewport_desc">Tela %1$s</string>
+
+    <!-- Voice recorder to PC -->
+    <string name="action_record_pc">Gravar</string>
+    <string name="channel_recorder">Gravador de voz</string>
+    <!-- Phone as microphone. -->
+    <string name="channel_mic">Microfone para o PC</string>
+    <string name="channel_mic_requests">Pedidos de microfone</string>
+    <string name="mic_notification_title">Microfone ativado para %1$s</string>
+    <string name="mic_notification_text">Seu PC está ouvindo o microfone deste celular.</string>
+    <string name="mic_request_title">%1$s quer usar o microfone deste celular</string>
+    <string name="mic_request_text">Toque para começar. Ele fica ligado até você ou o PC desligar.</string>
+    <string name="mic_request_start">Iniciar</string>
+    <string name="mic_request_card_text">Ele fica ligado até você ou o PC desligar.</string>
+    <string name="mic_pc_toggle">Usar este celular como microfone</string>
+    <string name="mic_pc_toggle_hint">Ativado por padrão. Este PC pode pedir o microfone, que só liga quando você toca em Iniciar.</string>
+    <string name="mic_pc_toggle_hint_auto">Ativado por padrão. Este PC pode pedir o microfone, e ele liga na hora.</string>
+    <string name="start_without_asking_toggle">Iniciar a câmera e o microfone sem pedir confirmação</string>
+    <string name="start_without_asking_hint">Quando este PC pedir, eles ligam na hora, sem precisar tocar no celular. Precisa do Elevated. Sem ele, o celular pergunta como sempre.</string>
+    <string name="recorder_notification_recording">Gravando para %1$s</string>
+    <string name="recorder_notification_paused">Gravação pausada (%1$s)</string>
+    <string name="recorder_permission_title">Permitir acesso ao microfone</string>
+    <string name="recorder_permission_text">O NectarLink usa o microfone somente enquanto você grava uma nota de voz para enviar a %1$s.</string>
+    <string name="recorder_allow_mic">Permitir microfone</string>
+    <string name="recorder_offline_hint">As gravações ficam salvas neste celular e são enviadas sozinhas quando %1$s se conectar.</string>
+    <string name="recorder_status_ready">Pronto para gravar para %1$s</string>
+    <string name="recorder_status_recording">Gravando para %1$s</string>
+    <string name="recorder_status_paused">Pausada</string>
+    <string name="recorder_start">Iniciar gravação</string>
+    <string name="recorder_pause">Pausar</string>
+    <string name="recorder_resume">Retomar</string>
+    <string name="recorder_marker_hint">Nome do marcador (opcional)</string>
+    <string name="recorder_add_marker">Adicionar marcador</string>
+    <string name="recorder_marker_default">Marcador %1$d</string>
+    <string name="recorder_saved_title">Gravações</string>
+    <string name="recorder_send_now">Enviar</string>
+    <string name="recorder_send_again">Enviar de novo</string>
+    <string name="recorder_delete">Excluir</string>
+    <string name="recorder_denied_text">O envio de gravações de voz está desativado para este celular em %1$s.</string>
+    <plurals name="recorder_markers_count">
+        <item quantity="one">%1$d marcador</item>
+        <item quantity="other">%1$d marcadores</item>
+    </plurals>
+
+    <!-- Deck (macro pad to PC) -->
+    <string name="action_deck_pc">Deck</string>
+    <string name="action_desk_pc">Relógio de mesa</string>
+    <string name="deck_fullscreen">Tela inteira</string>
+    <string name="deck_exit_fullscreen">Sair da tela inteira</string>
+    <string name="deck_playing">Reproduzindo</string>
+    <string name="deck_paused">Pausado</string>
+    <string name="deck_muted">Silenciado</string>
+    <string name="deck_live">Ao vivo</string>
+    <string name="deck_volume_percent">%1$d%%</string>
+    <string name="deck_empty_page">Ainda não há botões nesta página. Adicione botões no NectarLink em %1$s.</string>
+    <string name="deck_commands_denied_title">Permitir comandos em %1$s</string>
+    <string name="deck_commands_denied_text">Para executar comandos do shell por este celular, ative “Executar comandos do shell do Deck” para este celular em NectarLink › Configurações › Dispositivos em %1$s.</string>
+    <string name="deck_hint">Personalize os botões do Deck em %1$s</string>
+    <string name="pc_audio_volume">Volume</string>
+    <string name="pc_audio_mute">Silenciar</string>
+    <string name="pc_audio_unmute">Ativar som</string>
+    <string name="pc_audio_muted">Silenciado</string>
+    <string name="pc_audio_output">Saída: %1$s</string>
+    <string name="pc_audio_outputs_title">Saídas de áudio em %1$s</string>
+    <string name="pc_audio_default_badge">Padrão</string>
+    <string name="pc_audio_outputs_hint">Dispositivos de reprodução ativos em %1$s.</string>
+    <string name="pc_audio_use_phone_speaker">Usar o celular como alto-falante</string>
+    <string name="pc_audio_use_phone_speaker_sub">Reproduzir o áudio do PC neste celular</string>
+    <string name="pc_audio_use_phone_speaker_on">Transmitindo áudio do PC para este celular</string>
+    <string name="pc_audio_use_phone_mic">Usar o celular como microfone</string>
+    <string name="pc_audio_use_phone_mic_sub">Enviar o microfone deste celular para o PC</string>
+    <string name="pc_audio_use_phone_mic_on">O PC está ouvindo o microfone deste celular</string>
+
+    <!-- Phone storage in File Explorer -->
+    <string name="storage_all_files_title">Acesso a todos os arquivos</string>
+    <string name="storage_all_files_on">Ativado. Os PCs que você autorizar podem ver, abrir e copiar os arquivos deste celular no Explorador de Arquivos.</string>
+    <string name="storage_all_files_off">Navegue pelas pastas deste celular no Explorador de Arquivos do PC. Precisa do Acesso a todos os arquivos, ou escolha pastas específicas abaixo.</string>
+    <string name="storage_saf_title">Somente pastas selecionadas</string>
+    <string name="storage_saf_hint">Compartilhe somente as pastas que você escolher.</string>
+    <string name="storage_add_folder">Adicionar pasta</string>
+    <string name="storage_remove_folder">Remover</string>
+    <string name="storage_pc_toggle">Explorar o armazenamento deste celular pelo Explorador de Arquivos</string>
+    <string name="storage_pc_toggle_hint">Desativado por padrão. Permite que este PC liste, abra, envie, renomeie e exclua os arquivos compartilhados.</string>
+    <string name="storage_request_title">%1$s quer acessar o armazenamento deste celular</string>
+    <string name="storage_request_text">Permitir que %1$s acesse o armazenamento compartilhado (ou as pastas selecionadas) pelo Explorador de Arquivos?</string>
+    <string name="action_not_now">Agora não</string>
+
+    <!-- Phone as webcam to PC -->
+    <string name="action_webcam_pc">Webcam</string>
+    <string name="channel_webcam">Webcam</string>
+    <string name="channel_webcam_requests">Pedidos de webcam</string>
+    <string name="webcam_notification_streaming">Transmitindo a câmera para %1$s</string>
+    <string name="webcam_notification_detail">%1$d × %2$d · câmera %3$s</string>
+    <string name="webcam_request_title">%1$s quer usar sua câmera</string>
+    <string name="webcam_request_text">Toque para abrir os controles da webcam e começar a transmitir.</string>
+    <string name="webcam_permission_title">Permitir acesso à câmera</string>
+    <string name="webcam_permission_text">O NectarLink usa a câmera somente enquanto você transmite vídeo para %1$s usando o celular como webcam.</string>
+    <string name="webcam_allow_camera">Permitir câmera</string>
+    <string name="webcam_status_connecting">Conectando a câmera a %1$s…</string>
+    <string name="webcam_status_ready">Pronto para transmitir para %1$s</string>
+    <string name="webcam_start">Iniciar webcam</string>
+    <string name="webcam_stop">Parar webcam</string>
+    <string name="webcam_camera_back">Traseira</string>
+    <string name="webcam_camera_front">Frontal</string>
+    <string name="webcam_switch_to_front">Mudar para a câmera frontal</string>
+    <string name="webcam_switch_to_back">Mudar para a câmera traseira</string>
+    <string name="webcam_turn_torch_on">Ligar a lanterna</string>
+    <string name="webcam_turn_torch_off">Desligar a lanterna</string>
+    <string name="webcam_switch_camera">Trocar câmera</string>
+    <string name="webcam_zoom_label">Zoom %1$.1f×</string>
+    <string name="webcam_resolution_label">Resolução</string>
+    <string name="webcam_denied_text">O uso da webcam está desativado para este celular em %1$s.</string>
+    <string name="webcam_offline_hint">Conecte %1$s à mesma rede para começar a transmitir a câmera.</string>
+
+    <!-- Timeline -->
+    <string name="timeline_title">Linha do tempo</string>
+    <string name="timeline_subtitle">Arquivos, itens copiados, links, fotos e sessões compartilhados com seus PCs.</string>
+    <string name="timeline_search">Buscar na Linha do tempo</string>
+    <string name="timeline_empty">Nada na sua Linha do tempo ainda.</string>
+    <string name="timeline_no_match">Nada encontrado para “%1$s”.</string>
+    <string name="timeline_filter_all">Tudo</string>
+    <string name="timeline_filter_files">Arquivos</string>
+    <string name="timeline_filter_clips">Itens copiados</string>
+    <string name="timeline_filter_links">Links</string>
+    <string name="timeline_filter_photos">Fotos</string>
+    <string name="timeline_filter_recordings">Gravações</string>
+    <string name="timeline_filter_sessions">Sessões</string>
+    <string name="timeline_action_open">Abrir</string>
+    <string name="timeline_action_folder">Mostrar na pasta</string>
+    <string name="timeline_action_copy">Copiar</string>
+    <string name="timeline_action_send_again">Enviar de novo</string>
+    <string name="timeline_action_remove">Remover</string>
+    <string name="timeline_action_clear_all">Limpar tudo</string>
+    <string name="timeline_action_load_more">Carregar mais</string>
+    <string name="timeline_today">Hoje</string>
+    <string name="timeline_yesterday">Ontem</string>
+    <string name="timeline_retention_30d">30 dias</string>
+    <string name="timeline_retention_90d">90 dias</string>
+    <string name="timeline_retention_1y">1 ano</string>
+    <string name="timeline_retention_all">Sem limite</string>
+
+    <!-- Data & storage -->
+    <string name="settings_data_storage_title">Dados e armazenamento</string>
+    <string name="data_action_clear">Limpar</string>
+    <string name="data_notifications_title">Histórico de notificações</string>
+    <string name="data_notifications_subtitle">Espelhadas em tempo real nos PCs pareados · não ficam salvas neste celular (os PCs mantêm as notificações dispensadas por até 24 horas / 300 itens)</string>
+    <string name="data_clipboard_title">Histórico da área de transferência</string>
+    <string name="data_clipboard_subtitle">Criptografado neste celular (senhas e códigos de uso único não são salvos) · mantido por 7 dias, até 50 itens copiados / 128 MB</string>
+    <plurals name="data_clipboard_count">
+        <item quantity="one">%1$d item salvo</item>
+        <item quantity="other">%1$d itens salvos</item>
+    </plurals>
+    <string name="data_timeline_title">Linha do tempo</string>
+    <string name="data_timeline_subtitle">Arquivos, itens copiados, links, fotos, gravações e sessões · até 5.000 itens</string>
+    <string name="data_messages_title">Cache de mensagens</string>
+    <string name="data_messages_subtitle">SMS e notificações de conversa são lidos do Android em tempo real; os arquivos temporários de MMS ficam guardados por até 5 minutos (os PCs guardam as conversas em cache por 90 dias)</string>
+    <string name="data_photos_title">Miniaturas de fotos e cache da câmera</string>
+    <string name="data_photos_subtitle">As fotos são lidas direto do MediaStore quando necessário; as capturas temporárias da Câmera de Continuidade ficam guardadas por até 24 horas</string>
+    <string name="data_received_files_title">Histórico de arquivos recebidos</string>
+    <string name="data_received_files_subtitle">Registro de transferências guardado com a Linha do tempo (os arquivos salvos em Downloads nunca são apagados)</string>
+    <string name="data_clear_everything_hint">Apaga o histórico da área de transferência, a Linha do tempo, os registros de transferência e os caches. Os PCs pareados e as configurações são mantidos.</string>
+    <string name="data_clear_everything_button">Limpar tudo…</string>
+    <string name="data_clear_everything_dialog_title">Limpar todos os dados locais?</string>
+    <string name="data_clear_everything_dialog_body">Apaga o histórico da área de transferência, a Linha do tempo, os registros de arquivos recebidos e os caches deste celular. Os PCs pareados e as configurações são mantidos.</string>
+    <string name="data_clear_everything_confirm">Limpar tudo</string>
+    <string name="data_cleared_everything_toast">Todos os dados locais foram apagados deste celular.</string>
+
+    <!-- LocalSend -->
+    <string name="settings_localsend_title">LocalSend</string>
+    <string name="settings_localsend_subtitle">Envie e receba arquivos com dispositivos LocalSend próximos. Desativado por padrão. Toda transferência recebida pede sua confirmação.</string>
+    <string name="localsend_card_title">LocalSend por perto</string>
+    <string name="localsend_card_empty">Nenhum dispositivo LocalSend encontrado nesta rede Wi-Fi ainda.</string>
+    <string name="localsend_nearby_device">Dispositivo por perto</string>
+    <string name="action_accept">Aceitar</string>
+    <string name="action_decline">Recusar</string>
+    <string name="action_dismiss">Dispensar</string>
+
+    <!-- Continuity Camera -->
+    <string name="channel_camera_requests">Pedidos para usar a câmera</string>
+    <string name="continuity_camera_request_scan_title">%1$s quer digitalizar um documento</string>
+    <string name="continuity_camera_request_photo_title">%1$s quer tirar uma foto</string>
+    <string name="continuity_camera_request_scan_text">Toque para digitalizar um documento com a câmera.</string>
+    <string name="continuity_camera_request_photo_text">Toque para tirar uma foto com a câmera.</string>
+    <string name="continuity_camera_scan_title">Digitalizar documento</string>
+    <string name="continuity_camera_photo_title">Tirar foto</string>
+    <string name="continuity_camera_for_pc">Para %1$s</string>
+    <string name="continuity_camera_mode_photo">Foto</string>
+    <string name="continuity_camera_mode_scan">Digitalizar</string>
+    <string name="continuity_camera_enhance">Aprimorar documento</string>
+    <string name="continuity_camera_adjust_corners">Ajustar os cantos</string>
+    <string name="continuity_camera_preview_scan">Ver documento digitalizado</string>
+    <string name="continuity_camera_retake">Tirar de novo</string>
+    <string name="continuity_camera_send_scan">Enviar documento</string>
+    <string name="continuity_camera_use_photo">Usar foto</string>
+    <string name="continuity_camera_shutter_photo">Tirar foto</string>
+    <string name="continuity_camera_shutter_scan">Digitalizar documento</string>
+    <string name="continuity_camera_preview_desc">Prévia da captura</string>
+    <string name="continuity_camera_corners_desc">Arraste os cantos para ajustar as bordas do documento</string>
+    <string name="continuity_camera_permission_denied">Permissão da câmera negada no celular</string>
+    <string name="continuity_camera_cancelled">Cancelado no celular</string>
+
+    <!-- Task notifications -->
+    <string name="task_default_label">Tarefa</string>
+    <string name="task_finished_title">%1$s terminou</string>
+    <string name="task_failed_title">%1$s falhou (código de saída %2$d)</string>
+    <string name="task_took_from">%1$s · %2$s</string>
+    <string name="task_took_hm">Durou %1$dh %2$02dm</string>
+    <string name="task_took_ms">Durou %1$dm %2$02ds</string>
+    <string name="task_took_s">Durou %1$ds</string>
+    <string name="task_running_short">Em execução</string>
+
+    <!-- Errors -->
+    <string name="error_not_connected">O PC não está conectado agora.</string>
+    <string name="error_not_paired">Esse PC não está mais pareado.</string>
+    <string name="error_timed_out">O PC não respondeu a tempo.</string>
+    <string name="error_unsupported">O app do PC ainda não suporta isso.</string>
+    <string name="error_generic">Algo deu errado.</string>
+
+    <!-- Theme seed names -->
+    <string name="settings_seed_honey">Mel</string>
+    <string name="settings_seed_lavender">Lavanda</string>
+    <string name="settings_seed_ocean">Oceano</string>
+    <string name="settings_seed_sage">Sálvia</string>
+    <string name="settings_seed_black">Preto</string>
+    <string name="settings_amoled">Preto puro (AMOLED)</string>
+    <string name="settings_amoled_hint">Superfícies escuras realmente pretas (#000000) para telas OLED.</string>
+
+    <!-- Deck defaults & accessibility -->
+    <string name="deck_tile_with_badge">%1$s, %2$s</string>
+    <string name="deck_default_page_main">Principal</string>
+    <string name="deck_default_play_pause">Reproduzir / pausar</string>
+    <string name="deck_default_previous">Anterior</string>
+    <string name="deck_default_next">Próximo</string>
+    <string name="deck_default_volume_down">Diminuir volume</string>
+    <string name="deck_default_volume_up">Aumentar volume</string>
+    <string name="deck_default_volume_mute">Silenciar áudio</string>
+    <string name="deck_default_mic_mute">Silenciar microfone</string>
+    <string name="deck_default_show_desktop">Mostrar área de trabalho</string>
+    <string name="deck_default_switch_window">Alternar janela</string>
+    <string name="deck_default_screenshot">Captura de tela</string>
+    <string name="deck_default_lock_pc">Bloquear PC</string>
+
+    <!-- Remote special keys -->
+    <string name="remote_key_ctrl">Ctrl</string>
+    <string name="remote_key_alt">Alt</string>
+    <string name="remote_key_shift">Shift</string>
+    <string name="remote_key_win">Win</string>
+    <string name="remote_key_esc">Esc</string>
+    <string name="remote_key_esc_desc">Escape</string>
+    <string name="remote_key_tab">Tab</string>
+    <string name="remote_key_left_desc">Seta para a esquerda</string>
+    <string name="remote_key_up_desc">Seta para cima</string>
+    <string name="remote_key_down_desc">Seta para baixo</string>
+    <string name="remote_key_right_desc">Seta para a direita</string>
+    <string name="remote_key_home">Home</string>
+    <string name="remote_key_end">End</string>
+    <string name="remote_key_del">Del</string>
+    <string name="remote_key_del_desc">Delete</string>
+    <string name="remote_key_copy">Copiar</string>
+    <string name="remote_key_paste">Colar</string>
+
+    <!-- Webcam formatting -->
+    <string name="webcam_stream_spec">%1$d × %2$d · %3$d fps</string>
+    <string name="webcam_stream_camera_spec">%1$d × %2$d · %3$s</string>
+    <string name="webcam_status_streaming_camera">Transmitindo %1$d × %2$d para %3$s · %4$s</string>
+    <string name="webcam_res_720p">720p</string>
+    <string name="webcam_res_1080p">1080p</string>
+    <string name="webcam_res_4k">4K</string>
+    <string name="webcam_zoom_preset">%1$d×</string>
+
+    <!-- Formatted status & metadata phrases -->
+    <string name="transfer_requested_from_size">%1$s quer enviar arquivos · %2$s</string>
+    <string name="transfer_sending_progress">Enviando para %1$s · %2$s / %3$s</string>
+    <string name="transfer_receiving_progress">Recebendo de %1$s · %2$s / %3$s</string>
+    <string name="clipboard_history_meta">%1$s · %2$s</string>
+    <string name="clipboard_history_meta_pinned">%1$s · %2$s · Fixado</string>
+    <string name="timeline_latest_summary">%1$s · %2$s</string>
+    <string name="recorder_marker_chip">%1$s · %2$s</string>
+
+    <!-- Rich Handoff -->
+    <string name="handoff_map_from">Mapa de %1$s</string>
+    <string name="handoff_video_from">Vídeo de %1$s</string>
+    <string name="handoff_action_continue_video">Continuar assistindo</string>
+    <string name="handoff_doc_received_from">De %1$s · toque para abrir</string>
+
+    <!-- Remote PC keyboard typing without mirroring -->
+    <string name="keyboard_from_pc_banner">Digitando de %1$s</string>
+    <string name="keyboard_stop">Parar de digitar</string>
+
+    <!-- Home-screen PC widget -->
+    <string name="widget_pc_title">Ações rápidas do PC</string>
+    <string name="widget_pc_description">Status da conexão, Enviar item copiado, Fazer o PC tocar, Bloquear PC e Acordar para o PC pareado.</string>
+    <string name="widget_pc_no_pc">Nenhum PC pareado</string>
+    <string name="widget_pc_tap_to_pair">Toque para abrir o NectarLink e parear um PC</string>
+    <string name="widget_pc_connected">Conectado</string>
+    <string name="widget_pc_offline">Desconectado</string>
+    <string name="widget_pc_waking">Acordando…</string>
+    <string name="widget_pc_wake">Acordar</string>
+    <string name="widget_pc_send_clip">Enviar item copiado</string>
+    <string name="widget_pc_ring">Fazer o PC tocar</string>
+    <string name="widget_pc_lock">Bloquear PC</string>
+    <string name="widget_pc_ringing_toast">Fazendo %1$s tocar…</string>
+    <string name="widget_pc_waking_toast">Acordando %1$s…</string>
+
+    <!-- Companion Device Manager proximity wake -->
+    <string name="companion_wake_title">Ativar quando o PC estiver por perto (dispositivo complementar)</string>
+    <string name="companion_wake_on">Associado · o Android ativa o NectarLink quando seu PC está por perto</string>
+    <string name="companion_wake_off">Associe seu PC para que o Android ative o NectarLink quando o sinal BLE dele estiver ao alcance</string>
+    <string name="companion_wake_associate">Associar</string>
+
+    <!-- Flick to Send sheet -->
+
+    <!-- PC notifications & Browse PC files -->
+    <string name="channel_pc_notifications">Notificações do PC</string>
+    <string name="channel_peer_notifications">Notificações do outro celular ou tablet</string>
+    <string name="action_browse_pc_files">Explorar arquivos do PC</string>
+    <string name="pc_files_title">Arquivos em %1$s</string>
+    <string name="pc_files_root">Início</string>
+    <string name="pc_files_up">Subir um nível</string>
+    <string name="pc_files_empty">Esta pasta está vazia.</string>
+    <string name="pc_files_loading">Carregando arquivos…</string>
+    <string name="pc_files_downloading">Baixando %1$s…</string>
+    <string name="pc_files_saved">%1$s salvo em Downloads</string>
+    <string name="pc_files_failed">Não foi possível baixar %1$s</string>
+    <string name="pc_files_not_shared">Ative “Seu PC no bolso” em NectarLink › Configurações no %1$s.</string>
+    <string name="pc_files_offline">%1$s não está conectado.</string>
+    <string name="pc_files_update">Atualize o NectarLink em %1$s para navegar pelos arquivos dele.</string>
+    <string name="pc_files_not_found">Esta pasta não está mais em %1$s.</string>
+    <string name="pc_files_error">Não foi possível listar o conteúdo desta pasta em %1$s. Tente de novo.</string>
+    <string name="pc_files_folder_downloads">Downloads</string>
+    <string name="pc_files_folder_documents">Documentos</string>
+    <string name="pc_files_folder_desktop">Área de trabalho</string>
+    <string name="pc_files_folder_pictures">Imagens</string>
+
+    <!-- Live streaming banners, remote input setup, collapsible permissions & clipboard privacy -->
+    <string name="mirror_banner_subtitle_control_on">Toque, deslize e digite pelo PC</string>
+    <string name="mirror_banner_subtitle_audio">Tela e áudio · toque em Parar quando quiser</string>
+    <string name="mirror_banner_subtitle">Transmissão da tela ao vivo · toque em Parar quando quiser</string>
+    <string name="mirror_banner_subtitle_sound">Somente áudio · toque em Parar quando quiser</string>
+    <string name="mirror_allow_pc_control">Permitir controle pelo mouse do PC</string>
+    <string name="action_open_controls">Controles</string>
+    <string name="remote_input_requested_title">Seu PC tentou controlar este celular</string>
+    <string name="remote_input_requested_text">Ative “NectarLink: controle pelo PC” em Acessibilidade para usar o mouse e o teclado do PC neste celular.</string>
+    <string name="permissions_setup_title">Permissões e configuração (faltam %1$d)</string>
+    <string name="permissions_setup_subtitle">Notificações, chamadas, mensagens, fotos e acesso em segundo plano</string>
+    <string name="clipboard_preview_hidden">••••••••••••</string>
+    <string name="clipboard_preview_reveal">Mostrar</string>
+    <string name="clipboard_preview_hide">Ocultar</string>
+
+    <!-- Send queue -->
+    <string name="send_queue_title_count">Aguardando para enviar · %1$d</string>
+    <string name="send_queue_cancel_all">Cancelar tudo</string>
+    <string name="send_queue_clear">Limpar</string>
+    <string name="send_queue_waiting_for">Aguardando %1$s</string>
+    <string name="send_queue_sending_progress">Enviando · %1$d%%</string>
+    <string name="send_queue_sending">Enviando…</string>
+    <string name="send_queue_failed_reason">Falha · %1$s</string>
+    <string name="send_queue_expired_reason">Expirado · %1$s</string>
+    <string name="send_queue_retry">Tentar de novo</string>
+    <string name="send_queue_dismiss">Dispensar</string>
+    <string name="send_queue_offline_toast">%1$s está offline. O envio sai quando ele voltar.</string>
+    <string name="send_queue_undo">Desfazer</string>
+    <string name="send_queue_full">A fila de envio está cheia. Limpe a fila ou espere os itens pendentes terminarem.</string>
+    <string name="send_queue_dropped_unpair">%1$d item(ns) na fila para %2$s descartado(s) (dispositivo despareado).</string>
+
+    <!-- Setup Walkthrough -->
+    <string name="walkthrough_step_progress">Etapa %1$d de %2$d</string>
+    <string name="walkthrough_stage_desc">Etapa %1$d de %2$d da configuração do favo</string>
+    <string name="walkthrough_action_skip">Pular configuração</string>
+    <string name="walkthrough_action_back">Voltar</string>
+    <string name="walkthrough_action_get_started">Começar</string>
+    <string name="walkthrough_action_continue">Continuar</string>
+    <string name="walkthrough_action_pair_later">Parear depois</string>
+    <string name="walkthrough_action_done">Concluído</string>
+    <string name="walkthrough_action_open_guide">Abrir guia de recursos</string>
+
+    <string name="walkthrough_welcome_title">Conecte seu celular ao PC</string>
+    <string name="walkthrough_welcome_subtitle">Notificações, chamadas, mensagens, arquivos, área de transferência, câmera e tela, compartilhados com o PC.</string>
+    <string name="walkthrough_welcome_card_heading">Feito para ser privado</string>
+    <string name="walkthrough_welcome_tls_title">Criptografado de ponta a ponta (TLS 1.3)</string>
+    <string name="walkthrough_welcome_tls_body">Toda conexão usa certificados de dispositivo verificados pelos dois lados.</string>
+    <string name="walkthrough_welcome_lan_title">Conexão direta por Wi-Fi, Ethernet ou USB</string>
+    <string name="walkthrough_welcome_lan_body">O tráfego fica na sua rede. O retransmissor só é usado quando Conectar usando dados móveis está ativado.</string>
+    <string name="walkthrough_welcome_local_title">Sem conta e sem nuvem</string>
+    <string name="walkthrough_welcome_local_body">As chaves dos dispositivos ficam protegidas pelo Windows DPAPI e pelo Android Keystore.</string>
+
+    <string name="walkthrough_permissions_title">Permissões</string>
+    <string name="walkthrough_permissions_subtitle">Conceda só o que você usa. Dá para mudar qualquer permissão depois em Configurações.</string>
+    <string name="walkthrough_permissions_granted_badge">%1$d de %2$d concedidas</string>
+    <string name="walkthrough_perm_counter">Permissão %1$d de %2$d</string>
+    <string name="walkthrough_perm_counter_optional">Permissão %1$d de %2$d · Opcional</string>
+    <string name="walkthrough_perm_status_granted">Concedida</string>
+    <string name="walkthrough_perm_status_not_granted">Não concedida</string>
+    <string name="walkthrough_perm_action_grant">Permitir</string>
+    <string name="walkthrough_perm_action_manage">Gerenciar</string>
+    <string name="walkthrough_perm_action_next">Avançar</string>
+    <string name="walkthrough_perm_dot_desc">%1$s, %2$s</string>
+
+    <string name="walkthrough_perm_notif_title">Notificações</string>
+    <string name="walkthrough_perm_notif_does">Veja, dispense e responda às notificações do celular e controle a mídia no PC.</string>
+    <string name="walkthrough_perm_notif_requires">O Android exige o Acesso a notificações e a permissão de notificações.</string>
+    <string name="walkthrough_restricted_title">O Android bloqueou esta configuração</string>
+    <string name="walkthrough_restricted_body">O Android segura algumas permissões de apps instalados por arquivo, e não por uma loja de apps. Para liberar esta:</string>
+    <string name="walkthrough_restricted_step1">Toque em Abrir informações do app.</string>
+    <string name="walkthrough_restricted_step2">Toque em ⋮ no canto superior direito, depois em Permitir configurações restritas e confirme.</string>
+    <string name="walkthrough_restricted_step3">Volte aqui e toque em Permitir de novo.</string>
+    <string name="walkthrough_restricted_note">O menu só mostra essa opção depois que você tenta conceder a permissão uma vez. Em alguns celulares, o nome pode ser diferente.</string>
+    <string name="walkthrough_restricted_open">Abrir informações do app</string>
+
+    <string name="walkthrough_perm_battery_title">Bateria sem restrições</string>
+    <string name="walkthrough_perm_battery_does">Mantenha o celular acessível com a tela desligada.</string>
+    <string name="walkthrough_perm_battery_requires">Mantém a conexão com o PC ativa enquanto o celular está bloqueado.</string>
+
+    <string name="walkthrough_perm_calls_title">Chamadas</string>
+    <string name="walkthrough_perm_calls_does">Veja as chamadas recebidas no PC e atenda, recuse ou ligue pelo computador.</string>
+    <string name="walkthrough_perm_calls_requires">O Android exige as permissões de Telefone e Registro de chamadas.</string>
+
+    <string name="walkthrough_perm_sms_title">Mensagens</string>
+    <string name="walkthrough_perm_sms_does">Leia e envie SMS e MMS pelo PC, com os nomes dos contatos.</string>
+    <string name="walkthrough_perm_sms_requires">O Android exige as permissões de SMS e Contatos.</string>
+
+    <string name="walkthrough_perm_photos_title">Fotos</string>
+    <string name="walkthrough_perm_photos_does">Veja as fotos recentes do celular no PC e salve os arquivos originais.</string>
+    <string name="walkthrough_perm_photos_requires">O Android exige acesso a Fotos e vídeos.</string>
+
+    <string name="walkthrough_perm_storage_title">Armazenamento no Explorador de Arquivos</string>
+    <string name="walkthrough_perm_storage_does">Explore as pastas do celular pelo Explorador de Arquivos no PC.</string>
+    <string name="walkthrough_perm_storage_requires">O Android exige o Acesso a todos os arquivos ou pastas selecionadas.</string>
+
+    <string name="walkthrough_perm_access_title">Assist</string>
+    <string name="walkthrough_perm_access_does">Controle a tela espelhada do celular usando o mouse e o teclado do PC.</string>
+    <string name="walkthrough_perm_access_requires">O Android exige o serviço de Acessibilidade do NectarLink ou o Elevated.</string>
+
+    <string name="walkthrough_pair_title">Parear com o PC</string>
+    <string name="walkthrough_pair_subtitle">Abra o NectarLink no PC. Escaneie o código QR ou escolha seu PC abaixo.</string>
+    <string name="walkthrough_pair_ready_title">PC pareado</string>
+    <string name="walkthrough_pair_badge_paired">Pareado</string>
+    <string name="walkthrough_pair_device_online">%1$s · Conectado</string>
+    <string name="walkthrough_pair_device_offline">%1$s · Desconectado</string>
+    <string name="walkthrough_pair_scan_qr">Escanear código QR</string>
+    <string name="walkthrough_pair_hide_qr">Ocultar leitor de QR</string>
+    <string name="walkthrough_pair_nearby_heading">PCs por perto</string>
+    <string name="walkthrough_pair_nearby_tap">Toque para parear pela rede local</string>
+    <string name="walkthrough_pair_usb_title">Pareamento automático por USB</string>
+    <string name="walkthrough_pair_usb_hint">Conecte um cabo USB com a depuração USB ativada para parear automaticamente.</string>
+
+    <string name="walkthrough_power_title">Escolha o nível de acesso</string>
+    <string name="walkthrough_power_subtitle">Escolha quanto controle o PC terá sobre este celular.</string>
+    <string name="walkthrough_power_current_badge">Atual: %1$s</string>
+    <string name="walkthrough_power_badge_active">Ativo</string>
+    <string name="walkthrough_power_badge_available">Disponível</string>
+    <string name="walkthrough_power_badge_optional">Opcional</string>
+    <string name="walkthrough_power_standard_title">Padrão</string>
+    <string name="walkthrough_power_standard_sub">Instalação padrão</string>
+    <string name="walkthrough_power_standard_desc">Notificações, chamadas, mensagens, fotos, arquivos, o botão Enviar item copiado e espelhamento de tela somente para visualização.</string>
+    <string name="walkthrough_power_assist_title">Assist</string>
+    <string name="walkthrough_power_assist_sub">Serviço de acessibilidade</string>
+    <string name="walkthrough_power_assist_desc">Adiciona o controle por mouse e teclado do PC durante o espelhamento da tela.</string>
+    <string name="walkthrough_power_assist_manage">Gerenciar</string>
+    <string name="walkthrough_power_assist_open">Ativar</string>
+    <string name="walkthrough_power_elevated_title">Elevated</string>
+    <string name="walkthrough_power_elevated_sub">Depuração por Wi-Fi</string>
+    <string name="walkthrough_power_elevated_desc">Sincronização da área de transferência em segundo plano, apps em janelas próprias no PC e controle com baixa latência.</string>
+    <string name="walkthrough_power_elevated_reconnect">Reconectar</string>
+    <string name="walkthrough_power_elevated_enable">Configurar</string>
+    <string name="walkthrough_power_elevated_hide_steps">Ocultar etapas</string>
+    <string name="walkthrough_power_elevated_show_steps">Mostrar etapas</string>
+    <string name="walkthrough_power_elevated_steps_heading">Configuração da depuração por Wi-Fi</string>
+    <string name="walkthrough_power_elevated_step1">1. Em Configurações › Sobre o telefone, toque 7 vezes em Número da versão para ativar as Opções do desenvolvedor.</string>
+    <string name="walkthrough_power_elevated_step2">2. Toque em Configurar para abrir as Opções do desenvolvedor.</string>
+    <string name="walkthrough_power_elevated_step3">3. Ative a Depuração por Wi-Fi, toque em Parear o dispositivo com um código de pareamento e digite o código de 6 dígitos na notificação.</string>
+
+    <string name="walkthrough_done_title">Configuração concluída</string>
+    <string name="walkthrough_done_subtitle">O NectarLink está pronto. Abra este passo a passo de novo quando quiser em Configurações › Sobre.</string>
+    <string name="walkthrough_done_summary_heading">Sua configuração</string>
+    <string name="walkthrough_done_paired_label">PC pareado</string>
+    <string name="walkthrough_done_no_pc">Nenhum ainda · pareie quando quiser no Início</string>
+    <string name="walkthrough_done_power_label">Nível de acesso</string>
+    <string name="walkthrough_done_power_elevated">Elevated (depuração por Wi-Fi)</string>
+    <string name="walkthrough_done_power_assist">Assist (serviço de Acessibilidade)</string>
+    <string name="walkthrough_done_power_standard">Padrão</string>
+    <string name="walkthrough_done_permissions_label">Permissões</string>
+    <string name="walkthrough_done_no_permissions">Nenhuma permissão concedida ainda</string>
+    <string name="walkthrough_done_try_heading">Para começar</string>
+    <string name="walkthrough_done_try_1">1. Copie um texto e toque em Enviar item copiado para colá-lo no PC.</string>
+    <string name="walkthrough_done_try_2">2. Compartilhe qualquer arquivo ou link com o NectarLink pelo menu Compartilhar do Android.</string>
+
+    <!-- Features Guide Chrome -->
+    <string name="guide_back">Voltar</string>
+    <string name="guide_open_walkthrough">Passo a passo de configuração</string>
+    <string name="guide_title">Guia de recursos</string>
+    <string name="guide_subtitle">Confira se os recursos estão prontos neste celular ou abra direto os controles.</string>
+    <string name="guide_search_placeholder">Buscar recursos ou permissões</string>
+    <string name="guide_search_desc">Buscar recursos</string>
+    <string name="guide_connect_pc_banner">Conecte seu PC para ver quais recursos estão prontos</string>
+    <string name="guide_empty_title">Nenhum recurso encontrado</string>
+    <string name="guide_empty_body">Tente outra palavra-chave ou selecione Tudo.</string>
+    <string name="guide_where_prefix">Onde: %1$s</string>
+    <string name="guide_needs_prefix">Requer: %1$s</string>
+    <string name="guide_external_heading">Abrir pelo Android</string>
+    <string name="guide_action_show_me">Mostrar</string>
+    <string name="guide_action_learn_more">Saiba mais</string>
+    <string name="guide_action_done">Concluído</string>
+    <string name="guide_sheet_where">Onde encontrar</string>
+    <string name="guide_sheet_needs">Do que você precisa</string>
+    <string name="guide_sheet_steps_phone">No seu celular</string>
+    <string name="guide_sheet_steps_pc">No seu PC</string>
+    <string name="guide_sheet_options">Opções</string>
+    <string name="guide_sheet_privacy">Dados e privacidade</string>
+    <string name="guide_sheet_limits">Limites</string>
+    <string name="guide_numbered_step">%1$d. %2$s</string>
+
+    <string name="guide_area_all">Tudo</string>
+    <string name="guide_area_notifications_calls">Notificações e chamadas</string>
+    <string name="guide_area_messages">Mensagens</string>
+    <string name="guide_area_clipboard_files">Área de transferência e arquivos</string>
+    <string name="guide_area_mirroring_camera">Espelhamento e câmera</string>
+    <string name="guide_area_input_control">Entrada e controle</string>
+    <string name="guide_area_power_network">Energia e rede</string>
+
+    <string name="guide_badge_available">Pronto</string>
+    <string name="guide_badge_needs_permission">Requer %1$s</string>
+    <string name="guide_badge_needs_power">Requer %1$s</string>
+    <string name="guide_badge_connect_pc">Conecte o PC para verificar</string>
+
+    <string name="guide_req_notification_access">Acesso a notificações</string>
+    <string name="guide_req_unrestricted_battery">Bateria sem restrições</string>
+    <string name="guide_req_calls">Telefone e Registro de chamadas</string>
+    <string name="guide_req_sms_contacts">SMS e Contatos</string>
+    <string name="guide_req_photos">Fotos</string>
+    <string name="guide_req_storage">Acesso a todos os arquivos</string>
+    <string name="guide_req_dnd">Acesso ao Não perturbe</string>
+    <string name="guide_req_write_settings">Modificar configurações do sistema</string>
+    <string name="guide_req_elevated">Elevated</string>
+    <string name="guide_req_assist_or_elevated">Assist ou Elevated</string>
+
+    <string name="guide_fix_grant">Permitir</string>
+    <string name="guide_fix_allow">Permitir</string>
+    <string name="guide_fix_enable">Ativar</string>
+    <string name="guide_fix_pair">Parear</string>
+
+    <!-- Features Guide Entries -->
+    <!-- 1. Notifications -->
+    <string name="guide_notif_title">Notificações</string>
+    <string name="guide_notif_summary">Veja as notificações do celular no PC, dispense-as ou responda por lá.</string>
+    <string name="guide_notif_where">Configurações › Permissões › Notificações</string>
+    <string name="guide_notif_needs">Acesso a notificações e opção Notificações ativada para o PC</string>
+    <string name="guide_notif_need_1">Acesso a notificações do Android ativado para o NectarLink.</string>
+    <string name="guide_notif_need_2">No Android 13 ou mais recente, se o app foi instalado por fora de uma loja, ative Permitir configurações restritas em Informações do app.</string>
+    <string name="guide_notif_need_3">PC pareado e conectado.</string>
+    <string name="guide_notif_phone_1">Abra Configurações › Permissões › Notificações e toque em Permitir.</string>
+    <string name="guide_notif_phone_2">Ative o NectarLink no Acesso a notificações do Android.</string>
+    <string name="guide_notif_pc_1">Veja as notificações do celular na Central de notificações do PC ou na janela do NectarLink.</string>
+    <string name="guide_notif_pc_2">Digite uma resposta no cartão e clique em Enviar, ou dispense para limpar nos dois dispositivos.</string>
+    <string name="guide_notif_opt_1">Permitir / Gerenciar: abre as configurações de Acesso a notificações do Android.</string>
+    <string name="guide_notif_opt_2">Opção Notificações por PC: controla se um PC pareado recebe as notificações.</string>
+    <string name="guide_notif_privacy">As notificações são transmitidas por TLS 1.3 e ficam somente na memória deste celular.</string>
+    <string name="guide_notif_limits">Notificações persistentes do sistema não podem ser dispensadas à distância.</string>
+
+    <!-- 2. Calls -->
+    <string name="guide_calls_title">Chamadas</string>
+    <string name="guide_calls_summary">Veja as chamadas recebidas no PC, atenda ou recuse e ligue para qualquer número pelo computador.</string>
+    <string name="guide_calls_where">Configurações › Permissões › Chamadas, contatos e mensagens</string>
+    <string name="guide_calls_needs">Permissões de Telefone, Registro de chamadas e Contatos</string>
+    <string name="guide_calls_need_1">Permissões de Telefone e Registro de chamadas concedidas no Android.</string>
+    <string name="guide_calls_need_2">Permissão de Contatos concedida para mostrar nomes e fotos de quem está ligando.</string>
+    <string name="guide_calls_phone_1">Abra Configurações › Permissões › Chamadas, contatos e mensagens e toque em Permitir.</string>
+    <string name="guide_calls_phone_2">Use a notificação da chamada em andamento para silenciar o microfone, ativar o viva-voz ou encerrar a ligação.</string>
+    <string name="guide_calls_pc_1">Atenda, recuse ou responda com um SMS pelo aviso de chamada recebida no PC.</string>
+    <string name="guide_calls_pc_2">Abra Chamadas no PC para ver o histórico ou ligar para um número.</string>
+    <string name="guide_calls_opt_1">Atender / Recusar: atende ou recusa a chamada no celular.</string>
+    <string name="guide_calls_opt_2">Silenciar / Viva-voz: desativa o microfone do celular ou liga o viva-voz durante a chamada.</string>
+    <string name="guide_calls_privacy">O histórico de chamadas é lido do Android quando o PC se conecta e não sai dos seus dispositivos pareados.</string>
+    <string name="guide_calls_limits">O áudio da chamada continua no celular ou no fone de ouvido. Para silenciar ou colocar a chamada em espera pelo PC, é preciso usar o Elevated no Android 12 ou posterior.</string>
+
+    <!-- 3. Now playing -->
+    <string name="guide_media_title">Tocando agora</string>
+    <string name="guide_media_summary">Controle a reprodução de mídia no celular e no PC, ajuste o volume do PC ou transmita o áudio do PC para o alto-falante do celular.</string>
+    <string name="guide_media_where">Início › cartão do PC pareado › Áudio do PC</string>
+    <string name="guide_media_needs">Acesso a notificações para controlar a mídia do celular; PC pareado conectado para usar o áudio do PC</string>
+    <string name="guide_media_need_1">Acesso a notificações do Android para ler as sessões de mídia ativas.</string>
+    <string name="guide_media_need_2">PC pareado e conectado.</string>
+    <string name="guide_media_phone_1">Na tela Início, expanda Áudio do PC no cartão do PC pareado.</string>
+    <string name="guide_media_phone_2">Ajuste o controle de volume do PC ou ative Usar o celular como alto-falante.</string>
+    <string name="guide_media_pc_1">Controle a reprodução do celular com Reproduzir, Pausar, Próximo e Anterior no PC.</string>
+    <string name="guide_media_opt_1">Usar o celular como alto-falante: transmite o áudio do PC para o celular com baixa latência.</string>
+    <string name="guide_media_opt_2">Volume e Silenciar: controlam o dispositivo de reprodução padrão do PC.</string>
+    <string name="guide_media_privacy">Os metadados e as capas vêm da sessão de mídia local por uma conexão TLS 1.3.</string>
+    <string name="guide_media_limits">A transmissão do áudio do PC ao vivo exige uma conexão Wi-Fi ou USB estável.</string>
+
+    <!-- 4. Messages -->
+    <string name="guide_sms_title">Mensagens</string>
+    <string name="guide_sms_summary">Leia conversas, veja anexos MMS e envie mensagens pelo PC.</string>
+    <string name="guide_sms_where">Configurações › Permissões › Chamadas, contatos e mensagens</string>
+    <string name="guide_sms_needs">Permissões de SMS e Contatos</string>
+    <string name="guide_sms_need_1">Permissão de SMS concedida no Android.</string>
+    <string name="guide_sms_need_2">Permissão de Contatos concedida para os nomes e fotos dos contatos.</string>
+    <string name="guide_sms_phone_1">Abra Configurações › Permissões › Chamadas, contatos e mensagens e permita Mensagens pelo PC e Contatos.</string>
+    <string name="guide_sms_pc_1">Abra Mensagens no PC para ler conversas ou responder por SMS ou MMS.</string>
+    <string name="guide_sms_opt_1">Permitir / Gerenciar: abre as configurações de SMS e Contatos do Android.</string>
+    <string name="guide_sms_opt_2">Cache de mensagens: apague os arquivos temporários de MMS em Configurações › Recursos e dados › Dados e armazenamento.</string>
+    <string name="guide_sms_privacy">As mensagens são lidas da telefonia do Android quando necessário.</string>
+    <string name="guide_sms_limits">O envio usa o chip e o plano da operadora do celular.</string>
+
+    <!-- 5. Clipboard -->
+    <string name="guide_clip_title">Área de transferência</string>
+    <string name="guide_clip_summary">Compartilhe textos e imagens copiados entre o celular e o PC e veja os 50 itens copiados mais recentes no histórico da área de transferência.</string>
+    <string name="guide_clip_where">Início › Histórico da área de transferência (ou Configurações › Recursos e dados › Área de transferência)</string>
+    <string name="guide_clip_needs">PC pareado; o Elevated é necessário para sincronizar automaticamente a área de transferência do celular com o PC em segundo plano</string>
+    <string name="guide_clip_need_1">A sincronização da área de transferência do PC para o celular e o botão Enviar item copiado funcionam sem configuração adicional.</string>
+    <string name="guide_clip_need_2">O Elevated adiciona a sincronização automática da área de transferência do celular para o PC.</string>
+    <string name="guide_clip_phone_1">Copie um texto ou uma imagem no celular e abra o NectarLink ou toque em Enviar item copiado.</string>
+    <string name="guide_clip_phone_2">Toque em Histórico da área de transferência na tela Início para ver, fixar, copiar ou excluir itens recentes.</string>
+    <string name="guide_clip_pc_1">Copie um texto ou uma imagem no PC para enviar à área de transferência do celular.</string>
+    <string name="guide_clip_opt_1">Mostrar / Ocultar: esconde ou mostra a prévia do último item copiado na tela Início.</string>
+    <string name="guide_clip_opt_2">Fixar: mantém um item no topo do histórico de 50 itens copiados.</string>
+    <string name="guide_clip_opt_3">Sugerir ações para texto copiado: oferece opções para abrir links, mapas ou números recebidos do PC.</string>
+    <string name="guide_clip_privacy">O histórico da área de transferência fica criptografado no dispositivo e não salva itens que gerenciadores de senhas marcam como sensíveis.</string>
+    <string name="guide_clip_limits">O Android 10 ou posterior bloqueia a leitura da área de transferência em segundo plano, a menos que você use o Elevated ou toque em Enviar item copiado.</string>
+
+    <!-- 6. Send clipboard -->
+    <string name="guide_tile_title">Enviar item copiado</string>
+    <string name="guide_tile_summary">Envie o conteúdo da área de transferência do celular para o PC em qualquer app pelo atalho nas Configurações rápidas.</string>
+    <string name="guide_tile_where">Painel de Configurações rápidas do Android › Enviar item copiado</string>
+    <string name="guide_tile_needs">PC pareado</string>
+    <string name="guide_tile_ext_1">1. Deslize duas vezes de cima para baixo na tela para abrir as Configurações rápidas.</string>
+    <string name="guide_tile_ext_2">2. Toque em Editar e arraste Enviar item copiado para os atalhos ativos.</string>
+    <string name="guide_tile_ext_3">3. Copie um texto em qualquer app, abra as Configurações rápidas e toque em Enviar item copiado.</string>
+    <string name="guide_tile_need_1">Pelo menos um PC pareado.</string>
+    <string name="guide_tile_phone_1">Adicione o atalho Enviar item copiado às Configurações rápidas uma vez; depois, toque nele após copiar um texto.</string>
+    <string name="guide_tile_pc_1">Cole no seu PC com Ctrl+V.</string>
+    <string name="guide_tile_opt_1">Atalho Enviar item copiado: lê o conteúdo atual da área de transferência do celular uma vez quando tocado e o envia ou adiciona à fila.</string>
+    <string name="guide_tile_privacy">Só lê a área de transferência quando você toca no atalho. Se o PC estiver desconectado, os itens copiados ficam na fila por até 24 horas.</string>
+    <string name="guide_tile_limits">Usado quando a sincronização automática em segundo plano do Elevated não está ativa.</string>
+
+    <!-- 7. Send files -->
+    <string name="guide_files_title">Enviar arquivos</string>
+    <string name="guide_files_summary">Transfira arquivos ou pastas entre o celular e o PC por Wi-Fi, Ethernet ou USB, com suporte para pausar e retomar.</string>
+    <string name="guide_files_where">Início › cartão do PC pareado › Enviar arquivos / Enviar uma pasta</string>
+    <string name="guide_files_needs">PC pareado</string>
+    <string name="guide_files_need_1">PC pareado (se estiver desconectado, os arquivos aguardam na fila de envios por até 7 dias).</string>
+    <string name="guide_files_phone_1">Na tela Início, toque em Enviar arquivos ou Enviar uma pasta no cartão do PC pareado.</string>
+    <string name="guide_files_phone_2">Pause, retome ou cancele transferências no cartão Transferências da tela Início.</string>
+    <string name="guide_files_pc_1">Arraste arquivos para a janela do NectarLink ou para a Ilha Nectar, no topo da tela do PC.</string>
+    <string name="guide_files_opt_1">Enviar arquivos / Enviar uma pasta: transfere arquivos individuais ou pastas inteiras com seu conteúdo.</string>
+    <string name="guide_files_opt_2">Pausar / Retomar: continua transferências interrompidas sem reenviar os dados que já chegaram.</string>
+    <string name="guide_files_privacy">Os arquivos são transferidos por QUIC com TLS 1.3 e verificação de integridade BLAKE3 e salvos em Download/Nectarlink.</string>
+    <string name="guide_files_limits">Até 5.000 arquivos por envio.</string>
+
+    <!-- 8. Send queue -->
+    <string name="guide_queue_title">Fila de envios</string>
+    <string name="guide_queue_summary">Adicione arquivos, links, itens copiados e gravações à fila enquanto o PC estiver desconectado. O envio continua quando ele se reconectar.</string>
+    <string name="guide_queue_where">Início › cartão Aguardando para enviar</string>
+    <string name="guide_queue_needs">PC pareado</string>
+    <string name="guide_queue_need_1">Pelo menos um PC pareado.</string>
+    <string name="guide_queue_phone_1">Envie arquivos, itens copiados ou links para um PC desconectado; eles aparecem em Aguardando para enviar na tela Início.</string>
+    <string name="guide_queue_phone_2">Os itens da fila são enviados automaticamente, na ordem, assim que o PC se reconectar.</string>
+    <string name="guide_queue_pc_1">Itens adicionados à fila no PC enquanto o celular está desconectado também são enviados quando ele se reconecta.</string>
+    <string name="guide_queue_opt_1">Tentar de novo / Dispensar / Cancelar tudo: gerencie um item ou a fila inteira na tela Início.</string>
+    <string name="guide_queue_privacy">O conteúdo da fila fica no armazenamento privado do app e é apagado após o envio ou ao desparear o dispositivo.</string>
+    <string name="guide_queue_limits">A fila comporta até 200 itens ou 10 GiB. Os arquivos expiram após 7 dias; itens copiados e links, após 24 horas.</string>
+
+    <!-- 9. Send to PC -->
+    <string name="guide_share_title">Enviar para PC</string>
+    <string name="guide_share_summary">Compartilhe links, textos, fotos ou documentos de qualquer app Android com seu PC pelo menu de compartilhamento do sistema.</string>
+    <string name="guide_share_where">Menu de compartilhamento do Android › Enviar para PC</string>
+    <string name="guide_share_needs">PC pareado</string>
+    <string name="guide_share_ext_1">1. Toque em Compartilhar em qualquer navegador, galeria ou app de documentos no celular.</string>
+    <string name="guide_share_ext_2">2. Selecione NectarLink (Enviar para PC ou Abrir no PC).</string>
+    <string name="guide_share_need_1">Pelo menos um PC pareado.</string>
+    <string name="guide_share_phone_1">Compartilhe qualquer link ou arquivo pelo menu Compartilhar do Android e escolha o PC de destino.</string>
+    <string name="guide_share_pc_1">Os links abrem no navegador padrão do PC; os arquivos são salvos em Downloads.</string>
+    <string name="guide_share_opt_1">Enviar para PC / Abrir no PC: salva arquivos ou abre links e documentos seguros assim que chegam.</string>
+    <string name="guide_share_privacy">Executáveis e scripts nunca são abertos automaticamente no seu PC.</string>
+    <string name="guide_share_limits">Somente tipos seguros de documentos abrem automaticamente; os demais arquivos são salvos em Downloads.</string>
+
+    <!-- 10. Storage in File Explorer -->
+    <string name="guide_storage_title">Armazenamento no Explorador de Arquivos</string>
+    <string name="guide_storage_summary">Explore o armazenamento compartilhado ou as pastas selecionadas deste celular no Explorador de Arquivos do Windows.</string>
+    <string name="guide_storage_where">Configurações › Permissões › Fotos e vídeos (e Configurações › Dispositivos)</string>
+    <string name="guide_storage_needs">Acesso a todos os arquivos (ou às pastas selecionadas) e opção de compartilhamento do armazenamento ativada para cada PC</string>
+    <string name="guide_storage_need_1">Acesso a todos os arquivos ou pastas selecionadas em Configurações › Permissões › Fotos e vídeos.</string>
+    <string name="guide_storage_need_2">A opção Explorar o armazenamento deste celular pelo Explorador de Arquivos precisa estar ativada para o PC em Configurações › Dispositivos.</string>
+    <string name="guide_storage_phone_1">Permita o acesso a todos os arquivos ou selecione pastas em Configurações › Permissões › Fotos e vídeos.</string>
+    <string name="guide_storage_phone_2">Ative o compartilhamento do armazenamento para seu PC em Configurações › Dispositivos.</string>
+    <string name="guide_storage_pc_1">Abra o armazenamento do celular pelo NectarLink ou pelo Explorador de Arquivos do Windows no PC.</string>
+    <string name="guide_storage_opt_1">Acesso a todos os arquivos / Somente pastas selecionadas: compartilhe todo o armazenamento ou apenas as pastas selecionadas pelo seletor do Android.</string>
+    <string name="guide_storage_privacy">O acesso ao armazenamento fica desativado para todos os PCs até que você o ative.</string>
+    <string name="guide_storage_limits">O Android bloqueia o acesso às pastas privadas dos apps em /Android/data.</string>
+
+    <!-- 11. Browse PC files -->
+    <string name="guide_pc_files_title">Explorar arquivos do PC</string>
+    <string name="guide_pc_files_summary">Explore pelo celular as pastas que o PC compartilhou e baixe arquivos para Downloads.</string>
+    <string name="guide_pc_files_where">Início › cartão do PC pareado › Explorar arquivos do PC</string>
+    <string name="guide_pc_files_needs">PC pareado e conectado, com o compartilhamento de armazenamento ativado</string>
+    <string name="guide_pc_files_need_1">PC pareado e conectado que compartilha as pastas (Seu PC no bolso).</string>
+    <string name="guide_pc_files_phone_1">Na tela Início, toque em Explorar arquivos do PC no cartão do PC pareado e toque em um arquivo para baixar.</string>
+    <string name="guide_pc_files_pc_1">Ative Seu PC no bolso nas Configurações do NectarLink no PC.</string>
+    <string name="guide_pc_files_opt_1">Tela Explorar arquivos do PC: navegue pelas pastas do PC e baixe arquivos para Downloads.</string>
+    <string name="guide_pc_files_privacy">Os arquivos baixados são salvos localmente na pasta Downloads do celular.</string>
+    <string name="guide_pc_files_limits">Requer que o PC pareado esteja online.</string>
+
+    <!-- 12. Photos -->
+    <string name="guide_photos_title">Fotos</string>
+    <string name="guide_photos_summary">Explore no PC as fotos, capturas de tela e os vídeos do celular e salve os arquivos originais na resolução completa.</string>
+    <string name="guide_photos_where">Configurações › Permissões › Fotos e vídeos</string>
+    <string name="guide_photos_needs">Permissão de fotos e vídeos</string>
+    <string name="guide_photos_need_1">Permissão para acessar fotos e vídeos concedida no Android.</string>
+    <string name="guide_photos_phone_1">Abra Configurações › Permissões › Fotos e vídeos e toque em Permitir.</string>
+    <string name="guide_photos_pc_1">Abra Fotos no PC para ver miniaturas e copiar ou salvar os arquivos originais.</string>
+    <string name="guide_photos_opt_1">Permitir todas: dá acesso à galeria inteira quando o acesso a fotos está limitado no Android 14 ou posterior.</string>
+    <string name="guide_photos_privacy">As miniaturas são geradas no próprio celular, quando necessário.</string>
+    <string name="guide_photos_limits">No Android 14 ou posterior, o acesso parcial mostra somente as fotos que você selecionou.</string>
+
+    <!-- 13. Timeline -->
+    <string name="guide_timeline_title">Linha do tempo</string>
+    <string name="guide_timeline_summary">Pesquise o histórico local de arquivos, itens copiados, links, fotos, gravações e sessões compartilhados com seus PCs.</string>
+    <string name="guide_timeline_where">Início › Linha do tempo (e Configurações › Recursos e dados › Dados e armazenamento)</string>
+    <string name="guide_timeline_needs">Nenhuma permissão extra</string>
+    <string name="guide_timeline_need_1">É preciso compartilhar pelo menos um item para o cartão Linha do tempo aparecer na tela Início.</string>
+    <string name="guide_timeline_phone_1">Toque em Linha do tempo na tela Início para buscar, filtrar por tipo ou tocar em Enviar de novo em itens anteriores.</string>
+    <string name="guide_timeline_pc_1">Abra Linha do tempo no PC para buscar o histórico de atividades.</string>
+    <string name="guide_timeline_opt_1">Manter itens da Linha do tempo (30 dias, 90 dias, 1 ano, Sem limite): defina o período em Configurações › Recursos e dados › Dados e armazenamento.</string>
+    <string name="guide_timeline_privacy">Os dados ficam somente em um banco de dados SQLite local neste dispositivo.</string>
+    <string name="guide_timeline_limits">Armazena até 5.000 itens localmente.</string>
+
+    <!-- 14. LocalSend -->
+    <string name="guide_localsend_title">LocalSend</string>
+    <string name="guide_localsend_summary">Envie e receba arquivos, sem parear, com dispositivos LocalSend próximos que estejam na mesma rede Wi-Fi.</string>
+    <string name="guide_localsend_where">Configurações › Recursos e dados › LocalSend (e Início › LocalSend por perto)</string>
+    <string name="guide_localsend_needs">LocalSend ativado em Configurações › Recursos e dados</string>
+    <string name="guide_localsend_need_1">A opção LocalSend está ativada em Configurações › Recursos e dados.</string>
+    <string name="guide_localsend_phone_1">Ative o LocalSend em Configurações › Recursos e dados e use o cartão LocalSend por perto na tela Início.</string>
+    <string name="guide_localsend_pc_1">Envie ou aceite arquivos de qualquer dispositivo LocalSend na mesma rede local.</string>
+    <string name="guide_localsend_opt_1">Opção LocalSend: controla a descoberta de dispositivos por multicast na rede local (porta 53317).</string>
+    <string name="guide_localsend_privacy">Desativado por padrão. Toda transferência recebida pede sua confirmação antes de salvar os arquivos.</string>
+    <string name="guide_localsend_limits">Só funciona na mesma rede local.</string>
+
+    <!-- 15. Screen mirroring -->
+    <string name="guide_mirror_title">Espelhamento de tela</string>
+    <string name="guide_mirror_summary">Transmita a tela e o áudio interno do celular para uma janela no PC ou veja a tela do PC no celular.</string>
+    <string name="guide_mirror_where">Configurações › Permissões › Controle pelo PC (ou Início › Controlar o PC)</string>
+    <string name="guide_mirror_needs">PC pareado e conectado; Assist ou Elevated para controlar com mouse e teclado</string>
+    <string name="guide_mirror_need_1">PC pareado e conectado.</string>
+    <string name="guide_mirror_need_2">Opcional: Assist (Acessibilidade) ou Elevated para usar o mouse e o teclado do PC.</string>
+    <string name="guide_mirror_phone_1">Quando o espelhamento começar pelo PC, toque em Iniciar agora no aviso de captura do Android.</string>
+    <string name="guide_mirror_phone_2">Toque em Parar no aviso da tela Início a qualquer momento para encerrar o compartilhamento da tela.</string>
+    <string name="guide_mirror_pc_1">Inicie o espelhamento de tela no PC para abrir uma janela ao vivo do celular.</string>
+    <string name="guide_mirror_opt_1">Parar: encerra a captura da tela na hora, pela tela Início ou pela notificação.</string>
+    <string name="guide_mirror_privacy">Pede confirmação no celular, a menos que seja iniciado pela tela virtual do Elevated.</string>
+    <string name="guide_mirror_limits">Apps com FLAG_SECURE aparecem com a tela preta nas transmissões padrão do MediaProjection.</string>
+
+    <!-- 16. App streams -->
+    <string name="guide_apps_title">Janelas de apps</string>
+    <string name="guide_apps_summary">Abra apps Android, cada um na sua própria janela no PC, enquanto a tela do celular continua independente.</string>
+    <string name="guide_apps_where">Configurações › Permissões › Controle pelo PC › Toque e teclas de verdade (depuração por Wi-Fi)</string>
+    <string name="guide_apps_needs">Elevated (depuração por Wi-Fi)</string>
+    <string name="guide_apps_need_1">Elevated configurado pela depuração por Wi-Fi.</string>
+    <string name="guide_apps_need_2">PC pareado e conectado.</string>
+    <string name="guide_apps_phone_1">Configure a depuração por Wi-Fi em Configurações › Permissões › Controle pelo PC.</string>
+    <string name="guide_apps_pc_1">Abra Janelas de apps no PC e clique em qualquer app do celular para abri-lo em uma janela própria.</string>
+    <string name="guide_apps_opt_1">Fechar tudo: fecha todas as janelas de apps em tela virtual pelo aviso da tela Início.</string>
+    <string name="guide_apps_privacy">As janelas de apps são transmitidas por TLS 1.3 a partir de uma tela virtual local neste celular.</string>
+    <string name="guide_apps_limits">É preciso usar o Elevated para criar telas virtuais no Android.</string>
+
+    <!-- 17. Phone as webcam -->
+    <string name="guide_webcam_title">Celular como webcam</string>
+    <string name="guide_webcam_summary">Transmita a câmera frontal ou traseira do celular para o PC em até 4K ou 60 fps.</string>
+    <string name="guide_webcam_where">Início › cartão do PC pareado › Webcam</string>
+    <string name="guide_webcam_needs">Permissão da câmera e PC pareado conectado</string>
+    <string name="guide_webcam_need_1">Permissão da câmera no Android e um PC pareado conectado.</string>
+    <string name="guide_webcam_phone_1">Na tela Início, toque em Webcam no cartão do PC pareado, escolha a resolução e a câmera e toque em Iniciar webcam.</string>
+    <string name="guide_webcam_pc_1">Veja ou grave a transmissão ao vivo da câmera no NectarLink do PC.</string>
+    <string name="guide_webcam_opt_1">Trocar câmera / Lanterna / Zoom / Resolução (720p, 1080p, 4K): controles da câmera ao vivo.</string>
+    <string name="guide_webcam_privacy">A câmera nunca é ativada sem avisar: uma notificação persistente aparece durante a transmissão.</string>
+    <string name="guide_webcam_limits">1080p a 60 fps e 4K exigem codificação por hardware e uma conexão Wi-Fi ou USB rápida.</string>
+
+    <!-- 18. Continuity camera -->
+    <string name="guide_continuity_title">Câmera de Continuidade</string>
+    <string name="guide_continuity_summary">Tire uma foto ou digitalize e recorte um documento com a câmera do celular, direto para o PC.</string>
+    <string name="guide_continuity_where">Solicitado no PC › aviso da Câmera de Continuidade no celular</string>
+    <string name="guide_continuity_needs">Permissão da câmera e PC pareado conectado</string>
+    <string name="guide_continuity_need_1">Permissão da câmera no Android e um PC pareado conectado.</string>
+    <string name="guide_continuity_phone_1">Toque na notificação ou no aviso, tire uma foto ou ajuste os cantos do documento e toque em Enviar.</string>
+    <string name="guide_continuity_pc_1">Acione Tirar foto ou Digitalizar documento no NectarLink do PC.</string>
+    <string name="guide_continuity_opt_1">Ajustar os cantos / Aprimorar documento: corrige a perspectiva e aumenta o contraste dos documentos digitalizados.</string>
+    <string name="guide_continuity_privacy">As capturas só são enviadas quando você toca em Usar foto ou Enviar documento.</string>
+    <string name="guide_continuity_limits">Os pedidos de câmera expiram em 2 minutos se ninguém responder.</string>
+
+    <!-- 19. Voice recorder -->
+    <string name="guide_recorder_title">Gravador de voz</string>
+    <string name="guide_recorder_summary">Grave notas de voz com marcadores de tempo para enviar ao PC. Se estiver desconectado, as gravações entram na fila automaticamente.</string>
+    <string name="guide_recorder_where">Início › cartão do PC pareado › Gravar</string>
+    <string name="guide_recorder_needs">Permissão do microfone e PC pareado</string>
+    <string name="guide_recorder_need_1">Permissão do microfone no Android e um PC pareado.</string>
+    <string name="guide_recorder_phone_1">Na tela Início, toque em Gravar no cartão do PC pareado e depois em Iniciar gravação.</string>
+    <string name="guide_recorder_phone_2">Toque em Adicionar marcador para marcar um momento. Ao terminar, a gravação é enviada ou colocada na fila.</string>
+    <string name="guide_recorder_pc_1">As gravações concluídas chegam à pasta Downloads do PC e à Linha do tempo.</string>
+    <string name="guide_recorder_opt_1">Adicionar marcador / Enviar de novo / Excluir: gerencie marcadores e gravações salvas.</string>
+    <string name="guide_recorder_privacy">O microfone só é usado durante a gravação. O arquivo fica no armazenamento privado até ser enviado.</string>
+    <string name="guide_recorder_limits">As gravações feitas sem conexão entram na fila automaticamente e são enviadas quando o PC se reconecta.</string>
+
+    <!-- 20. Control PC -->
+    <string name="guide_remote_title">Controlar o PC</string>
+    <string name="guide_remote_summary">Use o celular como touchpad, teclado, microfone para ditado, mouse aéreo ou controle de apresentação do PC.</string>
+    <string name="guide_remote_where">Início › cartão do PC pareado › Controlar o PC</string>
+    <string name="guide_remote_needs">PC pareado e conectado com o controle remoto permitido</string>
+    <string name="guide_remote_need_1">PC pareado e conectado, com o controle permitido para este celular.</string>
+    <string name="guide_remote_phone_1">Na tela Início, toque em Controlar o PC no cartão do PC pareado.</string>
+    <string name="guide_remote_phone_2">Alterne entre Touchpad, Mouse aéreo, Apresentação, Teclado e Ditar.</string>
+    <string name="guide_remote_pc_1">Aprove o controle remoto no PC quando solicitado.</string>
+    <string name="guide_remote_opt_1">Velocidade do touchpad: ajuste a sensibilidade em Configurações › Recursos e dados › Controlar o PC.</string>
+    <string name="guide_remote_privacy">Os comandos são enviados ao PC pareado por conexões QUIC criptografadas.</string>
+    <string name="guide_remote_limits">O mouse aéreo precisa de um giroscópio no celular.</string>
+
+    <!-- 21. Assist -->
+    <string name="guide_assist_title">Assist</string>
+    <string name="guide_assist_summary">Use o mouse e o teclado do PC para tocar, deslizar e digitar no celular pelo serviço de Acessibilidade.</string>
+    <string name="guide_assist_where">Configurações › Permissões › Controle pelo PC › Usar o mouse e o teclado do PC</string>
+    <string name="guide_assist_needs">Serviço de acessibilidade ativado</string>
+    <string name="guide_assist_need_1">Serviço de Acessibilidade do NectarLink ativado nas Configurações do Android.</string>
+    <string name="guide_assist_phone_1">Abra Configurações › Permissões › Controle pelo PC e toque em Permitir em Usar o mouse e o teclado do PC.</string>
+    <string name="guide_assist_pc_1">Clique, arraste, role e digite na janela de espelhamento do celular no PC.</string>
+    <string name="guide_assist_opt_1">Parar de digitar: encerra a digitação remota pelo teclado do PC usando o aviso da tela Início.</string>
+    <string name="guide_assist_privacy">Injeta gestos e texto vindos do PC pareado; não lê o conteúdo da tela nem senhas.</string>
+    <string name="guide_assist_limits">APKs instalados por fora de uma loja no Android 13 ou mais recente precisam primeiro ativar Permitir configurações restritas em Informações do app.</string>
+
+    <!-- 22. Elevated -->
+    <string name="guide_elevated_title">Elevated</string>
+    <string name="guide_elevated_summary">Toque e teclas de verdade, Janelas de apps, sincronização da área de transferência em segundo plano e controles durante chamadas, pela depuração por Wi-Fi.</string>
+    <string name="guide_elevated_where">Configurações › Permissões › Controle pelo PC › Toque e teclas de verdade (depuração por Wi-Fi)</string>
+    <string name="guide_elevated_needs">Depuração por Wi-Fi</string>
+    <string name="guide_elevated_need_1">Opções do desenvolvedor e Depuração por Wi-Fi ativadas.</string>
+    <string name="guide_elevated_phone_1">Abra Configurações › Permissões › Controle pelo PC e toque em Configurar em Toque e teclas de verdade.</string>
+    <string name="guide_elevated_phone_2">Em Depuração por Wi-Fi, toque em Parear o dispositivo com um código de pareamento e digite o código de 6 dígitos na notificação.</string>
+    <string name="guide_elevated_pc_1">Use janelas de apps, sincronização da área de transferência em segundo plano e controle com baixa latência pelo PC.</string>
+    <string name="guide_elevated_opt_1">Configurar / Desligar: pareia ou para o auxiliar local da Depuração por Wi-Fi.</string>
+    <string name="guide_elevated_privacy">Funciona localmente neste celular por ADB via loopback; não usa servidor externo.</string>
+    <string name="guide_elevated_limits">O primeiro pareamento pela Depuração por Wi-Fi exige Wi-Fi.</string>
+
+    <!-- 23. Deck -->
+    <string name="guide_deck_title">Deck</string>
+    <string name="guide_deck_summary">Use o celular como uma grade de botões de atalho, teclas de mídia, controles deslizantes de volume e indicadores ao vivo do sistema do PC.</string>
+    <string name="guide_deck_where">Início › cartão do PC pareado › Deck</string>
+    <string name="guide_deck_needs">PC pareado e conectado</string>
+    <string name="guide_deck_need_1">PC pareado e conectado.</string>
+    <string name="guide_deck_phone_1">Na tela Início, toque em Deck no cartão do PC pareado e depois em qualquer botão para executar a ação.</string>
+    <string name="guide_deck_pc_1">Personalize as páginas e os botões do Deck no NectarLink do PC.</string>
+    <string name="guide_deck_opt_1">Tela inteira: amplia a grade do Deck para ocupar a tela do celular.</string>
+    <string name="guide_deck_privacy">Os layouts do Deck e as estatísticas do sistema são compartilhados somente entre este celular e o PC pareado.</string>
+    <string name="guide_deck_limits">Botões com comando do shell exigem “Executar comandos do shell do Deck” ativado para este celular no PC.</string>
+
+    <!-- 24. Desk Mode -->
+    <string name="guide_desk_title">Modo de mesa</string>
+    <string name="guide_desk_summary">Relógio de mesa OLED sempre ligado, status da conexão com o PC em tempo real, controles de mídia e ações rápidas.</string>
+    <string name="guide_desk_where">Início › cartão do PC pareado › Relógio de mesa</string>
+    <string name="guide_desk_needs">PC pareado</string>
+    <string name="guide_desk_need_1">PC pareado.</string>
+    <string name="guide_desk_phone_1">Na tela Início, toque em Relógio de mesa no cartão do PC pareado e coloque o celular em um suporte ou no carregador.</string>
+    <string name="guide_desk_pc_1">A reprodução de mídia e o status do PC são atualizados ao vivo no Modo de mesa.</string>
+    <string name="guide_desk_opt_1">Proteção contra retenção de imagem OLED: o layout se desloca alguns pixels de tempos em tempos para evitar marcas na tela.</string>
+    <string name="guide_desk_privacy">A tela é renderizada localmente no celular com base no estado atual do PC.</string>
+    <string name="guide_desk_limits">Mantém a tela ligada enquanto o modo está aberto.</string>
+
+    <!-- 25. Wake PC -->
+    <string name="guide_wake_title">Acordar o PC</string>
+    <string name="guide_wake_summary">Acorde um PC pareado em suspensão pela rede local com o Wake-on-LAN.</string>
+    <string name="guide_wake_where">Início › cartão do PC pareado › Acordar</string>
+    <string name="guide_wake_needs">PC pareado com Wake-on-LAN ativado na BIOS e no adaptador de rede</string>
+    <string name="guide_wake_need_1">O PC pareado precisa ter se conectado pela rede local pelo menos uma vez, para o NectarLink aprender o endereço MAC dele.</string>
+    <string name="guide_wake_need_2">Wake-on-LAN ativado nas configurações do adaptador de rede do Windows e na BIOS/UEFI.</string>
+    <string name="guide_wake_phone_1">Quando o PC pareado aparecer offline na tela Início, toque em Acordar no cartão dele.</string>
+    <string name="guide_wake_pc_1">Ative o despertar por pacote Wake-on-LAN em Gerenciador de Dispositivos › Adaptadores de rede › Gerenciamento de Energia.</string>
+    <string name="guide_wake_opt_1">Acordar: envia um pacote Wake-on-LAN pela rede local.</string>
+    <string name="guide_wake_privacy">Usa o endereço MAC aprendido numa sessão autenticada anterior na rede local.</string>
+    <string name="guide_wake_limits">Exige Ethernet ou um adaptador Wi-Fi compatível com Wake on Wireless LAN.</string>
+
+    <!-- 26. Quick actions -->
+    <string name="guide_quick_title">Ações rápidas</string>
+    <string name="guide_quick_summary">Faça o PC tocar, bloqueie ou suspenda o PC pela tela Início ou pelo widget, e controle o Não perturbe, a lanterna e o brilho do celular pelo PC.</string>
+    <string name="guide_quick_where">Início › cartão do PC pareado (e Configurações › Permissões › Controle pelo PC)</string>
+    <string name="guide_quick_needs">Acesso ao Não perturbe e permissão de Brilho da tela para os controles do PC no celular</string>
+    <string name="guide_quick_need_1">Fazer o PC tocar, Bloquear PC, Suspender e controlar a lanterna do celular não exigem permissões extras.</string>
+    <string name="guide_quick_need_2">Não perturbe e o modo silencioso exigem acesso ao Não perturbe.</string>
+    <string name="guide_quick_need_3">O controle de brilho do celular exige a permissão de Brilho da tela ou o Elevated.</string>
+    <string name="guide_quick_phone_1">Use Fazer o PC tocar, Bloquear PC ou Suspender no cartão do PC pareado na tela Início ou adicione o widget de ações rápidas do PC.</string>
+    <string name="guide_quick_pc_1">Alterne o Não perturbe, o toque, a lanterna, o volume e o brilho do celular pelo NectarLink no PC.</string>
+    <string name="guide_quick_opt_1">Não perturbe / Brilho da tela: conceda as permissões em Configurações › Permissões › Controle pelo PC.</string>
+    <string name="guide_quick_privacy">Os comandos são autenticados por dispositivo usando TLS 1.3.</string>
+    <string name="guide_quick_limits">Bloquear e suspender o PC podem ser ligados ou desligados para cada celular em Configurações › Dispositivos no PC.</string>
+
+    <!-- 27. Connect over mobile data -->
+    <string name="guide_away_title">Conectar usando dados móveis</string>
+    <string name="guide_away_summary">Mantenha o celular conectado ao PC por dados móveis quando estiver fora do Wi-Fi ou conecte-o por um cabo USB.</string>
+    <string name="guide_away_where">Configurações › Dispositivos › Conectar usando dados móveis</string>
+    <string name="guide_away_needs">Bateria sem restrições e opção Conectar usando dados móveis ativada</string>
+    <string name="guide_away_need_1">Bateria sem restrições em Configurações › Permissões › Segundo plano e bateria.</string>
+    <string name="guide_away_need_2">Opção Conectar usando dados móveis ativada em Configurações › Dispositivos.</string>
+    <string name="guide_away_phone_1">Ative Conectar usando dados móveis em Configurações › Dispositivos.</string>
+    <string name="guide_away_pc_1">O cartão do PC mostra Conectado à distância ou Via USB, conforme a conexão ativa.</string>
+    <string name="guide_away_opt_1">Conectar usando dados móveis: usa um retransmissor criptografado de ponta a ponta quando a rede local e o USB não estão disponíveis.</string>
+    <string name="guide_away_privacy">O tráfego pelo retransmissor é criptografado de ponta a ponta com as chaves TLS 1.3 dos dispositivos pareados.</string>
+    <string name="guide_away_limits">As transferências de arquivos por dados móveis usam seu plano de dados.</string>
+
+    <!-- 28. Connection Doctor -->
+    <string name="guide_doctor_title">Diagnóstico de conexão</string>
+    <string name="guide_doctor_summary">Verifique as configurações de bateria em segundo plano, a ativação por dispositivo complementar e o acesso à rede local para manter o celular acessível.</string>
+    <string name="guide_doctor_where">Configurações › Permissões › Segundo plano e bateria</string>
+    <string name="guide_doctor_needs">Bateria sem restrições</string>
+    <string name="guide_doctor_need_1">Uso da bateria em segundo plano sem restrições ativado.</string>
+    <string name="guide_doctor_need_2">Opcional: Ativar quando o PC estiver por perto (dispositivo complementar) associado.</string>
+    <string name="guide_doctor_phone_1">Abra Configurações › Permissões › Segundo plano e bateria e permita o uso da bateria sem restrições.</string>
+    <string name="guide_doctor_phone_2">Se o fabricante do celular restringe apps em segundo plano, siga o guia de bateria da marca.</string>
+    <string name="guide_doctor_pc_1">Abra Diagnóstico de conexão no PC para conferir a latência, as portas e o estado da conexão.</string>
+    <string name="guide_doctor_opt_1">Ativar quando o PC estiver por perto: associa o PC para que o Android ative o NectarLink quando ele estiver ao alcance do BLE.</string>
+    <string name="guide_doctor_privacy">Os diagnósticos rodam localmente entre o celular e o PC pareado.</string>
+    <string name="guide_doctor_limits">A economia de bateria de alguns fabricantes precisa ficar em Sem restrições.</string>
+    <string name="pair_link_title">Parear com %1$s?</string>
+    <string name="pair_link_body">Foi aberto um link de pareamento. Só pareie se você acabou de escanear ou abrir o código deste dispositivo. Um dispositivo pareado pode receber as notificações e mensagens deste celular.</string>
+    <string name="pair_link_confirm">Parear</string>
+    <string name="pair_link_cancel">Cancelar</string>
+    <string name="pair_link_unknown_pc">este dispositivo</string>
+    <string name="data_clear_failed">Não foi possível apagar parte do histórico. Tente de novo.</string>
+    <string name="channel_updates">Atualizações</string>
+    <string name="update_ready_title">O NectarLink %1$s está pronto para instalar</string>
+    <string name="update_ready_text">Toque para instalar a atualização.</string>
+    <string name="update_done_title">O NectarLink foi atualizado para a versão %1$s</string>
+    <string name="update_done_text">Toque para abrir. Seus PCs vão se reconectar automaticamente.</string>
+    <string name="update_auto_title">Instalar atualizações automaticamente</string>
+    <string name="update_auto_text">Novas versões do GitHub são instaladas em segundo plano.</string>
+    <string name="update_nightly">Nightly %1$d</string>
+    <string name="update_nightly_named">Nightly %1$d (%2$s)</string>
+    <string name="update_channel_title">Canal de atualização</string>
+    <string name="update_channel_stable">Estável</string>
+    <string name="update_channel_nightly">Nightly</string>
+    <string name="update_channel_stable_text">Versões oficiais, testadas e menos frequentes.</string>
+    <string name="update_channel_nightly_text">A versão mais nova, gerada a cada poucas horas, com as últimas correções e recursos, e às vezes bugs novos. Ao voltar para Estável, este celular mantém a versão atual até sair uma versão estável mais nova.</string>
+
+    <string name="home_guide_title">Guia</string>
+    <string name="home_whats_new_guide">Novidade: Guia de recursos</string>
+    <string name="home_guide_card_body">Explore todos os recursos do NectarLink, confira as permissões ao vivo ou toque em Mostrar para ir direto a qualquer controle.</string>
+    <string name="home_no_pc_paired">Nenhum PC pareado ainda</string>
+    <string name="home_no_pc_body">Abra o NectarLink no seu PC com Windows ou Linux para parear por código QR ou pela rede local, ou reabra o passo a passo de configuração.</string>
+    <string name="home_background_clipboard_title">Área de transferência em segundo plano e controle completo</string>
+    <string name="home_background_clipboard_body">Sincronize a área de transferência em segundo plano e ative o controle por toque pela Depuração por Wi-Fi.</string>
+    <string name="home_section_screen">Tela, câmera e controle</string>
+    <string name="home_section_transfer">Envio rápido e área de transferência</string>
+    <string name="home_section_system">Sistema e energia</string>
+    <string name="settings_category_devices">Dispositivos</string>
+    <string name="settings_category_features">Recursos e dados</string>
+    <string name="settings_theme_artwork_color">Cor da capa da mídia</string>
+    <string name="settings_mobile_data_body">Continue conectado por LTE/5G ou retransmissor quando estiver fora do Wi-Fi</string>
+    <string name="settings_background_clipboard_title">Acesso à área de transferência em segundo plano</string>
+    <string name="settings_guide_card_body">Explore todos os recursos, confira os requisitos em tempo real ou abra direto os controles.</string>
+    <string name="settings_walkthrough_body">Reabra o passo a passo de permissões, pareamento e níveis de acesso.</string>
+    <string name="desk_exit">Sair do Modo de mesa</string>
+    <string name="desk_media_playing">Mídia do PC · Tocando</string>
+    <string name="desk_media_audio">Mídia e áudio do PC</string>
+    <string name="desk_pc_screen">Tela do PC</string>
+    <string name="queue_kind_clipboard">Área de transferência</string>
+    <string name="queue_kind_clipboard_image">Imagem da área de transferência</string>
+    <string name="queue_kind_files">Arquivos</string>
+    <string name="queue_kind_folder">Pasta</string>
+    <string name="queue_kind_link">Link</string>
+    <string name="queue_kind_document">Documento</string>
+    <string name="queue_kind_recording">Gravação</string>
+    <string name="queue_kind_task_alert">Alerta de tarefa</string>
+    <string name="queue_kind_camera_request">Pedido para usar a câmera</string>
+
+    <string name="settings_theme_artwork_body">Sincroniza as cores do app e do vidro com a capa da mídia que está tocando</string>
+    <string name="settings_wireless_debugging_active">Ativo pela Depuração por Wi-Fi · a área de transferência sincroniza sozinha</string>
+    <string name="settings_wireless_debugging_hint">Ative a Depuração por Wi-Fi para a área de transferência sincronizar em segundo plano, ou use Enviar item copiado na notificação</string>
+
+    <!-- Pause for banking apps -->
+    <string name="banking_title">Pausar para apps bancários</string>
+    <string name="banking_text">Alguns apps bancários não abrem enquanto as Opções do desenvolvedor, a depuração ou um serviço de Acessibilidade estão ativados. Escolha os apps aqui: o NectarLink desativa essas opções enquanto o app bancário estiver aberto e as ativa de novo quando você sair.</string>
+    <plurals name="banking_chosen">
+        <item quantity="one">%1$d app selecionado</item>
+        <item quantity="other">%1$d apps selecionados</item>
+    </plurals>
+    <string name="banking_needs_elevated">É preciso configurar o Elevated uma vez para que o NectarLink possa mudar essas opções.</string>
+    <string name="banking_needs_usage">Permita o acesso aos dados de uso para que o NectarLink saiba quando um app bancário estiver aberto.</string>
+    <string name="banking_paused_now">Pausado agora para um app bancário.</string>
+    <string name="banking_choose">Escolher apps</string>
+    <string name="banking_pick_title">Apps bancários</string>
+    <string name="banking_search">Buscar apps</string>
+    <string name="banking_shortcut">Adicionar atalho</string>
+    <string name="banking_shortcut_hint">Se um app ainda se recusar a abrir, abra pelo atalho dele: o NectarLink pausa primeiro e depois abre o app.</string>
+    <string name="banking_channel">Pausar para apps bancários</string>
+    <string name="banking_paused_title">Pausado enquanto um app bancário está aberto</string>
+    <string name="banking_paused_text">As Opções do desenvolvedor, a depuração e o serviço de Acessibilidade do NectarLink permanecem desativados até você sair do app bancário.</string>
+    <string name="banking_turn_back_on">Ativar de novo</string>
+    <string name="action_done">Concluído</string>
+    <!-- The phone's name as PCs see it when NectarLink runs in another Android profile: "Pixel 9a (Work)". -->
+    <string name="device_name_in_profile">%1$s (%2$s)</string>
+    <string name="profile_work">Trabalho</string>
+    <string name="profile_other">Segundo perfil</string>
+</resources>
+
+
+
