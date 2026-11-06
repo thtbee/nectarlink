@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: DCO
+
+# pull_request_target runs this file and its script as they are on main, so a pull
+# request can't change the check to pass itself. It must never check out or run the
+# pull request's code: it only reads the commits' messages through the API.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  dco:
+    name: DCO
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Test the check
+        run: python3 -m unittest discover -s .github/scripts -p 'test_dco_check.py'
+      - name: Every commit is signed off
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          gh api "repos/$REPO/pulls/$PR/commits" --paginate --jq '.[]' > commits.jsonl
+          python3 .github/scripts/dco_check.py < commits.jsonl
