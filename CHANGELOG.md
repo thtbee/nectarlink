@@ -34,6 +34,9 @@ change things that need a step from you, and its notes say so.
   ([#94](https://github.com/thtbee/nectarlink/issues/94)).
 - Starting Elevated on Android 17 no longer overloads the phone. Looking for wireless
   debugging connected to every local port, which could make other apps fail.
+- Phone sound through Elevated is no longer almost silent on the PC. It has a volume of
+  its own that starts low, so NectarLink now turns it up
+  ([#94](https://github.com/thtbee/nectarlink/issues/94)).
 - A second title bar no longer covers the top of the window on Windows 11 23H2
   ([#227](https://github.com/thtbee/nectarlink/issues/227),
   [#209](https://github.com/thtbee/nectarlink/issues/209)).
