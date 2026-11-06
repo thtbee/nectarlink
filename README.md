@@ -164,8 +164,8 @@ and dark.
 - **Local-first.** Devices talk directly over your network or a USB cable.
   Nothing goes through a server, and there's no account.
 - **End-to-end encrypted.** Every connection is QUIC with TLS 1.3, authenticated
-  with device keys exchanged when you pair. Keys are protected by Windows DPAPI
-  and the Android Keystore. On Linux, for now, only by file permissions.
+  with device keys exchanged when you pair. Keys are protected by Windows DPAPI,
+  the macOS Keychain and the Android Keystore. On Linux, for now, only by file permissions.
 - **You decide what's shared.** Each paired device has its own feature
   switches. Remote control of the PC, shell commands and phone storage are off
   until you allow them.

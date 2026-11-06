@@ -29,6 +29,13 @@ change things that need a step from you, and its notes say so.
   ([#219](https://github.com/thtbee/nectarlink/issues/219)).
 - **App size.** Settings › Appearance makes the PC app bigger, up to 150%, after a
   restart ([#221](https://github.com/thtbee/nectarlink/issues/221)).
+- **The macOS app seals the device key in the login Keychain.** `identity.key`
+  and the clipboard vault are now encrypted with a key held in the Keychain
+  instead of sitting on disk in the clear, so a copy of the app's data folder
+  can't act as this Mac. An existing key file is re-sealed in place on first
+  launch and keeps its `DeviceId`, so no re-pairing is needed. Clipboard history
+  and unsent queue items written by an earlier macOS build can't be opened with
+  the new key, so they start empty once.
 
 ### Fixed
 

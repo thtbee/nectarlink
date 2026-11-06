@@ -12,6 +12,7 @@ When NectarLink starts for the first time on your PC or Android phone, it genera
 - **How your private key is protected at rest**:
   - On **Windows**, `identity.key` is encrypted using the Windows Data Protection API (**DPAPI** via `CryptProtectData` with `CRYPTPROTECT_UI_FORBIDDEN` and entropy `b"nectarlink/identity/v1"`), tied to your Windows user account credentials (not hardware-backed).
   - On **Android**, `identity.key` is encrypted by a non-exportable **AES-256-GCM** key (`nectarlink.identity.v1`) inside the **Android Keystore**, which may be hardware-backed depending on your phone.
+  - On **macOS**, `identity.key` is sealed with **AES-256-GCM** using a 256-bit key kept in your **login Keychain** (`app.nectarlink.identity`). A copy of the app's data folder alone can't act as this Mac. Removing that Keychain item makes the key unreadable, and the app then creates a new identity that has to pair again.
   - On **Linux**, `identity.key` isn't encrypted yet. It's protected by file permissions (`0600`), so only your user can read it, but anything running as you can, and so can anyone who reads the disk. Full-disk encryption covers the second case.
 
 ## 2. Cryptographic Pairing (Out-of-Band Secret and 6-Digit SAS)
