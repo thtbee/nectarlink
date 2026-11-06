@@ -1077,6 +1077,7 @@ impl qobject::Preferences {
             battery_alerts: p.battery_alerts,
             battery_full_threshold: p.battery_full_threshold.clamp(50, 100) as u8,
             ui_scale: u16::try_from(p.ui_scale).unwrap_or(100),
+            keep_screen_off: crate::settings::keep_screen_off_phones(),
             device_nicknames: crate::settings::device_nicknames(),
             start_with_windows: p.start_choice,
             recordings_folder: p.custom_recordings_folder.clone(),

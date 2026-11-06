@@ -80,7 +80,12 @@ class AppWindows(
         // never draws (#152); a display that's awake stays so while the
         // window is open. Mirroring wakes the screen the same way.
         Elevated.wakeScreen()
-        val socket = Elevated.openApp(pkg, width, height, dpi, options.bitrate.toInt(), options.fps.toInt()) ?: return false
+        // Straight off when it's meant to stay off, so it barely lights up.
+        if (options.screenOff) Elevated.setScreenOff(true)
+        val socket = Elevated.openApp(pkg, width, height, dpi, options.bitrate.toInt(), options.fps.toInt()) ?: run {
+            if (options.screenOff && windows.isEmpty()) Elevated.setScreenOff(false)
+            return false
+        }
         val window = Window(pc, options.session, socket, width, height, dpi, maxSize)
         power[pc] = options.stayAwake to options.screenOff
         windows.put(pc to options.session, window)?.let { runCatching { it.socket.close() } }

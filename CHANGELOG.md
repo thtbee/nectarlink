@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Keep the phone's screen off.** The toolbar's screen-off button now stays set for
+  that phone, and Settings › Devices has the same switch, so mirroring and app
+  windows start with the screen off, barely lighting it up
+  ([#217](https://github.com/thtbee/nectarlink/issues/217)).
 - **App size.** Settings › Appearance makes the PC app bigger, up to 150%, after a
   restart ([#221](https://github.com/thtbee/nectarlink/issues/221)).
 

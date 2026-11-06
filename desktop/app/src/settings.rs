@@ -250,6 +250,26 @@ fn default_battery_full_threshold() -> u8 {
 static NICKNAMES: std::sync::Mutex<Option<std::collections::HashMap<String, String>>> =
     std::sync::Mutex::new(None);
 
+static KEEP_SCREEN_OFF: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+
+/// The phones whose screen stays off for mirroring and app windows, by device ID.
+pub fn keep_screen_off_phones() -> Vec<String> {
+    KEEP_SCREEN_OFF.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+/// `phones` with `device` in it when `on`, and out of it otherwise.
+pub fn with_keep_screen_off(mut phones: Vec<String>, device: &str, on: bool) -> Vec<String> {
+    phones.retain(|phone| phone != device);
+    if on {
+        phones.push(device.to_owned());
+    }
+    phones
+}
+
+pub fn set_keep_screen_off_phones(phones: Vec<String>) {
+    *KEEP_SCREEN_OFF.lock().unwrap_or_else(|e| e.into_inner()) = phones;
+}
+
 pub fn device_nicknames() -> std::collections::HashMap<String, String> {
     NICKNAMES.lock().unwrap_or_else(|e| e.into_inner()).clone().unwrap_or_default()
 }
@@ -421,6 +441,9 @@ pub struct Settings {
     /// the app starts.
     #[serde(default = "default_ui_scale", alias = "ui_scale")]
     pub ui_scale: u16,
+    /// The phones whose screen stays off for mirroring and app windows, by device ID.
+    #[serde(default, skip_serializing_if = "Vec::is_empty", alias = "keep_screen_off")]
+    pub keep_screen_off: Vec<String>,
     /// User-assigned nicknames for paired phones by their device ID (hex string).
     #[serde(
         default,
@@ -583,6 +606,7 @@ impl Default for Settings {
             battery_alerts: true,
             battery_full_threshold: default_battery_full_threshold(),
             ui_scale: default_ui_scale(),
+            keep_screen_off: Vec::new(),
             device_nicknames: std::collections::HashMap::new(),
             start_with_windows: None,
             recordings_folder: None,
@@ -683,6 +707,7 @@ impl Settings {
         set_forward_pc_notifications_to_phone(self.forward_pc_notifications_to_phone);
         set_away_mode(self.away_mode);
         set_battery_full_threshold(self.battery_full_threshold);
+        set_keep_screen_off_phones(self.keep_screen_off.clone());
         set_device_nicknames(self.device_nicknames.clone());
         set_window_geometry(
             self.window_screen.clone(),
@@ -824,6 +849,7 @@ mod tests {
             battery_alerts: false,
             battery_full_threshold: 80,
             ui_scale: 125,
+            keep_screen_off: vec!["abc".to_owned()],
             device_nicknames: std::collections::HashMap::from([("abc".to_owned(), "Work phone".to_owned())]),
             start_with_windows: Some(true),
             recordings_folder: Some(PathBuf::from(r"C:\Recordings")),
@@ -1138,6 +1164,14 @@ mod tests {
         assert_eq!(upgraded.walkthrough_step, 0);
         assert!(upgraded.reconcile_walkthrough_for_paired_devices(2));
         assert!(upgraded.walkthrough_completed);
+    }
+
+    #[test]
+    fn keep_screen_off_adds_and_removes_a_phone_once() {
+        let on = with_keep_screen_off(vec!["a".into()], "b", true);
+        assert_eq!(on, ["a", "b"]);
+        assert_eq!(with_keep_screen_off(on.clone(), "b", true), ["a", "b"]);
+        assert_eq!(with_keep_screen_off(on, "a", false), ["b"]);
     }
 
     #[test]

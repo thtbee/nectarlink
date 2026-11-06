@@ -33,6 +33,8 @@ pub mod qobject {
         #[qproperty(QString, windows)]
         /// The user turned the phones' sound off on this PC.
         #[qproperty(bool, muted)]
+        /// The phones whose screen stays off, as a JSON list of device IDs.
+        #[qproperty(QString, keep_screen_off_phones)]
         /// The phone whose apps [`apps`] lists.
         #[qproperty(QString, apps_device, cxx_name = "appsDevice")]
         /// Its apps, as JSON: `[{ pkg, label, icon }]` (icon: a file URL or "").
@@ -117,6 +119,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "setScreenOff"]
         fn set_screen_off(self: &Mirror, key: &QString, on: bool);
+        /// Keeps `device`'s screen off from the start of each mirroring or app window.
+        #[qinvokable]
+        #[cxx_name = "setKeepScreenOff"]
+        fn set_keep_screen_off(self: &Mirror, device: &QString, on: bool);
         /// Starts or stops remote keyboard typing on `device` without screen mirroring.
         #[qinvokable]
         #[cxx_name = "toggleKeyboard"]
@@ -163,6 +169,7 @@ pub mod qobject {
 #[derive(Default)]
 pub struct MirrorRust {
     windows: QString,
+    keep_screen_off_phones: QString,
     muted: bool,
     apps_device: QString,
     apps: QString,
@@ -256,6 +263,10 @@ impl qobject::Mirror {
             self.as_mut().set_windows(QString::from(&json));
         }
         self.as_mut().set_muted(mirror::muted());
+        let keep = serde_json::Value::from(crate::settings::keep_screen_off_phones()).to_string();
+        if self.keep_screen_off_phones.to_string() != keep {
+            self.as_mut().set_keep_screen_off_phones(QString::from(&keep));
+        }
         let kb = mirror::keyboard_device().map(|d| d.to_string()).unwrap_or_default();
         if self.keyboard_device.to_string() != kb {
             self.as_mut().set_keyboard_device(QString::from(&kb));
@@ -435,6 +446,12 @@ impl qobject::Mirror {
     pub fn set_screen_off(&self, key: &QString, on: bool) {
         if let Some(window) = Window::parse(&String::from(key)) {
             mirror::set_screen_off(window, on);
+        }
+    }
+
+    pub fn set_keep_screen_off(&self, device: &QString, on: bool) {
+        if let Some(device) = super::parse_device(device) {
+            mirror::remember_screen_off(device, on);
         }
     }
 
