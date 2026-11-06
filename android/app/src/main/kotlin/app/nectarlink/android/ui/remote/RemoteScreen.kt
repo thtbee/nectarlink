@@ -6,6 +6,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -111,6 +112,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import app.nectarlink.android.R
 import app.nectarlink.android.core.Core
 import app.nectarlink.android.core.Device
@@ -151,8 +155,24 @@ fun RemoteScreen(
 
     var mode by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
     var screenFullScreen by rememberSaveable { mutableStateOf(false) }
-    val isFullScreen = mode == RemoteMode.Screen && screenFullScreen
     var access by remember(device.id) { mutableStateOf(Core.RemoteAccess.Allowed) }
+    // In landscape the touchpad takes the screen, with its buttons under it.
+    var touchpadOnlyChosen by rememberSaveable { mutableStateOf(true) }
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val touchpadOnly = landscape && touchpadOnlyChosen && mode == RemoteMode.Touchpad &&
+        device.online && access == Core.RemoteAccess.Allowed
+    val isFullScreen = (mode == RemoteMode.Screen && screenFullScreen) || touchpadOnly
+    DisposableEffect(view, touchpadOnly) {
+        val window = (context as? Activity)?.window
+        val bars = window?.let { WindowCompat.getInsetsController(it, view) }
+        if (touchpadOnly) {
+            bars?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            bars?.hide(WindowInsetsCompat.Type.systemBars())
+        }
+        onDispose {
+            if (touchpadOnly) bars?.show(WindowInsetsCompat.Type.systemBars())
+        }
+    }
     val utteranceJoiner = remember(device.id) { UtteranceJoiner() }
 
     LaunchedEffect(mode) {
@@ -314,6 +334,9 @@ fun RemoteScreen(
                     sensitivity = sensitivity,
                     utteranceJoiner = utteranceJoiner,
                     onStatus = onStatus,
+                    canBeTouchpadOnly = landscape,
+                    touchpadOnly = touchpadOnly,
+                    onTouchpadOnly = { touchpadOnlyChosen = it },
                     modifier = Modifier.fillMaxSize(),
                 )
                 RemoteMode.AirMouse -> AirMouseView(
@@ -622,6 +645,9 @@ private fun TouchpadView(
     sensitivity: Float,
     utteranceJoiner: UtteranceJoiner,
     onStatus: (Core.RemoteAccess) -> Unit,
+    canBeTouchpadOnly: Boolean,
+    touchpadOnly: Boolean,
+    onTouchpadOnly: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showKeyboard by rememberSaveable { mutableStateOf(false) }
@@ -646,8 +672,11 @@ private fun TouchpadView(
     Column(
         // Above the keyboard while it's open: apps are drawn edge to edge
         // (Android 15 and later), so the keyboard would cover the typing field.
-        modifier = modifier.fillMaxWidth().imePadding(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .imePadding()
+            .then(if (touchpadOnly) Modifier.padding(8.dp) else Modifier),
+        verticalArrangement = Arrangement.spacedBy(if (touchpadOnly) 6.dp else 10.dp),
     ) {
         // While typing, the keyboard leaves too little room for the touchpad,
         // and the field below must keep its full height.
@@ -703,7 +732,11 @@ private fun TouchpadView(
                 )
             }
             Button(
-                onClick = { showKeyboard = !showKeyboard },
+                onClick = {
+                    // Typing needs the keys and the field, so show them all.
+                    if (touchpadOnly) onTouchpadOnly(false)
+                    showKeyboard = !showKeyboard
+                },
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                 modifier = Modifier.weight(1.26f).height(46.dp),
             ) {
@@ -714,7 +747,26 @@ private fun TouchpadView(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+            if (canBeTouchpadOnly) {
+                OutlinedButton(
+                    onClick = {
+                        if (!touchpadOnly) showKeyboard = false
+                        onTouchpadOnly(!touchpadOnly)
+                    },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1.1f).height(46.dp),
+                ) {
+                    Text(
+                        stringResource(if (touchpadOnly) R.string.remote_more_controls else R.string.remote_touchpad_only),
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
+
+        if (touchpadOnly) return@Column
 
         // Scroll rather than squeeze the typing field when the keyboard is up.
         Column(
