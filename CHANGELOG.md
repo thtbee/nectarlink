@@ -71,6 +71,9 @@ what people reported since 0.1.4.
 - Voice typing comes through right in Notepad on Windows 11. Words could still turn into
   repeats of one letter, because the PC typed faster than Notepad could read
   ([#52](https://github.com/thtbee/nectarlink/issues/52)).
+- Turning the phone's screen off keeps it off on Android 16. Setting the brightness to 0
+  right after could wake it again, dim but lit
+  ([#217](https://github.com/thtbee/nectarlink/issues/217)).
 
 ### Downloads
 
