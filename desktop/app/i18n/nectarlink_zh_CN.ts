@@ -5384,64 +5384,64 @@ What it needs
         <translation>刷新</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1041"/>
+        <location filename="../qml/MainWindow.qml" line="1046"/>
         <source>%1 is ringing this PC</source>
         <translation>%1 正在让本机响铃</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1047"/>
+        <location filename="../qml/MainWindow.qml" line="1052"/>
         <source>Stop ringing</source>
         <translation>停止响铃</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1073"/>
+        <location filename="../qml/MainWindow.qml" line="1078"/>
         <source>Allow %1 to control this PC?</source>
         <translation>允许 %1 控制本机吗？</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1080"/>
+        <location filename="../qml/MainWindow.qml" line="1085"/>
         <source>%1 wants to use this PC&apos;s mouse and keyboard. You can change this in Settings.</source>
         <translation>%1 想要使用本机的鼠标和键盘。你可以在设置中更改。</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1090"/>
-        <location filename="../qml/MainWindow.qml" line="1138"/>
+        <location filename="../qml/MainWindow.qml" line="1095"/>
+        <location filename="../qml/MainWindow.qml" line="1143"/>
         <source>Not now</source>
         <translation>暂不</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1094"/>
-        <location filename="../qml/MainWindow.qml" line="1143"/>
+        <location filename="../qml/MainWindow.qml" line="1099"/>
+        <location filename="../qml/MainWindow.qml" line="1148"/>
         <source>Allow</source>
         <translation>允许</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1121"/>
+        <location filename="../qml/MainWindow.qml" line="1126"/>
         <source>Allow %1 to view this PC&apos;s screen?</source>
         <translation>允许 %1 查看本机屏幕吗？</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1128"/>
+        <location filename="../qml/MainWindow.qml" line="1133"/>
         <source>%1 wants to view this PC&apos;s screen. Control needs Remote mouse, keyboard &amp; Deck in Settings.</source>
         <translation>%1 想要查看本机屏幕。如需控制，请在设置中开启远程鼠标、键盘和面板。</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1147"/>
+        <location filename="../qml/MainWindow.qml" line="1152"/>
         <source>Allow for this device</source>
         <translation>允许此设备</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1176"/>
+        <location filename="../qml/MainWindow.qml" line="1181"/>
         <source>Photo ready on clipboard</source>
         <translation>照片已复制到剪贴板</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1193"/>
+        <location filename="../qml/MainWindow.qml" line="1198"/>
         <source>Keep on clipboard</source>
         <translation>保留在剪贴板</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1197"/>
+        <location filename="../qml/MainWindow.qml" line="1202"/>
         <source>Paste into active window</source>
         <translation>粘贴到当前窗口</translation>
     </message>
@@ -9286,6 +9286,29 @@ What it needs
         <location filename="../qml/ShelfWindow.qml" line="1282"/>
         <source>Flick any card up to send to phone, drag out to use, or drop files in</source>
         <translation>向上轻扫任意卡片即可发送到手机，拖出即可使用，也可将文件拖入</translation>
+    </message>
+</context>
+<context>
+    <name>StarPrompt</name>
+    <message>
+        <location filename="../qml/components/StarPrompt.qml" line="290"/>
+        <source>Thank you!</source>
+        <translation>谢谢！</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/StarPrompt.qml" line="290"/>
+        <source>Enjoying NectarLink?</source>
+        <translation>喜欢 NectarLink 吗？</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/StarPrompt.qml" line="300"/>
+        <source>Star on GitHub</source>
+        <translation>在 GitHub 上点星</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/StarPrompt.qml" line="311"/>
+        <source>Dismiss</source>
+        <translation>关闭</translation>
     </message>
 </context>
 <context>

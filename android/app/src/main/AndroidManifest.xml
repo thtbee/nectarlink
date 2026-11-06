@@ -191,6 +191,10 @@
         </activity>
 
         <receiver
+            android:name=".ui.StarNotification$Receiver"
+            android:exported="false" />
+
+        <receiver
             android:name=".files.TransferNotifications$CancelReceiver"
             android:exported="false" />
 

@@ -141,6 +141,12 @@ pub mod qobject {
         #[qproperty(bool, whats_new_dismissed)]
         /// Whether the card on Home inviting to try Hive has been answered.
         #[qproperty(bool, hive_invite_dismissed)]
+        /// Whether the one-time ask for a star on GitHub has been answered.
+        #[qproperty(bool, star_prompt_done)]
+        /// Updated without having answered it: ask as soon as the window opens.
+        #[qproperty(bool, star_prompt_updated)]
+        /// Minutes the window has been in use, up to when a new install is asked.
+        #[qproperty(i32, star_prompt_minutes)]
         /// JSON array of configured `FolderSyncRule` items.
         #[qproperty(QString, folder_sync_rules_json)]
         /// JSON array of configured `AutomationRule` items.
@@ -360,6 +366,9 @@ pub struct PreferencesRust {
     walkthrough_step: i32,
     whats_new_dismissed: bool,
     hive_invite_dismissed: bool,
+    star_prompt_done: bool,
+    star_prompt_updated: bool,
+    star_prompt_minutes: i32,
     folder_sync_rules_json: QString,
     automation_rules_json: QString,
     window_screen: QString,
@@ -459,6 +468,9 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_walkthrough_step(i32::from(settings.walkthrough_step.min(6)));
         self.as_mut().set_whats_new_dismissed(settings.whats_new_dismissed);
         self.as_mut().set_hive_invite_dismissed(settings.hive_invite_dismissed);
+        self.as_mut().set_star_prompt_done(settings.star_prompt_done);
+        self.as_mut().set_star_prompt_updated(settings.star_prompt_updated);
+        self.as_mut().set_star_prompt_minutes(settings.star_prompt_minutes.min(i32::MAX as u32) as i32);
         let folder_rules_json =
             serde_json::to_string(&settings.folder_sync_rules).unwrap_or_else(|_| "[]".into());
         self.as_mut().set_folder_sync_rules_json(QString::from(&folder_rules_json));
@@ -764,6 +776,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
             .release();
         self.as_mut().on_whats_new_dismissed_changed(|p| p.save()).release();
         self.as_mut().on_hive_invite_dismissed_changed(|p| p.save()).release();
+        self.as_mut().on_star_prompt_done_changed(|p| p.save()).release();
+        self.as_mut().on_star_prompt_minutes_changed(|p| p.save()).release();
 
         super::subscribe(self.qt_thread(), crate::state::Changes::PREFS, Self::refresh_runtime_flags);
     }
@@ -1134,6 +1148,9 @@ impl qobject::Preferences {
             walkthrough_step: p.walkthrough_step.clamp(0, 6) as u8,
             whats_new_dismissed: p.whats_new_dismissed,
             hive_invite_dismissed: p.hive_invite_dismissed,
+            star_prompt_done: p.star_prompt_done,
+            star_prompt_updated: p.star_prompt_updated,
+            star_prompt_minutes: p.star_prompt_minutes.max(0) as u32,
             obs_port: crate::settings::obs_settings().0,
             obs_password: crate::settings::obs_settings().1,
             window_screen: win_screen,

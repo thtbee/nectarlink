@@ -5104,64 +5104,64 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1041"/>
+        <location filename="../../qml/MainWindow.qml" line="1046"/>
         <source>%1 is ringing this PC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1047"/>
+        <location filename="../../qml/MainWindow.qml" line="1052"/>
         <source>Stop ringing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1073"/>
+        <location filename="../../qml/MainWindow.qml" line="1078"/>
         <source>Allow %1 to control this PC?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1080"/>
+        <location filename="../../qml/MainWindow.qml" line="1085"/>
         <source>%1 wants to use this PC&apos;s mouse and keyboard. You can change this in Settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1090"/>
-        <location filename="../../qml/MainWindow.qml" line="1138"/>
+        <location filename="../../qml/MainWindow.qml" line="1095"/>
+        <location filename="../../qml/MainWindow.qml" line="1143"/>
         <source>Not now</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1094"/>
-        <location filename="../../qml/MainWindow.qml" line="1143"/>
+        <location filename="../../qml/MainWindow.qml" line="1099"/>
+        <location filename="../../qml/MainWindow.qml" line="1148"/>
         <source>Allow</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1121"/>
+        <location filename="../../qml/MainWindow.qml" line="1126"/>
         <source>Allow %1 to view this PC&apos;s screen?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1128"/>
+        <location filename="../../qml/MainWindow.qml" line="1133"/>
         <source>%1 wants to view this PC&apos;s screen. Control needs Remote mouse, keyboard &amp; Deck in Settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1147"/>
+        <location filename="../../qml/MainWindow.qml" line="1152"/>
         <source>Allow for this device</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1176"/>
+        <location filename="../../qml/MainWindow.qml" line="1181"/>
         <source>Photo ready on clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1193"/>
+        <location filename="../../qml/MainWindow.qml" line="1198"/>
         <source>Keep on clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1197"/>
+        <location filename="../../qml/MainWindow.qml" line="1202"/>
         <source>Paste into active window</source>
         <translation type="unfinished"></translation>
     </message>
@@ -8977,6 +8977,29 @@ What it needs
     <message>
         <location filename="../../qml/ShelfWindow.qml" line="1282"/>
         <source>Flick any card up to send to phone, drag out to use, or drop files in</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>StarPrompt</name>
+    <message>
+        <location filename="../../qml/components/StarPrompt.qml" line="290"/>
+        <source>Thank you!</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/StarPrompt.qml" line="290"/>
+        <source>Enjoying NectarLink?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/StarPrompt.qml" line="300"/>
+        <source>Star on GitHub</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/StarPrompt.qml" line="311"/>
+        <source>Dismiss</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

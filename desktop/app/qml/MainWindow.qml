@@ -977,6 +977,11 @@ NativeWindow {
         }
     }
 
+    StarPrompt {
+        eligible: AppController.status === "ready" && !window.showWalkthrough && window.active
+        onStarred: Qt.openUrlExternally("https://github.com/thtbee/nectarlink")
+    }
+
     // ---- First run ----
     Loader {
         anchors.fill: parent

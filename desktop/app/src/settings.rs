@@ -563,6 +563,15 @@ pub struct Settings {
     /// Whether the card on Home inviting to try Hive has been answered.
     #[serde(default, alias = "hive_invite_dismissed")]
     pub hive_invite_dismissed: bool,
+    /// Whether the one-time ask for a star on GitHub has been answered.
+    #[serde(default, alias = "star_prompt_done")]
+    pub star_prompt_done: bool,
+    /// Updated without having answered it: ask as soon as the window opens.
+    #[serde(default, alias = "star_prompt_updated")]
+    pub star_prompt_updated: bool,
+    /// Minutes the window has been in use, up to when a new install is asked.
+    #[serde(default, alias = "star_prompt_minutes")]
+    pub star_prompt_minutes: u32,
     /// OBS Studio's WebSocket port, for `obs:` Deck commands.
     pub obs_port: u16,
     /// OBS's WebSocket password, encrypted with Windows DPAPI (base64). Never stored in clear.
@@ -585,6 +594,18 @@ pub struct Settings {
     /// Whether the main window was maximized when last open.
     #[serde(default, alias = "window_maximized")]
     pub window_maximized: bool,
+}
+
+impl Settings {
+    /// Someone who updated is asked for a star right away, unless they already
+    /// answered: an answer stays through every update. Whether anything changed.
+    pub fn ask_for_star_after_update(&mut self) -> bool {
+        if self.star_prompt_done || self.star_prompt_updated {
+            return false;
+        }
+        self.star_prompt_updated = true;
+        true
+    }
 }
 
 impl Default for Settings {
@@ -650,6 +671,9 @@ impl Default for Settings {
             walkthrough_step: 0,
             whats_new_dismissed: false,
             hive_invite_dismissed: false,
+            star_prompt_done: false,
+            star_prompt_updated: false,
+            star_prompt_minutes: 0,
             obs_port: crate::obs::DEFAULT_PORT,
             obs_password: None,
             window_screen: None,
@@ -804,6 +828,19 @@ pub(crate) fn create_private_file(path: &Path) -> std::io::Result<fs::File> {
 mod tests {
     use super::*;
 
+    #[test]
+    fn an_update_asks_for_a_star_unless_it_was_answered() {
+        let mut new = Settings::default();
+        assert!(new.ask_for_star_after_update());
+        assert!(new.star_prompt_updated);
+        assert!(!new.ask_for_star_after_update(), "nothing more to save the next time");
+
+        let mut answered = Settings { star_prompt_done: true, ..Settings::default() };
+        assert!(!answered.ask_for_star_after_update());
+        assert!(!answered.star_prompt_updated);
+        assert!(answered.star_prompt_done);
+    }
+
     #[cfg(unix)]
     #[test]
     fn settings_and_token_files_are_private() {
@@ -895,6 +932,9 @@ mod tests {
             walkthrough_step: 4,
             whats_new_dismissed: true,
             hive_invite_dismissed: true,
+            star_prompt_done: true,
+            star_prompt_updated: true,
+            star_prompt_minutes: 3,
             obs_port: crate::obs::DEFAULT_PORT,
             obs_password: None,
             window_screen: Some("DP-1".into()),

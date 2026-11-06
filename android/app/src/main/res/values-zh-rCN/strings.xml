@@ -227,6 +227,9 @@
     <string name="hive_invite_text">炭黑或暖蜡底色上的蜜色，应用背后是鲜活的蜂巢。随时可在设置中更换。</string>
     <string name="hive_invite_try">试用蜂巢</string>
     <string name="hive_invite_dismiss">暂不</string>
+    <string name="star_channel">NectarLink 项目</string>
+    <string name="star_title">喜欢 NectarLink 吗？</string>
+    <string name="star_text">点按前往 GitHub 点星，帮助更多人发现它。</string>
     <string name="settings_comb_motion">动态蜂巢</string>
     <string name="settings_comb_motion_hint">蜂巢会呼吸与脉动。开启“移除动画”或省电模式后保持静止。</string>
     <string name="theme_bloom">绽放</string>

@@ -233,6 +233,9 @@
     <string name="hive_invite_text">Honey on charcoal or warm wax, with a living honeycomb behind the app. Change it any time in Settings.</string>
     <string name="hive_invite_try">Try Hive</string>
     <string name="hive_invite_dismiss">Not now</string>
+    <string name="star_channel">NectarLink project</string>
+    <string name="star_title">Enjoying NectarLink?</string>
+    <string name="star_text">Tap to star it on GitHub. It helps other people find it.</string>
     <string name="settings_comb_motion">Animated comb</string>
     <string name="settings_comb_motion_hint">The honeycomb breathes and pulses. It holds still with Remove animations or battery saver on.</string>
     <string name="theme_bloom">Bloom</string>

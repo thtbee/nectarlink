@@ -623,6 +623,15 @@ fn main() -> ExitCode {
         &settings.command_palette_hotkey,
         &settings.shelf_hotkey,
     );
+    let updated_from = updater::note_running_version(&data_dir);
+    if updated_from.is_some() {
+        let mut saved = settings::Settings::load(&data_dir);
+        if saved.ask_for_star_after_update()
+            && let Err(e) = saved.save(&data_dir)
+        {
+            tracing::warn!(error = %e, "can't save settings");
+        }
+    }
     // A test instance (own data folder) leaves the user's menu and sign-in
     // alone.
     if options.data_dir.is_none() {
@@ -643,15 +652,14 @@ fn main() -> ExitCode {
         });
         updater::set_channel(channel);
         updater::start();
-        match (updater::note_running_version(&data_dir), options.updated) {
+        match (updated_from, options.updated) {
             (Some(previous), _) => {
                 // A new version invites to try Hive again, once.
                 let mut saved = settings::Settings::load(&data_dir);
-                if saved.hive_invite_dismissed {
-                    saved.hive_invite_dismissed = false;
-                    if let Err(e) = saved.save(&data_dir) {
-                        tracing::warn!(error = %e, "can't save settings");
-                    }
+                if std::mem::take(&mut saved.hive_invite_dismissed)
+                    && let Err(e) = saved.save(&data_dir)
+                {
+                    tracing::warn!(error = %e, "can't save settings");
                 }
                 updater::announce_update(previous, !options.minimized);
             }

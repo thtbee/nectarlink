@@ -233,6 +233,9 @@
     <string name="hive_invite_text">Kömür karası üzerinde bal ya da sıcak balmumu tonları, uygulamanın arkasında canlı bir petekle. İstediğiniz zaman Ayarlar\'dan değiştirin.</string>
     <string name="hive_invite_try">Hive\'ı dene</string>
     <string name="hive_invite_dismiss">Şimdi değil</string>
+    <string name="star_channel">NectarLink projesi</string>
+    <string name="star_title">NectarLink\'i beğendin mi?</string>
+    <string name="star_text">GitHub\'da yıldızlamak için dokun. Başkalarının bulmasına yardımcı olur.</string>
     <string name="settings_comb_motion">Hareketli petek</string>
     <string name="settings_comb_motion_hint">Petek nefes alır ve atar. Animasyonları kaldır veya pil tasarrufu açıkken durağan kalır.</string>
     <string name="theme_bloom">Bloom</string>

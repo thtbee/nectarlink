@@ -129,6 +129,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val core = (application as NectarlinkApplication).core
         val preferences = Preferences(this)
+        StarNotification.onAppOpened(this)
 
         // Notifications (transfers, calls, requests from PCs) and, on Android
         // 17, the local network, without which no PC can be reached.

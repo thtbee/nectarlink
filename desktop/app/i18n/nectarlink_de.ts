@@ -5386,64 +5386,64 @@ Voraussetzungen
         <translation>Aktualisieren</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1041"/>
+        <location filename="../qml/MainWindow.qml" line="1046"/>
         <source>%1 is ringing this PC</source>
         <translation>%1 lässt diesen PC klingeln</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1047"/>
+        <location filename="../qml/MainWindow.qml" line="1052"/>
         <source>Stop ringing</source>
         <translation>Klingeln beenden</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1073"/>
+        <location filename="../qml/MainWindow.qml" line="1078"/>
         <source>Allow %1 to control this PC?</source>
         <translation>Darf %1 diesen PC steuern?</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1080"/>
+        <location filename="../qml/MainWindow.qml" line="1085"/>
         <source>%1 wants to use this PC&apos;s mouse and keyboard. You can change this in Settings.</source>
         <translation>%1 möchte Maus und Tastatur dieses PCs verwenden. Du kannst dies in den Einstellungen ändern.</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1090"/>
-        <location filename="../qml/MainWindow.qml" line="1138"/>
+        <location filename="../qml/MainWindow.qml" line="1095"/>
+        <location filename="../qml/MainWindow.qml" line="1143"/>
         <source>Not now</source>
         <translation>Jetzt nicht</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1094"/>
-        <location filename="../qml/MainWindow.qml" line="1143"/>
+        <location filename="../qml/MainWindow.qml" line="1099"/>
+        <location filename="../qml/MainWindow.qml" line="1148"/>
         <source>Allow</source>
         <translation>Erlauben</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1121"/>
+        <location filename="../qml/MainWindow.qml" line="1126"/>
         <source>Allow %1 to view this PC&apos;s screen?</source>
         <translation>Darf %1 den Bildschirm dieses PCs sehen?</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1128"/>
+        <location filename="../qml/MainWindow.qml" line="1133"/>
         <source>%1 wants to view this PC&apos;s screen. Control needs Remote mouse, keyboard &amp; Deck in Settings.</source>
         <translation>%1 möchte den Bildschirm dieses PCs sehen. Für die Steuerung muss in den Einstellungen „Remote-Maus, -Tastatur &amp; Deck“ aktiviert sein.</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1147"/>
+        <location filename="../qml/MainWindow.qml" line="1152"/>
         <source>Allow for this device</source>
         <translation>Für dieses Gerät erlauben</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1176"/>
+        <location filename="../qml/MainWindow.qml" line="1181"/>
         <source>Photo ready on clipboard</source>
         <translation>Foto in der Zwischenablage bereit</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1193"/>
+        <location filename="../qml/MainWindow.qml" line="1198"/>
         <source>Keep on clipboard</source>
         <translation>In der Zwischenablage behalten</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1197"/>
+        <location filename="../qml/MainWindow.qml" line="1202"/>
         <source>Paste into active window</source>
         <translation>In aktives Fenster einfügen</translation>
     </message>
@@ -9290,6 +9290,29 @@ Voraussetzungen
         <location filename="../qml/ShelfWindow.qml" line="1282"/>
         <source>Flick any card up to send to phone, drag out to use, or drop files in</source>
         <translation>Wische eine Karte nach oben, um sie ans Gerät zu senden, ziehe sie heraus oder lege Dateien hier ab</translation>
+    </message>
+</context>
+<context>
+    <name>StarPrompt</name>
+    <message>
+        <location filename="../qml/components/StarPrompt.qml" line="290"/>
+        <source>Thank you!</source>
+        <translation>Danke!</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/StarPrompt.qml" line="290"/>
+        <source>Enjoying NectarLink?</source>
+        <translation>Gefällt dir NectarLink?</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/StarPrompt.qml" line="300"/>
+        <source>Star on GitHub</source>
+        <translation>Stern auf GitHub</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/StarPrompt.qml" line="311"/>
+        <source>Dismiss</source>
+        <translation>Schließen</translation>
     </message>
 </context>
 <context>

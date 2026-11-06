@@ -233,6 +233,9 @@
     <string name="hive_invite_text">Honig auf Anthrazit oder warmem Wachs, mit einer lebendigen Bienenwabe im Hintergrund der App. Jederzeit in den Einstellungen änderbar.</string>
     <string name="hive_invite_try">Wabe ausprobieren</string>
     <string name="hive_invite_dismiss">Jetzt nicht</string>
+    <string name="star_channel">NectarLink-Projekt</string>
+    <string name="star_title">Gefällt dir NectarLink?</string>
+    <string name="star_text">Tippe, um es auf GitHub mit einem Stern zu markieren. Das hilft anderen, es zu finden.</string>
     <string name="settings_comb_motion">Animierte Wabe</string>
     <string name="settings_comb_motion_hint">Die Bienenwabe atmet und pulsiert sanft. Bei aktivierter Option „Animationen entfernen“ oder im Energiesparmodus bleibt sie ruhig.</string>
     <string name="theme_bloom">Blüte</string>
