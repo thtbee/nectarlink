@@ -678,6 +678,7 @@ fn main() -> ExitCode {
     } else {
         bridge::native::ffi::prepare_qt(&logging::logs_dir(&data_dir).to_string_lossy());
     }
+    bridge::native::ffi::set_ui_scale(i32::from(settings::Settings::load(&data_dir).ui_scale));
     #[cfg(target_os = "linux")]
     let mut app = bridge::native::ffi::create_qt_app();
     #[cfg(not(target_os = "linux"))]

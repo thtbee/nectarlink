@@ -565,6 +565,23 @@ Item {
                                 onPicked: (value) => Preferences.colorMode = value
                             }
                         }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.palette
+                            title: qsTr("App size")
+                            description: qsTr("Makes text and everything else bigger. Applies when you restart NectarLink.")
+                            Segmented {
+                                options: [
+                                    { value: 100, label: "100%" },
+                                    { value: 110, label: "110%" },
+                                    { value: 125, label: "125%" },
+                                    { value: 150, label: "150%" }
+                                ]
+                                value: Preferences.uiScale
+                                onPicked: (value) => Preferences.uiScale = value
+                            }
+                        }
                         // Hive's colors are fixed: no seed to pick.
                         Divider { width: parent.width; visible: !Theme.graphite && !Theme.hive }
                         ListRow {

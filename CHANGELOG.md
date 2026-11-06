@@ -6,6 +6,11 @@ change things that need a step from you, and its notes say so.
 
 ## 0.1.6 (unreleased)
 
+### New
+
+- **App size.** Settings › Appearance makes the PC app bigger, up to 150%, after a
+  restart ([#221](https://github.com/thtbee/nectarlink/issues/221)).
+
 ### Fixed
 
 - **Pressing Enter or Backspace from the PC threw some apps back to their first

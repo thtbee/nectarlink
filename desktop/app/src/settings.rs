@@ -236,6 +236,13 @@ pub fn set_battery_full_threshold(threshold: u8) {
     BATTERY_FULL_THRESHOLD.store(clamped, std::sync::atomic::Ordering::Relaxed);
 }
 
+/// The sizes Settings offers, in percent.
+pub const UI_SCALES: [u16; 4] = [100, 110, 125, 150];
+
+fn default_ui_scale() -> u16 {
+    100
+}
+
 fn default_battery_full_threshold() -> u8 {
     100
 }
@@ -410,6 +417,10 @@ pub struct Settings {
     /// Battery charge level percent to treat as "full" for alerts (default `100`, or `80` for battery protection mode).
     #[serde(default = "default_battery_full_threshold", alias = "battery_full_threshold")]
     pub battery_full_threshold: u8,
+    /// How big the app draws, in percent of normal ([`UI_SCALES`]). Read when
+    /// the app starts.
+    #[serde(default = "default_ui_scale", alias = "ui_scale")]
+    pub ui_scale: u16,
     /// User-assigned nicknames for paired phones by their device ID (hex string).
     #[serde(
         default,
@@ -571,6 +582,7 @@ impl Default for Settings {
             update_channel: String::new(),
             battery_alerts: true,
             battery_full_threshold: default_battery_full_threshold(),
+            ui_scale: default_ui_scale(),
             device_nicknames: std::collections::HashMap::new(),
             start_with_windows: None,
             recordings_folder: None,
@@ -624,6 +636,9 @@ impl Settings {
     }
 
     pub fn sanitized(mut self) -> Self {
+        if !UI_SCALES.contains(&self.ui_scale) {
+            self.ui_scale = default_ui_scale();
+        }
         self.webcam_camera = normalize_webcam_camera(&self.webcam_camera);
         self.walkthrough_step = self.walkthrough_step.min(6);
         self.window_screen = self.window_screen.map(|s| s.trim().to_owned()).filter(|s| !s.is_empty());
@@ -808,6 +823,7 @@ mod tests {
             update_channel: "nightly".into(),
             battery_alerts: false,
             battery_full_threshold: 80,
+            ui_scale: 125,
             device_nicknames: std::collections::HashMap::from([("abc".to_owned(), "Work phone".to_owned())]),
             start_with_windows: Some(true),
             recordings_folder: Some(PathBuf::from(r"C:\Recordings")),
@@ -1122,6 +1138,17 @@ mod tests {
         assert_eq!(upgraded.walkthrough_step, 0);
         assert!(upgraded.reconcile_walkthrough_for_paired_devices(2));
         assert!(upgraded.walkthrough_completed);
+    }
+
+    #[test]
+    fn only_offered_app_sizes_are_kept() {
+        let dir = tempfile::tempdir().unwrap();
+        for (saved, loaded) in [(125, 125), (150, 150), (333, 100), (0, 100)] {
+            fs::write(dir.path().join(FILE_NAME), format!(r#"{{ "uiScale": {saved} }}"#)).unwrap();
+            assert_eq!(Settings::load(dir.path()).ui_scale, loaded);
+        }
+        fs::write(dir.path().join(FILE_NAME), "{}").unwrap();
+        assert_eq!(Settings::load(dir.path()).ui_scale, 100);
     }
 
     #[test]

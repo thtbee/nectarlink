@@ -79,6 +79,8 @@ pub mod qobject {
         #[qproperty(bool, battery_alerts)]
         /// Charge level threshold for full battery alerts (e.g. 100 or 80 for protect battery mode).
         #[qproperty(i32, battery_full_threshold)]
+        /// How big the app draws, in percent. Takes effect after a restart.
+        #[qproperty(i32, ui_scale)]
         /// Folder where voice recordings from phones are saved.
         #[qproperty(QString, recordings_folder)]
         /// Whether `recordings_folder` is the default (`Documents\Nectarlink Recordings`).
@@ -323,6 +325,7 @@ pub struct PreferencesRust {
     update_channel: QString,
     battery_alerts: bool,
     battery_full_threshold: i32,
+    ui_scale: i32,
     recordings_folder: QString,
     recordings_folder_is_default: bool,
     recordings_format: QString,
@@ -411,6 +414,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_update_channel(QString::from(channel.as_str()));
         self.as_mut().set_battery_alerts(settings.battery_alerts);
         self.as_mut().set_battery_full_threshold(i32::from(settings.battery_full_threshold));
+        self.as_mut().set_ui_scale(i32::from(settings.ui_scale));
         let start_effective = crate::startup::effective(settings.start_with_windows);
         self.as_mut().set_start_with_windows(start_effective);
         self.as_mut().set_start_at_login(start_effective);
@@ -574,6 +578,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
                 p.save();
             })
             .release();
+        self.as_mut().on_ui_scale_changed(|p| p.save()).release();
         self.as_mut()
             .on_start_with_windows_changed(|mut p| {
                 let on = p.start_with_windows;
@@ -1071,6 +1076,7 @@ impl qobject::Preferences {
             update_channel: String::from(&p.update_channel),
             battery_alerts: p.battery_alerts,
             battery_full_threshold: p.battery_full_threshold.clamp(50, 100) as u8,
+            ui_scale: u16::try_from(p.ui_scale).unwrap_or(100),
             device_nicknames: crate::settings::device_nicknames(),
             start_with_windows: p.start_choice,
             recordings_folder: p.custom_recordings_folder.clone(),
