@@ -339,6 +339,8 @@
     <string name="remote_right_click">右键</string>
     <string name="remote_middle_click">中键</string>
     <string name="remote_keyboard">键盘</string>
+    <string name="remote_more_controls">更多</string>
+    <string name="remote_touchpad_only">仅触控板</string>
     <string name="remote_type_placeholder">在 %1$s 上输入…</string>
     <string name="remote_dictate">语音输入</string>
     <string name="remote_dictate_stop">停止</string>

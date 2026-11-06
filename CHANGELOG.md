@@ -8,6 +8,8 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **A bigger touchpad in landscape.** Control PC's Touchpad takes the phone's screen
+  when it's sideways, with its buttons underneath. **More** brings the rest back.
 - **Keep the phone's screen off.** The toolbar's screen-off button now stays set for
   that phone, and Settings › Devices has the same switch, so mirroring and app
   windows start with the screen off, barely lighting it up

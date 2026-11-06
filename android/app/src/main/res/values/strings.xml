@@ -352,6 +352,8 @@
     <string name="remote_right_click">Right</string>
     <string name="remote_middle_click">Middle</string>
     <string name="remote_keyboard">Keyboard</string>
+    <string name="remote_more_controls">More</string>
+    <string name="remote_touchpad_only">Touchpad only</string>
     <string name="remote_type_placeholder">Type on %1$s…</string>
     <string name="remote_dictate">Dictate</string>
     <string name="remote_dictate_stop">Stop</string>

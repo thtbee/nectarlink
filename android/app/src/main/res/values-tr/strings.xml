@@ -352,6 +352,8 @@
     <string name="remote_right_click">Sağ</string>
     <string name="remote_middle_click">Orta</string>
     <string name="remote_keyboard">Klavye</string>
+    <string name="remote_more_controls">Daha fazla</string>
+    <string name="remote_touchpad_only">Yalnızca dokunmatik yüzey</string>
     <string name="remote_type_placeholder">%1$s cihazına yazın…</string>
     <string name="remote_dictate">Dikte et</string>
     <string name="remote_dictate_stop">Durdur</string>
