@@ -29,7 +29,13 @@ This appends a line like:
 Signed-off-by: Your Name <you@example.com>
 ```
 
-Commits without a sign-off can't be merged.
+Commits without a sign-off can't be merged, and a check on every pull request
+looks for it. If you forgot, this adds it to every commit on your branch:
+
+```
+git rebase --signoff origin/main
+git push --force-with-lease
+```
 
 ## Licensing of contributions
 
