@@ -2306,10 +2306,32 @@ Item {
                 readonly property bool canStart: home.online
                 readonly property bool activeHere: Mirror.keyboardDevice === home.deviceId
                 property string lastSent: ""
+                // What's been typed lately, shown as it would read rather than key by key.
+                property string typed: ""
+
+                function sentText(text) {
+                    typed = (typed + text).slice(-40)
+                    lastSent = typed
+                }
+                function sentKey(name) {
+                    if (name === "backspace" && typed.length > 0) {
+                        const chars = Array.from(typed)
+                        chars.pop()
+                        typed = chars.join("")
+                        if (typed.length > 0) {
+                            lastSent = typed
+                            return
+                        }
+                    }
+                    typed = ""
+                    lastSent = name
+                }
 
                 onActiveHereChanged: {
-                    if (!activeHere)
+                    if (!activeHere) {
                         lastSent = ""
+                        typed = ""
+                    }
                 }
 
                 Column {
@@ -2364,7 +2386,7 @@ Item {
                                     text: typeOnPhoneCard.activeHere
                                         ? (typeOnPhoneCard.lastSent.length > 0
                                             ? qsTr("Sent: %1").arg(typeOnPhoneCard.lastSent)
-                                            : qsTr("Listening for keys"))
+                                            : qsTr("Tap a text box on the phone, then type"))
                                         : qsTr("When connected")
                                 }
                             }
@@ -2447,7 +2469,7 @@ Item {
                             }
                             if (keyName.length > 0) {
                                 Mirror.keyboardPress(home.deviceId, keyName)
-                                typeOnPhoneCard.lastSent = keyName
+                                typeOnPhoneCard.sentKey(keyName)
                                 event.accepted = true
                                 return
                             }
@@ -2467,7 +2489,7 @@ Item {
                                         || ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.AltModifier)
                                             && !/^[A-Za-z0-9 ]$/.test(event.text)))) {
                                 Mirror.keyboardText(home.deviceId, event.text)
-                                typeOnPhoneCard.lastSent = event.text
+                                typeOnPhoneCard.sentText(event.text)
                                 event.accepted = true
                             }
                         }
