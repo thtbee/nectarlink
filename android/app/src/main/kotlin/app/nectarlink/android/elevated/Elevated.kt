@@ -846,6 +846,12 @@ object Elevated {
         return send(writer, line)
     }
 
+    /** Moves the music volume to this index through the helper, false if it isn't running. */
+    fun setMusicVolume(index: Int): Boolean {
+        val writer = input ?: return false
+        return send(writer, "V $index")
+    }
+
     /** Sends a gamepad state directly through the Elevated helper. */
     fun sendGamepad(buttons: Int, lx: Int, ly: Int, rx: Int, ry: Int, lt: Int, rt: Int): Boolean {
         val writer = input ?: return false

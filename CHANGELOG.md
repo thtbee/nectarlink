@@ -8,6 +8,8 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Back, Home and Recent apps buttons** in the mirror window's toolbar
+  ([#192](https://github.com/thtbee/nectarlink/issues/192)).
 - **Brazilian Portuguese.** The Android and PC apps speak Brazilian Portuguese
   (Português (Brasil)): pick it in Settings, or they follow the system's language.
   Thanks to [@AlphaOrionisWKG](https://github.com/AlphaOrionisWKG).
@@ -102,6 +104,9 @@ what people reported since 0.1.4.
   ([#209](https://github.com/thtbee/nectarlink/issues/209)).
 - The phone's clipboard setting says Elevated is on however it was started, and takes
   you to Elevated's settings ([#110](https://github.com/thtbee/nectarlink/issues/110)).
+- The PC's volume slider works on phones that ignore the normal request, like iQOO on
+  FuntouchOS, when Elevated is on ([#266](https://github.com/thtbee/nectarlink/issues/266),
+  [#192](https://github.com/thtbee/nectarlink/issues/192)).
 
 ### Downloads
 

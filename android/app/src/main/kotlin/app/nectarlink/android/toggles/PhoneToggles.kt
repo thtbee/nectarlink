@@ -291,7 +291,13 @@ class PhoneToggles(
         }
         val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(min + 1)
         val index = min + ((clamped / 100f) * (max - min)).roundToInt()
-        am.setStreamVolume(AudioManager.STREAM_MUSIC, index.coerceIn(min, max), 0)
+        val wanted = index.coerceIn(min, max)
+        am.setStreamVolume(AudioManager.STREAM_MUSIC, wanted, 0)
+        // Some phones ignore this without a word (FuntouchOS, #266). Elevated's
+        // helper can still get there with the volume keys.
+        if (am.getStreamVolume(AudioManager.STREAM_MUSIC) != wanted && app.nectarlink.android.elevated.Elevated.running) {
+            app.nectarlink.android.elevated.Elevated.setMusicVolume(wanted)
+        }
         return true
     }
 

@@ -53,6 +53,9 @@ object InputServer {
     private const val DEVICE_OUT_REMOTE_SUBMIX = 0x8000
     private const val SUBMIX_POLL_MS = 500L
     private const val SUBMIX_PRESS_MS = 40L
+    private const val VOLUME_POLL_MS = 30L
+    private const val VOLUME_SETTLE_MS = 600L
+    private const val MAX_VOLUME_PRESSES = 200
     // The installed package, so a build with an applicationIdSuffix (".dev")
     // grants itself and gets the attach broadcast, not the release app.
     private const val PKG = app.nectarlink.android.BuildConfig.APPLICATION_ID
@@ -424,12 +427,7 @@ object InputServer {
     @android.annotation.SuppressLint("PrivateApi", "DiscouragedPrivateApi")
     private fun raiseSubmixVolume(injector: Injector, recording: () -> Boolean) {
         runCatching {
-            val binder = Class.forName("android.os.ServiceManager")
-                .getMethod("getService", String::class.java).invoke(null, "audio") as android.os.IBinder
-            val audio = Class.forName("android.media.IAudioService\$Stub")
-                .getMethod("asInterface", android.os.IBinder::class.java).invoke(null, binder)!!
-            fun read(method: String) =
-                audio.javaClass.getMethod(method, Int::class.javaPrimitiveType).invoke(audio, STREAM_MUSIC) as Int
+            val read = musicStreamReader()
             // The sound moves to the submix once something plays, which may be later.
             while (recording() && read("getDeviceMaskForStream") and DEVICE_OUT_REMOTE_SUBMIX == 0) {
                 Thread.sleep(SUBMIX_POLL_MS)
@@ -457,6 +455,61 @@ object InputServer {
         }
         runCatching {
             Runtime.getRuntime().exec(arrayOf("settings", "put", "system", "screen_brightness", "0")).waitFor()
+        }
+    }
+
+    /** Reads a value of the music stream from the audio service, by the method's name. */
+    @android.annotation.SuppressLint("PrivateApi", "DiscouragedPrivateApi")
+    private fun musicStreamReader(): (String) -> Int {
+        val binder = Class.forName("android.os.ServiceManager")
+            .getMethod("getService", String::class.java).invoke(null, "audio") as android.os.IBinder
+        val audio = Class.forName("android.media.IAudioService\$Stub")
+            .getMethod("asInterface", android.os.IBinder::class.java).invoke(null, binder)!!
+        return { method ->
+            audio.javaClass.getMethod(method, Int::class.javaPrimitiveType).invoke(audio, STREAM_MUSIC) as Int
+        }
+    }
+
+    @Volatile private var volumeTarget = -1
+    private val steppingVolume = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /**
+     * Moves the music volume to [target] with the volume keys, for phones that
+     * ignore the app's own request (FuntouchOS, unless the screen is being
+     * touched). A slider sends many values, so the newest one is what it heads for.
+     */
+    private fun stepVolumeTo(target: Int, injector: Injector) {
+        volumeTarget = target
+        if (!steppingVolume.compareAndSet(false, true)) return
+        thread(isDaemon = true, name = "volume-keys") {
+            try {
+                val read = musicStreamReader()
+                var presses = 0
+                var unchanged = 0
+                while (presses++ < MAX_VOLUME_PRESSES) {
+                    val now = read("getStreamVolume")
+                    val wanted = volumeTarget
+                    if (now == wanted) break
+                    injector.pressKey(if (now < wanted) KeyEvent.KEYCODE_VOLUME_UP else KeyEvent.KEYCODE_VOLUME_DOWN)
+                    // The key lands a moment later, so wait for it instead of
+                    // reading straight away and pressing again on top of it.
+                    var moved = false
+                    var waited = 0L
+                    while (!moved && waited < VOLUME_SETTLE_MS) {
+                        Thread.sleep(VOLUME_POLL_MS)
+                        waited += VOLUME_POLL_MS
+                        moved = read("getStreamVolume") != now
+                    }
+                    // A first press can just show the volume panel. Keys that keep
+                    // changing nothing: stop, don't press forever.
+                    unchanged = if (moved) 0 else unchanged + 1
+                    if (unchanged >= 3) break
+                }
+            } catch (e: Exception) {
+                System.err.println("can't step the volume: $e")
+            } finally {
+                steppingVolume.set(false)
+            }
         }
     }
 
@@ -658,6 +711,7 @@ object InputServer {
                     scroll(x, y, dx, dy)
                 }
                 "K" -> key(rest.toInt())
+                "V" -> if (display < 0) stepVolumeTo(rest.toInt(), this)
                 "Y" -> {
                     val (code, meta) = rest.split(' ').map { it.toInt() }
                     shortcut(code, meta)
