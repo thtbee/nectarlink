@@ -3164,6 +3164,10 @@ pub struct ClipSet {
     pub html: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rtf: Option<String>,
+    /// A password or the like: the receiver marks it private on its clipboard and
+    /// keeps no record of it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub sensitive: bool,
 }
 
 impl ClipSet {
@@ -5845,7 +5849,7 @@ mod tests {
 
     #[test]
     fn clip_set_rich_text_validates_and_round_trips() {
-        let plain = ClipSet { text: "Hello".into(), html: None, rtf: None };
+        let plain = ClipSet { text: "Hello".into(), html: None, rtf: None, sensitive: false };
         assert!(plain.is_valid());
         let env_plain = Envelope::new(types::CLIP_SET, &plain).unwrap();
         assert!(!format!("{:?}", env_plain.b).contains("html"));
@@ -5857,6 +5861,7 @@ mod tests {
             text: "Hello world".into(),
             html: Some("<b>Hello</b> world".into()),
             rtf: Some(r"{\rtf1\ansi\b Hello\b0  world}".into()),
+            sensitive: false,
         };
         assert!(rich.is_valid());
         assert!(!format!("{rich:?}").contains("Hello"));
@@ -5864,9 +5869,18 @@ mod tests {
         let back_rich: ClipSet = Envelope::from_cbor(&env_rich.to_cbor()).unwrap().body().unwrap();
         assert_eq!(back_rich, rich);
 
-        let oversized =
-            ClipSet { text: "a".repeat(CLIP_MAX_BYTES), html: Some("<b>a</b>".into()), rtf: None };
+        let oversized = ClipSet {
+            text: "a".repeat(CLIP_MAX_BYTES),
+            html: Some("<b>a</b>".into()),
+            rtf: None,
+            sensitive: false,
+        };
         assert!(!oversized.is_valid());
+
+        let secret = ClipSet { text: "x".into(), html: None, rtf: None, sensitive: true };
+        let env_secret = Envelope::new(types::CLIP_SET, &secret).unwrap();
+        let back_secret: ClipSet = Envelope::from_cbor(&env_secret.to_cbor()).unwrap().body().unwrap();
+        assert!(back_secret.sensitive);
     }
 
     #[test]

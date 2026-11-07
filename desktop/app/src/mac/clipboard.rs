@@ -95,6 +95,12 @@ pub fn start(on_copy: impl Fn(Clip) + Send + Sync + 'static) {
         .ok();
 }
 
+/// macOS gives the text only when it isn't marked private, so a password stays
+/// out of reach here.
+pub fn read_private_text() -> Option<String> {
+    None
+}
+
 pub fn read() -> Clip {
     let mut is_private = false;
     let text = crate::bridge::native::ffi::mac_clipboard_read_text(&mut is_private);

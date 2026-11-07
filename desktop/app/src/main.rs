@@ -112,6 +112,9 @@ impl Platform for DesktopPlatform {
     fn set_clipboard_rich(&self, text: &str, html: Option<&str>, rtf: Option<&str>) -> Result<(), String> {
         win::clipboard::write_rich(text, html, rtf)
     }
+    fn set_clipboard_private(&self, text: &str) -> Result<(), String> {
+        win::clipboard::write_private(text)
+    }
     fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
         win::clipboard::write_image(mime, bytes)
     }

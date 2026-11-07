@@ -137,6 +137,7 @@ static SHARE_PC_STORAGE: std::sync::atomic::AtomicBool = std::sync::atomic::Atom
 static FORWARD_PC_NOTIFICATIONS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static AWAY_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static FLOW_FOLLOW_CLIPBOARD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+static SYNC_PASSWORDS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static SYNC_WIFI_ONLY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static OPEN_SHARED_FILES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
@@ -157,6 +158,14 @@ pub fn set_clipboard_auto_copy_received_files(on: bool) {
 }
 
 /// Whether a single file shared from the phone opens in its default app on arrival.
+pub fn sync_passwords() -> bool {
+    SYNC_PASSWORDS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub fn set_sync_passwords(on: bool) {
+    SYNC_PASSWORDS.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
 pub fn sync_wifi_only() -> bool {
     SYNC_WIFI_ONLY.load(std::sync::atomic::Ordering::Relaxed)
 }
@@ -530,6 +539,9 @@ pub struct Settings {
     /// through the relay, which may be using its mobile data.
     #[serde(default, alias = "sync_wifi_only")]
     pub sync_wifi_only: bool,
+    /// What password managers mark private also goes to phones.
+    #[serde(default, alias = "sync_passwords")]
+    pub sync_passwords: bool,
     /// Send the PC's clipboard to the phone when control moves to it: the mouse
     /// enters the phone's window, or a remote control session starts.
     #[serde(default = "default_true", alias = "flow_follow_clipboard")]
@@ -673,6 +685,7 @@ impl Default for Settings {
             clipboard_auto_copy_received_files: true,
             open_shared_files: false,
             sync_wifi_only: false,
+            sync_passwords: false,
             flow_follow_clipboard: true,
             folder_sync_rules: Vec::new(),
             nectar_island: false,
@@ -745,6 +758,7 @@ impl Settings {
         set_clipboard_auto_copy_received_files(self.clipboard_auto_copy_received_files);
         set_open_shared_files(self.open_shared_files);
         set_sync_wifi_only(self.sync_wifi_only);
+        set_sync_passwords(self.sync_passwords);
         set_flow_follow_clipboard(self.flow_follow_clipboard);
         set_folder_sync_rules(self.folder_sync_rules.clone());
         set_obs_settings(
@@ -937,6 +951,7 @@ mod tests {
             clipboard_auto_copy_received_files: false,
             open_shared_files: true,
             sync_wifi_only: true,
+            sync_passwords: true,
             flow_follow_clipboard: false,
             folder_sync_rules: Vec::new(),
             nectar_island: true,

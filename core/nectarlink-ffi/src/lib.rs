@@ -2642,6 +2642,9 @@ pub trait Platform: Send + Sync {
     /// A PC sent this text (with optional HTML and RTF rich text): put it on
     /// the clipboard. False if that failed.
     fn set_clipboard_rich(&self, text: String, html: Option<String>, rtf: Option<String>) -> bool;
+    /// A PC sent a password or the like: put it on the clipboard marked
+    /// sensitive. False if that failed.
+    fn set_clipboard_private(&self, text: String) -> bool;
     /// A PC sent this image (`image/png` or `image/jpeg`): put it on the
     /// clipboard. False if that failed.
     fn set_clipboard_image(&self, mime: String, bytes: Vec<u8>) -> bool;
@@ -2863,6 +2866,13 @@ impl core::Platform for PlatformAdapter {
     }
     fn set_clipboard(&self, text: &str) -> Result<(), String> {
         if self.0.set_clipboard(text.to_owned()) { Ok(()) } else { Err("the clipboard rejected it".into()) }
+    }
+    fn set_clipboard_private(&self, text: &str) -> Result<(), String> {
+        if self.0.set_clipboard_private(text.to_owned()) {
+            Ok(())
+        } else {
+            Err("the phone couldn't set the clipboard".to_owned())
+        }
     }
     fn set_clipboard_rich(&self, text: &str, html: Option<&str>, rtf: Option<&str>) -> Result<(), String> {
         if self.0.set_clipboard_rich(text.to_owned(), html.map(str::to_owned), rtf.map(str::to_owned)) {
@@ -3670,6 +3680,14 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.send_clipboard_rich(id, text, html, rtf).await?) }).await
+    }
+
+    /// Puts a password or the like on a connected PC's clipboard: never recorded
+    /// or queued.
+    pub async fn send_clipboard_private(&self, id: String, text: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.send_clipboard_private(id, text).await?) }).await
     }
 
     /// Puts an image (`image/png` or `image/jpeg`) on a paired PC's

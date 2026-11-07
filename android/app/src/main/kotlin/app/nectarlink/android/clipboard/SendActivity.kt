@@ -161,6 +161,12 @@ class SendActivity : ComponentActivity() {
         when (val clip = PhoneClipboard.read(this)) {
             is PhoneClipboard.Read.Text -> send(clip.text, clip.html)
             is PhoneClipboard.Read.Image -> sendImage(clip.uri)
+            is PhoneClipboard.Read.Sensitive -> {
+                sent = true
+                val core = (application as NectarlinkApplication).core
+                val pcId = targetPcId()
+                scope.launch { finishWith(core.sendClipboardSensitive(clip.text, pcId)) }
+            }
             PhoneClipboard.Read.Private -> finishWith(getString(R.string.clip_private))
             PhoneClipboard.Read.Empty -> finishWith(getString(R.string.clip_empty))
         }

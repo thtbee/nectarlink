@@ -163,6 +163,7 @@ object InputServer {
             clip.description.extras = android.os.PersistableBundle().apply {
                 putBoolean("com.android.systemui.SUPPRESS_CLIPBOARD_OVERLAY", true)
                 putBoolean("android.content.extra.IS_REMOTE_DEVICE", true)
+                if (parts.getOrNull(2) == "1") putBoolean("android.content.extra.IS_SENSITIVE", true)
             }
             set.invoke(service, *buildClipboardArgs(set.parameterTypes, null, clip))
         }.onFailure { System.err.println("can't set the clipboard: $it") }
@@ -256,7 +257,7 @@ object InputServer {
                     extras?.getBoolean("com.android.systemui.SUPPRESS_CLIPBOARD_OVERLAY") == true ||
                     extras?.getBoolean("android.content.extra.IS_REMOTE_DEVICE") == true
                 val isSensitive = extras?.getBoolean("android.content.extra.IS_SENSITIVE") == true
-                if (isHostPipe || isSensitive || label == "Nectarlink") {
+                if (isHostPipe || label == "Nectarlink") {
                     lastSentClipKey = null
                     return@runCatching
                 }
@@ -285,7 +286,8 @@ object InputServer {
                         ""
                     }
                     synchronized(out) {
-                        out.write("CLIP\t$b64Text\t$b64Html\n")
+                        // The app drops a sensitive one unless the user chose to sync those.
+                        out.write("CLIP\t$b64Text\t$b64Html\t${if (isSensitive) "1" else "0"}\n")
                         out.flush()
                     }
                     return@runCatching

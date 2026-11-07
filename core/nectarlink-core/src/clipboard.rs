@@ -38,14 +38,25 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                 let text = clip.text;
                 let html = clip.html;
                 let rtf = clip.rtf;
+                let sensitive = clip.sensitive;
                 let written = {
                     let text = text.clone();
                     tokio::task::spawn_blocking(move || {
-                        platform.set_clipboard_rich(&text, html.as_deref(), rtf.as_deref())
+                        if sensitive {
+                            platform.set_clipboard_private(&text)
+                        } else {
+                            platform.set_clipboard_rich(&text, html.as_deref(), rtf.as_deref())
+                        }
                     })
                     .await
                 };
                 match written {
+                    // No history, Timeline or suggestion: nothing keeps a password.
+                    Ok(Ok(())) if sensitive => {
+                        *shared.last_clip_suggestion.lock().unwrap_or_else(|e| e.into_inner()) = None;
+                        shared.emit(NodeEvent::ClipboardReceived { device: peer });
+                        Envelope::empty(types::OK)
+                    }
                     Ok(Ok(())) => {
                         let peer_name = shared.peer_name(&peer);
                         if let Some((clip_id, evicted)) =

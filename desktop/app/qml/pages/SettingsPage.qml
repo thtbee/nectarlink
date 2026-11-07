@@ -2965,6 +2965,23 @@ Item {
                     Column {
                         width: parent.width
 
+                        ListRow {
+                            width: parent.width
+                            visible: Qt.platform.os !== "osx"
+                            iconPath: Icons.lock
+                            title: qsTr("Sync copied passwords")
+                            description: qsTr("Also sends what password managers mark private. It stays on the phone's clipboard until something replaces it, and is never kept in history.")
+                            Toggle {
+                                label: qsTr("Sync copied passwords")
+                                checked: Preferences.syncPasswords
+                                onToggled: (on) => Preferences.syncPasswords = on
+                            }
+                        }
+                        Divider {
+                            width: parent.width
+                            visible: Qt.platform.os !== "osx"
+                        }
+
                         // Row 1: Clipboard history | Notification history
                         Item {
                             id: historyPairRow

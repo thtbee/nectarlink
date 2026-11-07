@@ -199,6 +199,12 @@ pub trait Platform: Send + Sync + 'static {
         self.set_clipboard(text)
     }
 
+    /// Put a password or the like on this device's clipboard, marked private so
+    /// clipboard tools leave it alone. Defaults to [`Platform::set_clipboard`].
+    fn set_clipboard_private(&self, text: &str) -> Result<(), String> {
+        self.set_clipboard(text)
+    }
+
     /// Put an image on this device's clipboard (a paired device sent it).
     /// `mime` is `image/png` or `image/jpeg`.
     fn set_clipboard_image(&self, _mime: &str, _bytes: &[u8]) -> Result<(), String> {

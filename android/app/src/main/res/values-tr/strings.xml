@@ -202,6 +202,8 @@
     <string name="clipboard_history_clear">Geçmişi temizle</string>
     <string name="clipboard_history_done">Bitti</string>
     <string name="settings_clipboard_title">Pano</string>
+    <string name="settings_clipboard_passwords">Kopyalanan parolaları eşitle</string>
+    <string name="settings_clipboard_passwords_hint">Parola yöneticilerinin özel olarak işaretlediklerini de gönderir. Başka bir şey yerine geçene kadar PC\'nin panosunda kalır ve geçmişte hiç tutulmaz.</string>
     <string name="settings_clipboard_suggestions">Kopyalanan metin için eylem öner</string>
     <string name="settings_clipboard_suggestions_hint">Bilgisayarınızdan gelen metin için eylem önerin: bağlantılar, haritalar, aramalar, kargo takibi ve e-posta.</string>
     <string name="clip_received_from">%1$s cihazından kopyalandı</string>
