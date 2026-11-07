@@ -203,9 +203,11 @@ fn windows_resources() {
     let numbers: Vec<&str> = version.split(['.', '-', '+']).take(3).collect();
     let numeric = format!("{},0", numbers.join(","));
     // No #include: numeric constants keep rc.exe off the SDK headers.
+    // IDI_ICON1 is the name Qt looks for to give its windows their class icon. With
+    // any other, they get the generic one, and the taskbar can show that at launch.
     // 0x40004 is VOS_NT_WINDOWS32, 0x1 is VFT_APP.
     let rc = format!(
-        r#"1 ICON "{ico}"
+        r#"IDI_ICON1 ICON "{ico}"
 1 VERSIONINFO
 FILEVERSION {numeric}
 PRODUCTVERSION {numeric}
