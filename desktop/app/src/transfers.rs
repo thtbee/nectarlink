@@ -237,17 +237,55 @@ pub fn show_in_folder(path: &Path) {
         crate::bridge::app::request_activation();
         return;
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(windows)]
     {
-        let mut select = std::ffi::OsString::from("/select,");
-        select.push(path);
-        if let Err(e) = std::process::Command::new("explorer").arg(select).spawn() {
+        use std::os::windows::process::CommandExt;
+        // raw_arg: a normal argument with a space in it gets quoted whole, and
+        // Explorer then ignores it and opens Documents.
+        if let Err(e) = std::process::Command::new("explorer").raw_arg(explorer_select_arg(path)).spawn() {
             tracing::warn!(error = %e, "can't show a received file");
         }
+    }
+    #[cfg(target_os = "macos")]
+    if let Err(e) = std::process::Command::new("open").arg("-R").arg(path).spawn() {
+        tracing::warn!(error = %e, "can't show a received file");
     }
     #[cfg(target_os = "linux")]
     if let Err(e) = crate::win::shell::select_in_explorer(path) {
         tracing::warn!(error = %e, "can't show a received file");
+    }
+}
+
+/// What Explorer needs to select `path`: `/select,"C:\folder\file"`, with the
+/// quotes around the path only and backslashes (with `/` it opens the Desktop).
+#[cfg(windows)]
+fn explorer_select_arg(path: &Path) -> std::ffi::OsString {
+    use std::os::windows::ffi::{OsStrExt, OsStringExt};
+    let mut arg = std::ffi::OsString::from("/select,\"");
+    let native: Vec<u16> = path
+        .as_os_str()
+        .encode_wide()
+        .map(|c| if c == u16::from(b'/') { u16::from(b'\\') } else { c })
+        .collect();
+    arg.push(std::ffi::OsString::from_wide(&native));
+    arg.push("\"");
+    arg
+}
+
+#[cfg(all(test, windows))]
+mod select_tests {
+    use super::*;
+
+    #[test]
+    fn only_the_path_is_quoted() {
+        let arg = explorer_select_arg(Path::new(r"C:\Users\me\My Files\final deck.pptx"));
+        assert_eq!(arg, r#"/select,"C:\Users\me\My Files\final deck.pptx""#);
+    }
+
+    #[test]
+    fn forward_slashes_become_backslashes() {
+        let arg = explorer_select_arg(Path::new("C:/Users/me/Downloads/a.rar"));
+        assert_eq!(arg, r#"/select,"C:\Users\me\Downloads\a.rar""#);
     }
 }
 

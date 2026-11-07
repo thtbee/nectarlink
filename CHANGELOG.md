@@ -96,6 +96,8 @@ what people reported since 0.1.4.
 - On Windows, NectarLink opens again by itself after an automatic update. It closed for the
   update and stayed closed until you opened it. This takes effect from the update after
   the one that has this fix.
+- Show in folder opens the right folder when a file's path has a space in it, instead of
+  Documents or the Desktop ([#264](https://github.com/thtbee/nectarlink/issues/264)).
 
 ### Downloads
 
