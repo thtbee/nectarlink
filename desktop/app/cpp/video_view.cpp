@@ -34,9 +34,11 @@ struct Latest
 
 // Pictures by stream, and the views to tell. Views register and leave
 // under the lock, so a picture never wakes a view that's being destroyed.
-std::mutex lock;
-QHash<QString, Latest> latest;
-std::vector<VideoView *> views;
+// Never destroyed: a decoder thread can still be finishing while the app exits, after
+// destructors of globals have run (a crash on quitting with a mirror open).
+std::mutex &lock = *new std::mutex;
+QHash<QString, Latest> &latest = *new QHash<QString, Latest>;
+std::vector<VideoView *> &views = *new std::vector<VideoView *>;
 quint64 nextSerial = 1;
 
 void wakeViews(const QString &stream)
