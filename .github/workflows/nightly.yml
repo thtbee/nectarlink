@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# A nightly: every two hours, when main has changed (more than docs) since the
-# last one and CI passed on it, builds everything as a release does
+# A nightly, only when started by hand: if main has changed (more than docs) since
+# the last one and CI passed on it, builds everything as a release does
 # (build.yml) at version <next>-nightly.N, publishes it as a pre-release
 # named for a flower (nightly-name.py), and points the nightly channel's feed
 # at it (write-feed.py, publish-feed.sh), where installs on Nightly find it.
@@ -8,9 +8,6 @@
 name: Nightly
 
 on:
-  schedule:
-    # Every two hours, off the hour, when GitHub's scheduler is busiest.
-    - cron: "17 */2 * * *"
   workflow_dispatch:
     inputs:
       force:
@@ -31,7 +28,6 @@ concurrency:
 jobs:
   plan:
     name: Is a nightly due?
-    if: github.event_name != 'schedule' || github.repository == 'thtbee/nectarlink'
     runs-on: ubuntu-latest
     outputs:
       due: ${{ steps.plan.outputs.due }}

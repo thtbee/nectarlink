@@ -50,7 +50,8 @@ an unchanged feed costs a few hundred bytes; until a feed exists they fall
 back to GitHub's latest release. A Nightly install reads both feeds, so it
 takes a release that's newer than its nightly.
 
-`nightly.yml` runs every two hours. When `main` changed (more than docs) since
+`nightly.yml` runs only when started by hand (Actions, or
+`gh workflow run Nightly`). When `main` changed (more than docs) since
 the last nightly and CI passed on it, it builds `<next>-nightly.N` with
 `build.yml`, publishes it as a pre-release named for a flower
 (`nightly-name.py`, "Golden Lavender"), points the nightly feed at it and keeps
