@@ -317,6 +317,11 @@ fn reconcile_adb_devices(
         if !dev.is_online() || !nectarlink_adb::is_serial_allowed(&dev.serial) {
             continue;
         }
+        // Wireless adb isn't a cable: the connection would go through adb's TCP over
+        // Wi-Fi, which stutters where a direct one over the same Wi-Fi doesn't.
+        if nectarlink_adb::is_network_serial(&dev.serial) {
+            continue;
+        }
         if active.contains_key(&dev.serial) {
             continue;
         }

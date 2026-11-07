@@ -37,6 +37,25 @@ pub fn is_serial_allowed(serial: &str) -> bool {
     true
 }
 
+/// Whether adb reaches this device over the network rather than a cable:
+/// `192.168.1.40:5555`, or `adb-XYZ._adb-tls-connect._tcp` from Wireless debugging.
+/// A loopback address stays local (an emulator, or a forward on this PC).
+pub fn is_network_serial(serial: &str) -> bool {
+    let serial = serial.trim();
+    if serial.contains("._adb-tls-connect.") || serial.contains("._adb._tcp") {
+        return true;
+    }
+    let Some((host, port)) = serial.rsplit_once(':') else { return false };
+    if port.is_empty() || !port.bytes().all(|b| b.is_ascii_digit()) {
+        return false;
+    }
+    let host = host.trim_start_matches('[').trim_end_matches(']');
+    match host.parse::<std::net::IpAddr>() {
+        Ok(ip) => !ip.is_loopback(),
+        Err(_) => !host.eq_ignore_ascii_case("localhost"),
+    }
+}
+
 /// Errors returned by ADB server operations.
 #[derive(Debug, thiserror::Error)]
 pub enum AdbError {
@@ -246,6 +265,23 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn network_serials_are_told_from_cables_and_loopback() {
+        for serial in [
+            "192.168.1.40:5555",
+            "[fe80::1]:5555",
+            "pixel.lan:5555",
+            "adb-1A2B3C4D-xYz._adb-tls-connect._tcp",
+            "adb-1A2B3C4D-xYz._adb-tls-connect._tcp.",
+        ] {
+            assert!(is_network_serial(serial), "{serial}");
+        }
+        for serial in ["SYNTH_SERIAL_001", "emulator-5554", "127.0.0.1:5591", "localhost:5555", "[::1]:5555"]
+        {
+            assert!(!is_network_serial(serial), "{serial}");
+        }
+    }
 
     #[test]
     fn only_serials_made_of_serial_characters_are_allowed() {
