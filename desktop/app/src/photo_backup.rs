@@ -87,6 +87,8 @@ pub enum Activity {
     Idle,
     /// Off, or the phone isn't connected.
     Waiting,
+    /// Held back by "Sync on Wi-Fi only" while the phone is away.
+    WaitingForWifi,
     Looking,
     Copying {
         left: usize,
@@ -144,6 +146,11 @@ fn state() -> MutexGuard<'static, State> {
 
 fn wake() -> &'static Notify {
     WAKE.get_or_init(Notify::new)
+}
+
+/// Looks at every phone now instead of at the next regular look.
+pub fn look_again() {
+    wake().notify_one();
 }
 
 fn changed() {
@@ -553,6 +560,10 @@ async fn run(node: &nectarlink_core::Node, device: DeviceId) {
         set_activity(device, Activity::Waiting);
         return;
     }
+    if !crate::folder_sync::sync_allowed(device) {
+        set_activity(device, Activity::WaitingForWifi);
+        return;
+    }
     set_activity(device, Activity::Looking);
     give_up_stalled(device);
     let (done, videos, full_scan_ms) = {
@@ -597,6 +608,10 @@ async fn run(node: &nectarlink_core::Node, device: DeviceId) {
         let still_on = state().devices.get(&device).is_some_and(|b| b.enabled);
         if !still_on {
             set_activity(device, Activity::Waiting);
+            return;
+        }
+        if !crate::folder_sync::sync_allowed(device) {
+            set_activity(device, Activity::WaitingForWifi);
             return;
         }
         set_activity(device, Activity::Copying { left: total - copied });
