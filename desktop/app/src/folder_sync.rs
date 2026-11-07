@@ -30,8 +30,9 @@ pub struct FolderSyncRule {
     /// [`MODE_PHONE_TO_PC`], [`MODE_PC_TO_PHONE`] or [`MODE_TWO_WAY`].
     pub mode: String,
     pub enabled: bool,
-    /// Phone to PC only: a file removed on the phone also leaves the PC, for the
-    /// Recycle Bin.
+    /// A synced file removed on the side it's copied from also leaves the other: the
+    /// PC's goes to the Recycle Bin, the phone's to its trash where Android has one.
+    /// Not for PC to phone.
     #[serde(default)]
     pub remove_deleted: bool,
 }
@@ -184,6 +185,30 @@ pub fn plan_removals(
         .filter(|pc| last_synced.get(&pc.rel_path).is_some_and(|base| matches_state(pc, *base)))
         .map(|pc| pc.rel_path.clone())
         .collect()
+}
+
+/// Most of a folder vanishing at once looks like a moved or missing folder rather
+/// than someone deleting files, so a pass past this size and share removes nothing.
+const MANY_REMOVALS: usize = 10;
+
+fn too_many_removals(removals: usize, synced: usize) -> bool {
+    removals > MANY_REMOVALS && removals * 2 > synced
+}
+
+/// Both ways: what should leave the PC, and what should leave the phone. Each is a
+/// file synced before, gone from one side and unchanged on the other. A file changed
+/// since is copied back instead. See [`plan_removals`] for why an empty side removes nothing.
+pub fn plan_two_way_removals(
+    phone_files: &[SyncEntry],
+    pc_files: &[SyncEntry],
+    last_synced: &HashMap<String, (u64, i64)>,
+) -> (Vec<String>, Vec<String>) {
+    let from_pc = plan_removals(phone_files, pc_files, last_synced);
+    let from_phone = plan_removals(pc_files, phone_files, last_synced);
+    if too_many_removals(from_pc.len() + from_phone.len(), last_synced.len()) {
+        return (Vec::new(), Vec::new());
+    }
+    (from_pc, from_phone)
 }
 
 /// Pure reconciliation planner for the one-way ([`MODE_PHONE_TO_PC`],
@@ -686,11 +711,29 @@ pub async fn sync_now(node: &Node) -> SyncReport {
 
         let actions = plan_two_way_sync(&phone_files, &pc_files, &last_synced, &rule.mode, &pc_hostname);
         // A subfolder that couldn't be read would look like its files were removed.
-        let removals = if rule.remove_deleted && rule.mode == MODE_PHONE_TO_PC && listed_all {
-            plan_removals(&phone_files, &pc_files, &last_synced)
+        let (removals, phone_removals) = if !rule.remove_deleted || !listed_all {
+            (Vec::new(), Vec::new())
+        } else if rule.mode == MODE_TWO_WAY {
+            plan_two_way_removals(&phone_files, &pc_files, &last_synced)
+        } else if rule.mode == MODE_PHONE_TO_PC {
+            let removals = plan_removals(&phone_files, &pc_files, &last_synced);
+            if too_many_removals(removals.len(), last_synced.len()) {
+                (Vec::new(), Vec::new())
+            } else {
+                (removals, Vec::new())
+            }
         } else {
-            Vec::new()
+            (Vec::new(), Vec::new())
         };
+        // What's being removed isn't copied back from the side it's leaving.
+        let actions: Vec<SyncAction> = actions
+            .into_iter()
+            .filter(|action| match action {
+                SyncAction::PullToPc { rel_path } => !phone_removals.contains(rel_path),
+                SyncAction::PushToPhone { rel_path } => !removals.contains(rel_path),
+                SyncAction::ConflictRenamePcAndPull { .. } => true,
+            })
+            .collect();
         let mut updated_baseline = last_synced;
         updated_baseline.retain(|rel, _| {
             phone_files.iter().any(|e| e.rel_path == *rel) || pc_files.iter().any(|e| e.rel_path == *rel)
@@ -759,6 +802,23 @@ pub async fn sync_now(node: &Node) -> SyncReport {
                 }
                 Ok(Err(reason)) => tracing::warn!(reason, "can't remove a synced file"),
                 Err(error) => tracing::warn!(%error, "can't remove a synced file"),
+            }
+        }
+
+        for rel_path in phone_removals {
+            let remote = join_phone_path(&rule.phone_folder, &rel_path);
+            // A photo or video goes to the phone's trash without confirming. Anything
+            // else has to be confirmed, which turning on this folder's option did.
+            let removed = match node.storage_delete(peer, remote.clone(), false).await {
+                Err(nectarlink_core::Error::Denied) => node.storage_delete(peer, remote, true).await,
+                other => other,
+            };
+            match removed {
+                Ok(()) => {
+                    updated_baseline.remove(&rel_path);
+                    report.removed += 1;
+                }
+                Err(error) => tracing::warn!(%error, "can't remove a synced file on the phone"),
             }
         }
 
@@ -849,6 +909,49 @@ mod tests {
         keep_phone_date(&path, 1_700_000_000_000);
         let read = read_pc_entries(dir.path());
         assert_eq!(read[0].modified_ms, 1_700_000_000_000);
+    }
+
+    #[test]
+    fn both_ways_a_deletion_on_either_side_goes_across() {
+        let phone = vec![entry("keep.txt", 1, 1_000), entry("gone_from_pc.txt", 2, 2_000)];
+        let pc = vec![entry("keep.txt", 1, 1_000), entry("gone_from_phone.txt", 3, 3_000)];
+        let base = HashMap::from([
+            ("keep.txt".to_owned(), (1, 1_000)),
+            ("gone_from_pc.txt".to_owned(), (2, 2_000)),
+            ("gone_from_phone.txt".to_owned(), (3, 3_000)),
+        ]);
+        let (from_pc, from_phone) = plan_two_way_removals(&phone, &pc, &base);
+        assert_eq!(from_pc, vec!["gone_from_phone.txt".to_owned()]);
+        assert_eq!(from_phone, vec!["gone_from_pc.txt".to_owned()]);
+    }
+
+    #[test]
+    fn both_ways_a_file_changed_since_or_never_synced_stays() {
+        let phone = vec![entry("edited.txt", 9, 9_000), entry("new_on_phone.txt", 4, 4_000)];
+        let pc = vec![entry("other.txt", 1, 1_000)];
+        let base = HashMap::from([("edited.txt".to_owned(), (2, 2_000))]);
+        assert_eq!(plan_two_way_removals(&phone, &pc, &base), (Vec::new(), Vec::new()));
+    }
+
+    #[test]
+    fn both_ways_an_emptied_side_removes_nothing_from_the_other() {
+        let files = vec![entry("a.txt", 1, 1_000), entry("b.txt", 2, 2_000)];
+        let base = HashMap::from([("a.txt".to_owned(), (1, 1_000)), ("b.txt".to_owned(), (2, 2_000))]);
+        assert_eq!(plan_two_way_removals(&[], &files, &base), (Vec::new(), Vec::new()));
+        assert_eq!(plan_two_way_removals(&files, &[], &base), (Vec::new(), Vec::new()));
+    }
+
+    #[test]
+    fn most_of_a_folder_vanishing_at_once_removes_nothing() {
+        let names: Vec<String> = (0..30).map(|i| format!("{i}.txt")).collect();
+        let base: HashMap<String, (u64, i64)> = names.iter().map(|n| (n.clone(), (1, 1_000))).collect();
+        let all: Vec<SyncEntry> = names.iter().map(|n| entry(n, 1, 1_000)).collect();
+        // 20 of 30 gone from the phone: too many at once.
+        assert_eq!(plan_two_way_removals(&all[20..], &all, &base), (Vec::new(), Vec::new()));
+        // 5 gone: an ordinary clean-up.
+        assert_eq!(plan_two_way_removals(&all[5..], &all, &base).0.len(), 5);
+        // A small folder is small enough to empty by hand, down to one file left.
+        assert!(!too_many_removals(MANY_REMOVALS, MANY_REMOVALS + 1));
     }
 
     #[test]

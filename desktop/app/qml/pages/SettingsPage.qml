@@ -2461,7 +2461,8 @@ Item {
                                     width: parent.width
                                     iconPath: Icons.folder
                                     title: syncRuleDelegate.modelData.phoneFolder + (syncRuleDelegate.modelData.mode === "two_way" ? " ⇄ " : syncRuleDelegate.modelData.mode === "one_way_pc_to_phone" ? " ← " : " → ") + syncRuleDelegate.modelData.pcFolder
-                                    description: syncRuleDelegate.modelData.mode === "two_way" ? qsTr("Two-way sync · conflict copies kept")
+                                    description: syncRuleDelegate.modelData.mode === "two_way" && syncRuleDelegate.modelData.removeDeleted ? qsTr("Two-way sync · conflict copies kept · deletions go across")
+                                        : syncRuleDelegate.modelData.mode === "two_way" ? qsTr("Two-way sync · conflict copies kept")
                                         : syncRuleDelegate.modelData.mode === "one_way_pc_to_phone" ? qsTr("One-way · PC to phone")
                                         : syncRuleDelegate.modelData.removeDeleted ? qsTr("One-way · phone to PC · removes files deleted on the phone")
                                         : qsTr("One-way · phone to PC")
@@ -3696,11 +3697,13 @@ Item {
 
             ListRow {
                 width: parent.width
-                visible: folderSyncSheet.mode === "one_way_phone_to_pc"
-                title: qsTr("Also remove from the PC")
-                description: qsTr("A synced file you delete on the phone goes to the PC's Recycle Bin.")
+                visible: folderSyncSheet.mode !== "one_way_pc_to_phone"
+                title: folderSyncSheet.mode === "two_way" ? qsTr("Also remove deleted files") : qsTr("Also remove from the PC")
+                description: folderSyncSheet.mode === "two_way"
+                    ? qsTr("A synced file you delete on one side leaves the other. On the PC it goes to the Recycle Bin. On the phone, photos and videos go to its trash where Android has one, and other files are gone for good.")
+                    : qsTr("A synced file you delete on the phone goes to the PC's Recycle Bin.")
                 Toggle {
-                    label: qsTr("Also remove from the PC")
+                    label: folderSyncSheet.mode === "two_way" ? qsTr("Also remove deleted files") : qsTr("Also remove from the PC")
                     checked: folderSyncSheet.removeDeleted
                     onToggled: (on) => folderSyncSheet.removeDeleted = on
                 }
