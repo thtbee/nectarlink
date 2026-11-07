@@ -76,10 +76,9 @@ class AppWindows(
         if (pkg == context.packageName) return false
         val maxSize = options.maxSize.toInt().coerceIn(320, 1920)
         val (width, height, dpi) = size(maxSize)
-        // A window's display starts asleep while the phone is, and its app
-        // never draws (#152); a display that's awake stays so while the
-        // window is open. Mirroring wakes the screen the same way.
-        Elevated.wakeScreen()
+        // The phone stays as it is: the helper gives the window a display
+        // that runs while the phone sleeps, or wakes the phone when it
+        // can't (see AppDisplay.createDisplay).
         // Straight off when it's meant to stay off, so it barely lights up.
         if (options.screenOff) Elevated.setScreenOff(true)
         val socket = Elevated.openApp(pkg, width, height, dpi, options.bitrate.toInt(), options.fps.toInt()) ?: run {

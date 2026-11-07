@@ -686,7 +686,7 @@ object InputServer {
         val pkg = parts.getOrNull(6)?.takeIf { it == "-" || PACKAGE.matches(it) } ?: return
         val codec = parts.getOrNull(7)?.takeIf { it in setOf("h264", "h265", "av1") } ?: "h264"
         if (width !in 16..4096 || height !in 16..4096 || dpi !in 72..1000) return
-        val window = AppDisplay(width, height, dpi, bitrate.coerceIn(500_000, 40_000_000), fps.coerceIn(1, 120), codec)
+        val window = AppDisplay(width, height, dpi, bitrate.coerceIn(500_000, 40_000_000), fps.coerceIn(1, 120), codec, ::wakeForWindow)
         windows.add(window)
         // Further lines: keyframe or resize requests; the end of them closes the window.
         Thread {
@@ -724,6 +724,16 @@ object InputServer {
             windows.remove(window)
             window.stop()
         }
+    }
+
+    /**
+     * Wakes the phone for a window on a plain display, which sleeps with it
+     * (#152). WAKEUP does nothing to a phone that's awake; a panel turned
+     * off for the PC goes back off.
+     */
+    private fun wakeForWindow() {
+        runCatching { Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_WAKEUP")).waitFor() }
+        if (displayTurnedOff) runCatching { setDisplayPower(false) }
     }
 
     private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")

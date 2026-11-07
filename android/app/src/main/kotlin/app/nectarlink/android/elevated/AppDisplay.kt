@@ -31,6 +31,8 @@ class AppDisplay(
     private val bitrate: Int,
     private val fps: Int,
     private val codecName: String = "h264",
+    /** Wakes the phone; a window on a plain display needs it awake (#152). */
+    private val wakePhone: () -> Unit = {},
 ) {
     private data class EncodedSurface(
         val codecName: String,
@@ -44,6 +46,8 @@ class AppDisplay(
     @Volatile private var size = Triple(width, height, dpi)
     private var lastRotationCheck = 0L
     private var display: VirtualDisplay? = null
+    /** Owns [display] when it has one; closed after it. */
+    private var device: VirtualDevice? = null
 
     /** The display's ID, once made. */
     var displayId: Int = -1
@@ -112,6 +116,8 @@ class AppDisplay(
             runCatching { surface?.release() }
             display?.release()
             display = null
+            device?.close()
+            device = null
         }
     }
 
@@ -328,7 +334,9 @@ class AppDisplay(
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             flags = flags or OWN_FOCUS or DEVICE_DISPLAY_GROUP
+            ownedDisplay(w, h, d, surface, flags)?.let { return it }
         }
+        wakePhone()
         val constructor = DisplayManager::class.java.getDeclaredConstructor(Context::class.java)
         constructor.isAccessible = true
         val manager = constructor.newInstance(ShellContext.get())
@@ -336,6 +344,21 @@ class AppDisplay(
         // the shell may use.
         @SuppressLint("WrongConstant")
         return manager.createVirtualDisplay("Nectarlink", w, h, d, surface, flags)
+    }
+
+    /**
+     * A display owned by a virtual device, which runs while the phone sleeps
+     * (see [VirtualDevice]), or null to make a plain one.
+     */
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun ownedDisplay(w: Int, h: Int, d: Int, surface: Surface, flags: Int): VirtualDisplay? {
+        val owner = VirtualDevice.create() ?: return null
+        return runCatching {
+            owner.createVirtualDisplay("Nectarlink", w, h, d, surface, flags and OWN_DISPLAY_GROUP.inv())
+        }.onSuccess { device = owner }.onFailure {
+            System.err.println("no display on the virtual device: $it")
+            owner.close()
+        }.getOrNull()
     }
 
     /** Hides the soft keyboard on this virtual display so typing from the PC never pops it up on the phone. */
