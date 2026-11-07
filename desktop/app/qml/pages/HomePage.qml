@@ -3,6 +3,8 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.Dialogs
 import QtQuick.Shapes
+import QtQml.Models
+import QtCore
 import app.nectarlink
 
 // Home: the paired phone at a glance (status, battery, power level) and
@@ -10,6 +12,20 @@ import app.nectarlink
 // available shows what unlocks it.
 Item {
     id: page
+    // Home is drawn as the phone itself (status bar, clock, media,
+    // notifications and dock inside a phone frame, with a Live switch for the
+    // real screen). False brings back the original hero, tiles and feed.
+    readonly property bool phoneLayout: true
+    // Whether Qt Multimedia (which the radio needs) is installed. Asked
+    // quietly: a failed import throws here instead of logging a warning.
+    readonly property bool radioAvailable: {
+        try {
+            Qt.createQmlObject("import QtQuick; import QtMultimedia; QtObject {}", page, "radioProbe").destroy()
+            return true
+        } catch (e) {
+            return false
+        }
+    }
     property bool active: true
     property int current: AppController.currentDevice
     Connections {
@@ -127,6 +143,25 @@ Item {
             if (page.current >= DeviceList.count)
                 page.current = Math.max(0, DeviceList.count - 1)
         }
+    }
+
+    // GETs JSON (the lock screen's weather).
+    function getJson(url, ok, fail) {
+        const xhr = new XMLHttpRequest()
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState !== XMLHttpRequest.DONE)
+                return
+            let data = null
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try { data = JSON.parse(xhr.responseText) } catch (e) {}
+            }
+            if (data !== null)
+                ok(data)
+            else if (fail)
+                fail()
+        }
+        xhr.open("GET", url)
+        xhr.send()
     }
 
     function relativeTime(unixSeconds) {
@@ -590,6 +625,299 @@ Item {
         }
     }
 
+    // A conversation in the Messages widget.
+    component ThreadRow: Item {
+        id: tr
+        property var thread: ({})
+        readonly property bool unread: (thread.unread || 0) > 0
+        height: 46
+        Rectangle {
+            id: trAvatar
+            anchors.verticalCenter: parent.verticalCenter
+            width: 34
+            height: 34
+            radius: 17
+            color: Theme.secondaryContainer
+            Txt {
+                anchors.centerIn: parent
+                role: "label"
+                weight: 700
+                color: Theme.secondaryContainerContent
+                text: (tr.thread.title || "?").trim().charAt(0).toUpperCase()
+            }
+        }
+        Column {
+            anchors.left: trAvatar.right
+            anchors.leftMargin: 10
+            anchors.right: trWhen.left
+            anchors.rightMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 1
+            Txt {
+                width: parent.width
+                role: "body"
+                size: 13
+                weight: tr.unread ? 700 : 500
+                elide: Text.ElideRight
+                maximumLineCount: 1
+                text: (tr.thread.title || "").replace(/\s+/g, " ").trim()
+            }
+            Txt {
+                width: parent.width
+                role: "caption"
+                muted: !tr.unread
+                elide: Text.ElideRight
+                maximumLineCount: 1
+                text: (tr.thread.snippet || "").replace(/\s+/g, " ").trim()
+            }
+        }
+        Column {
+            id: trWhen
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 4
+            Txt {
+                anchors.right: parent.right
+                role: "caption"
+                muted: true
+                text: tr.thread.date ? page.relativeTime(tr.thread.date > 1e12 ? tr.thread.date / 1000 : tr.thread.date) : ""
+            }
+            Rectangle {
+                anchors.right: parent.right
+                visible: tr.unread
+                width: 8
+                height: 8
+                radius: 4
+                color: Theme.primary
+            }
+        }
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: AppController.currentPage = "messages"
+        }
+    }
+
+    // A call in the Recent calls widget, with Call back.
+    component CallRow: Item {
+        id: cr
+        property var call: ({})
+        property bool canCall: true
+        readonly property bool missed: call.direction === "missed"
+        height: 38
+        Icon {
+            id: crDir
+            anchors.verticalCenter: parent.verticalCenter
+            width: 16
+            height: 16
+            path: cr.missed ? Icons.callMissed : cr.call.direction === "incoming" ? Icons.callIncoming : Icons.callOutgoing
+            color: cr.missed ? Theme.error : Theme.surfaceContentVariant
+        }
+        Column {
+            anchors.left: crDir.right
+            anchors.leftMargin: 10
+            anchors.right: crBack.left
+            anchors.rightMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 1
+            Txt {
+                width: parent.width
+                role: "body"
+                size: 13
+                color: cr.missed ? Theme.error : Theme.surfaceContent
+                elide: Text.ElideRight
+                text: cr.call.name && cr.call.name.length > 0 ? cr.call.name : (cr.call.number || "")
+            }
+            Txt {
+                width: parent.width
+                role: "caption"
+                muted: true
+                elide: Text.ElideRight
+                text: cr.call.date ? page.relativeTime(cr.call.date > 1e12 ? cr.call.date / 1000 : cr.call.date) : ""
+            }
+        }
+        IconButton {
+            id: crBack
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            visible: cr.canCall && (cr.call.number || "").length > 0
+            iconPath: Icons.call
+            label: qsTr("Call back")
+            onClicked: PhoneCall.dial(cr.call.number)
+        }
+    }
+
+    // A one-line text field in a widget (city, stock symbols). Enter applies it.
+    component WidgetInput: Rectangle {
+        id: wi
+        property string placeholder
+        signal accepted(string text)
+        height: 32
+        radius: 16
+        color: Theme.surfaceContainerHigh
+        border.width: wiInput.activeFocus ? 1 : 0
+        border.color: Theme.primary
+        TextInput {
+            id: wiInput
+            anchors.fill: parent
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            verticalAlignment: TextInput.AlignVCenter
+            color: Theme.surfaceContent
+            selectionColor: Theme.primary
+            font.pixelSize: 12
+            clip: true
+            selectByMouse: true
+            Accessible.name: wi.placeholder
+            onAccepted: {
+                wi.accepted(text)
+                text = ""
+                focus = false
+            }
+        }
+        Txt {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 12
+            anchors.rightMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            visible: wiInput.text.length === 0 && !wiInput.activeFocus
+            role: "caption"
+            muted: true
+            elide: Text.ElideRight
+            text: wi.placeholder
+        }
+    }
+
+    // A widget beside the phone: a header that opens its page, then content.
+    component GlanceCard: Rectangle {
+        id: glance
+        property string title
+        property string iconPath
+        property string target
+        default property alias content: glanceBody.data
+        height: glanceBody.y + glanceBody.implicitHeight + 16
+        radius: Theme.radiusLg
+        color: Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.42 : 0.60)
+        border.width: 1
+        border.color: Qt.rgba(1, 1, 1, Theme.dark ? 0.10 : 0.40)
+        Item {
+            id: glanceHead
+            x: 16
+            y: 12
+            width: parent.width - 32
+            height: 26
+            Icon {
+                id: glanceIcon
+                anchors.verticalCenter: parent.verticalCenter
+                width: 16
+                height: 16
+                path: glance.iconPath
+                color: Theme.primary
+            }
+            Txt {
+                anchors.left: glanceIcon.right
+                anchors.leftMargin: 8
+                anchors.verticalCenter: parent.verticalCenter
+                role: "title"
+                size: 14
+                text: glance.title
+            }
+            Row {
+                id: seeAll
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                visible: glance.target.length > 0
+                spacing: 2
+                Txt {
+                    anchors.verticalCenter: parent.verticalCenter
+                    role: "label"
+                    color: Theme.primary
+                    text: qsTr("See all")
+                }
+                Icon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 14
+                    height: 14
+                    path: Icons.chevronRight
+                    color: Theme.primary
+                }
+            }
+            // Over the link, not inside its Row: sized to the Row, it would resize it forever.
+            MouseArea {
+                anchors.fill: seeAll
+                anchors.margins: -4
+                visible: seeAll.visible
+                cursorShape: Qt.PointingHandCursor
+                onClicked: AppController.currentPage = glance.target
+            }
+        }
+        Column {
+            id: glanceBody
+            x: 16
+            y: glanceHead.y + glanceHead.height + 8
+            width: parent.width - 32
+            spacing: 6
+        }
+    }
+
+    // A round button in the phone-shaped Home's dock.
+    component PhoneDockButton: Item {
+        id: dockBtn
+        property string iconPath
+        property string label
+        property bool available: true
+        property bool active: false
+        signal clicked
+        width: 46
+        height: 46
+        opacity: available ? 1 : 0.4
+        Accessible.role: Accessible.Button
+        Accessible.name: label
+        activeFocusOnTab: available
+        Keys.onSpacePressed: if (available) clicked()
+        Keys.onReturnPressed: if (available) clicked()
+        Rectangle {
+            anchors.fill: parent
+            radius: width / 2
+            color: dockBtn.active ? Theme.primary
+                 : (dockMouse.containsMouse && dockBtn.available) || dockBtn.activeFocus
+                   ? Theme.surfaceContainerHighest : Theme.surfaceContainerHigh
+            scale: dockMouse.pressed && dockBtn.available ? 0.92 : 1
+            Behavior on scale { NumberAnimation { duration: 90 } }
+        }
+        Icon {
+            anchors.centerIn: parent
+            width: 20
+            height: 20
+            path: dockBtn.iconPath
+            color: dockBtn.active ? Theme.primaryContent : Theme.surfaceContent
+        }
+        Rectangle {
+            visible: dockMouse.containsMouse
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.top
+            anchors.bottomMargin: 8
+            width: dockTip.implicitWidth + 16
+            height: 24
+            radius: 12
+            color: Theme.surfaceContainerHighest
+            Txt {
+                id: dockTip
+                anchors.centerIn: parent
+                role: "caption"
+                text: dockBtn.label
+            }
+        }
+        MouseArea {
+            id: dockMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: dockBtn.available ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: if (dockBtn.available) dockBtn.clicked()
+        }
+    }
+
     component DeviceHome: Row {
         id: home
         required property string deviceId
@@ -668,9 +996,1379 @@ Item {
             width: home.width - home.sideWidth - home.spacing
             spacing: Theme.gutter
 
+            // ---- Phone: Home drawn as the phone itself ----
+            // A phone-shaped dashboard (status bar, lock-screen clock, media,
+            // notifications, dock), or with Live on, the phone's real screen.
+            Item {
+                id: phoneStage
+                visible: page.phoneLayout
+                width: parent.width
+                height: Math.max(phoneFrame.height, stageSide.implicitHeight) + 8
+
+                property bool live: false
+                property date now: new Date()
+                Timer {
+                    interval: 15000
+                    repeat: true
+                    running: phoneStage.visible
+                    onTriggered: phoneStage.now = new Date()
+                }
+
+                // The phone's screen session (session 0), whoever started it.
+                readonly property var liveInfo: {
+                    try {
+                        return JSON.parse(Mirror.windows).find(w => w.device === home.deviceId && w.session === 0) || null
+                    } catch (e) {
+                        return null
+                    }
+                }
+                readonly property string liveKey: liveInfo ? liveInfo.key : ""
+                readonly property string livePhase: liveInfo ? (liveInfo.phase || "") : ""
+                readonly property bool liveControl: liveInfo ? liveInfo.canControl === true : false
+                readonly property bool canLive: home.online && home.feature("mirroring.view").state === "available"
+
+                // Last known status, so the status bar stays filled (dimmed) offline.
+                property int knownBattery: -1
+                property bool knownCharging: false
+                property int knownCellBars: -1
+                property string knownCellType: ""
+                property int knownWifiBars: -1
+                property bool knownBluetooth: false
+                function remember() {
+                    if (!home.online)
+                        return
+                    if (home.battery >= 0) { knownBattery = home.battery; knownCharging = home.charging }
+                    knownCellBars = home.cellBars
+                    knownCellType = home.cellType
+                    knownWifiBars = home.wifiBars
+                    if (phoneControls.state)
+                        knownBluetooth = phoneControls.state.bluetooth === true
+                    if (home.rttMs >= 1)
+                        rttLog = rttLog.concat([home.rttMs]).slice(-30)
+                }
+                Timer {
+                    interval: 5000
+                    repeat: true
+                    triggeredOnStart: true
+                    running: home.online
+                    onTriggered: phoneStage.remember()
+                }
+                property var rttLog: []
+
+                Settings {
+                    id: widgetPrefs
+                    location: StandardPaths.writableLocation(StandardPaths.AppConfigLocation) + "/home-widgets.ini"
+                    property string batteryLog: "{}"
+                    property string city: ""
+                    property real lat: 0
+                    property real lon: 0
+                }
+
+                // Battery samples for the last 24 hours, kept per phone.
+                readonly property var batteryLog: {
+                    try {
+                        return (JSON.parse(widgetPrefs.batteryLog) || {})[home.deviceId] || []
+                    } catch (e) {
+                        return []
+                    }
+                }
+                function logBattery() {
+                    if (!home.online || home.battery < 0)
+                        return
+                    const now = Date.now()
+                    let all = {}
+                    try { all = JSON.parse(widgetPrefs.batteryLog) || {} } catch (e) {}
+                    const log = (all[home.deviceId] || []).filter(p => now - p.t <= 24 * 3600 * 1000)
+                    const last = log[log.length - 1]
+                    if (last && now - last.t < 9 * 60 * 1000 && last.b === home.battery)
+                        return
+                    log.push({ t: now, b: home.battery })
+                    all[home.deviceId] = log
+                    widgetPrefs.batteryLog = JSON.stringify(all)
+                }
+                Timer {
+                    interval: 10 * 60 * 1000
+                    repeat: true
+                    triggeredOnStart: true
+                    running: home.online
+                    onTriggered: phoneStage.logBattery()
+                }
+
+                // Timeline events per hour, last 12 hours (oldest first).
+                property var activity: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                function countActivity() {
+                    const now = Date.now()
+                    const b = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                    for (let i = 0; i < timelineRows.count; i++) {
+                        const o = timelineRows.objectAt(i)
+                        if (!o)
+                            continue
+                        const t = o.timestamp > 1e12 ? o.timestamp : o.timestamp * 1000
+                        const h = Math.floor((now - t) / 3600000)
+                        if (h >= 0 && h < 12)
+                            b[11 - h]++
+                    }
+                    activity = b
+                }
+                Instantiator {
+                    id: timelineRows
+                    model: TimelineModel
+                    delegate: QtObject { required property real timestamp }
+                    onObjectAdded: activityRecount.restart()
+                    onObjectRemoved: activityRecount.restart()
+                }
+                Timer { id: activityRecount; interval: 400; onTriggered: phoneStage.countActivity() }
+                Timer { interval: 60000; repeat: true; running: phoneStage.visible; onTriggered: phoneStage.countActivity() }
+
+                // Weather for the lock screen: the city you set, from Open-Meteo.
+                property var weather: null
+                property string weatherError: ""
+                readonly property string weatherLine: {
+                    if (widgetPrefs.city.length === 0)
+                        return weatherError.length > 0 ? weatherError : qsTr("Set your city for weather")
+                    if (!weather || !weather.current)
+                        return weatherError.length > 0 ? weatherError : widgetPrefs.city
+                    return qsTr("%1° · %2 · %3").arg(Math.round(weather.current.temperature_2m))
+                        .arg(describeWeather(weather.current.weather_code)).arg(widgetPrefs.city)
+                }
+                function describeWeather(code) {
+                    if (code === 0) return qsTr("Clear")
+                    if (code <= 3) return qsTr("Partly cloudy")
+                    if (code <= 48) return qsTr("Fog")
+                    if (code <= 57) return qsTr("Drizzle")
+                    if (code <= 67) return qsTr("Rain")
+                    if (code <= 77) return qsTr("Snow")
+                    if (code <= 82) return qsTr("Showers")
+                    return qsTr("Thunderstorm")
+                }
+                function loadWeather() {
+                    if (widgetPrefs.city.length === 0)
+                        return
+                    page.getJson("https://api.open-meteo.com/v1/forecast?latitude=" + widgetPrefs.lat
+                                 + "&longitude=" + widgetPrefs.lon + "&current=temperature_2m,weather_code&timezone=auto",
+                                 (data) => { phoneStage.weather = data; phoneStage.weatherError = "" },
+                                 () => phoneStage.weatherError = qsTr("Weather unavailable"))
+                }
+                function setCity(name) {
+                    if (name.trim().length === 0)
+                        return
+                    page.getJson("https://geocoding-api.open-meteo.com/v1/search?count=1&name=" + encodeURIComponent(name.trim()),
+                                 (data) => {
+                                     const r = data.results && data.results[0]
+                                     if (!r) {
+                                         phoneStage.weatherError = qsTr("No place called “%1”").arg(name.trim())
+                                         return
+                                     }
+                                     widgetPrefs.city = r.name
+                                     widgetPrefs.lat = r.latitude
+                                     widgetPrefs.lon = r.longitude
+                                     phoneStage.weather = null
+                                     phoneStage.loadWeather()
+                                 },
+                                 () => phoneStage.weatherError = qsTr("Weather unavailable"))
+                }
+                Timer {
+                    interval: 30 * 60 * 1000
+                    repeat: true
+                    triggeredOnStart: true
+                    running: phoneStage.visible
+                    onTriggered: phoneStage.loadWeather()
+                }
+
+                // What the widgets beside the phone show.
+                readonly property var threads: {
+                    try {
+                        return JSON.parse(Messages.threads) || []
+                    } catch (e) {
+                        return []
+                    }
+                }
+                readonly property var calls: {
+                    try {
+                        return JSON.parse(PhoneCall.callLog) || []
+                    } catch (e) {
+                        return []
+                    }
+                }
+                function ago(date) {
+                    if (!date)
+                        return ""
+                    return page.relativeTime(date > 1e12 ? date / 1000 : date)
+                }
+                function loadGlance() {
+                    if (!home.online || !home.visible)
+                        return
+                    Messages.open(home.deviceId)
+                    PhoneCall.open(home.deviceId)
+                    Photos.open(home.deviceId)
+                }
+                Component.onCompleted: Qt.callLater(loadGlance)
+
+                function startLive() {
+                    if (!canLive)
+                        return
+                    HomeLive.embed(home.deviceId)
+                    live = true
+                    if (!liveInfo || livePhase === "ended")
+                        Mirror.start(home.deviceId)
+                }
+                function stopLive() {
+                    if (!live)
+                        return
+                    live = false
+                    if (liveKey.length > 0)
+                        Mirror.stop(liveKey)
+                    HomeLive.release(home.deviceId)
+                }
+                // Moves the live screen into a window of its own; the session keeps going.
+                function popOut() {
+                    live = false
+                    HomeLive.release(home.deviceId)
+                    if (!liveInfo || livePhase === "ended")
+                        Mirror.start(home.deviceId)
+                }
+                Connections {
+                    target: home
+                    function onOnlineChanged() {
+                        if (!home.online)
+                            phoneStage.stopLive()
+                        else
+                            phoneStage.loadGlance()
+                    }
+                    function onVisibleChanged() {
+                        if (!home.visible)
+                            phoneStage.stopLive()
+                    }
+                }
+                Component.onDestruction: stopLive()
+
+                // ---- The phone ----
+                Item {
+                    id: phoneFrame
+                    y: 4
+                    height: Math.round(Math.min(800, Math.max(620, page.height - 120)))
+                    width: Math.round(height * phoneArt.aspect)
+                    readonly property real bezel: Math.max(8, Math.round(width * 0.032))
+                    readonly property real innerW: width - bezel * 2
+                    readonly property real innerH: height - bezel * 2
+                    function corner(k) {
+                        const s = home.screenData
+                        return s && s.corners ? Math.max(14, s.corners[k] * width) : width * 0.13
+                    }
+                    readonly property real rTl: corner("tl")
+                    readonly property real rTr: corner("tr")
+                    readonly property real rBr: corner("br")
+                    readonly property real rBl: corner("bl")
+                    readonly property color chassis: Theme.dark ? "#0B0C0F" : "#17181C"
+                    readonly property color ink: phoneArt.screenInk
+                    readonly property string cutoutPath: {
+                        const s = home.screenData
+                        if (s && s.cutout_path && s.cutout_path.length > 0)
+                            return page.scaleSvgPath(s.cutout_path, innerW, innerH, bezel, bezel)
+                        return ""
+                    }
+                    // Android reports a punch hole as a box reaching the top
+                    // edge; at this size draw the round camera inside it.
+                    readonly property var hole: {
+                        const s = home.screenData
+                        const c = s && s.cutouts && s.cutouts.length > 0 ? s.cutouts[0] : null
+                        const d = Math.round(Math.max(9, Math.min(16, width * 0.036)))
+                        if (!c || c.w <= 0 || c.h <= 0)
+                            return { x: (width - d) / 2, y: bezel + 10, d: d }
+                        const cx = bezel + (c.x + c.w / 2) * innerW
+                        const cy = bezel + (c.y + c.h / 2) * innerH
+                        return { x: cx - d / 2, y: cy - d / 2, d: d }
+                    }
+
+                    // Accent glow while connected.
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width + 40
+                        height: parent.height + 40
+                        radius: phoneFrame.rTl + 20
+                        color: Theme.graphite ? Theme.primary : phoneArt.seedColor
+                        opacity: home.online ? (Theme.dark ? 0.20 : 0.14) : 0.0
+                        visible: opacity > 0
+                        Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal } }
+                    }
+
+                    // Side keys: volume and power.
+                    Rectangle { x: phoneFrame.width - 1; y: phoneFrame.height * 0.20; width: 3.5; height: phoneFrame.height * 0.09; radius: 2; color: Qt.lighter(phoneFrame.chassis, 1.9) }
+                    Rectangle { x: phoneFrame.width - 1; y: phoneFrame.height * 0.32; width: 3.5; height: phoneFrame.height * 0.05; radius: 2; color: Qt.lighter(phoneFrame.chassis, 1.9) }
+
+                    // ---- The screen ----
+                    Item {
+                        id: phoneScreen
+                        x: phoneFrame.bezel
+                        y: phoneFrame.bezel
+                        width: phoneFrame.innerW
+                        height: phoneFrame.innerH
+                        clip: true
+
+                        // Wallpaper, in the phone's own colors.
+                        Rectangle {
+                            anchors.fill: parent
+                            gradient: Gradient {
+                                GradientStop { position: 0.0; color: phoneArt.screenTop }
+                                GradientStop { position: 1.0; color: phoneArt.screenBottom }
+                            }
+                        }
+                        Rectangle {
+                            x: -parent.width * 0.3
+                            y: -parent.width * 0.4
+                            width: parent.width * 1.2
+                            height: width
+                            radius: width / 2
+                            color: phoneArt.seedColor
+                            opacity: Theme.dark ? 0.22 : 0.18
+                        }
+
+                        // ---- Dashboard ----
+                        Item {
+                            id: dash
+                            anchors.fill: parent
+                            visible: !phoneStage.live
+
+                            // Status bar, drawn the way the phone draws it.
+                            Item {
+                                id: statusBar
+                                x: 26
+                                y: 11
+                                width: parent.width - 52
+                                height: 22
+                                readonly property var toggles: phoneControls.state
+                                readonly property color ink: phoneFrame.ink
+                                Txt {
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    role: "label"
+                                    size: 12
+                                    weight: 600
+                                    color: statusBar.ink
+                                    text: Qt.formatTime(phoneStage.now, "hh:mm")
+                                }
+                                Row {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 5
+                                    // Last known while offline, dimmed.
+                                    opacity: home.online ? 1 : 0.55
+                                    Icon {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: !!statusBar.toggles && statusBar.toggles.bluetooth === true || (!home.online && phoneStage.knownBluetooth)
+                                        width: 12
+                                        height: 12
+                                        path: Icons.bluetooth
+                                        color: statusBar.ink
+                                    }
+                                    Icon {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: phoneStage.knownWifiBars >= 0 || (!!statusBar.toggles && statusBar.toggles.wifi === true)
+                                        width: 13
+                                        height: 13
+                                        path: Icons.wifi
+                                        color: statusBar.ink
+                                    }
+                                    Txt {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: phoneStage.knownCellBars >= 0 && phoneStage.knownCellType.length > 0
+                                        role: "label"
+                                        size: 9
+                                        weight: 700
+                                        color: statusBar.ink
+                                        text: phoneStage.knownCellType
+                                    }
+                                    Item {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: phoneStage.knownCellBars >= 0
+                                        width: 4 * 2.5 + 3 * 1.5
+                                        height: 10
+                                        Repeater {
+                                            model: 4
+                                            Rectangle {
+                                                required property int index
+                                                x: index * 4
+                                                width: 2.5
+                                                height: 3 + index * 2.3
+                                                y: 10 - height
+                                                radius: 1
+                                                color: statusBar.ink
+                                                opacity: index < phoneStage.knownCellBars ? 1 : 0.3
+                                            }
+                                        }
+                                    }
+                                    Txt {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: phoneStage.knownBattery >= 0
+                                        leftPadding: 2
+                                        role: "label"
+                                        size: 10
+                                        weight: 600
+                                        color: statusBar.ink
+                                        text: phoneStage.knownBattery + "%"
+                                    }
+                                    // A small battery, nub on the right.
+                                    Item {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: phoneStage.knownBattery >= 0
+                                        width: 19
+                                        height: 9
+                                        Rectangle {
+                                            width: 17
+                                            height: 9
+                                            radius: 2.5
+                                            color: "transparent"
+                                            border.width: 1
+                                            border.color: Qt.rgba(statusBar.ink.r, statusBar.ink.g, statusBar.ink.b, 0.6)
+                                            Rectangle {
+                                                x: 1.5
+                                                y: 1.5
+                                                height: parent.height - 3
+                                                width: Math.max(1, (parent.width - 3) * Math.max(0, Math.min(100, phoneStage.knownBattery)) / 100)
+                                                radius: 1.5
+                                                color: phoneStage.knownCharging ? "#4ADE80"
+                                                     : phoneStage.knownBattery <= 15 ? "#F87171" : statusBar.ink
+                                            }
+                                        }
+                                        Rectangle {
+                                            x: 17.5
+                                            y: 3
+                                            width: 1.5
+                                            height: 3
+                                            radius: 0.75
+                                            color: Qt.rgba(statusBar.ink.r, statusBar.ink.g, statusBar.ink.b, 0.6)
+                                        }
+                                    }
+                                    Icon {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: phoneStage.knownCharging && phoneStage.knownBattery >= 0
+                                        width: 10
+                                        height: 10
+                                        path: Icons.bolt
+                                        color: statusBar.ink
+                                    }
+                                }
+                            }
+
+                            Flickable {
+                                id: dashFlick
+                                y: statusBar.y + statusBar.height + 4
+                                width: parent.width
+                                height: dock.y - y - 10
+                                contentWidth: width
+                                contentHeight: dashCol.height + 12
+                                clip: true
+                                boundsBehavior: Flickable.StopAtBounds
+
+                                Column {
+                                    id: dashCol
+                                    x: 12
+                                    width: dashFlick.width - 24
+                                    spacing: 10
+
+                                    // Lock-screen clock.
+                                    Column {
+                                        width: parent.width
+                                        topPadding: 22
+                                        bottomPadding: 12
+                                        spacing: 0
+                                        Txt {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            role: "displayLarge"
+                                            size: Math.round(phoneScreen.width * 0.21)
+                                            weight: 300
+                                            color: phoneFrame.ink
+                                            text: Qt.formatTime(phoneStage.now, "hh:mm")
+                                        }
+                                        Txt {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            role: "body"
+                                            size: 14
+                                            color: phoneFrame.ink
+                                            opacity: 0.85
+                                            text: Qt.formatDate(phoneStage.now, "dddd, d MMMM")
+                                        }
+                                        // Weather, a line on the lock screen (Open-Meteo, no account).
+                                        Txt {
+                                            id: lockWeather
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            topPadding: 4
+                                            visible: !weatherEdit.visible
+                                            role: "label"
+                                            color: phoneFrame.ink
+                                            opacity: 0.9
+                                            text: phoneStage.weatherLine
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                anchors.margins: -6
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: weatherEdit.visible = true
+                                            }
+                                        }
+                                        WidgetInput {
+                                            id: weatherEdit
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            width: Math.min(220, dashCol.width)
+                                            visible: false
+                                            placeholder: qsTr("City, then Enter")
+                                            onAccepted: (text) => {
+                                                visible = false
+                                                phoneStage.setCity(text)
+                                            }
+                                        }
+                                        Txt {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            topPadding: 8
+                                            visible: !home.online
+                                            role: "label"
+                                            color: phoneFrame.ink
+                                            opacity: 0.8
+                                            text: !home.reconnect ? qsTr("Not reconnecting")
+                                                  : home.lastSeen > 0 ? qsTr("Offline · %1").arg(page.relativeTime(home.lastSeen))
+                                                  : qsTr("Offline")
+                                        }
+                                    }
+
+                                    // Now playing.
+                                    Repeater {
+                                        model: MediaList
+                                        delegate: NowPlaying {
+                                            required property int index
+                                            visible: MediaList.revision >= 0 && index === heroCard.activeMediaRow
+                                            width: visible ? dashCol.width : 0
+                                            embeddedInHero: true
+                                            hasMultipleSources: heroCard.hasBothMedia
+                                            phoneVolume: phoneControls.state ? phoneControls.state.volume : 65
+                                            onSourceSelected: (src) => heroCard.preferredMediaSource = src
+                                        }
+                                    }
+
+                                    // Notification shade.
+                                    Item {
+                                        width: parent.width
+                                        height: 26
+                                        visible: phoneFeed.count > 0
+                                        Txt {
+                                            anchors.left: parent.left
+                                            anchors.leftMargin: 4
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            role: "label"
+                                            color: phoneFrame.ink
+                                            opacity: 0.85
+                                            text: qsTr("Notifications · %1").arg(phoneFeed.count)
+                                        }
+                                        Txt {
+                                            id: phoneClearAll
+                                            anchors.right: parent.right
+                                            anchors.rightMargin: 4
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            role: "label"
+                                            color: phoneFrame.ink
+                                            text: qsTr("Clear all")
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                anchors.margins: -6
+                                                cursorShape: Qt.PointingHandCursor
+                                                onClicked: NotificationList.dismissAll(home.deviceId)
+                                            }
+                                        }
+                                    }
+                                    Rectangle {
+                                        width: parent.width
+                                        height: phoneUndo.height + 14
+                                        visible: NotificationList.undoLabel.length > 0
+                                        radius: 16
+                                        color: Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.62 : 0.74)
+                                        Row {
+                                            id: phoneUndo
+                                            x: 12
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: parent.width - 24
+                                            spacing: 8
+                                            Txt {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: parent.width - phoneUndoBtn.width - 8
+                                                role: "bodySmall"
+                                                elide: Text.ElideRight
+                                                text: NotificationList.undoLabel
+                                            }
+                                            Button {
+                                                id: phoneUndoBtn
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                variant: "tonal"
+                                                size: "sm"
+                                                text: qsTr("Undo")
+                                                onClicked: NotificationList.undoDismiss()
+                                            }
+                                        }
+                                    }
+                                    Rectangle {
+                                        id: phoneFeed
+                                        readonly property int count: NotificationList.count >= 0 ? NotificationList.countFor(home.deviceId) : 0
+                                        width: parent.width
+                                        height: phoneNotifs.height + 12
+                                        visible: count > 0
+                                        radius: 20
+                                        color: Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.55 : 0.70)
+                                        border.width: 1
+                                        border.color: Qt.rgba(1, 1, 1, Theme.dark ? 0.08 : 0.35)
+                                        Timer {
+                                            id: phoneFeedClock
+                                            property int minutes: 0
+                                            interval: 60000
+                                            repeat: true
+                                            running: phoneFeed.count > 0
+                                            onTriggered: minutes++
+                                        }
+                                        Column {
+                                            id: phoneNotifs
+                                            x: 4
+                                            y: 6
+                                            width: parent.width - 8
+                                            spacing: 2
+                                            Repeater {
+                                                model: NotificationList
+                                                delegate: NotificationItem {
+                                                    width: phoneNotifs.width
+                                                    clock: phoneFeedClock.minutes
+                                                    visible: deviceId === home.deviceId
+                                                    height: visible ? implicitHeight : 0
+                                                    canOpenApp: home.feature("mirroring.app_windows").state === "available" && app.length > 0
+                                                    onOpenAppRequested: Mirror.startApp(deviceId, app, appName.length > 0 ? appName : app)
+                                                    onOptionsRequested: appSheet.openFor(app, appName)
+                                                    onImageClicked: (url) => imagePreviewSheet.openFor(url, title.length > 0 ? title : appName)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Txt {
+                                        width: parent.width
+                                        visible: phoneFeed.count === 0 && home.online
+                                        horizontalAlignment: Text.AlignHCenter
+                                        role: "bodySmall"
+                                        color: phoneFrame.ink
+                                        opacity: 0.7
+                                        wrapMode: Text.WordWrap
+                                        text: home.feature("notifications.mirror").state === "available"
+                                              ? qsTr("No notifications") : qsTr("Notifications unavailable")
+                                    }
+                                }
+                            }
+
+                            // Dock.
+                            Rectangle {
+                                id: dock
+                                x: 14
+                                width: parent.width - 28
+                                height: 66
+                                y: parent.height - height - 26
+                                radius: 28
+                                color: Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.48 : 0.60)
+                                border.width: 1
+                                border.color: Qt.rgba(1, 1, 1, Theme.dark ? 0.10 : 0.40)
+                                Row {
+                                    anchors.centerIn: parent
+                                    spacing: Math.max(8, (dock.width - 4 * 46) / 5)
+                                    PhoneDockButton {
+                                        iconPath: Icons.mirror
+                                        label: qsTr("Mirror screen in a window")
+                                        available: home.online && home.feature("mirroring.view").state === "available"
+                                        active: phoneStage.livePhase.length > 0 && phoneStage.livePhase !== "ended"
+                                        onClicked: phoneStage.popOut()
+                                    }
+                                    PhoneDockButton {
+                                        iconPath: Icons.send
+                                        label: qsTr("Send files")
+                                        available: page.currentCanReceive
+                                        onClicked: filePicker.open()
+                                    }
+                                    PhoneDockButton {
+                                        iconPath: Icons.clipboard
+                                        label: qsTr("Send clipboard")
+                                        available: home.feature("clipboard.pc_to_phone").state === "available"
+                                                   || (!home.online && home.feature("clipboard.pc_to_phone").state !== "locked"
+                                                       && home.feature("clipboard.pc_to_phone").state !== "unsupported")
+                                        onClicked: AppController.sendClipboard(home.deviceId)
+                                    }
+                                    PhoneDockButton {
+                                        iconPath: Icons.ring
+                                        label: home.ringing ? qsTr("Stop ringing") : qsTr("Find phone")
+                                        available: home.online && home.feature("device.find_phone").state === "available"
+                                        active: home.ringing
+                                        onClicked: {
+                                            home.ringing = !home.ringing
+                                            if (home.ringing)
+                                                ringTimeout.restart()
+                                            AppController.ring(home.deviceId, home.ringing)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // ---- Live: the real screen ----
+                        Rectangle {
+                            anchors.fill: parent
+                            visible: phoneStage.live
+                            color: "black"
+                        }
+                        Loader {
+                            id: liveLoader
+                            anchors.fill: parent
+                            active: phoneStage.live && phoneStage.liveKey.length > 0
+                            sourceComponent: VideoView {
+                                id: liveVideo
+                                stream: phoneStage.liveKey
+                                focus: true
+                                acceptsText: phoneStage.livePhase === "showing" && phoneStage.liveControl
+                                onTextCommitted: (text) => Mirror.text(phoneStage.liveKey, text)
+
+                                function at(x, y) {
+                                    const r = pictureRect()
+                                    return { x: (x - r.x) / Math.max(1, r.width), y: (y - r.y) / Math.max(1, r.height),
+                                             inside: x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+                                    property bool down: false
+                                    property real lastMove: 0
+                                    onPressed: (mouse) => {
+                                        liveVideo.forceActiveFocus()
+                                        if (!phoneStage.liveControl) {
+                                            Mirror.requestControl(phoneStage.liveKey)
+                                            return
+                                        }
+                                        if (mouse.button === Qt.RightButton) { Mirror.press(phoneStage.liveKey, "back"); return }
+                                        if (mouse.button === Qt.MiddleButton) { Mirror.press(phoneStage.liveKey, "home"); return }
+                                        const p = liveVideo.at(mouse.x, mouse.y)
+                                        if (!p.inside)
+                                            return
+                                        down = true
+                                        Mirror.touch(phoneStage.liveKey, "down", p.x, p.y)
+                                    }
+                                    onPositionChanged: (mouse) => {
+                                        if (!down || !phoneStage.liveControl)
+                                            return
+                                        const now = Date.now()
+                                        if (now - lastMove < 16)
+                                            return
+                                        lastMove = now
+                                        const p = liveVideo.at(mouse.x, mouse.y)
+                                        Mirror.touch(phoneStage.liveKey, "move", p.x, p.y)
+                                    }
+                                    onReleased: (mouse) => {
+                                        if (!down)
+                                            return
+                                        down = false
+                                        if (!phoneStage.liveControl)
+                                            return
+                                        const p = liveVideo.at(mouse.x, mouse.y)
+                                        Mirror.touch(phoneStage.liveKey, "up", p.x, p.y)
+                                    }
+                                    onWheel: (wheel) => {
+                                        if (!phoneStage.liveControl) {
+                                            Mirror.requestControl(phoneStage.liveKey)
+                                            return
+                                        }
+                                        const p = liveVideo.at(wheel.x, wheel.y)
+                                        if (p.inside)
+                                            Mirror.scroll(phoneStage.liveKey, p.x, p.y, -wheel.angleDelta.x / 120, -wheel.angleDelta.y / 120)
+                                    }
+                                }
+
+                                Keys.onPressed: (event) => {
+                                    if (!phoneStage.liveControl)
+                                        return
+                                    const keys = {}
+                                    keys[Qt.Key_Escape] = "back"
+                                    keys[Qt.Key_Back] = "back"
+                                    keys[Qt.Key_Home] = "home"
+                                    keys[Qt.Key_Return] = "enter"
+                                    keys[Qt.Key_Enter] = "enter"
+                                    keys[Qt.Key_Backspace] = "backspace"
+                                    keys[Qt.Key_Delete] = "delete"
+                                    keys[Qt.Key_Left] = "left"
+                                    keys[Qt.Key_Right] = "right"
+                                    keys[Qt.Key_Up] = "up"
+                                    keys[Qt.Key_Down] = "down"
+                                    keys[Qt.Key_Tab] = "tab"
+                                    if (keys[event.key] !== undefined) {
+                                        Mirror.press(phoneStage.liveKey, keys[event.key])
+                                        event.accepted = true
+                                    }
+                                }
+                            }
+                        }
+                        // What the live screen is doing, until the picture arrives.
+                        Column {
+                            anchors.centerIn: parent
+                            width: parent.width - 48
+                            spacing: 12
+                            visible: phoneStage.live && phoneStage.livePhase !== "showing"
+                            Spinner {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                visible: phoneStage.livePhase !== "ended"
+                            }
+                            Txt {
+                                width: parent.width
+                                horizontalAlignment: Text.AlignHCenter
+                                wrapMode: Text.WordWrap
+                                role: "body"
+                                color: "#FFFFFF"
+                                text: phoneStage.livePhase === "ended" ? qsTr("The live screen ended")
+                                      : qsTr("Asking %1 for its screen…").arg(home.name)
+                            }
+                            Button {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                visible: phoneStage.livePhase === "ended"
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Start again")
+                                onClicked: Mirror.start(home.deviceId)
+                            }
+                        }
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 28
+                            visible: phoneStage.live && phoneStage.livePhase === "showing" && !phoneStage.liveControl
+                            width: controlHint.implicitWidth + 28
+                            height: 34
+                            radius: 17
+                            color: Qt.rgba(0, 0, 0, 0.66)
+                            Txt {
+                                id: controlHint
+                                anchors.centerIn: parent
+                                role: "label"
+                                color: "#FFFFFF"
+                                text: qsTr("Click to control the phone")
+                            }
+                        }
+
+                        // Gesture bar.
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: parent.height - 12
+                            width: Math.round(parent.width * 0.34)
+                            height: 4
+                            radius: 2
+                            visible: !phoneStage.live
+                            color: phoneFrame.ink
+                            opacity: 0.55
+                        }
+                    }
+
+                    // Chassis over the screen's corners, the outline, and the camera cutout.
+                    Shape {
+                        anchors.fill: parent
+                        preferredRendererType: Shape.CurveRenderer
+                        ShapePath {
+                            strokeWidth: -1
+                            fillColor: phoneFrame.chassis
+                            fillRule: ShapePath.OddEvenFill
+                            PathSvg {
+                                path: page.roundedRectSvg(0, 0, phoneFrame.width, phoneFrame.height,
+                                                          phoneFrame.rTl, phoneFrame.rTr, phoneFrame.rBr, phoneFrame.rBl)
+                                      + " " + page.roundedRectSvg(phoneFrame.bezel, phoneFrame.bezel, phoneFrame.innerW, phoneFrame.innerH,
+                                                                  Math.max(4, phoneFrame.rTl - phoneFrame.bezel),
+                                                                  Math.max(4, phoneFrame.rTr - phoneFrame.bezel),
+                                                                  Math.max(4, phoneFrame.rBr - phoneFrame.bezel),
+                                                                  Math.max(4, phoneFrame.rBl - phoneFrame.bezel))
+                            }
+                        }
+                        ShapePath {
+                            strokeWidth: 1.5
+                            strokeColor: Qt.rgba(1, 1, 1, Theme.dark ? 0.16 : 0.30)
+                            fillColor: "transparent"
+                            PathSvg {
+                                path: page.roundedRectSvg(0.75, 0.75, phoneFrame.width - 1.5, phoneFrame.height - 1.5,
+                                                          phoneFrame.rTl, phoneFrame.rTr, phoneFrame.rBr, phoneFrame.rBl)
+                            }
+                        }
+                        ShapePath {
+                            strokeWidth: -1
+                            fillColor: "#000000"
+                            PathSvg { path: "" }
+                        }
+                    }
+                    // The punch-hole camera. Android reports it as a box (or an outline
+                    // with that box's shape); a round lens reads truer at this size.
+                    Rectangle {
+                        width: phoneFrame.hole.d
+                        height: phoneFrame.hole.d
+                        radius: width / 2
+                        x: Math.round(phoneFrame.hole.x)
+                        y: Math.round(phoneFrame.hole.y)
+                        color: "#000000"
+                        border.width: 1
+                        border.color: "#1E2027"
+                    }
+                }
+
+                // ---- Beside the phone: two columns, or one when narrow ----
+                Grid {
+                    id: stageSide
+                    x: phoneFrame.width + 32
+                    y: 4
+                    width: Math.max(260, parent.width - x)
+                    columns: width >= 820 ? 2 : 1
+                    columnSpacing: 16
+                    rowSpacing: 16
+                    readonly property real colAWidth: columns === 2 ? Math.round((width - columnSpacing) * 0.46) : width
+                    readonly property real colBWidth: columns === 2 ? width - colAWidth - columnSpacing : width
+
+                    // ---- Identity, Live, messages, photos, calls ----
+                    Column {
+                        width: stageSide.colAWidth
+                        spacing: 14
+
+                        Row {
+                            width: parent.width
+                            spacing: 6
+                            Txt {
+                                id: stageName
+                                width: Math.min(implicitWidth, parent.width - stageEdit.width - parent.spacing)
+                                role: "displaySmall"
+                                size: 28
+                                elide: Text.ElideRight
+                                text: home.name
+                            }
+                            IconButton {
+                                id: stageEdit
+                                anchors.verticalCenter: stageName.verticalCenter
+                                iconPath: Icons.edit
+                                iconSize: 14
+                                label: home.hasNickname ? qsTr("Change nickname") : qsTr("Set nickname")
+                                onClicked: nicknameSheet.openFor(home.deviceId, home.name, home.rawName)
+                            }
+                        }
+                        Txt {
+                            width: parent.width
+                            role: "body"
+                            muted: true
+                            visible: text.length > 0
+                            text: home.osVersion.length > 0 ? qsTr("Android %1").arg(home.osVersion) : ""
+                        }
+                        Flow {
+                            width: parent.width
+                            spacing: 6
+                            Chip {
+                                interactive: true
+                                onClicked: AppController.runDoctor()
+                                iconPath: !home.online ? Icons.unlink
+                                          : home.path === "usb" ? Icons.usb
+                                          : home.path === "relay" ? Icons.globe
+                                          : (home.wifiBars < 0 && home.cellBars >= 0 ? Icons.signal : Icons.wifi)
+                                text: home.online
+                                      ? (home.path === "relay" ? qsTr("Away")
+                                         : home.path === "usb" ? qsTr("USB") : qsTr("Wi‑Fi"))
+                                        + (home.rttMs >= 1 ? qsTr(" · %1 ms").arg(home.rttMs) : "")
+                                      : !home.reconnect ? qsTr("Not reconnecting")
+                                      : (home.lastSeen > 0 ? qsTr("Offline · %1").arg(page.relativeTime(home.lastSeen)) : qsTr("Offline"))
+                            }
+                            Chip {
+                                visible: home.online && home.charging
+                                iconPath: Icons.bolt
+                                text: {
+                                    const eta = page.formatChargeEta(home.batteryFullIn)
+                                    return eta.length > 0 ? eta : qsTr("Charging")
+                                }
+                            }
+                            Chip {
+                                visible: home.reconnect
+                                interactive: true
+                                text: home.online ? qsTr("Disconnect") : qsTr("Stop reconnecting")
+                                onClicked: AppController.setReconnect(home.deviceId, false)
+                            }
+                            Chip {
+                                visible: !home.online
+                                interactive: true
+                                text: home.reconnect ? qsTr("Troubleshoot") : qsTr("Reconnect")
+                                onClicked: home.reconnect ? AppController.runDoctor() : AppController.setReconnect(home.deviceId, true)
+                            }
+                        }
+
+                        // The Live switch.
+                        GlanceCard {
+                            width: parent.width
+                            title: qsTr("Live screen")
+                            iconPath: Icons.mirror
+                            target: ""
+                            Item {
+                                width: parent.width
+                                height: Math.max(liveText.implicitHeight, liveToggle.height)
+                                Txt {
+                                    id: liveText
+                                    anchors.left: parent.left
+                                    anchors.right: liveToggle.left
+                                    anchors.rightMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    role: "caption"
+                                    muted: true
+                                    wrapMode: Text.WordWrap
+                                    text: phoneStage.live
+                                          ? qsTr("Click to tap, scroll to swipe, right-click for Back.")
+                                          : phoneStage.canLive
+                                            ? qsTr("Shows the phone's real screen in the frame. Uses more battery while on.")
+                                            : qsTr("Needs the phone connected with screen mirroring available.")
+                                }
+                                Toggle {
+                                    id: liveToggle
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    label: qsTr("Live screen")
+                                    enabled: phoneStage.canLive || phoneStage.live
+                                    opacity: enabled ? 1 : 0.5
+                                    checked: phoneStage.live
+                                    onToggled: (on) => on ? phoneStage.startLive() : phoneStage.stopLive()
+                                }
+                            }
+                            Flow {
+                                width: parent.width
+                                spacing: 8
+                                visible: phoneStage.live
+                                Button { variant: "tonal"; size: "sm"; iconPath: Icons.back; text: qsTr("Back"); onClicked: Mirror.press(phoneStage.liveKey, "back") }
+                                Button { variant: "tonal"; size: "sm"; iconPath: Icons.home; text: qsTr("Home"); onClicked: Mirror.press(phoneStage.liveKey, "home") }
+                                Button { variant: "tonal"; size: "sm"; iconPath: Icons.lock; text: qsTr("Lock"); onClicked: Mirror.press(phoneStage.liveKey, "lock") }
+                                Button { variant: "tonal"; size: "sm"; iconPath: Icons.openExternal; text: qsTr("Pop out"); onClicked: phoneStage.popOut() }
+                            }
+                        }
+
+                        GlanceCard {
+                            width: parent.width
+                            title: qsTr("Messages")
+                            iconPath: Icons.messages
+                            target: "messages"
+                            Repeater {
+                                model: phoneStage.threads.slice(0, 3)
+                                delegate: ThreadRow {
+                                    required property var modelData
+                                    width: parent.width
+                                    thread: modelData
+                                }
+                            }
+                            Txt {
+                                width: parent.width
+                                visible: phoneStage.threads.length === 0
+                                role: "bodySmall"
+                                muted: true
+                                text: home.online ? qsTr("No recent messages") : qsTr("Connect to see messages")
+                            }
+                        }
+
+                        GlanceCard {
+                            width: parent.width
+                            title: qsTr("Photos")
+                            iconPath: Icons.photo
+                            target: "photos"
+                            ListView {
+                                width: parent.width
+                                height: Photos.count > 0 ? 72 : 0
+                                visible: Photos.count > 0
+                                orientation: ListView.Horizontal
+                                interactive: false
+                                clip: true
+                                spacing: 6
+                                model: Photos
+                                delegate: Item {
+                                    required property string itemId
+                                    required property string thumb
+                                    required property bool isVideo
+                                    width: 72
+                                    height: 72
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: Theme.radiusMd
+                                        color: Theme.surfaceContainerHigh
+                                    }
+                                    RoundedImage {
+                                        anchors.fill: parent
+                                        radius: Theme.radiusMd
+                                        fillMode: Image.PreserveAspectCrop
+                                        source: thumb
+                                    }
+                                    Icon {
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        anchors.margins: 5
+                                        visible: isVideo
+                                        width: 14
+                                        height: 14
+                                        path: Icons.play
+                                        color: "#FFFFFF"
+                                    }
+                                    Component.onCompleted: if (thumb.length === 0 && itemId.length > 0) Photos.needThumb(itemId)
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: AppController.currentPage = "photos"
+                                    }
+                                }
+                            }
+                            Txt {
+                                width: parent.width
+                                visible: Photos.count === 0
+                                role: "bodySmall"
+                                muted: true
+                                text: home.online ? qsTr("No photos yet") : qsTr("Connect to see photos")
+                            }
+                        }
+
+                        GlanceCard {
+                            width: parent.width
+                            title: qsTr("Recent calls")
+                            iconPath: Icons.call
+                            target: "calls"
+                            Repeater {
+                                model: phoneStage.calls.slice(0, 3)
+                                delegate: CallRow {
+                                    required property var modelData
+                                    width: parent.width
+                                    canCall: home.online
+                                    call: modelData
+                                }
+                            }
+                            Txt {
+                                width: parent.width
+                                visible: phoneStage.calls.length === 0
+                                role: "bodySmall"
+                                muted: true
+                                text: home.online ? qsTr("No recent calls") : qsTr("Connect to see calls")
+                            }
+                        }
+                    }
+
+                    // ---- Widgets, then the radio ----
+                    Column {
+                        width: stageSide.colBWidth
+                        spacing: 14
+                    Grid {
+                        id: widgetGrid
+                        width: parent.width
+                        columns: width >= 400 ? 2 : 1
+                        spacing: 14
+                        readonly property real cellW: (width - spacing * (columns - 1)) / columns
+
+                        // Phone controls: quick toggles and media volume.
+                        GlanceCard {
+                            width: widgetGrid.cellW
+                            title: qsTr("Device controls")
+                            iconPath: Icons.phone
+                            target: ""
+                            Row {
+                                visible: home.online && !!phoneControls.state
+                                spacing: 8
+                                Repeater {
+                                    model: [
+                                        { id: "dnd", icon: Icons.moon, label: qsTr("Do not disturb") },
+                                        { id: "flashlight", icon: Icons.flashlight, label: qsTr("Torch") },
+                                        { id: "wifi", icon: Icons.wifi, label: qsTr("Wi‑Fi") },
+                                        { id: "bluetooth", icon: Icons.bluetooth, label: qsTr("Bluetooth") }
+                                    ]
+                                    delegate: PhoneDockButton {
+                                        required property var modelData
+                                        readonly property var st: phoneControls.state
+                                        width: 40
+                                        height: 40
+                                        iconPath: modelData.icon
+                                        label: modelData.label
+                                        active: !!st && st[modelData.id] === true
+                                        onClicked: AppController.setPhoneToggle(home.deviceId, modelData.id, String(!active))
+                                    }
+                                }
+                            }
+                            ToggleSlider {
+                                visible: home.online && !!phoneControls.state
+                                width: parent.width
+                                deviceId: home.deviceId
+                                toggleId: "volume"
+                                title: qsTr("Volume")
+                                iconPath: shownValue === 0 ? Icons.soundOff : Icons.speaker
+                                phoneValue: phoneControls.state ? phoneControls.state.volume : 0
+                                feature: phoneControls.volumeFeature
+                            }
+                            Txt {
+                                width: parent.width
+                                visible: !home.online || !phoneControls.state
+                                role: "bodySmall"
+                                muted: true
+                                wrapMode: Text.WordWrap
+                                text: qsTr("Connect the phone to use its controls")
+                            }
+                        }
+
+                        // Connection health: round-trip time, sampled every few seconds.
+                        GlanceCard {
+                            width: widgetGrid.cellW
+                            title: qsTr("Connection health")
+                            iconPath: Icons.signal
+                            target: ""
+                            Item {
+                                id: rttChart
+                                width: parent.width
+                                height: 64
+                                readonly property int maxRtt: Math.max(20, ...phoneStage.rttLog)
+                                Row {
+                                    height: 64
+                                    spacing: 3
+                                    Repeater {
+                                        model: phoneStage.rttLog
+                                        Rectangle {
+                                            required property var modelData
+                                            width: Math.max(3, (rttChart.width - 29 * 3) / 30)
+                                            height: Math.max(3, 60 * modelData / rttChart.maxRtt)
+                                            y: 64 - height
+                                            radius: 1.5
+                                            color: modelData > 150 ? Theme.error : modelData > 60 ? "#FBBF24" : Theme.primary
+                                        }
+                                    }
+                                }
+                            }
+                            Txt {
+                                width: parent.width
+                                role: "caption"
+                                muted: true
+                                text: !home.online ? qsTr("Offline")
+                                      : phoneStage.rttLog.length === 0 ? qsTr("Measuring…")
+                                      : qsTr("%1 · %2 ms now · %3 ms average")
+                                            .arg(home.path === "usb" ? qsTr("USB") : home.path === "relay" ? qsTr("Away") : qsTr("Wi‑Fi"))
+                                            .arg(home.rttMs)
+                                            .arg(Math.round(phoneStage.rttLog.reduce((a, b) => a + b, 0) / phoneStage.rttLog.length))
+                            }
+                        }
+
+                        // Battery, with the last 24 hours as recorded while the app ran.
+                        GlanceCard {
+                            width: widgetGrid.cellW
+                            title: qsTr("Battery")
+                            iconPath: phoneStage.knownCharging ? Icons.bolt : Icons.battery
+                            target: ""
+                            Row {
+                                spacing: 10
+                                Txt {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    role: "displaySmall"
+                                    size: 30
+                                    text: phoneStage.knownBattery >= 0 ? phoneStage.knownBattery + "%" : "–"
+                                }
+                                Txt {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    role: "caption"
+                                    muted: true
+                                    text: !home.online ? (phoneStage.knownBattery >= 0 ? qsTr("Last known") : qsTr("Not known yet"))
+                                          : home.charging
+                                            ? (page.formatChargeEta(home.batteryFullIn).length > 0 ? page.formatChargeEta(home.batteryFullIn) : qsTr("Charging"))
+                                            : home.battery >= 0 && home.battery <= 15 ? qsTr("Low battery") : qsTr("On battery")
+                                }
+                            }
+                            Canvas {
+                                width: parent.width
+                                height: 64
+                                property var points: phoneStage.batteryLog
+                                onPointsChanged: requestPaint()
+                                onWidthChanged: requestPaint()
+                                onPaint: {
+                                    const ctx = getContext("2d")
+                                    ctx.reset()
+                                    const now = Date.now(), span = 24 * 3600 * 1000
+                                    ctx.strokeStyle = Qt.rgba(Theme.outlineVariant.r, Theme.outlineVariant.g, Theme.outlineVariant.b, 0.6)
+                                    ctx.lineWidth = 1
+                                    for (const f of [0, 0.5, 1]) {
+                                        ctx.beginPath()
+                                        ctx.moveTo(0, 2 + f * (height - 4))
+                                        ctx.lineTo(width, 2 + f * (height - 4))
+                                        ctx.stroke()
+                                    }
+                                    const pts = points.filter(p => now - p.t <= span)
+                                    if (pts.length < 2)
+                                        return
+                                    const xOf = t => width * (1 - (now - t) / span)
+                                    const yOf = b => 2 + (height - 4) * (1 - b / 100)
+                                    const grad = ctx.createLinearGradient(0, 0, 0, height)
+                                    grad.addColorStop(0, Qt.rgba(0.29, 0.87, 0.5, 0.45))
+                                    grad.addColorStop(1, Qt.rgba(0.29, 0.87, 0.5, 0.02))
+                                    ctx.beginPath()
+                                    ctx.moveTo(xOf(pts[0].t), height)
+                                    for (const p of pts)
+                                        ctx.lineTo(xOf(p.t), yOf(p.b))
+                                    ctx.lineTo(xOf(pts[pts.length - 1].t), height)
+                                    ctx.closePath()
+                                    ctx.fillStyle = grad
+                                    ctx.fill()
+                                    ctx.beginPath()
+                                    pts.forEach((p, i) => i === 0 ? ctx.moveTo(xOf(p.t), yOf(p.b)) : ctx.lineTo(xOf(p.t), yOf(p.b)))
+                                    ctx.strokeStyle = "#4ADE80"
+                                    ctx.lineWidth = 2
+                                    ctx.stroke()
+                                }
+                            }
+                            Txt {
+                                width: parent.width
+                                role: "caption"
+                                muted: true
+                                wrapMode: Text.WordWrap
+                                text: phoneStage.batteryLog.length < 2 ? qsTr("The last 24 hours fill in while NectarLink runs")
+                                                                       : qsTr("Last 24 hours")
+                            }
+                        }
+
+                        // Activity: Timeline events per hour, last 12 hours.
+                        GlanceCard {
+                            width: widgetGrid.cellW
+                            title: qsTr("Activity")
+                            iconPath: Icons.history
+                            target: "timeline"
+                            Item {
+                                id: activityChart
+                                width: parent.width
+                                height: 64
+                                readonly property int peak: Math.max(1, ...phoneStage.activity)
+                                Row {
+                                    height: 64
+                                    spacing: 4
+                                    Repeater {
+                                        model: phoneStage.activity
+                                        Rectangle {
+                                            required property var modelData
+                                            width: Math.max(4, (activityChart.width - 11 * 4) / 12)
+                                            height: Math.max(2, 60 * modelData / activityChart.peak)
+                                            y: 64 - height
+                                            radius: 2
+                                            color: Theme.primary
+                                            opacity: modelData > 0 ? 0.9 : 0.25
+                                        }
+                                    }
+                                }
+                            }
+                            Txt {
+                                width: parent.width
+                                role: "caption"
+                                muted: true
+                                text: qsTr("%1 events in the last 12 hours").arg(phoneStage.activity.reduce((a, b) => a + b, 0))
+                            }
+                        }
+
+                    }
+
+                    // Internet radio, drawn as an analogue tuner. Only where Qt
+                    // Multimedia is installed: otherwise there's no radio, and no warning.
+                    Loader {
+                        width: parent.width
+                        active: page.radioAvailable
+                        visible: status === Loader.Ready
+                        source: Qt.resolvedUrl("../components/CarRadio.qml")
+                        onLoaded: item.width = Qt.binding(() => width)
+                    }
+                    }
+                }
+            }
+
             // ---- Hero ----
             Rectangle {
                 id: heroCard
+                visible: !page.phoneLayout
                 width: parent.width
                 readonly property bool wide: width >= 540
                 readonly property int phoneMediaRow: MediaList.revision >= 0 ? MediaList.firstFor(home.deviceId) : -1
@@ -1280,6 +2978,7 @@ Item {
             // ---- Quick actions ----
             Grid {
                 id: actions
+                visible: !page.phoneLayout
                 width: parent.width
                 columns: width > 640 ? 4 : 2
                 spacing: 12
@@ -1635,6 +3334,7 @@ Item {
             // ---- Notifications ----
             Card {
                 id: feed
+                visible: !page.phoneLayout
                 width: parent.width
                 readonly property var state: home.feature("notifications.mirror")
                 readonly property int count: NotificationList.count >= 0 ? NotificationList.countFor(home.deviceId) : 0

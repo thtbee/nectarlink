@@ -82,7 +82,10 @@ QtObject {
     function syncMirrorWindows() {
         let keys = []
         try {
-            keys = JSON.parse(Mirror.windows).map(w => w.key)
+            // A phone screen shown live inside Home has no window of its own.
+            keys = JSON.parse(Mirror.windows)
+                .filter(w => !(w.session === 0 && HomeLive.isEmbedded(w.device)))
+                .map(w => w.key)
         } catch (e) {}
         const current = app.openMirrors
         for (const k of Object.keys(current)) {
@@ -107,6 +110,11 @@ QtObject {
     }
     readonly property bool startMinimized: Qt.application.arguments.indexOf("--minimized") >= 0
         || Qt.application.arguments.indexOf("--send-to") >= 0
+
+    readonly property Connections homeLiveSync: Connections {
+        target: HomeLive
+        function onDevicesChanged() { app.syncMirrorWindows() }
+    }
 
     readonly property Timer trayTrimTimer: Timer {
         interval: 350

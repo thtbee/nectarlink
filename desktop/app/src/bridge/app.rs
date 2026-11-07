@@ -240,6 +240,11 @@ pub mod qobject {
         /// `[{ name, on }]`: what the user allows this device to do.
         #[qinvokable]
         fn device_toggles(self: &AppController, device: &QString) -> QList_QVariant;
+        /// The two-letter country of this PC's time zone ("EG" for
+        /// Africa/Cairo), or "" when it can't tell. Read offline.
+        #[qinvokable]
+        #[cxx_name = "systemCountry"]
+        fn system_country(self: &AppController) -> QString;
         /// The Wi-Fi networks Windows has saved, as a JSON array of names.
         #[qinvokable]
         #[cxx_name = "wifiNetworks"]
@@ -1675,6 +1680,10 @@ impl qobject::AppController {
             core_host::host().hub.read(|s| s.matrices.get(&id).and_then(|m| m.state(&feature)))
         });
         feature_state_map(state)
+    }
+
+    pub fn system_country(&self) -> QString {
+        QString::from(&system_country())
     }
 
     pub fn wifi_networks(&self) -> QString {
@@ -3398,8 +3407,52 @@ fn feature_state_map(state: Option<FeatureState>) -> QMap<QMapPair_QString_QVari
     map
 }
 
+/// The country of this PC's time zone, from the system zone table.
+#[cfg(target_os = "linux")]
+fn system_country() -> String {
+    let zone = std::fs::read_to_string("/etc/timezone")
+        .ok()
+        .map(|z| z.trim().to_owned())
+        .filter(|z| !z.is_empty())
+        .or_else(|| {
+            let target = std::fs::read_link("/etc/localtime").ok()?;
+            let target = target.to_string_lossy().into_owned();
+            target.split_once("zoneinfo/").map(|(_, z)| z.to_owned())
+        });
+    let Some(zone) = zone else { return String::new() };
+    ["/usr/share/zoneinfo/zone1970.tab", "/usr/share/zoneinfo/zone.tab"]
+        .iter()
+        .find_map(|tab| country_for_zone(&std::fs::read_to_string(tab).ok()?, &zone))
+        .unwrap_or_default()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn system_country() -> String {
+    String::new()
+}
+
+/// The first country listed for `zone` in a `zone.tab`-style table
+/// (`CC[,CC…]<TAB>coordinates<TAB>zone…`).
+#[cfg(any(target_os = "linux", test))]
+fn country_for_zone(tab: &str, zone: &str) -> Option<String> {
+    tab.lines().filter(|l| !l.starts_with('#')).find_map(|line| {
+        let mut cols = line.split('\t');
+        let codes = cols.next()?;
+        let name = cols.nth(1)?;
+        (name == zone).then(|| codes.split(',').next().unwrap_or_default().to_owned())
+    })
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn finds_the_country_of_a_time_zone() {
+        let tab = "# comment\nEG\t+3003+03115\tAfrica/Cairo\nCH,DE,LI\t+4723+00832\tEurope/Zurich\n";
+        assert_eq!(country_for_zone(tab, "Africa/Cairo").as_deref(), Some("EG"));
+        assert_eq!(country_for_zone(tab, "Europe/Zurich").as_deref(), Some("CH"));
+        assert_eq!(country_for_zone(tab, "Mars/Olympus"), None);
+    }
+
     use super::*;
 
     #[test]
