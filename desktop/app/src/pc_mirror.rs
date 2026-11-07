@@ -2006,10 +2006,10 @@ mod imp {
             select_opts.insert("types", Value::from(1u32));
             select_opts.insert("multiple", Value::from(false));
             select_opts.insert("cursor_mode", Value::from(2u32));
-            // Ask once while the app runs: the portal hands back a token that
-            // restores the same choice without a new dialog.
-            select_opts.insert("persist_mode", Value::from(1u32));
-            let restore = RESTORE_TOKEN.lock().unwrap_or_else(|e| e.into_inner()).clone();
+            // Ask once until the user takes it back: the portal hands back a token
+            // that restores the same choice without a dialog, also after a restart.
+            select_opts.insert("persist_mode", Value::from(2u32));
+            let restore = read_restore_token(&restore_token_path());
             if let Some(token) = restore.as_deref() {
                 select_opts.insert("restore_token", Value::from(token));
             }
@@ -2044,7 +2044,10 @@ mod imp {
             let start_res = wait_portal_response(&mut iter, req_path_3.as_str())?;
             if let Some(token) = start_res.get("restore_token").and_then(|v| String::try_from(v.clone()).ok())
             {
-                *RESTORE_TOKEN.lock().unwrap_or_else(|e| e.into_inner()) = Some(token);
+                // Each token works once, and this is the one for next time.
+                if let Err(error) = save_restore_token(&restore_token_path(), &token) {
+                    tracing::warn!(%error, "can't save the screen choice");
+                }
             }
 
             let streams_val = start_res.get("streams")?;
@@ -2201,10 +2204,32 @@ mod imp {
     #[cfg(target_os = "linux")]
     static WAYLAND_CASTER: Mutex<Option<WaylandScreenCaster>> = Mutex::new(None);
 
-    /// The ScreenCast portal's restore token, so later sessions in this run
+    /// Where the ScreenCast portal's restore token is kept, so later sessions
     /// reuse the screen the user chose instead of asking again.
     #[cfg(target_os = "linux")]
-    static RESTORE_TOKEN: Mutex<Option<String>> = Mutex::new(None);
+    fn restore_token_path() -> std::path::PathBuf {
+        core_host::host().data_dir.join("screencast-restore-token")
+    }
+
+    /// A token that's gone or unusable just means the portal asks again.
+    #[cfg(target_os = "linux")]
+    fn read_restore_token(path: &std::path::Path) -> Option<String> {
+        let token = std::fs::read_to_string(path).ok()?;
+        let token = token.trim();
+        (!token.is_empty() && token.len() <= 256).then(|| token.to_owned())
+    }
+
+    /// Only this user may read it: it lets this app see the screen without asking.
+    #[cfg(target_os = "linux")]
+    fn save_restore_token(path: &std::path::Path, token: &str) -> std::io::Result<()> {
+        use std::{io::Write, os::unix::fs::OpenOptionsExt};
+        let tmp = path.with_extension("tmp");
+        let mut file =
+            std::fs::OpenOptions::new().create(true).write(true).truncate(true).mode(0o600).open(&tmp)?;
+        file.write_all(token.as_bytes())?;
+        drop(file);
+        std::fs::rename(&tmp, path)
+    }
 
     /// gst-launch arguments: read stream `node_id` through the portal's
     /// PipeWire connection (fd 3) and write raw BGRx frames to stdout.
@@ -2727,6 +2752,22 @@ mod imp {
 
     #[cfg(test)]
     mod tests {
+        #[cfg(target_os = "linux")]
+        #[test]
+        fn the_screen_choice_survives_a_restart_privately() {
+            use std::os::unix::fs::PermissionsExt;
+            let dir = tempfile::tempdir().unwrap();
+            let path = dir.path().join("token");
+            assert_eq!(super::read_restore_token(&path), None);
+            super::save_restore_token(&path, "first").unwrap();
+            assert_eq!(super::read_restore_token(&path).as_deref(), Some("first"));
+            super::save_restore_token(&path, "second").unwrap();
+            assert_eq!(super::read_restore_token(&path).as_deref(), Some("second"));
+            assert_eq!(std::fs::metadata(&path).unwrap().permissions().mode() & 0o777, 0o600);
+            std::fs::write(&path, "  ").unwrap();
+            assert_eq!(super::read_restore_token(&path), None);
+        }
+
         use super::*;
 
         #[cfg(windows)]
