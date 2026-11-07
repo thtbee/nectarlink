@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Sync on Wi-Fi only.** A switch in Settings › Files & Sync on the PC holds folder sync
+  and photo backup back while the phone is away, so they don't use its mobile data
+  ([#244](https://github.com/thtbee/nectarlink/issues/244)).
 - **Share photos and videos from the PC.** On Windows, the Photos page has a Share
   button that opens the system's share sheet
   ([#174](https://github.com/thtbee/nectarlink/issues/174)).

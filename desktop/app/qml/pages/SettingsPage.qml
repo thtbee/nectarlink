@@ -2291,6 +2291,21 @@ Item {
                     }
                 }
 
+                Card {
+                    width: parent.width
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.wifi
+                        title: qsTr("Sync on Wi-Fi only")
+                        description: qsTr("Folder sync and photo backup wait while the phone is away, so they don't use its mobile data.")
+                        Toggle {
+                            label: qsTr("Sync on Wi-Fi only")
+                            checked: Preferences.syncWifiOnly
+                            onToggled: (on) => Preferences.syncWifiOnly = on
+                        }
+                    }
+                }
+
                 // Photo backup: every album, by year and month, never deleting.
                 Card {
                     width: parent.width
