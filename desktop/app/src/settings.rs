@@ -137,6 +137,7 @@ static SHARE_PC_STORAGE: std::sync::atomic::AtomicBool = std::sync::atomic::Atom
 static FORWARD_PC_NOTIFICATIONS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static AWAY_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static FLOW_FOLLOW_CLIPBOARD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+static MIRROR_QUALITY: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 static SYNC_PASSWORDS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static SYNC_WIFI_ONLY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static OPEN_SHARED_FILES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -158,6 +159,14 @@ pub fn set_clipboard_auto_copy_received_files(on: bool) {
 }
 
 /// Whether a single file shared from the phone opens in its default app on arrival.
+pub fn mirror_quality() -> crate::mirror::Quality {
+    crate::mirror::Quality::parse(&MIRROR_QUALITY.lock().unwrap_or_else(|e| e.into_inner()))
+}
+
+pub fn set_mirror_quality(quality: &str) {
+    quality.clone_into(&mut MIRROR_QUALITY.lock().unwrap_or_else(|e| e.into_inner()));
+}
+
 pub fn sync_passwords() -> bool {
     SYNC_PASSWORDS.load(std::sync::atomic::Ordering::Relaxed)
 }
@@ -542,6 +551,10 @@ pub struct Settings {
     /// What password managers mark private also goes to phones.
     #[serde(default, alias = "sync_passwords")]
     pub sync_passwords: bool,
+    /// "sharper" or "smoother"; anything else is the balanced default. Text, so a
+    /// value from a newer version can't stop this file from loading.
+    #[serde(default, alias = "mirror_quality")]
+    pub mirror_quality: String,
     /// Send the PC's clipboard to the phone when control moves to it: the mouse
     /// enters the phone's window, or a remote control session starts.
     #[serde(default = "default_true", alias = "flow_follow_clipboard")]
@@ -686,6 +699,7 @@ impl Default for Settings {
             open_shared_files: false,
             sync_wifi_only: false,
             sync_passwords: false,
+            mirror_quality: String::new(),
             flow_follow_clipboard: true,
             folder_sync_rules: Vec::new(),
             nectar_island: false,
@@ -759,6 +773,7 @@ impl Settings {
         set_open_shared_files(self.open_shared_files);
         set_sync_wifi_only(self.sync_wifi_only);
         set_sync_passwords(self.sync_passwords);
+        set_mirror_quality(&self.mirror_quality);
         set_flow_follow_clipboard(self.flow_follow_clipboard);
         set_folder_sync_rules(self.folder_sync_rules.clone());
         set_obs_settings(
@@ -952,6 +967,7 @@ mod tests {
             open_shared_files: true,
             sync_wifi_only: true,
             sync_passwords: true,
+            mirror_quality: "sharper".into(),
             flow_follow_clipboard: false,
             folder_sync_rules: Vec::new(),
             nectar_island: true,

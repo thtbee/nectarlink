@@ -39,6 +39,70 @@ use crate::{
     },
 };
 
+/// How sharp the whole screen's mirror is. App windows always use [`OPTIONS`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Quality {
+    Balanced,
+    Sharper,
+    Smoother,
+}
+
+impl Quality {
+    pub fn parse(name: &str) -> Quality {
+        match name {
+            "sharper" => Quality::Sharper,
+            "smoother" => Quality::Smoother,
+            _ => Quality::Balanced,
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Quality::Balanced => "balanced",
+            Quality::Sharper => "sharper",
+            Quality::Smoother => "smoother",
+        }
+    }
+}
+
+/// The whole screen's size and bitrate. The frame rate stays, as recording relies
+/// on it. Over the relay it's always Balanced, which may be the phone's mobile data.
+fn screen_options(quality: Quality, on_relay: bool) -> MirrorStart {
+    match (quality, on_relay) {
+        (Quality::Sharper, false) => MirrorStart { max_size: 4096, bitrate: 20_000_000, ..OPTIONS },
+        (Quality::Smoother, false) => MirrorStart { max_size: 1280, bitrate: 4_000_000, ..OPTIONS },
+        _ => OPTIONS,
+    }
+}
+
+fn on_relay(device: &DeviceId) -> bool {
+    core_host::host().hub.read(|s| {
+        s.devices.iter().any(|d| {
+            d.id == *device
+                && matches!(
+                    d.link,
+                    nectarlink_core::LinkState::Online { path: nectarlink_core::ConnectionPath::Relay, .. }
+                )
+        })
+    })
+}
+
+/// Whether a stream that ended should be asked for again at Balanced: Sharper or
+/// Smoother was asked for, the phone started, and no picture ever came, which is
+/// how a phone's encoder refusing that size looks from here.
+fn retry_at_balanced(unproven: bool, showing: bool) -> bool {
+    unproven && showing
+}
+
+/// Phones asked for a quality other than Balanced that haven't sent a picture yet.
+static UNPROVEN_QUALITY: Mutex<Option<std::collections::HashSet<DeviceId>>> = Mutex::new(None);
+
+fn set_unproven(device: DeviceId, unproven: bool) -> bool {
+    let mut set = UNPROVEN_QUALITY.lock().unwrap_or_else(|e| e.into_inner());
+    let set = set.get_or_insert_with(Default::default);
+    if unproven { !set.insert(device) } else { set.remove(&device) }
+}
+
 /// What the PC asks for: the phone scales its screen to fit.
 const OPTIONS: MirrorStart = MirrorStart {
     max_size: 1920,
@@ -829,7 +893,9 @@ pub fn start(device: DeviceId) {
         s.windows.insert(window, Shown { phase: Phase::Asking, app: None, pkg: None });
         power(s, &device)
     });
-    request(window, MirrorStart { stay_awake, screen_off, ..OPTIONS });
+    let options = screen_options(crate::settings::mirror_quality(), on_relay(&device));
+    set_unproven(device, options.max_size != OPTIONS.max_size);
+    request(window, MirrorStart { stay_awake, screen_off, ..options });
 }
 
 /// Phone currently receiving PC keyboard input without screen mirroring.
@@ -1065,6 +1131,48 @@ fn request(window: Window, mut options: MirrorStart) {
     });
 }
 
+#[cfg(test)]
+mod quality_tests {
+    use super::*;
+
+    #[test]
+    fn balanced_is_exactly_what_mirroring_always_asked_for() {
+        assert_eq!(OPTIONS.max_size, 1920);
+        assert_eq!(OPTIONS.fps, 60);
+        assert_eq!(OPTIONS.bitrate, 8_000_000);
+        let balanced = screen_options(Quality::Balanced, false);
+        assert_eq!((balanced.max_size, balanced.fps, balanced.bitrate), (1920, 60, 8_000_000));
+    }
+
+    #[test]
+    fn a_settings_file_without_a_quality_or_with_an_unknown_one_is_balanced() {
+        assert_eq!(Quality::parse(""), Quality::Balanced);
+        assert_eq!(Quality::parse("ultra"), Quality::Balanced);
+        for quality in [Quality::Balanced, Quality::Sharper, Quality::Smoother] {
+            assert_eq!(Quality::parse(quality.name()), quality);
+        }
+    }
+
+    #[test]
+    fn the_relay_always_gets_balanced_and_every_option_keeps_the_frame_rate() {
+        for quality in [Quality::Sharper, Quality::Smoother] {
+            let relayed = screen_options(quality, true);
+            assert_eq!((relayed.max_size, relayed.bitrate), (OPTIONS.max_size, OPTIONS.bitrate));
+            assert_eq!(screen_options(quality, false).fps, OPTIONS.fps);
+            assert!(screen_options(quality, false).is_valid());
+        }
+        assert!(screen_options(Quality::Sharper, false).max_size > OPTIONS.max_size);
+        assert!(screen_options(Quality::Smoother, false).bitrate < OPTIONS.bitrate);
+    }
+
+    #[test]
+    fn only_a_started_stream_with_no_picture_asks_again() {
+        assert!(retry_at_balanced(true, true));
+        assert!(!retry_at_balanced(false, true), "it showed a picture, or asked for Balanced");
+        assert!(!retry_at_balanced(true, false), "declined on the phone, or closed here");
+    }
+}
+
 /// How long an app window may take to show its first frame.
 const APP_START_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
@@ -1135,6 +1243,16 @@ pub fn on_event(event: &NodeEvent) {
                 if cleared_kb {
                     core_host::host().hub.changed(Changes::MIRROR);
                 }
+            }
+            let showing = matches!(phase(&window), Some(Phase::Showing));
+            let unproven = *session == MIRROR_SCREEN && set_unproven(*device, false);
+            if retry_at_balanced(unproven, showing) {
+                tracing::warn!("the phone couldn't mirror at this quality; asking for Balanced");
+                let (stay_awake, screen_off) = state(|s| power(s, device));
+                set_phase(window, Phase::Asking);
+                set_notice(window, "This phone can't mirror at that quality, so it's using Balanced");
+                request(window, MirrorStart { stay_awake, screen_off, ..OPTIONS });
+                return;
             }
             if phase(&window).is_some() {
                 set_phase(window, Phase::Ended(None));
@@ -1937,6 +2055,16 @@ impl Sink {
 
 impl MirrorSink for Sink {
     fn config(&self, config: MirrorConfig) {
+        // A picture is coming: this quality works on this phone.
+        if self.window.session == MIRROR_SCREEN {
+            set_unproven(self.window.device, false);
+        }
+        tracing::info!(
+            width = config.width,
+            height = config.height,
+            session = self.window.session,
+            "mirror stream size"
+        );
         LAST_CONFIG
             .lock()
             .unwrap_or_else(|e| e.into_inner())

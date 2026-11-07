@@ -1661,6 +1661,29 @@ Item {
 
                 Card {
                     width: parent.width
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.screenOff
+                        title: qsTr("Mirror quality")
+                        description: Preferences.mirrorQuality === "sharper"
+                            ? qsTr("The phone's full resolution. Uses more of its battery, and needs good Wi-Fi or USB and a GPU on this PC.")
+                            : Preferences.mirrorQuality === "smoother"
+                            ? qsTr("A softer picture that holds up better on weak Wi-Fi.")
+                            : qsTr("For the phone's whole screen, from the next time you open it. App windows don't change.")
+                        Segmented {
+                            options: [
+                                { value: "balanced", label: qsTr("Balanced") },
+                                { value: "sharper", label: qsTr("Sharper") },
+                                { value: "smoother", label: qsTr("Smoother") }
+                            ]
+                            value: Preferences.mirrorQuality
+                            onPicked: (value) => Preferences.mirrorQuality = value
+                        }
+                    }
+                }
+
+                Card {
+                    width: parent.width
                     Column {
                         width: parent.width
 
