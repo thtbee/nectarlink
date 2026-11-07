@@ -11,6 +11,9 @@ change things that need a step from you, and its notes say so.
 - **Share photos and videos from the PC.** On Windows, the Photos page has a Share
   button that opens the system's share sheet
   ([#174](https://github.com/thtbee/nectarlink/issues/174)).
+- **Pick how Elevated starts.** When Shizuku is installed or the phone is rooted, Elevated's
+  settings on the phone let you choose Wireless debugging, Shizuku or root
+  ([#110](https://github.com/thtbee/nectarlink/issues/110)).
 - **Back, Home and Recent apps buttons** in the mirror window's toolbar
   ([#192](https://github.com/thtbee/nectarlink/issues/192)).
 - **Brazilian Portuguese.** The Android and PC apps speak Brazilian Portuguese
