@@ -24,11 +24,11 @@ import java.util.concurrent.Executor
  * Needs a CDM association with the app streaming profile for the shell,
  * which [create] makes once (it then lasts across reboots).
  */
-@RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
 @SuppressLint("PrivateApi", "DiscouragedPrivateApi", "BlockedPrivateApi")
 internal class VirtualDevice private constructor(private val device: Any) {
 
     /** A display on this device; [flags] must leave out OWN_DISPLAY_GROUP, which would move it back to the default group. */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     fun createVirtualDisplay(name: String, width: Int, height: Int, dpi: Int, surface: Surface, flags: Int): VirtualDisplay {
         val config = VirtualDisplayConfig.Builder(name, width, height, dpi).setFlags(flags).setSurface(surface).build()
         return device.javaClass
@@ -48,8 +48,11 @@ internal class VirtualDevice private constructor(private val device: Any) {
         private const val ADDRESS = "02:00:00:00:5c:01"
         /** VirtualDeviceParams.LOCK_STATE_ALWAYS_UNLOCKED: apps show on it while the phone is locked. */
         private const val LOCK_STATE_ALWAYS_UNLOCKED = 1
+        private const val ASSOCIATION_POLLS = 20
+        private const val ASSOCIATION_POLL_MS = 100L
 
         /** A virtual device, or null when there's no association and none can be made, or no virtual devices. */
+        @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
         fun create(): VirtualDevice? = runCatching {
             val association = association() ?: return null
             val context = ShellContext.get()
@@ -69,15 +72,23 @@ internal class VirtualDevice private constructor(private val device: Any) {
         }.onFailure { System.err.println("no virtual device: $it") }.getOrNull()
 
         /** The shell's app streaming association, made first if there's none. */
+        @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
         private fun association(): Int? = findAssociation() ?: run {
             val process = Runtime.getRuntime().exec(
                 arrayOf("cmd", "companiondevice", "associate", "0", SHELL, ADDRESS, APP_STREAMING),
             )
             val said = process.inputStream.bufferedReader().readText() + process.errorStream.bufferedReader().readText()
             process.waitFor()
-            findAssociation().also { if (it == null) System.err.println("can't associate for app streaming: ${said.trim()}") }
+            // CDM lists a new association a moment after `associate` returns.
+            repeat(ASSOCIATION_POLLS) {
+                findAssociation()?.let { return it }
+                Thread.sleep(ASSOCIATION_POLL_MS)
+            }
+            System.err.println("can't associate for app streaming: ${said.trim()}")
+            null
         }
 
+        @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
         private fun findAssociation(): Int? {
             val serviceType = Class.forName("android.companion.ICompanionDeviceManager")
             val cdm = CompanionDeviceManager::class.java.getConstructor(serviceType, Context::class.java)
