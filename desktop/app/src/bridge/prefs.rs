@@ -213,7 +213,8 @@ pub mod qobject {
             device_id: &QString,
             phone_folder: &QString,
             pc_folder: &QString,
-            two_way: bool,
+            mode: &QString,
+            remove_deleted: bool,
         );
         /// Where a phone folder could go on this PC (the user's Pictures,
         /// Music, Videos or Documents), for the Add folder sheet.
@@ -958,7 +959,8 @@ impl qobject::Preferences {
         device_id: &QString,
         phone_folder: &QString,
         pc_folder: &QString,
-        two_way: bool,
+        mode: &QString,
+        remove_deleted: bool,
     ) {
         let raw_pc = QUrl::from(pc_folder)
             .to_local_file()
@@ -982,12 +984,18 @@ impl qobject::Preferences {
             return;
         }
         let next_id = new_rule_id("sync", rules.iter().map(|r| r.id.as_str()));
+        // Anything unknown gets the mode that can't change the phone.
+        let mode = match String::from(mode) {
+            m if m == crate::folder_sync::MODE_PC_TO_PHONE || m == crate::folder_sync::MODE_TWO_WAY => m,
+            _ => crate::folder_sync::MODE_PHONE_TO_PC.to_owned(),
+        };
         rules.push(crate::folder_sync::FolderSyncRule {
             id: next_id,
             phone_id,
             phone_folder: phone_trimmed,
             pc_folder: pc_trimmed.to_owned(),
-            mode: if two_way { "two_way".into() } else { "one_way_phone_to_pc".into() },
+            remove_deleted: remove_deleted && mode == crate::folder_sync::MODE_PHONE_TO_PC,
+            mode,
             enabled: true,
         });
         let json = serde_json::to_string(&rules).unwrap_or_else(|_| "[]".into());
