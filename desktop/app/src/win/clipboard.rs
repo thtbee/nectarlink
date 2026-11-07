@@ -199,6 +199,13 @@ fn on_clipboard_changed(hwnd: HWND) {
         return;
     }
     let clip = read_with(Some(hwnd), true);
+    // A password manager's: the listener decides, by the user's choice.
+    if matches!(clip, Clip::Private) {
+        if let Some(on_copy) = ON_COPY.get() {
+            on_copy(clip);
+        }
+        return;
+    }
     if let Clip::Text { ref text, html: None, rtf: None } = clip {
         let restore = LAST_WRITTEN_RICH
             .lock()
@@ -243,6 +250,15 @@ pub fn read() -> Clip {
 /// monitors away). Pasting it is what any app does; only watchers skip it.
 pub fn read_for_paste() -> Clip {
     read_with(window(), false)
+}
+
+/// The text a password manager marked private, for sending it when the user
+/// allows that.
+pub fn read_private_text() -> Option<String> {
+    match read_for_paste() {
+        Clip::Text { text, .. } => Some(text),
+        _ => None,
+    }
 }
 
 /// Reads an image from the clipboard as PNG bytes, if an image (`PNG`,

@@ -202,6 +202,8 @@
     <string name="clipboard_history_clear">Verlauf löschen</string>
     <string name="clipboard_history_done">Fertig</string>
     <string name="settings_clipboard_title">Zwischenablage</string>
+    <string name="settings_clipboard_passwords">Kopierte Passwörter synchronisieren</string>
+    <string name="settings_clipboard_passwords_hint">Sendet auch, was Passwort-Manager als privat markieren. Es bleibt in der Zwischenablage des PCs, bis etwas anderes es ersetzt, und landet nie im Verlauf.</string>
     <string name="settings_clipboard_suggestions">Aktionen für kopierten Text vorschlagen</string>
     <string name="settings_clipboard_suggestions_hint">Aktionen für Text von deinem PC vorschlagen: Links öffnen, Karten, Anrufe, Sendungsverfolgung und E-Mail.</string>
     <string name="clip_received_from">Kopiert von %1$s</string>

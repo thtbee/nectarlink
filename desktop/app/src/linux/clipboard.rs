@@ -590,6 +590,15 @@ fn read_from_os(check_privacy: bool) -> Option<Clip> {
     None
 }
 
+/// The text a password manager marked private, for sending it when the user
+/// allows that.
+pub fn read_private_text() -> Option<String> {
+    match read_from_os(false) {
+        Some(Clip::Text { text, .. }) => Some(text),
+        _ => None,
+    }
+}
+
 /// Reads the current clipboard contents.
 pub fn read() -> Clip {
     if let Some(os_clip) = read_from_os(true) {

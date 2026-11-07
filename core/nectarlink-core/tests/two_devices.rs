@@ -29,6 +29,7 @@ struct RecordingPlatform {
     dismissed: Mutex<Vec<String>>,
     actions: Mutex<Vec<(String, String, Option<String>)>>,
     clipboard: Mutex<Vec<String>>,
+    clipboard_private: Mutex<Vec<String>>,
     clipboard_rich: Mutex<Vec<RichClipboardRecord>>,
     images: Mutex<Vec<(String, Vec<u8>)>>,
     media: Mutex<Vec<(String, MediaAction, Option<u64>)>>,
@@ -94,6 +95,10 @@ impl Platform for RecordingPlatform {
             html.map(str::to_owned),
             rtf.map(str::to_owned),
         ));
+        Ok(())
+    }
+    fn set_clipboard_private(&self, text: &str) -> Result<(), String> {
+        self.clipboard_private.lock().unwrap().push(text.to_owned());
         Ok(())
     }
     fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
@@ -1546,6 +1551,30 @@ async fn clipboard_text_goes_both_ways_with_consent() {
 
     let huge = "x".repeat(nectarlink_core::CLIP_MAX_BYTES + 1);
     assert!(matches!(pc.node.send_clipboard(phone_id, huge).await, Err(Error::TooLarge)));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_password_arrives_marked_private_and_leaves_no_record() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    phone.node.set_device_toggle(pc_id, "clipboard", true).unwrap();
+    pc.node.set_device_toggle(phone_id, "clipboard", true).unwrap();
+    with_timeout("send", phone.node.send_clipboard_private(pc_id, "hunter2".into())).await.expect("sent");
+
+    assert_eq!(pc.platform.clipboard_private.lock().unwrap().as_slice(), ["hunter2"]);
+    assert!(pc.platform.clipboard.lock().unwrap().is_empty(), "not the normal clipboard call");
+    assert!(pc.node.clipboard_history(None).is_empty(), "nothing in the PC's history");
+    assert!(phone.node.clipboard_history(None).is_empty(), "nothing in the phone's history");
+
+    // Never queued for later.
+    let stranger = pc.node.device_id();
+    pc.node.shutdown().await;
+    let later = with_timeout("offline", phone.node.send_clipboard_private(stranger, "hunter2".into())).await;
+    assert!(later.is_err(), "{later:?}");
+    assert!(phone.node.send_queue(None).unwrap().is_empty(), "nothing left in the queue");
 }
 
 #[tokio::test(flavor = "multi_thread")]

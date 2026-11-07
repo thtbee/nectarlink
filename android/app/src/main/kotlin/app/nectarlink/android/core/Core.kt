@@ -1491,6 +1491,23 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     suspend fun sendClipboard(text: String, pcId: String? = null, html: String? = null): String =
         sendToPcs(image = false, pcId = pcId) { node, pc -> node.sendClipboardRich(pc, text, html, null) }
 
+    /** Sends what a password manager copied, when the user chose that. Never queued. */
+    suspend fun sendClipboardSensitive(text: String, pcId: String? = null): String =
+        sendToPcs(image = false, pcId = pcId) { node, pc -> node.sendClipboardPrivate(pc, text) }
+
+    /** A password manager copied this in the background while Elevated is running. */
+    fun onElevatedSensitiveCopied(text: String) {
+        if (!PhoneClipboard.syncPasswords(context) || PhoneClipboard.isRecentEcho(text, null)) return
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@launch
+            for (pc in _state.value.devices.filter { it.online }) {
+                runCatching { currentNode.sendClipboardPrivate(pc.id, text) }
+                    .onFailure { Log.d(TAG, "private clip not sent to ${pc.id}") }
+            }
+        }
+    }
+
     /**
      * Automatically sends non-sensitive text copied in the background while Elevated mode is running.
      * Skips clips NectarLink itself wrote from a PC (`PhoneClipboard.isRecentEcho`).

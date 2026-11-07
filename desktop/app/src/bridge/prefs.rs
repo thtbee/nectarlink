@@ -113,6 +113,7 @@ pub mod qobject {
         /// Open a single file shared from the phone when it arrives.
         #[qproperty(bool, open_shared_files)]
         #[qproperty(bool, sync_wifi_only)]
+        #[qproperty(bool, sync_passwords)]
         /// Send the clipboard to the phone when control moves to it.
         #[qproperty(bool, flow_follow_clipboard)]
         /// Floating Nectar Island pill at the top center of the screen.
@@ -356,6 +357,7 @@ pub struct PreferencesRust {
     clipboard_auto_copy_received_files: bool,
     open_shared_files: bool,
     sync_wifi_only: bool,
+    sync_passwords: bool,
     flow_follow_clipboard: bool,
     nectar_island: bool,
     nectar_island_calls: bool,
@@ -462,6 +464,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_clipboard_auto_copy_received_files(settings.clipboard_auto_copy_received_files);
         self.as_mut().set_open_shared_files(settings.open_shared_files);
         self.as_mut().set_sync_wifi_only(settings.sync_wifi_only);
+        self.as_mut().set_sync_passwords(settings.sync_passwords);
         self.as_mut().set_flow_follow_clipboard(settings.flow_follow_clipboard);
         self.as_mut().set_nectar_island(settings.nectar_island);
         self.as_mut().set_nectar_island_calls(settings.nectar_island_calls);
@@ -734,6 +737,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_open_shared_files_changed(|p| {
                 crate::settings::set_open_shared_files(p.open_shared_files);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_sync_passwords_changed(|p| {
+                crate::settings::set_sync_passwords(p.sync_passwords);
                 p.save();
             })
             .release();
@@ -1162,6 +1171,7 @@ impl qobject::Preferences {
             clipboard_auto_copy_received_files: p.clipboard_auto_copy_received_files,
             open_shared_files: p.open_shared_files,
             sync_wifi_only: p.sync_wifi_only,
+            sync_passwords: p.sync_passwords,
             flow_follow_clipboard: p.flow_follow_clipboard,
             folder_sync_rules: crate::settings::folder_sync_rules(),
             nectar_island: p.nectar_island,

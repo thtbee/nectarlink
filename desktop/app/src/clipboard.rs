@@ -225,6 +225,20 @@ fn on_copy(clip: Clip) {
     if devices.is_empty() {
         return;
     }
+    if matches!(clip, Clip::Private) {
+        let Some(text) = crate::settings::sync_passwords().then(clipboard::read_private_text).flatten()
+        else {
+            return;
+        };
+        core_host::spawn(async move {
+            for device in devices {
+                if let Err(e) = node.send_clipboard_private(device, text.clone()).await {
+                    tracing::debug!(device = %device.short(), error = %e, "private clip not sent");
+                }
+            }
+        });
+        return;
+    }
     core_host::spawn(async move {
         let Some(content) = Content::from_clip(clip).await else { return };
         for device in devices {
@@ -282,10 +296,23 @@ pub fn send_now(device: DeviceId) {
     let image = matches!(clip, Clip::Image(_));
     match clip {
         Clip::Private => {
-            return show_message(tr!(
-                "Clipboard",
-                "What you copied is marked private by its app, so it wasn't sent."
-            ));
+            let Some(text) = crate::settings::sync_passwords().then(clipboard::read_private_text).flatten()
+            else {
+                return show_message(tr!(
+                    "Clipboard",
+                    "What you copied is marked private by its app, so it wasn't sent."
+                ));
+            };
+            core_host::spawn(async move {
+                match node.send_clipboard_private(device, text).await {
+                    Ok(()) => show_message(tr!("Clipboard", "Sent to %1.", name)),
+                    Err(Error::Denied) => {
+                        show_message(tr!("Clipboard", "The clipboard is turned off for %1.", name))
+                    }
+                    Err(e) => show_message(describe(&e)),
+                }
+            });
+            return;
         }
         Clip::Empty => {
             if let Some(files) = clipboard::read_files() {
