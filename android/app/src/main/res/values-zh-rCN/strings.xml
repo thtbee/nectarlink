@@ -197,7 +197,7 @@
     <string name="clipboard_history_done">完成</string>
     <string name="settings_clipboard_title">剪贴板</string>
     <string name="settings_clipboard_passwords">同步复制的密码</string>
-    <string name="settings_clipboard_passwords_hint">也会发送密码管理器标记为私密的内容。它会一直留在电脑的剪贴板上，直到被其他内容替换，且不会保存到历史记录。</string>
+    <string name="settings_clipboard_passwords_hint">也会发送密码管理器标记为私密的内容。一分钟后会从电脑的剪贴板清除，且不会保存到历史记录。</string>
     <string name="settings_clipboard_suggestions">为复制的文本推荐操作</string>
     <string name="settings_clipboard_suggestions_hint">为来自电脑的文本推荐操作：打开链接、地图、拨号、快递和邮件。</string>
     <string name="clip_received_from">复制自 %1$s</string>

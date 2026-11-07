@@ -8075,11 +8075,6 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2973"/>
-        <source>Also sends what password managers mark private. It stays on the phone&apos;s clipboard until something replaces it, and is never kept in history.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="3001"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="3025"/>
         <source>Clipboard history</source>
@@ -8531,6 +8526,11 @@ What it needs
     <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="2420"/>
         <source>Add folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2973"/>
+        <source>Also sends what password managers mark private. It leaves the phone&apos;s clipboard after a minute where Android allows it, and is never kept in history.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

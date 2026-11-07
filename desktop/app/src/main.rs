@@ -115,6 +115,9 @@ impl Platform for DesktopPlatform {
     fn set_clipboard_private(&self, text: &str) -> Result<(), String> {
         win::clipboard::write_private(text)
     }
+    fn clear_clipboard_private(&self, text: &str) {
+        win::clipboard::clear_private(text);
+    }
     fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
         win::clipboard::write_image(mime, bytes)
     }

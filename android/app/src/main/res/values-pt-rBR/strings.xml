@@ -203,7 +203,7 @@
     <string name="clipboard_history_done">Concluído</string>
     <string name="settings_clipboard_title">Área de transferência</string>
     <string name="settings_clipboard_passwords">Sincronizar senhas copiadas</string>
-    <string name="settings_clipboard_passwords_hint">Envia também o que os gerenciadores de senhas marcam como privado. Fica na área de transferência do PC até algo substituir, e nunca é guardado no histórico.</string>
+    <string name="settings_clipboard_passwords_hint">Envia também o que os gerenciadores de senhas marcam como privado. Sai da área de transferência do PC após um minuto e nunca é guardado no histórico.</string>
     <string name="settings_clipboard_suggestions">Sugerir ações para o texto copiado</string>
     <string name="settings_clipboard_suggestions_hint">Sugere ações para textos vindos do PC: abrir links e mapas, ligar, rastrear encomendas e mandar e-mail.</string>
     <string name="clip_received_from">Copiado de %1$s</string>

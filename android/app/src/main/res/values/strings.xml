@@ -205,7 +205,7 @@
     <string name="clipboard_history_done">Done</string>
     <string name="settings_clipboard_title">Clipboard</string>
     <string name="settings_clipboard_passwords">Sync copied passwords</string>
-    <string name="settings_clipboard_passwords_hint">Also sends what password managers mark private. It stays on the PC\'s clipboard until something replaces it, and is never kept in history.</string>
+    <string name="settings_clipboard_passwords_hint">Also sends what password managers mark private. It leaves the PC\'s clipboard after a minute, and is never kept in history.</string>
     <string name="settings_clipboard_suggestions">Suggest actions for copied text</string>
     <string name="settings_clipboard_suggestions_hint">Suggest actions for text from your PC: open links, maps, calls, parcels and email.</string>
     <string name="clip_received_from">Copied from %1$s</string>

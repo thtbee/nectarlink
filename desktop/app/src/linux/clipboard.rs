@@ -590,6 +590,15 @@ fn read_from_os(check_privacy: bool) -> Option<Clip> {
     None
 }
 
+/// Empties the clipboard if `text` is still what's on it.
+pub fn clear_private(text: &str) {
+    if read_private_text().is_some_and(|now| now == text)
+        && let Err(reason) = write_private("")
+    {
+        tracing::warn!(reason, "can't clear a password from the clipboard");
+    }
+}
+
 /// The text a password manager marked private, for sending it when the user
 /// allows that.
 pub fn read_private_text() -> Option<String> {

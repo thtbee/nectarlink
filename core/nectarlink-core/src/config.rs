@@ -41,6 +41,8 @@ pub struct NodeConfig {
     /// (`adb forward tcp:0 tcp:<usb_port>`). Typically `Some(53319)` on
     /// phones and `None` on PCs.
     pub usb_port: Option<u16>,
+    /// How long a password from another device stays on this clipboard.
+    pub private_clip_lifetime: std::time::Duration,
     /// ADB server address on a PC (`127.0.0.1:5037`) for automatic USB
     /// detection, port forwarding, and USB auto-pairing.
     pub adb_server: Option<std::net::SocketAddr>,
@@ -137,6 +139,7 @@ impl NodeConfig {
             capabilities: vec![nectarlink_protocol::messages::continuity_camera::RECEIVE.into()],
             localsend_port,
             usb_port: None,
+            private_clip_lifetime: std::time::Duration::from_secs(60),
             adb_server: None,
             transport: TransportTuning::from_env(),
         }
@@ -204,6 +207,10 @@ pub trait Platform: Send + Sync + 'static {
     fn set_clipboard_private(&self, text: &str) -> Result<(), String> {
         self.set_clipboard(text)
     }
+
+    /// Take a password a device sent off this clipboard, if `text` is still what's
+    /// there. Anything copied since stays. Defaults to doing nothing.
+    fn clear_clipboard_private(&self, _text: &str) {}
 
     /// Put an image on this device's clipboard (a paired device sent it).
     /// `mime` is `image/png` or `image/jpeg`.

@@ -8352,9 +8352,8 @@ O que precisa
         <translation>Sincronizar senhas copiadas</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2973"/>
         <source>Also sends what password managers mark private. It stays on the phone&apos;s clipboard until something replaces it, and is never kept in history.</source>
-        <translation>Envia também o que os gerenciadores de senhas marcam como privado. Fica na área de transferência do celular até algo substituir, e nunca é guardado no histórico.</translation>
+        <translation type="vanished">Envia também o que os gerenciadores de senhas marcam como privado. Fica na área de transferência do celular até algo substituir, e nunca é guardado no histórico.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3001"/>
@@ -8809,6 +8808,11 @@ O que precisa
         <location filename="../qml/pages/SettingsPage.qml" line="2420"/>
         <source>Add folder</source>
         <translation>Adicionar pasta</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="2973"/>
+        <source>Also sends what password managers mark private. It leaves the phone&apos;s clipboard after a minute where Android allows it, and is never kept in history.</source>
+        <translation>Envia também o que os gerenciadores de senhas marcam como privado. Sai da área de transferência do celular após um minuto, quando o Android permite, e nunca é guardado no histórico.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3445"/>

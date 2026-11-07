@@ -100,6 +100,8 @@ internal class PhonePlatform(
 
     override fun setClipboardPrivate(text: String): Boolean = PhoneClipboard.writeSensitive(context, text)
 
+    override fun clearClipboardPrivate(text: String) = PhoneClipboard.clearSensitive(context, text)
+
     override fun setClipboardRich(text: String, html: String?, rtf: String?): Boolean =
         PhoneClipboard.write(context, text, html)
 
