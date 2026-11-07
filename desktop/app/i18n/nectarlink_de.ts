@@ -8415,9 +8415,8 @@ Voraussetzungen
         <translation>Kopierte Passwörter synchronisieren</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2996"/>
         <source>Also sends what password managers mark private. It stays on the phone&apos;s clipboard until something replaces it, and is never kept in history.</source>
-        <translation>Sendet auch, was Passwort-Manager als privat markieren. Es bleibt in der Zwischenablage des Handys, bis etwas anderes es ersetzt, und landet nie im Verlauf.</translation>
+        <translation type="vanished">Sendet auch, was Passwort-Manager als privat markieren. Es bleibt in der Zwischenablage des Handys, bis etwas anderes es ersetzt, und landet nie im Verlauf.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3024"/>
@@ -8871,6 +8870,11 @@ Voraussetzungen
         <location filename="../qml/pages/SettingsPage.qml" line="2443"/>
         <source>Add folder</source>
         <translation>Ordner hinzufügen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="2996"/>
+        <source>Also sends what password managers mark private. It leaves the phone&apos;s clipboard after a minute where Android allows it, and is never kept in history.</source>
+        <translation>Sendet auch, was Passwort-Manager als privat markieren. Es verschwindet nach einer Minute aus der Zwischenablage des Handys, wo Android das zulässt, und landet nie im Verlauf.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3468"/>

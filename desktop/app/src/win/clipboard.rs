@@ -252,6 +252,19 @@ pub fn read_for_paste() -> Clip {
     read_with(window(), false)
 }
 
+/// Empties the clipboard if `text` is still what's on it.
+pub fn clear_private(text: &str) {
+    let Clip::Text { text: now, .. } = read_for_paste() else { return };
+    if now.replace("\r\n", "\n") != text.replace("\r\n", "\n") {
+        return;
+    }
+    let Some(_open) = Opened::open(window()) else { return };
+    // SAFETY: the clipboard is open on this thread until `_open` drops.
+    if let Err(error) = unsafe { EmptyClipboard() } {
+        tracing::warn!(%error, "can't clear a password from the clipboard");
+    }
+}
+
 /// The text a password manager marked private, for sending it when the user
 /// allows that.
 pub fn read_private_text() -> Option<String> {

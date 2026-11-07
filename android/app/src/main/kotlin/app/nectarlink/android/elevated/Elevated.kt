@@ -903,6 +903,13 @@ object Elevated {
      * doesn't pop up "copied" for a copy made on the PC. False when the
      * helper isn't running (the app writes it then).
      */
+    /** Has the helper empty the clipboard if `text` is still on it; false if it isn't running. */
+    fun clearClipboard(text: String): Boolean {
+        val writer = input ?: return false
+        val b64 = android.util.Base64.encodeToString(text.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
+        return send(writer, "X $b64")
+    }
+
     fun setClipboard(text: String, html: String?, sensitive: Boolean = false): Boolean {
         val writer = input ?: return false
         val b64 = { value: String -> android.util.Base64.encodeToString(value.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP) }

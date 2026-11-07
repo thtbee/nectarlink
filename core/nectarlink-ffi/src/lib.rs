@@ -2645,6 +2645,8 @@ pub trait Platform: Send + Sync {
     /// A PC sent a password or the like: put it on the clipboard marked
     /// sensitive. False if that failed.
     fn set_clipboard_private(&self, text: String) -> bool;
+    /// Takes that password off the clipboard, if it's still what's there.
+    fn clear_clipboard_private(&self, text: String);
     /// A PC sent this image (`image/png` or `image/jpeg`): put it on the
     /// clipboard. False if that failed.
     fn set_clipboard_image(&self, mime: String, bytes: Vec<u8>) -> bool;
@@ -2873,6 +2875,9 @@ impl core::Platform for PlatformAdapter {
         } else {
             Err("the phone couldn't set the clipboard".to_owned())
         }
+    }
+    fn clear_clipboard_private(&self, text: &str) {
+        self.0.clear_clipboard_private(text.to_owned());
     }
     fn set_clipboard_rich(&self, text: &str, html: Option<&str>, rtf: Option<&str>) -> Result<(), String> {
         if self.0.set_clipboard_rich(text.to_owned(), html.map(str::to_owned), rtf.map(str::to_owned)) {

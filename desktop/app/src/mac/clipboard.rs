@@ -95,6 +95,19 @@ pub fn start(on_copy: impl Fn(Clip) + Send + Sync + 'static) {
         .ok();
 }
 
+/// Empties the clipboard if nothing has been copied since NectarLink wrote `text`.
+pub fn clear_private(text: &str) {
+    let ours = LAST_TEXT.lock().unwrap_or_else(|e| e.into_inner()).as_deref() == Some(text);
+    let unchanged =
+        LAST_COUNT.load(Ordering::Relaxed) == crate::bridge::native::ffi::mac_clipboard_change_count();
+    if ours
+        && unchanged
+        && let Err(reason) = write_private("")
+    {
+        tracing::warn!(reason, "can't clear a password from the clipboard");
+    }
+}
+
 /// macOS gives the text only when it isn't marked private, so a password stays
 /// out of reach here.
 pub fn read_private_text() -> Option<String> {

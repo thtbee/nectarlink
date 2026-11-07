@@ -142,12 +142,27 @@ object InputServer {
 
     /** The clipboard service and its setPrimaryClip, once the watcher found them. */
     @Volatile private var clipService: Pair<Any, Method>? = null
+    @Volatile private var clipGet: Method? = null
 
     /**
      * Puts a PC's text on the clipboard as the shell, marked to suppress the
      * clipboard overlay: SystemUI (Samsung's copy toast too) honours that
      * only for clips the shell sets, so the copy doesn't pop up on the phone.
      */
+    /** Empties the clipboard if the text (base64) is still what's on it. */
+    private fun clearClipboard(rest: String) {
+        val (service, set) = clipService ?: return
+        val get = clipGet ?: return
+        runCatching {
+            val text = String(android.util.Base64.decode(rest, android.util.Base64.NO_WRAP), Charsets.UTF_8)
+            val clip = get.invoke(service, *buildClipboardArgs(get.parameterTypes, null, null))
+                as? android.content.ClipData ?: return
+            if (clip.itemCount == 0 || clip.getItemAt(0).text?.toString() != text) return
+            val empty = android.content.ClipData.newPlainText("Nectarlink", "")
+            set.invoke(service, *buildClipboardArgs(set.parameterTypes, null, empty))
+        }.onFailure { System.err.println("can't clear the clipboard: $it") }
+    }
+
     private fun setClipboard(rest: String) {
         val (service, set) = clipService ?: return System.err.println("no clipboard to set")
         runCatching {
@@ -177,6 +192,7 @@ object InputServer {
             val stub = Class.forName("android.content.IClipboard\$Stub")
             val clipboard = stub.getMethod("asInterface", android.os.IBinder::class.java).invoke(null, binder) ?: return
             val getMethod = clipboard.javaClass.methods.firstOrNull { it.name == "getPrimaryClip" } ?: return
+            clipGet = getMethod
             clipboard.javaClass.methods.firstOrNull { it.name == "setPrimaryClip" }?.let { clipService = clipboard to it }
             val addMethod = clipboard.javaClass.methods.firstOrNull { it.name == "addPrimaryClipChangedListener" } ?: return
             val listenerClass = Class.forName("android.content.IOnPrimaryClipChangedListener")
@@ -731,6 +747,7 @@ object InputServer {
                 }
                 "P" -> if (display < 0) setDisplayPower(rest.trim() != "0")
                 "B" -> if (display < 0) setClipboard(rest)
+                "X" -> if (display < 0) clearClipboard(rest)
             }
         }
 

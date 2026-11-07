@@ -7789,6 +7789,41 @@ O que precisa
         <translation>Abrir</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1667"/>
+        <source>Mirror quality</source>
+        <translation>Qualidade do espelhamento</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1669"/>
+        <source>The phone&apos;s full resolution. Uses more of its battery, and needs good Wi-Fi or USB and a GPU on this PC.</source>
+        <translation>A resolução total do celular. Usa mais bateria e precisa de um bom Wi-Fi ou USB e de uma GPU neste PC.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1671"/>
+        <source>A softer picture that holds up better on weak Wi-Fi.</source>
+        <translation>Uma imagem mais suave que se sai melhor em Wi-Fi fraco.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1672"/>
+        <source>For the phone&apos;s whole screen, from the next time you open it. App windows don&apos;t change.</source>
+        <translation>Para a tela inteira do celular, a partir da próxima vez que abrir. As janelas de apps não mudam.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1675"/>
+        <source>Balanced</source>
+        <translation>Equilibrado</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1676"/>
+        <source>Sharper</source>
+        <translation>Mais nítido</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1677"/>
+        <source>Smoother</source>
+        <translation>Mais fluido</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1706"/>
         <location filename="../qml/pages/SettingsPage.qml" line="1709"/>
         <source>Stream PC audio to phone</source>
@@ -7858,41 +7893,6 @@ O que precisa
         <location filename="../qml/pages/SettingsPage.qml" line="1500"/>
         <source>Mirroring and app windows start with this phone&apos;s screen off. Needs Elevated.</source>
         <translation>O espelhamento e as janelas de apps começam com a tela do celular desligada. Requer o Elevated.</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1667"/>
-        <source>Mirror quality</source>
-        <translation>Qualidade do espelhamento</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1669"/>
-        <source>The phone&apos;s full resolution. Uses more of its battery, and needs good Wi-Fi or USB and a GPU on this PC.</source>
-        <translation>A resolução total do celular. Usa mais bateria e precisa de um bom Wi-Fi ou USB e de uma GPU neste PC.</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1671"/>
-        <source>A softer picture that holds up better on weak Wi-Fi.</source>
-        <translation>Uma imagem mais suave que se sai melhor em Wi-Fi fraco.</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1672"/>
-        <source>For the phone&apos;s whole screen, from the next time you open it. App windows don&apos;t change.</source>
-        <translation>Para a tela inteira do celular, a partir da próxima vez que abrir. As janelas de apps não mudam.</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1675"/>
-        <source>Balanced</source>
-        <translation>Equilibrado</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1676"/>
-        <source>Sharper</source>
-        <translation>Mais nítido</translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1677"/>
-        <source>Smoother</source>
-        <translation>Mais fluido</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1771"/>
@@ -8388,9 +8388,8 @@ O que precisa
         <translation>Sincronizar senhas copiadas</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2996"/>
         <source>Also sends what password managers mark private. It stays on the phone&apos;s clipboard until something replaces it, and is never kept in history.</source>
-        <translation>Envia também o que os gerenciadores de senhas marcam como privado. Fica na área de transferência do celular até algo substituir, e nunca é guardado no histórico.</translation>
+        <translation type="vanished">Envia também o que os gerenciadores de senhas marcam como privado. Fica na área de transferência do celular até algo substituir, e nunca é guardado no histórico.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3024"/>
@@ -8845,6 +8844,11 @@ O que precisa
         <location filename="../qml/pages/SettingsPage.qml" line="2443"/>
         <source>Add folder</source>
         <translation>Adicionar pasta</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="2996"/>
+        <source>Also sends what password managers mark private. It leaves the phone&apos;s clipboard after a minute where Android allows it, and is never kept in history.</source>
+        <translation>Envia também o que os gerenciadores de senhas marcam como privado. Sai da área de transferência do celular após um minuto, quando o Android permite, e nunca é guardado no histórico.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3468"/>

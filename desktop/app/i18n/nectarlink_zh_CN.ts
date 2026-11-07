@@ -8406,9 +8406,8 @@ What it needs
         <translation>同步复制的密码</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2996"/>
         <source>Also sends what password managers mark private. It stays on the phone&apos;s clipboard until something replaces it, and is never kept in history.</source>
-        <translation>也会发送密码管理器标记为私密的内容。它会一直留在手机的剪贴板上，直到被其他内容替换，且不会保存到历史记录。</translation>
+        <translation type="vanished">也会发送密码管理器标记为私密的内容。它会一直留在手机的剪贴板上，直到被其他内容替换，且不会保存到历史记录。</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3024"/>
@@ -8849,6 +8848,11 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="2443"/>
         <source>Add folder</source>
         <translation>添加文件夹</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="2996"/>
+        <source>Also sends what password managers mark private. It leaves the phone&apos;s clipboard after a minute where Android allows it, and is never kept in history.</source>
+        <translation>也会发送密码管理器标记为私密的内容。在 Android 允许的情况下，一分钟后会从手机的剪贴板清除，且不会保存到历史记录。</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3468"/>

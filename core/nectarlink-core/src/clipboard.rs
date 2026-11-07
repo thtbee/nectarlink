@@ -39,6 +39,7 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                 let html = clip.html;
                 let rtf = clip.rtf;
                 let sensitive = clip.sensitive;
+                let clear_platform = platform.clone();
                 let written = {
                     let text = text.clone();
                     tokio::task::spawn_blocking(move || {
@@ -55,6 +56,18 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                     Ok(Ok(())) if sensitive => {
                         *shared.last_clip_suggestion.lock().unwrap_or_else(|e| e.into_inner()) = None;
                         shared.emit(NodeEvent::ClipboardReceived { device: peer });
+                        let lifetime = shared.private_clip_lifetime;
+                        let cancel = shared.cancel.clone();
+                        tokio::spawn(async move {
+                            tokio::select! {
+                                _ = tokio::time::sleep(lifetime) => {}
+                                _ = cancel.cancelled() => {}
+                            }
+                            let _ = tokio::task::spawn_blocking(move || {
+                                clear_platform.clear_clipboard_private(&text);
+                            })
+                            .await;
+                        });
                         Envelope::empty(types::OK)
                     }
                     Ok(Ok(())) => {

@@ -26,8 +26,8 @@ change things that need a step from you, and its notes say so.
   up with what's still on the phone
   ([#219](https://github.com/thtbee/nectarlink/issues/219)).
 - **Sync copied passwords.** An opt-in switch on the phone and the PC sends what password
-  managers mark private. It's marked private on the other side too, and never goes into
-  history, the Timeline or the offline queue
+  managers mark private. It's marked private on the other side too, leaves that clipboard
+  after a minute, and never goes into history, the Timeline or the offline queue
   ([#272](https://github.com/thtbee/nectarlink/issues/272)).
 - **Mirror quality.** Balanced as before, Sharper for the phone's full resolution, or
   Smoother for weak Wi-Fi, in Settings › Camera & Audio on the PC. It's for the phone's
@@ -140,6 +140,7 @@ what people reported since 0.1.4.
 - Nectar Island's progress bar moves while music plays, instead of only when the phone
   sends an update.
 - On GNOME with Wayland, Nectar Island stays on top if you have the PiP on top extension.
+- Quitting the PC app with a mirror open could crash it on the way out.
 - Voice typing from the phone no longer loses or doubles letters in Notepad when it
   rewrites a phrase ([#52](https://github.com/thtbee/nectarlink/issues/52)).
 - **Type on phone** shows what you've typed instead of only the last key, which looked

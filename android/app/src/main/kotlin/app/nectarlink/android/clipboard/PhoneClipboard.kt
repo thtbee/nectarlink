@@ -241,6 +241,25 @@ object PhoneClipboard {
         true
     }.getOrDefault(false)
 
+    /**
+     * Takes a password from a PC off the clipboard, if it's still what's there. Android
+     * hides the clipboard from apps in the background: without Elevated, a phone that
+     * can't tell leaves it, since it could be something the user copied since.
+     */
+    fun clearSensitive(context: Context, text: String) {
+        if (app.nectarlink.android.elevated.Elevated.clearClipboard(text)) return
+        runCatching {
+            val mgr = manager(context) ?: return
+            val now = mgr.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString() ?: return
+            if (normalizeClipText(now) != normalizeClipText(text)) return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                mgr.clearPrimaryClip()
+            } else {
+                mgr.setPrimaryClip(ClipData.newPlainText("Nectarlink", ""))
+            }
+        }
+    }
+
     fun write(context: Context, text: String, html: String? = null): Boolean = runCatching {
         appContext = context.applicationContext
         val cleanHtml = html?.takeIf(String::isNotBlank)
