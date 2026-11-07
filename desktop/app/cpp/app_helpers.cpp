@@ -296,6 +296,14 @@ void drop(QPointer<QTranslator> &translator)
 }
 } // namespace
 
+rust::Vec<rust::String> system_ui_languages()
+{
+    rust::Vec<rust::String> out;
+    for (const QString &tag : QLocale::system().uiLanguages())
+        out.push_back(rust::String(tag.toStdString()));
+    return out;
+}
+
 bool install_translator(rust::Str dir, rust::Str language)
 {
     const QString folder = QString::fromUtf8(dir.data(), static_cast<qsizetype>(dir.size()));

@@ -65,11 +65,44 @@ fn select_translation_dir(exe_dir: &Path) -> PathBuf {
 /// Uses `language` ("" for the system's) from now on, retranslating the
 /// open windows. Call on the Qt thread, after the `QGuiApplication` exists.
 pub fn install(language: &str) {
-    let language = if is_known(language) { language } else { "" };
+    let chosen = if is_known(language) { language } else { "" };
+    // Qt goes down the whole list for a file, and English has none, so with English
+    // first and German second it took German (#280). This stops at English.
+    let system = if chosen.is_empty() {
+        system_language(&crate::bridge::native::ffi::system_ui_languages())
+    } else {
+        ""
+    };
+    let language = if chosen.is_empty() { system } else { chosen };
+    tracing::info!(chosen, language, "app language");
     let Some(exe) = exe_dir() else { return };
     let dir = select_translation_dir(&exe);
     let installed = crate::bridge::native::ffi::install_translator(&dir.to_string_lossy(), language);
     tracing::debug!(language, dir = %dir.display(), installed, "translator");
+}
+
+/// The language to use when following the system: the first of the user's
+/// languages the app speaks, English included, from tags like `de-DE` or `zh-Hans-CN`.
+fn system_language(preferred: &[String]) -> &'static str {
+    for tag in preferred {
+        let tag = tag.replace('_', "-").to_ascii_lowercase();
+        let mut parts = tag.split('-');
+        let base = parts.next().unwrap_or_default();
+        let rest: Vec<&str> = parts.collect();
+        let code = match base {
+            "en" => "en",
+            "de" => "de",
+            "tr" => "tr",
+            "pt" if rest.contains(&"br") => "pt_BR",
+            "zh" if rest.contains(&"hans") || rest.contains(&"cn") || rest.contains(&"sg") => "zh_CN",
+            "zh" if rest.is_empty() => "zh_CN",
+            _ => continue,
+        };
+        if is_known(code) {
+            return code;
+        }
+    }
+    "en"
 }
 
 /// `text` (from `context`) in the app's language. Use [`tr!`], which also
@@ -153,6 +186,23 @@ mod tests {
         let name = "Pixel 9";
         assert_eq!(tr!("Tests", "Sent to %1", name), "Sent to Pixel 9");
         assert_eq!(tr!("Tests", "Done"), "Done");
+    }
+
+    #[test]
+    fn following_the_system_stops_at_the_first_language_it_speaks() {
+        let list = |tags: &[&str]| tags.iter().map(|t| (*t).to_owned()).collect::<Vec<_>>();
+        // English first: English, even with German further down (#280).
+        assert_eq!(system_language(&list(&["en-US", "de-DE"])), "en");
+        assert_eq!(system_language(&list(&["en-IN", "hi-IN", "de"])), "en");
+        assert_eq!(system_language(&list(&["de-DE", "en-US"])), "de");
+        // One it doesn't speak first: the next one it does.
+        assert_eq!(system_language(&list(&["ru-RU", "tr-TR"])), "tr");
+        assert_eq!(system_language(&list(&["zh-Hans-CN"])), "zh_CN");
+        assert_eq!(system_language(&list(&["zh-Hant-TW", "en"])), "en");
+        assert_eq!(system_language(&list(&["pt-BR"])), "pt_BR");
+        assert_eq!(system_language(&list(&["pt-PT", "en-GB"])), "en");
+        assert_eq!(system_language(&list(&["ja-JP"])), "en");
+        assert_eq!(system_language(&[]), "en");
     }
 
     #[test]

@@ -144,6 +144,9 @@ what people reported since 0.1.4.
 - Quitting the PC app with a mirror open could crash it on the way out.
 - On GNOME with Wayland, text copied on the phone could be replaced by what was on the
   PC's clipboard, once NectarLink got focus.
+- Following the system's language, the PC app could open in German (or another language
+  further down Windows' list) when English came first
+  ([#280](https://github.com/thtbee/nectarlink/issues/280)).
 - Voice typing from the phone no longer loses or doubles letters in Notepad when it
   rewrites a phrase ([#52](https://github.com/thtbee/nectarlink/issues/52)).
 - **Type on phone** shows what you've typed instead of only the last key, which looked

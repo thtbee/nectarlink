@@ -55,6 +55,7 @@ bool start_external_drag(rust::Str file_path, rust::Str text_fallback);
 // the first pass; called again later, it retranslates the open windows.
 // Returns true when NectarLink's own translation was found and installed.
 bool install_translator(rust::Str dir, rust::Str language);
+rust::Vec<rust::String> system_ui_languages();
 
 // `text` in the installed language (Qt's translate), for the strings the app
 // builds in Rust; `text` itself when there is no translation.

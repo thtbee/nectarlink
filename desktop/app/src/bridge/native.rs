@@ -57,6 +57,8 @@ pub mod ffi {
         /// retranslate the open windows. Returns true when NectarLink's own
         /// translation was installed.
         fn install_translator(dir: &str, language: &str) -> bool;
+        /// The languages the user prefers, in order (`de-DE`, `en-US`).
+        fn system_ui_languages() -> Vec<String>;
 
         /// `text` in the installed language (`QCoreApplication::translate`).
         fn translate(context: &str, text: &str) -> String;
