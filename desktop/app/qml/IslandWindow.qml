@@ -81,6 +81,19 @@ Window {
         }
     }
 
+    // QSG_RENDER_LOOP=basic (app_helpers.cpp) only advances QML's animation
+    // clock while a window is rendering. Closing the main window destroys it
+    // (App.qml), leaving the Island as the only window; the basic loop then
+    // stops ticking it, freezing every animation and live repaint. A wall-clock
+    // timer (independent of the scene-graph clock) forces a repaint each frame,
+    // and each render re-advances the clock. Runs only while the pill is shown.
+    Timer {
+        running: islandWin.visible
+        interval: 16
+        repeat: true
+        onTriggered: islandWin.update()
+    }
+
     Timer {
         id: transferDoneTimer
         interval: 3200
