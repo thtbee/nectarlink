@@ -1022,7 +1022,7 @@ impl qobject::Preferences {
             phone_id,
             phone_folder: phone_trimmed,
             pc_folder: pc_trimmed.to_owned(),
-            remove_deleted: remove_deleted && mode == crate::folder_sync::MODE_PHONE_TO_PC,
+            remove_deleted: remove_deleted && mode != crate::folder_sync::MODE_PC_TO_PHONE,
             mode,
             enabled: true,
         });

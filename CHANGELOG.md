@@ -10,7 +10,8 @@ change things that need a step from you, and its notes say so.
 
 - **More ways to sync a folder.** A synced folder can now go one way from the PC to the
   phone. Phone to PC can also remove from the PC what you delete on the phone: only
-  files it synced and that haven't changed on the PC, and they go to the Recycle Bin
+  files it synced and that haven't changed on the PC, and they go to the Recycle Bin. Both
+  ways has the same option, so a deletion on either side goes across
   ([#243](https://github.com/thtbee/nectarlink/issues/243)).
 - **Sync on Wi-Fi only.** A switch in Settings › Files & Sync on the PC holds folder sync
   and photo backup back while the phone is away, so they don't use its mobile data
