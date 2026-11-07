@@ -11,6 +11,7 @@ Item {
     height: 100
 
     property bool uhd: true
+    property int size: 125
 
     Segmented {
         id: choice
@@ -19,6 +20,16 @@ Item {
             { value: "1080", label: "1080p" }
         ].concat(root.uhd ? [{ value: "2160", label: "4K" }] : [])
         value: "2160"
+    }
+
+    Segmented {
+        id: numbers
+        y: 50
+        options: [
+            { value: 100, label: "100%" },
+            { value: 125, label: "125%" }
+        ]
+        value: root.size
     }
 
     SignalSpy {
@@ -35,6 +46,13 @@ Item {
             root.uhd = true
             choice.value = "2160"
             picked.clear()
+        }
+
+        function test_a_number_is_selected_too() {
+            compare(numbers.selectedIndex, 1)
+            verify(numbers.selectedItem !== null)
+            root.size = 100
+            compare(numbers.selectedIndex, 0)
         }
 
         function test_the_value_is_selected() {
