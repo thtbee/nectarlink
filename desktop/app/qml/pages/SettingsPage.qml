@@ -2437,8 +2437,11 @@ Item {
                                 ListRow {
                                     width: parent.width
                                     iconPath: Icons.folder
-                                    title: syncRuleDelegate.modelData.phoneFolder + (syncRuleDelegate.modelData.mode === "two_way" ? " ⇄ " : " → ") + syncRuleDelegate.modelData.pcFolder
-                                    description: syncRuleDelegate.modelData.mode === "two_way" ? qsTr("Two-way sync · conflict copies kept") : qsTr("One-way · phone to PC")
+                                    title: syncRuleDelegate.modelData.phoneFolder + (syncRuleDelegate.modelData.mode === "two_way" ? " ⇄ " : syncRuleDelegate.modelData.mode === "one_way_pc_to_phone" ? " ← " : " → ") + syncRuleDelegate.modelData.pcFolder
+                                    description: syncRuleDelegate.modelData.mode === "two_way" ? qsTr("Two-way sync · conflict copies kept")
+                                        : syncRuleDelegate.modelData.mode === "one_way_pc_to_phone" ? qsTr("One-way · PC to phone")
+                                        : syncRuleDelegate.modelData.removeDeleted ? qsTr("One-way · phone to PC · removes files deleted on the phone")
+                                        : qsTr("One-way · phone to PC")
                                     Row {
                                         spacing: 8
                                         Button {
@@ -3534,7 +3537,8 @@ Item {
         property string phoneId
         property string phoneFolder
         property string pcFolder
-        property bool twoWay: false
+        property string mode: "one_way_phone_to_pc"
+        property bool removeDeleted: false
         // The PC folder follows the phone folder until the user picks one.
         property bool pcChosen: false
         readonly property var common: ["DCIM/Camera", "Pictures/Screenshots", "Download", "Documents", "Music", "Movies", "Recordings"]
@@ -3544,7 +3548,8 @@ Item {
 
         function openFor(id) {
             phoneId = id
-            twoWay = false
+            mode = "one_way_phone_to_pc"
+            removeDeleted = false
             pcChosen = false
             choosePhoneFolder("DCIM/Camera")
             open()
@@ -3630,20 +3635,35 @@ Item {
 
             Segmented {
                 options: [
-                    { value: "one", label: qsTr("Phone to PC") },
-                    { value: "two", label: qsTr("Both ways") }
+                    { value: "one_way_phone_to_pc", label: qsTr("Phone to PC") },
+                    { value: "one_way_pc_to_phone", label: qsTr("PC to phone") },
+                    { value: "two_way", label: qsTr("Both ways") }
                 ]
-                value: folderSyncSheet.twoWay ? "two" : "one"
-                onPicked: (v) => folderSyncSheet.twoWay = v === "two"
+                value: folderSyncSheet.mode
+                onPicked: (v) => folderSyncSheet.mode = v
             }
             Txt {
                 width: parent.width
                 wrapMode: Text.WordWrap
                 role: "body"
                 muted: true
-                text: folderSyncSheet.twoWay
+                text: folderSyncSheet.mode === "one_way_pc_to_phone"
+                    ? qsTr("New and changed files on the PC are copied to the phone. Nothing on the phone comes to the PC, and nothing is deleted.")
+                    : folderSyncSheet.mode === "two_way"
                     ? qsTr("Changes on either side are copied to the other. When a file changed on both, both versions are kept.")
                     : qsTr("New and changed files on the phone are copied to the PC. Nothing on the PC goes to the phone.")
+            }
+
+            ListRow {
+                width: parent.width
+                visible: folderSyncSheet.mode === "one_way_phone_to_pc"
+                title: qsTr("Also remove from the PC")
+                description: qsTr("A synced file you delete on the phone goes to the PC's Recycle Bin.")
+                Toggle {
+                    label: qsTr("Also remove from the PC")
+                    checked: folderSyncSheet.removeDeleted
+                    onToggled: (on) => folderSyncSheet.removeDeleted = on
+                }
             }
 
             Row {
@@ -3655,7 +3675,8 @@ Item {
                     enabled: folderSyncSheet.phoneFolderOk && folderSyncSheet.pcFolder.length > 0
                     onClicked: {
                         Preferences.addFolderSyncRule(folderSyncSheet.phoneId, folderSyncSheet.tidyPhoneFolder,
-                                                      folderSyncSheet.pcFolder, folderSyncSheet.twoWay)
+                                                      folderSyncSheet.pcFolder, folderSyncSheet.mode,
+                                                      folderSyncSheet.removeDeleted)
                         folderSyncSheet.close()
                     }
                 }

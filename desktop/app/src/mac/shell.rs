@@ -112,3 +112,17 @@ mod urlencoding {
         out
     }
 }
+
+/// Moves `path` to the Trash in the user's home folder.
+pub fn recycle_file(path: &Path) -> Result<(), String> {
+    let trash = dirs::home_dir().ok_or("no home folder")?.join(".Trash");
+    std::fs::create_dir_all(&trash).map_err(|e| e.to_string())?;
+    let name = path.file_name().ok_or("no file name")?;
+    let mut target = trash.join(name);
+    let mut number = 1;
+    while target.exists() {
+        target = trash.join(format!("{} {number}", name.to_string_lossy()));
+        number += 1;
+    }
+    std::fs::rename(path, &target).map_err(|e| e.to_string())
+}
