@@ -12,7 +12,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use nectarlink_core::{DeviceId, Node};
+use nectarlink_core::{ConnectionPath, DeviceId, LinkState, Node};
 use serde::{Deserialize, Serialize};
 
 use crate::{core_host, settings};
@@ -27,10 +27,18 @@ pub struct FolderSyncRule {
     pub phone_folder: String,
     /// Absolute path on this PC (e.g. `"C:\\Users\\Alice\\Pictures\\Phone"`).
     pub pc_folder: String,
-    /// `"one_way_phone_to_pc"` or `"two_way"`.
+    /// [`MODE_PHONE_TO_PC`], [`MODE_PC_TO_PHONE`] or [`MODE_TWO_WAY`].
     pub mode: String,
     pub enabled: bool,
+    /// Phone to PC only: a file removed on the phone also leaves the PC, for the
+    /// Recycle Bin.
+    #[serde(default)]
+    pub remove_deleted: bool,
 }
+
+pub const MODE_PHONE_TO_PC: &str = "one_way_phone_to_pc";
+pub const MODE_PC_TO_PHONE: &str = "one_way_pc_to_phone";
+pub const MODE_TWO_WAY: &str = "two_way";
 
 /// Metadata for a single file compared during folder synchronization.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -83,10 +91,36 @@ pub fn suggested_pc_folder(phone_folder: &str) -> Option<PathBuf> {
 /// Drops what a removed rule last synced.
 pub fn forget_rule(rule_id: &str) {
     baselines().lock().unwrap_or_else(|e| e.into_inner()).remove(rule_id);
+    save_baselines();
 }
 
 fn baselines() -> &'static Mutex<RuleBaselineMap> {
-    LAST_SYNCED.get_or_init(|| Mutex::new(HashMap::new()))
+    LAST_SYNCED.get_or_init(|| {
+        let saved = std::fs::read(baselines_path()).ok().and_then(|b| serde_json::from_slice(&b).ok());
+        Mutex::new(saved.unwrap_or_default())
+    })
+}
+
+fn baselines_path() -> PathBuf {
+    core_host::host().data_dir.join("folder-sync-state.json")
+}
+
+/// Kept across restarts, so a file removed while the app was closed is still
+/// recognised as removed rather than as one that was never synced.
+fn save_baselines() {
+    let bytes = {
+        let map = baselines().lock().unwrap_or_else(|e| e.into_inner());
+        serde_json::to_vec(&*map)
+    };
+    let path = baselines_path();
+    let tmp = path.with_extension("json.tmp");
+    let saved = bytes
+        .map_err(std::io::Error::other)
+        .and_then(|bytes| std::fs::write(&tmp, bytes))
+        .and_then(|()| std::fs::rename(&tmp, &path));
+    if let Err(error) = saved {
+        tracing::warn!(%error, "can't save what folder sync last synced");
+    }
 }
 
 /// Formats a conflict-safe relative path by inserting
@@ -132,8 +166,28 @@ fn matches_state(entry: &SyncEntry, state: (u64, i64)) -> bool {
     entry.size == state.0 && (entry.modified_ms - state.1).abs() <= 2_000
 }
 
-/// Pure reconciliation planner for one-way (`"one_way_phone_to_pc"`) and
-/// two-way (`"two_way"`) folder synchronization.
+/// What should leave the PC because it's gone from the phone. Only a file we
+/// synced before and that nobody has changed on the PC since, so nothing that's
+/// only ever been on the PC is touched. An empty phone folder removes nothing: a
+/// missing folder or storage permission looks the same as one emptied on purpose.
+pub fn plan_removals(
+    phone_files: &[SyncEntry],
+    pc_files: &[SyncEntry],
+    last_synced: &HashMap<String, (u64, i64)>,
+) -> Vec<String> {
+    if phone_files.is_empty() {
+        return Vec::new();
+    }
+    pc_files
+        .iter()
+        .filter(|pc| !phone_files.iter().any(|ph| ph.rel_path == pc.rel_path))
+        .filter(|pc| last_synced.get(&pc.rel_path).is_some_and(|base| matches_state(pc, *base)))
+        .map(|pc| pc.rel_path.clone())
+        .collect()
+}
+
+/// Pure reconciliation planner for the one-way ([`MODE_PHONE_TO_PC`],
+/// [`MODE_PC_TO_PHONE`]) and two-way ([`MODE_TWO_WAY`]) modes.
 pub fn plan_two_way_sync(
     phone_files: &[SyncEntry],
     pc_files: &[SyncEntry],
@@ -164,7 +218,26 @@ pub fn plan_two_way_sync_with_date(
 
     let mut actions = Vec::new();
 
-    if mode == "one_way_phone_to_pc" {
+    if mode == MODE_PC_TO_PHONE {
+        for pc in pc_files {
+            let changed = match phone_map.get(pc.rel_path.as_str()) {
+                None => true,
+                Some(ph) => {
+                    pc.size != ph.size
+                        || pc.modified_ms > ph.modified_ms + 2_000
+                        // Same size, and older than the phone's copy: an edit
+                        // with an old timestamp still counts.
+                        || last_synced.get(&pc.rel_path).is_some_and(|base| !matches_state(pc, *base))
+                }
+            };
+            if changed {
+                actions.push(SyncAction::PushToPhone { rel_path: pc.rel_path.clone() });
+            }
+        }
+        return actions;
+    }
+
+    if mode == MODE_PHONE_TO_PC {
         for ph in phone_files {
             match pc_map.get(ph.rel_path.as_str()) {
                 None => actions.push(SyncAction::PullToPc { rel_path: ph.rel_path.clone() }),
@@ -309,11 +382,13 @@ fn storable_here(name: &str) -> bool {
     !cfg!(windows) || nectarlink_core::storable_name(name) == name
 }
 
+/// A phone folder's files, and whether all of its subfolders could be read.
 async fn list_phone_entries(
     node: &Node,
     peer: DeviceId,
     base_folder: &str,
-) -> nectarlink_core::Result<Vec<SyncEntry>> {
+) -> nectarlink_core::Result<(Vec<SyncEntry>, bool)> {
+    let mut complete = true;
     let mut out = Vec::new();
     let mut queue = std::collections::VecDeque::new();
     queue.push_back((String::new(), 0usize));
@@ -323,7 +398,10 @@ async fn list_phone_entries(
         let entries = match node.storage_list(peer, &remote_dir).await {
             Ok(list) => list,
             Err(err) if rel_dir.is_empty() => return Err(err),
-            Err(_) => continue,
+            Err(_) => {
+                complete = false;
+                continue;
+            }
         };
         for entry in entries {
             if entry.name.starts_with('.')
@@ -346,7 +424,7 @@ async fn list_phone_entries(
     }
 
     out.sort_by(|a, b| a.rel_path.cmp(&b.rel_path));
-    Ok(out)
+    Ok((out, complete))
 }
 
 fn temp_part_path(dest: &Path) -> Option<PathBuf> {
@@ -516,7 +594,34 @@ async fn pull_phone_file_streaming(
         return None;
     }
 
+    keep_phone_date(dest, meta.modified);
     Some((meta.size, meta.modified))
+}
+
+/// Gives the copy the phone's date. That's what later passes compare to tell
+/// whether the file changed on the PC since it was synced.
+fn keep_phone_date(path: &Path, modified_ms: i64) {
+    let Ok(ms) = u64::try_from(modified_ms) else { return };
+    let date = UNIX_EPOCH + Duration::from_millis(ms);
+    let set = std::fs::OpenOptions::new().write(true).open(path).and_then(|f| f.set_modified(date));
+    if let Err(error) = set {
+        tracing::debug!(%error, "can't keep a synced file's date");
+    }
+}
+
+/// Whether a sync may use this connection. Only the relay is held back: a USB
+/// cable and the local network cost no data.
+fn link_allows_sync(link: &LinkState, wifi_only: bool) -> bool {
+    !(wifi_only && matches!(link, LinkState::Online { path: ConnectionPath::Relay, .. }))
+}
+
+/// Whether "Sync on Wi-Fi only" lets `device` sync right now. An offline phone
+/// counts as allowed: that fails on its own and is reported as it always was.
+pub fn sync_allowed(device: DeviceId) -> bool {
+    let wifi_only = settings::sync_wifi_only();
+    core_host::host().hub.read(|s| {
+        s.devices.iter().find(|d| d.id == device).is_none_or(|d| link_allows_sync(&d.link, wifi_only))
+    })
 }
 
 /// What one [`sync_now`] pass did.
@@ -524,11 +629,15 @@ async fn pull_phone_file_streaming(
 pub struct SyncReport {
     /// Files copied either way.
     pub copied: usize,
+    /// Files moved to the Recycle Bin because they're gone from the phone.
+    pub removed: usize,
     /// Rules whose phone said no: its "browse this phone's storage" switch
     /// for this PC is off.
     pub refused: usize,
     /// Rules whose phone folder couldn't be read for another reason.
     pub unreadable: usize,
+    /// Rules held back or cut short by "Sync on Wi-Fi only".
+    pub held_back: usize,
 }
 
 /// Runs all enabled [`FolderSyncRule`]s once against `node`.
@@ -544,22 +653,27 @@ pub async fn sync_now(node: &Node) -> SyncReport {
         let Ok(peer) = rule.phone_id.parse::<DeviceId>() else {
             continue;
         };
+        if !sync_allowed(peer) {
+            report.held_back += 1;
+            continue;
+        }
         let pc_dir = PathBuf::from(&rule.pc_folder);
         if std::fs::create_dir_all(&pc_dir).is_err() {
             continue;
         }
-        let phone_files = match list_phone_entries(node, peer, rule.phone_folder.trim_matches('/')).await {
-            Ok(files) => files,
-            Err(nectarlink_core::Error::Denied) => {
-                report.refused += 1;
-                continue;
-            }
-            Err(err) => {
-                tracing::debug!(rule = %rule.id, %err, "can't list the phone folder");
-                report.unreadable += 1;
-                continue;
-            }
-        };
+        let (phone_files, listed_all) =
+            match list_phone_entries(node, peer, rule.phone_folder.trim_matches('/')).await {
+                Ok(listed) => listed,
+                Err(nectarlink_core::Error::Denied) => {
+                    report.refused += 1;
+                    continue;
+                }
+                Err(err) => {
+                    tracing::debug!(rule = %rule.id, %err, "can't list the phone folder");
+                    report.unreadable += 1;
+                    continue;
+                }
+            };
         let pc_files = tokio::task::spawn_blocking({
             let pc_dir = pc_dir.clone();
             move || read_pc_entries(&pc_dir)
@@ -571,7 +685,16 @@ pub async fn sync_now(node: &Node) -> SyncReport {
             baselines().lock().unwrap_or_else(|e| e.into_inner()).get(&rule.id).cloned().unwrap_or_default();
 
         let actions = plan_two_way_sync(&phone_files, &pc_files, &last_synced, &rule.mode, &pc_hostname);
+        // A subfolder that couldn't be read would look like its files were removed.
+        let removals = if rule.remove_deleted && rule.mode == MODE_PHONE_TO_PC && listed_all {
+            plan_removals(&phone_files, &pc_files, &last_synced)
+        } else {
+            Vec::new()
+        };
         let mut updated_baseline = last_synced;
+        updated_baseline.retain(|rel, _| {
+            phone_files.iter().any(|e| e.rel_path == *rel) || pc_files.iter().any(|e| e.rel_path == *rel)
+        });
         for ph in &phone_files {
             if pc_files.iter().any(|pc| {
                 pc.rel_path == ph.rel_path
@@ -583,6 +706,10 @@ pub async fn sync_now(node: &Node) -> SyncReport {
         }
 
         for action in actions {
+            if !sync_allowed(peer) {
+                report.held_back += 1;
+                break;
+            }
             match action {
                 SyncAction::PullToPc { rel_path } => {
                     let remote = join_phone_path(&rule.phone_folder, &rel_path);
@@ -622,7 +749,21 @@ pub async fn sync_now(node: &Node) -> SyncReport {
             }
         }
 
+        for rel_path in removals {
+            let path = pc_dir.join(&rel_path);
+            let recycled = tokio::task::spawn_blocking(move || crate::win::shell::recycle_file(&path)).await;
+            match recycled {
+                Ok(Ok(())) => {
+                    updated_baseline.remove(&rel_path);
+                    report.removed += 1;
+                }
+                Ok(Err(reason)) => tracing::warn!(reason, "can't remove a synced file"),
+                Err(error) => tracing::warn!(%error, "can't remove a synced file"),
+            }
+        }
+
         baselines().lock().unwrap_or_else(|e| e.into_inner()).insert(rule.id, updated_baseline);
+        save_baselines();
     }
 
     report
@@ -636,8 +777,10 @@ pub fn trigger_sync_now() {
             // A refusal comes first: it's the one the user has to act on, on the phone.
             let message = if report.refused > 0 {
                 tr!("FolderSync", "The phone hasn't let this PC into its files yet. Allow it on the phone.")
-            } else if report.copied > 0 {
-                tr!("FolderSync", "Synced %1 file(s).", report.copied)
+            } else if report.held_back > 0 {
+                tr!("FolderSync", "Waiting for Wi-Fi. Sync on Wi-Fi only is on, and the phone is away.")
+            } else if report.copied + report.removed > 0 {
+                tr!("FolderSync", "Synced %1 file(s).", report.copied + report.removed)
             } else if report.unreadable > 0 {
                 tr!("FolderSync", "Couldn't read the folder on the phone. Check that it's connected.")
             } else {
@@ -675,6 +818,89 @@ mod tests {
         assert!(!storable_here("CON"));
         assert!(!storable_here("aux.txt"));
         assert!(!storable_here("trailing."));
+    }
+
+    fn entry(rel_path: &str, size: u64, modified_ms: i64) -> SyncEntry {
+        SyncEntry { rel_path: rel_path.into(), size, modified_ms }
+    }
+
+    #[test]
+    fn removals_only_touch_what_was_synced_and_left_alone() {
+        let phone = vec![entry("kept.jpg", 1, 1_000)];
+        let pc = vec![
+            entry("kept.jpg", 1, 1_000),
+            entry("gone.jpg", 2, 2_000),
+            entry("edited.jpg", 9, 9_000),
+            entry("only_on_pc.jpg", 3, 3_000),
+        ];
+        let base = HashMap::from([
+            ("kept.jpg".to_owned(), (1, 1_000)),
+            ("gone.jpg".to_owned(), (2, 2_000)),
+            ("edited.jpg".to_owned(), (4, 4_000)),
+        ]);
+        assert_eq!(plan_removals(&phone, &pc, &base), vec!["gone.jpg".to_owned()]);
+    }
+
+    #[test]
+    fn a_synced_copy_keeps_the_phones_date() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.jpg");
+        std::fs::write(&path, b"x").unwrap();
+        keep_phone_date(&path, 1_700_000_000_000);
+        let read = read_pc_entries(dir.path());
+        assert_eq!(read[0].modified_ms, 1_700_000_000_000);
+    }
+
+    #[test]
+    fn an_empty_phone_folder_removes_nothing() {
+        let pc = vec![entry("a.jpg", 1, 1_000)];
+        let base = HashMap::from([("a.jpg".to_owned(), (1, 1_000))]);
+        assert!(plan_removals(&[], &pc, &base).is_empty());
+    }
+
+    #[test]
+    fn one_way_pc_to_phone_pushes_new_and_changed_and_never_pulls() {
+        let phone = vec![
+            entry("same.txt", 5, 5_000),
+            entry("on_phone_only.txt", 6, 6_000),
+            entry("bigger.txt", 1, 7_000),
+            entry("older_edit.txt", 8, 90_000),
+        ];
+        let pc = vec![
+            entry("same.txt", 5, 5_000),
+            entry("new.txt", 3, 3_000),
+            entry("bigger.txt", 2, 7_000),
+            entry("older_edit.txt", 8, 10_000),
+        ];
+        let base = HashMap::from([("older_edit.txt".to_owned(), (8, 90_000))]);
+        let actions = plan_two_way_sync_with_date(&phone, &pc, &base, MODE_PC_TO_PHONE, "MYPC", "20260420");
+        assert_eq!(
+            actions,
+            vec![
+                SyncAction::PushToPhone { rel_path: "new.txt".into() },
+                SyncAction::PushToPhone { rel_path: "bigger.txt".into() },
+                SyncAction::PushToPhone { rel_path: "older_edit.txt".into() },
+            ]
+        );
+    }
+
+    #[test]
+    fn a_rule_saved_before_the_removal_option_keeps_files() {
+        let rule: FolderSyncRule = serde_json::from_str(
+            r#"{"id":"r","phoneId":"p","phoneFolder":"Download","pcFolder":"d","mode":"two_way","enabled":true}"#,
+        )
+        .unwrap();
+        assert!(!rule.remove_deleted);
+    }
+
+    #[test]
+    fn wifi_only_holds_back_the_relay_and_nothing_else() {
+        let on = |path| LinkState::Online { path, rtt_ms: 5 };
+        assert!(!link_allows_sync(&on(ConnectionPath::Relay), true));
+        assert!(link_allows_sync(&on(ConnectionPath::Lan), true));
+        assert!(link_allows_sync(&on(ConnectionPath::Usb), true));
+        assert!(link_allows_sync(&LinkState::Connecting, true));
+        assert!(link_allows_sync(&on(ConnectionPath::Relay), false));
     }
 
     #[test]

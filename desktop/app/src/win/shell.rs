@@ -216,6 +216,32 @@ pub fn run_command(command: &str) -> Result<(), String> {
         .map_err(|e| format!("failed to run command: {e}"))
 }
 
+/// Moves `path` to the Recycle Bin. On a drive without one, such as a network
+/// share, Windows deletes it instead.
+pub fn recycle_file(path: &std::path::Path) -> Result<(), String> {
+    use windows::Win32::UI::Shell::{
+        FO_DELETE, FOF_ALLOWUNDO, FOF_NO_UI, FOF_SILENT, SHFILEOPSTRUCTW, SHFileOperationW,
+    };
+    // It wants backslashes, and a list ending in two NULs.
+    let mut from: Vec<u16> = path.to_string_lossy().replace('/', "\\").encode_utf16().collect();
+    from.extend([0, 0]);
+    let mut operation = SHFILEOPSTRUCTW {
+        wFunc: FO_DELETE,
+        pFrom: windows::core::PCWSTR(from.as_ptr()),
+        fFlags: (FOF_ALLOWUNDO.0 | FOF_NO_UI.0 | FOF_SILENT.0) as u16,
+        ..Default::default()
+    };
+    // SAFETY: `from` is double-NUL terminated and outlives the call.
+    let code = unsafe { SHFileOperationW(&raw mut operation) };
+    if code != 0 {
+        return Err(format!("the Recycle Bin refused {}: {code:#x}", path.display()));
+    }
+    if operation.fAnyOperationsAborted.as_bool() {
+        return Err(format!("moving {} to the Recycle Bin was cancelled", path.display()));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

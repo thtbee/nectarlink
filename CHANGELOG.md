@@ -8,6 +8,13 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **More ways to sync a folder.** A synced folder can now go one way from the PC to the
+  phone. Phone to PC can also remove from the PC what you delete on the phone: only
+  files it synced and that haven't changed on the PC, and they go to the Recycle Bin
+  ([#243](https://github.com/thtbee/nectarlink/issues/243)).
+- **Sync on Wi-Fi only.** A switch in Settings › Files & Sync on the PC holds folder sync
+  and photo backup back while the phone is away, so they don't use its mobile data
+  ([#244](https://github.com/thtbee/nectarlink/issues/244)).
 - **Share photos and videos from the PC.** On Windows, the Photos page has a Share
   button that opens the system's share sheet
   ([#174](https://github.com/thtbee/nectarlink/issues/174)).
@@ -110,6 +117,9 @@ what people reported since 0.1.4.
   ([#209](https://github.com/thtbee/nectarlink/issues/209)).
 - The phone's clipboard setting says Elevated is on however it was started, and takes
   you to Elevated's settings ([#110](https://github.com/thtbee/nectarlink/issues/110)).
+- **Type on phone** shows what you've typed instead of only the last key, which looked
+  like it took one letter, and says to tap a text box on the phone first
+  ([#116](https://github.com/thtbee/nectarlink/issues/116)).
 - The PC's volume slider works on phones that ignore the normal request, like iQOO on
   FuntouchOS, when Elevated is on ([#266](https://github.com/thtbee/nectarlink/issues/266),
   [#192](https://github.com/thtbee/nectarlink/issues/192)).

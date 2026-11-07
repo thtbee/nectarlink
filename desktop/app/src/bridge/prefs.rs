@@ -111,6 +111,7 @@ pub mod qobject {
         #[qproperty(bool, clipboard_auto_copy_received_files)]
         /// Open a single file shared from the phone when it arrives.
         #[qproperty(bool, open_shared_files)]
+        #[qproperty(bool, sync_wifi_only)]
         /// Send the clipboard to the phone when control moves to it.
         #[qproperty(bool, flow_follow_clipboard)]
         /// Floating Nectar Island pill at the top center of the screen.
@@ -212,7 +213,8 @@ pub mod qobject {
             device_id: &QString,
             phone_folder: &QString,
             pc_folder: &QString,
-            two_way: bool,
+            mode: &QString,
+            remove_deleted: bool,
         );
         /// Where a phone folder could go on this PC (the user's Pictures,
         /// Music, Videos or Documents), for the Add folder sheet.
@@ -351,6 +353,7 @@ pub struct PreferencesRust {
     local_api_token_path: QString,
     clipboard_auto_copy_received_files: bool,
     open_shared_files: bool,
+    sync_wifi_only: bool,
     flow_follow_clipboard: bool,
     nectar_island: bool,
     nectar_island_calls: bool,
@@ -454,6 +457,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_local_api_token_path(QString::from(&token_path.to_string_lossy().into_owned()));
         self.as_mut().set_clipboard_auto_copy_received_files(settings.clipboard_auto_copy_received_files);
         self.as_mut().set_open_shared_files(settings.open_shared_files);
+        self.as_mut().set_sync_wifi_only(settings.sync_wifi_only);
         self.as_mut().set_flow_follow_clipboard(settings.flow_follow_clipboard);
         self.as_mut().set_nectar_island(settings.nectar_island);
         self.as_mut().set_nectar_island_calls(settings.nectar_island_calls);
@@ -724,6 +728,13 @@ impl cxx_qt::Initialize for qobject::Preferences {
             })
             .release();
         self.as_mut()
+            .on_sync_wifi_only_changed(|p| {
+                crate::settings::set_sync_wifi_only(p.sync_wifi_only);
+                p.save();
+                crate::photo_backup::look_again();
+            })
+            .release();
+        self.as_mut()
             .on_flow_follow_clipboard_changed(|p| {
                 crate::settings::set_flow_follow_clipboard(p.flow_follow_clipboard);
                 p.save();
@@ -948,7 +959,8 @@ impl qobject::Preferences {
         device_id: &QString,
         phone_folder: &QString,
         pc_folder: &QString,
-        two_way: bool,
+        mode: &QString,
+        remove_deleted: bool,
     ) {
         let raw_pc = QUrl::from(pc_folder)
             .to_local_file()
@@ -972,12 +984,18 @@ impl qobject::Preferences {
             return;
         }
         let next_id = new_rule_id("sync", rules.iter().map(|r| r.id.as_str()));
+        // Anything unknown gets the mode that can't change the phone.
+        let mode = match String::from(mode) {
+            m if m == crate::folder_sync::MODE_PC_TO_PHONE || m == crate::folder_sync::MODE_TWO_WAY => m,
+            _ => crate::folder_sync::MODE_PHONE_TO_PC.to_owned(),
+        };
         rules.push(crate::folder_sync::FolderSyncRule {
             id: next_id,
             phone_id,
             phone_folder: phone_trimmed,
             pc_folder: pc_trimmed.to_owned(),
-            mode: if two_way { "two_way".into() } else { "one_way_phone_to_pc".into() },
+            remove_deleted: remove_deleted && mode == crate::folder_sync::MODE_PHONE_TO_PC,
+            mode,
             enabled: true,
         });
         let json = serde_json::to_string(&rules).unwrap_or_else(|_| "[]".into());
@@ -1132,6 +1150,7 @@ impl qobject::Preferences {
                 .unwrap_or(crate::settings::DEFAULT_LOCAL_API_PORT),
             clipboard_auto_copy_received_files: p.clipboard_auto_copy_received_files,
             open_shared_files: p.open_shared_files,
+            sync_wifi_only: p.sync_wifi_only,
             flow_follow_clipboard: p.flow_follow_clipboard,
             folder_sync_rules: crate::settings::folder_sync_rules(),
             nectar_island: p.nectar_island,
