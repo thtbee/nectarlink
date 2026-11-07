@@ -13,7 +13,9 @@ import app.nectarlink
 Window {
     id: islandWin
 
-    title: qsTr("Nectar Island")
+    // GNOME on Wayland lets no app keep its own window on top. The "PiP on top"
+    // extension does it for windows titled like this, for those who have it.
+    title: Qt.platform.pluginName.startsWith("wayland") ? qsTr("Nectar Island") + " - PiP" : qsTr("Nectar Island")
     flags: Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus
     color: "transparent"
 
@@ -43,6 +45,20 @@ Window {
     property bool mediaCanPrev: true
     property real mediaDuration: 0
     property real mediaPosition: 0
+    // When mediaPosition was current, as JavaScript time.
+    property real mediaPositionAt: 0
+    // Phones only report the position when it jumps, so it's counted forward here.
+    property real mediaNow: Date.now()
+    readonly property real mediaPositionNow: mediaPosition
+        + (mediaPlaying ? Math.max(0, mediaNow - mediaPositionAt) : 0)
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: islandWin.mediaPlaying && islandWin.mediaDuration > 0 && islandWin.mode === "media"
+        onRunningChanged: if (running) islandWin.mediaNow = Date.now()
+        onTriggered: islandWin.mediaNow = Date.now()
+    }
 
     // ---- Track active file transfer ----
     property string activeTransferId: ""
@@ -150,6 +166,8 @@ Window {
             mediaCanPrev = best.canPrevious
             mediaDuration = best.duration
             mediaPosition = best.position
+            mediaPositionAt = best.positionAt
+            mediaNow = Date.now()
         } else {
             mediaDeviceId = ""
             mediaPlayerId = ""
@@ -321,6 +339,7 @@ Window {
                 required property bool canPrevious
                 required property real duration
                 required property real position
+                required property real positionAt
                 visible: false
                 onPlayingChanged: islandWin.recomputeMedia()
                 onTitleChanged: islandWin.recomputeMedia()
@@ -853,7 +872,7 @@ Window {
                                 if (islandWin.mode === "transfer")
                                     return parent.width * (islandWin.transferJustFinished ? 1.0 : Math.max(0.04, islandWin.activeTransferProgress))
                                 if (islandWin.mediaDuration > 0)
-                                    return parent.width * Math.max(0, Math.min(1, islandWin.mediaPosition / islandWin.mediaDuration))
+                                    return parent.width * Math.max(0, Math.min(1, islandWin.mediaPositionNow / islandWin.mediaDuration))
                                 return 0
                             }
                             Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }

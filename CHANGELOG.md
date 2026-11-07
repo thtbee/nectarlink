@@ -133,6 +133,9 @@ what people reported since 0.1.4.
   or read from the wrong place in the file, when the paused attempt's reader was still going.
 - On Linux with Wayland, the PC remembers which screen you picked to share, so Control PC
   doesn't ask again each time NectarLink restarts.
+- Nectar Island's progress bar moves while music plays, instead of only when the phone
+  sends an update.
+- On GNOME with Wayland, Nectar Island stays on top if you have the PiP on top extension.
 - Voice typing from the phone no longer loses or doubles letters in Notepad when it
   rewrites a phrase ([#52](https://github.com/thtbee/nectarlink/issues/52)).
 - **Type on phone** shows what you've typed instead of only the last key, which looked
