@@ -737,6 +737,7 @@ fn main() -> ExitCode {
     drop(engine);
     pc_audio_stream::set_enabled(false);
     pc_mirror::stop_all();
+    photos::clear_shared_files();
     local_api::stop();
     win::ble_beacon::stop();
     webcam::shutdown();
