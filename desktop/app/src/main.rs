@@ -757,6 +757,26 @@ fn main() -> ExitCode {
 
 #[cfg(test)]
 mod tests {
+    /// Qt gives its windows the icon of this exact name, or else a generic one.
+    #[cfg(windows)]
+    #[allow(unsafe_code)]
+    #[test]
+    fn the_exe_has_the_icon_qt_looks_for() {
+        use windows::{
+            Win32::{
+                System::LibraryLoader::GetModuleHandleW,
+                UI::WindowsAndMessaging::{IMAGE_ICON, LR_DEFAULTSIZE, LoadImageW},
+            },
+            core::w,
+        };
+        // SAFETY: the name is a valid wide string, and this only reads our own resources.
+        let icon = unsafe {
+            let module = GetModuleHandleW(None).unwrap();
+            LoadImageW(Some(module.into()), w!("IDI_ICON1"), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE)
+        };
+        assert!(icon.is_ok_and(|icon| !icon.is_invalid()));
+    }
+
     use std::ffi::OsString;
 
     use super::*;

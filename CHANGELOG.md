@@ -90,6 +90,8 @@ what people reported since 0.1.4.
   ([#217](https://github.com/thtbee/nectarlink/issues/217)).
 - Settings shows which App size and Full charge target are selected
   ([#260](https://github.com/thtbee/nectarlink/issues/260)).
+- The taskbar shows the NectarLink icon from the moment the app opens, not a generic one
+  ([#258](https://github.com/thtbee/nectarlink/issues/258)).
 
 ### Downloads
 
