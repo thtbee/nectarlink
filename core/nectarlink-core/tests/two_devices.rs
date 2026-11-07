@@ -1399,6 +1399,45 @@ async fn notifications_mirror_to_the_pc_and_actions_reach_the_phone() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn a_held_pc_gets_no_notifications_and_catches_up_afterwards() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    grant_notification_access(&phone).await;
+    phone.node.notifications_reset(vec![note("a", "com.chat", "Sam", false)]).await;
+    wait_for(&mut pc, "first snapshot", |e| match e {
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id && items.len() == 1 => {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    pc.node.hold_notifications(true).await;
+    // A round trip after the hold, so the phone has it before posting.
+    with_timeout("ping", pc.node.run_notification_action(phone_id, "a".into(), "1".into(), None)).await.ok();
+    phone.node.notification_posted(note("b", "com.chat", "Alex", false)).await;
+    phone
+        .node
+        .notifications_reset(vec![note("a", "com.chat", "Sam", false), note("b", "com.chat", "Alex", false)])
+        .await;
+
+    pc.node.hold_notifications(false).await;
+    // Whatever comes first after the hold ends is the catch-up list. Nothing
+    // posted or reset while held got through ahead of it.
+    let items = wait_for(&mut pc, "catch-up", |e| match e {
+        NodeEvent::NotificationPosted { device, .. } if *device == phone_id => {
+            panic!("a notification came through while held")
+        }
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id => Some(items.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(items.len(), 2);
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn notification_toggles_are_honored_on_both_devices() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;
     let mut phone = device("Pixel", DeviceKind::Phone).await;

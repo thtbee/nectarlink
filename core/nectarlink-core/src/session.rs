@@ -180,6 +180,9 @@ pub(crate) struct Session {
     sent_icons: crate::notifications::SentIcons,
     /// Artwork keys sent to this device (docs/protocol/media.md).
     sent_art: crate::notifications::SentIcons,
+    /// This peer asked for no notifications for now. Ends with the session: a
+    /// PC that's still locked says so again when it reconnects.
+    notifications_held: std::sync::atomic::AtomicBool,
     pub(crate) cancel: CancellationToken,
 }
 
@@ -225,6 +228,7 @@ impl Session {
             usb_peers: shared.usb_peers.clone(),
             sent_icons: Default::default(),
             sent_art: Default::default(),
+            notifications_held: Default::default(),
             cancel: shared.cancel.child_token(),
         });
 
@@ -315,6 +319,14 @@ impl Session {
 
     pub(crate) fn sent_icons(&self) -> std::sync::MutexGuard<'_, std::collections::HashSet<String>> {
         self.sent_icons.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    pub(crate) fn notifications_held(&self) -> bool {
+        self.notifications_held.load(Ordering::Relaxed)
+    }
+
+    pub(crate) fn hold_notifications(&self, held: bool) {
+        self.notifications_held.store(held, Ordering::Relaxed);
     }
 
     pub(crate) fn sent_art(&self) -> std::sync::MutexGuard<'_, std::collections::HashSet<String>> {
