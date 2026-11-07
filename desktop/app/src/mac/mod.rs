@@ -73,9 +73,83 @@ pub fn on_battery() -> bool {
         .is_ok_and(|out| String::from_utf8_lossy(&out.stdout).contains("'Battery Power'"))
 }
 
-/// Not known here yet, so notifications keep popping up.
+/// Whether the session is locked, so nothing the phone sends should pop up on
+/// this Mac.
+///
+/// `CGSessionCopyCurrentDictionary` is the public CoreGraphics view of the
+/// current login session. Measured on macOS 26.6: while the screen is locked the
+/// dictionary carries `CGSSessionScreenIsLocked = true`; when it is unlocked the
+/// key is absent entirely, and `kCGSSessionOnConsoleKey` stays true throughout,
+/// so only the screen-lock key can answer this.
+///
+/// A dictionary that can't be read counts as unlocked, like Linux when
+/// `LockedHint` is missing: better to show a notification than to hide every one.
+#[allow(unsafe_code)]
 pub fn session_locked() -> bool {
-    false
+    let dictionary = unsafe { CGSessionCopyCurrentDictionary() };
+    if dictionary.is_null() {
+        return false;
+    }
+    let screen_locked = dictionary_bool(dictionary, "CGSSessionScreenIsLocked");
+    // SAFETY: CGSessionCopyCurrentDictionary returns one reference we own.
+    unsafe { CFRelease(dictionary) };
+    is_locked(screen_locked)
+}
+
+/// The lock decision on its own, so it can be tested without CoreFoundation.
+/// Only `true` means locked: the key is absent while the screen is unlocked.
+fn is_locked(screen_locked: Option<bool>) -> bool {
+    screen_locked == Some(true)
+}
+
+type CFTypeRef = *const std::ffi::c_void;
+
+#[allow(unsafe_code)]
+#[link(name = "CoreGraphics", kind = "framework")]
+unsafe extern "C" {
+    /// A +1 dictionary describing the current login session, or null.
+    fn CGSessionCopyCurrentDictionary() -> CFTypeRef;
+}
+
+#[allow(unsafe_code)]
+#[link(name = "CoreFoundation", kind = "framework")]
+unsafe extern "C" {
+    fn CFDictionaryGetValue(dictionary: CFTypeRef, key: CFTypeRef) -> CFTypeRef;
+    fn CFBooleanGetValue(boolean: CFTypeRef) -> u8;
+    fn CFGetTypeID(value: CFTypeRef) -> usize;
+    fn CFBooleanGetTypeID() -> usize;
+    fn CFStringCreateWithCString(alloc: CFTypeRef, text: *const std::ffi::c_char, encoding: u32)
+    -> CFTypeRef;
+    fn CFRelease(value: CFTypeRef);
+}
+
+/// A boolean entry of `dictionary`, or `None` when the key is absent or holds
+/// something other than a CFBoolean.
+#[allow(unsafe_code)]
+fn dictionary_bool(dictionary: CFTypeRef, key: &str) -> Option<bool> {
+    /// `kCFStringEncodingUTF8`.
+    const UTF8: u32 = 0x0800_0100;
+    let key = std::ffi::CString::new(key).ok()?;
+    // SAFETY: `key` is a live NUL-terminated string and the call copies it.
+    let key_ref = unsafe { CFStringCreateWithCString(std::ptr::null(), key.as_ptr(), UTF8) };
+    if key_ref.is_null() {
+        return None;
+    }
+    // SAFETY: both are live CoreFoundation objects; the value stays borrowed.
+    let value = unsafe { CFDictionaryGetValue(dictionary, key_ref) };
+    // SAFETY: `key_ref` came from CFStringCreateWithCString and is ours.
+    unsafe { CFRelease(key_ref) };
+    if value.is_null() {
+        return None;
+    }
+    // The session dictionary holds strings, numbers and booleans, and reading a
+    // non-boolean as one would be unsound, so check the type first.
+    // SAFETY: `value` is a non-null CoreFoundation object owned by the dictionary.
+    if unsafe { CFGetTypeID(value) } != unsafe { CFBooleanGetTypeID() } {
+        return None;
+    }
+    // SAFETY: the check above proved `value` is a CFBoolean.
+    Some(unsafe { CFBooleanGetValue(value) != 0 })
 }
 
 pub fn is_laptop() -> bool {
@@ -161,5 +235,27 @@ mod tests {
     fn free_space_returns_some_on_system_drive() {
         let space = free_space(std::path::Path::new("/"));
         assert!(space.is_some());
+    }
+
+    #[test]
+    fn locked_when_the_screen_is_locked() {
+        assert!(is_locked(Some(true)));
+    }
+
+    /// The key is absent, not `false`, while the screen is unlocked (measured).
+    #[test]
+    fn unlocked_when_the_key_is_absent() {
+        assert!(!is_locked(None));
+    }
+
+    #[test]
+    fn unlocked_when_the_key_says_so() {
+        assert!(!is_locked(Some(false)));
+    }
+
+    #[test]
+    fn reads_this_machines_session_without_panicking() {
+        // Whatever this machine's state, the call must answer, not crash.
+        let _ = session_locked();
     }
 }
