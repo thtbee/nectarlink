@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Sync on Wi-Fi only.** A switch in Settings › Files & Sync on the PC holds folder sync
+  and photo backup back while the phone is away, so they don't use its mobile data
+  ([#244](https://github.com/thtbee/nectarlink/issues/244)).
 - **Back, Home and Recent apps buttons** in the mirror window's toolbar
   ([#192](https://github.com/thtbee/nectarlink/issues/192)).
 - **Brazilian Portuguese.** The Android and PC apps speak Brazilian Portuguese
