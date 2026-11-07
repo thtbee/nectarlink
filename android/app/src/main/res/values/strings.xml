@@ -91,19 +91,21 @@
     <string name="local_network_title">Reach your PC on this network</string>
     <string name="local_network_text">Android asks before an app talks to devices on your network. NectarLink needs it to reach your PC.</string>
     <string name="channel_elevated">Wireless debugging setup</string>
-    <string name="elevated_title">Real touch and keys (Wireless debugging)</string>
-    <string name="elevated_not_set_up">Real-time touch, every key, and mute, hold and keypad on calls from your PC. Uses Android\'s own Wireless debugging.</string>
+    <string name="elevated_title">Real touch and keys</string>
+    <string name="elevated_not_set_up">Real-time touch, every key, and mute, hold and keypad on calls from your PC.</string>
     <string name="elevated_waiting">Waiting for Wireless debugging. Turn it on in Developer options.</string>
     <string name="elevated_starting">Starting…</string>
     <string name="elevated_running">On: your PC\'s mouse and keyboard work like a real touchscreen and keyboard.</string>
     <string name="elevated_failed">Couldn\'t start it. Check that Wireless debugging is on, then try again.</string>
     <string name="elevated_not_paired">The phone forgot NectarLink\'s pairing. Set it up again.</string>
+    <string name="elevated_start_with">Start it with</string>
+    <string name="elevated_method_wireless">Wireless</string>
+    <string name="elevated_method_shizuku" translatable="false">Shizuku</string>
+    <string name="elevated_method_root" translatable="false">Root</string>
     <string name="elevated_set_up">Set up</string>
-    <string name="elevated_use_root">Use root</string>
     <string name="elevated_root_hint">This phone is rooted, so Elevated can start through root instead: no pairing, and it comes back by itself after a restart or away from Wi-Fi. It gets the same permissions as with Wireless debugging.</string>
     <string name="elevated_running_root">On, through root: your PC\'s mouse and keyboard work like a real touchscreen and keyboard.</string>
     <string name="elevated_root_failed">Root wasn\'t allowed, or your root manager can\'t start NectarLink\'s helper as the shell user. You can set it up with Wireless debugging instead.</string>
-    <string name="elevated_use_shizuku">Use Shizuku</string>
     <string name="elevated_shizuku_hint">Shizuku is installed, so Elevated can start through it instead: no pairing of its own, and it keeps working away from Wi-Fi while Shizuku runs. It gets the same permissions as with Wireless debugging.</string>
     <string name="elevated_running_shizuku">On, through Shizuku: your PC\'s mouse and keyboard work like a real touchscreen and keyboard.</string>
     <string name="elevated_shizuku_waiting">Waiting for Shizuku. Start it in the Shizuku app, then open NectarLink.</string>

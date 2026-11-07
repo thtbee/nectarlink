@@ -139,6 +139,14 @@ object Elevated {
 
     private fun prefs() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
+    /** The user picked Wireless debugging: root and Shizuku are no longer tried first. */
+    fun useWirelessDebugging() {
+        prefs().edit {
+            putBoolean(ROOT, false)
+            putBoolean(SHIZUKU, false)
+        }
+    }
+
     /**
      * Sets Elevated up through root, as the user asked (instead of pairing
      * Wireless debugging). The root manager asks once; after that Elevated
@@ -152,7 +160,10 @@ object Elevated {
             _state.value = State.Starting
             tryStartWithRootLocked()
         }
-        prefs().edit { putBoolean(ROOT, started) }
+        prefs().edit {
+            putBoolean(ROOT, started)
+            if (started) putBoolean(SHIZUKU, false)
+        }
         if (started) {
             cancelRetry()
         } else {
@@ -172,7 +183,10 @@ object Elevated {
             _state.value = State.Failed(reasonFor(problem))
             return@withContext false
         }
-        prefs().edit { putBoolean(SHIZUKU, true) }
+        prefs().edit {
+            putBoolean(SHIZUKU, true)
+            putBoolean(ROOT, false)
+        }
         held = false
         val started = lock.withLock {
             if (running && !shizukuActive) stopLocked()

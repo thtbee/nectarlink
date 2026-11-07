@@ -18,6 +18,9 @@ change things that need a step from you, and its notes say so.
 - **Share photos and videos from the PC.** On Windows, the Photos page has a Share
   button that opens the system's share sheet
   ([#174](https://github.com/thtbee/nectarlink/issues/174)).
+- **Pick how Elevated starts.** When Shizuku is installed or the phone is rooted, Elevated's
+  settings on the phone let you choose Wireless debugging, Shizuku or root
+  ([#110](https://github.com/thtbee/nectarlink/issues/110)).
 - **Don't receive while this PC is locked.** A stricter switch in Settings ›
   Notifications on the PC: the phone sends nothing until you unlock, then Home catches
   up with what's still on the phone

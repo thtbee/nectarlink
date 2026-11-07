@@ -74,6 +74,7 @@ import app.nectarlink.android.companion.PcCompanion
 import app.nectarlink.android.contacts.PhoneContacts
 import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.elevated.PairingNotification
+import app.nectarlink.android.elevated.ElevatedMethod
 import app.nectarlink.android.elevated.ShizukuElevated
 import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.photos.RecentPhotos
@@ -1350,6 +1351,22 @@ private fun ElevatedAccess() {
         failure == Elevated.Reason.ShizukuDenied || failure == Elevated.Reason.ShizukuRoot
     // Through Shizuku, the way back is in Shizuku's app, not Developer options.
     val viaShizuku = Elevated.usesShizuku() || shizukuFailure
+    val methods = remember { ElevatedMethod.available(shizukuInstalled, Elevated.isRootAvailable()) }
+    var method by remember {
+        mutableStateOf(if (Elevated.usesShizuku()) ElevatedMethod.Shizuku else ElevatedMethod.WirelessDebugging)
+    }
+    fun setUp() {
+        when (method) {
+            ElevatedMethod.WirelessDebugging -> {
+                Elevated.useWirelessDebugging()
+                steps = true
+            }
+            ElevatedMethod.Shizuku -> scope.launch {
+                if (!Elevated.setUpWithShizuku() && !ShizukuElevated.running()) openShizuku(context)
+            }
+            ElevatedMethod.Root -> scope.launch { Elevated.setUpWithRoot() }
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f).padding(end = 12.dp)) {
@@ -1381,10 +1398,17 @@ private fun ElevatedAccess() {
                 )
             }
             when (state) {
-                Elevated.State.NotSetUp, is Elevated.State.Failed -> Button(onClick = { steps = true }) {
+                Elevated.State.NotSetUp, is Elevated.State.Failed -> Button(onClick = { setUp() }) {
                     Text(stringResource(R.string.elevated_set_up))
                 }
                 Elevated.State.Waiting -> Button(onClick = {
+                    // Picked another way while waiting for this one.
+                    val waitingFor =
+                        if (Elevated.usesShizuku()) ElevatedMethod.Shizuku else ElevatedMethod.WirelessDebugging
+                    if (method != waitingFor) {
+                        setUp()
+                        return@Button
+                    }
                     scope.launch {
                         if (Elevated.usesShizuku()) {
                             if (!Elevated.start() && !ShizukuElevated.running()) openShizuku(context)
@@ -1420,34 +1444,35 @@ private fun ElevatedAccess() {
                 }
             }
         }
-        // Root only when the user picks it, and only on a rooted phone.
-        val rootOffered = Elevated.isRootAvailable() &&
-            (state == Elevated.State.NotSetUp || state is Elevated.State.Failed)
-        if (rootOffered) {
-            Text(
-                stringResource(R.string.elevated_root_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        // Shizuku and root only show when the phone has them, and nothing asks for
+        // either until the user picks it and taps Set up. To change the way it
+        // started, turn it off first.
+        if (methods.size > 1 && state != Elevated.State.Running && state != Elevated.State.Starting) {
+            Text(stringResource(R.string.elevated_start_with), style = MaterialTheme.typography.labelMedium)
+            Choice(
+                options = methods.map { option ->
+                    option.name to stringResource(
+                        when (option) {
+                            ElevatedMethod.WirelessDebugging -> R.string.elevated_method_wireless
+                            ElevatedMethod.Shizuku -> R.string.elevated_method_shizuku
+                            ElevatedMethod.Root -> R.string.elevated_method_root
+                        },
+                    )
+                },
+                selected = method.name,
+                onSelect = { picked -> method = ElevatedMethod.valueOf(picked) },
             )
-            OutlinedButton(onClick = { scope.launch { Elevated.setUpWithRoot() } }) {
-                Text(stringResource(R.string.elevated_use_root))
+            val hint = when (method) {
+                ElevatedMethod.WirelessDebugging -> null
+                ElevatedMethod.Shizuku -> R.string.elevated_shizuku_hint
+                ElevatedMethod.Root -> R.string.elevated_root_hint
             }
-        }
-        // Shizuku too, only when the user picks it and only when its app is installed.
-        val shizukuOffered = shizukuInstalled && !Elevated.usesShizuku() &&
-            (state == Elevated.State.NotSetUp || state is Elevated.State.Failed)
-        if (shizukuOffered) {
-            Text(
-                stringResource(R.string.elevated_shizuku_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            OutlinedButton(onClick = {
-                scope.launch {
-                    if (!Elevated.setUpWithShizuku() && !ShizukuElevated.running()) openShizuku(context)
-                }
-            }) {
-                Text(stringResource(R.string.elevated_use_shizuku))
+            hint?.let {
+                Text(
+                    stringResource(it),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
