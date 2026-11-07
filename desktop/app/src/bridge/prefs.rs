@@ -114,6 +114,7 @@ pub mod qobject {
         #[qproperty(bool, open_shared_files)]
         #[qproperty(bool, sync_wifi_only)]
         #[qproperty(bool, sync_passwords)]
+        #[qproperty(QString, mirror_quality)]
         /// Send the clipboard to the phone when control moves to it.
         #[qproperty(bool, flow_follow_clipboard)]
         /// Floating Nectar Island pill at the top center of the screen.
@@ -358,6 +359,7 @@ pub struct PreferencesRust {
     open_shared_files: bool,
     sync_wifi_only: bool,
     sync_passwords: bool,
+    mirror_quality: QString,
     flow_follow_clipboard: bool,
     nectar_island: bool,
     nectar_island_calls: bool,
@@ -465,6 +467,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_open_shared_files(settings.open_shared_files);
         self.as_mut().set_sync_wifi_only(settings.sync_wifi_only);
         self.as_mut().set_sync_passwords(settings.sync_passwords);
+        self.as_mut().set_mirror_quality(QString::from(crate::settings::mirror_quality().name()));
         self.as_mut().set_flow_follow_clipboard(settings.flow_follow_clipboard);
         self.as_mut().set_nectar_island(settings.nectar_island);
         self.as_mut().set_nectar_island_calls(settings.nectar_island_calls);
@@ -737,6 +740,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_open_shared_files_changed(|p| {
                 crate::settings::set_open_shared_files(p.open_shared_files);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_mirror_quality_changed(|p| {
+                crate::settings::set_mirror_quality(&String::from(p.mirror_quality()));
                 p.save();
             })
             .release();
@@ -1172,6 +1181,7 @@ impl qobject::Preferences {
             open_shared_files: p.open_shared_files,
             sync_wifi_only: p.sync_wifi_only,
             sync_passwords: p.sync_passwords,
+            mirror_quality: String::from(&p.mirror_quality),
             flow_follow_clipboard: p.flow_follow_clipboard,
             folder_sync_rules: crate::settings::folder_sync_rules(),
             nectar_island: p.nectar_island,

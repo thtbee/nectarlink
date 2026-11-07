@@ -29,6 +29,10 @@ change things that need a step from you, and its notes say so.
   managers mark private. It's marked private on the other side too, leaves that clipboard
   after a minute, and never goes into history, the Timeline or the offline queue
   ([#272](https://github.com/thtbee/nectarlink/issues/272)).
+- **Mirror quality.** Balanced as before, Sharper for the phone's full resolution, or
+  Smoother for weak Wi-Fi, in Settings › Camera & Audio on the PC. It's for the phone's
+  whole screen, and over the relay it stays Balanced
+  ([#275](https://github.com/thtbee/nectarlink/issues/275)).
 - **Back, Home and Recent apps buttons** in the mirror window's toolbar
   ([#192](https://github.com/thtbee/nectarlink/issues/192)).
 - **Brazilian Portuguese.** The Android and PC apps speak Brazilian Portuguese
