@@ -430,24 +430,132 @@ mod imp {
         }
     }
 
+    /// Tells [`process_loopback_client`] that Windows has made the client.
     #[cfg(windows)]
-    fn capture_and_stream_once() -> Result<(), String> {
-        let node = core_host::node().ok_or_else(|| "core node not running".to_owned())?;
-        let peers: Vec<_> = node
-            .paired_devices()
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|d| matches!(d.link, nectarlink_core::LinkState::Online { .. }))
-            .map(|d| d.id)
-            .collect();
-        let wanted = *TARGET.lock().unwrap_or_else(|e| e.into_inner());
-        let Some(peer) = super::pick_target(wanted, &peers) else {
-            std::thread::sleep(Duration::from_millis(500));
-            return Ok(());
-        };
+    #[windows::core::implement(windows::Win32::Media::Audio::IActivateAudioInterfaceCompletionHandler)]
+    struct Activated(std::sync::mpsc::Sender<()>);
 
+    #[cfg(windows)]
+    impl windows::Win32::Media::Audio::IActivateAudioInterfaceCompletionHandler_Impl for Activated_Impl {
+        fn ActivateCompleted(
+            &self,
+            _: windows::core::Ref<windows::Win32::Media::Audio::IActivateAudioInterfaceAsyncOperation>,
+        ) -> windows::core::Result<()> {
+            let _ = self.0.send(());
+            Ok(())
+        }
+    }
+
+    /// A capture of everything the PC plays except NectarLink itself: the phone's
+    /// own sound playing here must not go back to the phone, round and round (#281).
+    #[cfg(windows)]
+    fn process_loopback_client() -> Result<IAudioClient, String> {
+        use windows::Win32::{
+            Media::Audio::{
+                AUDIOCLIENT_ACTIVATION_PARAMS, AUDIOCLIENT_ACTIVATION_PARAMS_0,
+                AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK, AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS,
+                ActivateAudioInterfaceAsync, IActivateAudioInterfaceCompletionHandler,
+                PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE, VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK,
+            },
+            System::{
+                Com::{
+                    BLOB,
+                    StructuredStorage::{PROPVARIANT, PROPVARIANT_0, PROPVARIANT_0_0, PROPVARIANT_0_0_0},
+                },
+                Variant::VT_BLOB,
+            },
+        };
+        use windows::core::{IUnknown, Interface};
+
+        let mut params = AUDIOCLIENT_ACTIVATION_PARAMS {
+            ActivationType: AUDIOCLIENT_ACTIVATION_TYPE_PROCESS_LOOPBACK,
+            Anonymous: AUDIOCLIENT_ACTIVATION_PARAMS_0 {
+                ProcessLoopbackParams: AUDIOCLIENT_PROCESS_LOOPBACK_PARAMS {
+                    TargetProcessId: std::process::id(),
+                    ProcessLoopbackMode: PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE,
+                },
+            },
+        };
+        // The parameters go as a blob, which the PROPVARIANT only points to. It's
+        // never dropped: dropping one frees its blob, which here is on the stack.
+        let blob = std::mem::ManuallyDrop::new(PROPVARIANT {
+            Anonymous: PROPVARIANT_0 {
+                Anonymous: std::mem::ManuallyDrop::new(PROPVARIANT_0_0 {
+                    vt: VT_BLOB,
+                    wReserved1: 0,
+                    wReserved2: 0,
+                    wReserved3: 0,
+                    Anonymous: PROPVARIANT_0_0_0 {
+                        blob: BLOB {
+                            cbSize: std::mem::size_of::<AUDIOCLIENT_ACTIVATION_PARAMS>() as u32,
+                            pBlobData: (&raw mut params).cast(),
+                        },
+                    },
+                }),
+            },
+        });
+        let (done, finished) = std::sync::mpsc::channel();
+        let handler: IActivateAudioInterfaceCompletionHandler = Activated(done).into();
+        // SAFETY: `params` and `blob` outlive the call, which copies them before it returns.
+        let operation = unsafe {
+            ActivateAudioInterfaceAsync(
+                VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK,
+                &IAudioClient::IID,
+                Some(&raw const *blob),
+                &handler,
+            )
+        }
+        .map_err(|e| e.to_string())?;
+        finished.recv_timeout(Duration::from_secs(5)).map_err(|_| "activation timed out".to_owned())?;
+        let mut result = windows::core::HRESULT(0);
+        let mut unknown: Option<IUnknown> = None;
+        // SAFETY: the operation has completed, as the handler said.
+        unsafe { operation.GetActivateResult(&mut result, &mut unknown) }.map_err(|e| e.to_string())?;
+        result.ok().map_err(|e| e.to_string())?;
+        unknown.ok_or("no audio client")?.cast::<IAudioClient>().map_err(|e| e.to_string())
+    }
+
+    /// The capture client, its rate, channels and bits per sample: without
+    /// NectarLink's own sound where Windows can (version 2004 and later), or else
+    /// everything the default output plays, as before.
+    #[cfg(windows)]
+    fn open_capture() -> Result<(IAudioClient, IAudioCaptureClient, u32, usize, u16), String> {
+        use windows::Win32::Media::Audio::{AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM, WAVE_FORMAT_PCM};
+        match process_loopback_client() {
+            Ok(client) => {
+                // This client has no mix format of its own; Windows converts to this.
+                let format = WAVEFORMATEX {
+                    wFormatTag: WAVE_FORMAT_PCM as u16,
+                    nChannels: 2,
+                    nSamplesPerSec: 48_000,
+                    nAvgBytesPerSec: 48_000 * 4,
+                    nBlockAlign: 4,
+                    wBitsPerSample: 16,
+                    cbSize: 0,
+                };
+                // SAFETY: a shared-mode loopback capture of a format we own.
+                let started = unsafe {
+                    client
+                        .Initialize(
+                            AUDCLNT_SHAREMODE_SHARED,
+                            AUDCLNT_STREAMFLAGS_LOOPBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM,
+                            100_000,
+                            0,
+                            &format,
+                            None,
+                        )
+                        .and_then(|()| client.GetService::<IAudioCaptureClient>())
+                        .and_then(|capture| client.Start().map(|()| capture))
+                };
+                match started {
+                    Ok(capture) => return Ok((client, capture, 48_000, 2, 16)),
+                    Err(e) => tracing::info!(error = %e, "can't capture without NectarLink's own sound"),
+                }
+            }
+            Err(e) => tracing::info!(error = %e, "can't capture without NectarLink's own sound"),
+        }
         // SAFETY: WASAPI loopback initialization on the default render endpoint.
-        let (client, capture, rate, channels, bits_per_sample) = unsafe {
+        unsafe {
             let enumerator: IMMDeviceEnumerator =
                 CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| e.to_string())?;
             let device = enumerator.GetDefaultAudioEndpoint(eRender, eConsole).map_err(|e| e.to_string())?;
@@ -473,8 +581,27 @@ mod imp {
             init_res.map_err(|e| e.to_string())?;
             let capture: IAudioCaptureClient = client.GetService().map_err(|e| e.to_string())?;
             client.Start().map_err(|e| e.to_string())?;
-            (client, capture, rate, channels, bits)
+            Ok((client, capture, rate, channels, bits))
+        }
+    }
+
+    #[cfg(windows)]
+    fn capture_and_stream_once() -> Result<(), String> {
+        let node = core_host::node().ok_or_else(|| "core node not running".to_owned())?;
+        let peers: Vec<_> = node
+            .paired_devices()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|d| matches!(d.link, nectarlink_core::LinkState::Online { .. }))
+            .map(|d| d.id)
+            .collect();
+        let wanted = *TARGET.lock().unwrap_or_else(|e| e.into_inner());
+        let Some(peer) = super::pick_target(wanted, &peers) else {
+            std::thread::sleep(Duration::from_millis(500));
+            return Ok(());
         };
+
+        let (client, capture, rate, channels, bits_per_sample) = open_capture()?;
 
         let mut enhancer = SpeakerEnhancer::new(rate);
         let (tx, mut rx) = tokio::sync::mpsc::channel::<(u32, u8, Vec<u8>)>(64);
@@ -576,6 +703,90 @@ mod imp {
     #[cfg(test)]
     mod tests {
         use super::*;
+
+        /// Plays a tone too quiet to hear and checks what each capture picks up:
+        /// everything sees it, the one for Phone as speaker doesn't. Needs a sound
+        /// device, so it runs by hand: `cargo test -- --ignored own_sound`.
+        #[cfg(windows)]
+        #[test]
+        #[ignore]
+        fn phone_as_speaker_leaves_out_nectarlinks_own_sound() {
+            use windows::Win32::System::Com::{COINIT_MULTITHREADED, CoInitializeEx};
+            // SAFETY: COM for this test thread.
+            let _ = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+
+            // The peak of what a capture has picked up since the last look.
+            let drain = |capture: &IAudioCaptureClient, bits: u16| -> f32 {
+                let mut loudest = 0f32;
+                // SAFETY: draining the capture as the worker does.
+                unsafe {
+                    while capture.GetNextPacketSize().unwrap_or(0) > 0 {
+                        let (mut data, mut frames, mut flags) = (std::ptr::null_mut(), 0u32, 0u32);
+                        if capture.GetBuffer(&mut data, &mut frames, &mut flags, None, None).is_err() {
+                            break;
+                        }
+                        if !data.is_null() && flags & (AUDCLNT_BUFFERFLAGS_SILENT.0 as u32) == 0 {
+                            let n = frames as usize * 2;
+                            let peak = if bits == 32 {
+                                std::slice::from_raw_parts(data.cast::<f32>(), n)
+                                    .iter()
+                                    .fold(0f32, |m, s| m.max(s.abs()))
+                            } else {
+                                std::slice::from_raw_parts(data.cast::<i16>(), n)
+                                    .iter()
+                                    .fold(0f32, |m, s| m.max(f32::from(s.unsigned_abs()) / 32_768.0))
+                            };
+                            loudest = loudest.max(peak);
+                        }
+                        let _ = capture.ReleaseBuffer(frames);
+                    }
+                }
+                loudest
+            };
+
+            let (ours, ours_capture, _, _, ours_bits) = open_capture().expect("a capture");
+            assert_eq!(ours_bits, 16, "the capture without NectarLink's own sound opened");
+            // SAFETY: the whole output, as before this change.
+            let (all, all_capture, all_bits) = unsafe {
+                let enumerator: IMMDeviceEnumerator =
+                    CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).unwrap();
+                let device = enumerator.GetDefaultAudioEndpoint(eRender, eConsole).unwrap();
+                let client: IAudioClient = device.Activate(CLSCTX_ALL, None).unwrap();
+                let mix = client.GetMixFormat().unwrap();
+                let bits = (*mix).wBitsPerSample;
+                client
+                    .Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_LOOPBACK, 100_000, 0, mix, None)
+                    .unwrap();
+                let capture: IAudioCaptureClient = client.GetService().unwrap();
+                client.Start().unwrap();
+                (client, capture, bits)
+            };
+
+            let player = crate::win::audio_out::Player::start(48_000, 2).expect("a sound device");
+            // About -50 dB, in 100 ms pieces as the mirror plays them.
+            let piece: Vec<u8> = (0..4_800)
+                .flat_map(|i| {
+                    let s = ((i as f32 * 400.0 * std::f32::consts::TAU / 48_000.0).sin() * 100.0) as i16;
+                    [s.to_le_bytes(), s.to_le_bytes()].concat()
+                })
+                .collect();
+            let (mut without_us, mut everything) = (0f32, 0f32);
+            for _ in 0..20 {
+                player.push(piece.clone());
+                std::thread::sleep(Duration::from_millis(100));
+                without_us = without_us.max(drain(&ours_capture, ours_bits));
+                everything = everything.max(drain(&all_capture, all_bits));
+            }
+            drop(player);
+            // SAFETY: done with them.
+            unsafe {
+                let _ = ours.Stop();
+                let _ = all.Stop();
+            }
+            eprintln!("whole output {everything}, without NectarLink {without_us}");
+            assert!(everything > 0.001, "the whole output didn't pick the tone up: {everything}");
+            assert!(without_us < everything / 10.0, "own sound got through: {without_us} vs {everything}");
+        }
 
         #[test]
         fn f32_stereo_to_i16le_clamps_and_encodes_little_endian() {
