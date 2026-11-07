@@ -107,8 +107,12 @@ The [user guide](docs/guide/README.md) walks through every step and feature.
   one-time codes are never kept in the history.
 - **Files and folders** both ways at Wi-Fi speed, with resume after a dropped
   connection, **Send to** in File Explorer, and the phone's storage in File
-  Explorer.
-- **Photos**: the phone's camera roll, screenshots and albums on the PC.
+  Explorer. It also works with LocalSend devices, without pairing.
+- **Synced folders**: keep a phone folder and a PC folder in step, one way or
+  both ways, with a copy kept when a file changed on both sides.
+- **Photos**: the phone's camera roll, screenshots and albums on the PC, and
+  **Photo backup**, which copies new photos into a folder on the PC by year and
+  month and never deletes anything.
 - **Handoff**: links, maps and videos (at the same timestamp) open on the
   other device.
 
@@ -123,6 +127,7 @@ The [user guide](docs/guide/README.md) walks through every step and feature.
 
 **Use your PC from the phone**
 - **Touchpad, air mouse, keyboard, voice typing and presentation remote.**
+- **Your PC's screen on the phone**, with control from the phone.
 - **Deck**: a Stream Deck style grid of buttons for the PC (media, shortcuts,
   apps, OBS Studio, commands), with live volume and mute.
 - **Lock, sleep and wake** the PC.
@@ -133,13 +138,18 @@ The [user guide](docs/guide/README.md) walks through every step and feature.
   have it on the PC's clipboard.
 - **Phone as a speaker** for the PC's sound, and a **voice recorder** that
   saves straight to the PC.
+- **The phone's sound on the PC**, without a mirror window.
+- **Phone as a microphone** for Discord, Zoom, OBS or Teams, through a virtual
+  audio cable such as VB-CABLE.
+- **Play on phone**: carry on with the video playing on the PC.
 
 **And more**: media controls both ways, battery alerts, Find my device, a
 searchable **Timeline** of everything that moved, a **Command Palette**
 (`Ctrl+Alt+Space`), a slide-out **Shelf**, a home-screen widget, and a
 **Connection Doctor** that finds and fixes what keeps devices from connecting.
-Four themes, **Hive**, **Bloom**, **Glass** and **Graphite**, each in light
-and dark.
+An optional **Nectar Island** at the top of the screen shows calls, music and
+transfers. Four themes, **Hive**, **Bloom**, **Glass** and **Graphite**, each
+in light and dark. In English, German, Turkish and Simplified Chinese.
 
 ### Platform support
 
@@ -161,8 +171,8 @@ and dark.
 
 ## Private by design
 
-- **Local-first.** Devices talk directly over your network or a USB cable.
-  Nothing goes through a server, and there's no account.
+- **Local-first.** Devices talk directly over your network, a USB cable or
+  Tailscale. Nothing goes through a server, and there's no account.
 - **End-to-end encrypted.** Every connection is QUIC with TLS 1.3, authenticated
   with device keys exchanged when you pair. Keys are protected by Windows DPAPI,
   the macOS Keychain and the Android Keystore. On Linux, for now, only by file permissions.
@@ -217,7 +227,7 @@ Windows backdrop; and **Graphite**, ink on paper. All in light and dark.
 ## How it works
 
 ```
- Android app (Kotlin, Compose)            Windows app (Qt Quick, Rust)
+ Android app (Kotlin, Compose)            Desktop app (Qt Quick, Rust)
           │ UniFFI                                │ cxx-qt
           ▼                                       ▼
  ┌─────────────────────┐   QUIC (iroh),   ┌─────────────────────┐
@@ -244,16 +254,18 @@ core/
   nectarlink-protocol/   Message types, framing, pairing cryptography      (MPL-2.0)
   nectarlink-core/       Identity, trust store, pairing, sessions, features (MPL-2.0)
   nectarlink-ffi/        UniFFI bindings used by the Android app          (MPL-2.0)
-  nectarlink-adb/        Wireless debugging client for the phone's helper  (MPL-2.0)
+  nectarlink-adb/        Client for the PC's adb, for USB connections      (MPL-2.0)
   nectarlink-cli/        Command-line client (`nectarlink`)                (GPL)
 desktop/
-  app/                   Windows app: Rust host, cxx-qt bridge, QML UI     (GPL)
+  app/                   Desktop app: Rust host, cxx-qt bridge, QML UI     (GPL)
   vcam/                  Windows 11 virtual camera Media Foundation DLL    (GPL)
   installer/             NSIS installer script and Sparse Package manifest (GPL)
+  packaging/             Linux packages and the install script             (GPL)
 android/                 Android app: Kotlin and Jetpack Compose (API 26+) (GPL)
 assets/fonts/            Fonts both apps ship with                         (OFL-1.1)
 assets/brand/            The app icon (see the trademark policy)
 tools/xtask/             Code generation (theme tokens) and checks         (GPL)
+third_party/             Patched copies of dependencies, under their own licenses
 spikes/                  Technical experiments with their results
 scripts/                 Build, packaging and check scripts
 docs/                    Guide, technical docs, protocol, design system    (CC BY 4.0)
@@ -281,7 +293,7 @@ encoding requires hardware; if unavailable, screen sharing falls back to H.264.
 ```sh
 cargo test -p nectarlink-protocol -p nectarlink-core -p nectarlink-ffi   # core and tests
 cargo run -p nectarlink-cli -- --help                                     # command-line client
-cargo run -p nectarlink-desktop                                           # Windows app (Qt's bin on PATH)
+cargo run -p nectarlink-desktop                                           # desktop app (Qt's bin on PATH)
 cd android && ./gradlew assembleDebug                                     # Android app
 ```
 
