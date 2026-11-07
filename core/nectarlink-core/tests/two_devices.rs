@@ -5661,15 +5661,22 @@ async fn two_profiles_on_one_phone_each_get_their_own_usb_port() {
     // Android profiles (personal, work, a cloned app) share one loopback: both apps ask
     // for the same port, and the second takes the next one rather than a random port the
     // PC never tries. Each port then reaches its own profile.
-    let base = loop {
+    // Other tests take ports all the time, so a range that looked free can be gone
+    // by the time the devices start: then try another one.
+    let (base, personal, work) = 'range: loop {
         let base = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap().local_addr().unwrap().port();
         let Some(last) = base.checked_add(nectarlink_core::USB_PORT_COUNT) else { continue };
-        if (base..=last).all(|p| std::net::TcpListener::bind(("127.0.0.1", p)).is_ok()) {
-            break base;
+        if !(base..=last).all(|p| std::net::TcpListener::bind(("127.0.0.1", p)).is_ok()) {
+            continue;
         }
+        let personal = start_usb_device("Pixel", DeviceKind::Phone, Some(base), &[]).await;
+        let work = start_usb_device("Pixel (Work)", DeviceKind::Phone, Some(base), &[]).await;
+        if personal.node.usb_port().is_some() && work.node.usb_port().is_some() {
+            break 'range (base, personal, work);
+        }
+        personal.node.shutdown().await;
+        work.node.shutdown().await;
     };
-    let personal = start_usb_device("Pixel", DeviceKind::Phone, Some(base), &[]).await;
-    let work = start_usb_device("Pixel (Work)", DeviceKind::Phone, Some(base), &[]).await;
     let pc = start_usb_device("Desktop", DeviceKind::Desktop, None, &[]).await;
 
     // Other tests run alongside and take ports too, so which ones are free can vary; what
