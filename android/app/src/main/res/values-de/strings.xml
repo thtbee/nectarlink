@@ -1364,8 +1364,8 @@
     <string name="queue_kind_camera_request">Kameraanfrage</string>
 
     <string name="settings_theme_artwork_body">App- &amp; Glasfarben an das aktuelle Mediencover anpassen</string>
-    <string name="settings_wireless_debugging_active">Aktiv über Kabelloses Debugging · Zwischenablage wird automatisch synchronisiert</string>
-    <string name="settings_wireless_debugging_hint">Erlaube Kabelloses Debugging, damit die Zwischenablage im Hintergrund synchronisiert wird, oder nutze „Zwischenablage senden“ in der Benachrichtigung</string>
+    <string name="settings_wireless_debugging_active">Elevated ist aktiv · Zwischenablage wird automatisch synchronisiert</string>
+    <string name="settings_wireless_debugging_hint">Richte Elevated ein (Kabelloses Debugging, Shizuku oder Root), damit die Zwischenablage im Hintergrund synchronisiert wird, oder nutze „Zwischenablage senden“ in der Benachrichtigung</string>
 
     <!-- Pause for banking apps -->
     <string name="banking_title">Für Banking-Apps pausieren</string>

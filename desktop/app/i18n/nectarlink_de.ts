@@ -5217,13 +5217,21 @@ Voraussetzungen
     </message>
     <message>
         <location filename="../qml/components/LockChip.qml" line="46"/>
-        <source>On your phone, open NectarLink › Settings › Control from your PC and turn on the Accessibility service.</source>
-        <translation>Öffne auf deinem Gerät NectarLink › Einstellungen › Vom PC aus steuern und aktiviere die Bedienungshilfe.</translation>
+        <source>On your phone, open NectarLink › Settings › Permissions › Control from your PC and turn on the Accessibility service.</source>
+        <translation>Öffne auf deinem Gerät NectarLink › Einstellungen › Berechtigungen › Steuerung vom PC und aktiviere die Bedienungshilfe.</translation>
     </message>
     <message>
         <location filename="../qml/components/LockChip.qml" line="48"/>
+        <source>Needs Elevated: set it up in NectarLink › Settings › Permissions › Control from your PC, or connect the phone over USB with USB debugging allowed.</source>
+        <translation>Erfordert Elevated: Richte es in NectarLink › Einstellungen › Berechtigungen › Steuerung vom PC ein oder verbinde das Telefon per USB mit aktiviertem USB-Debugging.</translation>
+    </message>
+    <message>
+        <source>On your phone, open NectarLink › Settings › Control from your PC and turn on the Accessibility service.</source>
+        <translation type="vanished">Öffne auf deinem Gerät NectarLink › Einstellungen › Vom PC aus steuern und aktiviere die Bedienungshilfe.</translation>
+    </message>
+    <message>
         <source>Needs Elevated: set up Wireless debugging in NectarLink › Settings › Control from your PC, or connect the phone over USB with USB debugging allowed.</source>
-        <translation>Erfordert den erweiterten Modus: Richte Kabelloses Debugging in NectarLink › Einstellungen › Steuerung vom PC ein oder verbinde das Telefon per USB mit aktiviertem USB-Debugging.</translation>
+        <translation type="vanished">Erfordert den erweiterten Modus: Richte Kabelloses Debugging in NectarLink › Einstellungen › Steuerung vom PC ein oder verbinde das Telefon per USB mit aktiviertem USB-Debugging.</translation>
     </message>
     <message>
         <source>Needs Elevated: set up Wireless debugging or connect over USB.</source>
@@ -9295,22 +9303,22 @@ Voraussetzungen
 <context>
     <name>StarPrompt</name>
     <message>
-        <location filename="../qml/components/StarPrompt.qml" line="290"/>
+        <location filename="../qml/components/StarPrompt.qml" line="299"/>
         <source>Thank you!</source>
         <translation>Danke!</translation>
     </message>
     <message>
-        <location filename="../qml/components/StarPrompt.qml" line="290"/>
+        <location filename="../qml/components/StarPrompt.qml" line="299"/>
         <source>Enjoying NectarLink?</source>
         <translation>Gefällt dir NectarLink?</translation>
     </message>
     <message>
-        <location filename="../qml/components/StarPrompt.qml" line="300"/>
+        <location filename="../qml/components/StarPrompt.qml" line="309"/>
         <source>Star on GitHub</source>
         <translation>Stern auf GitHub</translation>
     </message>
     <message>
-        <location filename="../qml/components/StarPrompt.qml" line="311"/>
+        <location filename="../qml/components/StarPrompt.qml" line="320"/>
         <source>Dismiss</source>
         <translation>Schließen</translation>
     </message>

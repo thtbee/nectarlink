@@ -5202,13 +5202,21 @@ O que precisa
     </message>
     <message>
         <location filename="../qml/components/LockChip.qml" line="46"/>
-        <source>On your phone, open NectarLink › Settings › Control from your PC and turn on the Accessibility service.</source>
-        <translation>No celular, abra NectarLink › Configurações › Controle pelo PC e ative o serviço de Acessibilidade.</translation>
+        <source>On your phone, open NectarLink › Settings › Permissions › Control from your PC and turn on the Accessibility service.</source>
+        <translation>No celular, abra NectarLink › Configurações › Permissões › Controle pelo PC e ative o serviço de Acessibilidade.</translation>
     </message>
     <message>
         <location filename="../qml/components/LockChip.qml" line="48"/>
+        <source>Needs Elevated: set it up in NectarLink › Settings › Permissions › Control from your PC, or connect the phone over USB with USB debugging allowed.</source>
+        <translation>Precisa do Elevated: configure em NectarLink › Configurações › Permissões › Controle pelo PC, ou conecte o celular por USB com a depuração USB permitida.</translation>
+    </message>
+    <message>
+        <source>On your phone, open NectarLink › Settings › Control from your PC and turn on the Accessibility service.</source>
+        <translation type="vanished">No celular, abra NectarLink › Configurações › Controle pelo PC e ative o serviço de Acessibilidade.</translation>
+    </message>
+    <message>
         <source>Needs Elevated: set up Wireless debugging in NectarLink › Settings › Control from your PC, or connect the phone over USB with USB debugging allowed.</source>
-        <translation>Requer o Elevated: configure a Depuração por Wi-Fi em NectarLink › Configurações › Controle pelo PC, ou conecte o celular por USB com a depuração USB permitida.</translation>
+        <translation type="vanished">Requer o Elevated: configure a Depuração por Wi-Fi em NectarLink › Configurações › Controle pelo PC, ou conecte o celular por USB com a depuração USB permitida.</translation>
     </message>
     <message>
         <location filename="../qml/components/LockChip.qml" line="50"/>

@@ -4939,12 +4939,12 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/components/LockChip.qml" line="46"/>
-        <source>On your phone, open NectarLink › Settings › Control from your PC and turn on the Accessibility service.</source>
+        <source>On your phone, open NectarLink › Settings › Permissions › Control from your PC and turn on the Accessibility service.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../qml/components/LockChip.qml" line="48"/>
-        <source>Needs Elevated: set up Wireless debugging in NectarLink › Settings › Control from your PC, or connect the phone over USB with USB debugging allowed.</source>
+        <source>Needs Elevated: set it up in NectarLink › Settings › Permissions › Control from your PC, or connect the phone over USB with USB debugging allowed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -8983,22 +8983,22 @@ What it needs
 <context>
     <name>StarPrompt</name>
     <message>
-        <location filename="../../qml/components/StarPrompt.qml" line="290"/>
+        <location filename="../../qml/components/StarPrompt.qml" line="299"/>
         <source>Thank you!</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/components/StarPrompt.qml" line="290"/>
+        <location filename="../../qml/components/StarPrompt.qml" line="299"/>
         <source>Enjoying NectarLink?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/components/StarPrompt.qml" line="300"/>
+        <location filename="../../qml/components/StarPrompt.qml" line="309"/>
         <source>Star on GitHub</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/components/StarPrompt.qml" line="311"/>
+        <location filename="../../qml/components/StarPrompt.qml" line="320"/>
         <source>Dismiss</source>
         <translation type="unfinished"></translation>
     </message>

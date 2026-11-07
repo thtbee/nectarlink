@@ -5215,13 +5215,21 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/components/LockChip.qml" line="46"/>
-        <source>On your phone, open NectarLink › Settings › Control from your PC and turn on the Accessibility service.</source>
-        <translation>Telefonunuzda NectarLink › Ayarlar › Bilgisayarınızdan kontrol&apos;ü açın ve Erişilebilirlik hizmetini açın.</translation>
+        <source>On your phone, open NectarLink › Settings › Permissions › Control from your PC and turn on the Accessibility service.</source>
+        <translation>Telefonunda NectarLink › Ayarlar › İzinler › Bilgisayarınızdan kontrol bölümünü aç ve Erişilebilirlik hizmetini etkinleştir.</translation>
     </message>
     <message>
         <location filename="../qml/components/LockChip.qml" line="48"/>
+        <source>Needs Elevated: set it up in NectarLink › Settings › Permissions › Control from your PC, or connect the phone over USB with USB debugging allowed.</source>
+        <translation>Elevated gerekir: NectarLink › Ayarlar › İzinler › Bilgisayarınızdan kontrol bölümünden kur ya da telefonu USB hata ayıklamaya izin vererek USB ile bağla.</translation>
+    </message>
+    <message>
+        <source>On your phone, open NectarLink › Settings › Control from your PC and turn on the Accessibility service.</source>
+        <translation type="vanished">Telefonunuzda NectarLink › Ayarlar › Bilgisayarınızdan kontrol&apos;ü açın ve Erişilebilirlik hizmetini açın.</translation>
+    </message>
+    <message>
         <source>Needs Elevated: set up Wireless debugging in NectarLink › Settings › Control from your PC, or connect the phone over USB with USB debugging allowed.</source>
-        <translation>Yükseltilmiş mod gerekli: NectarLink › Ayarlar › Bilgisayarınızdan kontrol bölümünde Kablosuz hata ayıklamayı ayarlayın veya telefonu USB hata ayıklamaya izin verilmiş şekilde USB ile bağlayın.</translation>
+        <translation type="vanished">Yükseltilmiş mod gerekli: NectarLink › Ayarlar › Bilgisayarınızdan kontrol bölümünde Kablosuz hata ayıklamayı ayarlayın veya telefonu USB hata ayıklamaya izin verilmiş şekilde USB ile bağlayın.</translation>
     </message>
     <message>
         <location filename="../qml/components/LockChip.qml" line="50"/>
@@ -9283,22 +9291,22 @@ Neler gerekir
 <context>
     <name>StarPrompt</name>
     <message>
-        <location filename="../qml/components/StarPrompt.qml" line="290"/>
+        <location filename="../qml/components/StarPrompt.qml" line="299"/>
         <source>Thank you!</source>
         <translation>Teşekkürler!</translation>
     </message>
     <message>
-        <location filename="../qml/components/StarPrompt.qml" line="290"/>
+        <location filename="../qml/components/StarPrompt.qml" line="299"/>
         <source>Enjoying NectarLink?</source>
-        <translation>NectarLink'i beğendin mi?</translation>
+        <translation>NectarLink&apos;i beğendin mi?</translation>
     </message>
     <message>
-        <location filename="../qml/components/StarPrompt.qml" line="300"/>
+        <location filename="../qml/components/StarPrompt.qml" line="309"/>
         <source>Star on GitHub</source>
-        <translation>GitHub'da yıldızla</translation>
+        <translation>GitHub&apos;da yıldızla</translation>
     </message>
     <message>
-        <location filename="../qml/components/StarPrompt.qml" line="311"/>
+        <location filename="../qml/components/StarPrompt.qml" line="320"/>
         <source>Dismiss</source>
         <translation>Kapat</translation>
     </message>

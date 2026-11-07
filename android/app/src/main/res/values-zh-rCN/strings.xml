@@ -1226,8 +1226,8 @@
     <string name="queue_kind_camera_request">摄像头请求</string>
 
     <string name="settings_theme_artwork_body">让应用与玻璃配色跟随播放中的媒体封面</string>
-    <string name="settings_wireless_debugging_active">无线调试已启用 · 剪贴板会自动同步</string>
-    <string name="settings_wireless_debugging_hint">允许无线调试后，剪贴板才能在后台同步；也可以在通知里点「发送剪贴板」</string>
+    <string name="settings_wireless_debugging_active">Elevated 已开启 · 剪贴板会自动同步</string>
+    <string name="settings_wireless_debugging_hint">设置 Elevated（无线调试、Shizuku 或 root）后，剪贴板才能在后台同步；也可以在通知里使用“发送剪贴板”</string>
     <!-- Pause for banking apps -->
     <string name="banking_title">为银行应用暂停</string>
     <string name="banking_text">部分银行应用在开发者选项、调试或无障碍服务开启时无法打开。在这里选择这些应用：打开它们时，NectarLink会关闭这些设置，离开后再重新开启。</string>

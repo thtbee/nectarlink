@@ -1363,8 +1363,8 @@
     <string name="queue_kind_camera_request">Pedido para usar a câmera</string>
 
     <string name="settings_theme_artwork_body">Sincroniza as cores do app e do vidro com a capa da mídia que está tocando</string>
-    <string name="settings_wireless_debugging_active">Ativo pela Depuração por Wi-Fi · a área de transferência sincroniza sozinha</string>
-    <string name="settings_wireless_debugging_hint">Ative a Depuração por Wi-Fi para a área de transferência sincronizar em segundo plano, ou use Enviar item copiado na notificação</string>
+    <string name="settings_wireless_debugging_active">Elevated ativo · a área de transferência sincroniza automaticamente</string>
+    <string name="settings_wireless_debugging_hint">Configure o Elevated (Depuração por Wi-Fi, Shizuku ou root) para sincronizar a área de transferência em segundo plano, ou use Enviar área de transferência na notificação</string>
 
     <!-- Pause for banking apps -->
     <string name="banking_title">Pausar para apps bancários</string>

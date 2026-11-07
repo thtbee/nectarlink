@@ -1363,8 +1363,8 @@
     <string name="queue_kind_camera_request">Kamera isteği</string>
 
     <string name="settings_theme_artwork_body">Uygulama ve cam renklerini çalan medyanın kapak görseliyle eşitle</string>
-    <string name="settings_wireless_debugging_active">Kablosuz hata ayıklama ile etkin · pano otomatik olarak eşitlenir</string>
-    <string name="settings_wireless_debugging_hint">Panonun arka planda eşitlenebilmesi için Kablosuz hata ayıklamaya izin verin veya bildirimdeki Panoyu gönder\'i kullanın</string>
+    <string name="settings_wireless_debugging_active">Elevated açık · pano otomatik olarak eşitlenir</string>
+    <string name="settings_wireless_debugging_hint">Panonun arka planda eşitlenmesi için Elevated\'ı kur (Kablosuz hata ayıklama, Shizuku veya root) ya da bildirimdeki Panoyu gönder\'i kullan</string>
 
     <!-- Pause for banking apps -->
     <string name="banking_title">Bankacılık uygulamaları için duraklat</string>

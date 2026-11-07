@@ -1364,8 +1364,8 @@
     <string name="queue_kind_camera_request">Camera request</string>
 
     <string name="settings_theme_artwork_body">Sync app &amp; glass colors with playing media artwork</string>
-    <string name="settings_wireless_debugging_active">Active via Wireless Debugging · clipboard syncs automatically</string>
-    <string name="settings_wireless_debugging_hint">Allow Wireless Debugging so clipboard can sync in the background, or use Send clipboard in the notification</string>
+    <string name="settings_wireless_debugging_active">Elevated is on · clipboard syncs automatically</string>
+    <string name="settings_wireless_debugging_hint">Set up Elevated (Wireless debugging, Shizuku or root) so clipboard can sync in the background, or use Send clipboard in the notification</string>
 
     <!-- Pause for banking apps -->
     <string name="banking_title">Pause for banking apps</string>

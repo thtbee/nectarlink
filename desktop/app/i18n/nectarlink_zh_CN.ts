@@ -5215,13 +5215,21 @@ What it needs
     </message>
     <message>
         <location filename="../qml/components/LockChip.qml" line="46"/>
-        <source>On your phone, open NectarLink › Settings › Control from your PC and turn on the Accessibility service.</source>
-        <translation>请在手机上打开 NectarLink › 设置 › 从电脑控制，并开启无障碍服务。</translation>
+        <source>On your phone, open NectarLink › Settings › Permissions › Control from your PC and turn on the Accessibility service.</source>
+        <translation>在手机上打开 NectarLink › 设置 › 权限 › 从电脑控制，然后开启无障碍服务。</translation>
     </message>
     <message>
         <location filename="../qml/components/LockChip.qml" line="48"/>
+        <source>Needs Elevated: set it up in NectarLink › Settings › Permissions › Control from your PC, or connect the phone over USB with USB debugging allowed.</source>
+        <translation>需要 Elevated：请在 NectarLink › 设置 › 权限 › 从电脑控制 中设置，或用 USB 连接手机并允许 USB 调试。</translation>
+    </message>
+    <message>
+        <source>On your phone, open NectarLink › Settings › Control from your PC and turn on the Accessibility service.</source>
+        <translation type="vanished">请在手机上打开 NectarLink › 设置 › 从电脑控制，并开启无障碍服务。</translation>
+    </message>
+    <message>
         <source>Needs Elevated: set up Wireless debugging in NectarLink › Settings › Control from your PC, or connect the phone over USB with USB debugging allowed.</source>
-        <translation>需要高级权限：请在 NectarLink › 设置 › 从电脑控制 中设置无线调试，或通过 USB 连接手机并启用 USB 调试。</translation>
+        <translation type="vanished">需要高级权限：请在 NectarLink › 设置 › 从电脑控制 中设置无线调试，或通过 USB 连接手机并启用 USB 调试。</translation>
     </message>
     <message>
         <source>Needs Elevated: set up Wireless debugging or connect over USB.</source>
@@ -9291,22 +9299,22 @@ What it needs
 <context>
     <name>StarPrompt</name>
     <message>
-        <location filename="../qml/components/StarPrompt.qml" line="290"/>
+        <location filename="../qml/components/StarPrompt.qml" line="299"/>
         <source>Thank you!</source>
         <translation>谢谢！</translation>
     </message>
     <message>
-        <location filename="../qml/components/StarPrompt.qml" line="290"/>
+        <location filename="../qml/components/StarPrompt.qml" line="299"/>
         <source>Enjoying NectarLink?</source>
         <translation>喜欢 NectarLink 吗？</translation>
     </message>
     <message>
-        <location filename="../qml/components/StarPrompt.qml" line="300"/>
+        <location filename="../qml/components/StarPrompt.qml" line="309"/>
         <source>Star on GitHub</source>
         <translation>在 GitHub 上点星</translation>
     </message>
     <message>
-        <location filename="../qml/components/StarPrompt.qml" line="311"/>
+        <location filename="../qml/components/StarPrompt.qml" line="320"/>
         <source>Dismiss</source>
         <translation>关闭</translation>
     </message>

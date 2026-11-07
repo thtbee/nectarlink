@@ -140,6 +140,7 @@ fun SettingsScreen(
     var pickLanguage by remember { mutableStateOf(false) }
     var activeCategory by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("all") }
     var pulsingSectionKey by remember { mutableStateOf<String?>(null) }
+    var jumpToControl by remember { mutableStateOf(0) }
     val isGlass = LocalGlassTheme.current
     val anyDialogOpen = confirmUnpair != null || confirmClearEverything
 
@@ -163,6 +164,16 @@ fun SettingsScreen(
     val listState = androidx.compose.foundation.lazy.rememberLazyListState(
         cacheWindow = androidx.compose.foundation.lazy.layout.LazyLayoutCacheWindow(aheadFraction = 1f, behindFraction = 1f),
     )
+
+    androidx.compose.runtime.LaunchedEffect(jumpToControl) {
+        if (jumpToControl == 0) return@LaunchedEffect
+        activeCategory = "permissions"
+        pulsingSectionKey = "control"
+        delay(60)
+        runCatching { listState.animateScrollToItem(2) }
+        delay(2200)
+        if (pulsingSectionKey == "control") pulsingSectionKey = null
+    }
 
     androidx.compose.runtime.LaunchedEffect(highlightTarget) {
         val target = highlightTarget ?: return@LaunchedEffect
@@ -727,16 +738,14 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                        // Elevated's own section knows every way to start it.
                         if (state.elevated) {
-                            OutlinedButton(onClick = { openDeveloperOptionsSettings(context) }) {
+                            OutlinedButton(onClick = { jumpToControl++ }) {
                                 Text(stringResource(R.string.action_manage))
                             }
                         } else {
-                            Button(onClick = {
-                                PairingNotification.show(context)
-                                openDeveloperOptionsSettings(context)
-                            }) {
-                                Text(stringResource(R.string.action_allow))
+                            Button(onClick = { jumpToControl++ }) {
+                                Text(stringResource(R.string.elevated_set_up))
                             }
                         }
                     }

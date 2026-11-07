@@ -98,6 +98,10 @@ what people reported since 0.1.4.
   the one that has this fix.
 - Show in folder opens the right folder when a file's path has a space in it, instead of
   Documents or the Desktop ([#264](https://github.com/thtbee/nectarlink/issues/264)).
+- Deck tiles and page names show in the phone's language unless you renamed them
+  ([#209](https://github.com/thtbee/nectarlink/issues/209)).
+- The phone's clipboard setting says Elevated is on however it was started, and takes
+  you to Elevated's settings ([#110](https://github.com/thtbee/nectarlink/issues/110)).
 
 ### Downloads
 

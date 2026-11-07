@@ -157,7 +157,9 @@ fun DeckScreen(
     }
 
     val reducedMotion = LocalReducedMotion.current
-    val layout = device.deckLayout ?: remember(context) { fallbackDefaultLayout(context) }
+    val layout = remember(device.deckLayout, context) {
+        device.deckLayout?.let { localizedDefaults(it, context) } ?: fallbackDefaultLayout(context)
+    }
     val liveState = device.deckState ?: DeckState(
         playing = false,
         volume = 50u,
@@ -1036,4 +1038,38 @@ private fun fallbackDefaultLayout(context: Context): DeckLayout = DeckLayout(
             ),
         ),
     ),
+)
+
+/**
+ * The string for a label the PC's default Deck uses, or null for one the user
+ * chose. The PC sends these in English, whatever language this phone is in.
+ */
+internal fun defaultDeckLabel(label: String): Int? = when (label) {
+    "Play / pause" -> R.string.deck_default_play_pause
+    "Previous" -> R.string.deck_default_previous
+    "Next" -> R.string.deck_default_next
+    "Volume down" -> R.string.deck_default_volume_down
+    "Volume up" -> R.string.deck_default_volume_up
+    "Mute audio" -> R.string.deck_default_volume_mute
+    "Mic mute" -> R.string.deck_default_mic_mute
+    "Show desktop" -> R.string.deck_default_show_desktop
+    "Switch window" -> R.string.deck_default_switch_window
+    "Screenshot" -> R.string.deck_default_screenshot
+    "Lock PC" -> R.string.deck_default_lock_pc
+    else -> null
+}
+
+private fun localizedDefaults(layout: DeckLayout, context: android.content.Context) = layout.copy(
+    pages = layout.pages.map { page ->
+        page.copy(
+            name = if (page.id == "main" && page.name == "Main") {
+                context.getString(R.string.deck_default_page_main)
+            } else {
+                page.name
+            },
+            tiles = page.tiles.map { tile ->
+                defaultDeckLabel(tile.label)?.let { tile.copy(label = context.getString(it)) } ?: tile
+            },
+        )
+    },
 )
