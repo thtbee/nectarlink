@@ -5987,8 +5987,23 @@ Voraussetzungen
         <translation>Gerätebildschirm beim Spiegeln ausschalten</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="435"/>
-        <location filename="../qml/MirrorWindow.qml" line="462"/>
+        <location filename="../qml/MirrorWindow.qml" line="426"/>
+        <source>Back (right-click)</source>
+        <translation>Zurück (Rechtsklick)</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml" line="433"/>
+        <source>Home (middle-click)</source>
+        <translation>Startbildschirm (Mittelklick)</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml" line="440"/>
+        <source>Recent apps</source>
+        <translation>Letzte Apps</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml" line="457"/>
+        <location filename="../qml/MirrorWindow.qml" line="484"/>
         <source>Play the phone&apos;s sound here</source>
         <translation>Ton des Geräts hier abspielen</translation>
     </message>
@@ -5997,87 +6012,87 @@ Voraussetzungen
         <translation type="vanished">Ton des Geräts hier stummschalten</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="426"/>
+        <location filename="../qml/MirrorWindow.qml" line="448"/>
         <source>Lock phone</source>
         <translation>Gerät sperren</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="435"/>
+        <location filename="../qml/MirrorWindow.qml" line="457"/>
         <source>Play the sound on the phone</source>
         <translation>Ton auf dem Gerät abspielen</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="471"/>
+        <location filename="../qml/MirrorWindow.qml" line="493"/>
         <source>Release to send files to %1</source>
         <translation>Loslassen, um Dateien an %1 zu senden</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="471"/>
+        <location filename="../qml/MirrorWindow.qml" line="493"/>
         <source>phone</source>
         <translation>Gerät</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="539"/>
+        <location filename="../qml/MirrorWindow.qml" line="561"/>
         <source>To control the phone, turn on Control from your PC in NectarLink&apos;s settings on the phone.</source>
         <translation>Um das Gerät zu steuern, aktiviere „Vom PC aus steuern“ in den NectarLink-Einstellungen auf dem Gerät.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="548"/>
+        <location filename="../qml/MirrorWindow.qml" line="570"/>
         <source>Notify phone</source>
         <translation>Hinweis auf Gerät senden</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="559"/>
+        <location filename="../qml/MirrorWindow.qml" line="581"/>
         <source>Hide</source>
         <translation>Ausblenden</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="597"/>
+        <location filename="../qml/MirrorWindow.qml" line="619"/>
         <source>Opening %1</source>
         <translation>%1 wird geöffnet</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="597"/>
+        <location filename="../qml/MirrorWindow.qml" line="619"/>
         <source>Allow it on your phone</source>
         <translation>Auf deinem Gerät erlauben</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="598"/>
+        <location filename="../qml/MirrorWindow.qml" line="620"/>
         <source>%1 closed</source>
         <translation>%1 geschlossen</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="598"/>
+        <location filename="../qml/MirrorWindow.qml" line="620"/>
         <source>Mirroring stopped</source>
         <translation>Spiegelung beendet</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="599"/>
+        <location filename="../qml/MirrorWindow.qml" line="621"/>
         <source>Starting…</source>
         <translation>Wird gestartet…</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="608"/>
+        <location filename="../qml/MirrorWindow.qml" line="630"/>
         <source>Tap the notification on %1, then choose to share the entire screen.</source>
         <translation>Tippe auf die Benachrichtigung auf %1 und wähle dann die Freigabe des gesamten Bildschirms aus.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="610"/>
+        <location filename="../qml/MirrorWindow.qml" line="632"/>
         <source>The app closed on %1.</source>
         <translation>Die App wurde auf %1 geschlossen.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="611"/>
+        <location filename="../qml/MirrorWindow.qml" line="633"/>
         <source>The phone stopped sharing its screen.</source>
         <translation>Das Gerät hat die Bildschirmfreigabe beendet.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="618"/>
+        <location filename="../qml/MirrorWindow.qml" line="640"/>
         <source>Open again</source>
         <translation>Erneut öffnen</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="618"/>
+        <location filename="../qml/MirrorWindow.qml" line="640"/>
         <source>Try again</source>
         <translation>Erneut versuchen</translation>
     </message>

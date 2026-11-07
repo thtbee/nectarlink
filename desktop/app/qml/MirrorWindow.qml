@@ -342,7 +342,7 @@ Window {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 56
+        height: navPill.visible && !navPill.besideToolbar ? 104 : 56
         HoverHandler { id: topZoneHover }
     }
     Rectangle {
@@ -357,7 +357,8 @@ Window {
         visible: win.phase === "showing" && video.frameSize.width > 0
         readonly property bool toolbarHasFocus: lockBtn.activeFocus || copyShotBtn.activeFocus || saveShotBtn.activeFocus
             || recordBtn.activeFocus || stayAwakeBtn.activeFocus || screenOffBtn.activeFocus || soundBtn.activeFocus
-        opacity: topZoneHover.hovered || toolbarHover.hovered || toolbarWakeTimer.running
+            || backBtn.activeFocus || homeBtn.activeFocus || recentsBtn.activeFocus
+        opacity: topZoneHover.hovered || toolbarHover.hovered || navHover.hovered || toolbarWakeTimer.running
             || win.info.recording === true || win.info.screenOff === true || toolbarHasFocus ? 1 : 0
         Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast } }
 
@@ -434,6 +435,55 @@ Window {
                 iconColor: "white"
                 label: Mirror.muted ? qsTr("Play the phone's sound here") : qsTr("Play the sound on the phone")
                 onClicked: Mirror.toggleSound()
+            }
+        }
+    }
+
+    // The phone's three navigation keys, whole screen only. Beside the toolbar
+    // when the window is wide enough, under it when it's phone-narrow.
+    Rectangle {
+        id: navPill
+        readonly property bool besideToolbar: win.width >= toolbar.width + width + 30
+        anchors.top: besideToolbar ? parent.top : toolbar.bottom
+        anchors.topMargin: besideToolbar ? 12 : 6
+        anchors.right: besideToolbar ? toolbar.left : parent.right
+        anchors.rightMargin: besideToolbar ? 6 : 12
+        width: navRow.implicitWidth + 8
+        height: 40
+        radius: 20
+        color: Qt.rgba(0, 0, 0, 0.68)
+        visible: toolbar.visible && win.canControl && !win.info.app
+        opacity: toolbar.opacity
+
+        HoverHandler { id: navHover }
+
+        Row {
+            id: navRow
+            anchors.centerIn: parent
+            spacing: 2
+            // Faded out, a click here belongs to the phone's screen.
+            enabled: navPill.opacity > 0
+
+            IconButton {
+                id: backBtn
+                iconPath: Icons.back
+                iconColor: "white"
+                label: qsTr("Back (right-click)")
+                onClicked: Mirror.press(win.mirrorKey, "back")
+            }
+            IconButton {
+                id: homeBtn
+                iconPath: Icons.home
+                iconColor: "white"
+                label: qsTr("Home (middle-click)")
+                onClicked: Mirror.press(win.mirrorKey, "home")
+            }
+            IconButton {
+                id: recentsBtn
+                iconPath: Icons.apps
+                iconColor: "white"
+                label: qsTr("Recent apps")
+                onClicked: Mirror.press(win.mirrorKey, "recents")
             }
         }
     }
