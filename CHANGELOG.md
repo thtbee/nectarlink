@@ -42,7 +42,8 @@ change things that need a step from you, and its notes say so.
 
 - **"Quiet while this PC is locked" now works on macOS.** The switch was there,
   but the app never found out whether the screen was locked, so pop-ups kept
-  coming while the Mac was locked.
+  coming while the Mac was locked. Thanks to
+  [@aydinoglucagan-sudo](https://github.com/aydinoglucagan-sudo).
 - Elevated pairs on Android 17 with the right code. Another app listening on the phone
   could make it say the code didn't work
   ([#94](https://github.com/thtbee/nectarlink/issues/94)).
