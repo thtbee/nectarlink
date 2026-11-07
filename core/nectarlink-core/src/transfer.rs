@@ -1812,16 +1812,10 @@ fn read_ahead(
     plan: Vec<(std::fs::File, u64, u64)>,
     blocks: &tokio::sync::mpsc::Sender<std::result::Result<Bytes, TransferFailure>>,
 ) {
-    use std::io::{Read, Seek, SeekFrom};
-    for (mut file, start, mut left) in plan {
-        if let Err(e) = file.seek(SeekFrom::Start(start)) {
-            let failure = TransferFailure::Other(format!("can't read a file: {}", e.kind()));
-            let _ = blocks.blocking_send(Err(failure));
-            return;
-        }
+    for (file, mut at, mut left) in plan {
         while left > 0 {
             let mut block = vec![0u8; BLOCK.min(usize::try_from(left).unwrap_or(usize::MAX))];
-            if let Err(e) = file.read_exact(&mut block) {
+            if let Err(e) = read_exact_at(&file, &mut block, at) {
                 let failure = if e.kind() == std::io::ErrorKind::UnexpectedEof {
                     TransferFailure::Other("a file got shorter while sending".into())
                 } else {
@@ -1830,11 +1824,36 @@ fn read_ahead(
                 let _ = blocks.blocking_send(Err(failure));
                 return;
             }
+            at += block.len() as u64;
             left -= block.len() as u64;
             if blocks.blocking_send(Ok(Bytes::from(block))).is_err() {
                 return;
             }
         }
+    }
+}
+
+/// Fills `block` from `at`, whatever the file's position is. Handles from
+/// `try_clone` share one position, and a reader from an attempt that just ended
+/// can still be going: moving it under the next one would send the wrong bytes.
+fn read_exact_at(file: &std::fs::File, block: &mut [u8], at: u64) -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::FileExt::read_exact_at(file, block, at)
+    }
+    #[cfg(windows)]
+    {
+        let mut filled = 0;
+        while filled < block.len() {
+            let offset = at + filled as u64;
+            match std::os::windows::fs::FileExt::seek_read(file, &mut block[filled..], offset) {
+                Ok(0) => return Err(std::io::ErrorKind::UnexpectedEof.into()),
+                Ok(n) => filled += n,
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
     }
 }
 
@@ -2193,6 +2212,30 @@ pub(crate) fn clean_incoming(dir: &Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reading_ahead_ignores_where_another_handle_moved_the_file() {
+        use std::io::{Seek, SeekFrom, Write};
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("f");
+        let data: Vec<u8> = (0..BLOCK * 3).map(|i| (i % 251) as u8).collect();
+        std::fs::File::create(&path).unwrap().write_all(&data).unwrap();
+        let mut other = std::fs::File::open(&path).unwrap();
+        let clone = other.try_clone().unwrap();
+        let start = 100u64;
+        let want = data.len() as u64 - start;
+
+        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let reader = std::thread::spawn(move || read_ahead(vec![(clone, start, want)], &tx));
+        let mut got = Vec::new();
+        while let Some(block) = rx.blocking_recv() {
+            got.extend_from_slice(&block.expect("reads to the end"));
+            // The reader of an attempt that just ended, sharing this position.
+            other.seek(SeekFrom::End(0)).unwrap();
+        }
+        reader.join().unwrap();
+        assert!(got == data[100..], "the bytes came from where they should");
+    }
 
     #[cfg(windows)]
     #[test]

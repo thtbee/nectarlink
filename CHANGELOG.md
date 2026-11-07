@@ -129,6 +129,8 @@ what people reported since 0.1.4.
   anywhere in it ([#52](https://github.com/thtbee/nectarlink/issues/52)).
 - A phone connected to the PC's `adb` over Wi-Fi no longer shows as USB, or sends
   everything through that slower route ([#275](https://github.com/thtbee/nectarlink/issues/275)).
+- A file transfer resumed after a pause could fail with "a file got shorter while sending",
+  or read from the wrong place in the file, when the paused attempt's reader was still going.
 - Voice typing from the phone no longer loses or doubles letters in Notepad when it
   rewrites a phrase ([#52](https://github.com/thtbee/nectarlink/issues/52)).
 - **Type on phone** shows what you've typed instead of only the last key, which looked
