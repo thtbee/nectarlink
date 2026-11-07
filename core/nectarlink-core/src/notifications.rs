@@ -14,7 +14,10 @@ use std::{
 
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
-    messages::{Notification, NotifyAction, NotifyKey, NotifySnapshot, notify_limits::SNAPSHOT_ITEMS, types},
+    messages::{
+        Notification, NotifyAction, NotifyHold, NotifyKey, NotifySnapshot, notify_limits::SNAPSHOT_ITEMS,
+        types,
+    },
 };
 
 use crate::{
@@ -48,6 +51,9 @@ pub enum NotificationError {
 /// session.
 #[derive(Default)]
 pub(crate) struct Feed {
+    /// On a PC: phones have been asked to hold their notifications, and any
+    /// still arriving are dropped.
+    holding: std::sync::atomic::AtomicBool,
     inner: Mutex<FeedState>,
 }
 
@@ -62,6 +68,10 @@ struct FeedState {
 }
 
 impl Feed {
+    fn is_holding(&self) -> bool {
+        self.holding.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
     fn lock(&self) -> std::sync::MutexGuard<'_, FeedState> {
         self.inner.lock().unwrap_or_else(|e| e.into_inner())
     }
@@ -211,7 +221,11 @@ impl Shared {
     fn notification_targets(&self) -> Vec<Arc<Session>> {
         self.live_sessions()
             .into_iter()
-            .filter(|s| self.shows_notifications(&s.peer) && self.notifications_allowed(&s.peer))
+            .filter(|s| {
+                self.shows_notifications(&s.peer)
+                    && self.notifications_allowed(&s.peer)
+                    && !s.notifications_held()
+            })
             .collect()
     }
 
@@ -232,7 +246,10 @@ impl Shared {
     /// Sends this phone's notifications to one PC: everything when the
     /// user allows it, an empty list (which clears the PC) when not.
     pub(crate) async fn send_notification_snapshot(&self, session: &Arc<Session>) {
-        if !self.notifications.is_active() || !self.shows_notifications(&session.peer) {
+        if !self.notifications.is_active()
+            || !self.shows_notifications(&session.peer)
+            || session.notifications_held()
+        {
             return;
         }
         let snapshot = if self.notifications_allowed(&session.peer) {
@@ -241,6 +258,31 @@ impl Shared {
             NotifySnapshot { items: Vec::new() }
         };
         if let Ok(env) = Envelope::new(types::NOTIFY_SNAPSHOT, &snapshot) {
+            let _ = session.send(env).await;
+        }
+    }
+
+    /// On a PC: asks every connected phone to hold its notifications, or to carry
+    /// on and send what it shows now. Stored items are left alone either way.
+    pub(crate) async fn hold_notifications(&self, held: bool) {
+        self.notifications.holding.store(held, std::sync::atomic::Ordering::Relaxed);
+        for session in self.live_sessions() {
+            self.send_notification_hold(&session, held).await;
+            if !held {
+                let _ = session.send(Envelope::empty(types::NOTIFY_SYNC)).await;
+            }
+        }
+    }
+
+    /// Tells a phone that just connected, while this PC is holding.
+    pub(crate) async fn send_held_notifications(&self, session: &Arc<Session>) {
+        if self.notifications.is_holding() {
+            self.send_notification_hold(session, true).await;
+        }
+    }
+
+    async fn send_notification_hold(&self, session: &Arc<Session>, held: bool) {
+        if let Ok(env) = Envelope::new(types::NOTIFY_HOLD, &NotifyHold { held }) {
             let _ = session.send(env).await;
         }
     }
@@ -280,7 +322,7 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
     match env.t.as_str() {
         // ---- On the PC ----
         types::NOTIFY_SNAPSHOT => {
-            if shared.notifications_allowed(&peer) {
+            if shared.notifications_allowed(&peer) && !shared.notifications.is_holding() {
                 let snapshot: NotifySnapshot = env.body()?;
                 let items: Vec<Notification> = snapshot
                     .items
@@ -305,6 +347,7 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         }
         types::NOTIFY_POSTED => {
             if shared.notifications_allowed(&peer)
+                && !shared.notifications.is_holding()
                 && let Some(notification) = env.body::<Notification>()?.sanitized()
             {
                 let cached_icon =
@@ -326,6 +369,10 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         }
         // ---- On the phone ----
         types::NOTIFY_SYNC => shared.send_notification_snapshot(session).await,
+        types::NOTIFY_HOLD => {
+            let NotifyHold { held } = env.body()?;
+            session.hold_notifications(held);
+        }
         types::NOTIFY_DISMISS => {
             let NotifyKey { key } = env.body()?;
             let reply = match allowed(shared, &peer) {

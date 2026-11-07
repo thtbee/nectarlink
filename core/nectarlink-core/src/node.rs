@@ -1274,6 +1274,7 @@ impl Shared {
             {
                 let _ = s.send(env).await;
             }
+            shared.send_held_notifications(&s).await;
             shared.send_notification_snapshot(&s).await;
             shared.send_media_state(&s).await;
             shared.send_call_state(&s).await;
@@ -3351,6 +3352,12 @@ impl Node {
     /// A notification appeared or changed on this phone; sent to every
     /// connected PC the user allows. Include the app icon (PNG) each time:
     /// the core sends it once per PC and session.
+    /// On a PC: phones send no notifications at all while `held`, and catch it
+    /// up with what they show when it ends.
+    pub async fn hold_notifications(&self, held: bool) {
+        self.shared.hold_notifications(held).await;
+    }
+
     pub async fn notification_posted(&self, notification: Notification) {
         if let Some(clean) = notification.clone().sanitized() {
             let mut hist = lock(&self.shared.notification_history);

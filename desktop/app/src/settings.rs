@@ -424,6 +424,9 @@ pub struct Settings {
     /// No pop-ups for phone notifications while this PC is locked.
     #[serde(default, alias = "quiet_when_locked")]
     pub quiet_when_locked: bool,
+    /// Phones send nothing while this PC is locked, instead of keeping quiet.
+    #[serde(default, alias = "hold_when_locked")]
+    pub hold_when_locked: bool,
     /// Paired phones in Explorer's "Send to" menu.
     #[serde(alias = "send_to_menu")]
     pub send_to_menu: bool,
@@ -628,6 +631,7 @@ impl Default for Settings {
             sync_dnd: false,
             enter_sends: false,
             quiet_when_locked: false,
+            hold_when_locked: false,
             send_to_menu: true,
             auto_update: true,
             install_updates: true,
@@ -889,6 +893,7 @@ mod tests {
             sync_dnd: true,
             enter_sends: true,
             quiet_when_locked: true,
+            hold_when_locked: true,
             send_to_menu: false,
             auto_update: false,
             install_updates: false,

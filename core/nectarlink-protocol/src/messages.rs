@@ -32,6 +32,8 @@ pub mod types {
     pub const NOTIFY_POSTED: &str = "notify.posted";
     pub const NOTIFY_REMOVED: &str = "notify.removed";
     pub const NOTIFY_SYNC: &str = "notify.sync";
+    /// PC to phone: send nothing until told otherwise, or carry on.
+    pub const NOTIFY_HOLD: &str = "notify.hold";
 
     pub const CLIP_SET: &str = "clip.set";
     pub const NOTIFY_DISMISS: &str = "notify.dismiss";
@@ -922,6 +924,12 @@ impl Notification {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NotifySnapshot {
     pub items: Vec<Notification>,
+}
+
+/// Body of `notify.hold`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotifyHold {
+    pub held: bool,
 }
 
 /// Body of `notify.removed` and `notify.dismiss`.

@@ -157,6 +157,7 @@ t = "notify.removed"    b = { key: text }
 
 ```
 t = "notify.sync"                                    // one-way
+t = "notify.hold"      b = { held: bool }            // one-way
 t = "notify.dismiss"   id = n   b = { key: text }
 t = "notify.action"    id = n   b = { key: text, action: text, reply: text? }
 t = "ok"               re = n
@@ -165,6 +166,12 @@ t = "ok"               re = n
 - **`notify.sync`** asks for a fresh `notify.snapshot`, for example after the
   user turned notifications from this phone back on. A phone that doesn't
   mirror notifications ignores it.
+- **`notify.hold`** with `held: true` asks the phone to send this PC no
+  `notify.posted`, `notify.removed` or `notify.snapshot` until `held: false` or
+  the session ends. A PC sends it when it's locked and the user chose that, again
+  on reconnecting, and follows `held: false` with `notify.sync`. A phone from
+  before this message answers `unsupported`, so a holding PC also drops what
+  still arrives.
 - **`notify.dismiss`** dismisses the notification on the phone. Dismissing
   one that's already gone succeeds. A PC **SHOULD NOT** send it for an `ongoing`
   notification, nor remove one from its list on a "clear all": Android

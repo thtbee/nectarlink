@@ -69,6 +69,7 @@ pub mod qobject {
         #[qproperty(bool, enter_sends)]
         /// No pop-ups for phone notifications while this PC is locked.
         #[qproperty(bool, quiet_when_locked)]
+        #[qproperty(bool, hold_when_locked)]
         /// Paired phones in Explorer's "Send to" menu.
         #[qproperty(bool, send_to_menu)]
         /// Start when the user signs in.
@@ -330,6 +331,7 @@ pub struct PreferencesRust {
     sync_dnd: bool,
     enter_sends: bool,
     quiet_when_locked: bool,
+    hold_when_locked: bool,
     send_to_menu: bool,
     start_with_windows: bool,
     auto_update: bool,
@@ -423,6 +425,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_enter_sends(settings.enter_sends);
         self.as_mut().set_quiet_when_locked(settings.quiet_when_locked);
         crate::notifications::set_quiet_when_locked(settings.quiet_when_locked);
+        self.as_mut().set_hold_when_locked(settings.hold_when_locked);
+        crate::notifications::set_hold_when_locked(settings.hold_when_locked);
         self.as_mut().set_send_to_menu(settings.send_to_menu);
         self.as_mut().set_auto_update(settings.auto_update);
         self.as_mut().set_install_updates(settings.install_updates);
@@ -551,6 +555,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_pause_media_on_call_changed(|p| {
                 crate::calls::set_pause_media_on_call(p.pause_media_on_call);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_hold_when_locked_changed(|p| {
+                crate::notifications::set_hold_when_locked(p.hold_when_locked);
                 p.save();
             })
             .release();
@@ -1102,6 +1112,7 @@ impl qobject::Preferences {
             sync_dnd: p.sync_dnd,
             enter_sends: p.enter_sends,
             quiet_when_locked: p.quiet_when_locked,
+            hold_when_locked: p.hold_when_locked,
             send_to_menu: p.send_to_menu,
             auto_update: p.auto_update,
             install_updates: p.install_updates,
