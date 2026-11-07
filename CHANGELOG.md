@@ -93,6 +93,9 @@ what people reported since 0.1.4.
   ([#260](https://github.com/thtbee/nectarlink/issues/260)).
 - The taskbar shows the NectarLink icon from the moment the app opens, not a generic one
   ([#258](https://github.com/thtbee/nectarlink/issues/258)).
+- On Windows, NectarLink opens again by itself after an automatic update. It closed for the
+  update and stayed closed until you opened it. This takes effect from the update after
+  the one that has this fix.
 
 ### Downloads
 

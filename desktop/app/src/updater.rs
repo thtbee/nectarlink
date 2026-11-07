@@ -807,6 +807,14 @@ fn spawn_relauncher(exe: &Path, version: &str, shown: bool) -> Result<(), String
     }
     let arguments = if shown { UPDATED_ARG.to_owned() } else { format!("--minimized {UPDATED_ARG}") };
     let script = relauncher_script(exe, version, &arguments);
+    hidden_powershell(&script).spawn().map(|_| ()).map_err(|e| format!("relauncher: {e}"))
+}
+
+/// PowerShell running `script` with no window, and still running after this app
+/// quits. Not `DETACHED_PROCESS`: without a console PowerShell exits at once,
+/// reporting success, and never runs the script.
+#[cfg(windows)]
+fn hidden_powershell(script: &str) -> std::process::Command {
     let encoded: Vec<u8> = script.encode_utf16().flat_map(u16::to_le_bytes).collect();
     let mut cmd = std::process::Command::new("powershell.exe");
     cmd.args(["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand"])
@@ -814,8 +822,8 @@ fn spawn_relauncher(exe: &Path, version: &str, shown: bool) -> Result<(), String
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
-    cmd.creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS);
-    cmd.spawn().map(|_| ()).map_err(|e| format!("relauncher: {e}"))
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    cmd
 }
 
 #[cfg(not(windows))]
@@ -1395,6 +1403,18 @@ mod tests {
                 },
             ],
         }
+    }
+
+    /// Really starts it, because the way it's started decides if the script runs.
+    #[cfg(windows)]
+    #[test]
+    fn the_relauncher_really_runs_its_script() {
+        let dir = tempfile::tempdir().unwrap();
+        let marker = dir.path().join("ran");
+        let script = format!("Set-Content -LiteralPath '{}' -Value ran", marker.display());
+        let mut child = hidden_powershell(&script).spawn().unwrap();
+        child.wait().unwrap();
+        assert!(marker.exists(), "PowerShell exited without running the script");
     }
 
     #[test]
