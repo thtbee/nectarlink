@@ -72,6 +72,7 @@ import app.nectarlink.android.R
 import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.companion.PcCompanion
 import app.nectarlink.android.contacts.PhoneContacts
+import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.elevated.PairingNotification
 import app.nectarlink.android.elevated.ElevatedMethod
@@ -749,6 +750,27 @@ fun SettingsScreen(
                                 Text(stringResource(R.string.elevated_set_up))
                             }
                         }
+                    }
+                    SettingRowDivider()
+                    var syncPasswords by remember { mutableStateOf(PhoneClipboard.syncPasswords(context)) }
+                    val syncPasswordsTitle = stringResource(R.string.settings_clipboard_passwords)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(syncPasswordsTitle, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                stringResource(R.string.settings_clipboard_passwords_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = syncPasswords,
+                            onCheckedChange = {
+                                syncPasswords = it
+                                PhoneClipboard.setSyncPasswords(context, it)
+                            },
+                            modifier = Modifier.semantics { contentDescription = syncPasswordsTitle },
+                        )
                     }
                     SettingRowDivider()
                     val suggestionsTitle = stringResource(R.string.settings_clipboard_suggestions)

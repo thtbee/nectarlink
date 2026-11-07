@@ -24,7 +24,7 @@ A PC always accepts `clip.set` from a phone the user allows.
 ## 2. Messages
 
 ```
-t = "clip.set"   id = n   b = { text: text, ?html: text, ?rtf: text }
+t = "clip.set"   id = n   b = { text: text, ?html: text, ?rtf: text, ?sensitive: bool }
 t = "ok"         re = n
 ```
 

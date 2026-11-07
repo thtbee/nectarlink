@@ -2459,7 +2459,7 @@ impl Node {
         if !has_queue && self.shared.session(&peer).is_some() {
             let env = Envelope::new(
                 types::CLIP_SET,
-                &ClipSet { text: text.clone(), html: html.clone(), rtf: rtf.clone() },
+                &ClipSet { text: text.clone(), html: html.clone(), rtf: rtf.clone(), sensitive: false },
             )?;
             match self.request(peer, env).await.and_then(|r| r.expect(types::OK).map_err(Into::into)) {
                 Ok(()) => {
@@ -2481,6 +2481,28 @@ impl Node {
         self.shared.store.enqueue_send_item(&id, &peer, &payload, None, crate::now_unix_ms())?;
         self.shared.emit(NodeEvent::QueueChanged);
         self.shared.queue_notify.notify_waiters();
+        Ok(())
+    }
+
+    /// Puts a password or the like on a connected device's clipboard, as the user
+    /// chose to allow. Never recorded on either side and never queued:
+    /// [`Error::Offline`] when the device isn't connected.
+    pub async fn send_clipboard_private(&self, peer: DeviceId, text: String) -> Result<()> {
+        if text.is_empty() {
+            return Ok(());
+        }
+        if text.len() > nectarlink_protocol::messages::CLIP_MAX_BYTES {
+            return Err(Error::TooLarge);
+        }
+        if !self.shared.store.is_paired(&peer)? {
+            return Err(Error::NotPaired);
+        }
+        if !self.shared.toggle_on(&peer, crate::clipboard::TOGGLE) {
+            return Err(Error::Denied);
+        }
+        self.connected(&peer)?;
+        let env = Envelope::new(types::CLIP_SET, &ClipSet { text, html: None, rtf: None, sensitive: true })?;
+        self.request(peer, env).await?.expect(types::OK)?;
         Ok(())
     }
 
@@ -4465,7 +4487,7 @@ async fn deliver_queued_rpc(
             } else {
                 match Envelope::new(
                     types::CLIP_SET,
-                    &ClipSet { text: text.clone(), html: html.clone(), rtf: rtf.clone() },
+                    &ClipSet { text: text.clone(), html: html.clone(), rtf: rtf.clone(), sensitive: false },
                 ) {
                     Ok(env) => match session.request(env, REQUEST_TIMEOUT).await {
                         Ok(reply) => match reply.expect(types::OK) {

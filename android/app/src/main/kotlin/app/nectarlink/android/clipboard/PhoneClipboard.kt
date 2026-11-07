@@ -33,6 +33,9 @@ object PhoneClipboard {
     @Volatile private var lastWrittenAtMs: Long = 0L
     private const val ECHO_WINDOW_MS = 6_000L
 
+    private const val PREFS = "clipboard"
+    private const val SYNC_PASSWORDS = "sync_passwords"
+
     private fun normalizeClipText(s: String): String = s.replace("\r\n", "\n").replace('\r', '\n')
 
     fun init(context: Context) {
@@ -43,8 +46,10 @@ object PhoneClipboard {
         data class Text(val text: String, val html: String? = null) : Read
         /** An image, still to be read with [readImage] (the app holds access to it for now). */
         data class Image(val uri: Uri) : Read
-        /** Marked sensitive by the app it came from (a password manager): never sent. */
+        /** Marked sensitive by the app it came from (a password manager): not sent. */
         data object Private : Read
+        /** The same, when the user chose to sync those. */
+        data class Sensitive(val text: String) : Read
         data object Empty : Read
     }
 
@@ -132,7 +137,11 @@ object PhoneClipboard {
     fun read(context: Context): Read {
         appContext = context.applicationContext
         val clip = manager(context)?.primaryClip ?: return Read.Empty
-        if (clip.description.isSensitive()) return Read.Private
+        if (clip.description.isSensitive()) {
+            if (!syncPasswords(context)) return Read.Private
+            val text = (0 until clip.itemCount).firstNotNullOfOrNull { clip.getItemAt(it).text?.toString() }
+            return text?.takeIf(String::isNotBlank)?.let { Read.Sensitive(it) } ?: Read.Empty
+        }
         val resolver = context.contentResolver
         val descHasImage = (0 until clip.description.mimeTypeCount)
             .any { clip.description.getMimeType(it)?.startsWith("image/") == true }
@@ -203,6 +212,35 @@ object PhoneClipboard {
     }
 
     /** Puts text (and optional HTML) a PC sent on the clipboard. */
+    /** Whether what password managers mark sensitive also goes to PCs. */
+    fun syncPasswords(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(SYNC_PASSWORDS, false)
+
+    fun setSyncPasswords(context: Context, on: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(SYNC_PASSWORDS, on).apply()
+    }
+
+    /** A password from a PC: marked sensitive, so Android hides it and keyboards don't keep it. */
+    fun writeSensitive(context: Context, text: String): Boolean = runCatching {
+        appContext = context.applicationContext
+        val mgr = manager(context) ?: return false
+        lastWrittenText = text
+        lastWrittenHtml = null
+        lastWrittenUri = null
+        lastWrittenAtMs = android.os.SystemClock.elapsedRealtime()
+        if (app.nectarlink.android.elevated.Elevated.setClipboard(text, null, sensitive = true)) {
+            return@runCatching true
+        }
+        val clip = ClipData.newPlainText("Nectarlink", text)
+        clip.description.extras = android.os.PersistableBundle().apply {
+            putBoolean("com.android.systemui.SUPPRESS_CLIPBOARD_OVERLAY", true)
+            putBoolean("android.content.extra.IS_REMOTE_DEVICE", true)
+            putBoolean("android.content.extra.IS_SENSITIVE", true)
+        }
+        mgr.setPrimaryClip(clip)
+        true
+    }.getOrDefault(false)
+
     fun write(context: Context, text: String, html: String? = null): Boolean = runCatching {
         appContext = context.applicationContext
         val cleanHtml = html?.takeIf(String::isNotBlank)
