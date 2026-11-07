@@ -2970,7 +2970,7 @@ Item {
                             visible: Qt.platform.os !== "osx"
                             iconPath: Icons.lock
                             title: qsTr("Sync copied passwords")
-                            description: qsTr("Also sends what password managers mark private. It stays on the phone's clipboard until something replaces it, and is never kept in history.")
+                            description: qsTr("Also sends what password managers mark private. It leaves the phone's clipboard after a minute where Android allows it, and is never kept in history.")
                             Toggle {
                                 label: qsTr("Sync copied passwords")
                                 checked: Preferences.syncPasswords

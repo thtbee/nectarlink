@@ -26,8 +26,8 @@ change things that need a step from you, and its notes say so.
   up with what's still on the phone
   ([#219](https://github.com/thtbee/nectarlink/issues/219)).
 - **Sync copied passwords.** An opt-in switch on the phone and the PC sends what password
-  managers mark private. It's marked private on the other side too, and never goes into
-  history, the Timeline or the offline queue
+  managers mark private. It's marked private on the other side too, leaves that clipboard
+  after a minute, and never goes into history, the Timeline or the offline queue
   ([#272](https://github.com/thtbee/nectarlink/issues/272)).
 - **Back, Home and Recent apps buttons** in the mirror window's toolbar
   ([#192](https://github.com/thtbee/nectarlink/issues/192)).

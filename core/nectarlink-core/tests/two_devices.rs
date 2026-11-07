@@ -30,6 +30,7 @@ struct RecordingPlatform {
     actions: Mutex<Vec<(String, String, Option<String>)>>,
     clipboard: Mutex<Vec<String>>,
     clipboard_private: Mutex<Vec<String>>,
+    clipboard_cleared: Mutex<Vec<String>>,
     clipboard_rich: Mutex<Vec<RichClipboardRecord>>,
     images: Mutex<Vec<(String, Vec<u8>)>>,
     media: Mutex<Vec<(String, MediaAction, Option<u64>)>>,
@@ -100,6 +101,9 @@ impl Platform for RecordingPlatform {
     fn set_clipboard_private(&self, text: &str) -> Result<(), String> {
         self.clipboard_private.lock().unwrap().push(text.to_owned());
         Ok(())
+    }
+    fn clear_clipboard_private(&self, text: &str) {
+        self.clipboard_cleared.lock().unwrap().push(text.to_owned());
     }
     fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
         self.images.lock().unwrap().push((mime.to_owned(), bytes.to_vec()));
@@ -684,6 +688,7 @@ fn init_logging() {
 async fn start_in(dir: TempDir, name: &'static str, kind: DeviceKind) -> TestDevice {
     init_logging();
     let mut config = NodeConfig::new(dir.path(), info(name, kind), "0.0.1-test");
+    config.private_clip_lifetime = Duration::from_millis(300);
     config.lan_discovery = false;
     config.away_mode = false;
     config.key_protector = Some(Arc::new(PlainKeyProtector));
@@ -1568,6 +1573,20 @@ async fn a_password_arrives_marked_private_and_leaves_no_record() {
     assert!(pc.platform.clipboard.lock().unwrap().is_empty(), "not the normal clipboard call");
     assert!(pc.node.clipboard_history(None).is_empty(), "nothing in the PC's history");
     assert!(phone.node.clipboard_history(None).is_empty(), "nothing in the phone's history");
+
+    // It doesn't stay: the receiver is told to take it off the clipboard.
+    let cleared = tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            if !pc.platform.clipboard_cleared.lock().unwrap().is_empty() {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await;
+    assert!(cleared.is_ok(), "the password was left on the clipboard");
+    assert_eq!(pc.platform.clipboard_cleared.lock().unwrap().as_slice(), ["hunter2"]);
+    assert!(phone.platform.clipboard_cleared.lock().unwrap().is_empty(), "only the receiver clears");
 
     // Never queued for later.
     let stranger = pc.node.device_id();

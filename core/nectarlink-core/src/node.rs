@@ -211,6 +211,7 @@ pub(crate) struct Shared {
     pub(crate) clipboard_history: crate::clipboard_history::ClipboardHistoryStore,
     /// Smart suggestion for the most recently received text clip, if any.
     pub(crate) last_clip_suggestion: Mutex<Option<(DeviceId, crate::ClipSuggestion)>>,
+    pub(crate) private_clip_lifetime: std::time::Duration,
     /// LocalSend v2.1 discovery, server, and outgoing transfers.
     pub(crate) localsend: crate::localsend::LocalSendState,
     /// Bound loopback TCP port for the phone-side USB tunnel listener (0 if disabled).
@@ -1706,6 +1707,7 @@ impl Node {
             storage: Mutex::new(Default::default()),
             clipboard_history,
             last_clip_suggestion: Mutex::new(None),
+            private_clip_lifetime: config.private_clip_lifetime,
             localsend,
             usb_listener_port: std::sync::atomic::AtomicU16::new(0),
             usb_bridge_ports: Arc::new(Mutex::new(std::collections::HashSet::new())),
