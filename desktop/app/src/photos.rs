@@ -51,6 +51,8 @@ enum Intent {
     View { device: DeviceId, item_id: String },
     /// Saved from the gallery to `Downloads\Nectarlink` or a user-chosen folder.
     GallerySave { ids: Vec<String>, folder: Option<PathBuf> },
+    /// Handed to the system's share sheet; not kept in Downloads.
+    Share,
 }
 
 #[derive(Debug, Default)]
@@ -234,7 +236,7 @@ pub fn on_toast(key: &str, action: Option<&str>) {
 }
 
 fn asked(transfer: String, intent: Intent) {
-    let private = matches!(intent, Intent::View { .. } | Intent::Copy { .. });
+    let private = matches!(intent, Intent::View { .. } | Intent::Copy { .. } | Intent::Share);
     let id = transfer.clone();
     let done = state(|s| {
         let now = Instant::now();
@@ -363,6 +365,13 @@ fn deliver(transfer_id: &str, intent: Intent, saved: &[PathBuf]) {
                 }
             });
             gallery_changed();
+        }
+        Intent::Share => {
+            if let Some(node) = core_host::node() {
+                node.delete_timeline_by_ref(transfer_id);
+            }
+            let files = saved.iter().map(|p| (p.clone(), file_name_of(p))).collect();
+            share_ready(stage_for_share(&share_dir(), files, false));
         }
         Intent::GallerySave { ids, folder } => {
             let mut final_paths = Vec::with_capacity(saved.len());
@@ -554,6 +563,8 @@ struct GalleryState {
     fetching_thumbs: bool,
     saving: bool,
     busy_item: Option<String>,
+    /// Files waiting for Qt's thread to open the share sheet.
+    share_ready: Option<Vec<PathBuf>>,
     save_folder: Option<PathBuf>,
     generation: u64,
 }
@@ -1405,6 +1416,111 @@ pub fn save_items(ids: Vec<String>, folder: Option<PathBuf>) {
     });
 }
 
+/// Opens the system's share sheet for these photos or videos, bringing them from
+/// the phone first unless they're all here already.
+pub fn share_items(ids: Vec<String>) {
+    let ids: Vec<String> = ids.into_iter().filter(|id| !id.is_empty()).collect();
+    if ids.is_empty() {
+        return;
+    }
+    let (cached, device) = gallery_state(|s| {
+        let cached: Option<Vec<(PathBuf, String)>> = ids
+            .iter()
+            .map(|id| {
+                let path = s.full_files.get(id).filter(|p| p.exists())?.clone();
+                let name = s.items.iter().find(|i| &i.id == id).map(|i| i.name.clone());
+                let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("jpg").to_owned();
+                Some((path, sanitize_drag_filename(&name.unwrap_or_default(), &ext)))
+            })
+            .collect();
+        s.saving = true;
+        (cached, s.device)
+    });
+    gallery_changed();
+    if let Some(files) = cached {
+        std::thread::spawn(move || share_ready(stage_for_share(&share_dir(), files, true)));
+        return;
+    }
+    let (Some(device), Some(node)) = (device, core_host::node()) else {
+        share_ready(Vec::new());
+        return;
+    };
+    core_host::spawn(async move {
+        match node.fetch_photos(device, ids).await {
+            Ok(transfer) => asked(transfer, Intent::Share),
+            Err(e) => {
+                gallery_state(|s| {
+                    s.saving = false;
+                    s.busy_item = None;
+                });
+                gallery_changed();
+                show_photo_error(&e);
+            }
+        }
+    });
+}
+
+/// Where shared files wait for the app picked in the sheet to read them. Emptied
+/// by the next share and when the app quits.
+fn share_dir() -> PathBuf {
+    std::env::temp_dir().join("NectarLink-share")
+}
+
+pub fn clear_shared_files() {
+    let _ = std::fs::remove_dir_all(share_dir());
+}
+
+fn file_name_of(path: &Path) -> String {
+    path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()
+}
+
+/// Puts `files` (path and the name to give it) alone in `dir`, returning where each
+/// one ended up. One that can't be put there is left out.
+fn stage_for_share(dir: &Path, files: Vec<(PathBuf, String)>, keep_source: bool) -> Vec<PathBuf> {
+    let _ = std::fs::remove_dir_all(dir);
+    if let Err(error) = std::fs::create_dir_all(dir) {
+        tracing::warn!(%error, "can't make the folder for shared files");
+        return Vec::new();
+    }
+    files
+        .into_iter()
+        .filter_map(|(src, name)| {
+            let dst = free_path(dir, &name);
+            let done =
+                if keep_source { std::fs::copy(&src, &dst).map(|_| ()) } else { move_or_copy(&src, &dst) };
+            match done {
+                Ok(()) => Some(dst),
+                Err(error) => {
+                    tracing::warn!(%error, "can't get a photo ready to share");
+                    None
+                }
+            }
+        })
+        .collect()
+}
+
+fn share_ready(files: Vec<PathBuf>) {
+    let empty = files.is_empty();
+    gallery_state(|s| {
+        s.saving = false;
+        s.busy_item = None;
+        s.share_ready = (!empty).then_some(files);
+    });
+    gallery_changed();
+    if empty {
+        show_share_failed();
+    }
+}
+
+/// Files waiting for the share sheet, once.
+pub fn take_share_ready() -> Option<Vec<PathBuf>> {
+    gallery_state(|s| s.share_ready.take())
+}
+
+pub fn show_share_failed() {
+    show_message(tr!("Photos", "Couldn't open the share window. Try Save instead."));
+}
+
 fn show_photo_error(error: &Error) {
     match error {
         Error::NotFound => show_message(tr!("Photos", "That photo isn't on the phone anymore.")),
@@ -1579,6 +1695,36 @@ mod tests {
         assert!(v.rows[1].is_video);
         assert_eq!(v.rows[1].duration, 14_500);
         gallery_state(|s| *s = GalleryState::default());
+    }
+
+    #[test]
+    fn sharing_leaves_only_the_new_files_with_their_real_names() {
+        let root = std::env::temp_dir().join(format!("nl-share-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let dir = root.join("share");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("old.jpg"), b"old").unwrap();
+        let cached = root.join("full-1234.jpg");
+        std::fs::write(&cached, b"new").unwrap();
+        let moved = root.join("moved.jpg");
+        std::fs::write(&moved, b"two").unwrap();
+        let missing = root.join("gone.jpg");
+
+        let copied = stage_for_share(
+            &dir,
+            vec![(cached.clone(), "IMG_1.jpg".into()), (missing, "IMG_2.jpg".into())],
+            true,
+        );
+        assert_eq!(copied, vec![dir.join("IMG_1.jpg")]);
+        assert!(!dir.join("old.jpg").exists());
+        assert!(cached.exists(), "the viewer's cached copy stays");
+
+        let staged = stage_for_share(&dir, vec![(moved.clone(), "IMG_3.jpg".into())], false);
+        assert_eq!(staged, vec![dir.join("IMG_3.jpg")]);
+        assert_eq!(std::fs::read(&staged[0]).unwrap(), b"two");
+        assert!(!moved.exists(), "a download isn't left behind in Downloads");
+        assert!(!dir.join("IMG_1.jpg").exists());
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]

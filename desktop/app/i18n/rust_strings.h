@@ -415,6 +415,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("PhotoBackup", "Waiting for %1"), // desktop/app/src/bridge/photo_backup.rs
     QT_TRANSLATE_NOOP("Photos", "%1 of %2 couldn't be moved to %3. They're in Downloads\\Nectarlink."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "Copied to clipboard."), // desktop/app/src/photos.rs
+    QT_TRANSLATE_NOOP("Photos", "Couldn't open the share window. Try Save instead."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "Deleted %1 of %2."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "From %1"), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "New photo"), // desktop/app/src/photos.rs

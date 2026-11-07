@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Share photos and videos from the PC.** On Windows, the Photos page has a Share
+  button that opens the system's share sheet
+  ([#174](https://github.com/thtbee/nectarlink/issues/174)).
 - **Back, Home and Recent apps buttons** in the mirror window's toolbar
   ([#192](https://github.com/thtbee/nectarlink/issues/192)).
 - **Brazilian Portuguese.** The Android and PC apps speak Brazilian Portuguese

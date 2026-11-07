@@ -126,6 +126,9 @@ pub mod qobject {
         #[cxx_name = "copyItem"]
         fn copy_item(self: &Photos, id: &QString);
         #[qinvokable]
+        #[cxx_name = "shareItems"]
+        fn share_items(self: &Photos, ids: &QStringList);
+        #[qinvokable]
         #[cxx_name = "deleteItems"]
         fn delete_items(self: &Photos, ids: &QStringList);
         #[qinvokable]
@@ -234,6 +237,12 @@ impl cxx_qt::Initialize for qobject::Photos {
 
 impl qobject::Photos {
     fn update_view(mut self: Pin<&mut Self>) {
+        if let Some(files) = photos::take_share_ready()
+            && let Err(reason) = crate::win::share::show(&files)
+        {
+            tracing::warn!(reason, "can't open the share sheet");
+            photos::show_share_failed();
+        }
         let view = photos::view();
         self.as_mut().set_device(QString::from(&view.device.map(|d| d.to_string()).unwrap_or_default()));
         self.as_mut().set_status(QString::from(view.status.as_str()));
@@ -381,6 +390,12 @@ impl qobject::Photos {
 
     pub fn copy_item(&self, id: &QString) {
         photos::copy_item(String::from(id));
+    }
+
+    pub fn share_items(&self, ids: &QStringList) {
+        let list: Vec<String> =
+            QList::<QString>::from(ids).iter().map(String::from).filter(|id| !id.is_empty()).collect();
+        photos::share_items(list);
     }
 
     pub fn delete_items(&self, ids: &QStringList) {

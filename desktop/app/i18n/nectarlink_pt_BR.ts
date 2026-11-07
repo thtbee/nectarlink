@@ -5928,148 +5928,148 @@ O que precisa
         <translation>Tela do celular · NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="375"/>
+        <location filename="../qml/MirrorWindow.qml" line="376"/>
         <source>Copy screenshot (Ctrl+Shift+C)</source>
         <translation>Copiar captura de tela (Ctrl+Shift+C)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="382"/>
+        <location filename="../qml/MirrorWindow.qml" line="383"/>
         <source>Save screenshot (Ctrl+S)</source>
         <translation>Salvar captura de tela (Ctrl+S)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="389"/>
+        <location filename="../qml/MirrorWindow.qml" line="390"/>
         <source>Stop recording (Ctrl+R)</source>
         <translation>Parar gravação (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="389"/>
+        <location filename="../qml/MirrorWindow.qml" line="390"/>
         <source>Record video (Ctrl+R)</source>
         <translation>Gravar vídeo (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="407"/>
+        <location filename="../qml/MirrorWindow.qml" line="408"/>
         <source>Phone stays awake while mirroring (turn off)</source>
         <translation>A tela do celular fica ligada durante o espelhamento (desativar)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="408"/>
+        <location filename="../qml/MirrorWindow.qml" line="409"/>
         <source>Keep phone awake while mirroring</source>
         <translation>Manter a tela do celular ligada durante o espelhamento</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="417"/>
+        <location filename="../qml/MirrorWindow.qml" line="418"/>
         <source>Turn phone screen back on</source>
         <translation>Ligar a tela do celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="418"/>
+        <location filename="../qml/MirrorWindow.qml" line="419"/>
         <source>Turn phone screen off while mirroring</source>
         <translation>Desligar a tela do celular durante o espelhamento</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="457"/>
-        <location filename="../qml/MirrorWindow.qml" line="484"/>
+        <location filename="../qml/MirrorWindow.qml" line="436"/>
+        <location filename="../qml/MirrorWindow.qml" line="512"/>
         <source>Play the phone&apos;s sound here</source>
         <translation>Tocar o som do celular aqui</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="448"/>
+        <location filename="../qml/MirrorWindow.qml" line="427"/>
         <source>Lock phone</source>
         <translation>Bloquear celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="426"/>
+        <location filename="../qml/MirrorWindow.qml" line="471"/>
         <source>Back (right-click)</source>
         <translation>Voltar (botão direito)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="433"/>
+        <location filename="../qml/MirrorWindow.qml" line="478"/>
         <source>Home (middle-click)</source>
         <translation>Início (botão do meio)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="440"/>
+        <location filename="../qml/MirrorWindow.qml" line="485"/>
         <source>Recent apps</source>
         <translation>Apps recentes</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="457"/>
+        <location filename="../qml/MirrorWindow.qml" line="436"/>
         <source>Play the sound on the phone</source>
         <translation>Tocar o som no celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="493"/>
+        <location filename="../qml/MirrorWindow.qml" line="521"/>
         <source>Release to send files to %1</source>
         <translation>Solte para enviar arquivos para %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="493"/>
+        <location filename="../qml/MirrorWindow.qml" line="521"/>
         <source>phone</source>
         <translation>celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="561"/>
+        <location filename="../qml/MirrorWindow.qml" line="589"/>
         <source>To control the phone, turn on Control from your PC in NectarLink&apos;s settings on the phone.</source>
         <translation>Para controlar o celular, ative Controle pelo PC nas Configurações do NectarLink no celular.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="570"/>
+        <location filename="../qml/MirrorWindow.qml" line="598"/>
         <source>Notify phone</source>
         <translation>Avisar o celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="581"/>
+        <location filename="../qml/MirrorWindow.qml" line="609"/>
         <source>Hide</source>
         <translation>Ocultar</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="619"/>
+        <location filename="../qml/MirrorWindow.qml" line="647"/>
         <source>Opening %1</source>
         <translation>Abrindo %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="619"/>
+        <location filename="../qml/MirrorWindow.qml" line="647"/>
         <source>Allow it on your phone</source>
         <translation>Permita no celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="620"/>
+        <location filename="../qml/MirrorWindow.qml" line="648"/>
         <source>%1 closed</source>
         <translation>%1 foi fechado</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="620"/>
+        <location filename="../qml/MirrorWindow.qml" line="648"/>
         <source>Mirroring stopped</source>
         <translation>Espelhamento encerrado</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="621"/>
+        <location filename="../qml/MirrorWindow.qml" line="649"/>
         <source>Starting…</source>
         <translation>Iniciando…</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="630"/>
+        <location filename="../qml/MirrorWindow.qml" line="658"/>
         <source>Tap the notification on %1, then choose to share the entire screen.</source>
         <translation>Toque na notificação em %1 e escolha Compartilhar a tela inteira.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="632"/>
+        <location filename="../qml/MirrorWindow.qml" line="660"/>
         <source>The app closed on %1.</source>
         <translation>O app foi fechado em %1.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="633"/>
+        <location filename="../qml/MirrorWindow.qml" line="661"/>
         <source>The phone stopped sharing its screen.</source>
         <translation>O celular parou de compartilhar a tela.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="640"/>
+        <location filename="../qml/MirrorWindow.qml" line="668"/>
         <source>Open again</source>
         <translation>Abrir de novo</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="640"/>
+        <location filename="../qml/MirrorWindow.qml" line="668"/>
         <source>Try again</source>
         <translation>Tentar de novo</translation>
     </message>
@@ -6626,72 +6626,77 @@ O que precisa
         <translation>Copiado para a área de transferência.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="419"/>
+        <location filename="rust_strings.h" line="418"/>
+        <source>Couldn&apos;t open the share window. Try Save instead.</source>
+        <translation>Não foi possível abrir a janela de compartilhamento. Tente Salvar.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="420"/>
         <source>From %1</source>
         <translation>De %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="420"/>
+        <location filename="rust_strings.h" line="421"/>
         <source>New photo</source>
         <translation>Nova foto</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="421"/>
+        <location filename="rust_strings.h" line="422"/>
         <source>New screenshot</source>
         <translation>Nova captura de tela</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="422"/>
+        <location filename="rust_strings.h" line="423"/>
         <source>No recent photos found on the phone.</source>
         <translation>Nenhuma foto recente encontrada no celular.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="423"/>
+        <location filename="rust_strings.h" line="424"/>
         <source>Opening latest photo…</source>
         <translation>Abrindo a foto mais recente…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="424"/>
+        <location filename="rust_strings.h" line="425"/>
         <source>Saved %1 items to %2.</source>
         <translation>%1 itens salvos em %2.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="425"/>
+        <location filename="rust_strings.h" line="426"/>
         <source>Saved %1 to %2.</source>
         <translation>%1 salvo em %2.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="429"/>
+        <location filename="rust_strings.h" line="430"/>
         <source>The phone kept them. Deleting from the PC needs All files access on the phone (Android 11 or later).</source>
         <translation>O celular manteve os arquivos. Para apagá-los do PC, é preciso permitir o acesso a todos os arquivos no celular (Android 11 ou posterior).</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="418"/>
+        <location filename="rust_strings.h" line="419"/>
         <source>Deleted %1 of %2.</source>
         <translation>%1 de %2 itens excluídos.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="426"/>
+        <location filename="rust_strings.h" line="427"/>
         <source>That photo isn&apos;t on the phone anymore.</source>
         <translation>Essa foto não está mais no celular.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="427"/>
+        <location filename="rust_strings.h" line="428"/>
         <source>The phone doesn&apos;t share photos or files with this PC.</source>
         <translation>O celular não está compartilhando fotos nem arquivos com este PC.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="428"/>
+        <location filename="rust_strings.h" line="429"/>
         <source>The phone isn&apos;t connected right now.</source>
         <translation>O celular não está conectado no momento.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="430"/>
+        <location filename="rust_strings.h" line="431"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>Não foi possível copiar a foto para a área de transferência.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="431"/>
+        <location filename="rust_strings.h" line="432"/>
         <source>The photo couldn&apos;t be copied. It&apos;s in Downloads\Nectarlink.</source>
         <translation>Não foi possível copiar a foto. Ela está em Downloads\Nectarlink.</translation>
     </message>
@@ -6763,7 +6768,7 @@ O que precisa
     </message>
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="277"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="633"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="644"/>
         <source>%1 isn&apos;t connected</source>
         <translation>%1 não está conectado</translation>
     </message>
@@ -6774,7 +6779,7 @@ O que precisa
     </message>
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="287"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="647"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="658"/>
         <source>Connect %1 to view photos.</source>
         <translation>Conecte %1 para ver fotos.</translation>
     </message>
@@ -6865,120 +6870,126 @@ O que precisa
     </message>
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="534"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="841"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="852"/>
         <source>Copy</source>
         <translation>Copiar</translation>
     </message>
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="545"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="863"/>
+        <source>Share</source>
+        <translation>Compartilhar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/PhotosPage.qml" line="556"/>
         <source>Open</source>
         <translation>Abrir</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="556"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="567"/>
         <source>Delete</source>
         <translation>Excluir</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="576"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="587"/>
         <source>Save (%1)</source>
         <translation>Salvar (%1)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="577"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="863"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="588"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="885"/>
         <source>Save</source>
         <translation>Salvar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="588"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="871"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="599"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="893"/>
         <source>Save to folder…</source>
         <translation>Salvar na pasta…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="556"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="567"/>
         <source>Move to the phone&apos;s trash?</source>
         <translation>Mover para a lixeira do celular?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="631"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="642"/>
         <source>Photos are off for %1</source>
         <translation>O compartilhamento de fotos está desativado para %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="632"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="643"/>
         <source>Allow photos on %1</source>
         <translation>Permitir acesso a fotos em %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="634"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="645"/>
         <source>Couldn&apos;t load photos</source>
         <translation>Não foi possível carregar as fotos</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="643"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="654"/>
         <source>Enable Photos in Settings.</source>
         <translation>Ative Fotos em Configurações.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="645"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="656"/>
         <source>Grant photos permission on %1.</source>
         <translation>Permita o acesso a fotos em %1.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="648"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="659"/>
         <source>Unable to load photos.</source>
         <translation>Não foi possível carregar as fotos.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="660"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="671"/>
         <source>Try again</source>
         <translation>Tentar de novo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="683"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="694"/>
         <source>No photos or videos</source>
         <translation>Nenhuma foto ou vídeo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="788"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="799"/>
         <source>Back to gallery</source>
         <translation>Voltar à galeria</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="851"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="949"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="873"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="971"/>
         <source>Play video</source>
         <translation>Reproduzir vídeo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="851"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="873"/>
         <source>Open in Photos</source>
         <translation>Abrir no app Fotos</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="930"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="952"/>
         <source>Loading full resolution…</source>
         <translation>Carregando resolução completa…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="989"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1011"/>
         <source>Previous photo</source>
         <translation>Foto anterior</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1002"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1024"/>
         <source>Next photo</source>
         <translation>Próxima foto</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1089"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1111"/>
         <source>%1</source>
         <translation>%1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1271"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1293"/>
         <source>Select photo</source>
         <translation>Selecionar foto</translation>
     </message>
@@ -6986,32 +6997,32 @@ O que precisa
 <context>
     <name>PlayOnPhone</name>
     <message>
-        <location filename="rust_strings.h" line="432"/>
+        <location filename="rust_strings.h" line="433"/>
         <source>Connect your phone to play on it.</source>
         <translation>Conecte o celular para reproduzir a mídia nele.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="433"/>
+        <location filename="rust_strings.h" line="434"/>
         <source>Media is turned off for %1.</source>
         <translation>A mídia está desativada para %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="434"/>
+        <location filename="rust_strings.h" line="435"/>
         <source>Opening in %1 on %2. Tap the notification there.</source>
         <translation>Abrindo no %1 em %2. Toque na notificação lá.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="435"/>
+        <location filename="rust_strings.h" line="436"/>
         <source>Sent to %1. Tap the notification there.</source>
         <translation>Enviado para %1. Toque na notificação lá.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="436"/>
+        <location filename="rust_strings.h" line="437"/>
         <source>Tap the notification on %1 to watch.</source>
         <translation>Toque na notificação em %1 para assistir.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="437"/>
+        <location filename="rust_strings.h" line="438"/>
         <source>Update NectarLink on %1 to play on it.</source>
         <translation>Atualize o NectarLink em %1 para reproduzir a mídia nele.</translation>
     </message>
@@ -7019,7 +7030,7 @@ O que precisa
 <context>
     <name>Prefs</name>
     <message>
-        <location filename="rust_strings.h" line="438"/>
+        <location filename="rust_strings.h" line="439"/>
         <source>Connected to OBS.</source>
         <translation>Conectado ao OBS.</translation>
     </message>
@@ -7027,7 +7038,7 @@ O que precisa
 <context>
     <name>Recordings</name>
     <message>
-        <location filename="rust_strings.h" line="439"/>
+        <location filename="rust_strings.h" line="440"/>
         <source>Recording from %1 saved</source>
         <translation>Gravação de %1 salva</translation>
     </message>
@@ -7043,57 +7054,57 @@ O que precisa
 <context>
     <name>SendTo</name>
     <message>
-        <location filename="rust_strings.h" line="440"/>
+        <location filename="rust_strings.h" line="441"/>
         <source>Copied to your phone&apos;s clipboard.</source>
         <translation>Copiado para a área de transferência do celular.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="441"/>
+        <location filename="rust_strings.h" line="442"/>
         <source>Couldn&apos;t reach %1.</source>
         <translation>Não foi possível acessar %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="442"/>
+        <location filename="rust_strings.h" line="443"/>
         <source>Couldn&apos;t send %1</source>
         <translation>Não foi possível enviar %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="443"/>
+        <location filename="rust_strings.h" line="444"/>
         <source>Couldn&apos;t send to %1</source>
         <translation>Não foi possível enviar para %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="444"/>
+        <location filename="rust_strings.h" line="445"/>
         <source>Couldn&apos;t share with %1</source>
         <translation>Não foi possível compartilhar com %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="445"/>
+        <location filename="rust_strings.h" line="446"/>
         <source>File failed integrity check; partial file kept to resume.</source>
         <translation>O arquivo falhou na verificação de integridade. A parte recebida foi mantida para continuar depois.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="446"/>
+        <location filename="rust_strings.h" line="447"/>
         <source>Send to %1 with NectarLink</source>
         <translation>Enviar para %1 com o NectarLink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="447"/>
+        <location filename="rust_strings.h" line="448"/>
         <source>Sending to %1…</source>
         <translation>Enviando para %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="448"/>
+        <location filename="rust_strings.h" line="449"/>
         <source>Sent to %1</source>
         <translation>Enviado para %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="449"/>
+        <location filename="rust_strings.h" line="450"/>
         <source>The transfer didn&apos;t go through.</source>
         <translation>Não foi possível concluir a transferência.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="450"/>
+        <location filename="rust_strings.h" line="451"/>
         <source>Waiting for %1…</source>
         <translation>Aguardando %1…</translation>
     </message>
@@ -8795,72 +8806,72 @@ O que precisa
 <context>
     <name>Setup</name>
     <message>
-        <location filename="rust_strings.h" line="451"/>
+        <location filename="rust_strings.h" line="452"/>
         <source>Choose a folder on a drive inside this PC, not a USB or network drive.</source>
         <translation>Escolha uma pasta em uma unidade deste PC, não em uma unidade USB ou de rede.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="452"/>
+        <location filename="rust_strings.h" line="453"/>
         <source>Choose a folder on one of this PC&apos;s drives.</source>
         <translation>Escolha uma pasta em uma das unidades deste PC.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="453"/>
+        <location filename="rust_strings.h" line="454"/>
         <source>Couldn&apos;t start setup: %1</source>
         <translation>Não foi possível iniciar a instalação: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="454"/>
+        <location filename="rust_strings.h" line="455"/>
         <source>Couldn&apos;t uninstall NectarLink: %1</source>
         <translation>Não foi possível desinstalar o NectarLink: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="455"/>
+        <location filename="rust_strings.h" line="456"/>
         <source>Setup can&apos;t use that folder. Choose another one.</source>
         <translation>A instalação não pode usar essa pasta. Escolha outra.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="456"/>
+        <location filename="rust_strings.h" line="457"/>
         <source>Setup is taking too long. Try again after restarting the PC.</source>
         <translation>A instalação está demorando demais. Tente de novo depois de reiniciar o PC.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="457"/>
+        <location filename="rust_strings.h" line="458"/>
         <source>Setup stopped with code %1.</source>
         <translation>A instalação parou com o código %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="458"/>
+        <location filename="rust_strings.h" line="459"/>
         <source>That drive can&apos;t keep the app&apos;s files safe (it isn&apos;t NTFS). Choose another drive.</source>
         <translation>Essa unidade não consegue proteger os arquivos do app (não é NTFS). Escolha outra unidade.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="459"/>
+        <location filename="rust_strings.h" line="460"/>
         <source>That folder&apos;s path is too long. Choose one closer to the top of a drive.</source>
         <translation>O caminho dessa pasta é muito longo. Escolha uma pasta mais perto da raiz da unidade.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="460"/>
+        <location filename="rust_strings.h" line="461"/>
         <source>The uninstaller is missing. Reinstall NectarLink, then uninstall it.</source>
         <translation>O desinstalador não foi encontrado. Reinstale o NectarLink e depois desinstale-o.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="461"/>
+        <location filename="rust_strings.h" line="462"/>
         <source>There&apos;s a file named %1 there. Choose another place.</source>
         <translation>Já existe um arquivo chamado %1 lá. Escolha outro lugar.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="462"/>
+        <location filename="rust_strings.h" line="463"/>
         <source>There&apos;s already a %1 folder there with files in it. Choose another place.</source>
         <translation>Já existe uma pasta %1 com arquivos lá. Escolha outro lugar.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="463"/>
+        <location filename="rust_strings.h" line="464"/>
         <source>Uninstall stopped with code %1.</source>
         <translation>A desinstalação foi interrompida com o código %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="464"/>
+        <location filename="rust_strings.h" line="465"/>
         <source>Updates here will ask for your permission each time.</source>
         <translation>As atualizações neste local vão pedir sua permissão toda vez.</translation>
     </message>
@@ -9294,17 +9305,17 @@ O que precisa
 <context>
     <name>Storage</name>
     <message>
-        <location filename="rust_strings.h" line="465"/>
+        <location filename="rust_strings.h" line="466"/>
         <source>%1&apos;s files aren&apos;t shared with this PC</source>
         <translation>Os arquivos de %1 não estão compartilhados com este PC</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="466"/>
+        <location filename="rust_strings.h" line="467"/>
         <source>On the phone, allow All files access for NectarLink.</source>
         <translation>No celular, permita Acesso a todos os arquivos para o NectarLink.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="467"/>
+        <location filename="rust_strings.h" line="468"/>
         <source>On the phone, turn on Browse this phone&apos;s storage in File Explorer in NectarLink.</source>
         <translation>No celular, ative Explorar o armazenamento deste celular pelo Explorador de Arquivos no NectarLink.</translation>
     </message>
@@ -9312,147 +9323,147 @@ O que precisa
 <context>
     <name>Timeline</name>
     <message>
-        <location filename="rust_strings.h" line="468"/>
+        <location filename="rust_strings.h" line="469"/>
         <source>App window #%1</source>
         <translation>Janela de app #%1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="469"/>
+        <location filename="rust_strings.h" line="470"/>
         <source>Clip (removed from clipboard history)</source>
         <translation>Item copiado (removido do histórico da área de transferência)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="470"/>
+        <location filename="rust_strings.h" line="471"/>
         <source>Copied image</source>
         <translation>Imagem copiada</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="471"/>
+        <location filename="rust_strings.h" line="472"/>
         <source>Copied link to clipboard.</source>
         <translation>Link copiado para a área de transferência.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="472"/>
+        <location filename="rust_strings.h" line="473"/>
         <source>Copied to clipboard.</source>
         <translation>Copiado para a área de transferência.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="473"/>
+        <location filename="rust_strings.h" line="474"/>
         <source>From %1</source>
         <translation>De %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="474"/>
+        <location filename="rust_strings.h" line="475"/>
         <source>In progress</source>
         <translation>Em andamento</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="475"/>
+        <location filename="rust_strings.h" line="476"/>
         <source>No phone is paired yet.</source>
         <translation>Nenhum celular pareado ainda.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="476"/>
+        <location filename="rust_strings.h" line="477"/>
         <source>Opened from %1</source>
         <translation>Aberto a partir de %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="477"/>
+        <location filename="rust_strings.h" line="478"/>
         <source>Opened on %1</source>
         <translation>Aberto em %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="478"/>
+        <location filename="rust_strings.h" line="479"/>
         <source>Phone microphone</source>
         <translation>Microfone do celular</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="479"/>
+        <location filename="rust_strings.h" line="480"/>
         <source>Phone webcam</source>
         <translation>Webcam do celular</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="480"/>
+        <location filename="rust_strings.h" line="481"/>
         <source>Recorded on %1</source>
         <translation>Gravado em %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="481"/>
+        <location filename="rust_strings.h" line="482"/>
         <source>Saved from %1</source>
         <translation>Salvo de %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="482"/>
+        <location filename="rust_strings.h" line="483"/>
         <source>Screen mirroring</source>
         <translation>Espelhamento de tela</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="483"/>
+        <location filename="rust_strings.h" line="484"/>
         <source>Sending to %1…</source>
         <translation>Enviando para %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="484"/>
+        <location filename="rust_strings.h" line="485"/>
         <source>Sent clip to %1.</source>
         <translation>Item enviado para %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="485"/>
+        <location filename="rust_strings.h" line="486"/>
         <source>Sent to %1</source>
         <translation>Enviado para %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="486"/>
+        <location filename="rust_strings.h" line="487"/>
         <source>Session</source>
         <translation>Sessão</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="487"/>
+        <location filename="rust_strings.h" line="488"/>
         <source>That clip is no longer in clipboard history.</source>
         <translation>Esse item não está mais no histórico da área de transferência.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="488"/>
+        <location filename="rust_strings.h" line="489"/>
         <source>That entry couldn&apos;t be removed. Try again.</source>
         <translation>Não foi possível remover esse item. Tente de novo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="489"/>
+        <location filename="rust_strings.h" line="490"/>
         <source>That file was moved or deleted.</source>
         <translation>Esse arquivo foi movido ou apagado.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="490"/>
+        <location filename="rust_strings.h" line="491"/>
         <source>That isn&apos;t a web link.</source>
         <translation>Isso não é um link da web.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="491"/>
+        <location filename="rust_strings.h" line="492"/>
         <source>That photo was moved or deleted.</source>
         <translation>Essa foto foi movida ou apagada.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="492"/>
+        <location filename="rust_strings.h" line="493"/>
         <source>The Timeline couldn&apos;t be cleared. Try again.</source>
         <translation>Não foi possível limpar a Linha do tempo. Tente de novo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="493"/>
+        <location filename="rust_strings.h" line="494"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>Não foi possível copiar a foto para a área de transferência.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="494"/>
+        <location filename="rust_strings.h" line="495"/>
         <source>Voice recording</source>
         <translation>Gravação de voz</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="495"/>
+        <location filename="rust_strings.h" line="496"/>
         <source>With %1</source>
         <translation>Com %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="496"/>
+        <location filename="rust_strings.h" line="497"/>
         <source>device</source>
         <translation>dispositivo</translation>
     </message>
@@ -9773,37 +9784,37 @@ O que precisa
 <context>
     <name>Transfers</name>
     <message>
-        <location filename="rust_strings.h" line="497"/>
+        <location filename="rust_strings.h" line="498"/>
         <source>Accept in NectarLink to save to Downloads\Nectarlink</source>
         <translation>Aceite no NectarLink para salvar em Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="498"/>
+        <location filename="rust_strings.h" line="499"/>
         <source>Files are turned off for that device.</source>
         <translation>O compartilhamento de arquivos está desativado para esse dispositivo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="499"/>
+        <location filename="rust_strings.h" line="500"/>
         <source>From %1, opened from Downloads\Nectarlink</source>
         <translation>De %1, aberto em Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="500"/>
+        <location filename="rust_strings.h" line="501"/>
         <source>From %1, saved in Downloads\Nectarlink</source>
         <translation>De %1, salvo em Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="501"/>
+        <location filename="rust_strings.h" line="502"/>
         <source>Nearby device</source>
         <translation>Dispositivo por perto</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="502"/>
+        <location filename="rust_strings.h" line="503"/>
         <source>That&apos;s too many files to send at once.</source>
         <translation>São muitos arquivos para enviar de uma vez.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="503"/>
+        <location filename="rust_strings.h" line="504"/>
         <source>There&apos;s nothing to send in there.</source>
         <translation>Não há nada para enviar aí.</translation>
     </message>
@@ -9811,82 +9822,82 @@ O que precisa
 <context>
     <name>Updater</name>
     <message>
-        <location filename="rust_strings.h" line="504"/>
+        <location filename="rust_strings.h" line="505"/>
         <source>Couldn&apos;t check for updates. Check your internet connection.</source>
         <translation>Não foi possível verificar se há atualizações. Confira sua conexão com a internet.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="505"/>
+        <location filename="rust_strings.h" line="506"/>
         <source>NectarLink %1 is available</source>
         <translation>O NectarLink %1 está disponível</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="506"/>
+        <location filename="rust_strings.h" line="507"/>
         <source>NectarLink %1 is available.</source>
         <translation>O NectarLink %1 está disponível.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="507"/>
+        <location filename="rust_strings.h" line="508"/>
         <source>NectarLink is still on the version you had. Try again from Settings.</source>
         <translation>O NectarLink continua na versão que você tinha. Tente de novo em Configurações.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="508"/>
+        <location filename="rust_strings.h" line="509"/>
         <source>NectarLink is up to date.</source>
         <translation>O NectarLink está atualizado.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="509"/>
+        <location filename="rust_strings.h" line="510"/>
         <source>NectarLink is updated to %1</source>
         <translation>O NectarLink foi atualizado para %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="510"/>
+        <location filename="rust_strings.h" line="511"/>
         <source>Nightly %1</source>
         <translation>Nightly %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="511"/>
+        <location filename="rust_strings.h" line="512"/>
         <source>Nightly %1 (%2)</source>
         <translation>Nightly %1 (%2)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="512"/>
+        <location filename="rust_strings.h" line="513"/>
         <source>The download was damaged, so it wasn&apos;t installed. Try again.</source>
         <translation>O arquivo baixado foi corrompido e não foi instalado. Tente de novo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="513"/>
+        <location filename="rust_strings.h" line="514"/>
         <source>The update couldn&apos;t be downloaded. Check your internet connection and try again.</source>
         <translation>Não foi possível baixar a atualização. Confira sua conexão com a internet e tente de novo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="514"/>
+        <location filename="rust_strings.h" line="515"/>
         <source>The update couldn&apos;t be saved. Check that there&apos;s free space and try again.</source>
         <translation>Não foi possível salvar a atualização. Confira se há espaço livre e tente de novo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="515"/>
+        <location filename="rust_strings.h" line="516"/>
         <source>The update couldn&apos;t be started. Try again.</source>
         <translation>Não foi possível iniciar a atualização. Tente de novo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="516"/>
+        <location filename="rust_strings.h" line="517"/>
         <source>The update didn&apos;t install</source>
         <translation>A atualização não foi instalada</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="517"/>
+        <location filename="rust_strings.h" line="518"/>
         <source>The update is installed. Restart NectarLink to use it.</source>
         <translation>A atualização foi instalada. Reinicie o NectarLink para começar a usá-la.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="518"/>
+        <location filename="rust_strings.h" line="519"/>
         <source>Update now, or later from Settings.</source>
         <translation>Atualize agora ou depois em Configurações.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="519"/>
+        <location filename="rust_strings.h" line="520"/>
         <source>Your phone reconnects on its own.</source>
         <translation>O celular se reconecta sozinho.</translation>
     </message>
@@ -10394,12 +10405,12 @@ O que precisa
 <context>
     <name>Webcam</name>
     <message>
-        <location filename="rust_strings.h" line="520"/>
+        <location filename="rust_strings.h" line="521"/>
         <source>Starting camera on %1…</source>
         <translation>Iniciando a câmera em %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="521"/>
+        <location filename="rust_strings.h" line="522"/>
         <source>Streaming %1 × %2 · %3 fps from %4</source>
         <translation>Transmitindo de %4 em %1 × %2, a %3 fps</translation>
     </message>
