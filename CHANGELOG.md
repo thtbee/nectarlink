@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **More ways to sync a folder.** A synced folder can now go one way from the PC to the
+  phone. Phone to PC can also remove from the PC what you delete on the phone: only
+  files it synced and that haven't changed on the PC, and they go to the Recycle Bin
+  ([#243](https://github.com/thtbee/nectarlink/issues/243)).
 - **Back, Home and Recent apps buttons** in the mirror window's toolbar
   ([#192](https://github.com/thtbee/nectarlink/issues/192)).
 - **Brazilian Portuguese.** The Android and PC apps speak Brazilian Portuguese
