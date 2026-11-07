@@ -1434,17 +1434,18 @@ async fn a_held_pc_gets_no_notifications_and_catches_up_afterwards() {
         .await;
 
     pc.node.hold_notifications(false).await;
-    // Whatever comes first after the hold ends is the catch-up list. Nothing
-    // posted or reset while held got through ahead of it.
-    let items = wait_for(&mut pc, "catch-up", |e| match e {
+    // Lists from before the hold may still be waiting here (they repeat), so wait for
+    // the one with both. Nothing posted while held got through ahead of it.
+    wait_for(&mut pc, "catch-up", |e| match e {
         NodeEvent::NotificationPosted { device, .. } if *device == phone_id => {
             panic!("a notification came through while held")
         }
-        NodeEvent::NotificationsReset { device, items } if *device == phone_id => Some(items.clone()),
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id && items.len() == 2 => {
+            Some(())
+        }
         _ => None,
     })
     .await;
-    assert_eq!(items.len(), 2);
 }
 
 #[tokio::test(flavor = "multi_thread")]
