@@ -5005,7 +5005,8 @@ async fn localsend_discovers_peer_requires_accept_and_transfers_files_over_https
 
     sender.node.set_localsend_enabled(true).unwrap();
     receiver.node.set_localsend_enabled(true).unwrap();
-    for _ in 0..40 {
+    // Generous: on a busy runner the server can take a while to start.
+    for _ in 0..200 {
         if receiver.node.localsend_receiving() {
             break;
         }
