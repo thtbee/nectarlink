@@ -36,6 +36,31 @@ static ON_COPY: OnceLock<OnCopy> = OnceLock::new();
 /// item so the watcher thread never echoes our own writes back to the phone.
 static LAST_REPORTED: Mutex<Option<Fingerprint>> = Mutex::new(None);
 
+/// What the PC's clipboard held before a write that may not have reached it. Without
+/// focus on GNOME's Wayland, Qt reports success for a write that goes nowhere, so the
+/// old text is still there, and seeing it again isn't the user copying it.
+static MAYBE_STALE: Mutex<Option<Fingerprint>> = Mutex::new(None);
+
+/// What to do with what's on the clipboard now.
+#[derive(Debug, PartialEq, Eq)]
+enum Seen {
+    /// What we last reported or wrote: our write reached the clipboard.
+    Same,
+    /// What was there before a write that went nowhere.
+    Stale,
+    New,
+}
+
+fn classify(now: &Fingerprint, last: Option<&Fingerprint>, stale: Option<&Fingerprint>) -> Seen {
+    if last == Some(now) {
+        Seen::Same
+    } else if stale == Some(now) {
+        Seen::Stale
+    } else {
+        Seen::New
+    }
+}
+
 /// Most recent rich-text payload (`(plain_text, html, rtf)`) written by
 /// NectarLink so rich formats survive round-trips through plain-text bridges.
 static LAST_WRITTEN_RICH: Mutex<Option<WrittenRich>> = Mutex::new(None);
@@ -299,10 +324,18 @@ where
     };
     {
         let mut last = LAST_REPORTED.lock().unwrap_or_else(|e| e.into_inner());
-        if *last == Some(fp) {
-            return false;
+        let mut stale = MAYBE_STALE.lock().unwrap_or_else(|e| e.into_inner());
+        match classify(&fp, last.as_ref(), stale.as_ref()) {
+            Seen::Stale => return false,
+            Seen::Same => {
+                *stale = None;
+                return false;
+            }
+            Seen::New => {
+                *stale = None;
+                *last = Some(fp);
+            }
         }
-        *last = Some(fp);
     }
     callback(clip);
     true
@@ -683,7 +716,14 @@ fn write_text(text: &str, html: Option<&str>, rtf: Option<&str>, private: bool) 
 
     // Update LAST_REPORTED and LAST_WRITTEN_RICH BEFORE touching the OS
     // clipboard so the background watcher never echoes our own write back.
-    *LAST_REPORTED.lock().unwrap_or_else(|e| e.into_inner()) = fingerprint(&text_clip);
+    let previous = std::mem::replace(
+        &mut *LAST_REPORTED.lock().unwrap_or_else(|e| e.into_inner()),
+        fingerprint(&text_clip),
+    );
+    // Everywhere else a write lands, so copying the old text again is a real copy.
+    if !cfg!(test) && is_gnome_wayland() && !super::data_control::active() {
+        *MAYBE_STALE.lock().unwrap_or_else(|e| e.into_inner()) = previous;
+    }
 
     if private {
         *LAST_WRITTEN_RICH.lock().unwrap_or_else(|e| e.into_inner()) = None;
@@ -1279,5 +1319,22 @@ mod tests {
             |c| reported.push(c)
         ));
         assert!(reported.is_empty());
+    }
+
+    fn print(text: &str) -> Fingerprint {
+        fingerprint(&Clip::Text { text: text.into(), html: None, rtf: None }).unwrap()
+    }
+
+    #[test]
+    fn old_pc_text_seen_after_a_write_that_went_nowhere_isnt_a_new_copy() {
+        let (phone, old, other) = (print("from the phone"), print("old on the PC"), print("copied now"));
+        // The phone's text is what we last wrote; the PC still shows its old text.
+        assert_eq!(classify(&old, Some(&phone), Some(&old)), Seen::Stale);
+        // Something really copied since still goes.
+        assert_eq!(classify(&other, Some(&phone), Some(&old)), Seen::New);
+        // The write landed after all.
+        assert_eq!(classify(&phone, Some(&phone), Some(&old)), Seen::Same);
+        // Elsewhere nothing's stale, so copying the old text again goes too.
+        assert_eq!(classify(&old, Some(&phone), None), Seen::New);
     }
 }
