@@ -105,7 +105,6 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -817,15 +816,12 @@ private fun TouchpadView(
                     }
                     if (diff.added.isNotEmpty()) core.remoteText(pcId, diff.added, onStatus)
                     if (diff.backspaces > 0 || diff.added.isNotEmpty()) activeMods.clear()
-                    // The PC's cursor is at the end of what was typed: keep this one there too.
-                    typed = if (next.selection == TextRange(next.text.length)) {
-                        next
-                    } else {
-                        next.copy(selection = TextRange(next.text.length))
-                    }
+                    // The cursor and selection here are free to move: an edit anywhere
+                    // goes over as Backspaces from the end, then what follows it again.
+                    typed = next
                 },
                 placeholder = { Text(typePlaceholder) },
-                singleLine = true,
+                maxLines = 4,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(
                     onSend = {

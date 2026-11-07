@@ -118,6 +118,8 @@ what people reported since 0.1.4.
   ([#209](https://github.com/thtbee/nectarlink/issues/209)).
 - The phone's clipboard setting says Elevated is on however it was started, and takes
   you to Elevated's settings ([#110](https://github.com/thtbee/nectarlink/issues/110)).
+- The phone's box for typing on the PC grows to four lines, and you can select and edit
+  anywhere in it ([#52](https://github.com/thtbee/nectarlink/issues/52)).
 - Voice typing from the phone no longer loses or doubles letters in Notepad when it
   rewrites a phrase ([#52](https://github.com/thtbee/nectarlink/issues/52)).
 - **Type on phone** shows what you've typed instead of only the last key, which looked

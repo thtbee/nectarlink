@@ -29,6 +29,11 @@ class TypingDiffTest {
     }
 
     @Test
+    fun deletingWordsInTheMiddleRetypesWhatFollows() {
+        assertEquals(TypingDiff(12, "is fine"), typingDiff("this part is fine", "this is fine"))
+    }
+
+    @Test
     fun aPastedOrSuggestedChunkIsSentWhole() {
         assertEquals(TypingDiff(0, "world"), typingDiff("hello ", "hello world"))
     }
