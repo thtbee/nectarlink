@@ -3,7 +3,10 @@
 //! phone acting as a touchpad, keyboard or presentation remote
 //! (`docs/protocol/remote.md`).
 
-use std::{sync::Mutex, time::Duration};
+use std::{
+    sync::Mutex,
+    time::{Duration, Instant},
+};
 
 use nectarlink_core::{ButtonAction, KeyMod, MouseButton, PowerAction, SlideAction, TouchAction};
 use windows::Win32::UI::{
@@ -234,18 +237,33 @@ pub fn scroll(dx: f32, dy: f32) {
 pub fn type_text(text: &str) {
     // One character at a time: an app that reads a packet key late (Notepad on
     // Windows 11) can turn a batch into its last letter ("great" as "ttttt").
-    for (i, keystroke) in keystrokes(text).iter().enumerate() {
-        if i > 0 {
-            std::thread::sleep(BETWEEN_CHARACTERS);
-        }
-        send_inputs(keystroke);
+    for keystroke in keystrokes(text) {
+        wait_for_last_keystroke(BETWEEN_CHARACTERS);
+        send_inputs(&keystroke);
     }
+}
+
+static NEXT_KEYSTROKE: Mutex<Option<Instant>> = Mutex::new(None);
+
+/// Waits until the app has had its time since the last character or key press,
+/// and books `gap` for this one. Voice typing rewrites a phrase with Backspaces
+/// and then the new text, and a letter sent right after a Backspace could get
+/// lost ("working" as "rking").
+fn wait_for_last_keystroke(gap: Duration) {
+    let mut next = NEXT_KEYSTROKE.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(left) = next.and_then(|at| at.checked_duration_since(Instant::now())) {
+        std::thread::sleep(left);
+    }
+    *next = Some(Instant::now() + gap);
 }
 
 /// How long the app gets to read one typed character before the next. In
 /// Notepad on Windows 11, up to 6 ms still garbled words and 12 ms dropped a
 /// letter; 16 ms was clean. It can't grow much: see the test below.
 const BETWEEN_CHARACTERS: Duration = Duration::from_millis(16);
+/// A key press takes the app longer than a character: Notepad on Windows 11 still
+/// lost a letter now and then after 16 ms, here after Backspace or Enter.
+const AFTER_KEY: Duration = Duration::from_millis(32);
 
 /// The input events of each character in `text`, press and release together.
 fn keystrokes(text: &str) -> Vec<Vec<INPUT>> {
@@ -368,6 +386,7 @@ pub fn press_key(key: &str, mods: &[KeyMod]) {
         let (mvk, mext) = mod_vk(m);
         inputs.push(vk_input(mvk, mext, true));
     }
+    wait_for_last_keystroke(AFTER_KEY);
     send_inputs(&inputs);
 }
 
@@ -409,6 +428,14 @@ pub fn is_user_active_within_ms(max_idle_ms: u32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn each_keystroke_waits_out_the_last_ones_gap() {
+        wait_for_last_keystroke(Duration::from_millis(40));
+        let start = Instant::now();
+        wait_for_last_keystroke(Duration::ZERO);
+        assert!(start.elapsed() >= Duration::from_millis(30), "{:?}", start.elapsed());
+    }
 
     #[test]
     fn the_longest_text_is_typed_before_the_phone_gives_up() {
