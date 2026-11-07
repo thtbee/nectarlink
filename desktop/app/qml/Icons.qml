@@ -44,6 +44,7 @@ QtObject {
     readonly property string backspace: "M10 5a2 2 0 0 0-1.34.52l-6.33 5.74a1 1 0 0 0 0 1.48l6.33 5.74A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zM12 9l6 6M18 9l-6 6"
     readonly property string lock: "M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4M12 15.5v2"
     readonly property string mark: "M9.39 11.23C4.14 8.78 2.13 11.57 4.06 15.70C5.99 19.83 9.42 20.09 10.91 14.49M13.09 9.51C14.58 3.91 18.01 4.17 19.94 8.30C21.87 12.43 19.86 15.22 14.61 12.77M12.6 12a0.6 0.6 0 1 1-1.2 0a0.6 0.6 0 1 1 1.2 0"
+    readonly property string share: "M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"
     readonly property string back: "M15 18l-6-6 6-6"
     readonly property string chevronRight: "M9 18l6-6-6-6"
     readonly property string chevronDown: "M6 9l6 6 6-6"

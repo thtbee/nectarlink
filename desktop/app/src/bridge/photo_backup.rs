@@ -82,6 +82,7 @@ fn status(enabled: bool, online: bool, done: usize, activity: &Activity, phone: 
         Activity::Copying { left } => (tr!("PhotoBackup", "Copying, %1 left", left), false),
         _ if !online => (tr!("PhotoBackup", "Waiting for %1", phone), false),
         Activity::Waiting => (tr!("PhotoBackup", "Waiting for %1", phone), false),
+        Activity::WaitingForWifi => (tr!("PhotoBackup", "Waiting for Wi-Fi"), false),
         Activity::Idle if done > 0 => (tr!("PhotoBackup", "Up to date, %1 backed up", done), false),
         Activity::Idle => (tr!("PhotoBackup", "Up to date"), false),
     }

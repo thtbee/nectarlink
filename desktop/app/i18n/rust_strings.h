@@ -267,6 +267,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("FolderSync", "Folders are up to date."), // desktop/app/src/folder_sync.rs
     QT_TRANSLATE_NOOP("FolderSync", "Synced %1 file(s)."), // desktop/app/src/folder_sync.rs
     QT_TRANSLATE_NOOP("FolderSync", "The phone hasn't let this PC into its files yet. Allow it on the phone."), // desktop/app/src/folder_sync.rs
+    QT_TRANSLATE_NOOP("FolderSync", "Waiting for Wi-Fi. Sync on Wi-Fi only is on, and the phone is away."), // desktop/app/src/folder_sync.rs
     QT_TRANSLATE_NOOP("Guide", "1. Install NectarLink on your PC (Windows 11 or Linux) and your Android phone (Android 8.0 or newer).\n2. Connect both devices to the same Wi-Fi network, or plug your phone into your PC with a USB cable.\n3. Open the Pair step in the setup walkthrough, or click + (Pair a new device) at the bottom of the left rail.\n4. Scan the QR code from the NectarLink Android app, or select your phone from the nearby devices list and confirm that the 6-digit code matches on both screens.\n5. Choose which features to share for that phone and grant only the Android permissions you want to use."), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("Guide", "Android permissions and why each is optional"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("Guide", "Automations"), // desktop/app/src/bridge/app.rs
@@ -413,8 +414,10 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("PhotoBackup", "Up to date, %1 backed up"), // desktop/app/src/bridge/photo_backup.rs
     QT_TRANSLATE_NOOP("PhotoBackup", "Update NectarLink on %1 to back up its photos."), // desktop/app/src/photo_backup.rs
     QT_TRANSLATE_NOOP("PhotoBackup", "Waiting for %1"), // desktop/app/src/bridge/photo_backup.rs
+    QT_TRANSLATE_NOOP("PhotoBackup", "Waiting for Wi-Fi"), // desktop/app/src/bridge/photo_backup.rs
     QT_TRANSLATE_NOOP("Photos", "%1 of %2 couldn't be moved to %3. They're in Downloads\\Nectarlink."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "Copied to clipboard."), // desktop/app/src/photos.rs
+    QT_TRANSLATE_NOOP("Photos", "Couldn't open the share window. Try Save instead."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "Deleted %1 of %2."), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "From %1"), // desktop/app/src/photos.rs
     QT_TRANSLATE_NOOP("Photos", "New photo"), // desktop/app/src/photos.rs

@@ -12,7 +12,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use nectarlink_core::{DeviceId, Node};
+use nectarlink_core::{ConnectionPath, DeviceId, LinkState, Node};
 use serde::{Deserialize, Serialize};
 
 use crate::{core_host, settings};
@@ -609,6 +609,21 @@ fn keep_phone_date(path: &Path, modified_ms: i64) {
     }
 }
 
+/// Whether a sync may use this connection. Only the relay is held back: a USB
+/// cable and the local network cost no data.
+fn link_allows_sync(link: &LinkState, wifi_only: bool) -> bool {
+    !(wifi_only && matches!(link, LinkState::Online { path: ConnectionPath::Relay, .. }))
+}
+
+/// Whether "Sync on Wi-Fi only" lets `device` sync right now. An offline phone
+/// counts as allowed: that fails on its own and is reported as it always was.
+pub fn sync_allowed(device: DeviceId) -> bool {
+    let wifi_only = settings::sync_wifi_only();
+    core_host::host().hub.read(|s| {
+        s.devices.iter().find(|d| d.id == device).is_none_or(|d| link_allows_sync(&d.link, wifi_only))
+    })
+}
+
 /// What one [`sync_now`] pass did.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct SyncReport {
@@ -621,6 +636,8 @@ pub struct SyncReport {
     pub refused: usize,
     /// Rules whose phone folder couldn't be read for another reason.
     pub unreadable: usize,
+    /// Rules held back or cut short by "Sync on Wi-Fi only".
+    pub held_back: usize,
 }
 
 /// Runs all enabled [`FolderSyncRule`]s once against `node`.
@@ -636,6 +653,10 @@ pub async fn sync_now(node: &Node) -> SyncReport {
         let Ok(peer) = rule.phone_id.parse::<DeviceId>() else {
             continue;
         };
+        if !sync_allowed(peer) {
+            report.held_back += 1;
+            continue;
+        }
         let pc_dir = PathBuf::from(&rule.pc_folder);
         if std::fs::create_dir_all(&pc_dir).is_err() {
             continue;
@@ -685,6 +706,10 @@ pub async fn sync_now(node: &Node) -> SyncReport {
         }
 
         for action in actions {
+            if !sync_allowed(peer) {
+                report.held_back += 1;
+                break;
+            }
             match action {
                 SyncAction::PullToPc { rel_path } => {
                     let remote = join_phone_path(&rule.phone_folder, &rel_path);
@@ -752,6 +777,8 @@ pub fn trigger_sync_now() {
             // A refusal comes first: it's the one the user has to act on, on the phone.
             let message = if report.refused > 0 {
                 tr!("FolderSync", "The phone hasn't let this PC into its files yet. Allow it on the phone.")
+            } else if report.held_back > 0 {
+                tr!("FolderSync", "Waiting for Wi-Fi. Sync on Wi-Fi only is on, and the phone is away.")
             } else if report.copied + report.removed > 0 {
                 tr!("FolderSync", "Synced %1 file(s).", report.copied + report.removed)
             } else if report.unreadable > 0 {
@@ -864,6 +891,16 @@ mod tests {
         )
         .unwrap();
         assert!(!rule.remove_deleted);
+    }
+
+    #[test]
+    fn wifi_only_holds_back_the_relay_and_nothing_else() {
+        let on = |path| LinkState::Online { path, rtt_ms: 5 };
+        assert!(!link_allows_sync(&on(ConnectionPath::Relay), true));
+        assert!(link_allows_sync(&on(ConnectionPath::Lan), true));
+        assert!(link_allows_sync(&on(ConnectionPath::Usb), true));
+        assert!(link_allows_sync(&LinkState::Connecting, true));
+        assert!(link_allows_sync(&on(ConnectionPath::Relay), false));
     }
 
     #[test]
