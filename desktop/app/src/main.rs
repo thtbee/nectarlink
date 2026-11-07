@@ -605,6 +605,8 @@ fn main() -> ExitCode {
     clipboard::set_suggest_actions(settings.suggest_clipboard_actions);
     notifications::set_auto_copy_otp(settings.auto_copy_otp);
     notifications::set_sync_dnd(settings.sync_dnd);
+    notifications::set_hold_when_locked(settings.hold_when_locked);
+    notifications::start_lock_watch();
     calls::set_pause_media_on_call(settings.pause_media_on_call);
     pc_mirror::set_mute_while_watched(settings.mute_while_watched);
     recordings::init(&settings);

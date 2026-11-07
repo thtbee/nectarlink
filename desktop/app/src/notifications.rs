@@ -34,6 +34,9 @@ static SYNC_DND: AtomicBool = AtomicBool::new(false);
 static PAUSED: AtomicBool = AtomicBool::new(false);
 /// No pop-ups while this PC is locked.
 static QUIET_WHEN_LOCKED: AtomicBool = AtomicBool::new(false);
+static HOLD_WHEN_LOCKED: AtomicBool = AtomicBool::new(false);
+/// How often the lock is looked at, for the phone to stop within moments of it.
+const LOCK_LOOK_EVERY: std::time::Duration = std::time::Duration::from_secs(2);
 
 /// Keys that have a toast, per device, so a snapshot can remove the toasts
 /// of notifications that went away meanwhile.
@@ -78,6 +81,33 @@ pub fn paused() -> bool {
 
 pub fn set_paused(on: bool) {
     PAUSED.store(on, Ordering::Relaxed);
+}
+
+pub fn set_hold_when_locked(on: bool) {
+    HOLD_WHEN_LOCKED.store(on, Ordering::Relaxed);
+}
+
+/// What a look at the lock changes: `Some` when phones need telling.
+fn hold_change(holding: bool, wanted: bool, locked: impl FnOnce() -> bool) -> Option<bool> {
+    let hold = wanted && locked();
+    (hold != holding).then_some(hold)
+}
+
+/// Keeps phones' notifications off this PC while it's locked, if the user asked.
+pub fn start_lock_watch() {
+    core_host::spawn(async {
+        let Some(node) = core_host::wait_for_node().await else { return };
+        let mut holding = false;
+        let mut look = tokio::time::interval(LOCK_LOOK_EVERY);
+        loop {
+            look.tick().await;
+            let wanted = HOLD_WHEN_LOCKED.load(Ordering::Relaxed);
+            if let Some(hold) = hold_change(holding, wanted, crate::win::session_locked) {
+                node.hold_notifications(hold).await;
+                holding = hold;
+            }
+        }
+    });
 }
 
 pub fn set_quiet_when_locked(on: bool) {
@@ -626,6 +656,17 @@ mod tests {
     use nectarlink_core::NotificationLive;
 
     use super::*;
+
+    #[test]
+    fn phones_are_told_only_when_the_hold_changes() {
+        assert_eq!(hold_change(false, true, || true), Some(true));
+        assert_eq!(hold_change(true, true, || true), None);
+        assert_eq!(hold_change(true, true, || false), Some(false));
+        assert_eq!(hold_change(false, true, || false), None);
+        // Switched off while locked: carry on straight away.
+        assert_eq!(hold_change(true, false, || true), Some(false));
+        assert_eq!(hold_change(false, false, || panic!("no need to look")), None);
+    }
 
     fn make_note(title: Option<&str>, text: Option<&str>) -> Notification {
         Notification {

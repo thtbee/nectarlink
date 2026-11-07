@@ -18,6 +18,10 @@ change things that need a step from you, and its notes say so.
 - **Share photos and videos from the PC.** On Windows, the Photos page has a Share
   button that opens the system's share sheet
   ([#174](https://github.com/thtbee/nectarlink/issues/174)).
+- **Don't receive while this PC is locked.** A stricter switch in Settings ›
+  Notifications on the PC: the phone sends nothing until you unlock, then Home catches
+  up with what's still on the phone
+  ([#219](https://github.com/thtbee/nectarlink/issues/219)).
 - **Back, Home and Recent apps buttons** in the mirror window's toolbar
   ([#192](https://github.com/thtbee/nectarlink/issues/192)).
 - **Brazilian Portuguese.** The Android and PC apps speak Brazilian Portuguese

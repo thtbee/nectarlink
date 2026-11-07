@@ -2015,6 +2015,18 @@ Item {
                             }
                         }
                         Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.lock
+                            title: qsTr("Don't receive while this PC is locked")
+                            description: qsTr("The phone sends nothing until you unlock. Then Home shows what's still on the phone.")
+                            Toggle {
+                                label: qsTr("Don't receive while this PC is locked")
+                                checked: Preferences.holdWhenLocked
+                                onToggled: (on) => Preferences.holdWhenLocked = on
+                            }
+                        }
+                        Divider { width: parent.width }
 
                         // Row 1: Follow phone Do not disturb | Forward PC notifications
                         Item {
