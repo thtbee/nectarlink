@@ -9,18 +9,29 @@ use std::{
 };
 
 use nectarlink_core::{ButtonAction, KeyMod, MouseButton, PowerAction, SlideAction, TouchAction};
-use windows::Win32::UI::{
-    Input::KeyboardAndMouse::{
-        INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBD_EVENT_FLAGS, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
-        KEYEVENTF_KEYUP, KEYEVENTF_UNICODE, MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_HWHEEL,
-        MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP,
-        MOUSEEVENTF_MOVE, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_WHEEL, MOUSEINPUT,
-        SendInput, VIRTUAL_KEY, VK_A, VK_B, VK_BACK, VK_C, VK_CONTROL, VK_DELETE, VK_DOWN, VK_END, VK_ESCAPE,
-        VK_F1, VK_F5, VK_HOME, VK_INSERT, VK_LEFT, VK_LWIN, VK_MEDIA_NEXT_TRACK, VK_MEDIA_PLAY_PAUSE,
-        VK_MEDIA_PREV_TRACK, VK_MENU, VK_NEXT, VK_PRIOR, VK_RETURN, VK_RIGHT, VK_SHIFT, VK_SPACE, VK_TAB,
-        VK_UP, VK_V, VK_VOLUME_DOWN, VK_VOLUME_MUTE, VK_VOLUME_UP, VK_X, VK_Y, VK_Z,
+use windows::Win32::{
+    Foundation::{LPARAM, WPARAM},
+    UI::{
+        Input::{
+            Ime::ImmGetDefaultIMEWnd,
+            KeyboardAndMouse::{
+                GetKeyState, GetKeyboardLayout, HKL, INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE,
+                KEYBD_EVENT_FLAGS, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE,
+                MAPVK_VK_TO_VSC, MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_HWHEEL,
+                MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP,
+                MOUSEEVENTF_MOVE, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_WHEEL, MOUSEINPUT,
+                MapVirtualKeyExW, SendInput, ToUnicodeEx, VIRTUAL_KEY, VK_A, VK_B, VK_BACK, VK_C, VK_CAPITAL,
+                VK_CONTROL, VK_DELETE, VK_DOWN, VK_END, VK_ESCAPE, VK_F1, VK_F5, VK_HOME, VK_INSERT, VK_LEFT,
+                VK_LWIN, VK_MEDIA_NEXT_TRACK, VK_MEDIA_PLAY_PAUSE, VK_MEDIA_PREV_TRACK, VK_MENU, VK_NEXT,
+                VK_PRIOR, VK_RETURN, VK_RIGHT, VK_SHIFT, VK_SPACE, VK_TAB, VK_UP, VK_V, VK_VOLUME_DOWN,
+                VK_VOLUME_MUTE, VK_VOLUME_UP, VK_X, VK_Y, VK_Z, VkKeyScanExW,
+            },
+        },
+        WindowsAndMessaging::{
+            GetForegroundWindow, GetWindowThreadProcessId, SMTO_ABORTIFHUNG, SendMessageTimeoutW,
+            WHEEL_DELTA, WM_IME_CONTROL,
+        },
     },
-    WindowsAndMessaging::WHEEL_DELTA,
 };
 
 /// Fractional remainders for sub-pixel pointer motion and sub-notch scrolling,
@@ -76,6 +87,17 @@ fn vk_input(vk: VIRTUAL_KEY, extended: bool, up: bool) -> INPUT {
     INPUT {
         r#type: INPUT_KEYBOARD,
         Anonymous: INPUT_0 { ki: KEYBDINPUT { wVk: vk, wScan: 0, dwFlags: flags, time: 0, dwExtraInfo: 0 } },
+    }
+}
+
+/// A key of the keyboard layout, with its scan code, as a real key press sends it.
+fn layout_key_input(vk: VIRTUAL_KEY, scan: u16, up: bool) -> INPUT {
+    let flags = if up { KEYEVENTF_KEYUP } else { KEYBD_EVENT_FLAGS(0) };
+    INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT { wVk: vk, wScan: scan, dwFlags: flags, time: 0, dwExtraInfo: 0 },
+        },
     }
 }
 
@@ -235,11 +257,87 @@ pub fn scroll(dx: f32, dy: f32) {
 /// Types arbitrary Unicode text via `KEYEVENTF_UNICODE` (including surrogate
 /// pairs for non-BMP characters like emoji).
 pub fn type_text(text: &str) {
+    let layout = typing_layout();
     // One character at a time: an app that reads a packet key late (Notepad on
     // Windows 11) can turn a batch into its last letter ("great" as "ttttt").
-    for keystroke in keystrokes(text) {
+    for keystroke in keystrokes(text, layout) {
         wait_for_last_keystroke(BETWEEN_CHARACTERS);
         send_inputs(&keystroke);
+    }
+}
+
+/// The keyboard layout of the window being typed into, and whether Caps Lock is on;
+/// `None` when an input method there is on (it would turn keys into its own text).
+fn typing_layout() -> Option<(HKL, bool)> {
+    // SAFETY: plain Win32 queries; a missing window gives a null handle, which they accept.
+    unsafe {
+        let window = GetForegroundWindow();
+        let thread = GetWindowThreadProcessId(window, None);
+        let layout = GetKeyboardLayout(thread);
+        let ime = ImmGetDefaultIMEWnd(window);
+        if !ime.is_invalid() {
+            // IMC_GETOPENSTATUS. No answer counts as on: the old way is always safe.
+            let mut open = 0usize;
+            let answered = SendMessageTimeoutW(
+                ime,
+                WM_IME_CONTROL,
+                WPARAM(5),
+                LPARAM(0),
+                SMTO_ABORTIFHUNG,
+                50,
+                Some(&mut open),
+            );
+            if answered.0 == 0 || open != 0 {
+                return None;
+            }
+        }
+        let caps = GetKeyState(i32::from(VK_CAPITAL.0)) & 1 != 0;
+        Some((layout, caps))
+    }
+}
+
+/// The key and Shift that type `ch` on `layout`, checked by asking the layout what
+/// that press gives: only plain and Shift presses, never a dead key or AltGr.
+fn layout_key(ch: char, layout: HKL, caps: bool) -> Option<(VIRTUAL_KEY, u16, bool)> {
+    if ch.is_control() {
+        return None;
+    }
+    let mut buf = [0u16; 2];
+    let [unit] = ch.encode_utf16(&mut buf) else { return None };
+    let unit = *unit;
+    // SAFETY: plain Win32 queries about a keyboard layout.
+    unsafe {
+        let found = VkKeyScanExW(unit, layout);
+        if found == -1 {
+            return None;
+        }
+        let [vk, mods] = (found as u16).to_le_bytes();
+        if mods & !1 != 0 {
+            return None;
+        }
+        let scan = MapVirtualKeyExW(u32::from(vk), MAPVK_VK_TO_VSC, Some(layout)) as u16;
+        let gives = |shift: bool| {
+            let mut state = [0u8; 256];
+            if shift {
+                state[usize::from(VK_SHIFT.0)] = 0x80;
+            }
+            if caps {
+                state[usize::from(VK_CAPITAL.0)] = 0x01;
+            }
+            let mut out = [0u16; 4];
+            // 4: leave the layout's dead-key state alone.
+            ToUnicodeEx(u32::from(vk), u32::from(scan), &state, &mut out, 4, Some(layout)) == 1
+                && out[0] == unit
+        };
+        // Caps Lock turns Shift around for letters, so try the other one too.
+        let shift = mods & 1 != 0;
+        if gives(shift) {
+            Some((VIRTUAL_KEY(u16::from(vk)), scan, shift))
+        } else if gives(!shift) {
+            Some((VIRTUAL_KEY(u16::from(vk)), scan, !shift))
+        } else {
+            None
+        }
     }
 }
 
@@ -266,7 +364,10 @@ const BETWEEN_CHARACTERS: Duration = Duration::from_millis(16);
 const AFTER_KEY: Duration = Duration::from_millis(32);
 
 /// The input events of each character in `text`, press and release together.
-fn keystrokes(text: &str) -> Vec<Vec<INPUT>> {
+/// What the layout has a key for is typed with that key: Notepad on Windows 11
+/// could still turn fast dictation into the wrong letters ("or not" as "tttttt")
+/// when every letter came as a Unicode packet. The rest still comes as one.
+fn keystrokes(text: &str, layout: Option<(HKL, bool)>) -> Vec<Vec<INPUT>> {
     let mut keystrokes = Vec::with_capacity(text.len());
     for ch in text.chars() {
         if ch == '\r' {
@@ -274,6 +375,19 @@ fn keystrokes(text: &str) -> Vec<Vec<INPUT>> {
         }
         if ch == '\n' {
             keystrokes.push(vec![vk_input(VK_RETURN, false, false), vk_input(VK_RETURN, false, true)]);
+            continue;
+        }
+        if let Some((vk, scan, shift)) = layout.and_then(|(layout, caps)| layout_key(ch, layout, caps)) {
+            let mut keystroke = Vec::with_capacity(4);
+            if shift {
+                keystroke.push(vk_input(VK_SHIFT, false, false));
+            }
+            keystroke.push(layout_key_input(vk, scan, false));
+            keystroke.push(layout_key_input(vk, scan, true));
+            if shift {
+                keystroke.push(vk_input(VK_SHIFT, false, true));
+            }
+            keystrokes.push(keystroke);
             continue;
         }
         let mut buf = [0u16; 2];
@@ -445,12 +559,124 @@ mod tests {
 
     #[test]
     fn text_is_typed_one_character_at_a_time() {
-        let sizes = |text: &str| keystrokes(text).iter().map(Vec::len).collect::<Vec<_>>();
+        let sizes = |text: &str| keystrokes(text, None).iter().map(Vec::len).collect::<Vec<_>>();
         assert_eq!(sizes("great"), [2, 2, 2, 2, 2]);
         // An emoji is two UTF-16 units, kept together; a line break is Enter.
         assert_eq!(sizes("a\u{1F600}"), [2, 4]);
         assert_eq!(sizes("a\r\nb"), [2, 2, 2]);
-        assert!(keystrokes("").is_empty());
+        assert!(keystrokes("", None).is_empty());
+    }
+
+    /// This thread's keyboard layout: US English on CI, any Latin layout on a PC.
+    fn latin_layout() -> HKL {
+        // SAFETY: a plain Win32 query.
+        let layout = unsafe { GetKeyboardLayout(0) };
+        assert!(layout_key('a', layout, false).is_some(), "these tests need a Latin keyboard layout");
+        layout
+    }
+
+    fn key_of(input: &INPUT) -> (u16, bool, bool) {
+        // SAFETY: every keystroke built here is a keyboard input.
+        let ki = unsafe { input.Anonymous.ki };
+        (ki.wVk.0, ki.dwFlags.contains(KEYEVENTF_UNICODE), ki.dwFlags.contains(KEYEVENTF_KEYUP))
+    }
+
+    #[test]
+    fn what_the_layout_has_a_key_for_is_typed_with_that_key() {
+        let latin = latin_layout();
+        let key = |ch, caps| layout_key(ch, latin, caps).map(|(vk, _, shift)| (vk, shift));
+        assert_eq!(key('a', false), Some((VK_A, false)));
+        assert_eq!(key('A', false), Some((VK_A, true)));
+        assert_eq!(key(' ', false), Some((VK_SPACE, false)));
+        // Caps Lock on: a capital without Shift, a small letter with it.
+        assert_eq!(key('A', true), Some((VK_A, false)));
+        assert_eq!(key('a', true), Some((VK_A, true)));
+        assert!(layout_key('a', latin, false).is_some_and(|(_, scan, _)| scan == 0x1E));
+        // Not on the layout, or not a key at all: the Unicode way.
+        for ch in ['я', 'म', '\u{1F600}', '\t'] {
+            assert_eq!(layout_key(ch, latin, false), None, "{ch:?}");
+        }
+    }
+
+    #[test]
+    fn a_mixed_sentence_uses_keys_where_it_can() {
+        let strokes = keystrokes("Hi я", Some((latin_layout(), false)));
+        let keys: Vec<Vec<(u16, bool, bool)>> =
+            strokes.iter().map(|k| k.iter().map(key_of).collect()).collect();
+        let shift = VK_SHIFT.0;
+        let (h, i, space) = (u16::from(b'H'), u16::from(b'I'), VK_SPACE.0);
+        assert_eq!(
+            keys[0],
+            [(shift, false, false), (h, false, false), (h, false, true), (shift, false, true)]
+        );
+        assert_eq!(keys[1], [(i, false, false), (i, false, true)]);
+        assert_eq!(keys[2], [(space, false, false), (space, false, true)]);
+        assert_eq!(keys[3], [(0, true, false), (0, true, true)]);
+        // No layout (an input method is on): every letter the Unicode way, as before.
+        assert!(keystrokes("Hi", None).iter().flatten().all(|input| key_of(input).1));
+    }
+
+    /// Voice typing's pattern in Notepad, as fast as the phone sends it: words, then
+    /// Backspaces and the rewritten phrase. Needs a desktop, so not on CI; run with
+    /// `--ignored` while Notepad has focus on an empty file, and compare the lines.
+    ///
+    /// `NL_UNPACED=old` or `=new` sends every letter and Backspace at once with no
+    /// gaps, the old Unicode way or with the layout's keys, to compare the two.
+    #[test]
+    #[ignore = "types into the focused window"]
+    fn rewrite_in_notepad() {
+        // `old` or `new`, optionally with a gap in milliseconds: `new:4`.
+        let unpaced = std::env::var("NL_UNPACED").ok();
+        let gap = unpaced
+            .as_deref()
+            .and_then(|mode| mode.split_once(':'))
+            .and_then(|(_, ms)| ms.parse().ok())
+            .map_or(Duration::ZERO, Duration::from_millis);
+        let typing = |text: &str| match unpaced.as_deref() {
+            Some(mode) => {
+                let layout = if mode.starts_with("new") { typing_layout() } else { None };
+                for keystroke in keystrokes(text, layout) {
+                    send_inputs(&keystroke);
+                    std::thread::sleep(gap);
+                }
+            }
+            None => type_text(text),
+        };
+        let backspaces = |count: usize| {
+            for _ in 0..count {
+                match unpaced {
+                    Some(_) => {
+                        send_inputs(&[vk_input(VK_BACK, false, false), vk_input(VK_BACK, false, true)]);
+                        std::thread::sleep(gap);
+                    }
+                    None => press_key("backspace", &[]),
+                }
+            }
+        };
+        for _ in 0..40 {
+            assert!(focused_title().contains("nl-type-test"), "focus moved: {}", focused_title());
+            typing("trying to check whether it");
+            backspaces(2);
+            typing("that's w");
+            backspaces(1);
+            typing("working or");
+            backspaces(3);
+            typing(" or not Great");
+            backspaces(5);
+            typing("great but again\n");
+            std::thread::sleep(Duration::from_millis(150));
+        }
+        std::thread::sleep(Duration::from_millis(500));
+        assert!(focused_title().contains("nl-type-test"), "focus moved: {}", focused_title());
+        press_key("s", &[KeyMod::Ctrl]);
+    }
+
+    fn focused_title() -> String {
+        use windows::Win32::UI::WindowsAndMessaging::GetWindowTextW;
+        let mut title = [0u16; 256];
+        // SAFETY: a plain Win32 query into a local buffer.
+        let len = unsafe { GetWindowTextW(GetForegroundWindow(), &mut title) };
+        String::from_utf16_lossy(&title[..len.max(0) as usize])
     }
 
     #[test]

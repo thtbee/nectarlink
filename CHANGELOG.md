@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Vietnamese.** NectarLink speaks Tiếng Việt now: on the Android phone and
+  the Windows PC, every screen is translated. Settings › Appearance › Language
+  picks it, or the system language does. Thanks to
+  [@wuwenhou](https://github.com/wuwenhou).
 - **More ways to sync a folder.** A synced folder can now go one way from the PC to the
   phone. Phone to PC can also remove from the PC what you delete on the phone: only
   files it synced and that haven't changed on the PC, and they go to the Recycle Bin. Both
@@ -149,6 +153,9 @@ what people reported since 0.1.4.
   PC's clipboard, once NectarLink got focus.
 - On Linux, quitting the PC app (or logging out) with a phone's screen or an app window
   open could crash it on the way out.
+- Voice typing into Notepad on Windows no longer mixes up letters when you speak fast
+  ("or not" coming out as "tttttt"): letters your keyboard layout has are typed with
+  its keys ([#52](https://github.com/thtbee/nectarlink/issues/52)).
 - With the phone's keyboard open in Remote, a strip of touchpad stays above it when
   there's room, so you can move the pointer without closing the keyboard
   ([#52](https://github.com/thtbee/nectarlink/issues/52)).
