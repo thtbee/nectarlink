@@ -246,6 +246,8 @@ struct Options {
     register_vcam: bool,
     /// Elevated helper: unregister `nectarlink_vcam.dll` from `HKLM` and exit.
     unregister_vcam: bool,
+    /// Elevated helper (Windows): register the sparse package and exit (#84).
+    register_package: bool,
     /// Out-of-process Windows 11 Widget Board COM server (`--widget-provider`).
     widget_provider: bool,
     /// The update task's job, as SYSTEM (`--update-service`, see `updater`).
@@ -334,6 +336,10 @@ fn parse_options_from<I: IntoIterator<Item = std::ffi::OsString>>(iter: I) -> Op
             Some(win::vcam::UNREGISTER_ARG) => {
                 in_share = false;
                 options.unregister_vcam = true;
+            }
+            Some("--register-package") => {
+                in_share = false;
+                options.register_package = true;
             }
             Some(win::widget::ARG) => {
                 in_share = false;
@@ -506,6 +512,10 @@ fn main() -> ExitCode {
             }
         };
     }
+    #[cfg(windows)]
+    if options.register_package {
+        return win::share_target::register_elevated();
+    }
     if options.unregister_vcam {
         return match win::vcam::unregister_hklm() {
             Ok(()) => ExitCode::SUCCESS,
@@ -600,6 +610,9 @@ fn main() -> ExitCode {
     std::thread::spawn(notifications::prune_images);
     watch_network();
     start_toasts();
+    // The Share sheet and notification buttons, after an update (#84).
+    #[cfg(windows)]
+    win::share_target::ensure_sparse_package(data_dir.clone());
     clipboard::start();
     win::smtc::start(media::on_flyout);
     win::media_sessions::start(media::local_changed);

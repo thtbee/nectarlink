@@ -78,34 +78,161 @@ pub fn parse_targets(targets: &[String]) -> SharedPayload {
     payload
 }
 
-/// Registers the installed `AppxManifest.xml` for this Windows user when the
-/// app starts after a silent update (the update task runs as SYSTEM, which
-/// Windows does not allow to register per-user packages).
-pub fn register_sparse_package() {
+/// The flag that starts the app as the elevated helper registering the package.
+pub const REGISTER_ARG: &str = "--register-package";
+
+/// Makes sure the sparse package is registered for this Windows user, which the
+/// Share sheet needs (#84).
+///
+/// The package isn't signed, so Windows only registers it with Developer Mode on;
+/// without it this just logs why. Setup registers it on a fresh install. An update
+/// runs as SYSTEM, which can't, and the app can't either without admin rights:
+/// Windows creates `microsoft.system.package.metadata` in the install folder under
+/// Program Files. So when that's what stops it, this asks for admin rights, once
+/// per version of the app, so saying no isn't asked again until the next update.
+/// A registration from an earlier version keeps working and is left alone.
+pub fn ensure_sparse_package(data_dir: PathBuf) {
     let Ok(exe) = std::env::current_exe() else { return };
     let Some(dir) = exe.parent().map(Path::to_path_buf) else { return };
-    if !dir.join("AppxManifest.xml").is_file() {
-        return;
-    }
+    let Ok(manifest) = std::fs::read_to_string(dir.join("AppxManifest.xml")) else { return };
+    let Some(name) = manifest_name(&manifest) else { return };
     std::thread::spawn(move || {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-        let _ = std::process::Command::new("powershell.exe")
-            .args([
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-Command",
-                "try { Add-AppxPackage -Register \"$env:NECTARLINK_INSTDIR\\AppxManifest.xml\" -ExternalLocation $env:NECTARLINK_INSTDIR -ErrorAction SilentlyContinue } catch {}",
-            ])
-            .env("NECTARLINK_INSTDIR", &dir)
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .creation_flags(CREATE_NO_WINDOW)
-            .status();
+        // After the window: the prompt shouldn't be the first thing on screen.
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        if registered(&name) {
+            return;
+        }
+        match register(&dir) {
+            Ok(()) => return tracing::info!("sparse package registered"),
+            Err(error) if !needs_admin(&error) => {
+                return tracing::info!(%error, "sparse package not registered (an unsigned one needs Developer Mode)");
+            }
+            Err(error) => tracing::info!(%error, "can't register the sparse package without admin rights"),
+        }
+        let asked = data_dir.join("sparse-package-asked");
+        let version = env!("CARGO_PKG_VERSION");
+        if std::fs::read_to_string(&asked).is_ok_and(|v| v.trim() == version) {
+            return tracing::warn!(
+                "sparse package not registered: Share and notification buttons won't work"
+            );
+        }
+        if let Err(error) = std::fs::write(&asked, version) {
+            tracing::warn!(%error, "can't note that admin rights were asked for");
+        }
+        match run_elevated(&exe) {
+            Ok(true) if registered(&name) => tracing::info!("sparse package registered with admin rights"),
+            Ok(true) => tracing::warn!("sparse package still not registered after the elevated helper"),
+            Ok(false) => {
+                tracing::warn!("sparse package not registered: admin rights declined or the helper failed")
+            }
+            Err(error) => tracing::warn!(%error, "can't start the helper that registers the sparse package"),
+        }
     });
+}
+
+/// The elevated helper ([`REGISTER_ARG`]): registers the package next to this exe.
+pub fn register_elevated() -> std::process::ExitCode {
+    let dir = std::env::current_exe().ok().and_then(|exe| exe.parent().map(Path::to_path_buf));
+    match dir.map(|dir| register(&dir)) {
+        Some(Ok(())) => std::process::ExitCode::SUCCESS,
+        Some(Err(error)) => {
+            eprintln!("nectarlink: register-package failed: {error}");
+            std::process::ExitCode::FAILURE
+        }
+        None => std::process::ExitCode::FAILURE,
+    }
+}
+
+/// Whether admin rights would get the registration past `error`: access denied
+/// (0x80070005), creating the metadata folder under Program Files. Not, say, the
+/// missing developer license (0x80073CFF), which admin rights don't change.
+fn needs_admin(error: &str) -> bool {
+    error.contains("0x80070005")
+}
+
+/// The package name in an `AppxManifest.xml` (`<Identity Name="...">`).
+fn manifest_name(manifest: &str) -> Option<String> {
+    let identity = &manifest[manifest.find("<Identity")?..];
+    let identity = &identity[..identity.find('>')?];
+    let start = identity.find("Name=\"")? + "Name=\"".len();
+    let name = &identity[start..];
+    let name = &name[..name.find('"')?];
+    (!name.is_empty()).then(|| name.to_owned())
+}
+
+fn powershell(script: &str, dir: Option<&Path>, name: Option<&str>) -> std::io::Result<std::process::Output> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let mut command = std::process::Command::new("powershell.exe");
+    command
+        .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script])
+        .stdin(std::process::Stdio::null())
+        .creation_flags(CREATE_NO_WINDOW);
+    if let Some(dir) = dir {
+        command.env("NECTARLINK_INSTDIR", dir);
+    }
+    if let Some(name) = name {
+        command.env("NECTARLINK_PACKAGE", name);
+    }
+    command.output()
+}
+
+/// Whether any version of the package is registered for this user.
+fn registered(name: &str) -> bool {
+    powershell("(Get-AppxPackage -Name $env:NECTARLINK_PACKAGE | Measure-Object).Count", None, Some(name))
+        .is_ok_and(|out| String::from_utf8_lossy(&out.stdout).trim().parse::<u32>().is_ok_and(|n| n > 0))
+}
+
+/// Registers the package in `dir`; Windows' message if it can't.
+fn register(dir: &Path) -> Result<(), String> {
+    let script = "try { Add-AppxPackage -Register \"$env:NECTARLINK_INSTDIR\\AppxManifest.xml\" \
+                  -ExternalLocation $env:NECTARLINK_INSTDIR -ErrorAction Stop } \
+                  catch { $_.Exception.Message; exit 1 }";
+    let out = powershell(script, Some(dir), None).map_err(|e| e.to_string())?;
+    if out.status.success() { Ok(()) } else { Err(String::from_utf8_lossy(&out.stdout).trim().to_owned()) }
+}
+
+/// Starts this exe as the elevated helper (the UAC prompt) and waits for it.
+/// `Ok(false)` when the prompt is declined or the helper fails.
+fn run_elevated(exe: &Path) -> windows::core::Result<bool> {
+    use windows::{
+        Win32::{
+            Foundation::{CloseHandle, WAIT_OBJECT_0},
+            System::Threading::{GetExitCodeProcess, WaitForSingleObject},
+            UI::{
+                Shell::{SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW, ShellExecuteExW},
+                WindowsAndMessaging::SW_HIDE,
+            },
+        },
+        core::{HSTRING, PCWSTR, w},
+    };
+    let file = HSTRING::from(exe.as_os_str());
+    let parameters = HSTRING::from(REGISTER_ARG);
+    let mut info = SHELLEXECUTEINFOW {
+        cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
+        fMask: SEE_MASK_NOCLOSEPROCESS,
+        lpVerb: w!("runas"),
+        lpFile: PCWSTR(file.as_ptr()),
+        lpParameters: PCWSTR(parameters.as_ptr()),
+        nShow: SW_HIDE.0,
+        ..Default::default()
+    };
+    // SAFETY: the structure and its strings outlive the call; the process
+    // handle is waited on and closed.
+    unsafe {
+        if ShellExecuteExW(&mut info).is_err() {
+            // Most often: the user said no to the prompt.
+            return Ok(false);
+        }
+        if info.hProcess.is_invalid() {
+            return Ok(false);
+        }
+        let waited = WaitForSingleObject(info.hProcess, 60_000);
+        let mut exit_code = 1u32;
+        let _ = GetExitCodeProcess(info.hProcess, &mut exit_code);
+        let _ = CloseHandle(info.hProcess);
+        Ok(waited == WAIT_OBJECT_0 && exit_code == 0)
+    }
 }
 
 /// Checks if the current process was activated by the Windows Share sheet
@@ -270,5 +397,35 @@ mod tests {
         }
         // Without braces: the schema rejects them, and the package then never registers (#84).
         assert!(xml_str.contains(r#"ToastActivatorCLSID="7B9E0E64-5C5A-4E8B-9D31-5A4C2B10F6E1""#));
+    }
+
+    #[test]
+    fn the_package_name_comes_from_the_installed_manifest() {
+        let manifest = include_str!("../../../installer/AppxManifest.xml");
+        assert_eq!(manifest_name(manifest).as_deref(), Some("Nectarlink.Desktop"));
+        assert_eq!(manifest_name(r#"<Identity Version="1.0.0.0" Name="A.B" />"#).as_deref(), Some("A.B"));
+        // Only the Identity's own Name, never one further on.
+        assert_eq!(manifest_name(r#"<Identity Version="1" /><Application Name="x" />"#), None);
+        assert_eq!(manifest_name("<Package />"), None);
+    }
+
+    #[test]
+    fn only_the_program_files_error_asks_for_admin_rights() {
+        // An auto-updated install with Developer Mode on (#84).
+        assert!(needs_admin(
+            "Deployment failed with HRESULT: 0x80070005, Access is denied. Creating the package metadata \
+             directory C:\\Program Files\\Nectarlink\\microsoft.system.package.metadata failed."
+        ));
+        // Without Developer Mode: admin rights don't help, so no prompt.
+        assert!(!needs_admin(
+            "Deployment failed with HRESULT: 0x80073CFF, To install this application you need either a \
+             Windows developer license or a sideloading-enabled system."
+        ));
+        assert!(!needs_admin(""));
+    }
+
+    #[test]
+    fn a_package_that_isnt_there_is_not_registered() {
+        assert!(!registered("Nectarlink.NoSuchPackage"));
     }
 }

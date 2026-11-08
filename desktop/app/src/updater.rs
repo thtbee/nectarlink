@@ -1299,8 +1299,6 @@ pub fn note_running_version(data_dir: &Path) -> Option<String> {
 pub fn announce_update(previous: String, shown: bool) {
     let current = env!("CARGO_PKG_VERSION");
     tracing::info!(from = previous, to = current, "updated");
-    #[cfg(windows)]
-    crate::win::share_target::register_sparse_package();
     after_start(
         shown,
         tr!("Updater", "NectarLink is updated to %1", current),

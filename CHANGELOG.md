@@ -151,6 +151,10 @@ what people reported since 0.1.4.
 - Quitting the PC app with a mirror open could crash it on the way out.
 - On GNOME with Wayland, text copied on the phone could be replaced by what was on the
   PC's clipboard, once NectarLink got focus.
+- With Developer Mode on, NectarLink dropped out of the Windows Share sheet after updating
+  itself, without a word. It now asks once for admin rights to register again, and logs
+  why it isn't in the Share sheet otherwise
+  ([#84](https://github.com/thtbee/nectarlink/issues/84)).
 - On Linux, quitting the PC app (or logging out) with a phone's screen or an app window
   open could crash it on the way out.
 - Voice typing into Notepad on Windows no longer mixes up letters when you speak fast
