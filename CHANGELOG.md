@@ -149,6 +149,9 @@ what people reported since 0.1.4.
   PC's clipboard, once NectarLink got focus.
 - On Linux, quitting the PC app (or logging out) with a phone's screen or an app window
   open could crash it on the way out.
+- Voice typing into Notepad on Windows no longer mixes up letters when you speak fast
+  ("or not" coming out as "tttttt"): letters your keyboard layout has are typed with
+  its keys ([#52](https://github.com/thtbee/nectarlink/issues/52)).
 - Following the system's language, the PC app could open in German (or another language
   further down Windows' list) when English came first
   ([#280](https://github.com/thtbee/nectarlink/issues/280)).
