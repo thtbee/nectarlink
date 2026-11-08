@@ -34,6 +34,9 @@ change things that need a step from you, and its notes say so.
   managers mark private. It's marked private on the other side too, leaves that clipboard
   after a minute, and never goes into history, the Timeline or the offline queue
   ([#272](https://github.com/thtbee/nectarlink/issues/272)).
+- **Fluent theme.** The PC app can look like Windows 11's own apps: Mica, Segoe UI Variable,
+  WinUI's toggles, buttons and navigation, and your Windows accent color. Pick it in
+  Settings › Appearance ([#295](https://github.com/thtbee/nectarlink/issues/295)).
 - **Switch the PC's audio output from the phone.** Tap the device under Volume on the
   phone, then pick another output, like speakers or headphones. Windows and Linux.
 - **Mirror quality.** Balanced as before, Sharper for the phone's full resolution, or

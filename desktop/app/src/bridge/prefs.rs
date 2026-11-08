@@ -35,7 +35,7 @@ pub mod qobject {
         #[qobject]
         #[qml_element]
         #[qml_singleton]
-        /// "bloom" or "graphite".
+        /// "bloom", "hive", "glass", "graphite" or "fluent".
         #[qproperty(QString, theme)]
         /// Bloom colors: "wallpaper", or a preset: "honey", "sage", "lavender"
         /// or "ocean".
@@ -397,12 +397,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
     fn initialize(mut self: Pin<&mut Self>) {
         let settings = Settings::load(&core_host::host().data_dir);
         settings.apply_runtime();
-        self.as_mut().set_theme(QString::from(match settings.theme {
-            Theme::Hive => "hive",
-            Theme::Bloom => "bloom",
-            Theme::Glass => "glass",
-            Theme::Graphite => "graphite",
-        }));
+        self.as_mut().set_theme(QString::from(settings.theme.name()));
         self.as_mut().set_seed(QString::from(&settings.seed));
         self.as_mut().set_color_mode(QString::from(match settings.color_mode {
             ColorMode::System => "system",
@@ -829,12 +824,7 @@ impl qobject::Preferences {
             self.as_mut().set_stream_pc_audio_to_phone(on);
         }
         let disk = Settings::load(&core_host::host().data_dir);
-        let disk_theme = QString::from(match disk.theme {
-            Theme::Hive => "hive",
-            Theme::Bloom => "bloom",
-            Theme::Glass => "glass",
-            Theme::Graphite => "graphite",
-        });
+        let disk_theme = QString::from(disk.theme.name());
         let disk_mode = QString::from(match disk.color_mode {
             ColorMode::System => "system",
             ColorMode::Light => "light",
@@ -1122,12 +1112,7 @@ impl qobject::Preferences {
         let p = self.rust();
         let (win_screen, win_x, win_y, win_w, win_h, win_max) = crate::settings::window_geometry();
         Settings {
-            theme: match String::from(&p.theme).as_str() {
-                "hive" => Theme::Hive,
-                "graphite" => Theme::Graphite,
-                "glass" | "blurry" => Theme::Glass,
-                _ => Theme::Bloom,
-            },
+            theme: Theme::parse(&String::from(&p.theme)),
             seed: String::from(&p.seed),
             color_mode: match String::from(&p.color_mode).as_str() {
                 "light" => ColorMode::Light,

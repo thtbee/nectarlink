@@ -301,16 +301,29 @@ Item {
                     required property var modelData
                     readonly property bool selected: page.currentSection === modelData.id
                     readonly property bool isHovered: railCol.hoveredCategoryId === modelData.id && navMouse.containsMouse
-                    readonly property color fg: selected
+                    readonly property color fg: selected && !Theme.fluent
                         ? (Theme.graphite ? Theme.surface : Theme.secondaryContainerContent)
                         : Theme.surfaceContent
                     width: railCol.width
                     height: 42
                     radius: Theme.radiusMd
                     activeFocusOnTab: true
-                    color: selected
+                    color: Theme.fluent
+                        ? (navMouse.pressed ? Theme.subtleFillTertiary : (selected || isHovered ? Theme.subtleFillSecondary : "transparent"))
+                        : selected
                         ? (Theme.graphite ? Theme.surfaceContent : Theme.secondaryContainer)
                         : (isHovered ? Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, Theme.dark ? 0.06 : 0.04) : "transparent")
+
+                    // Fluent: the accent pill of the selected item, as in WinUI's NavigationView.
+                    Rectangle {
+                        visible: Theme.fluent && navItem.selected
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 3
+                        height: navMouse.pressed ? 10 : 16
+                        radius: 1.5
+                        color: Theme.primary
+                    }
                     border.width: Theme.focusVisible(navItem) ? 2 : (Theme.graphite && selected ? 1 : 0)
                     border.color: Theme.focusVisible(navItem) ? Theme.primary : Theme.outlineVariant
 
@@ -544,7 +557,8 @@ Item {
                                     { value: "hive", label: qsTr("Hive") },
                                     { value: "bloom", label: qsTr("Bloom") },
                                     { value: "glass", label: qsTr("Glass") },
-                                    { value: "graphite", label: qsTr("Graphite") }
+                                    { value: "graphite", label: qsTr("Graphite") },
+                                    { value: "fluent", label: qsTr("Fluent") }
                                 ]
                                 value: Theme.hive ? "hive" : (Theme.glass ? "glass" : Preferences.theme)
                                 onPicked: (value) => Preferences.theme = value
@@ -582,12 +596,12 @@ Item {
                                 onPicked: (value) => Preferences.uiScale = value
                             }
                         }
-                        // Hive's colors are fixed: no seed to pick.
-                        Divider { width: parent.width; visible: !Theme.graphite && !Theme.hive }
+                        // Hive's colors are fixed, and Fluent follows Windows' accent: no seed to pick.
+                        Divider { width: parent.width; visible: !Theme.graphite && !Theme.hive && !Theme.fluent }
                         ListRow {
                             id: colorRow
                             width: parent.width
-                            visible: !Theme.graphite && !Theme.hive
+                            visible: !Theme.graphite && !Theme.hive && !Theme.fluent
                             stackBelow: true
                             iconPath: Icons.colorSwatch
                             title: qsTr("Color")
@@ -827,7 +841,7 @@ Item {
                                 }
                             }
                         }
-                        Divider { width: parent.width }
+                        Divider { width: parent.width; visible: Theme.hive || appearanceBottomPair.visible }
 
                         // Hive: the comb's motion instead of Mica (Hive keeps its own colors).
                         ListRow {
@@ -853,7 +867,8 @@ Item {
                         Item {
                             id: appearanceBottomPair
                             readonly property bool showGraphiteAmoled: Theme.graphite && Theme.dark
-                            readonly property bool showMica: Qt.platform.os === "windows"
+                            // Fluent always uses Mica, so there's nothing to switch.
+                            readonly property bool showMica: Qt.platform.os === "windows" && !Theme.fluent
                                 && !!Window.window && Window.window.systemBackdropSupported === true
                             visible: !Theme.hive && (showMica || showGraphiteAmoled)
                             width: parent.width

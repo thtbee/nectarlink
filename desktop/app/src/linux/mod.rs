@@ -412,6 +412,11 @@ fn read_portal_appearance_u32(key: &str) -> Option<u32> {
 }
 
 /// Whether the desktop prefers a dark color scheme.
+/// No system accent to follow here: the Fluent theme uses its own blue.
+pub fn accent_colors() -> Option<([u8; 3], [u8; 3])> {
+    None
+}
+
 pub fn system_dark() -> bool {
     // XDG Desktop Portal `color-scheme`: 1 = prefer dark, 2 = prefer light, 0 = no preference.
     match read_portal_appearance_u32("color-scheme") {

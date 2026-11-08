@@ -178,6 +178,11 @@ pub fn power_saver() -> bool {
 }
 
 /// Whether macOS is set to dark mode.
+/// No system accent to follow here: the Fluent theme uses its own blue.
+pub fn accent_colors() -> Option<([u8; 3], [u8; 3])> {
+    None
+}
+
 pub fn system_dark() -> bool {
     let output =
         std::process::Command::new("defaults").args(["read", "-g", "AppleInterfaceStyle"]).output().ok();

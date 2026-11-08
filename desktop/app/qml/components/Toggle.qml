@@ -10,8 +10,8 @@ FocusScope {
     property string label
     signal toggled(bool checked)
 
-    implicitWidth: 46
-    implicitHeight: 28
+    implicitWidth: Theme.fluent ? 40 : 46
+    implicitHeight: Theme.fluent ? 20 : 28
     activeFocusOnTab: true
     opacity: enabled ? 1 : 0.38
 
@@ -38,8 +38,40 @@ FocusScope {
         Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
     }
 
+    // Fluent: WinUI's ToggleSwitch. Off, a stroked track with a dark knob; on,
+    // the accent with a knob in its text color. The knob grows under the
+    // pointer and stretches while pressed.
+    Rectangle {
+        id: fluentTrack
+        visible: Theme.fluent
+        anchors.fill: parent
+        radius: height / 2
+        color: toggle.checked
+            ? (mouse.pressed ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.80)
+                : (mouse.containsMouse ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.90) : Theme.primary))
+            : (mouse.pressed ? Theme.controlAltFill : (mouse.containsMouse ? Theme.subtleFillSecondary : Theme.controlAltFill))
+        border.width: toggle.checked ? 0 : 1
+        border.color: Theme.controlStrong
+        Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: 83 } }
+
+        Rectangle {
+            readonly property real size: mouse.pressed || mouse.containsMouse ? 14 : 12
+            width: mouse.pressed ? 17 : size
+            height: size
+            radius: height / 2
+            anchors.verticalCenter: parent.verticalCenter
+            x: toggle.checked ? parent.width - width - (mouse.containsMouse || mouse.pressed ? 3 : 4)
+                              : (mouse.containsMouse || mouse.pressed ? 3 : 4)
+            color: toggle.checked ? Theme.primaryContent : Theme.controlStrong
+            Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: 167; easing.type: Easing.OutCubic } }
+            Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: 83; easing.type: Easing.OutCubic } }
+            Behavior on height { enabled: !Theme.reduceMotion; NumberAnimation { duration: 83; easing.type: Easing.OutCubic } }
+        }
+    }
+
     Rectangle {
         id: track
+        visible: !Theme.fluent
         anchors.fill: parent
         radius: Theme.graphite ? Theme.radiusSm : height / 2
         color: Theme.glass
@@ -90,7 +122,7 @@ FocusScope {
         id: mouse
         anchors.fill: parent
         hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
+        cursorShape: Theme.controlCursor
         onClicked: toggle.toggled(!toggle.checked)
     }
 }
