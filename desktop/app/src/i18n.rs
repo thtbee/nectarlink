@@ -17,6 +17,7 @@ pub const LANGUAGES: &[(&str, &str)] = &[
     ("tr", "Türkçe"),
     ("pt_BR", "Português (Brasil)"),
     ("vi", "Tiếng Việt"),
+    ("es", "Español"),
 ];
 
 /// [`LANGUAGES`] without the system's, as JSON for Settings: `[{ code, name }]`.
@@ -93,6 +94,7 @@ fn system_language(preferred: &[String]) -> &'static str {
         let code = match base {
             "en" => "en",
             "de" => "de",
+            "es" => "es",
             "tr" => "tr",
             "pt" if rest.contains(&"br") => "pt_BR",
             "zh" if rest.contains(&"hans") || rest.contains(&"cn") || rest.contains(&"sg") => "zh_CN",
@@ -196,6 +198,8 @@ mod tests {
         assert_eq!(system_language(&list(&["en-US", "de-DE"])), "en");
         assert_eq!(system_language(&list(&["en-IN", "hi-IN", "de"])), "en");
         assert_eq!(system_language(&list(&["de-DE", "en-US"])), "de");
+        assert_eq!(system_language(&list(&["es-ES", "en-US"])), "es");
+        assert_eq!(system_language(&list(&["es-MX"])), "es");
         // One it doesn't speak first: the next one it does.
         assert_eq!(system_language(&list(&["ru-RU", "tr-TR"])), "tr");
         assert_eq!(system_language(&list(&["zh-Hans-CN"])), "zh_CN");
