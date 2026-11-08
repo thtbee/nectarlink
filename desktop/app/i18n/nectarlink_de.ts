@@ -7860,8 +7860,8 @@ Voraussetzungen
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1672"/>
-        <source>For the phone&apos;s whole screen, from the next time you open it. App windows don&apos;t change.</source>
-        <translation>Für den ganzen Handybildschirm, ab dem nächsten Öffnen. App-Fenster ändern sich nicht.</translation>
+        <source>For the phone&apos;s screen and app windows, from the next time you open them.</source>
+        <translation>Für den Handybildschirm und App-Fenster, ab dem nächsten Öffnen.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1675"/>

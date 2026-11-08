@@ -7851,8 +7851,8 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1672"/>
-        <source>For the phone&apos;s whole screen, from the next time you open it. App windows don&apos;t change.</source>
-        <translation>适用于手机的整个屏幕，下次打开时生效。应用窗口不变。</translation>
+        <source>For the phone&apos;s screen and app windows, from the next time you open them.</source>
+        <translation>适用于手机屏幕和应用窗口，下次打开时生效。</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1675"/>

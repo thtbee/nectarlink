@@ -8,6 +8,7 @@
 
 #include <rust/cxx.h>
 
+#include <atomic>
 #include <cstdint>
 
 // Shows the latest picture of a video stream (a phone's screen), scaled to
@@ -50,6 +51,9 @@ public:
     // Where the picture is drawn in the item (letterboxed).
     Q_INVOKABLE QRectF pictureRect() const;
 
+    // Any thread, while the view registry's lock protects this view's lifetime.
+    void queueFrame();
+
 signals:
     void streamChanged();
     void frameSizeChanged();
@@ -78,6 +82,7 @@ private:
     QString m_windowIcon;
     QString m_windowAppId;
     bool m_acceptsText = false;
+    std::atomic_bool m_framePending{false};
 };
 
 // The latest picture of `stream`: `width` x `height`, 32-bit BGRX rows.

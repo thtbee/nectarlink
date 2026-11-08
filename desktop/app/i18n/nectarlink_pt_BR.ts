@@ -7805,8 +7805,8 @@ O que precisa
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1672"/>
-        <source>For the phone&apos;s whole screen, from the next time you open it. App windows don&apos;t change.</source>
-        <translation>Para a tela inteira do celular, a partir da próxima vez que abrir. As janelas de apps não mudam.</translation>
+        <source>For the phone&apos;s screen and app windows, from the next time you open them.</source>
+        <translation>Para a tela do celular e as janelas de apps, a partir da próxima vez que abrir.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1675"/>

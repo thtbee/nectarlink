@@ -7599,7 +7599,7 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="1672"/>
-        <source>For the phone&apos;s whole screen, from the next time you open it. App windows don&apos;t change.</source>
+        <source>For the phone&apos;s screen and app windows, from the next time you open them.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

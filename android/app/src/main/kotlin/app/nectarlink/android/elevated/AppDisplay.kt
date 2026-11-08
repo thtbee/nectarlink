@@ -173,6 +173,9 @@ class AppDisplay(
             setInteger(MediaFormat.KEY_COLOR_RANGE, MediaFormat.COLOR_RANGE_LIMITED)
             setInteger(MediaFormat.KEY_PRIORITY, 0)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // KEY_FRAME_RATE describes the stream but does not cap a
+                // 90/120 Hz display feeding a surface-input encoder.
+                setFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER, fps.toFloat())
                 setInteger(MediaFormat.KEY_MAX_B_FRAMES, 0)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

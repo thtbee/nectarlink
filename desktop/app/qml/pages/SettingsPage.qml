@@ -1669,7 +1669,7 @@ Item {
                             ? qsTr("The phone's full resolution. Uses more of its battery, and needs good Wi-Fi or USB and a GPU on this PC.")
                             : Preferences.mirrorQuality === "smoother"
                             ? qsTr("A softer picture that holds up better on weak Wi-Fi.")
-                            : qsTr("For the phone's whole screen, from the next time you open it. App windows don't change.")
+                            : qsTr("For the phone's screen and app windows, from the next time you open them.")
                         Segmented {
                             options: [
                                 { value: "balanced", label: qsTr("Balanced") },

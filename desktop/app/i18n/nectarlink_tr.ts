@@ -7852,8 +7852,8 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1672"/>
-        <source>For the phone&apos;s whole screen, from the next time you open it. App windows don&apos;t change.</source>
-        <translation>Telefonun tüm ekranı için, bir sonraki açışınızdan itibaren. Uygulama pencereleri değişmez.</translation>
+        <source>For the phone&apos;s screen and app windows, from the next time you open them.</source>
+        <translation>Telefon ekranı ve uygulama pencereleri için, bir sonraki açışınızdan itibaren.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1675"/>

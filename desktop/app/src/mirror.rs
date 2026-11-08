@@ -39,7 +39,7 @@ use crate::{
     },
 };
 
-/// How sharp the whole screen's mirror is. App windows always use [`OPTIONS`].
+/// How sharp the screen and app windows are.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Quality {
     Balanced,
@@ -73,6 +73,12 @@ fn screen_options(quality: Quality, on_relay: bool) -> MirrorStart {
         (Quality::Smoother, false) => MirrorStart { max_size: 1280, bitrate: 4_000_000, ..OPTIONS },
         _ => OPTIONS,
     }
+}
+
+fn app_options(quality: Quality, on_relay: bool) -> MirrorStart {
+    let options = screen_options(quality, on_relay);
+    // App displays are limited to 1920 pixels by Android's app-window path.
+    MirrorStart { max_size: options.max_size.min(OPTIONS.max_size), ..options }
 }
 
 fn on_relay(device: &DeviceId) -> bool {
@@ -116,8 +122,8 @@ const OPTIONS: MirrorStart = MirrorStart {
     watch: None,
     sound_only: false,
 };
-/// Packets waiting for the decoder, at most (about two seconds).
-const BACKLOG: usize = 120;
+/// A short burst, rather than seconds of old frames behind the user's input.
+const BACKLOG: usize = 8;
 /// How often decode times are logged.
 const STATS_EVERY: Duration = Duration::from_secs(10);
 /// Even while it's behind, the decoder shows a picture at least this often:
@@ -991,6 +997,7 @@ pub fn start_app(device: DeviceId, pkg: String, label: String) {
         Some((window, power(s, &device)))
     });
     let Some((window, (stay_awake, screen_off))) = window else { return };
+    let options = app_options(crate::settings::mirror_quality(), on_relay(&device));
     ffi::video_clear(&window.key());
     request(
         window,
@@ -1000,7 +1007,7 @@ pub fn start_app(device: DeviceId, pkg: String, label: String) {
             app: Some(pkg),
             stay_awake,
             screen_off,
-            ..OPTIONS
+            ..options
         },
     );
 }
@@ -1020,6 +1027,7 @@ pub fn reopen(window: Window) {
         Some((pkg, power(s, &window.device)))
     });
     let Some((pkg, (stay_awake, screen_off))) = pkg else { return };
+    let options = app_options(crate::settings::mirror_quality(), on_relay(&window.device));
     ffi::video_clear(&window.key());
     request(
         window,
@@ -1029,7 +1037,7 @@ pub fn reopen(window: Window) {
             app: Some(pkg),
             stay_awake,
             screen_off,
-            ..OPTIONS
+            ..options
         },
     );
 }
@@ -1134,6 +1142,15 @@ fn request(window: Window, mut options: MirrorStart) {
 #[cfg(test)]
 mod quality_tests {
     use super::*;
+
+    #[test]
+    fn app_windows_apply_smoother_and_keep_android_size_limits() {
+        let smoother = app_options(Quality::Smoother, false);
+        assert_eq!((smoother.max_size, smoother.bitrate, smoother.fps), (1280, 4_000_000, 60));
+        let sharper = app_options(Quality::Sharper, false);
+        assert_eq!((sharper.max_size, sharper.bitrate), (1920, 20_000_000));
+        assert_eq!(app_options(Quality::Smoother, true).max_size, OPTIONS.max_size);
+    }
 
     #[test]
     fn balanced_is_exactly_what_mirroring_always_asked_for() {
@@ -1990,7 +2007,7 @@ pub fn sink(device: &DeviceId, session: u32) -> Option<Arc<dyn MirrorSink>> {
 
 enum Item {
     Config(MirrorConfig),
-    Packet { keyframe: bool, time_us: u64, data: Vec<u8> },
+    Packet { keyframe: bool, time_us: u64, data: Vec<u8>, sequence: usize, received: Instant },
     Ended,
 }
 
@@ -2075,6 +2092,7 @@ struct Video {
     queue: SyncSender<Item>,
     /// Packets waiting for the decoder.
     waiting: Arc<AtomicUsize>,
+    sequence: AtomicUsize,
 }
 
 impl Sink {
@@ -2089,7 +2107,7 @@ impl Video {
         let waiting = Arc::new(AtomicUsize::new(0));
         let counter = waiting.clone();
         if STOPPING.load(Ordering::Acquire) {
-            return Video { queue, waiting };
+            return Video { queue, waiting, sequence: AtomicUsize::new(0) };
         }
         let started = std::thread::Builder::new()
             .name("mirror-decoder".into())
@@ -2102,7 +2120,7 @@ impl Video {
             }
             Err(e) => tracing::error!(error = %e, "can't start the video decoder"),
         }
-        Video { queue, waiting }
+        Video { queue, waiting, sequence: AtomicUsize::new(0) }
     }
 }
 
@@ -2156,13 +2174,25 @@ impl MirrorSink for Sink {
             tracing::warn!(error = %e, "mirror recording packet failed");
         }
         let Some(video) = self.video.get() else { return };
-        match video.queue.try_send(Item::Packet { keyframe, time_us, data }) {
-            Ok(()) => {
-                video.waiting.fetch_add(1, Ordering::AcqRel);
+        let sequence = video.sequence.fetch_add(1, Ordering::Relaxed);
+        // Count before publishing: the decoder can receive immediately.
+        video.waiting.fetch_add(1, Ordering::AcqRel);
+        match video.queue.try_send(Item::Packet {
+            keyframe,
+            time_us,
+            data,
+            sequence,
+            received: Instant::now(),
+        }) {
+            Ok(()) => {}
+            Err(TrySendError::Disconnected(_)) => {
+                video.waiting.fetch_sub(1, Ordering::AcqRel);
             }
-            Err(TrySendError::Disconnected(_)) => {}
             // The decoder is behind; it starts over at the next keyframe.
-            Err(TrySendError::Full(_)) => self.keyframe_please(),
+            Err(TrySendError::Full(_)) => {
+                video.waiting.fetch_sub(1, Ordering::AcqRel);
+                self.keyframe_please();
+            }
         }
     }
 
@@ -2245,7 +2275,7 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
     let keyframe_please = || ask_keyframe(window);
     let mut size = (0, 0);
     // After a gap, pictures are garbage until the next keyframe.
-    let mut need_keyframe = true;
+    let mut gate = DecodeGate::new();
     let mut stats = Stats::new();
     let mut last_shown = Instant::now();
     while let Some(item) = next_item(items, &STOPPING) {
@@ -2277,29 +2307,40 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
                     decoder.flush();
                 }
                 size = (config.width, config.height);
-                need_keyframe = true;
+                gate.reset();
             }
-            Item::Packet { keyframe, time_us, data } => {
-                let behind = waiting.fetch_sub(1, Ordering::AcqRel) > 1;
-                if need_keyframe && !keyframe {
+            Item::Packet { keyframe, time_us, data, sequence, received } => {
+                waiting.fetch_sub(1, Ordering::AcqRel);
+                let age = received.elapsed();
+                stats.queue_age(age);
+                let (accept, reset) = gate.packet(sequence, keyframe);
+                if reset {
+                    decoder.flush();
+                    keyframe_please();
+                }
+                if !accept {
+                    keyframe_please();
+                    stats.skipped();
                     continue;
                 }
-                need_keyframe = false;
                 let started = Instant::now();
                 let pictures = match decoder.decode(&data, time_us) {
                     Ok(pictures) => pictures,
                     Err(e) => {
                         tracing::debug!(error = %e, "a video packet didn't decode");
                         decoder.flush();
-                        need_keyframe = true;
+                        gate.reset();
                         keyframe_please();
                         continue;
                     }
                 };
                 let decoded = started.elapsed();
-                // Behind: skip showing this one, the next is already here,
-                // unless nothing has been shown for a while.
-                let show = !behind || last_shown.elapsed() >= SHOW_AT_LEAST_EVERY;
+                // Decode every contiguous packet to preserve references. Only
+                // convert the newest available picture, unless none has been
+                // shown for a while. Always show the last queued picture even
+                // if it is old: a static screen may not send another one.
+                // Recheck after decoding: more packets may have arrived.
+                let show = should_show_frame(waiting.load(Ordering::Acquire), last_shown.elapsed());
                 if let (Some(picture), true) = (pictures.last(), show) {
                     last_shown = Instant::now();
                     let converted = Instant::now();
@@ -2326,6 +2367,41 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
     ffi::video_clear(&stream);
 }
 
+fn should_show_frame(queued: usize, since_shown: Duration) -> bool {
+    queued == 0 || since_shown >= SHOW_AT_LEAST_EVERY
+}
+
+/// A lost packet breaks the reference chain; age alone does not. Resume at
+/// a keyframe after a sequence gap, but keep decoding contiguous old packets
+/// so that skipping their conversion can catch us up.
+struct DecodeGate {
+    next: Option<usize>,
+    needs_keyframe: bool,
+}
+
+impl DecodeGate {
+    fn new() -> Self {
+        Self { next: None, needs_keyframe: true }
+    }
+
+    fn reset(&mut self) {
+        self.next = None;
+        self.needs_keyframe = true;
+    }
+
+    fn packet(&mut self, sequence: usize, keyframe: bool) -> (bool, bool) {
+        let gap = self.next.is_some_and(|next| next != sequence);
+        self.next = Some(sequence.wrapping_add(1));
+        let reset = gap && !self.needs_keyframe;
+        self.needs_keyframe |= gap;
+        if self.needs_keyframe && !keyframe {
+            return (false, reset);
+        }
+        self.needs_keyframe = false;
+        (true, reset)
+    }
+}
+
 fn scale_bgrx(src: &[u8], src_w: u32, src_h: u32, dst_w: u32, dst_h: u32) -> Vec<u8> {
     let mut dst = vec![0u8; (dst_w * dst_h * 4) as usize];
     for y in 0..dst_h {
@@ -2347,11 +2423,23 @@ struct Stats {
     skipped: u32,
     decode: Duration,
     convert: Duration,
+    queue_max: Duration,
 }
 
 impl Stats {
     fn new() -> Stats {
-        Stats { since: Instant::now(), shown: 0, skipped: 0, decode: Duration::ZERO, convert: Duration::ZERO }
+        Stats {
+            since: Instant::now(),
+            shown: 0,
+            skipped: 0,
+            decode: Duration::ZERO,
+            convert: Duration::ZERO,
+            queue_max: Duration::ZERO,
+        }
+    }
+
+    fn queue_age(&mut self, age: Duration) {
+        self.queue_max = self.queue_max.max(age);
     }
 
     fn shown(&mut self, decode: Duration, convert: Duration) {
@@ -2384,6 +2472,7 @@ impl Stats {
             skipped = self.skipped,
             decode_ms = format!("{:.1}", self.decode.as_secs_f64() * 1000.0 / f64::from(self.shown)),
             convert_ms = format!("{:.1}", self.convert.as_secs_f64() * 1000.0 / f64::from(self.shown)),
+            queue_max_ms = self.queue_max.as_millis(),
             "mirroring"
         );
         *self = Stats::new();
@@ -2392,6 +2481,58 @@ impl Stats {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn decoder_resumes_at_a_fresh_keyframe_after_a_gap() {
+        let mut gate = super::DecodeGate::new();
+        assert_eq!(gate.packet(0, false), (false, false));
+        assert_eq!(gate.packet(1, true), (true, false));
+        assert_eq!(gate.packet(2, false), (true, false));
+        // Packet 3 was dropped while the queue was full. A previously
+        // decoded keyframe must not make packet 4 look safe to decode.
+        assert_eq!(gate.packet(4, false), (false, true));
+        assert_eq!(gate.packet(5, false), (false, false));
+        assert_eq!(gate.packet(6, true), (true, false));
+        assert_eq!(gate.packet(7, false), (true, false));
+    }
+
+    #[test]
+    fn decoder_keeps_contiguous_packets_without_converting_every_picture() {
+        let mut gate = super::DecodeGate::new();
+        let fresh = std::time::Duration::ZERO;
+        for (sequence, keyframe) in [(0, true), (1, false), (2, true), (3, false)] {
+            assert_eq!(gate.packet(sequence, keyframe), (true, false));
+            assert!(!super::should_show_frame(1, fresh));
+        }
+        // Once caught up, a dependent frame is still usable without a new IDR.
+        assert_eq!(gate.packet(4, false), (true, false));
+        assert!(super::should_show_frame(0, fresh));
+        gate.reset();
+        assert_eq!(gate.packet(5, false), (false, false));
+        assert_eq!(gate.packet(6, true), (true, false));
+    }
+
+    #[test]
+    fn frame_presentation_skips_backlog_but_keeps_updating_under_load() {
+        use std::time::Duration;
+        let fresh = Duration::ZERO;
+        // The queue may end with an old frame and then no more updates.
+        assert!(super::should_show_frame(0, fresh));
+        assert!(!super::should_show_frame(1, fresh));
+        assert!(!super::should_show_frame(8, super::SHOW_AT_LEAST_EVERY - Duration::from_nanos(1)));
+        assert!(super::should_show_frame(8, super::SHOW_AT_LEAST_EVERY));
+    }
+
+    #[test]
+    fn decoder_accepts_a_keyframe_at_the_gap_and_wrapping_sequences() {
+        let mut gate = super::DecodeGate::new();
+        assert_eq!(gate.packet(2, true), (true, false));
+        assert_eq!(gate.packet(4, true), (true, true));
+        assert_eq!(gate.packet(5, false), (true, false));
+        gate.reset();
+        assert_eq!(gate.packet(usize::MAX, true), (true, false));
+        assert_eq!(gate.packet(0, false), (true, false));
+    }
+
     use super::{
         App, GamepadState, LEFT_THUMB_DEADZONE, RIGHT_THUMB_DEADZONE, TRIGGER_THRESHOLD, merge_recent_apps,
         normalize_gamepad_state, parse_dropped_file_urls, save_apps, saved_apps, saved_apps_path,
