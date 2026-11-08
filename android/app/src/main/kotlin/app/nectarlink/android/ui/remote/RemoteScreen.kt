@@ -681,17 +681,13 @@ private fun TouchpadView(
                 .then(if (touchpadOnly) Modifier.padding(8.dp) else Modifier),
             verticalArrangement = Arrangement.spacedBy(if (touchpadOnly) 6.dp else 10.dp),
         ) {
-            if (!imeVisible || padWhileTyping) {
+            if (!imeVisible) {
                 TouchpadSurface(
                     pcId = pcId,
                     core = core,
                     sensitivity = sensitivity,
                     onStatus = onStatus,
-                    modifier = if (imeVisible) {
-                        Modifier.height(PAD_WHILE_TYPING).fillMaxWidth()
-                    } else {
-                        Modifier.weight(1f).fillMaxWidth()
-                    },
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
             }
 
@@ -850,6 +846,18 @@ private fun TouchpadView(
                             }
                         }
                         .semantics { contentDescription = typePlaceholder },
+                )
+            }
+
+            // While typing, the strip sits right above the keyboard, under the
+            // field, where both thumbs reach it (#52).
+            if (imeVisible && padWhileTyping) {
+                TouchpadSurface(
+                    pcId = pcId,
+                    core = core,
+                    sensitivity = sensitivity,
+                    onStatus = onStatus,
+                    modifier = Modifier.height(PAD_WHILE_TYPING).fillMaxWidth(),
                 )
             }
         }
