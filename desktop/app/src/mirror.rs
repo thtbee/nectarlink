@@ -124,7 +124,6 @@ const OPTIONS: MirrorStart = MirrorStart {
 };
 /// A short burst, rather than seconds of old frames behind the user's input.
 const BACKLOG: usize = 8;
-const MAX_FRAME_LAG: Duration = Duration::from_millis(150);
 /// How often decode times are logged.
 const STATS_EVERY: Duration = Duration::from_secs(10);
 /// Even while it's behind, the decoder shows a picture at least this often:
@@ -2278,13 +2277,11 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
                 };
                 let decoded = started.elapsed();
                 // Decode every contiguous packet to preserve references. Only
-                // convert a current picture, unless none has been shown for a
-                // while. Recheck after decoding: more packets may have arrived.
-                let show = should_show_frame(
-                    waiting.load(Ordering::Acquire),
-                    received.elapsed(),
-                    last_shown.elapsed(),
-                );
+                // convert the newest available picture, unless none has been
+                // shown for a while. Always show the last queued picture even
+                // if it is old: a static screen may not send another one.
+                // Recheck after decoding: more packets may have arrived.
+                let show = should_show_frame(waiting.load(Ordering::Acquire), last_shown.elapsed());
                 if let (Some(picture), true) = (pictures.last(), show) {
                     last_shown = Instant::now();
                     let converted = Instant::now();
@@ -2311,8 +2308,8 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
     ffi::video_clear(&stream);
 }
 
-fn should_show_frame(queued: usize, age: Duration, since_shown: Duration) -> bool {
-    (queued == 0 && age <= MAX_FRAME_LAG) || since_shown >= SHOW_AT_LEAST_EVERY
+fn should_show_frame(queued: usize, since_shown: Duration) -> bool {
+    queued == 0 || since_shown >= SHOW_AT_LEAST_EVERY
 }
 
 /// A lost packet breaks the reference chain; age alone does not. Resume at
@@ -2440,17 +2437,16 @@ mod tests {
     }
 
     #[test]
-    fn decoder_keeps_old_packets_without_converting_every_picture() {
+    fn decoder_keeps_contiguous_packets_without_converting_every_picture() {
         let mut gate = super::DecodeGate::new();
         let fresh = std::time::Duration::ZERO;
-        let old = super::MAX_FRAME_LAG + std::time::Duration::from_millis(1);
         for (sequence, keyframe) in [(0, true), (1, false), (2, true), (3, false)] {
             assert_eq!(gate.packet(sequence, keyframe), (true, false));
-            assert!(!super::should_show_frame(0, old, fresh));
+            assert!(!super::should_show_frame(1, fresh));
         }
         // Once caught up, a dependent frame is still usable without a new IDR.
         assert_eq!(gate.packet(4, false), (true, false));
-        assert!(super::should_show_frame(0, fresh, fresh));
+        assert!(super::should_show_frame(0, fresh));
         gate.reset();
         assert_eq!(gate.packet(5, false), (false, false));
         assert_eq!(gate.packet(6, true), (true, false));
@@ -2460,12 +2456,11 @@ mod tests {
     fn frame_presentation_skips_backlog_but_keeps_updating_under_load() {
         use std::time::Duration;
         let fresh = Duration::ZERO;
-        let old = super::MAX_FRAME_LAG + Duration::from_millis(1);
-        assert!(super::should_show_frame(0, super::MAX_FRAME_LAG, fresh));
-        assert!(!super::should_show_frame(1, fresh, fresh));
-        assert!(!super::should_show_frame(0, old, fresh));
-        assert!(!super::should_show_frame(8, old, super::SHOW_AT_LEAST_EVERY - Duration::from_nanos(1)));
-        assert!(super::should_show_frame(8, old, super::SHOW_AT_LEAST_EVERY));
+        // The queue may end with an old frame and then no more updates.
+        assert!(super::should_show_frame(0, fresh));
+        assert!(!super::should_show_frame(1, fresh));
+        assert!(!super::should_show_frame(8, super::SHOW_AT_LEAST_EVERY - Duration::from_nanos(1)));
+        assert!(super::should_show_frame(8, super::SHOW_AT_LEAST_EVERY));
     }
 
     #[test]
