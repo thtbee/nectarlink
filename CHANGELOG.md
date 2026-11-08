@@ -32,8 +32,11 @@ change things that need a step from you, and its notes say so.
   ([#272](https://github.com/thtbee/nectarlink/issues/272)).
 - **Mirror quality.** Balanced as before, Sharper for the phone's full resolution, or
   Smoother for weak Wi-Fi, in Settings › Camera & Audio on the PC. It's for the phone's
-  whole screen, and over the relay it stays Balanced
-  ([#275](https://github.com/thtbee/nectarlink/issues/275)).
+  screen and app windows (those stay at 1920 at most), and over the relay it stays
+  Balanced ([#275](https://github.com/thtbee/nectarlink/issues/275)). App windows also
+  stay closer to live when the PC falls behind
+  ([#284](https://github.com/thtbee/nectarlink/pull/284)). Thanks to
+  [@krakotay](https://github.com/krakotay).
 - **Back, Home and Recent apps buttons** in the mirror window's toolbar
   ([#192](https://github.com/thtbee/nectarlink/issues/192)).
 - **Brazilian Portuguese.** The Android and PC apps speak Brazilian Portuguese
