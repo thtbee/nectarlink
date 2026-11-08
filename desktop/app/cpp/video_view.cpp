@@ -45,7 +45,7 @@ void wakeViews(const QString &stream)
 {
     for (VideoView *view : views) {
         if (view->stream() == stream)
-            QMetaObject::invokeMethod(view, "frameArrived", Qt::QueuedConnection);
+            view->queueFrame();
     }
 }
 
@@ -203,8 +203,17 @@ QRectF VideoView::pictureRect() const
     return QRectF((width() - fitted.width()) / 2, (height() - fitted.height()) / 2, fitted.width(), fitted.height());
 }
 
+void VideoView::queueFrame()
+{
+    // The picture cache already keeps only the newest image. Coalesce UI
+    // notifications too, so a busy UI does not replay old frame callbacks.
+    if (!m_framePending.exchange(true))
+        QMetaObject::invokeMethod(this, "frameArrived", Qt::QueuedConnection);
+}
+
 void VideoView::frameArrived()
 {
+    m_framePending.store(false);
     QSize size;
     {
         std::lock_guard guard(lock);

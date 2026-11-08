@@ -90,6 +90,7 @@ You can also view (and optionally control) your PC's desktop from your phone:
 
 ## What the Options Do
 
+- **Mirror quality**: On a direct connection, **Smoother** lowers both screen mirroring and app windows to at most 1280 pixels and 4 Mbps. Reopen an app window after changing it. This reduces encoding, network and decoding work; it can help responsiveness when several apps are open.
 - **Screen mirroring** (`Settings › Devices` on PC, default: **On**): Allows your PC and phone to start phone-to-PC screen mirroring and `app window` sessions.
 - **Share PC screen to phone** (`Settings › Devices` on PC, default: **Off**): Allows the selected phone to view this PC's screen without showing the one-time consent dialog each time.
 - **Remote mouse, keyboard & Deck** (`Settings › Devices` on PC, default: **Off**): Allows the selected phone to send touch/mouse clicks and keystrokes to this PC (including during reverse mirroring).
