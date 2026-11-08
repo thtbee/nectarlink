@@ -189,6 +189,10 @@ void prepare_qt_without_log()
     QQuickWindow::setDefaultAlphaBuffer(true);
     qputenv("QT_QPA_DISABLE_REDIRECTION_SURFACE", "1");
     qputenv("QSG_RENDER_LOOP", "basic");
+    // With the basic loop, a frame after a resize often waited out the D3D
+    // swap chain's latency object (1 s), so dragging a window's edge stalled
+    // (a quarter of resize steps took ~1 s; none over 15 ms without it).
+    qputenv("QT_D3D_MAX_FRAME_LATENCY", "0");
     // Qt's V4 JS engine reserves 2 x QV4_JS_MAX_STACK_SIZE of committed RW
     // memory (8 MB by default). 512 KB per stack (1 MB total) is plenty for
     // UI bindings and saves 7 MB of private commit in the tray.
