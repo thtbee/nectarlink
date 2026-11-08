@@ -13,7 +13,7 @@ use std::{
     sync::{
         Arc, Mutex, OnceLock,
         atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering},
-        mpsc::{Receiver, SyncSender, TrySendError, sync_channel},
+        mpsc::{Receiver, RecvTimeoutError, SyncSender, TrySendError, sync_channel},
     },
     time::{Duration, Instant},
 };
@@ -2036,6 +2036,57 @@ fn ask_keyframe(window: Window) {
     }
 }
 
+/// Set when the app quits: decoder threads end instead of waiting for packets.
+static STOPPING: AtomicBool = AtomicBool::new(false);
+/// The decoder threads, so quitting can wait for them.
+static DECODERS: Mutex<Vec<std::thread::JoinHandle<()>>> = Mutex::new(Vec::new());
+/// How often an idle decoder looks at [`STOPPING`].
+const STOP_CHECK: Duration = Duration::from_millis(100);
+/// How long quitting waits for a decoder in the middle of a picture.
+const STOP_WAIT: Duration = Duration::from_secs(2);
+
+/// Ends every decoder thread and waits for it. Call before the core and Qt go
+/// away: a decoder still running while the process exits used the GPU driver
+/// after it was unloaded, and the app crashed on quit (Linux, an app window open).
+pub fn stop_decoders() {
+    STOPPING.store(true, Ordering::Release);
+    let threads = std::mem::take(&mut *DECODERS.lock().unwrap_or_else(|e| e.into_inner()));
+    let left = join_by(threads, Instant::now() + STOP_WAIT);
+    if left > 0 {
+        tracing::warn!(left, "mirror decoders still busy at quit");
+    }
+}
+
+/// Joins the threads that finish before `deadline`; returns how many didn't.
+fn join_by(threads: Vec<std::thread::JoinHandle<()>>, deadline: Instant) -> usize {
+    let mut left = 0;
+    for thread in threads {
+        while !thread.is_finished() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        if thread.is_finished() {
+            let _ = thread.join();
+        } else {
+            left += 1;
+        }
+    }
+    left
+}
+
+/// The next item for a decoder, or `None` once the stream ends or the app quits.
+fn next_item(items: &Receiver<Item>, stopping: &AtomicBool) -> Option<Item> {
+    loop {
+        if stopping.load(Ordering::Acquire) {
+            return None;
+        }
+        match items.recv_timeout(STOP_CHECK) {
+            Ok(item) => return Some(item),
+            Err(RecvTimeoutError::Timeout) => {}
+            Err(RecvTimeoutError::Disconnected) => return None,
+        }
+    }
+}
+
 /// The decoder thread's end of a sink.
 struct Video {
     queue: SyncSender<Item>,
@@ -2055,11 +2106,19 @@ impl Video {
         let (queue, items) = sync_channel(BACKLOG);
         let waiting = Arc::new(AtomicUsize::new(0));
         let counter = waiting.clone();
+        if STOPPING.load(Ordering::Acquire) {
+            return Video { queue, waiting };
+        }
         let started = std::thread::Builder::new()
             .name("mirror-decoder".into())
             .spawn(move || decode(window, &items, &counter));
-        if let Err(e) = started {
-            tracing::error!(error = %e, "can't start the video decoder");
+        match started {
+            Ok(thread) => {
+                let mut threads = DECODERS.lock().unwrap_or_else(|e| e.into_inner());
+                threads.retain(|t| !t.is_finished());
+                threads.push(thread);
+            }
+            Err(e) => tracing::error!(error = %e, "can't start the video decoder"),
         }
         Video { queue, waiting, sequence: AtomicUsize::new(0) }
     }
@@ -2219,7 +2278,7 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
     let mut gate = DecodeGate::new();
     let mut stats = Stats::new();
     let mut last_shown = Instant::now();
-    while let Ok(item) = items.recv() {
+    while let Some(item) = next_item(items, &STOPPING) {
         match item {
             Item::Config(config) => {
                 if decoder.codec() != config.codec {
@@ -2604,5 +2663,58 @@ mod tests {
         assert_eq!(normalized.ry, -22_000);
         assert_eq!(normalized.lt, 255);
         assert_eq!(normalized.rt, 127);
+    }
+
+    #[test]
+    fn an_idle_decoder_ends_when_the_app_quits() {
+        use std::sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+            mpsc::sync_channel,
+        };
+        use std::time::{Duration, Instant};
+        let (queue, items) = sync_channel::<super::Item>(4);
+        let stopping = Arc::new(AtomicBool::new(false));
+        let flag = stopping.clone();
+        // Waits for packets that never come, as a phone with a still screen sends none.
+        let thread = std::thread::spawn(move || {
+            let mut seen = 0;
+            while super::next_item(&items, &flag).is_some() {
+                seen += 1;
+            }
+            seen
+        });
+        queue.send(super::Item::Ended).unwrap();
+        std::thread::sleep(Duration::from_millis(250));
+        assert!(!thread.is_finished(), "it ended before the app quit");
+        stopping.store(true, Ordering::Release);
+        let started = Instant::now();
+        while !thread.is_finished() && started.elapsed() < Duration::from_secs(2) {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(thread.join().unwrap(), 1);
+        assert!(started.elapsed() < Duration::from_secs(1));
+        drop(queue);
+    }
+
+    #[test]
+    fn a_closed_stream_ends_the_decoder_without_quitting() {
+        let (queue, items) = std::sync::mpsc::sync_channel::<super::Item>(1);
+        drop(queue);
+        assert!(super::next_item(&items, &std::sync::atomic::AtomicBool::new(false)).is_none());
+    }
+
+    #[test]
+    fn quitting_waits_for_finished_decoders_but_not_forever() {
+        use std::time::{Duration, Instant};
+        let quick = std::thread::spawn(|| std::thread::sleep(Duration::from_millis(50)));
+        let (release, stuck_rx) = std::sync::mpsc::channel::<()>();
+        let stuck = std::thread::spawn(move || {
+            let _ = stuck_rx.recv();
+        });
+        let started = Instant::now();
+        assert_eq!(super::join_by(vec![quick, stuck], Instant::now() + Duration::from_millis(300)), 1);
+        assert!(started.elapsed() < Duration::from_secs(2));
+        release.send(()).unwrap();
     }
 }

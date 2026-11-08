@@ -743,6 +743,7 @@ fn main() -> ExitCode {
     tracing::info!(code, "shutting down");
     // QML first (it holds references into Qt), then the core.
     drop(engine);
+    mirror::stop_decoders();
     pc_audio_stream::set_enabled(false);
     pc_mirror::stop_all();
     photos::clear_shared_files();
