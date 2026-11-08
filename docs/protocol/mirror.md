@@ -149,8 +149,13 @@ bottom), so they hold at any size and rotation.
 - `text`: typed text (at most 4 KiB), into the focused text field. When the
   accessibility service (`InputService`) is running, non-ASCII / Unicode
   text is inserted directly into the focused editable node; at Elevated
-  without the accessibility service, ASCII/Latin text is typed as key events
-  and non-ASCII text is pasted via the phone's clipboard (`KEYCODE_PASTE`).
+  without the accessibility service, ASCII/Latin text is typed as key events.
+  In Elevated app windows, Unicode text is inserted into the focused editable
+  field on that display through the shell's accessibility connection, keeping
+  existing accessibility services running. This also works while the physical
+  phone is locked and its clipboard is unavailable. Other fields fall back to
+  the phone's clipboard (`KEYCODE_PASTE`); each paste finishes before the next
+  text replaces the clipboard.
 - `gamepad`: controller state forwarded from the PC's connected gamepad
   (e.g. XInput). `buttons` is a 16-bit XInput-compatible button bitmask
   (D-pad up/down/left/right, Start, Back, L3, R3, LB, RB, Guide, A, B, X, Y);

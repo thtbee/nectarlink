@@ -28,6 +28,7 @@ import kotlin.concurrent.thread
  *   S x y dx dy             wheel, in notches
  *   K keycode               a key, pressed and released
  *   T text                  typed text (what the keyboard map can type)
+ *   I base64                UTF-8 text, inserted on the target display
  *   C command...            a shell command of a fixed set (see `allowed`)
  *   P 0 / P 1               physical screen power off (0) or normal (1)
  * Any of these after `@display ` goes to that display (an app window's).
@@ -163,9 +164,9 @@ object InputServer {
         }.onFailure { System.err.println("can't clear the clipboard: $it") }
     }
 
-    private fun setClipboard(rest: String) {
-        val (service, set) = clipService ?: return System.err.println("no clipboard to set")
-        runCatching {
+    private fun setClipboard(rest: String): Boolean {
+        val (service, set) = clipService ?: return false.also { System.err.println("no clipboard to set") }
+        return runCatching {
             val parts = rest.split(' ')
             val decode = { b64: String -> String(android.util.Base64.decode(b64, android.util.Base64.NO_WRAP), Charsets.UTF_8) }
             val text = decode(parts[0])
@@ -181,7 +182,7 @@ object InputServer {
                 if (parts.getOrNull(2) == "1") putBoolean("android.content.extra.IS_SENSITIVE", true)
             }
             set.invoke(service, *buildClipboardArgs(set.parameterTypes, null, clip))
-        }.onFailure { System.err.println("can't set the clipboard: $it") }
+        }.onFailure { System.err.println("can't set the clipboard: $it") }.isSuccess
     }
 
     @android.annotation.SuppressLint("PrivateApi", "DiscouragedPrivateApi")
@@ -317,6 +318,7 @@ object InputServer {
     }
 
     private fun shutdown() {
+        ShellTextInput.close()
         runCatching { serverSocket?.close() }
         runCatching { UhidBridge.closeAll() }
         val open = synchronized(windows) { windows.toList().also { windows.clear() } }
@@ -735,6 +737,14 @@ object InputServer {
                     shortcut(code, meta)
                 }
                 "T" -> type(rest)
+                "I" -> {
+                    val text = String(android.util.Base64.decode(rest, android.util.Base64.NO_WRAP), Charsets.UTF_8)
+                    if (ShellTextInput.insert(display, text)) return
+                    // Clipboard calls are device-wide, but the paste key belongs
+                    // to this display. Do not let the next letter replace the
+                    // clipboard while this key is still in Android's input queue.
+                    if (setClipboard(rest)) key(KeyEvent.KEYCODE_PASTE, waitForFinish = true)
+                }
                 "G" -> gamepad(rest)
                 "C" -> if (allowedCommand(rest) && display < 0) {
                     when (rest) {
@@ -751,10 +761,11 @@ object InputServer {
             }
         }
 
-        private fun send(event: InputEvent) {
+        private fun send(event: InputEvent, waitForFinish: Boolean = false) {
             if (display >= 0) setDisplayId?.invoke(event, display)
-            // 0: asynchronous; the app doesn't wait for the target app.
-            inject.invoke(manager, event, 0)
+            // Touch stays asynchronous. Text and editing keys wait when their
+            // completion determines the next insertion's cursor or selection.
+            check(inject.invoke(manager, event, if (waitForFinish) 2 else 0) == true) { "Android rejected the input event" }
         }
 
         private fun touch(action: String, x: Float, y: Float) {
@@ -808,12 +819,12 @@ object InputServer {
 
         fun pressKey(code: Int) = key(code)
 
-        private fun key(code: Int) {
+        private fun key(code: Int, waitForFinish: Boolean = false) {
             // Injected, not through a virtual keyboard: adding one changes the phone's
             // configuration, which restarts apps that don't handle that (Snapchat).
             val now = SystemClock.uptimeMillis()
             for (action in intArrayOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP)) {
-                send(KeyEvent(now, now, action, code, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD))
+                send(KeyEvent(now, now, action, code, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD), waitForFinish || display > 0)
             }
         }
 
@@ -824,7 +835,7 @@ object InputServer {
         private fun shortcut(code: Int, meta: Int) {
             val now = SystemClock.uptimeMillis()
             for (action in intArrayOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP)) {
-                send(KeyEvent(now, now, action, code, 0, meta, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD))
+                send(KeyEvent(now, now, action, code, 0, meta, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD), waitForFinish = display > 0)
             }
         }
 
@@ -832,7 +843,7 @@ object InputServer {
             val map = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD)
             // What the keyboard map can't type (most non-Latin letters, emoji) is skipped.
             for (c in text) {
-                map.getEvents(charArrayOf(c))?.forEach { send(it) }
+                map.getEvents(charArrayOf(c))?.forEach { send(it, waitForFinish = display > 0) }
             }
         }
 
