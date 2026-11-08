@@ -2107,7 +2107,7 @@ impl Video {
         let waiting = Arc::new(AtomicUsize::new(0));
         let counter = waiting.clone();
         if STOPPING.load(Ordering::Acquire) {
-            return Video { queue, waiting };
+            return Video { queue, waiting, sequence: AtomicUsize::new(0) };
         }
         let started = std::thread::Builder::new()
             .name("mirror-decoder".into())
