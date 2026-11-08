@@ -103,7 +103,7 @@
     <string name="elevated_set_up">Einrichten</string>
     <string name="elevated_root_hint">Dieses Gerät ist gerootet, daher kann der erweiterte Modus stattdessen über Root starten: ohne Kopplung, und er ist nach einem Neustart oder ohne WLAN von selbst wieder da. Er erhält dieselben Berechtigungen wie beim Kabellosen Debugging.</string>
     <string name="elevated_running_root">Ein (über Root): Maus und Tastatur deines PCs funktionieren wie ein echter Touchscreen und eine echte Tastatur.</string>
-    <string name="elevated_root_failed">Root-Zugriff wurde nicht gewährt oder dein Root-Manager kann den NectarLink-Helfer nicht als Shell-Benutzer starten. Du kannst ihn stattdessen über Kabelloses Debugging einrichten.</string>
+    <string name="elevated_root_failed">Root-Zugriff wurde nicht gewährt oder dein Root-Manager kann den NectarLink-Helfer nicht als Shell-Benutzer starten. Bei KernelSU oder APatch füge NectarLink zuerst zur Superuser-Liste hinzu und versuche es dann erneut. Oder richte ihn stattdessen über Kabelloses Debugging ein.</string>
     <string name="elevated_shizuku_hint">Shizuku ist installiert, daher kann der erweiterte Modus stattdessen darüber starten: ohne eigene Kopplung, und er funktioniert auch ohne WLAN, solange Shizuku läuft. Er erhält dieselben Berechtigungen wie beim Kabellosen Debugging.</string>
     <string name="elevated_running_shizuku">An, über Shizuku: Maus und Tastatur deines PCs funktionieren wie ein echter Touchscreen und eine echte Tastatur.</string>
     <string name="elevated_shizuku_waiting">Warte auf Shizuku. Starte es in der Shizuku-App und öffne dann NectarLink.</string>

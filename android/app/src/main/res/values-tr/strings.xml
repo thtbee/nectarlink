@@ -103,7 +103,7 @@
     <string name="elevated_set_up">Kur</string>
     <string name="elevated_root_hint">Bu telefon root\'lu, bu yüzden Yükseltilmiş mod bunun yerine root üzerinden başlayabilir: eşleştirme gerekmez ve yeniden başlatmadan sonra veya Wi-Fi dışındayken kendiliğinden geri gelir. Kablosuz hata ayıklamadakiyle aynı izinleri alır.</string>
     <string name="elevated_running_root">Açık, root üzerinden: bilgisayarınızın faresi ve klavyesi gerçek bir dokunmatik ekran ve klavye gibi çalışır.</string>
-    <string name="elevated_root_failed">Root izni verilmedi veya root yöneticiniz NectarLink\'in yardımcısını shell kullanıcısı olarak başlatamıyor. Bunun yerine Kablosuz hata ayıklama ile kurabilirsiniz.</string>
+    <string name="elevated_root_failed">Root izni verilmedi veya root yöneticiniz NectarLink\'in yardımcısını shell kullanıcısı olarak başlatamıyor. KernelSU veya APatch kullanıyorsanız önce NectarLink\'i Süper kullanıcı listesine ekleyin, sonra tekrar deneyin. Ya da Kablosuz hata ayıklama ile kurun.</string>
     <string name="elevated_shizuku_hint">Shizuku yüklü, bu yüzden Yükseltilmiş mod onun üzerinden başlayabilir: ayrıca eşleştirme gerekmez ve Shizuku çalıştığı sürece Wi-Fi dışındayken de çalışır. Kablosuz hata ayıklamadakiyle aynı izinleri alır.</string>
     <string name="elevated_running_shizuku">Açık, Shizuku üzerinden: bilgisayarınızın faresi ve klavyesi gerçek bir dokunmatik ekran ve klavye gibi çalışır.</string>
     <string name="elevated_shizuku_waiting">Shizuku bekleniyor. Shizuku uygulamasından başlatın, sonra NectarLink\'i açın.</string>
