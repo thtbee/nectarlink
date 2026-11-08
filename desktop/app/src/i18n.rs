@@ -16,6 +16,7 @@ pub const LANGUAGES: &[(&str, &str)] = &[
     ("zh_CN", "简体中文"),
     ("tr", "Türkçe"),
     ("pt_BR", "Português (Brasil)"),
+    ("vi", "Tiếng Việt"),
 ];
 
 /// [`LANGUAGES`] without the system's, as JSON for Settings: `[{ code, name }]`.

@@ -149,7 +149,7 @@ searchable **Timeline** of everything that moved, a **Command Palette**
 **Connection Doctor** that finds and fixes what keeps devices from connecting.
 An optional **Nectar Island** at the top of the screen shows calls, music and
 transfers. Four themes, **Hive**, **Bloom**, **Glass** and **Graphite**, each
-in light and dark. In English, German, Turkish and Simplified Chinese.
+in light and dark. In English, German, Turkish, Simplified Chinese, Brazilian Portuguese and Vietnamese.
 
 ### Platform support
 

@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Vietnamese.** NectarLink speaks Tiếng Việt now: on the Android phone and
+  the Windows PC, every screen is translated. Settings › Appearance › Language
+  picks it, or the system language does. Thanks to
+  [@wuwenhou](https://github.com/wuwenhou).
 - **More ways to sync a folder.** A synced folder can now go one way from the PC to the
   phone. Phone to PC can also remove from the PC what you delete on the phone: only
   files it synced and that haven't changed on the PC, and they go to the Recycle Bin. Both
