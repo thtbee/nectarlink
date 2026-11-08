@@ -150,6 +150,8 @@ what people reported since 0.1.4.
 - Phone as speaker together with the phone's sound on the PC (or a mirror with sound) no
   longer loops into loud distortion on Windows: the PC's sound sent to the phone leaves out
   NectarLink's own ([#281](https://github.com/thtbee/nectarlink/issues/281)).
+- With two phones connected, **Phone sound on this PC** plays the phone selected on Home,
+  not the first one. Thanks to [@krakotay](https://github.com/krakotay).
 - Voice typing from the phone no longer loses or doubles letters in Notepad when it
   rewrites a phrase ([#52](https://github.com/thtbee/nectarlink/issues/52)).
 - **Type on phone** shows what you've typed instead of only the last key, which looked
