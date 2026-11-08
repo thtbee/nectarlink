@@ -124,7 +124,7 @@ const OPTIONS: MirrorStart = MirrorStart {
 };
 /// A short burst, rather than seconds of old frames behind the user's input.
 const BACKLOG: usize = 8;
-const MAX_DECODE_LAG: Duration = Duration::from_millis(150);
+const MAX_FRAME_LAG: Duration = Duration::from_millis(150);
 /// How often decode times are logged.
 const STATS_EVERY: Duration = Duration::from_secs(10);
 /// Even while it's behind, the decoder shows a picture at least this often:
@@ -2252,10 +2252,10 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
                 gate.reset();
             }
             Item::Packet { keyframe, time_us, data, sequence, received } => {
-                let behind = waiting.fetch_sub(1, Ordering::AcqRel) > 1;
+                waiting.fetch_sub(1, Ordering::AcqRel);
                 let age = received.elapsed();
                 stats.queue_age(age);
-                let (accept, reset) = gate.packet(sequence, keyframe, age);
+                let (accept, reset) = gate.packet(sequence, keyframe);
                 if reset {
                     decoder.flush();
                     keyframe_please();
@@ -2277,9 +2277,14 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
                     }
                 };
                 let decoded = started.elapsed();
-                // Behind: skip showing this one, the next is already here,
-                // unless nothing has been shown for a while.
-                let show = !behind || last_shown.elapsed() >= SHOW_AT_LEAST_EVERY;
+                // Decode every contiguous packet to preserve references. Only
+                // convert a current picture, unless none has been shown for a
+                // while. Recheck after decoding: more packets may have arrived.
+                let show = should_show_frame(
+                    waiting.load(Ordering::Acquire),
+                    received.elapsed(),
+                    last_shown.elapsed(),
+                );
                 if let (Some(picture), true) = (pictures.last(), show) {
                     last_shown = Instant::now();
                     let converted = Instant::now();
@@ -2306,9 +2311,13 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
     ffi::video_clear(&stream);
 }
 
-/// Once a packet is lost or too old, dependent frames cannot catch us up.
-/// Resume only at a fresh keyframe, including when an old keyframe was queued
-/// before the dropped packet.
+fn should_show_frame(queued: usize, age: Duration, since_shown: Duration) -> bool {
+    (queued == 0 && age <= MAX_FRAME_LAG) || since_shown >= SHOW_AT_LEAST_EVERY
+}
+
+/// A lost packet breaks the reference chain; age alone does not. Resume at
+/// a keyframe after a sequence gap, but keep decoding contiguous old packets
+/// so that skipping their conversion can catch us up.
 struct DecodeGate {
     next: Option<usize>,
     needs_keyframe: bool,
@@ -2324,13 +2333,12 @@ impl DecodeGate {
         self.needs_keyframe = true;
     }
 
-    fn packet(&mut self, sequence: usize, keyframe: bool, age: Duration) -> (bool, bool) {
-        let stale = age > MAX_DECODE_LAG;
+    fn packet(&mut self, sequence: usize, keyframe: bool) -> (bool, bool) {
         let gap = self.next.is_some_and(|next| next != sequence);
         self.next = Some(sequence.wrapping_add(1));
-        let reset = (stale || gap) && !self.needs_keyframe;
-        self.needs_keyframe |= stale || gap;
-        if stale || (self.needs_keyframe && !keyframe) {
+        let reset = gap && !self.needs_keyframe;
+        self.needs_keyframe |= gap;
+        if self.needs_keyframe && !keyframe {
             return (false, reset);
         }
         self.needs_keyframe = false;
@@ -2420,31 +2428,55 @@ mod tests {
     #[test]
     fn decoder_resumes_at_a_fresh_keyframe_after_a_gap() {
         let mut gate = super::DecodeGate::new();
-        let fresh = std::time::Duration::ZERO;
-        assert_eq!(gate.packet(0, false, fresh), (false, false));
-        assert_eq!(gate.packet(1, true, fresh), (true, false));
-        assert_eq!(gate.packet(2, false, fresh), (true, false));
+        assert_eq!(gate.packet(0, false), (false, false));
+        assert_eq!(gate.packet(1, true), (true, false));
+        assert_eq!(gate.packet(2, false), (true, false));
         // Packet 3 was dropped while the queue was full. A previously
         // decoded keyframe must not make packet 4 look safe to decode.
-        assert_eq!(gate.packet(4, false, fresh), (false, true));
-        assert_eq!(gate.packet(5, false, fresh), (false, false));
-        assert_eq!(gate.packet(6, true, fresh), (true, false));
-        assert_eq!(gate.packet(7, false, fresh), (true, false));
+        assert_eq!(gate.packet(4, false), (false, true));
+        assert_eq!(gate.packet(5, false), (false, false));
+        assert_eq!(gate.packet(6, true), (true, false));
+        assert_eq!(gate.packet(7, false), (true, false));
     }
 
     #[test]
-    fn decoder_discards_old_pictures_even_when_they_are_keyframes() {
+    fn decoder_keeps_old_packets_without_converting_every_picture() {
         let mut gate = super::DecodeGate::new();
         let fresh = std::time::Duration::ZERO;
-        let old = super::MAX_DECODE_LAG + std::time::Duration::from_millis(1);
-        assert_eq!(gate.packet(0, true, fresh), (true, false));
-        assert_eq!(gate.packet(1, false, old), (false, true));
-        assert_eq!(gate.packet(2, true, old), (false, false));
-        assert_eq!(gate.packet(3, false, fresh), (false, false));
-        assert_eq!(gate.packet(4, true, fresh), (true, false));
+        let old = super::MAX_FRAME_LAG + std::time::Duration::from_millis(1);
+        for (sequence, keyframe) in [(0, true), (1, false), (2, true), (3, false)] {
+            assert_eq!(gate.packet(sequence, keyframe), (true, false));
+            assert!(!super::should_show_frame(0, old, fresh));
+        }
+        // Once caught up, a dependent frame is still usable without a new IDR.
+        assert_eq!(gate.packet(4, false), (true, false));
+        assert!(super::should_show_frame(0, fresh, fresh));
         gate.reset();
-        assert_eq!(gate.packet(5, false, fresh), (false, false));
-        assert_eq!(gate.packet(6, true, fresh), (true, false));
+        assert_eq!(gate.packet(5, false), (false, false));
+        assert_eq!(gate.packet(6, true), (true, false));
+    }
+
+    #[test]
+    fn frame_presentation_skips_backlog_but_keeps_updating_under_load() {
+        use std::time::Duration;
+        let fresh = Duration::ZERO;
+        let old = super::MAX_FRAME_LAG + Duration::from_millis(1);
+        assert!(super::should_show_frame(0, super::MAX_FRAME_LAG, fresh));
+        assert!(!super::should_show_frame(1, fresh, fresh));
+        assert!(!super::should_show_frame(0, old, fresh));
+        assert!(!super::should_show_frame(8, old, super::SHOW_AT_LEAST_EVERY - Duration::from_nanos(1)));
+        assert!(super::should_show_frame(8, old, super::SHOW_AT_LEAST_EVERY));
+    }
+
+    #[test]
+    fn decoder_accepts_a_keyframe_at_the_gap_and_wrapping_sequences() {
+        let mut gate = super::DecodeGate::new();
+        assert_eq!(gate.packet(2, true), (true, false));
+        assert_eq!(gate.packet(4, true), (true, true));
+        assert_eq!(gate.packet(5, false), (true, false));
+        gate.reset();
+        assert_eq!(gate.packet(usize::MAX, true), (true, false));
+        assert_eq!(gate.packet(0, false), (true, false));
     }
 
     use super::{
