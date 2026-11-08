@@ -151,6 +151,9 @@ what people reported since 0.1.4.
 - Quitting the PC app with a mirror open could crash it on the way out.
 - On GNOME with Wayland, text copied on the phone could be replaced by what was on the
   PC's clipboard, once NectarLink got focus.
+- On a phone rooted with KernelSU or APatch, Elevated's settings didn't offer **Use root**:
+  those show root only to apps they already allow. NectarLink now also looks for their
+  manager app ([#291](https://github.com/thtbee/nectarlink/issues/291)).
 - With Developer Mode on, NectarLink dropped out of the Windows Share sheet after updating
   itself, without a word. It now asks once for admin rights to register again, and logs
   why it isn't in the Share sheet otherwise
