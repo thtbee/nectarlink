@@ -197,6 +197,9 @@ impl Platform for DesktopPlatform {
     ) -> Result<(), String> {
         deck::handle_set_audio(peer, volume, muted)
     }
+    fn set_pc_audio_output(&self, _peer: &nectarlink_core::DeviceId, id: &str) -> Result<(), String> {
+        deck::handle_set_output(id)
+    }
     fn storage_list(&self, path: &str) -> Result<Vec<StorageEntry>, StorageError> {
         pc_storage::storage_list(path)
     }

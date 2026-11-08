@@ -491,6 +491,13 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device has no PC audio controls".into())
     }
 
+    /// Make `id`, one of this PC's `output_devices`, the default audio output
+    /// (`pc.audio.set { output }`). The ID has been validated and the
+    /// per-device permission checked.
+    fn set_pc_audio_output(&self, _from: &nectarlink_protocol::DeviceId, _id: &str) -> Result<(), String> {
+        Err("this device can't switch its audio output".into())
+    }
+
     /// List immediate children of `path` (`""` for the shared storage root) on
     /// this phone (`storage.list`, `docs/protocol/storage.md`).
     fn storage_list(&self, _path: &str) -> Result<Vec<crate::StorageEntry>, crate::StorageError> {

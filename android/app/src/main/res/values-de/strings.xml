@@ -460,7 +460,7 @@
     <string name="pc_audio_output">Ausgabe: %1$s</string>
     <string name="pc_audio_outputs_title">Audioausgänge auf %1$s</string>
     <string name="pc_audio_default_badge">Standard</string>
-    <string name="pc_audio_outputs_hint">Aktive Wiedergabegeräte auf %1$s.</string>
+    <string name="pc_audio_outputs_hint">Tippe auf ein Gerät, um den Ton von %1$s dort abzuspielen.</string>
     <string name="pc_audio_use_phone_speaker">Gerät als Lautsprecher verwenden</string>
     <string name="pc_audio_use_phone_speaker_sub">PC-Audio auf diesem Gerät wiedergeben</string>
     <string name="pc_audio_use_phone_speaker_on">PC-Audio wird auf dieses Gerät gestreamt</string>

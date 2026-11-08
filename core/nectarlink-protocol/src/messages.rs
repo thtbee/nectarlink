@@ -4119,19 +4119,39 @@ impl DeckPress {
 }
 
 /// Body of `pc.audio.set`: asks the PC to change its master speaker volume
-/// (`0..=100`) and/or mute state (`docs/protocol/deck.md` §2.5).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// (`0..=100`), mute state, and/or default output device
+/// (`docs/protocol/deck.md` §2.4).
+#[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PcAudioSet {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub volume: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub muted: Option<bool>,
+    /// The `id` of one of the PC's `output_devices` to make its default output.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output: Option<String>,
+}
+
+/// Never prints the output device's system ID in logs (protocol v0 §11).
+impl std::fmt::Debug for PcAudioSet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PcAudioSet")
+            .field("volume", &self.volume)
+            .field("muted", &self.muted)
+            .field("output", &self.output.as_ref().map(|_| "…"))
+            .finish()
+    }
 }
 
 impl PcAudioSet {
     pub fn is_valid(&self) -> bool {
         let vol_ok = self.volume.is_none_or(|v| v <= 100 || v == 200 || v == 201);
-        (self.volume.is_some() || self.muted.is_some()) && vol_ok
+        let output_ok = self.output.as_deref().is_none_or(|id| {
+            !id.trim().is_empty()
+                && id.len() <= deck::MAX_DEVICE_ID_BYTES
+                && !id.chars().any(char::is_control)
+        });
+        (self.volume.is_some() || self.muted.is_some() || self.output.is_some()) && vol_ok && output_ok
     }
 }
 
@@ -5525,12 +5545,23 @@ mod tests {
         assert_eq!(back, state);
 
         // PC audio set validation and round-trip.
-        let audio_set = PcAudioSet { volume: Some(65), muted: Some(false) };
+        let audio_set = PcAudioSet { volume: Some(65), muted: Some(false), output: None };
         assert!(audio_set.is_valid());
         let env = Envelope::new(types::PC_AUDIO_SET, &audio_set).unwrap();
         assert_eq!(Envelope::from_cbor(&env.to_cbor()).unwrap().body::<PcAudioSet>().unwrap(), audio_set);
-        assert!(!PcAudioSet { volume: None, muted: None }.is_valid());
-        assert!(!PcAudioSet { volume: Some(101), muted: None }.is_valid());
+        assert!(!PcAudioSet::default().is_valid());
+        assert!(!PcAudioSet { volume: Some(101), ..Default::default() }.is_valid());
+
+        // Switching the output: an ID on its own is enough, and goes over the wire.
+        let switch =
+            PcAudioSet { output: Some("{0.0.0.00000000}.{headphones}".into()), ..Default::default() };
+        assert!(switch.is_valid());
+        let env = Envelope::new(types::PC_AUDIO_SET, &switch).unwrap();
+        assert_eq!(Envelope::from_cbor(&env.to_cbor()).unwrap().body::<PcAudioSet>().unwrap(), switch);
+        assert!(!format!("{switch:?}").contains("headphones"), "the device ID stays out of logs");
+        for bad in [String::new(), "  ".into(), "a\nb".into(), "x".repeat(deck::MAX_DEVICE_ID_BYTES + 1)] {
+            assert!(!PcAudioSet { output: Some(bad), ..Default::default() }.is_valid());
+        }
 
         // Press validation.
         let press = DeckPress { tile: "play_pause".into() };

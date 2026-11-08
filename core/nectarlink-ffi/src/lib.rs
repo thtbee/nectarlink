@@ -4091,6 +4091,14 @@ impl NectarlinkNode {
         self.run(async move { Ok(node.set_pc_audio(id, volume, muted).await?) }).await
     }
 
+    /// Asks a paired PC to make one of its audio outputs (by its `id` in
+    /// `DeckState.output_devices`) the default (`pc.audio.set { output }`).
+    pub async fn set_pc_audio_output(&self, id: String, output: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.set_pc_audio_output(id, output).await?) }).await
+    }
+
     /// The context chip suggestion for the most recently received text clip, if any.
     pub fn last_clip_suggestion(&self) -> Option<ClipSuggestion> {
         self.node.last_clip_suggestion().map(|(_, s)| s.into())
