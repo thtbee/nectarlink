@@ -36,6 +36,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
@@ -668,186 +669,201 @@ private fun TouchpadView(
         }
     }
 
-    Column(
-        // Above the keyboard while it's open: apps are drawn edge to edge
-        // (Android 15 and later), so the keyboard would cover the typing field.
-        modifier = modifier
-            .fillMaxWidth()
-            .imePadding()
-            .then(if (touchpadOnly) Modifier.padding(8.dp) else Modifier),
-        verticalArrangement = Arrangement.spacedBy(if (touchpadOnly) 6.dp else 10.dp),
-    ) {
-        // While typing, the keyboard leaves too little room for the touchpad,
-        // and the field below must keep its full height.
-        if (!imeVisible) {
-            TouchpadSurface(
-                pcId = pcId,
-                core = core,
-                sensitivity = sensitivity,
-                onStatus = onStatus,
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-            )
-        }
-
-        // Mouse buttons + Keyboard toggle row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+    // Above the keyboard while it's open: apps are drawn edge to edge
+    // (Android 15 and later), so the keyboard would cover the typing field.
+    BoxWithConstraints(modifier = modifier.fillMaxWidth().imePadding()) {
+        // While typing, a strip of touchpad stays when there's room for it and the
+        // field, so the pointer can move without closing the keyboard (#52).
+        val padWhileTyping = maxHeight >= ROOM_FOR_PAD_WHILE_TYPING
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(if (touchpadOnly) Modifier.padding(8.dp) else Modifier),
+            verticalArrangement = Arrangement.spacedBy(if (touchpadOnly) 6.dp else 10.dp),
         ) {
-            FilledTonalButton(
-                onClick = { core.remoteButton(pcId, "left", "click", onStatus) },
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
-                modifier = Modifier.weight(0.88f).height(46.dp),
-            ) {
-                Text(
-                    stringResource(R.string.remote_left_click),
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            OutlinedButton(
-                onClick = { core.remoteButton(pcId, "middle", "click", onStatus) },
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
-                modifier = Modifier.weight(1.04f).height(46.dp),
-            ) {
-                Text(
-                    stringResource(R.string.remote_middle_click),
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            FilledTonalButton(
-                onClick = { core.remoteButton(pcId, "right", "click", onStatus) },
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
-                modifier = Modifier.weight(0.94f).height(46.dp),
-            ) {
-                Text(
-                    stringResource(R.string.remote_right_click),
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Button(
-                onClick = {
-                    // Typing needs the keys and the field, so show them all.
-                    if (touchpadOnly) onTouchpadOnly(false)
-                    showKeyboard = !showKeyboard
-                },
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                modifier = Modifier.weight(1.26f).height(46.dp),
-            ) {
-                Text(
-                    stringResource(R.string.remote_keyboard),
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (canBeTouchpadOnly) {
-                OutlinedButton(
-                    onClick = {
-                        if (!touchpadOnly) showKeyboard = false
-                        onTouchpadOnly(!touchpadOnly)
+            if (!imeVisible || padWhileTyping) {
+                TouchpadSurface(
+                    pcId = pcId,
+                    core = core,
+                    sensitivity = sensitivity,
+                    onStatus = onStatus,
+                    modifier = if (imeVisible) {
+                        Modifier.height(PAD_WHILE_TYPING).fillMaxWidth()
+                    } else {
+                        Modifier.weight(1f).fillMaxWidth()
                     },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                    modifier = Modifier.weight(1.1f).height(46.dp),
+                )
+            }
+
+            // Mouse buttons + Keyboard toggle row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                FilledTonalButton(
+                    onClick = { core.remoteButton(pcId, "left", "click", onStatus) },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(0.88f).height(46.dp),
                 ) {
                     Text(
-                        stringResource(if (touchpadOnly) R.string.remote_more_controls else R.string.remote_touchpad_only),
+                        stringResource(R.string.remote_left_click),
                         style = MaterialTheme.typography.labelLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-            }
-        }
-
-        if (touchpadOnly) return@Column
-
-        // Scroll rather than squeeze the typing field when the keyboard is up.
-        Column(
-            modifier = if (imeVisible) Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()) else Modifier,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            // Voice typing bar (Dictate button: hold to talk, or tap to start/stop)
-            VoiceTypingBar(
-                pcId = pcId,
-                pcName = pcName,
-                core = core,
-                utteranceJoiner = utteranceJoiner,
-                onStatus = onStatus,
-            )
-
-            // Special keys & modifiers bar (always accessible in Touchpad mode)
-            SpecialKeysBar(
-                activeMods = activeMods,
-                showExtraKeys = showKeyboard,
-                onToggleMod = { mod ->
-                    if (mod in activeMods) activeMods.remove(mod) else activeMods.add(mod)
-                },
-                onKey = { key, forceMods ->
-                    val mods = forceMods ?: activeMods.toList()
-                    core.remoteKey(pcId, key, mods, onStatus)
-                    if (forceMods == null) activeMods.clear()
-                },
-            )
-        }
-
-        // Soft keyboard input row when toggled open
-        if (showKeyboard) {
-            val typePlaceholder = stringResource(R.string.remote_type_placeholder, pcName)
-            OutlinedTextField(
-                value = typed,
-                onValueChange = { next ->
-                    val diff = typingDiff(typed.text, next.text)
-                    if (activeMods.isNotEmpty() && diff.backspaces == 0 && diff.added.length == 1 &&
-                        diff.added[0].isLetterOrDigit()
-                    ) {
-                        // A shortcut (Ctrl+C...), not text: it stays out of the field.
-                        core.remoteKey(pcId, diff.added.lowercase(), activeMods.toList(), onStatus)
-                        activeMods.clear()
-                        return@OutlinedTextField
-                    }
-                    repeat(diff.backspaces) { i ->
-                        core.remoteKey(pcId, "backspace", if (i == 0) activeMods.toList() else emptyList(), onStatus)
-                    }
-                    if (diff.added.isNotEmpty()) core.remoteText(pcId, diff.added, onStatus)
-                    if (diff.backspaces > 0 || diff.added.isNotEmpty()) activeMods.clear()
-                    // The cursor and selection here are free to move: an edit anywhere
-                    // goes over as Backspaces from the end, then what follows it again.
-                    typed = next
-                },
-                placeholder = { Text(typePlaceholder) },
-                maxLines = 4,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(
-                    onSend = {
-                        core.remoteKey(pcId, "enter", activeMods.toList(), onStatus)
-                        activeMods.clear()
-                        typed = TextFieldValue("")
+                OutlinedButton(
+                    onClick = { core.remoteButton(pcId, "middle", "click", onStatus) },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1.04f).height(46.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.remote_middle_click),
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                FilledTonalButton(
+                    onClick = { core.remoteButton(pcId, "right", "click", onStatus) },
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(0.94f).height(46.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.remote_right_click),
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Button(
+                    onClick = {
+                        // Typing needs the keys and the field, so show them all.
+                        if (touchpadOnly) onTouchpadOnly(false)
+                        showKeyboard = !showKeyboard
                     },
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-                    // Backspace with nothing typed here still deletes on the PC.
-                    .onPreviewKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyDown && event.key == Key.Backspace && typed.text.isEmpty()) {
-                            core.remoteKey(pcId, "backspace", activeMods.toList(), onStatus)
-                            activeMods.clear()
-                            true
-                        } else {
-                            false
-                        }
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1.26f).height(46.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.remote_keyboard),
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (canBeTouchpadOnly) {
+                    OutlinedButton(
+                        onClick = {
+                            if (!touchpadOnly) showKeyboard = false
+                            onTouchpadOnly(!touchpadOnly)
+                        },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1.1f).height(46.dp),
+                    ) {
+                        Text(
+                            stringResource(if (touchpadOnly) R.string.remote_more_controls else R.string.remote_touchpad_only),
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
-                    .semantics { contentDescription = typePlaceholder },
-            )
+                }
+            }
+
+            if (touchpadOnly) return@Column
+
+            // Scroll rather than squeeze the typing field when the keyboard is up.
+            Column(
+                modifier = if (imeVisible) Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()) else Modifier,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                // Voice typing bar (Dictate button: hold to talk, or tap to start/stop)
+                VoiceTypingBar(
+                    pcId = pcId,
+                    pcName = pcName,
+                    core = core,
+                    utteranceJoiner = utteranceJoiner,
+                    onStatus = onStatus,
+                )
+
+                // Special keys & modifiers bar (always accessible in Touchpad mode)
+                SpecialKeysBar(
+                    activeMods = activeMods,
+                    showExtraKeys = showKeyboard,
+                    onToggleMod = { mod ->
+                        if (mod in activeMods) activeMods.remove(mod) else activeMods.add(mod)
+                    },
+                    onKey = { key, forceMods ->
+                        val mods = forceMods ?: activeMods.toList()
+                        core.remoteKey(pcId, key, mods, onStatus)
+                        if (forceMods == null) activeMods.clear()
+                    },
+                )
+            }
+
+            // Soft keyboard input row when toggled open
+            if (showKeyboard) {
+                val typePlaceholder = stringResource(R.string.remote_type_placeholder, pcName)
+                OutlinedTextField(
+                    value = typed,
+                    onValueChange = { next ->
+                        val diff = typingDiff(typed.text, next.text)
+                        if (activeMods.isNotEmpty() && diff.backspaces == 0 && diff.added.length == 1 &&
+                            diff.added[0].isLetterOrDigit()
+                        ) {
+                            // A shortcut (Ctrl+C...), not text: it stays out of the field.
+                            core.remoteKey(pcId, diff.added.lowercase(), activeMods.toList(), onStatus)
+                            activeMods.clear()
+                            return@OutlinedTextField
+                        }
+                        repeat(diff.backspaces) { i ->
+                            core.remoteKey(pcId, "backspace", if (i == 0) activeMods.toList() else emptyList(), onStatus)
+                        }
+                        if (diff.added.isNotEmpty()) core.remoteText(pcId, diff.added, onStatus)
+                        if (diff.backspaces > 0 || diff.added.isNotEmpty()) activeMods.clear()
+                        // The cursor and selection here are free to move: an edit anywhere
+                        // goes over as Backspaces from the end, then what follows it again.
+                        typed = next
+                    },
+                    placeholder = { Text(typePlaceholder) },
+                    maxLines = 4,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(
+                        onSend = {
+                            core.remoteKey(pcId, "enter", activeMods.toList(), onStatus)
+                            activeMods.clear()
+                            typed = TextFieldValue("")
+                        },
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                        // Backspace with nothing typed here still deletes on the PC.
+                        .onPreviewKeyEvent { event ->
+                            if (event.type == KeyEventType.KeyDown && event.key == Key.Backspace && typed.text.isEmpty()) {
+                                core.remoteKey(pcId, "backspace", activeMods.toList(), onStatus)
+                                activeMods.clear()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        .semantics { contentDescription = typePlaceholder },
+                )
+            }
         }
     }
 }
+
+/** The touchpad strip while the keyboard is open. */
+private val PAD_WHILE_TYPING = 96.dp
+
+/**
+ * Height above the keyboard that fits the strip, the buttons, the field and a row
+ * of the keys below them, which scroll to make room.
+ */
+private val ROOM_FOR_PAD_WHILE_TYPING = 280.dp
 
 @Composable
 private fun AirMouseView(
