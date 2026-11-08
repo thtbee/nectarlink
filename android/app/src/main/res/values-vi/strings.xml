@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <resources>
-<!-- chunk 1/6: source entries to translate to Vietnamese; keep structure -->
-<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <string name="app_name">NectarLink</string>
 <!-- Pairing -->
 <string name="pair_title">Ghép nối với PC của bạn</string>
@@ -254,7 +252,6 @@
 <string name="action_pair">Ghép nối</string>
 <string name="action_pair_nearby">Ghép nối lân cận thay thế</string>
 
-<!-- chunk 2/6: source entries to translate to Vietnamese; keep structure -->
 <string name="action_scan_instead">Quét mã thay vào đó</string>
 <string name="action_codes_match">Mã đã khớp</string>
 <string name="action_codes_differ">Không khớp</string>
@@ -553,7 +550,6 @@
 <string name="data_clear_everything_button">Xóa mọi thứ…</string>
 <string name="data_clear_everything_dialog_title">Xóa toàn bộ dữ liệu cục bộ?</string>
 
-<!-- chunk 3/6: source entries to translate to Vietnamese; keep structure -->
 <string name="data_clear_everything_dialog_body">Xóa lịch sử bảng nhớ tạm, Timeline, bản ghi tệp đã nhận và bộ nhớ đệm trên điện thoại này. Các PC đã ghép nối và cài đặt được giữ lại.</string>
 <string name="data_clear_everything_confirm">Xóa mọi thứ</string>
 <string name="data_cleared_everything_toast">Đã xóa toàn bộ dữ liệu cục bộ trên điện thoại này.</string>
@@ -837,7 +833,6 @@
 <string name="walkthrough_done_title">Hoàn tất thiết lập</string>
 <string name="walkthrough_done_subtitle">NectarLink đã sẵn sàng. Bạn có thể mở lại phần hướng dẫn này bất cứ lúc nào từ Cài đặt › Giới thiệu.</string>
 
-<!-- chunk 4/6: source entries to translate to Vietnamese; keep structure -->
 <string name="walkthrough_done_summary_heading">Thiết lập của bạn</string>
 <string name="walkthrough_done_paired_label">PC đã ghép nối</string>
 <string name="walkthrough_done_no_pc">Chưa có · ghép nối bất cứ lúc nào trong Home</string>
@@ -1067,7 +1062,6 @@
 <string name="guide_timeline_needs">Không cần quyền bổ sung</string>
 <string name="guide_timeline_need_1">Ít nhất một mục đã chia sẻ để thẻ Dòng thời gian xuất hiện trên Home.</string>
 
-<!-- chunk 5/6: source entries to translate to Vietnamese; keep structure -->
 <string name="guide_timeline_phone_1">Chạm vào Dòng thời gian trên Trang chủ để tìm kiếm, lọc theo loại, hoặc chạm Gửi lần nữa trên các mục trước đó.</string>
 <string name="guide_timeline_pc_1">Mở Dòng thời gian trên PC để tìm kiếm lịch sử hoạt động từ màn hình nền.</string>
 <string name="guide_timeline_opt_1">Giữ mục dòng thời gian (30 ngày, 90 ngày, 1 năm, Tất cả): Đặt thời gian lưu trữ trong Cài đặt › Tính năng &amp; Dữ liệu › Dữ liệu &amp; bộ nhớ.</string>
@@ -1275,7 +1269,6 @@
 <string name="home_guide_card_body">Khám phá mọi tính năng của NectarLink, kiểm tra quyền theo thời gian thực, hoặc chạm Cho tôi xem để nhảy thẳng đến bất kỳ điều khiển nào.</string>
 <string name="home_no_pc_paired">Chưa ghép nối PC nào</string>
 
-<!-- chunk 6/6: source entries to translate to Vietnamese; keep structure -->
 <string name="home_no_pc_body">Mở NectarLink trên máy tính Windows hoặc Linux của bạn để ghép nối bằng mã QR hoặc tự động phát hiện trong mạng nội bộ, hoặc mở lại hướng dẫn thiết lập.</string>
 <string name="home_background_clipboard_title">Bảng nhớ tạm nền &amp; toàn quyền điều khiển</string>
 <string name="home_background_clipboard_body">Đồng bộ bảng nhớ tạm ở chế độ nền và bật điều khiển cảm ứng qua Gỡ lỗi không dây.</string>
