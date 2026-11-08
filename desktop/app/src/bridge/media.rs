@@ -48,10 +48,6 @@ pub mod qobject {
         #[qproperty(bool, can_play_on_phone, cxx_name = "canPlayOnPhone")]
         /// Play on phone: "off", "asking" (the phone's notification is up) or "watching".
         #[qproperty(QString, play_on_phone_state, cxx_name = "playOnPhoneState")]
-        /// The phone whose sound can play here without a window (its name), or "".
-        #[qproperty(QString, phone_sound_name, cxx_name = "phoneSoundName")]
-        /// Phone sound on this PC: "off", "asking" (the phone may be asking) or "playing".
-        #[qproperty(QString, phone_sound_state, cxx_name = "phoneSoundState")]
         type MediaList = super::MediaListRust;
     }
 
@@ -116,7 +112,11 @@ pub mod qobject {
         /// The phone sound on this PC toggle.
         #[qinvokable]
         #[cxx_name = "setPhoneSound"]
-        fn set_phone_sound(self: &MediaList, on: bool);
+        fn set_phone_sound(self: &MediaList, device: &QString, on: bool);
+        /// Sound state for this device. Bindings also depend on `revision`.
+        #[qinvokable]
+        #[cxx_name = "phoneSoundState"]
+        fn phone_sound_state(self: &MediaList, device: &QString) -> QString;
     }
 
     impl cxx_qt::Threading for MediaList {}
@@ -132,8 +132,6 @@ pub struct MediaListRust {
     play_on_phone_name: QString,
     can_play_on_phone: bool,
     play_on_phone_state: QString,
-    phone_sound_name: QString,
-    phone_sound_state: QString,
     rows: Vec<PlayerView>,
 }
 
@@ -271,15 +269,6 @@ impl qobject::MediaList {
         if *self.play_on_phone_state() != watch {
             self.as_mut().set_play_on_phone_state(watch);
         }
-        let sound_phone =
-            QString::from(crate::phone_sound::phone().map(|(_, name)| name).unwrap_or_default());
-        if *self.phone_sound_name() != sound_phone {
-            self.as_mut().set_phone_sound_name(sound_phone);
-        }
-        let sound = QString::from(crate::phone_sound::state());
-        if *self.phone_sound_state() != sound {
-            self.as_mut().set_phone_sound_state(sound);
-        }
         let revision = self.revision.wrapping_add(1);
         self.set_revision(revision);
     }
@@ -288,8 +277,14 @@ impl qobject::MediaList {
         crate::play_on_phone::set_on(on);
     }
 
-    pub fn set_phone_sound(&self, on: bool) {
-        crate::phone_sound::set_on(on);
+    pub fn set_phone_sound(&self, device: &QString, on: bool) {
+        if let Some(device) = super::parse_device(device) {
+            crate::phone_sound::set_on(device, on);
+        }
+    }
+
+    pub fn phone_sound_state(&self, device: &QString) -> QString {
+        QString::from(super::parse_device(device).map_or("off", |id| crate::phone_sound::state(&id)))
     }
 
     pub fn first_for(&self, device: &QString) -> i32 {

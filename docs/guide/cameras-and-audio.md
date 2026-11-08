@@ -78,6 +78,7 @@ If your desktop PC lacks speakers, or you want to walk around the room while lis
 
 To hear what your phone plays (music, videos, app sounds) through your PC's speakers or headphones without opening a mirror window, turn on **Phone sound on this PC** on the PC's Home screen.
 
+- If several phones are connected, select the phone’s tab on Home first. The switch shows and controls that phone’s sound. Turning it on for another phone stops the previous phone’s sound.
 - With `Elevated` it starts right away. Otherwise your phone asks first, as it does for mirroring: tap the notification, then allow it. Android's prompt talks about sharing your screen, but only the sound goes to the PC.
 - It's the same sound mirroring sends: on Android 10 and newer, apps that allow their audio to be captured (most media and games). Calls aren't included.
 - Your phone goes quiet while its sound plays on the PC. Without `Elevated` it turns its media volume down to 0 and back up when you turn this off (if you turned the volume up yourself meanwhile, yours stays).
