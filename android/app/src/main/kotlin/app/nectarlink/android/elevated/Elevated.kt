@@ -843,9 +843,18 @@ object Elevated {
                 event.key == "notifications" && display == null -> "C cmd statusbar expand-notifications"
                 else -> return true
             }
-            // Non-ASCII text and pastes travel in one command. The helper keeps
-            // direct insertion and clipboard fallbacks in typing order.
-            is MirrorInputEvent.Text -> return TextCommand.make(event.text, display)?.let { send(writer, it) } ?: true
+            // A key typed on the PC types; anything longer (a paste, a word from
+            // an input method, an emoji) goes on the clipboard, quietly, and is
+            // pasted at once: typing it out took a moment per letter, and a line
+            // break typed as Enter sends a chat message early.
+            is MirrorInputEvent.Text -> return when {
+                event.text.isEmpty() -> true
+                event.text == "\n" || event.text == "\r" || event.text == "\r\n" ->
+                    send(writer, "${to}K ${KeyEvent.KEYCODE_ENTER}")
+                event.text.length == 1 && event.text[0].code in 32..126 -> send(writer, "${to}T ${event.text}")
+                // The clipboard is the phone's own, whichever display the text is for.
+                else -> setClipboard(event.text, null) && send(writer, "${to}K ${KeyEvent.KEYCODE_PASTE}")
+            }
             is MirrorInputEvent.Gamepad ->
                 "G ${event.buttons} ${event.lx} ${event.ly} ${event.rx} ${event.ry} ${event.lt} ${event.rt}"
         }
