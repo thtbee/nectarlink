@@ -102,7 +102,8 @@ change things that need a step from you, and its notes say so.
   an app window gets a display of its own that keeps running when the phone's screen
   turns off or locks, including on Android 17, and opening one no longer wakes the
   phone. The phone remembers this with an app streaming link for the shell, made the
-  first time; where it can't, windows wake the screen as before.
+  first time; where it can't, windows wake the screen as before. Their toolbar no
+  longer shows Keep phone awake and Turn phone screen off, which do nothing for them.
 - **Pause phone notifications.** From the tray, Home or the command palette, for when
   you're presenting or sharing your screen. They still collect on Home
   ([#218](https://github.com/thtbee/nectarlink/issues/218)).
@@ -196,6 +197,8 @@ change things that need a step from you, and its notes say so.
 - **Phone as speaker could play the PC's sound twice on the phone.** It now leaves NectarLink's own sound out only while NectarLink is playing a phone's sound ([#281](https://github.com/thtbee/nectarlink/issues/281)).
 - **The PC app's album art cache no longer grows without limit.** It kept every cover of everything played on the PC (166 MB after a month on one PC), and now keeps the newest 90.
 - **The Elevated card on the phone is titled Elevated.** That's the name the guide, the setup and every hint use. It was titled "Real touch and keys", so people looking for Elevated couldn't find it ([#136](https://github.com/thtbee/nectarlink/issues/136)).
+- **Resizing a window is smooth on Windows.** Dragging the edge of an app window, the
+  mirror or the main window often froze for a second at a time.
 - **"Quiet while this PC is locked" now works on macOS.** The switch was there,
   but the app never found out whether the screen was locked, so pop-ups kept
   coming while the Mac was locked. Thanks to
