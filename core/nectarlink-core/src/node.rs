@@ -3536,6 +3536,13 @@ impl Node {
         crate::deck::set_pc_audio(&self.shared, &session, volume, muted).await
     }
 
+    /// Asks a paired PC to make one of its `output_devices` (by `id`) its
+    /// default audio output (`pc.audio.set { output }`).
+    pub async fn set_pc_audio_output(&self, peer: DeviceId, output: String) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::deck::set_pc_audio_output(&self.shared, &session, output).await
+    }
+
     // ---- Phone storage (PC File Explorer) ----
 
     /// Lists a directory on a connected phone (`storage.list`).

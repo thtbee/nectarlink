@@ -460,7 +460,7 @@
     <string name="pc_audio_output">Saída: %1$s</string>
     <string name="pc_audio_outputs_title">Saídas de áudio em %1$s</string>
     <string name="pc_audio_default_badge">Padrão</string>
-    <string name="pc_audio_outputs_hint">Dispositivos de reprodução ativos em %1$s.</string>
+    <string name="pc_audio_outputs_hint">Toque em um para tocar o som de %1$s nele.</string>
     <string name="pc_audio_use_phone_speaker">Usar o celular como alto-falante</string>
     <string name="pc_audio_use_phone_speaker_sub">Reproduzir o áudio do PC neste celular</string>
     <string name="pc_audio_use_phone_speaker_on">Transmitindo áudio do PC para este celular</string>

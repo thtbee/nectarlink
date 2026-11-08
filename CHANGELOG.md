@@ -34,6 +34,8 @@ change things that need a step from you, and its notes say so.
   managers mark private. It's marked private on the other side too, leaves that clipboard
   after a minute, and never goes into history, the Timeline or the offline queue
   ([#272](https://github.com/thtbee/nectarlink/issues/272)).
+- **Switch the PC's audio output from the phone.** Tap the device under Volume on the
+  phone, then pick another output, like speakers or headphones. Windows and Linux.
 - **Mirror quality.** Balanced as before, Sharper for the phone's full resolution, or
   Smoother for weak Wi-Fi, in Settings › Camera & Audio on the PC. It's for the phone's
   screen and app windows (those stay at 1920 at most), and over the relay it stays

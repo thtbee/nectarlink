@@ -642,7 +642,20 @@ pub(crate) async fn set_pc_audio(
     volume: Option<u8>,
     muted: Option<bool>,
 ) -> Result<()> {
-    let req = PcAudioSet { volume, muted };
+    send_pc_audio(shared, session, PcAudioSet { volume, muted, output: None }).await
+}
+
+/// Asks a paired PC to make one of its `output_devices` its default audio
+/// output (`pc.audio.set { output }`).
+pub(crate) async fn set_pc_audio_output(
+    shared: &Arc<Shared>,
+    session: &Arc<Session>,
+    output: String,
+) -> Result<()> {
+    send_pc_audio(shared, session, PcAudioSet { volume: None, muted: None, output: Some(output) }).await
+}
+
+async fn send_pc_audio(shared: &Arc<Shared>, session: &Arc<Session>, req: PcAudioSet) -> Result<()> {
     if !req.is_valid() {
         return Err(Error::Protocol("invalid PC audio request".into()));
     }
@@ -702,8 +715,9 @@ async fn run_pc_audio_set(shared: &Arc<Shared>, peer: &DeviceId, req: PcAudioSet
     if !shared.offers_pc_audio() && !shared.offers_deck() {
         return Envelope::error(ErrorCode::Unsupported, "PC audio control is not supported here");
     }
-    let is_phone_speaker_toggle =
-        req.volume.is_some_and(|v| v == PHONE_SPEAKER_OFF || v == PHONE_SPEAKER_ON) && req.muted.is_none();
+    let is_phone_speaker_toggle = req.volume.is_some_and(|v| v == PHONE_SPEAKER_OFF || v == PHONE_SPEAKER_ON)
+        && req.muted.is_none()
+        && req.output.is_none();
     // Playing this PC's sound on a phone shares what the PC plays, so it
     // needs that phone's media permission. Stopping is always allowed.
     if is_phone_speaker_toggle
@@ -722,13 +736,27 @@ async fn run_pc_audio_set(shared: &Arc<Shared>, peer: &DeviceId, req: PcAudioSet
     let from = *peer;
     let vol = req.volume;
     let muted = req.muted;
-    let ran = tokio::task::spawn_blocking(move || platform.set_pc_audio(&from, vol, muted))
-        .await
-        .unwrap_or_else(|e| Err(e.to_string()));
+    let output = req.output.clone();
+    let ran = tokio::task::spawn_blocking(move || {
+        if vol.is_some() || muted.is_some() {
+            platform.set_pc_audio(&from, vol, muted)?;
+        }
+        match &output {
+            Some(id) => platform.set_pc_audio_output(&from, id),
+            None => Ok(()),
+        }
+    })
+    .await
+    .unwrap_or_else(|e| Err(e.to_string()));
     match ran {
         Ok(()) => {
             if !is_phone_speaker_toggle {
                 let mut state = shared.deck.local_state();
+                if let Some(id) = &req.output {
+                    for device in &mut state.output_devices {
+                        device.is_default = device.id == *id;
+                    }
+                }
                 if let Some(v) = vol
                     && v <= 100
                 {

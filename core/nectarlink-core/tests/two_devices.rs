@@ -58,6 +58,7 @@ struct RecordingPlatform {
     phone_toggles: Mutex<Vec<(String, nectarlink_core::PhoneToggleValue)>>,
     deck_presses: Mutex<Vec<String>>,
     pc_audio_changes: Mutex<Vec<(Option<u8>, Option<bool>)>>,
+    pc_audio_outputs: Mutex<Vec<String>>,
     tasks: Mutex<Vec<nectarlink_core::TaskNotify>>,
     storage: Mutex<Option<nectarlink_core::FolderStorage>>,
 }
@@ -540,6 +541,10 @@ impl Platform for RecordingPlatform {
         muted: Option<bool>,
     ) -> Result<(), String> {
         self.pc_audio_changes.lock().unwrap().push((volume, muted));
+        Ok(())
+    }
+    fn set_pc_audio_output(&self, _from: &nectarlink_core::DeviceId, id: &str) -> Result<(), String> {
+        self.pc_audio_outputs.lock().unwrap().push(id.to_owned());
         Ok(())
     }
     fn storage_list(
@@ -3982,8 +3987,30 @@ async fn pc_audio_volume_mute_output_devices_and_smart_clipboard_context_chips_f
     pc.node.set_device_toggle(phone_id, "pc_actions", false).unwrap();
     assert!(matches!(phone.node.set_pc_audio(pc_id, Some(50), None).await, Err(Error::Denied)));
 
+    // Switching the output is a PC action too.
+    let headphones = "{0.0.0.00000000}.{headphones-id}".to_owned();
+    assert!(matches!(phone.node.set_pc_audio_output(pc_id, headphones.clone()).await, Err(Error::Denied)));
+    assert!(pc.platform.pc_audio_outputs.lock().unwrap().is_empty());
+
     // Turning `pc_actions` back on re-enables `set_pc_audio`.
     pc.node.set_device_toggle(phone_id, "pc_actions", true).unwrap();
+
+    // The phone switches the PC to the headphones; its list then shows them as the default.
+    with_timeout("switch pc output", phone.node.set_pc_audio_output(pc_id, headphones.clone()))
+        .await
+        .unwrap();
+    let switched = wait_for(&mut phone, "deck state with headphones default", |e| match e {
+        NodeEvent::DeckState { device, state }
+            if *device == pc_id && state.default_output_name() == Some("Headphones (USB DAC)") =>
+        {
+            Some(state.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(switched.output_devices.iter().filter(|d| d.is_default).count(), 1);
+    assert_eq!(*pc.platform.pc_audio_outputs.lock().unwrap(), vec![headphones]);
+    assert!(matches!(phone.node.set_pc_audio_output(pc_id, String::new()).await, Err(Error::Protocol(_))));
     with_timeout("set pc audio unmute + 65", phone.node.set_pc_audio(pc_id, Some(65), Some(false)))
         .await
         .unwrap();

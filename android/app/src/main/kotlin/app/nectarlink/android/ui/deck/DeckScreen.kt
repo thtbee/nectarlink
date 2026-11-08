@@ -233,6 +233,7 @@ fun DeckScreen(
                 pcName = device.name,
                 liveState = liveState,
                 onSetPcAudio = { vol, muted -> core.setPcAudio(device.id, vol, muted) },
+                onPickOutput = { output -> core.setPcAudioOutput(device.id, output) },
             )
         }
 
@@ -366,6 +367,7 @@ private fun DeckAudioHeaderBar(
     pcName: String,
     liveState: DeckState,
     onSetPcAudio: (volume: Int?, muted: Boolean?) -> Unit,
+    onPickOutput: (String) -> Unit,
 ) {
     var draggingVolume by remember { mutableStateOf<Float?>(null) }
     var lastSentVolume by remember { mutableStateOf(liveState.volume.toInt()) }
@@ -459,7 +461,11 @@ private fun DeckAudioHeaderBar(
     if (showOutputs && liveState.outputDevices.isNotEmpty()) {
         PcAudioOutputsDialog(
             pcName = pcName,
-            devices = liveState.outputDevices,
+            devices = liveState.outputDevices.filterNot { it.id == "nectarlink:phone_speaker" },
+            onPick = { output ->
+                onPickOutput(output)
+                showOutputs = false
+            },
             onDismiss = { showOutputs = false },
         )
     }

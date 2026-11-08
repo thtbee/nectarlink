@@ -270,6 +270,19 @@ pub fn handle_set_audio(peer: &DeviceId, volume: Option<u8>, muted: Option<bool>
     Ok(())
 }
 
+/// Makes `id`, one of this PC's real output devices, the default output, for a
+/// phone (`pc.audio.set { output }`). The phone speaker isn't a device to switch to.
+pub fn handle_set_output(id: &str) -> Result<(), String> {
+    if !win::audio::output_devices().iter().any(|d| d.id == id) {
+        return Err("no such output device".into());
+    }
+    win::audio::set_default_output_device(id)?;
+    core_host::spawn(async {
+        refresh_live_state().await;
+    });
+    Ok(())
+}
+
 /// Executes a tile's action by ID (used both for remote `deck.press` and the
 /// desktop Deck editor's "Test" button).
 pub fn execute_tile(tile_id: &str) -> Result<(), String> {

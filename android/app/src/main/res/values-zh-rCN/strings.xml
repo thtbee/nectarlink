@@ -442,7 +442,7 @@
     <string name="pc_audio_output">输出：%1$s</string>
     <string name="pc_audio_outputs_title">%1$s 上的音频输出</string>
     <string name="pc_audio_default_badge">默认</string>
-    <string name="pc_audio_outputs_hint">%1$s 上正在使用的播放设备。</string>
+    <string name="pc_audio_outputs_hint">点按一个设备，让 %1$s 的声音从那里播放。</string>
     <string name="pc_audio_use_phone_speaker">将手机用作扬声器</string>
     <string name="pc_audio_use_phone_speaker_sub">在此手机上播放电脑音频</string>
     <string name="pc_audio_use_phone_speaker_on">正在将电脑音频传输到此手机</string>
