@@ -43,9 +43,30 @@ Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $work | Out-Null
 $oldSetup = Join-Path $work $oldName
 $sums = Join-Path $work 'SHA256SUMS.txt'
-$asset = { param($name) ($release.assets | Where-Object name -eq $name).browser_download_url }
-Invoke-WebRequest (& $asset $oldName) -OutFile $oldSetup -Headers @{ 'User-Agent' = 'nectarlink-ci' }
-Invoke-WebRequest (& $asset 'SHA256SUMS.txt') -OutFile $sums -Headers @{ 'User-Agent' = 'nectarlink-ci' }
+# Through the API first: github.com's download links answered 504 for hours on
+# 2026-11-08 while the API still served the same files. A few rounds of each.
+function Get-ReleaseFile([string]$name, [string]$out) {
+    $file = $release.assets | Where-Object name -eq $name
+    if (-not $file) { throw "the release has no $name" }
+    $ways = @(
+        @{ Uri = $file.url; Headers = $headers + @{ Accept = 'application/octet-stream' } },
+        @{ Uri = $file.browser_download_url; Headers = @{ 'User-Agent' = 'nectarlink-ci' } }
+    )
+    for ($round = 1; $round -le 3; $round++) {
+        foreach ($way in $ways) {
+            try {
+                Invoke-WebRequest $way.Uri -OutFile $out -Headers $way.Headers
+                return
+            } catch {
+                Write-Host "  $name from $($way.Uri): $($_.Exception.Message)"
+            }
+        }
+        Start-Sleep (20 * $round)
+    }
+    throw "can't download $name"
+}
+Get-ReleaseFile $oldName $oldSetup
+Get-ReleaseFile 'SHA256SUMS.txt' $sums
 $listed = (Get-Content $sums | Where-Object { $_ -match "^([0-9a-f]{64})\s+\*?$([regex]::Escape($oldName))$" } | ForEach-Object { $Matches[1] }) | Select-Object -First 1
 Check "$oldName is the published one (SHA-256)" ($listed -and (Get-FileHash $oldSetup -Algorithm SHA256).Hash.ToLower() -eq $listed)
 
