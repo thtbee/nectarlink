@@ -462,7 +462,7 @@
     <string name="pc_audio_output">Output: %1$s</string>
     <string name="pc_audio_outputs_title">Audio outputs on %1$s</string>
     <string name="pc_audio_default_badge">Default</string>
-    <string name="pc_audio_outputs_hint">Active playback devices on %1$s.</string>
+    <string name="pc_audio_outputs_hint">Tap one to play %1$s\'s sound there.</string>
     <string name="pc_audio_use_phone_speaker">Use phone as speaker</string>
     <string name="pc_audio_use_phone_speaker_sub">Play PC audio on this phone</string>
     <string name="pc_audio_use_phone_speaker_on">Streaming PC audio to this phone</string>

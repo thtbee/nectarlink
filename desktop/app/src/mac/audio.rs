@@ -112,6 +112,12 @@ pub fn output_devices() -> Vec<nectarlink_core::AudioOutputDevice> {
     }]
 }
 
+/// Lists only the system's default output (see [`output_devices`]), so there's
+/// nothing to switch to yet.
+pub fn set_default_output_device(_id: &str) -> Result<(), String> {
+    Err("switching the audio output isn't supported on macOS yet".into())
+}
+
 pub fn watch(_changed: fn()) {}
 
 #[allow(dead_code)]

@@ -203,6 +203,52 @@ pub fn output_devices() -> Vec<nectarlink_core::AudioOutputDevice> {
     }
 }
 
+/// `CPolicyConfigClient` and `IPolicyConfig`: what Windows' own sound settings use
+/// to change the default device. There's no public API for it; this interface
+/// has stayed the same since Windows 7, and audio switchers like EarTrumpet use it.
+const CLSID_POLICY_CONFIG: GUID = GUID::from_u128(0x870af99c_171d_4f9e_af0d_e63df40c2bc9);
+const IID_POLICY_CONFIG: GUID = GUID::from_u128(0xf8679f50_850a_41cf_9c72_430f290290c8);
+/// `IPolicyConfig::SetDefaultEndpoint`'s place in its vtable: after `IUnknown`'s
+/// three methods and ten of its own.
+const SET_DEFAULT_ENDPOINT_SLOT: usize = 13;
+const RELEASE_SLOT: usize = 2;
+
+/// Makes `id`, an active output device, the default output for apps and system
+/// sounds (console and multimedia), as choosing it in Windows' sound settings does.
+pub fn set_default_output_device(id: &str) -> Result<(), String> {
+    use windows::{
+        Win32::Media::Audio::eMultimedia,
+        core::{HRESULT, HSTRING, IUnknown, Interface},
+    };
+    type SetDefaultEndpoint = unsafe extern "system" fn(*mut std::ffi::c_void, PCWSTR, ERole) -> HRESULT;
+    type Release = unsafe extern "system" fn(*mut std::ffi::c_void) -> u32;
+    if id.trim().is_empty() || id.chars().any(char::is_control) {
+        return Err("output device id is invalid".into());
+    }
+    let _com = ComGuard::new();
+    let wide = HSTRING::from(id);
+    // SAFETY: `CPolicyConfigClient` is activated and queried for `IPolicyConfig`;
+    // its vtable is read only at the documented slots, the interface pointer is
+    // released once, and `wide` outlives the calls.
+    unsafe {
+        let unknown: IUnknown =
+            CoCreateInstance(&CLSID_POLICY_CONFIG, None, CLSCTX_ALL).map_err(|e| e.to_string())?;
+        let mut policy = std::ptr::null_mut();
+        unknown.query(&IID_POLICY_CONFIG, &mut policy).ok().map_err(|e| e.to_string())?;
+        let vtable = *(policy as *const *const usize);
+        let set: SetDefaultEndpoint = std::mem::transmute(*vtable.add(SET_DEFAULT_ENDPOINT_SLOT));
+        let release: Release = std::mem::transmute(*vtable.add(RELEASE_SLOT));
+        let mut result = Ok(());
+        for role in [eConsole, eMultimedia] {
+            if let Err(e) = set(policy, PCWSTR(wide.as_ptr()), role).ok() {
+                result = Err(e.to_string());
+            }
+        }
+        release(policy);
+        result
+    }
+}
+
 /// Calls `changed` (on a worker thread, a moment after a burst of changes)
 /// whenever Windows reports a change to the default speaker's or
 /// microphone's volume or mute, or to the output devices (one plugged in or
@@ -319,5 +365,19 @@ mod tests {
             assert!(!d.id.is_empty());
             assert!(!d.name.is_empty());
         }
+    }
+
+    /// Calls Windows for real, so not on CI: making the current default output the
+    /// default again changes nothing the user hears, and a made-up device fails.
+    #[test]
+    #[ignore = "uses this PC's audio devices"]
+    fn the_default_output_can_be_set() {
+        let before = output_devices();
+        let Some(default) = before.iter().find(|d| d.is_default) else { return };
+        set_default_output_device(&default.id).expect("setting the current default output");
+        let after = output_devices();
+        assert_eq!(after.iter().find(|d| d.is_default).map(|d| &d.id), Some(&default.id));
+        assert!(set_default_output_device("{0.0.0.00000000}.{not-a-device}").is_err());
+        assert!(set_default_output_device("").is_err());
     }
 }

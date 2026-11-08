@@ -455,7 +455,7 @@
 <string name="pc_audio_output">Đầu ra: %1$s</string>
 <string name="pc_audio_outputs_title">Đầu ra âm thanh trên %1$s</string>
 <string name="pc_audio_default_badge">Mặc định</string>
-<string name="pc_audio_outputs_hint">Các thiết bị phát đang hoạt động trên %1$s.</string>
+<string name="pc_audio_outputs_hint">Chạm vào một thiết bị để phát âm thanh của %1$s ở đó.</string>
 <string name="pc_audio_use_phone_speaker">Dùng điện thoại làm loa</string>
 <string name="pc_audio_use_phone_speaker_sub">Phát âm thanh của PC trên điện thoại này</string>
 <string name="pc_audio_use_phone_speaker_on">Đang phát trực tuyến âm thanh PC tới điện thoại này</string>

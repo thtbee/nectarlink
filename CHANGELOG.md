@@ -37,6 +37,8 @@ change things that need a step from you, and its notes say so.
 - **Fluent theme.** The PC app can look like Windows 11's own apps: Mica, Segoe UI Variable,
   WinUI's toggles, buttons and navigation, and your Windows accent color. Pick it in
   Settings › Appearance ([#295](https://github.com/thtbee/nectarlink/issues/295)).
+- **Switch the PC's audio output from the phone.** Tap the device under Volume on the
+  phone, then pick another output, like speakers or headphones. Windows and Linux.
 - **Mirror quality.** Balanced as before, Sharper for the phone's full resolution, or
   Smoother for weak Wi-Fi, in Settings › Camera & Audio on the PC. It's for the phone's
   screen and app windows (those stay at 1920 at most), and over the relay it stays
@@ -154,6 +156,8 @@ what people reported since 0.1.4.
 - Quitting the PC app with a mirror open could crash it on the way out.
 - On GNOME with Wayland, text copied on the phone could be replaced by what was on the
   PC's clipboard, once NectarLink got focus.
+- On Wayland, Nectar Island went back to where the desktop put it after a song was paused and
+  played again. It now keeps the spot you dragged it to for 10 minutes after it goes quiet.
 - On a phone rooted with KernelSU or APatch, Elevated's settings didn't offer **Use root**:
   those show root only to apps they already allow. NectarLink now also looks for their
   manager app ([#291](https://github.com/thtbee/nectarlink/issues/291)).
