@@ -21,17 +21,37 @@ pub enum Theme {
     Hive,
     Glass,
     Graphite,
+    /// Windows 11's own look (WinUI 3), with the system accent color.
+    Fluent,
+}
+
+impl Theme {
+    /// The name QML and the settings file use.
+    pub fn name(self) -> &'static str {
+        match self {
+            Theme::Bloom => "bloom",
+            Theme::Hive => "hive",
+            Theme::Glass => "glass",
+            Theme::Graphite => "graphite",
+            Theme::Fluent => "fluent",
+        }
+    }
+
+    /// A theme by name; anything unknown is Bloom, the default.
+    pub fn parse(name: &str) -> Theme {
+        match name.trim().to_ascii_lowercase().as_str() {
+            "hive" => Theme::Hive,
+            "graphite" => Theme::Graphite,
+            "glass" | "blurry" => Theme::Glass,
+            "fluent" => Theme::Fluent,
+            _ => Theme::Bloom,
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for Theme {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let s = String::deserialize(deserializer).unwrap_or_default();
-        Ok(match s.trim().to_ascii_lowercase().as_str() {
-            "hive" => Theme::Hive,
-            "graphite" => Theme::Graphite,
-            "glass" | "blurry" => Theme::Glass,
-            _ => Theme::Bloom,
-        })
+        Ok(Theme::parse(&String::deserialize(deserializer).unwrap_or_default()))
     }
 }
 
@@ -875,6 +895,16 @@ pub(crate) fn create_private_file(path: &Path) -> std::io::Result<fs::File> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_theme_keeps_its_name() {
+        for theme in [Theme::Bloom, Theme::Hive, Theme::Glass, Theme::Graphite, Theme::Fluent] {
+            assert_eq!(Theme::parse(theme.name()), theme);
+        }
+        assert_eq!(Theme::parse("Fluent "), Theme::Fluent);
+        assert_eq!(Theme::parse("blurry"), Theme::Glass);
+        assert_eq!(Theme::parse("unknown"), Theme::Bloom);
+    }
 
     #[test]
     fn an_update_asks_for_a_star_unless_it_was_answered() {

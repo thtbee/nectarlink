@@ -311,6 +311,81 @@ QtObject {
             }
           }
         },
+        "fluent": {
+          "description": "Windows 11's own look (WinUI 3): Mica behind a navigation pane, layered cards with hairline strokes, 4 px controls, the system accent color. primary is the default accent; on Windows the app uses the user's accent instead (AccentPalette: Dark1 in light, Light2 in dark).",
+          "dynamicColor": false,
+          "fonts": {
+            "display": "Segoe UI Variable Display",
+            "label": "Segoe UI Variable Text",
+            "mono": "Cascadia Mono",
+            "ui": "Segoe UI Variable Text"
+          },
+          "label": {
+            "case": "none",
+            "size": 14,
+            "tracking": 0,
+            "weight": 600
+          },
+          "rules": [
+            "Mica (Windows 11) behind everything; the navigation pane sits straight on it, and pages on one layer with an 8 px top-left corner and a hairline stroke.",
+            "Cards: 8 px corners, 1 px strokes, no shadows. Controls (buttons, fields, segments): 4 px corners.",
+            "Toggles are WinUI ToggleSwitches: 40 x 20, a stroked track and a 12 px knob that grows on hover.",
+            "The selected navigation item has a subtle fill and a 3 x 16 px accent pill at its left edge.",
+            "Accent only on what's active or primary, never as a background wash. Text: Segoe UI Variable."
+          ],
+          "shape": {
+            "full": 4,
+            "lg": 8,
+            "md": 4,
+            "sm": 4,
+            "xl": 8,
+            "xs": 2
+          },
+          "variants": {
+            "dark": {
+              "error": "#FF99A4",
+              "onError": "#000000",
+              "onPrimary": "#000000",
+              "onPrimaryContainer": "#CDEBFF",
+              "onSecondaryContainer": "#FFFFFF",
+              "onSurface": "#FFFFFF",
+              "onSurfaceVariant": "#C5C5C5",
+              "outline": "#9A9A9A",
+              "outlineVariant": "#333333",
+              "primary": "#60CDFF",
+              "primaryContainer": "#283844",
+              "secondaryContainer": "#2D2D2D",
+              "success": "#6CCB5F",
+              "surface": "#202020",
+              "surfaceContainer": "#2B2B2B",
+              "surfaceContainerHigh": "#323232",
+              "surfaceContainerHighest": "#3A3A3A",
+              "surfaceContainerLow": "#202020",
+              "warning": "#FCE100"
+            },
+            "light": {
+              "error": "#C42B1C",
+              "onError": "#FFFFFF",
+              "onPrimary": "#FFFFFF",
+              "onPrimaryContainer": "#003D78",
+              "onSecondaryContainer": "#1A1A1A",
+              "onSurface": "#1A1A1A",
+              "onSurfaceVariant": "#5D5D5D",
+              "outline": "#8A8A8A",
+              "outlineVariant": "#E5E5E5",
+              "primary": "#005FB8",
+              "primaryContainer": "#E6EEF7",
+              "secondaryContainer": "#EAEAEA",
+              "success": "#0F7B0F",
+              "surface": "#F3F3F3",
+              "surfaceContainer": "#FBFBFB",
+              "surfaceContainerHigh": "#F9F9F9",
+              "surfaceContainerHighest": "#ECECEC",
+              "surfaceContainerLow": "#F3F3F3",
+              "warning": "#945700"
+            }
+          }
+        },
         "graphite": {
           "description": "Built-in alternative, from github.com/thtbee/graphite. Monochrome ink on paper / chalk on slate; dynamic color off.",
           "dynamicColor": false,

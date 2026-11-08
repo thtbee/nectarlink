@@ -64,6 +64,9 @@ pub mod qobject {
         /// Bloom colors from the desktop wallpaper, as JSON in the shape of
         /// a tokens.json seed (`{ seed, light, dark }`); "" until known.
         #[qproperty(QString, wallpaper_colors)]
+        /// Windows' accent color for the Fluent theme, `{"light": "#rrggbb", "dark": "#rrggbb"}`,
+        /// or empty where there's none (other systems).
+        #[qproperty(QString, system_accent)]
         /// Material You color schemes for paired phones (`[{ id, key, name, label, hasAccent, scheme }]`).
         #[qproperty(QString, phone_colors)]
         /// Whether Windows shows this app's notifications.
@@ -439,6 +442,7 @@ pub struct AppControllerRust {
     reduce_motion: bool,
     power_saver: bool,
     wallpaper_colors: QString,
+    system_accent: QString,
     phone_colors: QString,
     toasts_enabled: bool,
     version: QString,
@@ -980,12 +984,7 @@ fn dispatch_jump_task(qt: &CxxQtThread<qobject::AppController>, action: String) 
                 Some((name, "light")) => (name, Some(ColorMode::Light)),
                 _ => (mode, None),
             };
-            st.theme = match name {
-                "graphite" => Theme::Graphite,
-                "glass" => Theme::Glass,
-                "hive" => Theme::Hive,
-                _ => Theme::Bloom,
-            };
+            st.theme = Theme::parse(name);
             st.color_mode =
                 color.unwrap_or(if name == "graphite" { ColorMode::Dark } else { ColorMode::Light });
             let _ = st.save(dir);
@@ -1076,6 +1075,12 @@ static WALLPAPER_GENERATION: AtomicU64 = AtomicU64::new(0);
 
 /// Works out the wallpaper's colors on a worker thread (decoding a photo
 /// takes a moment) and hands them to QML.
+/// The accent pair QML reads (`AppController.systemAccent`).
+fn accent_json(light: [u8; 3], dark: [u8; 3]) -> String {
+    let hex = |c: [u8; 3]| format!("#{:02X}{:02X}{:02X}", c[0], c[1], c[2]);
+    serde_json::json!({ "light": hex(light), "dark": hex(dark) }).to_string()
+}
+
 fn refresh_wallpaper_colors(qt: CxxQtThread<qobject::AppController>) {
     let generation = WALLPAPER_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
     let spawned = std::thread::Builder::new().name("wallpaper-colors".into()).spawn(move || {
@@ -1402,6 +1407,9 @@ impl qobject::AppController {
 
     fn refresh_appearance(mut self: Pin<&mut Self>) {
         self.as_mut().set_system_dark(win::system_dark());
+        self.as_mut().set_system_accent(QString::from(
+            win::accent_colors().map(|(light, dark)| accent_json(light, dark)).unwrap_or_default(),
+        ));
         self.as_mut().set_reduce_motion(win::reduce_motion());
         self.as_mut().set_power_saver(win::power_saver());
         refresh_wallpaper_colors(self.qt_thread());

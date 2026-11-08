@@ -47,7 +47,8 @@ use windows::{
             Com::{COINIT_APARTMENTTHREADED, CoInitializeEx, CoUninitialize},
             Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS},
             Registry::{
-                HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, RRF_RT_REG_DWORD, RRF_RT_REG_SZ, RegGetValueW,
+                HKEY, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, RRF_RT_REG_BINARY, RRF_RT_REG_DWORD,
+                RRF_RT_REG_SZ, RegGetValueW,
             },
         },
         UI::WindowsAndMessaging::{
@@ -73,6 +74,33 @@ fn reg_dword(root: HKEY, key: &str, value: &str) -> Option<u32> {
         )
     };
     (status == ERROR_SUCCESS).then_some(data)
+}
+
+/// The user's accent color as WinUI 3 apps use it: `(light, dark)`, the
+/// palette's Dark1 shade for light mode and Light2 for dark mode, from the 32
+/// bytes Windows keeps in `Explorer\Accent\AccentPalette` (eight RGBA colors,
+/// lightest first, the accent itself fourth).
+pub fn accent_colors() -> Option<([u8; 3], [u8; 3])> {
+    let mut data = [0u8; 32];
+    let mut size = data.len() as u32;
+    // SAFETY: data/size describe a live 32-byte buffer.
+    let status = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            &HSTRING::from(r"Software\Microsoft\Windows\CurrentVersion\Explorer\Accent"),
+            &HSTRING::from("AccentPalette"),
+            RRF_RT_REG_BINARY,
+            None,
+            Some(data.as_mut_ptr().cast()),
+            Some(&mut size),
+        )
+    };
+    (status == ERROR_SUCCESS && size >= 32).then(|| accent_from_palette(&data))
+}
+
+fn accent_from_palette(palette: &[u8; 32]) -> ([u8; 3], [u8; 3]) {
+    let color = |i: usize| [palette[i * 4], palette[i * 4 + 1], palette[i * 4 + 2]];
+    (color(4), color(1))
 }
 
 /// Windows' per-installation machine GUID. It stays the same across app reinstalls, so a
@@ -276,6 +304,27 @@ pub fn with_com<T>(f: impl FnOnce() -> T) -> T {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_accent_is_windows_dark1_in_light_mode_and_light2_in_dark() {
+        // Windows' default blue AccentPalette: Light3, Light2, Light1, Accent, Dark1, Dark2, Dark3, unused.
+        let colors: [[u8; 3]; 8] = [
+            [0x99, 0xEB, 0xFF],
+            [0x4C, 0xC2, 0xFF],
+            [0x00, 0x91, 0xF8],
+            [0x00, 0x78, 0xD4],
+            [0x00, 0x5F, 0xB8],
+            [0x00, 0x3D, 0x92],
+            [0x00, 0x19, 0x68],
+            [0x88, 0x17, 0x98],
+        ];
+        let mut palette = [0u8; 32];
+        for (i, c) in colors.iter().enumerate() {
+            palette[i * 4..i * 4 + 3].copy_from_slice(c);
+            palette[i * 4 + 3] = 0xFF;
+        }
+        assert_eq!(accent_from_palette(&palette), ([0x00, 0x5F, 0xB8], [0x4C, 0xC2, 0xFF]));
+    }
 
     #[test]
     fn reads_the_windows_version() {

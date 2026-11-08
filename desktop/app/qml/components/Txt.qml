@@ -21,7 +21,10 @@ Text {
     // Set this (not font.weight) to change the weight: Figtree is a variable
     // font, and its weight axis is set to match, so in-between weights such
     // as 650 render exactly instead of snapping to a named style.
-    property int weight: graphiteLabel ? Theme.labelStyle.weight : (isDisplay && Theme.graphite ? 400 : spec.weight)
+    // Fluent follows Windows' type ramp: semibold titles, regular text.
+    property int weight: graphiteLabel ? Theme.labelStyle.weight
+        : (isDisplay && Theme.graphite ? 400
+            : (Theme.fluent ? (spec.weight >= 600 ? 600 : 400) : spec.weight))
 
     readonly property string family: role === "code" || graphiteLabel
         ? Theme.fontMono : (isDisplay ? Theme.fontDisplay : Theme.fontUi)
@@ -31,7 +34,7 @@ Text {
     font.pixelSize: Math.max(1, Math.round(size))
     font.weight: weight
     font.variableAxes: family === Theme.fontUi ? { "wght": weight } : {}
-    font.letterSpacing: (graphiteLabel ? Theme.labelStyle.tracking : spec.tracking) * size
+    font.letterSpacing: Theme.fluent ? 0 : (graphiteLabel ? Theme.labelStyle.tracking : spec.tracking) * size
     font.capitalization: graphiteLabel ? Font.AllUppercase : Font.MixedCase
     // Token line heights are CSS-style (a multiple of the font size), not
     // a multiple of the font's own line spacing.

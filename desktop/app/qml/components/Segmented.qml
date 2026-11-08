@@ -21,14 +21,15 @@ Rectangle {
     readonly property Item selectedItem: (selectedIndex >= 0 && selectedIndex < segRepeater.count)
         ? segRepeater.itemAt(selectedIndex) : null
 
-    implicitHeight: 36
+    implicitHeight: Theme.fluent ? 32 : 36
     implicitWidth: row.implicitWidth + 6
     radius: Theme.graphite ? Theme.radiusSm : Theme.pill(height)
     color: Theme.graphite
         ? "transparent"
-        : (Theme.glass ? Qt.rgba(1, 1, 1, Theme.dark ? 0.08 : 0.44) : Theme.surfaceContainerHigh)
-    border.width: Theme.graphite || Theme.glass ? 1 : 0
-    border.color: Theme.glass
+        : (Theme.fluent ? Theme.controlAltFill
+            : (Theme.glass ? Qt.rgba(1, 1, 1, Theme.dark ? 0.08 : 0.44) : Theme.surfaceContainerHigh))
+    border.width: Theme.graphite || Theme.glass || Theme.fluent ? 1 : 0
+    border.color: Theme.fluent ? Theme.controlStroke : Theme.glass
         ? Qt.rgba(1, 1, 1, Theme.dark ? 0.18 : 0.65)
         : Theme.outlineVariant
 
@@ -45,11 +46,23 @@ Rectangle {
         radius: Theme.graphite ? Math.max(2, Theme.radiusSm - 2) : Theme.pill(height)
         color: Theme.graphite
             ? Theme.surfaceContent
+            : Theme.fluent ? (Theme.dark ? Qt.rgba(1, 1, 1, 0.084) : "#FFFFFF")
             : (Theme.glass
                 ? Qt.tint(Qt.rgba(1, 1, 1, Theme.dark ? 0.16 : 0.78), Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, Theme.dark ? 0.24 : 0.14))
                 : (Theme.hive ? Theme.primaryContainer : Theme.surface))
-        border.width: Theme.glass ? 1 : 0
-        border.color: Qt.rgba(1, 1, 1, Theme.dark ? 0.28 : 0.85)
+        border.width: Theme.glass || Theme.fluent ? 1 : 0
+        border.color: Theme.fluent ? Theme.controlStroke : Qt.rgba(1, 1, 1, Theme.dark ? 0.28 : 0.85)
+        // Fluent: an accent pill under the selected label.
+        Rectangle {
+            visible: Theme.fluent
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 2
+            width: 16
+            height: 3
+            radius: 1.5
+            color: Theme.primary
+        }
         Behavior on x {
             enabled: !Theme.reduceMotion && slideIndicator.width > 0
             SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy }
@@ -109,6 +122,8 @@ Rectangle {
                     anchors.centerIn: parent
                     text: option.modelData.label
                     role: "label"
+                    size: Theme.fluent ? 14 : Theme.typography.label.size
+                    weight: Theme.fluent ? (option.selected ? 600 : 400) : Theme.typography.label.weight
                     color: option.selected
                         ? (Theme.graphite ? Theme.surface : (Theme.hive ? Theme.primaryContainerContent : Theme.surfaceContent))
                         : (segMouse.containsMouse ? Theme.surfaceContent : Theme.surfaceContentVariant)
@@ -118,7 +133,7 @@ Rectangle {
                     id: segMouse
                     anchors.fill: parent
                     hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
+                    cursorShape: Theme.controlCursor
                     onClicked: segmented.picked(option.modelData.value)
                 }
             }

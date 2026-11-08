@@ -348,7 +348,9 @@ NativeWindow {
     // before it is removed.
     // Hive keeps its own fixed colors, so it never shows the wallpaper through.
     // Windows 10 has no backdrop: the window stays opaque there.
-    readonly property bool wantBackdrop: Qt.platform.os === "windows" && systemBackdropSupported && (Preferences.backdrop || Theme.glass) && !Theme.amoled && !Theme.hive
+    // Fluent is Mica's own theme, so it always asks for it.
+    readonly property bool wantBackdrop: Qt.platform.os === "windows" && systemBackdropSupported
+        && (Preferences.backdrop || Theme.glass || Theme.fluent) && !Theme.amoled && !Theme.hive
     property bool micaApplied: false
     property bool micaVisible: false
     backdrop: micaApplied
@@ -408,7 +410,7 @@ NativeWindow {
 
     // Window background: a tinted veil of the theme over Mica/Acrylic (so the
     // theme's seed color is rich and clear), opaque otherwise.
-    readonly property color windowSurface: Theme.graphite || Theme.amoled || Theme.hive
+    readonly property color windowSurface: Theme.graphite || Theme.amoled || Theme.hive || Theme.fluent
         ? Theme.surface
         : Qt.tint(
             Theme.surface,
@@ -421,12 +423,13 @@ NativeWindow {
         )
     Rectangle {
         anchors.fill: parent
+        // Fluent: Mica itself, as WinUI apps show it; its solid color without it.
         color: window.micaVisible && !Theme.amoled
             ? Qt.rgba(
                 window.windowSurface.r,
                 window.windowSurface.g,
                 window.windowSurface.b,
-                Theme.glass ? (Theme.dark ? 0.38 : 0.46) : (Theme.dark ? 0.76 : 0.84)
+                Theme.fluent ? 0 : (Theme.glass ? (Theme.dark ? 0.38 : 0.46) : (Theme.dark ? 0.76 : 0.84))
             )
             : window.windowSurface
         Behavior on color { ColorAnimation { duration: Theme.fadeNormal } }
@@ -689,6 +692,20 @@ NativeWindow {
         anchors.left: rail.right
         anchors.right: parent.right
         height: parent.height
+
+        // Fluent: pages sit on one layer over Mica, rounded at the top left with
+        // a hairline, as in WinUI's NavigationView. The title bar stays on Mica.
+        Rectangle {
+            visible: Theme.fluent
+            x: 0
+            y: Theme.topBarHeight
+            width: parent.width + 1
+            height: parent.height - Theme.topBarHeight + 1
+            topLeftRadius: 8
+            color: Theme.layerFill
+            border.width: 1
+            border.color: Theme.layerStroke
+        }
 
         Item {
             id: topBar
