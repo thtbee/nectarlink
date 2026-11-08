@@ -2526,7 +2526,11 @@ mod tests {
 
     #[test]
     fn an_idle_decoder_ends_when_the_app_quits() {
-        use std::sync::{Arc, atomic::{AtomicBool, Ordering}, mpsc::sync_channel};
+        use std::sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+            mpsc::sync_channel,
+        };
         use std::time::{Duration, Instant};
         let (queue, items) = sync_channel::<super::Item>(4);
         let stopping = Arc::new(AtomicBool::new(false));
