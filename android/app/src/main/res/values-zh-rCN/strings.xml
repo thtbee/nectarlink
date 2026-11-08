@@ -97,7 +97,7 @@
     <string name="elevated_set_up">设置</string>
     <string name="elevated_root_hint">这台手机已Root，Elevated也可以改用Root启动：无需配对，重启后或离开Wi-Fi时也会自动恢复。权限与使用无线调试时相同。</string>
     <string name="elevated_running_root">已通过Root开启：电脑的鼠标和键盘就像真实的触摸屏和键盘一样工作。</string>
-    <string name="elevated_root_failed">未获得Root授权，或Root管理器无法以shell用户身份启动NectarLink的辅助程序。你可以改用无线调试进行设置。</string>
+    <string name="elevated_root_failed">未获得Root授权，或Root管理器无法以shell用户身份启动NectarLink的辅助程序。如果使用KernelSU或APatch，请先把NectarLink加入其超级用户列表，然后重试。也可以改用无线调试进行设置。</string>
     <string name="elevated_shizuku_hint">已安装 Shizuku，因此 Elevated 可以改为通过它启动：无需单独配对，只要 Shizuku 在运行，离开 Wi-Fi 也能继续使用。它获得的权限与无线调试相同。</string>
     <string name="elevated_running_shizuku">已开启（通过 Shizuku）：电脑的鼠标和键盘就像真正的触摸屏和键盘一样工作。</string>
     <string name="elevated_shizuku_waiting">正在等待 Shizuku。请在 Shizuku 应用中启动它，然后打开 NectarLink。</string>

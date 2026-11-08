@@ -109,24 +109,25 @@ object Elevated {
 
     val running: Boolean get() = input != null
 
-    private val rootAvailableCached: Boolean by lazy {
-        val paths = arrayOf(
-            "/system/bin/su",
-            "/system/xbin/su",
-            "/sbin/su",
-            "/debug_ramdisk/su",
-            "/data/adb/ksu/bin/su",
-            "/data/adb/ap/bin/su",
-        )
-        paths.any { runCatching { java.io.File(it).exists() }.getOrDefault(false) }
-    }
+    private val suPaths = arrayOf(
+        "/system/bin/su",
+        "/system/xbin/su",
+        "/sbin/su",
+        "/debug_ramdisk/su",
+        "/data/adb/ksu/bin/su",
+        "/data/adb/ap/bin/su",
+    )
 
     /**
-     * Whether a `su` binary (Magisk, KernelSU, APatch) is on the phone, so
-     * Elevated may offer root as a way to start. Only looks for the file:
-     * nothing asks for root until the user picks it.
+     * Whether the phone is rooted (Magisk, KernelSU, APatch), so Elevated may
+     * offer root as a way to start. Only looks: nothing asks for root until the
+     * user picks it. KernelSU and APatch show `su` only to apps they already
+     * allow, so their manager apps count too (#291). Not cached: allowing
+     * NectarLink there and coming back shows it at once.
      */
-    fun isRootAvailable(): Boolean = rootAvailableCached
+    fun isRootAvailable(): Boolean =
+        suPaths.any { runCatching { java.io.File(it).exists() }.getOrDefault(false) } ||
+            (::context.isInitialized && RootManagers.anyInstalled(context.packageManager))
 
     /** Whether the user set Elevated up through root. */
     private fun usesRoot() = isRootAvailable() && prefs().getBoolean(ROOT, false)

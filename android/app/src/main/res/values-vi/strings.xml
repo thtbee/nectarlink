@@ -102,7 +102,7 @@
 <string name="elevated_set_up">Thiết lập</string>
 <string name="elevated_root_hint">Điện thoại này đã root, nên Elevated có thể khởi động qua root: không cần ghép nối, và nó tự quay lại sau khi khởi động lại hoặc rời Wi-Fi. Nó có cùng quyền như khi dùng Gỡ lỗi không dây.</string>
 <string name="elevated_running_root">Bật, qua root: chuột và bàn phím của PC hoạt động như màn hình cảm ứng và bàn phím thật.</string>
-<string name="elevated_root_failed">Root không được cho phép, hoặc trình quản lý root của bạn không thể khởi động trình hỗ trợ của NectarLink dưới dạng người dùng shell. Bạn có thể thiết lập qua Gỡ lỗi không dây thay thế.</string>
+<string name="elevated_root_failed">Root không được cho phép, hoặc trình quản lý root của bạn không thể khởi động trình hỗ trợ của NectarLink dưới dạng người dùng shell. Với KernelSU hoặc APatch, hãy thêm NectarLink vào danh sách Siêu người dùng trước rồi thử lại. Hoặc thiết lập qua Gỡ lỗi không dây.</string>
 <string name="elevated_shizuku_hint">Shizuku đã được cài đặt, nên Elevated có thể khởi động qua nó: không cần ghép nối riêng, và nó vẫn hoạt động khi rời Wi-Fi miễn là Shizuku đang chạy. Nó có cùng quyền như khi dùng Gỡ lỗi không dây.</string>
 <string name="elevated_running_shizuku">Bật, qua Shizuku: chuột và bàn phím của PC hoạt động như màn hình cảm ứng và bàn phím thật.</string>
 <string name="elevated_shizuku_waiting">Đang chờ Shizuku. Hãy khởi động nó trong ứng dụng Shizuku, rồi mở NectarLink.</string>

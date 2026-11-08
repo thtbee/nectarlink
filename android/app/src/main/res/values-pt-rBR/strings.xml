@@ -103,7 +103,7 @@
     <string name="elevated_set_up">Configurar</string>
     <string name="elevated_root_hint">Este celular tem root, então o Elevated pode ser iniciado pelo root: sem pareamento, e ele volta sozinho depois de reiniciar ou fora do Wi-Fi. As permissões são as mesmas da depuração por Wi-Fi.</string>
     <string name="elevated_running_root">Ativado pelo root: o mouse e o teclado do PC funcionam como uma tela touch e um teclado de verdade.</string>
-    <string name="elevated_root_failed">O root não foi permitido, ou o seu gerenciador de root não consegue iniciar o auxiliar do NectarLink como usuário shell. Você pode configurar pela depuração por Wi-Fi.</string>
+    <string name="elevated_root_failed">O root não foi permitido, ou o seu gerenciador de root não consegue iniciar o auxiliar do NectarLink como usuário shell. No KernelSU ou APatch, adicione o NectarLink à lista de Superusuário primeiro e tente de novo. Ou configure pela depuração por Wi-Fi.</string>
     <string name="elevated_shizuku_hint">O Shizuku está instalado, então o Elevated pode ser iniciado por ele: sem pareamento próprio, e continua funcionando fora do Wi-Fi enquanto o Shizuku estiver rodando. As permissões são as mesmas da depuração por Wi-Fi.</string>
     <string name="elevated_running_shizuku">Ativado pelo Shizuku: o mouse e o teclado do PC funcionam como uma tela touch e um teclado de verdade.</string>
     <string name="elevated_shizuku_waiting">Aguardando o Shizuku. Inicie-o no app Shizuku e abra o NectarLink.</string>
