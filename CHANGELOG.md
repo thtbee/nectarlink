@@ -144,6 +144,8 @@ what people reported since 0.1.4.
 - Quitting the PC app with a mirror open could crash it on the way out.
 - On GNOME with Wayland, text copied on the phone could be replaced by what was on the
   PC's clipboard, once NectarLink got focus.
+- On Linux, quitting the PC app (or logging out) with a phone's screen or an app window
+  open could crash it on the way out.
 - Following the system's language, the PC app could open in German (or another language
   further down Windows' list) when English came first
   ([#280](https://github.com/thtbee/nectarlink/issues/280)).
