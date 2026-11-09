@@ -183,6 +183,9 @@ what people reported since 0.1.4.
   longer loops into loud distortion on Windows: the PC's sound sent to the phone leaves out
   NectarLink's own, and the phone
   doesn't send the PC's sound back with its own either ([#281](https://github.com/thtbee/nectarlink/issues/281)).
+- **Enter sends messages** now sends in WhatsApp, Telegram and Messenger, whose message boxes
+  ignore the keyboard's Send: it presses the app's Send button instead
+  ([#220](https://github.com/thtbee/nectarlink/issues/220)).
 - Elevated's pairing notification says to swipe it down for **Enter code**, which phones that keep
   it collapsed hide ([#305](https://github.com/thtbee/nectarlink/issues/305)).
 - The Nectar Island keeps animating (the scrolling title and the equalizer) after the main window is
