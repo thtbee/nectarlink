@@ -2,6 +2,7 @@
 package app.nectarlink.android.elevated
 
 import android.os.Build
+import io.github.muntashirakon.adb.AdbPairingRequiredException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -69,6 +70,27 @@ internal object LoopbackAdb {
             }
         }
         return withTimeoutOrNull(timeoutMs) { result.await() } ?: false
+    }
+
+    /**
+     * Connects the usual way ([found], through mDNS), or else on 127.0.0.1
+     * ([loopback]). adbd saying it no longer knows this phone isn't a miss:
+     * it goes to the caller, so the user is asked to pair again.
+     */
+    suspend fun foundOrLoopback(
+        found: suspend () -> Boolean,
+        loopback: suspend () -> Boolean,
+        onMissed: (Exception) -> Unit = {},
+    ): Boolean {
+        val connected = try {
+            found()
+        } catch (e: AdbPairingRequiredException) {
+            throw e
+        } catch (e: Exception) {
+            onMissed(e)
+            false
+        }
+        return connected || loopback()
     }
 
     /** adbd's port for connecting (it answers an adb hello), among [open]. */
