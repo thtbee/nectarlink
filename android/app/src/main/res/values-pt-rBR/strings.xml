@@ -119,6 +119,7 @@
     <string name="elevated_pair_title">Parear o NectarLink pela depuração por Wi-Fi</string>
     <string name="elevated_pair_text">Em Depuração por Wi-Fi, toque em Parear o dispositivo com um código de pareamento e digite o código aqui.</string>
     <string name="elevated_pair_action">Digitar código</string>
+    <string name="elevated_pair_collapsed">Deslize esta notificação para baixo e toque em Digitar código.</string>
     <string name="elevated_pair_hint">Código de pareamento de 6 dígitos</string>
     <string name="elevated_pairing">Pareando…</string>
     <string name="elevated_no_dialog">O código de pareamento não está aparecendo. Em Depuração por Wi-Fi, toque em Parear o dispositivo com um código de pareamento e digite o código aqui.</string>

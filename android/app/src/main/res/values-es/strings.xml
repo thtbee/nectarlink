@@ -121,6 +121,7 @@
     <string name="elevated_pair_title">Emparejar NectarLink con depuración inalámbrica</string>
     <string name="elevated_pair_text">En Depuración inalámbrica, toca Emparejar dispositivo con código de emparejamiento y escribe el código aquí.</string>
     <string name="elevated_pair_action">Introduce el código</string>
+    <string name="elevated_pair_collapsed">Desliza esta notificación hacia abajo y toca Introduce el código.</string>
     <string name="elevated_pair_hint">Código de emparejamiento de 6 dígitos</string>
     <string name="elevated_pairing">Emparejando…</string>
     <string name="elevated_no_dialog">No se muestra el código de emparejamiento. En Depuración inalámbrica, toca Emparejar dispositivo con código de emparejamiento y escríbelo aquí.</string>
