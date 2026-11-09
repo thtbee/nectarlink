@@ -340,7 +340,8 @@ object Elevated {
 
     /**
      * Connects to wireless debugging found on 127.0.0.1 (Android 17 and later,
-     * see [LoopbackAdb]), waiting a moment for it to start listening.
+     * see [LoopbackAdb], and earlier when mDNS finds nothing), waiting a moment
+     * for it to start listening.
      */
     private suspend fun connectOverLoopback(adb: Connection): Boolean {
         val deadline = System.currentTimeMillis() + CONNECT_MS
@@ -351,6 +352,19 @@ object Elevated {
             delay(LOOPBACK_RETRY_MS)
         }
     }
+
+    /**
+     * Connects to wireless debugging found with mDNS, or else on 127.0.0.1:
+     * some phones and networks never answer the lookup (#147), and adbd
+     * listens on this phone either way. A pairing adbd forgot is still
+     * reported, so the user is asked to pair again.
+     */
+    private suspend fun connectFoundOrLoopback(adb: Connection): Boolean =
+        LoopbackAdb.foundOrLoopback(
+            found = { adb.connectTls(context, CONNECT_MS) },
+            loopback = { connectOverLoopback(adb) },
+            onMissed = { Log.i(TAG, "wireless debugging wasn't found on the network; trying this phone directly", it) },
+        )
 
     /**
      * Pairs through the pairing port found on 127.0.0.1: any listening port
@@ -429,7 +443,7 @@ object Elevated {
             discardConnection()
             val adb = connection()
             val connected = try {
-                if (LoopbackAdb.preferred()) connectOverLoopback(adb) else adb.connectTls(context, CONNECT_MS)
+                if (LoopbackAdb.preferred()) connectOverLoopback(adb) else connectFoundOrLoopback(adb)
             } catch (e: AdbPairingRequiredException) {
                 // adbd forgot us (the user revoked the authorizations).
                 context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean(PAIRED, false) }
