@@ -318,7 +318,11 @@ class MirrorService : Service() {
     }
 
     private fun applyPower() {
-        val active = (encoder != null && projection != null) || elevatedSocket != null
+        val active = streaming(
+            screen = encoder != null && projection != null,
+            elevatedScreen = elevatedSocket != null,
+            sound = sound != null,
+        )
         StreamPower.set(this, StreamPower.SCREEN, active, stayAwake, screenOff)
     }
 
@@ -351,6 +355,8 @@ class MirrorService : Service() {
             }
             sound = capture
             capture.start()
+            // Sound alone also needs the phone awake and its Wi-Fi out of power save (#94).
+            applyPower()
             // Only the sound, so it's heard on the PC instead of the phone (#94).
             if (soundOnly && sound?.usesPlaybackCapture == true) PhoneQuiet.start(this)
         }
@@ -512,9 +518,17 @@ class MirrorService : Service() {
                 } else {
                     service.sound?.stop()
                     service.sound = null
+                    service.applyPower()
                 }
             }
         }
+
+        /**
+         * Whether the phone is sending the PC anything, so it has to stay on the
+         * network: the screen (captured, or through Elevated) or only its sound.
+         */
+        internal fun streaming(screen: Boolean, elevatedScreen: Boolean, sound: Boolean): Boolean =
+            screen || elevatedScreen || sound
 
         fun setPower(pcId: String, stayAwake: Boolean, screenOff: Boolean) {
             val service = current ?: return

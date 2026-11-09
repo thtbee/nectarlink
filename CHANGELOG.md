@@ -190,6 +190,9 @@ what people reported since 0.1.4.
   longer loops into loud distortion on Windows: the PC's sound sent to the phone leaves out
   NectarLink's own, and the phone
   doesn't send the PC's sound back with its own either ([#281](https://github.com/thtbee/nectarlink/issues/281)).
+- **Phone sound on this PC** keeps the phone awake and its Wi-Fi out of power saving, as
+  mirroring already did. With only the sound going, neither was held
+  ([#94](https://github.com/thtbee/nectarlink/issues/94)).
 - **Enter sends messages** now sends in WhatsApp, Telegram and Messenger, whose message boxes
   ignore the keyboard's Send: it presses the app's Send button instead
   ([#220](https://github.com/thtbee/nectarlink/issues/220)).
