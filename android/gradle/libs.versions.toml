@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 [versions]
-agp = "9.5.0"
+agp = "9.5.1"
 kotlin = "2.4.21"
 compose-bom = "2026.09.00"
 activity-compose = "1.13.0"
@@ -17,7 +17,7 @@ orgJson = "20260814"
 
 [libraries]
 libadb-android = { module = "com.github.MuntashirAkon:libadb-android", version = "3.1.1" }
-conscrypt-android = { module = "org.conscrypt:conscrypt-android", version = "2.8.0" }
+conscrypt-android = { module = "org.conscrypt:conscrypt-android", version = "2.9.0" }
 # Shizuku (MIT), an optional way to start Elevated (#110).
 shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
 shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
