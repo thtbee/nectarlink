@@ -193,6 +193,9 @@ what people reported since 0.1.4.
 - Elevated starts on phones and networks where Wireless debugging can't be looked up: it's
   tried on the phone itself instead of waiting forever
   ([#147](https://github.com/thtbee/nectarlink/issues/147)).
+- **Phone sound on this PC** keeps the phone awake and its Wi-Fi out of power saving, as
+  mirroring already did. With only the sound going, neither was held
+  ([#94](https://github.com/thtbee/nectarlink/issues/94)).
 - **Enter sends messages** now sends in WhatsApp, Telegram and Messenger, whose message boxes
   ignore the keyboard's Send: it presses the app's Send button instead
   ([#220](https://github.com/thtbee/nectarlink/issues/220)).
