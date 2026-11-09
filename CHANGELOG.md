@@ -190,6 +190,10 @@ what people reported since 0.1.4.
   longer loops into loud distortion on Windows: the PC's sound sent to the phone leaves out
   NectarLink's own, and the phone
   doesn't send the PC's sound back with its own either ([#281](https://github.com/thtbee/nectarlink/issues/281)).
+- The PC app does less in the background while a phone is connected. The phone's folder in
+  File Explorer was set up again on every connection update, about every 15 seconds, and when
+  that failed it was retried just as often. Now it's only when the phone connects or
+  disconnects, and a failure waits a minute, then longer.
 - On home networks numbered outside the usual private ranges, the PC reconnects to the phone
   on its own after a restart without **Connect over mobile data**. It found the phone over
   mDNS but didn't count it as on the same network
