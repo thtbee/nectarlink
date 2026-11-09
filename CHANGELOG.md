@@ -9,7 +9,8 @@ change things that need a step from you, and its notes say so.
 ### New
 
 - **Spanish.** NectarLink is available in Spanish on Android and Windows.
-  Thanks to José María Garcia Dominguez.
+  Thanks to José María Garcia Dominguez, and to
+  [@KevinL50-sysadmin](https://github.com/KevinL50-sysadmin) for a review pass on it.
 
 - **Vietnamese.** NectarLink speaks Tiếng Việt now: on the Android phone and
   the Windows PC, every screen is translated. Settings › Appearance › Language
