@@ -119,12 +119,35 @@ mod imp {
         stop_watcher: Arc<AtomicBool>,
         populated_dirs: Mutex<HashSet<String>>,
         uploading: Mutex<HashSet<String>>,
+        /// The phone was connected at the last sync: its folder is re-read
+        /// only when it comes back, not on every sync.
+        online: AtomicBool,
     }
 
     #[cfg(windows)]
     static ACTIVE_ROOTS: Mutex<Option<HashMap<DeviceId, Arc<ActiveRoot>>>> = Mutex::new(None);
     #[cfg(windows)]
     static RECONCILING: Mutex<()> = Mutex::new(());
+
+    /// What the next reconcile should reach, and whether one is running. A
+    /// burst of syncs (a phone connecting sends several events at once) runs
+    /// one reconcile, then one more with the newest state, instead of a
+    /// thread each.
+    #[cfg(windows)]
+    static PENDING: Mutex<(bool, Option<Wanted>)> = Mutex::new((false, None));
+
+    #[cfg(windows)]
+    type Wanted = (Vec<(DeviceId, String, String, bool)>, Vec<(DeviceId, String)>);
+
+    /// Whether each phone was connected when its link last changed. Only a
+    /// change between connected and not matters here: the link also changes
+    /// with every round-trip time update.
+    #[cfg(windows)]
+    static LINK_ONLINE: Mutex<Option<HashMap<DeviceId, bool>>> = Mutex::new(None);
+
+    /// Phones whose folder couldn't be registered, and when to try again.
+    #[cfg(windows)]
+    static FAILED: Mutex<Option<HashMap<DeviceId, RetryLater>>> = Mutex::new(None);
 
     #[cfg(windows)]
     fn active_roots() -> MutexGuard<'static, Option<HashMap<DeviceId, Arc<ActiveRoot>>>> {
@@ -195,10 +218,41 @@ mod imp {
             }
         }
 
-        let _ = std::thread::Builder::new().name("storage-sync".into()).spawn(move || {
-            let _guard = lock(&RECONCILING);
-            win::with_com(|| reconcile(&desired, &disabled));
+        {
+            let mut pending = lock(&PENDING);
+            pending.1 = Some((desired, disabled));
+            if pending.0 {
+                // The running reconcile picks this up when it's done.
+                return;
+            }
+            pending.0 = true;
+        }
+        let spawned = std::thread::Builder::new().name("storage-sync".into()).spawn(|| {
+            loop {
+                let next = {
+                    let mut pending = lock(&PENDING);
+                    let next = pending.1.take();
+                    if next.is_none() {
+                        pending.0 = false;
+                    }
+                    next
+                };
+                let Some((desired, disabled)) = next else { return };
+                let _guard = lock(&RECONCILING);
+                win::with_com(|| reconcile(&desired, &disabled));
+            }
         });
+        if spawned.is_err() {
+            lock(&PENDING).0 = false;
+        }
+    }
+
+    /// Whether a link change moved `device` between connected and not, noting
+    /// where it is now.
+    #[cfg(windows)]
+    fn online_changed(device: DeviceId, online: bool) -> bool {
+        let mut links = lock(&LINK_ONLINE);
+        links.get_or_insert_with(HashMap::new).insert(device, online) != Some(online)
     }
 
     #[cfg(target_os = "linux")]
@@ -217,10 +271,12 @@ mod imp {
                     win::with_com(|| remove_device_root(device, None));
                 });
             }
-            NodeEvent::DeviceAdded(_)
-            | NodeEvent::PeerInfoChanged { .. }
-            | NodeEvent::Capabilities(_)
-            | NodeEvent::LinkChanged { .. } => {
+            NodeEvent::LinkChanged { device, link } => {
+                if online_changed(*device, matches!(link, LinkState::Online { .. })) {
+                    sync();
+                }
+            }
+            NodeEvent::DeviceAdded(_) | NodeEvent::PeerInfoChanged { .. } | NodeEvent::Capabilities(_) => {
                 sync();
             }
             NodeEvent::StorageChanged { device, path } => {
@@ -414,6 +470,47 @@ mod imp {
         Some(parts.join("/"))
     }
 
+    /// When to try registering a phone's folder again after it failed: a
+    /// minute, then twice as long each time up to half an hour. A new name
+    /// or folder is worth trying at once.
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    #[cfg_attr(target_os = "linux", allow(dead_code))]
+    struct RetryLater {
+        name: String,
+        folder: String,
+        next: std::time::Instant,
+        delay: std::time::Duration,
+    }
+
+    #[cfg_attr(target_os = "linux", allow(dead_code))]
+    impl RetryLater {
+        const FIRST: std::time::Duration = std::time::Duration::from_secs(60);
+        const MOST: std::time::Duration = std::time::Duration::from_secs(30 * 60);
+
+        fn new(name: &str, folder: &str, now: std::time::Instant) -> RetryLater {
+            RetryLater {
+                name: name.to_owned(),
+                folder: folder.to_owned(),
+                next: now + Self::FIRST,
+                delay: Self::FIRST,
+            }
+        }
+
+        /// Whether to leave this phone alone for now.
+        fn waits(&self, name: &str, folder: &str, now: std::time::Instant) -> bool {
+            self.name == name && self.folder == folder && now < self.next
+        }
+
+        fn failed_again(&mut self, name: &str, folder: &str, now: std::time::Instant) {
+            if self.name != name || self.folder != folder {
+                *self = RetryLater::new(name, folder, now);
+                return;
+            }
+            self.delay = (self.delay * 2).min(Self::MOST);
+            self.next = now + self.delay;
+        }
+    }
+
     #[cfg_attr(target_os = "linux", allow(dead_code))]
     fn normalize_win_path(path: &Path) -> String {
         let s = path.to_string_lossy();
@@ -426,6 +523,8 @@ mod imp {
         // Unregister any disabled devices that belong to this instance.
         for (id, folder) in disabled {
             remove_device_root(*id, Some(folder));
+            // Turned off: turning it on again tries right away.
+            lock(&FAILED).get_or_insert_with(HashMap::new).remove(id);
         }
 
         // Remove any active roots no longer in `desired`.
@@ -444,7 +543,9 @@ mod imp {
                 if existing.name == *name
                     && existing.root_path.file_name() == Some(std::ffi::OsStr::new(folder))
                 {
-                    if *online {
+                    let was_online = existing.online.swap(*online, Ordering::Relaxed);
+                    if *online && !was_online {
+                        // Back after being away: what's on the phone may have changed.
                         let root = existing.clone();
                         core_host::spawn(async move {
                             let is_root_populated = lock(&root.populated_dirs).contains("");
@@ -460,8 +561,38 @@ mod imp {
                 remove_device_root(*id, old_folder.as_deref());
             }
 
-            if let Err(e) = register_and_connect(*id, name, folder, *online) {
-                tracing::warn!(device = %id.short(), error = %e, "can't register phone storage sync root");
+            let now = std::time::Instant::now();
+            let waiting = lock(&FAILED)
+                .as_ref()
+                .and_then(|failed| failed.get(id))
+                .is_some_and(|retry| retry.waits(name, folder, now));
+            if waiting {
+                continue;
+            }
+            match register_and_connect(*id, name, folder, *online) {
+                Ok(()) => {
+                    lock(&FAILED).get_or_insert_with(HashMap::new).remove(id);
+                }
+                Err(e) => {
+                    let mut failed = lock(&FAILED);
+                    let retry = failed
+                        .get_or_insert_with(HashMap::new)
+                        .entry(*id)
+                        .and_modify(|retry| retry.failed_again(name, folder, now))
+                        .or_insert_with(|| RetryLater::new(name, folder, now));
+                    tracing::warn!(
+                        device = %id.short(),
+                        error = %e,
+                        retry_in_s = retry.delay.as_secs(),
+                        "can't register phone storage sync root"
+                    );
+                    // Nothing else may change meanwhile: try again once the wait is over.
+                    let delay = retry.delay;
+                    let _ = std::thread::Builder::new().name("storage-retry".into()).spawn(move || {
+                        std::thread::sleep(delay);
+                        sync();
+                    });
+                }
             }
         }
     }
@@ -609,6 +740,7 @@ mod imp {
             stop_watcher: stop_watcher.clone(),
             populated_dirs: Mutex::new(HashSet::new()),
             uploading: Mutex::new(HashSet::new()),
+            online: AtomicBool::new(online),
         });
 
         if let Some(map) = active_roots().as_mut() {
@@ -1426,6 +1558,44 @@ mod imp {
     #[cfg(test)]
     mod tests {
         use super::*;
+
+        #[test]
+        fn a_failed_folder_waits_longer_each_time_up_to_half_an_hour() {
+            let start = std::time::Instant::now();
+            let mut retry = RetryLater::new("Pixel", "Pixel", start);
+            assert!(retry.waits("Pixel", "Pixel", start));
+            assert!(!retry.waits("Pixel", "Pixel", start + RetryLater::FIRST));
+
+            let mut now = start + RetryLater::FIRST;
+            retry.failed_again("Pixel", "Pixel", now);
+            assert_eq!(retry.delay, RetryLater::FIRST * 2);
+            assert!(retry.waits("Pixel", "Pixel", now + RetryLater::FIRST));
+            for _ in 0..10 {
+                now = retry.next;
+                retry.failed_again("Pixel", "Pixel", now);
+            }
+            assert_eq!(retry.delay, RetryLater::MOST);
+        }
+
+        #[test]
+        fn a_renamed_phone_is_tried_again_at_once() {
+            let now = std::time::Instant::now();
+            let mut retry = RetryLater::new("Pixel", "Pixel", now);
+            assert!(!retry.waits("Pixel 9", "Pixel 9", now));
+            retry.failed_again("Pixel 9", "Pixel 9", now);
+            assert_eq!(retry.delay, RetryLater::FIRST, "a new name starts the wait over");
+        }
+
+        #[cfg(windows)]
+        #[test]
+        fn only_connecting_or_disconnecting_counts_as_a_link_change() {
+            let phone = DeviceId([0x5a; 32]);
+            assert!(online_changed(phone, true), "first time online");
+            assert!(!online_changed(phone, true), "a new round-trip time isn't a change");
+            assert!(online_changed(phone, false));
+            assert!(!online_changed(phone, false));
+            assert!(online_changed(phone, true));
+        }
 
         #[cfg(windows)]
         #[test]

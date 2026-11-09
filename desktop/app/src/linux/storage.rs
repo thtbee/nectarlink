@@ -837,6 +837,14 @@ impl MountedDevice {
 static MOUNTS: OnceLock<Mutex<HashMap<DeviceId, Arc<MountedDevice>>>> = OnceLock::new();
 static LINUX_RECONCILING: Mutex<()> = Mutex::new(());
 static SHUTTING_DOWN: AtomicBool = AtomicBool::new(false);
+/// Whether each phone was connected when its link last changed. The link
+/// also changes with every round-trip time update, which isn't worth a sync.
+static LINK_ONLINE: Mutex<Option<HashMap<DeviceId, bool>>> = Mutex::new(None);
+
+/// Whether a link change moved `device` between connected and not, noting where it is now.
+fn online_changed(device: DeviceId, online: bool) -> bool {
+    lock(&LINK_ONLINE).get_or_insert_with(HashMap::new).insert(device, online) != Some(online)
+}
 static STAGE_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 fn mounts() -> MutexGuard<'static, HashMap<DeviceId, Arc<MountedDevice>>> {
@@ -2113,10 +2121,12 @@ pub fn on_event(event: &NodeEvent) {
                 unmount_device(device, None, true);
             });
         }
-        NodeEvent::DeviceAdded(_)
-        | NodeEvent::PeerInfoChanged { .. }
-        | NodeEvent::Capabilities(_)
-        | NodeEvent::LinkChanged { .. } => {
+        NodeEvent::LinkChanged { device, link } => {
+            if online_changed(*device, matches!(link, LinkState::Online { .. })) {
+                sync();
+            }
+        }
+        NodeEvent::DeviceAdded(_) | NodeEvent::PeerInfoChanged { .. } | NodeEvent::Capabilities(_) => {
             sync();
         }
         NodeEvent::StorageChanged { device, .. } => {
