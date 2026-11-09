@@ -340,8 +340,12 @@ class InputService : AccessibilityService() {
             node.actionList.any { it.id == AccessibilityNodeInfo.ACTION_SET_TEXT }
 
     private fun pressAction(): Boolean {
+        val field = focused() ?: return false
+        // A multi-line box takes the keyboard's action and does nothing with
+        // it, so press the app's Send button instead; no button, a plain Enter.
+        if (field.isMultiLine) return SendButton.press(field, field.window?.root ?: rootInActiveWindow)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
-        return focused()?.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id) == true
+        return field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
     }
 
     private fun focused(): AccessibilityNodeInfo? {
