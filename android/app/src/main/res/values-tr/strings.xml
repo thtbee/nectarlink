@@ -119,6 +119,7 @@
     <string name="elevated_pair_title">NectarLink\'i Kablosuz hata ayıklama ile eşleştirin</string>
     <string name="elevated_pair_text">Kablosuz hata ayıklama bölümünde Eşleme kodu ile cihazı eşle\'ye dokunun, ardından kodu buraya yazın.</string>
     <string name="elevated_pair_action">Kodu gir</string>
+    <string name="elevated_pair_collapsed">Bu bildirimi aşağı kaydırın, ardından Kodu gir\'e dokunun.</string>
     <string name="elevated_pair_hint">6 haneli eşleştirme kodu</string>
     <string name="elevated_pairing">Eşleştiriliyor…</string>
     <string name="elevated_no_dialog">Eşleştirme kodu görünmüyor. Kablosuz hata ayıklama bölümünde Eşleme kodu ile cihazı eşle\'ye dokunun, ardından kodu buraya yazın.</string>

@@ -119,6 +119,7 @@
     <string name="elevated_pair_title">NectarLink mit Kabellosem Debugging koppeln</string>
     <string name="elevated_pair_text">Tippe in „Kabelloses Debugging“ auf „Gerät mit Kopplungscode koppeln“ und gib den Code anschließend hier ein.</string>
     <string name="elevated_pair_action">Code eingeben</string>
+    <string name="elevated_pair_collapsed">Zieh diese Mitteilung nach unten und tippe auf „Code eingeben“.</string>
     <string name="elevated_pair_hint">6-stelliger Kopplungscode</string>
     <string name="elevated_pairing">Koppeln…</string>
     <string name="elevated_no_dialog">Der Kopplungscode wird nicht angezeigt. Tippe in „Kabelloses Debugging“ auf „Gerät mit Kopplungscode koppeln“ und gib ihn dann hier ein.</string>

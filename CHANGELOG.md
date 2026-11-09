@@ -183,6 +183,8 @@ what people reported since 0.1.4.
   longer loops into loud distortion on Windows: the PC's sound sent to the phone leaves out
   NectarLink's own, and the phone
   doesn't send the PC's sound back with its own either ([#281](https://github.com/thtbee/nectarlink/issues/281)).
+- Elevated's pairing notification says to swipe it down for **Enter code**, which phones that keep
+  it collapsed hide ([#305](https://github.com/thtbee/nectarlink/issues/305)).
 - The Nectar Island keeps animating (the scrolling title and the equalizer) after the main window is
   closed to the tray ([#225](https://github.com/thtbee/nectarlink/pull/225)). Thanks to
   [@HaqmuinDox](https://github.com/HaqmuinDox).

@@ -35,8 +35,16 @@ object PairingNotification {
     private const val RECEIVER_MS = 8_000L
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** Asks for the code; false if notifications are off for the app. */
-    fun show(context: Context, text: String = context.getString(R.string.elevated_pair_text)): Boolean {
+    /**
+     * Asks for the code; false if notifications are off for the app. [collapsed]
+     * is all a collapsed notification shows, and many phones keep it collapsed,
+     * which hides the Enter code button: by default it says how to get to it.
+     */
+    fun show(
+        context: Context,
+        text: String = context.getString(R.string.elevated_pair_text),
+        collapsed: String = context.getString(R.string.elevated_pair_collapsed),
+    ): Boolean {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             return false
         }
@@ -53,7 +61,7 @@ object PairingNotification {
         val notification = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.elevated_pair_title))
-            .setContentText(text)
+            .setContentText(collapsed)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .addAction(action)
             .setOnlyAlertOnce(true)
@@ -73,7 +81,8 @@ object PairingNotification {
                 show(app)
                 return
             }
-            show(app, app.getString(R.string.elevated_pairing))
+            val pairing = app.getString(R.string.elevated_pairing)
+            show(app, pairing, collapsed = pairing)
             val pending = goAsync()
             // Android stops a receiver after about ten seconds (an "isn't
             // responding" error), and finding the pairing dialog alone can take
@@ -94,7 +103,8 @@ object PairingNotification {
                             Elevated.Reason.WrongCode -> R.string.elevated_wrong_code
                             else -> R.string.elevated_failed
                         }
-                        show(app, app.getString(why))
+                        val message = app.getString(why)
+                        show(app, message, collapsed = message)
                     }
                 } finally {
                     release()

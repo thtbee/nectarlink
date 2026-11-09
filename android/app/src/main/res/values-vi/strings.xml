@@ -118,6 +118,7 @@
 <string name="elevated_pair_title">Ghép nối NectarLink với Gỡ lỗi không dây</string>
 <string name="elevated_pair_text">Trong Gỡ lỗi không dây, chạm Ghép nối thiết bị bằng mã ghép nối, rồi nhập mã vào đây.</string>
 <string name="elevated_pair_action">Nhập mã</string>
+<string name="elevated_pair_collapsed">Vuốt thông báo này xuống, rồi chạm Nhập mã.</string>
 <string name="elevated_pair_hint">Mã ghép nối 6 chữ số</string>
 <string name="elevated_pairing">Đang ghép nối…</string>
 <string name="elevated_no_dialog">Mã ghép nối không hiển thị. Trong Gỡ lỗi không dây, chạm Ghép nối thiết bị bằng mã ghép nối, rồi nhập nó vào đây.</string>
