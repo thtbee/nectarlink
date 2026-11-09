@@ -641,6 +641,7 @@
 <string name="remote_key_del_desc">Phím Delete</string>
 <string name="remote_key_copy">Sao chép</string>
 <string name="remote_key_paste">Dán</string>
+<string name="remote_key_undo">Hoàn tác</string>
 <!-- Webcam formatting -->
 <string name="webcam_stream_spec">%1$d × %2$d · %3$d fps</string>
 <string name="webcam_stream_camera_spec">%1$d × %2$d · %3$s</string>

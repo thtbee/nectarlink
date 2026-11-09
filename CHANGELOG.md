@@ -42,6 +42,13 @@ change things that need a step from you, and its notes say so.
   Settings › Appearance ([#295](https://github.com/thtbee/nectarlink/issues/295)).
 - **Switch the PC's audio output from the phone.** Tap the device under Volume on the
   phone, then pick another output, like speakers or headphones. Windows and Linux.
+- **A touchpad in full screen.** Control PC's Screen tab, in full screen, has a **Touchpad**
+  button: the whole screen then moves the PC's pointer like a laptop's touchpad (tap to click,
+  two fingers to scroll or right-click) instead of pointing straight at things
+  ([#306](https://github.com/thtbee/nectarlink/issues/306)).
+- **Full-screen controls beside the picture.** In landscape, the controls sit in the black
+  space on both sides of the PC's screen instead of over it, always shown, with Esc, Copy,
+  Paste, Switch window and Undo added.
 - **Mirror quality.** Balanced as before, Sharper for the phone's full resolution, or
   Smoother for weak Wi-Fi, in Settings › Camera & Audio on the PC. It's for the phone's
   screen and app windows (those stay at 1920 at most), and over the relay it stays
