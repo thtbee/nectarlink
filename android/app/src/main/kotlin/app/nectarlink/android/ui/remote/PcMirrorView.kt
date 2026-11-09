@@ -34,19 +34,24 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
@@ -82,15 +87,21 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
@@ -306,7 +317,66 @@ private fun isSystemAutoRotateOn(context: Context): Boolean =
  *
  * With [watch] (Play on phone), it shows what that PC player plays instead, full screen,
  * and sends the PC nothing: a tap calls [onTap].
+ *
+ * With [touchpadSensitivity], full screen offers a Touchpad switch: the whole
+ * screen then works like a laptop's touchpad instead of pointing directly.
  */
+/** How wide the space beside the picture has to be to hold the controls. */
+private val MIN_RAIL_WIDTH = 72.dp
+
+/** A column of full-screen controls in the space beside the picture. */
+@Composable
+private fun FullScreenRail(width: Dp, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(width)
+            // Taps between the buttons stay here instead of reaching the picture.
+            .pointerInput(Unit) { detectTapGestures { } }
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 6.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        content = content,
+    )
+}
+
+@Composable
+private fun RailButton(
+    label: String,
+    selected: Boolean = false,
+    description: String = label,
+    onClick: () -> Unit,
+) {
+    TextButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.textButtonColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+            } else {
+                Color.White.copy(alpha = 0.08f)
+            },
+            contentColor = if (selected) MaterialTheme.colorScheme.primary else Color.White,
+        ),
+        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 44.dp)
+            .semantics {
+                contentDescription = description
+                this.selected = selected
+            },
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
+    }
+}
+
 @Composable
 fun PcMirrorView(
     pcId: String,
@@ -317,6 +387,8 @@ fun PcMirrorView(
     onFullScreenChange: (Boolean) -> Unit = {},
     watch: String? = null,
     onTap: () -> Unit = {},
+    touchpadSensitivity: Float? = null,
+    onStatus: (Core.RemoteAccess) -> Unit = {},
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -332,6 +404,9 @@ fun PcMirrorView(
     // Video looks its best at 1080p; the PC's desktop starts at 720p.
     var highQuality by rememberSaveable { mutableStateOf(watch != null) }
     var showKeyboardBar by rememberSaveable { mutableStateOf(false) }
+    // Full screen only: the screen moves the pointer like a touchpad, for precision.
+    var touchpadMode by rememberSaveable { mutableStateOf(false) }
+    val touchpadActive = isFullScreen && touchpadMode && touchpadSensitivity != null && watch == null
     var typedText by rememberSaveable { mutableStateOf("") }
     var surface by remember { mutableStateOf<Surface?>(null) }
     var hasRenderedFrame by remember(pcId) { mutableStateOf(false) }
@@ -730,11 +805,33 @@ fun PcMirrorView(
         if (w > 0 && h > 0) w.toFloat() / h.toFloat() else 16f / 9f
     }
     val currentAspect by rememberUpdatedState(aspect)
+
+    // The black space beside the picture, where full screen puts its controls.
+    var viewportSize by remember { mutableStateOf(IntSize.Zero) }
+    val railWidth = with(LocalDensity.current) {
+        if (viewportSize.width <= 0 || viewportSize.height <= 0) {
+            0.dp
+        } else {
+            PcMirrorMath.computeVideoViewport(
+                viewportSize.width.toFloat(),
+                viewportSize.height.toFloat(),
+                aspect,
+            ).left.toDp()
+        }
+    }
+    val useRails = isFullScreen && watch == null && railWidth >= MIN_RAIL_WIDTH
     val viewportDescription = stringResource(R.string.pc_mirror_viewport_desc, pcName)
     val fullScreenLabel = stringResource(R.string.pc_mirror_fullscreen)
     val exitFullScreenLabel = stringResource(R.string.pc_mirror_exit_fullscreen)
     val rightClickLabel = stringResource(R.string.pc_mirror_right_click)
     val taskViewLabel = stringResource(R.string.pc_mirror_task_view)
+    val touchpadLabel = stringResource(R.string.remote_mode_touchpad)
+    val escLabel = stringResource(R.string.remote_key_esc)
+    val escDescription = stringResource(R.string.remote_key_esc_desc)
+    val copyLabel = stringResource(R.string.remote_key_copy)
+    val pasteLabel = stringResource(R.string.remote_key_paste)
+    val undoLabel = stringResource(R.string.remote_key_undo)
+    val switchWindowLabel = stringResource(R.string.deck_default_switch_window)
     val keyboardLabel = stringResource(
         if (showKeyboardBar) R.string.pc_mirror_hide_keyboard else R.string.pc_mirror_keyboard,
     )
@@ -769,237 +866,254 @@ fun PcMirrorView(
                 .weight(1f)
                 .clip(outerShape)
                 .background(Color.Black)
-                .semantics { contentDescription = viewportDescription }
-                .pointerInput(pcId, watch) {
-                    if (watch != null) {
-                        // Watching: nothing goes to the PC.
-                        detectTapGestures(onTap = { onTap() })
-                        return@pointerInput
-                    }
-                    val tapSlop = viewConfiguration.touchSlop
-                    val scrollStepPx = 16.dp.toPx().coerceAtLeast(1f)
-                    val tapTimeoutMs = 280L
-                    val doubleTapWindowMs = 300L
-                    var lastTapUpTimeMs = 0L
-                    var lastTapPos = Offset.Zero
-
-                    awaitEachGesture {
-                        val cw = size.width.toFloat().coerceAtLeast(1f)
-                        val ch = size.height.toFloat().coerceAtLeast(1f)
-                        val viewport = PcMirrorMath.computeVideoViewport(cw, ch, currentAspect)
-
-                        val first = awaitFirstDown(requireUnconsumed = false)
-                        val downTime = System.currentTimeMillis()
-                        val downPos = first.position
-                        val initialMapped = PcMirrorMath.mapTouchToNormalized(
-                            touchX = downPos.x,
-                            touchY = downPos.y,
-                            viewport = viewport,
-                            clampOutside = false,
-                        )
-                        val touchStartedInVideo = initialMapped != null
-                        var lastX = initialMapped?.first ?: 0.5f
-                        var lastY = initialMapped?.second ?: 0.5f
-                        var twoFingerGesture = false
-                        var didTwoFingerScroll = false
-                        var maxPointers = 1
-                        var totalMoved = 0f
-                        var scrollAccumX = 0f
-                        var scrollAccumY = 0f
-
-                        if (touchStartedInVideo) {
-                            core.sendPcMirrorInput(
-                                pcId,
-                                MirrorInputEvent.Touch(TouchPhase.DOWN, lastX, lastY),
-                            )
+                .onSizeChanged { viewportSize = it },
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .semantics { contentDescription = viewportDescription }
+                    .pointerInput(pcId, watch, touchpadActive, touchpadSensitivity) {
+                        if (watch != null) {
+                            // Watching: nothing goes to the PC.
+                            detectTapGestures(onTap = { onTap() })
+                            return@pointerInput
                         }
+                        if (touchpadActive && touchpadSensitivity != null) {
+                            touchpadGestures(
+                                pcId = pcId,
+                                core = core,
+                                sensitivity = touchpadSensitivity,
+                                onStatus = onStatus,
+                                onTap = { bumpOverlay() },
+                            )
+                            return@pointerInput
+                        }
+                        val tapSlop = viewConfiguration.touchSlop
+                        val scrollStepPx = 16.dp.toPx().coerceAtLeast(1f)
+                        val tapTimeoutMs = 280L
+                        val doubleTapWindowMs = 300L
+                        var lastTapUpTimeMs = 0L
+                        var lastTapPos = Offset.Zero
 
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val changes = event.changes
-                            var pressedCount = 0
-                            var primaryChange: androidx.compose.ui.input.pointer.PointerInputChange? = null
-                            for (i in 0 until changes.size) {
-                                val c = changes[i]
-                                if (c.pressed) {
-                                    if (primaryChange == null) primaryChange = c
-                                    pressedCount++
+                        awaitEachGesture {
+                            val cw = size.width.toFloat().coerceAtLeast(1f)
+                            val ch = size.height.toFloat().coerceAtLeast(1f)
+                            val viewport = PcMirrorMath.computeVideoViewport(cw, ch, currentAspect)
+
+                            val first = awaitFirstDown(requireUnconsumed = false)
+                            val downTime = System.currentTimeMillis()
+                            val downPos = first.position
+                            val initialMapped = PcMirrorMath.mapTouchToNormalized(
+                                touchX = downPos.x,
+                                touchY = downPos.y,
+                                viewport = viewport,
+                                clampOutside = false,
+                            )
+                            val touchStartedInVideo = initialMapped != null
+                            var lastX = initialMapped?.first ?: 0.5f
+                            var lastY = initialMapped?.second ?: 0.5f
+                            var twoFingerGesture = false
+                            var didTwoFingerScroll = false
+                            var maxPointers = 1
+                            var totalMoved = 0f
+                            var scrollAccumX = 0f
+                            var scrollAccumY = 0f
+
+                            if (touchStartedInVideo) {
+                                core.sendPcMirrorInput(
+                                    pcId,
+                                    MirrorInputEvent.Touch(TouchPhase.DOWN, lastX, lastY),
+                                )
+                            }
+
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val changes = event.changes
+                                var pressedCount = 0
+                                var primaryChange: androidx.compose.ui.input.pointer.PointerInputChange? = null
+                                for (i in 0 until changes.size) {
+                                    val c = changes[i]
+                                    if (c.pressed) {
+                                        if (primaryChange == null) primaryChange = c
+                                        pressedCount++
+                                    }
                                 }
-                            }
-                            if (pressedCount > maxPointers) {
-                                maxPointers = pressedCount
-                            }
-                            if (pressedCount == 0 || primaryChange == null) {
-                                if (touchStartedInVideo && !twoFingerGesture) {
-                                    core.sendPcMirrorInput(
-                                        pcId,
-                                        MirrorInputEvent.Touch(TouchPhase.UP, lastX, lastY),
-                                    )
+                                if (pressedCount > maxPointers) {
+                                    maxPointers = pressedCount
                                 }
-                                break
-                            }
-                            if (pressedCount >= 2) {
-                                if (!twoFingerGesture) {
-                                    twoFingerGesture = true
-                                    if (touchStartedInVideo) {
+                                if (pressedCount == 0 || primaryChange == null) {
+                                    if (touchStartedInVideo && !twoFingerGesture) {
                                         core.sendPcMirrorInput(
                                             pcId,
                                             MirrorInputEvent.Touch(TouchPhase.UP, lastX, lastY),
                                         )
                                     }
+                                    break
                                 }
-                                val prev = primaryChange.previousPosition
-                                val cur = primaryChange.position
-                                val d = primaryChange.positionChange()
-                                totalMoved += hypot(d.x, d.y)
-                                scrollAccumY += (prev.y - cur.y) / scrollStepPx
-                                scrollAccumX += (cur.x - prev.x) / scrollStepPx
-                                if (abs(scrollAccumX) > 0.05f || abs(scrollAccumY) > 0.05f) {
-                                    didTwoFingerScroll = true
-                                    val sendDx = scrollAccumX.coerceIn(-10f, 10f)
-                                    val sendDy = scrollAccumY.coerceIn(-10f, 10f)
-                                    scrollAccumX = 0f
-                                    scrollAccumY = 0f
-                                    core.sendPcMirrorInput(
-                                        pcId,
-                                        MirrorInputEvent.Scroll(lastX, lastY, sendDx, sendDy),
-                                    )
-                                }
-                                for (i in 0 until changes.size) {
-                                    changes[i].consume()
-                                }
-                            } else if (!twoFingerGesture && touchStartedInVideo) {
-                                val cur = primaryChange.position
-                                val d = primaryChange.positionChange()
-                                totalMoved += hypot(d.x, d.y)
-                                val mapped = PcMirrorMath.mapTouchToNormalized(
-                                    touchX = cur.x,
-                                    touchY = cur.y,
-                                    viewport = viewport,
-                                    clampOutside = true,
-                                )
-                                if (mapped != null) {
-                                    val (nx, ny) = mapped
-                                    if (abs(nx - lastX) > 0.002f || abs(ny - lastY) > 0.002f) {
-                                        lastX = nx
-                                        lastY = ny
+                                if (pressedCount >= 2) {
+                                    if (!twoFingerGesture) {
+                                        twoFingerGesture = true
+                                        if (touchStartedInVideo) {
+                                            core.sendPcMirrorInput(
+                                                pcId,
+                                                MirrorInputEvent.Touch(TouchPhase.UP, lastX, lastY),
+                                            )
+                                        }
+                                    }
+                                    val prev = primaryChange.previousPosition
+                                    val cur = primaryChange.position
+                                    val d = primaryChange.positionChange()
+                                    totalMoved += hypot(d.x, d.y)
+                                    scrollAccumY += (prev.y - cur.y) / scrollStepPx
+                                    scrollAccumX += (cur.x - prev.x) / scrollStepPx
+                                    if (abs(scrollAccumX) > 0.05f || abs(scrollAccumY) > 0.05f) {
+                                        didTwoFingerScroll = true
+                                        val sendDx = scrollAccumX.coerceIn(-10f, 10f)
+                                        val sendDy = scrollAccumY.coerceIn(-10f, 10f)
+                                        scrollAccumX = 0f
+                                        scrollAccumY = 0f
                                         core.sendPcMirrorInput(
                                             pcId,
-                                            MirrorInputEvent.Touch(TouchPhase.MOVE, lastX, lastY),
+                                            MirrorInputEvent.Scroll(lastX, lastY, sendDx, sendDy),
                                         )
                                     }
-                                }
-                                for (i in 0 until changes.size) {
-                                    changes[i].consume()
+                                    for (i in 0 until changes.size) {
+                                        changes[i].consume()
+                                    }
+                                } else if (!twoFingerGesture && touchStartedInVideo) {
+                                    val cur = primaryChange.position
+                                    val d = primaryChange.positionChange()
+                                    totalMoved += hypot(d.x, d.y)
+                                    val mapped = PcMirrorMath.mapTouchToNormalized(
+                                        touchX = cur.x,
+                                        touchY = cur.y,
+                                        viewport = viewport,
+                                        clampOutside = true,
+                                    )
+                                    if (mapped != null) {
+                                        val (nx, ny) = mapped
+                                        if (abs(nx - lastX) > 0.002f || abs(ny - lastY) > 0.002f) {
+                                            lastX = nx
+                                            lastY = ny
+                                            core.sendPcMirrorInput(
+                                                pcId,
+                                                MirrorInputEvent.Touch(TouchPhase.MOVE, lastX, lastY),
+                                            )
+                                        }
+                                    }
+                                    for (i in 0 until changes.size) {
+                                        changes[i].consume()
+                                    }
                                 }
                             }
-                        }
 
-                        val upTime = System.currentTimeMillis()
-                        val elapsed = upTime - downTime
-                        if (twoFingerGesture && !didTwoFingerScroll && elapsed <= tapTimeoutMs && touchStartedInVideo) {
-                            // Two-finger quick tap performs a right click at the tapped PC location.
-                            core.remoteButton(pcId, "right", "click")
-                            lastTapUpTimeMs = 0L
-                        } else if (maxPointers == 1 && elapsed <= tapTimeoutMs && totalMoved <= tapSlop * 1.5f) {
-                            val isDoubleTap =
-                                (upTime - lastTapUpTimeMs) <= doubleTapWindowMs &&
-                                    hypot(downPos.x - lastTapPos.x, downPos.y - lastTapPos.y) <= tapSlop * 3f
-                            if (isDoubleTap && !currentIsFullScreen) {
+                            val upTime = System.currentTimeMillis()
+                            val elapsed = upTime - downTime
+                            if (twoFingerGesture && !didTwoFingerScroll && elapsed <= tapTimeoutMs && touchStartedInVideo) {
+                                // Two-finger quick tap performs a right click at the tapped PC location.
+                                core.remoteButton(pcId, "right", "click")
                                 lastTapUpTimeMs = 0L
-                                enterFullScreen(fromButton = true)
+                            } else if (maxPointers == 1 && elapsed <= tapTimeoutMs && totalMoved <= tapSlop * 1.5f) {
+                                val isDoubleTap =
+                                    (upTime - lastTapUpTimeMs) <= doubleTapWindowMs &&
+                                        hypot(downPos.x - lastTapPos.x, downPos.y - lastTapPos.y) <= tapSlop * 3f
+                                if (isDoubleTap && !currentIsFullScreen) {
+                                    lastTapUpTimeMs = 0L
+                                    enterFullScreen(fromButton = true)
+                                } else {
+                                    lastTapUpTimeMs = upTime
+                                    lastTapPos = downPos
+                                    if (currentIsFullScreen) {
+                                        bumpOverlay()
+                                    }
+                                }
                             } else {
-                                lastTapUpTimeMs = upTime
-                                lastTapPos = downPos
-                                if (currentIsFullScreen) {
-                                    bumpOverlay()
-                                }
-                            }
-                        } else {
-                            lastTapUpTimeMs = 0L
-                        }
-                    }
-                },
-        ) {
-            // Single persistent TextureView positioned to the exact fitted video rectangle.
-            Box(
-                modifier = Modifier
-                    .layout { measurable, constraints ->
-                        val cw = constraints.maxWidth.toFloat().coerceAtLeast(1f)
-                        val ch = constraints.maxHeight.toFloat().coerceAtLeast(1f)
-                        val vp = PcMirrorMath.computeVideoViewport(cw, ch, aspect)
-                        val childW = vp.width.roundToInt().coerceIn(1, constraints.maxWidth.coerceAtLeast(1))
-                        val childH = vp.height.roundToInt().coerceIn(1, constraints.maxHeight.coerceAtLeast(1))
-                        val placeable = measurable.measure(Constraints.fixed(childW, childH))
-                        layout(constraints.maxWidth, constraints.maxHeight) {
-                            placeable.place(vp.left.roundToInt(), vp.top.roundToInt())
-                        }
-                    }
-                    .clip(innerShape),
-            ) {
-                AndroidView(
-                    factory = { ctx ->
-                        TextureView(ctx).apply {
-                            isOpaque = false
-                            surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                                private var activeSt: SurfaceTexture? = null
-
-                                override fun onSurfaceTextureAvailable(
-                                    st: SurfaceTexture,
-                                    width: Int,
-                                    height: Int,
-                                ) {
-                                    if (activeSt === st && surface?.isValid == true) {
-                                        return
-                                    }
-                                    activeSt = st
-                                    surface?.release()
-                                    surface = Surface(st)
-                                }
-
-                                override fun onSurfaceTextureSizeChanged(
-                                    st: SurfaceTexture,
-                                    width: Int,
-                                    height: Int,
-                                ) = Unit
-
-                                override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
-                                    if (activeSt === st) {
-                                        activeSt = null
-                                    }
-                                    surface?.release()
-                                    surface = null
-                                    return true
-                                }
-
-                                override fun onSurfaceTextureUpdated(st: SurfaceTexture) = Unit
+                                lastTapUpTimeMs = 0L
                             }
                         }
                     },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-
-            if (!hasRenderedFrame) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                // Single persistent TextureView positioned to the exact fitted video rectangle.
+                Box(
                     modifier = Modifier
-                        .align(Alignment.Center)
-                        .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(16.dp))
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .layout { measurable, constraints ->
+                            val cw = constraints.maxWidth.toFloat().coerceAtLeast(1f)
+                            val ch = constraints.maxHeight.toFloat().coerceAtLeast(1f)
+                            val vp = PcMirrorMath.computeVideoViewport(cw, ch, aspect)
+                            val childW = vp.width.roundToInt().coerceIn(1, constraints.maxWidth.coerceAtLeast(1))
+                            val childH = vp.height.roundToInt().coerceIn(1, constraints.maxHeight.coerceAtLeast(1))
+                            val placeable = measurable.measure(Constraints.fixed(childW, childH))
+                            layout(constraints.maxWidth, constraints.maxHeight) {
+                                placeable.place(vp.left.roundToInt(), vp.top.roundToInt())
+                            }
+                        }
+                        .clip(innerShape),
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(28.dp),
-                        strokeWidth = 2.5.dp,
-                        color = Color.White,
-                    )
-                    Text(
-                        text = stringResource(R.string.pc_mirror_connecting, pcName),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White,
+                    AndroidView(
+                        factory = { ctx ->
+                            TextureView(ctx).apply {
+                                isOpaque = false
+                                surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                                    private var activeSt: SurfaceTexture? = null
+
+                                    override fun onSurfaceTextureAvailable(
+                                        st: SurfaceTexture,
+                                        width: Int,
+                                        height: Int,
+                                    ) {
+                                        if (activeSt === st && surface?.isValid == true) {
+                                            return
+                                        }
+                                        activeSt = st
+                                        surface?.release()
+                                        surface = Surface(st)
+                                    }
+
+                                    override fun onSurfaceTextureSizeChanged(
+                                        st: SurfaceTexture,
+                                        width: Int,
+                                        height: Int,
+                                    ) = Unit
+
+                                    override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+                                        if (activeSt === st) {
+                                            activeSt = null
+                                        }
+                                        surface?.release()
+                                        surface = null
+                                        return true
+                                    }
+
+                                    override fun onSurfaceTextureUpdated(st: SurfaceTexture) = Unit
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
+
+                if (!hasRenderedFrame) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(28.dp),
+                            strokeWidth = 2.5.dp,
+                            color = Color.White,
+                        )
+                        Text(
+                            text = stringResource(R.string.pc_mirror_connecting, pcName),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White,
+                        )
+                    }
+                }
+
             }
 
             // Expand button in the corner of the portrait viewer
@@ -1020,8 +1134,44 @@ fun PcMirrorView(
                 }
             }
 
+            // Landscape full screen leaves black space beside the picture: the controls
+            // live there, always shown, and never cover the PC's screen.
+            if (useRails) {
+                FullScreenRail(width = railWidth, modifier = Modifier.align(Alignment.CenterStart)) {
+                    if (touchpadSensitivity != null) {
+                        RailButton(touchpadLabel, selected = touchpadMode) { touchpadMode = !touchpadMode }
+                    }
+                    RailButton(rightClickLabel) { core.remoteButton(pcId, "right", "click", onStatus) }
+                    RailButton(keyboardLabel, selected = showKeyboardBar) { showKeyboardBar = !showKeyboardBar }
+                    RailButton(escLabel, description = escDescription) { core.remoteKey(pcId, "escape", onStatus = onStatus) }
+                    RailButton(copyLabel) { core.remoteKey(pcId, "copy", onStatus = onStatus) }
+                    RailButton(pasteLabel) { core.remoteKey(pcId, "paste", onStatus = onStatus) }
+                }
+                FullScreenRail(width = railWidth, modifier = Modifier.align(Alignment.CenterEnd)) {
+                    RailButton(taskViewLabel) { core.sendPcMirrorInput(pcId, MirrorInputEvent.Key("recents")) }
+                    RailButton(switchWindowLabel) { core.remoteKey(pcId, "tab", listOf("alt"), onStatus) }
+                    RailButton(undoLabel) { core.remoteKey(pcId, "undo", onStatus = onStatus) }
+                    RailButton(qualityShortLabel, description = qualityA11yLabel) {
+                        highQuality = !highQuality
+                        reconnectTick++
+                    }
+                    IconButton(
+                        onClick = { exitFullScreen(fromManualCollapse = true) },
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = Color.White.copy(alpha = 0.12f),
+                            contentColor = Color.White,
+                        ),
+                        modifier = Modifier
+                            .size(40.dp)
+                            .semantics { contentDescription = exitFullScreenLabel },
+                    ) {
+                        ExpandCollapseIcon(isFullScreen = true)
+                    }
+                }
+            }
+
             // Slim overlay row in full screen: appears on tap and fades out after 3 s
-            if (isFullScreen && watch == null) {
+            if (isFullScreen && watch == null && !useRails) {
                 androidx.compose.animation.AnimatedVisibility(
                     visible = overlayVisible,
                     enter = if (reducedMotion) EnterTransition.None else fadeIn(tween(180)),
@@ -1099,6 +1249,34 @@ fun PcMirrorView(
                                     style = MaterialTheme.typography.labelLarge,
                                     maxLines = 1,
                                 )
+                            }
+                            if (touchpadSensitivity != null) {
+                                TextButton(
+                                    onClick = {
+                                        bumpOverlay()
+                                        touchpadMode = !touchpadMode
+                                    },
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = if (touchpadMode) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            Color.White
+                                        },
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                    modifier = Modifier
+                                        .height(36.dp)
+                                        .semantics {
+                                            contentDescription = touchpadLabel
+                                            selected = touchpadMode
+                                        },
+                                ) {
+                                    Text(
+                                        touchpadLabel,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        maxLines = 1,
+                                    )
+                                }
                             }
                             TextButton(
                                 onClick = {

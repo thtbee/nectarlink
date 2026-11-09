@@ -658,6 +658,7 @@
     <string name="remote_key_del_desc">Eliminar</string>
     <string name="remote_key_copy">Copiar</string>
     <string name="remote_key_paste">Pegar</string>
+    <string name="remote_key_undo">Deshacer</string>
 
     <!-- Webcam formatting -->
     <string name="webcam_stream_spec">%1$d × %2$d · %3$d fps</string>
