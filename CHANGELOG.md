@@ -190,6 +190,10 @@ what people reported since 0.1.4.
   longer loops into loud distortion on Windows: the PC's sound sent to the phone leaves out
   NectarLink's own, and the phone
   doesn't send the PC's sound back with its own either ([#281](https://github.com/thtbee/nectarlink/issues/281)).
+- On home networks numbered outside the usual private ranges, the PC reconnects to the phone
+  on its own after a restart without **Connect over mobile data**. It found the phone over
+  mDNS but didn't count it as on the same network
+  ([#131](https://github.com/thtbee/nectarlink/issues/131)).
 - Elevated starts on phones and networks where Wireless debugging can't be looked up: it's
   tried on the phone itself instead of waiting forever
   ([#147](https://github.com/thtbee/nectarlink/issues/147)).
