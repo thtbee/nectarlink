@@ -4231,6 +4231,54 @@ impl<T: iroh::address_lookup::AddressLookup> iroh::address_lookup::AddressLookup
     }
 }
 
+/// mDNS, telling the LAN check what it finds while a device is being looked
+/// up. The library tells its subscribers only about devices nobody was
+/// looking up, so a paired device found while it was being dialed (right
+/// after a restart) never counted as on this network, and a home network
+/// numbered outside the private ranges refused it (#131).
+struct SeenOnLan<T> {
+    inner: T,
+    seen: Arc<dyn Fn(&iroh::address_lookup::EndpointInfo) + Send + Sync>,
+}
+
+impl<T: std::fmt::Debug> std::fmt::Debug for SeenOnLan<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("SeenOnLan").field(&self.inner).finish()
+    }
+}
+
+impl<T: iroh::address_lookup::AddressLookup> iroh::address_lookup::AddressLookup for SeenOnLan<T> {
+    fn publish(&self, data: &iroh::address_lookup::EndpointData) {
+        self.inner.publish(data);
+    }
+
+    fn resolve(
+        &self,
+        endpoint_id: iroh::EndpointId,
+    ) -> Option<
+        n0_future::boxed::BoxStream<
+            std::result::Result<iroh::address_lookup::Item, iroh::address_lookup::Error>,
+        >,
+    > {
+        use n0_future::StreamExt;
+        let seen = Arc::clone(&self.seen);
+        let found = self.inner.resolve(endpoint_id)?;
+        Some(Box::pin(found.inspect(move |item| {
+            if let Ok(item) = item {
+                seen(item.endpoint_info());
+            }
+        })))
+    }
+}
+
+/// Notes that `info` was seen over mDNS here, so its addresses count as this network's.
+fn record_mdns_sighting(shared: &Shared, info: &iroh::address_lookup::EndpointInfo) -> DeviceId {
+    let id = crate::device_id(&info.endpoint_id);
+    let addrs: Vec<SocketAddr> = info.ip_addrs().copied().collect();
+    lock(&shared.lan_seen).insert(id, (std::time::Instant::now(), addrs));
+    id
+}
+
 /// Announces this device on the LAN and watches for others.
 fn start_lan_discovery(shared: &Arc<Shared>, name: &str) -> Result<()> {
     install_mdns(shared, false)?;
@@ -4279,7 +4327,15 @@ fn install_mdns(shared: &Arc<Shared>, fast: bool) -> Result<()> {
             }
         }
     }
-    lookups.add(mdns.clone());
+    let recorder = Arc::downgrade(shared);
+    lookups.add(SeenOnLan {
+        inner: mdns.clone(),
+        seen: Arc::new(move |info| {
+            if let Some(shared) = recorder.upgrade() {
+                record_mdns_sighting(&shared, info);
+            }
+        }),
+    });
 
     let weak = Arc::downgrade(shared);
     tokio::spawn(async move {
@@ -4293,9 +4349,7 @@ fn install_mdns(shared: &Arc<Shared>, fast: bool) -> Result<()> {
             let Some(shared) = weak.upgrade() else { return };
             match event {
                 DiscoveryEvent::Discovered { endpoint_info, .. } => {
-                    let id = crate::device_id(&endpoint_info.endpoint_id);
-                    let addrs: Vec<SocketAddr> = endpoint_info.ip_addrs().copied().collect();
-                    lock(&shared.lan_seen).insert(id, (std::time::Instant::now(), addrs));
+                    let id = record_mdns_sighting(&shared, &endpoint_info);
                     if shared.store.is_paired(&id).unwrap_or(false) {
                         shared.wake_supervisor(&id);
                         continue;
@@ -4733,5 +4787,56 @@ mod away_tests {
         let data = EndpointData::new(Vec::new()).with_user_data("Bee's phone".parse().unwrap());
         WithoutName(seen.clone()).publish(&data);
         assert!(seen.0.lock().unwrap().as_ref().unwrap().user_data().is_none());
+    }
+}
+
+#[cfg(test)]
+mod seen_on_lan_tests {
+    use super::*;
+    use iroh::address_lookup::{AddressLookup, EndpointData, EndpointInfo, Item};
+
+    /// A lookup that answers with one fixed item.
+    #[derive(Debug)]
+    struct Fixed(Item);
+
+    impl AddressLookup for Fixed {
+        fn resolve(
+            &self,
+            _endpoint_id: iroh::EndpointId,
+        ) -> Option<n0_future::boxed::BoxStream<std::result::Result<Item, iroh::address_lookup::Error>>>
+        {
+            Some(Box::pin(n0_future::stream::iter([Ok(self.0.clone())])))
+        }
+    }
+
+    #[tokio::test]
+    async fn a_device_found_while_dialing_counts_as_seen_on_this_network() {
+        use n0_future::StreamExt;
+        let id = iroh::SecretKey::from_bytes(&[9; 32]).public();
+        let addr: SocketAddr = "192.1.1.169:49806".parse().unwrap();
+        let data = EndpointData::from_iter([iroh::TransportAddr::Ip(addr)]);
+        let item = Item::new(EndpointInfo::from_parts(id, data), "mdns", None);
+        let seen = Arc::new(Mutex::new(Vec::new()));
+        let recorded = Arc::clone(&seen);
+        let lookup = SeenOnLan {
+            inner: Fixed(item),
+            seen: Arc::new(move |info: &EndpointInfo| {
+                lock(&recorded).push((info.endpoint_id, info.ip_addrs().copied().collect::<Vec<_>>()));
+            }),
+        };
+
+        let found: Vec<_> = lookup.resolve(id).expect("a stream").collect().await;
+
+        assert_eq!(found.len(), 1, "the dial still gets the address");
+        assert_eq!(*lock(&seen), vec![(id, vec![addr])]);
+    }
+
+    #[test]
+    fn a_sighting_makes_its_addresses_this_networks() {
+        let addr: SocketAddr = "192.1.1.169:49806".parse().unwrap();
+        let ip = addr.ip();
+        // Outside the private ranges: only an mDNS sighting makes it home.
+        assert!(!crate::session::is_lan_ip(ip));
+        assert!(crate::session::is_lan_peer_ip(ip, &[addr]));
     }
 }

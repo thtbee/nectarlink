@@ -194,6 +194,10 @@ what people reported since 0.1.4.
   File Explorer was set up again on every connection update, about every 15 seconds, and when
   that failed it was retried just as often. Now it's only when the phone connects or
   disconnects, and a failure waits a minute, then longer.
+- On home networks numbered outside the usual private ranges, the PC reconnects to the phone
+  on its own after a restart without **Connect over mobile data**. It found the phone over
+  mDNS but didn't count it as on the same network
+  ([#131](https://github.com/thtbee/nectarlink/issues/131)).
 - Elevated starts on phones and networks where Wireless debugging can't be looked up: it's
   tried on the phone itself instead of waiting forever
   ([#147](https://github.com/thtbee/nectarlink/issues/147)).
