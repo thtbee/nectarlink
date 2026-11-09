@@ -5,6 +5,7 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.media.audiofx.LoudnessEnhancer
+import android.os.Build
 import android.os.Process
 import android.util.Log
 import java.util.concurrent.LinkedBlockingDeque
@@ -237,6 +238,13 @@ class PcSpeakerPlayer(
             val attrs = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .apply {
+                    // The PC's own sound must not go back to the PC with the
+                    // phone's sound or a mirror, or it plays twice and can loop.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        setAllowedCapturePolicy(AudioAttributes.ALLOW_CAPTURE_BY_SYSTEM)
+                    }
+                }
                 .build()
             val format = AudioFormat.Builder()
                 .setSampleRate(sampleRate)
