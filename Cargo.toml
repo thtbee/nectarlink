@@ -75,7 +75,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = "2.5"
 windows = "0.62"
 # The same version windows itself depends on, never newer on its own.
-windows-collections = "0.3"
+windows-collections = "0.100"
 windows-core = "0.62"
 zbus = { version = "5", default-features = false, features = ["tokio", "blocking-api"] }
 
