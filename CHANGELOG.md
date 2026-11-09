@@ -183,6 +183,9 @@ what people reported since 0.1.4.
   longer loops into loud distortion on Windows: the PC's sound sent to the phone leaves out
   NectarLink's own, and the phone
   doesn't send the PC's sound back with its own either ([#281](https://github.com/thtbee/nectarlink/issues/281)).
+- The Nectar Island keeps animating (the scrolling title and the equalizer) after the main window is
+  closed to the tray ([#225](https://github.com/thtbee/nectarlink/pull/225)). Thanks to
+  [@HaqmuinDox](https://github.com/HaqmuinDox).
 - With two phones connected, **Phone sound on this PC** plays the phone selected on Home,
   not the first one. Thanks to [@krakotay](https://github.com/krakotay).
 - Voice typing from the phone no longer loses or doubles letters in Notepad when it
