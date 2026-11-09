@@ -860,7 +860,7 @@
     <string name="walkthrough_power_badge_optional">Opcional</string>
     <string name="walkthrough_power_standard_title">Estándar</string>
     <string name="walkthrough_power_standard_sub">Instalación predeterminada</string>
-    <string name="walkthrough_power_standard_desc">Notificaciones, llamadas, mensajes, fotos, archivos, el mosaico Enviar portapapeles y duplicación de solo visualización.</string>
+    <string name="walkthrough_power_standard_desc">Notificaciones, llamadas, mensajes, fotos, archivos, el recuadro Enviar portapapeles y duplicación de solo visualización.</string>
     <string name="walkthrough_power_assist_title">Assist</string>
     <string name="walkthrough_power_assist_sub">Servicio de accesibilidad</string>
     <string name="walkthrough_power_assist_desc">Añade el control del ratón y el teclado desde tu PC durante la duplicación de pantalla.</string>
@@ -890,7 +890,7 @@
     <string name="walkthrough_done_permissions_label">Permisos</string>
     <string name="walkthrough_done_no_permissions">Ninguno concedido todavía</string>
     <string name="walkthrough_done_try_heading">Prueba primero</string>
-    <string name="walkthrough_done_try_1">1. Copia texto y toca el mosaico Enviar portapapeles para pegarlo en tu PC.</string>
+    <string name="walkthrough_done_try_1">1. Copia texto y toca el recuadro Enviar portapapeles para pegarlo en tu PC.</string>
     <string name="walkthrough_done_try_2">2. Comparte cualquier archivo o enlace con NectarLink desde el menú Compartir de Android.</string>
 
     <!-- Features Guide Chrome -->
@@ -1015,9 +1015,9 @@
     <string name="guide_clip_summary">Comparte texto e imágenes copiados entre el teléfono y el PC, y explora los últimos 50 elementos en Historial del portapapeles.</string>
     <string name="guide_clip_where">Inicio › Historial del portapapeles (o Ajustes › Funciones y datos › Portapapeles)</string>
     <string name="guide_clip_needs">PC emparejado; Elevated para sincronizar automáticamente del teléfono al PC en segundo plano</string>
-    <string name="guide_clip_need_1">La sincronización del portapapeles de PC a teléfono y el mosaico Enviar portapapeles funcionan de inmediato.</string>
+    <string name="guide_clip_need_1">La sincronización del portapapeles de PC a teléfono y el recuadro Enviar portapapeles funcionan de inmediato.</string>
     <string name="guide_clip_need_2">Elevated añade la sincronización automática del portapapeles del teléfono al PC.</string>
-    <string name="guide_clip_phone_1">Copia texto o una imagen en tu teléfono y luego abre NectarLink o toca el mosaico Enviar portapapeles.</string>
+    <string name="guide_clip_phone_1">Copia texto o una imagen en tu teléfono y luego abre NectarLink o toca el recuadro Enviar portapapeles.</string>
     <string name="guide_clip_phone_2">Toca Historial del portapapeles en Inicio para ver, fijar, copiar o eliminar elementos recientes.</string>
     <string name="guide_clip_pc_1">Copia texto o una imagen en tu PC para enviarlos al portapapeles de tu teléfono.</string>
     <string name="guide_clip_opt_1">Mostrar/Ocultar: oculta o muestra la vista previa del último elemento copiado en Inicio.</string>
@@ -1028,16 +1028,16 @@
 
     <!-- 6. Send clipboard -->
     <string name="guide_tile_title">Enviar portapapeles</string>
-    <string name="guide_tile_summary">Envía el portapapeles de tu teléfono a tu PC desde cualquier aplicación con el mosaico de Ajustes rápidos.</string>
+    <string name="guide_tile_summary">Envía el portapapeles de tu teléfono a tu PC desde cualquier aplicación con el recuadro de Ajustes rápidos.</string>
     <string name="guide_tile_where">Ajustes rápidos de Android › Enviar portapapeles</string>
     <string name="guide_tile_needs">PC emparejado</string>
     <string name="guide_tile_ext_1">1. Desliza dos veces hacia abajo desde la parte superior de la pantalla para abrir Ajustes rápidos.</string>
-    <string name="guide_tile_ext_2">2. Toca Editar y arrastra Enviar portapapeles a los accesos activos.</string>
+    <string name="guide_tile_ext_2">2. Toca Editar y arrastra Enviar portapapeles a los recuadros activos.</string>
     <string name="guide_tile_ext_3">3. Copia texto en cualquier aplicación, desliza hacia abajo y toca Enviar portapapeles.</string>
     <string name="guide_tile_need_1">Al menos un PC emparejado.</string>
-    <string name="guide_tile_phone_1">Añade una vez el acceso Enviar portapapeles a Ajustes rápidos y tócalo después de copiar.</string>
+    <string name="guide_tile_phone_1">Añade una vez el recuadro Enviar portapapeles a Ajustes rápidos y tócalo después de copiar.</string>
     <string name="guide_tile_pc_1">Pega en tu PC con Ctrl+V.</string>
-    <string name="guide_tile_opt_1">Enviar portapapeles: lee una vez el portapapeles del teléfono al tocarlo y envía su contenido o lo pone en cola.</string>
+    <string name="guide_tile_opt_1">Recuadro Enviar portapapeles: lee una vez el portapapeles del teléfono al tocarlo y envía su contenido o lo pone en cola.</string>
     <string name="guide_tile_privacy">Solo lee el portapapeles al tocar el acceso. Si no hay conexión, el contenido permanece en cola hasta 24 horas.</string>
     <string name="guide_tile_limits">Se utiliza cuando la sincronización del portapapeles en segundo plano de Elevated no está activa.</string>
 

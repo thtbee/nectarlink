@@ -2647,7 +2647,7 @@
     <message>
         <location filename="../../qml/pages/FeaturesGuidePage.qml" line="169"/>
         <source>Clipboard toggle on Home; Elevated or quick tile for background phone copy</source>
-        <translation>Control del portapapeles en Inicio; Elevated o el acceso rápido para copiar desde el teléfono en segundo plano</translation>
+        <translation>Control del portapapeles en Inicio; Elevated o el recuadro de Ajustes rápidos para copiar desde el teléfono en segundo plano</translation>
     </message>
     <message>
         <location filename="../../qml/pages/FeaturesGuidePage.qml" line="175"/>
@@ -3847,7 +3847,7 @@ Dónde encontrarlo
 
 Qué necesitas
 - El envío automático del portapapeles del PC al teléfono funciona mientras este está conectado.
-- En Android 10 o posterior, la sincronización en segundo plano del teléfono al PC utiliza las notificaciones, el acceso rápido de NectarLink o Elevated.</translation>
+- En Android 10 o posterior, la sincronización en segundo plano del teléfono al PC utiliza las notificaciones, el recuadro de NectarLink en Ajustes rápidos o Elevated.</translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="333"/>
