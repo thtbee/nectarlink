@@ -614,6 +614,10 @@ pub enum Event {
         id: String,
         on: bool,
     },
+    RemoteRing {
+        id: String,
+        on: bool,
+    },
     Discovered {
         device: DiscoveredDevice,
     },
@@ -2430,6 +2434,7 @@ impl Event {
                 Event::Battery { id: device.to_string(), battery: battery.into() }
             }
             NodeEvent::Ring { device, on } => Event::Ring { id: device.to_string(), on },
+            NodeEvent::RemoteRing { device, on } => Event::RemoteRing { id: device.to_string(), on },
             NodeEvent::Discovered(device) => Event::Discovered { device: device.into() },
             NodeEvent::DiscoveryExpired(id) => Event::DiscoveryExpired { id: id.to_string() },
             NodeEvent::Pairing(PairingEvent::SasCode { peer, code }) => {
@@ -3475,6 +3480,15 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.ring(id, on).await?) }).await
+    }
+
+    pub async fn stop_ringing(&self) -> Result<()> {
+        let node = self.node.clone();
+        self.run(async move {
+            node.stop_ringing().await;
+            Ok(())
+        })
+        .await
     }
 
     /// Dismisses a paired phone's or tablet's notification there, after it

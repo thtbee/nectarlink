@@ -657,9 +657,7 @@ Item {
         }
         readonly property bool canAnimateHero: !Theme.reduceMotion && !page.resizing && home.visible && page.visible
                                                && Qt.application.state === Qt.ApplicationActive
-        property bool ringing: false
-        // The phone stops ringing by itself after a minute (Ringer.MAX_RING_MS).
-        Timer { id: ringTimeout; interval: 60000; onTriggered: home.ringing = false }
+        readonly property bool ringing: AppController.ringingDevices.includes(home.deviceId)
 
         spacing: Theme.gutter
         readonly property real sideWidth: Math.round(Math.min(450, Math.max(320, home.width * 0.34)))
@@ -1344,11 +1342,7 @@ Item {
                     iconPath: Icons.ring
                     feature: home.feature("device.find_phone")
                     active: home.ringing
-                    onClicked: {
-                        home.ringing = !home.ringing
-                        if (home.ringing) ringTimeout.restart()
-                        AppController.ring(home.deviceId, home.ringing)
-                    }
+                    onClicked: AppController.ring(home.deviceId, !home.ringing)
                 }
             }
             FileDialog {

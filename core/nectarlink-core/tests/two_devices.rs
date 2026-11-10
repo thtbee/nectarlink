@@ -810,6 +810,33 @@ async fn update_hints_reach_peers_now_and_on_connect() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn local_stop_clears_the_initiators_ring_state() {
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut tablet = device("Tablet", DeviceKind::Phone).await;
+    pair_qr(&mut phone, &mut pc).await;
+    pair_qr(&mut phone, &mut tablet).await;
+
+    for target in [&pc, &tablet] {
+        let target_id = target.node.device_id();
+        phone.node.ring(target_id, true).await.unwrap();
+        wait_for(&mut phone, "remote ring started", |event| match event {
+            NodeEvent::RemoteRing { device, on: true } if *device == target_id => Some(()),
+            _ => None,
+        })
+        .await;
+
+        target.node.stop_ringing().await;
+        wait_for(&mut phone, "remote ring stopped", |event| match event {
+            NodeEvent::RemoteRing { device, on: false } if *device == target_id => Some(()),
+            _ => None,
+        })
+        .await;
+        assert_eq!(*target.platform.rings.lock().unwrap(), [true, false]);
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn ring_and_battery_flow_between_devices() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;
     let mut phone = device("Pixel", DeviceKind::Phone).await;

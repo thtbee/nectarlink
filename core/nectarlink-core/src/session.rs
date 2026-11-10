@@ -168,6 +168,7 @@ pub(crate) struct Session {
     /// Who opened the connection; used to resolve duplicate connections.
     pub dialer: DeviceId,
     pub conn: Connection,
+    pub(crate) ring_command: tokio::sync::Mutex<()>,
     outbox: mpsc::Sender<Envelope>,
     pending: Mutex<HashMap<u64, oneshot::Sender<Envelope>>>,
     next_id: AtomicU64,
@@ -218,6 +219,7 @@ impl Session {
             peer,
             dialer,
             conn,
+            ring_command: Default::default(),
             outbox,
             pending: Mutex::new(HashMap::new()),
             next_id: AtomicU64::new(1),
@@ -517,8 +519,7 @@ async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shar
 fn is_background_rpc(t: &str) -> bool {
     matches!(
         t,
-        types::DEVICE_RING
-            | types::NOTIFY_DISMISS
+        types::NOTIFY_DISMISS
             | types::NOTIFY_ACTION
             | types::PC_POWER
             | types::LINK_OPEN
@@ -595,18 +596,12 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         }
         types::DEVICE_RING => {
             let ring: Ring = env.body()?;
-            let platform = shared.platform.clone();
-            let on = ring.on;
-            let _ = tokio::task::spawn_blocking(move || {
-                if on {
-                    platform.start_ringing();
-                } else {
-                    platform.stop_ringing();
-                }
-            })
-            .await;
-            shared.emit(NodeEvent::Ring { device: peer, on: ring.on });
+            shared.receive_ring(session, ring).await;
             session.send(Envelope::empty(types::OK).reply_to(env.id)).await?;
+        }
+        types::DEVICE_RING_STOPPED => {
+            let stopped: RingStopped = env.body()?;
+            shared.clear_remote_ring(peer, Some(stopped.token));
         }
         types::PAIR_REVOKE => {
             tracing::info!(peer = %peer.short(), "peer unpaired this device");

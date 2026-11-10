@@ -263,6 +263,7 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_allow_camera">Allow camera</string>
     <string name="action_ring_pc">Ring PC</string>
+    <string name="action_ring_stop">STOP</string>
     <string name="action_stop_ringing">Stop ringing</string>
     <string name="action_stop_service">Turn off</string>
     <string name="action_turn_on">Turn on</string>

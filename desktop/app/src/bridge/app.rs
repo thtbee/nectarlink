@@ -13,19 +13,21 @@ use std::{
 
 use cxx_qt::{CxxQtThread, CxxQtType, Threading};
 use cxx_qt_lib::{
-    QHash, QHashPair_QString_QVariant, QList, QMap, QMapPair_QString_QVariant, QString, QVariant,
+    QHash, QHashPair_QString_QVariant, QList, QMap, QMapPair_QString_QVariant, QString, QStringList, QVariant,
 };
 use nectarlink_core::{DeviceId, Error, FeatureState, LinkState, PhoneToggleValue, features::Upgrade};
 
 use crate::{
     core_host,
     state::{Changes, CoreStatus},
-    win::{self, sound, tray},
+    win::{self, tray},
 };
 
 #[cxx_qt::bridge]
 pub mod qobject {
     unsafe extern "C++" {
+        include!("cxx-qt-lib/qstringlist.h");
+        type QStringList = cxx_qt_lib::QStringList;
         include!("cxx-qt-lib/qstring.h");
         type QString = cxx_qt_lib::QString;
         include!("cxx-qt-lib/qmap.h");
@@ -57,6 +59,7 @@ pub mod qobject {
         #[qproperty(i32, phone_toggles_revision)]
         /// Name of the device making this PC ring ("" when not ringing).
         #[qproperty(QString, ringing_from)]
+        #[qproperty(QStringList, ringing_devices)]
         #[qproperty(bool, system_dark)]
         #[qproperty(bool, reduce_motion)]
         /// Battery saver is on: decorative animation rests.
@@ -438,6 +441,7 @@ pub struct AppControllerRust {
     toggles_revision: i32,
     phone_toggles_revision: i32,
     ringing_from: QString,
+    ringing_devices: QStringList,
     system_dark: bool,
     reduce_motion: bool,
     power_saver: bool,
@@ -1190,6 +1194,7 @@ impl qobject::AppController {
             devices,
             phone_colors,
             ringing,
+            ringing_devices,
             online,
             current_is_online,
             caps_version,
@@ -1204,7 +1209,9 @@ impl qobject::AppController {
             wake_wired,
             waiting_count,
         ) = hub.read(|s| {
-            let ringing = s.ringing_from.and_then(|id| s.name_of(&id)).unwrap_or_default();
+            let ringing =
+                s.ringing_from.map(|id| s.name_of(&id).unwrap_or_else(|| id.short())).unwrap_or_default();
+            let ringing_devices = s.ringing_devices.iter().map(|id| QString::from(&id.to_string())).collect();
             let remote_prompt = s.remote_prompt.map(|id| {
                 let name = s.name_of(&id).unwrap_or_else(|| id.short());
                 (id.to_string(), name)
@@ -1245,6 +1252,7 @@ impl qobject::AppController {
                 s.devices.len(),
                 phone_colors,
                 ringing,
+                ringing_devices,
                 connected.len(),
                 current_is_online,
                 s.matrices_version,
@@ -1285,6 +1293,7 @@ impl qobject::AppController {
             self.as_mut().set_phone_colors(phone_colors_q);
         }
         self.as_mut().set_ringing_from(QString::from(&ringing));
+        self.as_mut().set_ringing_devices(ringing_devices);
         let (prompt_id, prompt_name) = remote_prompt.unwrap_or_default();
         self.as_mut().set_remote_prompt_device_id(QString::from(&prompt_id));
         self.as_mut().set_remote_prompt_device_name(QString::from(&prompt_name));
@@ -1591,10 +1600,9 @@ impl qobject::AppController {
     }
 
     pub fn stop_ringing(self: Pin<&mut Self>) {
-        sound::stop_ringing();
-        core_host::host()
-            .hub
-            .update(|s| if s.ringing_from.take().is_some() { Changes::RINGING } else { Changes::NONE });
+        if let Some(node) = core_host::node() {
+            core_host::spawn(async move { node.stop_ringing().await });
+        }
     }
 
     pub fn allow_remote_input(mut self: Pin<&mut Self>, device: &QString) {

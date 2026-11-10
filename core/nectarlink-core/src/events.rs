@@ -115,6 +115,11 @@ pub enum NodeEvent {
         device: DeviceId,
         on: bool,
     },
+    /// Whether a paired device is ringing at our request.
+    RemoteRing {
+        device: DeviceId,
+        on: bool,
+    },
     Discovered(DiscoveredDevice),
     DiscoveryExpired(DeviceId),
     Pairing(PairingEvent),

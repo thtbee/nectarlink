@@ -115,7 +115,6 @@ object ContinuityCameraRequests {
                 .setContentTitle(title)
                 .setContentText(text)
                 .setContentIntent(openPending)
-                .setFullScreenIntent(openPending, true)
                 .setAutoCancel(true)
                 .setTimeoutAfter(REQUEST_TIMEOUT_MS)
                 .setCategory(NotificationCompat.CATEGORY_CALL)

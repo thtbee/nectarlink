@@ -183,6 +183,7 @@ pub(crate) struct Shared {
     pub(crate) notification_history: Mutex<Vec<Notification>>,
     /// This device's media players (docs/protocol/media.md).
     pub players: crate::media::Players,
+    pub(crate) rings: crate::ring::Rings,
     /// This phone's call in progress (docs/protocol/calls.md).
     pub(crate) calls: crate::calls::Current,
     /// This phone's quick settings state (docs/protocol/toggles.md).
@@ -1081,7 +1082,7 @@ impl Shared {
     }
 
     /// Removes a paired device locally (after we or the peer unpaired).
-    pub async fn forget_peer(&self, peer: &DeviceId) -> Result<()> {
+    pub async fn forget_peer(self: &Arc<Self>, peer: &DeviceId) -> Result<()> {
         let peer_name = self.peer_name(peer);
         let dropped_count = self
             .store
@@ -1128,6 +1129,9 @@ impl Shared {
         lock(&self.storage).remove_peer(peer);
         self.toggles.remove_peer(peer);
         self.deck.remove_peer(peer);
+        self.clear_remote_ring(*peer, None);
+        let peer_id = *peer;
+        self.stop_local_ring_if(move |ring| ring.peer == peer_id).await;
         self.stop_webcam(peer);
         // The session was removed above, so `on_session_end` won't clear these:
         // a one-time "show my screen" must not outlive the pairing.
@@ -1294,6 +1298,7 @@ impl Shared {
         let current = sessions.get(&ended.peer).is_some_and(|current| Arc::ptr_eq(current, ended));
         if current {
             sessions.remove(&ended.peer);
+            self.clear_remote_ring(ended.peer, None);
             lock(&self.pc_mirror_sessions).remove(&ended.peer);
             lock(&self.watch_offers).remove(&ended.peer);
             lock(&self.storage).remove_peer(&ended.peer);
@@ -1693,6 +1698,7 @@ impl Node {
             notifications: Feed::default(),
             notification_history: Mutex::new(Vec::new()),
             players: Default::default(),
+            rings: Default::default(),
             calls: Default::default(),
             toggles: Default::default(),
             wake_info: Default::default(),
@@ -1800,6 +1806,7 @@ impl Node {
     /// Stops all sessions and networking.
     pub async fn shutdown(&self) {
         self.shared.cancel.cancel();
+        self.stop_ringing().await;
         crate::elevated_usb::stop_all(&self.shared);
         self.shared.localsend.stop(&self.shared);
         let sessions: Vec<_> = lock(&self.shared.sessions).drain().map(|(_, s)| s).collect();
@@ -1982,9 +1989,21 @@ impl Node {
 
     /// Asks a device to start or stop ringing.
     pub async fn ring(&self, peer: DeviceId, on: bool) -> Result<()> {
-        let reply = self.request(peer, Envelope::new(types::DEVICE_RING, &Ring { on })?).await?;
-        reply.expect(types::OK)?;
-        Ok(())
+        let session = self.connected(&peer)?;
+        let _command = session.ring_command.lock().await;
+        let token =
+            if on { Some(self.shared.start_remote_ring(peer)) } else { self.shared.remote_ring_token(peer) };
+        let reply = self.request(peer, Envelope::new(types::DEVICE_RING, &Ring { on, token })?).await;
+        let result = reply.and_then(|reply| Ok(reply.expect(types::OK)?));
+        if !on || result.is_err() {
+            self.shared.clear_remote_ring(peer, token);
+        }
+        result
+    }
+
+    /// Stops the local alarm and informs the device that started it.
+    pub async fn stop_ringing(&self) {
+        self.shared.stop_local_ring_if(|_| true).await;
     }
 
     /// Sends a request to a connected device. If the connection is replaced

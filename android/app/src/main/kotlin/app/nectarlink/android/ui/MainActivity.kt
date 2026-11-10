@@ -159,6 +159,9 @@ class MainActivity : ComponentActivity() {
                     ConnectionService.stop(this@MainActivity)
                 }
             }
+            LaunchedEffect(state.ringingPeer) {
+                if (state.ringingPeer != null) startActivity(RingActivity.intent(this@MainActivity))
+            }
             NectarlinkTheme(
                 appearance = appearance,
                 mediaSeedColor = state.activeMediaColor,

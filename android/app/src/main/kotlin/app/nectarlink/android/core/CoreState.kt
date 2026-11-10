@@ -180,8 +180,9 @@ data class CoreState(
     val devices: List<Device> = emptyList(),
     val discovered: List<DiscoveredDevice> = emptyList(),
     val pairing: PairingState = PairingState.Idle,
-    /** Name of the device making this phone ring, or null. */
-    val ringingFrom: String? = null,
+    /** ID of the device making this phone ring, or null. */
+    val ringingPeer: String? = null,
+    val ringingDevices: Set<String> = emptySet(),
     /** Whether the user let NectarLink read notifications (to mirror them). */
     val notificationAccess: Boolean = false,
     /** Whether Android lets NectarLink reach the local network (Android 17). */
@@ -302,7 +303,11 @@ data class CoreState(
             storageRequestedFrom = if (enabled && storageRequestedFrom == id) null else storageRequestedFrom,
         )
 
+    val ringingFrom: String? get() = ringingPeer?.let { nameOf(it).orEmpty() }
+
     fun withDevicesOffline(): CoreState = copy(
+        ringingPeer = null,
+        ringingDevices = emptySet(),
         devices = devices.map { d ->
             if (d.online) d.copy(link = Link.Offline(System.currentTimeMillis() / 1000L), wakeState = WakeState.Idle) else d
         }.sortedWith(deviceOrder),
@@ -319,7 +324,8 @@ data class CoreState(
         is Event.DeviceRemoved -> copy(
             devices = devices.filterNot { it.id == event.id },
             sendQueue = sendQueue.filterNot { it.peerId == event.id },
-            ringingFrom = if (ringingFrom == nameOf(event.id)) null else ringingFrom,
+            ringingPeer = ringingPeer?.takeUnless { it == event.id },
+            ringingDevices = ringingDevices - event.id,
             storageRequestedFrom = if (storageRequestedFrom == event.id) null else storageRequestedFrom,
             webcamRequest = if (webcamRequest?.pcId == event.id) null else webcamRequest,
             micRequestFrom = if (micRequestFrom == event.id) null else micRequestFrom,
@@ -378,7 +384,8 @@ data class CoreState(
         is Event.Capabilities -> update(event.id) { it.copy(features = event.features) }
         is Event.DeckLayout -> update(event.id) { it.copy(deckLayout = event.layout) }
         is Event.DeckState -> update(event.id) { it.copy(deckState = event.state) }
-        is Event.Ring -> copy(ringingFrom = if (event.on) nameOf(event.id) ?: "" else null)
+        is Event.Ring -> copy(ringingPeer = if (event.on) event.id else ringingPeer?.takeUnless { it == event.id })
+        is Event.RemoteRing -> copy(ringingDevices = if (event.on) ringingDevices + event.id else ringingDevices - event.id)
         is Event.Discovered -> copy(discovered = discovered.filterNot { it.id == event.device.id } + event.device)
         is Event.DiscoveryExpired -> copy(discovered = discovered.filterNot { it.id == event.id })
         is Event.PairingCode -> copy(pairing = PairingState.Comparing(event.peer, event.code))

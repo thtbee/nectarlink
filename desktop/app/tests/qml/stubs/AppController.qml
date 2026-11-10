@@ -5,6 +5,7 @@ import QtQuick
 // Stands in for the Rust AppController in QML tests: still, light, no
 // phone or wallpaper colors.
 QtObject {
+    property list<string> ringingDevices
     property bool systemDark: false
     property bool reduceMotion: true
     property bool powerSaver: false

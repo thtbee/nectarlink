@@ -626,6 +626,7 @@ fun HomeScreen(
             ) {
                 PcCard(
                     device = device,
+                    ringing = device.id in state.ringingDevices,
                     onRing = onRing,
                     onSendFiles = onSendFiles,
                     onSendFolder = onSendFolder,
@@ -646,7 +647,12 @@ fun HomeScreen(
         }
         // Another phone or tablet paired with this one.
         items(state.devices.filter { it.isAndroid }, key = { it.id }, contentType = { "peer_card" }) { device ->
-            PeerCard(device = device, onRing = onRing, onSendFiles = onSendFiles)
+            PeerCard(
+                device = device,
+                ringing = device.id in state.ringingDevices,
+                onRing = onRing,
+                onSendFiles = onSendFiles,
+            )
         }
         if (state.sendQueue.isNotEmpty()) {
             item(key = "send_queue", contentType = "send_queue") {
@@ -1277,6 +1283,7 @@ private fun KeyboardBanner(from: String, onStop: () -> Unit) {
 @Composable
 private fun PeerCard(
     device: Device,
+    ringing: Boolean,
     onRing: (String, Boolean) -> Unit,
     onSendFiles: (String, List<Uri>) -> Unit,
 ) {
@@ -1284,7 +1291,6 @@ private fun PeerCard(
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) onSendFiles(device.id, uris)
     }
-    var ringing by remember(device.id) { mutableStateOf(false) }
     val isGlass = LocalGlassTheme.current
     Column(
         modifier = Modifier
@@ -1322,10 +1328,7 @@ private fun PeerCard(
             FilledTonalButton(
                 contentPadding = CardButtonPadding,
                 enabled = device.online && device.has("pair.ring"),
-                onClick = {
-                    ringing = !ringing
-                    onRing(device.id, ringing)
-                },
+                onClick = { onRing(device.id, !ringing) },
                 modifier = Modifier.weight(1f),
             ) {
                 Icon(imageVector = BellIcon, contentDescription = null, modifier = Modifier.size(15.dp))
@@ -1359,6 +1362,7 @@ private fun PeerCard(
 @Composable
 private fun PcCard(
     device: Device,
+    ringing: Boolean,
     onRing: (String, Boolean) -> Unit,
     onSendFiles: (String, List<Uri>) -> Unit,
     onSendFolder: (String, Uri) -> Unit,
@@ -1382,7 +1386,6 @@ private fun PcCard(
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
         if (tree != null) onSendFolder(device.id, tree)
     }
-    var ringing by remember(device.id) { mutableStateOf(false) }
     val isGlass = LocalGlassTheme.current
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1728,10 +1731,7 @@ private fun PcCard(
                         contentPadding = CardButtonPadding,
                         enabled = device.online,
                         colors = tonal,
-                        onClick = {
-                            ringing = !ringing
-                            onRing(device.id, ringing)
-                        },
+                        onClick = { onRing(device.id, !ringing) },
                         modifier = Modifier.weight(1f),
                     ) {
                         Icon(

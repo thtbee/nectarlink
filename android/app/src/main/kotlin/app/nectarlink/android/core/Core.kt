@@ -2542,10 +2542,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     fun unpair(id: String) = command { it.unpair(id) }
 
     /** Stops this phone ringing. */
-    fun stopRinging() {
-        ringer.stopRinging()
-        _state.update { it.copy(ringingFrom = null) }
-    }
+    fun stopRinging() = command { it.stopRinging() }
 
     /** Records whether `pcId` is currently typing on this phone without mirroring. */
     fun setKeyboardFromPc(pcId: String, on: Boolean) {

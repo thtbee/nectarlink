@@ -256,6 +256,7 @@ pub struct AppState {
     pub toggles_version: u32,
     /// The device that asked this PC to ring, while it rings.
     pub ringing_from: Option<DeviceId>,
+    pub ringing_devices: BTreeSet<DeviceId>,
     /// Phone notifications, newest first.
     pub notifications: Vec<NotificationView>,
     /// App icon files by package name.
@@ -391,6 +392,9 @@ impl AppState {
                     self.toggles_version = self.toggles_version.wrapping_add(1);
                     changes |= Changes::TOGGLES;
                 }
+                if self.ringing_devices.remove(id) {
+                    changes |= Changes::RINGING;
+                }
                 if self.ringing_from == Some(*id) {
                     self.ringing_from = None;
                     changes |= Changes::RINGING;
@@ -480,12 +484,24 @@ impl AppState {
                 self.set_matrix(matrix.clone())
             }
             NodeEvent::Ring { device, on } => {
-                let next = on.then_some(*device);
+                let next = if *on {
+                    Some(*device)
+                } else {
+                    self.ringing_from.filter(|id| id != device)
+                };
                 if self.ringing_from == next {
                     return Changes::NONE;
                 }
                 self.ringing_from = next;
                 Changes::RINGING
+            }
+            NodeEvent::RemoteRing { device, on } => {
+                let changed = if *on {
+                    self.ringing_devices.insert(*device)
+                } else {
+                    self.ringing_devices.remove(device)
+                };
+                if changed { Changes::RINGING } else { Changes::NONE }
             }
             NodeEvent::RemoteInputRequested { device } => {
                 if self.remote_prompt == Some(*device) {
