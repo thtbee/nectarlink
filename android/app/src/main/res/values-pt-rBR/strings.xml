@@ -1397,6 +1397,38 @@
     <string name="device_name_in_profile">%1$s (%2$s)</string>
     <string name="profile_work">Trabalho</string>
     <string name="profile_other">Segundo perfil</string>
+
+    <string name="relay_settings_title">Servidores de retransmissão Iroh</string>
+    <string name="relay_waiting">Aguardando o serviço de conexão…</string>
+    <string name="relay_away_hint">Ative “Conectar usando dados móveis” para usar os retransmissores habilitados.</string>
+    <string name="relay_selection_hint">Os controles definem quais servidores o Iroh pode escolher como retransmissor principal deste dispositivo.</string>
+    <string name="relay_home">Retransmissores principais</string>
+    <string name="relay_home_empty">Nenhum retransmissor principal selecionado</string>
+    <string name="relay_home_connected">Conectado · %1$s</string>
+    <string name="relay_home_failed">Falha na conexão · %1$s</string>
+    <string name="relay_home_connecting">Conectando · %1$s</string>
+    <string name="relay_device_routes">Tráfego dos dispositivos via retransmissão</string>
+    <string name="relay_routes_empty">Nenhum dispositivo está usando um retransmissor</string>
+    <string name="relay_route">%1$s via %2$s</string>
+    <string name="relay_check_all">Verificar todos os retransmissores</string>
+    <string name="relay_checking">Verificando retransmissores…</string>
+    <string name="relay_checking_short">Verificando…</string>
+    <string name="relay_not_checked">Ainda não verificado</string>
+    <string name="relay_rtt">%1$d ms</string>
+    <string name="relay_timed_out">Tempo limite excedido</string>
+    <string name="relay_unreachable">Inacessível</string>
+    <string name="relay_address">Endereço do retransmissor personalizado</string>
+    <string name="relay_add">Adicionar retransmissor</string>
+    <string name="relay_enable">Ativar %1$s</string>
+    <string name="relay_invalid_address">Informe um endereço HTTP ou HTTPS sem credenciais, caminho ou parâmetros de consulta.</string>
+    <string name="relay_duplicate">Este retransmissor já está na lista.</string>
+    <string name="relay_limit">A lista aceita até 16 retransmissores personalizados.</string>
+    <string name="relay_save_failed">Não foi possível salvar as configurações de retransmissão.</string>
+    <string name="relay_region_na_east">América do Norte · Leste</string>
+    <string name="relay_region_na_west">América do Norte · Oeste</string>
+    <string name="relay_region_europe">Europa</string>
+    <string name="relay_region_asia_pacific">Ásia-Pacífico</string>
+    <string name="relay_region_custom">Personalizados</string>
 </resources>
 
 

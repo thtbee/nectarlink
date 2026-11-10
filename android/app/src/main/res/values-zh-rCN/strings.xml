@@ -1257,4 +1257,36 @@
     <string name="device_name_in_profile">%1$s（%2$s）</string>
     <string name="profile_work">工作</string>
     <string name="profile_other">第二资料</string>
+
+    <string name="relay_settings_title">Iroh 中继服务器</string>
+    <string name="relay_waiting">正在等待连接服务…</string>
+    <string name="relay_away_hint">开启“通过移动数据连接”后，即可使用已启用的中继服务器。</string>
+    <string name="relay_selection_hint">开关决定 Iroh 可以为此设备选择哪些服务器作为主中继。</string>
+    <string name="relay_home">主中继服务器</string>
+    <string name="relay_home_empty">尚未选择主中继</string>
+    <string name="relay_home_connected">已连接 · %1$s</string>
+    <string name="relay_home_failed">连接失败 · %1$s</string>
+    <string name="relay_home_connecting">正在连接 · %1$s</string>
+    <string name="relay_device_routes">经中继转发的设备流量</string>
+    <string name="relay_routes_empty">当前没有设备通过中继传输流量</string>
+    <string name="relay_route">%1$s 经由 %2$s</string>
+    <string name="relay_check_all">检测所有中继服务器</string>
+    <string name="relay_checking">正在检测中继服务器…</string>
+    <string name="relay_checking_short">正在检测…</string>
+    <string name="relay_not_checked">尚未检测</string>
+    <string name="relay_rtt">%1$d 毫秒</string>
+    <string name="relay_timed_out">超时</string>
+    <string name="relay_unreachable">无法连接</string>
+    <string name="relay_address">自定义中继地址</string>
+    <string name="relay_add">添加中继</string>
+    <string name="relay_enable">启用 %1$s</string>
+    <string name="relay_invalid_address">请输入不含凭据、路径或查询参数的 HTTP 或 HTTPS 中继地址。</string>
+    <string name="relay_duplicate">此中继服务器已在列表中。</string>
+    <string name="relay_limit">最多可添加 16 个自定义中继服务器。</string>
+    <string name="relay_save_failed">无法保存中继设置。</string>
+    <string name="relay_region_na_east">北美东部</string>
+    <string name="relay_region_na_west">北美西部</string>
+    <string name="relay_region_europe">欧洲</string>
+    <string name="relay_region_asia_pacific">亚太地区</string>
+    <string name="relay_region_custom">自定义</string>
 </resources>

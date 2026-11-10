@@ -1327,4 +1327,36 @@
 <string name="device_name_in_profile">%1$s (%2$s)</string>
 <string name="profile_work">Công việc</string>
 <string name="profile_other">Hồ sơ thứ hai</string>
+
+<string name="relay_settings_title">Máy chủ chuyển tiếp Iroh</string>
+<string name="relay_waiting">Đang chờ dịch vụ kết nối…</string>
+<string name="relay_away_hint">Bật “Kết nối qua dữ liệu di động” để sử dụng các máy chủ chuyển tiếp đã bật.</string>
+<string name="relay_selection_hint">Các công tắc xác định máy chủ mà Iroh có thể chọn làm máy chủ chuyển tiếp chính cho thiết bị này.</string>
+<string name="relay_home">Máy chủ chuyển tiếp chính</string>
+<string name="relay_home_empty">Chưa chọn máy chủ chuyển tiếp chính</string>
+<string name="relay_home_connected">Đã kết nối · %1$s</string>
+<string name="relay_home_failed">Kết nối thất bại · %1$s</string>
+<string name="relay_home_connecting">Đang kết nối · %1$s</string>
+<string name="relay_device_routes">Lưu lượng thiết bị qua máy chủ chuyển tiếp</string>
+<string name="relay_routes_empty">Không có thiết bị nào đang dùng máy chủ chuyển tiếp</string>
+<string name="relay_route">%1$s qua %2$s</string>
+<string name="relay_check_all">Kiểm tra tất cả máy chủ chuyển tiếp</string>
+<string name="relay_checking">Đang kiểm tra các máy chủ chuyển tiếp…</string>
+<string name="relay_checking_short">Đang kiểm tra…</string>
+<string name="relay_not_checked">Chưa kiểm tra</string>
+<string name="relay_rtt">%1$d ms</string>
+<string name="relay_timed_out">Hết thời gian chờ</string>
+<string name="relay_unreachable">Không thể truy cập</string>
+<string name="relay_address">Địa chỉ máy chủ chuyển tiếp tùy chỉnh</string>
+<string name="relay_add">Thêm máy chủ chuyển tiếp</string>
+<string name="relay_enable">Bật %1$s</string>
+<string name="relay_invalid_address">Nhập địa chỉ HTTP hoặc HTTPS không chứa thông tin đăng nhập, đường dẫn hay tham số truy vấn.</string>
+<string name="relay_duplicate">Máy chủ chuyển tiếp này đã có trong danh sách.</string>
+<string name="relay_limit">Có thể thêm tối đa 16 máy chủ chuyển tiếp tùy chỉnh.</string>
+<string name="relay_save_failed">Không thể lưu cài đặt chuyển tiếp.</string>
+<string name="relay_region_na_east">Bắc Mỹ · Miền Đông</string>
+<string name="relay_region_na_west">Bắc Mỹ · Miền Tây</string>
+<string name="relay_region_europe">Châu Âu</string>
+<string name="relay_region_asia_pacific">Châu Á – Thái Bình Dương</string>
+<string name="relay_region_custom">Tùy chỉnh</string>
 </resources>

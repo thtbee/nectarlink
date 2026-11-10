@@ -1397,6 +1397,38 @@
     <string name="device_name_in_profile">%1$s (%2$s)</string>
     <string name="profile_work">İş</string>
     <string name="profile_other">İkinci profil</string>
+
+    <string name="relay_settings_title">Iroh aktarma sunucuları</string>
+    <string name="relay_waiting">Bağlantı hizmeti bekleniyor…</string>
+    <string name="relay_away_hint">Etkin aktarma sunucularını kullanmak için “Mobil veri üzerinden bağlan” seçeneğini açın.</string>
+    <string name="relay_selection_hint">Anahtarlar, Iroh’un bu cihaz için hangi sunucuları ana aktarma sunucusu olarak seçebileceğini belirler.</string>
+    <string name="relay_home">Ana aktarma sunucuları</string>
+    <string name="relay_home_empty">Ana aktarma sunucusu seçilmedi</string>
+    <string name="relay_home_connected">Bağlandı · %1$s</string>
+    <string name="relay_home_failed">Bağlantı başarısız · %1$s</string>
+    <string name="relay_home_connecting">Bağlanıyor · %1$s</string>
+    <string name="relay_device_routes">Aktarma sunucusu üzerinden cihaz trafiği</string>
+    <string name="relay_routes_empty">Hiçbir cihaz aktarma sunucusu kullanmıyor</string>
+    <string name="relay_route">%1$s, %2$s üzerinden</string>
+    <string name="relay_check_all">Tüm aktarma sunucularını denetle</string>
+    <string name="relay_checking">Aktarma sunucuları denetleniyor…</string>
+    <string name="relay_checking_short">Denetleniyor…</string>
+    <string name="relay_not_checked">Henüz denetlenmedi</string>
+    <string name="relay_rtt">%1$d ms</string>
+    <string name="relay_timed_out">Zaman aşımına uğradı</string>
+    <string name="relay_unreachable">Erişilemiyor</string>
+    <string name="relay_address">Özel aktarma sunucusu adresi</string>
+    <string name="relay_add">Aktarma sunucusu ekle</string>
+    <string name="relay_enable">%1$s sunucusunu etkinleştir</string>
+    <string name="relay_invalid_address">Kimlik bilgileri, yol veya sorgu içermeyen bir HTTP ya da HTTPS adresi girin.</string>
+    <string name="relay_duplicate">Bu aktarma sunucusu zaten listede.</string>
+    <string name="relay_limit">Listeye en fazla 16 özel aktarma sunucusu eklenebilir.</string>
+    <string name="relay_save_failed">Aktarma sunucusu ayarları kaydedilemedi.</string>
+    <string name="relay_region_na_east">Kuzey Amerika · Doğu</string>
+    <string name="relay_region_na_west">Kuzey Amerika · Batı</string>
+    <string name="relay_region_europe">Avrupa</string>
+    <string name="relay_region_asia_pacific">Asya-Pasifik</string>
+    <string name="relay_region_custom">Özel sunucular</string>
 </resources>
 
 

@@ -1407,4 +1407,36 @@
     <string name="device_name_in_profile">%1$s (%2$s)</string>
     <string name="profile_work">Trabajo</string>
     <string name="profile_other">Segundo perfil</string>
+
+    <string name="relay_settings_title">Servidores de retransmisión de Iroh</string>
+    <string name="relay_waiting">Esperando al servicio de conexión…</string>
+    <string name="relay_away_hint">Activa «Conectar mediante datos móviles» para usar los servidores habilitados.</string>
+    <string name="relay_selection_hint">Los interruptores determinan qué servidores puede elegir Iroh como servidor principal para este dispositivo.</string>
+    <string name="relay_home">Servidores principales</string>
+    <string name="relay_home_empty">No se ha seleccionado ningún servidor principal</string>
+    <string name="relay_home_connected">Conectado · %1$s</string>
+    <string name="relay_home_failed">Error de conexión · %1$s</string>
+    <string name="relay_home_connecting">Conectando · %1$s</string>
+    <string name="relay_device_routes">Tráfico de dispositivos mediante retransmisión</string>
+    <string name="relay_routes_empty">Ningún dispositivo está usando un servidor de retransmisión</string>
+    <string name="relay_route">%1$s mediante %2$s</string>
+    <string name="relay_check_all">Comprobar todos los servidores</string>
+    <string name="relay_checking">Comprobando los servidores…</string>
+    <string name="relay_checking_short">Comprobando…</string>
+    <string name="relay_not_checked">Sin comprobar</string>
+    <string name="relay_rtt">%1$d ms</string>
+    <string name="relay_timed_out">Tiempo de espera agotado</string>
+    <string name="relay_unreachable">Inaccesible</string>
+    <string name="relay_address">Dirección del servidor personalizado</string>
+    <string name="relay_add">Añadir servidor</string>
+    <string name="relay_enable">Habilitar %1$s</string>
+    <string name="relay_invalid_address">Introduce una dirección HTTP o HTTPS sin credenciales, ruta ni parámetros de consulta.</string>
+    <string name="relay_duplicate">Este servidor ya está en la lista.</string>
+    <string name="relay_limit">Puedes añadir hasta 16 servidores personalizados.</string>
+    <string name="relay_save_failed">No se han podido guardar los ajustes de retransmisión.</string>
+    <string name="relay_region_na_east">Norteamérica · Este</string>
+    <string name="relay_region_na_west">Norteamérica · Oeste</string>
+    <string name="relay_region_europe">Europa</string>
+    <string name="relay_region_asia_pacific">Asia-Pacífico</string>
+    <string name="relay_region_custom">Personalizados</string>
 </resources>
