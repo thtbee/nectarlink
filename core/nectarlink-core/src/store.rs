@@ -691,6 +691,10 @@ impl Store {
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.pragma_update(None, "synchronous", "NORMAL")?;
         conn.pragma_update(None, "busy_timeout", 5000)?;
+        // The write-ahead log shrinks back after a checkpoint. Without a limit it
+        // keeps the size of its busiest moment (as big as the database itself, seen
+        // on a real install), and what was deleted stays readable in it.
+        conn.pragma_update(None, "journal_size_limit", 1_048_576)?;
         conn.pragma_update(None, "temp_store", "MEMORY")?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
         // What's deleted is overwritten, not left in free pages.
