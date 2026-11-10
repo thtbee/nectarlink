@@ -91,7 +91,7 @@
     <string name="local_network_title">Deinen PC in diesem Netzwerk erreichen</string>
     <string name="local_network_text">Android fragt nach, bevor eine App mit Geräten in deinem Netzwerk kommuniziert. NectarLink benötigt dies, um deinen PC zu erreichen.</string>
     <string name="channel_elevated">Einrichtung für Kabelloses Debugging</string>
-    <string name="elevated_title">Echte Touch- und Tasteneingabe</string>
+    <string name="elevated_title">Erweitert</string>
     <string name="elevated_not_set_up">Echtzeit-Toucheingabe, alle Tasten sowie Stummschalten, Halten und Ziffernblock bei Anrufen direkt vom PC.</string>
     <string name="elevated_waiting">Warte auf Kabelloses Debugging. Aktiviere es in den Entwickleroptionen.</string>
     <string name="elevated_starting">Wird gestartet…</string>
