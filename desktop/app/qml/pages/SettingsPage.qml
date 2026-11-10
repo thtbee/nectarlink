@@ -3339,6 +3339,24 @@ Item {
                                 onToggled: function(v) { Preferences.awayMode = v }
                             }
                         }
+                        Divider { width: parent.width; visible: Qt.platform.os === "linux" }
+                        ListRow {
+                            width: parent.width
+                            visible: Qt.platform.os === "linux"
+                            iconPath: Icons.wifi
+                            title: qsTr("Network interface")
+                            description: qsTr("Relays switch right away. Local connections use the new setting after a restart.")
+                            Button {
+                                variant: "tonal"
+                                size: "sm"
+                                text: Preferences.networkInterface || qsTr("System Default")
+                                onClicked: {
+                                    networkInterfaceSheet.options = JSON.parse(AppController.networkInterfaces())
+                                    networkInterfaceSheet.failed = false
+                                    networkInterfaceSheet.open()
+                                }
+                            }
+                        }
                         Divider { width: parent.width }
                         ListRow {
                             width: parent.width
@@ -3779,6 +3797,47 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    Sheet {
+        id: networkInterfaceSheet
+        property var options: []
+        property bool failed: false
+        cardWidth: 420
+
+        Column {
+            width: parent.width
+            spacing: 10
+            Txt { role: "headline"; text: qsTr("Network interface") }
+            Repeater {
+                model: [{ name: "", direct: false }].concat(networkInterfaceSheet.options)
+                delegate: Button {
+                    required property var modelData
+                    width: parent.width
+                    text: modelData.direct ? qsTr("%1 (Direct)").arg(modelData.name)
+                                           : (modelData.name || qsTr("System Default"))
+                    variant: modelData.name === Preferences.networkInterface ? "tonal" : "text"
+                    onClicked: {
+                        if (modelData.name === Preferences.networkInterface) {
+                            networkInterfaceSheet.close()
+                        } else if (AppController.selectRelayInterface(modelData.name)) {
+                            Preferences.networkInterface = modelData.name
+                            networkInterfaceSheet.close()
+                            relaySheet.open()
+                        } else {
+                            networkInterfaceSheet.failed = true
+                        }
+                    }
+                }
+            }
+            Txt {
+                width: parent.width
+                wrapMode: Text.Wrap
+                visible: networkInterfaceSheet.failed
+                text: qsTr("Could not use this network interface.")
+            }
+            Button { variant: "text"; text: qsTr("Close"); onClicked: networkInterfaceSheet.close() }
         }
     }
 

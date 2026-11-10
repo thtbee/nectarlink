@@ -612,6 +612,9 @@ pub struct Settings {
     /// Allow staying connected over mobile data (LTE/5G) / relay when away from Wi-Fi.
     #[serde(default, alias = "away_mode")]
     pub away_mode: bool,
+    /// Interface selected for connections on Linux. Empty uses system routing.
+    #[serde(default)]
+    pub network_interface: String,
     /// Whether the first-run setup walkthrough has been completed or skipped.
     #[serde(default, alias = "walkthrough_completed")]
     pub walkthrough_completed: bool,
@@ -732,6 +735,7 @@ impl Default for Settings {
             share_pc_storage: false,
             forward_pc_notifications_to_phone: false,
             away_mode: false,
+            network_interface: String::new(),
             walkthrough_completed: false,
             walkthrough_step: 0,
             whats_new_dismissed: false,
@@ -761,6 +765,10 @@ impl Settings {
             self.ui_scale = default_ui_scale();
         }
         self.webcam_camera = normalize_webcam_camera(&self.webcam_camera);
+        // Pre-release builds saved automatic routing without an explicit choice.
+        if self.network_interface == "@auto" {
+            self.network_interface.clear();
+        }
         self.walkthrough_step = self.walkthrough_step.min(6);
         self.window_screen = self.window_screen.map(|s| s.trim().to_owned()).filter(|s| !s.is_empty());
         self.window_width = self.window_width.clamp(MIN_WINDOW_WIDTH, MAX_WINDOW_WIDTH);
@@ -1010,6 +1018,7 @@ mod tests {
             share_pc_storage: true,
             forward_pc_notifications_to_phone: true,
             away_mode: true,
+            network_interface: "wlan0".into(),
             walkthrough_completed: true,
             walkthrough_step: 4,
             whats_new_dismissed: true,

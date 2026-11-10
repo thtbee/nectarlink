@@ -8822,6 +8822,33 @@ Voraussetzungen
         <translation>Über LTE/5G oder Relay verbunden bleiben, wenn kein WLAN verfügbar ist.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3347"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3812"/>
+        <source>Network interface</source>
+        <translation>Netzwerkschnittstelle</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3348"/>
+        <source>Relays switch right away. Local connections use the new setting after a restart.</source>
+        <translation>Relay-Verbindungen wechseln sofort. Lokale Verbindungen verwenden die neue Einstellung nach einem Neustart.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3352"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3819"/>
+        <source>System Default</source>
+        <translation>Systemstandard</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3818"/>
+        <source>%1 (Direct)</source>
+        <translation>%1 (Direkt)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3838"/>
+        <source>Could not use this network interface.</source>
+        <translation>Diese Netzwerkschnittstelle konnte nicht verwendet werden.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3346"/>
         <source>Iroh relay servers</source>
         <translation>iroh-Relay-Server</translation>

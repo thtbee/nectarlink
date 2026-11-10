@@ -375,6 +375,10 @@ pub mod qobject {
         fn edit_relay(self: &AppController, url: &QString, action: &QString) -> QString;
         #[qinvokable]
         fn check_relays(self: Pin<&mut AppController>);
+        #[qinvokable]
+        fn network_interfaces(self: &AppController) -> QString;
+        #[qinvokable]
+        fn select_relay_interface(self: Pin<&mut AppController>, name: &QString) -> bool;
         /// Clears local notification history (in-memory, on-disk JSON, and cached notification images).
         #[qinvokable]
         fn clear_notification_history(self: Pin<&mut AppController>);
@@ -496,6 +500,8 @@ pub struct AppControllerRust {
     data_retention_summary: QString,
     relay_probes: QString,
     relay_check_busy: bool,
+    relay_check_generation: u64,
+    relay_check_task: Option<tokio::task::AbortHandle>,
     localsend_enabled: bool,
     localsend_receiving: bool,
     localsend_peers_json: QString,
@@ -1930,20 +1936,63 @@ impl qobject::AppController {
         }
     }
 
-    pub fn check_relays(mut self: Pin<&mut Self>) {
+    pub fn network_interfaces(&self) -> QString {
+        #[cfg(target_os = "linux")]
+        {
+            let interfaces = nectarlink_core::direct_network::network_interfaces();
+            let json = serde_json::to_string(&interfaces).ok();
+            QString::from(json.as_deref().unwrap_or("[]"))
+        }
+        #[cfg(not(target_os = "linux"))]
+        QString::from("[]")
+    }
+
+    pub fn select_relay_interface(self: Pin<&mut Self>, name: &QString) -> bool {
+        #[cfg(target_os = "linux")]
+        {
+            let Some(node) = core_host::node() else { return false };
+            if let Err(error) = node.set_relay_interface(&name.to_string()) {
+                tracing::warn!(%error, "could not select relay network interface");
+                return false;
+            }
+            self.start_relay_check(node);
+            true
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = (self, name);
+            false
+        }
+    }
+
+    pub fn check_relays(self: Pin<&mut Self>) {
         if *self.relay_check_busy() {
             return;
         }
         let Some(node) = core_host::node() else { return };
+        self.start_relay_check(node);
+    }
+
+    fn start_relay_check(mut self: Pin<&mut Self>, node: nectarlink_core::Node) {
+        if let Some(task) = self.as_mut().rust_mut().relay_check_task.take() {
+            task.abort();
+        }
+        let generation = self.rust().relay_check_generation.wrapping_add(1);
+        self.as_mut().rust_mut().relay_check_generation = generation;
+        self.as_mut().set_relay_probes(QString::default());
         self.as_mut().set_relay_check_busy(true);
         let qt = self.qt_thread();
-        core_host::spawn(async move {
+        let task = core_host::host().runtime.spawn(async move {
             let results = serde_json::to_string(&node.check_relays().await).unwrap_or_default();
             let _ = qt.queue(move |mut object| {
+                if object.rust().relay_check_generation != generation {
+                    return;
+                }
                 object.as_mut().set_relay_probes(QString::from(&results));
                 object.as_mut().set_relay_check_busy(false);
             });
         });
+        self.as_mut().rust_mut().relay_check_task = Some(task.abort_handle());
     }
 
     pub fn clear_notification_history(self: Pin<&mut Self>) {

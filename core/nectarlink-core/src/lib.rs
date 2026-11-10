@@ -15,6 +15,8 @@ mod config;
 mod contacts;
 pub mod continuity_camera;
 pub mod deck;
+#[cfg(target_os = "linux")]
+pub mod direct_network;
 pub(crate) mod elevated_usb;
 mod error;
 mod events;

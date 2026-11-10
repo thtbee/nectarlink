@@ -8780,6 +8780,33 @@ Nó cần gì
         <translation>Giữ kết nối qua LTE/5G hoặc chuyển tiếp khi không có Wi-Fi.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3347"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3812"/>
+        <source>Network interface</source>
+        <translation>Giao diện mạng</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3348"/>
+        <source>Relays switch right away. Local connections use the new setting after a restart.</source>
+        <translation>Kết nối qua máy chủ chuyển tiếp đổi ngay. Kết nối cục bộ dùng thiết lập mới sau khi khởi động lại ứng dụng.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3352"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3819"/>
+        <source>System Default</source>
+        <translation>Mặc định của hệ thống</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3818"/>
+        <source>%1 (Direct)</source>
+        <translation>%1 (Trực tiếp)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3838"/>
+        <source>Could not use this network interface.</source>
+        <translation>Không thể sử dụng giao diện mạng này.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3346"/>
         <source>Iroh relay servers</source>
         <translation>Máy chủ relay iroh</translation>
