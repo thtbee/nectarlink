@@ -82,6 +82,7 @@ import app.nectarlink.android.ui.pairing.PairingScreen
 import app.nectarlink.android.ui.recorder.RecorderScreen
 import app.nectarlink.android.ui.remote.RemoteMode
 import app.nectarlink.android.ui.remote.RemoteScreen
+import app.nectarlink.android.ui.settings.RelaySettingsDialog
 import app.nectarlink.android.ui.settings.SettingsScreen
 import app.nectarlink.android.ui.theme.Appearance
 import app.nectarlink.android.ui.theme.GlassBackdrop
@@ -971,6 +972,14 @@ private fun App(
                                 )
                             }
                             Tab.Settings -> saveableStateHolder.SaveableStateProvider("tab_settings") {
+                                var relaySettingsOpen by remember { mutableStateOf(false) }
+                                if (relaySettingsOpen) {
+                                    RelaySettingsDialog(
+                                        core = core,
+                                        awayMode = state.awayMode,
+                                        onDismiss = { relaySettingsOpen = false },
+                                    )
+                                }
                                 SettingsScreen(
                                     state = state,
                                     appearance = appearance,
@@ -1011,6 +1020,7 @@ private fun App(
                                     onClearEverything = core::clearEverything,
                                     onToggleLocalSend = core::setLocalSendEnabled,
                                     onToggleAwayMode = core::setAwayMode,
+                                    onOpenRelaySettings = { relaySettingsOpen = true },
                                     onOpenWalkthrough = {
                                         preferences.updateWalkthrough { it.goToStep(WalkthroughStep.Welcome) }
                                         manualWalkthroughOpen = true

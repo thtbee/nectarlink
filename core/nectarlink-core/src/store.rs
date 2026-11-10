@@ -1019,6 +1019,27 @@ impl Store {
         })
     }
 
+    pub(crate) fn relay_settings(&self) -> Result<crate::relays::RelaySettings> {
+        let json: Option<String> = self.with(|c| {
+            c.query_row("SELECT value FROM meta WHERE key = 'relay_settings'", [], |r| r.get(0)).optional()
+        })?;
+        json.map(|json| serde_json::from_str(&json).map_err(|e| Error::Storage(e.to_string())))
+            .transpose()
+            .map(Option::unwrap_or_default)
+    }
+
+    pub(crate) fn save_relay_settings(&self, settings: &crate::relays::RelaySettings) -> Result<()> {
+        let json = serde_json::to_string(settings).map_err(|e| Error::Storage(e.to_string()))?;
+        self.with(|c| {
+            c.execute(
+                "INSERT INTO meta (key, value) VALUES ('relay_settings', ?1)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                [json],
+            )?;
+            Ok(())
+        })
+    }
+
     // ---- Timeline ----
 
     pub fn timeline_retention(&self) -> Result<TimelineRetention> {

@@ -296,6 +296,18 @@ impl Session {
             })
     }
 
+    pub(crate) fn relay_url(&self) -> Option<iroh::RelayUrl> {
+        if self.has_usb_tunnel() {
+            return None;
+        }
+        let paths = self.conn.paths();
+        let path = paths.iter().find(|p| p.is_selected()).or_else(|| paths.iter().next())?;
+        match path.remote_addr() {
+            iroh::TransportAddr::Relay(url) => Some(url.clone()),
+            _ => None,
+        }
+    }
+
     /// The path the connection currently uses.
     pub fn path(&self) -> ConnectionPath {
         if self.has_usb_tunnel() {

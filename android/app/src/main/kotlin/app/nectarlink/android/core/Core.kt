@@ -54,6 +54,10 @@ import app.nectarlink.core.Notification
 import app.nectarlink.core.PairingFailure
 import app.nectarlink.core.PowerLevel
 import app.nectarlink.core.RecordingMarker
+import app.nectarlink.core.RelayEdit
+import app.nectarlink.core.RelayEditResult
+import app.nectarlink.core.RelayProbe
+import app.nectarlink.core.RelaySnapshot
 import app.nectarlink.core.RemoteStorageEntry
 import app.nectarlink.core.TimelineEntry
 import app.nectarlink.core.TimelineKind
@@ -63,6 +67,7 @@ import app.nectarlink.core.TransferDirection
 import app.nectarlink.core.TransferStatus
 import app.nectarlink.core.initLogging
 import app.nectarlink.android.files.transferTitle
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -1479,6 +1484,23 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     ) {
         val shouldHold = enabled && interactive && isRunning
         localsendMulticast?.runCatching { if (shouldHold) { if (!isHeld) acquire() } else if (isHeld) release() }
+    }
+
+    suspend fun relaySnapshot(): RelaySnapshot? = withContext(Dispatchers.IO) {
+        runCatching { node?.relaySnapshot() }.getOrNull()
+    }
+
+    suspend fun editRelay(url: String, action: RelayEdit): RelayEditResult = withContext(Dispatchers.IO) {
+        runCatching { node?.editRelay(url, action) }.getOrNull() ?: RelayEditResult.FAILED
+    }
+
+    suspend fun checkRelays(): List<RelayProbe> = try {
+        node?.checkRelays().orEmpty()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: IllegalStateException) {
+        // The node can be closed while the settings dialog is open.
+        emptyList()
     }
 
     fun setLocalSendEnabled(enabled: Boolean) {

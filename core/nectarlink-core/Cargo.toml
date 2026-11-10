@@ -12,6 +12,7 @@ repository.workspace = true
 nectarlink-adb.workspace = true
 nectarlink-protocol.workspace = true
 iroh.workspace = true
+iroh-relay = { version = "1.3", default-features = false }
 noq-proto.workspace = true
 iroh-mdns-address-lookup.workspace = true
 material-colors.workspace = true

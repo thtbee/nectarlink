@@ -80,6 +80,8 @@ pub mod qobject {
         #[qproperty(QString, doctor_checks)]
         /// Checking, or fixing.
         #[qproperty(bool, doctor_busy)]
+        #[qproperty(QString, relay_probes)]
+        #[qproperty(bool, relay_check_busy)]
         /// This copy updates itself (it's installed).
         #[qproperty(bool, can_update)]
         /// A newer version that's available ("" when none).
@@ -367,6 +369,12 @@ pub mod qobject {
         /// Recomputes `data_retention_summary` from local stores and disk caches.
         #[qinvokable]
         fn refresh_data_retention(self: Pin<&mut AppController>);
+        #[qinvokable]
+        fn relay_snapshot(self: &AppController) -> QString;
+        #[qinvokable]
+        fn edit_relay(self: &AppController, url: &QString, action: &QString) -> QString;
+        #[qinvokable]
+        fn check_relays(self: Pin<&mut AppController>);
         /// Clears local notification history (in-memory, on-disk JSON, and cached notification images).
         #[qinvokable]
         fn clear_notification_history(self: Pin<&mut AppController>);
@@ -486,6 +494,8 @@ pub struct AppControllerRust {
     command_palette_results: QString,
     command_palette_open_ms: f64,
     data_retention_summary: QString,
+    relay_probes: QString,
+    relay_check_busy: bool,
     localsend_enabled: bool,
     localsend_receiving: bool,
     localsend_peers_json: QString,
@@ -1889,6 +1899,51 @@ impl qobject::AppController {
 
     pub fn refresh_data_retention(self: Pin<&mut Self>) {
         spawn_data_retention_refresh(self.qt_thread());
+    }
+
+    pub fn relay_snapshot(&self) -> QString {
+        let json = core_host::node().and_then(|node| serde_json::to_string(&node.relay_snapshot()).ok());
+        QString::from(json.as_deref().unwrap_or("null"))
+    }
+
+    pub fn edit_relay(&self, url: &QString, action: &QString) -> QString {
+        use nectarlink_core::relays::{RelayEdit, RelayEditError};
+        let Some(node) = core_host::node() else {
+            return QString::from("unavailable");
+        };
+        let action = match action.to_string().as_str() {
+            "add" => RelayEdit::Add,
+            "enable" => RelayEdit::Enable,
+            "disable" => RelayEdit::Disable,
+            "remove" => RelayEdit::Remove,
+            _ => return QString::from("failed"),
+        };
+        match node.edit_relay(&url.to_string(), action) {
+            Ok(()) => QString::default(),
+            Err(RelayEditError::InvalidAddress) => QString::from("invalid"),
+            Err(RelayEditError::Duplicate) => QString::from("duplicate"),
+            Err(RelayEditError::Limit) => QString::from("limit"),
+            Err(err) => {
+                tracing::warn!(%err, "can't save relay settings");
+                QString::from("failed")
+            }
+        }
+    }
+
+    pub fn check_relays(mut self: Pin<&mut Self>) {
+        if *self.relay_check_busy() {
+            return;
+        }
+        let Some(node) = core_host::node() else { return };
+        self.as_mut().set_relay_check_busy(true);
+        let qt = self.qt_thread();
+        core_host::spawn(async move {
+            let results = serde_json::to_string(&node.check_relays().await).unwrap_or_default();
+            let _ = qt.queue(move |mut object| {
+                object.as_mut().set_relay_probes(QString::from(&results));
+                object.as_mut().set_relay_check_busy(false);
+            });
+        });
     }
 
     pub fn clear_notification_history(self: Pin<&mut Self>) {
