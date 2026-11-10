@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,7 +57,10 @@ class RingActivity : ComponentActivity() {
                             onClick = { core.stopRinging() },
                             modifier = Modifier.sizeIn(minWidth = 220.dp, minHeight = 96.dp),
                         ) {
-                            Text(stringResource(R.string.action_ring_stop), style = MaterialTheme.typography.headlineLarge)
+                            Text(
+                                stringResource(R.string.action_stop).uppercase(LocalConfiguration.current.locales[0]),
+                                style = MaterialTheme.typography.headlineLarge,
+                            )
                         }
                     }
                 }
