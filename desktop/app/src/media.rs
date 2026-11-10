@@ -32,6 +32,12 @@ static ART_SCHEMES: Mutex<Option<HashMap<PathBuf, String>>> = Mutex::new(None);
 static LOCAL_ART: Mutex<Option<PathBuf>> = Mutex::new(None);
 /// Artwork files kept per device (older ones are deleted).
 const KEPT_ART: usize = 12;
+/// This PC's own artwork kept on disk (the `pc-` files: what its players show,
+/// by player, track and album). Every new track adds up to three, and nothing
+/// else ever removed them.
+const KEPT_LOCAL_ART: usize = 90;
+/// The folder is tidied on the first change and then every this many.
+const LOCAL_ART_TIDY_EVERY: usize = 24;
 
 fn art_dir() -> PathBuf {
     core_host::host().data_dir.join("cache").join("art")
@@ -153,6 +159,27 @@ fn prune(art: &mut HashMap<(DeviceId, String), PathBuf>, device: DeviceId, in_us
         let _ = std::fs::remove_file(&path);
         art.remove(&(device, key));
     }
+}
+
+/// Deletes this PC's own artwork (`pc-` files) in `dir` beyond the newest `keep`,
+/// never what's `in_use`. Returns how many went. A file that's wanted again is
+/// simply read from the player and written again.
+fn prune_local_art(dir: &std::path::Path, keep: usize, in_use: &[PathBuf]) -> usize {
+    let Ok(entries) = std::fs::read_dir(dir) else { return 0 };
+    let mut ours: Vec<(std::time::SystemTime, PathBuf)> = entries
+        .flatten()
+        .filter(|e| e.file_name().to_string_lossy().starts_with("pc-"))
+        .filter_map(|e| Some((e.metadata().ok()?.modified().ok()?, e.path())))
+        .collect();
+    if ours.len() <= keep {
+        return 0;
+    }
+    ours.sort_by_key(|(modified, _)| std::cmp::Reverse(*modified));
+    ours.into_iter()
+        .skip(keep)
+        .filter(|(_, path)| !in_use.contains(path))
+        .filter(|(_, path)| std::fs::remove_file(path).is_ok())
+        .count()
 }
 
 fn fnv(text: &str) -> u64 {
@@ -295,6 +322,17 @@ pub fn local_changed(players: Vec<nectarlink_core::MediaPlayer>) {
         .find(|p| p.playing && per_player_art.contains_key(&p.id))
         .or_else(|| players.iter().find(|p| per_player_art.contains_key(&p.id)))
         .and_then(|p| per_player_art.get(&p.id).cloned());
+    static CHANGES: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    if CHANGES.fetch_add(1, std::sync::atomic::Ordering::Relaxed).is_multiple_of(LOCAL_ART_TIDY_EVERY) {
+        let in_use: Vec<PathBuf> = per_player_art.values().cloned().collect();
+        let dir = art_dir();
+        std::thread::spawn(move || {
+            let removed = prune_local_art(&dir, KEPT_LOCAL_ART, &in_use);
+            if removed > 0 {
+                tracing::debug!(removed, "old artwork of this PC's players removed");
+            }
+        });
+    }
     *lock(&LOCAL_PLAYER_ART) = Some(per_player_art);
     *lock(&LOCAL_ART) = chosen_art;
     core_host::host().hub.changed(crate::state::Changes::MEDIA);
@@ -312,4 +350,33 @@ pub fn local_changed(players: Vec<nectarlink_core::MediaPlayer>) {
         tx
     });
     updates.send_replace(players);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn this_pcs_old_artwork_goes_and_the_rest_stays() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = |name: &str, age_secs: u64| {
+            let path = dir.path().join(name);
+            let f = std::fs::File::create(&path).unwrap();
+            f.set_modified(std::time::SystemTime::now() - std::time::Duration::from_secs(age_secs)).unwrap();
+            path
+        };
+        let oldest = file("pc-track-01.img", 500);
+        let in_use = file("pc-02.png", 400);
+        let newer = file("pc-album-03.img", 300);
+        let newest = file("pc-track-04.img", 200);
+        let phones = file("386j39qo-05.jpg", 900);
+
+        let removed = prune_local_art(dir.path(), 2, std::slice::from_ref(&in_use));
+        assert_eq!(removed, 1);
+        assert!(!oldest.exists(), "the oldest of this PC's goes");
+        assert!(in_use.exists(), "what a player is showing stays");
+        assert!(newer.exists() && newest.exists());
+        assert!(phones.exists(), "a phone's artwork isn't this one's to remove");
+        assert_eq!(prune_local_art(dir.path(), 10, &[]), 0);
+    }
 }
