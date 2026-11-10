@@ -3,7 +3,7 @@
 //! control stream, request/response correlation and the heartbeat.
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{
         Arc, Mutex, Weak,
         atomic::{AtomicU32, AtomicU64, Ordering},
@@ -179,8 +179,8 @@ pub(crate) struct Session {
     usb_peers: Arc<Mutex<HashMap<DeviceId, (std::net::SocketAddr, CancellationToken)>>>,
     /// Apps whose notification icon this peer already got.
     sent_icons: crate::notifications::SentIcons,
-    /// Artwork keys sent to this device (docs/protocol/media.md).
-    sent_art: crate::notifications::SentIcons,
+    /// Serializes media snapshots and remembers the artwork queued for this device.
+    pub(crate) sent_art: tokio::sync::Mutex<HashSet<String>>,
     /// This peer asked for no notifications for now. Ends with the session: a
     /// PC that's still locked says so again when it reconnects.
     notifications_held: std::sync::atomic::AtomicBool,
@@ -329,10 +329,6 @@ impl Session {
 
     pub(crate) fn hold_notifications(&self, held: bool) {
         self.notifications_held.store(held, Ordering::Relaxed);
-    }
-
-    pub(crate) fn sent_art(&self) -> std::sync::MutexGuard<'_, std::collections::HashSet<String>> {
-        self.sent_art.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     pub fn is_alive(&self) -> bool {

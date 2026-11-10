@@ -8,7 +8,7 @@ use crate::i18n::tr;
 use std::{
     collections::HashMap,
     path::PathBuf,
-    sync::{Mutex, MutexGuard},
+    sync::{Mutex, MutexGuard, OnceLock},
 };
 
 use nectarlink_core::{DeviceId, Error, MediaAction, NodeEvent};
@@ -299,9 +299,17 @@ pub fn local_changed(players: Vec<nectarlink_core::MediaPlayer>) {
     *lock(&LOCAL_ART) = chosen_art;
     core_host::host().hub.changed(crate::state::Changes::MEDIA);
     crate::deck::on_local_media_changed(&players);
-    core_host::spawn(async move {
-        if let Some(node) = core_host::wait_for_node().await {
-            node.media_changed(players).await;
-        }
+    static UPDATES: OnceLock<tokio::sync::watch::Sender<Vec<nectarlink_core::MediaPlayer>>> = OnceLock::new();
+    let updates = UPDATES.get_or_init(|| {
+        let (tx, mut rx) = tokio::sync::watch::channel(Vec::new());
+        core_host::spawn(async move {
+            let Some(node) = core_host::wait_for_node().await else { return };
+            while rx.changed().await.is_ok() {
+                let players = rx.borrow_and_update().clone();
+                node.media_changed(players).await;
+            }
+        });
+        tx
     });
+    updates.send_replace(players);
 }

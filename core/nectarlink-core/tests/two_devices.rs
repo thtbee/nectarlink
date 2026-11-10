@@ -1865,6 +1865,57 @@ async fn media_is_shared_and_controlled_with_consent() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn pc_playback_reaches_both_phones_with_large_artwork() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut first = device("Pixel", DeviceKind::Phone).await;
+    let mut second = device("Tablet", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut first).await;
+    let pc_id = pc.node.device_id();
+
+    let players = (0..4)
+        .map(|i| {
+            let mut p = player(
+                &format!("player-{i}"),
+                &format!("Video {i}"),
+                Some((&format!("art-{i}"), vec![i; 256 * 1024])),
+            );
+            p.playing = i == 3;
+            p
+        })
+        .collect::<Vec<_>>();
+    pc.node.media_changed(players.clone()).await;
+    let state = wait_for(&mut first, "first phone sees video", media_of(pc_id)).await;
+    assert_eq!(state.len(), 4);
+    assert!(state[3].playing && state[3].art.is_some());
+
+    // The second phone joins after playback started. Use a separate event
+    // subscription so waiting for pairing can't consume its first snapshot.
+    let mut events = second.node.events();
+    pair_qr(&mut pc, &mut second).await;
+    let state = with_timeout("second phone sees the already playing video", async {
+        loop {
+            if let Some(players) = media_of(pc_id)(&events.recv().await.unwrap()) {
+                break players;
+            }
+        }
+    })
+    .await;
+    assert_eq!(state.len(), 4);
+    assert!(state[3].playing && state[3].art.is_some());
+
+    let mut paused = players;
+    paused[3].playing = false;
+    pc.node.media_changed(paused).await;
+    for phone in [&mut first, &mut second] {
+        let state = wait_for(phone, "phone sees the pause", |event| {
+            media_of(pc_id)(event).filter(|players| players.len() == 4 && !players[3].playing)
+        })
+        .await;
+        assert_eq!(state[3].title.as_deref(), Some("Video 3"));
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn phones_lock_pcs_and_links_open_on_either_side() {
     let mut pc = device_with("Desktop", DeviceKind::Desktop, &["pc.power"]).await;
     let mut phone = device("Pixel", DeviceKind::Phone).await;

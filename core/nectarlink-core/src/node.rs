@@ -1279,9 +1279,9 @@ impl Shared {
             {
                 let _ = s.send(env).await;
             }
+            shared.send_media_state(&s).await;
             shared.send_held_notifications(&s).await;
             shared.send_notification_snapshot(&s).await;
-            shared.send_media_state(&s).await;
             shared.send_call_state(&s).await;
             shared.send_toggles_state(&s).await;
             crate::actions::send_wake_info(&shared, &s).await;
