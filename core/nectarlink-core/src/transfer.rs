@@ -2300,7 +2300,8 @@ mod tests {
         let want = data.len() as u64 - start;
 
         let (tx, mut rx) = tokio::sync::mpsc::channel(1);
-        let reader = std::thread::spawn(move || read_ahead(vec![(clone, start, want)], &tx));
+        let reader =
+            std::thread::spawn(move || read_ahead(vec![(ReadSource::File(clone), start, want)], &tx));
         let mut got = Vec::new();
         while let Some(block) = rx.blocking_recv() {
             got.extend_from_slice(&block.expect("reads to the end"));
