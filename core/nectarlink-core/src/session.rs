@@ -601,7 +601,12 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         }
         types::PAIR_REVOKE => {
             tracing::info!(peer = %peer.short(), "peer unpaired this device");
-            shared.forget_peer(&peer).await?;
+            // Forgetting the peer closes this session before its cleanup finishes.
+            // Keep the cleanup alive when closing the session drops the reader.
+            let shared = shared.clone();
+            tokio::spawn(async move { shared.forget_peer(&peer).await })
+                .await
+                .map_err(|err| Error::Internal(err.to_string()))??;
         }
         t if t.starts_with("notify.") && crate::notifications::handle(shared, session, &env).await? => {}
         t if t.starts_with("media.") && crate::media::handle(shared, session, &env).await? => {}

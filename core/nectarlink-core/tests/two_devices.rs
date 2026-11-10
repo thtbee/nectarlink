@@ -1050,6 +1050,7 @@ async fn unpairing_is_mirrored_on_the_other_device() {
     pair_qr(&mut pc, &mut phone).await;
     let pc_id = pc.node.device_id();
 
+    with_timeout("ring before unpair", phone.node.ring(pc_id, true)).await.unwrap();
     with_timeout("unpair", phone.node.unpair(pc_id)).await.unwrap();
     let phone_id = phone.node.device_id();
     wait_for(&mut pc, "device removed", |e| match e {
@@ -1057,6 +1058,7 @@ async fn unpairing_is_mirrored_on_the_other_device() {
         _ => None,
     })
     .await;
+    assert_eq!(*pc.platform.rings.lock().unwrap(), [true, false]);
     assert!(pc.node.paired_devices().unwrap().is_empty());
     assert!(phone.node.paired_devices().unwrap().is_empty());
     assert!(matches!(pc.node.ring(phone_id, true).await, Err(Error::NotPaired)));
