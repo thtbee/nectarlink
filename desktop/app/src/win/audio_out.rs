@@ -10,7 +10,10 @@
 
 use std::{
     collections::VecDeque,
-    sync::mpsc::{Receiver, RecvTimeoutError, SyncSender, TrySendError, sync_channel},
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        mpsc::{Receiver, RecvTimeoutError, SyncSender, TrySendError, sync_channel},
+    },
     time::Duration,
 };
 
@@ -37,10 +40,37 @@ const TRIM_TO_MS: u32 = 60;
 /// The device's buffer.
 const DEVICE_BUFFER: Duration = Duration::from_millis(40);
 
+/// How many [`Player`]s are alive.
+static PLAYERS: AtomicUsize = AtomicUsize::new(0);
+
+/// Whether NectarLink is playing a phone's sound on this PC right now. Phone as
+/// speaker asks: only then does it have to leave NectarLink's own sound out.
+pub fn playing() -> bool {
+    PLAYERS.load(Ordering::Relaxed) > 0
+}
+
+/// Counts a [`Player`] for [`playing`] while it lives.
+#[derive(Debug)]
+struct Counted;
+
+impl Counted {
+    fn new() -> Counted {
+        PLAYERS.fetch_add(1, Ordering::Relaxed);
+        Counted
+    }
+}
+
+impl Drop for Counted {
+    fn drop(&mut self) {
+        PLAYERS.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
 /// Plays sound until dropped.
 #[derive(Debug)]
 pub struct Player {
     queue: SyncSender<Vec<u8>>,
+    _counted: Counted,
 }
 
 impl Player {
@@ -70,7 +100,7 @@ impl Player {
                 }
             }
         })?;
-        Ok(Player { queue })
+        Ok(Player { queue, _counted: Counted::new() })
     }
 
     /// Hands over a packet without waiting (dropped if the player is far
