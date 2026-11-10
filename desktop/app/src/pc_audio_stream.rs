@@ -515,14 +515,21 @@ mod imp {
         unknown.ok_or("no audio client")?.cast::<IAudioClient>().map_err(|e| e.to_string())
     }
 
-    /// The capture client, its rate, channels and bits per sample: without
-    /// NectarLink's own sound where Windows can (version 2004 and later), or else
-    /// everything the default output plays, as before.
+    /// The capture client, its rate, channels and bits per sample. Normally what
+    /// the default output plays. With `without_own`, every program's sound but
+    /// NectarLink's (Windows version 2004 and later), for while it plays a phone's
+    /// sound here: that would go back to the phone and loop. Only then, because
+    /// that capture takes each program's sound separately, and a PC whose sound
+    /// runs through a mixer app (Voicemeeter, Sonar and the like) gives it twice.
     #[cfg(windows)]
-    fn open_capture() -> Result<(IAudioClient, IAudioCaptureClient, u32, usize, u16), String> {
+    fn open_capture(
+        without_own: bool,
+    ) -> Result<(IAudioClient, IAudioCaptureClient, u32, usize, u16), String> {
         use windows::Win32::Media::Audio::{AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM, WAVE_FORMAT_PCM};
-        match process_loopback_client() {
-            Ok(client) => {
+        let own_left_out = if without_own { process_loopback_client().map(Some) } else { Ok(None) };
+        match own_left_out {
+            Ok(None) => {}
+            Ok(Some(client)) => {
                 // This client has no mix format of its own; Windows converts to this.
                 let format = WAVEFORMATEX {
                     wFormatTag: WAVE_FORMAT_PCM as u16,
@@ -601,7 +608,8 @@ mod imp {
             return Ok(());
         };
 
-        let (client, capture, rate, channels, bits_per_sample) = open_capture()?;
+        let without_own = crate::win::audio_out::playing();
+        let (client, capture, rate, channels, bits_per_sample) = open_capture(without_own)?;
 
         let mut enhancer = SpeakerEnhancer::new(rate);
         let (tx, mut rx) = tokio::sync::mpsc::channel::<(u32, u8, Vec<u8>)>(64);
@@ -627,6 +635,11 @@ mod imp {
             // Another phone asked for the sound (it watches the PC's playback):
             // start over for that one.
             if target() != wanted && target().is_some_and(|t| peers.contains(&t)) {
+                break 'capture;
+            }
+            // NectarLink started or stopped playing a phone's sound here: capture
+            // the other way from now on.
+            if crate::win::audio_out::playing() != without_own {
                 break 'capture;
             }
             // SAFETY: Drain available capture packets from `IAudioCaptureClient`.
@@ -744,7 +757,7 @@ mod imp {
                 loudest
             };
 
-            let (ours, ours_capture, _, _, ours_bits) = open_capture().expect("a capture");
+            let (ours, ours_capture, _, _, ours_bits) = open_capture(true).expect("a capture");
             assert_eq!(ours_bits, 16, "the capture without NectarLink's own sound opened");
             // SAFETY: the whole output, as before this change.
             let (all, all_capture, all_bits) = unsafe {
