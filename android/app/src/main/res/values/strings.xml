@@ -91,7 +91,7 @@
     <string name="local_network_title">Reach your PC on this network</string>
     <string name="local_network_text">Android asks before an app talks to devices on your network. NectarLink needs it to reach your PC.</string>
     <string name="channel_elevated">Wireless debugging setup</string>
-    <string name="elevated_title">Real touch and keys</string>
+    <string name="elevated_title">Elevated</string>
     <string name="elevated_not_set_up">Real-time touch, every key, and mute, hold and keypad on calls from your PC.</string>
     <string name="elevated_waiting">Waiting for Wireless debugging. Turn it on in Developer options.</string>
     <string name="elevated_starting">Starting…</string>

@@ -91,7 +91,7 @@
     <string name="local_network_title">Bu ağda bilgisayarınıza ulaşın</string>
     <string name="local_network_text">Android, bir uygulama ağınızdaki cihazlarla iletişim kurmadan önce izin ister. NectarLink\'in bilgisayarınıza ulaşmak için bu izne ihtiyacı var.</string>
     <string name="channel_elevated">Kablosuz hata ayıklama kurulumu</string>
-    <string name="elevated_title">Gerçek dokunma ve tuşlar</string>
+    <string name="elevated_title">Yükseltilmiş</string>
     <string name="elevated_not_set_up">Bilgisayarınızdan gerçek zamanlı dokunma, tüm tuşlar ve aramalarda sessize alma, bekletme ve tuş takımı.</string>
     <string name="elevated_waiting">Kablosuz hata ayıklama bekleniyor. Geliştirici seçenekleri\'nden açın.</string>
     <string name="elevated_starting">Başlatılıyor…</string>

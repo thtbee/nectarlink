@@ -91,7 +91,7 @@
     <string name="local_network_title">Conectar con tu PC en esta red</string>
     <string name="local_network_text">Android pide permiso antes de que una aplicación se comunique con los dispositivos de tu red. NectarLink lo necesita para conectar con tu PC.</string>
     <string name="channel_elevated">Configuración de depuración inalámbrica</string>
-    <string name="elevated_title">Pulsaciones y teclas reales</string>
+    <string name="elevated_title">Elevated</string>
     <string name="elevated_not_set_up">Control táctil en tiempo real, todas las teclas y controles para silenciar, poner en espera y usar el teclado en las llamadas desde tu PC.</string>
     <string name="elevated_waiting">Esperando la depuración inalámbrica. Actívala en Opciones de desarrollador.</string>
     <string name="elevated_starting">Iniciando…</string>

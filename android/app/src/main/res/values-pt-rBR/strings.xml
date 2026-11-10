@@ -91,7 +91,7 @@
     <string name="local_network_title">Acessar o PC nesta rede</string>
     <string name="local_network_text">O Android pede sua autorização antes de um app se comunicar com dispositivos da rede. O NectarLink precisa dessa permissão para acessar seu PC.</string>
     <string name="channel_elevated">Configuração da depuração por Wi-Fi</string>
-    <string name="elevated_title">Toque e teclas de verdade</string>
+    <string name="elevated_title">Elevated</string>
     <string name="elevated_not_set_up">Toque em tempo real, todas as teclas e, nas chamadas, silenciar, colocar em espera e teclado numérico pelo PC.</string>
     <string name="elevated_waiting">Aguardando a depuração por Wi-Fi. Ative nas Opções do desenvolvedor.</string>
     <string name="elevated_starting">Iniciando…</string>
