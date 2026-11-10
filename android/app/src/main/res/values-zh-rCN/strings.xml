@@ -85,7 +85,7 @@
     <string name="local_network_title">在此网络上访问你的电脑</string>
     <string name="local_network_text">应用与网络中的设备通信前，Android会先询问。NectarLink需要此权限才能访问你的电脑。</string>
     <string name="channel_elevated">无线调试设置</string>
-    <string name="elevated_title">真实触控与按键</string>
+    <string name="elevated_title">高级权限</string>
     <string name="elevated_not_set_up">从电脑实现实时触控、全部按键，以及通话中的静音、保持和拨号盘。</string>
     <string name="elevated_waiting">正在等待无线调试，请在开发者选项中开启。</string>
     <string name="elevated_starting">正在启动…</string>
