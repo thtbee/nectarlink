@@ -3305,7 +3305,7 @@ pub struct NodeOptions {
     pub usb_port: Option<u16>,
 }
 
-#[derive(uniffi::Enum)]
+#[derive(Debug, uniffi::Enum)]
 pub enum RelayRegion {
     NorthAmericaEast,
     NorthAmericaWest,
@@ -3314,7 +3314,7 @@ pub enum RelayRegion {
     Custom,
 }
 
-#[derive(uniffi::Record)]
+#[derive(Debug, uniffi::Record)]
 pub struct RelayServer {
     pub url: String,
     pub provider: String,
@@ -3322,34 +3322,34 @@ pub struct RelayServer {
     pub enabled: bool,
 }
 
-#[derive(uniffi::Record)]
+#[derive(Debug, uniffi::Record)]
 pub struct HomeRelay {
     pub url: String,
     pub connected: bool,
     pub failed: bool,
 }
 
-#[derive(uniffi::Record)]
+#[derive(Debug, uniffi::Record)]
 pub struct RelayRoute {
     pub device: String,
     pub url: String,
 }
 
-#[derive(uniffi::Record)]
+#[derive(Debug, uniffi::Record)]
 pub struct RelaySnapshot {
     pub servers: Vec<RelayServer>,
     pub home: Vec<HomeRelay>,
     pub routes: Vec<RelayRoute>,
 }
 
-#[derive(uniffi::Record)]
+#[derive(Debug, uniffi::Record)]
 pub struct RelayProbe {
     pub url: String,
     pub rtt_ms: Option<u32>,
     pub timed_out: bool,
 }
 
-#[derive(uniffi::Enum)]
+#[derive(Debug, uniffi::Enum)]
 pub enum RelayEdit {
     Add,
     Enable,
@@ -3357,7 +3357,7 @@ pub enum RelayEdit {
     Remove,
 }
 
-#[derive(uniffi::Enum)]
+#[derive(Debug, uniffi::Enum)]
 pub enum RelayEditResult {
     Saved,
     InvalidAddress,
