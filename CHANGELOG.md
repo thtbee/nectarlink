@@ -101,6 +101,10 @@ change things that need a step from you, and its notes say so.
 
 - **Find device stops everywhere.** The button on the device that started the alarm resets when it's stopped on the other one, and a phone shows a full-screen Stop. PC playback also reaches every connected phone, in order. Thanks to [@krakotay](https://github.com/krakotay) ([#326](https://github.com/thtbee/nectarlink/pull/326)).
 - **Phone storage in File Explorer kept showing files deleted on the phone.** They're now removed when the phone's folder is read again. Files you added on the PC that haven't reached the phone stay ([#328](https://github.com/thtbee/nectarlink/issues/328)).
+- **A mirrored phone could scroll by itself from a Linux PC.** The app took any joystick
+  device for a game controller, a laptop's motion sensor too, and sent its tilt to the
+  phone as a held stick. Only real controllers count now
+  ([#332](https://github.com/thtbee/nectarlink/issues/332)).
 - **"Call with" didn't show for phones with two SIMs.** On newer Android the phone
   couldn't list its SIMs, so the PC never offered the choice
   ([#334](https://github.com/thtbee/nectarlink/issues/334)).

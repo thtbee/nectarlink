@@ -1883,6 +1883,28 @@ fn apply_js_event(state: &mut GamepadState, ev: JsEvent) {
     }
 }
 
+/// Whether `/dev/input/js{n}` is a game controller: one with the gamepad
+/// buttons (`BTN_GAMEPAD`), unlike a sensor or a flight stick.
+#[cfg(target_os = "linux")]
+fn is_gamepad(n: usize) -> bool {
+    std::fs::read_to_string(format!("/sys/class/input/js{n}/device/capabilities/key"))
+        .is_ok_and(|caps| has_key(&caps, BTN_GAMEPAD, usize::BITS))
+}
+
+/// The first gamepad button (`BTN_SOUTH`).
+#[cfg(any(target_os = "linux", test))]
+const BTN_GAMEPAD: u32 = 0x130;
+
+/// Whether a sysfs key bitmap (hex words, most significant first, each
+/// `word_bits` wide) has `code` set.
+#[cfg(any(target_os = "linux", test))]
+fn has_key(caps: &str, code: u32, word_bits: u32) -> bool {
+    let words: Vec<&str> = caps.split_whitespace().collect();
+    let index = (code / word_bits) as usize;
+    let Some(word) = words.len().checked_sub(index + 1).and_then(|i| words.get(i)) else { return false };
+    u64::from_str_radix(word, 16).is_ok_and(|w| w >> (code % word_bits) & 1 == 1)
+}
+
 #[cfg(target_os = "linux")]
 struct LinuxGamepadPoller {
     fd: std::ffi::c_int,
@@ -1906,7 +1928,12 @@ fn poll_gamepad() -> Option<GamepadState> {
     let mut poller = POLLER.lock().unwrap_or_else(|e| e.into_inner());
     if poller.fd < 0 {
         let paths = [c"/dev/input/js0", c"/dev/input/js1", c"/dev/input/js2", c"/dev/input/js3"];
-        for path in paths {
+        for (n, path) in paths.into_iter().enumerate() {
+            // Not every joystick device is a controller: a laptop's accelerometer
+            // is one too, and its tilt read as a held stick scrolled the phone (#332).
+            if !is_gamepad(n) {
+                continue;
+            }
             let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY | libc::O_NONBLOCK) };
             if fd >= 0 {
                 poller.fd = fd;
@@ -2481,6 +2508,21 @@ impl Stats {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn only_controllers_count_as_gamepads() {
+        use super::{BTN_GAMEPAD, has_key};
+        // An Xbox controller, as a 64-bit kernel lists its keys.
+        assert!(has_key("7cdb000000000000 0 0 0 0", BTN_GAMEPAD, 64));
+        // The same on a 32-bit kernel.
+        assert!(has_key("7cdb0000 0 0 0 0 0 0 0 0 0", BTN_GAMEPAD, 32));
+        // A laptop's accelerometer has no keys at all (#332).
+        assert!(!has_key("0", BTN_GAMEPAD, 64));
+        assert!(!has_key("", BTN_GAMEPAD, 64));
+        // A flight stick has BTN_TRIGGER and friends (0x120..), not BTN_SOUTH.
+        assert!(!has_key("ffff00000000 0 0 0 0", BTN_GAMEPAD, 64));
+        assert!(!has_key("not hex 0 0 0 0", BTN_GAMEPAD, 64));
+    }
+
     #[test]
     fn decoder_resumes_at_a_fresh_keyframe_after_a_gap() {
         let mut gate = super::DecodeGate::new();
