@@ -36,6 +36,8 @@ fi
 STAGE_DIR="$(mktemp -d -t nectarlink-tar-XXXXXX)"
 trap 'rm -rf "${STAGE_DIR}"' EXIT
 
+bash "${SCRIPT_DIR}/build-translations.sh" "${STAGE_DIR}/translations"
+
 BUNDLE_NAME="Nectarlink-${VERSION}-linux-${ARCH}"
 BUNDLE_DIR="${STAGE_DIR}/${BUNDLE_NAME}"
 mkdir -p "${BUNDLE_DIR}/share/applications" "${BUNDLE_DIR}/share/metainfo" "${BUNDLE_DIR}/share/icons" "${BUNDLE_DIR}/share/nectarlink"
@@ -45,7 +47,7 @@ for adapter in "$(dirname "${BIN_PATH}")"/libnectarlink-video-ffmpeg*.so; do
     [[ ! -f "${adapter}" ]] || install -m 0755 "${adapter}" "${BUNDLE_DIR}/"
 done
 printf '%s\n' "${VERSION}" > "${BUNDLE_DIR}/VERSION"
-for qm in "$(dirname "${BIN_PATH}")"/nectarlink_*.qm; do
+for qm in "${STAGE_DIR}"/translations/nectarlink_*.qm; do
     if [[ -f "${qm}" ]]; then
         install -m 0644 "${qm}" "${BUNDLE_DIR}/$(basename "${qm}")"
         install -m 0644 "${qm}" "${BUNDLE_DIR}/share/nectarlink/$(basename "${qm}")"
