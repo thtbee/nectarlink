@@ -118,6 +118,10 @@ change things that need a step from you, and its notes say so.
 - **"Call with" didn't show for phones with two SIMs.** On newer Android the phone
   couldn't list its SIMs, so the PC never offered the choice
   ([#334](https://github.com/thtbee/nectarlink/issues/334)).
+- **Phone storage catches up when the phone connects.** Every folder already open in File
+  Explorer is read again, so files deleted on the phone while it was away, or before the
+  app started, go from the PC too
+  ([#328](https://github.com/thtbee/nectarlink/issues/328)).
 - **Deleting a downloaded file in phone storage failed.** Sending it to the Recycle Bin said
   "The cloud operation was unsuccessful" and still deleted it on the phone. It now goes to
   the Recycle Bin and leaves the phone, and a file is only deleted on the phone once Windows

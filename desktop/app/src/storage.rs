@@ -61,10 +61,10 @@ mod imp {
                     CF_OPERATION_TYPE_ACK_DELETE, CF_OPERATION_TYPE_ACK_RENAME,
                     CF_OPERATION_TYPE_TRANSFER_DATA, CF_OPERATION_TYPE_TRANSFER_PLACEHOLDERS,
                     CF_PLACEHOLDER_CREATE_FLAG_MARK_IN_SYNC, CF_PLACEHOLDER_CREATE_INFO,
-                    CF_PLACEHOLDER_STATE_IN_SYNC, CF_PLACEHOLDER_STATE_PLACEHOLDER, CF_SET_IN_SYNC_FLAG_NONE,
-                    CfConnectSyncRoot, CfConvertToPlaceholder, CfCreatePlaceholders, CfDisconnectSyncRoot,
-                    CfExecute, CfGetPlaceholderStateFromAttributeTag, CfReportProviderProgress,
-                    CfSetInSyncState,
+                    CF_PLACEHOLDER_STATE, CF_PLACEHOLDER_STATE_IN_SYNC, CF_PLACEHOLDER_STATE_PARTIAL,
+                    CF_PLACEHOLDER_STATE_PLACEHOLDER, CF_SET_IN_SYNC_FLAG_NONE, CfConnectSyncRoot,
+                    CfConvertToPlaceholder, CfCreatePlaceholders, CfDisconnectSyncRoot, CfExecute,
+                    CfGetPlaceholderStateFromAttributeTag, CfReportProviderProgress, CfSetInSyncState,
                 },
                 FileSystem::{
                     CreateFileW, FILE_ACTION_ADDED, FILE_ACTION_MODIFIED, FILE_ACTION_RENAMED_NEW_NAME,
@@ -562,12 +562,7 @@ mod imp {
                     if *online && !was_online {
                         // Back after being away: what's on the phone may have changed.
                         let root = existing.clone();
-                        core_host::spawn(async move {
-                            let is_root_populated = lock(&root.populated_dirs).contains("");
-                            if is_root_populated {
-                                refresh_folder(root, "").await;
-                            }
-                        });
+                        core_host::spawn(refresh_known_folders(root));
                     }
                     continue;
                 }
@@ -773,8 +768,9 @@ mod imp {
         if online {
             core_host::spawn(async move {
                 // Pre-populate top-level placeholders when connected so opening the
-                // sync root in Explorer or inspecting it immediately shows folders.
-                refresh_folder(active, "").await;
+                // sync root in Explorer or inspecting it immediately shows folders,
+                // and catch up on the folders shown before.
+                refresh_known_folders(active).await;
             });
         }
 
@@ -1376,6 +1372,38 @@ mod imp {
         let _ = unsafe { CfExecute(&op_info, &mut op_params) };
     }
 
+    /// Reads again every folder the PC already shows, top first: what changed
+    /// on the phone while it was away, or before the app started, only shows
+    /// once a folder is read. Folders never opened are empty here and skipped.
+    #[cfg(windows)]
+    async fn refresh_known_folders(root: Arc<ActiveRoot>) {
+        const MOST_FOLDERS: usize = 256;
+        let mut queue = std::collections::VecDeque::from([String::new()]);
+        let mut done = 0;
+        while let Some(rel) = queue.pop_front() {
+            if done == MOST_FOLDERS {
+                break;
+            }
+            done += 1;
+            refresh_folder(root.clone(), &rel).await;
+            let local = if rel.is_empty() {
+                root.root_path.clone()
+            } else {
+                root.root_path.join(rel.replace('/', "\\"))
+            };
+            let Ok(children) = std::fs::read_dir(&local) else { continue };
+            for child in children.flatten() {
+                let path = child.path();
+                // Only folders already read: listing one never opened would
+                // fetch it, and so on through the whole phone.
+                if path.is_dir() && fully_listed(&path) {
+                    let name = child.file_name().to_string_lossy().into_owned();
+                    queue.push_back(if rel.is_empty() { name } else { format!("{rel}/{name}") });
+                }
+            }
+        }
+    }
+
     /// Refreshes a folder's placeholders from the phone (`storage.changed` or initial connect).
     #[cfg(windows)]
     async fn refresh_folder(root: Arc<ActiveRoot>, rel_folder: &str) {
@@ -1605,6 +1633,33 @@ mod imp {
 
     /// Checks whether `full_path` is a newly dropped non-placeholder file/folder or
     /// a modified placeholder that is no longer in sync.
+    /// Whether a placeholder folder's contents are all here (it was read
+    /// from the phone), from its attributes, without listing it.
+    #[cfg(windows)]
+    fn fully_listed(full_path: &Path) -> bool {
+        placeholder_state(full_path).is_some_and(|state| {
+            (state.0 & CF_PLACEHOLDER_STATE_PLACEHOLDER.0) != 0
+                && (state.0 & CF_PLACEHOLDER_STATE_PARTIAL.0) == 0
+        })
+    }
+
+    #[cfg(windows)]
+    fn placeholder_state(full_path: &Path) -> Option<CF_PLACEHOLDER_STATE> {
+        let wide = to_wide_null(full_path);
+        let mut find_data = WIN32_FIND_DATAW::default();
+        // SAFETY: wide is null-terminated and find_data is a valid struct.
+        let handle = unsafe { FindFirstFileW(PCWSTR(wide.as_ptr()), &mut find_data) }.ok()?;
+        if handle == INVALID_HANDLE_VALUE {
+            return None;
+        }
+        // SAFETY: handle came from FindFirstFileW.
+        let _ = unsafe { FindClose(handle) };
+        // SAFETY: dwFileAttributes and dwReserved0 (reparse tag) were populated by FindFirstFileW.
+        Some(unsafe {
+            CfGetPlaceholderStateFromAttributeTag(find_data.dwFileAttributes, find_data.dwReserved0)
+        })
+    }
+
     #[cfg(windows)]
     fn needs_upload(full_path: &Path) -> bool {
         let wide = to_wide_null(full_path);
