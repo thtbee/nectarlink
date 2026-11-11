@@ -997,6 +997,7 @@ NativeWindow {
     StarPrompt {
         eligible: AppController.status === "ready" && !window.showWalkthrough && window.active
         onStarred: Qt.openUrlExternally("https://github.com/thtbee/nectarlink")
+        onSupported: Qt.openUrlExternally("https://buymeacoffee.com/thtbee_")
     }
 
     // ---- First run ----

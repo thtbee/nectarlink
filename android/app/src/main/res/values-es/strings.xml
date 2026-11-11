@@ -242,6 +242,9 @@
     <string name="star_channel">Proyecto NectarLink</string>
     <string name="star_title">¿Estás disfrutando de NectarLink?</string>
     <string name="star_text">Toca para darle una estrella en GitHub. Ayudará a que otras personas lo encuentren.</string>
+    <string name="support_title">Apoyar NectarLink</string>
+    <string name="support_body">NectarLink es gratuito y de código abierto. Si te hace los días un poco más fáciles, puedes ayudar a que siga adelante. ¡Gracias!</string>
+    <string name="support_action">Apoyar</string>
     <string name="settings_comb_motion">Panal animado</string>
     <string name="settings_comb_motion_hint">El panal respira y pulsa. Se queda inmóvil cuando están activados Quitar animaciones o el ahorro de batería.</string>
     <string name="theme_bloom">Bloom</string>

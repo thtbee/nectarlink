@@ -52,7 +52,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import app.nectarlink.android.ui.AppLanguage
+import app.nectarlink.android.ui.StarNotification
 import androidx.compose.material3.RadioButton
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.res.pluralStringResource
@@ -1036,6 +1038,22 @@ fun SettingsScreen(
                     SettingRowDivider()
                     Text(stringResource(R.string.about_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodyMedium)
                     CheckForUpdates(updater)
+                }
+            }
+            item(key = "support", contentType = "section") {
+                val uriHandler = LocalUriHandler.current
+                Section(stringResource(R.string.support_title)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            stringResource(R.string.support_body),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f).padding(end = 12.dp),
+                        )
+                        FilledTonalButton(onClick = { runCatching { uriHandler.openUri(StarNotification.SUPPORT) } }) {
+                            Text(stringResource(R.string.support_action))
+                        }
+                    }
                 }
             }
         }

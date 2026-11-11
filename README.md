@@ -19,6 +19,8 @@ Feedback, bugs or ideas? DM me directly.
 [![Apps: GPL-3.0-or-later](https://img.shields.io/badge/apps-GPL--3.0--or--later-blue)](LICENSE)
 [![Core: MPL-2.0](https://img.shields.io/badge/core-MPL--2.0-blue)](LICENSE)
 
+<a href="https://buymeacoffee.com/thtbee_"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20some%20honey&emoji=%F0%9F%8D%AF&slug=thtbee_&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" alt="Buy me some honey" height="40"></a>
+
 </div>
 
 <p align="center">

@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Support NectarLink.** If you'd like to help keep it going, Settings has a Support
+  section on the phone and the PC, and the "Enjoying NectarLink?" prompt has a Support
+  button next to Star on GitHub. It only opens the page when you tap it.
 - **Keep a mirror window on top.** A pin button in the window's controls keeps it above other windows. Thanks to [@Nebhay](https://github.com/Nebhay) ([#327](https://github.com/thtbee/nectarlink/pull/327)).
 - **Spanish.** NectarLink is available in Spanish on Android and Windows.
   Thanks to José María Garcia Dominguez, and to

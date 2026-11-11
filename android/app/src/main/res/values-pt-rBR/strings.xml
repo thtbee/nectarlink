@@ -239,6 +239,9 @@
     <string name="star_channel">Projeto NectarLink</string>
     <string name="star_title">Está curtindo o NectarLink?</string>
     <string name="star_text">Toque para dar uma estrela no GitHub. Isso ajuda outras pessoas a encontrar o app.</string>
+    <string name="support_title">Apoiar o NectarLink</string>
+    <string name="support_body">O NectarLink é gratuito e de código aberto. Se ele deixa seus dias um pouco mais fáceis, você pode ajudar a mantê-lo. Obrigado!</string>
+    <string name="support_action">Apoiar</string>
     <string name="settings_comb_motion">Favo animado</string>
     <string name="settings_comb_motion_hint">O favo respira e pulsa. Ele fica parado quando Remover animações ou a Economia de bateria estão ativadas.</string>
     <string name="theme_bloom">Bloom</string>

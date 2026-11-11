@@ -239,6 +239,9 @@
     <string name="star_channel">NectarLink projesi</string>
     <string name="star_title">NectarLink\'i beğendin mi?</string>
     <string name="star_text">GitHub\'da yıldızlamak için dokun. Başkalarının bulmasına yardımcı olur.</string>
+    <string name="support_title">NectarLink\'i destekle</string>
+    <string name="support_body">NectarLink ücretsiz ve açık kaynaklıdır. Günlerini biraz kolaylaştırıyorsa devam etmesine yardım edebilirsin. Teşekkürler!</string>
+    <string name="support_action">Destekle</string>
     <string name="settings_comb_motion">Hareketli petek</string>
     <string name="settings_comb_motion_hint">Petek nefes alır ve atar. Animasyonları kaldır veya pil tasarrufu açıkken durağan kalır.</string>
     <string name="theme_bloom">Bloom</string>

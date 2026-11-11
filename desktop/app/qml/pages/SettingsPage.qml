@@ -24,7 +24,8 @@ Item {
         { id: "files_sync", title: qsTr("Files & Sync"), icon: Icons.folder, subtitle: qsTr("Folder sync, storage & recordings") },
         { id: "shortcuts", title: qsTr("Shortcuts & Rules"), icon: Icons.bolt, subtitle: qsTr("Hotkeys & automations") },
         { id: "storage", title: qsTr("Storage & Privacy"), icon: Icons.clipboardList, subtitle: qsTr("History, caches & retention") },
-        { id: "connection", title: qsTr("Connection & About"), icon: Icons.wifi, subtitle: qsTr("Doctor, Wake-on-LAN, API & version") }
+        { id: "connection", title: qsTr("Connection & About"), icon: Icons.wifi, subtitle: qsTr("Doctor, Wake-on-LAN, API & version") },
+        { id: "support", title: qsTr("Support NectarLink"), icon: Icons.heart, subtitle: qsTr("Help keep it going") }
     ]
 
     // The languages the app speaks besides the system's ({ code, name }).
@@ -3551,6 +3552,32 @@ Item {
                                 text: qsTr("Open")
                                 onClicked: AppController.currentPage = "guide"
                             }
+                        }
+                    }
+                }
+            }
+
+            // ================================================================
+            // 10. SUPPORT
+            // ================================================================
+            Column {
+                visible: page.currentSection === "support"
+                width: visible ? parent.width : 0
+                spacing: Theme.gutter
+
+                Card {
+                    width: parent.width
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.heart
+                        title: qsTr("Support NectarLink")
+                        description: qsTr("NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!")
+                        Button {
+                            objectName: "supportButton"
+                            variant: "tonal"
+                            size: "sm"
+                            text: qsTr("Support")
+                            onClicked: Qt.openUrlExternally("https://buymeacoffee.com/thtbee_")
                         }
                     }
                 }

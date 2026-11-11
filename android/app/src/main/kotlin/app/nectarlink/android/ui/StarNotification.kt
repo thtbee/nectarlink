@@ -26,6 +26,16 @@ internal object StarNotification {
     private const val HOUR_MS = 60 * 60 * 1000L
     private const val REPO = "https://github.com/thtbee/nectarlink"
 
+    /** Where the Support buttons go: the project's tip page. */
+    const val SUPPORT = "https://buymeacoffee.com/thtbee_"
+
+    fun supportIntent(context: Context): PendingIntent = PendingIntent.getActivity(
+        context,
+        1,
+        Intent(Intent.ACTION_VIEW, Uri.parse(SUPPORT)),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+
     // Its own file: "appearance" is backed up, and a reinstall should ask again.
     private const val PREFS = "star_notification"
     private const val POSTED = "posted"
@@ -82,6 +92,7 @@ internal object StarNotification {
             .setContentText(context.getString(R.string.star_text))
             .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.star_text)))
             .setContentIntent(open)
+            .addAction(0, context.getString(R.string.support_action), supportIntent(context))
             .setAutoCancel(true)
             .build()
         if (context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=

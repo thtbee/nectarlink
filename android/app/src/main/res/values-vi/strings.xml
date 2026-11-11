@@ -238,6 +238,9 @@
 <string name="star_channel">Dự án NectarLink</string>
 <string name="star_title">Thích NectarLink?</string>
 <string name="star_text">Chạm để gắn sao trên GitHub. Nó giúp nhiều người khác tìm thấy.</string>
+<string name="support_title">Ủng hộ NectarLink</string>
+<string name="support_body">NectarLink miễn phí và mã nguồn mở. Nếu nó giúp ngày của bạn dễ dàng hơn một chút, bạn có thể ủng hộ để nó tiếp tục phát triển. Cảm ơn bạn!</string>
+<string name="support_action">Ủng hộ</string>
 <string name="settings_comb_motion">Tổ ong động</string>
 <string name="settings_comb_motion_hint">Tổ ong thở và đập. Nó sẽ đứng yên khi bật Loại bỏ hiệu ứng động hoặc trình tiết kiệm pin.</string>
 <string name="theme_bloom">Bloom</string>

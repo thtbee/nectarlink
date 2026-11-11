@@ -20,6 +20,11 @@ Item {
     }
 
     SignalSpy {
+        id: supportedSpy
+        signalName: "supported"
+    }
+
+    SignalSpy {
         id: starredSpy
         signalName: "starred"
     }
@@ -110,6 +115,19 @@ Item {
             compare(prompt.phase, "thanks")
             tryCompare(prompt, "phase", "gone", 6000)
             verify(!prompt.visible)
+        }
+
+        function test_support_opens_the_support_page_and_ends_it() {
+            const prompt = make(true)
+            supportedSpy.clear()
+            supportedSpy.target = prompt
+            waitUntilOpen(prompt)
+            mouseClick(findChild(prompt, "supportButton"))
+            compare(supportedSpy.count, 1)
+            compare(starredSpy.count, 0)
+            verify(Preferences.starPromptDone)
+            compare(prompt.phase, "thanks")
+            tryCompare(prompt, "phase", "gone", 6000)
         }
 
         function test_closing_ends_it_without_opening_anything() {

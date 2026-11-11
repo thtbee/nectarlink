@@ -3,10 +3,10 @@ import QtQuick
 import QtQuick.Shapes
 import app.nectarlink
 
-// Asks once for a star on GitHub: right as the window opens after an update, or
+// Asks once for a star on GitHub (or support): right as the window opens after an update, or
 // after ten minutes of use on a new install. A honeycomb cell lands in the corner
 // and fills with honey, a star rises out of it, and the question unfolds from the
-// cell. Starring or closing it ends it for good. Nothing moves while it waits for
+// cell. Any answer ends it for good. Nothing moves while it waits for
 // an answer, so it costs nothing to leave open.
 Item {
     id: prompt
@@ -18,6 +18,7 @@ Item {
     property int minutesOfUse: 10
     property int updatedWaitMs: 1500
     signal starred
+    signal supported
 
     readonly property string phase: internal.phase
     readonly property real cellSize: 30
@@ -38,9 +39,20 @@ Item {
     function star() {
         if (internal.phase !== "open")
             return
+        prompt.starred()
+        thank()
+    }
+
+    function support() {
+        if (internal.phase !== "open")
+            return
+        prompt.supported()
+        thank()
+    }
+
+    function thank() {
         Preferences.starPromptDone = true
         internal.phase = "thanks"
-        prompt.starred()
         arrive.stop()
         if (Theme.reduceMotion)
             thankedPause.start()
@@ -309,6 +321,17 @@ Item {
                     text: qsTr("Star on GitHub")
                     enabled: internal.reveal === 1
                     onClicked: prompt.star()
+                }
+
+                Button {
+                    objectName: "supportButton"
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: internal.phase !== "thanks"
+                    size: "sm"
+                    variant: "tonal"
+                    text: qsTr("Support")
+                    enabled: internal.reveal === 1
+                    onClicked: prompt.support()
                 }
 
                 IconButton {

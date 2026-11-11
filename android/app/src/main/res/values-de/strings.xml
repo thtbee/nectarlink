@@ -239,6 +239,9 @@
     <string name="star_channel">NectarLink-Projekt</string>
     <string name="star_title">Gefällt dir NectarLink?</string>
     <string name="star_text">Tippe, um es auf GitHub mit einem Stern zu markieren. Das hilft anderen, es zu finden.</string>
+    <string name="support_title">NectarLink unterstützen</string>
+    <string name="support_body">NectarLink ist kostenlos und Open Source. Wenn es deinen Alltag etwas leichter macht, kannst du helfen, es am Laufen zu halten. Danke!</string>
+    <string name="support_action">Unterstützen</string>
     <string name="settings_comb_motion">Animierte Wabe</string>
     <string name="settings_comb_motion_hint">Die Bienenwabe atmet und pulsiert sanft. Bei aktivierter Option „Animationen entfernen“ oder im Energiesparmodus bleibt sie ruhig.</string>
     <string name="theme_bloom">Blüte</string>
