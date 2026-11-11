@@ -26,6 +26,7 @@ Window {
     color: "black"
     minimumWidth: 240
     minimumHeight: 240
+    flags: Qt.Window
 
     // A phone-shaped window the first time a picture arrives (portrait or
     // landscape), within the screen, or restored to where the user left it.
@@ -122,6 +123,14 @@ Window {
     }
     width: 420
     height: 860
+    readonly property bool staysOnTop: win.flags & Qt.WindowStaysOnTopHint
+
+    function toggleStayOnTop() {
+        win.flags = win.staysOnTop
+            ? Qt.Window
+            : Qt.WindowStaysOnTopHint | Qt.Window
+    }
+
     onClosing: {
         if (info.app && sized)
             Mirror.saveGeometry(mirrorKey, x, y, width, height)
@@ -426,6 +435,13 @@ Window {
                 iconColor: "white"
                 label: qsTr("Lock phone")
                 onClicked: Mirror.press(win.mirrorKey, "lock")
+            }
+            IconButton {
+                id: pinBtn
+                iconPath: Icons.pin
+                iconColor: win.staysOnTop ? Theme.primary : "white"
+                label: win.staysOnTop ? qsTr("Window no longer stays on top") : qsTr("Window stays on top")
+                onClicked: toggleStayOnTop()
             }
             IconButton {
                 id: soundBtn
