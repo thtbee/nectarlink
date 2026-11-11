@@ -3342,6 +3342,19 @@ Item {
                         Divider { width: parent.width }
                         ListRow {
                             width: parent.width
+                            iconPath: Icons.globe
+                            title: qsTr("Iroh relay servers")
+                            description: qsTr("View active routes, check latency and manage relay servers.")
+                            Button {
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Manage")
+                                onClicked: relaySheet.open()
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
                             iconPath: Icons.power
                             title: qsTr("Wake from your phone")
                             description: {
@@ -3768,6 +3781,8 @@ Item {
             }
         }
     }
+
+    RelaySheet { id: relaySheet }
 
     Sheet {
         id: hotspotSheet

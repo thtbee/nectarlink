@@ -2455,6 +2455,7 @@ dependencies = [
  "data-encoding",
  "iroh",
  "iroh-mdns-address-lookup",
+ "iroh-relay",
  "libc",
  "material-colors",
  "n0-future",

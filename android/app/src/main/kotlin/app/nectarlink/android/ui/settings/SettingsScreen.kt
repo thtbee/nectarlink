@@ -133,6 +133,7 @@ fun SettingsScreen(
     onClearEverything: () -> Unit = {},
     onToggleLocalSend: (Boolean) -> Unit = {},
     onToggleAwayMode: (Boolean) -> Unit = {},
+    onOpenRelaySettings: () -> Unit = {},
     onOpenWalkthrough: () -> Unit = {},
     onOpenFeaturesGuide: () -> Unit = {},
     highlightTarget: GuideHighlightTarget? = null,
@@ -602,6 +603,9 @@ fun SettingsScreen(
                             colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
                             modifier = Modifier.semantics { contentDescription = mobileDataTitle },
                         )
+                    }
+                    FilledTonalButton(onClick = onOpenRelaySettings) {
+                        Text(stringResource(R.string.relay_settings_title))
                     }
                 }
             }

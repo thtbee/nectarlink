@@ -1398,4 +1398,36 @@
     <string name="device_name_in_profile">%1$s (%2$s)</string>
     <string name="profile_work">Arbeit</string>
     <string name="profile_other">Zweites Profil</string>
+
+    <string name="relay_settings_title">Iroh-Relay-Server</string>
+    <string name="relay_waiting">Warten auf den Verbindungsdienst …</string>
+    <string name="relay_away_hint">Aktiviere „Über mobile Daten verbinden“, um die aktivierten Relay-Server zu nutzen.</string>
+    <string name="relay_selection_hint">Mit den Schaltern legst du fest, welche Server Iroh als Heim-Relay für dieses Gerät auswählen kann.</string>
+    <string name="relay_home">Heim-Relays</string>
+    <string name="relay_home_empty">Kein Heim-Relay ausgewählt</string>
+    <string name="relay_home_connected">Verbunden · %1$s</string>
+    <string name="relay_home_failed">Verbindung fehlgeschlagen · %1$s</string>
+    <string name="relay_home_connecting">Verbindung wird hergestellt · %1$s</string>
+    <string name="relay_device_routes">Geräteverkehr über Relay</string>
+    <string name="relay_routes_empty">Kein Geräteverkehr läuft über ein Relay</string>
+    <string name="relay_route">%1$s über %2$s</string>
+    <string name="relay_check_all">Alle Relays prüfen</string>
+    <string name="relay_checking">Relays werden geprüft …</string>
+    <string name="relay_checking_short">Wird geprüft …</string>
+    <string name="relay_not_checked">Noch nicht geprüft</string>
+    <string name="relay_rtt">%1$d ms</string>
+    <string name="relay_timed_out">Zeitüberschreitung</string>
+    <string name="relay_unreachable">Nicht erreichbar</string>
+    <string name="relay_address">Adresse des eigenen Relays</string>
+    <string name="relay_add">Relay hinzufügen</string>
+    <string name="relay_enable">%1$s aktivieren</string>
+    <string name="relay_invalid_address">Gib eine HTTP- oder HTTPS-Adresse für das Relay ein. Zugangsdaten, Pfade und Abfrageparameter sind unzulässig.</string>
+    <string name="relay_duplicate">Dieses Relay steht bereits in der Liste.</string>
+    <string name="relay_limit">Die Liste kann bis zu 16 eigene Relays enthalten.</string>
+    <string name="relay_save_failed">Die Relay-Einstellungen konnten nicht gespeichert werden.</string>
+    <string name="relay_region_na_east">Nordamerika · Ost</string>
+    <string name="relay_region_na_west">Nordamerika · West</string>
+    <string name="relay_region_europe">Europa</string>
+    <string name="relay_region_asia_pacific">Asien-Pazifik</string>
+    <string name="relay_region_custom">Eigene Relays</string>
 </resources>

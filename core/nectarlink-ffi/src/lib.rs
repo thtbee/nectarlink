@@ -3305,6 +3305,67 @@ pub struct NodeOptions {
     pub usb_port: Option<u16>,
 }
 
+#[derive(Debug, uniffi::Enum)]
+pub enum RelayRegion {
+    NorthAmericaEast,
+    NorthAmericaWest,
+    Europe,
+    AsiaPacific,
+    Custom,
+}
+
+#[derive(Debug, uniffi::Record)]
+pub struct RelayServer {
+    pub url: String,
+    pub provider: String,
+    pub region: RelayRegion,
+    pub enabled: bool,
+}
+
+#[derive(Debug, uniffi::Record)]
+pub struct HomeRelay {
+    pub url: String,
+    pub connected: bool,
+    pub failed: bool,
+}
+
+#[derive(Debug, uniffi::Record)]
+pub struct RelayRoute {
+    pub device: String,
+    pub url: String,
+}
+
+#[derive(Debug, uniffi::Record)]
+pub struct RelaySnapshot {
+    pub servers: Vec<RelayServer>,
+    pub home: Vec<HomeRelay>,
+    pub routes: Vec<RelayRoute>,
+}
+
+#[derive(Debug, uniffi::Record)]
+pub struct RelayProbe {
+    pub url: String,
+    pub rtt_ms: Option<u32>,
+    pub timed_out: bool,
+}
+
+#[derive(Debug, uniffi::Enum)]
+pub enum RelayEdit {
+    Add,
+    Enable,
+    Disable,
+    Remove,
+}
+
+#[derive(Debug, uniffi::Enum)]
+pub enum RelayEditResult {
+    Saved,
+    InvalidAddress,
+    Duplicate,
+    Limit,
+    Failed,
+}
+
 /// The NectarLink engine. One per app process.
 #[derive(uniffi::Object)]
 pub struct NectarlinkNode {
@@ -3960,6 +4021,68 @@ impl NectarlinkNode {
     /// Enables or disables connecting over mobile data / non-LAN paths at runtime.
     pub fn set_away_mode(&self, enabled: bool) {
         self.node.set_away_mode(enabled);
+    }
+
+    pub fn relay_snapshot(&self) -> RelaySnapshot {
+        use core::relays::RelayRegion as Region;
+        let snapshot = self.node.relay_snapshot();
+        RelaySnapshot {
+            servers: snapshot
+                .servers
+                .into_iter()
+                .map(|server| RelayServer {
+                    url: server.url,
+                    provider: server.provider,
+                    region: match server.region {
+                        Region::NorthAmericaEast => RelayRegion::NorthAmericaEast,
+                        Region::NorthAmericaWest => RelayRegion::NorthAmericaWest,
+                        Region::Europe => RelayRegion::Europe,
+                        Region::AsiaPacific => RelayRegion::AsiaPacific,
+                        Region::Custom => RelayRegion::Custom,
+                    },
+                    enabled: server.enabled,
+                })
+                .collect(),
+            home: snapshot
+                .home
+                .into_iter()
+                .map(|relay| HomeRelay { url: relay.url, connected: relay.connected, failed: relay.failed })
+                .collect(),
+            routes: snapshot
+                .routes
+                .into_iter()
+                .map(|route| RelayRoute { device: route.device, url: route.url })
+                .collect(),
+        }
+    }
+
+    pub fn edit_relay(&self, url: String, action: RelayEdit) -> RelayEditResult {
+        use core::relays::{RelayEdit as Edit, RelayEditError};
+        let action = match action {
+            RelayEdit::Add => Edit::Add,
+            RelayEdit::Enable => Edit::Enable,
+            RelayEdit::Disable => Edit::Disable,
+            RelayEdit::Remove => Edit::Remove,
+        };
+        match self.node.edit_relay(&url, action) {
+            Ok(()) => RelayEditResult::Saved,
+            Err(RelayEditError::InvalidAddress) => RelayEditResult::InvalidAddress,
+            Err(RelayEditError::Duplicate) => RelayEditResult::Duplicate,
+            Err(RelayEditError::Limit) => RelayEditResult::Limit,
+            Err(err) => {
+                tracing::warn!(%err, "can't save relay settings");
+                RelayEditResult::Failed
+            }
+        }
+    }
+
+    pub async fn check_relays(&self) -> Vec<RelayProbe> {
+        let node = self.node.clone();
+        self.run(async move { node.check_relays().await })
+            .await
+            .into_iter()
+            .map(|probe| RelayProbe { url: probe.url, rtt_ms: probe.rtt_ms, timed_out: probe.timed_out })
+            .collect()
     }
 
     /// Locks a paired PC (`sleep`: puts it to sleep instead).
