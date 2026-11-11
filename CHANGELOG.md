@@ -8,6 +8,7 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Keep a mirror window on top.** A pin button in the window's controls keeps it above other windows. Thanks to [@Nebhay](https://github.com/Nebhay) ([#327](https://github.com/thtbee/nectarlink/pull/327)).
 - **Spanish.** NectarLink is available in Spanish on Android and Windows.
   Thanks to José María Garcia Dominguez, and to
   [@KevinL50-sysadmin](https://github.com/KevinL50-sysadmin) for a review pass on it.

@@ -440,7 +440,7 @@ Window {
                 id: pinBtn
                 iconPath: Icons.pin
                 iconColor: win.staysOnTop ? Theme.primary : "white"
-                label: win.staysOnTop ? qsTr("Window no longer stays on top") : qsTr("Window stays on top")
+                label: win.staysOnTop ? qsTr("Don't keep on top") : qsTr("Keep on top")
                 onClicked: toggleStayOnTop()
             }
             IconButton {

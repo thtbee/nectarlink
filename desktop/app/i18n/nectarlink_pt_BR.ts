@@ -4101,8 +4101,8 @@ O que precisa
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="298"/>
-        <location filename="../qml/pages/HomePage.qml" line="1562"/>
-        <location filename="../qml/pages/HomePage.qml" line="1741"/>
+        <location filename="../qml/pages/HomePage.qml" line="1556"/>
+        <location filename="../qml/pages/HomePage.qml" line="1735"/>
         <source>Dismiss</source>
         <translation>Dispensar</translation>
     </message>
@@ -4158,13 +4158,13 @@ O que precisa
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="507"/>
-        <location filename="../qml/pages/HomePage.qml" line="1588"/>
+        <location filename="../qml/pages/HomePage.qml" line="1582"/>
         <source>Transfers</source>
         <translation>Transferências</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="516"/>
-        <location filename="../qml/pages/HomePage.qml" line="1605"/>
+        <location filename="../qml/pages/HomePage.qml" line="1599"/>
         <source>Clear finished</source>
         <translation>Limpar concluídas</translation>
     </message>
@@ -4179,505 +4179,505 @@ O que precisa
         <translation>Segure Shift ao soltar um documento para abri-lo assim que chegar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1072"/>
-        <location filename="../qml/pages/HomePage.qml" line="1164"/>
+        <location filename="../qml/pages/HomePage.qml" line="1070"/>
+        <location filename="../qml/pages/HomePage.qml" line="1162"/>
         <source>Charging</source>
         <translation>Carregando</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1075"/>
+        <location filename="../qml/pages/HomePage.qml" line="1073"/>
         <source>Low</source>
         <translation>Fraca</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1132"/>
+        <location filename="../qml/pages/HomePage.qml" line="1130"/>
         <source>Android %1</source>
         <translation>Android %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1146"/>
+        <location filename="../qml/pages/HomePage.qml" line="1144"/>
         <source>Away · %1 ms</source>
         <translation>À distância · %1 ms</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1146"/>
+        <location filename="../qml/pages/HomePage.qml" line="1144"/>
         <source>Away</source>
         <translation>À distância</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1148"/>
+        <location filename="../qml/pages/HomePage.qml" line="1146"/>
         <source>USB · %1 ms</source>
         <translation>USB · %1 ms</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1148"/>
+        <location filename="../qml/pages/HomePage.qml" line="1146"/>
         <source>USB</source>
         <translation>USB</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1150"/>
-        <location filename="../qml/pages/HomePage.qml" line="1154"/>
+        <location filename="../qml/pages/HomePage.qml" line="1148"/>
+        <location filename="../qml/pages/HomePage.qml" line="1152"/>
         <source>Wi‑Fi · %1 ms</source>
         <translation>Wi-Fi · %1 ms</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1150"/>
-        <location filename="../qml/pages/HomePage.qml" line="1154"/>
-        <location filename="../qml/pages/HomePage.qml" line="2065"/>
-        <location filename="../qml/pages/HomePage.qml" line="2066"/>
+        <location filename="../qml/pages/HomePage.qml" line="1148"/>
+        <location filename="../qml/pages/HomePage.qml" line="1152"/>
+        <location filename="../qml/pages/HomePage.qml" line="2059"/>
+        <location filename="../qml/pages/HomePage.qml" line="2060"/>
         <source>Wi‑Fi</source>
         <translation>Wi-Fi</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1152"/>
+        <location filename="../qml/pages/HomePage.qml" line="1150"/>
         <source>Cellular</source>
         <translation>Dados móveis</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1153"/>
+        <location filename="../qml/pages/HomePage.qml" line="1151"/>
         <source> · %1 ms</source>
         <translation> · %1 ms</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1155"/>
+        <location filename="../qml/pages/HomePage.qml" line="1153"/>
         <source>Not reconnecting</source>
         <translation>Reconexão desativada</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1156"/>
+        <location filename="../qml/pages/HomePage.qml" line="1154"/>
         <source>Offline · %1</source>
         <translation>Offline · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1157"/>
+        <location filename="../qml/pages/HomePage.qml" line="1155"/>
         <source>Offline</source>
         <translation>Offline</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1179"/>
+        <location filename="../qml/pages/HomePage.qml" line="1177"/>
         <source>Troubleshoot</source>
         <translation>Solucionar problemas</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1171"/>
+        <location filename="../qml/pages/HomePage.qml" line="1169"/>
         <source>Stop reconnecting</source>
         <translation>Parar de tentar reconectar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1171"/>
+        <location filename="../qml/pages/HomePage.qml" line="1169"/>
         <source>Disconnect</source>
         <translation>Desconectar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1179"/>
+        <location filename="../qml/pages/HomePage.qml" line="1177"/>
         <source>Reconnect</source>
         <translation>Reconectar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1263"/>
+        <location filename="../qml/pages/HomePage.qml" line="1261"/>
         <source>Media player</source>
         <translation>Player de mídia</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1270"/>
+        <location filename="../qml/pages/HomePage.qml" line="1268"/>
         <source>Nothing playing</source>
         <translation>Nada tocando</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1291"/>
+        <location filename="../qml/pages/HomePage.qml" line="1289"/>
         <source>Mirror screen</source>
         <translation>Espelhar tela</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1306"/>
+        <location filename="../qml/pages/HomePage.qml" line="1304"/>
         <source>Open an app</source>
         <translation>Abrir um app</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1313"/>
-        <location filename="../qml/pages/HomePage.qml" line="3642"/>
+        <location filename="../qml/pages/HomePage.qml" line="1311"/>
+        <location filename="../qml/pages/HomePage.qml" line="3636"/>
         <source>Send files</source>
         <translation>Enviar arquivos</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1319"/>
+        <location filename="../qml/pages/HomePage.qml" line="1317"/>
         <source>Send a folder</source>
         <translation>Enviar uma pasta</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1326"/>
+        <location filename="../qml/pages/HomePage.qml" line="1324"/>
         <source>Send clipboard</source>
         <translation>Enviar item copiado</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1332"/>
-        <location filename="../qml/pages/HomePage.qml" line="2921"/>
+        <location filename="../qml/pages/HomePage.qml" line="1330"/>
+        <location filename="../qml/pages/HomePage.qml" line="2915"/>
         <source>Clipboard history</source>
         <translation>Histórico da área de transferência</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1342"/>
+        <location filename="../qml/pages/HomePage.qml" line="1340"/>
         <source>Stop ringing</source>
         <translation>Parar de tocar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1342"/>
+        <location filename="../qml/pages/HomePage.qml" line="1340"/>
         <source>Find phone</source>
         <translation>Localizar celular</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1356"/>
+        <location filename="../qml/pages/HomePage.qml" line="1350"/>
         <source>Send to %1</source>
         <translation>Enviar para %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1362"/>
+        <location filename="../qml/pages/HomePage.qml" line="1356"/>
         <source>Hand off &amp; open on %1</source>
         <translation>Enviar e abrir em %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1378"/>
+        <location filename="../qml/pages/HomePage.qml" line="1372"/>
         <source>Send a folder to %1</source>
         <translation>Enviar uma pasta para %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1408"/>
+        <location filename="../qml/pages/HomePage.qml" line="1402"/>
         <source>Waiting to send · %1</source>
         <translation>Aguardando para enviar · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1409"/>
+        <location filename="../qml/pages/HomePage.qml" line="1403"/>
         <source>Waiting to send</source>
         <translation>Aguardando para enviar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1420"/>
+        <location filename="../qml/pages/HomePage.qml" line="1414"/>
         <source>Clear</source>
         <translation>Limpar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1427"/>
+        <location filename="../qml/pages/HomePage.qml" line="1421"/>
         <source>Cancel all</source>
         <translation>Cancelar tudo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1529"/>
+        <location filename="../qml/pages/HomePage.qml" line="1523"/>
         <source>Sending to %1 · %2%</source>
         <translation>Enviando para %1 · %2%</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1531"/>
+        <location filename="../qml/pages/HomePage.qml" line="1525"/>
         <source>Sending to %1…</source>
         <translation>Enviando para %1…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1536"/>
+        <location filename="../qml/pages/HomePage.qml" line="1530"/>
         <source>Failed · %1</source>
         <translation>Falha · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1537"/>
+        <location filename="../qml/pages/HomePage.qml" line="1531"/>
         <source>Failed</source>
         <translation>Falha</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1541"/>
+        <location filename="../qml/pages/HomePage.qml" line="1535"/>
         <source>Expired</source>
         <translation>Expirado</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1544"/>
+        <location filename="../qml/pages/HomePage.qml" line="1538"/>
         <source>Waiting for %1 · %2</source>
         <translation>Aguardando %1 · %2</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1545"/>
+        <location filename="../qml/pages/HomePage.qml" line="1539"/>
         <source>Waiting for %1</source>
         <translation>Aguardando %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1557"/>
+        <location filename="../qml/pages/HomePage.qml" line="1551"/>
         <source>Retry</source>
         <translation>Tentar de novo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1562"/>
-        <location filename="../qml/pages/HomePage.qml" line="2175"/>
-        <location filename="../qml/pages/HomePage.qml" line="2267"/>
-        <location filename="../qml/pages/HomePage.qml" line="2764"/>
+        <location filename="../qml/pages/HomePage.qml" line="1556"/>
+        <location filename="../qml/pages/HomePage.qml" line="2169"/>
+        <location filename="../qml/pages/HomePage.qml" line="2261"/>
+        <location filename="../qml/pages/HomePage.qml" line="2758"/>
         <source>Cancel</source>
         <translation>Cancelar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1597"/>
-        <location filename="../qml/pages/HomePage.qml" line="2566"/>
+        <location filename="../qml/pages/HomePage.qml" line="1591"/>
+        <location filename="../qml/pages/HomePage.qml" line="2560"/>
         <source>Timeline</source>
         <translation>Linha do tempo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1653"/>
+        <location filename="../qml/pages/HomePage.qml" line="1647"/>
         <source>Notifications · %1</source>
         <translation>Notificações · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1653"/>
+        <location filename="../qml/pages/HomePage.qml" line="1647"/>
         <source>Notifications</source>
         <translation>Notificações</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1664"/>
+        <location filename="../qml/pages/HomePage.qml" line="1658"/>
         <source>Resume pop-ups</source>
         <translation>Retomar avisos</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1664"/>
+        <location filename="../qml/pages/HomePage.qml" line="1658"/>
         <source>Pause pop-ups</source>
         <translation>Pausar avisos</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1674"/>
+        <location filename="../qml/pages/HomePage.qml" line="1668"/>
         <source>History</source>
         <translation>Histórico</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1675"/>
+        <location filename="../qml/pages/HomePage.qml" line="1669"/>
         <source>Notification history (last 24 hours)</source>
         <translation>Histórico de notificações (últimas 24 horas)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1688"/>
+        <location filename="../qml/pages/HomePage.qml" line="1682"/>
         <source>Clear all</source>
         <translation>Limpar tudo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1734"/>
+        <location filename="../qml/pages/HomePage.qml" line="1728"/>
         <source>Undo</source>
         <translation>Desfazer</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1791"/>
+        <location filename="../qml/pages/HomePage.qml" line="1785"/>
         <source>No notifications</source>
         <translation>Nenhuma notificação</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1793"/>
+        <location filename="../qml/pages/HomePage.qml" line="1787"/>
         <source>Notifications unavailable</source>
         <translation>Notificações indisponíveis</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1794"/>
+        <location filename="../qml/pages/HomePage.qml" line="1788"/>
         <source>Connect %1 to view notifications</source>
         <translation>Conecte %1 para ver notificações</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1820"/>
+        <location filename="../qml/pages/HomePage.qml" line="1814"/>
         <source>Desktop notifications are off. Turn them on in your system&apos;s notification settings.</source>
         <translation>As notificações da área de trabalho estão desativadas. Ative-as nas configurações de notificações do sistema.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1821"/>
+        <location filename="../qml/pages/HomePage.qml" line="1815"/>
         <source>Windows notifications are off.</source>
         <translation>As notificações do Windows estão desativadas.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1828"/>
+        <location filename="../qml/pages/HomePage.qml" line="1822"/>
         <source>Turn on</source>
         <translation>Ativar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1888"/>
+        <location filename="../qml/pages/HomePage.qml" line="1882"/>
         <source>Webcam</source>
         <translation>Webcam</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1899"/>
+        <location filename="../qml/pages/HomePage.qml" line="1893"/>
         <source>Streaming from %1</source>
         <translation>Transmitindo de %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1910"/>
-        <location filename="../qml/pages/HomePage.qml" line="2401"/>
+        <location filename="../qml/pages/HomePage.qml" line="1904"/>
+        <location filename="../qml/pages/HomePage.qml" line="2395"/>
         <source>Stop</source>
         <translation>Parar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1932"/>
+        <location filename="../qml/pages/HomePage.qml" line="1926"/>
         <source>Back</source>
         <translation>Voltar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1933"/>
+        <location filename="../qml/pages/HomePage.qml" line="1927"/>
         <source>Front</source>
         <translation>Frontal</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1951"/>
+        <location filename="../qml/pages/HomePage.qml" line="1945"/>
         <source>Mirror</source>
         <translation>Espelhar imagem</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2020"/>
+        <location filename="../qml/pages/HomePage.qml" line="2014"/>
         <source>Phone controls</source>
         <translation>Controles do celular</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2029"/>
+        <location filename="../qml/pages/HomePage.qml" line="2023"/>
         <source>Less</source>
         <translation>Menos</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2029"/>
+        <location filename="../qml/pages/HomePage.qml" line="2023"/>
         <source>Sound &amp; display</source>
         <translation>Som e tela</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2044"/>
+        <location filename="../qml/pages/HomePage.qml" line="2038"/>
         <source>DND</source>
         <translation>Não perturbe</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2045"/>
+        <location filename="../qml/pages/HomePage.qml" line="2039"/>
         <source>Do Not Disturb</source>
         <translation>Não perturbe</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2055"/>
+        <location filename="../qml/pages/HomePage.qml" line="2049"/>
         <source>Torch</source>
         <translation>Lanterna</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2056"/>
+        <location filename="../qml/pages/HomePage.qml" line="2050"/>
         <source>Flashlight</source>
         <translation>Lanterna</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2080"/>
+        <location filename="../qml/pages/HomePage.qml" line="2074"/>
         <source>BT</source>
         <translation>BT</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2081"/>
+        <location filename="../qml/pages/HomePage.qml" line="2075"/>
         <source>Bluetooth</source>
         <translation>Bluetooth</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2090"/>
+        <location filename="../qml/pages/HomePage.qml" line="2084"/>
         <source>Hotspot</source>
         <translation>Hotspot</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2091"/>
+        <location filename="../qml/pages/HomePage.qml" line="2085"/>
         <source>Instant Hotspot</source>
         <translation>Hotspot instantâneo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2105"/>
+        <location filename="../qml/pages/HomePage.qml" line="2099"/>
         <source>Phone as speaker</source>
         <translation>Celular como alto-falante</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2106"/>
+        <location filename="../qml/pages/HomePage.qml" line="2100"/>
         <source>Streaming PC audio</source>
         <translation>Transmitindo áudio do PC</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2117"/>
+        <location filename="../qml/pages/HomePage.qml" line="2111"/>
         <source>Play on phone</source>
         <translation>Reproduzir no celular</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2120"/>
+        <location filename="../qml/pages/HomePage.qml" line="2114"/>
         <source>Watching on %1</source>
         <translation>Assistindo em %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2121"/>
+        <location filename="../qml/pages/HomePage.qml" line="2115"/>
         <source>Tap the notification on %1</source>
         <translation>Toque na notificação em %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2123"/>
+        <location filename="../qml/pages/HomePage.qml" line="2117"/>
         <source>Play a video on this PC first</source>
         <translation>Reproduza um vídeo neste PC primeiro</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2133"/>
+        <location filename="../qml/pages/HomePage.qml" line="2127"/>
         <source>Phone sound on this PC</source>
         <translation>Som do celular neste PC</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2135"/>
+        <location filename="../qml/pages/HomePage.qml" line="2129"/>
         <source>Playing %1&apos;s sound</source>
         <translation>Tocando o som de %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2136"/>
+        <location filename="../qml/pages/HomePage.qml" line="2130"/>
         <source>Allow it on %1</source>
         <translation>Permita em %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2166"/>
+        <location filename="../qml/pages/HomePage.qml" line="2160"/>
         <source>Turning off Wi‑Fi may disconnect %1.</source>
         <translation>Desativar o Wi-Fi pode desconectar %1.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2181"/>
+        <location filename="../qml/pages/HomePage.qml" line="2175"/>
         <source>Turn off</source>
         <translation>Desligar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2206"/>
+        <location filename="../qml/pages/HomePage.qml" line="2200"/>
         <source>Ring</source>
         <translation>Som</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2207"/>
+        <location filename="../qml/pages/HomePage.qml" line="2201"/>
         <source>Vibrate</source>
         <translation>Vibrar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2208"/>
+        <location filename="../qml/pages/HomePage.qml" line="2202"/>
         <source>Silent</source>
         <translation>Silencioso</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2225"/>
+        <location filename="../qml/pages/HomePage.qml" line="2219"/>
         <source>Volume</source>
         <translation>Volume</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2236"/>
+        <location filename="../qml/pages/HomePage.qml" line="2230"/>
         <source>Brightness</source>
         <translation>Brilho</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2257"/>
+        <location filename="../qml/pages/HomePage.qml" line="2251"/>
         <source>Continuity Camera</source>
         <translation>Câmera de Continuidade</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2268"/>
+        <location filename="../qml/pages/HomePage.qml" line="2262"/>
         <source>Scan document</source>
         <translation>Digitalizar documento</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2281"/>
+        <location filename="../qml/pages/HomePage.qml" line="2275"/>
         <source>Phone as webcam</source>
         <translation>Celular como webcam</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2284"/>
+        <location filename="../qml/pages/HomePage.qml" line="2278"/>
         <source>Streaming</source>
         <translation>Transmitindo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2377"/>
-        <location filename="../qml/pages/HomePage.qml" line="2438"/>
+        <location filename="../qml/pages/HomePage.qml" line="2371"/>
+        <location filename="../qml/pages/HomePage.qml" line="2432"/>
         <source>Type on phone</source>
         <translation>Digitar no celular</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2388"/>
+        <location filename="../qml/pages/HomePage.qml" line="2382"/>
         <source>Sent: %1</source>
         <translation>Enviado: %1</translation>
     </message>
@@ -4686,287 +4686,287 @@ O que precisa
         <translation type="vanished">Aguardando teclas</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2390"/>
-        <location filename="../qml/pages/HomePage.qml" line="3238"/>
+        <location filename="../qml/pages/HomePage.qml" line="2384"/>
+        <location filename="../qml/pages/HomePage.qml" line="3232"/>
         <source>When connected</source>
         <translation>Quando conectado</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2401"/>
+        <location filename="../qml/pages/HomePage.qml" line="2395"/>
         <source>Start</source>
         <translation>Iniciar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2453"/>
-        <location filename="../qml/pages/HomePage.qml" line="2533"/>
+        <location filename="../qml/pages/HomePage.qml" line="2447"/>
+        <location filename="../qml/pages/HomePage.qml" line="2527"/>
         <source>Clipboard</source>
         <translation>Área de transferência</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2513"/>
+        <location filename="../qml/pages/HomePage.qml" line="2507"/>
         <source>Type here: keys go to %1</source>
         <translation>Digite aqui: as teclas vão para %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2514"/>
+        <location filename="../qml/pages/HomePage.qml" line="2508"/>
         <source>Click to focus keyboard</source>
         <translation>Clique para usar o teclado</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2521"/>
+        <location filename="../qml/pages/HomePage.qml" line="2515"/>
         <source>Ctrl+V pastes · Esc stops</source>
         <translation>Ctrl+V cola · Esc encerra</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2530"/>
+        <location filename="../qml/pages/HomePage.qml" line="2524"/>
         <source>Paste</source>
         <translation>Colar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2575"/>
+        <location filename="../qml/pages/HomePage.qml" line="2569"/>
         <source>View all</source>
         <translation>Ver tudo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2585"/>
+        <location filename="../qml/pages/HomePage.qml" line="2579"/>
         <source>No recent activity</source>
         <translation>Nenhuma atividade recente</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2674"/>
+        <location filename="../qml/pages/HomePage.qml" line="2668"/>
         <source>%1 notifications</source>
         <translation>%1 notificações</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2677"/>
+        <location filename="../qml/pages/HomePage.qml" line="2671"/>
         <source>Show</source>
         <translation>Mostrar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2678"/>
+        <location filename="../qml/pages/HomePage.qml" line="2672"/>
         <source>No pop-ups</source>
         <translation>Sem avisos</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2679"/>
+        <location filename="../qml/pages/HomePage.qml" line="2673"/>
         <source>Hide</source>
         <translation>Ocultar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2693"/>
+        <location filename="../qml/pages/HomePage.qml" line="2687"/>
         <source>Hidden on this PC.</source>
         <translation>Ocultas neste PC.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2695"/>
+        <location filename="../qml/pages/HomePage.qml" line="2689"/>
         <source>Shown in feed without pop-ups.</source>
         <translation>Aparecem no feed, sem avisos.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2697"/>
+        <location filename="../qml/pages/HomePage.qml" line="2691"/>
         <source>Shown in feed and as desktop pop-ups.</source>
         <translation>Aparecem no feed e como avisos na área de trabalho.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2698"/>
+        <location filename="../qml/pages/HomePage.qml" line="2692"/>
         <source>Shown in feed and as Windows pop-ups.</source>
         <translation>Aparecem no feed e como avisos do Windows.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2702"/>
-        <location filename="../qml/pages/HomePage.qml" line="2898"/>
-        <location filename="../qml/pages/HomePage.qml" line="3141"/>
-        <location filename="../qml/pages/HomePage.qml" line="3719"/>
+        <location filename="../qml/pages/HomePage.qml" line="2696"/>
+        <location filename="../qml/pages/HomePage.qml" line="2892"/>
+        <location filename="../qml/pages/HomePage.qml" line="3135"/>
+        <location filename="../qml/pages/HomePage.qml" line="3713"/>
         <source>Done</source>
         <translation>Concluído</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2769"/>
+        <location filename="../qml/pages/HomePage.qml" line="2763"/>
         <source>Save</source>
         <translation>Salvar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2790"/>
+        <location filename="../qml/pages/HomePage.qml" line="2784"/>
         <source>Notification history</source>
         <translation>Histórico de notificações</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2798"/>
-        <location filename="../qml/pages/HomePage.qml" line="2929"/>
+        <location filename="../qml/pages/HomePage.qml" line="2792"/>
+        <location filename="../qml/pages/HomePage.qml" line="2923"/>
         <source>Clear history</source>
         <translation>Limpar histórico</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2808"/>
+        <location filename="../qml/pages/HomePage.qml" line="2802"/>
         <source>Dismissed notifications from the last 24 hours.</source>
         <translation>Notificações dispensadas nas últimas 24 horas.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2809"/>
+        <location filename="../qml/pages/HomePage.qml" line="2803"/>
         <source>No recent notifications.</source>
         <translation>Nenhuma notificação recente.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/HomePage.qml" line="2845"/>
         <location filename="../qml/pages/HomePage.qml" line="2851"/>
-        <location filename="../qml/pages/HomePage.qml" line="2857"/>
         <source>Search notification history</source>
         <translation>Buscar no histórico de notificações</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2894"/>
-        <location filename="../qml/pages/HomePage.qml" line="3137"/>
+        <location filename="../qml/pages/HomePage.qml" line="2888"/>
+        <location filename="../qml/pages/HomePage.qml" line="3131"/>
         <source>Nothing matches “%1”.</source>
         <translation>Nada encontrado para “%1”.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2939"/>
+        <location filename="../qml/pages/HomePage.qml" line="2933"/>
         <source>Last 50 shared clips.</source>
         <translation>Últimos 50 itens compartilhados.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2940"/>
+        <location filename="../qml/pages/HomePage.qml" line="2934"/>
         <source>No shared clips yet.</source>
         <translation>Nenhum item compartilhado ainda.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/HomePage.qml" line="2974"/>
         <location filename="../qml/pages/HomePage.qml" line="2980"/>
-        <location filename="../qml/pages/HomePage.qml" line="2986"/>
         <source>Search clipboard history</source>
         <translation>Buscar no histórico da área de transferência</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3006"/>
+        <location filename="../qml/pages/HomePage.qml" line="3000"/>
         <source>From %1</source>
         <translation>De %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3006"/>
+        <location filename="../qml/pages/HomePage.qml" line="3000"/>
         <source>From phone</source>
         <translation>Do celular</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3007"/>
+        <location filename="../qml/pages/HomePage.qml" line="3001"/>
         <source>Sent to %1</source>
         <translation>Enviado para %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3007"/>
+        <location filename="../qml/pages/HomePage.qml" line="3001"/>
         <source>From this PC</source>
         <translation>Deste PC</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3013"/>
+        <location filename="../qml/pages/HomePage.qml" line="3007"/>
         <source>Image</source>
         <translation>Imagem</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3051"/>
+        <location filename="../qml/pages/HomePage.qml" line="3045"/>
         <source>Pinned</source>
         <translation>Fixado</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3095"/>
+        <location filename="../qml/pages/HomePage.qml" line="3089"/>
         <source>Open on phone</source>
         <translation>Abrir no celular</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3104"/>
+        <location filename="../qml/pages/HomePage.qml" line="3098"/>
         <source>Send to phone</source>
         <translation>Enviar para o celular</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3112"/>
+        <location filename="../qml/pages/HomePage.qml" line="3106"/>
         <source>Copy</source>
         <translation>Copiar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3118"/>
+        <location filename="../qml/pages/HomePage.qml" line="3112"/>
         <source>Unpin</source>
         <translation>Desafixar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3118"/>
+        <location filename="../qml/pages/HomePage.qml" line="3112"/>
         <source>Pin</source>
         <translation>Fixar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3123"/>
+        <location filename="../qml/pages/HomePage.qml" line="3117"/>
         <source>Delete</source>
         <translation>Excluir</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3411"/>
-        <location filename="../qml/pages/HomePage.qml" line="3422"/>
+        <location filename="../qml/pages/HomePage.qml" line="3405"/>
+        <location filename="../qml/pages/HomePage.qml" line="3416"/>
         <source>%1%</source>
         <translation>%1%</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3563"/>
+        <location filename="../qml/pages/HomePage.qml" line="3557"/>
         <source>LocalSend nearby · %1</source>
         <translation>LocalSend por perto · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3564"/>
+        <location filename="../qml/pages/HomePage.qml" line="3558"/>
         <source>LocalSend nearby</source>
         <translation>LocalSend por perto</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3573"/>
+        <location filename="../qml/pages/HomePage.qml" line="3567"/>
         <source>Refresh</source>
         <translation>Atualizar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3584"/>
+        <location filename="../qml/pages/HomePage.qml" line="3578"/>
         <source>Listening for LocalSend devices on your Wi‑Fi network.</source>
         <translation>Procurando dispositivos LocalSend na rede Wi-Fi.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3585"/>
+        <location filename="../qml/pages/HomePage.qml" line="3579"/>
         <source>LocalSend port 53317 is busy on this PC (another LocalSend app may be running).</source>
         <translation>A porta 53317 do LocalSend está ocupada neste PC (talvez outro app LocalSend esteja em execução).</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3624"/>
+        <location filename="../qml/pages/HomePage.qml" line="3618"/>
         <source>Nearby device</source>
         <translation>Dispositivo por perto</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3680"/>
+        <location filename="../qml/pages/HomePage.qml" line="3674"/>
         <source>Image preview</source>
         <translation>Prévia da imagem</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3687"/>
+        <location filename="../qml/pages/HomePage.qml" line="3681"/>
         <source>Close</source>
         <translation>Fechar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3715"/>
+        <location filename="../qml/pages/HomePage.qml" line="3709"/>
         <source>Open externally</source>
         <translation>Abrir em outro app</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1120"/>
+        <location filename="../qml/pages/HomePage.qml" line="1118"/>
         <source>Set nickname</source>
         <translation>Definir apelido</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1120"/>
+        <location filename="../qml/pages/HomePage.qml" line="1118"/>
         <source>Change nickname</source>
         <translation>Alterar apelido</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2389"/>
+        <location filename="../qml/pages/HomePage.qml" line="2383"/>
         <source>Tap a text box on the phone, then type</source>
         <translation>Toque em uma caixa de texto no celular e digite</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2731"/>
+        <location filename="../qml/pages/HomePage.qml" line="2725"/>
         <source>Phone nickname</source>
         <translation>Apelido do celular</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2739"/>
+        <location filename="../qml/pages/HomePage.qml" line="2733"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Defina um nome para identificar este celular no PC. Deixe em branco para usar “%1”.</translation>
     </message>
@@ -4998,94 +4998,94 @@ O que precisa
         <translation>Ilha Nectar</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="263"/>
+        <location filename="../qml/IslandWindow.qml" line="319"/>
         <source>Phone call</source>
         <translation>Chamada telefônica</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="266"/>
+        <location filename="../qml/IslandWindow.qml" line="322"/>
         <source>Transfer complete</source>
         <translation>Transferência concluída</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="266"/>
+        <location filename="../qml/IslandWindow.qml" line="322"/>
         <source>Transfer failed</source>
         <translation>Falha na transferência</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="269"/>
+        <location filename="../qml/IslandWindow.qml" line="325"/>
         <source>Transferring %1 file(s)…</source>
         <translation>Transferindo %1 arquivo(s)…</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="272"/>
+        <location filename="../qml/IslandWindow.qml" line="328"/>
         <source>Now playing</source>
         <translation>Tocando agora</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="274"/>
+        <location filename="../qml/IslandWindow.qml" line="330"/>
         <source>%1 phone notification(s)</source>
         <translation>%1 notificação(ões) do celular</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="276"/>
-        <location filename="../qml/IslandWindow.qml" line="295"/>
-        <location filename="../qml/IslandWindow.qml" line="304"/>
+        <location filename="../qml/IslandWindow.qml" line="332"/>
+        <location filename="../qml/IslandWindow.qml" line="351"/>
+        <location filename="../qml/IslandWindow.qml" line="360"/>
         <source>%1 waiting</source>
         <translation>%1 aguardando</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="278"/>
+        <location filename="../qml/IslandWindow.qml" line="334"/>
         <source>Nectar Island · %1</source>
         <translation>Ilha Nectar · %1</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="279"/>
+        <location filename="../qml/IslandWindow.qml" line="335"/>
         <source>Nectar Island · Ready</source>
         <translation>Ilha Nectar · Pronta</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="284"/>
+        <location filename="../qml/IslandWindow.qml" line="340"/>
         <source>Incoming call</source>
         <translation>Chamada recebida</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="285"/>
+        <location filename="../qml/IslandWindow.qml" line="341"/>
         <source>On hold</source>
         <translation>Em espera</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="286"/>
+        <location filename="../qml/IslandWindow.qml" line="342"/>
         <source>Call in progress</source>
         <translation>Chamada em andamento</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="299"/>
+        <location filename="../qml/IslandWindow.qml" line="355"/>
         <source>This PC</source>
         <translation>Este PC</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="299"/>
+        <location filename="../qml/IslandWindow.qml" line="355"/>
         <source>Phone</source>
         <translation>Celular</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="308"/>
+        <location filename="../qml/IslandWindow.qml" line="364"/>
         <source>Click to view in NectarLink</source>
         <translation>Clique para ver no NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="311"/>
+        <location filename="../qml/IslandWindow.qml" line="367"/>
         <source>Will send when %1 is back</source>
         <translation>Será enviado quando %1 voltar</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="312"/>
+        <location filename="../qml/IslandWindow.qml" line="368"/>
         <source>Will send when connected</source>
         <translation>Será enviado quando a conexão voltar</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="314"/>
+        <location filename="../qml/IslandWindow.qml" line="370"/>
         <source>Live calls, transfers &amp; media</source>
         <translation>Chamadas, transferências e mídia em tempo real</translation>
     </message>
@@ -5938,148 +5938,158 @@ O que precisa
         <translation>Tela do celular · NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="376"/>
+        <location filename="../qml/MirrorWindow.qml" line="385"/>
         <source>Copy screenshot (Ctrl+Shift+C)</source>
         <translation>Copiar captura de tela (Ctrl+Shift+C)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="383"/>
+        <location filename="../qml/MirrorWindow.qml" line="392"/>
         <source>Save screenshot (Ctrl+S)</source>
         <translation>Salvar captura de tela (Ctrl+S)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="390"/>
+        <location filename="../qml/MirrorWindow.qml" line="399"/>
         <source>Stop recording (Ctrl+R)</source>
         <translation>Parar gravação (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="390"/>
+        <location filename="../qml/MirrorWindow.qml" line="399"/>
         <source>Record video (Ctrl+R)</source>
         <translation>Gravar vídeo (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="408"/>
+        <location filename="../qml/MirrorWindow.qml" line="417"/>
         <source>Phone stays awake while mirroring (turn off)</source>
         <translation>A tela do celular fica ligada durante o espelhamento (desativar)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="409"/>
+        <location filename="../qml/MirrorWindow.qml" line="418"/>
         <source>Keep phone awake while mirroring</source>
         <translation>Manter a tela do celular ligada durante o espelhamento</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="418"/>
+        <location filename="../qml/MirrorWindow.qml" line="427"/>
         <source>Turn phone screen back on</source>
         <translation>Ligar a tela do celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="419"/>
+        <location filename="../qml/MirrorWindow.qml" line="428"/>
         <source>Turn phone screen off while mirroring</source>
         <translation>Desligar a tela do celular durante o espelhamento</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="436"/>
-        <location filename="../qml/MirrorWindow.qml" line="512"/>
+        <location filename="../qml/MirrorWindow.qml" line="452"/>
+        <location filename="../qml/MirrorWindow.qml" line="528"/>
         <source>Play the phone&apos;s sound here</source>
         <translation>Tocar o som do celular aqui</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="427"/>
+        <location filename="../qml/MirrorWindow.qml" line="436"/>
         <source>Lock phone</source>
         <translation>Bloquear celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="471"/>
+        <location filename="../qml/MirrorWindow.qml" line="487"/>
         <source>Back (right-click)</source>
         <translation>Voltar (botão direito)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="478"/>
+        <location filename="../qml/MirrorWindow.qml" line="494"/>
         <source>Home (middle-click)</source>
         <translation>Início (botão do meio)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="485"/>
+        <location filename="../qml/MirrorWindow.qml" line="501"/>
         <source>Recent apps</source>
         <translation>Apps recentes</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="436"/>
+        <location filename="../qml/MirrorWindow.qml" line="452"/>
         <source>Play the sound on the phone</source>
         <translation>Tocar o som no celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="521"/>
+        <location filename="../qml/MirrorWindow.qml" line="443"/>
+        <source>Don&apos;t keep on top</source>
+        <translation>Não manter no topo</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml" line="443"/>
+        <source>Keep on top</source>
+        <translation>Manter no topo</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml" line="537"/>
         <source>Release to send files to %1</source>
         <translation>Solte para enviar arquivos para %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="521"/>
+        <location filename="../qml/MirrorWindow.qml" line="537"/>
         <source>phone</source>
         <translation>celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="589"/>
+        <location filename="../qml/MirrorWindow.qml" line="605"/>
         <source>To control the phone, turn on Control from your PC in NectarLink&apos;s settings on the phone.</source>
         <translation>Para controlar o celular, ative Controle pelo PC nas Configurações do NectarLink no celular.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="598"/>
+        <location filename="../qml/MirrorWindow.qml" line="614"/>
         <source>Notify phone</source>
         <translation>Avisar o celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="609"/>
+        <location filename="../qml/MirrorWindow.qml" line="625"/>
         <source>Hide</source>
         <translation>Ocultar</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="647"/>
+        <location filename="../qml/MirrorWindow.qml" line="663"/>
         <source>Opening %1</source>
         <translation>Abrindo %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="647"/>
+        <location filename="../qml/MirrorWindow.qml" line="663"/>
         <source>Allow it on your phone</source>
         <translation>Permita no celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="648"/>
+        <location filename="../qml/MirrorWindow.qml" line="664"/>
         <source>%1 closed</source>
         <translation>%1 foi fechado</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="648"/>
+        <location filename="../qml/MirrorWindow.qml" line="664"/>
         <source>Mirroring stopped</source>
         <translation>Espelhamento encerrado</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="649"/>
+        <location filename="../qml/MirrorWindow.qml" line="665"/>
         <source>Starting…</source>
         <translation>Iniciando…</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="658"/>
+        <location filename="../qml/MirrorWindow.qml" line="674"/>
         <source>Tap the notification on %1, then choose to share the entire screen.</source>
         <translation>Toque na notificação em %1 e escolha Compartilhar a tela inteira.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="660"/>
+        <location filename="../qml/MirrorWindow.qml" line="676"/>
         <source>The app closed on %1.</source>
         <translation>O app foi fechado em %1.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="661"/>
+        <location filename="../qml/MirrorWindow.qml" line="677"/>
         <source>The phone stopped sharing its screen.</source>
         <translation>O celular parou de compartilhar a tela.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="668"/>
+        <location filename="../qml/MirrorWindow.qml" line="684"/>
         <source>Open again</source>
         <translation>Abrir de novo</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="668"/>
+        <location filename="../qml/MirrorWindow.qml" line="684"/>
         <source>Try again</source>
         <translation>Tentar de novo</translation>
     </message>

@@ -4099,8 +4099,8 @@ Nó cần gì
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="298"/>
-        <location filename="../qml/pages/HomePage.qml" line="1562"/>
-        <location filename="../qml/pages/HomePage.qml" line="1741"/>
+        <location filename="../qml/pages/HomePage.qml" line="1556"/>
+        <location filename="../qml/pages/HomePage.qml" line="1735"/>
         <source>Dismiss</source>
         <translation>Bỏ qua</translation>
     </message>
@@ -4156,13 +4156,13 @@ Nó cần gì
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="507"/>
-        <location filename="../qml/pages/HomePage.qml" line="1588"/>
+        <location filename="../qml/pages/HomePage.qml" line="1582"/>
         <source>Transfers</source>
         <translation>Chuyển tệp</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="516"/>
-        <location filename="../qml/pages/HomePage.qml" line="1605"/>
+        <location filename="../qml/pages/HomePage.qml" line="1599"/>
         <source>Clear finished</source>
         <translation>Xóa mục đã hoàn tất</translation>
     </message>
@@ -4177,790 +4177,790 @@ Nó cần gì
         <translation>Giữ Shift khi thả tài liệu để mở ngay khi tệp đến</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1072"/>
-        <location filename="../qml/pages/HomePage.qml" line="1164"/>
+        <location filename="../qml/pages/HomePage.qml" line="1070"/>
+        <location filename="../qml/pages/HomePage.qml" line="1162"/>
         <source>Charging</source>
         <translation>Đang sạc</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1075"/>
+        <location filename="../qml/pages/HomePage.qml" line="1073"/>
         <source>Low</source>
         <translation>Yếu</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1132"/>
+        <location filename="../qml/pages/HomePage.qml" line="1130"/>
         <source>Android %1</source>
         <translation>Android %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1146"/>
+        <location filename="../qml/pages/HomePage.qml" line="1144"/>
         <source>Away · %1 ms</source>
         <translation>Xa · %1 ms</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1146"/>
+        <location filename="../qml/pages/HomePage.qml" line="1144"/>
         <source>Away</source>
         <translation>Xa</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1148"/>
+        <location filename="../qml/pages/HomePage.qml" line="1146"/>
         <source>USB · %1 ms</source>
         <translation>USB · %1 ms</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1148"/>
+        <location filename="../qml/pages/HomePage.qml" line="1146"/>
         <source>USB</source>
         <translation>USB</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1150"/>
-        <location filename="../qml/pages/HomePage.qml" line="1154"/>
+        <location filename="../qml/pages/HomePage.qml" line="1148"/>
+        <location filename="../qml/pages/HomePage.qml" line="1152"/>
         <source>Wi‑Fi · %1 ms</source>
         <translation>Wi‑Fi · %1 ms</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1150"/>
-        <location filename="../qml/pages/HomePage.qml" line="1154"/>
-        <location filename="../qml/pages/HomePage.qml" line="2065"/>
-        <location filename="../qml/pages/HomePage.qml" line="2066"/>
+        <location filename="../qml/pages/HomePage.qml" line="1148"/>
+        <location filename="../qml/pages/HomePage.qml" line="1152"/>
+        <location filename="../qml/pages/HomePage.qml" line="2059"/>
+        <location filename="../qml/pages/HomePage.qml" line="2060"/>
         <source>Wi‑Fi</source>
         <translation>Wi‑Fi</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1152"/>
+        <location filename="../qml/pages/HomePage.qml" line="1150"/>
         <source>Cellular</source>
         <translation>Di động</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1153"/>
+        <location filename="../qml/pages/HomePage.qml" line="1151"/>
         <source> · %1 ms</source>
         <translation> · %1 ms</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1155"/>
+        <location filename="../qml/pages/HomePage.qml" line="1153"/>
         <source>Not reconnecting</source>
         <translation>Không kết nối lại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1156"/>
+        <location filename="../qml/pages/HomePage.qml" line="1154"/>
         <source>Offline · %1</source>
         <translation>Ngoại tuyến · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1157"/>
+        <location filename="../qml/pages/HomePage.qml" line="1155"/>
         <source>Offline</source>
         <translation>Ngoại tuyến</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1179"/>
+        <location filename="../qml/pages/HomePage.qml" line="1177"/>
         <source>Troubleshoot</source>
         <translation>Khắc phục sự cố</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1171"/>
+        <location filename="../qml/pages/HomePage.qml" line="1169"/>
         <source>Stop reconnecting</source>
         <translation>Dừng kết nối lại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1171"/>
+        <location filename="../qml/pages/HomePage.qml" line="1169"/>
         <source>Disconnect</source>
         <translation>Ngắt kết nối</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1179"/>
+        <location filename="../qml/pages/HomePage.qml" line="1177"/>
         <source>Reconnect</source>
         <translation>Kết nối lại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1263"/>
+        <location filename="../qml/pages/HomePage.qml" line="1261"/>
         <source>Media player</source>
         <translation>Trình phát media</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1270"/>
+        <location filename="../qml/pages/HomePage.qml" line="1268"/>
         <source>Nothing playing</source>
         <translation>Không có gì đang phát</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1291"/>
+        <location filename="../qml/pages/HomePage.qml" line="1289"/>
         <source>Mirror screen</source>
         <translation>Phản chiếu màn hình</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1306"/>
+        <location filename="../qml/pages/HomePage.qml" line="1304"/>
         <source>Open an app</source>
         <translation>Mở ứng dụng</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1313"/>
-        <location filename="../qml/pages/HomePage.qml" line="3642"/>
+        <location filename="../qml/pages/HomePage.qml" line="1311"/>
+        <location filename="../qml/pages/HomePage.qml" line="3636"/>
         <source>Send files</source>
         <translation>Gửi tệp</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1319"/>
+        <location filename="../qml/pages/HomePage.qml" line="1317"/>
         <source>Send a folder</source>
         <translation>Gửi thư mục</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1326"/>
+        <location filename="../qml/pages/HomePage.qml" line="1324"/>
         <source>Send clipboard</source>
         <translation>Gửi bảng nhớ tạm</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1332"/>
-        <location filename="../qml/pages/HomePage.qml" line="2921"/>
+        <location filename="../qml/pages/HomePage.qml" line="1330"/>
+        <location filename="../qml/pages/HomePage.qml" line="2915"/>
         <source>Clipboard history</source>
         <translation>Lịch sử bảng nhớ tạm</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1342"/>
+        <location filename="../qml/pages/HomePage.qml" line="1340"/>
         <source>Stop ringing</source>
         <translation>Dừng đổ chuông</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1342"/>
+        <location filename="../qml/pages/HomePage.qml" line="1340"/>
         <source>Find phone</source>
         <translation>Tìm điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1356"/>
+        <location filename="../qml/pages/HomePage.qml" line="1350"/>
         <source>Send to %1</source>
         <translation>Gửi tới %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1362"/>
+        <location filename="../qml/pages/HomePage.qml" line="1356"/>
         <source>Hand off &amp; open on %1</source>
         <translation>Chuyển tiếp &amp; mở trên %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1378"/>
+        <location filename="../qml/pages/HomePage.qml" line="1372"/>
         <source>Send a folder to %1</source>
         <translation>Gửi thư mục tới %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1408"/>
+        <location filename="../qml/pages/HomePage.qml" line="1402"/>
         <source>Waiting to send · %1</source>
         <translation>Đang chờ gửi · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1409"/>
+        <location filename="../qml/pages/HomePage.qml" line="1403"/>
         <source>Waiting to send</source>
         <translation>Đang chờ gửi</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1420"/>
+        <location filename="../qml/pages/HomePage.qml" line="1414"/>
         <source>Clear</source>
         <translation>Xóa</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1427"/>
+        <location filename="../qml/pages/HomePage.qml" line="1421"/>
         <source>Cancel all</source>
         <translation>Hủy tất cả</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1529"/>
+        <location filename="../qml/pages/HomePage.qml" line="1523"/>
         <source>Sending to %1 · %2%</source>
         <translation>Đang gửi tới %1 · %2%</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1531"/>
+        <location filename="../qml/pages/HomePage.qml" line="1525"/>
         <source>Sending to %1…</source>
         <translation>Đang gửi tới %1…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1536"/>
+        <location filename="../qml/pages/HomePage.qml" line="1530"/>
         <source>Failed · %1</source>
         <translation>Thất bại · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1537"/>
+        <location filename="../qml/pages/HomePage.qml" line="1531"/>
         <source>Failed</source>
         <translation>Thất bại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1541"/>
+        <location filename="../qml/pages/HomePage.qml" line="1535"/>
         <source>Expired</source>
         <translation>Hết hạn</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1544"/>
+        <location filename="../qml/pages/HomePage.qml" line="1538"/>
         <source>Waiting for %1 · %2</source>
         <translation>Đang chờ %1 · %2</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1545"/>
+        <location filename="../qml/pages/HomePage.qml" line="1539"/>
         <source>Waiting for %1</source>
         <translation>Đang chờ %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1557"/>
+        <location filename="../qml/pages/HomePage.qml" line="1551"/>
         <source>Retry</source>
         <translation>Thử lại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1562"/>
-        <location filename="../qml/pages/HomePage.qml" line="2175"/>
-        <location filename="../qml/pages/HomePage.qml" line="2267"/>
-        <location filename="../qml/pages/HomePage.qml" line="2764"/>
+        <location filename="../qml/pages/HomePage.qml" line="1556"/>
+        <location filename="../qml/pages/HomePage.qml" line="2169"/>
+        <location filename="../qml/pages/HomePage.qml" line="2261"/>
+        <location filename="../qml/pages/HomePage.qml" line="2758"/>
         <source>Cancel</source>
         <translation>Hủy</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1597"/>
-        <location filename="../qml/pages/HomePage.qml" line="2566"/>
+        <location filename="../qml/pages/HomePage.qml" line="1591"/>
+        <location filename="../qml/pages/HomePage.qml" line="2560"/>
         <source>Timeline</source>
         <translation>Dòng thời gian</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1653"/>
+        <location filename="../qml/pages/HomePage.qml" line="1647"/>
         <source>Notifications · %1</source>
         <translation>Thông báo · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1653"/>
+        <location filename="../qml/pages/HomePage.qml" line="1647"/>
         <source>Notifications</source>
         <translation>Thông báo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1664"/>
+        <location filename="../qml/pages/HomePage.qml" line="1658"/>
         <source>Resume pop-ups</source>
         <translation>Tiếp tục pop-up</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1664"/>
+        <location filename="../qml/pages/HomePage.qml" line="1658"/>
         <source>Pause pop-ups</source>
         <translation>Tạm dừng pop-up</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1674"/>
+        <location filename="../qml/pages/HomePage.qml" line="1668"/>
         <source>History</source>
         <translation>Lịch sử</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1675"/>
+        <location filename="../qml/pages/HomePage.qml" line="1669"/>
         <source>Notification history (last 24 hours)</source>
         <translation>Lịch sử thông báo (24 giờ qua)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1688"/>
+        <location filename="../qml/pages/HomePage.qml" line="1682"/>
         <source>Clear all</source>
         <translation>Xóa tất cả</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1734"/>
+        <location filename="../qml/pages/HomePage.qml" line="1728"/>
         <source>Undo</source>
         <translation>Hoàn tác</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1791"/>
+        <location filename="../qml/pages/HomePage.qml" line="1785"/>
         <source>No notifications</source>
         <translation>Không có thông báo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1793"/>
+        <location filename="../qml/pages/HomePage.qml" line="1787"/>
         <source>Notifications unavailable</source>
         <translation>Thông báo không khả dụng</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1794"/>
+        <location filename="../qml/pages/HomePage.qml" line="1788"/>
         <source>Connect %1 to view notifications</source>
         <translation>Kết nối %1 để xem thông báo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1820"/>
+        <location filename="../qml/pages/HomePage.qml" line="1814"/>
         <source>Desktop notifications are off. Turn them on in your system&apos;s notification settings.</source>
         <translation>Thông báo trên máy tính đang tắt. Hãy bật trong cài đặt thông báo của hệ thống.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1821"/>
+        <location filename="../qml/pages/HomePage.qml" line="1815"/>
         <source>Windows notifications are off.</source>
         <translation>Thông báo Windows đang tắt.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1828"/>
+        <location filename="../qml/pages/HomePage.qml" line="1822"/>
         <source>Turn on</source>
         <translation>Bật</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1888"/>
+        <location filename="../qml/pages/HomePage.qml" line="1882"/>
         <source>Webcam</source>
         <translation>Webcam</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1899"/>
+        <location filename="../qml/pages/HomePage.qml" line="1893"/>
         <source>Streaming from %1</source>
         <translation>Đang truyền từ %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1910"/>
-        <location filename="../qml/pages/HomePage.qml" line="2401"/>
+        <location filename="../qml/pages/HomePage.qml" line="1904"/>
+        <location filename="../qml/pages/HomePage.qml" line="2395"/>
         <source>Stop</source>
         <translation>Dừng</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1932"/>
+        <location filename="../qml/pages/HomePage.qml" line="1926"/>
         <source>Back</source>
         <translation>Sau</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1933"/>
+        <location filename="../qml/pages/HomePage.qml" line="1927"/>
         <source>Front</source>
         <translation>Trước</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1951"/>
+        <location filename="../qml/pages/HomePage.qml" line="1945"/>
         <source>Mirror</source>
         <translation>Lật gương</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2020"/>
+        <location filename="../qml/pages/HomePage.qml" line="2014"/>
         <source>Phone controls</source>
         <translation>Điều khiển điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2029"/>
+        <location filename="../qml/pages/HomePage.qml" line="2023"/>
         <source>Less</source>
         <translation>Ít hơn</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2029"/>
+        <location filename="../qml/pages/HomePage.qml" line="2023"/>
         <source>Sound &amp; display</source>
         <translation>Âm thanh &amp; hiển thị</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2044"/>
+        <location filename="../qml/pages/HomePage.qml" line="2038"/>
         <source>DND</source>
         <translation>DND</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2045"/>
+        <location filename="../qml/pages/HomePage.qml" line="2039"/>
         <source>Do Not Disturb</source>
         <translation>Không làm phiền</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2055"/>
+        <location filename="../qml/pages/HomePage.qml" line="2049"/>
         <source>Torch</source>
         <translation>Đèn pin</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2056"/>
+        <location filename="../qml/pages/HomePage.qml" line="2050"/>
         <source>Flashlight</source>
         <translation>Đèn pin</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2080"/>
+        <location filename="../qml/pages/HomePage.qml" line="2074"/>
         <source>BT</source>
         <translation>BT</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2081"/>
+        <location filename="../qml/pages/HomePage.qml" line="2075"/>
         <source>Bluetooth</source>
         <translation>Bluetooth</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2090"/>
+        <location filename="../qml/pages/HomePage.qml" line="2084"/>
         <source>Hotspot</source>
         <translation>Hotspot</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2091"/>
+        <location filename="../qml/pages/HomePage.qml" line="2085"/>
         <source>Instant Hotspot</source>
         <translation>Hotspot tức thì</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2105"/>
+        <location filename="../qml/pages/HomePage.qml" line="2099"/>
         <source>Phone as speaker</source>
         <translation>Điện thoại làm loa</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2106"/>
+        <location filename="../qml/pages/HomePage.qml" line="2100"/>
         <source>Streaming PC audio</source>
         <translation>Đang truyền âm thanh PC</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2117"/>
+        <location filename="../qml/pages/HomePage.qml" line="2111"/>
         <source>Play on phone</source>
         <translation>Phát trên điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2120"/>
+        <location filename="../qml/pages/HomePage.qml" line="2114"/>
         <source>Watching on %1</source>
         <translation>Đang xem trên %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2121"/>
+        <location filename="../qml/pages/HomePage.qml" line="2115"/>
         <source>Tap the notification on %1</source>
         <translation>Chạm vào thông báo trên %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2123"/>
+        <location filename="../qml/pages/HomePage.qml" line="2117"/>
         <source>Play a video on this PC first</source>
         <translation>Phát video trên PC này trước</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2133"/>
+        <location filename="../qml/pages/HomePage.qml" line="2127"/>
         <source>Phone sound on this PC</source>
         <translation>Âm thanh điện thoại trên PC này</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2135"/>
+        <location filename="../qml/pages/HomePage.qml" line="2129"/>
         <source>Playing %1&apos;s sound</source>
         <translation>Đang phát âm thanh của %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2136"/>
+        <location filename="../qml/pages/HomePage.qml" line="2130"/>
         <source>Allow it on %1</source>
         <translation>Cho phép trên %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2166"/>
+        <location filename="../qml/pages/HomePage.qml" line="2160"/>
         <source>Turning off Wi‑Fi may disconnect %1.</source>
         <translation>Tắt Wi‑Fi có thể ngắt kết nối %1.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2181"/>
+        <location filename="../qml/pages/HomePage.qml" line="2175"/>
         <source>Turn off</source>
         <translation>Tắt</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2206"/>
+        <location filename="../qml/pages/HomePage.qml" line="2200"/>
         <source>Ring</source>
         <translation>Đổ chuông</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2207"/>
+        <location filename="../qml/pages/HomePage.qml" line="2201"/>
         <source>Vibrate</source>
         <translation>Rung</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2208"/>
+        <location filename="../qml/pages/HomePage.qml" line="2202"/>
         <source>Silent</source>
         <translation>Im lặng</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2225"/>
+        <location filename="../qml/pages/HomePage.qml" line="2219"/>
         <source>Volume</source>
         <translation>Âm lượng</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2236"/>
+        <location filename="../qml/pages/HomePage.qml" line="2230"/>
         <source>Brightness</source>
         <translation>Độ sáng</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2257"/>
+        <location filename="../qml/pages/HomePage.qml" line="2251"/>
         <source>Continuity Camera</source>
         <translation>Continuity Camera</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2268"/>
+        <location filename="../qml/pages/HomePage.qml" line="2262"/>
         <source>Scan document</source>
         <translation>Quét tài liệu</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2281"/>
+        <location filename="../qml/pages/HomePage.qml" line="2275"/>
         <source>Phone as webcam</source>
         <translation>Điện thoại làm webcam</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2284"/>
+        <location filename="../qml/pages/HomePage.qml" line="2278"/>
         <source>Streaming</source>
         <translation>Đang truyền</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2377"/>
-        <location filename="../qml/pages/HomePage.qml" line="2438"/>
+        <location filename="../qml/pages/HomePage.qml" line="2371"/>
+        <location filename="../qml/pages/HomePage.qml" line="2432"/>
         <source>Type on phone</source>
         <translation>Nhập trên điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2388"/>
+        <location filename="../qml/pages/HomePage.qml" line="2382"/>
         <source>Sent: %1</source>
         <translation>Đã gửi: %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2390"/>
-        <location filename="../qml/pages/HomePage.qml" line="3238"/>
+        <location filename="../qml/pages/HomePage.qml" line="2384"/>
+        <location filename="../qml/pages/HomePage.qml" line="3232"/>
         <source>When connected</source>
         <translation>Khi đã kết nối</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2401"/>
+        <location filename="../qml/pages/HomePage.qml" line="2395"/>
         <source>Start</source>
         <translation>Bắt đầu</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2453"/>
-        <location filename="../qml/pages/HomePage.qml" line="2533"/>
+        <location filename="../qml/pages/HomePage.qml" line="2447"/>
+        <location filename="../qml/pages/HomePage.qml" line="2527"/>
         <source>Clipboard</source>
         <translation>Bảng nhớ tạm</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2513"/>
+        <location filename="../qml/pages/HomePage.qml" line="2507"/>
         <source>Type here: keys go to %1</source>
         <translation>Nhập ở đây: phím sẽ gửi tới %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2514"/>
+        <location filename="../qml/pages/HomePage.qml" line="2508"/>
         <source>Click to focus keyboard</source>
         <translation>Nhấp để kích hoạt bàn phím</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2521"/>
+        <location filename="../qml/pages/HomePage.qml" line="2515"/>
         <source>Ctrl+V pastes · Esc stops</source>
         <translation>Ctrl+V để dán · Esc để dừng</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2530"/>
+        <location filename="../qml/pages/HomePage.qml" line="2524"/>
         <source>Paste</source>
         <translation>Dán</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2575"/>
+        <location filename="../qml/pages/HomePage.qml" line="2569"/>
         <source>View all</source>
         <translation>Xem tất cả</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2585"/>
+        <location filename="../qml/pages/HomePage.qml" line="2579"/>
         <source>No recent activity</source>
         <translation>Không có hoạt động gần đây</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2674"/>
+        <location filename="../qml/pages/HomePage.qml" line="2668"/>
         <source>%1 notifications</source>
         <translation>%1 thông báo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2677"/>
+        <location filename="../qml/pages/HomePage.qml" line="2671"/>
         <source>Show</source>
         <translation>Hiện</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2678"/>
+        <location filename="../qml/pages/HomePage.qml" line="2672"/>
         <source>No pop-ups</source>
         <translation>Không có pop-up</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2679"/>
+        <location filename="../qml/pages/HomePage.qml" line="2673"/>
         <source>Hide</source>
         <translation>Ẩn</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2693"/>
+        <location filename="../qml/pages/HomePage.qml" line="2687"/>
         <source>Hidden on this PC.</source>
         <translation>Đã ẩn trên PC này.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2695"/>
+        <location filename="../qml/pages/HomePage.qml" line="2689"/>
         <source>Shown in feed without pop-ups.</source>
         <translation>Hiển thị trong bảng tin, không kèm pop-up.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2697"/>
+        <location filename="../qml/pages/HomePage.qml" line="2691"/>
         <source>Shown in feed and as desktop pop-ups.</source>
         <translation>Hiển thị trong bảng tin và dưới dạng pop-up trên máy tính.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2698"/>
+        <location filename="../qml/pages/HomePage.qml" line="2692"/>
         <source>Shown in feed and as Windows pop-ups.</source>
         <translation>Hiển thị trong bảng tin và dưới dạng pop-up Windows.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2702"/>
-        <location filename="../qml/pages/HomePage.qml" line="2898"/>
-        <location filename="../qml/pages/HomePage.qml" line="3141"/>
-        <location filename="../qml/pages/HomePage.qml" line="3719"/>
+        <location filename="../qml/pages/HomePage.qml" line="2696"/>
+        <location filename="../qml/pages/HomePage.qml" line="2892"/>
+        <location filename="../qml/pages/HomePage.qml" line="3135"/>
+        <location filename="../qml/pages/HomePage.qml" line="3713"/>
         <source>Done</source>
         <translation>Xong</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2769"/>
+        <location filename="../qml/pages/HomePage.qml" line="2763"/>
         <source>Save</source>
         <translation>Lưu</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2790"/>
+        <location filename="../qml/pages/HomePage.qml" line="2784"/>
         <source>Notification history</source>
         <translation>Lịch sử thông báo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2798"/>
-        <location filename="../qml/pages/HomePage.qml" line="2929"/>
+        <location filename="../qml/pages/HomePage.qml" line="2792"/>
+        <location filename="../qml/pages/HomePage.qml" line="2923"/>
         <source>Clear history</source>
         <translation>Xóa lịch sử</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2808"/>
+        <location filename="../qml/pages/HomePage.qml" line="2802"/>
         <source>Dismissed notifications from the last 24 hours.</source>
         <translation>Các thông báo đã bỏ qua trong 24 giờ qua.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2809"/>
+        <location filename="../qml/pages/HomePage.qml" line="2803"/>
         <source>No recent notifications.</source>
         <translation>Không có thông báo gần đây.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/HomePage.qml" line="2845"/>
         <location filename="../qml/pages/HomePage.qml" line="2851"/>
-        <location filename="../qml/pages/HomePage.qml" line="2857"/>
         <source>Search notification history</source>
         <translation>Tìm trong lịch sử thông báo</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2894"/>
-        <location filename="../qml/pages/HomePage.qml" line="3137"/>
+        <location filename="../qml/pages/HomePage.qml" line="2888"/>
+        <location filename="../qml/pages/HomePage.qml" line="3131"/>
         <source>Nothing matches “%1”.</source>
         <translation>Không có gì khớp với “%1”.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2939"/>
+        <location filename="../qml/pages/HomePage.qml" line="2933"/>
         <source>Last 50 shared clips.</source>
         <translation>50 clip đã chia sẻ gần đây.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2940"/>
+        <location filename="../qml/pages/HomePage.qml" line="2934"/>
         <source>No shared clips yet.</source>
         <translation>Chưa có clip chia sẻ nào.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/HomePage.qml" line="2974"/>
         <location filename="../qml/pages/HomePage.qml" line="2980"/>
-        <location filename="../qml/pages/HomePage.qml" line="2986"/>
         <source>Search clipboard history</source>
         <translation>Tìm trong lịch sử bảng nhớ tạm</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3006"/>
+        <location filename="../qml/pages/HomePage.qml" line="3000"/>
         <source>From %1</source>
         <translation>Từ %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3006"/>
+        <location filename="../qml/pages/HomePage.qml" line="3000"/>
         <source>From phone</source>
         <translation>Từ điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3007"/>
+        <location filename="../qml/pages/HomePage.qml" line="3001"/>
         <source>Sent to %1</source>
         <translation>Đã gửi tới %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3007"/>
+        <location filename="../qml/pages/HomePage.qml" line="3001"/>
         <source>From this PC</source>
         <translation>Từ PC này</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3013"/>
+        <location filename="../qml/pages/HomePage.qml" line="3007"/>
         <source>Image</source>
         <translation>Hình ảnh</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3051"/>
+        <location filename="../qml/pages/HomePage.qml" line="3045"/>
         <source>Pinned</source>
         <translation>Đã ghim</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3095"/>
+        <location filename="../qml/pages/HomePage.qml" line="3089"/>
         <source>Open on phone</source>
         <translation>Mở trên điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3104"/>
+        <location filename="../qml/pages/HomePage.qml" line="3098"/>
         <source>Send to phone</source>
         <translation>Gửi tới điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3112"/>
+        <location filename="../qml/pages/HomePage.qml" line="3106"/>
         <source>Copy</source>
         <translation>Sao chép</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3118"/>
+        <location filename="../qml/pages/HomePage.qml" line="3112"/>
         <source>Unpin</source>
         <translation>Bỏ ghim</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3118"/>
+        <location filename="../qml/pages/HomePage.qml" line="3112"/>
         <source>Pin</source>
         <translation>Ghim</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3123"/>
+        <location filename="../qml/pages/HomePage.qml" line="3117"/>
         <source>Delete</source>
         <translation>Xóa</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3411"/>
-        <location filename="../qml/pages/HomePage.qml" line="3422"/>
+        <location filename="../qml/pages/HomePage.qml" line="3405"/>
+        <location filename="../qml/pages/HomePage.qml" line="3416"/>
         <source>%1%</source>
         <translation>%1%</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3563"/>
+        <location filename="../qml/pages/HomePage.qml" line="3557"/>
         <source>LocalSend nearby · %1</source>
         <translation>LocalSend gần đây · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3564"/>
+        <location filename="../qml/pages/HomePage.qml" line="3558"/>
         <source>LocalSend nearby</source>
         <translation>LocalSend gần đây</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3573"/>
+        <location filename="../qml/pages/HomePage.qml" line="3567"/>
         <source>Refresh</source>
         <translation>Làm mới</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3584"/>
+        <location filename="../qml/pages/HomePage.qml" line="3578"/>
         <source>Listening for LocalSend devices on your Wi‑Fi network.</source>
         <translation>Đang lắng nghe thiết bị LocalSend trên mạng Wi‑Fi của bạn.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3585"/>
+        <location filename="../qml/pages/HomePage.qml" line="3579"/>
         <source>LocalSend port 53317 is busy on this PC (another LocalSend app may be running).</source>
         <translation>Cổng 53317 của LocalSend đang bận trên PC này (có thể một ứng dụng LocalSend khác đang chạy).</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3624"/>
+        <location filename="../qml/pages/HomePage.qml" line="3618"/>
         <source>Nearby device</source>
         <translation>Thiết bị gần đây</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3680"/>
+        <location filename="../qml/pages/HomePage.qml" line="3674"/>
         <source>Image preview</source>
         <translation>Xem trước hình ảnh</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3687"/>
+        <location filename="../qml/pages/HomePage.qml" line="3681"/>
         <source>Close</source>
         <translation>Đóng</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3715"/>
+        <location filename="../qml/pages/HomePage.qml" line="3709"/>
         <source>Open externally</source>
         <translation>Mở bằng ứng dụng ngoài</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1120"/>
+        <location filename="../qml/pages/HomePage.qml" line="1118"/>
         <source>Set nickname</source>
         <translation>Đặt biệt danh</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="1120"/>
+        <location filename="../qml/pages/HomePage.qml" line="1118"/>
         <source>Change nickname</source>
         <translation>Đổi biệt danh</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2389"/>
+        <location filename="../qml/pages/HomePage.qml" line="2383"/>
         <source>Tap a text box on the phone, then type</source>
         <translation>Chạm vào ô văn bản trên điện thoại, rồi nhập</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2731"/>
+        <location filename="../qml/pages/HomePage.qml" line="2725"/>
         <source>Phone nickname</source>
         <translation>Biệt danh điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2739"/>
+        <location filename="../qml/pages/HomePage.qml" line="2733"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Đặt tên tùy chỉnh cho điện thoại này trên PC của bạn. Để trống để dùng &quot;%1&quot;.</translation>
     </message>
@@ -4992,94 +4992,94 @@ Nó cần gì
         <translation>Nectar Island</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="263"/>
+        <location filename="../qml/IslandWindow.qml" line="319"/>
         <source>Phone call</source>
         <translation>Cuộc gọi</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="266"/>
+        <location filename="../qml/IslandWindow.qml" line="322"/>
         <source>Transfer complete</source>
         <translation>Chuyển xong</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="266"/>
+        <location filename="../qml/IslandWindow.qml" line="322"/>
         <source>Transfer failed</source>
         <translation>Chuyển thất bại</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="269"/>
+        <location filename="../qml/IslandWindow.qml" line="325"/>
         <source>Transferring %1 file(s)…</source>
         <translation>Đang chuyển %1 tệp…</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="272"/>
+        <location filename="../qml/IslandWindow.qml" line="328"/>
         <source>Now playing</source>
         <translation>Đang phát</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="274"/>
+        <location filename="../qml/IslandWindow.qml" line="330"/>
         <source>%1 phone notification(s)</source>
         <translation>%1 thông báo điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="276"/>
-        <location filename="../qml/IslandWindow.qml" line="295"/>
-        <location filename="../qml/IslandWindow.qml" line="304"/>
+        <location filename="../qml/IslandWindow.qml" line="332"/>
+        <location filename="../qml/IslandWindow.qml" line="351"/>
+        <location filename="../qml/IslandWindow.qml" line="360"/>
         <source>%1 waiting</source>
         <translation>%1 đang chờ</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="278"/>
+        <location filename="../qml/IslandWindow.qml" line="334"/>
         <source>Nectar Island · %1</source>
         <translation>Nectar Island · %1</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="279"/>
+        <location filename="../qml/IslandWindow.qml" line="335"/>
         <source>Nectar Island · Ready</source>
         <translation>Nectar Island · Sẵn sàng</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="284"/>
+        <location filename="../qml/IslandWindow.qml" line="340"/>
         <source>Incoming call</source>
         <translation>Cuộc gọi đến</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="285"/>
+        <location filename="../qml/IslandWindow.qml" line="341"/>
         <source>On hold</source>
         <translation>Đang giữ máy</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="286"/>
+        <location filename="../qml/IslandWindow.qml" line="342"/>
         <source>Call in progress</source>
         <translation>Cuộc gọi đang diễn ra</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="299"/>
+        <location filename="../qml/IslandWindow.qml" line="355"/>
         <source>This PC</source>
         <translation>PC này</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="299"/>
+        <location filename="../qml/IslandWindow.qml" line="355"/>
         <source>Phone</source>
         <translation>Điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="308"/>
+        <location filename="../qml/IslandWindow.qml" line="364"/>
         <source>Click to view in NectarLink</source>
         <translation>Nhấp để xem trong NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="311"/>
+        <location filename="../qml/IslandWindow.qml" line="367"/>
         <source>Will send when %1 is back</source>
         <translation>Sẽ gửi khi %1 quay lại</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="312"/>
+        <location filename="../qml/IslandWindow.qml" line="368"/>
         <source>Will send when connected</source>
         <translation>Sẽ gửi khi đã kết nối</translation>
     </message>
     <message>
-        <location filename="../qml/IslandWindow.qml" line="314"/>
+        <location filename="../qml/IslandWindow.qml" line="370"/>
         <source>Live calls, transfers &amp; media</source>
         <translation>Cuộc gọi trực tiếp, chuyển tệp &amp; media</translation>
     </message>
@@ -5923,148 +5923,158 @@ Nó cần gì
         <translation>Màn hình điện thoại · NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="376"/>
+        <location filename="../qml/MirrorWindow.qml" line="385"/>
         <source>Copy screenshot (Ctrl+Shift+C)</source>
         <translation>Sao chép ảnh chụp màn hình (Ctrl+Shift+C)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="383"/>
+        <location filename="../qml/MirrorWindow.qml" line="392"/>
         <source>Save screenshot (Ctrl+S)</source>
         <translation>Lưu ảnh chụp màn hình (Ctrl+S)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="390"/>
+        <location filename="../qml/MirrorWindow.qml" line="399"/>
         <source>Stop recording (Ctrl+R)</source>
         <translation>Dừng ghi (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="390"/>
+        <location filename="../qml/MirrorWindow.qml" line="399"/>
         <source>Record video (Ctrl+R)</source>
         <translation>Ghi video (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="408"/>
+        <location filename="../qml/MirrorWindow.qml" line="417"/>
         <source>Phone stays awake while mirroring (turn off)</source>
         <translation>Điện thoại luôn thức khi phản chiếu (tắt)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="409"/>
+        <location filename="../qml/MirrorWindow.qml" line="418"/>
         <source>Keep phone awake while mirroring</source>
         <translation>Giữ điện thoại luôn thức khi phản chiếu</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="418"/>
+        <location filename="../qml/MirrorWindow.qml" line="427"/>
         <source>Turn phone screen back on</source>
         <translation>Bật lại màn hình điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="419"/>
+        <location filename="../qml/MirrorWindow.qml" line="428"/>
         <source>Turn phone screen off while mirroring</source>
         <translation>Tắt màn hình điện thoại khi phản chiếu</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="436"/>
-        <location filename="../qml/MirrorWindow.qml" line="512"/>
+        <location filename="../qml/MirrorWindow.qml" line="452"/>
+        <location filename="../qml/MirrorWindow.qml" line="528"/>
         <source>Play the phone&apos;s sound here</source>
         <translation>Phát âm thanh của điện thoại tại đây</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="427"/>
+        <location filename="../qml/MirrorWindow.qml" line="436"/>
         <source>Lock phone</source>
         <translation>Khóa điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="471"/>
+        <location filename="../qml/MirrorWindow.qml" line="487"/>
         <source>Back (right-click)</source>
         <translation>Quay lại (nhấp chuột phải)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="478"/>
+        <location filename="../qml/MirrorWindow.qml" line="494"/>
         <source>Home (middle-click)</source>
         <translation>Trang chủ (nhấp chuột giữa)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="485"/>
+        <location filename="../qml/MirrorWindow.qml" line="501"/>
         <source>Recent apps</source>
         <translation>Ứng dụng gần đây</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="436"/>
+        <location filename="../qml/MirrorWindow.qml" line="452"/>
         <source>Play the sound on the phone</source>
         <translation>Phát âm thanh trên điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="521"/>
+        <location filename="../qml/MirrorWindow.qml" line="443"/>
+        <source>Don&apos;t keep on top</source>
+        <translation>Không giữ trên cùng</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml" line="443"/>
+        <source>Keep on top</source>
+        <translation>Giữ trên cùng</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml" line="537"/>
         <source>Release to send files to %1</source>
         <translation>Thả ra để gửi tệp đến %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="521"/>
+        <location filename="../qml/MirrorWindow.qml" line="537"/>
         <source>phone</source>
         <translation>điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="589"/>
+        <location filename="../qml/MirrorWindow.qml" line="605"/>
         <source>To control the phone, turn on Control from your PC in NectarLink&apos;s settings on the phone.</source>
         <translation>Để điều khiển điện thoại, hãy bật Điều khiển từ PC của bạn trong Cài đặt của NectarLink trên điện thoại.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="598"/>
+        <location filename="../qml/MirrorWindow.qml" line="614"/>
         <source>Notify phone</source>
         <translation>Thông báo cho điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="609"/>
+        <location filename="../qml/MirrorWindow.qml" line="625"/>
         <source>Hide</source>
         <translation>Ẩn</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="647"/>
+        <location filename="../qml/MirrorWindow.qml" line="663"/>
         <source>Opening %1</source>
         <translation>Đang mở %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="647"/>
+        <location filename="../qml/MirrorWindow.qml" line="663"/>
         <source>Allow it on your phone</source>
         <translation>Cho phép trên điện thoại của bạn</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="648"/>
+        <location filename="../qml/MirrorWindow.qml" line="664"/>
         <source>%1 closed</source>
         <translation>%1 đã đóng</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="648"/>
+        <location filename="../qml/MirrorWindow.qml" line="664"/>
         <source>Mirroring stopped</source>
         <translation>Đã dừng phản chiếu</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="649"/>
+        <location filename="../qml/MirrorWindow.qml" line="665"/>
         <source>Starting…</source>
         <translation>Đang khởi động…</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="658"/>
+        <location filename="../qml/MirrorWindow.qml" line="674"/>
         <source>Tap the notification on %1, then choose to share the entire screen.</source>
         <translation>Chạm vào thông báo trên %1, rồi chọn chia sẻ toàn bộ màn hình.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="660"/>
+        <location filename="../qml/MirrorWindow.qml" line="676"/>
         <source>The app closed on %1.</source>
         <translation>Ứng dụng đã đóng trên %1.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="661"/>
+        <location filename="../qml/MirrorWindow.qml" line="677"/>
         <source>The phone stopped sharing its screen.</source>
         <translation>Điện thoại đã dừng chia sẻ màn hình.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="668"/>
+        <location filename="../qml/MirrorWindow.qml" line="684"/>
         <source>Open again</source>
         <translation>Mở lại</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="668"/>
+        <location filename="../qml/MirrorWindow.qml" line="684"/>
         <source>Try again</source>
         <translation>Thử lại</translation>
     </message>
