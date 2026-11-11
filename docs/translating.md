@@ -1,6 +1,6 @@
 # Translating NectarLink
 
-NectarLink's Android and Windows apps can be translated into any language.
+NectarLink's Android and desktop apps can be translated into any language.
 Simplified Chinese, German, Turkish and Brazilian Portuguese are complete today.
 
 ## How to help
@@ -91,3 +91,11 @@ Turn on the placeholder checks (Weblate enables the Android and Qt format
 checks for these formats), and the "Add missing languages" add-on if you want
 Weblate to offer every language. Pull requests from Weblate run through CI like
 any other.
+
+## Linux packages
+
+The Linux package scripts compile every language offered in desktop Settings
+with Qt Linguist (`lrelease`), including Brazilian Portuguese (`pt_BR`). Install
+`qt6-l10n-tools` and Python 3 before packaging; `LRELEASE` can point to a
+custom Qt Linguist executable. Catalogues are installed in `share/nectarlink` and loaded by Qt for both QML and Rust text.
+Choose **Português (Brasil)** in Settings, or follow a system set to `pt-BR`.

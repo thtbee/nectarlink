@@ -45,6 +45,8 @@ fi
 STAGE_DIR="$(mktemp -d -t nectarlink-deb-XXXXXX)"
 trap 'rm -rf "${STAGE_DIR}"' EXIT
 
+bash "${SCRIPT_DIR}/build-translations.sh" "${STAGE_DIR}/translations"
+
 PKG_ROOT="${STAGE_DIR}/nectarlink_${VERSION}_${DEB_ARCH}"
 mkdir -p \
     "${PKG_ROOT}/DEBIAN" \
@@ -72,7 +74,7 @@ exec /usr/lib/nectarlink/nectarlink-desktop "$@"
 EOF
 chmod 0755 "${PKG_ROOT}/usr/bin/nectarlink-desktop"
 
-for qm in "$(dirname "${BIN_PATH}")"/nectarlink_*.qm; do
+for qm in "${STAGE_DIR}"/translations/nectarlink_*.qm; do
     if [[ -f "${qm}" ]]; then
         install -m 0644 "${qm}" "${PKG_ROOT}/usr/share/nectarlink/$(basename "${qm}")"
     fi
