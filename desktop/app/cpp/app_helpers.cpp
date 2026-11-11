@@ -46,7 +46,10 @@
 #include <chrono>
 #include <condition_variable>
 #include <deque>
+#include <fstream>
 #include <mutex>
+#include <string>
+#include <vector>
 #endif
 
 namespace {
@@ -680,13 +683,38 @@ bool runOnQtMainThreadSync(F &&fn, uint32_t timeout_ms = 500)
 } // namespace
 #endif
 
+#ifdef __linux__
+namespace {
+// This process's arguments, as the kernel has them.
+std::vector<std::string> processArguments()
+{
+    std::vector<std::string> args;
+    std::ifstream cmdline("/proc/self/cmdline", std::ios::binary);
+    std::string arg;
+    while (std::getline(cmdline, arg, '\0'))
+        args.push_back(arg);
+    if (args.empty())
+        args.emplace_back("nectarlink");
+    return args;
+}
+} // namespace
+#endif
+
 std::unique_ptr<QGuiApplication> create_qt_app()
 {
-    static int s_argc = 1;
-    static char s_arg0[] = "nectarlink";
-    static char *s_argv[] = { s_arg0, nullptr };
 #ifdef __linux__
-    auto app = std::unique_ptr<QGuiApplication>(new QApplication(s_argc, s_argv));
+    // The real arguments, as on the other systems: QML reads --minimized and
+    // --send-to from them (#336). Qt keeps pointers to them, so they live on.
+    static std::vector<std::string> s_args = processArguments();
+    static std::vector<char *> s_argv_list = [] {
+        std::vector<char *> list;
+        for (std::string &arg : s_args)
+            list.push_back(arg.data());
+        list.push_back(nullptr);
+        return list;
+    }();
+    static int s_argc = static_cast<int>(s_args.size());
+    auto app = std::unique_ptr<QGuiApplication>(new QApplication(s_argc, s_argv_list.data()));
     // On Wayland this is the app id, which is how the dock finds our icon and name.
     QGuiApplication::setDesktopFileName(QStringLiteral("nectarlink"));
     QObject::connect(app.get(), &QCoreApplication::aboutToQuit, app.get(), []() {
@@ -705,6 +733,9 @@ std::unique_ptr<QGuiApplication> create_qt_app()
     }
     return app;
 #else
+    static int s_argc = 1;
+    static char s_arg0[] = "nectarlink";
+    static char *s_argv[] = { s_arg0, nullptr };
     return std::make_unique<QGuiApplication>(s_argc, s_argv);
 #endif
 }
