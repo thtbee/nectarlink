@@ -119,6 +119,9 @@ mod imp {
         stop_watcher: Arc<AtomicBool>,
         populated_dirs: Mutex<HashSet<String>>,
         uploading: Mutex<HashSet<String>>,
+        /// Placeholders being removed because the phone no longer has them: the
+        /// delete Windows reports for them mustn't reach the phone.
+        removing: Mutex<HashSet<String>>,
         /// The phone was connected at the last sync: its folder is re-read
         /// only when it comes back, not on every sync.
         online: AtomicBool,
@@ -740,6 +743,7 @@ mod imp {
             stop_watcher: stop_watcher.clone(),
             populated_dirs: Mutex::new(HashSet::new()),
             uploading: Mutex::new(HashSet::new()),
+            removing: Mutex::new(HashSet::new()),
             online: AtomicBool::new(online),
         });
 
@@ -1255,6 +1259,11 @@ mod imp {
                 ack_delete(connection_key, transfer_key, request_key, STATUS_ACCESS_DENIED);
                 return;
             }
+            // Gone from the phone already: this is the app tidying up, not the user.
+            if lock(&root.removing).contains(&rel_path) {
+                ack_delete(connection_key, transfer_key, request_key, STATUS_SUCCESS);
+                return;
+            }
             let Some(node) = core_host::node() else {
                 ack_delete(connection_key, transfer_key, request_key, STATUS_CLOUD_NETWORK_UNAVAILABLE);
                 return;
@@ -1310,6 +1319,12 @@ mod imp {
 
         lock(&root.populated_dirs).insert(rel_folder.to_owned());
 
+        // A full listing (it stops at MAX_LISTED otherwise) says what's no longer there.
+        if entries.len() < nectarlink_core::MAX_STORAGE_LISTED {
+            let on_phone: HashSet<&str> = entries.iter().map(|e| e.name.as_str()).collect();
+            remove_gone(&root, rel_folder, &local_dir, &on_phone);
+        }
+
         let mut missing: Vec<StorageEntry> = Vec::new();
         for entry in entries {
             // Windows can't show a name it can't store (`:`, `CON`, a trailing
@@ -1354,6 +1369,46 @@ mod imp {
                 Some(&mut processed),
             )
         };
+    }
+
+    /// Removes the placeholders in `local_dir` (the phone's `rel_folder`) for
+    /// what the phone no longer has. Only what's in sync goes: anything changed
+    /// or added on the PC that hasn't reached the phone yet stays, and so does
+    /// a folder holding some.
+    #[cfg(windows)]
+    fn remove_gone(root: &ActiveRoot, rel_folder: &str, local_dir: &Path, on_phone: &HashSet<&str>) {
+        let Ok(children) = std::fs::read_dir(local_dir) else { return };
+        for child in children.flatten() {
+            let name = child.file_name().to_string_lossy().into_owned();
+            if on_phone.contains(name.as_str()) || name.starts_with('.') || name.starts_with("~$") {
+                continue;
+            }
+            let path = child.path();
+            if !removable(&path) {
+                continue;
+            }
+            let rel = if rel_folder.is_empty() { name } else { format!("{rel_folder}/{name}") };
+            lock(&root.removing).insert(rel.clone());
+            let removed =
+                if path.is_dir() { std::fs::remove_dir_all(&path) } else { std::fs::remove_file(&path) };
+            if let Err(e) = removed {
+                tracing::debug!(error = %e, "can't remove a file the phone no longer has");
+            }
+            lock(&root.removing).remove(&rel);
+            lock(&root.populated_dirs).remove(&rel);
+        }
+    }
+
+    /// Whether `path` and everything under it only mirror the phone.
+    #[cfg(windows)]
+    fn removable(path: &Path) -> bool {
+        if needs_upload(path) {
+            return false;
+        }
+        if !path.is_dir() {
+            return true;
+        }
+        std::fs::read_dir(path).is_ok_and(|children| children.flatten().all(|c| removable(&c.path())))
     }
 
     /// Watches the sync root directory for files or folders dropped in by the user
@@ -1611,6 +1666,18 @@ mod imp {
             std::fs::remove_file(root.join("DCIM").join("mine.txt")).unwrap();
             cleanup_sync_root_dir(&root);
             assert!(!root.exists(), "nothing kept: the folder goes");
+        }
+
+        #[cfg(windows)]
+        #[test]
+        fn files_the_phone_never_had_are_never_removed_as_gone() {
+            let dir = tempfile::tempdir().unwrap();
+            std::fs::create_dir_all(dir.path().join("Mine").join("deeper")).unwrap();
+            std::fs::write(dir.path().join("Mine").join("deeper").join("notes.txt"), b"mine").unwrap();
+            std::fs::write(dir.path().join("dropped.txt"), b"mine too").unwrap();
+            // Plain files and folders aren't placeholders: they're waiting to go to the phone.
+            assert!(!removable(&dir.path().join("dropped.txt")));
+            assert!(!removable(&dir.path().join("Mine")));
         }
 
         #[test]

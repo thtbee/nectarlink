@@ -151,7 +151,9 @@ pub use palette::{
 pub use play_on_phone::PlayOnPhone;
 pub use remote::{ButtonAction, INPUT_INJECT, KeyMod, MouseButton, RemoteInput, SlideAction, remote_keys};
 pub use session::is_lan_ip;
-pub use storage::{FolderStorage, StorageError, StorageReadFile, TOGGLE as STORAGE_TOGGLE};
+pub use storage::{
+    FolderStorage, MAX_LISTED as MAX_STORAGE_LISTED, StorageError, StorageReadFile, TOGGLE as STORAGE_TOGGLE,
+};
 pub use store::{
     CHAT_RETENTION_SECS, ChatMessageRecord, ChatThreadRecord, MAX_CHAT_MESSAGES_PER_THREAD,
     MAX_CHAT_THREADS_PER_PEER, MAX_QUEUE_ACTIVE_BYTES, MAX_QUEUE_ACTIVE_ITEMS,
