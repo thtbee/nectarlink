@@ -3345,11 +3345,11 @@ Item {
                             visible: Qt.platform.os === "linux"
                             iconPath: Icons.wifi
                             title: qsTr("Network interface")
-                            description: qsTr("Relays switch right away. Local connections use the new setting after a restart.")
+                            description: qsTr("Local connections switch after a restart. Relays switch right away if the app started with an interface selected.")
                             Button {
                                 variant: "tonal"
                                 size: "sm"
-                                text: Preferences.networkInterface || qsTr("System Default")
+                                text: Preferences.networkInterface || qsTr("System default")
                                 onClicked: {
                                     networkInterfaceSheet.options = JSON.parse(AppController.networkInterfaces())
                                     networkInterfaceSheet.failed = false
@@ -3815,19 +3815,23 @@ Item {
                 delegate: Button {
                     required property var modelData
                     width: parent.width
-                    text: modelData.direct ? qsTr("%1 (Direct)").arg(modelData.name)
-                                           : (modelData.name || qsTr("System Default"))
+                    text: modelData.direct ? qsTr("%1 · Direct (without a VPN)").arg(modelData.name)
+                                           : (modelData.name || qsTr("System default"))
                     variant: modelData.name === Preferences.networkInterface ? "tonal" : "text"
                     onClicked: {
                         if (modelData.name === Preferences.networkInterface) {
                             networkInterfaceSheet.close()
-                        } else if (AppController.selectRelayInterface(modelData.name)) {
-                            Preferences.networkInterface = modelData.name
-                            networkInterfaceSheet.close()
-                            relaySheet.open()
-                        } else {
-                            networkInterfaceSheet.failed = true
+                            return
                         }
+                        const result = AppController.selectRelayInterface(modelData.name)
+                        if (result === "failed") {
+                            networkInterfaceSheet.failed = true
+                            return
+                        }
+                        Preferences.networkInterface = modelData.name
+                        networkInterfaceSheet.close()
+                        if (result === "applied")
+                            relaySheet.open()
                     }
                 }
             }

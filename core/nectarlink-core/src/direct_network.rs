@@ -139,13 +139,7 @@ impl RelayConnector {
         self.task.abort();
     }
 
-    pub(crate) fn select(&self, name: &str) -> io::Result<()> {
-        if !name.is_empty() {
-            if !network_interfaces().iter().any(|interface| interface.name == name) {
-                return Err(io::Error::new(io::ErrorKind::NotFound, "network interface unavailable"));
-            }
-            TcpSocket::new_v4()?.bind_device(Some(name.as_bytes()))?;
-        }
+    pub(crate) fn select(&self, name: &str) {
         self.interface.send_if_modified(|current| {
             if current.as_str() == name {
                 return false;
@@ -153,8 +147,17 @@ impl RelayConnector {
             name.clone_into(current);
             true
         });
-        Ok(())
     }
+}
+
+pub(crate) fn validate_interface(name: &str) -> io::Result<()> {
+    if name.is_empty() {
+        return Ok(());
+    }
+    if !network_interfaces().iter().any(|interface| interface.name == name) {
+        return Err(io::Error::new(io::ErrorKind::NotFound, "network interface unavailable"));
+    }
+    TcpSocket::new_v4()?.bind_device(Some(name.as_bytes()))
 }
 
 impl Drop for RelayConnector {

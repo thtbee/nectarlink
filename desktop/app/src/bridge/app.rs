@@ -378,7 +378,7 @@ pub mod qobject {
         #[qinvokable]
         fn network_interfaces(self: &AppController) -> QString;
         #[qinvokable]
-        fn select_relay_interface(self: Pin<&mut AppController>, name: &QString) -> bool;
+        fn select_relay_interface(self: Pin<&mut AppController>, name: &QString) -> QString;
         /// Clears local notification history (in-memory, on-disk JSON, and cached notification images).
         #[qinvokable]
         fn clear_notification_history(self: Pin<&mut AppController>);
@@ -1947,21 +1947,26 @@ impl qobject::AppController {
         QString::from("[]")
     }
 
-    pub fn select_relay_interface(self: Pin<&mut Self>, name: &QString) -> bool {
+    pub fn select_relay_interface(self: Pin<&mut Self>, name: &QString) -> QString {
         #[cfg(target_os = "linux")]
         {
-            let Some(node) = core_host::node() else { return false };
-            if let Err(error) = node.set_relay_interface(&name.to_string()) {
-                tracing::warn!(%error, "could not select relay network interface");
-                return false;
+            let Some(node) = core_host::node() else { return QString::from("failed") };
+            match node.set_relay_interface(&name.to_string()) {
+                Ok(true) => {
+                    self.start_relay_check(node);
+                    QString::from("applied")
+                }
+                Ok(false) => QString::from("restart"),
+                Err(error) => {
+                    tracing::warn!(%error, "could not select relay network interface");
+                    QString::from("failed")
+                }
             }
-            self.start_relay_check(node);
-            true
         }
         #[cfg(not(target_os = "linux"))]
         {
             let _ = (self, name);
-            false
+            QString::from("failed")
         }
     }
 

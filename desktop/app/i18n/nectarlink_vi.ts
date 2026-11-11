@@ -8787,22 +8787,22 @@ Nó cần gì
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3348"/>
-        <source>Relays switch right away. Local connections use the new setting after a restart.</source>
-        <translation>Kết nối qua máy chủ chuyển tiếp đổi ngay. Kết nối cục bộ dùng thiết lập mới sau khi khởi động lại ứng dụng.</translation>
+        <source>Local connections switch after a restart. Relays switch right away if the app started with an interface selected.</source>
+        <translation>Kết nối cục bộ thay đổi sau khi khởi động lại ứng dụng. Kết nối qua máy chủ chuyển tiếp thay đổi ngay nếu đã chọn giao diện mạng khi ứng dụng khởi động.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3352"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3819"/>
-        <source>System Default</source>
+        <source>System default</source>
         <translation>Mặc định của hệ thống</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3818"/>
-        <source>%1 (Direct)</source>
-        <translation>%1 (Trực tiếp)</translation>
+        <source>%1 · Direct (without a VPN)</source>
+        <translation>%1 · Trực tiếp (không qua VPN)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3838"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3842"/>
         <source>Could not use this network interface.</source>
         <translation>Không thể sử dụng giao diện mạng này.</translation>
     </message>

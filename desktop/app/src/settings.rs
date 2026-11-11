@@ -765,10 +765,6 @@ impl Settings {
             self.ui_scale = default_ui_scale();
         }
         self.webcam_camera = normalize_webcam_camera(&self.webcam_camera);
-        // Pre-release builds saved automatic routing without an explicit choice.
-        if self.network_interface == "@auto" {
-            self.network_interface.clear();
-        }
         self.walkthrough_step = self.walkthrough_step.min(6);
         self.window_screen = self.window_screen.map(|s| s.trim().to_owned()).filter(|s| !s.is_empty());
         self.window_width = self.window_width.clamp(MIN_WINDOW_WIDTH, MAX_WINDOW_WIDTH);

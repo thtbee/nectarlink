@@ -8820,22 +8820,22 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3348"/>
-        <source>Relays switch right away. Local connections use the new setting after a restart.</source>
-        <translation>中继连接会立即切换。本地连接会在应用重启后使用新设置。</translation>
+        <source>Local connections switch after a restart. Relays switch right away if the app started with an interface selected.</source>
+        <translation>本地连接会在应用重启后切换。如果启动应用时已选定网络接口，中继连接会立即切换。</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3352"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3819"/>
-        <source>System Default</source>
+        <source>System default</source>
         <translation>系统默认</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3818"/>
-        <source>%1 (Direct)</source>
-        <translation>%1（直连）</translation>
+        <source>%1 · Direct (without a VPN)</source>
+        <translation>%1 · 直连（不经 VPN）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3838"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3842"/>
         <source>Could not use this network interface.</source>
         <translation>无法使用此网络接口。</translation>
     </message>

@@ -8821,22 +8821,22 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3348"/>
-        <source>Relays switch right away. Local connections use the new setting after a restart.</source>
-        <translation>Aktarma sunucusu bağlantıları hemen değişir. Yerel bağlantılar uygulamayı yeniden başlattığınızda yeni ayarı kullanır.</translation>
+        <source>Local connections switch after a restart. Relays switch right away if the app started with an interface selected.</source>
+        <translation>Yerel bağlantılar uygulama yeniden başlatıldığında değişir. Uygulama başlatılırken bir ağ arayüzü seçiliyse aktarma sunucusu bağlantıları hemen değişir.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3352"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3819"/>
-        <source>System Default</source>
+        <source>System default</source>
         <translation>Sistem varsayılanı</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3818"/>
-        <source>%1 (Direct)</source>
-        <translation>%1 (Doğrudan)</translation>
+        <source>%1 · Direct (without a VPN)</source>
+        <translation>%1 · Doğrudan (VPN olmadan)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3838"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3842"/>
         <source>Could not use this network interface.</source>
         <translation>Bu ağ arayüzü kullanılamadı.</translation>
     </message>

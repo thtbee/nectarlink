@@ -1844,7 +1844,7 @@ impl Node {
         #[cfg(not(target_os = "linux"))]
         let proxy = None;
         #[cfg(target_os = "linux")]
-        let relay_connector = match &config.network_interface {
+        let relay_connector = match config.network_interface.as_ref().filter(|name| !name.is_empty()) {
             Some(name) => Some(crate::direct_network::RelayConnector::start(name.clone()).await?),
             None => None,
         };
@@ -2076,12 +2076,15 @@ impl Node {
     }
 
     /// Changes the relay route and retires TCP connections on the old route.
+    /// Returns false if the relay connector needs to be enabled on restart.
     #[cfg(target_os = "linux")]
-    pub fn set_relay_interface(&self, name: &str) -> Result<()> {
-        self.shared.relay_connector.as_ref().ok_or(Error::Unsupported)?.select(name)?;
+    pub fn set_relay_interface(&self, name: &str) -> Result<bool> {
+        crate::direct_network::validate_interface(name)?;
+        let Some(connector) = &self.shared.relay_connector else { return Ok(false) };
+        connector.select(name);
         let shared = self.shared.clone();
         self.shared.runtime.spawn(async move { shared.endpoint.network_change().await });
-        Ok(())
+        Ok(true)
     }
 
     /// Enables or disables connecting over mobile data / non-LAN paths at runtime.
