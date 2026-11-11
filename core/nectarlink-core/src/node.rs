@@ -4966,7 +4966,6 @@ async fn deliver_queued_rpc(
 mod away_tests {
     use super::*;
     use crate::config::NoopPlatform;
-    use iroh::Watcher as _;
     use nectarlink_protocol::messages::{DeviceInfo, DeviceKind};
 
     async fn node(dir: &tempfile::TempDir, away: bool) -> Node {
