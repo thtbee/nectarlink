@@ -3959,6 +3959,17 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                             if e.photo.is_some() { " (photo)" } else { "" }
                         );
                     }
+                    match node.call_sims(id).await {
+                        Ok(sims) if sims.sims.is_empty() => println!("SIMs: none listed"),
+                        Ok(sims) => {
+                            for sim in &sims.sims {
+                                let default =
+                                    if sims.default.as_ref() == Some(&sim.id) { " (default)" } else { "" };
+                                println!("SIM: {}{default}", sim.label);
+                            }
+                        }
+                        Err(e) => println!("SIMs: {e}"),
+                    }
                 }
             }
         }

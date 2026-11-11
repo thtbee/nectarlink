@@ -514,9 +514,8 @@ internal class PhoneCalls(
             tm.callCapablePhoneAccounts.mapNotNull { handle ->
                 val rawId = handle.id?.trim().orEmpty()
                 if (rawId.isEmpty()) return@mapNotNull null
-                val account = tm.getPhoneAccount(handle) ?: return@mapNotNull null
                 val id = truncateUtf8(rawId, MAX_ID_BYTES)
-                CallSim(id = id, label = simLabel(handle, account), isDefault = handle == default)
+                CallSim(id = id, label = simLabel(tm, handle), isDefault = handle == default)
             }
         }.getOrElse {
             Log.w(TAG, "can't list the SIMs", it)
@@ -540,18 +539,26 @@ internal class PhoneCalls(
         return dial(number, handle)
     }
 
+    /**
+     * "SIM 1 · Orange": the slot, and the name the SIM has in the phone's
+     * settings. That comes from the SIM's subscription, not its phone account:
+     * reading an account needs Read phone numbers on newer Android (#334),
+     * which the app doesn't ask for, so it's only a fallback for accounts
+     * without a SIM, like a calling app's.
+     */
     @SuppressLint("MissingPermission")
-    private fun simLabel(handle: PhoneAccountHandle, account: PhoneAccount): String {
-        val carrier = account.label?.toString()?.trim().orEmpty()
-        val slot = runCatching {
+    private fun simLabel(tm: TelecomManager, handle: PhoneAccountHandle): String {
+        val info = runCatching {
             val subId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 context.getSystemService(TelephonyManager::class.java)?.getSubscriptionId(handle)
             } else {
                 handle.id.toIntOrNull()
             } ?: return@runCatching null
-            context.getSystemService(SubscriptionManager::class.java)
-                ?.getActiveSubscriptionInfo(subId)?.simSlotIndex?.takeIf { it >= 0 }?.plus(1)
+            context.getSystemService(SubscriptionManager::class.java)?.getActiveSubscriptionInfo(subId)
         }.getOrNull()
+        val slot = info?.simSlotIndex?.takeIf { it >= 0 }?.plus(1)
+        val carrier = (info?.displayName ?: info?.carrierName)?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+            ?: runCatching { tm.getPhoneAccount(handle)?.label?.toString()?.trim() }.getOrNull().orEmpty()
         val label = when {
             slot != null && carrier.isNotEmpty() -> "SIM $slot · $carrier"
             slot != null -> "SIM $slot"

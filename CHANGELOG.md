@@ -101,6 +101,9 @@ change things that need a step from you, and its notes say so.
 
 - **Find device stops everywhere.** The button on the device that started the alarm resets when it's stopped on the other one, and a phone shows a full-screen Stop. PC playback also reaches every connected phone, in order. Thanks to [@krakotay](https://github.com/krakotay) ([#326](https://github.com/thtbee/nectarlink/pull/326)).
 - **Phone storage in File Explorer kept showing files deleted on the phone.** They're now removed when the phone's folder is read again. Files you added on the PC that haven't reached the phone stay ([#328](https://github.com/thtbee/nectarlink/issues/328)).
+- **"Call with" didn't show for phones with two SIMs.** On newer Android the phone
+  couldn't list its SIMs, so the PC never offered the choice
+  ([#334](https://github.com/thtbee/nectarlink/issues/334)).
 - **Phone as speaker could play the PC's sound twice on the phone.** It now leaves NectarLink's own sound out only while NectarLink is playing a phone's sound ([#281](https://github.com/thtbee/nectarlink/issues/281)).
 - **The PC app's album art cache no longer grows without limit.** It kept every cover of everything played on the PC (166 MB after a month on one PC), and now keeps the newest 90.
 - **The Elevated card on the phone is titled Elevated.** That's the name the guide, the setup and every hint use. It was titled "Real touch and keys", so people looking for Elevated couldn't find it ([#136](https://github.com/thtbee/nectarlink/issues/136)).
