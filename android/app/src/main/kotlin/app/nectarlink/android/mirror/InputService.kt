@@ -348,10 +348,13 @@ class InputService : AccessibilityService() {
 
     private fun pressAction(): Boolean {
         val field = focused() ?: return false
-        // A multi-line box takes the keyboard's action and does nothing with
-        // it, so press the app's Send button instead; no button, a plain Enter.
-        if (field.isMultiLine) return SendButton.press(field, field.window?.root ?: rootInActiveWindow)
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
+        // Chat boxes take the keyboard's action and do nothing with it, and
+        // they don't all say they're multi-line (Messenger's, Telegram's and
+        // WhatsApp's don't), so press a Send button by the box when there is
+        // one. Without one, a multi-line box gets a plain Enter for its new
+        // line, and any other box the keyboard's action.
+        if (SendButton.press(field, field.window?.root ?: rootInActiveWindow)) return true
+        if (field.isMultiLine || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
         return field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
     }
 

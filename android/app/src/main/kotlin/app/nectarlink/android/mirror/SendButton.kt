@@ -6,9 +6,9 @@ import android.view.accessibility.AccessibilityNodeInfo
 import java.util.Locale
 
 /**
- * Finds a chat app's Send button. Multi-line message boxes (WhatsApp,
- * Telegram, Messenger) take the keyboard's action without doing anything,
- * so Enter sends by pressing the button next to the box instead.
+ * Finds a chat app's Send button. Message boxes (WhatsApp, Telegram,
+ * Messenger) take the keyboard's action without doing anything, so Enter
+ * sends by pressing the button next to the box instead.
  */
 internal object SendButton {
     /** What a button the screen reader calls Send is labeled, in the app's languages. */
@@ -53,7 +53,7 @@ internal object SendButton {
         return dx * dx + dy * dy
     }
 
-    /** Presses the Send button by the multi-line box [field]; false if there's none. */
+    /** Presses the Send button by the box [field]; false if there's none. */
     fun press(field: AccessibilityNodeInfo, root: AccessibilityNodeInfo?): Boolean {
         if (root == null) return false
         val nodes = ArrayList<AccessibilityNodeInfo>()
