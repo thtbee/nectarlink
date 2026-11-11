@@ -48,12 +48,14 @@ mod imp {
             },
             Storage::{
                 CloudFilters::{
-                    CF_CALLBACK_INFO, CF_CALLBACK_PARAMETERS, CF_CALLBACK_REGISTRATION,
-                    CF_CALLBACK_TYPE_FETCH_DATA, CF_CALLBACK_TYPE_FETCH_PLACEHOLDERS, CF_CALLBACK_TYPE_NONE,
-                    CF_CALLBACK_TYPE_NOTIFY_DELETE, CF_CALLBACK_TYPE_NOTIFY_RENAME,
-                    CF_CONNECT_FLAG_REQUIRE_FULL_FILE_PATH, CF_CONNECT_FLAG_REQUIRE_PROCESS_INFO,
-                    CF_CONNECTION_KEY, CF_CONVERT_FLAG_MARK_IN_SYNC, CF_FS_METADATA,
-                    CF_IN_SYNC_STATE_IN_SYNC, CF_OPERATION_INFO, CF_OPERATION_PARAMETERS,
+                    CF_CALLBACK_DELETE_FLAG_IS_UNDELETE, CF_CALLBACK_INFO, CF_CALLBACK_PARAMETERS,
+                    CF_CALLBACK_REGISTRATION, CF_CALLBACK_RENAME_FLAG_IS_DIRECTORY,
+                    CF_CALLBACK_RENAME_FLAG_SOURCE_IN_SCOPE, CF_CALLBACK_TYPE_FETCH_DATA,
+                    CF_CALLBACK_TYPE_FETCH_PLACEHOLDERS, CF_CALLBACK_TYPE_NONE,
+                    CF_CALLBACK_TYPE_NOTIFY_DELETE, CF_CALLBACK_TYPE_NOTIFY_DELETE_COMPLETION,
+                    CF_CALLBACK_TYPE_NOTIFY_RENAME, CF_CONNECT_FLAG_REQUIRE_FULL_FILE_PATH,
+                    CF_CONNECT_FLAG_REQUIRE_PROCESS_INFO, CF_CONNECTION_KEY, CF_CONVERT_FLAG_MARK_IN_SYNC,
+                    CF_FS_METADATA, CF_IN_SYNC_STATE_IN_SYNC, CF_OPERATION_INFO, CF_OPERATION_PARAMETERS,
                     CF_OPERATION_PARAMETERS_0,
                     CF_OPERATION_TRANSFER_PLACEHOLDERS_FLAG_DISABLE_ON_DEMAND_POPULATION, CF_OPERATION_TYPE,
                     CF_OPERATION_TYPE_ACK_DELETE, CF_OPERATION_TYPE_ACK_RENAME,
@@ -726,6 +728,10 @@ mod imp {
                 Type: CF_CALLBACK_TYPE_NOTIFY_DELETE,
                 Callback: Some(on_notify_delete),
             },
+            CF_CALLBACK_REGISTRATION {
+                Type: CF_CALLBACK_TYPE_NOTIFY_DELETE_COMPLETION,
+                Callback: Some(on_notify_delete_completion),
+            },
             CF_CALLBACK_REGISTRATION { Type: CF_CALLBACK_TYPE_NONE, Callback: None },
         ];
 
@@ -1216,6 +1222,14 @@ mod imp {
         let target_norm = unsafe { pcwstr_to_string(rename.TargetPath) };
         let target_full = PathBuf::from(format!("{vol}{target_norm}"));
         let new_rel = relative_path_under_root(&root.root_path, &target_full);
+        let flags = rename.Flags;
+        // Out of the phone's folder, like into the Recycle Bin: the PC keeps the
+        // file, so it leaves the phone. Only a file that's all here, though: a
+        // folder, or a file still in the cloud, would arrive empty.
+        let moving_out = new_rel.is_none()
+            && (flags.0 & CF_CALLBACK_RENAME_FLAG_SOURCE_IN_SCOPE.0) != 0
+            && (flags.0 & CF_CALLBACK_RENAME_FLAG_IS_DIRECTORY.0) == 0
+            && fully_here(&root.root_path.join(old_rel.replace('/', "\\")));
 
         core_host::spawn(async move {
             let Some(node) = core_host::node() else {
@@ -1234,9 +1248,13 @@ mod imp {
                         }
                     }
                 }
+                None if moving_out && !old_rel.is_empty() => {
+                    delete_status(node.storage_delete(root.device, &old_rel, true).await)
+                }
                 _ => {
-                    // Out of the phone's folder (the Recycle Bin, another drive) or onto it.
-                    tracing::warn!("a file can't be moved out of the phone's folder");
+                    tracing::warn!(
+                        "a folder, or a file not downloaded yet, can't be moved out of the phone's folder"
+                    );
                     STATUS_ACCESS_DENIED
                 }
             };
@@ -1260,10 +1278,14 @@ mod imp {
         let _ = unsafe { CfExecute(&op_info, &mut op_params) };
     }
 
+    /// Windows is about to delete a placeholder. Nothing reaches the phone yet:
+    /// a delete can still be taken back (Explorer does that when it moves a
+    /// file to the Recycle Bin), so the phone deletes it once it's done, in
+    /// [`on_notify_delete_completion`]. This only turns down what can't work.
     #[cfg(windows)]
     unsafe extern "system" fn on_notify_delete(
         callback_info: *const CF_CALLBACK_INFO,
-        _callback_parameters: *const CF_CALLBACK_PARAMETERS,
+        callback_parameters: *const CF_CALLBACK_PARAMETERS,
     ) {
         // SAFETY: callback_info is provided by Windows cfapi.
         let Some((root, rel_path, connection_key, transfer_key, request_key)) =
@@ -1271,37 +1293,71 @@ mod imp {
         else {
             return;
         };
-
-        core_host::spawn(async move {
-            if rel_path.is_empty() {
-                ack_delete(connection_key, transfer_key, request_key, STATUS_ACCESS_DENIED);
-                return;
-            }
-            // Gone from the phone already: this is the app tidying up, not the user.
-            if lock(&root.removing).contains(&rel_path) {
-                ack_delete(connection_key, transfer_key, request_key, STATUS_SUCCESS);
-                return;
-            }
-            let Some(node) = core_host::node() else {
-                ack_delete(connection_key, transfer_key, request_key, STATUS_CLOUD_NETWORK_UNAVAILABLE);
-                return;
-            };
-            let status = match node.storage_delete(root.device, &rel_path, true).await {
-                Ok(()) => STATUS_SUCCESS,
-                Err(nectarlink_core::Error::Offline) => STATUS_CLOUD_NETWORK_UNAVAILABLE,
-                // With neither All files access nor a folder picked, the phone can't.
-                Err(nectarlink_core::Error::Denied | nectarlink_core::Error::Unsupported) => {
-                    STATUS_ACCESS_DENIED
-                }
-                // Already gone from the phone: deleted, as asked.
-                Err(nectarlink_core::Error::NotFound) => STATUS_SUCCESS,
-                Err(e) => {
-                    tracing::warn!(error = %e, "the phone couldn't delete a file");
-                    STATUS_CLOUD_UNSUCCESSFUL
-                }
-            };
-            ack_delete(connection_key, transfer_key, request_key, status);
+        // SAFETY: callback_parameters is provided by Windows cfapi; the union
+        // variant matches CF_CALLBACK_TYPE_NOTIFY_DELETE.
+        let undelete = unsafe { callback_parameters.as_ref() }.is_some_and(|p| {
+            (unsafe { p.Anonymous.Delete }.Flags.0 & CF_CALLBACK_DELETE_FLAG_IS_UNDELETE.0) != 0
         });
+        let status = if undelete || lock(&root.removing).contains(&rel_path) {
+            STATUS_SUCCESS
+        } else if rel_path.is_empty() {
+            STATUS_ACCESS_DENIED
+        } else if !root.online.load(Ordering::Relaxed) || core_host::node().is_none() {
+            STATUS_CLOUD_NETWORK_UNAVAILABLE
+        } else {
+            STATUS_SUCCESS
+        };
+        ack_delete(connection_key, transfer_key, request_key, status);
+    }
+
+    /// A placeholder was deleted on the PC: delete it on the phone. If the
+    /// phone can't, the folder is read again so the file comes back.
+    #[cfg(windows)]
+    unsafe extern "system" fn on_notify_delete_completion(
+        callback_info: *const CF_CALLBACK_INFO,
+        _callback_parameters: *const CF_CALLBACK_PARAMETERS,
+    ) {
+        // SAFETY: callback_info is provided by Windows cfapi.
+        let Some((root, rel_path, ..)) = (unsafe { callback_root_and_path(callback_info) }) else {
+            return;
+        };
+        if rel_path.is_empty() || lock(&root.removing).contains(&rel_path) {
+            return;
+        }
+        core_host::spawn(async move {
+            let Some(node) = core_host::node() else { return };
+            if delete_status(node.storage_delete(root.device, &rel_path, true).await) != STATUS_SUCCESS {
+                let parent = rel_path.rsplit_once('/').map_or("", |(dir, _)| dir).to_owned();
+                refresh_folder(root, &parent).await;
+            }
+        });
+    }
+
+    /// What a delete on the phone means for Windows.
+    #[cfg(windows)]
+    fn delete_status(result: nectarlink_core::Result<()>) -> NTSTATUS {
+        match result {
+            // Already gone from the phone: deleted, as asked.
+            Ok(()) | Err(nectarlink_core::Error::NotFound) => STATUS_SUCCESS,
+            Err(nectarlink_core::Error::Offline) => STATUS_CLOUD_NETWORK_UNAVAILABLE,
+            // With neither All files access nor a folder picked, the phone can't.
+            Err(nectarlink_core::Error::Denied | nectarlink_core::Error::Unsupported) => {
+                tracing::warn!("the phone doesn't let this PC delete its files");
+                STATUS_ACCESS_DENIED
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "the phone couldn't delete a file");
+                STATUS_CLOUD_UNSUCCESSFUL
+            }
+        }
+    }
+
+    /// Whether a placeholder's data is all on the PC.
+    #[cfg(windows)]
+    fn fully_here(path: &Path) -> bool {
+        use std::os::windows::fs::MetadataExt;
+        const NOT_HERE: u32 = 0x0040_0000 | 0x0000_1000 | 0x0000_0200; // recall on access, offline, sparse
+        std::fs::symlink_metadata(path).is_ok_and(|m| m.file_attributes() & NOT_HERE == 0)
     }
 
     #[cfg(windows)]
