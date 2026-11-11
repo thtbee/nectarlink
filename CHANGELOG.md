@@ -15,6 +15,10 @@ change things that need a step from you, and its notes say so.
   servers used away from home, shows which one each device goes through, checks how fast
   they answer, and takes your own. Thanks to [@krakotay](https://github.com/krakotay)
   ([#324](https://github.com/thtbee/nectarlink/pull/324)).
+- **Pick the network interface relays use, on Linux.** Settings › Connection & About can
+  send relay connections through one interface, like the one past a VPN that's always on.
+  Thanks to [@krakotay](https://github.com/krakotay)
+  ([#331](https://github.com/thtbee/nectarlink/pull/331)).
 - **Keep a mirror window on top.** A pin button in the window's controls keeps it above other windows. Thanks to [@Nebhay](https://github.com/Nebhay) ([#327](https://github.com/thtbee/nectarlink/pull/327)).
 - **Spanish.** NectarLink is available in Spanish on Android and Windows.
   Thanks to José María Garcia Dominguez, and to
