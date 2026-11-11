@@ -40,7 +40,7 @@ use crate::{
 pub const TOGGLE: &str = "storage";
 
 /// Most entries read from one folder (page after page).
-const MAX_LISTED: usize = 100_000;
+pub const MAX_LISTED: usize = 100_000;
 /// Per-device toggle name for away-mode / relay file access (off by default).
 pub const REMOTE_FILES_TOGGLE: &str = "remote_files";
 
