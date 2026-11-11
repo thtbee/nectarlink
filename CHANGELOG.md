@@ -115,6 +115,10 @@ change things that need a step from you, and its notes say so.
 - **"Call with" didn't show for phones with two SIMs.** On newer Android the phone
   couldn't list its SIMs, so the PC never offered the choice
   ([#334](https://github.com/thtbee/nectarlink/issues/334)).
+- **Deleting a downloaded file in phone storage failed.** Sending it to the Recycle Bin said
+  "The cloud operation was unsuccessful" and still deleted it on the phone. It now goes to
+  the Recycle Bin and leaves the phone, and a file is only deleted on the phone once Windows
+  has really deleted it ([#328](https://github.com/thtbee/nectarlink/issues/328)).
 - **Phone as speaker could play the PC's sound twice on the phone.** It now leaves NectarLink's own sound out only while NectarLink is playing a phone's sound ([#281](https://github.com/thtbee/nectarlink/issues/281)).
 - **The PC app's album art cache no longer grows without limit.** It kept every cover of everything played on the PC (166 MB after a month on one PC), and now keeps the newest 90.
 - **The Elevated card on the phone is titled Elevated.** That's the name the guide, the setup and every hint use. It was titled "Real touch and keys", so people looking for Elevated couldn't find it ([#136](https://github.com/thtbee/nectarlink/issues/136)).
