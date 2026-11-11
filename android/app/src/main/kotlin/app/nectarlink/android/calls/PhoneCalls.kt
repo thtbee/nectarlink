@@ -557,14 +557,17 @@ internal class PhoneCalls(
             context.getSystemService(SubscriptionManager::class.java)?.getActiveSubscriptionInfo(subId)
         }.getOrNull()
         val slot = info?.simSlotIndex?.takeIf { it >= 0 }?.plus(1)
-        val carrier = (info?.displayName ?: info?.carrierName)?.toString()?.trim()?.takeIf { it.isNotEmpty() }
-            ?: runCatching { tm.getPhoneAccount(handle)?.label?.toString()?.trim() }.getOrNull().orEmpty()
-        val label = when {
-            slot != null && carrier.isNotEmpty() -> "SIM $slot · $carrier"
-            slot != null -> "SIM $slot"
-            carrier.isNotEmpty() -> carrier
-            else -> handle.id?.trim().orEmpty()
-        }.take(MAX_SIM_LABEL)
+        val account = if (info == null) {
+            runCatching { tm.getPhoneAccount(handle)?.label?.toString() }.getOrNull()
+        } else {
+            null
+        }
+        val label = simLabelOf(
+            slot,
+            info?.displayName?.toString(),
+            info?.carrierName?.toString() ?: account,
+            handle.id?.trim().orEmpty(),
+        ).take(MAX_SIM_LABEL)
         return truncateUtf8(label, MAX_TEXT_BYTES)
     }
 
@@ -728,6 +731,23 @@ internal class PhoneCalls(
                 (granted(context, Manifest.permission.CALL_PHONE) || canFollow(context))
 
         /** Whether it can list its SIMs and call on the one a PC picks (`call.sims`). */
+        /**
+         * "SIM 1 · Airtel": the slot, then the SIM's name, or the carrier's when
+         * the SIM still has its default name ("SIM 1"), so the slot isn't said twice.
+         */
+        fun simLabelOf(slot: Int?, name: String?, carrier: String?, fallback: String): String {
+            fun meaningful(text: String?) = text?.trim()?.takeIf {
+                it.isNotEmpty() && !Regex("(?i)(sim|slot)\\s*\\d*").matches(it)
+            }
+            val shown = meaningful(name) ?: meaningful(carrier)
+            return when {
+                slot != null && shown != null -> "SIM $slot · $shown"
+                slot != null -> "SIM $slot"
+                shown != null -> shown
+                else -> fallback
+            }
+        }
+
         fun canListSims(context: Context) =
             context.packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY) &&
                 granted(context, Manifest.permission.CALL_PHONE) &&
