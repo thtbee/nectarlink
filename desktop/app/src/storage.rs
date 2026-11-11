@@ -1228,10 +1228,17 @@ mod imp {
                         Ok(()) => STATUS_SUCCESS,
                         Err(nectarlink_core::Error::Offline) => STATUS_CLOUD_NETWORK_UNAVAILABLE,
                         Err(nectarlink_core::Error::Denied) => STATUS_ACCESS_DENIED,
-                        Err(_) => STATUS_CLOUD_UNSUCCESSFUL,
+                        Err(e) => {
+                            tracing::warn!(error = %e, "the phone couldn't move or rename a file");
+                            STATUS_CLOUD_UNSUCCESSFUL
+                        }
                     }
                 }
-                _ => STATUS_ACCESS_DENIED,
+                _ => {
+                    // Out of the phone's folder (the Recycle Bin, another drive) or onto it.
+                    tracing::warn!("a file can't be moved out of the phone's folder");
+                    STATUS_ACCESS_DENIED
+                }
             };
             ack_rename(connection_key, transfer_key, request_key, status);
         });
