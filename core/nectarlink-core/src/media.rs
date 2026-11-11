@@ -8,13 +8,13 @@
 //! that into [`NodeEvent::MediaChanged`] and sends the user's commands back.
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
 };
 
 use iroh::endpoint::{RecvStream, SendStream};
 use nectarlink_protocol::{
-    DeviceId, Envelope, ErrorCode,
+    DeviceId, Envelope, ErrorCode, MAX_FRAME_LEN,
     messages::{
         MediaCommand, MediaFileMeta, MediaFileRead, MediaPlayer, MediaState, MediaWatch, StreamHeader,
         WatchFile, media_actions, media_limits::PLAYERS, media_watch, types,
@@ -118,24 +118,26 @@ impl Players {
         state.art = art;
     }
 
-    /// The players for one session, artwork attached where it hasn't had it.
-    fn for_session(&self, session: &Session) -> MediaState {
+    /// The players for one session, with new artwork that fits in the frame.
+    fn for_session(&self, sent: &mut HashSet<String>) -> MediaState {
+        // Leave room for metadata for every player (four 256-character text
+        // fields, ID, art key, actions and CBOR overhead) and the envelope.
+        let mut remaining = MAX_FRAME_LEN - 64 * 1024;
         let state = self.lock();
-        let mut sent = session.sent_art();
-        let players = state
-            .players
-            .iter()
-            .map(|player| {
-                let mut player = player.clone();
+        let mut players = state.players.clone();
+        // Prefer artwork for playing media if several players get new artwork at once.
+        for playing in [true, false] {
+            for player in players.iter_mut().filter(|p| p.playing == playing) {
                 if let Some(key) = &player.art_key
                     && let Some(art) = state.art.get(key)
+                    && art.len() <= remaining
                     && sent.insert(key.clone())
                 {
                     player.art = Some(art.clone());
+                    remaining -= art.len();
                 }
-                player
-            })
-            .collect();
+            }
+        }
         MediaState { players }
     }
 
@@ -162,8 +164,9 @@ impl Shared {
         if !self.players.lock().active || !self.shows_media(&session.peer) {
             return;
         }
+        let mut sent_art = session.sent_art.lock().await;
         let state = if self.toggle_on(&session.peer, TOGGLE) {
-            self.players.for_session(session)
+            self.players.for_session(&mut sent_art)
         } else {
             MediaState { players: Vec::new() }
         };
@@ -172,13 +175,16 @@ impl Shared {
         }
     }
 
-    pub(crate) async fn media_changed(&self, players: Vec<MediaPlayer>) {
+    pub(crate) async fn media_changed(self: &Arc<Self>, players: Vec<MediaPlayer>) {
         self.players.set(players);
+        let mut sends = tokio::task::JoinSet::new();
         for session in self.live_sessions() {
             if self.toggle_on(&session.peer, TOGGLE) {
-                self.send_media_state(&session).await;
+                let shared = self.clone();
+                sends.spawn(async move { shared.send_media_state(&session).await });
             }
         }
+        while sends.join_next().await.is_some() {}
     }
 
     /// Brings both sides in line after the user allowed or stopped media

@@ -45,6 +45,7 @@
         android:name="android.permission.WRITE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- Scanning the pairing QR code. -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -156,6 +157,13 @@
                 <data android:scheme="nectarlink" android:host="pair" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ui.RingActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity="" />
 
         <!-- Sending text to the PC: shared from other apps, or the clipboard
              (from the tile and the connection notification). No screen of

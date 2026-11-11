@@ -39,6 +39,8 @@ every change, and again when the user changes what the other device may
 see. An empty list means nothing plays (or the user stopped sharing); the
 receiver clears what it showed. A receiver also clears a device's players
 when the connection ends.
+If the artwork would push the snapshot over the frame limit, the sender
+keeps all player metadata and defers excess artwork until another snapshot.
 
 **`media.sync`** asks for a `media.state` now (the user allowed media again
 on the receiving side).

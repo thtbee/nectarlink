@@ -4783,6 +4783,8 @@ fn print_event(node: &Node, event: &NodeEvent) {
             battery.level,
             if battery.charging { " (charging)" } else { "" }
         ),
+        NodeEvent::RemoteRing { device, on: false } => println!("{}: stopped ringing", name(device)),
+        NodeEvent::RemoteRing { .. } => {}
         NodeEvent::Ring { device, on } => {
             println!("{}: {}", name(device), if *on { "asked us to ring" } else { "stopped ringing" })
         }

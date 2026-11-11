@@ -810,6 +810,33 @@ async fn update_hints_reach_peers_now_and_on_connect() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn local_stop_clears_the_initiators_ring_state() {
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut tablet = device("Tablet", DeviceKind::Phone).await;
+    pair_qr(&mut phone, &mut pc).await;
+    pair_qr(&mut phone, &mut tablet).await;
+
+    for target in [&pc, &tablet] {
+        let target_id = target.node.device_id();
+        phone.node.ring(target_id, true).await.unwrap();
+        wait_for(&mut phone, "remote ring started", |event| match event {
+            NodeEvent::RemoteRing { device, on: true } if *device == target_id => Some(()),
+            _ => None,
+        })
+        .await;
+
+        target.node.stop_ringing().await;
+        wait_for(&mut phone, "remote ring stopped", |event| match event {
+            NodeEvent::RemoteRing { device, on: false } if *device == target_id => Some(()),
+            _ => None,
+        })
+        .await;
+        assert_eq!(*target.platform.rings.lock().unwrap(), [true, false]);
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn ring_and_battery_flow_between_devices() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;
     let mut phone = device("Pixel", DeviceKind::Phone).await;
@@ -1023,6 +1050,7 @@ async fn unpairing_is_mirrored_on_the_other_device() {
     pair_qr(&mut pc, &mut phone).await;
     let pc_id = pc.node.device_id();
 
+    with_timeout("ring before unpair", phone.node.ring(pc_id, true)).await.unwrap();
     with_timeout("unpair", phone.node.unpair(pc_id)).await.unwrap();
     let phone_id = phone.node.device_id();
     wait_for(&mut pc, "device removed", |e| match e {
@@ -1030,6 +1058,7 @@ async fn unpairing_is_mirrored_on_the_other_device() {
         _ => None,
     })
     .await;
+    assert_eq!(*pc.platform.rings.lock().unwrap(), [true, false]);
     assert!(pc.node.paired_devices().unwrap().is_empty());
     assert!(phone.node.paired_devices().unwrap().is_empty());
     assert!(matches!(pc.node.ring(phone_id, true).await, Err(Error::NotPaired)));
@@ -1835,6 +1864,57 @@ async fn media_is_shared_and_controlled_with_consent() {
     .await
     .expect("next");
     assert_eq!(pc.platform.media.lock().unwrap()[0], ("Spotify.exe".to_owned(), MediaAction::Next, None));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn pc_playback_reaches_both_phones_with_large_artwork() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut first = device("Pixel", DeviceKind::Phone).await;
+    let mut second = device("Tablet", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut first).await;
+    let pc_id = pc.node.device_id();
+
+    let players = (0..4)
+        .map(|i| {
+            let mut p = player(
+                &format!("player-{i}"),
+                &format!("Video {i}"),
+                Some((&format!("art-{i}"), vec![i; 256 * 1024])),
+            );
+            p.playing = i == 3;
+            p
+        })
+        .collect::<Vec<_>>();
+    pc.node.media_changed(players.clone()).await;
+    let state = wait_for(&mut first, "first phone sees video", media_of(pc_id)).await;
+    assert_eq!(state.len(), 4);
+    assert!(state[3].playing && state[3].art.is_some());
+
+    // The second phone joins after playback started. Use a separate event
+    // subscription so waiting for pairing can't consume its first snapshot.
+    let mut events = second.node.events();
+    pair_qr(&mut pc, &mut second).await;
+    let state = with_timeout("second phone sees the already playing video", async {
+        loop {
+            if let Some(players) = media_of(pc_id)(&events.recv().await.unwrap()) {
+                break players;
+            }
+        }
+    })
+    .await;
+    assert_eq!(state.len(), 4);
+    assert!(state[3].playing && state[3].art.is_some());
+
+    let mut paused = players;
+    paused[3].playing = false;
+    pc.node.media_changed(paused).await;
+    for phone in [&mut first, &mut second] {
+        let state = wait_for(phone, "phone sees the pause", |event| {
+            media_of(pc_id)(event).filter(|players| players.len() == 4 && !players[3].playing)
+        })
+        .await;
+        assert_eq!(state[3].title.as_deref(), Some("Video 3"));
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -626,6 +626,7 @@ fun HomeScreen(
             ) {
                 PcCard(
                     device = device,
+                    ringing = device.id in state.ringingDevices,
                     onRing = onRing,
                     onSendFiles = onSendFiles,
                     onSendFolder = onSendFolder,
@@ -646,7 +647,12 @@ fun HomeScreen(
         }
         // Another phone or tablet paired with this one.
         items(state.devices.filter { it.isAndroid }, key = { it.id }, contentType = { "peer_card" }) { device ->
-            PeerCard(device = device, onRing = onRing, onSendFiles = onSendFiles)
+            PeerCard(
+                device = device,
+                ringing = device.id in state.ringingDevices,
+                onRing = onRing,
+                onSendFiles = onSendFiles,
+            )
         }
         if (state.sendQueue.isNotEmpty()) {
             item(key = "send_queue", contentType = "send_queue") {
@@ -1277,6 +1283,7 @@ private fun KeyboardBanner(from: String, onStop: () -> Unit) {
 @Composable
 private fun PeerCard(
     device: Device,
+    ringing: Boolean,
     onRing: (String, Boolean) -> Unit,
     onSendFiles: (String, List<Uri>) -> Unit,
 ) {
@@ -1284,7 +1291,6 @@ private fun PeerCard(
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) onSendFiles(device.id, uris)
     }
-    var ringing by remember(device.id) { mutableStateOf(false) }
     val isGlass = LocalGlassTheme.current
     Column(
         modifier = Modifier
@@ -1322,10 +1328,7 @@ private fun PeerCard(
             FilledTonalButton(
                 contentPadding = CardButtonPadding,
                 enabled = device.online && device.has("pair.ring"),
-                onClick = {
-                    ringing = !ringing
-                    onRing(device.id, ringing)
-                },
+                onClick = { onRing(device.id, !ringing) },
                 modifier = Modifier.weight(1f),
             ) {
                 Icon(imageVector = BellIcon, contentDescription = null, modifier = Modifier.size(15.dp))
@@ -1359,6 +1362,7 @@ private fun PeerCard(
 @Composable
 private fun PcCard(
     device: Device,
+    ringing: Boolean,
     onRing: (String, Boolean) -> Unit,
     onSendFiles: (String, List<Uri>) -> Unit,
     onSendFolder: (String, Uri) -> Unit,
@@ -1382,7 +1386,6 @@ private fun PcCard(
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { tree ->
         if (tree != null) onSendFolder(device.id, tree)
     }
-    var ringing by remember(device.id) { mutableStateOf(false) }
     val isGlass = LocalGlassTheme.current
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onPrimaryContainer,
@@ -1685,7 +1688,7 @@ private fun PcCard(
 
                 // 3. Live PC media, master volume, mute, and active output device bar
                 val deckState = device.deckState
-                if (device.online && deckState != null) {
+                if (device.online) {
                     PcAudioCardSection(
                         pcId = device.id,
                         pcName = device.name,
@@ -1728,10 +1731,7 @@ private fun PcCard(
                         contentPadding = CardButtonPadding,
                         enabled = device.online,
                         colors = tonal,
-                        onClick = {
-                            ringing = !ringing
-                            onRing(device.id, ringing)
-                        },
+                        onClick = { onRing(device.id, !ringing) },
                         modifier = Modifier.weight(1f),
                     ) {
                         Icon(
@@ -1810,7 +1810,7 @@ private fun PcCard(
 private fun PcAudioCardSection(
     pcId: String,
     pcName: String,
-    deckState: DeckState,
+    deckState: DeckState?,
     ink: Color,
     onSetPcAudio: (volume: Int?, muted: Boolean?) -> Unit,
     micAvailable: Boolean = false,
@@ -1821,27 +1821,13 @@ private fun PcAudioCardSection(
     val pcMedia = remember(context) {
         (context.applicationContext as? NectarlinkApplication)?.core?.pcMedia
     }
-    val rawSummary = if (pcMedia != null) {
-        val state by pcMedia.summaryFlow.collectAsStateWithLifecycle()
-        state
+    val mediaSummary = if (pcMedia != null) {
+        val summaries by pcMedia.summaries.collectAsStateWithLifecycle()
+        summaries[pcId]
     } else {
         null
     }
-    val mediaSummary = rawSummary?.takeIf { it.pcId == pcId }
-    var draggingVolume by remember { mutableStateOf<Float?>(null) }
-    var lastSentVolume by remember { mutableStateOf(deckState.volume.toInt()) }
-    if (draggingVolume == null) {
-        lastSentVolume = deckState.volume.toInt()
-    }
-    var showOutputs by remember { mutableStateOf(false) }
-    val shownVolume = draggingVolume?.roundToInt() ?: deckState.volume.toInt()
-    val (streamingToPhone, hardwareOutputs, defaultOutput) = remember(deckState.outputDevices) {
-        val streaming = deckState.outputDevices.any { it.id == "nectarlink:phone_speaker" }
-        val hw = deckState.outputDevices.filterNot { it.id == "nectarlink:phone_speaker" }
-        val def = hw.firstOrNull { it.isDefault } ?: hw.firstOrNull()
-        Triple(streaming, hw, def)
-    }
-    val volumeLabel = stringResource(R.string.pc_audio_volume)
+    if (mediaSummary == null && deckState == null) return
 
     Column(
         modifier = Modifier
@@ -1885,7 +1871,9 @@ private fun PcAudioCardSection(
                 }
                 IconButton(
                     onClick = {
-                        pcMedia?.pressed(
+                        pcMedia?.command(
+                            pcId,
+                            mediaSummary.playerId,
                             if (mediaSummary.playing) app.nectarlink.core.MediaAction.PAUSE
                             else app.nectarlink.core.MediaAction.PLAY,
                         )
@@ -1902,7 +1890,7 @@ private fun PcAudioCardSection(
                     )
                 }
                 IconButton(
-                    onClick = { pcMedia?.pressed(app.nectarlink.core.MediaAction.NEXT) },
+                    onClick = { pcMedia?.command(pcId, mediaSummary.playerId, app.nectarlink.core.MediaAction.NEXT) },
                     modifier = Modifier.size(32.dp),
                 ) {
                     Icon(
@@ -1914,6 +1902,22 @@ private fun PcAudioCardSection(
                 }
             }
         }
+        if (deckState == null) return@Column
+        var draggingVolume by remember { mutableStateOf<Float?>(null) }
+        var lastSentVolume by remember { mutableStateOf(deckState.volume.toInt()) }
+        if (draggingVolume == null) {
+            lastSentVolume = deckState.volume.toInt()
+        }
+        var showOutputs by remember { mutableStateOf(false) }
+        val shownVolume = draggingVolume?.roundToInt() ?: deckState.volume.toInt()
+        val (streamingToPhone, hardwareOutputs, defaultOutput) = remember(deckState.outputDevices) {
+            val streaming = deckState.outputDevices.any { it.id == "nectarlink:phone_speaker" }
+            val hw = deckState.outputDevices.filterNot { it.id == "nectarlink:phone_speaker" }
+            val def = hw.firstOrNull { it.isDefault } ?: hw.firstOrNull()
+            Triple(streaming, hw, def)
+        }
+        val volumeLabel = stringResource(R.string.pc_audio_volume)
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -2081,18 +2085,17 @@ private fun PcAudioCardSection(
                 }
             }
         }
-    }
-
-    if (showOutputs && hardwareOutputs.isNotEmpty()) {
-        PcAudioOutputsDialog(
-            pcName = pcName,
-            devices = hardwareOutputs,
-            onPick = { output ->
-                (context.applicationContext as? NectarlinkApplication)?.core?.setPcAudioOutput(pcId, output)
-                showOutputs = false
-            },
-            onDismiss = { showOutputs = false },
-        )
+        if (showOutputs && hardwareOutputs.isNotEmpty()) {
+            PcAudioOutputsDialog(
+                pcName = pcName,
+                devices = hardwareOutputs,
+                onPick = { output ->
+                    (context.applicationContext as? NectarlinkApplication)?.core?.setPcAudioOutput(pcId, output)
+                    showOutputs = false
+                },
+                onDismiss = { showOutputs = false },
+            )
+        }
     }
 }
 

@@ -18,6 +18,7 @@ pub mod types {
     pub const EVENT_DEVICE: &str = "event.device";
     pub const EVENT_UPDATE: &str = "event.update";
     pub const DEVICE_RING: &str = "device.ring";
+    pub const DEVICE_RING_STOPPED: &str = "device.ring_stopped";
 
     pub const PAIR_REQUEST: &str = "pair.request";
     pub const PAIR_ACCEPT: &str = "pair.accept";
@@ -478,6 +479,14 @@ impl Battery {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Ring {
     pub on: bool,
+    /// Identifies a request across reconnects. Older peers only read `on`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub token: Option<u64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RingStopped {
+    pub token: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.service
 
+import android.app.KeyguardManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -29,6 +30,7 @@ import app.nectarlink.android.clipboard.SendActivity
 import app.nectarlink.android.core.CoreState
 import app.nectarlink.android.ui.MainActivity
 import app.nectarlink.android.ui.Preferences
+import app.nectarlink.android.ui.RingActivity
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -117,9 +119,14 @@ class ConnectionService : LifecycleService() {
             }
         }
         lifecycleScope.launch {
-            core.state.map { it.ringingFrom }.distinctUntilChanged().collect { from ->
+            core.state.map { it.ringingPeer to it.ringingFrom }.distinctUntilChanged().collect { (peer, from) ->
                 val manager = getSystemService(NotificationManager::class.java)
-                if (from != null) manager.notify(RINGING_ID, ringingNotification(from)) else manager.cancel(RINGING_ID)
+                if (peer != null) {
+                    manager.notify(RINGING_ID, ringingNotification(from.orEmpty()))
+                    if (!getSystemService(KeyguardManager::class.java).isKeyguardLocked) showRingScreen()
+                } else {
+                    manager.cancel(RINGING_ID)
+                }
             }
         }
     }
@@ -142,7 +149,10 @@ class ConnectionService : LifecycleService() {
     override fun onDestroy() {
         unregisterScreenWake()
         setDiscoveryLock(false)
-        getSystemService(NotificationManager::class.java)?.cancel(ONGOING_ID)
+        getSystemService(NotificationManager::class.java)?.let {
+            it.cancel(ONGOING_ID)
+            it.cancel(RINGING_ID)
+        }
         super.onDestroy()
     }
 
@@ -171,7 +181,11 @@ class ConnectionService : LifecycleService() {
                 if (action != Intent.ACTION_SCREEN_ON && action != Intent.ACTION_USER_PRESENT) return
                 setDiscoveryLock(true)
                 screenWake.trySend(Unit)
-                if (action == Intent.ACTION_USER_PRESENT) (application as NectarlinkApplication).core.reconnectIfOffline()
+                if (action == Intent.ACTION_USER_PRESENT) {
+                    val core = (application as NectarlinkApplication).core
+                    if (core.state.value.ringingPeer != null) showRingScreen()
+                    core.reconnectIfOffline()
+                }
             }
         }
         val filter = IntentFilter().apply {
@@ -255,7 +269,15 @@ class ConnectionService : LifecycleService() {
         return builder.build()
     }
 
+    private fun showRingScreen() {
+        // Android can restrict this background launch. The alarm notification also opens the screen.
+        runCatching { startActivity(RingActivity.intent(this)) }
+    }
+
     private fun ringingNotification(from: String): Notification {
+        val open = PendingIntent.getActivity(
+            this, RINGING_ID, RingActivity.intent(this), PendingIntent.FLAG_IMMUTABLE,
+        )
         val stop = PendingIntent.getService(
             this, 1, Intent(this, ConnectionService::class.java).setAction(ACTION_STOP_RINGING),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
@@ -264,7 +286,8 @@ class ConnectionService : LifecycleService() {
         return NotificationCompat.Builder(this, CHANNEL_RINGING)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
-            .setContentIntent(openApp())
+            .setContentIntent(open)
+            .setFullScreenIntent(open, true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setOngoing(true)

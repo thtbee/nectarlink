@@ -122,8 +122,8 @@ fun DeskScreen(
     val shiftY = (cos(minutePhase) * 6.0).roundToInt()
 
     val deckState = device.deckState
-    val pcMediaSummary by core.pcMedia.summaryFlow.collectAsStateWithLifecycle()
-    val activeSummary = pcMediaSummary?.takeIf { it.pcId == device.id } ?: pcMediaSummary
+    val summaries by core.pcMedia.summaries.collectAsStateWithLifecycle()
+    val activeSummary = summaries[device.id]
     val artBitmap = remember(activeSummary?.artwork) { activeSummary?.artwork?.asImageBitmap() }
 
     var draggingVolume by remember { mutableStateOf<Float?>(null) }
@@ -292,7 +292,7 @@ fun DeskScreen(
                                     FilledTonalIconButton(
                                         onClick = {
                                             if (activeSummary != null) {
-                                                core.pcMedia.pressed(MediaAction.PREVIOUS)
+                                                core.pcMedia.command(device.id, activeSummary.playerId, MediaAction.PREVIOUS)
                                             } else {
                                                 scope.launch { core.deckPress(device.id, "media_previous") }
                                             }
@@ -312,7 +312,9 @@ fun DeskScreen(
                                     FilledTonalIconButton(
                                         onClick = {
                                             if (activeSummary != null) {
-                                                core.pcMedia.pressed(
+                                                core.pcMedia.command(
+                                                    device.id,
+                                                    activeSummary.playerId,
                                                     if (isPlaying) MediaAction.PAUSE else MediaAction.PLAY,
                                                 )
                                             } else {
@@ -336,7 +338,7 @@ fun DeskScreen(
                                     FilledTonalIconButton(
                                         onClick = {
                                             if (activeSummary != null) {
-                                                core.pcMedia.pressed(MediaAction.NEXT)
+                                                core.pcMedia.command(device.id, activeSummary.playerId, MediaAction.NEXT)
                                             } else {
                                                 scope.launch { core.deckPress(device.id, "media_next") }
                                             }

@@ -3,7 +3,7 @@
 //! control stream, request/response correlation and the heartbeat.
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{
         Arc, Mutex, Weak,
         atomic::{AtomicU32, AtomicU64, Ordering},
@@ -168,6 +168,7 @@ pub(crate) struct Session {
     /// Who opened the connection; used to resolve duplicate connections.
     pub dialer: DeviceId,
     pub conn: Connection,
+    pub(crate) ring_command: tokio::sync::Mutex<()>,
     outbox: mpsc::Sender<Envelope>,
     pending: Mutex<HashMap<u64, oneshot::Sender<Envelope>>>,
     next_id: AtomicU64,
@@ -178,8 +179,8 @@ pub(crate) struct Session {
     usb_peers: Arc<Mutex<HashMap<DeviceId, (std::net::SocketAddr, CancellationToken)>>>,
     /// Apps whose notification icon this peer already got.
     sent_icons: crate::notifications::SentIcons,
-    /// Artwork keys sent to this device (docs/protocol/media.md).
-    sent_art: crate::notifications::SentIcons,
+    /// Serializes media snapshots and remembers the artwork queued for this device.
+    pub(crate) sent_art: tokio::sync::Mutex<HashSet<String>>,
     /// This peer asked for no notifications for now. Ends with the session: a
     /// PC that's still locked says so again when it reconnects.
     notifications_held: std::sync::atomic::AtomicBool,
@@ -218,6 +219,7 @@ impl Session {
             peer,
             dialer,
             conn,
+            ring_command: Default::default(),
             outbox,
             pending: Mutex::new(HashMap::new()),
             next_id: AtomicU64::new(1),
@@ -327,10 +329,6 @@ impl Session {
 
     pub(crate) fn hold_notifications(&self, held: bool) {
         self.notifications_held.store(held, Ordering::Relaxed);
-    }
-
-    pub(crate) fn sent_art(&self) -> std::sync::MutexGuard<'_, std::collections::HashSet<String>> {
-        self.sent_art.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     pub fn is_alive(&self) -> bool {
@@ -517,8 +515,7 @@ async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shar
 fn is_background_rpc(t: &str) -> bool {
     matches!(
         t,
-        types::DEVICE_RING
-            | types::NOTIFY_DISMISS
+        types::NOTIFY_DISMISS
             | types::NOTIFY_ACTION
             | types::PC_POWER
             | types::LINK_OPEN
@@ -595,22 +592,21 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         }
         types::DEVICE_RING => {
             let ring: Ring = env.body()?;
-            let platform = shared.platform.clone();
-            let on = ring.on;
-            let _ = tokio::task::spawn_blocking(move || {
-                if on {
-                    platform.start_ringing();
-                } else {
-                    platform.stop_ringing();
-                }
-            })
-            .await;
-            shared.emit(NodeEvent::Ring { device: peer, on: ring.on });
+            shared.receive_ring(session, ring).await;
             session.send(Envelope::empty(types::OK).reply_to(env.id)).await?;
+        }
+        types::DEVICE_RING_STOPPED => {
+            let stopped: RingStopped = env.body()?;
+            shared.clear_remote_ring(peer, Some(stopped.token));
         }
         types::PAIR_REVOKE => {
             tracing::info!(peer = %peer.short(), "peer unpaired this device");
-            shared.forget_peer(&peer).await?;
+            // Forgetting the peer closes this session before its cleanup finishes.
+            // Keep the cleanup alive when closing the session drops the reader.
+            let shared = shared.clone();
+            tokio::spawn(async move { shared.forget_peer(&peer).await })
+                .await
+                .map_err(|err| Error::Internal(err.to_string()))??;
         }
         t if t.starts_with("notify.") && crate::notifications::handle(shared, session, &env).await? => {}
         t if t.starts_with("media.") && crate::media::handle(shared, session, &env).await? => {}

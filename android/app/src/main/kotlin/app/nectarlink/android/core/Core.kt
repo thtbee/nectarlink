@@ -203,6 +203,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     /** What plays on the PCs, in Android's media controls. */
     val pcMedia = PcMedia(
         context = this.context,
+        scope = scope,
         onSeedColorChanged = { syncActiveMediaColor() },
         setPcAudio = { pc, volume, muted -> setPcAudio(pc, volume, muted) },
     ) { pc, player, action, position ->
@@ -625,6 +626,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 runScope = null
 
                 activeNode?.let { shutdownAndCloseNode(it) }
+                _state.value.devices.forEach { pcMedia.update(it.id, "", emptyList()) }
                 runCatching { Elevated.stop() }
 
                 withContext(Dispatchers.Main) {
@@ -819,9 +821,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             is Event.Transfer -> onTransfer(event.transfer)
             is Event.MediaChanged -> {
                 val pcName = _state.value.nameOf(event.id).orEmpty()
-                scope.launch(Dispatchers.Default) {
-                    pcMedia.update(event.id, pcName, event.players)
-                }
+                pcMedia.update(event.id, pcName, event.players)
             }
             is Event.NotificationPosted -> scope.launch(Dispatchers.Default) {
                 val (peer, name) = peerOf(event.id)
@@ -871,9 +871,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             // sends what plays when it's back.
             is Event.LinkChanged -> {
                 if (event.link is Link.Offline) {
-                    scope.launch(Dispatchers.Default) {
-                        pcMedia.update(event.id, "", emptyList())
-                    }
+                    pcMedia.update(event.id, "", emptyList())
                     pcSpeakerPlayer.stop()
                     if (_pcMirrorConfig.value?.pcId == event.id) {
                         _pcMirrorConfig.value = null
@@ -899,10 +897,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 wakeTimers.remove(event.id)?.cancel()
                 // Paired again later, it asks again until chosen again.
                 PcAutoStart.set(context, event.id, false)
-                scope.launch(Dispatchers.Default) {
-                    pcMedia.update(event.id, "", emptyList())
-                    pcNotificationPoster.cancelAll(event.id)
-                }
+                pcMedia.update(event.id, "", emptyList())
+                scope.launch(Dispatchers.Default) { pcNotificationPoster.cancelAll(event.id) }
                 pcSpeakerPlayer.stop()
                 if (_pcMirrorConfig.value?.pcId == event.id) {
                     _pcMirrorConfig.value = null
@@ -2542,10 +2538,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     fun unpair(id: String) = command { it.unpair(id) }
 
     /** Stops this phone ringing. */
-    fun stopRinging() {
-        ringer.stopRinging()
-        _state.update { it.copy(ringingFrom = null) }
-    }
+    fun stopRinging() = command { it.stopRinging() }
 
     /** Records whether `pcId` is currently typing on this phone without mirroring. */
     fun setKeyboardFromPc(pcId: String, on: Boolean) {

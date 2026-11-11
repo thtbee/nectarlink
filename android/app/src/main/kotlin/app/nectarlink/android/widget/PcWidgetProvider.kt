@@ -92,11 +92,14 @@ class PcWidgetProvider : AppWidgetProvider() {
                     ).show()
                 }
                 ACTION_MEDIA_PLAY_PAUSE -> {
-                    val playing = app.core.pcMedia.currentSummary?.playing == true
-                    app.core.pcMedia.pressed(if (playing) MediaAction.PAUSE else MediaAction.PLAY)
+                    val media = app.core.pcMedia
+                    val summary = media.summaries.value[pcId] ?: return
+                    media.command(pcId, summary.playerId, if (summary.playing) MediaAction.PAUSE else MediaAction.PLAY)
                 }
                 ACTION_MEDIA_NEXT -> {
-                    app.core.pcMedia.pressed(MediaAction.NEXT)
+                    val media = app.core.pcMedia
+                    val summary = media.summaries.value[pcId] ?: return
+                    media.command(pcId, summary.playerId, MediaAction.NEXT)
                 }
             }
         }
@@ -177,8 +180,7 @@ class PcWidgetProvider : AppWidgetProvider() {
 
                 val app = context.applicationContext as? NectarlinkApplication
                 val mediaSummary = if (pc.online) {
-                    app?.core?.pcMedia?.currentSummary?.takeIf { it.pcId == pc.id }
-                        ?: app?.core?.pcMedia?.currentSummary
+                    app?.core?.pcMedia?.summaries?.value?.get(pc.id)
                 } else {
                     null
                 }
@@ -240,11 +242,11 @@ class PcWidgetProvider : AppWidgetProvider() {
                     )
                     views.setOnClickPendingIntent(
                         R.id.widget_btn_media_play,
-                        actionBroadcast(context, REQ_MEDIA_PLAY_PAUSE, ACTION_MEDIA_PLAY_PAUSE, mediaSummary.pcId),
+                        actionBroadcast(context, REQ_MEDIA_PLAY_PAUSE, ACTION_MEDIA_PLAY_PAUSE, pc.id),
                     )
                     views.setOnClickPendingIntent(
                         R.id.widget_btn_media_next,
-                        actionBroadcast(context, REQ_MEDIA_NEXT, ACTION_MEDIA_NEXT, mediaSummary.pcId),
+                        actionBroadcast(context, REQ_MEDIA_NEXT, ACTION_MEDIA_NEXT, pc.id),
                     )
                 } else {
                     views.setViewVisibility(R.id.widget_media_row, View.GONE)
