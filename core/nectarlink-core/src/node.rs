@@ -182,6 +182,8 @@ pub(crate) struct Shared {
     pub(crate) away_mode: std::sync::atomic::AtomicBool,
     relay_settings: Mutex<RelaySettings>,
     relay_map: RelayMap,
+    #[cfg(target_os = "linux")]
+    relay_connector: Option<crate::direct_network::RelayConnector>,
     memory: MemoryLookup,
     /// This device's notifications, when it mirrors them (phones).
     pub notifications: Feed,
@@ -778,20 +780,21 @@ impl Shared {
                     return addrs;
                 }
                 return self
-                    .endpoint
-                    .bound_sockets()
-                    .into_iter()
-                    .find(|a| a.is_ipv4() && a.port() != 0)
-                    .map(|a| vec![SocketAddr::from(([127, 0, 0, 1], a.port()))])
+                    .bound_v4_port()
+                    .map(|port| vec![SocketAddr::from(([127, 0, 0, 1], port))])
                     .unwrap_or_default();
             }
             tokio::time::sleep(Duration::from_millis(25)).await;
         }
     }
 
-    /// Returns the local IPv4 UDP port the QUIC endpoint is bound to.
+    /// Returns the wildcard IPv4 UDP port used by the USB bridge.
     pub(crate) fn bound_v4_port(&self) -> Option<u16> {
-        self.endpoint.bound_sockets().into_iter().find(|a| a.is_ipv4() && a.port() != 0).map(|a| a.port())
+        self.endpoint
+            .bound_sockets()
+            .into_iter()
+            .find(|addr| addr.is_ipv4() && addr.ip().is_unspecified() && addr.port() != 0)
+            .map(|addr| addr.port())
     }
 
     pub(crate) fn register_usb_bridge_port(&self, port: u16, peer: DeviceId) {
@@ -1838,6 +1841,15 @@ impl Node {
             RelaySettings::default()
         });
         let relay_map = relay_settings.enabled_map(config.away_mode);
+        #[cfg(not(target_os = "linux"))]
+        let proxy = None;
+        #[cfg(target_os = "linux")]
+        let relay_connector = match config.network_interface.as_ref().filter(|name| !name.is_empty()) {
+            Some(name) => Some(crate::direct_network::RelayConnector::start(name.clone()).await?),
+            None => None,
+        };
+        #[cfg(target_os = "linux")]
+        let proxy = relay_connector.as_ref().map(|route| route.url());
         if let Err(e) = store.seal_queue_with(protector.clone()) {
             tracing::warn!(error = %e, "can't seal the send queue");
         }
@@ -1857,19 +1869,19 @@ impl Node {
             if config.port != 0 { Some(Ports { v4: config.port, v6: Some(config.port) }) } else { saved };
         // Right after a restart the previous process may still be letting go
         // of the ports, so try them for a moment before taking others.
-        let mut bound = bind_endpoint(&config, secret.clone(), wanted, relay_map.clone()).await;
+        let mut bound = bind_endpoint(&config, secret.clone(), wanted, relay_map.clone(), proxy).await;
         for _ in 0..PORT_RETRIES {
             if bound.is_ok() || wanted.is_none() {
                 break;
             }
             tokio::time::sleep(PORT_RETRY_DELAY).await;
-            bound = bind_endpoint(&config, secret.clone(), wanted, relay_map.clone()).await;
+            bound = bind_endpoint(&config, secret.clone(), wanted, relay_map.clone(), proxy).await;
         }
         let endpoint = match bound {
             Ok(endpoint) => endpoint,
             Err(e) if config.port == 0 && wanted.is_some() => {
                 tracing::info!(error = %e, "saved ports unavailable; using others");
-                bind_endpoint(&config, secret.clone(), None, relay_map.clone()).await?
+                bind_endpoint(&config, secret.clone(), None, relay_map.clone(), proxy).await?
             }
             Err(e) => return Err(e),
         };
@@ -1917,6 +1929,8 @@ impl Node {
             away_mode: std::sync::atomic::AtomicBool::new(config.away_mode),
             relay_settings: Mutex::new(relay_settings),
             relay_map,
+            #[cfg(target_os = "linux")]
+            relay_connector,
             memory,
             notifications: Feed::default(),
             notification_history: Mutex::new(Vec::new()),
@@ -2054,7 +2068,23 @@ impl Node {
     /// Checks all listed relays on demand, even while Away mode is off.
     pub async fn check_relays(&self) -> Vec<RelayProbe> {
         let servers = lock(&self.shared.relay_settings).servers();
-        relays::probe_servers(&self.shared.endpoint, servers).await
+        #[cfg(not(target_os = "linux"))]
+        let proxy = None;
+        #[cfg(target_os = "linux")]
+        let proxy = self.shared.relay_connector.as_ref().map(|route| route.url());
+        relays::probe_servers(&self.shared.endpoint, servers, proxy).await
+    }
+
+    /// Changes the relay route and retires TCP connections on the old route.
+    /// Returns false if the relay connector needs to be enabled on restart.
+    #[cfg(target_os = "linux")]
+    pub fn set_relay_interface(&self, name: &str) -> Result<bool> {
+        crate::direct_network::validate_interface(name)?;
+        let Some(connector) = &self.shared.relay_connector else { return Ok(false) };
+        connector.select(name);
+        let shared = self.shared.clone();
+        self.shared.runtime.spawn(async move { shared.endpoint.network_change().await });
+        Ok(true)
     }
 
     /// Enables or disables connecting over mobile data / non-LAN paths at runtime.
@@ -2103,6 +2133,10 @@ impl Node {
             tracing::warn!(error = %e, "router shutdown failed");
         }
         self.shared.endpoint.close().await;
+        #[cfg(target_os = "linux")]
+        if let Some(connector) = &self.shared.relay_connector {
+            connector.close();
+        }
     }
 
     pub fn device_id(&self) -> DeviceId {
@@ -4415,8 +4449,8 @@ impl Ports {
     }
 
     fn of(bound: &[SocketAddr]) -> Option<Ports> {
-        let v4 = bound.iter().find(|a| a.is_ipv4())?.port();
-        let v6 = bound.iter().find(|a| a.is_ipv6()).map(SocketAddr::port);
+        let v4 = bound.iter().find(|a| a.is_ipv4() && a.ip().is_unspecified())?.port();
+        let v6 = bound.iter().find(|a| a.is_ipv6() && a.ip().is_unspecified()).map(SocketAddr::port);
         Some(Ports { v4, v6 })
     }
 
@@ -4437,6 +4471,7 @@ async fn bind_endpoint(
     secret: iroh::SecretKey,
     ports: Option<Ports>,
     relay_map: RelayMap,
+    proxy: Option<&url::Url>,
 ) -> Result<Endpoint> {
     let tuning = config.transport;
     let controller: std::sync::Arc<dyn iroh::endpoint::ControllerFactory + Send + Sync> = match tuning
@@ -4470,18 +4505,24 @@ async fn bind_endpoint(
         // Keep a relay transport even in LAN mode, so it can be enabled later.
         .relay_mode(RelayMode::Custom(relay_map))
         .transport_config(transport);
+    if let Some(proxy) = proxy {
+        builder = builder.proxy_url(proxy.clone());
+    }
+    if !config.away_mode || ports.is_some() {
+        builder = builder.clear_ip_transports();
+    }
+    #[cfg(target_os = "linux")]
+    if let Some(name) = config.network_interface.as_deref().filter(|name| !name.is_empty()) {
+        builder = crate::direct_network::bind_lan_interface(builder, name, config.away_mode)?;
+    }
     if !config.away_mode {
         let v4_port = ports.map_or(0, |p| p.v4);
         builder = builder
             .portmapper_config(PortmapperConfig::Disabled)
-            .clear_ip_transports()
             .bind_addr(SocketAddr::from(([0, 0, 0, 0], v4_port)))
             .map_err(crate::error::net)?;
     } else if let Some(ports) = ports {
-        builder = builder
-            .clear_ip_transports()
-            .bind_addr(SocketAddr::from(([0, 0, 0, 0], ports.v4)))
-            .map_err(crate::error::net)?;
+        builder = builder.bind_addr(SocketAddr::from(([0, 0, 0, 0], ports.v4))).map_err(crate::error::net)?;
         if let Some(v6) = ports.v6 {
             builder = builder.bind_addr(SocketAddr::from(([0u16; 8], v6))).map_err(crate::error::net)?;
         }

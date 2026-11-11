@@ -8813,6 +8813,33 @@ What it needs
         <translation>离开 Wi-Fi 时通过 LTE/5G 或中继保持连接。</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3347"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3812"/>
+        <source>Network interface</source>
+        <translation>网络接口</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3348"/>
+        <source>Local connections switch after a restart. Relays switch right away if the app started with an interface selected.</source>
+        <translation>本地连接会在应用重启后切换。如果启动应用时已选定网络接口，中继连接会立即切换。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3352"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3819"/>
+        <source>System default</source>
+        <translation>系统默认</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3818"/>
+        <source>%1 · Direct (without a VPN)</source>
+        <translation>%1 · 直连（不经 VPN）</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3842"/>
+        <source>Could not use this network interface.</source>
+        <translation>无法使用此网络接口。</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3346"/>
         <source>Iroh relay servers</source>
         <translation>iroh 中继服务器</translation>

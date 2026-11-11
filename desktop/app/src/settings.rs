@@ -612,6 +612,9 @@ pub struct Settings {
     /// Allow staying connected over mobile data (LTE/5G) / relay when away from Wi-Fi.
     #[serde(default, alias = "away_mode")]
     pub away_mode: bool,
+    /// Interface selected for connections on Linux. Empty uses system routing.
+    #[serde(default)]
+    pub network_interface: String,
     /// Whether the first-run setup walkthrough has been completed or skipped.
     #[serde(default, alias = "walkthrough_completed")]
     pub walkthrough_completed: bool,
@@ -732,6 +735,7 @@ impl Default for Settings {
             share_pc_storage: false,
             forward_pc_notifications_to_phone: false,
             away_mode: false,
+            network_interface: String::new(),
             walkthrough_completed: false,
             walkthrough_step: 0,
             whats_new_dismissed: false,
@@ -1010,6 +1014,7 @@ mod tests {
             share_pc_storage: true,
             forward_pc_notifications_to_phone: true,
             away_mode: true,
+            network_interface: "wlan0".into(),
             walkthrough_completed: true,
             walkthrough_step: 4,
             whats_new_dismissed: true,

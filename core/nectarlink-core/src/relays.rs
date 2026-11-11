@@ -195,14 +195,22 @@ fn parse_address(input: &str) -> Result<RelayUrl, RelayEditError> {
 }
 
 /// Run a relay handshake and time a Ping/Pong with an ephemeral endpoint identity.
-pub(crate) async fn probe_servers(endpoint: &Endpoint, servers: Vec<RelayServer>) -> Vec<RelayProbe> {
+pub(crate) async fn probe_servers(
+    endpoint: &Endpoint,
+    servers: Vec<RelayServer>,
+    proxy: Option<&Url>,
+) -> Vec<RelayProbe> {
     let Ok(dns) = endpoint.dns_resolver() else { return Vec::new() };
     let tls = endpoint.tls_config();
     stream::iter(servers)
         .map(|server| {
             let client = server.url.parse::<RelayUrl>().ok().map(|url| {
-                ClientBuilder::new(url, iroh::SecretKey::generate(), dns.clone())
-                    .tls_client_config(tls.clone())
+                let client = ClientBuilder::new(url, iroh::SecretKey::generate(), dns.clone())
+                    .tls_client_config(tls.clone());
+                match proxy {
+                    Some(url) => client.proxy_url(url.clone()),
+                    None => client,
+                }
             });
             async move {
                 let result = tokio::time::timeout(PROBE_TIMEOUT, async {

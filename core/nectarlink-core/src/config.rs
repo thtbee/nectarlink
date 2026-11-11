@@ -20,6 +20,9 @@ pub struct NodeConfig {
     /// Allow connections through relay servers ("Reach my phone away from
     /// home"). Off by default: LAN only.
     pub away_mode: bool,
+    /// Enable relay interface selection on Linux. An empty name uses system routing.
+    #[cfg(target_os = "linux")]
+    pub network_interface: Option<String>,
     /// Discover and announce on the local network via mDNS.
     pub lan_discovery: bool,
     /// Fixed UDP port to listen on (0 = any). A fixed port makes firewall
@@ -132,6 +135,8 @@ impl NodeConfig {
             app_version: app_version.into(),
             power: PowerLevel::NotApplicable,
             away_mode: false,
+            #[cfg(target_os = "linux")]
+            network_interface: None,
             lan_discovery: true,
             port: 0,
             key_protector: None,

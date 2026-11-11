@@ -8519,6 +8519,33 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3347"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3812"/>
+        <source>Network interface</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3348"/>
+        <source>Local connections switch after a restart. Relays switch right away if the app started with an interface selected.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3352"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3819"/>
+        <source>System default</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3818"/>
+        <source>%1 · Direct (without a VPN)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3842"/>
+        <source>Could not use this network interface.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="3346"/>
         <source>Iroh relay servers</source>
         <translation type="unfinished"></translation>

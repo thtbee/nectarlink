@@ -135,6 +135,7 @@ pub mod qobject {
         #[qproperty(bool, forward_pc_notifications_to_phone)]
         /// Stay connected over mobile data (LTE/5G) or relay when away from Wi-Fi.
         #[qproperty(bool, away_mode)]
+        #[qproperty(QString, network_interface)]
         /// Alias for `start_with_windows` used by the walkthrough and settings bindings.
         #[qproperty(bool, start_at_login)]
         /// Whether the first-run setup walkthrough has been completed or skipped.
@@ -370,6 +371,7 @@ pub struct PreferencesRust {
     share_pc_storage: bool,
     forward_pc_notifications_to_phone: bool,
     away_mode: bool,
+    network_interface: QString,
     start_at_login: bool,
     walkthrough_completed: bool,
     walkthrough_step: i32,
@@ -473,6 +475,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_share_pc_storage(settings.share_pc_storage);
         self.as_mut().set_forward_pc_notifications_to_phone(settings.forward_pc_notifications_to_phone);
         self.as_mut().set_away_mode(settings.away_mode);
+        self.as_mut().set_network_interface(QString::from(&settings.network_interface));
         self.as_mut().set_walkthrough_completed(settings.walkthrough_completed);
         self.as_mut().set_walkthrough_step(i32::from(settings.walkthrough_step.min(6)));
         self.as_mut().set_whats_new_dismissed(settings.whats_new_dismissed);
@@ -797,6 +800,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
                 p.save();
             })
             .release();
+        self.as_mut().on_network_interface_changed(|p| p.save()).release();
         self.as_mut().on_walkthrough_completed_changed(|p| p.save()).release();
         self.as_mut()
             .on_walkthrough_step_changed(|mut p| {
@@ -1179,6 +1183,7 @@ impl qobject::Preferences {
             share_pc_storage: p.share_pc_storage,
             forward_pc_notifications_to_phone: p.forward_pc_notifications_to_phone,
             away_mode: p.away_mode,
+            network_interface: p.network_interface.to_string(),
             walkthrough_completed: p.walkthrough_completed,
             walkthrough_step: p.walkthrough_step.clamp(0, 6) as u8,
             whats_new_dismissed: p.whats_new_dismissed,

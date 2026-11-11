@@ -8800,6 +8800,33 @@ O que precisa
         <translation>Mantenha a conexão por LTE/5G ou por retransmissor quando estiver fora do Wi-Fi.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3347"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3812"/>
+        <source>Network interface</source>
+        <translation>Interface de rede</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3348"/>
+        <source>Local connections switch after a restart. Relays switch right away if the app started with an interface selected.</source>
+        <translation>As conexões locais mudam após reiniciar o aplicativo. As conexões por relay mudam imediatamente se já havia uma interface selecionada ao iniciar o aplicativo.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3352"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3819"/>
+        <source>System default</source>
+        <translation>Padrão do sistema</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3818"/>
+        <source>%1 · Direct (without a VPN)</source>
+        <translation>%1 · Direta (sem VPN)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3842"/>
+        <source>Could not use this network interface.</source>
+        <translation>Não foi possível usar esta interface de rede.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3346"/>
         <source>Iroh relay servers</source>
         <translation>Servidores relay do iroh</translation>
