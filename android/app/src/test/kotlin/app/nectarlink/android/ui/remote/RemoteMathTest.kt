@@ -300,4 +300,52 @@ class RemoteMathTest {
             ),
         )
     }
+
+    // A 16:9 picture pillarboxed in a 2000 x 900 container: 1600 x 900 at x = 200.
+    private val zoomViewport = PcMirrorMath.computeVideoViewport(2000f, 900f, 16f / 9f)
+
+    @Test
+    fun pinchKeepsThePointUnderTheFingersWhereItWas() {
+        val focusX = 900f
+        val focusY = 300f
+        val before = PcMirrorMath.mapTouchToNormalized(focusX, focusY, zoomViewport)!!
+        val zoom = PcMirrorMath.pinch(PcZoom(), zoomViewport, focusX, focusY, factor = 2f, panX = 0f, panY = 0f)
+        assertEquals(2f, zoom.scale, 0.0001f)
+        val (ux, uy) = PcMirrorMath.unzoom(focusX, focusY, zoomViewport, zoom)
+        val after = PcMirrorMath.mapTouchToNormalized(ux, uy, zoomViewport)!!
+        assertEquals(before.first, after.first, 0.0001f)
+        assertEquals(before.second, after.second, 0.0001f)
+    }
+
+    @Test
+    fun aZoomedPictureAlwaysFillsItsFrame() {
+        // Zoomed at the top-left corner, then dragged far right and down: it stops at the edge.
+        var zoom = PcMirrorMath.pinch(PcZoom(), zoomViewport, 200f, 0f, factor = 3f, panX = 0f, panY = 0f)
+        zoom = PcMirrorMath.pinch(zoom, zoomViewport, 600f, 400f, factor = 1f, panX = 5000f, panY = 5000f)
+        assertEquals(0f, zoom.x, 0.0001f)
+        assertEquals(0f, zoom.y, 0.0001f)
+        // The corners of the frame still land inside the PC's screen.
+        val (lx, ty) = PcMirrorMath.unzoom(zoomViewport.left, zoomViewport.top, zoomViewport, zoom)
+        val (rx, by) = PcMirrorMath.unzoom(zoomViewport.right, zoomViewport.bottom, zoomViewport, zoom)
+        assertTrue(lx >= zoomViewport.left - 0.01f && rx <= zoomViewport.right + 0.01f)
+        assertTrue(ty >= zoomViewport.top - 0.01f && by <= zoomViewport.bottom + 0.01f)
+        // Dragged the other way, it stops at the far edge.
+        zoom = PcMirrorMath.pinch(zoom, zoomViewport, 600f, 400f, factor = 1f, panX = -9000f, panY = -9000f)
+        assertEquals(1f - zoom.scale, zoom.x, 0.0001f)
+        assertEquals(1f - zoom.scale, zoom.y, 0.0001f)
+    }
+
+    @Test
+    fun zoomStaysWithinLimitsAndSnapsBackToTheWholeScreen() {
+        val far = PcMirrorMath.pinch(PcZoom(), zoomViewport, 1000f, 450f, factor = 50f, panX = 0f, panY = 0f)
+        assertEquals(PcMirrorMath.MAX_ZOOM, far.scale, 0.0001f)
+        val almost = PcMirrorMath.pinch(PcZoom(scale = 1.5f), zoomViewport, 1000f, 450f, factor = 0.68f, panX = 0f, panY = 0f)
+        assertEquals(PcZoom(), almost)
+        assertFalse(almost.zoomed)
+        // Not zoomed, a touch maps as it always did.
+        assertEquals(123f to 456f, PcMirrorMath.unzoom(123f, 456f, zoomViewport, PcZoom()))
+        // A broken factor (no movement between events) changes nothing.
+        val zoom = PcZoom(scale = 2f, x = -0.5f, y = -0.25f)
+        assertEquals(zoom, PcMirrorMath.pinch(zoom, zoomViewport, 1000f, 450f, factor = Float.NaN, panX = 0f, panY = 0f))
+    }
 }
