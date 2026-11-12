@@ -394,7 +394,7 @@
     <string name="pc_mirror_task_view">Görev Görünümü</string>
     <string name="pc_mirror_keyboard">Klavye</string>
     <string name="pc_mirror_hide_keyboard">Tuşları gizle</string>
-    <string name="pc_mirror_send_text">Gönder</string>
+    <string name="pc_mirror_enter">Enter</string>
     <string name="pc_mirror_backspace">Backspace</string>
     <string name="pc_mirror_quality_720p">720p</string>
     <string name="pc_mirror_quality_1080p">1080p</string>
