@@ -30,6 +30,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculateCentroidSize
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,11 +50,14 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -63,6 +70,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -79,11 +88,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.layout
@@ -98,11 +110,15 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -146,6 +162,24 @@ data class VideoViewportRect(
     fun contains(x: Float, y: Float): Boolean =
         x >= left && x <= right && y >= top && y <= bottom
 }
+
+/**
+ * How far the PC's screen is zoomed in on the phone: [scale] (1 is the whole
+ * screen) and the picture's shift, as a fraction of the viewport's size, so it
+ * keeps its place when the viewport changes size (rotating, full screen).
+ */
+data class PcZoom(val scale: Float = 1f, val x: Float = 0f, val y: Float = 0f) {
+    val zoomed: Boolean get() = scale > 1f
+}
+
+/** What a two-finger touch on the PC's screen turns out to be. */
+private enum class TwoFingerKind { Undecided, Scroll, Zoom }
+
+/**
+ * How long a touch waits before pressing on the PC, so a second finger landing
+ * (to zoom or scroll) doesn't click first. Moving sooner presses at once.
+ */
+private const val PRESS_HOLD_MS = 90L
 
 /**
  * Pure coordinate and orientation math for the PC screen viewer (`PcMirrorView`),
@@ -230,6 +264,61 @@ object PcMirrorMath {
     ): Pair<Float, Float>? {
         val viewport = computeVideoViewport(containerWidth, containerHeight, videoAspect)
         return mapTouchToNormalized(touchX, touchY, viewport, clampOutside)
+    }
+
+    /** The most the PC's screen zooms in. */
+    const val MAX_ZOOM = 5f
+
+    /** Below this a zoom snaps back to the whole screen. */
+    private const val ZOOM_SNAP = 1.03f
+
+    /**
+     * [zoom] after a pinch: scaled by [factor] around the fingers' midpoint
+     * ([focusX], [focusY], in container pixels) and moved by ([panX], [panY]).
+     * What's under the fingers stays under them, and the picture always fills
+     * [viewport], so no black shows at its edges.
+     */
+    fun pinch(
+        zoom: PcZoom,
+        viewport: VideoViewportRect,
+        focusX: Float,
+        focusY: Float,
+        factor: Float,
+        panX: Float,
+        panY: Float,
+    ): PcZoom {
+        val vw = viewport.width.coerceAtLeast(1f)
+        val vh = viewport.height.coerceAtLeast(1f)
+        val step = if (factor.isFinite() && factor > 0f) factor else 1f
+        val scale = (zoom.scale * step).coerceIn(1f, MAX_ZOOM)
+        if (scale < ZOOM_SNAP) return PcZoom()
+        fun shift(focus: Float, start: Float, size: Float, old: Float, pan: Float): Float {
+            // The picture's point under the fingers before the pinch...
+            val under = (focus - start - old * size) / zoom.scale
+            // ...stays under them after it.
+            val moved = focus + pan - start - under * scale
+            return (moved / size).coerceIn(1f - scale, 0f)
+        }
+        return PcZoom(
+            scale = scale,
+            x = shift(focusX, viewport.left, vw, zoom.x, panX),
+            y = shift(focusY, viewport.top, vh, zoom.y, panY),
+        )
+    }
+
+    /**
+     * Where a touch at ([touchX], [touchY]) lands on the unzoomed picture, in
+     * container pixels, so [mapTouchToNormalized] finds the PC's point under
+     * the finger.
+     */
+    fun unzoom(touchX: Float, touchY: Float, viewport: VideoViewportRect, zoom: PcZoom): Pair<Float, Float> {
+        if (!zoom.zoomed) return touchX to touchY
+        val vw = viewport.width.coerceAtLeast(1f)
+        val vh = viewport.height.coerceAtLeast(1f)
+        return Pair(
+            viewport.left + (touchX - viewport.left - zoom.x * vw) / zoom.scale,
+            viewport.top + (touchY - viewport.top - zoom.y * vh) / zoom.scale,
+        )
     }
 
     fun isPhysicalLandscape(degrees: Int): Boolean =
@@ -324,56 +413,115 @@ private fun isSystemAutoRotateOn(context: Context): Boolean =
 /** How wide the space beside the picture has to be to hold the controls. */
 private val MIN_RAIL_WIDTH = 72.dp
 
-/** A column of full-screen controls in the space beside the picture. */
+/** The tallest and shortest a full-screen control gets. */
+private val RAIL_TILE_MAX = 56.dp
+private val RAIL_TILE_MIN = 40.dp
+private val RAIL_TILE_MAX_WIDTH = 132.dp
+private val RAIL_GAP = 6.dp
+private val RAIL_SHAPE = RoundedCornerShape(12.dp)
+
+/**
+ * A column of full-screen controls in the space beside the picture. Both
+ * columns share one tile size ([tiles] is the longer one's count), so the two
+ * sides line up and every control has the same shape.
+ */
 @Composable
-private fun FullScreenRail(width: Dp, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(
+private fun FullScreenRail(
+    width: Dp,
+    tiles: Int,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.(tileHeight: Dp) -> Unit,
+) {
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxHeight()
             .width(width)
             // Taps between the buttons stay here instead of reaching the picture.
-            .pointerInput(Unit) { detectTapGestures { } }
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 6.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        content = content,
-    )
+            .pointerInput(Unit) { detectTapGestures { } },
+    ) {
+        val vertical = 12.dp
+        val fits = (maxHeight - vertical * 2 - RAIL_GAP * (tiles - 1)) / tiles.coerceAtLeast(1)
+        val tileHeight = fits.coerceIn(RAIL_TILE_MIN, RAIL_TILE_MAX)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 6.dp, vertical = vertical),
+            verticalArrangement = Arrangement.spacedBy(RAIL_GAP, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            content(tileHeight)
+        }
+    }
 }
 
 @Composable
 private fun RailButton(
     label: String,
+    height: Dp,
     selected: Boolean = false,
     description: String = label,
     onClick: () -> Unit,
 ) {
-    TextButton(
+    RailTile(height = height, selected = selected, description = description, onClick = onClick) {
+        // One word stays whole on one line and shrinks to fit; two words may
+        // take two lines, broken between them.
+        val words = label.trim().split(' ').count { it.isNotEmpty() }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            textAlign = TextAlign.Center,
+            maxLines = if (words > 1) 2 else 1,
+            softWrap = words > 1,
+            autoSize = TextAutoSize.StepBased(
+                minFontSize = 9.sp,
+                maxFontSize = MaterialTheme.typography.labelLarge.fontSize,
+                stepSize = 0.5.sp,
+            ),
+        )
+    }
+}
+
+/** A button label on one line that shrinks to fit, rather than cut a word off, on narrow phones or with large fonts. */
+@Composable
+private fun FitLabel(text: String) {
+    val size = LocalTextStyle.current.fontSize.takeIf { it.isSpecified } ?: 14.sp
+    Text(
+        text,
+        maxLines = 1,
+        softWrap = false,
+        autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = size, stepSize = 0.5.sp),
+    )
+}
+
+/** The one shape and size every full-screen control has. */
+@Composable
+private fun RailTile(
+    height: Dp,
+    selected: Boolean,
+    description: String,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
-        colors = ButtonDefaults.textButtonColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-            } else {
-                Color.White.copy(alpha = 0.08f)
-            },
-            contentColor = if (selected) MaterialTheme.colorScheme.primary else Color.White,
-        ),
-        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+        shape = RAIL_SHAPE,
+        // Selected reads like the bar's tonal Enter button: light on the black.
+        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.White.copy(alpha = 0.08f),
+        contentColor = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else Color.White,
         modifier = Modifier
+            // A wide black margin (a tablet, a narrow PC screen) doesn't stretch them into slabs.
+            .widthIn(max = RAIL_TILE_MAX_WIDTH)
             .fillMaxWidth()
-            .heightIn(min = 44.dp)
+            .height(height)
             .semantics {
                 contentDescription = description
                 this.selected = selected
             },
     ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-        )
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 6.dp)) {
+            content()
+        }
     }
 }
 
@@ -407,7 +555,11 @@ fun PcMirrorView(
     // Full screen only: the screen moves the pointer like a touchpad, for precision.
     var touchpadMode by rememberSaveable { mutableStateOf(false) }
     val touchpadActive = isFullScreen && touchpadMode && touchpadSensitivity != null && watch == null
-    var typedText by rememberSaveable { mutableStateOf("") }
+    var typed by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
+    // Pinched in on the PC's screen. Touchpad mode moves the PC's own pointer,
+    // so it shows the whole screen.
+    var zoom by remember(pcId) { mutableStateOf(PcZoom()) }
+    LaunchedEffect(touchpadActive) { if (touchpadActive) zoom = PcZoom() }
     var surface by remember { mutableStateOf<Surface?>(null) }
     var hasRenderedFrame by remember(pcId) { mutableStateOf(false) }
     var reconnectTick by remember { mutableIntStateOf(0) }
@@ -900,34 +1052,54 @@ fun PcMirrorView(
                             val ch = size.height.toFloat().coerceAtLeast(1f)
                             val viewport = PcMirrorMath.computeVideoViewport(cw, ch, currentAspect)
 
+                            // The PC's point under a finger, through the zoom.
+                            fun pcPoint(at: Offset): Pair<Float, Float>? {
+                                val (x, y) = PcMirrorMath.unzoom(at.x, at.y, viewport, zoom)
+                                return PcMirrorMath.mapTouchToNormalized(x, y, viewport, clampOutside = true)
+                            }
+
                             val first = awaitFirstDown(requireUnconsumed = false)
                             val downTime = System.currentTimeMillis()
                             val downPos = first.position
-                            val initialMapped = PcMirrorMath.mapTouchToNormalized(
-                                touchX = downPos.x,
-                                touchY = downPos.y,
-                                viewport = viewport,
-                                clampOutside = false,
-                            )
+                            // A touch on the black bars beside the picture doesn't click its edge.
+                            val initialMapped = if (viewport.contains(downPos.x, downPos.y)) pcPoint(downPos) else null
                             val touchStartedInVideo = initialMapped != null
                             var lastX = initialMapped?.first ?: 0.5f
                             var lastY = initialMapped?.second ?: 0.5f
                             var twoFingerGesture = false
                             var didTwoFingerScroll = false
+                            var didPinch = false
                             var maxPointers = 1
                             var totalMoved = 0f
                             var scrollAccumX = 0f
                             var scrollAccumY = 0f
+                            // Two fingers: undecided until they spread or close (zoom) or
+                            // move together (scroll) past the touch slop.
+                            var twoFingerKind = TwoFingerKind.Undecided
+                            var spreadAtStart = 0f
+                            var centroidAtStart = Offset.Zero
 
-                            if (touchStartedInVideo) {
-                                core.sendPcMirrorInput(
-                                    pcId,
-                                    MirrorInputEvent.Touch(TouchPhase.DOWN, lastX, lastY),
-                                )
+                            // The press waits a moment, so a second finger landing to zoom or
+                            // scroll never clicks the PC first. Moving or holding sends it.
+                            var downSent = false
+                            fun sendDown() {
+                                if (downSent || !touchStartedInVideo) return
+                                downSent = true
+                                core.sendPcMirrorInput(pcId, MirrorInputEvent.Touch(TouchPhase.DOWN, lastX, lastY))
                             }
 
                             while (true) {
-                                val event = awaitPointerEvent()
+                                val holding = touchStartedInVideo && !downSent && !twoFingerGesture
+                                val event = if (holding) {
+                                    val waited = System.currentTimeMillis() - downTime
+                                    withTimeoutOrNull((PRESS_HOLD_MS - waited).coerceAtLeast(1L)) { awaitPointerEvent() }
+                                } else {
+                                    awaitPointerEvent()
+                                }
+                                if (event == null) {
+                                    sendDown()
+                                    continue
+                                }
                                 val changes = event.changes
                                 var pressedCount = 0
                                 var primaryChange: androidx.compose.ui.input.pointer.PointerInputChange? = null
@@ -943,6 +1115,7 @@ fun PcMirrorView(
                                 }
                                 if (pressedCount == 0 || primaryChange == null) {
                                     if (touchStartedInVideo && !twoFingerGesture) {
+                                        sendDown()
                                         core.sendPcMirrorInput(
                                             pcId,
                                             MirrorInputEvent.Touch(TouchPhase.UP, lastX, lastY),
@@ -953,29 +1126,62 @@ fun PcMirrorView(
                                 if (pressedCount >= 2) {
                                     if (!twoFingerGesture) {
                                         twoFingerGesture = true
-                                        if (touchStartedInVideo) {
+                                        // Only a press already sent (a drag) needs letting go.
+                                        if (downSent) {
                                             core.sendPcMirrorInput(
                                                 pcId,
                                                 MirrorInputEvent.Touch(TouchPhase.UP, lastX, lastY),
                                             )
                                         }
+                                        spreadAtStart = event.calculateCentroidSize()
+                                        centroidAtStart = event.calculateCentroid()
                                     }
-                                    val prev = primaryChange.previousPosition
-                                    val cur = primaryChange.position
-                                    val d = primaryChange.positionChange()
-                                    totalMoved += hypot(d.x, d.y)
-                                    scrollAccumY += (prev.y - cur.y) / scrollStepPx
-                                    scrollAccumX += (cur.x - prev.x) / scrollStepPx
-                                    if (abs(scrollAccumX) > 0.05f || abs(scrollAccumY) > 0.05f) {
-                                        didTwoFingerScroll = true
-                                        val sendDx = scrollAccumX.coerceIn(-10f, 10f)
-                                        val sendDy = scrollAccumY.coerceIn(-10f, 10f)
-                                        scrollAccumX = 0f
-                                        scrollAccumY = 0f
-                                        core.sendPcMirrorInput(
-                                            pcId,
-                                            MirrorInputEvent.Scroll(lastX, lastY, sendDx, sendDy),
-                                        )
+                                    if (twoFingerKind == TwoFingerKind.Undecided) {
+                                        val spread = event.calculateCentroidSize()
+                                        val centroid = event.calculateCentroid()
+                                        twoFingerKind = when {
+                                            abs(spread - spreadAtStart) > tapSlop -> TwoFingerKind.Zoom
+                                            (centroid - centroidAtStart).getDistance() > tapSlop -> TwoFingerKind.Scroll
+                                            else -> TwoFingerKind.Undecided
+                                        }
+                                    }
+                                    when (twoFingerKind) {
+                                        TwoFingerKind.Zoom -> {
+                                            val centroid = event.calculateCentroid()
+                                            val pan = event.calculatePan()
+                                            if (centroid.isSpecified) {
+                                                didPinch = true
+                                                zoom = PcMirrorMath.pinch(
+                                                    zoom = zoom,
+                                                    viewport = viewport,
+                                                    focusX = centroid.x - pan.x,
+                                                    focusY = centroid.y - pan.y,
+                                                    factor = event.calculateZoom(),
+                                                    panX = pan.x,
+                                                    panY = pan.y,
+                                                )
+                                            }
+                                        }
+                                        TwoFingerKind.Scroll -> {
+                                            val prev = primaryChange.previousPosition
+                                            val cur = primaryChange.position
+                                            val d = primaryChange.positionChange()
+                                            totalMoved += hypot(d.x, d.y)
+                                            scrollAccumY += (prev.y - cur.y) / scrollStepPx
+                                            scrollAccumX += (cur.x - prev.x) / scrollStepPx
+                                            if (abs(scrollAccumX) > 0.05f || abs(scrollAccumY) > 0.05f) {
+                                                didTwoFingerScroll = true
+                                                val sendDx = scrollAccumX.coerceIn(-10f, 10f)
+                                                val sendDy = scrollAccumY.coerceIn(-10f, 10f)
+                                                scrollAccumX = 0f
+                                                scrollAccumY = 0f
+                                                core.sendPcMirrorInput(
+                                                    pcId,
+                                                    MirrorInputEvent.Scroll(lastX, lastY, sendDx, sendDy),
+                                                )
+                                            }
+                                        }
+                                        TwoFingerKind.Undecided -> Unit
                                     }
                                     for (i in 0 until changes.size) {
                                         changes[i].consume()
@@ -984,12 +1190,9 @@ fun PcMirrorView(
                                     val cur = primaryChange.position
                                     val d = primaryChange.positionChange()
                                     totalMoved += hypot(d.x, d.y)
-                                    val mapped = PcMirrorMath.mapTouchToNormalized(
-                                        touchX = cur.x,
-                                        touchY = cur.y,
-                                        viewport = viewport,
-                                        clampOutside = true,
-                                    )
+                                    // A drag starts where the finger went down.
+                                    if (totalMoved > tapSlop) sendDown()
+                                    val mapped = if (downSent) pcPoint(cur) else null
                                     if (mapped != null) {
                                         val (nx, ny) = mapped
                                         if (abs(nx - lastX) > 0.002f || abs(ny - lastY) > 0.002f) {
@@ -1009,7 +1212,9 @@ fun PcMirrorView(
 
                             val upTime = System.currentTimeMillis()
                             val elapsed = upTime - downTime
-                            if (twoFingerGesture && !didTwoFingerScroll && elapsed <= tapTimeoutMs && touchStartedInVideo) {
+                            if (twoFingerGesture && !didTwoFingerScroll && !didPinch && elapsed <= tapTimeoutMs &&
+                                touchStartedInVideo
+                            ) {
                                 // Two-finger quick tap performs a right click at the tapped PC location.
                                 core.remoteButton(pcId, "right", "click")
                                 lastTapUpTimeMs = 0L
@@ -1017,7 +1222,11 @@ fun PcMirrorView(
                                 val isDoubleTap =
                                     (upTime - lastTapUpTimeMs) <= doubleTapWindowMs &&
                                         hypot(downPos.x - lastTapPos.x, downPos.y - lastTapPos.y) <= tapSlop * 3f
-                                if (isDoubleTap && !currentIsFullScreen) {
+                                if (isDoubleTap && zoom.zoomed) {
+                                    // Zoomed in, a double tap shows the whole screen again.
+                                    lastTapUpTimeMs = 0L
+                                    zoom = PcZoom()
+                                } else if (isDoubleTap && !currentIsFullScreen) {
                                     lastTapUpTimeMs = 0L
                                     enterFullScreen(fromButton = true)
                                 } else {
@@ -1047,7 +1256,15 @@ fun PcMirrorView(
                                 placeable.place(vp.left.roundToInt(), vp.top.roundToInt())
                             }
                         }
-                        .clip(innerShape),
+                        .clip(innerShape)
+                        // Zoomed, inside the picture's own frame: the bars beside it stay put.
+                        .graphicsLayer {
+                            transformOrigin = TransformOrigin(0f, 0f)
+                            scaleX = zoom.scale
+                            scaleY = zoom.scale
+                            translationX = zoom.x * size.width
+                            translationY = zoom.y * size.height
+                        },
                 ) {
                     AndroidView(
                         factory = { ctx ->
@@ -1137,33 +1354,31 @@ fun PcMirrorView(
             // Landscape full screen leaves black space beside the picture: the controls
             // live there, always shown, and never cover the PC's screen.
             if (useRails) {
-                FullScreenRail(width = railWidth, modifier = Modifier.align(Alignment.CenterStart)) {
+                // One tile size for both sides, from the longer one.
+                val tiles = if (touchpadSensitivity != null) 6 else 5
+                FullScreenRail(width = railWidth, tiles = tiles, modifier = Modifier.align(Alignment.CenterStart)) { h ->
                     if (touchpadSensitivity != null) {
-                        RailButton(touchpadLabel, selected = touchpadMode) { touchpadMode = !touchpadMode }
+                        RailButton(touchpadLabel, h, selected = touchpadMode) { touchpadMode = !touchpadMode }
                     }
-                    RailButton(rightClickLabel) { core.remoteButton(pcId, "right", "click", onStatus) }
-                    RailButton(keyboardLabel, selected = showKeyboardBar) { showKeyboardBar = !showKeyboardBar }
-                    RailButton(escLabel, description = escDescription) { core.remoteKey(pcId, "escape", onStatus = onStatus) }
-                    RailButton(copyLabel) { core.remoteKey(pcId, "copy", onStatus = onStatus) }
-                    RailButton(pasteLabel) { core.remoteKey(pcId, "paste", onStatus = onStatus) }
+                    RailButton(rightClickLabel, h) { core.remoteButton(pcId, "right", "click", onStatus) }
+                    RailButton(keyboardLabel, h, selected = showKeyboardBar) { showKeyboardBar = !showKeyboardBar }
+                    RailButton(escLabel, h, description = escDescription) { core.remoteKey(pcId, "escape", onStatus = onStatus) }
+                    RailButton(copyLabel, h) { core.remoteKey(pcId, "copy", onStatus = onStatus) }
+                    RailButton(pasteLabel, h) { core.remoteKey(pcId, "paste", onStatus = onStatus) }
                 }
-                FullScreenRail(width = railWidth, modifier = Modifier.align(Alignment.CenterEnd)) {
-                    RailButton(taskViewLabel) { core.sendPcMirrorInput(pcId, MirrorInputEvent.Key("recents")) }
-                    RailButton(switchWindowLabel) { core.remoteKey(pcId, "tab", listOf("alt"), onStatus) }
-                    RailButton(undoLabel) { core.remoteKey(pcId, "undo", onStatus = onStatus) }
-                    RailButton(qualityShortLabel, description = qualityA11yLabel) {
+                FullScreenRail(width = railWidth, tiles = tiles, modifier = Modifier.align(Alignment.CenterEnd)) { h ->
+                    RailButton(taskViewLabel, h) { core.sendPcMirrorInput(pcId, MirrorInputEvent.Key("recents")) }
+                    RailButton(switchWindowLabel, h) { core.remoteKey(pcId, "tab", listOf("alt"), onStatus) }
+                    RailButton(undoLabel, h) { core.remoteKey(pcId, "undo", onStatus = onStatus) }
+                    RailButton(qualityShortLabel, h, description = qualityA11yLabel) {
                         highQuality = !highQuality
                         reconnectTick++
                     }
-                    IconButton(
+                    RailTile(
+                        height = h,
+                        selected = false,
+                        description = exitFullScreenLabel,
                         onClick = { exitFullScreen(fromManualCollapse = true) },
-                        colors = IconButtonDefaults.iconButtonColors(
-                            containerColor = Color.White.copy(alpha = 0.12f),
-                            contentColor = Color.White,
-                        ),
-                        modifier = Modifier
-                            .size(40.dp)
-                            .semantics { contentDescription = exitFullScreenLabel },
                     ) {
                         ExpandCollapseIcon(isFullScreen = true)
                     }
@@ -1318,8 +1533,24 @@ fun PcMirrorView(
         // so opening the IME shifts the video up and never covers the picture.
         if (showKeyboardBar) {
             val typePlaceholder = stringResource(R.string.remote_type_placeholder, pcName)
-            val sendLabel = stringResource(R.string.pc_mirror_send_text)
+            val enterLabel = stringResource(R.string.pc_mirror_enter)
             val backspaceLabel = stringResource(R.string.pc_mirror_backspace)
+
+            // Every letter reaches the PC as it's typed. The field keeps what was
+            // typed so the keyboard can autocorrect; a correction goes over as
+            // Backspaces and the new word.
+            fun type(next: TextFieldValue) {
+                val diff = typingDiff(typed.text, next.text)
+                repeat(diff.backspaces) { core.sendPcMirrorInput(pcId, MirrorInputEvent.Key("backspace")) }
+                if (diff.added.isNotEmpty()) core.sendPcMirrorInput(pcId, MirrorInputEvent.Text(diff.added))
+                typed = next
+            }
+
+            fun pressEnter() {
+                core.sendPcMirrorInput(pcId, MirrorInputEvent.Key("enter"))
+                typed = TextFieldValue("")
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1336,44 +1567,51 @@ fun PcMirrorView(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OutlinedTextField(
-                    value = typedText,
+                    value = typed,
                     onValueChange = {
-                        typedText = it
+                        type(it)
                         if (isFullScreen) bumpOverlay()
                     },
                     placeholder = { Text(typePlaceholder) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(
-                        onSend = {
-                            if (typedText.isNotEmpty()) {
-                                core.sendPcMirrorInput(pcId, MirrorInputEvent.Text(typedText))
-                                typedText = ""
-                            } else {
-                                core.sendPcMirrorInput(pcId, MirrorInputEvent.Key("enter"))
-                            }
-                        },
-                    ),
+                    keyboardActions = KeyboardActions(onSend = { pressEnter() }),
+                    // Full screen puts the bar on black: light text, so what's typed shows.
+                    colors = if (isFullScreen) {
+                        OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = Color.White,
+                            focusedBorderColor = Color.White.copy(alpha = 0.7f),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                            focusedPlaceholderColor = Color.White.copy(alpha = 0.55f),
+                            unfocusedPlaceholderColor = Color.White.copy(alpha = 0.55f),
+                        )
+                    } else {
+                        OutlinedTextFieldDefaults.colors()
+                    },
                     modifier = Modifier
                         .weight(1f)
                         .focusRequester(keyboardFocusRequester)
                         .semantics { contentDescription = typePlaceholder },
                 )
                 FilledTonalButton(
-                    onClick = {
-                        if (typedText.isNotEmpty()) {
-                            core.sendPcMirrorInput(pcId, MirrorInputEvent.Text(typedText))
-                            typedText = ""
-                        } else {
-                            core.sendPcMirrorInput(pcId, MirrorInputEvent.Key("enter"))
-                        }
-                    },
-                    modifier = Modifier.semantics { contentDescription = sendLabel },
+                    onClick = { pressEnter() },
+                    modifier = Modifier.semantics { contentDescription = enterLabel },
                 ) {
-                    Text(sendLabel)
+                    Text(enterLabel)
                 }
                 OutlinedButton(
-                    onClick = { core.sendPcMirrorInput(pcId, MirrorInputEvent.Key("backspace")) },
+                    onClick = {
+                        val text = typed.text
+                        if (text.isEmpty()) {
+                            core.sendPcMirrorInput(pcId, MirrorInputEvent.Key("backspace"))
+                        } else {
+                            // The last character goes from the field and the PC alike.
+                            val kept = text.substring(0, text.offsetByCodePoints(text.length, -1))
+                            type(TextFieldValue(kept, TextRange(kept.length)))
+                        }
+                    },
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
                     modifier = Modifier.semantics { contentDescription = backspaceLabel },
                 ) {
@@ -1395,7 +1633,7 @@ fun PcMirrorView(
                         .semantics { contentDescription = rightClickLabel },
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                 ) {
-                    Text(rightClickLabel, maxLines = 1)
+                    FitLabel(rightClickLabel)
                 }
                 OutlinedButton(
                     onClick = { core.sendPcMirrorInput(pcId, MirrorInputEvent.Key("recents")) },
@@ -1404,7 +1642,7 @@ fun PcMirrorView(
                         .semantics { contentDescription = taskViewLabel },
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                 ) {
-                    Text(taskViewLabel, maxLines = 1)
+                    FitLabel(taskViewLabel)
                 }
                 FilledTonalButton(
                     onClick = { showKeyboardBar = !showKeyboardBar },
@@ -1413,7 +1651,7 @@ fun PcMirrorView(
                         .semantics { contentDescription = keyboardLabel },
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                 ) {
-                    Text(keyboardLabel, maxLines = 1)
+                    FitLabel(keyboardLabel)
                 }
                 OutlinedButton(
                     onClick = {
@@ -1423,7 +1661,7 @@ fun PcMirrorView(
                     modifier = Modifier.semantics { contentDescription = qualityA11yLabel },
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
                 ) {
-                    Text(qualityShortLabel, maxLines = 1)
+                    FitLabel(qualityShortLabel)
                 }
             }
         }

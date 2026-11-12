@@ -111,8 +111,21 @@ change things that need a step from you, and its notes say so.
   and unsent queue items written by an earlier macOS build can't be opened with
   the new key, so they start empty once. Thanks to
   [@aydinoglucagan-sudo](https://github.com/aydinoglucagan-sudo).
+- **Pinch to zoom on the PC's screen.** In Control PC › Screen, two fingers zoom in up
+  to 5x and move around while zoomed, and a tap still lands where you see it. Two fingers
+  moving together still scroll, and a double tap shows the whole screen again
+  ([#351](https://github.com/thtbee/nectarlink/issues/351)).
+- **Typing on the PC's screen goes over as you type.** Each letter reaches the PC right
+  away, like a keyboard, instead of after Send; the button presses Enter
+  ([#351](https://github.com/thtbee/nectarlink/issues/351)).
 
 ### Fixed
+
+- **Full-screen controls beside the PC's screen.** They're one size and shape on both
+  sides, labels shrink to fit instead of breaking mid-word with a large font, the
+  selected one is easy to read, and so is what you type in the bar below.
+- **Large fonts squeezed a PC's status on Home.** "Offline · seen …" was squeezed into a
+  letter-wide column beside Wake; the buttons now move to a line of their own instead.
 
 - **Find device stops everywhere.** The button on the device that started the alarm resets when it's stopped on the other one, and a phone shows a full-screen Stop. PC playback also reaches every connected phone, in order. Thanks to [@krakotay](https://github.com/krakotay) ([#326](https://github.com/thtbee/nectarlink/pull/326)).
 - **Phone storage in File Explorer kept showing files deleted on the phone.** They're now removed when the phone's folder is read again. Files you added on the PC that haven't reached the phone stay ([#328](https://github.com/thtbee/nectarlink/issues/328)).

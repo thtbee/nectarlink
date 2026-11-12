@@ -56,6 +56,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -111,6 +112,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -236,7 +238,13 @@ fun RemoteScreen(
                 ) {}
             }
 
-            // Mode switcher: Touchpad | Air mouse | Presentation | Screen
+            // Mode switcher: Touchpad | Air mouse | Presentation | Screen. A label shrinks
+            // to fit (large fonts, longer languages) before it's cut short.
+            val modeLabelSize = TextAutoSize.StepBased(
+                minFontSize = 9.sp,
+                maxFontSize = MaterialTheme.typography.labelLarge.fontSize,
+                stepSize = 0.5.sp,
+            )
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 SegmentedButton(
                     selected = mode == RemoteMode.Touchpad,
@@ -249,6 +257,7 @@ fun RemoteScreen(
                         stringResource(R.string.remote_mode_touchpad),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        autoSize = modeLabelSize,
                     )
                 }
                 SegmentedButton(
@@ -262,6 +271,7 @@ fun RemoteScreen(
                         stringResource(R.string.remote_mode_air),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        autoSize = modeLabelSize,
                     )
                 }
                 SegmentedButton(
@@ -275,6 +285,7 @@ fun RemoteScreen(
                         stringResource(R.string.remote_mode_presentation),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        autoSize = modeLabelSize,
                     )
                 }
                 SegmentedButton(
@@ -288,6 +299,7 @@ fun RemoteScreen(
                         stringResource(R.string.remote_mode_screen),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        autoSize = modeLabelSize,
                     )
                 }
             }

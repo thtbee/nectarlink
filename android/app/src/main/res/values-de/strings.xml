@@ -394,7 +394,7 @@
     <string name="pc_mirror_task_view">Aktive Anwendungen</string>
     <string name="pc_mirror_keyboard">Tastatur</string>
     <string name="pc_mirror_hide_keyboard">Tasten ausblenden</string>
-    <string name="pc_mirror_send_text">Senden</string>
+    <string name="pc_mirror_enter">Eingabe</string>
     <string name="pc_mirror_backspace">Rücktaste</string>
     <string name="pc_mirror_quality_720p">720p</string>
     <string name="pc_mirror_quality_1080p">1080p</string>
