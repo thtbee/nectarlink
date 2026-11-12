@@ -4,7 +4,8 @@
 //! Low-level mouse and keyboard hooks run on a thread of their own while a
 //! phone is set beside the PC. Until the mouse is pushed against the edge
 //! facing the phone they only look. Once it's over there they hold the
-//! cursor still at the edge and pass what the mouse and keyboard do to the
+//! cursor still (in the middle of that screen, so Windows never clips a move
+//! towards the edge to nothing) and pass what the mouse and keyboard do to the
 //! phone instead: moves as counts for the phone's own pointer
 //! (`pointer.move`), keys as `mirror.input`. The mouse comes back when the
 //! phone's pointer is pushed against its edge facing the PC, on Ctrl+Alt+Esc,
@@ -14,8 +15,8 @@
 //! drops a low-level hook that's slow to answer.
 
 use std::sync::{
-    Mutex, OnceLock,
-    atomic::{AtomicBool, AtomicI32, AtomicU32, Ordering},
+    Mutex,
+    atomic::{AtomicBool, AtomicI32, Ordering},
     mpsc,
 };
 
@@ -27,12 +28,12 @@ use windows::Win32::{
     UI::{
         Input::KeyboardAndMouse::{GetKeyState, GetKeyboardLayout, ToUnicodeEx},
         WindowsAndMessaging::{
-            CallNextHookEx, GetCursorPos, GetMessageW, GetSystemMetrics, HC_ACTION, KBDLLHOOKSTRUCT,
-            LLKHF_INJECTED, LLMHF_INJECTED, MSG, MSLLHOOKSTRUCT, PostThreadMessageW, SM_CXVIRTUALSCREEN,
-            SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SetCursorPos, SetWindowsHookExW,
-            UnhookWindowsHookEx, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN,
-            WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_QUIT, WM_RBUTTONDOWN,
-            WM_RBUTTONUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_XBUTTONDOWN, WM_XBUTTONUP,
+            CallNextHookEx, GetCursorPos, GetMessageW, GetSystemMetrics, HC_ACTION, KBDLLHOOKSTRUCT, MSG,
+            MSLLHOOKSTRUCT, PostThreadMessageW, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN,
+            SM_YVIRTUALSCREEN, SetCursorPos, SetWindowsHookExW, UnhookWindowsHookEx, WH_KEYBOARD_LL,
+            WH_MOUSE_LL, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP,
+            WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_QUIT, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
+            WM_XBUTTONDOWN, WM_XBUTTONUP,
         },
     },
 };
@@ -66,15 +67,18 @@ enum Event {
 
 /// The mouse is on the phone: the hooks hold the cursor and swallow input.
 static ON_PHONE: AtomicBool = AtomicBool::new(false);
-/// Where the cursor is held while on the phone.
+/// Where the cursor is held while on the phone: the middle of the screen it
+/// left, so Windows doesn't clip a move towards the edge to nothing.
 static PARK_X: AtomicI32 = AtomicI32::new(0);
 static PARK_Y: AtomicI32 = AtomicI32::new(0);
-/// The hook thread, to stop it.
-static HOOK_THREAD: AtomicU32 = AtomicU32::new(0);
+/// Where it left the PC's screen, to come back there.
+static EDGE_X: AtomicI32 = AtomicI32::new(0);
+static EDGE_Y: AtomicI32 = AtomicI32::new(0);
 static EVENTS: Mutex<Option<mpsc::Sender<Event>>> = Mutex::new(None);
 /// Which phone is beside the PC, and on which side.
 static TARGET: Mutex<Option<(DeviceId, Side)>> = Mutex::new(None);
-static RUNNING: OnceLock<Mutex<bool>> = OnceLock::new();
+/// The hook thread's ID while it runs, to stop it.
+static HOOKS: Mutex<Option<u32>> = Mutex::new(None);
 
 fn queue(event: Event) {
     if let Some(tx) = EVENTS.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
@@ -87,31 +91,45 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 /// Sets which phone sits beside the PC, and on which side, or none: starts
-/// or stops watching the mouse.
+/// or stops watching the mouse. Setting what's already set does nothing.
 pub fn configure(target: Option<(DeviceId, Side)>) {
-    let running = RUNNING.get_or_init(|| Mutex::new(false));
-    let mut running = lock(running);
-    *lock(&TARGET) = target;
-    if *running {
-        // A new phone or side starts over; none stops.
-        queue(Event::Stop);
-        let thread = HOOK_THREAD.swap(0, Ordering::AcqRel);
-        if thread != 0 {
-            // SAFETY: posting WM_QUIT to the hook thread's own queue ends its loop.
-            let _ = unsafe { PostThreadMessageW(thread, WM_QUIT, WPARAM(0), LPARAM(0)) };
+    let mut current = lock(&TARGET);
+    if *current == target {
+        return;
+    }
+    *current = target;
+    // The flow for the old phone or side ends, giving the mouse back.
+    queue(Event::Stop);
+    let mut hooks = lock(&HOOKS);
+    match target {
+        None => {
+            *lock(&EVENTS) = None;
+            if let Some(thread) = hooks.take() {
+                // SAFETY: posting WM_QUIT to the hook thread's own queue ends its loop.
+                let _ = unsafe { PostThreadMessageW(thread, WM_QUIT, WPARAM(0), LPARAM(0)) };
+            }
+            tracing::debug!("not watching the mouse for a phone");
         }
-        *running = false;
+        Some((device, side)) => {
+            let (tx, rx) = mpsc::channel();
+            *lock(&EVENTS) = Some(tx);
+            std::thread::Builder::new()
+                .name("pointer-flow".into())
+                .spawn(move || Flow::new(device, side).run(rx))
+                .ok();
+            if hooks.is_none() {
+                *hooks = start_hooks();
+            }
+            tracing::debug!(phone = %device.short(), ?side, hooks = hooks.is_some(), "watching the mouse for a phone");
+        }
     }
-    if let Some((device, side)) = target {
-        let (tx, rx) = mpsc::channel();
-        *lock(&EVENTS) = Some(tx);
-        std::thread::Builder::new().name("pointer-hooks".into()).spawn(hook_thread).ok();
-        std::thread::Builder::new()
-            .name("pointer-flow".into())
-            .spawn(move || Flow::new(device, side).run(rx))
-            .ok();
-        *running = true;
-    }
+}
+
+/// Starts the hook thread; its ID once the hooks are in.
+fn start_hooks() -> Option<u32> {
+    let (ready, started) = mpsc::sync_channel(1);
+    std::thread::Builder::new().name("pointer-hooks".into()).spawn(move || hook_thread(ready)).ok()?;
+    started.recv_timeout(std::time::Duration::from_secs(5)).ok().flatten()
 }
 
 /// Core events: the phone going away gives the mouse back.
@@ -126,7 +144,7 @@ pub fn on_event(event: &nectarlink_core::NodeEvent) {
     }
 }
 
-fn hook_thread() {
+fn hook_thread(ready: mpsc::SyncSender<Option<u32>>) {
     // SAFETY: plain thread-wide low-level hooks with procedures that live
     // for the whole program; removed before the thread ends.
     let hooks = unsafe {
@@ -137,6 +155,7 @@ fn hook_thread() {
     };
     let (Ok(mouse), Ok(keyboard)) = hooks else {
         tracing::warn!("can't watch the mouse for a phone beside the PC");
+        let _ = ready.send(None);
         if let Ok(h) = hooks.0 {
             // SAFETY: unhooking the hook just set.
             let _ = unsafe { UnhookWindowsHookEx(h) };
@@ -148,7 +167,7 @@ fn hook_thread() {
         return;
     };
     // SAFETY: no preconditions.
-    HOOK_THREAD.store(unsafe { GetCurrentThreadId() }, Ordering::Release);
+    let _ = ready.send(Some(unsafe { GetCurrentThreadId() }));
     let mut msg = MSG::default();
     // SAFETY: the message loop low-level hooks need on their thread.
     unsafe { while GetMessageW(&mut msg, None, 0, 0).as_bool() {} }
@@ -164,10 +183,8 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
     if code == HC_ACTION as i32 {
         // SAFETY: for HC_ACTION, lparam points at an MSLLHOOKSTRUCT.
         let info = unsafe { &*(lparam.0 as *const MSLLHOOKSTRUCT) };
-        // Input another program made (remote desktop, automation) passes.
-        let ours = info.flags & LLMHF_INJECTED == 0;
         let msg = wparam.0 as u32;
-        if ours && ON_PHONE.load(Ordering::Acquire) {
+        if ON_PHONE.load(Ordering::Acquire) {
             match msg {
                 WM_MOUSEMOVE => {
                     let (px, py) = (PARK_X.load(Ordering::Relaxed), PARK_Y.load(Ordering::Relaxed));
@@ -192,7 +209,7 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
             // Swallowed: the cursor stays put and nothing on the PC sees it.
             return LRESULT(1);
         }
-        if ours && msg == WM_MOUSEMOVE {
+        if msg == WM_MOUSEMOVE {
             queue(Event::Moved(info.pt.x, info.pt.y));
         }
     }
@@ -204,13 +221,11 @@ unsafe extern "system" fn keyboard_proc(code: i32, wparam: WPARAM, lparam: LPARA
     if code == HC_ACTION as i32 && ON_PHONE.load(Ordering::Acquire) {
         // SAFETY: for HC_ACTION, lparam points at a KBDLLHOOKSTRUCT.
         let info = unsafe { &*(lparam.0 as *const KBDLLHOOKSTRUCT) };
-        if (info.flags & LLKHF_INJECTED).0 == 0 {
-            let down = matches!(wparam.0 as u32, WM_KEYDOWN | WM_SYSKEYDOWN);
-            let up = matches!(wparam.0 as u32, WM_KEYUP | WM_SYSKEYUP);
-            if down || up {
-                queue(Event::Key { code: info.vkCode as u16, scan: info.scanCode as u16, down });
-                return LRESULT(1);
-            }
+        let down = matches!(wparam.0 as u32, WM_KEYDOWN | WM_SYSKEYDOWN);
+        let up = matches!(wparam.0 as u32, WM_KEYUP | WM_SYSKEYUP);
+        if down || up {
+            queue(Event::Key { code: info.vkCode as u16, scan: info.scanCode as u16, down });
+            return LRESULT(1);
         }
     }
     // SAFETY: passing the event on.
@@ -231,8 +246,8 @@ fn desktop() -> Bounds {
     Bounds { left: x, top: y, right: x + w, bottom: y + h }
 }
 
-/// The top and bottom of the screen at (`x`, `y`).
-fn screen_span(x: i32, y: i32) -> (i32, i32) {
+/// The screen at (`x`, `y`).
+fn screen_at(x: i32, y: i32) -> Bounds {
     // SAFETY: MonitorFromPoint always returns a monitor with this flag;
     // GetMonitorInfoW fills a struct sized for it.
     unsafe {
@@ -240,10 +255,10 @@ fn screen_span(x: i32, y: i32) -> (i32, i32) {
         let mut info =
             MONITORINFO { cbSize: std::mem::size_of::<MONITORINFO>() as u32, ..Default::default() };
         if GetMonitorInfoW(monitor, &mut info).as_bool() {
-            (info.rcMonitor.top, info.rcMonitor.bottom)
+            let r = info.rcMonitor;
+            Bounds { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
         } else {
-            let d = desktop();
-            (d.top, d.bottom)
+            desktop()
         }
     }
 }
@@ -399,13 +414,25 @@ impl Flow {
         match (&mut self.state, event) {
             (State::Watching(watch), Event::Moved(x, y)) => {
                 if watch.moved(x, y, desktop()) {
+                    tracing::debug!(x, y, "the mouse pushed against the edge facing the phone");
                     self.go_over(x, y);
                 }
             }
             (State::Entering { at, y }, Event::Entered(Ok(screen))) => {
                 let ((x, py), fraction) = (*at, *y);
-                PARK_X.store(x, Ordering::Relaxed);
-                PARK_Y.store(py, Ordering::Relaxed);
+                // The hook sees where a push would have gone, past the edge:
+                // it comes back to the edge itself.
+                let desk = desktop();
+                let x = x.clamp(desk.left, desk.right - 1);
+                let py = py.clamp(desk.top, desk.bottom - 1);
+                EDGE_X.store(x, Ordering::Relaxed);
+                EDGE_Y.store(py, Ordering::Relaxed);
+                let monitor = screen_at(x, py);
+                let (cx, cy) = ((monitor.left + monitor.right) / 2, (monitor.top + monitor.bottom) / 2);
+                PARK_X.store(cx, Ordering::Relaxed);
+                PARK_Y.store(cy, Ordering::Relaxed);
+                // SAFETY: SetCursorPos has no preconditions.
+                let _ = unsafe { SetCursorPos(cx, cy) };
                 // SAFETY: GetKeyState has no preconditions.
                 let caps = unsafe { GetKeyState(vk::CAPITAL as i32) } & 1 != 0;
                 self.mods = Mods { caps, ..Mods::default() };
@@ -521,8 +548,8 @@ impl Flow {
 
     /// Asks the phone to show its pointer, from the PC's mouse at (`x`, `y`).
     fn go_over(&mut self, x: i32, y: i32) {
-        let (top, bottom) = screen_span(x, y);
-        let fraction = pointer_flow::fraction(y, top, bottom);
+        let screen = screen_at(x, y);
+        let fraction = pointer_flow::fraction(y, screen.top, screen.bottom);
         self.state = State::Entering { at: (x, y), y: fraction };
         let (device, edge) = (self.device, self.side.phone_edge());
         crate::core_host::spawn(async move {
@@ -546,11 +573,11 @@ impl Flow {
             let _ = out.send(Out::Leave);
         }
         if was_on_phone {
-            let (x, y) = (PARK_X.load(Ordering::Relaxed), PARK_Y.load(Ordering::Relaxed));
+            let (x, y) = (EDGE_X.load(Ordering::Relaxed), EDGE_Y.load(Ordering::Relaxed));
             let y = match fraction {
                 Some(f) => {
-                    let (top, bottom) = screen_span(x, y);
-                    pointer_flow::at_fraction(f, top, bottom)
+                    let screen = screen_at(x, y);
+                    pointer_flow::at_fraction(f, screen.top, screen.bottom)
                 }
                 None => y,
             };

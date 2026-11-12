@@ -594,10 +594,10 @@ pub struct Settings {
     pub flow_follow_clipboard: bool,
     /// The phone beside this PC, for its mouse to go over the edge of the
     /// screen to (#107): its device ID. Empty: none.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
+    #[serde(default, skip_serializing_if = "String::is_empty", alias = "phone_beside")]
     pub phone_beside: String,
     /// Which side of the PC it's on: "left" or "right".
-    #[serde(default, skip_serializing_if = "String::is_empty")]
+    #[serde(default, skip_serializing_if = "String::is_empty", alias = "phone_beside_side")]
     pub phone_beside_side: String,
     /// Configured one-way / two-way folder synchronization rules.
     #[serde(default, skip_serializing_if = "Vec::is_empty", alias = "folder_sync_rules")]
