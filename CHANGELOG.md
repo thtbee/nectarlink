@@ -15,6 +15,9 @@ change things that need a step from you, and its notes say so.
   servers used away from home, shows which one each device goes through, checks how fast
   they answer, and takes your own. Thanks to [@krakotay](https://github.com/krakotay)
   ([#324](https://github.com/thtbee/nectarlink/pull/324)).
+- **Right-click can be a long press.** In mirroring and app windows, an option in Settings ›
+  General makes right-click hold a finger down, for menus and selecting; Esc stays Back.
+  Shift+click is a long press either way ([#341](https://github.com/thtbee/nectarlink/issues/341)).
 - **A mirror says when the phone ignores your taps.** Xiaomi, Redmi and POCO phones refuse
   taps from the PC with Elevated until USB debugging (Security settings) is on. The phone
   now notices and the PC's window says what to turn on, instead of taps doing nothing.
@@ -118,6 +121,10 @@ change things that need a step from you, and its notes say so.
   device for a game controller, a laptop's motion sensor too, and sent its tilt to the
   phone as a held stick. Only real controllers count now
   ([#332](https://github.com/thtbee/nectarlink/issues/332)).
+- **The mirror's toolbar no longer stays over the app.** It stayed up the whole time the
+  phone's screen was off or a recording ran, covering the app's top bar. It now shows only
+  when you point at it, and a small badge shows recording and the screen being off
+  ([#340](https://github.com/thtbee/nectarlink/issues/340)).
 - **"Call with" didn't show for phones with two SIMs.** On newer Android the phone
   couldn't list its SIMs, so the PC never offered the choice
   ([#334](https://github.com/thtbee/nectarlink/issues/334)).

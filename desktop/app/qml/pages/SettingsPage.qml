@@ -1240,6 +1240,20 @@ Item {
 
                         Divider { width: parent.width }
 
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.mirror
+                            title: qsTr("Right-click is a long press")
+                            description: qsTr("In mirroring and app windows, right-click holds a finger down, for menus and selecting. Esc is Back. Shift+click is a long press either way.")
+                            Toggle {
+                                label: qsTr("Right-click is a long press")
+                                checked: Preferences.rightClickLongPress
+                                onToggled: (on) => Preferences.rightClickLongPress = on
+                            }
+                        }
+
+                        Divider { width: parent.width }
+
                         // Row 3: Sync clipboard to phone
                         ListRow {
                             width: parent.width

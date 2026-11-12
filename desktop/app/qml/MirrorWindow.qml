@@ -193,14 +193,32 @@ Window {
             }
         }
 
-        // The mouse: left is a finger, right is Back, middle is Home.
+        // The mouse: left is a finger, right is Back (or a long press, in
+        // Settings), middle is Home. Shift+click is a long press too (#341).
         MouseArea {
+            id: pointer
             anchors.fill: parent
             enabled: win.phase === "showing"
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             cursorShape: win.canControl ? Qt.PointingHandCursor : Qt.ArrowCursor
             property bool down: false
             property double lastMove: 0
+
+            // A finger held still past Android's long-press time (about half a
+            // second), then lifted: the phone sees both in order, a beat apart.
+            function longPress(p) {
+                if (longPressTimer.running)
+                    return
+                Mirror.touch(win.mirrorKey, "down", p.x, p.y)
+                longPressTimer.at = p
+                longPressTimer.start()
+            }
+            Timer {
+                id: longPressTimer
+                property var at
+                interval: 650
+                onTriggered: Mirror.touch(win.mirrorKey, "up", at.x, at.y)
+            }
             onPressed: (mouse) => {
                 video.forceActiveFocus()
                 if (!win.canControl) {
@@ -210,7 +228,14 @@ Window {
                     return
                 }
                 const p = video.at(mouse.x, mouse.y)
-                if (mouse.button === Qt.RightButton) { Mirror.press(win.mirrorKey, "back"); return }
+                if (mouse.button === Qt.RightButton && !Preferences.rightClickLongPress) {
+                    Mirror.press(win.mirrorKey, "back")
+                    return
+                }
+                if (mouse.button === Qt.RightButton || (mouse.modifiers & Qt.ShiftModifier)) {
+                    if (p.inside) pointer.longPress(p)
+                    return
+                }
                 if (mouse.button === Qt.MiddleButton) { Mirror.press(win.mirrorKey, "home"); return }
                 if (!p.inside) return
                 down = true
@@ -354,6 +379,39 @@ Window {
         height: navPill.visible && !navPill.besideToolbar ? 104 : 56
         HoverHandler { id: topZoneHover }
     }
+    // What the hidden toolbar would show: recording, and the phone's screen off.
+    Rectangle {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: 12
+        visible: toolbar.visible && toolbar.opacity === 0
+            && (win.info.recording === true || win.info.screenOff === true)
+        width: badgeRow.implicitWidth + 14
+        height: 24
+        radius: 12
+        color: Qt.rgba(0, 0, 0, 0.55)
+        Accessible.role: Accessible.StaticText
+        Accessible.name: [win.info.recording === true ? qsTr("Recording") : "",
+                          win.info.screenOff === true ? qsTr("Phone screen off") : ""].filter(t => t).join(", ")
+        Row {
+            id: badgeRow
+            anchors.centerIn: parent
+            spacing: 6
+            Rectangle {
+                visible: win.info.recording === true
+                anchors.verticalCenter: parent.verticalCenter
+                width: 8; height: 8; radius: 4
+                color: "#e5484d"
+            }
+            Icon {
+                visible: win.info.screenOff === true
+                anchors.verticalCenter: parent.verticalCenter
+                width: 14; height: 14
+                path: Icons.screenOff
+                color: "white"
+            }
+        }
+    }
     Rectangle {
         id: toolbar
         anchors.top: parent.top
@@ -367,8 +425,10 @@ Window {
         readonly property bool toolbarHasFocus: lockBtn.activeFocus || copyShotBtn.activeFocus || saveShotBtn.activeFocus
             || recordBtn.activeFocus || stayAwakeBtn.activeFocus || screenOffBtn.activeFocus || soundBtn.activeFocus
             || backBtn.activeFocus || homeBtn.activeFocus || recentsBtn.activeFocus
+        // Only while it's wanted: it sits over the app's own top bar (#340).
+        // Recording and a dark phone screen show as a small badge instead.
         opacity: topZoneHover.hovered || toolbarHover.hovered || navHover.hovered || toolbarWakeTimer.running
-            || win.info.recording === true || win.info.screenOff === true || toolbarHasFocus ? 1 : 0
+            || toolbarHasFocus ? 1 : 0
         Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast } }
 
         HoverHandler { id: toolbarHover }
@@ -484,7 +544,7 @@ Window {
                 id: backBtn
                 iconPath: Icons.back
                 iconColor: "white"
-                label: qsTr("Back (right-click)")
+                label: Preferences.rightClickLongPress ? qsTr("Back (Esc)") : qsTr("Back (right-click)")
                 onClicked: Mirror.press(win.mirrorKey, "back")
             }
             IconButton {
