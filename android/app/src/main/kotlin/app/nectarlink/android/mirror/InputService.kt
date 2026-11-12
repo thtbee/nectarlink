@@ -346,16 +346,40 @@ class InputService : AccessibilityService() {
             node.className == "android.widget.EditText" ||
             node.actionList.any { it.id == AccessibilityNodeInfo.ACTION_SET_TEXT }
 
-    private fun pressAction(): Boolean {
-        val field = focused() ?: return false
+    /**
+     * Presses the Send button by the focused box on [display] (an app window's
+     * own display), or on the phone's screen when it's null. Logs what it
+     * found, never what's typed, so a report can say where it stopped (#220).
+     */
+    private fun pressAction(display: Int?): Boolean {
+        val field = (if (display == null) focused() else focusedOn(display))
+        if (field == null) {
+            Log.i(TAG, "send: no text box on display ${display ?: 0}")
+            return false
+        }
         // Chat boxes take the keyboard's action and do nothing with it, and
         // they don't all say they're multi-line (Messenger's, Telegram's and
         // WhatsApp's don't), so press a Send button by the box when there is
         // one. Without one, a multi-line box gets a plain Enter for its new
         // line, and any other box the keyboard's action.
-        if (SendButton.press(field, field.window?.root ?: rootInActiveWindow)) return true
+        val pressed = SendButton.press(field, field.window?.root ?: rootInActiveWindow)
+        Log.i(TAG, "send: display ${display ?: 0}, multi-line ${field.isMultiLine}, Send button pressed $pressed")
+        if (pressed) return true
         if (field.isMultiLine || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
         return field.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)
+    }
+
+    /** The text box with focus on [display], from that display's own windows. */
+    private fun focusedOn(display: Int): AccessibilityNodeInfo? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+        val roots = runCatching { windowsOnAllDisplays.get(display) }.getOrNull().orEmpty().mapNotNull { it.root }
+        for (root in roots) {
+            root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.takeIf { isNodeEditable(it) }?.let { return it }
+        }
+        for (root in roots) {
+            findEditable(root, requireFocused = true)?.let { return it }
+        }
+        return null
     }
 
     private fun focused(): AccessibilityNodeInfo? {
@@ -404,7 +428,8 @@ class InputService : AccessibilityService() {
 
         /** The PC's input; ignored while the service is off. */
         /** Presses the focused field's action, like Send. False if that isn't possible here. */
-        fun pressSend(): Boolean = instance?.pressAction() == true
+        /** Presses Send on [display] (an app window's), or on the phone's screen when null. */
+        fun pressSend(display: Int? = null): Boolean = instance?.pressAction(display) == true
 
         fun handle(input: MirrorInputEvent) {
             val service = instance ?: return

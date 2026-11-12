@@ -198,7 +198,9 @@ internal class PhonePlatform(
         // Send needs the accessibility service. Without it, it's a plain Enter.
         var input = requested
         if (requested is MirrorInputEvent.Key && requested.key == "send") {
-            if (InputService.pressSend()) return
+            // An app window's box is on that window's display, not the screen's (#220).
+            val display = if (session == SCREEN) null else appWindows.displayOf(pcId, session)
+            if ((session == SCREEN || display != null) && InputService.pressSend(display)) return
             input = MirrorInputEvent.Key("enter")
         }
         if (session != SCREEN) return appWindows.input(pcId, session, input)

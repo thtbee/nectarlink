@@ -185,6 +185,9 @@ class AppWindows(
         }
     }
 
+    /** The display a PC's window runs on, once it has one. */
+    fun displayOf(pc: String, session: UInt): Int? = windows[pc to session]?.display?.takeIf { it >= 0 }
+
     /** The PC's mouse and keyboard on a window. */
     fun input(pc: String, session: UInt, event: MirrorInputEvent) {
         val window = windows[pc to session] ?: return
