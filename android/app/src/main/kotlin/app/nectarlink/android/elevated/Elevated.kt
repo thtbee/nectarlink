@@ -494,6 +494,14 @@ object Elevated {
             val cmd = "CLASSPATH=$apk app_process /system/bin ${InputServer::class.java.name} $token"
             val proc = ProcessBuilder("su", SHELL_UID, "-c", cmd).start()
             rootProcess = proc
+            // The helper reports what fails (a screen it can't capture) on
+            // stderr. Read it, so it reaches the log and a full pipe never
+            // stalls the helper.
+            Thread {
+                runCatching {
+                    proc.errorStream.bufferedReader().lineSequence().forEach { line -> Log.i(TAG, "root-helper: $line") }
+                }
+            }.apply { isDaemon = true }.start()
             val output = proc.inputStream.bufferedReader()
             val first = output.readLine().orEmpty()
             val port = first.removePrefix("ready ").toIntOrNull()
