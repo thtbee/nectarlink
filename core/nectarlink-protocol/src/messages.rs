@@ -82,6 +82,7 @@ pub mod types {
     pub const MIRROR_RESIZE: &str = "mirror.resize";
     pub const MIRROR_INPUT: &str = "mirror.input";
     pub const MIRROR_APPS: &str = "mirror.apps";
+    pub const MIRROR_NOTICE: &str = "mirror.notice";
     pub const REMOTE_CHECK: &str = "remote.check";
     pub const REMOTE_INPUT: &str = "remote.input";
     pub const PHONE_TOGGLES: &str = "phone.toggles";
@@ -1392,6 +1393,9 @@ pub mod mirror {
     pub const MAX_APPS: usize = 500;
     /// An app's icon (PNG), at most.
     pub const MAX_ICON_BYTES: usize = 8 * 1024;
+    /// `mirror.notice`: the phone refuses the PC's taps and keys (on Xiaomi,
+    /// until USB debugging (Security settings) is on).
+    pub const NOTICE_INPUT_BLOCKED: &str = "input_blocked";
 }
 
 /// Whether `name` looks like an Android package name.
@@ -1494,6 +1498,21 @@ pub struct MirrorSound {
 pub struct MirrorSession {
     #[serde(default)]
     pub session: u32,
+}
+
+/// Body of `mirror.notice` (phone → PC): something the PC should tell its
+/// user about a mirroring, by a code it knows (`mirror::NOTICE_*`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorNotice {
+    #[serde(default)]
+    pub session: u32,
+    pub code: String,
+}
+
+impl MirrorNotice {
+    pub fn is_valid(&self) -> bool {
+        (1..=32).contains(&self.code.len()) && self.code.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')
+    }
 }
 
 /// Body of `mirror.resize`: resize an app window's display (`session != 0`).
@@ -6157,5 +6176,17 @@ mod tests {
         let env = crate::Envelope::new(types::AUDIO_PCM, &frame).unwrap();
         let decoded: AudioPcmFrame = crate::Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
         assert_eq!(decoded, frame);
+    }
+
+    #[test]
+    fn mirror_notices_carry_a_short_code() {
+        let notice = MirrorNotice { session: 3, code: mirror::NOTICE_INPUT_BLOCKED.into() };
+        assert!(notice.is_valid());
+        let env = crate::Envelope::new(types::MIRROR_NOTICE, &notice).unwrap();
+        let decoded: MirrorNotice = crate::Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(decoded, notice);
+        for code in ["", "Input_Blocked", "input blocked", &"a".repeat(33), "über"] {
+            assert!(!MirrorNotice { session: 0, code: code.into() }.is_valid(), "{code}");
+        }
     }
 }

@@ -1194,6 +1194,25 @@ async fn a_phone_stopped_and_started_again_in_the_same_process_reconnects() {
     }
 }
 
+/// A phone that refuses the PC's taps (Xiaomi without USB debugging (Security
+/// settings)) says so, and the PC hears which window it's about.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_phone_that_refuses_taps_tells_the_pc() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::MIRROR_VIEW]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::MIRROR_CAPTURE]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    with_timeout("notice", phone.node.mirror_notice(pc_id, 2, nectarlink_core::MIRROR_NOTICE_INPUT_BLOCKED))
+        .await
+        .unwrap();
+    let (device, session, code) = wait_for(&mut pc, "the notice", |e| match e {
+        NodeEvent::MirrorNotice { device, session, code } => Some((*device, *session, code.clone())),
+        _ => None,
+    })
+    .await;
+    assert_eq!((device, session, code.as_str()), (phone_id, 2, nectarlink_core::MIRROR_NOTICE_INPUT_BLOCKED));
+}
+
 /// Each packet is reported back to the sender, and well past what a device
 /// from before reports reads (64 bytes): the stream carries on.
 #[tokio::test(flavor = "multi_thread")]

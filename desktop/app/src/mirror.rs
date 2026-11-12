@@ -250,7 +250,7 @@ struct State {
     screen_off: HashSet<DeviceId>,
     /// Phone currently receiving PC keyboard input without screen mirroring.
     keyboard_device: Option<DeviceId>,
-    /// Short transient feedback notices per mirror window: `(text, shown_at, token)`.
+    /// Short transient feedback notices per mirror window: `(text, shown_until, token)`.
     notices: HashMap<Window, (String, Instant, u64)>,
     apps: HashMap<DeviceId, Apps>,
     saved: SavedWindows,
@@ -439,25 +439,29 @@ pub fn remember_screen_off(device: DeviceId, on: bool) {
     core_host::host().hub.changed(Changes::MIRROR);
 }
 
-/// Short status banner for `window` if shown within the last 3 seconds.
+/// The status banner for `window`, while it's up.
 pub fn last_notice(window: &Window) -> String {
     state(|s| {
         s.notices
             .get(window)
-            .filter(|(_, at, _)| at.elapsed() < NOTICE_DURATION)
+            .filter(|(_, until, _)| Instant::now() < *until)
             .map(|(text, _, _)| text.clone())
             .unwrap_or_default()
     })
 }
 
 fn set_notice(window: Window, text: impl Into<String>) {
+    set_notice_for(window, text, NOTICE_DURATION);
+}
+
+fn set_notice_for(window: Window, text: impl Into<String>, duration: Duration) {
     let token = NOTICE_SEQ.fetch_add(1, Ordering::Relaxed);
     state(|s| {
-        s.notices.insert(window, (text.into(), Instant::now(), token));
+        s.notices.insert(window, (text.into(), Instant::now() + duration, token));
     });
     core_host::host().hub.changed(Changes::MIRROR);
     core_host::spawn(async move {
-        tokio::time::sleep(NOTICE_DURATION).await;
+        tokio::time::sleep(duration).await;
         let cleared = state(|s| {
             if s.notices.get(&window).is_some_and(|(_, _, t)| *t == token) {
                 s.notices.remove(&window);
@@ -1217,6 +1221,19 @@ pub fn stop(window: Window) {
 
 pub fn on_event(event: &NodeEvent) {
     match event {
+        NodeEvent::MirrorNotice { device, session, code } => {
+            if code == nectarlink_core::MIRROR_NOTICE_INPUT_BLOCKED {
+                let window = Window { device: *device, session: *session };
+                set_notice_for(
+                    window,
+                    tr!(
+                        "Mirror",
+                        "The phone ignores taps from this PC. In its Developer options, turn on USB debugging (Security settings)."
+                    ),
+                    Duration::from_secs(12),
+                );
+            }
+        }
         NodeEvent::Mirroring { device, session, on: true } => {
             let window = Window { device: *device, session: *session };
             set_phase(window, Phase::Showing);

@@ -60,6 +60,7 @@ class NectarlinkApplication : Application(), DefaultLifecycleObserver {
         Elevated.onChange = { core.refreshNotificationAccess() }
         Elevated.onClipboardChanged = { text, html -> core.onElevatedClipboardChanged(text, html) }
         Elevated.onSensitiveCopied = { text -> core.onElevatedSensitiveCopied(text) }
+        Elevated.onInputBlocked = { core.onElevatedInputBlocked() }
 
         // A build the phone sees in a feed is passed on to its PCs.
         updater.onFeedSeen = { channel, version -> core.announceUpdate(channel, version) }

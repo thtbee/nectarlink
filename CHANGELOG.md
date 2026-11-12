@@ -15,6 +15,9 @@ change things that need a step from you, and its notes say so.
   servers used away from home, shows which one each device goes through, checks how fast
   they answer, and takes your own. Thanks to [@krakotay](https://github.com/krakotay)
   ([#324](https://github.com/thtbee/nectarlink/pull/324)).
+- **A mirror says when the phone ignores your taps.** Xiaomi, Redmi and POCO phones refuse
+  taps from the PC with Elevated until USB debugging (Security settings) is on. The phone
+  now notices and the PC's window says what to turn on, instead of taps doing nothing.
 - **Pick the network interface relays use, on Linux.** Settings › Connection & About can
   send relay connections through one interface, like the one past a VPN that's always on.
   Thanks to [@krakotay](https://github.com/krakotay)

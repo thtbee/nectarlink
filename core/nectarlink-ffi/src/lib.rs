@@ -2503,6 +2503,8 @@ impl Event {
             | NodeEvent::CameraCaptureReceived { .. }
             | NodeEvent::CameraCaptureCancelled { .. }
             | NodeEvent::PcMirrorRequested { .. }
+            // Shown on PCs only.
+            | NodeEvent::MirrorNotice { .. }
             // A phone's microphone arrives on PCs only.
             | NodeEvent::Mic { .. } => return None,
             NodeEvent::RemoteInputRequested { device } => {
@@ -4276,6 +4278,18 @@ impl NectarlinkNode {
         let id = parse_id(&pc_id)?;
         let node = self.node.clone();
         self.run(async move { Ok(Arc::new(MirrorStream(node.mirror_open_audio(id).await?))) }).await
+    }
+
+    /// The Elevated helper's taps and keys are refused by this phone (Xiaomi,
+    /// until USB debugging (Security settings) is on): tells the PC showing
+    /// mirroring `session`, so it can say what to turn on.
+    pub async fn mirror_input_blocked(&self, pc_id: String, session: u32) -> Result<()> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move {
+            node.mirror_notice(id, session, core::MIRROR_NOTICE_INPUT_BLOCKED).await.map_err(Into::into)
+        })
+        .await
     }
 
     /// Tells a paired PC that mirroring or remote keyboard input on `session` has stopped (`mirror.stop`).
