@@ -5940,88 +5940,88 @@ Neler gerekir
 <context>
     <name>MirrorWindow</name>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="24"/>
+        <location filename="../qml/MirrorWindow.qml" line="26"/>
         <source>%1 · %2</source>
         <translation>%1 · %2</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="25"/>
+        <location filename="../qml/MirrorWindow.qml" line="27"/>
         <source>%1 · NectarLink</source>
         <translation>%1 · NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="25"/>
+        <location filename="../qml/MirrorWindow.qml" line="27"/>
         <source>Phone screen · NectarLink</source>
         <translation>Telefon ekranı · NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="394"/>
+        <location filename="../qml/MirrorWindow.qml" line="28"/>
         <source>Recording</source>
         <translation>Kaydediliyor</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="395"/>
+        <location filename="../qml/MirrorWindow.qml" line="29"/>
         <source>Phone screen off</source>
         <translation>Telefon ekranı kapalı</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="445"/>
+        <location filename="../qml/MirrorWindow.qml" line="416"/>
         <source>Copy screenshot (Ctrl+Shift+C)</source>
         <translation>Ekran görüntüsünü kopyala (Ctrl+Shift+C)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="452"/>
+        <location filename="../qml/MirrorWindow.qml" line="423"/>
         <source>Save screenshot (Ctrl+S)</source>
         <translation>Ekran görüntüsünü kaydet (Ctrl+S)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="459"/>
+        <location filename="../qml/MirrorWindow.qml" line="430"/>
         <source>Stop recording (Ctrl+R)</source>
         <translation>Kaydı durdur (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="459"/>
+        <location filename="../qml/MirrorWindow.qml" line="430"/>
         <source>Record video (Ctrl+R)</source>
         <translation>Video kaydet (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="477"/>
+        <location filename="../qml/MirrorWindow.qml" line="448"/>
         <source>Phone stays awake while mirroring (turn off)</source>
         <translation>Yansıtma sırasında telefon uyanık kalıyor (kapat)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="478"/>
+        <location filename="../qml/MirrorWindow.qml" line="449"/>
         <source>Keep phone awake while mirroring</source>
         <translation>Yansıtma sırasında telefonu uyanık tut</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="487"/>
+        <location filename="../qml/MirrorWindow.qml" line="458"/>
         <source>Turn phone screen back on</source>
         <translation>Telefon ekranını yeniden aç</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="488"/>
+        <location filename="../qml/MirrorWindow.qml" line="459"/>
         <source>Turn phone screen off while mirroring</source>
         <translation>Yansıtma sırasında telefon ekranını kapat</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="547"/>
+        <location filename="../qml/MirrorWindow.qml" line="518"/>
         <source>Back (right-click)</source>
         <translation>Geri (sağ tık)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="554"/>
+        <location filename="../qml/MirrorWindow.qml" line="525"/>
         <source>Home (middle-click)</source>
         <translation>Ana ekran (orta tık)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="561"/>
+        <location filename="../qml/MirrorWindow.qml" line="532"/>
         <source>Recent apps</source>
         <translation>Son uygulamalar</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="512"/>
-        <location filename="../qml/MirrorWindow.qml" line="588"/>
+        <location filename="../qml/MirrorWindow.qml" line="483"/>
+        <location filename="../qml/MirrorWindow.qml" line="559"/>
         <source>Play the phone&apos;s sound here</source>
         <translation>Telefonun sesini burada çal</translation>
     </message>
@@ -6030,102 +6030,102 @@ Neler gerekir
         <translation type="vanished">Telefonun sesini burada kapat</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="496"/>
+        <location filename="../qml/MirrorWindow.qml" line="467"/>
         <source>Lock phone</source>
         <translation>Telefonu kilitle</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="503"/>
+        <location filename="../qml/MirrorWindow.qml" line="474"/>
         <source>Don&apos;t keep on top</source>
         <translation>Üstte tutma</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="503"/>
+        <location filename="../qml/MirrorWindow.qml" line="474"/>
         <source>Keep on top</source>
         <translation>Üstte tut</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="512"/>
+        <location filename="../qml/MirrorWindow.qml" line="483"/>
         <source>Play the sound on the phone</source>
         <translation>Sesi telefonda çal</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="547"/>
+        <location filename="../qml/MirrorWindow.qml" line="518"/>
         <source>Back (Esc)</source>
         <translation>Geri (Esc)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="597"/>
+        <location filename="../qml/MirrorWindow.qml" line="568"/>
         <source>Release to send files to %1</source>
         <translation>Dosyaları %1 cihazına göndermek için bırakın</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="597"/>
+        <location filename="../qml/MirrorWindow.qml" line="568"/>
         <source>phone</source>
         <translation>telefon</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="665"/>
+        <location filename="../qml/MirrorWindow.qml" line="636"/>
         <source>To control the phone, turn on Control from your PC in NectarLink&apos;s settings on the phone.</source>
         <translation>Telefonu kontrol etmek için telefondaki NectarLink ayarlarında Bilgisayarınızdan kontrol&apos;ü açın.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="674"/>
+        <location filename="../qml/MirrorWindow.qml" line="645"/>
         <source>Notify phone</source>
         <translation>Telefona bildir</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="685"/>
+        <location filename="../qml/MirrorWindow.qml" line="656"/>
         <source>Hide</source>
         <translation>Gizle</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="723"/>
+        <location filename="../qml/MirrorWindow.qml" line="694"/>
         <source>Opening %1</source>
         <translation>Açılıyor: %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="723"/>
+        <location filename="../qml/MirrorWindow.qml" line="694"/>
         <source>Allow it on your phone</source>
         <translation>Telefonunuzda izin verin</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="724"/>
+        <location filename="../qml/MirrorWindow.qml" line="695"/>
         <source>%1 closed</source>
         <translation>%1 kapandı</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="724"/>
+        <location filename="../qml/MirrorWindow.qml" line="695"/>
         <source>Mirroring stopped</source>
         <translation>Yansıtma durdu</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="725"/>
+        <location filename="../qml/MirrorWindow.qml" line="696"/>
         <source>Starting…</source>
         <translation>Başlatılıyor…</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="734"/>
+        <location filename="../qml/MirrorWindow.qml" line="705"/>
         <source>Tap the notification on %1, then choose to share the entire screen.</source>
         <translation>%1 cihazındaki bildirime dokunun, ardından tüm ekranı paylaşmayı seçin.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="736"/>
+        <location filename="../qml/MirrorWindow.qml" line="707"/>
         <source>The app closed on %1.</source>
         <translation>Uygulama %1 cihazında kapandı.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="737"/>
+        <location filename="../qml/MirrorWindow.qml" line="708"/>
         <source>The phone stopped sharing its screen.</source>
         <translation>Telefon ekranını paylaşmayı durdurdu.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="744"/>
+        <location filename="../qml/MirrorWindow.qml" line="715"/>
         <source>Open again</source>
         <translation>Yeniden aç</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="744"/>
+        <location filename="../qml/MirrorWindow.qml" line="715"/>
         <source>Try again</source>
         <translation>Tekrar dene</translation>
     </message>

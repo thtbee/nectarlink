@@ -21,8 +21,12 @@ Window {
     readonly property bool canControl: info.canControl === true
 
     visible: true
-    title: info.app ? qsTr("%1 · %2").arg(info.title).arg(deviceName)
-         : deviceName.length > 0 ? qsTr("%1 · NectarLink").arg(deviceName) : qsTr("Phone screen · NectarLink")
+    // Recording and a dark phone screen show in the title, where they cover
+    // nothing of the app (#340).
+    title: [info.app ? qsTr("%1 · %2").arg(info.title).arg(deviceName)
+                     : deviceName.length > 0 ? qsTr("%1 · NectarLink").arg(deviceName) : qsTr("Phone screen · NectarLink"),
+            info.recording === true ? qsTr("Recording") : "",
+            info.screenOff === true ? qsTr("Phone screen off") : ""].filter(t => t.length > 0).join(" · ")
     color: "black"
     minimumWidth: 240
     minimumHeight: 240
@@ -379,39 +383,6 @@ Window {
         height: navPill.visible && !navPill.besideToolbar ? 104 : 56
         HoverHandler { id: topZoneHover }
     }
-    // What the hidden toolbar would show: recording, and the phone's screen off.
-    Rectangle {
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.margins: 12
-        visible: toolbar.visible && toolbar.opacity === 0
-            && (win.info.recording === true || win.info.screenOff === true)
-        width: badgeRow.implicitWidth + 14
-        height: 24
-        radius: 12
-        color: Qt.rgba(0, 0, 0, 0.55)
-        Accessible.role: Accessible.StaticText
-        Accessible.name: [win.info.recording === true ? qsTr("Recording") : "",
-                          win.info.screenOff === true ? qsTr("Phone screen off") : ""].filter(t => t).join(", ")
-        Row {
-            id: badgeRow
-            anchors.centerIn: parent
-            spacing: 6
-            Rectangle {
-                visible: win.info.recording === true
-                anchors.verticalCenter: parent.verticalCenter
-                width: 8; height: 8; radius: 4
-                color: "#e5484d"
-            }
-            Icon {
-                visible: win.info.screenOff === true
-                anchors.verticalCenter: parent.verticalCenter
-                width: 14; height: 14
-                path: Icons.screenOff
-                color: "white"
-            }
-        }
-    }
     Rectangle {
         id: toolbar
         anchors.top: parent.top
@@ -426,7 +397,7 @@ Window {
             || recordBtn.activeFocus || stayAwakeBtn.activeFocus || screenOffBtn.activeFocus || soundBtn.activeFocus
             || backBtn.activeFocus || homeBtn.activeFocus || recentsBtn.activeFocus
         // Only while it's wanted: it sits over the app's own top bar (#340).
-        // Recording and a dark phone screen show as a small badge instead.
+        // Recording and a dark phone screen show in the window's title instead.
         opacity: topZoneHover.hovered || toolbarHover.hovered || navHover.hovered || toolbarWakeTimer.running
             || toolbarHasFocus ? 1 : 0
         Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast } }
