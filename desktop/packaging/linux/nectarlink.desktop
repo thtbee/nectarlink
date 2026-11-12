@@ -3,12 +3,15 @@ Type=Application
 Version=1.4
 Name=NectarLink
 GenericName=Phone Link
+GenericName[pt_BR]=Conexão com o celular
 Comment=Connect your Android phone and Linux PC over LAN
+Comment[pt_BR]=Conecte seu celular Android e seu PC Linux pela rede local
 Exec=nectarlink-desktop %U
 Icon=nectarlink
 Terminal=false
 Categories=Network;FileTransfer;Telephony;
 Keywords=android;phone;sync;clipboard;notifications;files;mirror;sms;calls;
+Keywords[pt_BR]=android;celular;sincronização;área de transferência;notificações;arquivos;espelhamento;sms;chamadas;
 StartupNotify=true
 StartupWMClass=nectarlink
 MimeType=x-scheme-handler/nectarlink;x-scheme-handler/tel;x-scheme-handler/sms;x-scheme-handler/smsto;x-scheme-handler/mms;x-scheme-handler/mmsto;x-scheme-handler/geo;
@@ -16,20 +19,25 @@ Actions=send-files;send-clipboard;find-phone;take-photo;open-timeline;
 
 [Desktop Action send-files]
 Name=Send files to phone
+Name[pt_BR]=Enviar arquivos para o celular
 Exec=nectarlink-desktop --task send-files
 
 [Desktop Action send-clipboard]
 Name=Send clipboard to phone
+Name[pt_BR]=Enviar área de transferência para o celular
 Exec=nectarlink-desktop --task send-clipboard
 
 [Desktop Action find-phone]
 Name=Find my phone
+Name[pt_BR]=Localizar meu celular
 Exec=nectarlink-desktop --task find-phone
 
 [Desktop Action take-photo]
 Name=Take photo with phone
+Name[pt_BR]=Tirar foto com o celular
 Exec=nectarlink-desktop --task take-photo
 
 [Desktop Action open-timeline]
 Name=Open Timeline
+Name[pt_BR]=Abrir linha do tempo
 Exec=nectarlink-desktop --task open-timeline
