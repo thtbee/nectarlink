@@ -6014,12 +6014,12 @@ Qué necesitas
     <message>
         <location filename="../qml/MirrorWindow.qml" line="474"/>
         <source>Don&apos;t keep on top</source>
-        <translation>No mantener encima</translation>
+        <translation>No mantener en primer plano</translation>
     </message>
     <message>
         <location filename="../qml/MirrorWindow.qml" line="474"/>
         <source>Keep on top</source>
-        <translation>Mantener encima</translation>
+        <translation>Mantener en primer plano</translation>
     </message>
     <message>
         <location filename="../qml/MirrorWindow.qml" line="518"/>
@@ -7106,7 +7106,7 @@ Qué necesitas
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="30"/>
         <source>Enter an HTTP or HTTPS relay address without credentials, a path or a query.</source>
-        <translation>Escribe una dirección de relay HTTP o HTTPS sin credenciales, ruta ni consulta.</translation>
+        <translation>Introduce una dirección de relay HTTP o HTTPS sin credenciales, ruta ni consulta.</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="33"/>
@@ -7126,7 +7126,7 @@ Qué necesitas
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="42"/>
         <source>Couldn&apos;t save the relay settings.</source>
-        <translation>No se pudo guardar la configuración de relays.</translation>
+        <translation>No se pudieron guardar los ajustes de relays.</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="77"/>
@@ -8065,12 +8065,12 @@ Qué necesitas
         <location filename="../qml/pages/SettingsPage.qml" line="1246"/>
         <location filename="../qml/pages/SettingsPage.qml" line="1249"/>
         <source>Right-click is a long press</source>
-        <translation>Clic derecho es mantener pulsado</translation>
+        <translation>El clic derecho es una pulsación larga</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1247"/>
         <source>In mirroring and app windows, right-click holds a finger down, for menus and selecting. Esc is Back. Shift+click is a long press either way.</source>
-        <translation>En la duplicación y las ventanas de apps, el clic derecho mantiene el dedo pulsado, para menús y seleccionar. Esc es Atrás. Mayús+clic siempre es mantener pulsado.</translation>
+        <translation>En la duplicación y las ventanas de aplicaciones, el clic derecho mantiene el dedo pulsado, para menús y para seleccionar. Esc es Atrás. Mayús+clic es una pulsación larga en ambos casos.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1529"/>
@@ -8823,7 +8823,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3362"/>
         <source>Local connections switch after a restart. Relays switch right away if the app started with an interface selected.</source>
-        <translation>Las conexiones locales cambian tras reiniciar la aplicación. Las conexiones por relé cambian de inmediato si ya había una interfaz seleccionada al iniciar la aplicación.</translation>
+        <translation>Las conexiones locales cambian tras reiniciar la aplicación. Los relays cambian de inmediato si la aplicación se inició con una interfaz seleccionada.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3366"/>
