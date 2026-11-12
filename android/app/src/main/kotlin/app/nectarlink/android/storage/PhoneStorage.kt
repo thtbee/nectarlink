@@ -252,9 +252,7 @@ class PhoneStorage(
             if (!confirmed) {
                 throw StorageFailure.Denied()
             }
-            if (!deleteTreeSafely(target, canonRoot, blocked)) {
-                throw StorageFailure.Failed("delete failed")
-            }
+            deleteEntry(target, canonRoot, blocked)
             MediaScannerConnection.scanFile(context, arrayOf(target.absolutePath), null, null)
             return
         }
@@ -835,6 +833,18 @@ class PhoneStorage(
          * Deletes `file` recursively without following symbolic links into target
          * directories and without deleting any ancestor of a blocked directory.
          */
+        /**
+         * Deletes [target] for the PC. Not there to begin with is [StorageFailure.NotFound],
+         * which the PC takes as done; and once it's gone it's deleted, even if a step
+         * along the way said otherwise. Only a target still there is a failure.
+         */
+        internal fun deleteEntry(target: File, canonRoot: File, blocked: List<File>) {
+            if (!target.exists() && !isSymlink(target)) throw StorageFailure.NotFound()
+            if (!deleteTreeSafely(target, canonRoot, blocked) && (target.exists() || isSymlink(target))) {
+                throw StorageFailure.Failed("delete failed")
+            }
+        }
+
         internal fun deleteTreeSafely(file: File, canonRoot: File, blocked: List<File>): Boolean {
             if (isSymlink(file)) {
                 return runCatching { Files.deleteIfExists(file.toPath()) }.getOrDefault(false) || file.delete()

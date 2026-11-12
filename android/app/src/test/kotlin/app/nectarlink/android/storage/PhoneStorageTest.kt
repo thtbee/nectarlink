@@ -186,6 +186,39 @@ class PhoneStorageTest {
     }
 
     @Test
+    fun deletingWhatIsAlreadyGoneIsNotFoundAndARefusalStillFails() {
+        val temp = Files.createTempDirectory("nectarlink-storage-delete-test").toFile()
+        try {
+            val root = File(temp, "shared").apply { mkdirs() }
+            val canonRoot = root.canonicalFile
+            val blocked = listOf(File(root, "Android/data"))
+            val file = File(root, "app.xapk").apply { writeText("x") }
+
+            PhoneStorage.deleteEntry(file, canonRoot, blocked)
+            assertFalse(file.exists())
+            // A second delete of the same file (the PC asks again) is NotFound, which the PC takes as done.
+            try {
+                PhoneStorage.deleteEntry(file, canonRoot, blocked)
+                fail("expected NotFound for a file that's already gone")
+            } catch (_: StorageFailure.NotFound) {
+            }
+
+            val secret = File(root, "Android/data/app/secret.txt").apply {
+                parentFile?.mkdirs()
+                writeText("keep")
+            }
+            try {
+                PhoneStorage.deleteEntry(File(root, "Android"), canonRoot, blocked)
+                fail("expected a refusal to stay a failure")
+            } catch (_: StorageFailure.Failed) {
+            }
+            assertTrue(secret.exists())
+        } finally {
+            temp.deleteRecursively()
+        }
+    }
+
+    @Test
     fun filterPersistedSafEntriesDropsAllWhenPersistedSetIsEmpty() {
         val raw = setOf("Documents|content://tree/docs", "Music|content://tree/music")
         assertTrue(
