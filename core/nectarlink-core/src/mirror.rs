@@ -25,8 +25,8 @@ use iroh::endpoint::{RecvStream, SendStream, VarInt};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, PacketKind,
     messages::{
-        MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorPower, MirrorResize, MirrorSession, MirrorSound,
-        MirrorStart, PhoneApp, PhoneApps, StreamHeader, mirror, types,
+        MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorNotice, MirrorPower, MirrorResize, MirrorSession,
+        MirrorSound, MirrorStart, PhoneApp, PhoneApps, StreamHeader, mirror, types,
     },
     read_video_packet, video_packet_header, write_frame,
 };
@@ -117,6 +117,15 @@ pub(crate) async fn start(shared: &Shared, session: &Session, options: MirrorSta
     let env = Envelope::new(types::MIRROR_START, &options)?;
     session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect(types::OK)?;
     Ok(())
+}
+
+/// Tells the PC something about its mirroring (`mirror.notice`), by `code`.
+pub(crate) async fn notice(session: &Session, mirroring: u32, code: &str) -> Result<()> {
+    let body = MirrorNotice { session: mirroring, code: code.to_owned() };
+    if !body.is_valid() {
+        return Err(Error::Protocol("invalid mirror notice".into()));
+    }
+    session.send(Envelope::new(types::MIRROR_NOTICE, &body)?).await
 }
 
 pub(crate) async fn stop(session: &Session, mirroring: u32) -> Result<()> {
@@ -448,6 +457,16 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             shared.emit(NodeEvent::Mirroring { device: peer, session: mirroring, on: false });
             tokio::task::spawn_blocking(move || platform.mirror_stop_requested(&peer, mirroring));
             session.send(Envelope::empty(types::OK).reply_to(env.id)).await?;
+        }
+        types::MIRROR_NOTICE => {
+            let notice: MirrorNotice = env.body()?;
+            if notice.is_valid() && shared.we_offer(mirror::VIEW) {
+                shared.emit(NodeEvent::MirrorNotice {
+                    device: peer,
+                    session: notice.session,
+                    code: notice.code,
+                });
+            }
         }
         types::MIRROR_KEYFRAME => {
             let MirrorSession { session: mirroring } = env.body()?;

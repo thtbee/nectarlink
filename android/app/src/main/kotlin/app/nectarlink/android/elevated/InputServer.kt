@@ -340,6 +340,21 @@ object InputServer {
         kotlin.system.exitProcess(0)
     }
 
+    /** Whether this connection was told its input is refused, so it's said once. */
+    @Volatile private var blockedReported = false
+
+    private fun reportInputBlocked() {
+        if (blockedReported) return
+        val out = controlOut ?: return
+        blockedReported = true
+        runCatching {
+            synchronized(out) {
+                out.write("BLOCKED\n")
+                out.flush()
+            }
+        }
+    }
+
     private fun serve(client: Socket, token: String, injector: Injector) {
         client.use {
             client.tcpNoDelay = true
@@ -354,6 +369,7 @@ object InputServer {
             if (first == "A") return streamDeviceAudio(client.getOutputStream(), injector)
             val writer = java.io.OutputStreamWriter(client.getOutputStream(), Charsets.UTF_8)
             controlOut = writer
+            blockedReported = false
             try {
                 var line: String? = if (first == "H") runCatching { reader.nextLine(MAX_LINE_CHARS) }.getOrNull() else first
                 while (line != null) {
@@ -776,7 +792,14 @@ object InputServer {
         private fun send(event: InputEvent) {
             if (display >= 0) setDisplayId?.invoke(event, display)
             // 0: asynchronous; the app doesn't wait for the target app.
-            inject.invoke(manager, event, 0)
+            try {
+                inject.invoke(manager, event, 0)
+            } catch (e: java.lang.reflect.InvocationTargetException) {
+                // Xiaomi, Redmi and POCO refuse it until USB debugging
+                // (Security settings) is on: the app tells the PC what to do.
+                if (e.cause is SecurityException) reportInputBlocked()
+                throw e
+            }
         }
 
         private fun touch(action: String, x: Float, y: Float) {

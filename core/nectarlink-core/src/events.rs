@@ -183,6 +183,13 @@ pub enum NodeEvent {
         session: u32,
         on: bool,
     },
+    /// A phone says something about a mirroring shown here (`mirror.notice`),
+    /// by code (`mirror::NOTICE_*`).
+    MirrorNotice {
+        device: DeviceId,
+        session: u32,
+        code: String,
+    },
     /// A phone's messages changed: in `thread`, or anywhere when `None`.
     SmsChanged {
         device: DeviceId,

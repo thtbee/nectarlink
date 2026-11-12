@@ -578,6 +578,7 @@ impl AppState {
             | NodeEvent::ContactsChanged { .. }
             | NodeEvent::SmsChanged { .. }
             | NodeEvent::Mirroring { .. }
+            | NodeEvent::MirrorNotice { .. }
             | NodeEvent::WakeInfoChanged { .. }
             | NodeEvent::DeckLayout { .. }
             | NodeEvent::DeckState { .. }
