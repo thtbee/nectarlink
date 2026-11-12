@@ -1607,6 +1607,9 @@ pub mod mirror_keys {
     pub const SELECT_ALL: &str = "select_all";
     /// Locks the phone. Phones from before this drop it.
     pub const LOCK: &str = "lock";
+    /// Presses the focused chat box's Send (the PC's Enter, with "Enter sends
+    /// messages" on). Phones from before this drop it.
+    pub const SEND: &str = "send";
     pub const ALL: &[&str] = &[
         BACK,
         HOME,
@@ -1626,6 +1629,7 @@ pub mod mirror_keys {
         CUT,
         SELECT_ALL,
         LOCK,
+        SEND,
     ];
 }
 
@@ -5106,7 +5110,13 @@ mod tests {
         assert!(!MirrorInput::Touch { action: TouchAction::Up, x: f32::NAN, y: 0.0 }.is_valid());
         assert!(MirrorInput::Key { key: "back".into() }.is_valid());
         assert!(!MirrorInput::Key { key: "power".into() }.is_valid());
-        for key in [mirror_keys::COPY, mirror_keys::CUT, mirror_keys::SELECT_ALL] {
+        for key in [
+            mirror_keys::COPY,
+            mirror_keys::CUT,
+            mirror_keys::SELECT_ALL,
+            mirror_keys::LOCK,
+            mirror_keys::SEND,
+        ] {
             assert!(MirrorInput::Key { key: key.into() }.is_valid());
         }
         assert!(!MirrorInput::Text { text: String::new() }.is_valid());
