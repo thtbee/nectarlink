@@ -389,7 +389,7 @@
     <string name="pc_mirror_task_view">Представление задач</string>
     <string name="pc_mirror_keyboard">Клавиатура</string>
     <string name="pc_mirror_hide_keyboard">Скрыть клавиши</string>
-    <string name="pc_mirror_send_text">Отправить</string>
+    <string name="pc_mirror_enter">Ввод</string>
     <string name="pc_mirror_backspace">Стереть</string>
     <string name="pc_mirror_quality_720p">720p</string>
     <string name="pc_mirror_quality_1080p">1080p</string>
