@@ -117,6 +117,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The flashlight works from the PC while the phone is a webcam.** The phone's camera is busy then,
+  so the flashlight button now switches the webcam's own torch, and shows it, instead of failing
+  ([#353](https://github.com/thtbee/nectarlink/issues/353)).
 - **Full-screen controls beside the PC's screen.** They're one size and shape on both
   sides, labels shrink to fit instead of breaking mid-word with a large font, the
   selected one is easy to read, and so is what you type in the bar below.

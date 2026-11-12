@@ -21,6 +21,7 @@ import android.provider.Settings
 import android.util.Log
 import androidx.core.content.ContextCompat
 import app.nectarlink.android.elevated.Elevated
+import app.nectarlink.android.webcam.WebcamService
 import app.nectarlink.core.PhoneToggleValue
 import app.nectarlink.core.PhoneToggles as CorePhoneToggles
 import kotlin.math.roundToInt
@@ -136,7 +137,7 @@ class PhoneToggles(
     fun snapshot(): CorePhoneToggles = CorePhoneToggles(
         dnd = readDnd(),
         ringer = readRinger(),
-        flashlight = if (torchCameraId != null) torchOn else null,
+        flashlight = readFlashlight(),
         volume = readVolume().toUByte(),
         brightness = readBrightness().toUByte(),
         wifi = readWifi(),
@@ -261,12 +262,31 @@ class PhoneToggles(
         return true
     }
 
+    // While the phone is a webcam it holds the camera, and Android refuses
+    // the torch to anyone else: the webcam's own torch then (#353).
     private fun setFlashlight(on: Boolean): Boolean {
+        val webcam = WebcamService.session.value
+        if (webcam.active) {
+            if (!webcam.hasFlash) return false
+            WebcamService.setTorch(on)
+            return true
+        }
         val camId = torchCameraId ?: return false
         val cm = camera ?: return false
-        cm.setTorchMode(camId, on)
-        torchOn = on
-        return true
+        return runCatching { cm.setTorchMode(camId, on) }
+            .onSuccess { torchOn = on }
+            .onFailure { Log.i(TAG, "can't switch the flashlight", it) }
+            .isSuccess
+    }
+
+    /** The flashlight: the webcam's torch while it streams, else the phone's. */
+    private fun readFlashlight(): Boolean? {
+        val webcam = WebcamService.session.value
+        return when {
+            webcam.active && webcam.hasFlash -> webcam.torchOn
+            torchCameraId != null -> torchOn
+            else -> null
+        }
     }
 
     private fun readVolume(): Int {
