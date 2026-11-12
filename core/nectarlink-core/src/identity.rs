@@ -96,6 +96,14 @@ pub(crate) fn load_or_create(dir: &Path, protector: &dyn KeyProtector) -> Result
     }
 }
 
+/// The protection method of the device key stored in `dir`, or `None` when
+/// there is no key file yet (or it isn't one). Lets an app tell whether the key
+/// is already sealed before it picks a protector.
+pub fn stored_key_method(dir: &Path) -> Option<u8> {
+    let bytes = fs::read(dir.join(FILE_NAME)).ok()?;
+    bytes.strip_prefix(MAGIC.as_slice())?.first().copied()
+}
+
 fn encode(key: &SecretKey, protector: &dyn KeyProtector) -> Result<Vec<u8>> {
     let sealed = protector.protect(&key.to_bytes())?;
     let mut out = Vec::with_capacity(MAGIC.len() + 1 + sealed.len());
@@ -679,7 +687,9 @@ mod tests {
     #[test]
     fn a_sealed_key_is_not_opened_without_its_protector() {
         let dir = tempfile::tempdir().unwrap();
+        assert_eq!(stored_key_method(dir.path()), None, "no key file yet");
         load_or_create(dir.path(), &TestProtector).unwrap();
+        assert_eq!(stored_key_method(dir.path()), Some(TestProtector.id()));
         // Nothing is overwritten when the protector is gone: the error says why.
         let before = fs::read(dir.path().join(FILE_NAME)).unwrap();
         assert!(matches!(load_or_create(dir.path(), &PlainKeyProtector), Err(Error::Storage(_))));

@@ -34,6 +34,17 @@ pub struct CoreHost {
 
 static HOST: OnceLock<CoreHost> = OnceLock::new();
 
+/// Signaled by "Try again" while the core waits for the keyring.
+static KEYRING_RETRY: Notify = Notify::const_new();
+
+/// The notice shown while the core waits for the keyring.
+pub const KEYRING_TOAST_GROUP: &str = "keyring";
+
+/// Retries opening the keyring, if the core is waiting for it.
+pub fn retry_keyring() {
+    KEYRING_RETRY.notify_one();
+}
+
 /// The running host. Panics if called before [`start`].
 pub fn host() -> &'static CoreHost {
     HOST.get().expect("core host is started in main before Qt")
@@ -197,6 +208,93 @@ pub fn refresh_capabilities() {
     });
 }
 
+/// The keyring's protector for the core. Doesn't wait unless the device key is
+/// already sealed; then waits as long as it takes, saying why and what to do,
+/// and asks the user to unlock a locked keyring. Nothing on disk is touched
+/// meanwhile, so a keyring that is away for a while costs nothing.
+#[cfg(target_os = "linux")]
+async fn keyring_protector(data_dir: &std::path::Path) -> Option<Arc<dyn nectarlink_core::KeyProtector>> {
+    use crate::win::{keyring, toast};
+
+    let sealed = keyring::is_sealed(data_dir);
+    let mut prompt = false;
+    let mut asked = false;
+    let mut told = false;
+    let mut last = None;
+    loop {
+        let problem = match tokio::task::spawn_blocking(move || keyring::open(sealed, prompt)).await {
+            Ok(Ok(protector)) => {
+                if told {
+                    toast::remove(KEYRING_TOAST_GROUP, KEYRING_TOAST_GROUP);
+                    host().hub.update(|s| {
+                        s.status = Some(CoreStatus::Starting);
+                        Changes::STATUS
+                    });
+                }
+                return protector;
+            }
+            Ok(Err(problem)) => problem,
+            Err(_) => keyring::Problem::Unreachable,
+        };
+        if last != Some(problem) {
+            last = Some(problem);
+            tracing::info!(?problem, "waiting for the keyring that seals the device key");
+        }
+        let message = match problem {
+            keyring::Problem::Locked => tr!(
+                "Keyring",
+                "This PC's device key is sealed with your keyring, which is locked. Unlock it and NectarLink starts. Nothing is lost while it's locked."
+            ),
+            keyring::Problem::Missing => tr!(
+                "Keyring",
+                "Your keyring doesn't have the key that seals this PC's device key. If you use more than one keyring app, open the one NectarLink used before, then try again. Nothing has been changed."
+            ),
+            keyring::Problem::Unreachable => tr!(
+                "Keyring",
+                "This PC's device key is sealed with your keyring, but no keyring is running. Start it (GNOME Keyring, KWallet or KeePassXC), then try again. Nothing is lost meanwhile."
+            ),
+        };
+        host().hub.update(|s| {
+            let status = Some(CoreStatus::WaitingForKeyring(message.clone()));
+            if s.status == status {
+                return Changes::NONE;
+            }
+            s.status = status;
+            Changes::STATUS
+        });
+        if !told {
+            // Also when started minimized at login, where the window isn't seen.
+            told = true;
+            toast::show(toast::Toast {
+                device: KEYRING_TOAST_GROUP.into(),
+                key: KEYRING_TOAST_GROUP.into(),
+                title: tr!("Keyring", "NectarLink is waiting for your keyring"),
+                body: message,
+                attribution: "NectarLink".into(),
+                icon: None,
+                image: None,
+                actions: Vec::new(),
+                reply: None,
+                silent: true,
+                progress: None,
+                call: false,
+            });
+        }
+        // A locked keyring is asked to unlock right away, once. After that it's
+        // asked again on "Try again", and checked quietly every 15 s, so a
+        // keyring that comes back or is unlocked elsewhere is picked up.
+        if problem == keyring::Problem::Locked && !asked {
+            asked = true;
+            prompt = true;
+            continue;
+        }
+        prompt = tokio::select! {
+            _ = KEYRING_RETRY.notified() => true,
+            _ = tokio::time::sleep(Duration::from_secs(15)) => false,
+        };
+    }
+}
+
 async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     let host = host();
     let wake = crate::win::wol::query_wake_status();
@@ -205,8 +303,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     // Seal the device key with the desktop's Secret Service where there is one.
     #[cfg(target_os = "linux")]
     {
-        config.key_protector =
-            tokio::task::spawn_blocking(crate::win::keyring::protector).await.ok().flatten();
+        config.key_protector = keyring_protector(&data_dir).await;
     }
     // NECTARLINK_NO_ADB=1 keeps a development copy from reaching phones plugged in over USB,
     // unless NECTARLINK_ADB_ONLY_SERIAL explicitly restricts ADB to an Android emulator.

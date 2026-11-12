@@ -2,8 +2,9 @@
 import QtQuick
 import app.nectarlink
 
-// First run: pair a phone. Also covers the moment before the core is ready
-// and the (rare) case where it failed to start.
+// First run: pair a phone. Also covers the moment before the core is ready,
+// waiting for the keyring that seals the device key (Linux), and the (rare)
+// case where it failed to start.
 Item {
     id: page
 
@@ -44,6 +45,8 @@ Item {
                 muted: true
                 text: page.status === "failed"
                       ? qsTr("NectarLink couldn't start.")
+                      : page.status === "keyring"
+                      ? qsTr("NectarLink is waiting for your keyring.")
                       : qsTr("Your phone and this PC, together. Pair once and they find each other from then on.")
             }
         }
@@ -63,6 +66,25 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             visible: page.status === "starting"
             width: 28; height: 28
+        }
+
+        Column {
+            width: parent.width
+            spacing: 12
+            visible: page.status === "keyring"
+            Txt {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                role: "body"
+                text: AppController.error
+            }
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                variant: "tonal"
+                text: qsTr("Try again")
+                onClicked: AppController.retryKeyring()
+            }
         }
 
         Column {

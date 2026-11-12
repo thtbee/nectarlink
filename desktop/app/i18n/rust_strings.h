@@ -340,6 +340,10 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Hotspot", "%1's hotspot didn't show up. Check that it's on, then pick %2 in Windows' Wi-Fi list."), // desktop/app/src/hotspot.rs
     QT_TRANSLATE_NOOP("Hotspot", "Connected to %1's hotspot."), // desktop/app/src/hotspot.rs
     QT_TRANSLATE_NOOP("Hotspot", "Couldn't join %1's hotspot. Pick %2 in Windows' Wi-Fi list."), // desktop/app/src/hotspot.rs
+    QT_TRANSLATE_NOOP("Keyring", "NectarLink is waiting for your keyring"), // desktop/app/src/core_host.rs
+    QT_TRANSLATE_NOOP("Keyring", "This PC's device key is sealed with your keyring, but no keyring is running. Start it (GNOME Keyring, KWallet or KeePassXC), then try again. Nothing is lost meanwhile."), // desktop/app/src/core_host.rs
+    QT_TRANSLATE_NOOP("Keyring", "This PC's device key is sealed with your keyring, which is locked. Unlock it and NectarLink starts. Nothing is lost while it's locked."), // desktop/app/src/core_host.rs
+    QT_TRANSLATE_NOOP("Keyring", "Your keyring doesn't have the key that seals this PC's device key. If you use more than one keyring app, open the one NectarLink used before, then try again. Nothing has been changed."), // desktop/app/src/core_host.rs
     QT_TRANSLATE_NOOP("Links", "%1: tap the notification on your phone to continue watching."), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "%1: tap the notification on your phone to open in Maps."), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "Copy a link or address first"), // desktop/app/src/links.rs

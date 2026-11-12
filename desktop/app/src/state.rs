@@ -102,8 +102,15 @@ impl std::ops::BitOrAssign for Changes {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoreStatus {
     Starting,
-    Ready { device_id: DeviceId, name: String },
+    Ready {
+        device_id: DeviceId,
+        name: String,
+    },
     Failed(String),
+    /// Waiting for the keyring that seals the device key; the text says why
+    /// and what to do. Only Linux uses it.
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+    WaitingForKeyring(String),
 }
 
 /// A paired device as the UI shows it.

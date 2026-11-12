@@ -352,6 +352,9 @@ pub mod qobject {
         /// The folder with the app's logs, as a file URL.
         #[qinvokable]
         fn logs_url(self: &AppController) -> QString;
+        /// Asks the keyring again while the core waits for it (status `"keyring"`).
+        #[qinvokable]
+        fn retry_keyring(self: &AppController);
 
         /// Opens a paired phone's storage sync root in File Explorer.
         #[qinvokable]
@@ -1300,6 +1303,7 @@ impl qobject::AppController {
                 ("ready", String::new())
             }
             CoreStatus::Failed(message) => ("failed", message.clone()),
+            CoreStatus::WaitingForKeyring(message) => ("keyring", message.clone()),
         };
         self.as_mut().set_status(QString::from(status_text));
         self.as_mut().set_error(QString::from(&error));
@@ -1871,6 +1875,10 @@ impl qobject::AppController {
 
     pub fn doctor_fix(self: Pin<&mut Self>, fix: &QString) {
         diagnose_in_background(self, Some(String::from(fix)));
+    }
+
+    pub fn retry_keyring(&self) {
+        core_host::retry_keyring();
     }
 
     pub fn logs_url(&self) -> QString {

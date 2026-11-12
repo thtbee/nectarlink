@@ -531,6 +531,15 @@ pub fn on_toast(event: ToastEvent) {
             return;
         }
         ToastEvent::Dismissed { device, .. } if device == crate::clipboard::TOAST_GROUP => return,
+        // The core waiting for the keyring: show why.
+        ToastEvent::Opened { device, .. } if device == core_host::KEYRING_TOAST_GROUP => {
+            return crate::bridge::app::request_activation();
+        }
+        ToastEvent::Dismissed { device, .. } | ToastEvent::Action { device, .. }
+            if device == core_host::KEYRING_TOAST_GROUP =>
+        {
+            return;
+        }
         _ => {}
     }
     match event {
