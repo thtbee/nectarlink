@@ -468,6 +468,9 @@ pub struct Settings {
     /// In mirroring and app windows, Enter sends and Ctrl+Enter makes a new line.
     #[serde(default, alias = "enter_sends")]
     pub enter_sends: bool,
+    /// In mirroring and app windows, right-click is a long press instead of Back.
+    #[serde(default)]
+    pub right_click_long_press: bool,
     /// No pop-ups for phone notifications while this PC is locked.
     #[serde(default, alias = "quiet_when_locked")]
     pub quiet_when_locked: bool,
@@ -691,6 +694,7 @@ impl Default for Settings {
             language: String::new(),
             sync_dnd: false,
             enter_sends: false,
+            right_click_long_press: false,
             quiet_when_locked: false,
             hold_when_locked: false,
             send_to_menu: true,
@@ -970,6 +974,7 @@ mod tests {
             language: "zh_CN".into(),
             sync_dnd: true,
             enter_sends: true,
+            right_click_long_press: true,
             quiet_when_locked: true,
             hold_when_locked: true,
             send_to_menu: false,

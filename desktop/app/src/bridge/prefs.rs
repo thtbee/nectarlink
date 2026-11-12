@@ -67,6 +67,8 @@ pub mod qobject {
         #[qproperty(bool, sync_dnd)]
         /// In mirroring and app windows, Enter sends and Ctrl+Enter makes a new line.
         #[qproperty(bool, enter_sends)]
+        /// In mirroring and app windows, right-click is a long press instead of Back.
+        #[qproperty(bool, right_click_long_press)]
         /// No pop-ups for phone notifications while this PC is locked.
         #[qproperty(bool, quiet_when_locked)]
         #[qproperty(bool, hold_when_locked)]
@@ -335,6 +337,7 @@ pub struct PreferencesRust {
     language: QString,
     sync_dnd: bool,
     enter_sends: bool,
+    right_click_long_press: bool,
     quiet_when_locked: bool,
     hold_when_locked: bool,
     send_to_menu: bool,
@@ -427,6 +430,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_sync_dnd(settings.sync_dnd);
         crate::notifications::set_sync_dnd(settings.sync_dnd);
         self.as_mut().set_enter_sends(settings.enter_sends);
+        self.as_mut().set_right_click_long_press(settings.right_click_long_press);
         self.as_mut().set_quiet_when_locked(settings.quiet_when_locked);
         crate::notifications::set_quiet_when_locked(settings.quiet_when_locked);
         self.as_mut().set_hold_when_locked(settings.hold_when_locked);
@@ -579,6 +583,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
             })
             .release();
         self.as_mut().on_enter_sends_changed(|p| p.save()).release();
+        self.as_mut().on_right_click_long_press_changed(|p| p.save()).release();
         self.as_mut()
             .on_sync_dnd_changed(|p| {
                 crate::notifications::set_sync_dnd(p.sync_dnd);
@@ -1136,6 +1141,7 @@ impl qobject::Preferences {
             language: String::from(&p.language),
             sync_dnd: p.sync_dnd,
             enter_sends: p.enter_sends,
+            right_click_long_press: p.right_click_long_press,
             quiet_when_locked: p.quiet_when_locked,
             hold_when_locked: p.hold_when_locked,
             send_to_menu: p.send_to_menu,
