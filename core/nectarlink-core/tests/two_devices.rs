@@ -231,6 +231,25 @@ impl Platform for RecordingPlatform {
     fn camera_capture_cancelled(&self, _peer: &nectarlink_core::DeviceId, request_id: &str) {
         self.camera_asks.lock().unwrap().push(format!("cancel {request_id}"));
     }
+    fn pointer_enter(
+        &self,
+        _peer: &nectarlink_core::DeviceId,
+        edge: nectarlink_core::PointerEdge,
+        y: f32,
+    ) -> Result<nectarlink_core::PointerScreen, String> {
+        self.mirror_asks.lock().unwrap().push(format!("pointer in {edge:?} {y}"));
+        Ok(nectarlink_core::PointerScreen { width: 1080, height: 2400, scale: 2.0 })
+    }
+    fn pointer_move(&self, _peer: &nectarlink_core::DeviceId, moved: nectarlink_core::PointerMove) {
+        let nectarlink_core::PointerMove { dx, dy, buttons, wheel } = moved;
+        self.mirror_asks.lock().unwrap().push(format!("pointer {dx},{dy} b{buttons} w{wheel}"));
+    }
+    fn pointer_where(&self, _peer: &nectarlink_core::DeviceId) -> Option<nectarlink_core::PointerAt> {
+        Some(nectarlink_core::PointerAt { x: 0.0, y: 600.0 })
+    }
+    fn pointer_leave(&self, _peer: &nectarlink_core::DeviceId) {
+        self.mirror_asks.lock().unwrap().push("pointer out".into());
+    }
     fn phone_apps(&self) -> Result<Vec<nectarlink_core::PhoneApp>, String> {
         let app = |pkg: &str, label: &str, icon: usize| nectarlink_core::PhoneApp {
             pkg: pkg.into(),
@@ -2348,6 +2367,84 @@ async fn the_phone_screen_streams_to_the_pc() {
     }
     let shown = pc.platform.mirror_asks.lock().unwrap().clone();
     assert_eq!(shown, ["sink 0", "sink 0"], "the screen and its sound");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_pcs_mouse_goes_over_to_a_phone_that_takes_it() {
+    use nectarlink_core::{PointerEdge, PointerMove};
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::MIRROR_VIEW]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::MIRROR_CAPTURE]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+
+    // A phone that doesn't offer it (no Elevated) is never asked.
+    assert!(matches!(pc.node.pointer_enter(phone_id, PointerEdge::Left, 0.5).await, Err(Error::Unsupported)));
+    phone
+        .node
+        .update_power(
+            PowerLevel::Elevated,
+            vec![nectarlink_core::MIRROR_CAPTURE.into(), nectarlink_core::MIRROR_POINTER.into()],
+        )
+        .await;
+    let deadline = tokio::time::Instant::now() + WAIT;
+    let screen = loop {
+        match pc.node.pointer_enter(phone_id, PointerEdge::Left, 0.25).await {
+            Ok(screen) => break screen,
+            Err(_) if tokio::time::Instant::now() < deadline => {
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await
+            }
+            Err(e) => panic!("the mouse didn't go over: {e}"),
+        }
+    };
+    assert_eq!((screen.width, screen.height, screen.scale), (1080, 2400, 2.0));
+    assert!(matches!(pc.node.pointer_enter(phone_id, PointerEdge::Left, 2.0).await, Err(Error::Protocol(_))));
+
+    pc.node.pointer_move(phone_id, PointerMove { dx: 10, dy: -4, buttons: 0, wheel: 0 }).await.unwrap();
+    pc.node.pointer_move(phone_id, PointerMove { dx: 0, dy: 0, buttons: 1, wheel: 0 }).await.unwrap();
+    pc.node.pointer_move(phone_id, PointerMove { dx: 0, dy: 0, buttons: 0, wheel: -1 }).await.unwrap();
+    assert!(matches!(
+        pc.node.pointer_move(phone_id, PointerMove { dx: 0, dy: 0, buttons: 9, wheel: 0 }).await,
+        Err(Error::Protocol(_))
+    ));
+    let at = pc.node.pointer_where(phone_id).await.unwrap();
+    assert_eq!((at.x, at.y), (0.0, 600.0));
+    pc.node.pointer_leave(phone_id).await.unwrap();
+
+    let wanted = [
+        "pointer in Left 0.25",
+        "pointer 10,-4 b0 w0",
+        "pointer 0,0 b1 w0",
+        "pointer 0,0 b0 w-1",
+        "pointer out",
+    ];
+    let deadline = tokio::time::Instant::now() + WAIT;
+    let asks = loop {
+        let asks: Vec<String> = phone
+            .platform
+            .mirror_asks
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|a| a.starts_with("pointer"))
+            .cloned()
+            .collect();
+        if asks.len() >= wanted.len() || tokio::time::Instant::now() >= deadline {
+            break asks;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    };
+    assert_eq!(asks, wanted, "in order, and nothing invalid got through");
+
+    // Mirroring turned off for this PC on the phone: the mouse can't come over.
+    phone.node.set_device_toggle(pc.node.device_id(), "mirroring", false).unwrap();
+    let deadline = tokio::time::Instant::now() + WAIT;
+    loop {
+        match pc.node.pointer_enter(phone_id, PointerEdge::Right, 0.5).await {
+            Err(Error::Denied) => break,
+            other if tokio::time::Instant::now() >= deadline => panic!("still let in: {other:?}"),
+            _ => tokio::time::sleep(std::time::Duration::from_millis(50)).await,
+        }
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]

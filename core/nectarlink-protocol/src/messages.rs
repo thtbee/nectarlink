@@ -83,6 +83,10 @@ pub mod types {
     pub const MIRROR_INPUT: &str = "mirror.input";
     pub const MIRROR_APPS: &str = "mirror.apps";
     pub const MIRROR_NOTICE: &str = "mirror.notice";
+    pub const POINTER_ENTER: &str = "pointer.enter";
+    pub const POINTER_MOVE: &str = "pointer.move";
+    pub const POINTER_WHERE: &str = "pointer.where";
+    pub const POINTER_LEAVE: &str = "pointer.leave";
     pub const REMOTE_CHECK: &str = "remote.check";
     pub const REMOTE_INPUT: &str = "remote.input";
     pub const PHONE_TOGGLES: &str = "phone.toggles";
@@ -1400,6 +1404,9 @@ pub mod mirror {
     pub const MAX_APPS: usize = 500;
     /// An app's icon (PNG), at most.
     pub const MAX_ICON_BYTES: usize = 8 * 1024;
+    /// Offered by phones that take the PC's mouse over the edge of its screen,
+    /// with a pointer of their own (`pointer.*`, docs/protocol/mirror.md).
+    pub const POINTER: &str = "mirror.pointer";
     /// `mirror.notice`: the phone refuses the PC's taps and keys (on Xiaomi,
     /// until USB debugging (Security settings) is on).
     pub const NOTICE_INPUT_BLOCKED: &str = "input_blocked";
@@ -1685,6 +1692,88 @@ impl MirrorInput {
             MirrorInput::Text { text } => !text.is_empty() && text.len() <= mirror::MAX_TEXT_BYTES,
             MirrorInput::Gamepad { .. } => true,
         }
+    }
+}
+
+// ---- The PC's mouse on the phone (`pointer.*`) ----
+
+/// Which edge of the phone's screen the PC's mouse comes in at, or goes out
+/// of: the one facing the PC.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PointerEdge {
+    Left,
+    Right,
+}
+
+/// Body of `pointer.enter` (PC → phone, a request): the PC's mouse went over
+/// the edge of its screen towards the phone, `y` of the way down (0 to 1).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PointerEnter {
+    pub edge: PointerEdge,
+    pub y: f32,
+}
+
+impl PointerEnter {
+    pub fn is_valid(&self) -> bool {
+        self.y.is_finite() && (0.0..=1.0).contains(&self.y)
+    }
+}
+
+/// The answer to `pointer.enter` (and to `pointer.where`'s size): the screen
+/// as the phone's pointer sees it, in pixels, and how far one count of
+/// `pointer.move` moves it. The PC follows the pointer from these and asks
+/// `pointer.where` only near the edge it leaves by.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PointerScreen {
+    pub width: u32,
+    pub height: u32,
+    /// Pixels per count.
+    pub scale: f32,
+}
+
+impl PointerScreen {
+    pub fn is_valid(&self) -> bool {
+        (1..=16_384).contains(&self.width)
+            && (1..=16_384).contains(&self.height)
+            && self.scale.is_finite()
+            && (0.05..=64.0).contains(&self.scale)
+    }
+}
+
+/// Body of `pointer.move` (PC → phone): the mouse moved by `dx`, `dy` counts,
+/// with `buttons` held (bits: 1 left, 2 right, 4 middle), and the wheel turned
+/// `wheel` notches (positive: up, as a mouse reports it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PointerMove {
+    pub dx: i32,
+    pub dy: i32,
+    #[serde(default)]
+    pub buttons: u8,
+    #[serde(default)]
+    pub wheel: i8,
+}
+
+impl PointerMove {
+    /// Counts in one move, at most (a fast flick between two sends).
+    pub const MAX_COUNTS: i32 = 4096;
+
+    pub fn is_valid(&self) -> bool {
+        self.dx.abs() <= Self::MAX_COUNTS && self.dy.abs() <= Self::MAX_COUNTS && self.buttons <= 7
+    }
+}
+
+/// The answer to `pointer.where` (PC → phone, a request): where the phone's
+/// pointer is, in pixels of [`PointerScreen`].
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PointerAt {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl PointerAt {
+    pub fn is_valid(&self) -> bool {
+        self.x.is_finite() && self.y.is_finite() && self.x >= 0.0 && self.y >= 0.0
     }
 }
 
@@ -5128,6 +5217,43 @@ mod tests {
         }
         assert!(!MirrorInput::Text { text: String::new() }.is_valid());
         assert!(!format!("{:?}", MirrorInput::Text { text: "secret".into() }).contains("secret"));
+    }
+
+    #[test]
+    fn pointer_messages_round_trip_and_are_checked() {
+        let enter = PointerEnter { edge: PointerEdge::Right, y: 0.25 };
+        assert!(enter.is_valid());
+        let env = Envelope::new(types::POINTER_ENTER, &enter).unwrap();
+        assert_eq!(env.body::<PointerEnter>().unwrap(), enter);
+        assert!(!PointerEnter { y: 1.5, ..enter }.is_valid());
+        assert!(!PointerEnter { y: f32::NAN, ..enter }.is_valid());
+
+        let screen = PointerScreen { width: 1080, height: 2400, scale: 2.0 };
+        assert!(screen.is_valid());
+        assert_eq!(
+            Envelope::new(types::POINTER_ENTER, &screen).unwrap().body::<PointerScreen>().unwrap(),
+            screen
+        );
+        assert!(!PointerScreen { width: 0, ..screen }.is_valid());
+        assert!(!PointerScreen { scale: 0.0, ..screen }.is_valid());
+        assert!(!PointerScreen { scale: f32::INFINITY, ..screen }.is_valid());
+
+        let moved = PointerMove { dx: -12, dy: 40, buttons: 1, wheel: -2 };
+        assert!(moved.is_valid());
+        assert_eq!(Envelope::new(types::POINTER_MOVE, &moved).unwrap().body::<PointerMove>().unwrap(), moved);
+        assert!(!PointerMove { dx: PointerMove::MAX_COUNTS + 1, ..moved }.is_valid());
+        assert!(!PointerMove { buttons: 8, ..moved }.is_valid());
+        // Buttons and wheel can be left out when nothing's held or turned.
+        #[derive(Serialize)]
+        struct Bare {
+            dx: i32,
+            dy: i32,
+        }
+        let bare = Envelope::new(types::POINTER_MOVE, &Bare { dx: 3, dy: 0 }).unwrap();
+        assert_eq!(bare.body::<PointerMove>().unwrap(), PointerMove { dx: 3, dy: 0, buttons: 0, wheel: 0 });
+
+        assert!(PointerAt { x: 0.0, y: 2399.0 }.is_valid());
+        assert!(!PointerAt { x: -1.0, y: 0.0 }.is_valid());
     }
 
     #[test]

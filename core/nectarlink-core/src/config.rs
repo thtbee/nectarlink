@@ -316,6 +316,30 @@ pub trait Platform: Send + Sync + 'static {
     fn mirror_input(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32, _input: crate::MirrorInput) {
     }
 
+    /// The PC's mouse came over the edge of its screen to this phone
+    /// (`pointer.enter`), at `edge`, `y` of the way down: show a pointer of
+    /// this phone's own there, and say how its screen and moves measure. `Err`
+    /// (a reason for logs) when it can't (it needs Elevated).
+    fn pointer_enter(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+        _edge: crate::PointerEdge,
+        _y: f32,
+    ) -> Result<crate::PointerScreen, String> {
+        Err("this device doesn't take the PC's mouse".into())
+    }
+
+    /// The PC's mouse moved on this phone. Must return quickly.
+    fn pointer_move(&self, _peer: &nectarlink_protocol::DeviceId, _moved: crate::PointerMove) {}
+
+    /// Where the pointer the PC's mouse moves is; `None` when it isn't showing.
+    fn pointer_where(&self, _peer: &nectarlink_protocol::DeviceId) -> Option<crate::PointerAt> {
+        None
+    }
+
+    /// The PC's mouse went back to the PC: put the pointer away.
+    fn pointer_leave(&self, _peer: &nectarlink_protocol::DeviceId) {}
+
     /// The PC's decoder needs a fresh start: encode a keyframe next.
     fn mirror_keyframe_requested(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32) {}
 

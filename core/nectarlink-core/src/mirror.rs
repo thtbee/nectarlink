@@ -26,7 +26,8 @@ use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, PacketKind,
     messages::{
         MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorNotice, MirrorPower, MirrorResize, MirrorSession,
-        MirrorSound, MirrorStart, PhoneApp, PhoneApps, StreamHeader, mirror, types,
+        MirrorSound, MirrorStart, PhoneApp, PhoneApps, PointerAt, PointerEdge, PointerEnter, PointerMove,
+        PointerScreen, StreamHeader, mirror, types,
     },
     read_video_packet, video_packet_header, write_frame,
 };
@@ -207,6 +208,78 @@ pub(crate) async fn sound(shared: &Shared, session: &Session, on: bool) -> Resul
     }
     session.send(Envelope::new(types::MIRROR_SOUND, &MirrorSound { on })?).await
 }
+
+// ---- The PC's mouse on a phone (`pointer.*`, #107) ----
+
+/// Whether the phone on `session` takes the PC's mouse, and may.
+fn pointer_allowed(shared: &Shared, session: &Session) -> Result<()> {
+    if !shared.toggle_on(&session.peer, TOGGLE) {
+        return Err(Error::Denied);
+    }
+    let offers = shared
+        .store
+        .get_peer(&session.peer)
+        .ok()
+        .flatten()
+        .is_some_and(|record| record.caps.contains(mirror::POINTER));
+    if !offers {
+        return Err(Error::Unsupported);
+    }
+    Ok(())
+}
+
+/// The PC's mouse goes over to a phone at `edge`, `y` of the way down: the
+/// phone's screen as its pointer sees it. Fails when the phone can't show a
+/// pointer of its own right now (no Elevated).
+pub(crate) async fn pointer_enter(
+    shared: &Shared,
+    session: &Session,
+    edge: PointerEdge,
+    y: f32,
+) -> Result<PointerScreen> {
+    pointer_allowed(shared, session)?;
+    let body = PointerEnter { edge, y };
+    if !body.is_valid() {
+        return Err(Error::Protocol("invalid pointer.enter".into()));
+    }
+    let env = Envelope::new(types::POINTER_ENTER, &body)?;
+    let screen: PointerScreen =
+        session.request(env, POINTER_ENTER_TIMEOUT).await?.expect_body(types::POINTER_ENTER)?;
+    if !screen.is_valid() {
+        return Err(Error::Protocol("invalid pointer screen".into()));
+    }
+    Ok(screen)
+}
+
+/// Moves the phone's pointer (not answered: only worth it right away).
+pub(crate) async fn pointer_move(shared: &Shared, session: &Session, moved: PointerMove) -> Result<()> {
+    pointer_allowed(shared, session)?;
+    if !moved.is_valid() {
+        return Err(Error::Protocol("invalid pointer.move".into()));
+    }
+    session.send(Envelope::new(types::POINTER_MOVE, &moved)?).await
+}
+
+/// Where the phone's pointer is, in pixels of its [`PointerScreen`].
+pub(crate) async fn pointer_where(shared: &Shared, session: &Session) -> Result<PointerAt> {
+    pointer_allowed(shared, session)?;
+    let env = Envelope::empty(types::POINTER_WHERE);
+    let at: PointerAt =
+        session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect_body(types::POINTER_WHERE)?;
+    if !at.is_valid() {
+        return Err(Error::Protocol("invalid pointer position".into()));
+    }
+    Ok(at)
+}
+
+/// The PC's mouse came back to the PC: the phone puts its pointer away.
+pub(crate) async fn pointer_leave(session: &Session) -> Result<()> {
+    session.send(Envelope::empty(types::POINTER_LEAVE)).await
+}
+
+/// How long a phone gets to show its pointer: it adds a virtual mouse and
+/// measures it.
+const POINTER_ENTER_TIMEOUT: Duration = Duration::from_secs(6);
 
 /// The apps a phone can open in windows of their own, by name.
 pub(crate) async fn apps(shared: &Shared, session: &Session) -> Result<Vec<PhoneApp>> {
@@ -523,6 +596,52 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                     shared.emit(NodeEvent::RemoteInputRequested { device: peer });
                 }
             }
+        }
+        types::POINTER_ENTER => {
+            let enter: PointerEnter = env.body()?;
+            let reply = if !shared.toggle_on(&peer, TOGGLE) {
+                Envelope::error(ErrorCode::Denied, "mirroring is off for this device")
+            } else if !shared.we_offer(mirror::POINTER) {
+                Envelope::error(ErrorCode::Unsupported, "this device doesn't take the PC's mouse")
+            } else if !enter.is_valid() {
+                Envelope::error(ErrorCode::BadMessage, "invalid pointer.enter")
+            } else {
+                let p = platform.clone();
+                match tokio::task::spawn_blocking(move || p.pointer_enter(&peer, enter.edge, enter.y))
+                    .await
+                    .unwrap_or_else(|e| Err(e.to_string()))
+                {
+                    Ok(screen) if screen.is_valid() => Envelope::new(types::POINTER_ENTER, &screen)?,
+                    Ok(_) => Envelope::error(ErrorCode::Internal, "the phone couldn't measure its pointer"),
+                    Err(reason) => {
+                        tracing::info!(reason, "the PC's mouse can't come over");
+                        Envelope::error(ErrorCode::Unsupported, "the phone can't show a pointer right now")
+                    }
+                }
+            };
+            session.send(reply.reply_to(env.id)).await?;
+        }
+        types::POINTER_MOVE => {
+            let moved: PointerMove = env.body()?;
+            if shared.toggle_on(&peer, TOGGLE) && shared.we_offer(mirror::POINTER) && moved.is_valid() {
+                // Awaited, so moves and clicks keep their order.
+                let _ = tokio::task::spawn_blocking(move || platform.pointer_move(&peer, moved)).await;
+            }
+        }
+        types::POINTER_WHERE => {
+            let reply = if !shared.toggle_on(&peer, TOGGLE) || !shared.we_offer(mirror::POINTER) {
+                Envelope::error(ErrorCode::Unsupported, "this device doesn't take the PC's mouse")
+            } else {
+                match tokio::task::spawn_blocking(move || platform.pointer_where(&peer)).await.ok().flatten()
+                {
+                    Some(at) if at.is_valid() => Envelope::new(types::POINTER_WHERE, &at)?,
+                    _ => Envelope::error(ErrorCode::NotFound, "the phone's pointer isn't showing"),
+                }
+            };
+            session.send(reply.reply_to(env.id)).await?;
+        }
+        types::POINTER_LEAVE => {
+            tokio::task::spawn_blocking(move || platform.pointer_leave(&peer));
         }
         types::MIRROR_APPS => {
             let reply = if !shared.toggle_on(&peer, TOGGLE) {

@@ -1534,6 +1534,31 @@ Item {
                                     onToggled: (on) => Mirror.setKeepScreenOff(deviceCard.deviceId, on)
                                 }
                             }
+                            // The phone beside the PC: the mouse goes over the edge of the screen to it (#107).
+                            ListRow {
+                                width: parent.width
+                                visible: Qt.platform.os === "windows"
+                                iconPath: Icons.desktop
+                                title: qsTr("Beside this PC")
+                                description: qsTr("Move the mouse past that edge of the screen to use it on this phone, and type there. Move it back, or press Ctrl+Alt+Esc, to return. Needs Elevated.")
+                                Segmented {
+                                    options: [
+                                        { value: "", label: qsTr("Off") },
+                                        { value: "left", label: qsTr("Left") },
+                                        { value: "right", label: qsTr("Right") }
+                                    ]
+                                    value: Preferences.phoneBeside === deviceCard.deviceId ? Preferences.phoneBesideSide : ""
+                                    onPicked: (side) => {
+                                        if (side === "") {
+                                            if (Preferences.phoneBeside === deviceCard.deviceId)
+                                                Preferences.phoneBeside = ""
+                                            return
+                                        }
+                                        Preferences.phoneBesideSide = side
+                                        Preferences.phoneBeside = deviceCard.deviceId
+                                    }
+                                }
+                            }
                             Repeater {
                                 model: page.toggleGroups
                                 delegate: Column {

@@ -46,6 +46,7 @@ mod phone_sound;
 mod photo_backup;
 mod photos;
 mod play_on_phone;
+mod pointer_flow;
 mod qr;
 mod recordings;
 mod remote;

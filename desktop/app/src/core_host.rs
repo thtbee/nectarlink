@@ -367,6 +367,8 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 crate::webcam::on_event(&event);
                 crate::phone_mic::on_event(&event);
                 crate::automations::on_event(&event);
+                #[cfg(windows)]
+                crate::win::pointer_hooks::on_event(&event);
                 crate::bridge::app::on_home_event(&event);
             }
             Err(RecvError::Lagged(missed)) => {

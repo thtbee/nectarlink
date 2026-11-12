@@ -24,6 +24,7 @@ pub mod jumplist;
 pub mod media_sessions;
 pub mod mp4;
 pub mod net;
+pub mod pointer_hooks;
 pub mod share;
 pub mod share_target;
 pub mod shell;

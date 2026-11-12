@@ -45,6 +45,8 @@ import app.nectarlink.core.PhotoItem
 import app.nectarlink.core.PhotoThumb
 import app.nectarlink.core.NotificationFailure
 import app.nectarlink.core.Platform
+import app.nectarlink.core.PointerPosition
+import app.nectarlink.core.PointerScreen
 import app.nectarlink.core.StorageEntry
 import app.nectarlink.core.StorageReadFile
 import app.nectarlink.core.StorageWriteDone
@@ -190,6 +192,25 @@ internal class PhonePlatform(
 
     override fun mirrorResizeRequested(pcId: String, session: UInt, width: UInt, height: UInt) {
         if (session != SCREEN) appWindows.resize(pcId, session, width.toInt(), height.toInt())
+    }
+
+    // The PC's mouse over the edge of its screen (#107): a pointer of the
+    // phone's own, moved by a virtual mouse the Elevated helper adds.
+    override fun pointerEnter(pcId: String, edge: String, y: Float): PointerScreen? {
+        if (edge != "left" && edge != "right") return null
+        val info = Elevated.pointerStart(edge, y) ?: return null
+        return PointerScreen(info.width.toUInt(), info.height.toUInt(), info.scale)
+    }
+
+    override fun pointerMove(pcId: String, dx: Int, dy: Int, buttons: UByte, wheel: Byte) {
+        Elevated.pointerMove(dx, dy, buttons.toInt(), wheel.toInt())
+    }
+
+    override fun pointerWhere(pcId: String): PointerPosition? =
+        Elevated.pointerWhere()?.let { (x, y) -> PointerPosition(x, y) }
+
+    override fun pointerLeave(pcId: String) {
+        Elevated.pointerStop()
     }
 
     // Real events when Elevated runs; gestures through the accessibility service otherwise.
