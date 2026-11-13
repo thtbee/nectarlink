@@ -1969,7 +1969,7 @@
     <message>
         <location filename="rust_strings.h" line="203"/>
         <source>A USB cable needs adb</source>
-        <translation>Um cabo USB precisa do adb</translation>
+        <translation>A conexão por cabo USB precisa do adb</translation>
     </message>
     <message>
         <location filename="rust_strings.h" line="204"/>
@@ -2144,12 +2144,12 @@
     <message>
         <location filename="rust_strings.h" line="238"/>
         <source>Phones on a USB cable connect through adb. NectarLink starts it every minute or so; start it now if a phone on a cable isn&apos;t showing up.</source>
-        <translation>Celulares no cabo USB se conectam pelo adb. O NectarLink o inicia mais ou menos a cada minuto; inicie agora se um celular no cabo não aparecer.</translation>
+        <translation>Celulares no cabo USB se conectam pelo adb. O NectarLink o inicia a cada minuto, mais ou menos; inicie agora se um celular no cabo não aparecer.</translation>
     </message>
     <message>
         <location filename="rust_strings.h" line="239"/>
         <source>Ready for a USB cable</source>
-        <translation>Pronto para um cabo USB</translation>
+        <translation>Pronto para conexão por cabo USB</translation>
     </message>
     <message>
         <location filename="rust_strings.h" line="240"/>
@@ -3165,7 +3165,7 @@
     <message>
         <location filename="rust_strings.h" line="276"/>
         <source>Waiting for Wi-Fi. Sync on Wi-Fi only is on, and the phone is away.</source>
-        <translation>Aguardando Wi-Fi. Sincronizar só no Wi-Fi está ligado e o celular está fora de alcance.</translation>
+        <translation>Aguardando Wi-Fi. Sincronizar só no Wi-Fi está ligado e o celular está à distância.</translation>
     </message>
 </context>
 <context>
@@ -6061,12 +6061,12 @@ O que precisa
     <message>
         <location filename="../qml/MirrorWindow.qml" line="544"/>
         <source>Don&apos;t keep on top</source>
-        <translation>Não manter no topo</translation>
+        <translation>Não manter acima</translation>
     </message>
     <message>
         <location filename="../qml/MirrorWindow.qml" line="544"/>
         <source>Keep on top</source>
-        <translation>Manter no topo</translation>
+        <translation>Manter acima das outras janelas</translation>
     </message>
     <message>
         <location filename="../qml/MirrorWindow.qml" line="588"/>
@@ -7153,17 +7153,17 @@ O que precisa
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="30"/>
         <source>Enter an HTTP or HTTPS relay address without credentials, a path or a query.</source>
-        <translation>Digite um endereço de relay HTTP ou HTTPS sem credenciais, caminho ou consulta.</translation>
+        <translation>Digite um endereço de retransmissor HTTP ou HTTPS, sem credenciais, caminho nem parâmetros de consulta.</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="33"/>
         <source>This relay is already in the list.</source>
-        <translation>Este relay já está na lista.</translation>
+        <translation>Este retransmissor já está na lista.</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="36"/>
         <source>The list can hold up to 16 custom relays.</source>
-        <translation>A lista aceita até 16 relays personalizados.</translation>
+        <translation>A lista aceita até 16 retransmissores personalizados.</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="39"/>
@@ -7173,12 +7173,12 @@ O que precisa
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="42"/>
         <source>Couldn&apos;t save the relay settings.</source>
-        <translation>Não foi possível salvar as configurações de relay.</translation>
+        <translation>Não foi possível salvar as configurações de retransmissão.</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="77"/>
         <source>Iroh relay servers</source>
-        <translation>Servidores relay do iroh</translation>
+        <translation>Servidores de retransmissão do iroh</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="82"/>
@@ -7193,22 +7193,22 @@ O que precisa
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="92"/>
         <source>Turn on Connect over mobile data to use your enabled relays.</source>
-        <translation>Ative Conectar usando dados móveis para usar os relays ativados.</translation>
+        <translation>Ative “Conectar usando dados móveis” para usar os retransmissores ativados.</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="98"/>
         <source>The switches control which servers iroh can select as a home relay for this device.</source>
-        <translation>Os botões definem quais servidores o iroh pode escolher como relay principal deste dispositivo.</translation>
+        <translation>As chaves definem quais servidores o iroh pode escolher como retransmissor principal deste dispositivo.</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="100"/>
         <source>Home relays</source>
-        <translation>Relays principais</translation>
+        <translation>Retransmissores principais</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="103"/>
         <source>No home relay selected</source>
-        <translation>Nenhum relay principal escolhido</translation>
+        <translation>Nenhum retransmissor principal selecionado</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="112"/>
@@ -7228,12 +7228,12 @@ O que precisa
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="117"/>
         <source>Device traffic via relay</source>
-        <translation>Tráfego do dispositivo pelo relay</translation>
+        <translation>Tráfego dos dispositivos via retransmissor</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="120"/>
         <source>No device traffic routed through a relay</source>
-        <translation>Nenhum tráfego do dispositivo passa por um relay</translation>
+        <translation>Nenhum dispositivo está usando um retransmissor</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="129"/>
@@ -7243,23 +7243,23 @@ O que precisa
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="136"/>
         <source>Checking relays…</source>
-        <translation>Verificando relays…</translation>
+        <translation>Verificando retransmissores…</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="136"/>
         <source>Check all relays</source>
-        <translation>Verificar todos os relays</translation>
+        <translation>Verificar todos os retransmissores</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="140"/>
         <location filename="../qml/components/RelaySheet.qml" line="167"/>
         <source>Custom relay address</source>
-        <translation>Endereço de relay personalizado</translation>
+        <translation>Endereço de retransmissor personalizado</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="174"/>
         <source>Add relay</source>
-        <translation>Adicionar relay</translation>
+        <translation>Adicionar retransmissor</translation>
     </message>
     <message>
         <location filename="../qml/components/RelaySheet.qml" line="212"/>
@@ -7470,7 +7470,7 @@ O que precisa
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="28"/>
         <source>Help keep it going</source>
-        <translation>Ajude a mantê-lo</translation>
+        <translation>Ajude o projeto a continuar</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="51"/>
@@ -7931,12 +7931,12 @@ O que precisa
         <location filename="../qml/pages/SettingsPage.qml" line="1246"/>
         <location filename="../qml/pages/SettingsPage.qml" line="1249"/>
         <source>Right-click is a long press</source>
-        <translation>Clique direito é toque longo</translation>
+        <translation>Botão direito faz toque longo</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1247"/>
         <source>In mirroring and app windows, right-click holds a finger down, for menus and selecting. Esc is Back. Shift+click is a long press either way.</source>
-        <translation>No espelhamento e nas janelas de apps, o clique direito mantém o dedo pressionado, para menus e seleção. Esc é Voltar. Shift+clique é sempre toque longo.</translation>
+        <translation>No espelhamento e nas janelas de apps, o botão direito equivale a manter o dedo pressionado, para abrir menus e selecionar. Esc é Voltar. Shift+clique sempre faz toque longo.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1261"/>
@@ -8077,7 +8077,7 @@ O que precisa
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1702"/>
         <source>For the phone&apos;s screen and app windows, from the next time you open them.</source>
-        <translation>Para a tela do celular e as janelas de apps, a partir da próxima vez que abrir.</translation>
+        <translation>Vale para a tela do celular e as janelas de apps a partir da próxima vez que forem abertas.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1705"/>
@@ -8444,7 +8444,7 @@ O que precisa
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2353"/>
         <source>Folder sync and photo backup wait while the phone is away, so they don&apos;t use its mobile data.</source>
-        <translation>A sincronização de pastas e o backup de fotos esperam enquanto o celular está fora de alcance, para não usar os dados móveis dele.</translation>
+        <translation>A sincronização de pastas e o backup de fotos esperam enquanto o celular está à distância, para não usar os dados móveis dele.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2370"/>
@@ -8500,12 +8500,12 @@ O que precisa
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2494"/>
         <source>Two-way sync · conflict copies kept · deletions go across</source>
-        <translation>Sincronização nos dois sentidos · cópias de conflito mantidas · exclusões passam para o outro lado</translation>
+        <translation>Sincronização nas duas direções · cópias de conflito mantidas · exclusões passam para o outro lado</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2495"/>
         <source>Two-way sync · conflict copies kept</source>
-        <translation>Nos dois sentidos · cópias de conflito mantidas</translation>
+        <translation>Nas duas direções · cópias de conflito mantidas</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2496"/>
@@ -8874,7 +8874,7 @@ O que precisa
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3362"/>
         <source>Local connections switch after a restart. Relays switch right away if the app started with an interface selected.</source>
-        <translation>As conexões locais mudam após reiniciar o aplicativo. As conexões por relay mudam imediatamente se já havia uma interface selecionada ao iniciar o aplicativo.</translation>
+        <translation>As conexões locais mudam depois de reiniciar o app. As por retransmissor mudam na hora se o app já tiver iniciado com uma interface selecionada.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3366"/>
@@ -8895,12 +8895,12 @@ O que precisa
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3378"/>
         <source>Iroh relay servers</source>
-        <translation>Servidores relay do iroh</translation>
+        <translation>Servidores de retransmissão do iroh</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3379"/>
         <source>View active routes, check latency and manage relay servers.</source>
-        <translation>Veja as rotas ativas, verifique a latência e gerencie os servidores relay.</translation>
+        <translation>Veja as rotas ativas, verifique a latência e gerencie os servidores de retransmissão.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3383"/>
@@ -9075,7 +9075,7 @@ O que precisa
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3768"/>
         <source>Both ways</source>
-        <translation>Nos dois sentidos</translation>
+        <translation>Nas duas direções</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3779"/>
@@ -9107,7 +9107,7 @@ O que precisa
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3790"/>
         <source>A synced file you delete on one side leaves the other. On the PC it goes to the Recycle Bin. On the phone, photos and videos go to its trash where Android has one, and other files are gone for good.</source>
-        <translation>Um arquivo sincronizado que você excluir de um lado sai do outro. No PC, ele vai para a Lixeira. No celular, fotos e vídeos vão para a lixeira, quando o Android tem uma, e os outros arquivos são apagados de vez.</translation>
+        <translation>Um arquivo sincronizado que você excluir de um lado também é excluído do outro. No PC, ele vai para a Lixeira. No celular, fotos e vídeos vão para a lixeira, quando o Android tem uma, e os outros arquivos são apagados de vez.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3791"/>
