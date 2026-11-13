@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include <QtCore/QAbstractNativeEventFilter>
 #include <QtCore/QSize>
 #include <QtCore/QString>
 #include <QtQml/qqmlregistration.h>
@@ -14,7 +15,7 @@
 // Shows the latest picture of a video stream (a phone's screen), scaled to
 // fit with its aspect ratio kept. Pictures come from Rust, on any thread,
 // through `video_frame`; only the newest is drawn.
-class VideoView : public QQuickItem
+class VideoView : public QQuickItem, public QAbstractNativeEventFilter
 {
     Q_OBJECT
     QML_ELEMENT
@@ -32,6 +33,18 @@ class VideoView : public QQuickItem
     // Whether text from input methods (the emoji panel, IMEs for Chinese and
     // other languages) is taken, and given out through `textCommitted`.
     Q_PROPERTY(bool acceptsText READ acceptsText WRITE setAcceptsText NOTIFY acceptsTextChanged)
+    // Frosted, the picture is drawn blurred and dimmed, and covers the item
+    // (what overflows is cut off): what a window shows while it's resized.
+    Q_PROPERTY(bool frosted READ frosted WRITE setFrosted NOTIFY frostedChanged)
+    // A picture within 2% of the item's shape fills it instead of leaving
+    // thin bars (an app window's, whose sides the phone rounds to 16 pixels).
+    Q_PROPERTY(bool fillsNearShape MEMBER m_fillsNearShape NOTIFY fillsNearShapeChanged)
+    // Frozen, the view keeps the picture it has when this turns on.
+    Q_PROPERTY(bool frozen READ frozen WRITE setFrozen NOTIFY frozenChanged)
+    // The user holds an edge of the window: on from the moment it's grabbed,
+    // before the size changes, off when it's let go. Windows only; elsewhere
+    // never on.
+    Q_PROPERTY(bool sizing READ sizing NOTIFY sizingChanged)
 
 public:
     explicit VideoView(QQuickItem *parent = nullptr);
@@ -47,6 +60,13 @@ public:
     void setWindowAppId(const QString &appId);
     bool acceptsText() const { return m_acceptsText; }
     void setAcceptsText(bool on);
+    bool frosted() const { return m_frosted; }
+    void setFrosted(bool on);
+    bool frozen() const { return m_frozen; }
+    void setFrozen(bool on);
+    bool sizing() const { return m_sizing; }
+
+    bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) override;
 
     // Where the picture is drawn in the item (letterboxed).
     Q_INVOKABLE QRectF pictureRect() const;
@@ -61,6 +81,10 @@ signals:
     void windowIconChanged();
     void windowAppIdChanged();
     void acceptsTextChanged();
+    void frostedChanged();
+    void frozenChanged();
+    void fillsNearShapeChanged();
+    void sizingChanged();
     // An input method finished some text (an emoji, a word in Chinese...).
     void textCommitted(const QString &text);
 
@@ -82,6 +106,12 @@ private:
     QString m_windowIcon;
     QString m_windowAppId;
     bool m_acceptsText = false;
+    bool m_frosted = false;
+    bool m_frozen = false;
+    bool m_fillsNearShape = false;
+    // Frozen, and the picture to keep is on screen.
+    bool m_holding = false;
+    bool m_sizing = false;
     std::atomic_bool m_framePending{false};
 };
 
