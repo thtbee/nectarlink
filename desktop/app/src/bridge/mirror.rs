@@ -201,7 +201,7 @@ impl qobject::Mirror {
         let windows: Vec<serde_json::Value> = mirror::windows()
             .into_iter()
             .map(|(window, shown)| {
-                let (control, can_screen_off, name, android) = hub.read(|s| {
+                let (control, can_screen_off, name) = hub.read(|s| {
                     // The screen needs control turned on; app windows are Elevated already.
                     let feature = if window.session == MIRROR_SCREEN {
                         "mirroring.control"
@@ -212,10 +212,9 @@ impl qobject::Mirror {
                     let control = matrix.and_then(|m| m.state(feature)) == Some(FeatureState::Available);
                     let can_screen_off = matrix.and_then(|m| m.state("mirroring.app_windows"))
                         == Some(FeatureState::Available);
-                    let android = s.device(&window.device).and_then(|d| android_release(&d.info.os_ver));
-                    (control, can_screen_off, s.name_of(&window.device).unwrap_or_default(), android)
+                    (control, can_screen_off, s.name_of(&window.device).unwrap_or_default())
                 });
-                let power_buttons = window.session == MIRROR_SCREEN || !app_window_runs_asleep(android);
+                let power_buttons = mirror::power_matters(&window);
                 let (phase, reason) = match shown.phase {
                     Phase::Asking => ("asking", String::new()),
                     Phase::Showing => ("showing", String::new()),
@@ -253,8 +252,9 @@ impl qobject::Mirror {
                     },
                     "recording": mirror::is_recording(&window),
                     "recordingStartedMs": mirror::recording_started_ms(&window),
-                    "stayAwake": mirror::stay_awake(&window.device),
-                    "screenOff": mirror::screen_off(&window.device),
+                    // Off where the window has no say in them (and no buttons).
+                    "stayAwake": power_buttons && mirror::stay_awake(&window.device),
+                    "screenOff": power_buttons && mirror::screen_off(&window.device),
                     "canScreenOff": can_screen_off,
                     // Stay awake and screen off: only where the phone's power matters to this window.
                     "powerButtons": power_buttons,
@@ -529,30 +529,4 @@ impl qobject::Mirror {
 /// A position on the screen, kept on it.
 fn fraction(v: f64) -> f32 {
     if v.is_finite() { v.clamp(0.0, 1.0) as f32 } else { 0.0 }
-}
-
-/// The Android release in a phone's OS version (`"17.1"` → 17).
-fn android_release(os_ver: &str) -> Option<u32> {
-    os_ver.split('.').next()?.trim().parse().ok()
-}
-
-/// An app window keeps running while the phone sleeps from Android 14 on:
-/// its display has its own power group, on a virtual device from Android 17
-/// (the helper's `VirtualDevice`), so keeping the phone awake or its screen
-/// off does nothing for it. Unknown versions keep the buttons.
-fn app_window_runs_asleep(android: Option<u32>) -> bool {
-    android.is_some_and(|v| v >= 14)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn app_windows_from_android_14_need_no_power_buttons() {
-        assert!(app_window_runs_asleep(android_release("17.1")));
-        assert!(app_window_runs_asleep(android_release("14")));
-        assert!(!app_window_runs_asleep(android_release("13")));
-        assert!(!app_window_runs_asleep(android_release("")));
-    }
 }

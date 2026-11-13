@@ -532,7 +532,8 @@ Window {
             }
             IconButton {
                 id: lockBtn
-                visible: win.canControl
+                // The phone's screen only: an app window runs whether it's locked or not.
+                visible: win.canControl && !win.info.app
                 iconPath: Icons.lock
                 iconColor: "white"
                 label: qsTr("Lock phone")
