@@ -125,7 +125,8 @@ change things that need a step from you, and its notes say so.
 ### Fixed
 
 - **Resizing a window is smooth on Windows.** Dragging the edge of an app window, the
-  mirror or the main window often froze for a second at a time.
+  mirror or the main window often froze for a second at a time. Thanks to
+  [@rus152](https://github.com/rus152) ([#367](https://github.com/thtbee/nectarlink/pull/367)).
 - **App windows open with Elevated on ROMs that treat their display as screen sharing.**
   Some Android 13 ROMs refused the display an app window draws into, because the shell
   user only has the screen capture permission from Android 14, and fell back to the
