@@ -36,6 +36,37 @@ async fn connect_adb(server: SocketAddr) -> Result<TcpStream, AdbError> {
     with_adb_timeout(async { Ok(TcpStream::connect(server).await?) }).await
 }
 
+/// Runs `adb start-server` when nothing answers at `server`, as scrcpy and
+/// Android Studio do, so a phone on a cable connects after the PC restarts.
+/// A server that answers is left alone: an `adb` of another version would
+/// replace it. Only [`DEFAULT_ADB_ADDR`] is started, since that's where
+/// `adb start-server` listens. Blocks until `adb` exits; returns whether it tried.
+pub fn start_server(server: SocketAddr) -> bool {
+    if server != DEFAULT_ADB_ADDR || std::net::TcpStream::connect_timeout(&server, ADB_TIMEOUT).is_ok() {
+        return false;
+    }
+    let mut cmd = std::process::Command::new("adb");
+    cmd.arg("start-server")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    match cmd.status() {
+        Ok(status) if status.success() => tracing::info!("started the adb server"),
+        Ok(status) => tracing::warn!(code = ?status.code(), "adb couldn't start its server"),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            tracing::info!("adb isn't installed; USB connections need it")
+        }
+        Err(e) => tracing::warn!(error = %e, "can't run adb"),
+    }
+    true
+}
+
 /// Returns `true` if `serial` is non-empty, made only of the characters
 /// serials use, and permitted by the optional `NECTARLINK_ADB_ONLY_SERIAL`
 /// filter. A USB device names its own serial, and it goes into adb commands
@@ -325,6 +356,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_default_adb_address_is_started() {
+        // Nothing answers on port 1, but a mock server's address must never run the real adb.
+        assert!(!start_server(SocketAddr::from((Ipv4Addr::LOCALHOST, 1))));
+    }
 
     #[test]
     fn network_serials_are_told_from_cables_and_loopback() {

@@ -250,6 +250,9 @@ pub(crate) async fn connect_usb_tunnel(shared: &Arc<Shared>, forwarded_tcp: Sock
 /// sets up `adb forward tcp:0 tcp:53319` (and the other profile ports), and
 /// maintains a USB tunnel to each NectarLink profile that answers.
 pub(crate) fn start_adb_watcher(shared: &Arc<Shared>, adb_addr: SocketAddr) {
+    // A thread, not spawn_blocking: an adb that hangs mustn't hold up the runtime's shutdown.
+    // shortcut: tried once per start; retry while adb stays unreachable if people kill the server.
+    std::thread::spawn(move || nectarlink_adb::start_server(adb_addr));
     let weak = Arc::downgrade(shared);
     let cancel = shared.cancel.clone();
     tokio::spawn(async move {

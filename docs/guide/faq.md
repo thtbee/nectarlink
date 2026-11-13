@@ -26,7 +26,7 @@ When **Connect over mobile data** is turned on and a direct peer-to-peer UDP pat
 
 ### Can I use NectarLink without Wi-Fi at all, using only a USB cable?
 
-Yes. USB needs Android's `adb` on the PC with its server running: install Google's platform-tools and run `adb start-server` after each restart (Android Studio and scrcpy also start it). NectarLink doesn't start it itself. Then enable **USB debugging** in your phone's Developer options and plug your phone into your PC with a USB data cable. NectarLink automatically detects the USB connection, lets you pair with a 6-digit confirmation code, and runs your entire encrypted session (`On USB`) over the cable.
+Yes. USB needs Android's `adb` on the PC: install Google's platform-tools so `adb` is on your `PATH`. When NectarLink starts and no adb server is running, it starts one, so a restart needs nothing from you. Then enable **USB debugging** in your phone's Developer options and plug your phone into your PC with a USB data cable. NectarLink automatically detects the USB connection, lets you pair with a 6-digit confirmation code, and runs your entire encrypted session (`On USB`) over the cable.
 
 ### What happens if I send a file or copy a link while my other device is asleep or offline?
 
