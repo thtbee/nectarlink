@@ -286,6 +286,7 @@
     <string name="update_check_failed">Не удалось проверить обновления. Проверьте подключение к интернету.</string>
     <string name="action_lock_pc">Заблокировать ПК</string>
     <string name="action_sleep_pc">Сон</string>
+    <string name="action_hibernate_pc">Гибернация</string>
     <string name="action_wake_pc">Разбудить</string>
     <string name="action_disconnect">Отключить</string>
     <string name="action_stop_reconnecting">Не переподключаться</string>
@@ -296,6 +297,7 @@
     <string name="wake_not_ready">Один раз подключитесь к %1$s, чтобы телефон узнал его сетевой адрес.</string>
     <string name="pc_locked">%1$s заблокирован.</string>
     <string name="pc_sleeping">%1$s переходит в сон.</string>
+    <string name="pc_hibernating">%1$s переходит в гибернацию.</string>
     <string name="pc_actions_off">Блокировка и сон выключены для этого телефона на %1$s.</string>
     <string name="channel_links">Ссылки с ПК</string>
     <string name="watch_offer_title">Смотреть с %1$s</string>

@@ -284,6 +284,7 @@
     <string name="update_check_failed">无法检查更新。请检查网络连接。</string>
     <string name="action_lock_pc">锁定电脑</string>
     <string name="action_sleep_pc">睡眠</string>
+    <string name="action_hibernate_pc">休眠</string>
     <string name="action_wake_pc">唤醒</string>
     <string name="action_disconnect">断开连接</string>
     <string name="action_stop_reconnecting">停止自动重连</string>
@@ -294,6 +295,7 @@
     <string name="wake_not_ready">请先连接一次 %1$s，让本手机获取它的网络地址。</string>
     <string name="pc_locked">%1$s 已锁定。</string>
     <string name="pc_sleeping">%1$s 正在进入睡眠。</string>
+    <string name="pc_hibernating">%1$s 正在进入休眠。</string>
     <string name="pc_actions_off">%1$s 上已对本手机关闭锁定与睡眠功能。</string>
     <string name="channel_links">来自电脑的链接</string>
     <string name="watch_offer_title">观看 %1$s 上的播放</string>

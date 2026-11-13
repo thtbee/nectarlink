@@ -2140,6 +2140,22 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
+    /** Hibernates a PC that can (#355); says how it went. */
+    fun pcHibernate(id: String) {
+        scope.launch {
+            startJob?.join()
+            val node = node ?: return@launch
+            val name = _state.value.nameOf(id).orEmpty()
+            val message = try {
+                node.pcHibernate(id)
+                context.getString(R.string.pc_hibernating, name)
+            } catch (e: NectarlinkException) {
+                if (e is NectarlinkException.Denied) context.getString(R.string.pc_actions_off, name) else describe(e)
+            }
+            _messages.tryEmit(message)
+        }
+    }
+
     /**
      * Sends Wake-on-LAN magic packets to a sleeping or shut-down PC and waits
      * up to ~60 s for it to connect before showing troubleshooting tips.

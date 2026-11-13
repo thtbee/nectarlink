@@ -48,6 +48,8 @@ pub mod usb;
 pub mod webcam;
 
 pub use actions::{PC_WAKE, PowerAction};
+/// Offered by PCs that can hibernate right now.
+pub const PC_HIBERNATE: &str = nectarlink_protocol::messages::pc_power::HIBERNATE;
 pub use calls::CallCommand;
 pub use clip_kind::{
     ClipKind, ClipSuggestion, classify_clip, maps_web_url, percent_encode, tracking_search_url,

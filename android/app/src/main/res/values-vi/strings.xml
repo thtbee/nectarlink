@@ -291,6 +291,7 @@
 <string name="update_check_failed">Không thể kiểm tra cập nhật. Kiểm tra kết nối Internet của bạn.</string>
 <string name="action_lock_pc">Khóa PC</string>
 <string name="action_sleep_pc">Ngủ</string>
+<string name="action_hibernate_pc">Ngủ đông</string>
 <string name="action_wake_pc">Đánh thức</string>
 <string name="action_disconnect">Ngắt kết nối</string>
 <string name="action_stop_reconnecting">Ngừng kết nối lại</string>
@@ -301,6 +302,7 @@
 <string name="wake_not_ready">Hãy kết nối với %1$s ít nhất một lần để điện thoại này ghi nhớ địa chỉ mạng của nó.</string>
 <string name="pc_locked">%1$s đã bị khóa.</string>
 <string name="pc_sleeping">%1$s sắp chuyển sang chế độ ngủ.</string>
+<string name="pc_hibernating">%1$s sắp chuyển sang chế độ ngủ đông.</string>
 <string name="pc_actions_off">Khóa và chế độ ngủ đã bị tắt cho điện thoại này trên %1$s.</string>
 <string name="channel_links">Liên kết từ PC của bạn</string>
 <!-- Play on phone: what a PC plays, streamed to the phone. -->

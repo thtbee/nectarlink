@@ -1151,10 +1151,17 @@ impl MediaWatch {
 
 // ---- Actions (docs/protocol/actions.md) ----
 
-/// Body of `pc.power`: `lock` or `sleep`.
+/// Body of `pc.power`: `lock`, `sleep`, or `hibernate` (only to a PC that
+/// offers [`pc_power::HIBERNATE`]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PcPower {
     pub action: String,
+}
+
+pub mod pc_power {
+    /// Offered by PCs that can hibernate right now (it can be turned off, or
+    /// have nowhere to save to).
+    pub const HIBERNATE: &str = "pc.power.hibernate";
 }
 
 /// The longest link sent, in bytes.
