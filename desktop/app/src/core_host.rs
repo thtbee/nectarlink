@@ -124,6 +124,10 @@ pub fn compute_capabilities(
         caps.push(nectarlink_core::DECK_ACTIONS.into());
         caps.push(nectarlink_core::PC_AUDIO.into());
         caps.push(nectarlink_core::RECORDER.into());
+        // Only while hibernation is on: Windows can turn it off (#355).
+        if crate::win::shell::can_hibernate() {
+            caps.push(nectarlink_core::PC_HIBERNATE.into());
+        }
         #[cfg(windows)]
         {
             caps.push(nectarlink_core::WEBCAM_VIRTUAL.into());

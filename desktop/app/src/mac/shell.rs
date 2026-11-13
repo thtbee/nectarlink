@@ -72,6 +72,11 @@ pub fn sleep() -> Result<(), String> {
     std::process::Command::new("pmset").arg("sleepnow").spawn().map(|_| ()).map_err(|e| e.to_string())
 }
 
+/// Macs aren't hibernated on request (#355).
+pub fn hibernate() -> Result<(), String> {
+    Err("not on macOS".into())
+}
+
 /// Opens a directory in Finder.
 pub fn open_folder(path: &Path) -> Result<(), String> {
     std::process::Command::new("open").arg(path).spawn().map(|_| ()).map_err(|e| e.to_string())

@@ -180,6 +180,7 @@ fun HomeScreen(
     onPairNew: () -> Unit,
     onRefresh: () -> Unit,
     onPower: (pcId: String, sleep: Boolean) -> Unit,
+    onHibernate: (pcId: String) -> Unit,
     onWake: (pcId: String) -> Unit,
     onSetReconnect: (pcId: String, on: Boolean) -> Unit,
     onRemote: (pcId: String) -> Unit,
@@ -671,6 +672,7 @@ fun HomeScreen(
                     onSendFiles = onSendFiles,
                     onSendFolder = onSendFolder,
                     onPower = onPower,
+                    onHibernate = onHibernate,
                     onWake = onWake,
                     onSetReconnect = onSetReconnect,
                     onRemote = onRemote,
@@ -1408,6 +1410,7 @@ private fun PcCard(
     onSendFiles: (String, List<Uri>) -> Unit,
     onSendFolder: (String, Uri) -> Unit,
     onPower: (String, Boolean) -> Unit,
+    onHibernate: (String) -> Unit,
     onWake: (String) -> Unit,
     onSetReconnect: (String, Boolean) -> Unit,
     onRemote: (String) -> Unit,
@@ -1815,6 +1818,19 @@ private fun PcCard(
                             modifier = Modifier.weight(1f),
                         ) {
                             ButtonLabel(stringResource(R.string.action_sleep_pc))
+                        }
+                        // Only for a PC that can hibernate right now (#355).
+                        if (device.has("device.pc_hibernate")) {
+                            OutlinedButton(
+                                contentPadding = CardButtonPadding,
+                                enabled = device.online,
+                                colors = outlined,
+                                border = outline,
+                                onClick = { onHibernate(device.id) },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                ButtonLabel(stringResource(R.string.action_hibernate_pc))
+                            }
                         }
                     }
                 }

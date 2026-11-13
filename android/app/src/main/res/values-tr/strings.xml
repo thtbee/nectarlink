@@ -292,6 +292,7 @@
     <string name="update_check_failed">Güncellemeler denetlenemedi. İnternet bağlantınızı kontrol edin.</string>
     <string name="action_lock_pc">Bilgisayarı kilitle</string>
     <string name="action_sleep_pc">Uyut</string>
+    <string name="action_hibernate_pc">Hazırda beklet</string>
     <string name="action_wake_pc">Uyandır</string>
     <string name="action_disconnect">Bağlantıyı kes</string>
     <string name="action_stop_reconnecting">Yeniden bağlanmayı durdur</string>
@@ -302,6 +303,7 @@
     <string name="wake_not_ready">Bu telefonun ağ adresini öğrenmesi için %1$s cihazına bir kez bağlanın.</string>
     <string name="pc_locked">%1$s kilitlendi.</string>
     <string name="pc_sleeping">%1$s uyku moduna geçiyor.</string>
+    <string name="pc_hibernating">%1$s hazırda bekletmeye geçiyor.</string>
     <string name="pc_actions_off">%1$s üzerinde bu telefon için kilitleme ve uyku kapalı.</string>
     <string name="channel_links">Bilgisayarınızdan gelen bağlantılar</string>
     <!-- Play on phone: what a PC plays, streamed to the phone. -->

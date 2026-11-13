@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Hibernate a PC from the phone.** Next to Lock PC and Sleep on Home, for a PC that can
+  hibernate: on Windows, while hibernation is turned on. Thanks to
+  [@atilazz](https://github.com/atilazz) for the idea ([#355](https://github.com/thtbee/nectarlink/issues/355)).
 - **Support NectarLink.** If you'd like to help keep it going, Settings has a Support
   section on the phone and the PC, and the "Enjoying NectarLink?" prompt has a Support
   button next to Star on GitHub. It only opens the page when you tap it.

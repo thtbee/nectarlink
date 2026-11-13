@@ -169,6 +169,7 @@ pub(crate) async fn wake(
 pub enum PowerAction {
     Lock,
     Sleep,
+    Hibernate,
 }
 
 impl PowerAction {
@@ -176,6 +177,7 @@ impl PowerAction {
         match self {
             PowerAction::Lock => "lock",
             PowerAction::Sleep => "sleep",
+            PowerAction::Hibernate => "hibernate",
         }
     }
 
@@ -183,6 +185,7 @@ impl PowerAction {
         match action {
             "lock" => Some(PowerAction::Lock),
             "sleep" => Some(PowerAction::Sleep),
+            "hibernate" => Some(PowerAction::Hibernate),
             _ => None,
         }
     }
@@ -213,6 +216,11 @@ pub(crate) fn valid_link(url: &str) -> bool {
 
 pub(crate) async fn pc_power(shared: &Arc<Shared>, session: &Session, action: PowerAction) -> Result<()> {
     if !shared.offers(&session.peer, POWER)? {
+        return Err(Error::Unsupported);
+    }
+    if action == PowerAction::Hibernate
+        && !shared.offers(&session.peer, nectarlink_protocol::messages::pc_power::HIBERNATE)?
+    {
         return Err(Error::Unsupported);
     }
     let env = Envelope::new(types::PC_POWER, &PcPower { action: action.as_str().into() })?;
@@ -431,7 +439,7 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                         session.send(reply).await?;
                         tokio::spawn(async move {
                             // Give the answer time to leave before sleep cuts the network.
-                            if action == PowerAction::Sleep {
+                            if matches!(action, PowerAction::Sleep | PowerAction::Hibernate) {
                                 tokio::time::sleep(std::time::Duration::from_millis(300)).await;
                             }
                             if let Err(reason) = tokio::task::spawn_blocking(move || platform.power(action))

@@ -12,6 +12,7 @@ either device opens a web link on the other.
 | ID | Offered by | Meaning |
 |---|---|---|
 | `pc.power` | PC | Locks or sleeps when a paired phone asks |
+| `pc.power.hibernate` | PC | Can also hibernate now (`pc.power` with `hibernate`) |
 | `pc.wake` | PC | Shares its network adapter MAC and subnet broadcast addresses (`pc.wake_info`) so a paired phone can wake it |
 | `link.open` | both | Opens web links a paired device sends |
 | `task.notify` | both | Sends or shows watched PC task notifications (`task.notify`) |
@@ -26,7 +27,7 @@ requests answered with `ok` or `error`; `pc.wake_info` is a one-way event (no
 `id`, no reply).
 
 ```
-t = "pc.power"           id = n   b = { action: "lock" | "sleep" }
+t = "pc.power"           id = n   b = { action: "lock" | "sleep" | "hibernate" }
 t = "link.open"          id = n   b = { url: text, title?: text }
 t = "task.notify"        id = n   b = { id: text, title: text, active: bool, elapsed_ms: uint, exit_code?: int }
 t = "wake.relay"         id = n   b = { mac: bytes(6), broadcast?: text }
@@ -38,9 +39,13 @@ t = "pc.wake_info"                b = { macs: [text, ...], broadcasts?: [text, .
 
 ### 2.1 `pc.power`
 
-Asks the PC to lock (show the sign-in screen) or to sleep. The PC answers
-`ok` before it acts, and waits a moment before sleeping so the answer
-leaves before its network goes down.
+Asks the PC to lock (show the sign-in screen), to sleep, or to hibernate. The
+PC answers `ok` before it acts, and waits a moment before sleeping or
+hibernating so the answer leaves before its network goes down.
+
+`hibernate` goes only to a PC offering `pc.power.hibernate`, which it does
+only while hibernation works there: Windows can have it turned off
+(`powercfg /h off`), and Linux needs logind to say `CanHibernate` is `yes`.
 
 Errors: `DENIED` when the user turned PC actions off for the phone (the
 `pc_actions` device toggle, on by default); `UNSUPPORTED` when the device

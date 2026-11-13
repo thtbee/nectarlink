@@ -674,6 +674,12 @@ pub const FEATURES: &[FeatureDef] = &[
         partial: None,
     },
     FeatureDef {
+        id: "device.pc_hibernate",
+        group: FeatureGroup::Device,
+        requires: &[desktop("pc.power.hibernate", UPDATE), DeviceToggle("pc_actions")],
+        partial: None,
+    },
+    FeatureDef {
         id: "device.links_to_pc",
         group: FeatureGroup::Device,
         requires: &[desktop("link.open", UPDATE)],

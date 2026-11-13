@@ -96,7 +96,7 @@ When your phone is resting on a charger or desk stand, tap **Desk clock** on the
 ### 6. Lock, Sleep, Find My Device, and Wake-on-LAN
 
 - **Find my device (both ways)**: Click **Find phone** on PC Home to ring your phone at full volume on the alarm audio stream (even if the phone is on silent or Do Not Disturb). Tap **Ring PC** on your phone (or on the Android home-screen widget) to play an alert chime on your PC.
-- **Lock or Sleep PC**: Tap **Lock PC** or **Sleep** on your phone (or on the Android **PC quick actions** widget) to lock your Windows session or put the PC to sleep when you walk away.
+- **Lock, Sleep or Hibernate PC**: Tap **Lock PC** or **Sleep** on your phone (or on the Android **PC quick actions** widget) to lock your Windows session or put the PC to sleep when you walk away. **Hibernate** shows next to them when the PC can hibernate: on Windows only while hibernation is turned on (`powercfg /h on`).
 - **Wake PC (Wake-on-LAN)**: When your PC is asleep or powered off, tap **Wake** on your phone (or on the Android home-screen widget).
   - On the local network, your phone sends Wake-on-LAN UDP packets to every MAC and broadcast address stored for your PC during prior connections.
   - If you have another NectarLink device online on your home LAN while you are on mobile data (**Connect over mobile data**), NectarLink can also relay the wake request through your online home device.

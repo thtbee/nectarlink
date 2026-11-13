@@ -354,6 +354,28 @@ pub fn sleep_system() -> Result<(), String> {
     sleep()
 }
 
+/// Hibernates the system (`systemctl hibernate`, #355).
+pub fn hibernate() -> Result<(), String> {
+    spawn_detached("systemctl", &["hibernate"])
+}
+
+/// Whether logind says the system can hibernate (swap big enough, allowed).
+pub fn can_hibernate() -> bool {
+    super::non_tokio(|| {
+        let ask = || -> zbus::Result<String> {
+            let conn = zbus::blocking::Connection::system()?;
+            let manager = zbus::blocking::Proxy::new(
+                &conn,
+                "org.freedesktop.login1",
+                "/org/freedesktop/login1",
+                "org.freedesktop.login1.Manager",
+            )?;
+            manager.call("CanHibernate", &())
+        };
+        ask().is_ok_and(|answer| answer == "yes")
+    })
+}
+
 fn decode_file_uri(uri: &str) -> Option<PathBuf> {
     let rest = uri.strip_prefix("file://")?;
     let path_part =

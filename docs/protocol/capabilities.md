@@ -85,6 +85,7 @@ capability is missing.
 | ID | Meaning | Unlocked by |
 |---|---|---|
 | `pc.power` | Locks or sleeps on request ([actions](actions.md)) | app update |
+| `pc.power.hibernate` | Can hibernate on request now ([actions](actions.md)); not while hibernation is off on the PC | app update |
 | `pc.wake` | Shares network adapter addresses (`pc.wake_info`) so a paired phone can wake it with Wake-on-LAN ([actions](actions.md)) | app update |
 | `photos.show` | Shows a phone's new photos and gallery ([photos](photos.md)) | app update |
 | `call.show` | Shows a phone's calls, recent calls and dialer ([calls](calls.md)) | app update |

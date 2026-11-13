@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Opening links, locking and sleeping the PC.
+//! Opening links, locking, sleeping and hibernating the PC.
 
 use windows::{
     Win32::{
         System::{
-            Power::SetSuspendState,
+            Power::{GetPwrCapabilities, SYSTEM_POWER_CAPABILITIES, SetSuspendState},
             Registry::{
                 HKEY, HKEY_CLASSES_ROOT, HKEY_CURRENT_USER, KEY_READ, RegCloseKey, RegOpenKeyExW,
                 RegQueryValueExW,
@@ -167,6 +167,21 @@ pub fn sleep() -> Result<(), String> {
     } else {
         Err("SetSuspendState failed".into())
     }
+}
+
+/// Hibernates the PC (#355).
+pub fn hibernate() -> Result<(), String> {
+    // SAFETY: plain arguments.
+    if unsafe { SetSuspendState(true, false, false) } { Ok(()) } else { Err("SetSuspendState failed".into()) }
+}
+
+/// Whether the PC can hibernate now: supported, and turned on (`powercfg /h`
+/// leaves no hibernation file when it's off).
+pub fn can_hibernate() -> bool {
+    let mut caps = SYSTEM_POWER_CAPABILITIES::default();
+    // SAFETY: GetPwrCapabilities fills the struct it's given.
+    let read = unsafe { GetPwrCapabilities(&mut caps) };
+    read && caps.SystemS4 && caps.HiberFilePresent
 }
 
 /// Launches a `.exe` or `.lnk` file on the PC via `ShellExecuteW` with no

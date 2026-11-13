@@ -1945,9 +1945,28 @@ async fn phones_lock_pcs_and_links_open_on_either_side() {
 
     with_timeout("lock", phone.node.pc_power(pc_id, PowerAction::Lock)).await.expect("locked");
     with_timeout("sleep", phone.node.pc_power(pc_id, PowerAction::Sleep)).await.expect("asleep");
-    // The PC answers first and acts a moment later.
+    // A PC that can't hibernate (turned off there) isn't asked to.
+    let refused = phone.node.pc_power(pc_id, PowerAction::Hibernate).await;
+    assert!(matches!(refused, Err(Error::Unsupported)), "{refused:?}");
+    pc.node
+        .update_power(PowerLevel::Basic, vec!["pc.power".into(), nectarlink_core::PC_HIBERNATE.into()])
+        .await;
+    let deadline = tokio::time::Instant::now() + WAIT;
+    loop {
+        match phone.node.pc_power(pc_id, PowerAction::Hibernate).await {
+            Ok(()) => break,
+            Err(Error::Unsupported) if tokio::time::Instant::now() < deadline => {
+                tokio::time::sleep(Duration::from_millis(50)).await
+            }
+            Err(e) => panic!("didn't hibernate: {e}"),
+        }
+    }
+    // The PC answers first and acts a moment later: sleep and hibernate after
+    // the same pause, so in either order.
     tokio::time::sleep(Duration::from_millis(800)).await;
-    assert_eq!(*pc.platform.power.lock().unwrap(), [PowerAction::Lock, PowerAction::Sleep]);
+    let mut done: Vec<_> = pc.platform.power.lock().unwrap().iter().map(|a| a.as_str()).collect();
+    done.sort_unstable();
+    assert_eq!(done, ["hibernate", "lock", "sleep"]);
 
     // A phone doesn't lock or sleep on request.
     let phone_power = pc.node.pc_power(phone_id, PowerAction::Lock).await;

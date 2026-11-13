@@ -295,6 +295,7 @@
     <string name="update_check_failed">No se pudieron buscar actualizaciones. Comprueba tu conexión a Internet.</string>
     <string name="action_lock_pc">Bloquear PC</string>
     <string name="action_sleep_pc">Suspender</string>
+    <string name="action_hibernate_pc">Hibernar</string>
     <string name="action_wake_pc">Activar</string>
     <string name="action_disconnect">Desconectar</string>
     <string name="action_stop_reconnecting">Dejar de reconectar</string>
@@ -305,6 +306,7 @@
     <string name="wake_not_ready">Conéctate una vez a %1$s para que este teléfono aprenda su dirección de red.</string>
     <string name="pc_locked">%1$s está bloqueado.</string>
     <string name="pc_sleeping">%1$s va a suspenderse.</string>
+    <string name="pc_hibernating">%1$s va a hibernar.</string>
     <string name="pc_actions_off">El bloqueo y la suspensión están desactivados para este teléfono en %1$s.</string>
     <string name="channel_links">Enlaces desde tu PC</string>
     <!-- Play on phone: what a PC plays, streamed to the phone. -->

@@ -4095,6 +4095,13 @@ impl NectarlinkNode {
         self.run(async move { Ok(node.pc_power(id, action).await?) }).await
     }
 
+    /// Hibernates a paired PC (only one that offers `pc.power.hibernate`).
+    pub async fn pc_hibernate(&self, id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.pc_power(id, core::PowerAction::Hibernate).await?) }).await
+    }
+
     /// Sends Wake-on-LAN magic packets for a paired PC over UDP to its stored
     /// subnet broadcasts and `255.255.255.255` on ports 9 and 7, repeated a
     /// few times over ~2 s.
