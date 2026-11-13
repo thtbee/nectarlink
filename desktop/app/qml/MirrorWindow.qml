@@ -38,16 +38,68 @@ Window {
     property bool sized: false
     property bool readyForResize: false
 
+    // An app window between its size changing and the phone's picture of the
+    // new size: frost covers it (see `frost`), and the phone is told the
+    // size once, when the edge is let go.
+    property bool resizing: false
+
+    function frameFitsWindow() {
+        return frame.width > 0 && height > 0
+            && Math.abs((frame.width / frame.height) / (width / height) - 1) < 0.03
+    }
+
+    // The window has the size it's staying at: remember it, and tell the phone.
+    function sizeSettled() {
+        resizeTimer.stop()
+        if (!info.app || !sized)
+            return
+        Mirror.saveGeometry(mirrorKey, x, y, width, height)
+        if (phase === "showing")
+            Mirror.resize(mirrorKey, width, height)
+        if (!resizing)
+            return
+        if (frameFitsWindow() || phase !== "showing")
+            resizing = false
+        else
+            settleTimer.restart()
+    }
+
+    function windowResized() {
+        if (!info.app || !sized || !readyForResize)
+            return
+        resizing = true
+        settleTimer.stop()
+        resizeTimer.restart()
+    }
+
+    // A size change without an edge being dragged (maximized, snapped, or any
+    // on Linux and macOS) has settled when no other follows.
     Timer {
         id: resizeTimer
         interval: 300
         repeat: false
-        onTriggered: {
+        onTriggered: if (!video.sizing) win.sizeSettled()
+    }
+
+    // In case the phone keeps the size it has (no picture of the new one comes).
+    Timer {
+        id: settleTimer
+        interval: 2000
+        // Not under an edge grabbed again before the last resize settled.
+        onTriggered: if (!video.sizing) win.resizing = false
+    }
+
+    // An edge held (Windows): frost from the moment it's grabbed until it's
+    // let go and the phone has caught up.
+    Connections {
+        target: video
+        function onSizingChanged() {
             if (!win.info.app || !win.sized)
                 return
-            Mirror.saveGeometry(win.mirrorKey, win.x, win.y, win.width, win.height)
-            if (win.phase === "showing")
-                Mirror.resize(win.mirrorKey, win.width, win.height)
+            if (!video.sizing)
+                win.sizeSettled()
+            else
+                win.resizing = true
         }
     }
 
@@ -103,7 +155,7 @@ Window {
         if (!sized || !readyForResize)
             return
         if (info.app)
-            resizeTimer.restart()
+            windowResized()
         else
             screenResizeTimer.restart()
     }
@@ -111,7 +163,7 @@ Window {
         if (!sized || !readyForResize)
             return
         if (info.app)
-            resizeTimer.restart()
+            windowResized()
         else
             screenResizeTimer.restart()
     }
@@ -151,6 +203,15 @@ Window {
             }
             sized = true
             Qt.callLater(() => { win.readyForResize = true })
+            return
+        }
+        // Mid-resize, a picture of the old shape is not the app turning; one
+        // of the new shape ends the resize.
+        if (sized && info.app && resizing) {
+            if (!video.sizing && !resizeTimer.running && frameFitsWindow()) {
+                resizing = false
+                settleTimer.stop()
+            }
             return
         }
         // An app that only runs one way up turned the phone's display (#126):
@@ -215,6 +276,7 @@ Window {
         id: video
         anchors.fill: parent
         stream: win.mirrorKey
+        fillsNearShape: win.info.app === true
         windowIcon: win.info.icon || ""
         windowAppId: win.info.app && (win.info.pkg || "").length > 0
             ? "Nectarlink.App." + (win.info.device || "").slice(0, 8) + "." + win.info.pkg
@@ -272,7 +334,7 @@ Window {
         MouseArea {
             id: pointer
             anchors.fill: parent
-            enabled: win.phase === "showing"
+            enabled: win.phase === "showing" && !win.resizing
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             cursorShape: win.canControl ? Qt.PointingHandCursor : Qt.ArrowCursor
             property bool down: false
@@ -438,6 +500,52 @@ Window {
         const m = Math.floor(secs / 60)
         const s = secs % 60
         return (m < 10 ? "0" + m : "" + m) + ":" + (s < 10 ? "0" + s : "" + s)
+    }
+
+    // While an app window is resized: its last picture, blurred and kept as
+    // it was, covers the window with the app's icon over it. It appears at
+    // once (animations barely tick while Windows drags an edge) and fades out.
+    Item {
+        id: frost
+        anchors.fill: parent
+        opacity: 0
+        visible: opacity > 0
+        // Set by hand, not through a Behavior: one could catch the change to
+        // 1 too and animate it, and animations barely tick while Windows
+        // drags an edge (least of all a shrinking one), so the frost stayed
+        // half-transparent for a while.
+        Connections {
+            target: win
+            function onResizingChanged() {
+                fadeOut.stop()
+                if (win.resizing)
+                    frost.opacity = 1
+                else
+                    fadeOut.start()
+            }
+        }
+        NumberAnimation {
+            id: fadeOut
+            target: frost
+            property: "opacity"
+            to: 0
+            duration: Theme.reduceMotion ? 0 : 180
+            easing.type: Easing.OutCubic
+        }
+        VideoView {
+            anchors.fill: parent
+            stream: win.mirrorKey
+            frosted: true
+            frozen: win.resizing
+        }
+        RoundedImage {
+            anchors.centerIn: parent
+            visible: (win.info.icon || "").length > 0
+            width: 80
+            height: 80
+            radius: 20
+            source: win.info.icon || ""
+        }
     }
 
     // Floating mirror toolbar: screenshots, MP4 recording, stay awake, screen off, and audio mute.
