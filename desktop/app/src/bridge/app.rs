@@ -969,6 +969,16 @@ fn dispatch_jump_task(qt: &CxxQtThread<qobject::AppController>, action: String) 
                 object.as_mut().set_current_device(row as i32);
             }
         }
+        // Opens a paired phone's screen in its window, by the phone's name; debug builds only.
+        s if cfg!(debug_assertions) && s.starts_with("mirror:") => {
+            let name = &s["mirror:".len()..];
+            let id = core_host::host()
+                .hub
+                .read(|st| st.devices.iter().find(|d| d.info.name == name).map(|d| d.id));
+            if let Some(id) = id {
+                crate::mirror::start(id);
+            }
+        }
         s if cfg!(debug_assertions) && s.starts_with("walkthrough-step:") => {
             if let Ok(step) = s["walkthrough-step:".len()..].parse::<u8>() {
                 let dir = &core_host::host().data_dir;

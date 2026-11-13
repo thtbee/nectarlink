@@ -56,15 +56,67 @@ Window {
         interval: 300
         repeat: false
         onTriggered: {
-            if (win.info.app && win.sized)
+            if (win.sized)
                 Mirror.saveGeometry(win.mirrorKey, win.x, win.y, win.width, win.height)
         }
     }
 
-    onWidthChanged: if (info.app && sized && readyForResize) resizeTimer.restart()
-    onHeightChanged: if (info.app && sized && readyForResize) resizeTimer.restart()
-    onXChanged: if (info.app && sized && readyForResize) moveTimer.restart()
-    onYChanged: if (info.app && sized && readyForResize) moveTimer.restart()
+    // The phone's screen keeps the phone's shape (#358): a moment after a
+    // resize, the side moved less follows the one moved more, so no black bars
+    // show beside the picture. Maximized or full screen, it's left alone.
+    property real lastWidth: 0
+    property real lastHeight: 0
+    Timer {
+        id: screenResizeTimer
+        interval: 250
+        repeat: false
+        onTriggered: {
+            if (win.info.app || !win.sized || win.frame.width <= 0)
+                return
+            if (win.visibility === Window.Maximized || win.visibility === Window.FullScreen)
+                return
+            const aspect = win.frame.width / win.frame.height
+            const byWidth = Math.abs(win.width - win.lastWidth) / Math.max(1, win.lastWidth)
+                          >= Math.abs(win.height - win.lastHeight) / Math.max(1, win.lastHeight)
+            win.fitScreen(byWidth ? Math.max(win.width, win.width / aspect)
+                                  : Math.max(win.height, win.height * aspect))
+            Mirror.saveGeometry(win.mirrorKey, win.x, win.y, win.width, win.height)
+        }
+    }
+
+    // The phone's screen at its own shape, its long side `longSide`, within
+    // the screen it's on.
+    function fitScreen(longSide) {
+        const availW = Screen.desktopAvailableWidth > 0 ? Screen.desktopAvailableWidth : 1920
+        const availH = Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight : 1080
+        const scale = Math.min(longSide / Math.max(frame.width, frame.height),
+                               availW * 0.95 / frame.width, availH * 0.95 / frame.height)
+        readyForResize = false
+        width = Math.max(minimumWidth, Math.round(frame.width * scale))
+        height = Math.max(minimumHeight, Math.round(frame.height * scale))
+        lastWidth = width
+        lastHeight = height
+        Qt.callLater(() => { win.readyForResize = true })
+    }
+
+    onWidthChanged: {
+        if (!sized || !readyForResize)
+            return
+        if (info.app)
+            resizeTimer.restart()
+        else
+            screenResizeTimer.restart()
+    }
+    onHeightChanged: {
+        if (!sized || !readyForResize)
+            return
+        if (info.app)
+            resizeTimer.restart()
+        else
+            screenResizeTimer.restart()
+    }
+    onXChanged: if (sized && readyForResize) moveTimer.restart()
+    onYChanged: if (sized && readyForResize) moveTimer.restart()
     onPhaseChanged: {
         if (phase === "showing" && info.app && sized)
             resizeTimer.restart()
@@ -112,10 +164,28 @@ Window {
             placeOnScreen(x, y, turnedW, turnedH)
             return
         }
+        // The phone's screen: at the size it was left at, whichever way up
+        // the phone is now (the long side is what's kept), and the same size
+        // when the phone turns.
+        if (!info.app) {
+            const saved = Math.max(info.savedWidth || 0, info.savedHeight || 0)
+            if (!sized) {
+                fitScreen(saved >= 240 ? saved : Math.min(availH * 0.85 * Math.max(frame.width, frame.height) / frame.height,
+                                                          availW * 0.85 * Math.max(frame.width, frame.height) / frame.width,
+                                                          Math.max(frame.width, frame.height)))
+                if (saved >= 240 && info.savedX !== null && info.savedX !== undefined
+                        && info.savedY !== null && info.savedY !== undefined)
+                    placeOnScreen(info.savedX, info.savedY, width, height)
+                sized = true
+            } else if (Math.abs(width / height - frame.width / frame.height) > 0.05) {
+                fitScreen(Math.max(width, height))
+            }
+            return
+        }
         const maxH = availH * 0.85
         const maxW = availW * 0.85
         const scale = Math.min(maxH / frame.height, maxW / frame.width, 1)
-        if (!sized || (!info.app && Math.abs(width / height - frame.width / frame.height) > 0.05)) {
+        if (!sized) {
             readyForResize = false
             width = Math.round(frame.width * scale)
             height = Math.round(frame.height * scale)
