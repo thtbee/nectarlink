@@ -14,15 +14,19 @@ import java.util.concurrent.Executor
 
 /**
  * A VirtualDeviceManager virtual device, made by the shell-side helper only
- * to own an app window's display (the same as Scrcpy Launcher's patched
- * server). Its display is in the device's own display and power group, so
+ * to own an app window's display. Its display is in the device's own display and power group, so
  * the app starts and keeps running while the phone's own screen is off or
  * locked. A plain virtual display can't: Android 17 (`separate_timeouts`)
  * puts it in the default group whatever its flags, and it sleeps with the
  * phone (#152).
  *
- * Needs a CDM association with the app streaming profile for the shell,
- * which [create] makes once (it then lasts across reboots).
+ * Needs a CDM association with the app streaming profile for the shell.
+ * [create] makes it for the first window and [close] removes it with the
+ * last, so none is left on the phone when Elevated is off or NectarLink is
+ * gone; [forget] clears one a helper that was killed left behind.
+ *
+ * Adapted from the VirtualDevice wrapper its author (rus152) wrote for the
+ * scrcpy server in Scrcpy Launcher (github.com/rus152/Scrcpy-Launcher).
  */
 @SuppressLint("PrivateApi", "DiscouragedPrivateApi", "BlockedPrivateApi")
 internal class VirtualDevice private constructor(private val device: Any) {
@@ -39,13 +43,27 @@ internal class VirtualDevice private constructor(private val device: Any) {
     fun close() {
         runCatching { device.javaClass.getMethod("close").invoke(device) }
             .onFailure { System.err.println("can't close the virtual device: $it") }
+        synchronized(lock) {
+            open--
+            if (open <= 0) {
+                open = 0
+                forget()
+            }
+        }
     }
 
     companion object {
         private const val SHELL = "com.android.shell"
         private const val APP_STREAMING = "android.app.role.COMPANION_DEVICE_APP_STREAMING"
-        /** Any address will do; CDM only needs one. Locally administered, as the launcher's. */
-        private const val ADDRESS = "02:00:00:00:5c:01"
+        /**
+         * Any address will do; CDM only needs one. Locally administered, and
+         * NectarLink's own ("NL"), so removing its association never takes
+         * another tool's.
+         */
+        private const val ADDRESS = "02:00:00:4e:4c:01"
+        private val lock = Any()
+        /** Virtual devices in use: the association goes with the last. */
+        private var open = 0
         /** VirtualDeviceParams.LOCK_STATE_ALWAYS_UNLOCKED: apps show on it while the phone is locked. */
         private const val LOCK_STATE_ALWAYS_UNLOCKED = 1
         private const val ASSOCIATION_POLLS = 20
@@ -53,7 +71,19 @@ internal class VirtualDevice private constructor(private val device: Any) {
 
         /** A virtual device, or null when there's no association and none can be made, or no virtual devices. */
         @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-        fun create(): VirtualDevice? = runCatching {
+        fun create(): VirtualDevice? = synchronized(lock) {
+            make()?.also { open++ } ?: null.also { if (open == 0) forget() }
+        }
+
+        /** Removes NectarLink's association for the shell, if there is one. */
+        fun forget() {
+            runCatching {
+                Runtime.getRuntime().exec(arrayOf("cmd", "companiondevice", "disassociate", "0", SHELL, ADDRESS)).waitFor()
+            }.onFailure { System.err.println("can't remove the app streaming association: $it") }
+        }
+
+        @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+        private fun make(): VirtualDevice? = runCatching {
             val association = association() ?: return null
             val context = ShellContext.get()
             val managerType = Class.forName("android.companion.virtual.VirtualDeviceManager")
@@ -93,7 +123,9 @@ internal class VirtualDevice private constructor(private val device: Any) {
             val serviceType = Class.forName("android.companion.ICompanionDeviceManager")
             val cdm = CompanionDeviceManager::class.java.getConstructor(serviceType, Context::class.java)
                 .newInstance(service("companiondevice", serviceType), ShellContext.get())
-            return cdm.myAssociations.firstOrNull { it.deviceProfile == APP_STREAMING }?.id
+            return cdm.myAssociations.firstOrNull {
+                it.deviceProfile == APP_STREAMING && it.deviceMacAddress?.toString().equals(ADDRESS, ignoreCase = true)
+            }?.id
         }
 
         private fun service(name: String, type: Class<*>): Any {

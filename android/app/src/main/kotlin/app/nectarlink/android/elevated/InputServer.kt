@@ -89,6 +89,8 @@ object InputServer {
         }
         grantAppOps()
         startClipboardWatcher()
+        // No window is open yet: an association left by a helper that was killed goes.
+        Thread { VirtualDevice.forget() }.start()
         val injector = runCatching { Injector() }.getOrElse { return fail("can't inject input: $it") }
         val server = runCatching { ServerSocket(0, 8, InetAddress.getLoopbackAddress()) }.getOrElse { return fail("can't listen: $it") }
         serverSocket = server
