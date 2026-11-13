@@ -124,6 +124,11 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **App windows open with Elevated on ROMs that treat their display as screen sharing.**
+  Some Android 13 ROMs refused the display an app window draws into, because the shell
+  user only has the screen capture permission from Android 14, and fell back to the
+  screen sharing prompt. NectarLink now makes a private display there, which needs no
+  such permission. Thanks to [@Rajdave69](https://github.com/Rajdave69) ([#136](https://github.com/thtbee/nectarlink/issues/136)).
 - **Setup works on Windows that can't show the admin prompt.** Some Windows installs have
   lost "Run as administrator" for programs. Setup then said it needed your permission as if
   you'd said no; it now shows Windows' real reason, and started from an administrator

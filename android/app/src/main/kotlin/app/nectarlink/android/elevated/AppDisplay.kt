@@ -306,8 +306,23 @@ class AppDisplay(
         }
     }
 
-    private fun createDisplay(w: Int, h: Int, d: Int, surface: Surface): VirtualDisplay {
-        var flags = PUBLIC or OWN_CONTENT_ONLY or SUPPORTS_TOUCH or ROTATES_WITH_CONTENT or DESTROY_CONTENT_ON_REMOVAL
+    private fun createDisplay(w: Int, h: Int, d: Int, surface: Surface): VirtualDisplay =
+        try {
+            createDisplay(w, h, d, surface, public = true)
+        } catch (e: SecurityException) {
+            // A public display mirrors unless it shows only its own content, and stock
+            // Android lets the shell make one that doesn't. Some ROMs mirror it anyway
+            // and then want CAPTURE_VIDEO_OUTPUT, which the shell only has from Android
+            // 14 (#136). A private display needs no such permission, and the shell
+            // owns it, so it can still start the app there.
+            if (e.message?.contains("CAPTURE_VIDEO_OUTPUT") != true) throw e
+            System.err.println("a public display was refused (${e.message}); making a private one")
+            createDisplay(w, h, d, surface, public = false)
+        }
+
+    private fun createDisplay(w: Int, h: Int, d: Int, surface: Surface, public: Boolean): VirtualDisplay {
+        var flags = OWN_CONTENT_ONLY or SUPPORTS_TOUCH or ROTATES_WITH_CONTENT or DESTROY_CONTENT_ON_REMOVAL
+        if (public) flags = flags or PUBLIC
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             flags = flags or TRUSTED or OWN_DISPLAY_GROUP or ALWAYS_UNLOCKED or TOUCH_FEEDBACK_DISABLED
         }
