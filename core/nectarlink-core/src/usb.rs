@@ -55,6 +55,8 @@ const MAGIC: &[u8; 4] = b"NLQU";
 const MAX_HELLO_BYTES: usize = 4096;
 const HELLO_TIMEOUT: Duration = Duration::from_secs(3);
 const ADB_RETRY_DELAY: Duration = Duration::from_secs(2);
+/// How often, at most, the adb server is started while adb can't be reached.
+const ADB_START_EVERY: Duration = Duration::from_secs(60);
 /// How often, at most, a profile port nothing answered on is tried again.
 const SPARE_PORT_MAX_DELAY: Duration = Duration::from_secs(30);
 /// How long a tunnel may send frames without getting any back before it is
@@ -254,11 +256,19 @@ pub(crate) fn start_adb_watcher(shared: &Arc<Shared>, adb_addr: SocketAddr) {
     let cancel = shared.cancel.clone();
     tokio::spawn(async move {
         let mut active: HashMap<String, CancellationToken> = HashMap::new();
+        let mut started_adb: Option<Instant> = None;
         loop {
             if cancel.is_cancelled() {
                 break;
             }
             let Some(node) = weak.upgrade() else { break };
+            // The loop comes round when adb can't be reached: start its server, now and then
+            // at most once a minute, for an adb installed later or a server that went away.
+            // A thread, not spawn_blocking, so a slow adb never holds up the runtime's shutdown.
+            if started_adb.is_none_or(|at| at.elapsed() >= ADB_START_EVERY) {
+                started_adb = Some(Instant::now());
+                std::thread::spawn(move || nectarlink_adb::start_server(adb_addr));
+            }
             let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
             let track_cancel = cancel.child_token();
             let track_cancel_task = track_cancel.clone();

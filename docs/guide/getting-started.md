@@ -125,7 +125,7 @@ NectarLink supports three ways to `pair` your phone and PC. All three methods es
 
 ### Method 3: Plug in a USB Cable (Auto-Pair)
 
-If you have USB debugging (`adb`) enabled on your phone, NectarLink detects the phone as soon as you plug it into your PC with a USB cable. USB needs Android's `adb` on the PC with its server running: install Google's platform-tools and run `adb start-server` after each restart (Android Studio and scrcpy also start it). NectarLink doesn't start it itself.
+If you have USB debugging (`adb`) enabled on your phone, NectarLink detects the phone as soon as you plug it into your PC with a USB cable. USB needs Android's `adb` on the PC: install Google's platform-tools so `adb` is on your `PATH`. When NectarLink starts and no adb server is running, it starts one, so a restart needs nothing from you.
 
 <p align="center">
   <img src="images/usb-autopair.png" alt="USB auto-pair confirmation with 6-digit verification code on PC" width="760">

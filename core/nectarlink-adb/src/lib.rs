@@ -36,6 +36,89 @@ async fn connect_adb(server: SocketAddr) -> Result<TcpStream, AdbError> {
     with_adb_timeout(async { Ok(TcpStream::connect(server).await?) }).await
 }
 
+/// How long `adb start-server` may take before it's stopped.
+const START_SERVER_LIMIT: Duration = Duration::from_secs(10);
+
+/// The adb to run: `platform-tools` under `ANDROID_HOME`, `ANDROID_SDK_ROOT`,
+/// then the SDK's default folder (where Android Studio puts it, off `PATH`),
+/// or else plain `adb` for `PATH` to find. `var` reads an environment variable.
+fn find_adb(var: impl Fn(&str) -> Option<std::ffi::OsString>) -> std::path::PathBuf {
+    let exe = if cfg!(windows) { "adb.exe" } else { "adb" };
+    let mut sdks: Vec<std::path::PathBuf> =
+        ["ANDROID_HOME", "ANDROID_SDK_ROOT"].into_iter().filter_map(&var).map(Into::into).collect();
+    if cfg!(windows) {
+        sdks.extend(var("LOCALAPPDATA").map(|d| std::path::Path::new(&d).join("Android").join("Sdk")));
+    } else if cfg!(target_os = "macos") {
+        sdks.extend(
+            var("HOME").map(|d| std::path::Path::new(&d).join("Library").join("Android").join("sdk")),
+        );
+    } else {
+        sdks.extend(var("HOME").map(|d| std::path::Path::new(&d).join("Android").join("Sdk")));
+    }
+    sdks.into_iter()
+        .map(|sdk| sdk.join("platform-tools").join(exe))
+        .find(|adb| adb.is_file())
+        .unwrap_or_else(|| exe.into())
+}
+
+/// Runs `adb start-server` when nothing answers at `server`, as scrcpy and
+/// Android Studio do, so a phone on a cable connects after the PC restarts.
+/// A server that answers is left alone: an `adb` of another version would
+/// replace it. Only [`DEFAULT_ADB_ADDR`] is started, since that's where
+/// `adb start-server` listens. Blocks until `adb` exits, at most
+/// [`START_SERVER_LIMIT`]; returns whether it tried.
+pub fn start_server(server: SocketAddr) -> bool {
+    static NOT_FOUND_LOGGED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if server != DEFAULT_ADB_ADDR || std::net::TcpStream::connect_timeout(&server, ADB_TIMEOUT).is_ok() {
+        return false;
+    }
+    let adb = find_adb(|name| std::env::var_os(name));
+    let mut cmd = std::process::Command::new(&adb);
+    cmd.arg("start-server")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    let mut child = match cmd.spawn() {
+        Ok(child) => child,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            // Tried again every minute; once a run is enough to say so.
+            if !NOT_FOUND_LOGGED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                tracing::info!("adb isn't installed; USB connections need it");
+            }
+            return true;
+        }
+        Err(e) => {
+            tracing::warn!(adb = %adb.display(), error = %e, "can't run adb");
+            return true;
+        }
+    };
+    tracing::info!(adb = %adb.display(), "starting the adb server");
+    let deadline = std::time::Instant::now() + START_SERVER_LIMIT;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) if status.success() => tracing::info!("started the adb server"),
+            Ok(Some(status)) => tracing::warn!(code = ?status.code(), "adb couldn't start its server"),
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(100));
+                continue;
+            }
+            Ok(None) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                tracing::warn!("adb start-server didn't finish in time; stopped it");
+            }
+            Err(e) => tracing::warn!(error = %e, "lost track of adb start-server"),
+        }
+        return true;
+    }
+}
+
 /// Returns `true` if `serial` is non-empty, made only of the characters
 /// serials use, and permitted by the optional `NECTARLINK_ADB_ONLY_SERIAL`
 /// filter. A USB device names its own serial, and it goes into adb commands
@@ -325,6 +408,48 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn adb_is_looked_for_in_the_sdk_then_on_path() {
+        let root = std::env::temp_dir().join(format!("nectarlink-find-adb-{}", std::process::id()));
+        let exe = if cfg!(windows) { "adb.exe" } else { "adb" };
+        let with_adb = |sdk: std::path::PathBuf| {
+            std::fs::create_dir_all(sdk.join("platform-tools")).unwrap();
+            std::fs::write(sdk.join("platform-tools").join(exe), b"").unwrap();
+            sdk.join("platform-tools").join(exe)
+        };
+        // The SDK's default folder, under LOCALAPPDATA on Windows and HOME elsewhere.
+        let (base_var, default_sdk) = if cfg!(windows) {
+            ("LOCALAPPDATA", root.join("base").join("Android").join("Sdk"))
+        } else if cfg!(target_os = "macos") {
+            ("HOME", root.join("base").join("Library").join("Android").join("sdk"))
+        } else {
+            ("HOME", root.join("base").join("Android").join("Sdk"))
+        };
+        let in_home = with_adb(root.join("home"));
+        let in_default = with_adb(default_sdk);
+        let env = |vars: &[(&str, std::path::PathBuf)]| {
+            let vars: Vec<(String, std::path::PathBuf)> =
+                vars.iter().map(|(k, v)| (k.to_string(), v.clone())).collect();
+            move |name: &str| vars.iter().find(|(k, _)| k == name).map(|(_, v)| v.clone().into_os_string())
+        };
+
+        let all = env(&[("ANDROID_HOME", root.join("home")), (base_var, root.join("base"))]);
+        assert_eq!(find_adb(all), in_home);
+        let sdk_root_without_adb =
+            env(&[("ANDROID_SDK_ROOT", root.join("empty")), (base_var, root.join("base"))]);
+        assert_eq!(find_adb(sdk_root_without_adb), in_default);
+        let nothing = env(&[(base_var, root.join("empty"))]);
+        assert_eq!(find_adb(nothing), std::path::PathBuf::from(exe));
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn only_the_default_adb_address_is_started() {
+        // Nothing answers on port 1, but a mock server's address must never run the real adb.
+        assert!(!start_server(SocketAddr::from((Ipv4Addr::LOCALHOST, 1))));
+    }
 
     #[test]
     fn network_serials_are_told_from_cables_and_loopback() {
