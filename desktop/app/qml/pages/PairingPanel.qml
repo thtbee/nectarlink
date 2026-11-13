@@ -143,6 +143,15 @@ Item {
                 text: qsTr("Pair nearby instead")
                 onClicked: panel.showNearby = true
             }
+            // For phones where installing from a browser is blocked, or simply easier.
+            Button {
+                anchors.horizontalCenter: parent.horizontalCenter
+                variant: "text"
+                size: "sm"
+                iconPath: Icons.usb
+                text: qsTr("No app on the phone yet? Install it over USB")
+                onClicked: AppController.triggerHighlight("settings:install_phone")
+            }
         }
 
         // ---- Compact horizontal QR layout (used in Walkthrough Step 4) ----

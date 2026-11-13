@@ -8,6 +8,13 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Install the phone app from the PC, over USB.** Settings › Install on a phone checks
+  what's needed and walks you through the rest: it gets Android's USB tools from Google
+  when the PC has none (checked against Google's checksum), helps turn on USB debugging,
+  notices a missing USB driver on Windows, then installs and opens the newest phone app.
+  When the phone refuses, it says why and what to do. For phones where Play Protect or
+  the maker blocks installing from a browser. The adb it downloads also connects phones
+  over a cable from then on.
 - **App windows fit any shape, and say when they're catching up.** With Elevated, an app
   window's display now takes the window's exact size, so there are no bars beside the
   app. While you hold an edge on Windows, the window shows the app blurred under its
