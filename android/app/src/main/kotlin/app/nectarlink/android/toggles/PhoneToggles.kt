@@ -24,6 +24,13 @@ import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.webcam.WebcamService
 import app.nectarlink.core.PhoneToggleValue
 import app.nectarlink.core.PhoneToggles as CorePhoneToggles
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
@@ -47,6 +54,7 @@ class PhoneToggles(
     @Volatile private var torchOn: Boolean = false
     private var started = false
     private var lastSent: CorePhoneToggles? = null
+    private var webcamWatch: Job? = null
 
     private val emitRunnable = Runnable { pushIfChanged() }
     private val followUpRunnable = Runnable { pushIfChanged() }
@@ -104,6 +112,16 @@ class PhoneToggles(
             addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
         }
         ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        // The flashlight follows the webcam while it streams, so the PC hears when
+        // the webcam starts, stops or switches its torch. Without this the PC kept
+        // showing a torch from the last webcam session as on (#353).
+        webcamWatch = CoroutineScope(Dispatchers.Main).launch {
+            WebcamService.session
+                .map { Triple(it.active, it.hasFlash, it.torchOn) }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { schedulePush() }
+        }
         pushNow()
     }
 
@@ -112,6 +130,8 @@ class PhoneToggles(
         started = false
         mainHandler.removeCallbacks(emitRunnable)
         mainHandler.removeCallbacks(followUpRunnable)
+        webcamWatch?.cancel()
+        webcamWatch = null
         if (torchCameraId != null) {
             runCatching { camera?.unregisterTorchCallback(torchCallback) }
         }
