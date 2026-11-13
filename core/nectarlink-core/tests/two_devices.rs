@@ -1961,12 +1961,12 @@ async fn phones_lock_pcs_and_links_open_on_either_side() {
             Err(e) => panic!("didn't hibernate: {e}"),
         }
     }
-    // The PC answers first and acts a moment later.
+    // The PC answers first and acts a moment later: sleep and hibernate after
+    // the same pause, so in either order.
     tokio::time::sleep(Duration::from_millis(800)).await;
-    assert_eq!(
-        *pc.platform.power.lock().unwrap(),
-        [PowerAction::Lock, PowerAction::Sleep, PowerAction::Hibernate]
-    );
+    let mut done: Vec<_> = pc.platform.power.lock().unwrap().iter().map(|a| a.as_str()).collect();
+    done.sort_unstable();
+    assert_eq!(done, ["hibernate", "lock", "sleep"]);
 
     // A phone doesn't lock or sleep on request.
     let phone_power = pc.node.pc_power(phone_id, PowerAction::Lock).await;
