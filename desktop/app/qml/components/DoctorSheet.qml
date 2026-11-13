@@ -20,6 +20,7 @@ Sheet {
         case "firewall": return qsTr("Allow")
         case "network-settings": return qsTr("Open settings")
         case "reconnect": return qsTr("Reconnect")
+        case "start-adb": return qsTr("Start adb")
         default: return ""
         }
     }

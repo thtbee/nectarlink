@@ -200,6 +200,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Doctor", "%1 isn't connected"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 minutes ago"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 · %2 ms"), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "A USB cable needs adb"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "A VPN is on"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "A firewall rule blocks incoming NectarLink connections. Allow it, and your phone can connect."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Calls and alerts can't play sound yet"), // desktop/app/src/linux/doctor.rs
@@ -234,6 +235,8 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Doctor", "Phone as webcam needs one more step"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Phone storage can open in your file manager"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Phone storage needs one more step"), // desktop/app/src/linux/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "Phones on a USB cable connect through adb. NectarLink starts it every minute or so; start it now if a phone on a cable isn't showing up."), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "Ready for a USB cable"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Showing this PC's screen needs one more step"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Someone chose not to allow it when Windows asked. Allow it, and your phone can connect."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Sound is ready"), // desktop/app/src/linux/doctor.rs
@@ -245,6 +248,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Doctor", "This PC isn't on a network"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "This network"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "This usually takes a few seconds."), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "To connect over a cable, install Android's platform-tools or Android Studio, and turn on USB debugging on the phone. Wi-Fi works without it."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "VPNs often keep devices on your network from reaching this PC. If your phone can't connect, try turning it off."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "While away"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Windows Firewall blocks NectarLink"), // desktop/app/src/doctor.rs
@@ -255,6 +259,8 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Doctor", "Your phone can't control this PC yet"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Your phone may not be able to connect. Allow it once here."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "a minute ago"), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "adb is running, so a phone with USB debugging on connects over a cable."), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "adb isn't running"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "an hour ago"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "just now"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Errors", "Something went wrong: %1"), // desktop/app/src/bridge/app.rs

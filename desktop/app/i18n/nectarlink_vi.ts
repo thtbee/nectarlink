@@ -1968,286 +1968,316 @@
     </message>
     <message>
         <location filename="rust_strings.h" line="203"/>
+        <source>A USB cable needs adb</source>
+        <translation>Cáp USB cần adb</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="204"/>
         <source>A VPN is on</source>
         <translation>VPN đang bật</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="204"/>
+        <location filename="rust_strings.h" line="205"/>
         <source>A firewall rule blocks incoming NectarLink connections. Allow it, and your phone can connect.</source>
         <translation>Một quy tắc tường lửa đang chặn các kết nối NectarLink đến. Hãy cho phép, điện thoại của bạn sẽ kết nối được.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="205"/>
+        <location filename="rust_strings.h" line="206"/>
         <source>Calls and alerts can&apos;t play sound yet</source>
         <translation>Cuộc gọi và thông báo chưa thể phát âm thanh</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="206"/>
+        <location filename="rust_strings.h" line="207"/>
         <source>Connect it to the same Wi-Fi or wired network as your phone.</source>
         <translation>Hãy kết nối thiết bị vào cùng mạng Wi-Fi hoặc mạng có dây với điện thoại của bạn.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="207"/>
+        <location filename="rust_strings.h" line="208"/>
         <source>Connected to %1</source>
         <translation>Đã kết nối với %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="208"/>
+        <location filename="rust_strings.h" line="209"/>
         <source>Connected to a network</source>
         <translation>Đã kết nối với một mạng</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="209"/>
+        <location filename="rust_strings.h" line="210"/>
         <source>Connecting to %1…</source>
         <translation>Đang kết nối với %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="210"/>
+        <location filename="rust_strings.h" line="211"/>
         <source>GNOME shows app icons there only with the AppIndicator extension. Install it (gnome-shell-extension-appindicator) and turn it on in Extensions.</source>
         <translation>GNOME chỉ hiển thị biểu tượng ứng dụng ở đó khi có tiện ích mở rộng AppIndicator. Hãy cài đặt tiện ích này (gnome-shell-extension-appindicator) và bật nó trong Extensions.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="211"/>
+        <location filename="rust_strings.h" line="212"/>
         <source>Install fuse3 to browse your phone&apos;s files in your file manager.</source>
         <translation>Cài đặt fuse3 để duyệt các tệp trên điện thoại của bạn trong trình quản lý tệp.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="212"/>
+        <location filename="rust_strings.h" line="213"/>
         <source>Install gstreamer1.0-pipewire and gstreamer1.0-tools, and the desktop portal (xdg-desktop-portal) if it&apos;s missing.</source>
         <translation>Cài đặt gstreamer1.0-pipewire và gstreamer1.0-tools, và desktop portal (xdg-desktop-portal) nếu thiếu.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="213"/>
+        <location filename="rust_strings.h" line="214"/>
         <source>Install pipewire-pulse (or pulseaudio-utils) for call audio and Find my PC.</source>
         <translation>Cài đặt pipewire-pulse (hoặc pulseaudio-utils) cho âm thanh cuộc gọi và tính năng Tìm PC của tôi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="214"/>
+        <location filename="rust_strings.h" line="215"/>
         <source>Install v4l2loopback-dkms, then restart, so apps can use your phone as a camera.</source>
         <translation>Cài đặt v4l2loopback-dkms, sau đó khởi động lại, để các ứng dụng có thể dùng điện thoại của bạn làm máy ảnh.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="215"/>
+        <location filename="rust_strings.h" line="216"/>
         <source>It hasn&apos;t connected yet.</source>
         <translation>Thiết bị vẫn chưa kết nối.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="216"/>
+        <location filename="rust_strings.h" line="217"/>
         <source>Keep %1 reachable in the background (%2)</source>
         <translation>Giữ %1 luôn khả dụng trong nền (%2)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="217"/>
+        <location filename="rust_strings.h" line="218"/>
         <source>Last seen %1.</source>
         <translation>Lần cuối thấy %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="218"/>
+        <location filename="rust_strings.h" line="219"/>
         <source>NectarLink can&apos;t show its icon in the top bar</source>
         <translation>NectarLink không thể hiển thị biểu tượng của nó trên thanh trên cùng</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="219"/>
+        <location filename="rust_strings.h" line="220"/>
         <source>NectarLink is in the top bar</source>
         <translation>NectarLink đang hiển thị trên thanh trên cùng</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="220"/>
+        <location filename="rust_strings.h" line="221"/>
         <source>NectarLink isn&apos;t allowed through Windows Firewall</source>
         <translation>NectarLink chưa được Windows Firewall cho phép</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="221"/>
+        <location filename="rust_strings.h" line="222"/>
         <source>NectarLink isn&apos;t allowed through the firewall</source>
         <translation>NectarLink chưa được tường lửa cho phép</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="222"/>
+        <location filename="rust_strings.h" line="223"/>
         <source>On Huawei / Honor: open Settings → Battery → App launch, turn off Manage automatically for NectarLink, and keep Auto-launch, Secondary launch, and Run in background on.</source>
         <translation>Trên Huawei / Honor: mở Settings → Battery → App launch, tắt Manage automatically cho NectarLink, và giữ Auto-launch, Secondary launch và Run in background ở trạng thái bật.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="223"/>
+        <location filename="rust_strings.h" line="224"/>
         <source>On OnePlus / OxygenOS: open Settings → Apps → App management → NectarLink → Battery usage and turn on Allow background activity and Allow auto-launch.</source>
         <translation>Trên OnePlus / OxygenOS: mở Settings → Apps → App management → NectarLink → Battery usage và bật Allow background activity và Allow auto-launch.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="224"/>
+        <location filename="rust_strings.h" line="225"/>
         <source>On Oppo / Realme: open Settings → Apps → App management → NectarLink → Battery usage and turn on Allow background activity and Allow auto-launch.</source>
         <translation>Trên Oppo / Realme: mở Settings → Apps → App management → NectarLink → Battery usage và bật Allow background activity và Allow auto-launch.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="225"/>
+        <location filename="rust_strings.h" line="226"/>
         <source>On Pixel: open Settings → Apps → See all apps → NectarLink → App battery usage, tap Allow background usage, and choose Unrestricted.</source>
         <translation>Trên Pixel: mở Settings → Apps → See all apps → NectarLink → App battery usage, nhấn Allow background usage và chọn Unrestricted.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="226"/>
+        <location filename="rust_strings.h" line="227"/>
         <source>On Samsung: open Settings → Apps → NectarLink → Battery and choose Unrestricted, then in Device care → Battery → Background usage limits make sure NectarLink is never put to sleep.</source>
         <translation>Trên Samsung: mở Settings → Apps → NectarLink → Battery và chọn Unrestricted, sau đó trong Device care → Battery → Background usage limits hãy đảm bảo NectarLink không bao giờ bị đưa vào chế độ ngủ.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="227"/>
+        <location filename="rust_strings.h" line="228"/>
         <source>On USB</source>
         <translation>Qua USB</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="228"/>
+        <location filename="rust_strings.h" line="229"/>
         <source>On Vivo / OriginOS / Funtouch: open Settings → Battery → Background power consumption management → NectarLink and choose Unrestricted, and allow Autostart.</source>
         <translation>Trên Vivo / OriginOS / Funtouch: mở Settings → Battery → Background power consumption management → NectarLink và chọn Unrestricted, đồng thời cho phép Autostart.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="229"/>
+        <location filename="rust_strings.h" line="230"/>
         <source>On Xiaomi / HyperOS / MIUI: open Settings → Apps → Manage apps → NectarLink, turn on Autostart, and set Battery saver to No restrictions.</source>
         <translation>Trên Xiaomi / HyperOS / MIUI: mở Settings → Apps → Manage apps → NectarLink, bật Autostart và đặt Battery saver thành No restrictions.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="230"/>
+        <location filename="rust_strings.h" line="231"/>
         <source>On public networks Windows keeps other devices from finding this PC. If it&apos;s your home or work network, set it to Private.</source>
         <translation>Trên mạng công cộng, Windows ngăn các thiết bị khác tìm thấy PC này. Nếu đây là mạng nhà hoặc mạng cơ quan của bạn, hãy đặt nó thành Private.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="231"/>
+        <location filename="rust_strings.h" line="232"/>
         <source>On public networks the firewall keeps other devices from finding this PC. If it&apos;s your home or work network, open network settings and set its firewall zone to Home or Trusted.</source>
         <translation>Trên mạng công cộng, tường lửa ngăn các thiết bị khác tìm thấy PC này. Nếu đây là mạng nhà hoặc mạng cơ quan của bạn, hãy mở cài đặt mạng và đặt vùng tường lửa của nó thành Home hoặc Trusted.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="232"/>
+        <location filename="rust_strings.h" line="233"/>
         <source>On this network</source>
         <translation>Trên mạng này</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="233"/>
+        <location filename="rust_strings.h" line="234"/>
         <source>Phone as webcam is ready</source>
         <translation>Điện thoại làm webcam đã sẵn sàng</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="234"/>
+        <location filename="rust_strings.h" line="235"/>
         <source>Phone as webcam needs one more step</source>
         <translation>Điện thoại làm webcam cần thêm một bước nữa</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="235"/>
+        <location filename="rust_strings.h" line="236"/>
         <source>Phone storage can open in your file manager</source>
         <translation>Bộ nhớ điện thoại có thể mở trong trình quản lý tệp của bạn</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="236"/>
+        <location filename="rust_strings.h" line="237"/>
         <source>Phone storage needs one more step</source>
         <translation>Bộ nhớ điện thoại cần thêm một bước nữa</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="237"/>
+        <location filename="rust_strings.h" line="238"/>
+        <source>Phones on a USB cable connect through adb. NectarLink starts it every minute or so; start it now if a phone on a cable isn&apos;t showing up.</source>
+        <translation>Điện thoại cắm cáp USB kết nối qua adb. NectarLink khởi động nó khoảng mỗi phút; hãy khởi động ngay nếu điện thoại cắm cáp không hiện lên.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="239"/>
+        <source>Ready for a USB cable</source>
+        <translation>Sẵn sàng cho cáp USB</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="240"/>
         <source>Showing this PC&apos;s screen needs one more step</source>
         <translation>Việc hiển thị màn hình PC này cần thêm một bước nữa</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="238"/>
+        <location filename="rust_strings.h" line="241"/>
         <source>Someone chose not to allow it when Windows asked. Allow it, and your phone can connect.</source>
         <translation>Có người đã chọn không cho phép khi Windows hỏi. Hãy cho phép, điện thoại của bạn sẽ kết nối được.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="239"/>
+        <location filename="rust_strings.h" line="242"/>
         <source>Sound is ready</source>
         <translation>Âm thanh đã sẵn sàng</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="240"/>
+        <location filename="rust_strings.h" line="243"/>
         <source>The firewall blocks NectarLink</source>
         <translation>Tường lửa chặn NectarLink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="241"/>
+        <location filename="rust_strings.h" line="244"/>
         <source>The firewall is off for this network</source>
         <translation>Tường lửa đang tắt đối với mạng này</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="242"/>
+        <location filename="rust_strings.h" line="245"/>
         <source>The firewall lets your phone connect</source>
         <translation>Tường lửa cho phép điện thoại của bạn kết nối</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="243"/>
+        <location filename="rust_strings.h" line="246"/>
         <source>The touchpad and keyboard on your phone need the desktop portal (xdg-desktop-portal) or access to /dev/uinput.</source>
         <translation>Touchpad và bàn phím trên điện thoại của bạn cần desktop portal (xdg-desktop-portal) hoặc quyền truy cập /dev/uinput.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="244"/>
+        <location filename="rust_strings.h" line="247"/>
         <source>This PC can see %1 announce itself on the network, but the router is blocking devices from talking directly to each other (often called AP Isolation, Client Isolation, or Guest Wi-Fi). Move both devices off any Guest Wi-Fi network, turn off AP / Client Isolation in your router&apos;s Wi-Fi settings, or connect with a USB cable.</source>
         <translation>PC này có thể thấy %1 tự quảng bá trên mạng, nhưng router đang chặn các thiết bị giao tiếp trực tiếp với nhau (thường gọi là AP Isolation, Client Isolation hoặc Guest Wi-Fi). Hãy chuyển cả hai thiết bị ra khỏi mọi mạng Guest Wi-Fi, tắt AP / Client Isolation trong cài đặt Wi-Fi của router, hoặc kết nối bằng cáp USB.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="245"/>
+        <location filename="rust_strings.h" line="248"/>
         <source>This PC isn&apos;t on a network</source>
         <translation>PC này chưa kết nối vào mạng nào</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="246"/>
+        <location filename="rust_strings.h" line="249"/>
         <source>This network</source>
         <translation>Mạng này</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="247"/>
+        <location filename="rust_strings.h" line="250"/>
         <source>This usually takes a few seconds.</source>
         <translation>Quá trình này thường mất vài giây.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="248"/>
+        <location filename="rust_strings.h" line="251"/>
+        <source>To connect over a cable, install Android&apos;s platform-tools or Android Studio, and turn on USB debugging on the phone. Wi-Fi works without it.</source>
+        <translation>Để kết nối qua cáp, hãy cài platform-tools của Android hoặc Android Studio, rồi bật gỡ lỗi USB trên điện thoại. Wi-Fi vẫn hoạt động mà không cần nó.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="252"/>
         <source>VPNs often keep devices on your network from reaching this PC. If your phone can&apos;t connect, try turning it off.</source>
         <translation>VPN thường ngăn các thiết bị trên mạng của bạn tiếp cận PC này. Nếu điện thoại của bạn không thể kết nối, hãy thử tắt nó đi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="249"/>
+        <location filename="rust_strings.h" line="253"/>
         <source>While away</source>
         <translation>Khi đi vắng</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="250"/>
+        <location filename="rust_strings.h" line="254"/>
         <source>Windows Firewall blocks NectarLink</source>
         <translation>Windows Firewall chặn NectarLink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="251"/>
+        <location filename="rust_strings.h" line="255"/>
         <source>Windows Firewall is off for this network</source>
         <translation>Windows Firewall đang tắt đối với mạng này</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="252"/>
+        <location filename="rust_strings.h" line="256"/>
         <source>Windows Firewall lets your phone connect</source>
         <translation>Windows Firewall cho phép điện thoại của bạn kết nối</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="253"/>
+        <location filename="rust_strings.h" line="257"/>
         <source>Your phone can control this PC</source>
         <translation>Điện thoại của bạn có thể điều khiển PC này</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="254"/>
+        <location filename="rust_strings.h" line="258"/>
         <source>Your phone can show this PC&apos;s screen</source>
         <translation>Điện thoại của bạn có thể hiển thị màn hình PC này</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="255"/>
+        <location filename="rust_strings.h" line="259"/>
         <source>Your phone can&apos;t control this PC yet</source>
         <translation>Điện thoại của bạn chưa thể điều khiển PC này</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="256"/>
+        <location filename="rust_strings.h" line="260"/>
         <source>Your phone may not be able to connect. Allow it once here.</source>
         <translation>Điện thoại của bạn có thể không kết nối được. Hãy cho phép một lần tại đây.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="257"/>
+        <location filename="rust_strings.h" line="261"/>
         <source>a minute ago</source>
         <translation>một phút trước</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="258"/>
+        <location filename="rust_strings.h" line="262"/>
+        <source>adb is running, so a phone with USB debugging on connects over a cable.</source>
+        <translation>adb đang chạy, nên điện thoại bật gỡ lỗi USB sẽ kết nối qua cáp.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="263"/>
+        <source>adb isn&apos;t running</source>
+        <translation>adb chưa chạy</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="264"/>
         <source>an hour ago</source>
         <translation>một giờ trước</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="259"/>
+        <location filename="rust_strings.h" line="265"/>
         <source>just now</source>
         <translation>vừa xong</translation>
     </message>
@@ -2270,42 +2300,47 @@
         <translation>Kết nối lại</translation>
     </message>
     <message>
-        <location filename="../qml/components/DoctorSheet.qml" line="37"/>
+        <location filename="../qml/components/DoctorSheet.qml" line="23"/>
+        <source>Start adb</source>
+        <translation>Khởi động adb</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DoctorSheet.qml" line="38"/>
         <source>Connection Doctor</source>
         <translation>Connection Doctor</translation>
     </message>
     <message>
-        <location filename="../qml/components/DoctorSheet.qml" line="53"/>
+        <location filename="../qml/components/DoctorSheet.qml" line="54"/>
         <source>Checking network and firewall…</source>
         <translation>Đang kiểm tra mạng và tường lửa…</translation>
     </message>
     <message>
-        <location filename="../qml/components/DoctorSheet.qml" line="55"/>
+        <location filename="../qml/components/DoctorSheet.qml" line="56"/>
         <source>Everything looks right.</source>
         <translation>Mọi thứ đều ổn.</translation>
     </message>
     <message>
-        <location filename="../qml/components/DoctorSheet.qml" line="57"/>
+        <location filename="../qml/components/DoctorSheet.qml" line="58"/>
         <source>Your phone can reach this PC. A few features need a step from you:</source>
         <translation>Điện thoại của bạn truy cập được PC này. Một vài tính năng cần bạn thực hiện thêm một bước:</translation>
     </message>
     <message>
-        <location filename="../qml/components/DoctorSheet.qml" line="58"/>
+        <location filename="../qml/components/DoctorSheet.qml" line="59"/>
         <source>Issues blocking your phone from reaching this PC:</source>
         <translation>Các vấn đề đang chặn điện thoại của bạn kết nối tới PC này:</translation>
     </message>
     <message>
-        <location filename="../qml/components/DoctorSheet.qml" line="134"/>
+        <location filename="../qml/components/DoctorSheet.qml" line="135"/>
         <source>Firewall settings</source>
         <translation>Cài đặt tường lửa</translation>
     </message>
     <message>
-        <location filename="../qml/components/DoctorSheet.qml" line="158"/>
+        <location filename="../qml/components/DoctorSheet.qml" line="159"/>
         <source>Check again</source>
         <translation>Kiểm tra lại</translation>
     </message>
     <message>
-        <location filename="../qml/components/DoctorSheet.qml" line="162"/>
+        <location filename="../qml/components/DoctorSheet.qml" line="163"/>
         <source>Done</source>
         <translation>Xong</translation>
     </message>
@@ -2313,32 +2348,32 @@
 <context>
     <name>Errors</name>
     <message>
-        <location filename="rust_strings.h" line="260"/>
+        <location filename="rust_strings.h" line="266"/>
         <source>Something went wrong: %1</source>
         <translation>Đã xảy ra lỗi: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="261"/>
+        <location filename="rust_strings.h" line="267"/>
         <source>That device isn&apos;t paired anymore.</source>
         <translation>Thiết bị đó không còn được ghép nối nữa.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="262"/>
+        <location filename="rust_strings.h" line="268"/>
         <source>The device declined.</source>
         <translation>Thiết bị đã từ chối.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="263"/>
+        <location filename="rust_strings.h" line="269"/>
         <source>The device didn&apos;t answer in time.</source>
         <translation>Thiết bị không phản hồi kịp thời.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="264"/>
+        <location filename="rust_strings.h" line="270"/>
         <source>The device isn&apos;t connected right now.</source>
         <translation>Thiết bị hiện chưa kết nối.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="265"/>
+        <location filename="rust_strings.h" line="271"/>
         <source>The device&apos;s app doesn&apos;t support that yet.</source>
         <translation>Ứng dụng trên thiết bị chưa hỗ trợ tính năng đó.</translation>
     </message>
@@ -3108,27 +3143,27 @@
 <context>
     <name>FolderSync</name>
     <message>
-        <location filename="rust_strings.h" line="266"/>
+        <location filename="rust_strings.h" line="272"/>
         <source>Couldn&apos;t read the folder on the phone. Check that it&apos;s connected.</source>
         <translation>Không thể đọc thư mục trên điện thoại. Hãy kiểm tra điện thoại đã kết nối chưa.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="267"/>
+        <location filename="rust_strings.h" line="273"/>
         <source>Folders are up to date.</source>
         <translation>Các thư mục đã được cập nhật.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="268"/>
+        <location filename="rust_strings.h" line="274"/>
         <source>Synced %1 file(s).</source>
         <translation>Đã đồng bộ %1 tệp.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="269"/>
+        <location filename="rust_strings.h" line="275"/>
         <source>The phone hasn&apos;t let this PC into its files yet. Allow it on the phone.</source>
         <translation>Điện thoại chưa cho phép PC này truy cập tệp. Hãy cho phép trên điện thoại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="270"/>
+        <location filename="rust_strings.h" line="276"/>
         <source>Waiting for Wi-Fi. Sync on Wi-Fi only is on, and the phone is away.</source>
         <translation>Đang chờ Wi-Fi. Tính năng chỉ đồng bộ qua Wi-Fi đang bật và điện thoại không ở gần.</translation>
     </message>
@@ -3136,7 +3171,7 @@
 <context>
     <name>Guide</name>
     <message>
-        <location filename="rust_strings.h" line="271"/>
+        <location filename="rust_strings.h" line="277"/>
         <source>1. Install NectarLink on your PC (Windows 11 or Linux) and your Android phone (Android 8.0 or newer).
 2. Connect both devices to the same Wi-Fi network, or plug your phone into your PC with a USB cable.
 3. Open the Pair step in the setup walkthrough, or click + (Pair a new device) at the bottom of the left rail.
@@ -3149,72 +3184,72 @@
 5. Chọn những tính năng muốn chia sẻ cho điện thoại đó và chỉ cấp các quyền Android mà bạn muốn sử dụng.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="272"/>
+        <location filename="rust_strings.h" line="278"/>
         <source>Android permissions and why each is optional</source>
         <translation>Quyền Android và lý do mỗi quyền là tùy chọn</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="273"/>
+        <location filename="rust_strings.h" line="279"/>
         <source>Automations</source>
         <translation>Tự động hóa</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="274"/>
+        <location filename="rust_strings.h" line="280"/>
         <source>Calls</source>
         <translation>Cuộc gọi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="275"/>
+        <location filename="rust_strings.h" line="281"/>
         <source>Clipboard</source>
         <translation>Bảng nhớ tạm</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="276"/>
+        <location filename="rust_strings.h" line="282"/>
         <source>Command palette</source>
         <translation>Bảng lệnh</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="277"/>
+        <location filename="rust_strings.h" line="283"/>
         <source>Connection Doctor</source>
         <translation>Chẩn đoán kết nối</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="278"/>
+        <location filename="rust_strings.h" line="284"/>
         <source>Continuity camera</source>
         <translation>Máy ảnh liên tục</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="279"/>
+        <location filename="rust_strings.h" line="285"/>
         <source>Deck</source>
         <translation>Deck</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="280"/>
+        <location filename="rust_strings.h" line="286"/>
         <source>Drop shelf</source>
         <translation>Kệ thả tệp</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="281"/>
+        <location filename="rust_strings.h" line="287"/>
         <source>Elevated and Assist modes</source>
         <translation>Chế độ Nâng cao và Hỗ trợ</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="282"/>
+        <location filename="rust_strings.h" line="288"/>
         <source>Features guide</source>
         <translation>Hướng dẫn tính năng</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="283"/>
+        <location filename="rust_strings.h" line="289"/>
         <source>Features reference</source>
         <translation>Tra cứu tính năng</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="284"/>
+        <location filename="rust_strings.h" line="290"/>
         <source>Handoff</source>
         <translation>Chuyển giao</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="285"/>
+        <location filename="rust_strings.h" line="291"/>
         <source>If your phone and PC do not see each other:
 
 1. Open Connection Doctor from Settings › Connection &amp; About or the Command Palette.
@@ -3229,17 +3264,17 @@
 4. Bạn cũng có thể kết nối qua cáp USB với gỡ lỗi USB được bật; NectarLink tự động thiết lập một đường hầm cục bộ.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="286"/>
+        <location filename="rust_strings.h" line="292"/>
         <source>Install and first-time setup</source>
         <translation>Cài đặt và thiết lập lần đầu</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="287"/>
+        <location filename="rust_strings.h" line="293"/>
         <source>Local HTTP API</source>
         <translation>HTTP API cục bộ</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="288"/>
+        <location filename="rust_strings.h" line="294"/>
         <source>Local by default
 Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Connection &amp; About › Check for updates.
 
@@ -3258,17 +3293,17 @@ Mọi kết nối đều dùng QUIC với TLS 1.3 và chứng chỉ thiết bị
 Các khả năng nhạy cảm như Chia sẻ thư mục PC, Điều khiển từ xa và Phản chiếu màn hình ngược PC đều tắt theo mặc định cho mỗi thiết bị đã ghép nối cho đến khi bạn bật chúng lên.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="289"/>
+        <location filename="rust_strings.h" line="295"/>
         <source>LocalSend</source>
         <translation>LocalSend</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="290"/>
+        <location filename="rust_strings.h" line="296"/>
         <source>Messages</source>
         <translation>Tin nhắn</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="291"/>
+        <location filename="rust_strings.h" line="297"/>
         <source>Most NectarLink features work in Standard mode with regular Android permissions. Two optional modes unlock deeper system integration:
 
 Elevated mode (Wireless debugging or root)
@@ -3291,12 +3326,12 @@ Chế độ Hỗ trợ (Android Accessibility Service)
 - NectarLink không bao giờ đọc văn bản màn hình hay ghi lại phím gõ qua Accessibility service.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="292"/>
+        <location filename="rust_strings.h" line="298"/>
         <source>Nectar Island</source>
         <translation>Nectar Island</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="293"/>
+        <location filename="rust_strings.h" line="299"/>
         <source>NectarLink links your Android phone and your PC directly on your local network or over a USB cable.
 
 How it works
@@ -3321,7 +3356,7 @@ Các mức khả năng trên Android
 - Chế độ Hỗ trợ (tùy chọn): Chỉ dùng Android Accessibility service khi bạn bật Điều khiển từ xa để chuột và bàn phím PC có thể điều khiển điện thoại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="294"/>
+        <location filename="rust_strings.h" line="300"/>
         <source>NectarLink never asks for every permission up front. Each feature works independently:
 
 - Notification Access: Required only if you want phone notifications, inline replies, and notification-backed chat threads on your PC.
@@ -3338,97 +3373,97 @@ Các mức khả năng trên Android
 - Máy ảnh và Micrô: Chỉ cần khi đang stream điện thoại làm webcam, chụp ảnh bằng Máy ảnh liên tục hoặc ghi âm ghi chú thoại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="295"/>
+        <location filename="rust_strings.h" line="301"/>
         <source>NectarLink overview</source>
         <translation>Tổng quan về NectarLink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="296"/>
+        <location filename="rust_strings.h" line="302"/>
         <source>Notifications</source>
         <translation>Thông báo</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="297"/>
+        <location filename="rust_strings.h" line="303"/>
         <source>Phone as speaker</source>
         <translation>Điện thoại làm loa</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="298"/>
+        <location filename="rust_strings.h" line="304"/>
         <source>Phone as webcam</source>
         <translation>Điện thoại làm webcam</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="299"/>
+        <location filename="rust_strings.h" line="305"/>
         <source>Phone controls</source>
         <translation>Điều khiển điện thoại</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="300"/>
+        <location filename="rust_strings.h" line="306"/>
         <source>Photos</source>
         <translation>Ảnh</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="301"/>
+        <location filename="rust_strings.h" line="307"/>
         <source>Privacy and security</source>
         <translation>Quyền riêng tư và bảo mật</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="302"/>
+        <location filename="rust_strings.h" line="308"/>
         <source>Remote input</source>
         <translation>Điều khiển từ xa</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="303"/>
+        <location filename="rust_strings.h" line="309"/>
         <source>Screen mirroring</source>
         <translation>Phản chiếu màn hình</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="304"/>
+        <location filename="rust_strings.h" line="310"/>
         <source>Select any feature card in the Features guide to inspect its live status, jump directly to its control with Show me, or read how it works and what permissions it uses.</source>
         <translation>Chọn bất kỳ thẻ tính năng nào trong Hướng dẫn tính năng để xem trạng thái trực tiếp, nhảy thẳng đến điều khiển của nó bằng Hiển thị cho tôi, hoặc đọc cách nó hoạt động và các quyền nó sử dụng.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="305"/>
+        <location filename="rust_strings.h" line="311"/>
         <source>Send files</source>
         <translation>Gửi tệp</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="306"/>
+        <location filename="rust_strings.h" line="312"/>
         <source>Share PC folders</source>
         <translation>Chia sẻ thư mục PC</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="307"/>
+        <location filename="rust_strings.h" line="313"/>
         <source>Share PC screen</source>
         <translation>Chia sẻ màn hình PC</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="308"/>
+        <location filename="rust_strings.h" line="314"/>
         <source>Timeline</source>
         <translation>Dòng thời gian</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="309"/>
+        <location filename="rust_strings.h" line="315"/>
         <source>Troubleshooting and Connection Doctor</source>
         <translation>Khắc phục sự cố và Chẩn đoán kết nối</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="310"/>
+        <location filename="rust_strings.h" line="316"/>
         <source>Type on phone</source>
         <translation>Gõ trên điện thoại</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="311"/>
+        <location filename="rust_strings.h" line="317"/>
         <source>Voice recorder</source>
         <translation>Ghi âm</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="312"/>
+        <location filename="rust_strings.h" line="318"/>
         <source>Wake PC</source>
         <translation>Đánh thức PC</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="313"/>
+        <location filename="rust_strings.h" line="319"/>
         <source>What it does
 Browses recent photos, camera shots, and screenshots on your phone without copying your entire library first. You can view full-resolution images, copy them to the clipboard, save them to disk, or drag them directly into other Windows apps.
 
@@ -3449,7 +3484,7 @@ Nó cần gì
 - Quyền Ảnh và Media được cấp trên điện thoại Android của bạn.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="314"/>
+        <location filename="rust_strings.h" line="320"/>
         <source>What it does
 Controls your phone&apos;s Do Not Disturb mode, ringer mode (Sound, Vibrate, Silent), flashlight, media volume, screen brightness, Wi-Fi, Bluetooth, and Find My Phone ring from your PC.
 
@@ -3470,7 +3505,7 @@ Nó cần gì
 - Âm lượng, đèn pin và Tìm điện thoại hoạt động ở chế độ Tiêu chuẩn; Không làm phiền yêu cầu quyền Truy cập chính sách thông báo; các công tắc Wi-Fi và Bluetooth dùng chế độ Nâng cao trên các phiên bản Android mới hơn.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="315"/>
+        <location filename="rust_strings.h" line="321"/>
         <source>What it does
 Discovers and exchanges files with nearby devices running LocalSend v2 on your local network without requiring pairing.
 
@@ -3491,7 +3526,7 @@ Nó cần gì
 - LocalSend trên mạng cục bộ được bật trong Cài đặt › Tệp &amp; Đồng bộ, và cả hai thiết bị nằm trên cùng mạng cục bộ.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="316"/>
+        <location filename="rust_strings.h" line="322"/>
         <source>What it does
 Displays a compact pill at the top center of your primary monitor for incoming calls, live file transfer progress, media playback, and optional notification previews.
 
@@ -3510,7 +3545,7 @@ Nó cần gì
 - Bật Nectar Island trong Cài đặt › Chung và chọn những sự kiện nào sẽ xuất hiện.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="317"/>
+        <location filename="rust_strings.h" line="323"/>
         <source>What it does
 Exposes an opt-in localhost HTTP/JSON and Server-Sent Events API on 127.0.0.1 (default port 53320) protected by a bearer token so scripts, CLI tools, and Stream Deck plugins can trigger NectarLink actions.
 
@@ -3529,7 +3564,7 @@ Nó cần gì
 - Bật API tự động hóa cục bộ trong Cài đặt › Kết nối &amp; Giới thiệu và đọc bearer token từ api-token.json.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="318"/>
+        <location filename="rust_strings.h" line="324"/>
         <source>What it does
 Forwards keystrokes and pasted text from your PC keyboard directly to your phone without needing to mirror the phone screen.
 
@@ -3550,7 +3585,7 @@ Nó cần gì
 - Chế độ Hỗ trợ (Accessibility service), phương thức nhập NectarLink, hoặc chế độ Nâng cao trên điện thoại của bạn.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="319"/>
+        <location filename="rust_strings.h" line="325"/>
         <source>What it does
 Inspects Windows Firewall rules, network profile type (Private vs Public), UDP discovery sockets, and paired phone reachability, and offers one-click fixes.
 
@@ -3571,7 +3606,7 @@ Nó cần gì
 - Luôn khả dụng trên PC của bạn.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="320"/>
+        <location filename="rust_strings.h" line="326"/>
         <source>What it does
 Keeps selected folders on your phone (such as DCIM/Camera or Download) and folders on your PC in sync in one-way or two-way mode, and lets your phone browse shared PC folders.
 
@@ -3592,7 +3627,7 @@ Nó cần gì
 - Quyền truy cập tệp và media trên điện thoại của bạn và ít nhất một quy tắc đồng bộ thư mục được cấu hình trong Cài đặt.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="321"/>
+        <location filename="rust_strings.h" line="327"/>
         <source>What it does
 Lets you read and send SMS and MMS conversations, plus reply to notification-backed chat threads from messaging apps such as WhatsApp, Signal, and Telegram.
 
@@ -3615,7 +3650,7 @@ Nó cần gì
 - Quyền truy cập Thông báo trên điện thoại của bạn cho các cuộc trò chuyện ứng dụng nhắn tin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="322"/>
+        <location filename="rust_strings.h" line="328"/>
         <source>What it does
 Lets your paired phone wake this PC from sleep or soft power-off over your local network using a Wake-on-LAN packet.
 
@@ -3636,7 +3671,7 @@ Nó cần gì
 - Một card mạng có Wake-on-LAN được bật trong Windows Device Manager và BIOS/UEFI (Ethernet có dây là đáng tin cậy nhất).</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="323"/>
+        <location filename="rust_strings.h" line="329"/>
         <source>What it does
 Lets your phone act as a wireless trackpad, keyboard, presentation clicker, and on-screen laser pointer for your PC.
 
@@ -3657,7 +3692,7 @@ Nó cần gì
 - Công tắc Chuột, bàn phím &amp; Deck từ xa theo từng thiết bị trên PC của bạn (hoặc được phê duyệt từ hộp thoại một lần khi điện thoại yêu cầu điều khiển).</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="324"/>
+        <location filename="rust_strings.h" line="330"/>
         <source>What it does
 Mirrors your phone notifications to the Home feed and Windows notification pop-ups. You can reply inline to messages, click action buttons, dismiss individual notifications or groups, and undo a recent dismissal.
 
@@ -3682,7 +3717,7 @@ Nó cần gì
 - Công tắc Thông báo theo từng thiết bị được bật trên PC của bạn.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="325"/>
+        <location filename="rust_strings.h" line="331"/>
         <source>What it does
 Opens a keyboard-first search bar over actions, contacts, message threads, mirrorable apps, phone quick toggles, clipboard history, and navigation pages.
 
@@ -3703,7 +3738,7 @@ Nó cần gì
 - Hoạt động mọi lúc với chi phí bộ nhớ nền bằng không khi đóng.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="326"/>
+        <location filename="rust_strings.h" line="332"/>
         <source>What it does
 Opens a lightweight slide-out panel at the edge of your monitor showing your phone&apos;s latest photo, latest screenshot, recent clipboard items, and recent received files. Drag items out into any app, or drop files onto the Shelf to send them to your phone.
 
@@ -3726,7 +3761,7 @@ Nó cần gì
 - Điện thoại đã ghép nối; quyền Ảnh trên điện thoại của bạn cho các ô ảnh mới nhất và ảnh chụp màn hình.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="327"/>
+        <location filename="rust_strings.h" line="333"/>
         <source>What it does
 Provides a unified, searchable chronological feed of files, photos, clipboard items, calls, messages, and voice recordings shared between your phone and PC.
 
@@ -3747,7 +3782,7 @@ Nó cần gì
 - Hoạt động tự động cho tất cả thiết bị đã ghép nối; thời gian lưu trữ có thể điều chỉnh trong Cài đặt › Lưu trữ &amp; Quyền riêng tư.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="328"/>
+        <location filename="rust_strings.h" line="334"/>
         <source>What it does
 Receives voice notes recorded on your phone and saves them to your PC in your chosen audio format (M4A, MP3, WAV, or FLAC).
 
@@ -3768,7 +3803,7 @@ Nó cần gì
 - Quyền Micrô trên điện thoại của bạn khi ghi ghi chú thoại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="329"/>
+        <location filename="rust_strings.h" line="335"/>
         <source>What it does
 Runs automatic trigger-action rules such as locking your PC when your phone disconnects, pausing media when a call arrives, or running a command when your phone connects.
 
@@ -3787,7 +3822,7 @@ Nó cần gì
 - Thêm và bật một hoặc nhiều quy tắc tại đó.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="330"/>
+        <location filename="rust_strings.h" line="336"/>
         <source>What it does
 Sends files, folders, links, and text between your phone and PC at local network speed. If your phone is offline when you send, NectarLink places the item in the Waiting to send queue and delivers it automatically as soon as your phone reconnects.
 
@@ -3808,7 +3843,7 @@ Nó cần gì
 - Điện thoại đã ghép nối và công tắc Tệp theo từng thiết bị được bật.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="331"/>
+        <location filename="rust_strings.h" line="337"/>
         <source>What it does
 Sends web links, video links with their current playback timestamp, map coordinates or street addresses, and documents to your phone so they open immediately in the right app.
 
@@ -3827,7 +3862,7 @@ Nó cần gì
 - Điện thoại đã ghép nối; hoạt động trực tuyến hoặc tự động vào hàng đợi khi điện thoại ngoại tuyến.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="332"/>
+        <location filename="rust_strings.h" line="338"/>
         <source>What it does
 Shares copied text, rich HTML/RTF text, images, and small copied file sets between your PC and phone. Keeps an encrypted local history of up to 50 items with pinning and smart context chips for links, phone numbers, addresses, and tracking codes.
 
@@ -3850,7 +3885,7 @@ Nó cần gì
 - Đồng bộ bảng nhớ tạm nền từ điện thoại sang PC trên Android 10+ dùng thông báo, ô nhanh NectarLink hoặc chế độ Nâng cao.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="333"/>
+        <location filename="rust_strings.h" line="339"/>
         <source>What it does
 Shows incoming and active phone calls on your PC with Answer, Decline, and Reject with SMS actions, plus browsable call history, contacts, and a dialpad.
 
@@ -3873,7 +3908,7 @@ Nó cần gì
 - Âm thanh cuộc gọi ở lại trên điện thoại của bạn (hoặc tai nghe ghép nối với điện thoại); chế độ Nâng cao trên Android 12+ mở khóa điều khiển tắt tiếng, loa ngoài, giữ máy và bàn phím số.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="334"/>
+        <location filename="rust_strings.h" line="340"/>
         <source>What it does
 Streams your PC system audio to your connected phone in real time over the encrypted connection so you can listen through your phone speakers or headphones.
 
@@ -3894,7 +3929,7 @@ Nó cần gì
 - Điện thoại đã ghép nối kết nối qua Wi-Fi cục bộ hoặc USB.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="335"/>
+        <location filename="rust_strings.h" line="341"/>
         <source>What it does
 Streams your PC&apos;s screen to your phone so you can view your desktop from across the room and use your phone as a trackpad or laser pointer.
 
@@ -3915,7 +3950,7 @@ Nó cần gì
 - Công tắc Chia sẻ màn hình PC sang điện thoại theo từng thiết bị trên PC của bạn, hoặc phê duyệt một lần khi điện thoại yêu cầu xem màn hình của bạn.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="336"/>
+        <location filename="rust_strings.h" line="342"/>
         <source>What it does
 Streams your phone camera into the NectarLink Virtual Camera on Windows so Zoom, Teams, Meet, Discord, and OBS can use your phone&apos;s rear or front camera at up to 4K.
 
@@ -3938,7 +3973,7 @@ Nó cần gì
 - Để các ứng dụng khác nhìn thấy nó: tiện ích bổ sung Virtual camera trong Cài đặt › Máy ảnh &amp; Âm thanh.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="337"/>
+        <location filename="rust_strings.h" line="343"/>
         <source>What it does
 Streams your phone screen into a low-latency desktop window with hardware-accelerated decoding, or opens individual Android apps in their own windows on your PC.
 
@@ -3963,7 +3998,7 @@ Nó cần gì
 - Chế độ Hỗ trợ hoặc chế độ Nâng cao cho phép bạn nhấp, cuộn và gõ bên trong cửa sổ được phản chiếu.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="338"/>
+        <location filename="rust_strings.h" line="344"/>
         <source>What it does
 Syncs media playback between your phone and PC, switches Windows audio output and microphone devices, and turns your phone into a customizable grid of shortcut tiles, macros, and volume sliders.
 
@@ -3982,7 +4017,7 @@ Nó cần gì
 - Điện thoại đã ghép nối qua bất kỳ kết nối nào đang hoạt động.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="339"/>
+        <location filename="rust_strings.h" line="345"/>
         <source>What it does
 Triggers your phone camera from any Windows app to snap a photo or scan a document, then copies the result to the Windows clipboard and pastes it into the active window.
 
@@ -4968,17 +5003,17 @@ Nó cần gì
 <context>
     <name>Hotspot</name>
     <message>
-        <location filename="rust_strings.h" line="340"/>
+        <location filename="rust_strings.h" line="346"/>
         <source>%1&apos;s hotspot didn&apos;t show up. Check that it&apos;s on, then pick %2 in Windows&apos; Wi-Fi list.</source>
         <translation>Hotspot của %1 không hiện ra. Hãy kiểm tra nó đã bật, rồi chọn %2 trong danh sách Wi-Fi của Windows.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="341"/>
+        <location filename="rust_strings.h" line="347"/>
         <source>Connected to %1&apos;s hotspot.</source>
         <translation>Đã kết nối tới hotspot của %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="342"/>
+        <location filename="rust_strings.h" line="348"/>
         <source>Couldn&apos;t join %1&apos;s hotspot. Pick %2 in Windows&apos; Wi-Fi list.</source>
         <translation>Không thể vào hotspot của %1. Hãy chọn %2 trong danh sách Wi-Fi của Windows.</translation>
     </message>
@@ -5087,62 +5122,62 @@ Nó cần gì
 <context>
     <name>Links</name>
     <message>
-        <location filename="rust_strings.h" line="343"/>
+        <location filename="rust_strings.h" line="349"/>
         <source>%1: tap the notification on your phone to continue watching.</source>
         <translation>%1: chạm vào thông báo trên điện thoại để tiếp tục xem.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="344"/>
+        <location filename="rust_strings.h" line="350"/>
         <source>%1: tap the notification on your phone to open in Maps.</source>
         <translation>%1: chạm vào thông báo trên điện thoại để mở trong Maps.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="345"/>
+        <location filename="rust_strings.h" line="351"/>
         <source>Copy a link or address first</source>
         <translation>Hãy sao chép liên kết hoặc địa chỉ trước</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="346"/>
+        <location filename="rust_strings.h" line="352"/>
         <source>Copy a web link (https://…), geo: URI, or street address, then choose this again.</source>
         <translation>Sao chép liên kết web (https://…), geo: URI, hoặc địa chỉ đường phố, rồi chọn lại tùy chọn này.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="347"/>
+        <location filename="rust_strings.h" line="353"/>
         <source>Copy a web link, video URL, or street address, then choose this again to open it on your phone.</source>
         <translation>Sao chép liên kết web, URL video, hoặc địa chỉ đường phố, rồi chọn lại tùy chọn này để mở trên điện thoại của bạn.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="348"/>
+        <location filename="rust_strings.h" line="354"/>
         <source>Couldn&apos;t send it</source>
         <translation>Không thể gửi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="349"/>
+        <location filename="rust_strings.h" line="355"/>
         <source>No phone to open it on</source>
         <translation>Không có điện thoại để mở</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="350"/>
+        <location filename="rust_strings.h" line="356"/>
         <source>Pair a phone first, or enable opening links on your phone.</source>
         <translation>Hãy ghép nối điện thoại trước, hoặc bật tính năng mở liên kết trên điện thoại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="351"/>
+        <location filename="rust_strings.h" line="357"/>
         <source>Sent to %1</source>
         <translation>Đã gửi tới %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="352"/>
+        <location filename="rust_strings.h" line="358"/>
         <source>Tap the notification on your phone to open it.</source>
         <translation>Chạm vào thông báo trên điện thoại để mở.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="353"/>
+        <location filename="rust_strings.h" line="359"/>
         <source>That&apos;s not a link or address</source>
         <translation>Đó không phải là liên kết hay địa chỉ</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="354"/>
+        <location filename="rust_strings.h" line="360"/>
         <source>Update NectarLink on %1.</source>
         <translation>Cập nhật NectarLink trên %1.</translation>
     </message>
@@ -5436,17 +5471,17 @@ Nó cần gì
 <context>
     <name>Media</name>
     <message>
-        <location filename="rust_strings.h" line="355"/>
+        <location filename="rust_strings.h" line="361"/>
         <source>Media is turned off for that device.</source>
         <translation>Media đã bị tắt cho thiết bị đó.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="356"/>
+        <location filename="rust_strings.h" line="362"/>
         <source>That player can&apos;t do that.</source>
         <translation>Trình phát đó không làm được điều đó.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="357"/>
+        <location filename="rust_strings.h" line="363"/>
         <source>That player isn&apos;t playing anymore.</source>
         <translation>Trình phát đó không còn phát nữa.</translation>
     </message>
@@ -5454,22 +5489,22 @@ Nó cần gì
 <context>
     <name>Messages</name>
     <message>
-        <location filename="rust_strings.h" line="358"/>
+        <location filename="rust_strings.h" line="364"/>
         <source>Attachment is %1 (MMS supports up to 900 KB)</source>
         <translation>Tệp đính kèm là %1 (MMS hỗ trợ tối đa 900 KB)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="359"/>
+        <location filename="rust_strings.h" line="365"/>
         <source>Group texts can&apos;t be sent from the PC yet.</source>
         <translation>Chưa thể gửi tin nhắn nhóm từ PC.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="360"/>
+        <location filename="rust_strings.h" line="366"/>
         <source>Only image or voice-note audio files can be attached.</source>
         <translation>Chỉ có thể đính kèm hình ảnh hoặc tệp âm thanh ghi âm.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="361"/>
+        <location filename="rust_strings.h" line="367"/>
         <source>The text wasn&apos;t sent: this conversation isn&apos;t loaded yet. Try again in a moment.</source>
         <translation>Tin nhắn chưa được gửi: cuộc trò chuyện này chưa tải xong. Hãy thử lại sau chút nữa.</translation>
     </message>
@@ -5790,122 +5825,122 @@ Nó cần gì
 <context>
     <name>Mirror</name>
     <message>
-        <location filename="rust_strings.h" line="362"/>
+        <location filename="rust_strings.h" line="368"/>
         <source>Couldn&apos;t start recording.</source>
         <translation>Không thể bắt đầu ghi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="363"/>
+        <location filename="rust_strings.h" line="369"/>
         <source>Mirror recording</source>
         <translation>Ghi màn hình phản chiếu</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="364"/>
+        <location filename="rust_strings.h" line="370"/>
         <source>Mirror screenshot</source>
         <translation>Ảnh chụp màn hình phản chiếu</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="365"/>
+        <location filename="rust_strings.h" line="371"/>
         <source>Mirroring is turned off for this phone.</source>
         <translation>Tính năng phản chiếu đang tắt cho điện thoại này.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="366"/>
+        <location filename="rust_strings.h" line="372"/>
         <source>Recording from %1, saved in Downloads/Nectarlink</source>
         <translation>Đang ghi từ %1, lưu trong Downloads/Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="367"/>
+        <location filename="rust_strings.h" line="373"/>
         <source>Recording from %1, saved in Downloads\Nectarlink</source>
         <translation>Đang ghi từ %1, lưu trong Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="368"/>
+        <location filename="rust_strings.h" line="374"/>
         <source>Saved %1</source>
         <translation>Đã lưu %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="369"/>
+        <location filename="rust_strings.h" line="375"/>
         <source>Saved %1 to Downloads/Nectarlink.</source>
         <translation>Đã lưu %1 vào Downloads/Nectarlink.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="370"/>
+        <location filename="rust_strings.h" line="376"/>
         <source>Saved %1 to Downloads\Nectarlink.</source>
         <translation>Đã lưu %1 vào Downloads\Nectarlink.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="371"/>
+        <location filename="rust_strings.h" line="377"/>
         <source>Screenshot copied to clipboard.</source>
         <translation>Đã sao chép ảnh chụp màn hình vào Bảng nhớ tạm.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="372"/>
+        <location filename="rust_strings.h" line="378"/>
         <source>Screenshot from %1, saved in Downloads/Nectarlink</source>
         <translation>Ảnh chụp màn hình từ %1, đã lưu trong Downloads/Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="373"/>
+        <location filename="rust_strings.h" line="379"/>
         <source>Screenshot from %1, saved in Downloads\Nectarlink</source>
         <translation>Ảnh chụp màn hình từ %1, đã lưu trong Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="374"/>
+        <location filename="rust_strings.h" line="380"/>
         <source>Sending %1 files…</source>
         <translation>Đang gửi %1 tệp…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="375"/>
+        <location filename="rust_strings.h" line="381"/>
         <source>Sending %1…</source>
         <translation>Đang gửi %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="376"/>
+        <location filename="rust_strings.h" line="382"/>
         <source>Set up Wireless debugging in NectarLink on the phone to open its apps here.</source>
         <translation>Thiết lập Gỡ lỗi không dây trong NectarLink trên điện thoại để mở ứng dụng của điện thoại tại đây.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="377"/>
+        <location filename="rust_strings.h" line="383"/>
         <source>Show in folder</source>
         <translation>Hiển thị trong thư mục</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="378"/>
+        <location filename="rust_strings.h" line="384"/>
         <source>The app didn&apos;t open on the phone. Try again, or open NectarLink on the phone to check Wireless debugging.</source>
         <translation>Ứng dụng không mở trên điện thoại. Hãy thử lại, hoặc mở NectarLink trên điện thoại để kiểm tra Gỡ lỗi không dây.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="379"/>
+        <location filename="rust_strings.h" line="385"/>
         <source>The phone ignores taps from this PC. In its Developer options, turn on USB debugging (Security settings).</source>
         <translation>Điện thoại bỏ qua các lần chạm từ PC này. Trong Tùy chọn nhà phát triển, hãy bật Gỡ lỗi USB (Cài đặt bảo mật).</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="380"/>
+        <location filename="rust_strings.h" line="386"/>
         <source>The phone isn&apos;t connected.</source>
         <translation>Điện thoại chưa kết nối.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="381"/>
+        <location filename="rust_strings.h" line="387"/>
         <source>The screenshot couldn&apos;t be copied to the clipboard.</source>
         <translation>Không thể sao chép ảnh chụp màn hình vào Bảng nhớ tạm.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="382"/>
+        <location filename="rust_strings.h" line="388"/>
         <source>The screenshot couldn&apos;t be saved.</source>
         <translation>Không thể lưu ảnh chụp màn hình.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="383"/>
+        <location filename="rust_strings.h" line="389"/>
         <source>This PC can&apos;t decode the phone&apos;s video.</source>
         <translation>PC này không thể giải mã video của điện thoại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="384"/>
+        <location filename="rust_strings.h" line="390"/>
         <source>This phone&apos;s app doesn&apos;t share its screen yet. Update NectarLink on the phone.</source>
         <translation>Ứng dụng trên điện thoại này chưa chia sẻ màn hình. Hãy cập nhật NectarLink trên điện thoại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="385"/>
+        <location filename="rust_strings.h" line="391"/>
         <source>Wait for the screen to appear first.</source>
         <translation>Hãy đợi màn hình xuất hiện trước.</translation>
     </message>
@@ -5928,73 +5963,73 @@ Nó cần gì
         <translation>Màn hình điện thoại · NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="416"/>
+        <location filename="../qml/MirrorWindow.qml" line="486"/>
         <source>Copy screenshot (Ctrl+Shift+C)</source>
         <translation>Sao chép ảnh chụp màn hình (Ctrl+Shift+C)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="423"/>
+        <location filename="../qml/MirrorWindow.qml" line="493"/>
         <source>Save screenshot (Ctrl+S)</source>
         <translation>Lưu ảnh chụp màn hình (Ctrl+S)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="430"/>
+        <location filename="../qml/MirrorWindow.qml" line="500"/>
         <source>Stop recording (Ctrl+R)</source>
         <translation>Dừng ghi (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="430"/>
+        <location filename="../qml/MirrorWindow.qml" line="500"/>
         <source>Record video (Ctrl+R)</source>
         <translation>Ghi video (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="448"/>
+        <location filename="../qml/MirrorWindow.qml" line="518"/>
         <source>Phone stays awake while mirroring (turn off)</source>
         <translation>Điện thoại luôn thức khi phản chiếu (tắt)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="449"/>
+        <location filename="../qml/MirrorWindow.qml" line="519"/>
         <source>Keep phone awake while mirroring</source>
         <translation>Giữ điện thoại luôn thức khi phản chiếu</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="458"/>
+        <location filename="../qml/MirrorWindow.qml" line="528"/>
         <source>Turn phone screen back on</source>
         <translation>Bật lại màn hình điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="459"/>
+        <location filename="../qml/MirrorWindow.qml" line="529"/>
         <source>Turn phone screen off while mirroring</source>
         <translation>Tắt màn hình điện thoại khi phản chiếu</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="483"/>
-        <location filename="../qml/MirrorWindow.qml" line="559"/>
+        <location filename="../qml/MirrorWindow.qml" line="553"/>
+        <location filename="../qml/MirrorWindow.qml" line="629"/>
         <source>Play the phone&apos;s sound here</source>
         <translation>Phát âm thanh của điện thoại tại đây</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="467"/>
+        <location filename="../qml/MirrorWindow.qml" line="537"/>
         <source>Lock phone</source>
         <translation>Khóa điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="518"/>
+        <location filename="../qml/MirrorWindow.qml" line="588"/>
         <source>Back (right-click)</source>
         <translation>Quay lại (nhấp chuột phải)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="525"/>
+        <location filename="../qml/MirrorWindow.qml" line="595"/>
         <source>Home (middle-click)</source>
         <translation>Trang chủ (nhấp chuột giữa)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="532"/>
+        <location filename="../qml/MirrorWindow.qml" line="602"/>
         <source>Recent apps</source>
         <translation>Ứng dụng gần đây</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="483"/>
+        <location filename="../qml/MirrorWindow.qml" line="553"/>
         <source>Play the sound on the phone</source>
         <translation>Phát âm thanh trên điện thoại</translation>
     </message>
@@ -6009,92 +6044,92 @@ Nó cần gì
         <translation>Màn hình điện thoại tắt</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="474"/>
+        <location filename="../qml/MirrorWindow.qml" line="544"/>
         <source>Don&apos;t keep on top</source>
         <translation>Không giữ trên cùng</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="474"/>
+        <location filename="../qml/MirrorWindow.qml" line="544"/>
         <source>Keep on top</source>
         <translation>Giữ trên cùng</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="518"/>
+        <location filename="../qml/MirrorWindow.qml" line="588"/>
         <source>Back (Esc)</source>
         <translation>Quay lại (Esc)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="568"/>
+        <location filename="../qml/MirrorWindow.qml" line="638"/>
         <source>Release to send files to %1</source>
         <translation>Thả ra để gửi tệp đến %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="568"/>
+        <location filename="../qml/MirrorWindow.qml" line="638"/>
         <source>phone</source>
         <translation>điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="636"/>
+        <location filename="../qml/MirrorWindow.qml" line="706"/>
         <source>To control the phone, turn on Control from your PC in NectarLink&apos;s settings on the phone.</source>
         <translation>Để điều khiển điện thoại, hãy bật Điều khiển từ PC của bạn trong Cài đặt của NectarLink trên điện thoại.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="645"/>
+        <location filename="../qml/MirrorWindow.qml" line="715"/>
         <source>Notify phone</source>
         <translation>Thông báo cho điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="656"/>
+        <location filename="../qml/MirrorWindow.qml" line="726"/>
         <source>Hide</source>
         <translation>Ẩn</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="694"/>
+        <location filename="../qml/MirrorWindow.qml" line="764"/>
         <source>Opening %1</source>
         <translation>Đang mở %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="694"/>
+        <location filename="../qml/MirrorWindow.qml" line="764"/>
         <source>Allow it on your phone</source>
         <translation>Cho phép trên điện thoại của bạn</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="695"/>
+        <location filename="../qml/MirrorWindow.qml" line="765"/>
         <source>%1 closed</source>
         <translation>%1 đã đóng</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="695"/>
+        <location filename="../qml/MirrorWindow.qml" line="765"/>
         <source>Mirroring stopped</source>
         <translation>Đã dừng phản chiếu</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="696"/>
+        <location filename="../qml/MirrorWindow.qml" line="766"/>
         <source>Starting…</source>
         <translation>Đang khởi động…</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="705"/>
+        <location filename="../qml/MirrorWindow.qml" line="775"/>
         <source>Tap the notification on %1, then choose to share the entire screen.</source>
         <translation>Chạm vào thông báo trên %1, rồi chọn chia sẻ toàn bộ màn hình.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="707"/>
+        <location filename="../qml/MirrorWindow.qml" line="777"/>
         <source>The app closed on %1.</source>
         <translation>Ứng dụng đã đóng trên %1.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="708"/>
+        <location filename="../qml/MirrorWindow.qml" line="778"/>
         <source>The phone stopped sharing its screen.</source>
         <translation>Điện thoại đã dừng chia sẻ màn hình.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="715"/>
+        <location filename="../qml/MirrorWindow.qml" line="785"/>
         <source>Open again</source>
         <translation>Mở lại</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="715"/>
+        <location filename="../qml/MirrorWindow.qml" line="785"/>
         <source>Try again</source>
         <translation>Thử lại</translation>
     </message>
@@ -6102,7 +6137,7 @@ Nó cần gì
 <context>
     <name>Mp4</name>
     <message>
-        <location filename="rust_strings.h" line="386"/>
+        <location filename="rust_strings.h" line="392"/>
         <source>No video frames were recorded yet.</source>
         <translation>Chưa có khung hình video nào được ghi.</translation>
     </message>
@@ -6196,47 +6231,47 @@ Nó cần gì
 <context>
     <name>Notifications</name>
     <message>
-        <location filename="rust_strings.h" line="387"/>
+        <location filename="rust_strings.h" line="393"/>
         <source>Code copied</source>
         <translation>Đã sao chép mã</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="388"/>
+        <location filename="rust_strings.h" line="394"/>
         <source>Copy code</source>
         <translation>Sao chép mã</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="389"/>
+        <location filename="rust_strings.h" line="395"/>
         <source>Dismissed %1 from %2</source>
         <translation>Đã bỏ qua %1 từ %2</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="390"/>
+        <location filename="rust_strings.h" line="396"/>
         <source>Dismissed %1 notifications</source>
         <translation>Đã bỏ qua %1 thông báo</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="391"/>
+        <location filename="rust_strings.h" line="397"/>
         <source>Dismissed from %1</source>
         <translation>Đã bỏ qua từ %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="392"/>
+        <location filename="rust_strings.h" line="398"/>
         <source>Notification dismissed</source>
         <translation>Đã bỏ qua thông báo</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="393"/>
+        <location filename="rust_strings.h" line="399"/>
         <source>Open</source>
         <translation>Mở</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="394"/>
+        <location filename="rust_strings.h" line="400"/>
         <source>Reply</source>
         <translation>Trả lời</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="395"/>
+        <location filename="rust_strings.h" line="401"/>
         <source>That notification is gone from the phone.</source>
         <translation>Thông báo đó không còn trên điện thoại nữa.</translation>
     </message>
@@ -6352,17 +6387,17 @@ Nó cần gì
 <context>
     <name>Obs</name>
     <message>
-        <location filename="rust_strings.h" line="396"/>
+        <location filename="rust_strings.h" line="402"/>
         <source>OBS isn&apos;t reachable on port %1. Turn on its WebSocket server.</source>
         <translation>Không kết nối được tới OBS trên cổng %1. Hãy bật máy chủ WebSocket của nó.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="397"/>
+        <location filename="rust_strings.h" line="403"/>
         <source>OBS: %1</source>
         <translation>OBS: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="398"/>
+        <location filename="rust_strings.h" line="404"/>
         <source>The service on that port isn&apos;t OBS.</source>
         <translation>Dịch vụ trên cổng đó không phải là OBS.</translation>
     </message>
@@ -6533,7 +6568,7 @@ Nó cần gì
 <context>
     <name>PcMirror</name>
     <message>
-        <location filename="rust_strings.h" line="399"/>
+        <location filename="rust_strings.h" line="405"/>
         <source>Can&apos;t find the player&apos;s window. Play the video on this PC again, then turn on Play on phone.</source>
         <translation>Không tìm thấy cửa sổ trình phát. Hãy phát lại video trên PC này, rồi bật Phát trên điện thoại.</translation>
     </message>
@@ -6541,17 +6576,17 @@ Nó cần gì
 <context>
     <name>PhoneMic</name>
     <message>
-        <location filename="rust_strings.h" line="400"/>
+        <location filename="rust_strings.h" line="406"/>
         <source>Tap Start on %1 to use its microphone.</source>
         <translation>Chạm Bắt đầu trên %1 để sử dụng micrô của nó.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="401"/>
+        <location filename="rust_strings.h" line="407"/>
         <source>The microphone is turned off for this PC on %1.</source>
         <translation>Micrô đang tắt cho PC này trên %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="402"/>
+        <location filename="rust_strings.h" line="408"/>
         <source>Update NectarLink on %1 to use its microphone.</source>
         <translation>Cập nhật NectarLink trên %1 để sử dụng micrô của nó.</translation>
     </message>
@@ -6559,22 +6594,22 @@ Nó cần gì
 <context>
     <name>PhoneSound</name>
     <message>
-        <location filename="rust_strings.h" line="403"/>
+        <location filename="rust_strings.h" line="409"/>
         <source>%1 couldn&apos;t ask to share its sound. Check that NectarLink can show notifications on the phone.</source>
         <translation>%1 không thể yêu cầu chia sẻ âm thanh. Hãy kiểm tra NectarLink có thể hiển thị thông báo trên điện thoại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="404"/>
+        <location filename="rust_strings.h" line="410"/>
         <source>Mirroring is turned off for this phone.</source>
         <translation>Tính năng phản chiếu đang tắt cho điện thoại này.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="405"/>
+        <location filename="rust_strings.h" line="411"/>
         <source>The phone isn&apos;t connected.</source>
         <translation>Điện thoại chưa kết nối.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="406"/>
+        <location filename="rust_strings.h" line="412"/>
         <source>Update NectarLink on %1 to play its sound here.</source>
         <translation>Cập nhật NectarLink trên %1 để phát âm thanh của nó tại đây.</translation>
     </message>
@@ -6582,62 +6617,62 @@ Nó cần gì
 <context>
     <name>PhotoBackup</name>
     <message>
-        <location filename="rust_strings.h" line="407"/>
+        <location filename="rust_strings.h" line="413"/>
         <source>Can&apos;t write to the backup folder.</source>
         <translation>Không thể ghi vào thư mục sao lưu.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="408"/>
+        <location filename="rust_strings.h" line="414"/>
         <source>Copying, %1 left</source>
         <translation>Đang sao chép, còn %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="409"/>
+        <location filename="rust_strings.h" line="415"/>
         <source>Looking for new photos…</source>
         <translation>Đang tìm ảnh mới…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="410"/>
+        <location filename="rust_strings.h" line="416"/>
         <source>Off</source>
         <translation>Tắt</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="411"/>
+        <location filename="rust_strings.h" line="417"/>
         <source>Photos are turned off for this PC on %1.</source>
         <translation>Ảnh đang tắt cho PC này trên %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="412"/>
+        <location filename="rust_strings.h" line="418"/>
         <source>The backup folder&apos;s drive is full.</source>
         <translation>Ổ đĩa của thư mục sao lưu đã đầy.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="413"/>
+        <location filename="rust_strings.h" line="419"/>
         <source>The backup stopped. It tries again in a few minutes.</source>
         <translation>Bản sao lưu đã dừng. Hệ thống sẽ thử lại sau vài phút.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="414"/>
+        <location filename="rust_strings.h" line="420"/>
         <source>Up to date</source>
         <translation>Đã cập nhật</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="415"/>
+        <location filename="rust_strings.h" line="421"/>
         <source>Up to date, %1 backed up</source>
         <translation>Đã cập nhật, đã sao lưu %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="416"/>
+        <location filename="rust_strings.h" line="422"/>
         <source>Update NectarLink on %1 to back up its photos.</source>
         <translation>Cập nhật NectarLink trên %1 để sao lưu ảnh của nó.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="417"/>
+        <location filename="rust_strings.h" line="423"/>
         <source>Waiting for %1</source>
         <translation>Đang chờ %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="418"/>
+        <location filename="rust_strings.h" line="424"/>
         <source>Waiting for Wi-Fi</source>
         <translation>Đang chờ Wi-Fi</translation>
     </message>
@@ -6645,87 +6680,87 @@ Nó cần gì
 <context>
     <name>Photos</name>
     <message>
-        <location filename="rust_strings.h" line="419"/>
+        <location filename="rust_strings.h" line="425"/>
         <source>%1 of %2 couldn&apos;t be moved to %3. They&apos;re in Downloads\Nectarlink.</source>
         <translation>%1 trong số %2 không thể di chuyển tới %3. Chúng đang ở Downloads\Nectarlink.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="420"/>
+        <location filename="rust_strings.h" line="426"/>
         <source>Copied to clipboard.</source>
         <translation>Đã sao chép vào Bảng nhớ tạm.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="421"/>
+        <location filename="rust_strings.h" line="427"/>
         <source>Couldn&apos;t open the share window. Try Save instead.</source>
         <translation>Không thể mở cửa sổ chia sẻ. Hãy thử Lưu thay vào đó.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="423"/>
+        <location filename="rust_strings.h" line="429"/>
         <source>From %1</source>
         <translation>Từ %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="424"/>
+        <location filename="rust_strings.h" line="430"/>
         <source>New photo</source>
         <translation>Ảnh mới</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="425"/>
+        <location filename="rust_strings.h" line="431"/>
         <source>New screenshot</source>
         <translation>Ảnh chụp màn hình mới</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="426"/>
+        <location filename="rust_strings.h" line="432"/>
         <source>No recent photos found on the phone.</source>
         <translation>Không tìm thấy ảnh gần đây trên điện thoại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="427"/>
+        <location filename="rust_strings.h" line="433"/>
         <source>Opening latest photo…</source>
         <translation>Đang mở ảnh mới nhất…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="428"/>
+        <location filename="rust_strings.h" line="434"/>
         <source>Saved %1 items to %2.</source>
         <translation>Đã lưu %1 mục vào %2.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="429"/>
+        <location filename="rust_strings.h" line="435"/>
         <source>Saved %1 to %2.</source>
         <translation>Đã lưu %1 vào %2.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="433"/>
+        <location filename="rust_strings.h" line="439"/>
         <source>The phone kept them. Deleting from the PC needs All files access on the phone (Android 11 or later).</source>
         <translation>Điện thoại vẫn giữ chúng. Xóa khỏi PC cần quyền truy cập Tất cả tệp trên điện thoại (Android 11 trở lên).</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="422"/>
+        <location filename="rust_strings.h" line="428"/>
         <source>Deleted %1 of %2.</source>
         <translation>Đã xóa %1 trong số %2.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="430"/>
+        <location filename="rust_strings.h" line="436"/>
         <source>That photo isn&apos;t on the phone anymore.</source>
         <translation>Ảnh đó không còn trên điện thoại nữa.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="431"/>
+        <location filename="rust_strings.h" line="437"/>
         <source>The phone doesn&apos;t share photos or files with this PC.</source>
         <translation>Điện thoại không chia sẻ ảnh hoặc tệp với PC này.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="432"/>
+        <location filename="rust_strings.h" line="438"/>
         <source>The phone isn&apos;t connected right now.</source>
         <translation>Điện thoại hiện chưa kết nối.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="434"/>
+        <location filename="rust_strings.h" line="440"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>Không thể sao chép ảnh vào Bảng nhớ tạm.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="435"/>
+        <location filename="rust_strings.h" line="441"/>
         <source>The photo couldn&apos;t be copied. It&apos;s in Downloads\Nectarlink.</source>
         <translation>Không thể sao chép ảnh. Ảnh đang ở Downloads\Nectarlink.</translation>
     </message>
@@ -7026,32 +7061,32 @@ Nó cần gì
 <context>
     <name>PlayOnPhone</name>
     <message>
-        <location filename="rust_strings.h" line="436"/>
+        <location filename="rust_strings.h" line="442"/>
         <source>Connect your phone to play on it.</source>
         <translation>Kết nối điện thoại của bạn để phát trên đó.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="437"/>
+        <location filename="rust_strings.h" line="443"/>
         <source>Media is turned off for %1.</source>
         <translation>Media đã tắt cho %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="438"/>
+        <location filename="rust_strings.h" line="444"/>
         <source>Opening in %1 on %2. Tap the notification there.</source>
         <translation>Đang mở trong %1 trên %2. Chạm vào thông báo ở đó.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="439"/>
+        <location filename="rust_strings.h" line="445"/>
         <source>Sent to %1. Tap the notification there.</source>
         <translation>Đã gửi đến %1. Chạm vào thông báo ở đó.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="440"/>
+        <location filename="rust_strings.h" line="446"/>
         <source>Tap the notification on %1 to watch.</source>
         <translation>Chạm vào thông báo trên %1 để xem.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="441"/>
+        <location filename="rust_strings.h" line="447"/>
         <source>Update NectarLink on %1 to play on it.</source>
         <translation>Cập nhật NectarLink trên %1 để phát trên đó.</translation>
     </message>
@@ -7059,7 +7094,7 @@ Nó cần gì
 <context>
     <name>Prefs</name>
     <message>
-        <location filename="rust_strings.h" line="442"/>
+        <location filename="rust_strings.h" line="448"/>
         <source>Connected to OBS.</source>
         <translation>Đã kết nối với OBS.</translation>
     </message>
@@ -7067,7 +7102,7 @@ Nó cần gì
 <context>
     <name>Recordings</name>
     <message>
-        <location filename="rust_strings.h" line="443"/>
+        <location filename="rust_strings.h" line="449"/>
         <source>Recording from %1 saved</source>
         <translation>Đã lưu bản ghi từ %1</translation>
     </message>
@@ -7262,57 +7297,57 @@ Nó cần gì
 <context>
     <name>SendTo</name>
     <message>
-        <location filename="rust_strings.h" line="444"/>
+        <location filename="rust_strings.h" line="450"/>
         <source>Copied to your phone&apos;s clipboard.</source>
         <translation>Đã sao chép vào bảng nhớ tạm của điện thoại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="445"/>
+        <location filename="rust_strings.h" line="451"/>
         <source>Couldn&apos;t reach %1.</source>
         <translation>Không kết nối được với %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="446"/>
+        <location filename="rust_strings.h" line="452"/>
         <source>Couldn&apos;t send %1</source>
         <translation>Không gửi được %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="447"/>
+        <location filename="rust_strings.h" line="453"/>
         <source>Couldn&apos;t send to %1</source>
         <translation>Không gửi được đến %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="448"/>
+        <location filename="rust_strings.h" line="454"/>
         <source>Couldn&apos;t share with %1</source>
         <translation>Không chia sẻ được với %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="449"/>
+        <location filename="rust_strings.h" line="455"/>
         <source>File failed integrity check; partial file kept to resume.</source>
         <translation>Tệp không vượt qua kiểm tra toàn vẹn; đã giữ lại tệp một phần để tiếp tục.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="450"/>
+        <location filename="rust_strings.h" line="456"/>
         <source>Send to %1 with NectarLink</source>
         <translation>Gửi đến %1 bằng NectarLink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="451"/>
+        <location filename="rust_strings.h" line="457"/>
         <source>Sending to %1…</source>
         <translation>Đang gửi đến %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="452"/>
+        <location filename="rust_strings.h" line="458"/>
         <source>Sent to %1</source>
         <translation>Đã gửi đến %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="453"/>
+        <location filename="rust_strings.h" line="459"/>
         <source>The transfer didn&apos;t go through.</source>
         <translation>Chuyển dữ liệu không thành công.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="454"/>
+        <location filename="rust_strings.h" line="460"/>
         <source>Waiting for %1…</source>
         <translation>Đang chờ %1…</translation>
     </message>
@@ -9209,72 +9244,72 @@ Nó cần gì
 <context>
     <name>Setup</name>
     <message>
-        <location filename="rust_strings.h" line="455"/>
+        <location filename="rust_strings.h" line="461"/>
         <source>Choose a folder on a drive inside this PC, not a USB or network drive.</source>
         <translation>Chọn một thư mục trên ổ đĩa bên trong PC này, không phải ổ USB hoặc ổ mạng.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="456"/>
+        <location filename="rust_strings.h" line="462"/>
         <source>Choose a folder on one of this PC&apos;s drives.</source>
         <translation>Chọn một thư mục trên một trong các ổ đĩa của PC này.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="457"/>
+        <location filename="rust_strings.h" line="463"/>
         <source>Couldn&apos;t start setup: %1</source>
         <translation>Không thể bắt đầu cài đặt: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="458"/>
+        <location filename="rust_strings.h" line="464"/>
         <source>Couldn&apos;t uninstall NectarLink: %1</source>
         <translation>Không thể gỡ cài đặt NectarLink: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="459"/>
+        <location filename="rust_strings.h" line="465"/>
         <source>Setup can&apos;t use that folder. Choose another one.</source>
         <translation>Cài đặt không thể dùng thư mục đó. Hãy chọn thư mục khác.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="460"/>
+        <location filename="rust_strings.h" line="466"/>
         <source>Setup is taking too long. Try again after restarting the PC.</source>
         <translation>Cài đặt mất quá nhiều thời gian. Hãy thử lại sau khi khởi động lại PC.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="461"/>
+        <location filename="rust_strings.h" line="467"/>
         <source>Setup stopped with code %1.</source>
         <translation>Cài đặt dừng với mã %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="462"/>
+        <location filename="rust_strings.h" line="468"/>
         <source>That drive can&apos;t keep the app&apos;s files safe (it isn&apos;t NTFS). Choose another drive.</source>
         <translation>Ổ đĩa đó không thể giữ an toàn các tệp của ứng dụng (không phải NTFS). Hãy chọn ổ đĩa khác.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="463"/>
+        <location filename="rust_strings.h" line="469"/>
         <source>That folder&apos;s path is too long. Choose one closer to the top of a drive.</source>
         <translation>Đường dẫn thư mục đó quá dài. Hãy chọn thư mục gần gốc ổ đĩa hơn.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="464"/>
+        <location filename="rust_strings.h" line="470"/>
         <source>The uninstaller is missing. Reinstall NectarLink, then uninstall it.</source>
         <translation>Trình gỡ cài đặt bị thiếu. Hãy cài đặt lại NectarLink, sau đó gỡ cài đặt nó.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="465"/>
+        <location filename="rust_strings.h" line="471"/>
         <source>There&apos;s a file named %1 there. Choose another place.</source>
         <translation>Có một tệp tên %1 ở đó. Hãy chọn vị trí khác.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="466"/>
+        <location filename="rust_strings.h" line="472"/>
         <source>There&apos;s already a %1 folder there with files in it. Choose another place.</source>
         <translation>Đã có một thư mục %1 ở đó với các tệp bên trong. Hãy chọn vị trí khác.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="467"/>
+        <location filename="rust_strings.h" line="473"/>
         <source>Uninstall stopped with code %1.</source>
         <translation>Gỡ cài đặt dừng với mã %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="468"/>
+        <location filename="rust_strings.h" line="474"/>
         <source>Updates here will ask for your permission each time.</source>
         <translation>Các bản cập nhật tại đây sẽ hỏi quyền của bạn mỗi lần.</translation>
     </message>
@@ -9713,17 +9748,17 @@ Nó cần gì
 <context>
     <name>Storage</name>
     <message>
-        <location filename="rust_strings.h" line="469"/>
+        <location filename="rust_strings.h" line="475"/>
         <source>%1&apos;s files aren&apos;t shared with this PC</source>
         <translation>Các tệp của %1 chưa được chia sẻ với PC này</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="470"/>
+        <location filename="rust_strings.h" line="476"/>
         <source>On the phone, allow All files access for NectarLink.</source>
         <translation>Trên điện thoại, hãy cấp quyền Truy cập toàn bộ tệp cho NectarLink.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="471"/>
+        <location filename="rust_strings.h" line="477"/>
         <source>On the phone, turn on Browse this phone&apos;s storage in File Explorer in NectarLink.</source>
         <translation>Trên điện thoại, hãy bật Duyệt bộ nhớ điện thoại này trong File Explorer trong NectarLink.</translation>
     </message>
@@ -9731,147 +9766,147 @@ Nó cần gì
 <context>
     <name>Timeline</name>
     <message>
-        <location filename="rust_strings.h" line="472"/>
+        <location filename="rust_strings.h" line="478"/>
         <source>App window #%1</source>
         <translation>Cửa sổ ứng dụng #%1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="473"/>
+        <location filename="rust_strings.h" line="479"/>
         <source>Clip (removed from clipboard history)</source>
         <translation>Clip (đã xóa khỏi lịch sử bảng nhớ tạm)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="474"/>
+        <location filename="rust_strings.h" line="480"/>
         <source>Copied image</source>
         <translation>Ảnh đã sao chép</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="475"/>
+        <location filename="rust_strings.h" line="481"/>
         <source>Copied link to clipboard.</source>
         <translation>Đã sao chép liên kết vào bảng nhớ tạm.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="476"/>
+        <location filename="rust_strings.h" line="482"/>
         <source>Copied to clipboard.</source>
         <translation>Đã sao chép vào bảng nhớ tạm.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="477"/>
+        <location filename="rust_strings.h" line="483"/>
         <source>From %1</source>
         <translation>Từ %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="478"/>
+        <location filename="rust_strings.h" line="484"/>
         <source>In progress</source>
         <translation>Đang tiến hành</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="479"/>
+        <location filename="rust_strings.h" line="485"/>
         <source>No phone is paired yet.</source>
         <translation>Chưa có điện thoại nào được ghép nối.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="480"/>
+        <location filename="rust_strings.h" line="486"/>
         <source>Opened from %1</source>
         <translation>Đã mở từ %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="481"/>
+        <location filename="rust_strings.h" line="487"/>
         <source>Opened on %1</source>
         <translation>Đã mở trên %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="482"/>
+        <location filename="rust_strings.h" line="488"/>
         <source>Phone microphone</source>
         <translation>Micrô điện thoại</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="483"/>
+        <location filename="rust_strings.h" line="489"/>
         <source>Phone webcam</source>
         <translation>Webcam điện thoại</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="484"/>
+        <location filename="rust_strings.h" line="490"/>
         <source>Recorded on %1</source>
         <translation>Đã ghi trên %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="485"/>
+        <location filename="rust_strings.h" line="491"/>
         <source>Saved from %1</source>
         <translation>Đã lưu từ %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="486"/>
+        <location filename="rust_strings.h" line="492"/>
         <source>Screen mirroring</source>
         <translation>Phản chiếu màn hình</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="487"/>
+        <location filename="rust_strings.h" line="493"/>
         <source>Sending to %1…</source>
         <translation>Đang gửi đến %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="488"/>
+        <location filename="rust_strings.h" line="494"/>
         <source>Sent clip to %1.</source>
         <translation>Đã gửi clip đến %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="489"/>
+        <location filename="rust_strings.h" line="495"/>
         <source>Sent to %1</source>
         <translation>Đã gửi đến %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="490"/>
+        <location filename="rust_strings.h" line="496"/>
         <source>Session</source>
         <translation>Phiên</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="491"/>
+        <location filename="rust_strings.h" line="497"/>
         <source>That clip is no longer in clipboard history.</source>
         <translation>Clip đó không còn trong lịch sử bảng nhớ tạm.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="492"/>
+        <location filename="rust_strings.h" line="498"/>
         <source>That entry couldn&apos;t be removed. Try again.</source>
         <translation>Không thể xóa mục đó. Hãy thử lại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="493"/>
+        <location filename="rust_strings.h" line="499"/>
         <source>That file was moved or deleted.</source>
         <translation>Tệp đó đã bị di chuyển hoặc xóa.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="494"/>
+        <location filename="rust_strings.h" line="500"/>
         <source>That isn&apos;t a web link.</source>
         <translation>Đó không phải là liên kết web.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="495"/>
+        <location filename="rust_strings.h" line="501"/>
         <source>That photo was moved or deleted.</source>
         <translation>Ảnh đó đã bị di chuyển hoặc xóa.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="496"/>
+        <location filename="rust_strings.h" line="502"/>
         <source>The Timeline couldn&apos;t be cleared. Try again.</source>
         <translation>Không thể xóa dữ liệu Timeline. Hãy thử lại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="497"/>
+        <location filename="rust_strings.h" line="503"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>Không thể sao chép ảnh vào bảng nhớ tạm.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="498"/>
+        <location filename="rust_strings.h" line="504"/>
         <source>Voice recording</source>
         <translation>Ghi âm giọng nói</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="499"/>
+        <location filename="rust_strings.h" line="505"/>
         <source>With %1</source>
         <translation>Với %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="500"/>
+        <location filename="rust_strings.h" line="506"/>
         <source>device</source>
         <translation>thiết bị</translation>
     </message>
@@ -10192,37 +10227,37 @@ Nó cần gì
 <context>
     <name>Transfers</name>
     <message>
-        <location filename="rust_strings.h" line="501"/>
+        <location filename="rust_strings.h" line="507"/>
         <source>Accept in NectarLink to save to Downloads\Nectarlink</source>
         <translation>Chấp nhận trong NectarLink để lưu vào Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="502"/>
+        <location filename="rust_strings.h" line="508"/>
         <source>Files are turned off for that device.</source>
         <translation>Đã tắt chế độ tệp cho thiết bị đó.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="503"/>
+        <location filename="rust_strings.h" line="509"/>
         <source>From %1, opened from Downloads\Nectarlink</source>
         <translation>Từ %1, đã mở từ Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="504"/>
+        <location filename="rust_strings.h" line="510"/>
         <source>From %1, saved in Downloads\Nectarlink</source>
         <translation>Từ %1, đã lưu trong Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="505"/>
+        <location filename="rust_strings.h" line="511"/>
         <source>Nearby device</source>
         <translation>Thiết bị lân cận</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="506"/>
+        <location filename="rust_strings.h" line="512"/>
         <source>That&apos;s too many files to send at once.</source>
         <translation>Quá nhiều tệp để gửi cùng lúc.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="507"/>
+        <location filename="rust_strings.h" line="513"/>
         <source>There&apos;s nothing to send in there.</source>
         <translation>Không có gì để gửi ở đó.</translation>
     </message>
@@ -10230,82 +10265,82 @@ Nó cần gì
 <context>
     <name>Updater</name>
     <message>
-        <location filename="rust_strings.h" line="508"/>
+        <location filename="rust_strings.h" line="514"/>
         <source>Couldn&apos;t check for updates. Check your internet connection.</source>
         <translation>Không thể kiểm tra cập nhật. Hãy kiểm tra kết nối internet.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="509"/>
+        <location filename="rust_strings.h" line="515"/>
         <source>NectarLink %1 is available</source>
         <translation>Đã có NectarLink %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="510"/>
+        <location filename="rust_strings.h" line="516"/>
         <source>NectarLink %1 is available.</source>
         <translation>Đã có NectarLink %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="511"/>
+        <location filename="rust_strings.h" line="517"/>
         <source>NectarLink is still on the version you had. Try again from Settings.</source>
         <translation>NectarLink vẫn ở phiên bản bạn đang dùng. Hãy thử lại từ Cài đặt.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="512"/>
+        <location filename="rust_strings.h" line="518"/>
         <source>NectarLink is up to date.</source>
         <translation>NectarLink đang ở phiên bản mới nhất.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="513"/>
+        <location filename="rust_strings.h" line="519"/>
         <source>NectarLink is updated to %1</source>
         <translation>NectarLink đã được cập nhật lên %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="514"/>
+        <location filename="rust_strings.h" line="520"/>
         <source>Nightly %1</source>
         <translation>Nightly %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="515"/>
+        <location filename="rust_strings.h" line="521"/>
         <source>Nightly %1 (%2)</source>
         <translation>Nightly %1 (%2)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="516"/>
+        <location filename="rust_strings.h" line="522"/>
         <source>The download was damaged, so it wasn&apos;t installed. Try again.</source>
         <translation>Tệp tải xuống bị hỏng nên không được cài đặt. Hãy thử lại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="517"/>
+        <location filename="rust_strings.h" line="523"/>
         <source>The update couldn&apos;t be downloaded. Check your internet connection and try again.</source>
         <translation>Không thể tải xuống bản cập nhật. Hãy kiểm tra kết nối internet và thử lại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="518"/>
+        <location filename="rust_strings.h" line="524"/>
         <source>The update couldn&apos;t be saved. Check that there&apos;s free space and try again.</source>
         <translation>Không thể lưu bản cập nhật. Hãy kiểm tra dung lượng trống và thử lại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="519"/>
+        <location filename="rust_strings.h" line="525"/>
         <source>The update couldn&apos;t be started. Try again.</source>
         <translation>Không thể bắt đầu cập nhật. Hãy thử lại.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="520"/>
+        <location filename="rust_strings.h" line="526"/>
         <source>The update didn&apos;t install</source>
         <translation>Bản cập nhật không được cài đặt</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="521"/>
+        <location filename="rust_strings.h" line="527"/>
         <source>The update is installed. Restart NectarLink to use it.</source>
         <translation>Bản cập nhật đã được cài đặt. Khởi động lại NectarLink để sử dụng.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="522"/>
+        <location filename="rust_strings.h" line="528"/>
         <source>Update now, or later from Settings.</source>
         <translation>Cập nhật ngay, hoặc sau từ Cài đặt.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="523"/>
+        <location filename="rust_strings.h" line="529"/>
         <source>Your phone reconnects on its own.</source>
         <translation>Điện thoại của bạn sẽ tự động kết nối lại.</translation>
     </message>
@@ -10813,12 +10848,12 @@ Nó cần gì
 <context>
     <name>Webcam</name>
     <message>
-        <location filename="rust_strings.h" line="524"/>
+        <location filename="rust_strings.h" line="530"/>
         <source>Starting camera on %1…</source>
         <translation>Đang khởi động máy ảnh trên %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="525"/>
+        <location filename="rust_strings.h" line="531"/>
         <source>Streaming %1 × %2 · %3 fps from %4</source>
         <translation>Đang truyền phát %1 × %2 · %3 fps từ %4</translation>
     </message>

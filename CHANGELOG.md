@@ -130,7 +130,8 @@ change things that need a step from you, and its notes say so.
   prompt it installs without asking again ([#364](https://github.com/thtbee/nectarlink/discussions/364)).
 - **USB connects after a restart without starting adb yourself.** When no adb server is
   running, NectarLink starts one, using the adb from Android Studio's SDK folder or your
-  `PATH`, and tries again every minute until one answers. Thanks to
+  `PATH`, and tries again every minute until one answers. The Connection Doctor says whether
+  adb is running, with a Start adb button, or missing. Thanks to
   [@Asofwar](https://github.com/Asofwar) ([#360](https://github.com/thtbee/nectarlink/pull/360), [#322](https://github.com/thtbee/nectarlink/issues/322)).
 - **Russian reads more naturally on the phone.** Pairing, silent mode, file transfer and
   clipboard history wording, and the screen sharing hints name the real Stop button.

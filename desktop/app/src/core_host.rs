@@ -45,6 +45,15 @@ pub fn try_data_dir() -> Option<&'static std::path::Path> {
     HOST.get().map(|h| h.data_dir.as_path())
 }
 
+/// Whether phones on a USB cable are looked for through adb.
+/// NECTARLINK_NO_ADB=1 keeps a development copy from reaching phones plugged in over USB,
+/// unless NECTARLINK_ADB_ONLY_SERIAL explicitly restricts ADB to an Android emulator.
+pub fn adb_enabled() -> bool {
+    let only_emulator =
+        std::env::var("NECTARLINK_ADB_ONLY_SERIAL").is_ok_and(|s| s.trim().starts_with("emulator-"));
+    only_emulator || std::env::var_os("NECTARLINK_NO_ADB").is_none_or(|v| v != "1")
+}
+
 /// The node, once it has started.
 pub fn node() -> Option<Node> {
     HOST.get()?.node.get().cloned()
@@ -206,12 +215,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     let wake = crate::win::wol::query_wake_status();
     let mut config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
     config.downloads_dir = Some(downloads_dir());
-    // NECTARLINK_NO_ADB=1 keeps a development copy from reaching phones plugged in over USB,
-    // unless NECTARLINK_ADB_ONLY_SERIAL explicitly restricts ADB to an Android emulator.
-    let only_emulator =
-        std::env::var("NECTARLINK_ADB_ONLY_SERIAL").is_ok_and(|s| s.trim().starts_with("emulator-"));
-    let adb_disabled = !only_emulator && std::env::var_os("NECTARLINK_NO_ADB").is_some_and(|v| v == "1");
-    config.adb_server = (!adb_disabled).then_some(nectarlink_core::DEFAULT_ADB_ADDR);
+    config.adb_server = adb_enabled().then_some(nectarlink_core::DEFAULT_ADB_ADDR);
     let settings = crate::settings::Settings::load(&data_dir);
     config.away_mode = settings.away_mode;
     #[cfg(target_os = "linux")]

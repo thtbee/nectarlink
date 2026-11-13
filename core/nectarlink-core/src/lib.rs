@@ -83,6 +83,9 @@ pub use localsend::{
 pub use media::{MediaAction, MediaError};
 pub use mic::{MicSink, TOGGLE as MIC_TOGGLE};
 pub use mirror::{MirrorSend, MirrorSink, MirrorStream, PC_MIRROR_TOGGLE};
+pub use nectarlink_adb::{
+    locate_adb, server_answers as adb_server_answers, start_server as start_adb_server,
+};
 pub use nectarlink_protocol::messages::clip::{
     IMAGE_TYPES as CLIP_IMAGE_TYPES, MAX_IMAGE_BYTES as CLIP_MAX_IMAGE_BYTES,
 };

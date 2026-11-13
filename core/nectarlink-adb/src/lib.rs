@@ -61,6 +61,21 @@ fn find_adb(var: impl Fn(&str) -> Option<std::ffi::OsString>) -> std::path::Path
         .unwrap_or_else(|| exe.into())
 }
 
+/// The adb [`start_server`] runs, if this PC has one: in an SDK folder or on `PATH`.
+pub fn locate_adb() -> Option<std::path::PathBuf> {
+    let adb = find_adb(|name| std::env::var_os(name));
+    if adb.is_absolute() {
+        return Some(adb);
+    }
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path).map(|dir| dir.join(&adb)).find(|candidate| candidate.is_file())
+}
+
+/// Whether an adb server answers at `server` (blocks up to the adb timeout).
+pub fn server_answers(server: SocketAddr) -> bool {
+    std::net::TcpStream::connect_timeout(&server, ADB_TIMEOUT).is_ok()
+}
+
 /// Runs `adb start-server` when nothing answers at `server`, as scrcpy and
 /// Android Studio do, so a phone on a cable connects after the PC restarts.
 /// A server that answers is left alone: an `adb` of another version would
@@ -443,6 +458,15 @@ mod tests {
         assert_eq!(find_adb(nothing), std::path::PathBuf::from(exe));
 
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_listening_server_answers_and_a_closed_port_does_not() {
+        let listener = std::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let open = listener.local_addr().unwrap();
+        assert!(server_answers(open));
+        drop(listener);
+        assert!(!server_answers(open));
     }
 
     #[test]
