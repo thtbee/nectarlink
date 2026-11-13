@@ -124,6 +124,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Setup works on Windows that can't show the admin prompt.** Some Windows installs have
+  lost "Run as administrator" for programs. Setup then said it needed your permission as if
+  you'd said no; it now shows Windows' real reason, and started from an administrator
+  prompt it installs without asking again ([#364](https://github.com/thtbee/nectarlink/discussions/364)).
 - **USB connects after a restart without starting adb yourself.** When no adb server is
   running, NectarLink starts one, using the adb from Android Studio's SDK folder or your
   `PATH`, and tries again every minute until one answers. Thanks to
