@@ -172,6 +172,7 @@ impl Platform for RecordingPlatform {
         session: u32,
         width: u32,
         height: u32,
+        _zoom: u32,
     ) {
         self.mirror_asks.lock().unwrap().push(format!("resize {session} {width}x{height}"));
     }
@@ -2414,9 +2415,10 @@ async fn phone_apps_open_in_windows_of_their_own() {
     })
     .await;
     assert_eq!(session, 7);
-    assert!(matches!(pc.node.mirror_resize(phone_id, 0, 800, 600).await, Err(Error::Protocol(_))));
-    assert!(matches!(pc.node.mirror_resize(phone_id, 7, 10, 600).await, Err(Error::Protocol(_))));
-    pc.node.mirror_resize(phone_id, 7, 1024, 768).await.unwrap();
+    assert!(matches!(pc.node.mirror_resize(phone_id, 0, 800, 600, 100).await, Err(Error::Protocol(_))));
+    assert!(matches!(pc.node.mirror_resize(phone_id, 7, 10, 600, 100).await, Err(Error::Protocol(_))));
+    assert!(matches!(pc.node.mirror_resize(phone_id, 7, 1024, 768, 400).await, Err(Error::Protocol(_))));
+    pc.node.mirror_resize(phone_id, 7, 1024, 768, 100).await.unwrap();
     pc.node.mirror_input(phone_id, 7, MirrorInput::Key { key: "back".into() }).await.unwrap();
     pc.node.mirror_keyframe(phone_id, 7).await;
     pc.node.mirror_stop(phone_id, 7).await;

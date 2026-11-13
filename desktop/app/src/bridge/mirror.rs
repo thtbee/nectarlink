@@ -71,6 +71,16 @@ pub mod qobject {
         /// Resizes an app window's display on the phone.
         #[qinvokable]
         fn resize(self: &Mirror, key: &QString, width: u32, height: u32);
+        /// Makes an app window's app draw bigger (`steps` > 0) or smaller;
+        /// the next `resize` applies it. False when nothing changed.
+        #[qinvokable]
+        #[cxx_name = "changeZoom"]
+        fn change_zoom(self: &Mirror, key: &QString, steps: i32) -> bool;
+        /// Applies the zoom to a window that isn't flexible, whose picture
+        /// is `width` x `height` pixels.
+        #[qinvokable]
+        #[cxx_name = "zoomDisplay"]
+        fn zoom_display(self: &Mirror, key: &QString, width: u32, height: u32);
         /// Saves an app window's position and size on this PC.
         #[qinvokable]
         #[cxx_name = "saveGeometry"]
@@ -107,6 +117,11 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "screenshotFile"]
         fn screenshot_file(self: &Mirror, key: &QString);
+        /// Turns an app window's flexible display on or off (off restarts
+        /// the app at the phone's resolution).
+        #[qinvokable]
+        #[cxx_name = "setFlexible"]
+        fn set_flexible(self: &Mirror, key: &QString, on: bool);
         /// Starts or stops MP4 video recording for a mirror window.
         #[qinvokable]
         #[cxx_name = "toggleRecording"]
@@ -258,6 +273,8 @@ impl qobject::Mirror {
                     "canScreenOff": can_screen_off,
                     // Stay awake and screen off: only where the phone's power matters to this window.
                     "powerButtons": power_buttons,
+                    "flexible": mirror::flexible(&window),
+                    "zoom": mirror::zoom(&window),
                     "notice": mirror::last_notice(&window),
                     "savedX": geom.map(|g| g.x),
                     "savedY": geom.map(|g| g.y),
@@ -353,6 +370,16 @@ impl qobject::Mirror {
         }
     }
 
+    pub fn change_zoom(&self, key: &QString, steps: i32) -> bool {
+        Window::parse(&String::from(key)).is_some_and(|window| mirror::change_zoom(window, steps))
+    }
+
+    pub fn zoom_display(&self, key: &QString, width: u32, height: u32) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::zoom_display(window, width, height);
+        }
+    }
+
     pub fn save_geometry(&self, key: &QString, x: i32, y: i32, width: u32, height: u32) {
         if let Some(window) = Window::parse(&String::from(key)) {
             mirror::save_geometry(window, x, y, width, height);
@@ -430,6 +457,12 @@ impl qobject::Mirror {
     pub fn screenshot_clipboard(&self, key: &QString) {
         if let Some(window) = Window::parse(&String::from(key)) {
             mirror::screenshot_clipboard(window);
+        }
+    }
+
+    pub fn set_flexible(&self, key: &QString, on: bool) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::set_flexible(window, on);
         }
     }
 

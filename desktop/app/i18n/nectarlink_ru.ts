@@ -5975,73 +5975,73 @@ What it needs
         <translation>Экран телефона · NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="594"/>
+        <location filename="../qml/MirrorWindow.qml" line="697"/>
         <source>Copy screenshot (Ctrl+Shift+C)</source>
         <translation>Копировать снимок экрана (Ctrl+Shift+C)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="601"/>
+        <location filename="../qml/MirrorWindow.qml" line="704"/>
         <source>Save screenshot (Ctrl+S)</source>
         <translation>Сохранить снимок экрана (Ctrl+S)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="608"/>
+        <location filename="../qml/MirrorWindow.qml" line="711"/>
         <source>Stop recording (Ctrl+R)</source>
         <translation>Остановить запись (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="608"/>
+        <location filename="../qml/MirrorWindow.qml" line="711"/>
         <source>Record video (Ctrl+R)</source>
         <translation>Записать видео (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="626"/>
+        <location filename="../qml/MirrorWindow.qml" line="738"/>
         <source>Phone stays awake while mirroring (turn off)</source>
         <translation>Телефон не засыпает во время показа (выключить)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="627"/>
+        <location filename="../qml/MirrorWindow.qml" line="739"/>
         <source>Keep phone awake while mirroring</source>
         <translation>Не давать телефону засыпать во время показа</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="636"/>
+        <location filename="../qml/MirrorWindow.qml" line="748"/>
         <source>Turn phone screen back on</source>
         <translation>Снова включить экран телефона</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="637"/>
+        <location filename="../qml/MirrorWindow.qml" line="749"/>
         <source>Turn phone screen off while mirroring</source>
         <translation>Выключать экран телефона во время показа</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="661"/>
-        <location filename="../qml/MirrorWindow.qml" line="737"/>
+        <location filename="../qml/MirrorWindow.qml" line="774"/>
+        <location filename="../qml/MirrorWindow.qml" line="850"/>
         <source>Play the phone&apos;s sound here</source>
         <translation>Воспроизводить звук телефона здесь</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="645"/>
+        <location filename="../qml/MirrorWindow.qml" line="758"/>
         <source>Lock phone</source>
         <translation>Заблокировать телефон</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="696"/>
+        <location filename="../qml/MirrorWindow.qml" line="809"/>
         <source>Back (right-click)</source>
         <translation>Назад (правая кнопка)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="703"/>
+        <location filename="../qml/MirrorWindow.qml" line="816"/>
         <source>Home (middle-click)</source>
         <translation>Домой (средняя кнопка)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="710"/>
+        <location filename="../qml/MirrorWindow.qml" line="823"/>
         <source>Recent apps</source>
         <translation>Недавние приложения</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="661"/>
+        <location filename="../qml/MirrorWindow.qml" line="774"/>
         <source>Play the sound on the phone</source>
         <translation>Воспроизводить звук на телефоне</translation>
     </message>
@@ -6056,92 +6056,97 @@ What it needs
         <translation>Экран телефона выключен</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="652"/>
+        <location filename="../qml/MirrorWindow.qml" line="729"/>
+        <source>Flex mode</source>
+        <translation>Гибкий режим</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml" line="765"/>
         <source>Don&apos;t keep on top</source>
         <translation>Не держать поверх других</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="652"/>
+        <location filename="../qml/MirrorWindow.qml" line="765"/>
         <source>Keep on top</source>
         <translation>Держать поверх других</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="696"/>
+        <location filename="../qml/MirrorWindow.qml" line="809"/>
         <source>Back (Esc)</source>
         <translation>Назад (Esc)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="746"/>
+        <location filename="../qml/MirrorWindow.qml" line="859"/>
         <source>Release to send files to %1</source>
         <translation>Отпустите, чтобы отправить файлы на %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="746"/>
+        <location filename="../qml/MirrorWindow.qml" line="859"/>
         <source>phone</source>
         <translation>телефон</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="814"/>
+        <location filename="../qml/MirrorWindow.qml" line="927"/>
         <source>To control the phone, turn on Control from your PC in NectarLink&apos;s settings on the phone.</source>
         <translation>Чтобы управлять телефоном, включите «Управление с ПК» в настройках NectarLink на телефоне.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="823"/>
+        <location filename="../qml/MirrorWindow.qml" line="936"/>
         <source>Notify phone</source>
         <translation>Сообщить телефону</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="834"/>
+        <location filename="../qml/MirrorWindow.qml" line="947"/>
         <source>Hide</source>
         <translation>Скрывать</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="872"/>
+        <location filename="../qml/MirrorWindow.qml" line="985"/>
         <source>Opening %1</source>
         <translation>Открывается %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="872"/>
+        <location filename="../qml/MirrorWindow.qml" line="985"/>
         <source>Allow it on your phone</source>
         <translation>Разрешите это на телефоне</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="873"/>
+        <location filename="../qml/MirrorWindow.qml" line="986"/>
         <source>%1 closed</source>
         <translation>%1 закрыто</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="873"/>
+        <location filename="../qml/MirrorWindow.qml" line="986"/>
         <source>Mirroring stopped</source>
         <translation>Показ экрана остановлен</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="874"/>
+        <location filename="../qml/MirrorWindow.qml" line="987"/>
         <source>Starting…</source>
         <translation>Запуск…</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="883"/>
+        <location filename="../qml/MirrorWindow.qml" line="996"/>
         <source>Tap the notification on %1, then choose to share the entire screen.</source>
         <translation>Нажмите на уведомление на %1 и выберите показ всего экрана.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="885"/>
+        <location filename="../qml/MirrorWindow.qml" line="998"/>
         <source>The app closed on %1.</source>
         <translation>Приложение закрылось на %1.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="886"/>
+        <location filename="../qml/MirrorWindow.qml" line="999"/>
         <source>The phone stopped sharing its screen.</source>
         <translation>Телефон перестал показывать экран.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="893"/>
+        <location filename="../qml/MirrorWindow.qml" line="1006"/>
         <source>Open again</source>
         <translation>Открыть снова</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="893"/>
+        <location filename="../qml/MirrorWindow.qml" line="1006"/>
         <source>Try again</source>
         <translation>Повторить</translation>
     </message>
@@ -6756,7 +6761,7 @@ What it needs
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="222"/>
         <source>Downloading them means you accept Google&apos;s &lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;Android SDK terms&lt;/a&gt;.</source>
-        <translation>Скачивая их, вы принимаете &lt;a href="https://developer.android.com/studio/terms"&gt;условия Android SDK&lt;/a&gt; от Google.</translation>
+        <translation>Скачивая их, вы принимаете &lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;условия Android SDK&lt;/a&gt; от Google.</translation>
     </message>
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="235"/>

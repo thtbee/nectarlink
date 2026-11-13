@@ -2752,8 +2752,9 @@ pub trait Platform: Send + Sync {
     fn mirror_stop_requested(&self, pc_id: String, session: u32);
     /// The PC needs a keyframe.
     fn mirror_keyframe_requested(&self, pc_id: String, session: u32);
-    /// The PC resized an app window (`session` != 0) to `width × height`.
-    fn mirror_resize_requested(&self, pc_id: String, session: u32, width: u32, height: u32);
+    /// The PC resized an app window (`session` != 0) to `width × height`,
+    /// the app drawing at `zoom` percent of its usual size.
+    fn mirror_resize_requested(&self, pc_id: String, session: u32, width: u32, height: u32, zoom: u32);
     /// The PC updated `stay_awake` or `screen_off` while mirroring the screen (`session == 0`).
     fn mirror_power_requested(&self, pc_id: String, stay_awake: bool, screen_off: bool);
     /// The PC wants the phone's sound sent to it, or left on the phone, while
@@ -2978,8 +2979,8 @@ impl core::Platform for PlatformAdapter {
     fn mirror_keyframe_requested(&self, peer: &DeviceId, session: u32) {
         self.0.mirror_keyframe_requested(peer.to_string(), session);
     }
-    fn mirror_resize_requested(&self, peer: &DeviceId, session: u32, width: u32, height: u32) {
-        self.0.mirror_resize_requested(peer.to_string(), session, width, height);
+    fn mirror_resize_requested(&self, peer: &DeviceId, session: u32, width: u32, height: u32, zoom: u32) {
+        self.0.mirror_resize_requested(peer.to_string(), session, width, height, zoom);
     }
     fn mirror_power_requested(&self, peer: &DeviceId, stay_awake: bool, screen_off: bool) {
         self.0.mirror_power_requested(peer.to_string(), stay_awake, screen_off);

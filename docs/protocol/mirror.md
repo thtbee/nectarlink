@@ -40,7 +40,7 @@ t = "mirror.start"     id = n   b = { max_size: uint, fps: uint, bitrate: uint, 
 t = "mirror.stop"      id = n   b = { ? session: uint }
 t = "mirror.power"              b = { ? stay_awake: bool, ? screen_off: bool }
 t = "mirror.keyframe"           b = { ? session: uint }
-t = "mirror.resize"             b = { session: uint, width: uint, height: uint }
+t = "mirror.resize"             b = { session: uint, width: uint, height: uint, ? zoom: uint }
 t = "mirror.notice"             b = { ? session: uint, code: text }
 t = "mirror.apps"      id = n
 t = "mirror.apps"      re = n   b = { apps: [{ pkg: text, label: text, ? icon: bytes }] }
@@ -79,7 +79,8 @@ means 0, so PCs and phones that predate sessions work as before.
 - `mirror.keyframe` (PC → phone): the decoder lost its place; send a
   keyframe next. Not answered.
 - `mirror.resize` (PC → phone): resize an app window's display (`session != 0`)
-  to `width × height` pixels. Not answered; the phone sends a new `config`
+  to `width × height` pixels, the app drawing at `zoom` percent (50 to 200;
+  100 when missing) of the display's usual density. Not answered; the phone sends a new `config`
   packet on the video stream once its encoder restarts at the new size.
 - `mirror.notice` (phone → PC): something the PC should tell its user about
   that mirroring. `code` is `input_blocked` when the phone refuses the PC's

@@ -15,6 +15,13 @@ change things that need a step from you, and its notes say so.
   When the phone refuses, it says why and what to do. For phones where Play Protect or
   the maker blocks installing from a browser. The adb it downloads also connects phones
   over a cable from then on.
+- **Flex mode for app windows.** A button in an app window's toolbar turns off fitting
+  the app to the window, for apps that don't take odd shapes well: the app restarts at
+  the phone's resolution and the window keeps that shape when resized. It's remembered
+  for each app.
+- **Zoom an app window.** Ctrl + mouse wheel makes the app in a window draw bigger or
+  smaller, from 50% to 200%, remembered for each app. The window is blurred with a
+  spinner until the phone has drawn the app at its new size.
 - **App windows fit any shape, and say when they're catching up.** With Elevated, an app
   window's display now takes the window's exact size, so there are no bars beside the
   app. While you hold an edge on Windows, the window shows the app blurred under its
