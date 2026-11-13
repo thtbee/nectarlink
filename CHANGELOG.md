@@ -124,6 +124,16 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **USB connects after a restart without starting adb yourself.** When no adb server is
+  running, NectarLink starts one, using the adb from Android Studio's SDK folder or your
+  `PATH`, and tries again every minute until one answers. Thanks to
+  [@Asofwar](https://github.com/Asofwar) ([#360](https://github.com/thtbee/nectarlink/pull/360), [#322](https://github.com/thtbee/nectarlink/issues/322)).
+- **Russian reads more naturally on the phone.** Pairing, silent mode, file transfer and
+  clipboard history wording, and the screen sharing hints name the real Stop button.
+  Thanks to [@localzet](https://github.com/localzet) ([#361](https://github.com/thtbee/nectarlink/pull/361)).
+- **A cut-off video stream counts as an error, not a clean end.** Phone screen, webcam
+  and microphone streams also reject a packet length that doesn't fit before using it.
+  Thanks to [@localzet](https://github.com/localzet) ([#362](https://github.com/thtbee/nectarlink/pull/362)).
 - **The phone's screen window keeps the phone's shape, and its size.** Resizing it no
   longer leaves black bars: a moment after, it fits the phone's shape again. It opens
   at the size you left it, also when the phone turns. Thanks to
