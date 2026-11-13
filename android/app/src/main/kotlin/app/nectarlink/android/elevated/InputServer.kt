@@ -339,6 +339,8 @@ object InputServer {
         runCatching { UhidBridge.closeAll() }
         val open = synchronized(windows) { windows.toList().also { windows.clear() } }
         open.forEach { runCatching { it.stop() } }
+        // The windows' own cleanup won't run before the exit: their association goes here.
+        if (open.isNotEmpty()) VirtualDevice.forget()
         kotlin.system.exitProcess(0)
     }
 
