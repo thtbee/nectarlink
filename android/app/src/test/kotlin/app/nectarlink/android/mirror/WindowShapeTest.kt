@@ -18,6 +18,15 @@ class WindowShapeTest {
     }
 
     @Test
+    fun aWindowSizedByThePcIsKeptToTheNearestSixteen() {
+        assertEquals(1920 to 1008, WindowShape.exact(1920, 1008, 1920))
+        assertEquals(848 to 1728, WindowShape.exact(842, 1722, 1920))
+        // Scaled down to the phone's limit first.
+        assertEquals(1920 to 1008, WindowShape.exact(3840, 2018, 1920))
+        assertEquals(240 to 960, WindowShape.exact(100, 960, 1920))
+    }
+
+    @Test
     fun aWindowLikeThePhoneGetsThePhonesExactShape() {
         // Rounding 1080x2340 to multiples of 16 gave 880x1920 (2.18), which
         // Samsung's Camera refused to start on.
