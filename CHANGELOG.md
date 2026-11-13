@@ -11,7 +11,8 @@ change things that need a step from you, and its notes say so.
 - **App windows fit any shape, and say when they're catching up.** With Elevated, an app
   window's display now takes the window's exact size, so there are no bars beside the
   app. While you hold an edge on Windows, the window shows the app blurred under its
-  icon, and the app is laid out once, when you let go.
+  icon, and the app is laid out once, when you let go. Thanks to
+  [@rus152](https://github.com/rus152) ([#368](https://github.com/thtbee/nectarlink/pull/368)).
 - **Hibernate a PC from the phone.** Next to Lock PC and Sleep on Home, for a PC that can
   hibernate: on Windows, while hibernation is turned on. Thanks to
   [@atilazz](https://github.com/atilazz) for the idea ([#355](https://github.com/thtbee/nectarlink/issues/355)).
