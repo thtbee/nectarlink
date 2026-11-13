@@ -1579,8 +1579,8 @@ mod tests {
             assert!(PRIVILEGED_DEB_INSTALL_SCRIPT.contains("dpkg -i -- \"$dst\""));
             let rpm = newer_release_linux_kind(release("v9.0.0"), "0.0.1", LinuxInstallKind::Rpm).unwrap();
             assert_eq!(rpm.installer_name, rpm_name);
-            let tarball = newer_release_linux_kind(release("v9.0.0"), "0.0.1", LinuxInstallKind::Tarball)
-                .unwrap();
+            let tarball =
+                newer_release_linux_kind(release("v9.0.0"), "0.0.1", LinuxInstallKind::Tarball).unwrap();
             assert_eq!(tarball.installer_name, tarball_name);
             assert!(PRIVILEGED_RPM_INSTALL_SCRIPT.contains("sha256sum -c --status -"));
             assert!(PRIVILEGED_RPM_INSTALL_SCRIPT.contains("dnf install -y --nogpgcheck -- \"$1\""));
