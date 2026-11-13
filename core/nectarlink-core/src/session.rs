@@ -690,7 +690,9 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
             if env.id.is_some() {
                 let reply = match result {
                     Ok(()) => Envelope::empty(types::OK),
-                    Err(ErrorCode::Denied) => Envelope::error(ErrorCode::Denied, "not a paired PC's wake address"),
+                    Err(ErrorCode::Denied) => {
+                        Envelope::error(ErrorCode::Denied, "not a paired PC's wake address")
+                    }
                     Err(code) => Envelope::error(code, "couldn't send Wake-on-LAN packet"),
                 };
                 session.send(reply.reply_to(env.id)).await?;

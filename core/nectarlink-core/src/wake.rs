@@ -21,7 +21,10 @@ pub fn send_magic_packet(mac: [u8; 6], broadcast: Option<Ipv4Addr>) -> Result<()
 }
 
 /// Try all destinations even when one fails, and report an error if none succeed.
-fn send_to_targets(target: Ipv4Addr, mut send: impl FnMut(SocketAddrV4) -> io::Result<usize>) -> io::Result<()> {
+fn send_to_targets(
+    target: Ipv4Addr,
+    mut send: impl FnMut(SocketAddrV4) -> io::Result<usize>,
+) -> io::Result<()> {
     let mut result = Err(io::Error::other("no wake packets sent"));
     for port in nectarlink_protocol::messages::wake::DEFAULT_PORTS {
         result = result.or(send(SocketAddrV4::new(target, *port)).map(|_| ()));
