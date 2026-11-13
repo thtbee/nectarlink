@@ -139,6 +139,9 @@ change things that need a step from you, and its notes say so.
 - **A cut-off video stream counts as an error, not a clean end.** Phone screen, webcam
   and microphone streams also reject a packet length that doesn't fit before using it.
   Thanks to [@localzet](https://github.com/localzet) ([#362](https://github.com/thtbee/nectarlink/pull/362)).
+- **The Linux updater's tests cover ARM64 packages**, a first step towards Linux ARM64 builds
+  ([#356](https://github.com/thtbee/nectarlink/issues/356)). Thanks to
+  [@localzet](https://github.com/localzet) ([#363](https://github.com/thtbee/nectarlink/pull/363)).
 - **The phone's screen window keeps the phone's shape, and its size.** Resizing it no
   longer leaves black bars: a moment after, it fits the phone's shape again. It opens
   at the size you left it, also when the phone turns. Thanks to
