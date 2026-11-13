@@ -8,6 +8,7 @@ use windows::{
     Win32::{
         Foundation::{CloseHandle, ERROR_CANCELLED, HANDLE, WAIT_OBJECT_0},
         Security::{GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation},
+        System::Com::{COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE, CoInitializeEx, CoUninitialize},
         System::Threading::{GetCurrentProcess, GetExitCodeProcess, OpenProcessToken, WaitForSingleObject},
         UI::{
             Shell::{
@@ -101,6 +102,20 @@ pub fn start(program: &Path, params: &str) -> Result<Process, Error> {
     if is_elevated() {
         return start_directly(program, params);
     }
+    // ShellExecuteEx may hand the verb to shell extensions, which need COM on
+    // this thread; Microsoft says to set it up first. Without it, some PCs
+    // answer "no app is associated" for runas on an .exe (#364).
+    // SAFETY: paired with CoUninitialize below when it succeeded.
+    let com = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) }.is_ok();
+    let result = shell_runas(program, params);
+    if com {
+        // SAFETY: balances the successful CoInitializeEx above, on this thread.
+        unsafe { CoUninitialize() };
+    }
+    result
+}
+
+fn shell_runas(program: &Path, params: &str) -> Result<Process, Error> {
     let file = HSTRING::from(program.as_os_str());
     let parameters = HSTRING::from(params);
     let mut info = SHELLEXECUTEINFOW {
