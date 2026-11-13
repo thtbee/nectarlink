@@ -18,6 +18,7 @@ pub const LANGUAGES: &[(&str, &str)] = &[
     ("pt_BR", "Português (Brasil)"),
     ("vi", "Tiếng Việt"),
     ("es", "Español"),
+    ("ru", "Русский"),
 ];
 
 /// [`LANGUAGES`] without the system's, as JSON for Settings: `[{ code, name }]`.
@@ -95,7 +96,9 @@ fn system_language(preferred: &[String]) -> &'static str {
             "en" => "en",
             "de" => "de",
             "es" => "es",
+            "ru" => "ru",
             "tr" => "tr",
+            "vi" => "vi",
             "pt" if rest.contains(&"br") => "pt_BR",
             "zh" if rest.contains(&"hans") || rest.contains(&"cn") || rest.contains(&"sg") => "zh_CN",
             "zh" if rest.is_empty() => "zh_CN",
@@ -201,7 +204,9 @@ mod tests {
         assert_eq!(system_language(&list(&["es-ES", "en-US"])), "es");
         assert_eq!(system_language(&list(&["es-MX"])), "es");
         // One it doesn't speak first: the next one it does.
-        assert_eq!(system_language(&list(&["ru-RU", "tr-TR"])), "tr");
+        assert_eq!(system_language(&list(&["ja-JP", "tr-TR"])), "tr");
+        assert_eq!(system_language(&list(&["ru-RU", "en-US"])), "ru");
+        assert_eq!(system_language(&list(&["vi-VN"])), "vi");
         assert_eq!(system_language(&list(&["zh-Hans-CN"])), "zh_CN");
         assert_eq!(system_language(&list(&["zh-Hant-TW", "en"])), "en");
         assert_eq!(system_language(&list(&["pt-BR"])), "pt_BR");

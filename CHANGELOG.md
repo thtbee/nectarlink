@@ -34,6 +34,10 @@ change things that need a step from you, and its notes say so.
   the Windows PC, every screen is translated. Settings › Appearance › Language
   picks it, or the system language does. Thanks to
   [@wuwenhou](https://github.com/wuwenhou).
+- **Russian.** NectarLink speaks Русский on the phone and the PC. Settings › Appearance ›
+  Language picks it, or the system language does. Thanks to
+  [@krakotay](https://github.com/krakotay) for reviewing it
+  ([#343](https://github.com/thtbee/nectarlink/issues/343)).
 - **More ways to sync a folder.** A synced folder can now go one way from the PC to the
   phone. Phone to PC can also remove from the PC what you delete on the phone: only
   files it synced and that haven't changed on the PC, and they go to the Recycle Bin. Both

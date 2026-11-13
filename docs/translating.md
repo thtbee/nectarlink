@@ -1,7 +1,8 @@
 # Translating NectarLink
 
 NectarLink's Android and Windows apps can be translated into any language.
-Simplified Chinese, German, Turkish and Brazilian Portuguese are complete today.
+Simplified Chinese, German, Spanish, Turkish, Brazilian Portuguese, Vietnamese
+and Russian are complete today.
 
 ## How to help
 
