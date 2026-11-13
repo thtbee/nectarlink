@@ -124,6 +124,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The phone's screen window keeps the phone's shape, and its size.** Resizing it no
+  longer leaves black bars: a moment after, it fits the phone's shape again. It opens
+  at the size you left it, also when the phone turns. Thanks to
+  [@MikeWilliams-UK](https://github.com/MikeWilliams-UK) ([#358](https://github.com/thtbee/nectarlink/issues/358)).
 - **The flashlight works from the PC while the phone is a webcam.** The phone's camera is busy then,
   so the flashlight button now switches the webcam's own torch, and shows it, instead of failing
   ([#353](https://github.com/thtbee/nectarlink/issues/353)).

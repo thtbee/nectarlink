@@ -818,18 +818,29 @@ pub fn windows() -> Vec<(Window, Shown)> {
     all
 }
 
-/// Remembered window position and size for `(device, pkg)`.
+/// Where the phone's own screen keeps its window's place and size, beside its
+/// apps': not a package name, so no app can have it.
+pub const SCREEN_GEOMETRY: &str = "#screen";
+
+/// Remembered window position and size for `(device, pkg)` (or the phone's
+/// screen, [`SCREEN_GEOMETRY`]).
 pub fn geometry(device: &DeviceId, pkg: &str) -> Option<WindowGeometry> {
     state(|s| s.saved.geometry.get(&format!("{device}/{pkg}")).copied())
 }
 
-/// Saves an app window's position and size on this PC.
+/// Saves a window's position and size on this PC: an app's, or the phone
+/// screen's (#358), which the next one opens at.
 pub fn save_geometry(window: Window, x: i32, y: i32, width: u32, height: u32) {
-    if window.session == MIRROR_SCREEN || width < 200 || height < 200 {
+    if width < 200 || height < 200 {
         return;
     }
     state(|s| {
-        let Some(pkg) = s.windows.get(&window).and_then(|w| w.pkg.clone()) else { return };
+        let pkg = if window.session == MIRROR_SCREEN {
+            Some(SCREEN_GEOMETRY.to_owned())
+        } else {
+            s.windows.get(&window).and_then(|w| w.pkg.clone())
+        };
+        let Some(pkg) = pkg else { return };
         let key = format!("{}/{pkg}", window.device);
         let geom = WindowGeometry { x, y, width, height };
         if s.saved.geometry.insert(key, geom) != Some(geom) {

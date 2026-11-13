@@ -226,7 +226,11 @@ impl qobject::Mirror {
                     .as_deref()
                     .map(crate::icons::file_url)
                     .unwrap_or_default();
-                let geom = (!pkg.is_empty()).then(|| mirror::geometry(&window.device, &pkg)).flatten();
+                let geom = if window.session == MIRROR_SCREEN {
+                    mirror::geometry(&window.device, mirror::SCREEN_GEOMETRY)
+                } else {
+                    (!pkg.is_empty()).then(|| mirror::geometry(&window.device, &pkg)).flatten()
+                };
                 serde_json::json!({
                     "key": window.key(),
                     "device": window.device.to_string(),
