@@ -34,7 +34,7 @@ use crate::{
         audio_out::Player,
         h264::{Decoder, to_bgrx},
         image::{Bitmap, encode_png},
-        mp4::{MirrorRecorder, local_timestamp_filename, merge_sps_pps},
+        mp4::{MirrorRecorder, VideoCodec, can_record, local_timestamp_filename, merge_sps_pps},
         toast::{self, Toast},
     },
 };
@@ -343,6 +343,17 @@ static LAST_CONFIG: Mutex<Option<HashMap<Window, (u32, u32)>>> = Mutex::new(None
 static LAST_AUDIO_CONFIG: Mutex<Option<HashMap<DeviceId, (u32, u8)>>> = Mutex::new(None);
 /// Latest Annex-B SPS/PPS bytes per window so mid-stream recordings have parameter sets immediately.
 static LAST_SPS_PPS: Mutex<Option<HashMap<Window, Vec<u8>>>> = Mutex::new(None);
+/// Each window's video codec (H.264 unless its config says H.265), for recordings (#393).
+static LAST_CODEC: Mutex<Option<HashMap<Window, VideoCodec>>> = Mutex::new(None);
+
+fn codec_of(window: &Window) -> VideoCodec {
+    LAST_CODEC
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .and_then(|m| m.get(window).copied())
+        .unwrap_or_default()
+}
 
 pub fn muted() -> bool {
     MUTED.load(Ordering::Relaxed)
@@ -504,6 +515,9 @@ fn clear_window_buffers(window: &Window) {
     }
     if let Some(sps) = LAST_SPS_PPS.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
         sps.remove(window);
+    }
+    if let Some(codecs) = LAST_CODEC.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+        codecs.remove(window);
     }
 }
 
@@ -692,7 +706,15 @@ pub fn toggle_recording(window: Window) {
         None
     };
 
+    let codec = codec_of(&window);
+    if !can_record(codec) {
+        tracing::info!(?codec, "this stream's codec can't be recorded here");
+        set_notice(window, "Couldn't start recording");
+        show_message(tr!("Mirror", "Couldn't start recording."));
+        return;
+    }
     let mut recorder = MirrorRecorder::new(path, width, height, OPTIONS.fps, audio_cfg);
+    recorder.set_codec(codec);
     if let Some(sps_pps) =
         LAST_SPS_PPS.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|m| m.get(&window))
     {
@@ -2402,10 +2424,22 @@ impl MirrorSink for Sink {
             .unwrap_or_else(|e| e.into_inner())
             .get_or_insert_with(HashMap::new)
             .insert(self.window, (config.width, config.height));
+        let codec = VideoCodec::from_name(&config.codec);
+        let previous = LAST_CODEC
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_or_insert_with(HashMap::new)
+            .insert(self.window, codec);
+        if previous.is_some_and(|c| c != codec)
+            && let Some(sps) = LAST_SPS_PPS.lock().unwrap_or_else(|e| e.into_inner()).as_mut()
+        {
+            sps.remove(&self.window);
+        }
         if let Some(rec) =
             RECORDERS.lock().unwrap_or_else(|e| e.into_inner()).as_mut().and_then(|m| m.get_mut(&self.window))
         {
             rec.on_config(config.width, config.height);
+            rec.set_codec(codec);
         }
         let video = self.video.get_or_init(|| Video::start(self.window));
         // The format matters: wait for room rather than drop it.
@@ -2414,9 +2448,10 @@ impl MirrorSink for Sink {
 
     fn packet(&self, keyframe: bool, time_us: u64, data: Vec<u8>) {
         if keyframe {
+            let codec = codec_of(&self.window);
             let mut sps_map = LAST_SPS_PPS.lock().unwrap_or_else(|e| e.into_inner());
             let entry = sps_map.get_or_insert_with(HashMap::new).entry(self.window).or_default();
-            merge_sps_pps(entry, &data);
+            merge_sps_pps(codec, entry, &data);
         }
         if ACTIVE_RECORDERS.load(Ordering::Relaxed) > 0
             && let Some(rec) = RECORDERS

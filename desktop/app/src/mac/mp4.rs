@@ -48,6 +48,8 @@ impl MirrorRecorder {
 
     pub fn on_config(&mut self, _width: u32, _height: u32) {}
 
+    pub fn set_codec(&mut self, _codec: VideoCodec) {}
+
     pub fn on_audio_config(&mut self, _rate: u32, _channels: u8) {}
 
     pub fn on_packet(&mut self, _keyframe: bool, _time_us: u64, _data: &[u8]) -> Result<(), String> {
@@ -63,7 +65,31 @@ impl MirrorRecorder {
     }
 }
 
-pub fn merge_sps_pps(sps_pps: &mut Vec<u8>, data: &[u8]) {
+/// The video codec of a mirror stream.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum VideoCodec {
+    #[default]
+    H264,
+    Hevc,
+}
+
+impl VideoCodec {
+    /// From a stream's codec name ("h264", "h265").
+    pub fn from_name(name: &str) -> VideoCodec {
+        if name.eq_ignore_ascii_case("h265") || name.eq_ignore_ascii_case("hevc") {
+            VideoCodec::Hevc
+        } else {
+            VideoCodec::H264
+        }
+    }
+}
+
+/// Screen recording isn't available on macOS.
+pub fn can_record(_codec: VideoCodec) -> bool {
+    false
+}
+
+pub fn merge_sps_pps(_codec: VideoCodec, sps_pps: &mut Vec<u8>, data: &[u8]) {
     sps_pps.extend_from_slice(data);
 }
 
