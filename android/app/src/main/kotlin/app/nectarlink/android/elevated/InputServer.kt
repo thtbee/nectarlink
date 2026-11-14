@@ -88,6 +88,9 @@ object InputServer {
             rawArg
         }
         grantAppOps()
+        // A helper that stopped while the PC's mouse was here left the
+        // pointer's acceleration off.
+        PointerFlow.restoreAcceleration()
         startClipboardWatcher()
         val injector = runCatching { Injector() }.getOrElse { return fail("can't inject input: $it") }
         val server = runCatching { ServerSocket(0, 8, InetAddress.getLoopbackAddress()) }.getOrElse { return fail("can't listen: $it") }
@@ -334,6 +337,7 @@ object InputServer {
 
     private fun shutdown() {
         runCatching { serverSocket?.close() }
+        runCatching { PointerFlow.stop() }
         runCatching { UhidBridge.closeAll() }
         val open = synchronized(windows) { windows.toList().also { windows.clear() } }
         open.forEach { runCatching { it.stop() } }
@@ -772,6 +776,16 @@ object InputServer {
                     val (code, meta) = rest.split(' ').map { it.toInt() }
                     shortcut(code, meta)
                 }
+                "FS" -> if (display < 0) {
+                    val (edge, y) = rest.split(' ')
+                    reply(PointerFlow.start(edge, y.toFloat()))
+                }
+                "FM" -> {
+                    val (dx, dy, buttons, wheel) = rest.split(' ').map { it.toInt() }
+                    PointerFlow.move(dx, dy, buttons, wheel)
+                }
+                "FW" -> reply(PointerFlow.where())
+                "FX" -> PointerFlow.stop()
                 "T" -> type(rest)
                 "G" -> gamepad(rest)
                 "C" -> if (allowedCommand(rest) && display < 0) {
@@ -786,6 +800,15 @@ object InputServer {
                 "P" -> if (display < 0) setDisplayPower(rest.trim() != "0")
                 "B" -> if (display < 0) setClipboard(rest)
                 "X" -> if (display < 0) clearClipboard(rest)
+            }
+        }
+
+        /** A line back to the app, on the connection that asked. */
+        private fun reply(line: String) {
+            val out = controlOut ?: return
+            synchronized(out) {
+                out.write(line + "\n")
+                out.flush()
             }
         }
 
@@ -1169,6 +1192,181 @@ object InputServer {
         fun closeAll() {
             gamepadFd?.let(::destroy)
             gamepadFd = null
+            closeMouse()
+        }
+
+        // 4-byte relative mouse: [buttons (3 bits), dx, dy, wheel].
+        private val MOUSE_RD = byteArrayOf(
+            0x05, 0x01, // Usage Page (Generic Desktop)
+            0x09, 0x02, // Usage (Mouse)
+            0xA1.toByte(), 0x01, // Collection (Application)
+            0x09, 0x01, //   Usage (Pointer)
+            0xA1.toByte(), 0x00, //   Collection (Physical)
+            0x05, 0x09, //     Usage Page (Button)
+            0x19, 0x01, //     Usage Minimum (1)
+            0x29, 0x03, //     Usage Maximum (3)
+            0x15, 0x00, //     Logical Minimum (0)
+            0x25, 0x01, //     Logical Maximum (1)
+            0x95.toByte(), 0x03, //     Report Count (3)
+            0x75, 0x01, //     Report Size (1)
+            0x81.toByte(), 0x02, //     Input (Data, Variable, Absolute)
+            0x95.toByte(), 0x01, //     Report Count (1)
+            0x75, 0x05, //     Report Size (5)
+            0x81.toByte(), 0x03, //     Input (Constant)
+            0x05, 0x01, //     Usage Page (Generic Desktop)
+            0x09, 0x30, //     Usage (X)
+            0x09, 0x31, //     Usage (Y)
+            0x09, 0x38, //     Usage (Wheel)
+            0x15, 0x81.toByte(), //     Logical Minimum (-127)
+            0x25, 0x7F, //     Logical Maximum (127)
+            0x75, 0x08, //     Report Size (8)
+            0x95.toByte(), 0x03, //     Report Count (3)
+            0x81.toByte(), 0x06, //     Input (Data, Variable, Relative)
+            0xC0.toByte(), //   End Collection
+            0xC0.toByte(), // End Collection
+        )
+
+        /** The device name, to find its pointer in `dumpsys input`. */
+        const val MOUSE_NAME = "NectarLink Virtual Mouse"
+
+        @Volatile private var mouseFd: java.io.RandomAccessFile? = null
+
+        @Synchronized
+        fun openMouse(): Boolean {
+            if (mouseFd == null) mouseFd = openDevice(MOUSE_NAME, 0x4EE9, MOUSE_RD)
+            return mouseFd != null
+        }
+
+        /** Moves by ([dx], [dy]) counts with [buttons] held, in reports of at most 127 each way. */
+        @Synchronized
+        fun mouse(dx: Int, dy: Int, buttons: Int, wheel: Int): Boolean {
+            val fd = mouseFd ?: return false
+            var x = dx
+            var y = dy
+            var w = wheel
+            do {
+                val sx = x.coerceIn(-127, 127)
+                val sy = y.coerceIn(-127, 127)
+                val sw = w.coerceIn(-127, 127)
+                val report = byteArrayOf((buttons and 0x07).toByte(), sx.toByte(), sy.toByte(), sw.toByte())
+                if (!writeInputReport(fd, report)) return false
+                x -= sx
+                y -= sy
+                w -= sw
+            } while (x != 0 || y != 0 || w != 0)
+            return true
+        }
+
+        @Synchronized
+        fun closeMouse() {
+            mouseFd?.let(::destroy)
+            mouseFd = null
+        }
+    }
+    /**
+     * The PC's mouse on the phone (#107): a virtual USB mouse, so Android
+     * draws its own pointer. Android speeds a mouse up with how fast it moves,
+     * so the PC couldn't tell where the pointer is; while the PC's mouse is
+     * here, pointer acceleration is off (Android 15+'s
+     * `mouse_pointer_acceleration_enabled`, given back after, also after the
+     * helper stopped), and a count then moves the pointer a fixed distance,
+     * measured once at the start.
+     *
+     * Lines: `FS <left|right> <y 0..1>` starts, answered `FI <width> <height>
+     * <pixels per count>` (zeros if it couldn't); `FM <dx> <dy> <buttons>
+     * <wheel>` moves; `FW` is answered `FP <x> <y>` (-1 when unknown); `FX`
+     * stops.
+     */
+    private object PointerFlow {
+        private const val ACCELERATION = "mouse_pointer_acceleration_enabled"
+        private val saved = java.io.File("/data/local/tmp/nectarlink-pointer-acceleration")
+        // The main display's viewport: input devices without a display list
+        // empty frames first.
+        private val FRAME = Regex("""displayId=0,[^\n]*?logicalFrame=\[0, 0, (\d+), (\d+)\]""")
+
+        @Synchronized
+        fun start(edge: String, y: Float): String {
+            saveAcceleration()
+            settings("put", ACCELERATION, "0")
+            if (!UhidBridge.openMouse()) {
+                restoreAcceleration()
+                return "FI 0 0 0"
+            }
+            // A new device may miss its first reports while Android adds it.
+            Thread.sleep(400)
+            val size = screen()
+            // From the top left corner, 100 counts each way tell the scale.
+            UhidBridge.mouse(-127 * 30, -127 * 60, 0, 0)
+            Thread.sleep(80)
+            UhidBridge.mouse(100, 100, 0, 0)
+            Thread.sleep(150)
+            val at = position()
+            if (size == null || at == null || at.first <= 0f) {
+                stop()
+                return "FI 0 0 0"
+            }
+            val (width, height) = size
+            val scale = (at.first + at.second) / 200f
+            // Then to where the PC's mouse came in.
+            UhidBridge.mouse(if (edge == "left") -127 * 30 else 127 * 30, -127 * 60, 0, 0)
+            UhidBridge.mouse(0, (y.coerceIn(0f, 1f) * (height - 1) / scale).toInt(), 0, 0)
+            return "FI $width $height $scale"
+        }
+
+        @Synchronized
+        fun move(dx: Int, dy: Int, buttons: Int, wheel: Int) {
+            UhidBridge.mouse(dx, dy, buttons, wheel)
+        }
+
+        fun where(): String = position()?.let { (x, y) -> "FP $x $y" } ?: "FP -1 -1"
+
+        @Synchronized
+        fun stop() {
+            UhidBridge.closeMouse()
+            restoreAcceleration()
+        }
+
+        private fun saveAcceleration() {
+            if (saved.exists()) return
+            val now = runCatching {
+                val proc = Runtime.getRuntime().exec(arrayOf("settings", "get", "system", ACCELERATION))
+                proc.inputStream.bufferedReader().use { it.readText().trim() }.also { proc.waitFor() }
+            }.getOrDefault("null")
+            runCatching { saved.writeText(now) }
+        }
+
+        /** Gives the user's acceleration setting back, if it was changed. */
+        fun restoreAcceleration() {
+            val was = runCatching { saved.readText().trim() }.getOrNull() ?: return
+            if (was == "null" || was.isEmpty()) settings("delete", ACCELERATION) else settings("put", ACCELERATION, was)
+            saved.delete()
+        }
+
+        private fun settings(vararg args: String) {
+            runCatching { Runtime.getRuntime().exec(arrayOf("settings", args[0], "system") + args.drop(1)).waitFor() }
+        }
+
+        private fun dumpInput(): String? = runCatching {
+            val proc = Runtime.getRuntime().exec(arrayOf("dumpsys", "input"))
+            proc.inputStream.bufferedReader().use { it.readText() }.also { proc.waitFor() }
+        }.getOrNull()
+
+        /** The screen's size as the pointer sees it (turned with the phone). */
+        private fun screen(): Pair<Int, Int>? {
+            val dump = dumpInput() ?: return null
+            return FRAME.findAll(dump)
+                .map { it.groupValues[1].toInt() to it.groupValues[2].toInt() }
+                .firstOrNull { (w, h) -> w > 0 && h > 0 }
+        }
+
+        /** Where the virtual mouse's pointer is, from `dumpsys input`. */
+        private fun position(): Pair<Float, Float>? {
+            val dump = dumpInput() ?: return null
+            val id = Regex("""Device (\d+): ${Regex.escape(UhidBridge.MOUSE_NAME)}""").find(dump)?.groupValues?.get(1)
+                ?: return null
+            val at = Regex("""DeviceId\($id\):[^\n]*?Pointer\(id=0, MOUSE\) at \(([\d.]+), ([\d.]+)\)""").find(dump)
+                ?: return null
+            return at.groupValues[1].toFloat() to at.groupValues[2].toFloat()
         }
     }
 }

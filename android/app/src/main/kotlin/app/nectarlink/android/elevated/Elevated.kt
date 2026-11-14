@@ -664,6 +664,10 @@ object Elevated {
         Thread {
             runCatching {
                 local.inputStream.bufferedReader().lineSequence().forEach { line ->
+                    if (line.startsWith("FI ") || line.startsWith("FP ")) {
+                        pointerReplies.offer(line)
+                        return@forEach
+                    }
                     if (line == "BLOCKED") onInputBlocked()
                     if (line.startsWith("CLIP\t")) {
                         val parts = line.split('\t')
@@ -942,6 +946,52 @@ object Elevated {
         return send(writer, "V $index")
     }
 
+    // ---- The PC's mouse on the phone (#107) ----
+
+    /** What the helper answered to a pointer question (`FI`, `FP` lines). */
+    private val pointerReplies = java.util.concurrent.LinkedBlockingQueue<String>()
+
+    /** The screen and pointer scale for the PC's mouse here. */
+    data class PointerInfo(val width: Int, val height: Int, val scale: Float)
+
+    /**
+     * Starts the PC's mouse here: the pointer shows at the [edge] ("left" or
+     * "right") it came in from, [y] (0 to 1) down. Null without Elevated or
+     * when it couldn't start. Takes about a second; not on the main thread.
+     */
+    fun pointerStart(edge: String, y: Float): PointerInfo? {
+        val writer = input ?: return null
+        pointerReplies.clear()
+        if (!sendNow(writer, "FS $edge $y")) return null
+        val reply = pointerReplies.poll(POINTER_START_MS, java.util.concurrent.TimeUnit.MILLISECONDS) ?: return null
+        val (w, h, scale) = reply.removePrefix("FI ").split(' ').takeIf { it.size == 3 } ?: return null
+        val info = PointerInfo(w.toIntOrNull() ?: 0, h.toIntOrNull() ?: 0, scale.toFloatOrNull() ?: 0f)
+        return info.takeIf { it.width > 0 && it.height > 0 && it.scale > 0f }
+    }
+
+    /** Moves the PC's mouse here by counts, with [buttons] held (bits: left, right, middle). */
+    fun pointerMove(dx: Int, dy: Int, buttons: Int, wheel: Int): Boolean {
+        val writer = input ?: return false
+        return send(writer, "FM $dx $dy $buttons $wheel")
+    }
+
+    /** Where the pointer is, in pixels; null when unknown. Not on the main thread. */
+    fun pointerWhere(): Pair<Float, Float>? {
+        val writer = input ?: return null
+        pointerReplies.clear()
+        if (!sendNow(writer, "FW")) return null
+        val reply = pointerReplies.poll(POINTER_WHERE_MS, java.util.concurrent.TimeUnit.MILLISECONDS) ?: return null
+        val (x, y) = reply.removePrefix("FP ").split(' ').takeIf { it.size == 2 } ?: return null
+        val at = (x.toFloatOrNull() ?: -1f) to (y.toFloatOrNull() ?: -1f)
+        return at.takeIf { it.first >= 0f && it.second >= 0f }
+    }
+
+    /** The PC's mouse went back to the PC. */
+    fun pointerStop() {
+        val writer = input ?: return
+        send(writer, "FX")
+    }
+
     /** Sends a gamepad state directly through the Elevated helper. */
     fun sendGamepad(buttons: Int, lx: Int, ly: Int, rx: Int, ry: Int, lt: Int, rt: Int): Boolean {
         val writer = input ?: return false
@@ -1096,6 +1146,9 @@ object Elevated {
     }
 
     private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
+
+    private const val POINTER_START_MS = 5_000L
+    private const val POINTER_WHERE_MS = 2_000L
 
     private val keys = mapOf(
         "back" to KeyEvent.KEYCODE_BACK,

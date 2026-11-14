@@ -135,6 +135,10 @@ pub mod qobject {
         #[qproperty(bool, share_pc_storage)]
         /// Forward PC notifications to connected phones (opt-in privacy toggle).
         #[qproperty(bool, forward_pc_notifications_to_phone)]
+        /// The phone beside this PC for the mouse to go over to (#107), by device ID; empty: none.
+        #[qproperty(QString, phone_beside)]
+        /// Which side it's on: "left" or "right".
+        #[qproperty(QString, phone_beside_side)]
         /// Stay connected over mobile data (LTE/5G) or relay when away from Wi-Fi.
         #[qproperty(bool, away_mode)]
         #[qproperty(QString, network_interface)]
@@ -373,6 +377,8 @@ pub struct PreferencesRust {
     stream_pc_audio_to_phone: bool,
     share_pc_storage: bool,
     forward_pc_notifications_to_phone: bool,
+    phone_beside: QString,
+    phone_beside_side: QString,
     away_mode: bool,
     network_interface: QString,
     start_at_login: bool,
@@ -478,6 +484,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_stream_pc_audio_to_phone(settings.stream_pc_audio_to_phone);
         self.as_mut().set_share_pc_storage(settings.share_pc_storage);
         self.as_mut().set_forward_pc_notifications_to_phone(settings.forward_pc_notifications_to_phone);
+        self.as_mut().set_phone_beside(QString::from(&settings.phone_beside));
+        self.as_mut().set_phone_beside_side(QString::from(&settings.phone_beside_side));
         self.as_mut().set_away_mode(settings.away_mode);
         self.as_mut().set_network_interface(QString::from(&settings.network_interface));
         self.as_mut().set_walkthrough_completed(settings.walkthrough_completed);
@@ -796,6 +804,24 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_forward_pc_notifications_to_phone_changed(|p| {
                 crate::settings::set_forward_pc_notifications_to_phone(p.forward_pc_notifications_to_phone);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_phone_beside_changed(|p| {
+                crate::settings::set_phone_beside(
+                    &p.phone_beside.to_string(),
+                    &p.phone_beside_side.to_string(),
+                );
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_phone_beside_side_changed(|p| {
+                crate::settings::set_phone_beside(
+                    &p.phone_beside.to_string(),
+                    &p.phone_beside_side.to_string(),
+                );
                 p.save();
             })
             .release();
@@ -1188,6 +1214,8 @@ impl qobject::Preferences {
             stream_pc_audio_to_phone: p.stream_pc_audio_to_phone,
             share_pc_storage: p.share_pc_storage,
             forward_pc_notifications_to_phone: p.forward_pc_notifications_to_phone,
+            phone_beside: p.phone_beside.to_string(),
+            phone_beside_side: p.phone_beside_side.to_string(),
             away_mode: p.away_mode,
             network_interface: p.network_interface.to_string(),
             walkthrough_completed: p.walkthrough_completed,

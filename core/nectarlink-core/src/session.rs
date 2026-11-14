@@ -650,7 +650,8 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if t.starts_with("call.") && crate::calls::handle(shared, session, &env).await? => {}
         t if t.starts_with("contacts.") && crate::contacts::handle(shared, session, &env).await? => {}
         t if t.starts_with("sms.") && crate::sms::handle(shared, session, &env).await? => {}
-        t if t.starts_with("mirror.") && crate::mirror::handle(shared, session, &env).await? => {}
+        t if (t.starts_with("mirror.") || t.starts_with("pointer."))
+            && crate::mirror::handle(shared, session, &env).await? => {}
         t if t.starts_with("webcam.") && crate::webcam::handle(shared, session, &env).await? => {}
         t if t.starts_with("mic.") && crate::mic::handle(shared, session, &env).await? => {}
         t if t.starts_with("elevated.usb") && crate::elevated_usb::handle(shared, session, &env).await? => {}

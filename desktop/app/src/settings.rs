@@ -260,6 +260,16 @@ pub fn set_flow_follow_clipboard(on: bool) {
     FLOW_FOLLOW_CLIPBOARD.store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
+/// Sets the phone beside the PC (#107): the mouse goes over to it at that
+/// side. An unknown device or side, or an empty one, turns it off.
+pub fn set_phone_beside(device: &str, side: &str) {
+    let target = device.parse::<nectarlink_core::DeviceId>().ok().zip(crate::pointer_flow::Side::parse(side));
+    #[cfg(windows)]
+    crate::win::pointer_hooks::configure(target);
+    #[cfg(not(windows))]
+    let _ = target;
+}
+
 #[allow(dead_code)]
 pub fn away_mode() -> bool {
     AWAY_MODE.load(std::sync::atomic::Ordering::Relaxed)
@@ -582,6 +592,13 @@ pub struct Settings {
     /// enters the phone's window, or a remote control session starts.
     #[serde(default = "default_true", alias = "flow_follow_clipboard")]
     pub flow_follow_clipboard: bool,
+    /// The phone beside this PC, for its mouse to go over the edge of the
+    /// screen to (#107): its device ID. Empty: none.
+    #[serde(default, skip_serializing_if = "String::is_empty", alias = "phone_beside")]
+    pub phone_beside: String,
+    /// Which side of the PC it's on: "left" or "right".
+    #[serde(default, skip_serializing_if = "String::is_empty", alias = "phone_beside_side")]
+    pub phone_beside_side: String,
     /// Configured one-way / two-way folder synchronization rules.
     #[serde(default, skip_serializing_if = "Vec::is_empty", alias = "folder_sync_rules")]
     pub folder_sync_rules: Vec<crate::folder_sync::FolderSyncRule>,
@@ -728,6 +745,8 @@ impl Default for Settings {
             sync_passwords: false,
             mirror_quality: String::new(),
             flow_follow_clipboard: true,
+            phone_beside: String::new(),
+            phone_beside_side: String::new(),
             folder_sync_rules: Vec::new(),
             nectar_island: false,
             nectar_island_calls: true,
@@ -803,6 +822,7 @@ impl Settings {
         set_sync_passwords(self.sync_passwords);
         set_mirror_quality(&self.mirror_quality);
         set_flow_follow_clipboard(self.flow_follow_clipboard);
+        set_phone_beside(&self.phone_beside, &self.phone_beside_side);
         set_folder_sync_rules(self.folder_sync_rules.clone());
         set_obs_settings(
             if self.obs_port == 0 { crate::obs::DEFAULT_PORT } else { self.obs_port },
@@ -1008,6 +1028,8 @@ mod tests {
             sync_passwords: true,
             mirror_quality: "sharper".into(),
             flow_follow_clipboard: false,
+            phone_beside: String::new(),
+            phone_beside_side: String::new(),
             folder_sync_rules: Vec::new(),
             nectar_island: true,
             nectar_island_calls: true,

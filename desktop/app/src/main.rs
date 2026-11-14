@@ -46,6 +46,9 @@ mod phone_sound;
 mod photo_backup;
 mod photos;
 mod play_on_phone;
+// The arithmetic builds and is tested everywhere; only Windows takes the mouse so far.
+#[cfg_attr(not(windows), allow(dead_code))]
+mod pointer_flow;
 mod qr;
 mod recordings;
 mod remote;

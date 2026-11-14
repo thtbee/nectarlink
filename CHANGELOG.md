@@ -16,6 +16,11 @@ change things that need a step from you, and its notes say so.
 - **Hibernate a PC from the phone.** Next to Lock PC and Sleep on Home, for a PC that can
   hibernate: on Windows, while hibernation is turned on. Thanks to
   [@atilazz](https://github.com/atilazz) for the idea ([#355](https://github.com/thtbee/nectarlink/issues/355)).
+- **Your PC's mouse on the phone, over the screen edge.** With the phone beside the monitor, set
+  **Beside this PC** to Left or Right in Settings › Devices, and the mouse goes past that edge
+  onto the phone, with a pointer of its own: click, scroll and type there, then move back, or
+  press Ctrl+Alt+Esc. Windows, with Elevated on the phone
+  ([#107](https://github.com/thtbee/nectarlink/issues/107)).
 - **Support NectarLink.** If you'd like to help keep it going, Settings has a Support
   section on the phone and the PC, and the "Enjoying NectarLink?" prompt has a Support
   button next to Star on GitHub. It only opens the page when you tap it.

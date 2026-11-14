@@ -1199,6 +1199,23 @@ pub struct MirrorOptions {
     pub sound_only: bool,
 }
 
+/// The phone's screen as the pointer the PC's mouse moves sees it, and how
+/// far one count moves it (the answer to `pointer_enter`).
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
+pub struct PointerScreen {
+    pub width: u32,
+    pub height: u32,
+    /// Pixels per count.
+    pub scale: f32,
+}
+
+/// Where the pointer the PC's mouse moves is, in pixels.
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
+pub struct PointerPosition {
+    pub x: f32,
+    pub y: f32,
+}
+
 /// An app a PC can open in a window (docs/protocol/mirror.md).
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
 pub struct PhoneApp {
@@ -2762,6 +2779,18 @@ pub trait Platform: Send + Sync {
     /// The PC's mouse or keyboard on the mirrored screen (only while this
     /// phone offers `mirror.input`) or an app window. Return quickly.
     fn mirror_input(&self, pc_id: String, session: u32, input: MirrorInputEvent);
+    /// The PC's mouse came over the edge of its screen (#107), at the phone's
+    /// `edge` ("left" or "right"), `y` (0 to 1) of the way down: show a
+    /// pointer there (Elevated). None when it can't. Not on the main thread;
+    /// may take a second.
+    fn pointer_enter(&self, pc_id: String, edge: String, y: f32) -> Option<PointerScreen>;
+    /// The PC's mouse moved by `dx`, `dy` counts with `buttons` held (bits:
+    /// 1 left, 2 right, 4 middle) and the wheel turned `wheel` notches. Return quickly.
+    fn pointer_move(&self, pc_id: String, dx: i32, dy: i32, buttons: u8, wheel: i8);
+    /// Where the pointer is; None when it isn't showing.
+    fn pointer_where(&self, pc_id: String) -> Option<PointerPosition>;
+    /// The PC's mouse went back to the PC: put the pointer away.
+    fn pointer_leave(&self, pc_id: String);
     /// A PC asked for this phone's camera as a webcam: start streaming (or
     /// ask the user) and call `webcam_open`. False if it can't or the user
     /// declined.
@@ -2989,6 +3018,31 @@ impl core::Platform for PlatformAdapter {
     }
     fn mirror_input(&self, peer: &DeviceId, session: u32, input: core::MirrorInput) {
         self.0.mirror_input(peer.to_string(), session, input.into());
+    }
+    fn pointer_enter(
+        &self,
+        peer: &DeviceId,
+        edge: core::PointerEdge,
+        y: f32,
+    ) -> Result<core::PointerScreen, String> {
+        let edge = match edge {
+            core::PointerEdge::Left => "left",
+            core::PointerEdge::Right => "right",
+        };
+        let PointerScreen { width, height, scale } = self
+            .0
+            .pointer_enter(peer.to_string(), edge.to_owned(), y)
+            .ok_or_else(|| "the phone can't show a pointer".to_owned())?;
+        Ok(core::PointerScreen { width, height, scale })
+    }
+    fn pointer_move(&self, peer: &DeviceId, moved: core::PointerMove) {
+        self.0.pointer_move(peer.to_string(), moved.dx, moved.dy, moved.buttons, moved.wheel);
+    }
+    fn pointer_where(&self, peer: &DeviceId) -> Option<core::PointerAt> {
+        self.0.pointer_where(peer.to_string()).map(|PointerPosition { x, y }| core::PointerAt { x, y })
+    }
+    fn pointer_leave(&self, peer: &DeviceId) {
+        self.0.pointer_leave(peer.to_string());
     }
     fn webcam_requested(&self, peer: &DeviceId, options: &core::WebcamStart) -> Result<(), String> {
         let options = WebcamOptions {

@@ -1471,6 +1471,12 @@ impl Shared {
             self.stop_showing_all(&ended.peer);
             self.stop_webcam(&ended.peer);
             self.stop_mic(&ended.peer);
+            // A PC gone while its mouse was here can't send it back.
+            if self.we_offer(crate::MIRROR_POINTER) {
+                let peer = ended.peer;
+                let platform = self.platform.clone();
+                tokio::task::spawn_blocking(move || platform.pointer_leave(&peer));
+            }
             let outgoing = self.take_outgoing_mirror_sessions(&ended.peer);
             if !outgoing.is_empty() {
                 let peer = ended.peer;
@@ -3174,6 +3180,36 @@ impl Node {
     pub async fn mirror_apps(&self, peer: DeviceId) -> Result<Vec<crate::PhoneApp>> {
         let session = self.connected(&peer)?;
         crate::mirror::apps(&self.shared, &session).await
+    }
+
+    /// The PC's mouse goes over to `peer` at `edge`, `y` (0 to 1) of the way
+    /// down: the phone's screen as its pointer sees it (#107).
+    pub async fn pointer_enter(
+        &self,
+        peer: DeviceId,
+        edge: crate::PointerEdge,
+        y: f32,
+    ) -> Result<crate::PointerScreen> {
+        let session = self.connected(&peer)?;
+        crate::mirror::pointer_enter(&self.shared, &session, edge, y).await
+    }
+
+    /// Moves the PC's mouse on `peer` by counts, with buttons held and the wheel turned.
+    pub async fn pointer_move(&self, peer: DeviceId, moved: crate::PointerMove) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::mirror::pointer_move(&self.shared, &session, moved).await
+    }
+
+    /// Where the PC's mouse is on `peer`, in pixels.
+    pub async fn pointer_where(&self, peer: DeviceId) -> Result<crate::PointerAt> {
+        let session = self.connected(&peer)?;
+        crate::mirror::pointer_where(&self.shared, &session).await
+    }
+
+    /// The PC's mouse came back from `peer`.
+    pub async fn pointer_leave(&self, peer: DeviceId) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::mirror::pointer_leave(&session).await
     }
 
     /// Opens this phone's video stream to a PC that asked for the screen
