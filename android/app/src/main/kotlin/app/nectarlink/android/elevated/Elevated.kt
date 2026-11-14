@@ -79,6 +79,14 @@ object Elevated {
     private const val SHIZUKU = "shizuku"
     /** The shell user, which the helper runs as however it's started. */
     private const val SHELL_UID = "2000"
+    /**
+     * The shell user's groups as adbd gives them: input, log, adb, storage,
+     * Bluetooth, inet (sockets), network stats, readproc, uhid (gamepads)
+     * and readtracefs.
+     */
+    private val SHELL_GROUPS = listOf(1004, 1007, 1011, 1015, 1028, 1078, 1079, 3001, 3002, 3003, 3006, 3009, 3011, 3012)
+    /** Android lets only this group open sockets, the helper's included. */
+    private const val INET_GROUP = "3003"
     /** The version [compileIfUpdated] last asked Android to compile. */
     private const val COMPILED_VERSION = "compiled_version"
     /** How long after the helper starts the compile waits, so Android has recorded which code starting up uses. */
@@ -492,7 +500,7 @@ object Elevated {
             val token = ByteArray(24).also(SecureRandom()::nextBytes).joinToString("") { "%02x".format(it) }
             val apk = context.applicationInfo.sourceDir
             val cmd = "CLASSPATH=$apk app_process /system/bin ${InputServer::class.java.name} $token"
-            val proc = ProcessBuilder("su", SHELL_UID, "-c", cmd).start()
+            val proc = ProcessBuilder(suAsShell() + listOf("-c", cmd)).start()
             rootProcess = proc
             // The helper reports what fails (a screen it can't capture) on
             // stderr. Read it, so it reaches the log and a full pipe never
@@ -568,8 +576,36 @@ object Elevated {
     }
 
     /** Runs [command] as the shell user through `su`; its output, or null if it didn't run. */
-    private fun asShell(command: String): String? = runCatching {
-        val process = ProcessBuilder("su", SHELL_UID, "-c", command).redirectErrorStream(true).start()
+    private fun asShell(command: String): String? = runSu(suAsShell(), command)
+
+    /** The `su` that [suAsShell] settled on, once root answered. */
+    @Volatile
+    private var shellSu: List<String>? = null
+
+    /**
+     * `su` to the shell user with the shell user's groups, which Magisk 26+
+     * and KernelSU take as -g and -G. A plain `su 2000` leaves the user in no
+     * group at all, so the helper can't open its socket (no inet) or make a
+     * gamepad (no uhid). Root managers without -G get the plain one.
+     */
+    private fun suAsShell(): List<String> = shellSu ?: run {
+        val plain = listOf("su", SHELL_UID)
+        val withGroups = listOf("su", "-g", SHELL_UID) + SHELL_GROUPS.flatMap { listOf("-G", it.toString()) } + SHELL_UID
+        val groups = runSu(withGroups, "id -G")?.trim()?.split(Regex("\\s+"))
+        when {
+            groups != null && INET_GROUP in groups -> withGroups.also { shellSu = it }
+            groups != null -> plain.also {
+                shellSu = it
+                Log.i(TAG, "root gives the shell user no inet group: the helper may not open its socket")
+            }
+            // -G not understood, or root not allowed (yet): ask again next time.
+            else -> plain
+        }
+    }
+
+    /** Runs [command] through `su` with [su] as its arguments; its output, or null if it didn't run. */
+    private fun runSu(su: List<String>, command: String): String? = runCatching {
+        val process = ProcessBuilder(su + listOf("-c", command)).redirectErrorStream(true).start()
         if (!process.waitFor(SU_WAIT_S, java.util.concurrent.TimeUnit.SECONDS)) {
             process.destroyForcibly()
             return null
