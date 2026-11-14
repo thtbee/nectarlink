@@ -99,7 +99,7 @@
     <string name="elevated_failed">Não foi possível iniciar. Confira se a depuração por Wi-Fi está ativada e tente de novo.</string>
     <string name="elevated_not_paired">O celular esqueceu o pareamento do NectarLink. Configure de novo.</string>
     <string name="elevated_start_with">Iniciar com</string>
-    <string name="elevated_method_wireless">Sem fio</string>
+    <string name="elevated_method_wireless">Wi-Fi</string>
     <string name="elevated_set_up">Configurar</string>
     <string name="elevated_root_hint">Este celular tem root, então o Elevated pode ser iniciado pelo root: sem pareamento, e ele volta sozinho depois de reiniciar ou fora do Wi-Fi. As permissões são as mesmas da depuração por Wi-Fi.</string>
     <string name="elevated_running_root">Ativado pelo root: o mouse e o teclado do PC funcionam como uma tela touch e um teclado de verdade.</string>
@@ -1400,29 +1400,29 @@
     <string name="profile_work">Trabalho</string>
     <string name="profile_other">Segundo perfil</string>
 
-    <string name="relay_settings_title">Servidores de retransmissão Iroh</string>
+    <string name="relay_settings_title">Servidores de retransmissão do iroh</string>
     <string name="relay_waiting">Aguardando o serviço de conexão…</string>
-    <string name="relay_away_hint">Ative “Conectar usando dados móveis” para usar os retransmissores habilitados.</string>
-    <string name="relay_selection_hint">Os controles definem quais servidores o Iroh pode escolher como retransmissor principal deste dispositivo.</string>
+    <string name="relay_away_hint">Ative “Conectar usando dados móveis” para usar os retransmissores ativados.</string>
+    <string name="relay_selection_hint">As chaves definem quais servidores o iroh pode escolher como retransmissor principal deste dispositivo.</string>
     <string name="relay_home">Retransmissores principais</string>
     <string name="relay_home_empty">Nenhum retransmissor principal selecionado</string>
     <string name="relay_home_connected">Conectado · %1$s</string>
     <string name="relay_home_failed">Falha na conexão · %1$s</string>
     <string name="relay_home_connecting">Conectando · %1$s</string>
-    <string name="relay_device_routes">Tráfego dos dispositivos via retransmissão</string>
+    <string name="relay_device_routes">Tráfego dos dispositivos via retransmissor</string>
     <string name="relay_routes_empty">Nenhum dispositivo está usando um retransmissor</string>
     <string name="relay_route">%1$s via %2$s</string>
     <string name="relay_check_all">Verificar todos os retransmissores</string>
     <string name="relay_checking">Verificando retransmissores…</string>
     <string name="relay_checking_short">Verificando…</string>
-    <string name="relay_not_checked">Ainda não verificado</string>
+    <string name="relay_not_checked">Não verificado</string>
     <string name="relay_rtt">%1$d ms</string>
-    <string name="relay_timed_out">Tempo limite excedido</string>
+    <string name="relay_timed_out">Tempo esgotado</string>
     <string name="relay_unreachable">Inacessível</string>
     <string name="relay_address">Endereço do retransmissor personalizado</string>
     <string name="relay_add">Adicionar retransmissor</string>
     <string name="relay_enable">Ativar %1$s</string>
-    <string name="relay_invalid_address">Informe um endereço HTTP ou HTTPS sem credenciais, caminho ou parâmetros de consulta.</string>
+    <string name="relay_invalid_address">Digite um endereço de retransmissor HTTP ou HTTPS, sem credenciais, caminho nem parâmetros de consulta.</string>
     <string name="relay_duplicate">Este retransmissor já está na lista.</string>
     <string name="relay_limit">A lista aceita até 16 retransmissores personalizados.</string>
     <string name="relay_save_failed">Não foi possível salvar as configurações de retransmissão.</string>
@@ -1430,7 +1430,7 @@
     <string name="relay_region_na_west">América do Norte · Oeste</string>
     <string name="relay_region_europe">Europa</string>
     <string name="relay_region_asia_pacific">Ásia-Pacífico</string>
-    <string name="relay_region_custom">Personalizados</string>
+    <string name="relay_region_custom">Personalizado</string>
 </resources>
 
 
