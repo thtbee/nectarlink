@@ -207,6 +207,8 @@ change things that need a step from you, and its notes say so.
 - **The Linux updater's tests cover ARM64 packages**, a first step towards Linux ARM64 builds
   ([#356](https://github.com/thtbee/nectarlink/issues/356)). Thanks to
   [@localzet](https://github.com/localzet) ([#363](https://github.com/thtbee/nectarlink/pull/363)).
+- **Deleting photos from the PC counts what the phone deleted correctly**, and a phone
+  can't claim more than were asked for. Thanks to [@localzet](https://github.com/localzet) ([#395](https://github.com/thtbee/nectarlink/pull/395)).
 - **Handoff spots videos and maps in links with a port**, like `youtube.com:443`, and
   keeps a Vimeo time right. Thanks to [@localzet](https://github.com/localzet) ([#391](https://github.com/thtbee/nectarlink/pull/391)).
 - **The Theme picker in Settings › Appearance no longer sits over its label.**
