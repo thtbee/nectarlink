@@ -199,6 +199,7 @@ Item {
             }
         }
 
+        ScrollRail { flick: grid }
         GridView {
             id: grid
             anchors.top: toolbar.bottom

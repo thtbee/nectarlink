@@ -348,6 +348,7 @@ Item {
                 }
             }
 
+            ScrollRail { flick: recentList }
             ListView {
                 id: recentList
                 anchors.fill: parent
@@ -460,6 +461,7 @@ Item {
     }
 
     // ---- Right pane: Active call, selected contact, and keypad dialer ----
+    ScrollRail { flick: rightPane }
     Flickable {
         id: rightPane
         visible: !page.phoneOffline

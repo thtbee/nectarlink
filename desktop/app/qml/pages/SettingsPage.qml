@@ -473,6 +473,7 @@ Item {
     }
 
     // ---- Right Content Pane ----
+    ScrollRail { flick: contentFlickable }
     Flickable {
         id: contentFlickable
         x: page.wideLayout ? (categoryRail.x + categoryRail.width + 33) : 0

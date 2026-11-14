@@ -162,7 +162,9 @@ Item {
         }
     }
 
+    ScrollRail { flick: deckFlick }
     Flickable {
+        id: deckFlick
         anchors.fill: parent
         contentHeight: mainCol.height + Theme.contentPadding * 2
         boundsBehavior: Flickable.StopAtBounds

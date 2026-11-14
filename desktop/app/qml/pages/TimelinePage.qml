@@ -413,6 +413,7 @@ Item {
     }
 
     // Paged timeline list
+    ScrollRail { flick: listView }
     ListView {
         id: listView
         anchors.top: headerCol.bottom

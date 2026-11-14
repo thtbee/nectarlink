@@ -47,6 +47,7 @@ const QML: &[&str] = &[
     "qml/components/RelaySheet.qml",
     "qml/components/RoundedImage.qml",
     "qml/components/Segmented.qml",
+    "qml/components/ScrollRail.qml",
     "qml/components/Sheet.qml",
     "qml/components/Spinner.qml",
     "qml/components/StarPrompt.qml",

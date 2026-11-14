@@ -318,7 +318,9 @@ Item {
             }
         }
 
+        ScrollRail { flick: albumsFlick }
         Flickable {
+            id: albumsFlick
             anchors.top: albumHeader.bottom
             anchors.bottom: parent.bottom
             width: parent.width
@@ -696,6 +698,7 @@ Item {
             }
 
             // Virtualized thumbnail grid grouped by day.
+            ScrollRail { flick: grid }
             GridView {
                 id: grid
                 anchors.fill: parent

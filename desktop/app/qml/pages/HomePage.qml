@@ -243,7 +243,9 @@ Item {
         return parts.join(" ")
     }
 
+    ScrollRail { flick: homeFlick }
     Flickable {
+        id: homeFlick
         anchors.fill: parent
         contentHeight: column.height + Theme.contentPadding * 2
         boundsBehavior: Flickable.StopAtBounds

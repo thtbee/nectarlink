@@ -15,6 +15,10 @@ change things that need a step from you, and its notes say so.
   When the phone refuses, it says why and what to do. For phones where Play Protect or
   the maker blocks installing from a browser. The adb it downloads also connects phones
   over a cable from then on.
+- **Scrollbars.** Long pages on the PC (Home, Settings, Timeline, Messages, Photos, Calls,
+  Apps, Deck) and sheets show a thin scrollbar while they scroll or when the pointer is near
+  their edge; drag it, or click to jump. Thanks to [@Dipen425](https://github.com/Dipen425)
+  ([#387](https://github.com/thtbee/nectarlink/issues/387)).
 - **Flex mode for app windows.** A button in an app window's toolbar turns off fitting
   the app to the window, for apps that don't take odd shapes well: the app restarts at
   the phone's resolution and the window keeps that shape when resized. It's remembered

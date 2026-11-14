@@ -392,6 +392,7 @@ Item {
             }
         }
 
+        ScrollRail { flick: threadList }
         ListView {
             id: threadList
             anchors.top: appFilterBar.bottom
@@ -704,6 +705,7 @@ Item {
             }
         }
 
+        ScrollRail { flick: messageList }
         ListView {
             id: messageList
             anchors.top: chatHeader.bottom
