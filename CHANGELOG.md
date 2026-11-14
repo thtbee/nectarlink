@@ -150,9 +150,11 @@ change things that need a step from you, and its notes say so.
   used the PC, the phone silenced its own notification sounds and vibration, even with
   notifications turned off for that PC or paused. Now it only does that while the PC
   shows them. Thanks to [@sbstn87](https://github.com/sbstn87) ([#384](https://github.com/thtbee/nectarlink/issues/384)).
-- **KDE Plasma no longer opens its shortcut settings at every start.** NectarLink asked
-  for its global shortcuts again each time, twice. It now asks only when Plasma doesn't
-  have them yet, or when you change one. Thanks to [@sbstn87](https://github.com/sbstn87) ([#383](https://github.com/thtbee/nectarlink/issues/383)).
+- **NectarLink starts quietly in KDE Plasma.** Plasma opened its shortcut settings at
+  every start, since NectarLink asked for its global shortcuts each time (twice); it now
+  asks only when Plasma doesn't have them yet, or when you change one. And Plasma's
+  session restore no longer reopens NectarLink's window at login: Start at login starts
+  it, in the tray. Thanks to [@sbstn87](https://github.com/sbstn87) ([#383](https://github.com/thtbee/nectarlink/issues/383)).
 - **Elevated starts through root.** Magisk and KernelSU gave the shell user none of its
   groups, so the helper couldn't open its connection. NectarLink now asks for them.
   Thanks to [@SA-SUJON](https://github.com/SA-SUJON) ([#366](https://github.com/thtbee/nectarlink/issues/366)).

@@ -734,6 +734,7 @@ fn main() -> ExitCode {
         bridge::native::ffi::add_app_icon_image(size, &mark::render(size as usize));
     }
     bridge::native::ffi::apply_app_icon();
+    bridge::native::ffi::stay_out_of_session_restore();
 
     if let Some(instance) = instance {
         let data_dir = data_dir.clone();

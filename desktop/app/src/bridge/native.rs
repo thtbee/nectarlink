@@ -39,6 +39,9 @@ pub mod ffi {
         fn add_app_icon_image(size: i32, rgba: &[u8]);
         fn apply_app_icon();
         fn keep_running_without_windows();
+        /// Asks the desktop's session manager not to start the app again at
+        /// the next login: Start at login does that (Linux).
+        fn stay_out_of_session_restore();
         /// Registers the fonts compiled in under `:/fonts/`; returns how
         /// many loaded.
         fn load_bundled_fonts() -> i32;
