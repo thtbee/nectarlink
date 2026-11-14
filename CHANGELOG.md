@@ -207,6 +207,9 @@ change things that need a step from you, and its notes say so.
 - **The Linux updater's tests cover ARM64 packages**, a first step towards Linux ARM64 builds
   ([#356](https://github.com/thtbee/nectarlink/issues/356)). Thanks to
   [@localzet](https://github.com/localzet) ([#363](https://github.com/thtbee/nectarlink/pull/363)).
+- **Relays through a chosen network interface on Linux try every address**: one that
+  can't be set up (IPv6 on that interface, say) no longer stops the IPv4 one being tried.
+  Thanks to [@localzet](https://github.com/localzet) ([#396](https://github.com/thtbee/nectarlink/pull/396)).
 - **Deleting photos from the PC counts what the phone deleted correctly**, and a phone
   can't claim more than were asked for. Thanks to [@localzet](https://github.com/localzet) ([#395](https://github.com/thtbee/nectarlink/pull/395)).
 - **Handoff spots videos and maps in links with a port**, like `youtube.com:443`, and
