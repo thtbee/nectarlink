@@ -306,7 +306,10 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 was_active = false;
                 continue;
             }
-            let active = crate::win::input::is_user_active_within_ms(30_000);
+            // Active quiets the phone's own notification sounds, since this PC
+            // shows them: not while its pop-ups are paused (#384).
+            let active =
+                crate::win::input::is_user_active_within_ms(30_000) && !crate::notifications::paused();
             let should_send = active != was_active
                 || (active && last_sent_at.elapsed() >= std::time::Duration::from_secs(30));
             if should_send {

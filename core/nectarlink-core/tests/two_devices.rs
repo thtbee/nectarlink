@@ -7472,3 +7472,35 @@ async fn spoofed_usb_hello_is_not_trusted_without_matching_quic_identity() {
     pc.node.shutdown().await;
     phone.node.shutdown().await;
 }
+
+/// `pc_active` quiets the phone's own notification sounds because the PC
+/// shows them: where either side has notifications off, it doesn't (#384).
+#[tokio::test]
+async fn pc_active_needs_notifications_on_both_sides() {
+    use nectarlink_core::{PhoneToggleValue, TOGGLES_READ, toggle_ids};
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[TOGGLES_READ]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let node = pc.node.clone();
+    let send = || node.set_phone_toggle(phone_id, toggle_ids::PC_ACTIVE.into(), PhoneToggleValue::Bool(true));
+
+    with_timeout("pc active", send()).await.unwrap();
+    pc.node.set_device_toggle(phone_id, "notifications", false).unwrap();
+    with_timeout("pc active, its notifications off", send()).await.unwrap();
+    pc.node.set_device_toggle(phone_id, "notifications", true).unwrap();
+    phone.node.set_device_toggle(pc_id, "notifications", false).unwrap();
+    with_timeout("pc active, the phone's notifications off", send()).await.unwrap();
+
+    let recorded = phone.platform.phone_toggles.lock().unwrap().clone();
+    let pc_active = toggle_ids::PC_ACTIVE.to_owned();
+    assert_eq!(
+        recorded,
+        vec![
+            (pc_active.clone(), PhoneToggleValue::Bool(true)),
+            (pc_active.clone(), PhoneToggleValue::Bool(false)),
+            (pc_active, PhoneToggleValue::Bool(false)),
+        ]
+    );
+}
