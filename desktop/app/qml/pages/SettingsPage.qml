@@ -19,6 +19,7 @@ Item {
         { id: "appearance", title: qsTr("Appearance"), icon: Icons.palette, subtitle: qsTr("Theme, mode & colors") },
         { id: "general", title: qsTr("General"), icon: Icons.laptop, subtitle: qsTr("Startup, clipboard & desktop") },
         { id: "devices", title: qsTr("Devices"), icon: Icons.phone, subtitle: qsTr("Paired phones & permissions") },
+        { id: "install_phone", title: qsTr("Install on a phone"), icon: Icons.usb, subtitle: qsTr("The phone app, over a USB cable") },
         { id: "camera_audio", title: qsTr("Camera & Audio"), icon: Icons.video, subtitle: qsTr("Webcam, speaker & calls") },
         { id: "notifications", title: qsTr("Notifications"), icon: Icons.bell, subtitle: qsTr("Do not disturb & app rules") },
         { id: "files_sync", title: qsTr("Files & Sync"), icon: Icons.folder, subtitle: qsTr("Folder sync, storage & recordings") },
@@ -3315,6 +3316,19 @@ Item {
                             }
                         }
                     }
+                }
+            }
+
+            // ================================================================
+            // INSTALL ON A PHONE (over USB): loaded only while open, so its
+            // checks for phones run only then.
+            // ================================================================
+            Loader {
+                active: page.active && page.currentSection === "install_phone"
+                visible: active
+                width: visible ? parent.width : 0
+                sourceComponent: Component {
+                    PhoneInstallPane { width: parent ? parent.width : 0 }
                 }
             }
 

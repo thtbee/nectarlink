@@ -61,14 +61,43 @@ fn find_adb(var: impl Fn(&str) -> Option<std::ffi::OsString>) -> std::path::Path
         .unwrap_or_else(|| exe.into())
 }
 
-/// The adb [`start_server`] runs, if this PC has one: in an SDK folder or on `PATH`.
-pub fn locate_adb() -> Option<std::path::PathBuf> {
-    let adb = find_adb(|name| std::env::var_os(name));
+/// An adb NectarLink downloaded itself (Google's platform-tools, kept in
+/// its data folder), used when this PC has none of its own.
+static FALLBACK_ADB: std::sync::RwLock<Option<std::path::PathBuf>> = std::sync::RwLock::new(None);
+
+/// Sets (or clears) the adb [`locate_adb`] and [`start_server`] fall back to
+/// when there's none in an SDK folder or on `PATH`.
+pub fn set_fallback_adb(adb: Option<std::path::PathBuf>) {
+    *FALLBACK_ADB.write().unwrap_or_else(|e| e.into_inner()) = adb;
+}
+
+/// The adb to run: an SDK's or one on `PATH` (the PC's own come first, so
+/// an adb server someone already runs is the same version), else the one
+/// NectarLink downloaded. `var` reads an environment variable.
+fn resolve_adb(var: impl Fn(&str) -> Option<std::ffi::OsString>) -> Option<std::path::PathBuf> {
+    let adb = find_adb(&var);
     if adb.is_absolute() {
         return Some(adb);
     }
-    let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path).map(|dir| dir.join(&adb)).find(|candidate| candidate.is_file())
+    var("PATH")
+        .and_then(|path| std::env::split_paths(&path).map(|dir| dir.join(&adb)).find(|c| c.is_file()))
+        .or_else(|| FALLBACK_ADB.read().unwrap_or_else(|e| e.into_inner()).clone().filter(|p| p.is_file()))
+}
+
+/// The adb [`start_server`] runs, if this PC has one: in an SDK folder, on
+/// `PATH`, or the one NectarLink downloaded ([`set_fallback_adb`]).
+pub fn locate_adb() -> Option<std::path::PathBuf> {
+    resolve_adb(|name| std::env::var_os(name))
+}
+
+/// The adb server adb clients use: `ANDROID_ADB_SERVER_PORT` on this
+/// machine when it's set (adb itself honours it), else [`DEFAULT_ADB_ADDR`].
+pub fn configured_server() -> SocketAddr {
+    std::env::var("ANDROID_ADB_SERVER_PORT")
+        .ok()
+        .and_then(|p| p.trim().parse::<u16>().ok())
+        .filter(|p| *p != 0)
+        .map_or(DEFAULT_ADB_ADDR, |port| SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, port)))
 }
 
 /// Whether an adb server answers at `server` (blocks up to the adb timeout).
@@ -81,13 +110,23 @@ pub fn server_answers(server: SocketAddr) -> bool {
 /// A server that answers is left alone: an `adb` of another version would
 /// replace it. Only [`DEFAULT_ADB_ADDR`] is started, since that's where
 /// `adb start-server` listens. Blocks until `adb` exits, at most
-/// [`START_SERVER_LIMIT`]; returns whether it tried.
+/// [`START_SERVER_LIMIT`]; returns whether it tried. The address adb
+/// listens on when `ANDROID_ADB_SERVER_PORT` is set ([`configured_server`])
+/// is started too.
 pub fn start_server(server: SocketAddr) -> bool {
     static NOT_FOUND_LOGGED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-    if server != DEFAULT_ADB_ADDR || std::net::TcpStream::connect_timeout(&server, ADB_TIMEOUT).is_ok() {
+    if (server != DEFAULT_ADB_ADDR && server != configured_server())
+        || std::net::TcpStream::connect_timeout(&server, ADB_TIMEOUT).is_ok()
+    {
         return false;
     }
-    let adb = find_adb(|name| std::env::var_os(name));
+    let Some(adb) = locate_adb() else {
+        // Tried again every minute; once a run is enough to say so.
+        if !NOT_FOUND_LOGGED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            tracing::info!("adb isn't installed; USB connections need it");
+        }
+        return true;
+    };
     let mut cmd = std::process::Command::new(&adb);
     cmd.arg("start-server")
         .stdin(std::process::Stdio::null())
@@ -101,13 +140,6 @@ pub fn start_server(server: SocketAddr) -> bool {
     }
     let mut child = match cmd.spawn() {
         Ok(child) => child,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            // Tried again every minute; once a run is enough to say so.
-            if !NOT_FOUND_LOGGED.swap(true, std::sync::atomic::Ordering::Relaxed) {
-                tracing::info!("adb isn't installed; USB connections need it");
-            }
-            return true;
-        }
         Err(e) => {
             tracing::warn!(adb = %adb.display(), error = %e, "can't run adb");
             return true;
@@ -239,9 +271,15 @@ pub fn parse_devices_l(input: &str) -> Vec<AdbDevice> {
         }
         let mut parts = trimmed.split_whitespace();
         let Some(serial) = parts.next() else { continue };
-        let Some(state) = parts.next() else { continue };
+        let Some(mut state) = parts.next() else { continue };
         if !is_serial_allowed(serial) {
             continue;
+        }
+        // Linux, without udev rules for the phone: "no permissions (...)".
+        let mut parts = parts.peekable();
+        if state == "no" && parts.peek().is_some_and(|next| next.starts_with("permissions")) {
+            state = "no permissions";
+            parts.next();
         }
         let mut model = None;
         let mut product = None;
@@ -380,6 +418,107 @@ pub async fn shell(server: SocketAddr, serial: &str, command: &str) -> Result<Tc
     Ok(stream)
 }
 
+/// How long a short shell command's output may take ([`shell_output`]).
+const SHELL_OUTPUT_LIMIT: Duration = Duration::from_secs(15);
+/// How long an install may take after the APK is sent: the phone checks and
+/// compiles it, and it may wait for the user to allow it on the phone.
+const INSTALL_LIMIT: Duration = Duration::from_secs(180);
+
+fn timed_out(what: &str) -> AdbError {
+    AdbError::Io(std::io::Error::new(std::io::ErrorKind::TimedOut, format!("{what} timed out")))
+}
+
+/// Runs a short `command` on `serial` and returns what it printed (at most
+/// `limit` bytes, as text).
+pub async fn shell_output(
+    server: SocketAddr,
+    serial: &str,
+    command: &str,
+    limit: usize,
+) -> Result<String, AdbError> {
+    let stream = shell(server, serial, command).await?;
+    let mut out = Vec::new();
+    tokio::time::timeout(SHELL_OUTPUT_LIMIT, stream.take(limit as u64).read_to_end(&mut out))
+        .await
+        .map_err(|_| timed_out("shell command"))??;
+    Ok(String::from_utf8_lossy(&out).into_owned())
+}
+
+/// Installs (or updates, keeping its data) the APK at `apk` on `serial`, the
+/// way `adb install` does on Android 7 and later: the package manager reads
+/// it straight from the connection, with nothing written to the phone first.
+/// `progress(sent, total)` follows the upload. Returns what the package
+/// manager said, `Success` or `Failure [INSTALL_FAILED_...]` (see
+/// [`install_failure`]).
+pub async fn install_apk(
+    server: SocketAddr,
+    serial: &str,
+    apk: &std::path::Path,
+    mut progress: impl FnMut(u64, u64),
+) -> Result<String, AdbError> {
+    if !is_serial_allowed(serial) {
+        return Err(AdbError::BlockedSerial(serial.to_owned()));
+    }
+    let mut file = tokio::fs::File::open(apk).await?;
+    let total = file.metadata().await?.len();
+    let mut stream = connect_adb(server).await?;
+    send_command(&mut stream, &format!("host:transport:{serial}")).await?;
+    send_command(&mut stream, &format!("exec:cmd package install -r -S {total}")).await?;
+    let mut buf = vec![0u8; 64 * 1024];
+    let mut sent = 0u64;
+    progress(0, total);
+    loop {
+        let n = file.read(&mut buf).await?;
+        if n == 0 {
+            break;
+        }
+        with_adb_timeout(async { Ok(stream.write_all(&buf[..n]).await?) }).await?;
+        sent += n as u64;
+        progress(sent, total);
+    }
+    stream.flush().await?;
+    let mut out = Vec::new();
+    tokio::time::timeout(INSTALL_LIMIT, (&mut stream).take(64 * 1024).read_to_end(&mut out))
+        .await
+        .map_err(|_| timed_out("install"))??;
+    Ok(String::from_utf8_lossy(&out).trim().to_owned())
+}
+
+/// The reason in a package manager's answer (`Failure [INSTALL_FAILED_X: ...]`
+/// gives `INSTALL_FAILED_X`), or `None` when it says `Success`. An answer
+/// that's neither comes back whole.
+pub fn install_failure(answer: &str) -> Option<String> {
+    if answer.lines().any(|l| l.trim() == "Success") {
+        return None;
+    }
+    let reason = answer
+        .lines()
+        .rev()
+        .find_map(|l| l.split_once("Failure [").map(|(_, rest)| rest.trim_end_matches(']').to_owned()))
+        .unwrap_or_else(|| answer.trim().to_owned());
+    let code = reason.split([':', ' ']).next().unwrap_or_default();
+    Some(if code.is_empty() { reason } else { code.to_owned() })
+}
+
+/// Removes `package` from `serial`, with its data. Returns what the package
+/// manager said (see [`install_failure`]).
+pub async fn uninstall(server: SocketAddr, serial: &str, package: &str) -> Result<String, AdbError> {
+    if package.is_empty() || !package.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '_') {
+        return Err(AdbError::Protocol(format!("not a package name: {package}")));
+    }
+    if !is_serial_allowed(serial) {
+        return Err(AdbError::BlockedSerial(serial.to_owned()));
+    }
+    let mut stream = connect_adb(server).await?;
+    send_command(&mut stream, &format!("host:transport:{serial}")).await?;
+    send_command(&mut stream, &format!("exec:cmd package uninstall {package}")).await?;
+    let mut out = Vec::new();
+    tokio::time::timeout(SHELL_OUTPUT_LIMIT, (&mut stream).take(4096).read_to_end(&mut out))
+        .await
+        .map_err(|_| timed_out("uninstall"))??;
+    Ok(String::from_utf8_lossy(&out).trim().to_owned())
+}
+
 /// Removes a TCP port forward (`adb -s <serial> forward --remove tcp:<local>`).
 pub async fn kill_forward_tcp(server: SocketAddr, serial: &str, local_port: u16) -> Result<(), AdbError> {
     if !is_serial_allowed(serial) {
@@ -458,6 +597,67 @@ mod tests {
         assert_eq!(find_adb(nothing), std::path::PathBuf::from(exe));
 
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_downloaded_adb_is_the_last_resort() {
+        let root = std::env::temp_dir().join(format!("nectarlink-fallback-adb-{}", std::process::id()));
+        let exe = if cfg!(windows) { "adb.exe" } else { "adb" };
+        let on_path = root.join("bin");
+        let downloaded = root.join("downloaded").join(exe);
+        std::fs::create_dir_all(&on_path).unwrap();
+        std::fs::create_dir_all(downloaded.parent().unwrap()).unwrap();
+        std::fs::write(&downloaded, b"").unwrap();
+        let no_sdk = root.join("none");
+        let env = |path: Option<std::path::PathBuf>| {
+            let no_sdk = no_sdk.clone();
+            move |name: &str| match name {
+                "PATH" => path.clone().map(Into::into),
+                "LOCALAPPDATA" | "HOME" => Some(no_sdk.clone().into_os_string()),
+                _ => None,
+            }
+        };
+        set_fallback_adb(None);
+        assert_eq!(resolve_adb(env(Some(on_path.clone()))), None);
+        set_fallback_adb(Some(downloaded.clone()));
+        assert_eq!(resolve_adb(env(Some(on_path.clone()))), Some(downloaded.clone()));
+        // The PC's own adb on PATH comes first.
+        std::fs::write(on_path.join(exe), b"").unwrap();
+        assert_eq!(resolve_adb(env(Some(on_path.clone()))), Some(on_path.join(exe)));
+        set_fallback_adb(None);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_package_managers_answer_says_what_went_wrong() {
+        assert_eq!(install_failure("Performing Streamed Install\nSuccess"), None);
+        assert_eq!(
+            install_failure(
+                "Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: Existing package app.nectarlink signatures do not match]"
+            ),
+            Some("INSTALL_FAILED_UPDATE_INCOMPATIBLE".into())
+        );
+        assert_eq!(
+            install_failure(
+                "adb: failed\nFailure [INSTALL_FAILED_USER_RESTRICTED: Install canceled by user]"
+            ),
+            Some("INSTALL_FAILED_USER_RESTRICTED".into())
+        );
+        assert_eq!(install_failure("Failure [-99]"), Some("-99".into()));
+        assert_eq!(install_failure(""), Some(String::new()));
+    }
+
+    #[test]
+    fn a_phone_without_udev_rules_has_no_permissions() {
+        let devices = parse_devices_l(
+            "List of devices attached\n\
+             R5CT20 no permissions (missing udev rules? user is in the plugdev group); see [http://developer.android.com/tools/device.html] usb:1-2 transport_id:3\n\
+             emulator-5554 device product:sdk model:Pixel_7 transport_id:1\n",
+        );
+        assert_eq!(devices[0].state, "no permissions");
+        assert_eq!(devices[0].transport_id.as_deref(), Some("3"));
+        assert_eq!(devices[1].state, "device");
+        assert_eq!(devices[1].model.as_deref(), Some("Pixel_7"));
     }
 
     #[test]

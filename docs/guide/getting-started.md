@@ -48,8 +48,16 @@ Each kind of install updates itself the same way it was installed.
 1. Download `Nectarlink-<version>-android.apk` from the GitHub Releases page (or scan the QR code shown when Windows setup finishes, or in the PC walkthrough).
 2. Open the downloaded APK and allow installation if Android prompts you. Because NectarLink supports full SMS/MMS messaging, call logs, notification actions, accessibility input, and optional `All files access` for mounting phone storage in File Explorer (permissions that Google Play restricts), the full app is distributed directly as a signed APK with built-in SHA-256 verified updates:
    - If Google Play Protect shows an unrecognized-developer prompt, tap **More details › Install anyway**.
-   - Where Google Play Protect's **Enhanced Fraud Protection** is on (185 markets, including India), it blocks browser-sideloaded APKs that declare `READ_SMS`, `BIND_NOTIFICATION_LISTENER_SERVICE`, or `BIND_ACCESSIBILITY_SERVICE` without showing an **Install anyway** button, either install over USB with `adb install -r Nectarlink-<version>-android.apk` or temporarily pause **Scan apps with Play Protect** in **Google Play Store › Profile icon › Play Protect › Settings (gear)** while installing the APK, then turn it back on.
+   - Where Google Play Protect's **Enhanced Fraud Protection** is on (185 markets, including India), it blocks browser-sideloaded APKs that declare `READ_SMS`, `BIND_NOTIFICATION_LISTENER_SERVICE`, or `BIND_ACCESSIBILITY_SERVICE` without showing an **Install anyway** button. Install it from the PC over USB instead (below), or temporarily pause **Scan apps with Play Protect** in **Google Play Store › Profile icon › Play Protect › Settings (gear)** while installing the APK, then turn it back on.
 3. Open **NectarLink** on your phone.
+
+#### From the PC, over a USB cable
+
+On the PC, open **Settings › Install on a phone**. It checks three things, live, and says what to do about any that isn't ready:
+
+1. **Android's USB tools** (`adb`). NectarLink uses the ones already on the PC (Android Studio, a package manager or `PATH`). If there are none, **Download from Google** gets Google's platform-tools (about 8 MB), checks them against the SHA-1 Google publishes, and keeps only `adb` in NectarLink's own folder. Phones on a cable then connect through it too. Linux on ARM has no build from Google: install your distribution's `adb` package.
+2. **The phone.** Plug it in with a data cable and turn on USB debugging (the page walks you through it), then tap **Allow** on the phone's **Allow USB debugging?** prompt. On Windows, the page says when the phone needs its maker's USB driver; on Linux, when it needs Android's udev rules.
+3. **The app.** **Install** downloads the newest phone app on the PC's update channel from NectarLink's GitHub releases, checks its SHA-256, sends it straight to the phone and opens it. If the phone refuses (installs over USB turned off on Xiaomi phones, another build of NectarLink signed differently, no space, Play Protect), the page says why and what to do.
 
 ### Uninstalling
 
@@ -125,7 +133,7 @@ NectarLink supports three ways to `pair` your phone and PC. All three methods es
 
 ### Method 3: Plug in a USB Cable (Auto-Pair)
 
-If you have USB debugging (`adb`) enabled on your phone, NectarLink detects the phone as soon as you plug it into your PC with a USB cable. USB needs Android's `adb` on the PC: install Google's platform-tools so `adb` is on your `PATH`. When NectarLink starts and no adb server is running, it starts one, so a restart needs nothing from you.
+If you have USB debugging (`adb`) enabled on your phone, NectarLink detects the phone as soon as you plug it into your PC with a USB cable. USB needs Android's `adb` on the PC: **Settings › Install on a phone** can download Google's platform-tools for you, or install them yourself so `adb` is on your `PATH`. When NectarLink starts and no adb server is running, it starts one, so a restart needs nothing from you.
 
 <p align="center">
   <img src="images/usb-autopair.png" alt="USB auto-pair confirmation with 6-digit verification code on PC" width="760">

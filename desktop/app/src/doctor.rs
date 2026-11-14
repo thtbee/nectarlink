@@ -352,10 +352,10 @@ pub fn diagnose(facts: &Facts, now_secs: i64) -> Vec<Check> {
                 tr!("Doctor", "A USB cable needs adb"),
                 tr!(
                     "Doctor",
-                    "To connect over a cable, install Android's platform-tools or Android Studio, \
-                     and turn on USB debugging on the phone. Wi-Fi works without it."
+                    "To connect over a cable, NectarLink can get Android's USB tools from Google \
+                     for you, and the phone needs USB debugging on. Wi-Fi works without them."
                 ),
-                None,
+                Some("get-adb"),
             ));
         }
         _ => {}
@@ -618,12 +618,12 @@ mod tests {
 
         // Not installed: nothing while the phone is connected another way...
         assert!(find(&adb(false, false)).is_none());
-        // ...and a warning, with no button, once it isn't.
+        // ...and a warning once it isn't, whose button sets USB up (Install on a phone).
         let mut offline = adb(false, false);
         offline.devices = vec![device_fact("Pixel", LinkState::Offline { last_seen: None })];
         let missing = find(&offline).unwrap();
         assert_eq!(missing.outcome, Outcome::Warn);
-        assert_eq!(missing.fix, None);
+        assert_eq!(missing.fix, Some("get-adb"));
 
         // USB turned off (NECTARLINK_NO_ADB): no line at all.
         let mut off = facts();
