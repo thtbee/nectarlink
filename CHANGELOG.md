@@ -98,7 +98,9 @@ change things that need a step from you, and its notes say so.
   ([#192](https://github.com/thtbee/nectarlink/issues/192)).
 - **Brazilian Portuguese.** The Android and PC apps speak Brazilian Portuguese
   (Português (Brasil)): pick it in Settings, or they follow the system's language.
-  Thanks to [@AlphaOrionisWKG](https://github.com/AlphaOrionisWKG).
+  Thanks to [@AlphaOrionisWKG](https://github.com/AlphaOrionisWKG), and to
+  [@AlphaOrionisBetelgeuse](https://github.com/AlphaOrionisBetelgeuse) for a polish pass
+  ([#375](https://github.com/thtbee/nectarlink/pull/375)).
 - **Enter sends messages.** An option under Settings › General: in mirroring and app
   windows, Enter presses the app's Send and Ctrl+Enter makes a new line. It needs
   Assist on the phone, and both devices on this version. Thanks to
