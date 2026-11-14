@@ -488,6 +488,9 @@ impl Platform for RecordingPlatform {
             .collect())
     }
     fn photo_delete(&self, ids: &[String]) -> Result<u32, String> {
+        if ids.iter().any(|id| id == "overcount") {
+            return Ok(u32::MAX);
+        }
         Ok(ids.iter().filter(|id| id.as_str() != "gone").count() as u32)
     }
     fn photo_thumbs(&self, ids: &[String]) -> Result<Vec<nectarlink_core::PhotoThumb>, String> {
@@ -2971,6 +2974,12 @@ async fn gallery_albums_paging_thumbs_download_and_toggles() {
     // Deleting asks the phone and reports how many went; nonsense IDs never leave the PC.
     let ids = vec!["media:4".to_owned(), "gone".to_owned(), "../bad id".to_owned()];
     assert_eq!(pc.node.photos_delete(phone_id, ids).await.unwrap(), 1);
+    // A larger selection is split into batches and their counts are added.
+    let ids = (0..50).map(|i| format!("media:{i}")).collect();
+    assert_eq!(pc.node.photos_delete(phone_id, ids).await.unwrap(), 50);
+    // A peer cannot report more deleted items than were requested.
+    let result = pc.node.photos_delete(phone_id, vec!["overcount".into()]).await;
+    assert!(matches!(result, Err(Error::Protocol(msg)) if msg == "invalid photo delete count"));
     // Batch thumbnails (oversized or missing ones are skipped without failing the batch).
     let thumbs = with_timeout(
         "thumbs",
