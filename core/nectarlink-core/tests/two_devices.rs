@@ -3443,10 +3443,7 @@ async fn wake_relay_is_only_for_a_paired_pcs_own_address() {
     let mut pc = device_with("Desktop", DeviceKind::Desktop, &[PC_WAKE]).await;
     let mut phone = device("Pixel", DeviceKind::Phone).await;
     pc.node
-        .set_wake_info(PcWakeInfo {
-            macs: vec!["00:00:5E:00:53:01".into()],
-            broadcasts: Vec::new(),
-        })
+        .set_wake_info(PcWakeInfo { macs: vec!["00:00:5E:00:53:01".into()], broadcasts: Vec::new() })
         .await;
     pair_qr(&mut pc, &mut phone).await;
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
