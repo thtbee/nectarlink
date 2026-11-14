@@ -228,14 +228,25 @@ async fn connect(target: &str, interface: &str) -> io::Result<TcpStream> {
     if interface.is_empty() {
         return TcpStream::connect(target).await;
     }
-    let mut last_error = io::Error::from(io::ErrorKind::AddrNotAvailable);
-    for address in tokio::net::lookup_host(target).await? {
+    connect_addresses(tokio::net::lookup_host(target).await?, async |address| {
         let socket = if address.is_ipv4() { TcpSocket::new_v4()? } else { TcpSocket::new_v6()? };
         socket.bind_device(Some(interface.as_bytes()))?;
-        match tokio::time::timeout(Duration::from_millis(1300), socket.connect(address)).await {
-            Ok(Ok(stream)) => return Ok(stream),
-            Ok(Err(error)) => last_error = error,
-            Err(error) => last_error = error.into(),
+        tokio::time::timeout(Duration::from_millis(1300), socket.connect(address)).await?
+    })
+    .await
+}
+
+// Socket creation and interface binding can fail for just one address family.
+// Keep trying the remaining addresses without falling back to an unbound socket.
+async fn connect_addresses<T>(
+    addresses: impl IntoIterator<Item = SocketAddr>,
+    mut attempt: impl std::ops::AsyncFnMut(SocketAddr) -> io::Result<T>,
+) -> io::Result<T> {
+    let mut last_error = io::Error::from(io::ErrorKind::AddrNotAvailable);
+    for address in addresses {
+        match attempt(address).await {
+            Ok(value) => return Ok(value),
+            Err(error) => last_error = error,
         }
     }
     Err(last_error)
@@ -253,6 +264,35 @@ mod tests {
         for name in ["tun0", "tailscale0", "docker0", "veth42", "enp4s0.42", "wlan0"] {
             assert!(!predictable_physical_name(name), "{name}");
         }
+    }
+
+    #[tokio::test]
+    async fn relay_connection_tries_ipv4_after_ipv6_socket_failure() {
+        let ipv6: SocketAddr = "[::1]:443".parse().unwrap();
+        let ipv4: SocketAddr = "127.0.0.1:443".parse().unwrap();
+        let mut tried = Vec::new();
+        let connected = connect_addresses([ipv6, ipv4], async |address| {
+            tried.push(address);
+            if address.is_ipv6() { Err(io::ErrorKind::Unsupported.into()) } else { Ok(address) }
+        })
+        .await
+        .unwrap();
+        assert_eq!(connected, ipv4);
+        assert_eq!(tried, [ipv6, ipv4]);
+    }
+
+    #[tokio::test]
+    async fn relay_connection_reports_the_last_error() {
+        let addresses = ["[::1]:443".parse().unwrap(), "127.0.0.1:443".parse().unwrap()];
+        let result = connect_addresses(addresses, async |address| {
+            Err::<(), _>(if address.is_ipv6() {
+                io::ErrorKind::Unsupported.into()
+            } else {
+                io::ErrorKind::PermissionDenied.into()
+            })
+        })
+        .await;
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::PermissionDenied);
     }
 
     #[tokio::test]
