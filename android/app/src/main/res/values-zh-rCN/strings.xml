@@ -113,7 +113,7 @@
     <string name="elevated_pair_title">将NectarLink与无线调试配对</string>
     <string name="elevated_pair_text">在无线调试中，点按“使用配对码配对设备”，然后在此输入配对码。</string>
     <string name="elevated_pair_action">输入配对码</string>
-    <string name="elevated_pair_collapsed">向下滑动此通知，然后点按“输入配对码”。</string>
+    <string name="elevated_pair_collapsed">向下滑动此通知（小米手机需长按），然后点按“输入配对码”。</string>
     <string name="elevated_pair_hint">6位配对码</string>
     <string name="elevated_pairing">正在配对…</string>
     <string name="elevated_no_dialog">配对码没有显示。请在无线调试中点按“使用配对码配对设备”，然后在此输入。</string>
