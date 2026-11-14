@@ -901,6 +901,36 @@ fn power(s: &State, device: &DeviceId) -> (bool, bool) {
     (s.stay_awake.contains(device), s.screen_off.contains(device))
 }
 
+/// The Android release in a phone's OS version (`"17.1"` → 17).
+fn android_release(os_ver: &str) -> Option<u32> {
+    os_ver.split('.').next()?.trim().parse().ok()
+}
+
+/// An app window keeps running while the phone sleeps from Android 14 on
+/// (its display is in a power group of its own, the helper's `VirtualDevice`),
+/// so keeping the phone awake or its screen off does nothing for it. Unknown
+/// versions count as older.
+fn runs_asleep(android: Option<u32>) -> bool {
+    android.is_some_and(|v| v >= 14)
+}
+
+/// Whether the phone's power matters to `window`: its screen always, an app
+/// window only where it sleeps with the phone. Where it doesn't, the window
+/// has no power buttons and asks nothing of the phone's power.
+pub fn power_matters(window: &Window) -> bool {
+    window.session == MIRROR_SCREEN
+        || !runs_asleep(
+            core_host::host()
+                .hub
+                .read(|s| s.device(&window.device).and_then(|d| android_release(&d.info.os_ver))),
+        )
+}
+
+/// [`power`] for an app window: nothing where the phone's power doesn't matter to it.
+fn app_power(window: &Window) -> (bool, bool) {
+    if power_matters(window) { state(|s| power(s, &window.device)) } else { (false, false) }
+}
+
 /// Asks the phone for its screen.
 pub fn start(device: DeviceId) {
     if keyboard_device() == Some(device) {
@@ -1009,9 +1039,10 @@ pub fn start_app(device: DeviceId, pkg: String, label: String) {
             ended.unwrap_or_else(|| Window { device, session: NEXT_SESSION.fetch_add(1, Ordering::Relaxed) });
         s.reset_screen_off(&device);
         s.windows.insert(window, Shown { phase: Phase::Asking, app: Some(label), pkg: Some(pkg.clone()) });
-        Some((window, power(s, &device)))
+        Some(window)
     });
-    let Some((window, (stay_awake, screen_off))) = window else { return };
+    let Some(window) = window else { return };
+    let (stay_awake, screen_off) = app_power(&window);
     let options = app_options(crate::settings::mirror_quality(), on_relay(&device));
     ffi::video_clear(&window.key());
     request(
@@ -1039,9 +1070,10 @@ pub fn reopen(window: Window) {
         let pkg = shown.pkg.clone()?;
         shown.phase = Phase::Asking;
         record_recent(s, &window.device, &pkg);
-        Some((pkg, power(s, &window.device)))
+        Some(pkg)
     });
-    let Some((pkg, (stay_awake, screen_off))) = pkg else { return };
+    let Some(pkg) = pkg else { return };
+    let (stay_awake, screen_off) = app_power(&window);
     let options = app_options(crate::settings::mirror_quality(), on_relay(&window.device));
     ffi::video_clear(&window.key());
     request(
@@ -1159,6 +1191,14 @@ mod quality_tests {
     use super::*;
 
     #[test]
+    fn app_windows_from_android_14_run_while_the_phone_sleeps() {
+        assert!(runs_asleep(android_release("17.1")));
+        assert!(runs_asleep(android_release("14")));
+        assert!(!runs_asleep(android_release("13")));
+        assert!(!runs_asleep(android_release("")));
+    }
+
+    #[test]
     fn app_windows_apply_smoother_and_keep_android_size_limits() {
         let smoother = app_options(Quality::Smoother, false);
         assert_eq!((smoother.max_size, smoother.bitrate, smoother.fps), (1280, 4_000_000, 60));
@@ -1251,7 +1291,7 @@ pub fn on_event(event: &NodeEvent) {
             if *session != MIRROR_SCREEN {
                 follow_app_windows(*device);
                 // Keep awake / screen off, as set for this phone, apply to its app windows too.
-                let (stay_awake, screen_off) = state(|s| power(s, device));
+                let (stay_awake, screen_off) = app_power(&window);
                 if (stay_awake || screen_off)
                     && let Some(node) = core_host::node()
                 {

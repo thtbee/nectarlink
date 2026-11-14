@@ -620,6 +620,7 @@ Window {
             }
             IconButton {
                 id: stayAwakeBtn
+                visible: win.info.powerButtons !== false
                 iconPath: Icons.coffee
                 iconColor: win.info.stayAwake === true ? Theme.primary : "white"
                 label: win.info.stayAwake === true
@@ -629,7 +630,7 @@ Window {
             }
             IconButton {
                 id: screenOffBtn
-                visible: win.info.canScreenOff === true
+                visible: win.info.canScreenOff === true && win.info.powerButtons !== false
                 iconPath: Icons.screenOff
                 iconColor: win.info.screenOff === true ? Theme.primary : "white"
                 label: win.info.screenOff === true
@@ -639,7 +640,8 @@ Window {
             }
             IconButton {
                 id: lockBtn
-                visible: win.canControl
+                // The phone's screen only: an app window runs whether it's locked or not.
+                visible: win.canControl && !win.info.app
                 iconPath: Icons.lock
                 iconColor: "white"
                 label: qsTr("Lock phone")

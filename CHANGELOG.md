@@ -110,6 +110,13 @@ change things that need a step from you, and its notes say so.
   that phone, and Settings › Devices has the same switch, so mirroring and app
   windows start with the screen off, barely lighting it up
   ([#217](https://github.com/thtbee/nectarlink/issues/217)).
+- **App windows run while the phone sleeps.** With Elevated on Android 14 or newer,
+  an app window gets a display of its own that keeps running when the phone's screen
+  turns off or locks, including on Android 17, and opening one no longer wakes the
+  phone. While a window is open, the phone has an app streaming link for the shell,
+  removed with the last window; where it can't make one, windows wake the screen as
+  before. Their toolbar no longer shows Keep phone awake, Turn phone screen off and
+  Lock phone, and they no longer ask the phone for the first two.
 - **Pause phone notifications.** From the tray, Home or the command palette, for when
   you're presenting or sharing your screen. They still collect on Home
   ([#218](https://github.com/thtbee/nectarlink/issues/218)).

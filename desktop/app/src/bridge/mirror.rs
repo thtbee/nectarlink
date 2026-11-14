@@ -214,6 +214,7 @@ impl qobject::Mirror {
                         == Some(FeatureState::Available);
                     (control, can_screen_off, s.name_of(&window.device).unwrap_or_default())
                 });
+                let power_buttons = mirror::power_matters(&window);
                 let (phase, reason) = match shown.phase {
                     Phase::Asking => ("asking", String::new()),
                     Phase::Showing => ("showing", String::new()),
@@ -251,9 +252,12 @@ impl qobject::Mirror {
                     },
                     "recording": mirror::is_recording(&window),
                     "recordingStartedMs": mirror::recording_started_ms(&window),
-                    "stayAwake": mirror::stay_awake(&window.device),
-                    "screenOff": mirror::screen_off(&window.device),
+                    // Off where the window has no say in them (and no buttons).
+                    "stayAwake": power_buttons && mirror::stay_awake(&window.device),
+                    "screenOff": power_buttons && mirror::screen_off(&window.device),
                     "canScreenOff": can_screen_off,
+                    // Stay awake and screen off: only where the phone's power matters to this window.
+                    "powerButtons": power_buttons,
                     "notice": mirror::last_notice(&window),
                     "savedX": geom.map(|g| g.x),
                     "savedY": geom.map(|g| g.y),
