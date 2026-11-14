@@ -200,6 +200,9 @@ change things that need a step from you, and its notes say so.
 - **The Linux updater's tests cover ARM64 packages**, a first step towards Linux ARM64 builds
   ([#356](https://github.com/thtbee/nectarlink/issues/356)). Thanks to
   [@localzet](https://github.com/localzet) ([#363](https://github.com/thtbee/nectarlink/pull/363)).
+- **Handoff spots videos and maps in links with a port**, like `youtube.com:443`, and
+  keeps a Vimeo time right. Thanks to [@localzet](https://github.com/localzet) ([#391](https://github.com/thtbee/nectarlink/pull/391)).
+- **The Theme picker in Settings › Appearance no longer sits over its label.**
 - **Waking a PC through another device says when no packet went out**, instead of
   reporting success. Thanks to [@localzet](https://github.com/localzet) ([#385](https://github.com/thtbee/nectarlink/pull/385)).
 - **The Linux install tests fail when they should**: uninstalling, and a damaged package
