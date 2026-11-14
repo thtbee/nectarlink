@@ -1160,7 +1160,7 @@
     <!-- 16. App streams -->
     <string name="guide_apps_title">App streams</string>
     <string name="guide_apps_summary">Open individual Android apps in dedicated windows on your PC while your phone screen stays independent.</string>
-    <string name="guide_apps_where">Settings › Permissions › Control from your PC › Real touch and keys (Wireless debugging)</string>
+    <string name="guide_apps_where">Settings › Permissions › Control from your PC › Elevated</string>
     <string name="guide_apps_needs">Elevated (Wireless debugging)</string>
     <string name="guide_apps_need_1">Elevated, set up through Wireless debugging.</string>
     <string name="guide_apps_need_2">Online paired PC.</string>
@@ -1234,11 +1234,11 @@
 
     <!-- 22. Elevated -->
     <string name="guide_elevated_title">Elevated</string>
-    <string name="guide_elevated_summary">Real touch and keys, App streams, background clipboard sync and in-call controls, through Wireless debugging.</string>
-    <string name="guide_elevated_where">Settings › Permissions › Control from your PC › Real touch and keys (Wireless debugging)</string>
+    <string name="guide_elevated_summary">Real touch and keys, App streams, background clipboard sync and in-call controls, through Wireless debugging, Shizuku or root.</string>
+    <string name="guide_elevated_where">Settings › Permissions › Control from your PC › Elevated</string>
     <string name="guide_elevated_needs">Wireless debugging</string>
     <string name="guide_elevated_need_1">Developer options and Wireless debugging turned on.</string>
-    <string name="guide_elevated_phone_1">Open Settings › Permissions › Control from your PC and tap Set up under Real touch and keys.</string>
+    <string name="guide_elevated_phone_1">Open Settings › Permissions › Control from your PC and tap Set up under Elevated.</string>
     <string name="guide_elevated_phone_2">In Wireless debugging, tap Pair device with pairing code and enter the 6-digit code in the notification.</string>
     <string name="guide_elevated_pc_1">Use App streams, background clipboard sync, and low-latency input from your PC.</string>
     <string name="guide_elevated_opt_1">Set up / Turn off: Pairs or stops the local Wireless debugging helper.</string>

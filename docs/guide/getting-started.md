@@ -181,7 +181,7 @@ You can set up `Elevated` directly on your phone in about two minutes on Android
 </p>
 
 1. Open **NectarLink** on your phone and go to **Settings › Permissions › Control from your PC**.
-2. Next to **Real touch and keys**, tap **Set up**.
+2. On the **Elevated** card, tap **Set up**.
 3. If **Developer options** is not enabled on your phone yet, open Android's **Settings › About phone** and tap **Build number** 7 times until Android confirms you are a developer.
 4. Tap **Open Developer options** in NectarLink. Scroll down to **Wireless debugging**, turn the switch **On**, and tap the words **Wireless debugging** to open its sub-screen.
 5. Tap **Pair device with pairing code**. A dialog appears showing a 6-digit Wi-Fi pairing code.

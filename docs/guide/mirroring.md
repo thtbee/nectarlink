@@ -95,7 +95,7 @@ You can also view (and optionally control) your PC's desktop from your phone:
 - **Share PC screen to phone** (`Settings › Devices` on PC, default: **Off**): Allows the selected phone to view this PC's screen without showing the one-time consent dialog each time.
 - **Remote mouse, keyboard & Deck** (`Settings › Devices` on PC, default: **Off**): Allows the selected phone to send touch/mouse clicks and keystrokes to this PC (including during reverse mirroring).
 - **Use your PC's mouse and keyboard** (`Settings › Permissions › Control from your PC` on Android): Opens Android Accessibility settings to enable or disable `Assist` mode.
-- **Real touch and keys** (`Settings › Permissions › Control from your PC` on Android): Guides you through setting up or turning off `Elevated` mode.
+- **Elevated** (`Settings › Permissions › Control from your PC` on Android): Guides you through setting up or turning off `Elevated` mode.
 
 ## Data and Privacy
 
