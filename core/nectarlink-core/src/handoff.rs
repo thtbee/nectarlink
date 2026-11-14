@@ -139,8 +139,9 @@ pub fn with_video_timestamp(url: &str, secs: u32) -> String {
         Some((b, f)) => (b, Some(f)),
         None => (trimmed, None),
     };
-    let lower_host = link_host(before_frag).to_ascii_lowercase();
-    if lower_host == "vimeo.com" || lower_host.ends_with(".vimeo.com") {
+    if url::Url::parse(before_frag)
+        .is_ok_and(|u| u.host_str().is_some_and(|h| h == "vimeo.com" || h.ends_with(".vimeo.com")))
+    {
         return format!("{before_frag}#t={secs}s");
     }
     let (base, query) = match before_frag.split_once('?') {
@@ -336,7 +337,11 @@ fn classify_link_token(url: &str) -> Option<HandoffLink> {
         return None;
     }
 
-    if is_map_url(&host, rest) {
+    // The display label can include a port, but service detection uses the URL's host.
+    let parsed = url::Url::parse(url).ok()?;
+    let domain = parsed.host_str()?;
+
+    if is_map_url(domain, rest) {
         let query = extract_http_map_query(url);
         let label = match &query {
             Some(q) => format!("Map · {q}"),
@@ -351,7 +356,7 @@ fn classify_link_token(url: &str) -> Option<HandoffLink> {
         });
     }
 
-    if let Some((provider, ts)) = classify_video_url(&host, url) {
+    if let Some((provider, ts)) = classify_video_url(domain, url) {
         let label = match ts {
             Some(secs) => format!("{provider} · {}", format_video_timestamp(secs)),
             None => provider.to_owned(),
@@ -649,6 +654,26 @@ mod tests {
 
         let updated = with_video_timestamp("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10", 245);
         assert_eq!(updated, "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=245");
+    }
+
+    #[test]
+    fn explicit_ports_do_not_change_link_classification() {
+        let yt = extract_handoff_link("https://www.youtube.com:443/watch?v=abc&t=90").unwrap();
+        assert_eq!(yt.kind, HandoffKind::VideoLink);
+        assert_eq!(yt.timestamp_secs, Some(90));
+        assert_eq!(yt.label, "YouTube · 1:30");
+
+        let maps = extract_handoff_link("https://maps.apple.com:443/?q=Paris").unwrap();
+        assert_eq!(maps.kind, HandoffKind::MapLocation);
+        assert_eq!(maps.map_query.as_deref(), Some("Paris"));
+
+        let vimeo = "https://player.vimeo.com:443/video/123#t=10s";
+        assert_eq!(extract_handoff_link(vimeo).unwrap().kind, HandoffKind::VideoLink);
+        assert_eq!(with_video_timestamp(vimeo, 45), "https://player.vimeo.com:443/video/123#t=45s");
+
+        let web = extract_handoff_link("https://example.org:8443/page").unwrap();
+        assert_eq!(web.kind, HandoffKind::WebLink);
+        assert_eq!(web.label, "example.org:8443");
     }
 
     #[test]
