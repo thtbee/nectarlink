@@ -116,7 +116,8 @@ change things that need a step from you, and its notes say so.
   phone. While a window is open, the phone has an app streaming link for the shell,
   removed with the last window; where it can't make one, windows wake the screen as
   before. Their toolbar no longer shows Keep phone awake, Turn phone screen off and
-  Lock phone, and they no longer ask the phone for the first two.
+  Lock phone, and they no longer ask the phone for the first two. Thanks to
+  [@rus152](https://github.com/rus152) ([#365](https://github.com/thtbee/nectarlink/pull/365)).
 - **Pause phone notifications.** From the tray, Home or the command palette, for when
   you're presenting or sharing your screen. They still collect on Home
   ([#218](https://github.com/thtbee/nectarlink/issues/218)).
