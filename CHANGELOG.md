@@ -182,6 +182,10 @@ change things that need a step from you, and its notes say so.
 - **The Linux updater's tests cover ARM64 packages**, a first step towards Linux ARM64 builds
   ([#356](https://github.com/thtbee/nectarlink/issues/356)). Thanks to
   [@localzet](https://github.com/localzet) ([#363](https://github.com/thtbee/nectarlink/pull/363)).
+- **Waking a PC through another device says when no packet went out**, instead of
+  reporting success. Thanks to [@localzet](https://github.com/localzet) ([#385](https://github.com/thtbee/nectarlink/pull/385)).
+- **The Linux install tests fail when they should**: uninstalling, and a damaged package
+  being refused for its checksum. Thanks to [@localzet](https://github.com/localzet) ([#386](https://github.com/thtbee/nectarlink/pull/386)).
 - **The phone's screen window keeps the phone's shape, and its size.** Resizing it no
   longer leaves black bars: a moment after, it fits the phone's shape again. It opens
   at the size you left it, also when the phone turns. Thanks to
