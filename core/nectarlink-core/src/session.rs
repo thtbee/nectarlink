@@ -666,33 +666,34 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         types::WAKE_RELAY => {
             let req = env.body::<WakeRelay>().ok();
             let shared_clone = shared.clone();
-            let known = tokio::task::spawn_blocking(move || {
+            let result = tokio::task::spawn_blocking(move || {
                 // Only for a PC paired with this device, by an address it gave as its own.
                 let info = req.as_ref().and_then(|r| known_wake_info(&shared_clone, &r.mac));
-                let known = info.is_some();
-                if let (Some(req), Some(info)) = (req, info) {
-                    // Only to a subnet that PC gave as its own; anything else goes
-                    // to this network's broadcast, never to an address a peer picks.
-                    let bcast = req
-                        .broadcast
-                        .as_deref()
-                        .map(str::trim)
-                        .filter(|b| info.broadcasts.iter().any(|own| own.trim() == *b))
-                        .and_then(|b| b.parse().ok());
-                    let _ = wake::send_magic_packet(req.mac, bcast);
-                }
-                known
+                let (Some(req), Some(info)) = (req, info) else { return Err(ErrorCode::Denied) };
+                // Only to a subnet that PC gave as its own; anything else goes
+                // to this network's broadcast, never to an address a peer picks.
+                let bcast = req
+                    .broadcast
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|b| info.broadcasts.iter().any(|own| own.trim() == *b))
+                    .and_then(|b| b.parse().ok());
+                wake::send_magic_packet(req.mac, bcast).map_err(|_| ErrorCode::Internal)
             })
             .await
-            .unwrap_or(false);
-            if !known {
+            .unwrap_or(Err(ErrorCode::Internal));
+            if matches!(&result, Err(ErrorCode::Denied)) {
                 tracing::debug!(peer = %peer.short(), "refusing to wake an address no paired PC gave");
+            } else if result.is_err() {
+                tracing::debug!("couldn't send Wake-on-LAN packet");
             }
             if env.id.is_some() {
-                let reply = if known {
-                    Envelope::empty(types::OK)
-                } else {
-                    Envelope::error(ErrorCode::Denied, "not a paired PC's wake address")
+                let reply = match result {
+                    Ok(()) => Envelope::empty(types::OK),
+                    Err(ErrorCode::Denied) => {
+                        Envelope::error(ErrorCode::Denied, "not a paired PC's wake address")
+                    }
+                    Err(code) => Envelope::error(code, "couldn't send Wake-on-LAN packet"),
                 };
                 session.send(reply.reply_to(env.id)).await?;
             }
