@@ -146,6 +146,16 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The phone vibrates again when the PC doesn't show its notifications.** While you
+  used the PC, the phone silenced its own notification sounds and vibration, even with
+  notifications turned off for that PC or paused. Now it only does that while the PC
+  shows them. Thanks to [@sbstn87](https://github.com/sbstn87) ([#384](https://github.com/thtbee/nectarlink/issues/384)).
+- **KDE Plasma no longer opens its shortcut settings at every start.** NectarLink asked
+  for its global shortcuts again each time, twice. It now asks only when Plasma doesn't
+  have them yet, or when you change one. Thanks to [@sbstn87](https://github.com/sbstn87) ([#383](https://github.com/thtbee/nectarlink/issues/383)).
+- **Elevated starts through root.** Magisk and KernelSU gave the shell user none of its
+  groups, so the helper couldn't open its connection. NectarLink now asks for them.
+  Thanks to [@SA-SUJON](https://github.com/SA-SUJON) ([#366](https://github.com/thtbee/nectarlink/issues/366)).
 - **Resizing a window is smooth on Windows.** Dragging the edge of an app window, the
   mirror or the main window often froze for a second at a time. Thanks to
   [@rus152](https://github.com/rus152) ([#367](https://github.com/thtbee/nectarlink/pull/367)).
