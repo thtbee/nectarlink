@@ -55,7 +55,11 @@ ROOT_ROUND_TRIP='
     nectarlink-desktop --version >/dev/null
     test -f /etc/udev/rules.d/70-nectarlink-uinput.rules
     sh /dist/install.sh --uninstall
-    ! command -v nectarlink-desktop
+    hash -r
+    if command -v nectarlink-desktop; then
+        echo "nectarlink-desktop is still installed" >&2
+        exit 1
+    fi
     ! test -e /etc/udev/rules.d/70-nectarlink-uinput.rules'
 
 check deb docker.io/library/ubuntu:24.04 "${ROOT_ROUND_TRIP}"
@@ -71,6 +75,12 @@ check home-folder docker.io/library/ubuntu:24.04 '
 check bad-checksum docker.io/library/ubuntu:24.04 '
     mkdir /tampered && cp /dist/* /tampered/
     echo tampered >> /tampered/nectarlink_9.9.9_amd64.deb
-    ! NECTARLINK_ASSETS_DIR=/tampered sh /tampered/install.sh
+    if NECTARLINK_ASSETS_DIR=/tampered sh /tampered/install.sh > /tmp/tampered.log 2>&1; then
+        cat /tmp/tampered.log
+        echo "installer accepted a tampered package" >&2
+        exit 1
+    fi
+    cat /tmp/tampered.log
+    grep -F "match SHA256SUMS.txt; it may be damaged or tampered with." /tmp/tampered.log
     ! command -v nectarlink-desktop'
 echo "All install.sh checks passed."
