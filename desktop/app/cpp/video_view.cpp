@@ -87,6 +87,28 @@ QImage frost(const QImage &picture)
     return img;
 }
 
+// Whether two pictures look different: more than a few of a grid of points
+// differ clearly. A blinking caret or the encoder's noise doesn't count; an
+// app that laid itself out again does.
+bool looksDifferent(const QImage &a, const QImage &b)
+{
+    if (a.size() != b.size() || a.isNull())
+        return a.size() != b.size();
+    const int grid = 48;
+    int differing = 0;
+    for (int gy = 0; gy < grid; ++gy) {
+        const int y = (2 * gy + 1) * a.height() / (2 * grid);
+        const QRgb *rowA = reinterpret_cast<const QRgb *>(a.constScanLine(y));
+        const QRgb *rowB = reinterpret_cast<const QRgb *>(b.constScanLine(y));
+        for (int gx = 0; gx < grid; ++gx) {
+            const int x = (2 * gx + 1) * a.width() / (2 * grid);
+            if (qAbs(qGray(rowA[x]) - qGray(rowB[x])) > 16)
+                ++differing;
+        }
+    }
+    return differing >= 8;
+}
+
 // Owns its texture (replaced with each picture).
 class VideoNode : public QSGSimpleTextureNode
 {
@@ -179,8 +201,24 @@ void VideoView::setFrozen(bool on)
     m_frozen = on;
     // Turned on: the newest picture is taken once more, then kept.
     m_holding = false;
+    {
+        std::lock_guard guard(lock);
+        m_kept = on ? latest.value(m_stream).image : QImage();
+    }
+    if (m_changedSinceFrozen) {
+        m_changedSinceFrozen = false;
+        emit changedSinceFrozenChanged();
+    }
     emit frozenChanged();
     update();
+}
+
+void VideoView::setKeepShape(bool on)
+{
+    if (on == m_keepShape)
+        return;
+    m_keepShape = on;
+    emit keepShapeChanged();
 }
 
 bool VideoView::nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result)
@@ -211,8 +249,37 @@ bool VideoView::nativeEventFilter(const QByteArray &eventType, void *message, qi
             QCoreApplication::sendEvent(win, &draw);
         }
     }
-    Q_UNUSED(result)
-    return false;
+    if (msg->message != WM_SIZING || !m_keepShape || m_frameSize.isEmpty())
+        return false;
+    // The rect being dragged is the whole window; the picture fills the
+    // client area, so the frame's thickness stays out of the shape.
+    RECT outer{}, client{};
+    GetWindowRect(msg->hwnd, &outer);
+    GetClientRect(msg->hwnd, &client);
+    const int frameW = (outer.right - outer.left) - client.right;
+    const int frameH = (outer.bottom - outer.top) - client.bottom;
+    RECT *r = reinterpret_cast<RECT *>(msg->lParam);
+    const double ratio = double(m_frameSize.width()) / m_frameSize.height();
+    const int w = qMax(1, int(r->right - r->left) - frameW);
+    const int h = qMax(1, int(r->bottom - r->top) - frameH);
+    switch (msg->wParam) {
+    case WMSZ_TOP:
+    case WMSZ_BOTTOM:
+        // Height leads; the width follows to the right.
+        r->right = r->left + qRound(h * ratio) + frameW;
+        break;
+    case WMSZ_TOPLEFT:
+    case WMSZ_TOPRIGHT:
+        // Width leads; the top edge follows.
+        r->top = r->bottom - (qRound(w / ratio) + frameH);
+        break;
+    default:
+        // Left, right and the bottom corners: width leads, the bottom follows.
+        r->bottom = r->top + qRound(w / ratio) + frameH;
+        break;
+    }
+    *result = TRUE;
+    return true;
 #else
     Q_UNUSED(eventType)
     Q_UNUSED(message)
@@ -316,10 +383,15 @@ void VideoView::queueFrame()
 void VideoView::frameArrived()
 {
     m_framePending.store(false);
-    QSize size;
+    QImage newest;
     {
         std::lock_guard guard(lock);
-        size = latest.value(m_stream).image.size();
+        newest = latest.value(m_stream).image;
+    }
+    const QSize size = newest.size();
+    if (m_frozen && !m_changedSinceFrozen && !newest.isNull() && looksDifferent(m_kept, newest)) {
+        m_changedSinceFrozen = true;
+        emit changedSinceFrozenChanged();
     }
     if (size != m_frameSize) {
         m_frameSize = size;

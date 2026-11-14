@@ -5984,73 +5984,73 @@ O que precisa
         <translation>Tela do celular · NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="594"/>
+        <location filename="../qml/MirrorWindow.qml" line="697"/>
         <source>Copy screenshot (Ctrl+Shift+C)</source>
         <translation>Copiar captura de tela (Ctrl+Shift+C)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="601"/>
+        <location filename="../qml/MirrorWindow.qml" line="704"/>
         <source>Save screenshot (Ctrl+S)</source>
         <translation>Salvar captura de tela (Ctrl+S)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="608"/>
+        <location filename="../qml/MirrorWindow.qml" line="711"/>
         <source>Stop recording (Ctrl+R)</source>
         <translation>Parar gravação (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="608"/>
+        <location filename="../qml/MirrorWindow.qml" line="711"/>
         <source>Record video (Ctrl+R)</source>
         <translation>Gravar vídeo (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="626"/>
+        <location filename="../qml/MirrorWindow.qml" line="738"/>
         <source>Phone stays awake while mirroring (turn off)</source>
         <translation>A tela do celular fica ligada durante o espelhamento (desativar)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="627"/>
+        <location filename="../qml/MirrorWindow.qml" line="739"/>
         <source>Keep phone awake while mirroring</source>
         <translation>Manter a tela do celular ligada durante o espelhamento</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="636"/>
+        <location filename="../qml/MirrorWindow.qml" line="748"/>
         <source>Turn phone screen back on</source>
         <translation>Ligar a tela do celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="637"/>
+        <location filename="../qml/MirrorWindow.qml" line="749"/>
         <source>Turn phone screen off while mirroring</source>
         <translation>Desligar a tela do celular durante o espelhamento</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="661"/>
-        <location filename="../qml/MirrorWindow.qml" line="737"/>
+        <location filename="../qml/MirrorWindow.qml" line="774"/>
+        <location filename="../qml/MirrorWindow.qml" line="850"/>
         <source>Play the phone&apos;s sound here</source>
         <translation>Tocar o som do celular aqui</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="645"/>
+        <location filename="../qml/MirrorWindow.qml" line="758"/>
         <source>Lock phone</source>
         <translation>Bloquear celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="696"/>
+        <location filename="../qml/MirrorWindow.qml" line="809"/>
         <source>Back (right-click)</source>
         <translation>Voltar (botão direito)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="703"/>
+        <location filename="../qml/MirrorWindow.qml" line="816"/>
         <source>Home (middle-click)</source>
         <translation>Início (botão do meio)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="710"/>
+        <location filename="../qml/MirrorWindow.qml" line="823"/>
         <source>Recent apps</source>
         <translation>Apps recentes</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="661"/>
+        <location filename="../qml/MirrorWindow.qml" line="774"/>
         <source>Play the sound on the phone</source>
         <translation>Tocar o som no celular</translation>
     </message>
@@ -6065,92 +6065,97 @@ O que precisa
         <translation>Tela do celular desligada</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="652"/>
+        <location filename="../qml/MirrorWindow.qml" line="729"/>
+        <source>Flex mode</source>
+        <translation>Modo flexível</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml" line="765"/>
         <source>Don&apos;t keep on top</source>
         <translation>Não manter acima</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="652"/>
+        <location filename="../qml/MirrorWindow.qml" line="765"/>
         <source>Keep on top</source>
         <translation>Manter acima das outras janelas</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="696"/>
+        <location filename="../qml/MirrorWindow.qml" line="809"/>
         <source>Back (Esc)</source>
         <translation>Voltar (Esc)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="746"/>
+        <location filename="../qml/MirrorWindow.qml" line="859"/>
         <source>Release to send files to %1</source>
         <translation>Solte para enviar arquivos para %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="746"/>
+        <location filename="../qml/MirrorWindow.qml" line="859"/>
         <source>phone</source>
         <translation>celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="814"/>
+        <location filename="../qml/MirrorWindow.qml" line="927"/>
         <source>To control the phone, turn on Control from your PC in NectarLink&apos;s settings on the phone.</source>
         <translation>Para controlar o celular, ative Controle pelo PC nas Configurações do NectarLink no celular.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="823"/>
+        <location filename="../qml/MirrorWindow.qml" line="936"/>
         <source>Notify phone</source>
         <translation>Avisar o celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="834"/>
+        <location filename="../qml/MirrorWindow.qml" line="947"/>
         <source>Hide</source>
         <translation>Ocultar</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="872"/>
+        <location filename="../qml/MirrorWindow.qml" line="985"/>
         <source>Opening %1</source>
         <translation>Abrindo %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="872"/>
+        <location filename="../qml/MirrorWindow.qml" line="985"/>
         <source>Allow it on your phone</source>
         <translation>Permita no celular</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="873"/>
+        <location filename="../qml/MirrorWindow.qml" line="986"/>
         <source>%1 closed</source>
         <translation>%1 foi fechado</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="873"/>
+        <location filename="../qml/MirrorWindow.qml" line="986"/>
         <source>Mirroring stopped</source>
         <translation>Espelhamento encerrado</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="874"/>
+        <location filename="../qml/MirrorWindow.qml" line="987"/>
         <source>Starting…</source>
         <translation>Iniciando…</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="883"/>
+        <location filename="../qml/MirrorWindow.qml" line="996"/>
         <source>Tap the notification on %1, then choose to share the entire screen.</source>
         <translation>Toque na notificação em %1 e escolha Compartilhar a tela inteira.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="885"/>
+        <location filename="../qml/MirrorWindow.qml" line="998"/>
         <source>The app closed on %1.</source>
         <translation>O app foi fechado em %1.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="886"/>
+        <location filename="../qml/MirrorWindow.qml" line="999"/>
         <source>The phone stopped sharing its screen.</source>
         <translation>O celular parou de compartilhar a tela.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="893"/>
+        <location filename="../qml/MirrorWindow.qml" line="1006"/>
         <source>Open again</source>
         <translation>Abrir de novo</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="893"/>
+        <location filename="../qml/MirrorWindow.qml" line="1006"/>
         <source>Try again</source>
         <translation>Tentar de novo</translation>
     </message>
@@ -6764,7 +6769,7 @@ O que precisa
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="222"/>
         <source>Downloading them means you accept Google&apos;s &lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;Android SDK terms&lt;/a&gt;.</source>
-        <translation>Ao baixá-las, você aceita os &lt;a href="https://developer.android.com/studio/terms"&gt;termos do SDK do Android&lt;/a&gt; do Google.</translation>
+        <translation>Ao baixá-las, você aceita os &lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;termos do SDK do Android&lt;/a&gt; do Google.</translation>
     </message>
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="235"/>

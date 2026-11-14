@@ -320,13 +320,15 @@ pub trait Platform: Send + Sync + 'static {
     fn mirror_keyframe_requested(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32) {}
 
     /// The PC resized an app window (`session` != 0): resize its display and
-    /// restart its encoder at `width × height` pixels.
+    /// restart its encoder at `width × height` pixels, the app drawing at
+    /// `zoom` percent of the display's usual density.
     fn mirror_resize_requested(
         &self,
         _peer: &nectarlink_protocol::DeviceId,
         _session: u32,
         _width: u32,
         _height: u32,
+        _zoom: u32,
     ) {
     }
 

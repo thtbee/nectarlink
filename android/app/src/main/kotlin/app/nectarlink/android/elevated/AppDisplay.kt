@@ -90,6 +90,15 @@ class AppDisplay(
                 val (newW, newH, newDpi) = nextSize ?: continue
                 nextSize = null
                 if (newW == curW && newH == curH && newDpi == curDpi) continue
+                if (newW == curW && newH == curH) {
+                    // Only the density (the PC's zoom): the picture's size
+                    // stays, so the encoder does too, and nothing restarts.
+                    made.resize(curW, curH, newDpi)
+                    forceDensity(displayId, newDpi)
+                    curDpi = newDpi
+                    size = Triple(curW, curH, curDpi)
+                    continue
+                }
                 codecForKeyframes = null
                 runCatching { activeCodec.stop() }
                 runCatching { activeCodec.release() }
@@ -109,6 +118,7 @@ class AppDisplay(
                 writeConfig(data, curW, curH, displayId, next.codecName)
             }
         } finally {
+            if (!fullScreen && displayId > 0) forceDensity(displayId, null)
             running = false
             codecForKeyframes = null
             runCatching { codec?.stop() }
@@ -359,6 +369,22 @@ class AppDisplay(
             System.err.println("no display on the virtual device: $it")
             owner.close()
         }.getOrNull()
+    }
+
+    /**
+     * The window manager's own density for [display] ([dpi] null: none).
+     * Resizing a display to the size it has with another density reached
+     * the app only seconds later, or with the next touch; this is applied
+     * at once (the app draws anew within half a second). Taken off when the
+     * window closes: it's remembered by the display's name, which another
+     * window may get.
+     */
+    private fun forceDensity(display: Int, dpi: Int?) {
+        runCatching {
+            Runtime.getRuntime()
+                .exec(arrayOf("wm", "density", dpi?.toString() ?: "reset", "-d", display.toString()))
+                .waitFor()
+        }.onFailure { System.err.println("can't set the density of display $display: $it") }
     }
 
     /** Hides the soft keyboard on this virtual display so typing from the PC never pops it up on the phone. */

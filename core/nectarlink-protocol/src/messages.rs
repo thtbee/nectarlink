@@ -1528,13 +1528,24 @@ pub struct MirrorResize {
     pub session: u32,
     pub width: u32,
     pub height: u32,
+    /// How big the app draws, in percent of the display's usual density
+    /// (100 from PCs that don't say; phones from before this ignore it).
+    #[serde(default = "MirrorResize::usual_zoom")]
+    pub zoom: u32,
 }
 
 impl MirrorResize {
+    pub const ZOOM: std::ops::RangeInclusive<u32> = 50..=200;
+
+    fn usual_zoom() -> u32 {
+        100
+    }
+
     pub fn is_valid(&self) -> bool {
         self.session != mirror::SCREEN
             && (64..=4096).contains(&self.width)
             && (64..=4096).contains(&self.height)
+            && Self::ZOOM.contains(&self.zoom)
     }
 }
 

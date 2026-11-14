@@ -175,11 +175,12 @@ pub(crate) async fn resize(
     mirroring: u32,
     width: u32,
     height: u32,
+    zoom: u32,
 ) -> Result<()> {
     if !shared.toggle_on(&session.peer, TOGGLE) {
         return Err(Error::Denied);
     }
-    let msg = MirrorResize { session: mirroring, width, height };
+    let msg = MirrorResize { session: mirroring, width, height, zoom };
     if !msg.is_valid() {
         return Err(Error::Protocol("invalid resize".into()));
     }
@@ -477,7 +478,13 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let allowed = shared.toggle_on(&peer, TOGGLE) && shared.we_offer(mirror::VIRTUAL_DISPLAY);
             if allowed && resize.is_valid() {
                 tokio::task::spawn_blocking(move || {
-                    platform.mirror_resize_requested(&peer, resize.session, resize.width, resize.height);
+                    platform.mirror_resize_requested(
+                        &peer,
+                        resize.session,
+                        resize.width,
+                        resize.height,
+                        resize.zoom,
+                    );
                 });
             }
         }

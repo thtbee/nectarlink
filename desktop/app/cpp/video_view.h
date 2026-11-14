@@ -4,6 +4,7 @@
 #include <QtCore/QAbstractNativeEventFilter>
 #include <QtCore/QSize>
 #include <QtCore/QString>
+#include <QtGui/QImage>
 #include <QtQml/qqmlregistration.h>
 #include <QtQuick/QQuickItem>
 
@@ -41,6 +42,12 @@ class VideoView : public QQuickItem, public QAbstractNativeEventFilter
     Q_PROPERTY(bool fillsNearShape MEMBER m_fillsNearShape NOTIFY fillsNearShapeChanged)
     // Frozen, the view keeps the picture it has when this turns on.
     Q_PROPERTY(bool frozen READ frozen WRITE setFrozen NOTIFY frozenChanged)
+    // Frozen, and a picture has come since that looks different from the
+    // kept one (the app drew itself anew, say after a change of zoom).
+    Q_PROPERTY(bool changedSinceFrozen READ changedSinceFrozen NOTIFY changedSinceFrozenChanged)
+    // While the user drags its edges, the window keeps the picture's shape
+    // (on Windows; maximized and full screen are left alone).
+    Q_PROPERTY(bool keepShape READ keepShape WRITE setKeepShape NOTIFY keepShapeChanged)
     // The user holds an edge of the window: on from the moment it's grabbed,
     // before the size changes, off when it's let go. Windows only; elsewhere
     // never on.
@@ -64,6 +71,9 @@ public:
     void setFrosted(bool on);
     bool frozen() const { return m_frozen; }
     void setFrozen(bool on);
+    bool changedSinceFrozen() const { return m_changedSinceFrozen; }
+    bool keepShape() const { return m_keepShape; }
+    void setKeepShape(bool on);
     bool sizing() const { return m_sizing; }
 
     bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) override;
@@ -83,7 +93,9 @@ signals:
     void acceptsTextChanged();
     void frostedChanged();
     void frozenChanged();
+    void changedSinceFrozenChanged();
     void fillsNearShapeChanged();
+    void keepShapeChanged();
     void sizingChanged();
     // An input method finished some text (an emoji, a word in Chinese...).
     void textCommitted(const QString &text);
@@ -111,6 +123,10 @@ private:
     bool m_fillsNearShape = false;
     // Frozen, and the picture to keep is on screen.
     bool m_holding = false;
+    // The picture when it froze, to tell a different one by.
+    QImage m_kept;
+    bool m_changedSinceFrozen = false;
+    bool m_keepShape = false;
     bool m_sizing = false;
     std::atomic_bool m_framePending{false};
 };

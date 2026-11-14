@@ -5972,73 +5972,73 @@ Qué necesitas
         <translation>Pantalla del teléfono · NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="594"/>
+        <location filename="../qml/MirrorWindow.qml" line="697"/>
         <source>Copy screenshot (Ctrl+Shift+C)</source>
         <translation>Copiar captura de pantalla (Ctrl+Shift+C)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="601"/>
+        <location filename="../qml/MirrorWindow.qml" line="704"/>
         <source>Save screenshot (Ctrl+S)</source>
         <translation>Guardar captura de pantalla (Ctrl+S)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="608"/>
+        <location filename="../qml/MirrorWindow.qml" line="711"/>
         <source>Stop recording (Ctrl+R)</source>
         <translation>Detener grabación (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="608"/>
+        <location filename="../qml/MirrorWindow.qml" line="711"/>
         <source>Record video (Ctrl+R)</source>
         <translation>Grabar vídeo (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="626"/>
+        <location filename="../qml/MirrorWindow.qml" line="738"/>
         <source>Phone stays awake while mirroring (turn off)</source>
         <translation>El teléfono permanece activo durante la duplicación (desactivar)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="627"/>
+        <location filename="../qml/MirrorWindow.qml" line="739"/>
         <source>Keep phone awake while mirroring</source>
         <translation>Mantener el teléfono activo durante la duplicación</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="636"/>
+        <location filename="../qml/MirrorWindow.qml" line="748"/>
         <source>Turn phone screen back on</source>
         <translation>Volver a encender la pantalla del teléfono</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="637"/>
+        <location filename="../qml/MirrorWindow.qml" line="749"/>
         <source>Turn phone screen off while mirroring</source>
         <translation>Apagar la pantalla del teléfono durante la duplicación</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="661"/>
-        <location filename="../qml/MirrorWindow.qml" line="737"/>
+        <location filename="../qml/MirrorWindow.qml" line="774"/>
+        <location filename="../qml/MirrorWindow.qml" line="850"/>
         <source>Play the phone&apos;s sound here</source>
         <translation>Reproducir aquí el sonido del teléfono</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="645"/>
+        <location filename="../qml/MirrorWindow.qml" line="758"/>
         <source>Lock phone</source>
         <translation>Bloquear teléfono</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="696"/>
+        <location filename="../qml/MirrorWindow.qml" line="809"/>
         <source>Back (right-click)</source>
         <translation>Atrás (clic derecho)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="703"/>
+        <location filename="../qml/MirrorWindow.qml" line="816"/>
         <source>Home (middle-click)</source>
         <translation>Inicio (clic central)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="710"/>
+        <location filename="../qml/MirrorWindow.qml" line="823"/>
         <source>Recent apps</source>
         <translation>Aplicaciones recientes</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="661"/>
+        <location filename="../qml/MirrorWindow.qml" line="774"/>
         <source>Play the sound on the phone</source>
         <translation>Reproducir el sonido en el teléfono</translation>
     </message>
@@ -6053,92 +6053,97 @@ Qué necesitas
         <translation>Pantalla del teléfono apagada</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="652"/>
+        <location filename="../qml/MirrorWindow.qml" line="729"/>
+        <source>Flex mode</source>
+        <translation>Modo flexible</translation>
+    </message>
+    <message>
+        <location filename="../qml/MirrorWindow.qml" line="765"/>
         <source>Don&apos;t keep on top</source>
         <translation>No mantener en primer plano</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="652"/>
+        <location filename="../qml/MirrorWindow.qml" line="765"/>
         <source>Keep on top</source>
         <translation>Mantener en primer plano</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="696"/>
+        <location filename="../qml/MirrorWindow.qml" line="809"/>
         <source>Back (Esc)</source>
         <translation>Atrás (Esc)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="746"/>
+        <location filename="../qml/MirrorWindow.qml" line="859"/>
         <source>Release to send files to %1</source>
         <translation>Suelta para enviar archivos a %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="746"/>
+        <location filename="../qml/MirrorWindow.qml" line="859"/>
         <source>phone</source>
         <translation>teléfono</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="814"/>
+        <location filename="../qml/MirrorWindow.qml" line="927"/>
         <source>To control the phone, turn on Control from your PC in NectarLink&apos;s settings on the phone.</source>
         <translation>Para controlar el teléfono, activa Control desde el PC en los ajustes de NectarLink del teléfono.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="823"/>
+        <location filename="../qml/MirrorWindow.qml" line="936"/>
         <source>Notify phone</source>
         <translation>Notificar teléfono</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="834"/>
+        <location filename="../qml/MirrorWindow.qml" line="947"/>
         <source>Hide</source>
         <translation>Ocultar</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="872"/>
+        <location filename="../qml/MirrorWindow.qml" line="985"/>
         <source>Opening %1</source>
         <translation>Abriendo %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="872"/>
+        <location filename="../qml/MirrorWindow.qml" line="985"/>
         <source>Allow it on your phone</source>
         <translation>Permítelo en tu teléfono</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="873"/>
+        <location filename="../qml/MirrorWindow.qml" line="986"/>
         <source>%1 closed</source>
         <translation>%1 cerrado</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="873"/>
+        <location filename="../qml/MirrorWindow.qml" line="986"/>
         <source>Mirroring stopped</source>
         <translation>Duplicación detenida</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="874"/>
+        <location filename="../qml/MirrorWindow.qml" line="987"/>
         <source>Starting…</source>
         <translation>Iniciando…</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="883"/>
+        <location filename="../qml/MirrorWindow.qml" line="996"/>
         <source>Tap the notification on %1, then choose to share the entire screen.</source>
         <translation>Toca la notificación en %1 y elige compartir toda la pantalla.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="885"/>
+        <location filename="../qml/MirrorWindow.qml" line="998"/>
         <source>The app closed on %1.</source>
         <translation>La aplicación se cerró en %1.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="886"/>
+        <location filename="../qml/MirrorWindow.qml" line="999"/>
         <source>The phone stopped sharing its screen.</source>
         <translation>El teléfono dejó de compartir su pantalla.</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="893"/>
+        <location filename="../qml/MirrorWindow.qml" line="1006"/>
         <source>Open again</source>
         <translation>Abrir de nuevo</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="893"/>
+        <location filename="../qml/MirrorWindow.qml" line="1006"/>
         <source>Try again</source>
         <translation>Reintentar</translation>
     </message>
@@ -6752,7 +6757,7 @@ Qué necesitas
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="222"/>
         <source>Downloading them means you accept Google&apos;s &lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;Android SDK terms&lt;/a&gt;.</source>
-        <translation>Al descargarlas aceptas los &lt;a href="https://developer.android.com/studio/terms"&gt;términos del SDK de Android&lt;/a&gt; de Google.</translation>
+        <translation>Al descargarlas aceptas los &lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;términos del SDK de Android&lt;/a&gt; de Google.</translation>
     </message>
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="235"/>

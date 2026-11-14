@@ -3134,10 +3134,18 @@ impl Node {
         }
     }
 
-    /// Resizes an app window's display (`mirroring` != 0) on a phone.
-    pub async fn mirror_resize(&self, peer: DeviceId, mirroring: u32, width: u32, height: u32) -> Result<()> {
+    /// Resizes an app window's display (`mirroring` != 0) on a phone; the app
+    /// draws at `zoom` percent of its usual size (100: as it is).
+    pub async fn mirror_resize(
+        &self,
+        peer: DeviceId,
+        mirroring: u32,
+        width: u32,
+        height: u32,
+        zoom: u32,
+    ) -> Result<()> {
         let session = self.connected(&peer)?;
-        crate::mirror::resize(&self.shared, &session, mirroring, width, height).await
+        crate::mirror::resize(&self.shared, &session, mirroring, width, height, zoom).await
     }
 
     /// Updates `stay_awake` and `screen_off` while mirroring a phone's screen (`session == 0`).
