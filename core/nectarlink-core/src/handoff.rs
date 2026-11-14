@@ -338,8 +338,9 @@ fn classify_link_token(url: &str) -> Option<HandoffLink> {
     }
 
     // The display label can include a port, but service detection uses the URL's host.
-    let parsed = url::Url::parse(url).ok()?;
-    let domain = parsed.host_str()?;
+    // A link the URL parser refuses (a port out of range) is still a web link.
+    let parsed = url::Url::parse(url).ok();
+    let domain = parsed.as_ref().and_then(|u| u.host_str()).unwrap_or(&host);
 
     if is_map_url(domain, rest) {
         let query = extract_http_map_query(url);
@@ -674,6 +675,10 @@ mod tests {
         let web = extract_handoff_link("https://example.org:8443/page").unwrap();
         assert_eq!(web.kind, HandoffKind::WebLink);
         assert_eq!(web.label, "example.org:8443");
+
+        let odd = extract_handoff_link("https://example.org:99999/page").unwrap();
+        assert_eq!(odd.kind, HandoffKind::WebLink);
+        assert_eq!(odd.label, "example.org:99999");
     }
 
     #[test]
