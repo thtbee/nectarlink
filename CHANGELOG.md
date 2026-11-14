@@ -21,7 +21,8 @@ change things that need a step from you, and its notes say so.
   for each app.
 - **Zoom an app window.** Ctrl + mouse wheel makes the app in a window draw bigger or
   smaller, from 50% to 200%, remembered for each app. The window is blurred with a
-  spinner until the phone has drawn the app at its new size.
+  spinner until the phone has drawn the app at its new size. Both thanks to
+  [@rus152](https://github.com/rus152) ([#369](https://github.com/thtbee/nectarlink/pull/369)).
 - **App windows fit any shape, and say when they're catching up.** With Elevated, an app
   window's display now takes the window's exact size, so there are no bars beside the
   app. While you hold an edge on Windows, the window shows the app blurred under its
