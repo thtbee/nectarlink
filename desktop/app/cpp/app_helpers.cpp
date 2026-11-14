@@ -325,12 +325,40 @@ rust::Vec<rust::String> system_ui_languages()
     return out;
 }
 
+// The app's fonts (Figtree, Segoe UI Variable) have no Chinese, Japanese or
+// Korean, and on Windows Qt's own fallback for them was often SimSun, a serif
+// that's hard to read (#390). Windows' UI fonts come first instead, the one
+// for the app's language before the others, since the same characters look
+// different in each.
+static void use_windows_cjk_fonts(const QLocale &locale)
+{
+#ifdef _WIN32
+    const QStringList simplified{QStringLiteral("Microsoft YaHei UI"), QStringLiteral("Microsoft YaHei")};
+    const QStringList traditional{QStringLiteral("Microsoft JhengHei UI"), QStringLiteral("Microsoft JhengHei")};
+    const QStringList japanese{QStringLiteral("Yu Gothic UI"), QStringLiteral("Meiryo UI")};
+    QStringList han;
+    if (locale.language() == QLocale::Japanese)
+        han = japanese + simplified + traditional;
+    else if (locale.language() == QLocale::Chinese && locale.script() == QLocale::TraditionalHanScript)
+        han = traditional + simplified + japanese;
+    else
+        han = simplified + traditional + japanese;
+    QFontDatabase::setApplicationFallbackFontFamilies(QChar::Script_Han, han);
+    QFontDatabase::setApplicationFallbackFontFamilies(QChar::Script_Hiragana, japanese + han);
+    QFontDatabase::setApplicationFallbackFontFamilies(QChar::Script_Katakana, japanese + han);
+    QFontDatabase::setApplicationFallbackFontFamilies(QChar::Script_Hangul, {QStringLiteral("Malgun Gothic")});
+#else
+    Q_UNUSED(locale);
+#endif
+}
+
 bool install_translator(rust::Str dir, rust::Str language)
 {
     const QString folder = QString::fromUtf8(dir.data(), static_cast<qsizetype>(dir.size()));
     const QString chosen = QString::fromUtf8(language.data(), static_cast<qsizetype>(language.size()));
     const QLocale locale = chosen.isEmpty() ? QLocale::system() : QLocale(chosen);
     QLocale::setDefault(locale);
+    use_windows_cjk_fonts(locale);
     drop(qtTranslator());
     drop(appTranslator());
 
