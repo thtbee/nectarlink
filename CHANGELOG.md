@@ -46,11 +46,11 @@ change things that need a step from you, and its notes say so.
   [@KevinL50-sysadmin](https://github.com/KevinL50-sysadmin) for a review pass on it.
 
 - **Vietnamese.** NectarLink speaks Tiếng Việt now: on the Android phone and
-  the Windows PC, every screen is translated. Settings › Appearance › Language
-  picks it, or the system language does. Thanks to
+  the Windows PC, every screen is translated. Language (Settings › Appearance on the
+  phone, Settings › General on the PC) picks it, or the system language does. Thanks to
   [@wuwenhou](https://github.com/wuwenhou).
-- **Russian.** NectarLink speaks Русский on the phone and the PC. Settings › Appearance ›
-  Language picks it, or the system language does. Thanks to
+- **Russian.** NectarLink speaks Русский on the phone and the PC. Language (Settings ›
+  Appearance on the phone, Settings › General on the PC) picks it, or the system language does. Thanks to
   [@krakotay](https://github.com/krakotay) for reviewing it
   ([#343](https://github.com/thtbee/nectarlink/issues/343)).
 - **More ways to sync a folder.** A synced folder can now go one way from the PC to the
