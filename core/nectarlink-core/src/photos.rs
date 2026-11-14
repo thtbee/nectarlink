@@ -103,14 +103,17 @@ pub(crate) async fn list(
 pub(crate) async fn delete(shared: &Shared, session: &Session, mut ids: Vec<String>) -> Result<u32> {
     allowed(shared, &session.peer)?;
     ids.retain(|id| is_valid_photo_id(id));
-    let mut deleted = 0;
+    let mut deleted = 0u32;
     for batch in ids.chunks(photos::MAX_THUMB_BATCH) {
         let env = Envelope::new(types::PHOTOS_DELETE, &PhotoDelete { ids: batch.to_vec() })?;
         let PhotosDeleted { count } = session
             .request(env, crate::session::REQUEST_TIMEOUT)
             .await?
             .expect_body(types::PHOTOS_DELETED)?;
-        deleted += count;
+        if count as usize > batch.len() {
+            return Err(Error::Protocol("invalid photo delete count".into()));
+        }
+        deleted = deleted.checked_add(count).ok_or(Error::TooLarge)?;
     }
     Ok(deleted)
 }
