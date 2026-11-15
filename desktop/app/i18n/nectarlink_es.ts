@@ -6482,7 +6482,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/PairingPanel.qml" line="152"/>
         <source>No app on the phone yet? Install it over USB</source>
-        <translation>¿Aún no tienes la app en el teléfono? Instálala por USB</translation>
+        <translation>¿Aún no tienes la aplicación en el teléfono? Instálala por USB</translation>
     </message>
     <message>
         <location filename="../qml/pages/PairingPanel.qml" line="196"/>
@@ -6613,7 +6613,7 @@ Qué necesitas
     <message>
         <location filename="rust_strings.h" line="409"/>
         <source>Couldn&apos;t download the phone app</source>
-        <translation>No se pudo descargar la app del teléfono</translation>
+        <translation>No se pudo descargar la aplicación del teléfono</translation>
     </message>
     <message>
         <location filename="rust_strings.h" line="410"/>
@@ -6701,7 +6701,7 @@ Qué necesitas
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="142"/>
         <source>Put NectarLink on a phone over USB</source>
-        <translation>Pon NectarLink en un teléfono por USB</translation>
+        <translation>Instala NectarLink en un teléfono por USB</translation>
     </message>
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="150"/>
@@ -6747,7 +6747,7 @@ Qué necesitas
         <location filename="../qml/components/PhoneInstallPane.qml" line="211"/>
         <location filename="../qml/components/PhoneInstallPane.qml" line="737"/>
         <source>Try again</source>
-        <translation>Volver a intentarlo</translation>
+        <translation>Reintentar</translation>
     </message>
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="211"/>
@@ -6898,7 +6898,7 @@ Qué necesitas
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="653"/>
         <source>Downloading NectarLink… %1%</source>
-        <translation>Descargando NectarLink… %1 %</translation>
+        <translation>Descargando NectarLink… %1%</translation>
     </message>
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="654"/>
@@ -6908,7 +6908,7 @@ Qué necesitas
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="656"/>
         <source>Sending it to the phone… %1%</source>
-        <translation>Enviándolo al teléfono… %1 %</translation>
+        <translation>Enviándolo al teléfono… %1%</translation>
     </message>
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="658"/>
@@ -8446,7 +8446,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="22"/>
         <source>The phone app, over a USB cable</source>
-        <translation>La app del teléfono, por cable USB</translation>
+        <translation>La aplicación del teléfono, por cable USB</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="29"/>
