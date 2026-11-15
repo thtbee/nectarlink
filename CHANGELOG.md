@@ -58,7 +58,8 @@ change things that need a step from you, and its notes say so.
 - **Keep a mirror window on top.** A pin button in the window's controls keeps it above other windows. Thanks to [@Nebhay](https://github.com/Nebhay) ([#327](https://github.com/thtbee/nectarlink/pull/327)).
 - **Spanish.** NectarLink is available in Spanish on Android and Windows.
   Thanks to José María Garcia Dominguez, and to
-  [@KevinL50-sysadmin](https://github.com/KevinL50-sysadmin) for a review pass on it.
+  [@KevinL50-sysadmin](https://github.com/KevinL50-sysadmin) for review passes on it
+  ([#348](https://github.com/thtbee/nectarlink/pull/348), [#402](https://github.com/thtbee/nectarlink/pull/402)).
 
 - **Vietnamese.** NectarLink speaks Tiếng Việt now: on the Android phone and
   the Windows PC, every screen is translated. Language (Settings › Appearance on the
