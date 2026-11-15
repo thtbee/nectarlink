@@ -15,6 +15,9 @@ change things that need a step from you, and its notes say so.
   When the phone refuses, it says why and what to do. For phones where Play Protect or
   the maker blocks installing from a browser. The adb it downloads also connects phones
   over a cable from then on.
+- **Select a whole day of photos.** On the PC's Photos page, click the day at the top of
+  the grid to select everything from that day; click it again to clear it. Thanks to
+  [@Dipen425](https://github.com/Dipen425) ([#388](https://github.com/thtbee/nectarlink/issues/388)).
 - **Scrollbars.** Long pages on the PC (Home, Settings, Timeline, Messages, Photos, Calls,
   Apps, Deck) and sheets show a thin scrollbar while they scroll or when the pointer is near
   their edge; drag it, or click to jump. Thanks to [@Dipen425](https://github.com/Dipen425)
