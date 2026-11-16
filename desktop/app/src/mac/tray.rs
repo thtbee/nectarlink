@@ -70,15 +70,15 @@ fn write_tray_icon_png() -> Option<PathBuf> {
 
 fn parse_tray_action(action: &str) -> Option<TrayEvent> {
     match action {
-        "open" => Some(TrayEvent::Open),
-        "command_palette" => Some(TrayEvent::CommandPalette),
-        "shelf" => Some(TrayEvent::Shelf),
-        "take_photo" => Some(TrayEvent::TakePhoto),
-        "scan_document" => Some(TrayEvent::ScanDocument),
-        "find_phone" => Some(TrayEvent::FindPhone),
-        "open_link" => Some(TrayEvent::OpenLinkOnPhone),
-        "toggle_pause" => Some(TrayEvent::ToggleNotificationsPause),
-        "quit" => Some(TrayEvent::Quit),
+        "OPEN" => Some(TrayEvent::Open),
+        "COMMAND_PALETTE" => Some(TrayEvent::CommandPalette),
+        "SHELF" => Some(TrayEvent::Shelf),
+        "TAKE_PHOTO" => Some(TrayEvent::TakePhoto),
+        "SCAN_DOCUMENT" => Some(TrayEvent::ScanDocument),
+        "FIND_PHONE" => Some(TrayEvent::FindPhone),
+        "OPEN_LINK" => Some(TrayEvent::OpenLinkOnPhone),
+        "PAUSE_NOTIFICATIONS" => Some(TrayEvent::ToggleNotificationsPause),
+        "QUIT" => Some(TrayEvent::Quit),
         _ => None,
     }
 }
@@ -174,15 +174,15 @@ mod tests {
 
     #[test]
     fn tray_actions_map_to_events() {
-        assert_eq!(parse_tray_action("open"), Some(TrayEvent::Open));
-        assert_eq!(parse_tray_action("command_palette"), Some(TrayEvent::CommandPalette));
-        assert_eq!(parse_tray_action("shelf"), Some(TrayEvent::Shelf));
-        assert_eq!(parse_tray_action("take_photo"), Some(TrayEvent::TakePhoto));
-        assert_eq!(parse_tray_action("scan_document"), Some(TrayEvent::ScanDocument));
-        assert_eq!(parse_tray_action("find_phone"), Some(TrayEvent::FindPhone));
-        assert_eq!(parse_tray_action("open_link"), Some(TrayEvent::OpenLinkOnPhone));
-        assert_eq!(parse_tray_action("toggle_pause"), Some(TrayEvent::ToggleNotificationsPause));
-        assert_eq!(parse_tray_action("quit"), Some(TrayEvent::Quit));
+        assert_eq!(parse_tray_action("OPEN"), Some(TrayEvent::Open));
+        assert_eq!(parse_tray_action("COMMAND_PALETTE"), Some(TrayEvent::CommandPalette));
+        assert_eq!(parse_tray_action("SHELF"), Some(TrayEvent::Shelf));
+        assert_eq!(parse_tray_action("TAKE_PHOTO"), Some(TrayEvent::TakePhoto));
+        assert_eq!(parse_tray_action("SCAN_DOCUMENT"), Some(TrayEvent::ScanDocument));
+        assert_eq!(parse_tray_action("FIND_PHONE"), Some(TrayEvent::FindPhone));
+        assert_eq!(parse_tray_action("OPEN_LINK"), Some(TrayEvent::OpenLinkOnPhone));
+        assert_eq!(parse_tray_action("PAUSE_NOTIFICATIONS"), Some(TrayEvent::ToggleNotificationsPause));
+        assert_eq!(parse_tray_action("QUIT"), Some(TrayEvent::Quit));
         assert_eq!(parse_tray_action(""), None);
         assert_eq!(parse_tray_action("unknown"), None);
     }
