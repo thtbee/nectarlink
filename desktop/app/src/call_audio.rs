@@ -228,7 +228,9 @@ pub fn stop(device: DeviceId) {
 /// Ends the call's sound here (the call ended, the phone took it back or
 /// went away); whether it was `device`'s.
 pub fn end(device: DeviceId) -> bool {
-    let (recorder, uplink) = {
+    // The recorder stops when `_recorder` goes, at the end: outside the lock,
+    // which its thread may be waiting on.
+    let (_recorder, uplink) = {
         let mut guard = STATE.lock().unwrap_or_else(|e| e.into_inner());
         let s = guard.get_or_insert_default();
         if s.phase.device() != Some(device) {
@@ -241,8 +243,6 @@ pub fn end(device: DeviceId) -> bool {
         let recorder = ();
         (recorder, s.uplink.take())
     };
-    // Outside the lock: the recorder's thread may be waiting on it.
-    drop(recorder);
     if let Some(uplink) = uplink {
         uplink.close();
     }
