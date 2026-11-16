@@ -2476,7 +2476,7 @@ dependencies = [
  "n0-future",
  "nectarlink-adb",
  "nectarlink-protocol",
- "netdev 0.46.3",
+ "netdev 0.47.0",
  "noq-proto",
  "rand",
  "ring",
@@ -2618,6 +2618,28 @@ dependencies = [
  "libc",
  "mac-addr",
  "ndk-context",
+ "netlink-packet-core 0.9.0",
+ "netlink-packet-route 0.33.0",
+ "netlink-sys 0.9.0",
+ "objc2-core-foundation",
+ "objc2-system-configuration",
+ "once_cell",
+ "plist",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "netdev"
+version = "0.47.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98a4d13f8061600697d721c5fd45262aba533a7d4a7670e7c64fd02d68e4a9fb"
+dependencies = [
+ "block2",
+ "dispatch2",
+ "dlopen2",
+ "ipnet",
+ "libc",
+ "mac-addr",
  "netlink-packet-core 0.9.0",
  "netlink-packet-route 0.33.0",
  "netlink-sys 0.9.0",
