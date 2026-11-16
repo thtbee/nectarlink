@@ -81,6 +81,7 @@ use std::{
 };
 
 #[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 use cxx_qt_lib::QGuiApplication;
 use cxx_qt_lib::{QQmlApplicationEngine, QString, QUrl};
 use nectarlink_core::{
@@ -462,9 +463,9 @@ fn run_setup_window(mode: setup::Mode) -> ExitCode {
     }
     bridge::setup::set_mode(mode);
     bridge::native::ffi::prepare_qt_without_log();
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     let mut app = bridge::native::ffi::create_qt_app();
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     let mut app = QGuiApplication::new();
     if let Some(mut app) = app.as_mut() {
         app.as_mut().set_application_name(&QString::from("NectarLink Setup"));
@@ -714,9 +715,9 @@ fn main() -> ExitCode {
         bridge::native::ffi::prepare_qt(&logging::logs_dir(&data_dir).to_string_lossy());
     }
     bridge::native::ffi::set_ui_scale(i32::from(settings::Settings::load(&data_dir).ui_scale));
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     let mut app = bridge::native::ffi::create_qt_app();
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     let mut app = QGuiApplication::new();
     if let Some(mut app) = app.as_mut() {
         app.as_mut().set_application_name(&QString::from("Nectarlink"));

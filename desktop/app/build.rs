@@ -377,7 +377,7 @@ fn main() {
         .qml_files(QML.iter().map(|f| QmlFile::from(*f)))
         .qml_files(QML_SINGLETONS.iter().map(|f| QmlFile::from(*f).singleton(true)));
     let mut builder = CxxQtBuilder::new_qml_module(module).qt_module("Quick");
-    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
+    if matches!(std::env::var("CARGO_CFG_TARGET_OS").as_deref(), Ok("linux" | "macos")) {
         builder = builder.qt_module("Widgets");
     }
     builder
