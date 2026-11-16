@@ -211,7 +211,8 @@ Item {
 
     readonly property var toggleDescriptions: ({
         pc_mirror: qsTr("Allow this phone to view this PC's screen."),
-        commands: qsTr("Only enable for a phone you trust.")
+        commands: qsTr("Only enable for a phone you trust."),
+        remote_files: qsTr("Allow this phone to browse and download shared PC files over mobile data.")
     })
 
     readonly property var toggleGroups: [
