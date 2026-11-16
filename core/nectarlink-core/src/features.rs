@@ -349,6 +349,8 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("notifications", true),
     ("messages", true),
     ("calls", true),
+    // A call's sound on a PC (`call.audio`), with `calls` on too.
+    ("call_audio", true),
     ("contacts", true),
     ("clipboard", true),
     ("files", true),
@@ -831,6 +833,17 @@ pub const FEATURES: &[FeatureDef] = &[
         id: "calls.dial",
         group: FeatureGroup::Calls,
         requires: &[phone("call.dial", Unlock::Permission(Permission::Phone)), DeviceToggle("calls")],
+        partial: None,
+    },
+    FeatureDef {
+        id: "calls.audio",
+        group: FeatureGroup::Calls,
+        requires: &[
+            phone("call.control", Unlock::Permission(Permission::Phone)),
+            phone("call.audio", ELEVATED),
+            DeviceToggle("calls"),
+            DeviceToggle("call_audio"),
+        ],
         partial: None,
     },
     FeatureDef {

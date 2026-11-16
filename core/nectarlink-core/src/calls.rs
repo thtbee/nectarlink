@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //! Calls (docs/protocol/calls.md): a phone tells its PCs when a call rings,
 //! is answered and ends; a PC can answer, decline or silence it. The call's
-//! audio stays on the phone.
+//! sound can move to the PC (`call_audio`).
 
 use std::{
     sync::{Arc, Mutex},
@@ -115,7 +115,7 @@ const RINGING_AT_MOST: Duration = Duration::from_secs(90);
 pub(crate) struct Current(Mutex<Option<(CallState, Instant)>>);
 
 impl Current {
-    fn get(&self) -> Option<CallState> {
+    pub(crate) fn get(&self) -> Option<CallState> {
         self.get_at(Instant::now())
     }
 
@@ -305,6 +305,10 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                             .unwrap_or_else(|e| Err(e.to_string()))
                         {
                             Ok(()) => Envelope::empty(types::OK),
+                            // The call ended meanwhile (a second Hang up, say): it's not there to act on.
+                            Err(_) if shared.calls.get().is_none_or(|c| c.id != call.id) => {
+                                Envelope::error(ErrorCode::NotFound, "no such call")
+                            }
                             Err(reason) => {
                                 tracing::warn!(reason, action = command.as_str(), "a call action failed");
                                 Envelope::error(ErrorCode::Internal, "the phone couldn't do it")

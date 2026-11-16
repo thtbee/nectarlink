@@ -67,6 +67,8 @@ pub mod types {
     pub const CALL_LOG_CHANGED: &str = "call.log.changed";
     pub const CALL_DIAL: &str = "call.dial";
     pub const CALL_SIMS: &str = "call.sims";
+    pub const CALL_AUDIO_START: &str = "call.audio.start";
+    pub const CALL_AUDIO_STOP: &str = "call.audio.stop";
     pub const CONTACTS_LIST: &str = "contacts.list";
     pub const CONTACTS_CHANGED: &str = "contacts.changed";
     pub const SMS_THREADS: &str = "sms.threads";
@@ -2320,6 +2322,19 @@ pub mod calls {
     /// Offered by phones that list their SIMs (`call.sims`) and dial on the
     /// one a PC picks (`call.dial`'s `sim`).
     pub const SIMS: &str = "call.sims";
+    /// Offered by phones that carry a call's sound to a PC and the PC's
+    /// microphone into the call (`call.audio.start`).
+    pub const AUDIO: &str = "call.audio";
+    /// Stream service of the call's sound; `downlink` goes phone to PC (the
+    /// other party), `uplink` PC to phone (the PC's microphone).
+    pub const AUDIO_SERVICE: &str = "calls";
+    pub const OP_DOWNLINK: &str = "downlink";
+    pub const OP_UPLINK: &str = "uplink";
+    pub const AUDIO_VERSION: u32 = 1;
+    /// The call's sound: 16 kHz mono 16-bit PCM, both ways.
+    pub const AUDIO_RATE: u32 = 16_000;
+    /// Stream reset code: the call's sound stopped (or was refused).
+    pub const AUDIO_STOPPED: u32 = 14;
     /// Most SIMs (phone accounts that place calls) in one answer.
     pub const MAX_SIMS: usize = 8;
     /// A caller's photo: a JPEG of at most this many bytes.
@@ -2518,6 +2533,18 @@ impl CallDial {
             && self.number.len() <= calls::MAX_TEXT_BYTES
             && !self.number.chars().any(char::is_control)
             && self.sim.as_deref().is_none_or(is_valid_sim_id)
+    }
+}
+
+/// Body of `call.audio.start`: carry this call's sound to the PC.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallAudioStart {
+    pub id: String,
+}
+
+impl CallAudioStart {
+    pub fn is_valid(&self) -> bool {
+        !self.id.is_empty() && self.id.len() <= calls::MAX_ID_BYTES
     }
 }
 
@@ -5236,6 +5263,11 @@ mod tests {
         assert!(CallDial { number: "555".into(), sim: Some("1".into()) }.is_valid());
         assert!(!CallDial { number: "555".into(), sim: Some(String::new()) }.is_valid());
         assert!(!CallDial { number: "555".into(), sim: Some("a\nb".into()) }.is_valid());
+        let start = CallAudioStart { id: "7".into() };
+        let env = Envelope::new(types::CALL_AUDIO_START, &start).unwrap();
+        assert_eq!(Envelope::from_cbor(&env.to_cbor()).unwrap().body::<CallAudioStart>().unwrap(), start);
+        assert!(!CallAudioStart { id: String::new() }.is_valid());
+        assert!(!CallAudioStart { id: "1".repeat(calls::MAX_ID_BYTES + 1) }.is_valid());
         let old = Envelope::new(types::CALL_DIAL, &CallDial { number: "555".into(), sim: None }).unwrap();
         assert_eq!(old.body::<CallDial>().unwrap().sim, None);
         let sims = CallSims {

@@ -169,6 +169,7 @@ Item {
         notifications: qsTr("Notifications"),
         messages: qsTr("Messages"),
         calls: qsTr("Calls"),
+        call_audio: qsTr("Talk through this PC"),
         contacts: qsTr("Contacts"),
         clipboard: qsTr("Clipboard"),
         files: qsTr("Files"),
@@ -191,6 +192,7 @@ Item {
         notifications: Icons.bell,
         messages: Icons.messages,
         calls: Icons.call,
+        call_audio: Icons.desktop,
         contacts: Icons.person,
         clipboard: Icons.clipboard,
         files: Icons.send,
@@ -211,13 +213,14 @@ Item {
 
     readonly property var toggleDescriptions: ({
         pc_mirror: qsTr("Allow this phone to view this PC's screen."),
+        call_audio: qsTr("Move a call's sound to this PC: its speakers and microphone."),
         commands: qsTr("Only enable for a phone you trust.")
     })
 
     readonly property var toggleGroups: [
         {
             title: qsTr("Calls, messages & notifications"),
-            keys: ["notifications", "messages", "calls", "contacts"]
+            keys: ["notifications", "messages", "calls", "call_audio", "contacts"]
         },
         {
             title: qsTr("Files, photos & clipboard"),
@@ -253,7 +256,7 @@ Item {
     }
 
     readonly property var allGroupedKeys: [
-        "notifications", "messages", "calls", "contacts",
+        "notifications", "messages", "calls", "call_audio", "contacts",
         "clipboard", "files", "photos", "recordings", "storage", "remote_files",
         "media", "toggles", "mirroring", "pc_mirror", "webcam", "pc_actions", "remote_input", "commands"
     ]
@@ -2038,6 +2041,39 @@ Item {
                                 VideoView {
                                     anchors.fill: parent
                                     stream: "webcam"
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Calls through this PC (call.audio): what a phone call uses here.
+                Card {
+                    visible: Qt.platform.os === "windows"
+                    width: parent.width
+                    Column {
+                        width: parent.width
+                        spacing: 6
+                        Txt { text: qsTr("Calls through this PC"); role: "label"; muted: true }
+                        ListRow {
+                            id: callMicRow
+                            width: parent.width
+                            iconPath: Icons.mic
+                            title: qsTr("Microphone for calls")
+                            readonly property var mics: { try { return JSON.parse(PhoneCall.callMics) } catch (e) { return [] } }
+                            readonly property string micName: {
+                                const mic = mics.find(m => m.id === PhoneCall.callMic)
+                                return mic ? mic.name : qsTr("Windows default")
+                            }
+                            description: qsTr("Talking through this PC on a call records %1.").arg(micName)
+                            Component.onCompleted: PhoneCall.refreshCallMics()
+                            Button {
+                                variant: "outline"
+                                size: "sm"
+                                text: qsTr("Microphone")
+                                onClicked: {
+                                    PhoneCall.refreshCallMics()
+                                    callMicSheet.open()
                                 }
                             }
                         }
@@ -3965,6 +4001,41 @@ Item {
             Row {
                 anchors.right: parent.right
                 Button { variant: "text"; text: qsTr("Close"); onClicked: languageSheet.close() }
+            }
+        }
+    }
+
+    Sheet {
+        id: callMicSheet
+        cardWidth: 440
+        Column {
+            width: parent.width
+            spacing: 12
+            Txt { width: parent.width; text: qsTr("Talk on calls through"); role: "headline"; wrapMode: Text.WordWrap }
+            Repeater {
+                model: callMicRow.mics
+                delegate: Button {
+                    required property var modelData
+                    width: parent.width
+                    variant: modelData.id === PhoneCall.callMic ? "tonal" : "text"
+                    iconPath: modelData.id === PhoneCall.callMic ? Icons.check : Icons.mic
+                    text: modelData.name
+                    onClicked: {
+                        PhoneCall.chooseCallMic(modelData.id)
+                        callMicSheet.close()
+                    }
+                }
+            }
+            Txt {
+                visible: callMicRow.mics.length === 0
+                width: parent.width
+                muted: true
+                text: qsTr("No microphone found on this PC.")
+                wrapMode: Text.WordWrap
+            }
+            Row {
+                anchors.right: parent.right
+                Button { variant: "text"; text: qsTr("Close"); onClicked: callMicSheet.close() }
             }
         }
     }

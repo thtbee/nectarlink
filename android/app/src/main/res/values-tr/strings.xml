@@ -411,6 +411,10 @@
     <string name="channel_mic_requests">Mikrofon istekleri</string>
     <string name="mic_notification_title">%1$s için mikrofon açık</string>
     <string name="mic_notification_text">Bilgisayarınız bu telefonun mikrofonunu duyuyor.</string>
+    <string name="channel_call_audio">Arama sesi bilgisayarda</string>
+    <string name="call_audio_notification_title">Arama sesi %1$s üzerinde</string>
+    <string name="call_audio_notification_text">Bilgisayardan konuşup dinliyorsunuz.</string>
+    <string name="call_audio_back">Telefona geri al</string>
     <string name="mic_request_title">%1$s bu telefonun mikrofonunu istiyor</string>
     <string name="mic_request_text">Başlatmak için dokunun. Siz veya bilgisayar durdurana kadar açık kalır.</string>
     <string name="mic_request_start">Başlat</string>

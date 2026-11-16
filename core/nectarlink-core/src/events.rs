@@ -253,6 +253,12 @@ pub enum NodeEvent {
         device: DeviceId,
         on: bool,
     },
+    /// A paired PC's microphone for the call in progress (`call.audio`):
+    /// 16 kHz mono 16-bit PCM for this phone to put into the call.
+    CallAudioUplink {
+        device: DeviceId,
+        pcm: Vec<u8>,
+    },
     /// A paired PC requested a Continuity Camera capture on this phone.
     CameraCaptureRequested {
         device: DeviceId,

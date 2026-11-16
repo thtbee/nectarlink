@@ -579,6 +579,29 @@ pub trait Platform: Send + Sync + 'static {
     /// The PC stopped listening to this phone's microphone: stop recording.
     fn mic_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
 
+    /// Where a call's sound from a phone goes on this PC (`call.audio`):
+    /// `Some` only while this PC asked that phone for it.
+    fn call_audio_sink(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+    ) -> Option<std::sync::Arc<dyn crate::MicSink>> {
+        None
+    }
+
+    /// A paired PC asked for call `call_id`'s sound: get ready to carry it,
+    /// then stream with [`Node::call_audio_open`](crate::Node::call_audio_open).
+    /// An error refuses (the phone can't reach the call's sound).
+    fn call_audio_requested(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+        _call_id: &str,
+    ) -> Result<(), String> {
+        Err("this device doesn't carry a call's sound".into())
+    }
+
+    /// The other side stopped the call's sound (`call.audio.stop`).
+    fn call_audio_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
+
     /// The PC stopped using this phone's webcam: stop streaming.
     fn webcam_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
 

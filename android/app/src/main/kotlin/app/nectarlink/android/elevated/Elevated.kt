@@ -71,6 +71,9 @@ object Elevated {
     enum class Reason { WrongCode, NoPairingDialog, NotPaired, RootDenied, ShizukuNotRunning, ShizukuDenied, ShizukuRoot, Other }
 
     private const val TAG = "Elevated"
+
+    /** How long the helper may take to set up a call's sound. */
+    private const val CALL_AUDIO_ANSWER_MS = 3_000
     private const val PREFS = "elevated"
     private const val PAIRED = "paired"
     /** Set up through root (the user chose Use root) rather than Wireless debugging. */
@@ -697,6 +700,7 @@ object Elevated {
         _state.value = State.Running
         if (screenOffRequested) send(writer, "P 0")
         compileIfUpdated()
+        checkCallAudio()
         Thread {
             runCatching {
                 local.inputStream.bufferedReader().lineSequence().forEach { line ->
@@ -857,6 +861,7 @@ object Elevated {
         val writer = input
         input = null
         helper = null
+        callAudioSupported = false
         if (wasScreenOff && writer != null) {
             runCatching {
                 synchronized(writer) {
@@ -998,6 +1003,63 @@ object Elevated {
                 out.flush()
             }
         }.onFailure { Log.w(TAG, "can't open Elevated audio stream", it) }.getOrNull()
+    }
+
+    /**
+     * Opens the call in progress's sound from the Elevated helper ([CallAudio]):
+     * the other party arrives on the socket, what's written goes into the
+     * call. Null, with the helper's reason logged, if it can't.
+     */
+    fun openCallAudio(): java.net.Socket? = askCallAudio("CALL")
+
+    /**
+     * Whether this phone lets the helper reach a call's sound (Android 13+ and
+     * the audio HAL's telephony Rx/Tx devices): checked each time the helper
+     * starts, and `call.audio` is offered only when true.
+     */
+    @Volatile var callAudioSupported: Boolean = false
+        private set
+
+    private fun checkCallAudio() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        Thread {
+            val supported = askCallAudio("CALLCHECK")?.also { runCatching { it.close() } } != null
+            if (supported != callAudioSupported && helper != null) {
+                callAudioSupported = supported
+                Log.i(TAG, "call sound on a PC: ${if (supported) "supported" else "not supported"}")
+                onChange()
+            }
+        }.start()
+    }
+
+    /** Sends a call-sound command to the helper: the socket after its `OK`, or null. */
+    private fun askCallAudio(command: String): java.net.Socket? {
+        val (port, token) = helper ?: return null
+        val socket = runCatching {
+            java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
+                tcpNoDelay = true
+                soTimeout = CALL_AUDIO_ANSWER_MS
+                getOutputStream().write("$token\n$command\n".toByteArray())
+                getOutputStream().flush()
+            }
+        }.onFailure { Log.w(TAG, "can't reach the Elevated helper for call sound", it) }.getOrNull() ?: return null
+        // The answer line, read byte by byte so no sound after it is swallowed.
+        val answer = runCatching {
+            val line = StringBuilder()
+            while (true) {
+                val b = socket.getInputStream().read()
+                if (b < 0 || b == '\n'.code || line.length > 256) break
+                line.append(b.toChar())
+            }
+            line.toString()
+        }.getOrDefault("")
+        if (answer != "OK") {
+            Log.w(TAG, "no call sound: $answer")
+            runCatching { socket.close() }
+            return null
+        }
+        socket.soTimeout = 0
+        return socket
     }
 
     /** Lets NectarLink see which app is in front (for Pause for banking apps); false if Elevated isn't running. */

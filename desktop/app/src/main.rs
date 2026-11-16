@@ -11,6 +11,7 @@
 mod automations;
 mod battery;
 mod bridge;
+mod call_audio;
 mod calls;
 mod clipboard;
 mod command_palette;
@@ -172,6 +173,15 @@ impl Platform for DesktopPlatform {
         peer: &nectarlink_core::DeviceId,
     ) -> Option<std::sync::Arc<dyn nectarlink_core::MicSink>> {
         phone_mic::sink(peer)
+    }
+    fn call_audio_sink(
+        &self,
+        peer: &nectarlink_core::DeviceId,
+    ) -> Option<std::sync::Arc<dyn nectarlink_core::MicSink>> {
+        call_audio::sink(peer)
+    }
+    fn call_audio_stop_requested(&self, peer: &nectarlink_core::DeviceId) {
+        call_audio::end(*peer);
     }
     fn webcam_sink(
         &self,
@@ -642,6 +652,7 @@ fn main() -> ExitCode {
     photo_backup::start();
     webcam::init(&settings);
     phone_mic::init(&settings);
+    call_audio::init(&settings);
     local_api::init(&settings);
     win::widget::write_state_snapshot(&data_dir);
     win::tray::update_hotkeys(

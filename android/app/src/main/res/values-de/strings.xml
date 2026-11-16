@@ -411,6 +411,10 @@
     <string name="channel_mic_requests">Mikrofonanfragen</string>
     <string name="mic_notification_title">Mikrofon aktiv für %1$s</string>
     <string name="mic_notification_text">Dein PC hört das Mikrofon dieses Geräts.</string>
+    <string name="channel_call_audio">Anrufton am PC</string>
+    <string name="call_audio_notification_title">Anrufton auf %1$s</string>
+    <string name="call_audio_notification_text">Du sprichst und hörst am PC.</string>
+    <string name="call_audio_back">Zurück zum Telefon</string>
     <string name="mic_request_title">%1$s möchte das Mikrofon dieses Geräts nutzen</string>
     <string name="mic_request_text">Tippe zum Starten. Es bleibt aktiv, bis du oder der PC es beenden.</string>
     <string name="mic_request_start">Starten</string>

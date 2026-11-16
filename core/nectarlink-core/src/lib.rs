@@ -7,6 +7,7 @@
 //! `docs/architecture/core-api.md` for the design.
 
 mod actions;
+mod call_audio;
 mod calls;
 pub mod clip_kind;
 mod clipboard;
@@ -104,8 +105,9 @@ pub use nectarlink_protocol::{
         StorageWriteAccept, StorageWriteDone, StorageWriteOffer, TaskNotify, TouchAction, WatchFile,
         WebcamConfig, WebcamStart,
         calls::{
-            CONTROL as CALLS_CONTROL, DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG,
-            SHOW as CALLS_SHOW, SIMS as CALLS_SIMS, STATE as CALLS_STATE,
+            AUDIO as CALLS_AUDIO, AUDIO_RATE as CALLS_AUDIO_RATE, CONTROL as CALLS_CONTROL,
+            DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG, SHOW as CALLS_SHOW,
+            SIMS as CALLS_SIMS, STATE as CALLS_STATE,
         },
         contacts::{READ as CONTACTS_READ, SHOW as CONTACTS_SHOW},
         continuity_camera::{

@@ -413,6 +413,10 @@
     <string name="channel_mic_requests">Microphone requests</string>
     <string name="mic_notification_title">Microphone on for %1$s</string>
     <string name="mic_notification_text">Your PC hears this phone\'s microphone.</string>
+    <string name="channel_call_audio">Call sound on your PC</string>
+    <string name="call_audio_notification_title">Call sound on %1$s</string>
+    <string name="call_audio_notification_text">You talk and listen on the PC.</string>
+    <string name="call_audio_back">Back to phone</string>
     <string name="mic_request_title">%1$s wants this phone\'s microphone</string>
     <string name="mic_request_text">Tap to start. It stays on until you or the PC stop it.</string>
     <string name="mic_request_start">Start</string>

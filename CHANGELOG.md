@@ -8,6 +8,13 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Talk through your PC.** During a call, **On PC** on the call card or in Nectar Island moves the
+  call's sound to a Windows PC: you hear the other person from its speakers or headphones
+  and talk into its microphone, over NectarLink's own connection, without Bluetooth. The
+  phone shows a notification while the sound is on the PC, with **Back to phone** to move
+  it back. A call answered or dialed from the PC moves there on its own. Settings › Camera & Audio › Microphone for calls picks the PC's microphone.
+  Needs Elevated on Android 13 or newer, on a phone whose maker lets apps reach the call's
+  sound (Pixel phones do).
 - **Install the phone app from the PC, over USB.** Settings › Install on a phone checks
   what's needed and walks you through the rest: it gets Android's USB tools from Google
   when the PC has none (checked against Google's checksum), helps turn on USB debugging,

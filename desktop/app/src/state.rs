@@ -589,6 +589,7 @@ impl AppState {
             | NodeEvent::Webcam { .. }
             | NodeEvent::Mic { .. }
             | NodeEvent::PcAudioFrame { .. }
+            | NodeEvent::CallAudioUplink { .. }
             | NodeEvent::CameraCaptureRequested { .. }
             | NodeEvent::CameraCaptureCancelled { .. }
             // The updater acts on it (update_relay); nothing shows.

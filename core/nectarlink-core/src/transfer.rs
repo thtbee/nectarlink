@@ -1579,6 +1579,18 @@ pub(crate) async fn accept_stream(
             crate::mic::receive(shared, session.peer, send, recv).await;
         }
         Some(h)
+            if h.svc == nectarlink_protocol::messages::calls::AUDIO_SERVICE
+                && h.v == nectarlink_protocol::messages::calls::AUDIO_VERSION
+                && (h.op == nectarlink_protocol::messages::calls::OP_DOWNLINK
+                    || h.op == nectarlink_protocol::messages::calls::OP_UPLINK) =>
+        {
+            if h.op == nectarlink_protocol::messages::calls::OP_DOWNLINK {
+                crate::call_audio::receive_downlink(shared, session.peer, send, recv).await;
+            } else {
+                crate::call_audio::receive_uplink(shared, session.peer, send, recv).await;
+            }
+        }
+        Some(h)
             if h.svc == nectarlink_protocol::messages::webcam::SERVICE
                 && h.op == nectarlink_protocol::messages::webcam::OP_VIDEO
                 && h.v == nectarlink_protocol::messages::webcam::VERSION =>
