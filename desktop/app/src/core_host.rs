@@ -120,6 +120,8 @@ pub fn compute_capabilities(
         nectarlink_core::CONTACTS_SHOW.into(),
         nectarlink_core::SMS_SHOW.into(),
         nectarlink_core::TOGGLES_SHOW.into(),
+        nectarlink_core::MIRROR_LISTEN.into(),
+        nectarlink_core::MIC_LISTEN.into(),
     ];
     #[cfg(any(windows, target_os = "linux"))]
     {
@@ -129,7 +131,6 @@ pub fn compute_capabilities(
         caps.push(nectarlink_core::STORAGE_READ.into());
         caps.push(nectarlink_core::STORAGE_WRITE.into());
         caps.push(nectarlink_core::MIRROR_VIEW.into());
-        caps.push(nectarlink_core::MIRROR_LISTEN.into());
         caps.push(nectarlink_core::DECK_ACTIONS.into());
         caps.push(nectarlink_core::PC_AUDIO.into());
         caps.push(nectarlink_core::RECORDER.into());
@@ -158,7 +159,6 @@ pub fn compute_capabilities(
                 caps.push(nectarlink_core::MEDIA_STREAM.into());
             }
         }
-        caps.push(nectarlink_core::MIC_LISTEN.into());
     }
     #[cfg(any(windows, target_os = "linux"))]
     let mut pc_mirror_enabled = crate::pc_mirror::is_active();
@@ -460,7 +460,7 @@ mod tests {
         let caps = compute_capabilities(None);
         // Ensure unsupported features on macOS are never advertised
         assert!(!caps.contains(&"mirror.view".into()), "macOS must not advertise mirror.view");
-        assert!(!caps.contains(&"mirror.listen".into()), "macOS must not advertise mirror.listen");
+        assert!(caps.contains(&nectarlink_core::MIRROR_LISTEN.into()), "macOS must advertise mirror.listen");
         assert!(!caps.contains(&"media.control".into()), "macOS must not advertise media.control");
         assert!(
             !caps.contains(&nectarlink_core::STORAGE_MOUNT.into()),
@@ -488,7 +488,7 @@ mod tests {
             !caps.contains(&nectarlink_core::MEDIA_STREAM.into()),
             "macOS must not advertise media.stream"
         );
-        assert!(!caps.contains(&nectarlink_core::MIC_LISTEN.into()), "macOS must not advertise mic.listen");
+        assert!(caps.contains(&nectarlink_core::MIC_LISTEN.into()), "macOS must advertise mic.listen");
         assert!(!caps.contains(&nectarlink_core::PC_WAKE.into()), "macOS must not advertise pc.wake");
 
         // Ensure supported features on macOS are advertised
