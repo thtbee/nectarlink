@@ -1198,12 +1198,16 @@ async fn a_phone_stopped_and_started_again_in_the_same_process_reconnects() {
     }
 }
 
-/// A phone that refuses the PC's taps (Xiaomi without USB debugging (Security
-/// settings)) says so, and the PC hears which window it's about.
+/// Input and capture failures reach the viewer with their session and code.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_phone_that_refuses_taps_tells_the_pc() {
+async fn mirror_notices_reach_the_viewer_on_both_platforms() {
     let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::MIRROR_VIEW]).await;
-    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::MIRROR_CAPTURE]).await;
+    let mut phone = device_with(
+        "Pixel",
+        DeviceKind::Phone,
+        &[nectarlink_core::MIRROR_CAPTURE, nectarlink_core::MIRROR_VIEW],
+    )
+    .await;
     pair_qr(&mut pc, &mut phone).await;
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
     with_timeout("notice", phone.node.mirror_notice(pc_id, 2, nectarlink_core::MIRROR_NOTICE_INPUT_BLOCKED))
@@ -1215,6 +1219,26 @@ async fn a_phone_that_refuses_taps_tells_the_pc() {
     })
     .await;
     assert_eq!((device, session, code.as_str()), (phone_id, 2, nectarlink_core::MIRROR_NOTICE_INPUT_BLOCKED));
+
+    with_timeout(
+        "PC capture failure",
+        pc.node.mirror_notice(
+            phone_id,
+            nectarlink_core::MIRROR_SCREEN,
+            nectarlink_core::MIRROR_NOTICE_PC_CAPTURE_FAILED,
+        ),
+    )
+    .await
+    .unwrap();
+    let (device, session, code) = wait_for(&mut phone, "the notice", |e| match e {
+        NodeEvent::MirrorNotice { device, session, code } => Some((*device, *session, code.clone())),
+        _ => None,
+    })
+    .await;
+    assert_eq!(
+        (device, session, code.as_str()),
+        (pc_id, nectarlink_core::MIRROR_SCREEN, nectarlink_core::MIRROR_NOTICE_PC_CAPTURE_FAILED)
+    );
 }
 
 /// Each packet is reported back to the sender, and well past what a device

@@ -12,11 +12,12 @@
 //!    so typed strings never appear in `/proc/<pid>/cmdline`.
 
 use std::{
+    cell::RefCell,
     collections::HashMap,
     ffi::{CStr, CString, c_char, c_int, c_uint, c_ulong, c_void},
     io::Write,
     process::{Command, Stdio},
-    sync::{Mutex, OnceLock},
+    sync::{Arc, Mutex, OnceLock},
 };
 
 use nectarlink_core::{ButtonAction, KeyMod, MouseButton, PowerAction, SlideAction, TouchAction};
@@ -308,12 +309,23 @@ pub(crate) fn char_to_x11_keysym(ch: char) -> u32 {
 }
 
 // ---- Wayland `org.freedesktop.portal.RemoteDesktop` backend ----
-struct RemoteDesktopPortal {
+pub(crate) struct RemoteDesktopPortal {
     conn: zbus::blocking::Connection,
     session_path: zbus::zvariant::OwnedObjectPath,
+    stream: Option<(u32, i32, i32)>,
 }
 
 impl RemoteDesktopPortal {
+    pub(crate) fn for_screencast(
+        conn: zbus::blocking::Connection,
+        session_path: zbus::zvariant::OwnedObjectPath,
+        node_id: u32,
+        (width, height): (u32, u32),
+    ) -> Self {
+        // ScreenCast dimensions come from positive i32 values.
+        Self { conn, session_path, stream: Some((node_id, width as i32, height as i32)) }
+    }
+
     fn connect() -> Option<Self> {
         let conn = zbus::blocking::Connection::session().ok()?;
         if !super::dbus_name_has_owner(&conn, "org.freedesktop.portal.Desktop") {
@@ -388,7 +400,7 @@ impl RemoteDesktopPortal {
             start_reply.body().deserialize::<zbus::zvariant::OwnedObjectPath>().ok().map(|p| p.to_string());
         Self::wait_portal_response(&mut iter, start_req_path.as_deref())?;
 
-        Some(Self { conn, session_path })
+        Some(Self { conn, session_path, stream: None })
     }
 
     fn wait_portal_response(
@@ -424,7 +436,9 @@ impl RemoteDesktopPortal {
             .is_ok()
     }
 
-    fn move_absolute(&self, x: f64, y: f64) -> bool {
+    fn move_absolute(&self, x: f32, y: f32, width: i32, height: i32) -> bool {
+        let (stream, width, height) = self.stream.unwrap_or((0, width, height));
+        let (x, y) = normalized_to_pixels(x, y, width, height);
         let opts: HashMap<&str, zbus::zvariant::Value<'_>> = HashMap::new();
         self.conn
             .call_method(
@@ -432,7 +446,7 @@ impl RemoteDesktopPortal {
                 "/org/freedesktop/portal/desktop",
                 Some("org.freedesktop.portal.RemoteDesktop"),
                 "NotifyPointerMotionAbsolute",
-                &(&self.session_path, &opts, 0u32, x, y),
+                &(&self.session_path, &opts, stream, f64::from(x), f64::from(y)),
             )
             .is_ok()
     }
@@ -510,17 +524,44 @@ impl RemoteDesktopPortal {
     }
 }
 
+#[derive(Clone)]
+enum InputPortal {
+    Standalone,
+    Screencast(Option<Arc<RemoteDesktopPortal>>),
+}
+
+thread_local! {
+    static INPUT_PORTAL: RefCell<InputPortal> = const { RefCell::new(InputPortal::Standalone) };
+}
+
+/// Uses the screen sharing grant for this event without opening a second
+/// portal dialog or moving the standalone remote's pointer to another screen.
+pub(crate) fn with_screencast_input(portal: Option<Arc<RemoteDesktopPortal>>, f: impl FnOnce()) {
+    struct Restore(InputPortal);
+
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            INPUT_PORTAL.replace(std::mem::replace(&mut self.0, InputPortal::Standalone));
+        }
+    }
+
+    let _restore = Restore(INPUT_PORTAL.replace(InputPortal::Screencast(portal)));
+    f();
+}
+
 fn with_wayland_portal<F: FnOnce(&RemoteDesktopPortal) -> bool + Send>(f: F) -> bool {
     if !has_wayland_display() {
         return false;
     }
-    super::non_tokio(|| {
-        static PORTAL: OnceLock<Mutex<Option<RemoteDesktopPortal>>> = OnceLock::new();
-        let mutex = PORTAL.get_or_init(|| Mutex::new(RemoteDesktopPortal::connect()));
-        let guard = mutex.lock().unwrap_or_else(|e| e.into_inner());
-        guard.as_ref().is_some_and(f)
-    })
+    match INPUT_PORTAL.with(|portal| portal.borrow().clone()) {
+        InputPortal::Screencast(portal) => portal.as_deref().is_some_and(|p| super::non_tokio(|| f(p))),
+        InputPortal::Standalone => {
+            super::non_tokio(|| PORTAL.get_or_init(RemoteDesktopPortal::connect).as_ref().is_some_and(f))
+        }
+    }
 }
+
+static PORTAL: OnceLock<Option<RemoteDesktopPortal>> = OnceLock::new();
 
 fn has_remote_desktop_portal() -> bool {
     super::non_tokio(|| {
@@ -881,7 +922,7 @@ pub fn move_absolute(x: f32, y: f32) {
     }
     let (w, h) = display_dimensions();
     let (px, py) = normalized_to_pixels(x, y, w, h);
-    if with_wayland_portal(|p| p.move_absolute(f64::from(px), f64::from(py))) {
+    if with_wayland_portal(|p| p.move_absolute(x, y, w, h)) {
         return;
     }
     let sx = px.to_string();
@@ -1057,18 +1098,20 @@ pub fn release_held_buttons() {
     }) {
         return;
     }
-    if with_wayland_portal(|p| {
-        let mut ok = true;
-        if left {
-            ok &= p.button(i32::from(BTN_LEFT), false);
-        }
-        if middle {
-            ok &= p.button(i32::from(BTN_MIDDLE), false);
-        }
-        if right {
-            ok &= p.button(i32::from(BTN_RIGHT), false);
-        }
-        ok
+    if PORTAL.get().and_then(Option::as_ref).is_some_and(|p| {
+        super::non_tokio(|| {
+            let mut ok = true;
+            if left {
+                ok &= p.button(i32::from(BTN_LEFT), false);
+            }
+            if middle {
+                ok &= p.button(i32::from(BTN_MIDDLE), false);
+            }
+            if right {
+                ok &= p.button(i32::from(BTN_RIGHT), false);
+            }
+            ok
+        })
     }) {
         return;
     }

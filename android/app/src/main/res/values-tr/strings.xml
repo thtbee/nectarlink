@@ -390,6 +390,7 @@
     <string name="remote_volume_hint">Bu ekran açıkken ses düğmeleri de slayt değiştirir.</string>
     <string name="remote_mode_screen">Ekran</string>
     <string name="pc_mirror_connecting">Bağlanılıyor: %1$s…</string>
+    <string name="pc_mirror_capture_failed">Ekran paylaşımı başarısız oldu. Bilgisayarın kilidini açın, paylaşım izinlerini kontrol edin ve tekrar deneyin.</string>
     <string name="pc_mirror_fullscreen">Tam ekran</string>
     <string name="pc_mirror_exit_fullscreen">Tam ekrandan çık</string>
     <string name="pc_mirror_right_click">Sağ tık</string>

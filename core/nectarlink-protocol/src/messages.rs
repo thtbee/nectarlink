@@ -1403,6 +1403,8 @@ pub mod mirror {
     /// `mirror.notice`: the phone refuses the PC's taps and keys (on Xiaomi,
     /// until USB debugging (Security settings) is on).
     pub const NOTICE_INPUT_BLOCKED: &str = "input_blocked";
+    /// `mirror.notice`: the PC could not start or continue sharing its screen.
+    pub const NOTICE_PC_CAPTURE_FAILED: &str = "pc_capture_failed";
 }
 
 /// Whether `name` looks like an Android package name.
@@ -1507,8 +1509,8 @@ pub struct MirrorSession {
     pub session: u32,
 }
 
-/// Body of `mirror.notice` (phone → PC): something the PC should tell its
-/// user about a mirroring, by a code it knows (`mirror::NOTICE_*`).
+/// Body of `mirror.notice`: something the viewer should tell its user
+/// about a mirroring, by a code it knows (`mirror::NOTICE_*`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MirrorNotice {
     #[serde(default)]

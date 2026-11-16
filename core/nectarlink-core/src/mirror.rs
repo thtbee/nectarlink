@@ -119,7 +119,7 @@ pub(crate) async fn start(shared: &Shared, session: &Session, options: MirrorSta
     Ok(())
 }
 
-/// Tells the PC something about its mirroring (`mirror.notice`), by `code`.
+/// Tells the viewer something about its mirroring (`mirror.notice`), by `code`.
 pub(crate) async fn notice(session: &Session, mirroring: u32, code: &str) -> Result<()> {
     let body = MirrorNotice { session: mirroring, code: code.to_owned() };
     if !body.is_valid() {
