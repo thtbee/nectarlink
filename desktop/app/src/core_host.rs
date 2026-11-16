@@ -120,6 +120,7 @@ pub fn compute_capabilities(
         nectarlink_core::CONTACTS_SHOW.into(),
         nectarlink_core::SMS_SHOW.into(),
         nectarlink_core::TOGGLES_SHOW.into(),
+        nectarlink_core::MIRROR_VIEW.into(),
     ];
     #[cfg(any(windows, target_os = "linux"))]
     {
@@ -128,7 +129,6 @@ pub fn compute_capabilities(
         caps.push(nectarlink_core::STORAGE_MOUNT.into());
         caps.push(nectarlink_core::STORAGE_READ.into());
         caps.push(nectarlink_core::STORAGE_WRITE.into());
-        caps.push(nectarlink_core::MIRROR_VIEW.into());
         caps.push(nectarlink_core::MIRROR_LISTEN.into());
         caps.push(nectarlink_core::DECK_ACTIONS.into());
         caps.push(nectarlink_core::PC_AUDIO.into());
@@ -459,7 +459,7 @@ mod tests {
     fn macos_advertises_only_supported_capabilities() {
         let caps = compute_capabilities(None);
         // Ensure unsupported features on macOS are never advertised
-        assert!(!caps.contains(&"mirror.view".into()), "macOS must not advertise mirror.view");
+        assert!(caps.contains(&nectarlink_core::MIRROR_VIEW.into()), "macOS must advertise mirror.view");
         assert!(!caps.contains(&"mirror.listen".into()), "macOS must not advertise mirror.listen");
         assert!(!caps.contains(&"media.control".into()), "macOS must not advertise media.control");
         assert!(
