@@ -139,11 +139,8 @@ pub fn with_video_timestamp(url: &str, secs: u32) -> String {
         Some((b, f)) => (b, Some(f)),
         None => (trimmed, None),
     };
-    if url::Url::parse(before_frag)
-        .is_ok_and(|u| u.host_str().is_some_and(|h| h == "vimeo.com" || h.ends_with(".vimeo.com")))
-    {
-        return format!("{before_frag}#t={secs}s");
-    }
+    let vimeo = url::Url::parse(before_frag)
+        .is_ok_and(|u| u.host_str().is_some_and(|h| h == "vimeo.com" || h.ends_with(".vimeo.com")));
     let (base, query) = match before_frag.split_once('?') {
         Some((b, q)) => (b, Some(q)),
         None => (before_frag, None),
@@ -159,6 +156,14 @@ pub fn with_video_timestamp(url: &str, secs: u32) -> String {
                 kept.push(pair.to_owned());
             }
         }
+    }
+    if vimeo {
+        // Remove old query timestamps too, otherwise they take precedence over the new fragment.
+        return if kept.is_empty() {
+            format!("{base}#t={secs}s")
+        } else {
+            format!("{base}?{}#t={secs}s", kept.join("&"))
+        };
     }
     kept.push(format!("t={secs}"));
     let mut out = format!("{base}?{}", kept.join("&"));
@@ -655,6 +660,17 @@ mod tests {
 
         let updated = with_video_timestamp("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10", 245);
         assert_eq!(updated, "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=245");
+    }
+
+    #[test]
+    fn vimeo_timestamp_replaces_stale_query_parameters() {
+        let url = "https://vimeo.com/123?t=10";
+        assert_eq!(with_video_timestamp(url, 45), "https://vimeo.com/123#t=45s");
+
+        let url = "https://player.vimeo.com:443/video/123?h=abc&start=10&time_continue=20#t=30s";
+        let updated = with_video_timestamp(url, 45);
+        assert_eq!(updated, "https://player.vimeo.com:443/video/123?h=abc#t=45s");
+        assert_eq!(extract_handoff_link(&updated).unwrap().timestamp_secs, Some(45));
     }
 
     #[test]
