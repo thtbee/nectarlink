@@ -1069,6 +1069,45 @@ async fn unpairing_is_mirrored_on_the_other_device() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn qr_pairing_recovers_after_an_offline_unpair() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // The phone is offline when the PC forgets it, so it cannot receive pair.revoke.
+    phone.node.shutdown().await;
+    wait_for(&mut pc, "phone offline", |e| match e {
+        NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    with_timeout("offline unpair", pc.node.unpair(phone_id)).await.unwrap();
+    assert!(pc.node.paired_devices().unwrap().is_empty());
+
+    let TestDevice { node: old_node, dir, .. } = phone;
+    drop(old_node);
+    let mut phone = start_in(dir, "Pixel", DeviceKind::Phone).await;
+    assert_eq!(phone.node.device_id(), phone_id);
+    let stale = phone.node.paired_devices().unwrap();
+    assert_eq!(stale.len(), 1);
+    assert_eq!(stale[0].id, pc_id);
+
+    // Explicit pairing must work even with a stale pairing on the joining device.
+    pair_qr(&mut pc, &mut phone).await;
+    let pc_peers = pc.node.paired_devices().unwrap();
+    let phone_peers = phone.node.paired_devices().unwrap();
+    assert_eq!(pc_peers.len(), 1);
+    assert_eq!(pc_peers[0].id, phone_id);
+    assert_eq!(phone_peers.len(), 1);
+    assert_eq!(phone_peers[0].id, pc_id);
+    with_timeout("ring after pairing again", pc.node.ring(phone_id, true)).await.unwrap();
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn reconnects_after_a_restart() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;
     let mut phone = device("Pixel", DeviceKind::Phone).await;
