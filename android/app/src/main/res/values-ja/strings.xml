@@ -1,0 +1,1467 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <string name="app_name">NectarLink</string>
+
+    <!-- Pairing -->
+    <string name="pair_title">PCとペアリングする</string>
+    <string name="pair_show_title">スマートフォンやタブレットをペアリングする</string>
+    <string name="pair_show_hint">もう一方のスマートフォンやタブレットでNectarLinkを開き、「ペアリング」をタップして、このコードをスキャンしてください。</string>
+    <string name="pair_show_qr_desc">別のスマートフォンやタブレットとのペアリングコード</string>
+    <string name="action_show_code">代わりにスマートフォンやタブレットをペアリングする</string>
+    <string name="pair_scan_hint">PCでNectarLinkを開きます。表示されているコードにカメラをかざしてください。別のスマートフォンやタブレットの「スマートフォンやタブレットをペアリングする」欄に、そのデバイスのコードが表示されます。</string>
+    <string name="pair_nearby_title">近くのデバイスとペアリング</string>
+    <string name="pair_nearby_hint">PCでNectarLinkを開き、ペアリング画面を表示したままにしてください。ここに表示されます。</string>
+    <string name="pair_looking">PCを検索中…</string>
+    <string name="pair_joining">ペアリング…</string>
+    <string name="pair_connecting">%1$sに接続中…</string>
+    <string name="pair_waiting">%1$sを待機中…</string>
+    <string name="pair_check_code">コードを確認してください</string>
+    <string name="pair_compare_hint">%1$sに同じコードが表示されるようにしてください。これにより、途中で他の人がペアリングするのを防げます。</string>
+    <string name="pair_done_title">ペアリング済み</string>
+    <string name="pair_done">%1$s はこのスマートフォンとペアリングされています。</string>
+    <string name="pair_failed_title">ペアリングがうまくいきませんでした</string>
+    <string name="pair_failed_rejected">コードが一致しなかったため、何もペアリングされませんでした。</string>
+    <string name="pair_failed_declined">いずれかのデバイスでペアリングが拒否されました。</string>
+    <string name="pair_failed_expired">コードの有効期限が切れました。PCで新しいコードを表示してください。</string>
+    <string name="pair_failed_unreachable">PCに接続できませんでした。両方が同じネットワークにつながっているか確認してください。</string>
+    <string name="pair_failed_other">それはNectarLinkのペアリングコードではないか、何か不具合が起きたようです。</string>
+    <string name="your_pc">お使いのPC</string>
+    <string name="camera_permission_needed">NectarLinkでペアリングコードを読み取るにはカメラが必要です。記録されるものはありません。</string>
+
+    <!-- Home -->
+    <string name="home_title">ホーム</string>
+    <string name="link_online">接続済み</string>
+    <string name="link_online_rtt">接続済み · %1$d ms</string>
+    <string name="link_usb">USB接続時</string>
+    <string name="link_usb_rtt">USB接続時 · %1$d ms</string>
+    <string name="link_away">外出先で接続済み</string>
+    <string name="link_connecting">接続中…</string>
+    <string name="link_offline_seen">オフライン · 最終確認 %1$s</string>
+    <string name="link_offline_now">オフライン · 最終確認 たった今</string>
+    <string name="link_never">まだ接続されていません</string>
+    <string name="link_not_reconnecting">再接続しない</string>
+    <string name="battery_level">%1$d%%</string>
+    <string name="battery_charging">%1$d%% · 充電中</string>
+    <string name="ringing_title">%1$s がスマートフォンを鳴らしています</string>
+    <string name="ringing_title_unknown">PCがスマートフォンを鳴らしています</string>
+    <string name="connected">接続済み</string>
+    <string name="not_connected">未接続</string>
+
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="settings_appearance">外観</string>
+    <string name="settings_theme">テーマ</string>
+    <string name="settings_mode">モード</string>
+    <string name="settings_language">言語</string>
+    <string name="settings_language_more">その他</string>
+    <string name="settings_dynamic_color">壁紙の色</string>
+    <string name="settings_dynamic_color_hint">壁紙の色を使用します。</string>
+    <string name="settings_devices">PC</string>
+    <string name="settings_about">概要</string>
+    <string name="settings_notifications">通知</string>
+    <string name="notifications_title">PCに通知を表示する</string>
+    <string name="notifications_on">オン。ペアリング済みのPCに通知が表示され、そこで返信や非表示処理が行えます。</string>
+    <string name="notifications_off">NectarLinkがこのスマートフォンの通知をPCに表示するには、通知へのアクセス権限が必要です。</string>
+    <string name="notifications_restricted">スイッチがグレーアウトしていますか？アプリ情報を開き、⋮をタップして「制限付き設定を許可」を選択し、再度お試しください。</string>
+    <string name="action_allow">許可</string>
+    <string name="clip_share_label">PCに送信</string>
+    <string name="channel_transfers">ファイル転送</string>
+    <string name="channel_received">受信済みファイル</string>
+    <string name="channel_pc_media">PCでのメディア</string>
+    <string name="media_on">%2$s の %1$s</string>
+    <string name="media_play">再生</string>
+    <string name="media_pause">一時停止</string>
+    <string name="media_next">次へ</string>
+    <string name="media_previous">前へ</string>
+    <string name="media_seek">再生位置</string>
+    <string name="action_send_files">ファイルを送信</string>
+    <string name="action_send_folder">フォルダを送信</string>
+    <string name="input_service_label">NectarLink：PCから操作</string>
+    <string name="input_service_description">ペアリング済みのPCと画面を共有しながら、PCのマウスやキーボードでこのスマートフォンを操作したり、タップ、スワイプ、入力したりできます。それ以外のものは認識しません。</string>
+    <string name="settings_control">PCからの操作</string>
+    <string name="control_title">PCのマウスとキーボードを使う</string>
+    <string name="control_on">オン：PCに画面が表示されている間、そこからタップやスワイプ、入力が可能です。</string>
+    <string name="control_off">PCにこの画面を表示している間、PCからタップ、スワイプ、入力ができます。「ユーザー補助」でNectarLinkをオンにしてください。</string>
+    <string name="dnd_access_title">サイレント モードとマナーモード</string>
+    <string name="dnd_access_on">オン：PCでサイレント モードのオン/オフを切り替えたり、着信音をミュートに設定したりできます。</string>
+    <string name="dnd_access_off">PCでサイレント モードのオン/オフを切り替えたり、着信音をミュートにしたりできます。</string>
+    <string name="write_settings_title">画面の明るさ</string>
+    <string name="write_settings_on">オン：PCでこのスマートフォンの画面の明るさを調整できます。</string>
+    <string name="write_settings_off">PCでこのスマートフォンの画面の明るさを調整できます。</string>
+    <string name="local_network_title">このネットワーク上のPCにアクセスする</string>
+    <string name="local_network_text">Androidでは、アプリがネットワーク上のデバイスと通信する前に確認が求められます。NectarLinkがPCに接続するには、この許可が必要です。</string>
+    <string name="channel_elevated">ワイヤレス デバッグの設定</string>
+    <string name="elevated_title">昇格</string>
+    <string name="elevated_not_set_up">PCからの通話時に、リアルタイムタッチ、全キー操作、ミュート、保留、キーパッド操作が可能です。</string>
+    <string name="elevated_waiting">ワイヤレス デバッグを待機中です。「開発者向けオプション」で有効にしてください。</string>
+    <string name="elevated_starting">開始中…</string>
+    <string name="elevated_running">オン：PCのマウスとキーボードが、本物のタッチスクリーンやキーボードのように動作します。</string>
+    <string name="elevated_failed">起動できませんでした。ワイヤレス デバッグがオンになっているか確認し、再度お試しください。</string>
+    <string name="elevated_not_paired">スマートフォンがNectarLinkのペアリングを忘れてしまいました。再度設定してください。</string>
+    <string name="elevated_start_with">起動方法</string>
+    <string name="elevated_method_wireless">ワイヤレス</string>
+    <string name="elevated_set_up">セットアップ</string>
+    <string name="elevated_root_hint">このスマートフォンはルート化されているため、代わりにルート権限経由で昇格を開始できます。ペアリングは不要で、再起動後やWi-Fiから切断された後も自動的に復帰します。権限はワイヤレス デバッグ時と同様です。</string>
+    <string name="elevated_running_root">オン（root経由）：PCのマウスとキーボードが、本物のタッチスクリーンやキーボードのように動作します。</string>
+    <string name="elevated_root_failed">ルート権限が許可されていないか、ルート管理ツールがシェルユーザーとしてNectarLinkのヘルパーを起動できない可能性があります。KernelSUまたはAPatchでは、まずNectarLinkをスーパーユーザーリストに追加してから再度お試しください。あるいは、代わりにワイヤレス デバッグで設定してください。</string>
+    <string name="elevated_shizuku_hint">Shizukuがインストールされているため、代わりにそれ経由で昇格を開始できます。独自のペアリングは不要で、Shizukuの動作中はWi-Fi環境外でも継続して動作します。権限はワイヤレス デバッグ時と同様です。</string>
+    <string name="elevated_running_shizuku">オン（Shizuku経由）：PCのマウスとキーボードが、本物のタッチスクリーンやキーボードのように動作します。</string>
+    <string name="elevated_shizuku_waiting">Shizukuを待っています。Shizukuアプリで起動してから、NectarLinkを開いてください。</string>
+    <string name="elevated_shizuku_not_running">Shizukuが起動していません。Shizukuアプリで起動してから、もう一度お試しください。</string>
+    <string name="elevated_shizuku_denied">ShizukuはNectarLinkを許可しませんでした。Shizukuで許可し（古い場合はShizukuを更新し）、再度お試しください。</string>
+    <string name="elevated_shizuku_root">Shizukuはroot権限で動作しており、昇格ではヘルパーがシェルユーザーとしてのみ起動します。代わりにワイヤレス デバッグ付きでShizukuを起動するか、rootを使用してください。</string>
+    <string name="elevated_open_shizuku">Shizukuを開く</string>
+    <string name="elevated_turn_off">オフにする</string>
+    <string name="elevated_try_again">もう一度お試しください</string>
+    <string name="elevated_steps_title">ワイヤレス デバッグの設定</string>
+    <string name="elevated_steps">通知内のワンタイムコードはAndroidで機密情報として非表示になりますが、PC側にも届きます。\n\n1. 「開発者向けオプション」をオンにします：「設定」›「端末情報」で「ビルド番号」を7回タップします。\n2. 「開発者向けオプション」で「ワイヤレス デバッグ」（Wi-Fi接続時）をオンにし、その項目を開いて「ペアリングコードでデバイスをペアリング」をタップします。\n3. コードの画面を閉じずに、NectarLinkの通知に6桁のコードを入力します。</string>
+    <string name="elevated_open_developer">開発者向けオプションを開く</string>
+    <string name="elevated_pair_title">NectarLinkをワイヤレス デバッグとペアリング</string>
+    <string name="elevated_pair_text">「ワイヤレス デバッグ」で「ペアリングコードでデバイスをペアリング」をタップし、ここにコードを入力してください。</string>
+    <string name="elevated_pair_action">コードを入力</string>
+    <string name="elevated_pair_collapsed">この通知を下にスワイプし（Xiaomi製スマートフォンの場合は長押し）、「コードを入力」をタップしてください。</string>
+    <string name="elevated_pair_hint">6桁のペアリングコード</string>
+    <string name="elevated_pairing">ペアリング…</string>
+    <string name="elevated_no_dialog">ペアリングコードが表示されていません。「ワイヤレス デバッグ」で「ペアリングコードでデバイスをペアリング」をタップし、ここに入力してください。</string>
+    <string name="elevated_wrong_code">そのコードはうまくいきませんでした。確認してもう一度入力してください。</string>
+    <string name="channel_mirroring">画面共有</string>
+    <string name="channel_mirror_requests">画面共有リクエスト</string>
+    <string name="mirror_request_title">%1$s が画面を表示しようとしています</string>
+    <string name="mirror_request_title_sound">%1$s がお使いのスマートフォンのサウンドを再生しようとしています</string>
+    <string name="mirror_request_text">タップして共有してください。いつでも中止できます。</string>
+    <string name="mirror_request_text_sound">タップして共有します。Androidから画面共有を求められますが、PCには音声のみ伝わります。</string>
+    <string name="mirror_sharing">%1$s と画面を共有</string>
+    <string name="mirror_sharing_sound">スマートフォンの音声を%1$sと共有する</string>
+    <string name="action_stop">停止</string>
+    <plurals name="app_windows_title">
+        <item quantity="other">%1$d 個のアプリが PC のウィンドウで開いています</item>
+    </plurals>
+    <string name="app_windows_text">%1$sに表示されます。画面の内容と並んで、ここで動作します。</string>
+    <string name="action_close_all">すべて閉じる</string>
+    <string name="settings_calls_and_contacts">通話、連絡先、メッセージ</string>
+    <string name="sms_title">PCからのテキスト</string>
+    <string name="sms_on">オン。会話がPCに表示され、テキストの閲覧や送信が可能です。</string>
+    <string name="sms_off">PCでテキストの閲覧や送信が可能です。メッセージと連絡先へのアクセス権限が必要です。</string>
+    <string name="calls_title">PCでの通話</string>
+    <string name="calls_on">オン。PCに着信や最近の通話が表示され、通話の発信や応答が可能です。</string>
+    <string name="calls_off">誰から電話がかかってきたかを確認し、PCから発信や着信に対応できます。音声はスマートフォン側で処理されます。通話、通話履歴、および連絡先へのアクセス権限が必要です。</string>
+    <string name="contacts_title">PC上の連絡先</string>
+    <string name="contacts_on">オン。連絡先はPCの「通話」と「メッセージ」で利用できます。</string>
+    <string name="contacts_off">PCから連絡先を検索し、電話やメッセージを送信できます。連絡先へのアクセス権限が必要です。</string>
+    <string name="settings_photos">写真と動画</string>
+    <string name="photos_title">PC上の写真と動画</string>
+    <string name="photos_on">オン。写真、スクリーンショット、動画がPCで利用可能です。</string>
+    <string name="photos_partial">一部の写真しか共有されません。PCでギャラリー全体を閲覧できるようにするには、「すべて」を許可してください。</string>
+    <string name="photos_off">PCで写真や動画を閲覧し、新しいスクリーンショットをすぐに受け取れます。写真と動画へのアクセス権限が必要です。</string>
+    <string name="action_select_photos">すべて許可</string>
+    <string name="transfer_too_many">そのフォルダには、一度に送信するにはファイルが多すぎます。</string>
+    <string name="transfers_title">転送</string>
+    <string name="transfer_sending">%1$s へ送信</string>
+    <string name="transfer_receiving">%1$sから受信中</string>
+    <string name="transfer_waiting">%1$s を待機中</string>
+    <string name="transfer_pause">一時停止</string>
+    <string name="transfer_resume">再開</string>
+    <string name="transfer_paused_progress">一時停止中 · %1$s / %2$s</string>
+    <string name="transfer_received_from">%1$s から · Download/Nectarlink 内</string>
+    <string name="transfer_sent_to">%1$s に送信済み</string>
+    <string name="transfer_cancelled">キャンセル済み</string>
+    <string name="transfer_denied">%1$s はこのスマートフォンからのファイルを受け付けません。</string>
+    <string name="transfer_unreachable">%1$s に接続できませんでした。</string>
+    <string name="transfer_no_space">スペースが足りません。</string>
+    <string name="transfer_failed_integrity">ファイルの整合性チェックに失敗しました。再開のため一部のファイルを保持しています。</string>
+    <string name="transfer_failed">転送がうまくいきませんでした。</string>
+    <string name="transfer_nothing">それらのファイルは開けません。</string>
+    <string name="transfer_off_for">%1$s のファイルは無効になっています。</string>
+    <string name="transfer_pick_pc">どのPCに送信しますか？</string>
+    <string name="clip_tile_label">クリップボードを送信</string>
+    <string name="action_send_clipboard">クリップボードを送信</string>
+    <string name="clip_sent_to">%1$s に送信済み</string>
+    <string name="clip_no_pc">現在、接続されているPCはありません。</string>
+    <string name="clip_off_for">%1$s のクリップボードはオフになっています。</string>
+    <string name="clip_too_large">一度に送信するにはテキストが多すぎます。</string>
+    <string name="clip_private">コピーしたものはアプリ側で非公開に設定されているため、送信されませんでした。</string>
+    <string name="clip_empty">クリップボードにテキストや画像はありません。</string>
+    <string name="clip_image_too_large">その画像は大きすぎて送信できません。</string>
+    <string name="clip_image_unreadable">その画像は読み取れません。</string>
+    <string name="clip_image_unsupported">画像を送信するには、%1$s で NectarLink を更新してください。</string>
+    <string name="clip_nothing_shared">送信するテキストはありません。</string>
+    <string name="clipboard_history_title">クリップボード履歴</string>
+    <string name="clipboard_history_subtitle">PCとの直近50件のクリップ。このスマートフォン上で暗号化して保存されています。</string>
+    <string name="clipboard_history_just_now">たった今</string>
+    <string name="clipboard_history_empty">まだありません。PCと共有したクリップがここに表示されます。</string>
+    <string name="clipboard_history_search">クリップボード履歴を検索</string>
+    <string name="clipboard_history_no_match">「%1$s」に一致するものはありません。</string>
+    <string name="clipboard_history_from">%1$sから</string>
+    <string name="clipboard_history_sent_to">%1$s に送信済み</string>
+    <string name="clipboard_history_image">画像</string>
+    <string name="clipboard_history_copy">コピー</string>
+    <string name="clipboard_history_copied">クリップボードにコピーしました</string>
+    <string name="clipboard_history_pin">ピン留め</string>
+    <string name="clipboard_history_unpin">ピン留め解除</string>
+    <string name="clipboard_history_delete">削除</string>
+    <string name="clipboard_history_clear">履歴をクリア</string>
+    <string name="clipboard_history_done">完了</string>
+    <string name="settings_clipboard_title">クリップボード</string>
+    <string name="settings_clipboard_passwords">コピーしたパスワードを同期する</string>
+    <string name="settings_clipboard_passwords_hint">また、パスワードマネージャーが非公開としてマークしているものも送信します。1分後にPCのクリップボードから消去され、履歴に残ることはありません。</string>
+    <string name="settings_clipboard_suggestions">コピーしたテキストに対するアクションの提案</string>
+    <string name="settings_clipboard_suggestions_hint">PCからのテキストに応じた操作を提案します（リンクを開く、マップ、通話、荷物の追跡、メール）。</string>
+    <string name="clip_received_from">%1$sからコピーしました</string>
+    <string name="clip_action_open">開く</string>
+    <string name="clip_action_maps">マップで開く</string>
+    <string name="clip_action_call">通話</string>
+    <string name="clip_action_track">追跡</string>
+    <string name="clip_action_email">メール</string>
+    <string name="background_title">バックグラウンドでも連絡可能な状態を維持</string>
+    <string name="background_text">Androidがバッテリー節約のためNectarLinkを一時停止しているため、PCから接続できません。バックグラウンドで動作させたままにしてください。</string>
+    <string name="background_on">バックグラウンドでの接続維持を許可</string>
+    <string name="settings_background_title">バックグラウンドとバッテリー</string>
+    <string name="settings_run_in_background">バックグラウンドで動作する</string>
+    <string name="settings_run_in_background_hint">このスマートフォンをPCから操作可能な状態に保ちます。オフの状態では、NectarLinkは起動中のみ接続され、通知は表示されなくなります。</string>
+    <string name="home_background_off_title">バックグラウンド接続はオフです</string>
+    <string name="home_background_off_text">NectarLinkは、アプリが開いている間のみ接続されます。このスマートフォンをPCから操作できるようにするには、オンにしてください。</string>
+    <string name="battery_open_oem_settings">バッテリー設定</string>
+    <string name="battery_guide_samsung">Samsung端末の場合：「アプリ情報」＞「バッテリー」を開き、「制限なし」を選択します。次に、「デバイスケア」＞「バッテリー」＞「バックグラウンド使用の制限」で、NectarLinkがスリープ状態にならないように設定してください。</string>
+    <string name="battery_guide_xiaomi">Xiaomi / HyperOS / MIUI の場合：NectarLink の「自動起動」をオンにし、「アプリ情報」＞「バッテリー セーバー」で「制限なし」を選択してください。</string>
+    <string name="battery_guide_oneplus">OnePlus / OxygenOS の場合：アプリ情報 › バッテリー使用量を開き、「バックグラウンド動作を許可」と「自動起動を許可」をオンにします。</string>
+    <string name="battery_guide_oppo_realme">Oppo / Realmeの場合：アプリ情報 › バッテリー使用量を開き、「バックグラウンド動作を許可」と「自動起動を許可」をオンにします。</string>
+    <string name="battery_guide_vivo">Vivo / Funtouch / OriginOS の場合：アプリ情報を開く › バッテリー › 「制限なし（バックグラウンドでの電力使用量が多い）」を選択し、自動起動を許可してください。</string>
+    <string name="battery_guide_huawei">Huawei / Honorの場合：アプリ起動（電話管理）を開く › 「NectarLinkの自動管理」をオフにし、「自動起動」「セカンダリ起動」「バックグラウンド実行」はオンのままにする。</string>
+    <string name="battery_guide_pixel">Pixelの場合：アプリ情報を開く › アプリのバッテリー使用量 › 「バックグラウンドでの使用を許可」をタップし、「制限なし」を選択します。</string>
+    <string name="action_manage">管理</string>
+    <string name="action_app_info">アプリ情報</string>
+    <string name="theme_hive">Hive</string>
+    <string name="hive_invite_title">新しいテーマ「Hive」をお試しください</string>
+    <string name="hive_invite_text">チャコールまたは温かいワックスに蜂蜜を添え、アプリの背景には動く蜂の巣を配置。設定からいつでも変更可能です。</string>
+    <string name="hive_invite_try">Hiveを試す</string>
+    <string name="hive_invite_dismiss">今はしない</string>
+    <string name="star_channel">NectarLinkプロジェクト</string>
+    <string name="star_title">NectarLinkはいかがですか？</string>
+    <string name="star_text">タップしてGitHubでスターを付けてください。他の人が見つけやすくなります。</string>
+    <string name="support_title">NectarLinkを支援</string>
+    <string name="support_body">NectarLinkは無料かつオープンソースです。もし日々の生活が少しでも便利になったなら、ぜひ活動の継続にご協力ください。ありがとうございます！</string>
+    <string name="support_action">サポート</string>
+    <string name="settings_comb_motion">蜂の巣のアニメーション</string>
+    <string name="settings_comb_motion_hint">ハニカムは呼吸し、脈動します。「アニメーションの無効化」または「バッテリー セーバー」がオンの状態では、静止したままになります。</string>
+    <string name="theme_bloom">Bloom</string>
+    <string name="theme_graphite">Graphite</string>
+    <string name="mode_system">システム</string>
+    <string name="mode_light">ライト</string>
+    <string name="mode_dark">ダーク</string>
+    <string name="about_version">NectarLink %1$s</string>
+    <string name="unpair_title">%1$sのペアリングを解除しますか？</string>
+    <string name="unpair_text">両方のデバイスから互いのペアリング情報が削除されます。いつでも再度ペアリングできます。</string>
+    <string name="core_failed">NectarLinkを起動できませんでした: %1$s</string>
+
+    <!-- Actions -->
+    <string name="action_pair">ペアリング</string>
+    <string name="action_pair_nearby">代わりに近くのデバイスとペアリングする</string>
+    <string name="action_scan_instead">代わりにコードをスキャンする</string>
+    <string name="action_codes_match">コードが一致します</string>
+    <string name="action_codes_differ">一致していません</string>
+    <string name="action_try_again">もう一度お試しください</string>
+    <string name="action_cancel">キャンセル</string>
+    <string name="action_allow_camera">カメラを許可</string>
+    <string name="action_ring_pc">PCを鳴らす</string>
+    <string name="action_stop_ringing">鳴り止ませる</string>
+    <string name="action_stop_service">オフにする</string>
+    <string name="action_turn_on">オンにする</string>
+    <string name="action_ring_device">鳴らす</string>
+    <string name="peer_kind_phone">スマートフォン</string>
+    <string name="peer_kind_tablet">タブレット</string>
+    <string name="action_unpair">ペアリング解除</string>
+    <string name="action_pair_new">別のPCとペアリングする</string>
+    <string name="action_refresh">更新</string>
+    <string name="action_update">更新</string>
+    <string name="update_title">NectarLink %1$s が利用可能です</string>
+    <string name="update_text">最新の機能改善や修正が利用できます。</string>
+    <string name="update_downloading">ダウンロード中…</string>
+    <string name="update_downloading_progress">ダウンロード中 · %2$s の %1$s</string>
+    <string name="update_waiting_network">接続待ちです。ダウンロードは中断したところから再開されます。</string>
+    <string name="update_installing">インストールしています。Androidで確認を求められる場合があります。</string>
+    <string name="update_not_allowed">NectarLinkによるアップデートのインストールを許可してください。戻った時点でアップデートが続行されます。</string>
+    <string name="update_damaged">ダウンロードファイルが破損していたため、インストールできませんでした。もう一度お試しください。</string>
+    <string name="update_offline">アップデートをダウンロードできませんでした。オンラインのときにもう一度お試しください。</string>
+    <string name="update_install_failed">Androidでアップデートがインストールされませんでした。もう一度お試しください。</string>
+    <string name="update_whats_new">新機能</string>
+    <string name="update_check">アップデートを確認</string>
+    <string name="update_checking">アップデートを確認中…</string>
+    <string name="update_up_to_date_version">NectarLink %1$s は最新の状態です。</string>
+    <string name="update_current_version">NectarLink %1$s を使用中です。</string>
+    <string name="update_check_failed">アップデートを確認できませんでした。インターネット接続を確認してください。</string>
+    <string name="action_lock_pc">PCをロック</string>
+    <string name="action_sleep_pc">スリープ</string>
+    <string name="action_hibernate_pc">ハイバネート</string>
+    <string name="action_phone_sound_on_pc">スマートフォンの音声をPCで再生</string>
+    <string name="phone_sound_on_pc_off">%1$s はこのスマートフォンの音声を再生しません。PCの「設定」›「デバイス」で、このスマートフォンの「画面ミラーリング」をオンにしてください。</string>
+    <string name="action_shutdown_pc">シャットダウン</string>
+    <string name="shutdown_pc_title">%1$s をシャットダウンしますか？</string>
+    <string name="shutdown_pc_text">開いているアプリが閉じます。未保存のデータがある場合は中止されることがあります。</string>
+    <string name="action_wake_pc">起動</string>
+    <string name="action_disconnect">切断</string>
+    <string name="action_stop_reconnecting">再接続を停止する</string>
+    <string name="action_reconnect">再接続</string>
+    <string name="wake_waking">%1$sを起動中…</string>
+    <string name="wake_timeout_title">%1$sはまだ起動していません</string>
+    <string name="wake_timeout_text">以下を確認してください：\n• BIOS/UEFIおよびWindowsのネットワーク アダプター設定（電源の管理とマジック パケットによるウェイクアップ）で、Wake-on-LANが有効になっていること。\n• %1$s がシャットダウンされていた場合は、有線LAN（イーサネット）に接続されていること（シャットダウン状態からのWi-Fiによるウェイクアップはほとんど機能しません）。\n• このスマートフォンが %1$s と同じネットワークに接続されていること。</string>
+    <string name="wake_not_ready">このスマートフォンがネットワークアドレスを認識できるよう、一度だけ%1$sに接続してください。</string>
+    <string name="pc_locked">%1$s はロックされています。</string>
+    <string name="pc_sleeping">%1$s がスリープします。</string>
+    <string name="pc_hibernating">%1$s は休止状態です。</string>
+    <string name="pc_shutting_down">%1$s をシャットダウンしています。</string>
+    <string name="pc_actions_off">%1$s では、このスマートフォンのロックとスリープがオフになっています。</string>
+    <string name="channel_links">PCからのリンク</string>
+    <!-- Play on phone: what a PC plays, streamed to the phone. -->
+    <string name="watch_offer_title">%1$sで視聴</string>
+    <string name="watch_offer_untitled">PCで再生中のコンテンツ</string>
+    <string name="watch_back_10">10秒戻る</string>
+    <string name="watch_forward_10">10秒進む</string>
+    <string name="watch_seek">位置</string>
+    <string name="watch_file_failed">この動画は再生できませんでした。</string>
+    <string name="watch_offer_action">視聴</string>
+    <string name="watch_from">%1$sから</string>
+    <string name="watch_close">閉じる</string>
+    <string name="link_from">%1$sからのリンク</string>
+    <string name="link_opened_on">%1$sで開きました</string>
+    <string name="link_pick_pc">どのPCで開きますか？</string>
+    <string name="channel_pc_tasks">PCでのタスク</string>
+    <string name="channel_pc_tasks_running">PCで実行中のタスク</string>
+    <string name="task_running_on">%1$sで動作中</string>
+
+    <!-- Notifications -->
+    <string name="channel_connection">接続</string>
+    <string name="channel_ringing">スマートフォンを探す</string>
+    <string name="notification_connected_to">%1$sに接続済み</string>
+    <plurals name="notification_connected_pcs">
+        <item quantity="other">%1$d台のPCに接続済み</item>
+    </plurals>
+    <string name="notification_waiting">PCを待機中</string>
+    <string name="notification_not_paired">まだPCとペアリングされていません</string>
+    <plurals name="transfer_files">
+        <item quantity="other">%1$d 個のファイル</item>
+    </plurals>
+    <plurals name="transfer_items">
+        <item quantity="other">%1$d 件</item>
+    </plurals>
+
+    <!-- Remote input (touchpad, air mouse, keyboard, voice typing & presentation) -->
+    <string name="action_remote_pc">PCの操作</string>
+    <string name="action_back">戻る</string>
+    <string name="settings_remote">PCを操作する</string>
+    <string name="settings_volume_keys_control_pc">音量ボタンでPCを操作</string>
+    <string name="settings_volume_keys_control_pc_hint">PCで音楽や動画を再生している間、スマートフォンの音量ボタンでPCの音量を変更できます。</string>
+    <string name="settings_quiet_while_using_pc">PCの使用中は通知音を鳴らさない</string>
+    <string name="settings_quiet_while_using_pc_hint">通知を表示するペアリング済みのPCを使用している間、スマートフォン側では通知音やバイブレーションを鳴らしません。</string>
+    <string name="settings_hide_from_recents">最近使ったアプリから隠す</string>
+    <string name="settings_hide_from_recents_hint">NectarLinkを「最近使ったアプリ」画面に表示しないため、履歴をすべてクリアしても誤って終了されることがありません。</string>
+    <string name="settings_assist_on_demand">PCでスマートフォンを操作中のみアシストを有効にする</string>
+    <string name="settings_assist_on_demand_hint">昇格を有効にすると、PCでこのスマートフォンの画面を表示中や文字入力中だけアシストがオンになり、操作を終えると少ししてからオフになります。ユーザー補助サービスが有効だと起動しないアプリ向けです。</string>
+    <string name="settings_touchpad_sensitivity">タッチパッドの速度</string>
+    <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
+    <string name="remote_mode_touchpad">タッチパッド</string>
+    <string name="remote_mode_air">エアマウス</string>
+    <string name="remote_mode_presentation">プレゼンテーション</string>
+    <string name="remote_touchpad_hint">ドラッグで移動 · タップでクリック · 2本指で右クリックまたはスクロール · ダブルタップ＆ホールドでドラッグ</string>
+    <string name="remote_air_hold">長押しして %1$s を操作</string>
+    <string name="remote_air_active">%1$s 上を移動中 · スマートフォンを傾けるかタップしてクリック</string>
+    <string name="remote_air_hint">パッドを押したままスマートフォンを傾けてポインターを動かします · パッドをタップしてクリックします · 離すと停止します</string>
+    <string name="remote_air_no_gyro_title">このスマートフォンにはジャイロセンサーが搭載されていません</string>
+    <string name="remote_air_no_gyro_text">エアマウスはジャイロセンサーを使用して、スマートフォンの傾きに追従します。代わりにタッチパッドモードをご利用ください。</string>
+    <string name="remote_left_click">左</string>
+    <string name="remote_right_click">右</string>
+    <string name="remote_middle_click">中ボタン</string>
+    <string name="remote_keyboard">キーボード</string>
+    <string name="remote_more_controls">その他</string>
+    <string name="remote_touchpad_only">タッチパッドのみ</string>
+    <string name="remote_type_placeholder">%1$sに入力…</string>
+    <string name="remote_dictate">音声入力</string>
+    <string name="remote_dictate_stop">停止</string>
+    <string name="remote_dictate_hint">「音声入力」をタップまたは長押しして、%1$s に話しかけます</string>
+    <string name="remote_dictate_listening">%1$s 向けに聞き取り中…</string>
+    <string name="remote_dictate_typing">%1$sで入力中…</string>
+    <string name="remote_dictate_typed">%1$s に入力：「%2$s」</string>
+    <string name="remote_dictate_no_recognizer">このスマートフォンには音声認識が搭載されていません。</string>
+    <string name="remote_dictate_no_speech">何も検出されませんでした。「音声入力」をタップまたは長押しして、もう一度お試しください。</string>
+    <string name="remote_dictate_error">音声認識を完了できませんでした。「音声入力」をタップまたは長押しして、もう一度お試しください。</string>
+    <string name="remote_dictate_permission_needed">NectarLinkが%1$sに音声入力を行うには、マイクへのアクセス権限が必要です。</string>
+    <string name="remote_denied_title">%1$sの操作を許可する</string>
+    <string name="remote_denied_text">%1$s では、NectarLink のプロンプトまたは「設定」 › 「デバイス」で、このスマートフォンからの操作を許可してください。</string>
+    <string name="remote_offline_text">%1$sは現在接続されていません。</string>
+    <string name="remote_unsupported_text">このスマートフォンから操作するには、%1$sでNectarLinkを更新してください。</string>
+    <string name="remote_slide_next">次のスライド</string>
+    <string name="remote_slide_prev">前へ</string>
+    <string name="remote_slide_start">スライド開始</string>
+    <string name="remote_slide_stop">スライド終了</string>
+    <string name="remote_slide_black">黒い画面</string>
+    <string name="remote_laser_hold">長押しでレーザーポインター</string>
+    <string name="remote_laser_active">%1$s のレーザー · スマートフォンを傾けるか、ここをドラッグしてください</string>
+    <string name="remote_volume_hint">この画面が開いている間は、音量ボタンでスライドも切り替わります。</string>
+    <string name="remote_mode_screen">画面</string>
+    <string name="pc_mirror_connecting">%1$sに接続中…</string>
+    <string name="pc_mirror_capture_failed">画面共有に失敗しました。PCのロックを解除し、共有権限を確認してもう一度お試しください。</string>
+    <string name="pc_mirror_fullscreen">全画面表示</string>
+    <string name="pc_mirror_exit_fullscreen">全画面表示を終了</string>
+    <string name="pc_mirror_right_click">右クリック</string>
+    <string name="pc_mirror_task_view">タスクビュー</string>
+    <string name="pc_mirror_keyboard">キーボード</string>
+    <string name="pc_mirror_hide_keyboard">キーを非表示にする</string>
+    <string name="pc_mirror_enter">Enter</string>
+    <string name="pc_mirror_backspace">Backspace</string>
+    <string name="pc_mirror_quality_720p">720p</string>
+    <string name="pc_mirror_quality_1080p">1080p</string>
+    <string name="pc_mirror_quality_desc">ストリーミング画質: %1$s</string>
+    <string name="pc_mirror_viewport_desc">%1$s の画面</string>
+
+    <!-- Voice recorder to PC -->
+    <string name="action_record_pc">録音</string>
+    <string name="channel_recorder">ボイスレコーダー</string>
+    <!-- Phone as microphone. -->
+    <string name="channel_mic">PC用マイク</string>
+    <string name="channel_mic_requests">マイクのリクエスト</string>
+    <string name="mic_notification_title">%1$s のマイクがオン</string>
+    <string name="mic_notification_text">お使いのPCがこのスマートフォンのマイクから音声を聞き取ります。</string>
+    <string name="channel_call_audio">PCでの通話音声</string>
+    <string name="call_audio_notification_title">%1$s で通話音声を再生中</string>
+    <string name="call_audio_notification_text">PCを使って通話しています。</string>
+    <string name="call_audio_back">スマートフォンに戻す</string>
+    <string name="mic_request_title">%1$s がこのスマートフォンのマイクを使用しようとしています</string>
+    <string name="mic_request_text">タップして開始します。あなたまたはPCが停止するまでオンのままになります。</string>
+    <string name="mic_request_start">開始</string>
+    <string name="mic_request_card_text">あなたかPCが停止するまでオンのままになります。</string>
+    <string name="mic_pc_toggle">このスマートフォンをマイクとして使う</string>
+    <string name="mic_pc_toggle_hint">デフォルトでオンになっています。このPCはマイクの使用をリクエストできます。「開始」をタップしたときにのみ有効になります。</string>
+    <string name="mic_pc_toggle_hint_auto">デフォルトでオン。このPCはマイクの使用をリクエストでき、すぐに有効になります。</string>
+    <string name="start_without_asking_toggle">確認なしでカメラとマイクを開始</string>
+    <string name="start_without_asking_hint">このPCがリクエストすると、スマートフォンを操作しなくてもすぐにオンになります。昇格が必要です。昇格していない場合は、通常通りスマートフォン側にリクエストが届きます。</string>
+    <string name="recorder_notification_recording">%1$s の録音中</string>
+    <string name="recorder_notification_paused">録音一時停止中 (%1$s)</string>
+    <string name="recorder_permission_title">マイクへのアクセスを許可する</string>
+    <string name="recorder_permission_text">NectarLinkは、%1$sに送信する音声メモを録音している間のみマイクを使用します。</string>
+    <string name="recorder_allow_mic">マイクを許可する</string>
+    <string name="recorder_offline_hint">録音データはこのスマートフォンに保存され、%1$sが接続されると自動的に送信されます。</string>
+    <string name="recorder_status_ready">%1$s の録音準備完了</string>
+    <string name="recorder_status_recording">%1$s の録音中</string>
+    <string name="recorder_status_paused">一時停止中</string>
+    <string name="recorder_start">録音開始</string>
+    <string name="recorder_pause">一時停止</string>
+    <string name="recorder_resume">再開</string>
+    <string name="recorder_marker_hint">マーカーラベル（任意）</string>
+    <string name="recorder_add_marker">マーカーを追加</string>
+    <string name="recorder_marker_default">マーカー %1$d</string>
+    <string name="recorder_saved_title">録音</string>
+    <string name="recorder_send_now">送信</string>
+    <string name="recorder_send_again">再送信</string>
+    <string name="recorder_delete">削除</string>
+    <string name="recorder_denied_text">このスマートフォンの音声録音は、%1$s ではオフになっています。</string>
+    <plurals name="recorder_markers_count">
+        <item quantity="other">%1$d 個のマーカー</item>
+    </plurals>
+
+    <!-- Deck (macro pad to PC) -->
+    <string name="action_deck_pc">デッキ</string>
+    <string name="action_desk_pc">デスク時計</string>
+    <string name="deck_fullscreen">全画面表示</string>
+    <string name="deck_exit_fullscreen">全画面表示を終了</string>
+    <string name="deck_playing">再生中</string>
+    <string name="deck_paused">一時停止中</string>
+    <string name="deck_muted">ミュート</string>
+    <string name="deck_live">ライブ</string>
+    <string name="deck_volume_percent">%1$d%%</string>
+    <string name="deck_empty_page">このページにはまだタイルがありません。%1$s の NectarLink でタイルを追加してください。</string>
+    <string name="deck_commands_denied_title">%1$s でのコマンドを許可する</string>
+    <string name="deck_commands_denied_text">このスマートフォンでシェルコマンドを実行するには、NectarLink › 設定 › デバイスの %1$s で、このスマートフォンの「デッキコマンドを実行」をオンにしてください。</string>
+    <string name="deck_hint">%1$sのデッキでタイルをカスタマイズする</string>
+    <string name="pc_audio_volume">音量</string>
+    <string name="pc_audio_mute">ミュート</string>
+    <string name="pc_audio_unmute">ミュート解除</string>
+    <string name="pc_audio_muted">ミュート</string>
+    <string name="pc_audio_output">出力: %1$s</string>
+    <string name="pc_audio_outputs_title">%1$s のオーディオ出力</string>
+    <string name="pc_audio_default_badge">デフォルト</string>
+    <string name="pc_audio_outputs_hint">いずれかをタップすると、%1$sの音がそこで再生されます。</string>
+    <string name="pc_audio_use_phone_speaker">スマートフォンをスピーカーとして使用する</string>
+    <string name="pc_audio_use_phone_speaker_sub">このスマートフォンでPCの音声を再生する</string>
+    <string name="pc_audio_use_phone_speaker_on">PCの音声をこのスマートフォンにストリーミング中</string>
+    <string name="pc_audio_use_phone_mic">スマートフォンをマイクとして使用</string>
+    <string name="pc_audio_use_phone_mic_sub">このスマートフォンのマイクをPCに送信する</string>
+    <string name="pc_audio_use_phone_mic_on">PCがこのスマートフォンのマイクを認識します</string>
+
+    <!-- Phone storage in File Explorer -->
+    <string name="storage_all_files_title">すべてのファイルへのアクセス</string>
+    <string name="storage_all_files_on">オン。許可したPCでは、エクスプローラーでこのスマートフォンのファイルを閲覧、開く、コピーできます。</string>
+    <string name="storage_all_files_off">PCのエクスプローラーで、このスマートフォンのフォルダを参照します。「すべてのファイルへのアクセス」権限が必要です。または、以下から特定のフォルダを選択してください。</string>
+    <string name="storage_saf_title">選択したフォルダのみ</string>
+    <string name="storage_saf_hint">選択したフォルダのみを共有します。</string>
+    <string name="storage_add_folder">フォルダを追加</string>
+    <string name="storage_remove_folder">削除</string>
+    <string name="storage_pc_toggle">エクスプローラーでこのスマートフォンのストレージを参照する</string>
+    <string name="storage_pc_toggle_hint">デフォルトではオフです。このPCで、共有ファイルの一覧表示、開く、アップロード、名前変更、削除が行えます。</string>
+    <string name="storage_request_title">%1$s がこのスマートフォンのストレージを参照しようとしています</string>
+    <string name="storage_request_text">%1$s がエクスプローラーで共有ストレージ（または選択したフォルダ）を閲覧することを許可しますか？</string>
+    <string name="action_not_now">今はしない</string>
+
+    <!-- Phone as webcam to PC -->
+    <string name="action_webcam_pc">ウェブカメラ</string>
+    <string name="channel_webcam">ウェブカメラ</string>
+    <string name="channel_webcam_requests">ウェブカメラのリクエスト</string>
+    <string name="webcam_notification_streaming">%1$s にカメラをストリーミング中</string>
+    <string name="webcam_notification_detail">%1$d × %2$d · %3$s カメラ</string>
+    <string name="webcam_request_title">%1$s がお使いのカメラを使用しようとしています</string>
+    <string name="webcam_request_text">タップしてウェブカメラの操作画面を開き、配信を開始してください。</string>
+    <string name="webcam_permission_title">カメラへのアクセスを許可する</string>
+    <string name="webcam_permission_text">NectarLinkは、%1$sに動画をストリーミングしている間だけカメラを使用します。</string>
+    <string name="webcam_allow_camera">カメラを許可</string>
+    <string name="webcam_status_connecting">カメラを%1$sに接続しています…</string>
+    <string name="webcam_status_ready">%1$s へのストリーミング準備完了</string>
+    <string name="webcam_start">ウェブカメラを起動</string>
+    <string name="webcam_stop">ウェブカメラを停止</string>
+    <string name="webcam_camera_back">背面</string>
+    <string name="webcam_camera_front">前面</string>
+    <string name="webcam_switch_to_front">前面カメラに切り替える</string>
+    <string name="webcam_switch_to_back">背面カメラに切り替える</string>
+    <string name="webcam_turn_torch_on">ライトを点灯</string>
+    <string name="webcam_turn_torch_off">ライトをオフにする</string>
+    <string name="webcam_switch_camera">カメラを切り替え</string>
+    <string name="webcam_zoom_label">ズーム %1$.1f×</string>
+    <string name="webcam_resolution_label">解像度</string>
+    <string name="webcam_denied_text">%1$s では、このスマートフォンのウェブカメラはオフになっています。</string>
+    <string name="webcam_offline_hint">%1$sを同じネットワークに接続して、カメラのストリーミングを開始してください。</string>
+
+    <!-- Timeline -->
+    <string name="timeline_title">タイムライン</string>
+    <string name="timeline_subtitle">PCと共有するファイル、クリップ、リンク、写真、セッション。</string>
+    <string name="timeline_search">タイムラインを検索</string>
+    <string name="timeline_empty">タイムラインにはまだ何も表示されていません。</string>
+    <string name="timeline_no_match">「%1$s」に一致するものはありません。</string>
+    <string name="timeline_filter_all">すべて</string>
+    <string name="timeline_filter_files">ファイル</string>
+    <string name="timeline_filter_clips">クリップ</string>
+    <string name="timeline_filter_links">リンク</string>
+    <string name="timeline_filter_photos">写真</string>
+    <string name="timeline_filter_recordings">録音</string>
+    <string name="timeline_filter_sessions">セッション</string>
+    <string name="timeline_action_open">開く</string>
+    <string name="timeline_action_folder">フォルダーで表示</string>
+    <string name="timeline_action_copy">コピー</string>
+    <string name="timeline_action_send_again">再送信</string>
+    <string name="timeline_action_remove">削除</string>
+    <string name="timeline_action_clear_all">すべてクリア</string>
+    <string name="timeline_action_load_more">さらに読み込む</string>
+    <string name="timeline_today">今日</string>
+    <string name="timeline_yesterday">昨日</string>
+    <string name="timeline_retention_30d">30日</string>
+    <string name="timeline_retention_90d">90日</string>
+    <string name="timeline_retention_1y">1年</string>
+    <string name="timeline_retention_all">すべて</string>
+
+    <!-- Data & storage -->
+    <string name="settings_data_storage_title">データとストレージ</string>
+    <string name="data_action_clear">クリア</string>
+    <string name="data_notifications_title">通知履歴</string>
+    <string name="data_notifications_subtitle">ペアリング済みのPCにライブミラーリング · この端末には保存されません（PCは消去した通知を最大24時間／300件まで保持します）</string>
+    <string name="data_clipboard_title">クリップボード履歴</string>
+    <string name="data_clipboard_subtitle">デバイス上で暗号化（パスワードとOTPを除く） · 7日間保存、最大50クリップ / 128 MB</string>
+    <plurals name="data_clipboard_count">
+        <item quantity="other">%1$d 件のクリップを保存済み</item>
+    </plurals>
+    <string name="data_timeline_title">タイムライン</string>
+    <string name="data_timeline_subtitle">ファイル、クリップ、リンク、写真、録音、セッション · 最大5,000項目</string>
+    <string name="data_messages_title">メッセージキャッシュ</string>
+    <string name="data_messages_subtitle">SMSやチャットの通知はAndroidからリアルタイムで読み込まれ、一時的なMMSステージングファイルは最大5分間保持されます（PCではチャットスレッドが90日間キャッシュされます）。</string>
+    <string name="data_photos_title">写真のサムネイルとカメラキャッシュ</string>
+    <string name="data_photos_subtitle">写真は必要に応じてMediaStoreから直接読み込まれます。連係カメラによる一時的なキャプチャは最大24時間保存されます。</string>
+    <string name="data_received_files_title">受信ファイル履歴</string>
+    <string name="data_received_files_subtitle">タイムラインで管理される転送ログ（ダウンロードフォルダ内の保存済みファイルは削除されません）</string>
+    <string name="data_clear_everything_hint">クリップボード履歴、タイムライン、転送記録、およびキャッシュを削除します。ペアリング済みのPCと設定は保持されます。</string>
+    <string name="data_clear_everything_button">すべてクリア…</string>
+    <string name="data_clear_everything_dialog_title">ローカルデータをすべて消去しますか？</string>
+    <string name="data_clear_everything_dialog_body">このスマートフォン上のクリップボード履歴、タイムライン、受信ファイル記録、およびキャッシュを削除します。ペアリング済みのPCと設定は保持されます。</string>
+    <string name="data_clear_everything_confirm">すべてクリア</string>
+    <string name="data_cleared_everything_toast">このスマートフォンのローカルデータをすべて消去しました。</string>
+
+    <!-- LocalSend -->
+    <string name="settings_localsend_title">LocalSend</string>
+    <string name="settings_localsend_subtitle">近くにあるLocalSendデバイスとファイルを送受信します。デフォルトではオフです。受信ファイルについては、常に事前に確認を求めます。</string>
+    <string name="localsend_card_title">近くのLocalSend</string>
+    <string name="localsend_card_empty">このWi-Fiネットワーク上にはまだLocalSendデバイスが検出されていません。</string>
+    <string name="localsend_nearby_device">近くのデバイス</string>
+    <string name="action_accept">承諾</string>
+    <string name="action_decline">拒否</string>
+    <string name="action_dismiss">閉じる</string>
+
+    <!-- Continuity Camera -->
+    <string name="channel_camera_requests">カメラ撮影リクエスト</string>
+    <string name="continuity_camera_request_scan_title">%1$s がドキュメントをスキャンしようとしています</string>
+    <string name="continuity_camera_request_photo_title">%1$s が写真を撮影しようとしています</string>
+    <string name="continuity_camera_request_scan_text">タップしてカメラでドキュメントをスキャンします。</string>
+    <string name="continuity_camera_request_photo_text">タップしてカメラで写真を撮ります。</string>
+    <string name="continuity_camera_scan_title">ドキュメントをスキャン</string>
+    <string name="continuity_camera_photo_title">写真を撮る</string>
+    <string name="continuity_camera_for_pc">%1$s用</string>
+    <string name="continuity_camera_mode_photo">写真</string>
+    <string name="continuity_camera_mode_scan">スキャン</string>
+    <string name="continuity_camera_enhance">ドキュメントを補正</string>
+    <string name="continuity_camera_adjust_corners">角を調整</string>
+    <string name="continuity_camera_preview_scan">スキャンプレビュー</string>
+    <string name="continuity_camera_retake">撮り直し</string>
+    <string name="continuity_camera_send_scan">スキャン送信</string>
+    <string name="continuity_camera_use_photo">写真を使用</string>
+    <string name="continuity_camera_shutter_photo">写真を撮影</string>
+    <string name="continuity_camera_shutter_scan">ドキュメントを撮影</string>
+    <string name="continuity_camera_preview_desc">キャプチャしたプレビュー</string>
+    <string name="continuity_camera_corners_desc">角をドラッグしてドキュメントの端を調整します</string>
+    <string name="continuity_camera_permission_denied">スマートフォンでカメラの権限が拒否されました</string>
+    <string name="continuity_camera_cancelled">スマートフォンでキャンセル済み</string>
+
+    <!-- Task notifications -->
+    <string name="task_default_label">タスク</string>
+    <string name="task_finished_title">%1$s が完了しました</string>
+    <string name="task_failed_title">%1$s が失敗しました（終了コード %2$d）</string>
+    <string name="task_took_from">%1$s · %2$s</string>
+    <string name="task_took_hm">所要時間 %1$dh %2$02dm</string>
+    <string name="task_took_ms">所要時間 %1$dm %2$02ds</string>
+    <string name="task_took_s">所要時間 %1$ds</string>
+    <string name="task_running_short">実行中</string>
+
+    <!-- Errors -->
+    <string name="error_not_connected">現在、PCは接続されていません。</string>
+    <string name="error_not_paired">そのPCはもうペアリングされていません。</string>
+    <string name="error_timed_out">PCから時間内に応答がありませんでした。</string>
+    <string name="error_unsupported">PC側のアプリはまだ対応していません。</string>
+    <string name="error_generic">問題が発生しました。</string>
+
+    <!-- Theme seed names -->
+    <string name="settings_seed_honey">はちみつ</string>
+    <string name="settings_seed_lavender">ラベンダー</string>
+    <string name="settings_seed_ocean">海</string>
+    <string name="settings_seed_sage">セージ</string>
+    <string name="settings_seed_black">黒</string>
+    <string name="settings_amoled">純黒（AMOLED）</string>
+    <string name="settings_amoled_hint">OLED画面向けの完全な黒（#000000）表示。</string>
+
+    <!-- Deck defaults & accessibility -->
+    <string name="deck_tile_with_badge">%1$s, %2$s</string>
+    <string name="deck_default_page_main">メイン</string>
+    <string name="deck_default_play_pause">再生 / 一時停止</string>
+    <string name="deck_default_previous">前へ</string>
+    <string name="deck_default_next">次へ</string>
+    <string name="deck_default_volume_down">音量ダウン</string>
+    <string name="deck_default_volume_up">音量アップ</string>
+    <string name="deck_default_volume_mute">音声をミュートする</string>
+    <string name="deck_default_mic_mute">マイクミュート</string>
+    <string name="deck_default_show_desktop">デスクトップを表示</string>
+    <string name="deck_default_switch_window">ウィンドウを切り替える</string>
+    <string name="deck_default_screenshot">スクリーンショット</string>
+    <string name="deck_default_lock_pc">PCをロック</string>
+
+    <!-- Remote special keys -->
+    <string name="remote_key_ctrl">Ctrl</string>
+    <string name="remote_key_alt">Alt</string>
+    <string name="remote_key_shift">Shift</string>
+    <string name="remote_key_win">Win</string>
+    <string name="remote_key_esc">Esc</string>
+    <string name="remote_key_esc_desc">Escape</string>
+    <string name="remote_key_tab">Tab</string>
+    <string name="remote_key_left_desc">左矢印</string>
+    <string name="remote_key_up_desc">上矢印</string>
+    <string name="remote_key_down_desc">下矢印</string>
+    <string name="remote_key_right_desc">右矢印</string>
+    <string name="remote_key_home">Home</string>
+    <string name="remote_key_end">End</string>
+    <string name="remote_key_del">Del</string>
+    <string name="remote_key_del_desc">削除</string>
+    <string name="remote_key_copy">コピー</string>
+    <string name="remote_key_paste">貼り付け</string>
+    <string name="remote_key_undo">元に戻す</string>
+
+    <!-- Webcam formatting -->
+    <string name="webcam_stream_spec">%1$d × %2$d · %3$d fps</string>
+    <string name="webcam_stream_camera_spec">%1$d × %2$d · %3$s</string>
+    <string name="webcam_status_streaming_camera">%1$d × %2$d を %3$s · %4$s にストリーミング中</string>
+    <string name="webcam_res_720p">720p</string>
+    <string name="webcam_res_1080p">1080p</string>
+    <string name="webcam_res_4k">4K</string>
+    <string name="webcam_zoom_preset">%1$d×</string>
+
+    <!-- Formatted status & metadata phrases -->
+    <string name="transfer_requested_from_size">%1$s がファイルを送信しようとしています · %2$s</string>
+    <string name="transfer_sending_progress">%1$s へ送信中 · %2$s / %3$s</string>
+    <string name="transfer_receiving_progress">%1$s から受信中 · %2$s / %3$s</string>
+    <string name="clipboard_history_meta">%1$s · %2$s</string>
+    <string name="clipboard_history_meta_pinned">%1$s · %2$s · ピン留め済み</string>
+    <string name="timeline_latest_summary">%1$s · %2$s</string>
+    <string name="recorder_marker_chip">%1$s · %2$s</string>
+
+    <!-- Rich Handoff -->
+    <string name="handoff_map_from">%1$sからのマップ</string>
+    <string name="handoff_video_from">%1$sからの動画</string>
+    <string name="handoff_action_continue_video">視聴を続ける</string>
+    <string name="handoff_doc_received_from">%1$s から · タップして開く</string>
+
+    <!-- Remote PC keyboard typing without mirroring -->
+    <string name="keyboard_from_pc_banner">%1$sからの入力</string>
+    <string name="keyboard_stop">入力を停止</string>
+
+    <!-- Home-screen PC widget -->
+    <string name="widget_pc_title">PCの概要</string>
+    <string name="widget_pc_description">PCの接続状態、着信音を鳴らす、電源オプション、ウェイクアップ。</string>
+    <string name="widget_now_playing_title">再生中</string>
+    <string name="widget_now_playing_description">PCで再生中のメディアと操作ボタン。</string>
+    <string name="widget_actions_title">クイックアクション</string>
+    <string name="widget_actions_description">クリップボードやファイルの送信、PCを鳴らす、ロック・スリープ・シャットダウン。</string>
+    <string name="widget_from_pc_title">PCから</string>
+    <string name="widget_from_pc_description">PCから最後に送信されたクリップとファイルをコピーまたは開きます。</string>
+    <string name="widget_from_pc_empty">PCから送信されたクリップやファイルがここに表示されます。</string>
+    <string name="widget_media_on_pc">%1$s で再生中</string>
+    <string name="widget_media_nothing">再生中のメディアはありません</string>
+    <string name="widget_media_nothing_hint">%1$s で再生中の音楽や動画がここに表示されます。</string>
+    <string name="widget_battery">バッテリー %1$d%%</string>
+    <string name="widget_battery_charging">バッテリー %1$d%% · 充電中</string>
+    <string name="widget_link_lan">同じネットワーク内</string>
+    <string name="widget_seen">最終接続 %1$s</string>
+    <string name="widget_pc_send_clipboard">クリップボードを送信</string>
+    <string name="widget_power">電源</string>
+    <string name="widget_power_lock">ロック</string>
+    <string name="widget_power_suspend">サスペンド</string>
+    <string name="widget_power_off">電源オフ</string>
+    <string name="widget_power_off_title">%1$s の電源をオフにしますか？</string>
+    <string name="widget_choose_pc">PCを選択</string>
+    <string name="widget_power_offline">電源オプションは %1$s の接続中に表示されます。</string>
+    <string name="widget_pc_no_pc">ペアリング済みのPCなし</string>
+    <string name="widget_pc_tap_to_pair">タップしてNectarLinkを開き、PCとペアリングする</string>
+    <string name="widget_pc_connected">接続済み</string>
+    <string name="widget_pc_offline">オフライン</string>
+    <string name="widget_pc_waking">起動中…</string>
+    <string name="widget_pc_wake">起動</string>
+    <string name="widget_pc_ring">PCを鳴らす</string>
+    <string name="widget_pc_ringing_toast">%1$s を鳴らしています…</string>
+    <string name="widget_pc_waking_toast">%1$sを起動中…</string>
+
+    <!-- Companion Device Manager proximity wake -->
+    <string name="companion_wake_title">PCが近くにあるときに起動（コンパニオン デバイス）</string>
+    <string name="companion_wake_on">関連付け済み · PCが近くにあるとAndroidがNectarLinkを起動します</string>
+    <string name="companion_wake_off">PCを連携して、NectarLinkのBLEビーコンが範囲内にあるときにAndroidでNectarLinkを起動できるようにします。</string>
+    <string name="companion_wake_associate">関連付け</string>
+
+    <!-- Flick to Send sheet -->
+
+    <!-- PC notifications & Browse PC files -->
+    <string name="channel_pc_notifications">PCの通知</string>
+    <string name="channel_peer_notifications">別のスマートフォンやタブレットからの通知</string>
+    <string name="action_browse_pc_files">PCのファイルを閲覧する</string>
+    <string name="pc_files_title">%1$s のファイル</string>
+    <string name="pc_files_root">ホーム</string>
+    <string name="pc_files_up">上へ</string>
+    <string name="pc_files_empty">このフォルダは空です。</string>
+    <string name="pc_files_loading">ファイルを読み込み中…</string>
+    <string name="pc_files_downloading">%1$sをダウンロード中…</string>
+    <string name="pc_files_saved">%1$s をダウンロードフォルダに保存しました</string>
+    <string name="pc_files_failed">%1$s をダウンロードできませんでした</string>
+    <string name="pc_files_not_shared">%1$sのNectarLink設定で「ポケットの中のPC」をオンにしてください。</string>
+    <string name="pc_files_offline">%1$s は接続されていません。</string>
+    <string name="pc_files_update">%1$s で NectarLink を更新して、ファイルを閲覧してください。</string>
+    <string name="pc_files_not_found">このフォルダはもう %1$s にはありません。</string>
+    <string name="pc_files_error">%1$s のこのフォルダを表示できませんでした。もう一度お試しください。</string>
+    <string name="pc_files_folder_downloads">ダウンロード</string>
+    <string name="pc_files_folder_documents">ドキュメント</string>
+    <string name="pc_files_folder_desktop">デスクトップ</string>
+    <string name="pc_files_folder_pictures">ピクチャ</string>
+
+    <!-- Live streaming banners, remote input setup, collapsible permissions & clipboard privacy -->
+    <string name="mirror_banner_subtitle_control_on">PCからタップ、スワイプ、入力が可能</string>
+    <string name="mirror_banner_subtitle_audio">画面と音声 · いつでも「停止」をタップしてください</string>
+    <string name="mirror_banner_subtitle">画面のライブ配信 · いつでも「停止」をタップ</string>
+    <string name="mirror_banner_subtitle_sound">音声のみ · いつでも「停止」をタップしてください</string>
+    <string name="mirror_allow_pc_control">PCのマウス操作を許可する</string>
+    <string name="action_open_controls">コントロール</string>
+    <string name="remote_input_requested_title">お使いのPCがこのスマートフォンを操作しようとしました</string>
+    <string name="remote_input_requested_text">「ユーザー補助」の「NectarLink：PCから操作」をオンにすると、このスマートフォンでPCのマウスとキーボードが使用できるようになります。</string>
+    <string name="permissions_setup_title">権限と設定（残り %1$d）</string>
+    <string name="permissions_setup_subtitle">通知、通話、テキストメッセージ、写真、およびバックグラウンドアクセス</string>
+    <string name="clipboard_preview_hidden">••••••••••••</string>
+    <string name="clipboard_preview_reveal">表示</string>
+    <string name="clipboard_preview_hide">非表示</string>
+
+    <!-- Send queue -->
+    <string name="send_queue_title_count">送信待ち · %1$d</string>
+    <string name="send_queue_cancel_all">すべてキャンセル</string>
+    <string name="send_queue_clear">クリア</string>
+    <string name="send_queue_waiting_for">%1$s を待機中</string>
+    <string name="send_queue_sending_progress">送信 · %1$d%%</string>
+    <string name="send_queue_sending">送信中…</string>
+    <string name="send_queue_failed_reason">失敗 · %1$s</string>
+    <string name="send_queue_expired_reason">期限切れ · %1$s</string>
+    <string name="send_queue_retry">再試行</string>
+    <string name="send_queue_dismiss">閉じる</string>
+    <string name="send_queue_offline_toast">%1$s はオフラインです。復帰次第送信します。</string>
+    <string name="send_queue_undo">元に戻す</string>
+    <string name="send_queue_full">送信キューがいっぱいです。クリアするか、保留中の項目の処理が終わるまでお待ちください。</string>
+    <string name="send_queue_dropped_unpair">%2$s 宛てのキュー済み項目を %1$d 件破棄しました（デバイスのペアリングが解除されました）。</string>
+
+    <!-- Setup Walkthrough -->
+    <string name="walkthrough_step_progress">ステップ %1$d / %2$d</string>
+    <string name="walkthrough_stage_desc">ハニカムセットアップ段階、ステップ %1$d / %2$d</string>
+    <string name="walkthrough_action_skip">セットアップをスキップ</string>
+    <string name="walkthrough_action_back">戻る</string>
+    <string name="walkthrough_action_get_started">はじめに</string>
+    <string name="walkthrough_action_continue">続行</string>
+    <string name="walkthrough_action_pair_later">後でペアリング</string>
+    <string name="walkthrough_action_done">完了</string>
+    <string name="walkthrough_action_open_guide">機能ガイドを開く</string>
+
+    <string name="walkthrough_welcome_title">スマートフォンとPCを連携させる</string>
+    <string name="walkthrough_welcome_subtitle">通知、通話、メッセージ、ファイル、クリップボード、カメラ、画面をPCと共有します。</string>
+    <string name="walkthrough_welcome_card_heading">設計段階からプライバシー保護を実現</string>
+    <string name="walkthrough_welcome_tls_title">エンドツーエンド暗号化（TLS 1.3）</string>
+    <string name="walkthrough_welcome_tls_body">すべての接続では、相互に検証済みのデバイス証明書が使用されます。</string>
+    <string name="walkthrough_welcome_lan_title">Wi-Fi、イーサネット、またはUSBで直接接続</string>
+    <string name="walkthrough_welcome_lan_body">通信はご自身のネットワーク経由で行われます。リレーは、モバイルデータ通信での接続がオンになっている場合にのみ使用されます。</string>
+    <string name="walkthrough_welcome_local_title">アカウントやクラウドストレージなし</string>
+    <string name="walkthrough_welcome_local_body">デバイスのキーは、Windows DPAPIおよびAndroid Keystoreによって保護されています。</string>
+
+    <string name="walkthrough_permissions_title">権限</string>
+    <string name="walkthrough_permissions_subtitle">使用する権限のみを付与してください。許可内容は、後で「設定」から変更できます。</string>
+    <string name="walkthrough_permissions_granted_badge">%2$d のうち %1$d が付与済み</string>
+    <string name="walkthrough_perm_counter">権限 %1$d / %2$d</string>
+    <string name="walkthrough_perm_counter_optional">権限 %1$d / %2$d · 任意</string>
+    <string name="walkthrough_perm_status_granted">許可済み</string>
+    <string name="walkthrough_perm_status_not_granted">許可されていません</string>
+    <string name="walkthrough_perm_action_grant">付与</string>
+    <string name="walkthrough_perm_action_manage">管理</string>
+    <string name="walkthrough_perm_action_next">次へ</string>
+    <string name="walkthrough_perm_dot_desc">%1$s, %2$s</string>
+
+    <string name="walkthrough_perm_notif_title">通知</string>
+    <string name="walkthrough_perm_notif_does">スマートフォンでの通知を確認・非表示にしたり返信したりできるほか、PCでメディアを操作できます。</string>
+    <string name="walkthrough_perm_notif_requires">Androidでは通知へのアクセス権限と通知許可が必要です。</string>
+    <string name="walkthrough_restricted_title">Androidがこの設定をブロックしました</string>
+    <string name="walkthrough_restricted_body">Androidでは、アプリストアではなくファイルからインストールしたアプリに対して、一部の権限が制限されています。このアプリに権限を許可するには：</string>
+    <string name="walkthrough_restricted_step1">「アプリ情報を開く」をタップします。</string>
+    <string name="walkthrough_restricted_step2">右上の ⋮ をタップし、「制限付き設定を許可」を選択して確定します。</string>
+    <string name="walkthrough_restricted_step3">ここに戻って、もう一度「付与」をタップしてください。</string>
+    <string name="walkthrough_restricted_note">このオプションは、一度権限の付与を試みた後でないとメニューに表示されません。機種によっては表記が異なる場合があります。</string>
+    <string name="walkthrough_restricted_open">アプリ情報を開く</string>
+
+    <string name="walkthrough_perm_battery_title">バッテリーの制限なし</string>
+    <string name="walkthrough_perm_battery_does">画面オフの状態でもスマートフォンを操作可能な状態に保ちます。</string>
+    <string name="walkthrough_perm_battery_requires">スマートフォンがロックされている間も、PCとの接続を維持します。</string>
+
+    <string name="walkthrough_perm_calls_title">通話</string>
+    <string name="walkthrough_perm_calls_does">着信をPCで確認し、デスクトップから応答、拒否、または発信できます。</string>
+    <string name="walkthrough_perm_calls_requires">Androidでは「電話」および「通話履歴」の権限が必要です。</string>
+
+    <string name="walkthrough_perm_sms_title">メッセージ</string>
+    <string name="walkthrough_perm_sms_does">連絡先名付きのSMSおよびMMSメッセージをPCから送受信できます。</string>
+    <string name="walkthrough_perm_sms_requires">AndroidではSMSおよび連絡先の権限が必要です。</string>
+
+    <string name="walkthrough_perm_photos_title">写真</string>
+    <string name="walkthrough_perm_photos_does">スマートフォンで撮った最近の写真をPCで閲覧し、オリジナルを保存できます。</string>
+    <string name="walkthrough_perm_photos_requires">Androidでは写真と動画へのアクセス権限が必要です。</string>
+
+    <string name="walkthrough_perm_storage_title">エクスプローラーのストレージ</string>
+    <string name="walkthrough_perm_storage_does">エクスプローラーで、PCからスマートフォンのフォルダを参照できます。</string>
+    <string name="walkthrough_perm_storage_requires">Androidでは、すべてのファイルへのアクセス権限、または選択したフォルダへの権限が必要です。</string>
+
+    <string name="walkthrough_perm_access_title">アシスト</string>
+    <string name="walkthrough_perm_access_does">ミラーリングしたスマートフォンの画面を、PCからマウスとキーボードで操作できます。</string>
+    <string name="walkthrough_perm_access_requires">Androidでは、NectarLinkのユーザー補助サービスまたは昇格が必要です。</string>
+
+    <string name="walkthrough_pair_title">PCとペアリングする</string>
+    <string name="walkthrough_pair_subtitle">PCでNectarLinkを開いてください。QRコードをスキャンするか、以下からPCを選択してください。</string>
+    <string name="walkthrough_pair_ready_title">ペアリング済みのPC</string>
+    <string name="walkthrough_pair_badge_paired">ペアリング済み</string>
+    <string name="walkthrough_pair_device_online">%1$s · 接続済み</string>
+    <string name="walkthrough_pair_device_offline">%1$s · オフライン</string>
+    <string name="walkthrough_pair_scan_qr">QRコードをスキャン</string>
+    <string name="walkthrough_pair_hide_qr">QRコードスキャナーを非表示にする</string>
+    <string name="walkthrough_pair_nearby_heading">近くのPC</string>
+    <string name="walkthrough_pair_nearby_tap">タップしてローカルネットワークでペアリングする</string>
+    <string name="walkthrough_pair_usb_title">USB自動ペアリング</string>
+    <string name="walkthrough_pair_usb_hint">USB デバッグを有効にした状態でUSBケーブルを接続すると、自動的にペアリングされます。</string>
+
+    <string name="walkthrough_power_title">パワーレベルを選択してください</string>
+    <string name="walkthrough_power_subtitle">PCがこのスマートフォンをどの程度操作できるかを選択してください。</string>
+    <string name="walkthrough_power_current_badge">現在：%1$s</string>
+    <string name="walkthrough_power_badge_active">有効</string>
+    <string name="walkthrough_power_badge_available">利用可能</string>
+    <string name="walkthrough_power_badge_optional">任意</string>
+    <string name="walkthrough_power_standard_title">標準</string>
+    <string name="walkthrough_power_standard_sub">デフォルトのインストール</string>
+    <string name="walkthrough_power_standard_desc">通知、通話、メッセージ、写真、ファイル、「クリップボードを送信」タイル、および閲覧専用のミラーリング。</string>
+    <string name="walkthrough_power_assist_title">アシスト</string>
+    <string name="walkthrough_power_assist_sub">ユーザー補助サービス</string>
+    <string name="walkthrough_power_assist_desc">画面ミラーリング中にPCからマウスとキーボードで操作できるようになります。</string>
+    <string name="walkthrough_power_assist_manage">管理</string>
+    <string name="walkthrough_power_assist_open">オンにする</string>
+    <string name="walkthrough_power_elevated_title">昇格</string>
+    <string name="walkthrough_power_elevated_sub">ワイヤレス デバッグ</string>
+    <string name="walkthrough_power_elevated_desc">バックグラウンドでのクリップボード同期、アプリごとの個別PCウィンドウ表示、低遅延入力。</string>
+    <string name="walkthrough_power_elevated_reconnect">再接続</string>
+    <string name="walkthrough_power_elevated_enable">セットアップ</string>
+    <string name="walkthrough_power_elevated_hide_steps">手順を非表示にする</string>
+    <string name="walkthrough_power_elevated_show_steps">手順を表示</string>
+    <string name="walkthrough_power_elevated_steps_heading">ワイヤレス デバッグの設定</string>
+    <string name="walkthrough_power_elevated_step1">1. 「設定」＞「端末情報」で「ビルド番号」を7回タップし、「開発者向けオプション」をオンにします。</string>
+    <string name="walkthrough_power_elevated_step2">2. 「セットアップ」をタップして、開発者向けオプションを開きます。</string>
+    <string name="walkthrough_power_elevated_step3">3. ワイヤレス デバッグをオンにし、「ペアリングコードでデバイスをペアリング」をタップして、通知に表示される6桁のコードを入力してください。</string>
+
+    <string name="walkthrough_done_title">セットアップ完了</string>
+    <string name="walkthrough_done_subtitle">NectarLinkの準備が整いました。「設定」＞「バージョン情報」から、いつでもこのガイドを再表示できます。</string>
+    <string name="walkthrough_done_summary_heading">ご利用環境</string>
+    <string name="walkthrough_done_paired_label">ペアリング済みのPC</string>
+    <string name="walkthrough_done_no_pc">まだなし · ホームでいつでもペアリング可能</string>
+    <string name="walkthrough_done_power_label">パワーレベル</string>
+    <string name="walkthrough_done_power_elevated">昇格（ワイヤレス デバッグ）</string>
+    <string name="walkthrough_done_power_assist">アシスト（ユーザー補助サービス）</string>
+    <string name="walkthrough_done_power_standard">標準</string>
+    <string name="walkthrough_done_permissions_label">権限</string>
+    <string name="walkthrough_done_no_permissions">まだ付与されていません</string>
+    <string name="walkthrough_done_try_heading">まずはお試しください</string>
+    <string name="walkthrough_done_try_1">1. テキストをコピーし、「クリップボードを送信」タイルをタップしてPCに貼り付けます。</string>
+    <string name="walkthrough_done_try_2">2. Androidの「共有」から、任意のファイルやリンクをNectarLinkに共有します。</string>
+
+    <!-- Features Guide Chrome -->
+    <string name="guide_back">戻る</string>
+    <string name="guide_open_walkthrough">セットアップ手順</string>
+    <string name="guide_title">機能ガイド</string>
+    <string name="guide_subtitle">このスマートフォンで機能が利用可能か確認するか、直接操作画面へ進んでください。</string>
+    <string name="guide_search_placeholder">機能または権限の検索</string>
+    <string name="guide_search_desc">機能を検索</string>
+    <string name="guide_connect_pc_banner">PCを接続して、どの機能が利用可能か確認してください</string>
+    <string name="guide_empty_title">該当する機能はありません</string>
+    <string name="guide_empty_body">別のキーワードを試すか、「すべて」を選択してください。</string>
+    <string name="guide_where_prefix">場所：%1$s</string>
+    <string name="guide_needs_prefix">必要条件：%1$s</string>
+    <string name="guide_external_heading">Androidから開く</string>
+    <string name="guide_action_show_me">表示する</string>
+    <string name="guide_action_learn_more">詳細はこちら</string>
+    <string name="guide_action_done">完了</string>
+    <string name="guide_sheet_where">場所</string>
+    <string name="guide_sheet_needs">必要なもの</string>
+    <string name="guide_sheet_steps_phone">スマートフォンで</string>
+    <string name="guide_sheet_steps_pc">PCで</string>
+    <string name="guide_sheet_options">オプション</string>
+    <string name="guide_sheet_privacy">データとプライバシー</string>
+    <string name="guide_sheet_limits">制限事項</string>
+    <string name="guide_numbered_step">%1$d. %2$s</string>
+
+    <string name="guide_area_all">すべて</string>
+    <string name="guide_area_notifications_calls">通知と通話</string>
+    <string name="guide_area_messages">メッセージ</string>
+    <string name="guide_area_clipboard_files">クリップボードとファイル</string>
+    <string name="guide_area_mirroring_camera">ミラーリング＆カメラ</string>
+    <string name="guide_area_input_control">入力と操作</string>
+    <string name="guide_area_power_network">電源・ネットワーク</string>
+
+    <string name="guide_badge_available">準備完了</string>
+    <string name="guide_badge_needs_permission">%1$s が必要</string>
+    <string name="guide_badge_needs_power">%1$s が必要</string>
+    <string name="guide_badge_connect_pc">PCを接続して確認してください</string>
+
+    <string name="guide_req_notification_access">通知へのアクセス</string>
+    <string name="guide_req_unrestricted_battery">バッテリーの制限なし</string>
+    <string name="guide_req_calls">電話と通話履歴</string>
+    <string name="guide_req_sms_contacts">SMSと連絡先</string>
+    <string name="guide_req_photos">写真</string>
+    <string name="guide_req_storage">すべてのファイルへのアクセス</string>
+    <string name="guide_req_dnd">サイレント モードへのアクセス</string>
+    <string name="guide_req_write_settings">システム設定の変更</string>
+    <string name="guide_req_elevated">昇格</string>
+    <string name="guide_req_assist_or_elevated">アシストまたは昇格</string>
+
+    <string name="guide_fix_grant">付与</string>
+    <string name="guide_fix_allow">許可</string>
+    <string name="guide_fix_enable">有効にする</string>
+    <string name="guide_fix_pair">ペアリング</string>
+
+    <!-- Features Guide Entries -->
+    <!-- 1. Notifications -->
+    <string name="guide_notif_title">通知</string>
+    <string name="guide_notif_summary">スマートフォンでの通知をPCで確認したり、消去したり、その場で返信したりできます。</string>
+    <string name="guide_notif_where">設定 › 権限 › 通知</string>
+    <string name="guide_notif_needs">通知へのアクセス、PCの通知切り替えオン</string>
+    <string name="guide_notif_need_1">NectarLinkでAndroidの「通知へのアクセス」が有効になっていること。</string>
+    <string name="guide_notif_need_2">Android 13以降でサイドロードした場合は、「アプリ情報」で「制限付き設定を許可」が有効になっていること。</string>
+    <string name="guide_notif_need_3">PCがペアリング済みでオンライン状態です。</string>
+    <string name="guide_notif_phone_1">「設定」＞「権限」＞「通知」を開き、「許可」をタップします。</string>
+    <string name="guide_notif_phone_2">Androidの「通知へのアクセス」でNectarLinkをオンにします。</string>
+    <string name="guide_notif_pc_1">スマートフォンの通知を、PCの通知センターまたはNectarLinkウィンドウで確認できます。</string>
+    <string name="guide_notif_pc_2">カードに返信を入力して「送信」を押すか、「閉じる」で両方のデバイスから消去します。</string>
+    <string name="guide_notif_opt_1">許可 / 管理：Androidの通知へのアクセス設定を開きます。</string>
+    <string name="guide_notif_opt_2">PCごとの通知切り替え：ペアリング済みのPCが通知を受信するかどうかを制御します。</string>
+    <string name="guide_notif_privacy">通知はTLS 1.3経由で配信され、このスマートフォンのメモリ内に保持されます。</string>
+    <string name="guide_notif_limits">進行中のシステム通知は、リモートで非表示にできません。</string>
+
+    <!-- 2. Calls -->
+    <string name="guide_calls_title">通話</string>
+    <string name="guide_calls_summary">PCで着信を確認し、応答や拒否を行い、デスクトップから電話番号をダイヤルできます。</string>
+    <string name="guide_calls_where">設定 › 権限 › 通話、連絡先、メッセージ</string>
+    <string name="guide_calls_needs">電話、通話履歴、および連絡先の権限</string>
+    <string name="guide_calls_need_1">Androidで電話と通話履歴の権限が許可されています。</string>
+    <string name="guide_calls_need_2">発信者名と写真を表示するための連絡先権限が付与されていること。</string>
+    <string name="guide_calls_phone_1">「設定」＞「権限」＞「通話、連絡先、メッセージ」の順に開き、「許可」をタップします。</string>
+    <string name="guide_calls_phone_2">通話中の通知を利用して、「ミュート」「スピーカー」「切断」の操作を行ってください。</string>
+    <string name="guide_calls_pc_1">PCの着信バナーから、応答、拒否、またはSMSでの返信ができます。</string>
+    <string name="guide_calls_pc_2">PCで「通話」を開き、通話履歴の確認や番号への発信ができます。</string>
+    <string name="guide_calls_opt_1">応答 / 拒否：スマートフォンで着信を承諾または拒否します。</string>
+    <string name="guide_calls_opt_2">ミュート / スピーカー：通話中にスマートフォンのマイクをミュートまたはスピーカーフォンに切り替えます。</string>
+    <string name="guide_calls_privacy">通話履歴は、PC接続時にAndroidから読み取られ、ペアリング済みデバイスの外に保存されることはありません。</string>
+    <string name="guide_calls_limits">通話音声はスマートフォンまたはヘッドセットから流れます。PC側での通話中のミュートや保留には、Android 12以降で昇格が必要です。</string>
+
+    <!-- 3. Now playing -->
+    <string name="guide_media_title">再生中</string>
+    <string name="guide_media_summary">スマートフォンとPCのメディア再生を操作したり、PCの音量を調整したり、PCの音声をスマートフォンのスピーカーから出力したりできます。</string>
+    <string name="guide_media_where">ホーム › ペアリング済みPCカード › PCオーディオ</string>
+    <string name="guide_media_needs">スマートフォンのメディアに関する通知へのアクセス、PCオーディオ用のオンラインのペアリング済みPC</string>
+    <string name="guide_media_need_1">Androidでアクティブなメディアセッションを確認するための通知へのアクセス。</string>
+    <string name="guide_media_need_2">オンラインのペアリング済みPC。</string>
+    <string name="guide_media_phone_1">ホーム画面で、ペアリング済みのPCカードにある「PCオーディオ」を展開します。</string>
+    <string name="guide_media_phone_2">PCの音量スライダーを調整するか、「スマートフォンをスピーカーとして使用する」をオンにしてください。</string>
+    <string name="guide_media_pc_1">PCで再生、一時停止、次へ、前への操作を行い、スマートフォンの再生をコントロールできます。</string>
+    <string name="guide_media_opt_1">スマートフォンをスピーカーとして使用：PCからスマートフォンへ低遅延で音声をストリーミングします。</string>
+    <string name="guide_media_opt_2">音量とミュート：PCの既定の再生デバイスを操作します。</string>
+    <string name="guide_media_privacy">メディアのメタデータとアートワークは、TLS 1.3経由でローカルのメディアセッションから取得されます。</string>
+    <string name="guide_media_limits">PCの音声をリアルタイムでストリーミングするには、安定したWi-FiまたはUSB接続が必要です。</string>
+
+    <!-- 4. Messages -->
+    <string name="guide_sms_title">メッセージ</string>
+    <string name="guide_sms_summary">PCから会話スレッドの閲覧、MMS添付ファイルの表示、テキストメッセージの送信が可能です。</string>
+    <string name="guide_sms_where">設定 › 権限 › 通話、連絡先、メッセージ</string>
+    <string name="guide_sms_needs">SMSおよび連絡先の権限</string>
+    <string name="guide_sms_need_1">AndroidでSMS権限が許可されています。</string>
+    <string name="guide_sms_need_2">連絡先の名前とアバターを表示するための連絡先権限が付与されていること。</string>
+    <string name="guide_sms_phone_1">「設定」＞「権限」＞「通話、連絡先、メッセージ」を開き、「PCからのテキスト」と「連絡先」を許可してください。</string>
+    <string name="guide_sms_pc_1">PCでメッセージを開いて、スレッドを読んだり、SMSやMMSで返信したりできます。</string>
+    <string name="guide_sms_opt_1">許可 / 管理：SMSおよび連絡先のAndroid権限設定を開きます。</string>
+    <string name="guide_sms_opt_2">メッセージキャッシュ：「設定」›「機能とデータ」›「データとストレージ」で、ステージング済みのMMSファイルを消去してください。</string>
+    <string name="guide_sms_privacy">メッセージは必要に応じてAndroid端末から読み込まれます。</string>
+    <string name="guide_sms_limits">送信にはスマートフォンのSIMカードと通信プランが使用されます。</string>
+
+    <!-- 5. Clipboard -->
+    <string name="guide_clip_title">クリップボード</string>
+    <string name="guide_clip_summary">コピーしたテキストや画像をスマートフォンとPC間で共有し、クリップボード履歴の直近50件を閲覧できます。</string>
+    <string name="guide_clip_where">ホーム › クリップボード履歴（または 設定 › 機能とデータ › クリップボード）</string>
+    <string name="guide_clip_needs">ペアリング済みのPC（スマートフォン→PCのバックグラウンド同期を自動化するには昇格が必要）</string>
+    <string name="guide_clip_need_1">PCからスマートフォンへのクリップボード同期と「クリップボードを送信」タイルは、設定なしで利用できます。</string>
+    <string name="guide_clip_need_2">昇格を設定すると、スマートフォンからPCへのクリップボード同期も自動で行われます。</string>
+    <string name="guide_clip_phone_1">スマートフォンでテキストや画像をコピーし、NectarLinkを開くか、「クリップボードを送信」タイルをタップしてください。</string>
+    <string name="guide_clip_phone_2">ホーム画面の「クリップボード履歴」をタップすると、最近のクリップを表示、ピン留め、コピー、または削除できます。</string>
+    <string name="guide_clip_pc_1">PC上のテキストや画像をコピーして、スマートフォンのクリップボードに送信します。</string>
+    <string name="guide_clip_opt_1">表示 / 非表示：ホーム画面で最新のクリッププレビューをマスクまたは表示します。</string>
+    <string name="guide_clip_opt_2">ピン：50件の履歴の先頭にクリップを固定します。</string>
+    <string name="guide_clip_opt_3">コピーしたテキストに対するアクションの提案：PC上のリンク、マップ、または電話番号を開くことを提案します。</string>
+    <string name="guide_clip_privacy">クリップボードの履歴はディスク上で暗号化されており、パスワードマネージャーによって機密としてマークされた項目は除外されます。</string>
+    <string name="guide_clip_limits">Android 10以降では、昇格操作や「クリップボードを送信」のタップなしに、バックグラウンドでのクリップボード読み取りがブロックされます。</string>
+
+    <!-- 6. Send clipboard -->
+    <string name="guide_tile_title">クリップボードを送信</string>
+    <string name="guide_tile_summary">クイック設定タイルを使えば、どのアプリからでもスマートフォンのクリップボードをPCに送信できます。</string>
+    <string name="guide_tile_where">Android クイック設定 › クリップボードを送信</string>
+    <string name="guide_tile_needs">ペアリング済みのPC</string>
+    <string name="guide_tile_ext_1">1. 画面の上から2回下にスワイプして、クイック設定を開きます。</string>
+    <string name="guide_tile_ext_2">2. 「編集」をタップし、「クリップボードを送信」をアクティブなタイルにドラッグします。</string>
+    <string name="guide_tile_ext_3">3. 任意のアプリでテキストをコピーし、下にスワイプして「クリップボードを送信」をタップします。</string>
+    <string name="guide_tile_need_1">ペアリング済みのPCが1台以上。</string>
+    <string name="guide_tile_phone_1">「クリップボードを送信」タイルを一度クイック設定に追加し、コピーした後にタップしてください。</string>
+    <string name="guide_tile_pc_1">PCではCtrl+Vで貼り付けます。</string>
+    <string name="guide_tile_opt_1">クリップボードを送信タイル：タップすると現在のスマートフォンのクリップボードを一度読み取り、送信またはキューに追加します。</string>
+    <string name="guide_tile_privacy">タップしたときのみクリップボードを読み取る。オフラインのクリップは最大24時間キューに保存される。</string>
+    <string name="guide_tile_limits">昇格済みのバックグラウンドクリップボード同期が無効な場合に使用されます。</string>
+
+    <!-- 7. Send files -->
+    <string name="guide_files_title">ファイルを送信</string>
+    <string name="guide_files_summary">Wi-Fi、イーサネット、またはUSB経由で、スマートフォンとPC間でファイルやフォルダを転送でき、一時停止・再開も可能です。</string>
+    <string name="guide_files_where">ホーム › ペアリング済みPCカード › ファイルの送信 / フォルダの送信</string>
+    <string name="guide_files_needs">ペアリング済みのPC</string>
+    <string name="guide_files_need_1">ペアリング済みのPC（オフラインファイルは送信キューで最大7日間待機します）。</string>
+    <string name="guide_files_phone_1">ホーム画面で、ペアリング済みのPCカードにある「ファイルを送信」または「フォルダを送信」をタップします。</string>
+    <string name="guide_files_phone_2">ホーム画面の「転送」カードで、進行中の転送を一時停止、再開、またはキャンセルできます。</string>
+    <string name="guide_files_pc_1">PCのNectarLinkウィンドウまたは画面上部の Nectar Island にファイルをドラッグしてください。</string>
+    <string name="guide_files_opt_1">ファイルを送信 / フォルダを送信：個別のファイルやフォルダ全体を転送します。</string>
+    <string name="guide_files_opt_2">一時停止 / 再開：中断された転送を、完了済みのバイトを再送信することなく再開します。</string>
+    <string name="guide_files_privacy">ファイルはQUIC TLS 1.3とBLAKE3整合性検証を用いて、Download/Nectarlinkへストリーミングされます。</string>
+    <string name="guide_files_limits">1回あたり最大5,000ファイル。</string>
+
+    <!-- 8. Send queue -->
+    <string name="guide_queue_title">送信キュー</string>
+    <string name="guide_queue_summary">PCがオフラインの間にファイル、リンク、クリップ、録音をキューに追加し、再接続時に配信します。</string>
+    <string name="guide_queue_where">ホーム › 送信待ちカード</string>
+    <string name="guide_queue_needs">ペアリング済みのPC</string>
+    <string name="guide_queue_need_1">ペアリング済みのPCが1台以上。</string>
+    <string name="guide_queue_phone_1">オフラインのPCにファイル、クリップ、またはリンクを送信します。ホーム画面の「送信待ち」に表示されます。</string>
+    <string name="guide_queue_phone_2">キューに登録された項目は、PCが再接続され次第、順番に自動的に送信されます。</string>
+    <string name="guide_queue_pc_1">スマートフォンがオフラインの間にPCにキュー登録された項目は、再接続時にも配信されます。</string>
+    <string name="guide_queue_opt_1">再試行 / 破棄 / すべてキャンセル：ホーム画面でキューに入った個別の項目またはすべての項目を管理します。</string>
+    <string name="guide_queue_privacy">キューに溜まったペイロードはアプリのプライベートストレージに保存され、配信時またはペアリング解除時に削除されます。</string>
+    <string name="guide_queue_limits">最大200件または10 GiBまで保存可能です。ファイルは7日後、クリップとリンクは24時間後に期限切れとなります。</string>
+
+    <!-- 9. Send to PC -->
+    <string name="guide_share_title">PCに送信</string>
+    <string name="guide_share_summary">あらゆるAndroidアプリから、システムの共有シート経由でリンク、テキスト、写真、またはドキュメントをPCに共有できます。</string>
+    <string name="guide_share_where">Android 共有シート › PCに送信</string>
+    <string name="guide_share_needs">ペアリング済みのPC</string>
+    <string name="guide_share_ext_1">1. スマートフォンの任意のブラウザ、ギャラリー、またはドキュメントアプリで「共有」をタップします。</string>
+    <string name="guide_share_ext_2">2. NectarLink（PCに送信またはPCで開く）を選択します。</string>
+    <string name="guide_share_need_1">ペアリング済みのPCが1台以上。</string>
+    <string name="guide_share_phone_1">Androidの「共有」から任意のリンクやファイルを共有し、対象のPCを選択してください。</string>
+    <string name="guide_share_pc_1">リンクはPCの既定のブラウザで開き、ファイルは「ダウンロード」に保存されます。</string>
+    <string name="guide_share_opt_1">PCへ送信 / PCで開く：ファイルの保存や、リンク・安全なドキュメントの開封を、受信時に行います。</string>
+    <string name="guide_share_privacy">実行ファイルやスクリプトがPC上で自動的に開かれることはありません。</string>
+    <string name="guide_share_limits">安全なドキュメント形式のみ自動的に開き、それ以外のファイルはすべて「ダウンロード」に保存されます。</string>
+
+    <!-- 10. Storage in File Explorer -->
+    <string name="guide_storage_title">エクスプローラーのストレージ</string>
+    <string name="guide_storage_summary">Windows エクスプローラーで、このスマートフォンの共有ストレージや選択したフォルダーを参照します。</string>
+    <string name="guide_storage_where">設定 › 権限 › 写真と動画（および 設定 › デバイス）</string>
+    <string name="guide_storage_needs">すべてのファイルへのアクセス（または選択したフォルダ）およびPCごとのストレージ切り替え</string>
+    <string name="guide_storage_need_1">「設定」›「権限」›「写真と動画」で、すべてのファイルへのアクセスまたは選択したフォルダが許可されていること。</string>
+    <string name="guide_storage_need_2">「設定」›「デバイス」で、このPC向けに「エクスプローラーでこのスマートフォンのストレージを参照する」がオンになっていること。</string>
+    <string name="guide_storage_phone_1">「設定」＞「権限」＞「写真と動画」で、すべてのファイルへのアクセスを許可するか、フォルダを選択してください。</string>
+    <string name="guide_storage_phone_2">「設定」＞「デバイス」でPCのストレージスイッチをオンにします。</string>
+    <string name="guide_storage_pc_1">NectarLinkまたはPCのWindowsのエクスプローラーから、スマートフォンのストレージを開いてください。</string>
+    <string name="guide_storage_opt_1">すべてのファイルへのアクセス / 選択したフォルダのみ：ストレージ全体、または指定したSAFフォルダのみを共有。</string>
+    <string name="guide_storage_privacy">ストレージの閲覧機能は、有効にするまですべてのPCでデフォルトでオフになっています。</string>
+    <string name="guide_storage_limits">Androidは /Android/data 内のプライベートなアプリディレクトリへのアクセスをブロックします。</string>
+
+    <!-- 11. Browse PC files -->
+    <string name="guide_pc_files_title">PCのファイルを閲覧する</string>
+    <string name="guide_pc_files_summary">PCで共有されているフォルダをスマートフォンから閲覧し、ファイルを「ダウンロード」に保存できます。</string>
+    <string name="guide_pc_files_where">ホーム › ペアリング済みPCカード › PCファイルの閲覧</string>
+    <string name="guide_pc_files_needs">ストレージ共有を有効にしたオンラインのペアリング済みのPC</string>
+    <string name="guide_pc_files_need_1">フォルダを共有するオンラインのペアリング済みPC（ポケットの中のPC）。</string>
+    <string name="guide_pc_files_phone_1">ホーム画面で、ペアリング済みのPCカードにある「PCのファイルを閲覧する」をタップし、任意のファイルをタップしてダウンロードします。</string>
+    <string name="guide_pc_files_pc_1">PC側のNectarLinkの設定で「ポケットの中のPC」をオンにしてください。</string>
+    <string name="guide_pc_files_opt_1">PCファイル閲覧シート：PCのフォルダを移動し、ファイルを「ダウンロード」に保存します。</string>
+    <string name="guide_pc_files_privacy">ダウンロードしたファイルは、スマートフォンの「ダウンロード」フォルダに保存されます。</string>
+    <string name="guide_pc_files_limits">ペアリング済みのPCがオンラインである必要があります。</string>
+
+    <!-- 12. Photos -->
+    <string name="guide_photos_title">写真</string>
+    <string name="guide_photos_summary">スマートフォンの写真、スクリーンショット、動画をPCで閲覧し、フル解像度のオリジナルデータを保存できます。</string>
+    <string name="guide_photos_where">設定 › 権限 › 写真と動画</string>
+    <string name="guide_photos_needs">写真と動画の権限</string>
+    <string name="guide_photos_need_1">Androidで「写真と動画」の権限が許可されていること。</string>
+    <string name="guide_photos_phone_1">「設定」＞「権限」＞「写真と動画」を開き、「許可」をタップします。</string>
+    <string name="guide_photos_pc_1">PCで「写真」を開き、サムネイルを閲覧したり、オリジナル画像をコピー・保存したりできます。</string>
+    <string name="guide_photos_opt_1">すべて許可：Android 14以降で写真への部分的なアクセスが有効な場合、ギャラリーへのフルアクセスを許可します。</string>
+    <string name="guide_photos_privacy">サムネイルは必要に応じてスマートフォン上でローカルに生成されます。</string>
+    <string name="guide_photos_limits">Android 14以降での写真への部分的なアクセスでは、選択した写真のみが表示されます。</string>
+
+    <!-- 13. Timeline -->
+    <string name="guide_timeline_title">タイムライン</string>
+    <string name="guide_timeline_summary">PCと共有したファイル、クリップ、リンク、写真、録音、セッションのローカル履歴を検索します。</string>
+    <string name="guide_timeline_where">ホーム › タイムライン（および設定 › 機能とデータ › データとストレージ）</string>
+    <string name="guide_timeline_needs">追加権限なし</string>
+    <string name="guide_timeline_need_1">ホーム画面にタイムラインカードが表示されるよう、少なくとも1つの共有アイテムがあること。</string>
+    <string name="guide_timeline_phone_1">ホームの「タイムライン」をタップして検索や種類による絞り込みを行うか、過去の項目で再度「送信」をタップしてください。</string>
+    <string name="guide_timeline_pc_1">PCでタイムラインを開き、デスクトップからアクティビティ履歴を検索してください。</string>
+    <string name="guide_timeline_opt_1">タイムライン項目の保持（30日、90日、1年、すべて）：「設定」＞「機能とデータ」＞「データとストレージ」で保持期間を設定してください。</string>
+    <string name="guide_timeline_privacy">デバイス上のローカルSQLiteデータベースにのみ保存されます。</string>
+    <string name="guide_timeline_limits">最大5,000件のエントリをローカルに保存します。</string>
+
+    <!-- 14. LocalSend -->
+    <string name="guide_localsend_title">LocalSend</string>
+    <string name="guide_localsend_summary">同じWi-Fiネットワーク上の近くにあるLocalSendデバイスと、ペアリングなしでファイルを送受信できます。</string>
+    <string name="guide_localsend_where">設定 › 機能とデータ › LocalSend（およびホーム › 近くのLocalSend）</string>
+    <string name="guide_localsend_needs">「設定」›「機能とデータ」でLocalSendが有効</string>
+    <string name="guide_localsend_need_1">「設定」›「機能とデータ」でLocalSendスイッチがオンになっていること。</string>
+    <string name="guide_localsend_phone_1">「設定」＞「機能とデータ」でLocalSendを有効にし、ホーム画面の「近くのLocalSend」カードを使用してください。</string>
+    <string name="guide_localsend_pc_1">同一LAN上の任意のLocalSendデバイスとの間でファイルを送受信できます。</string>
+    <string name="guide_localsend_opt_1">LocalSendスイッチ：ポート53317のLANマルチキャスト検出を制御します。</string>
+    <string name="guide_localsend_privacy">デフォルトではオフ。受信転送の際は、保存前に必ず確認を求めます。</string>
+    <string name="guide_localsend_limits">同一ローカルネットワーク内でのみ動作します。</string>
+
+    <!-- 15. Screen mirroring -->
+    <string name="guide_mirror_title">画面ミラーリング</string>
+    <string name="guide_mirror_summary">スマートフォンの画面と内蔵オーディオをPC上のウィンドウにストリーミングしたり、PCの画面をスマートフォンで表示したりできます。</string>
+    <string name="guide_mirror_where">設定 › 権限 › PCからの操作（またはホーム › PCの操作）</string>
+    <string name="guide_mirror_needs">オンラインのペアリング済みのPC；マウスとキーボード操作用のアシストまたは昇格</string>
+    <string name="guide_mirror_need_1">オンラインのペアリング済みPC。</string>
+    <string name="guide_mirror_need_2">オプション：PCのマウスおよびキーボード入力用の「アシスト（ユーザー補助）」または「昇格」。</string>
+    <string name="guide_mirror_phone_1">PCからミラーリングが開始された際、Androidのキャプチャプロンプトで「今すぐ開始」をタップしてください。</string>
+    <string name="guide_mirror_phone_2">ホームバナーの「停止」をいつでもタップすると、画面共有を終了できます。</string>
+    <string name="guide_mirror_pc_1">PCで画面ミラーリングを開始して、スマートフォンのライブウィンドウを表示します。</string>
+    <string name="guide_mirror_opt_1">停止：ホーム画面または通知から即座に画面キャプチャを終了します。</string>
+    <string name="guide_mirror_privacy">昇格済みの仮想ディスプレイ経由で起動しない限り、スマートフォンでの確認が必要です。</string>
+    <string name="guide_mirror_limits">FLAG_SECURE が設定されたアプリは、標準的な MediaProjection ストリームでは黒く表示されます。</string>
+
+    <!-- 16. App streams -->
+    <string name="guide_apps_title">アプリストリーム</string>
+    <string name="guide_apps_summary">スマートフォンの画面はそのままに、個別のAndroidアプリをPC上の専用ウィンドウで開くことができます。</string>
+    <string name="guide_apps_where">設定 › 権限 › PCからの操作 › 昇格</string>
+    <string name="guide_apps_needs">昇格（ワイヤレス デバッグ）</string>
+    <string name="guide_apps_need_1">ワイヤレス デバッグ経由で設定された昇格状態であること。</string>
+    <string name="guide_apps_need_2">オンラインのペアリング済みPC。</string>
+    <string name="guide_apps_phone_1">「設定」＞「権限」＞「PCからの操作」からワイヤレス デバッグを設定してください。</string>
+    <string name="guide_apps_pc_1">PCでアプリストリームを開き、任意のスマートフォンアプリをクリックすると、そのアプリが専用ウィンドウで起動します。</string>
+    <string name="guide_apps_opt_1">すべて閉じる：ホームバナーから、アクティブな仮想ディスプレイアプリのウィンドウをすべて閉じます。</string>
+    <string name="guide_apps_privacy">アプリのウィンドウは、このスマートフォン上のローカル仮想ディスプレイからTLS 1.3経由でストリーミングされます。</string>
+    <string name="guide_apps_limits">Androidで仮想ディスプレイを作成するには、昇格が必要です。</string>
+
+    <!-- 17. Phone as webcam -->
+    <string name="guide_webcam_title">スマートフォンをウェブカメラとして使用する</string>
+    <string name="guide_webcam_summary">スマートフォンの前面または背面カメラを、最大4K/60fpsでPCにストリーミングできます。</string>
+    <string name="guide_webcam_where">ホーム › ペアリング済みPCカード › ウェブカメラ</string>
+    <string name="guide_webcam_needs">カメラ権限、オンラインのペアリング済みPC</string>
+    <string name="guide_webcam_need_1">Androidでのカメラ権限と、オンラインでペアリング済みのPC。</string>
+    <string name="guide_webcam_phone_1">ホーム画面で、ペアリング済みのPCカードにある「ウェブカメラ」をタップし、解像度とレンズを選択して、「ウェブカメラを起動」をタップします。</string>
+    <string name="guide_webcam_pc_1">NectarLinkで、PC上のライブカメラ映像を閲覧または録画できます。</string>
+    <string name="guide_webcam_opt_1">カメラ切替 / ライト / ズーム / 解像度 (720p, 1080p, 4K)：ライブカメラの操作。</string>
+    <string name="guide_webcam_privacy">ユーザーに知らせずひそかに起動することはなく、ストリーミング中は通知が表示され続けます。</string>
+    <string name="guide_webcam_limits">1080p 60 fpsおよび4Kには、ハードウェアエンコーダーの対応と、高速なWi-FiまたはUSBが必要です。</string>
+
+    <!-- 18. Continuity camera -->
+    <string name="guide_continuity_title">連係カメラ</string>
+    <string name="guide_continuity_summary">スマートフォンのカメラで写真を撮影したり、書類をスキャンして切り抜いたりして、そのままPCに取り込めます。</string>
+    <string name="guide_continuity_where">PCからリクエスト › スマートフォンの連係カメラプロンプト</string>
+    <string name="guide_continuity_needs">カメラ権限、オンラインのペアリング済みPC</string>
+    <string name="guide_continuity_need_1">Androidでのカメラ権限と、オンラインでペアリング済みのPC。</string>
+    <string name="guide_continuity_phone_1">リクエスト通知またはバナーをタップし、写真を撮影するかドキュメントの角を調整して、「送信」をタップします。</string>
+    <string name="guide_continuity_pc_1">PC上のNectarLinkから「写真を撮る」または「ドキュメントをスキャン」を実行します。</string>
+    <string name="guide_continuity_opt_1">角の調整 / ドキュメントの補正：スキャン画像のパースクロップとコントラスト強調。</string>
+    <string name="guide_continuity_privacy">「写真を使用」または「スキャン送信」をタップしたときのみ、キャプチャが送信されます。</string>
+    <string name="guide_continuity_limits">カメラのリクエストは、応答がない場合2分で期限切れとなります。</string>
+
+    <!-- 19. Voice recorder -->
+    <string name="guide_recorder_title">ボイスレコーダー</string>
+    <string name="guide_recorder_summary">タイムスタンプ付きの音声メモを録音してPCに送信でき、オフラインでの自動キューイングにも対応しています。</string>
+    <string name="guide_recorder_where">ホーム › ペアリング済みPCカード › 録音</string>
+    <string name="guide_recorder_needs">マイク権限、ペアリング済みPC</string>
+    <string name="guide_recorder_need_1">Androidでのマイク権限、およびペアリング済みのPC。</string>
+    <string name="guide_recorder_phone_1">ホーム画面で、ペアリング済みのPCカードにある「録音」をタップし、「録音開始」をタップします。</string>
+    <string name="guide_recorder_phone_2">「マーカーを追加」をタップして瞬間をブックマークできます。録音は完了次第、送信またはキューに追加されます。</string>
+    <string name="guide_recorder_pc_1">完了した録音データは、PCの「ダウンロード」フォルダとタイムラインに保存されます。</string>
+    <string name="guide_recorder_opt_1">マーカー追加 / 再送信 / 削除：マーカーと保存済みの録音を管理します。</string>
+    <string name="guide_recorder_privacy">録音時のみマイクを使用。配信されるまで非公開ストレージに保存されます。</string>
+    <string name="guide_recorder_limits">オフラインでの録音は自動的にキューに追加され、PCが再接続された際に送信されます。</string>
+
+    <!-- 20. Control PC -->
+    <string name="guide_remote_title">PCの操作</string>
+    <string name="guide_remote_summary">スマートフォンを、PCのタッチパッド、キーボード、音声入力用マイク、エアマウス、またはプレゼンテーション用リモコンとしてご利用いただけます。</string>
+    <string name="guide_remote_where">ホーム › ペアリング済みPCカード › PCの操作</string>
+    <string name="guide_remote_needs">オンラインのペアリング済みのPCでリモート操作が可能</string>
+    <string name="guide_remote_need_1">このスマートフォンで操作可能な、オンラインのペアリング済みのPC。</string>
+    <string name="guide_remote_phone_1">ホーム画面で、ペアリング済みのPCカードにある「PCの操作」をタップします。</string>
+    <string name="guide_remote_phone_2">タッチパッド、エアマウス、プレゼンテーション、キーボード、音声入力を切り替えます。</string>
+    <string name="guide_remote_pc_1">指示が表示されたら、PCでのリモート操作を許可してください。</string>
+    <string name="guide_remote_opt_1">タッチパッドの速度：「設定」›「機能とデータ」›「PCを操作する」で感度を調整できます。</string>
+    <string name="guide_remote_privacy">入力イベントは、暗号化されたQUICストリーム経由でペアリング済みのPCに送信されます。</string>
+    <string name="guide_remote_limits">エアマウスを利用するには、スマートフォンにハードウェアジャイロセンサーが必要です。</string>
+
+    <!-- 21. Assist -->
+    <string name="guide_assist_title">アシスト</string>
+    <string name="guide_assist_summary">ユーザー補助サービスを利用して、PCのマウスやキーボードでこのスマートフォンを操作（タップ、スワイプ、入力）できます。</string>
+    <string name="guide_assist_where">設定 › 権限 › PCからの操作 › PCのマウスとキーボードを使用する</string>
+    <string name="guide_assist_needs">ユーザー補助サービスが有効です</string>
+    <string name="guide_assist_need_1">Androidの設定で有効になっているNectarLinkユーザー補助サービス。</string>
+    <string name="guide_assist_phone_1">「設定」›「権限」›「PCからの操作」を開き、「PCのマウスとキーボードを使用する」の下にある「許可」をタップします。</string>
+    <string name="guide_assist_pc_1">PC上のスマートフォンのミラーウィンドウ内で、クリック、ドラッグ、スクロール、入力が可能です。</string>
+    <string name="guide_assist_opt_1">入力を停止：ホームバナーからのリモートPCキーボード入力を終了します。</string>
+    <string name="guide_assist_privacy">ペアリング済みのPCからジェスチャーやテキストを送信します。画面内容やパスワードは読み取りません。</string>
+    <string name="guide_assist_limits">Android 13以降でサイドロードしたAPKは、まず「アプリ情報」で「制限付き設定を許可」を有効にする必要があります。</string>
+
+    <!-- 22. Elevated -->
+    <string name="guide_elevated_title">昇格</string>
+    <string name="guide_elevated_summary">ワイヤレス デバッグ、Shizuku、またはroot経由で、リアルなタッチとキー入力、アプリストリーム、バックグラウンドのクリップボード同期、通話中の操作を利用できます。</string>
+    <string name="guide_elevated_where">設定 › 権限 › PCからの操作 › 昇格</string>
+    <string name="guide_elevated_needs">ワイヤレス デバッグ</string>
+    <string name="guide_elevated_need_1">開発者向けオプションとワイヤレス デバッグがオンになっていること。</string>
+    <string name="guide_elevated_phone_1">「設定」›「権限」›「PCからの操作」を開き、「昇格」の下にある「セットアップ」をタップします。</string>
+    <string name="guide_elevated_phone_2">ワイヤレス デバッグでは、「ペアリングコードでデバイスをペアリング」をタップし、通知に表示される6桁のコードを入力してください。</string>
+    <string name="guide_elevated_pc_1">アプリのストリーム、バックグラウンドでのクリップボード同期、およびPCからの低遅延入力をご利用いただけます。</string>
+    <string name="guide_elevated_opt_1">セットアップ / オフ：ローカルのワイヤレス デバッグヘルパーをペアリングまたは停止します。</string>
+    <string name="guide_elevated_privacy">ループバックADB経由でこのスマートフォンでローカルに動作します。外部サーバーは介在しません。</string>
+    <string name="guide_elevated_limits">初回のワイヤレス デバッグペアリングにはWi-Fiが必要です。</string>
+
+    <!-- 23. Deck -->
+    <string name="guide_deck_title">デッキ</string>
+    <string name="guide_deck_summary">スマートフォンを、ショートカットタイルやメディアキー、音量スライダー、PCシステムのリアルタイムゲージが並ぶグリッドとして活用できます。</string>
+    <string name="guide_deck_where">ホーム › ペアリング済みPCカード › デッキ</string>
+    <string name="guide_deck_needs">オンラインのペアリング済みのPC</string>
+    <string name="guide_deck_need_1">オンラインのペアリング済みPC。</string>
+    <string name="guide_deck_phone_1">ホーム画面で、ペアリング済みのPCカードにある「デッキ」をタップし、任意のタイルをタップしてそのアクションを実行します。</string>
+    <string name="guide_deck_pc_1">PC版NectarLinkで、デッキのページやタイルをカスタマイズできます。</string>
+    <string name="guide_deck_opt_1">全画面表示：デッキのグリッドをスマートフォンの画面に拡大表示します。</string>
+    <string name="guide_deck_privacy">デッキのレイアウトやシステム統計情報は、スマートフォンとペアリング済みのPC間で共有されます。</string>
+    <string name="guide_deck_limits">シェルコマンドタイルを使用するには、PC側でこのスマートフォン用の「デッキコマンドを実行」を有効にする必要があります。</string>
+
+    <!-- 24. Desk Mode -->
+    <string name="guide_desk_title">デスクモード</string>
+    <string name="guide_desk_summary">PCとの接続状態のリアルタイム表示、メディア操作、クイックアクションを備えた常時表示OLEDデスククロック。</string>
+    <string name="guide_desk_where">ホーム › ペアリング済みPCカード › デスク時計</string>
+    <string name="guide_desk_needs">ペアリング済みのPC</string>
+    <string name="guide_desk_need_1">ペアリング済みのPC。</string>
+    <string name="guide_desk_phone_1">ホーム画面で、ペアリング済みのPCカードにある「デスク時計」をタップし、スマートフォンをスタンドや充電器に置いてください。</string>
+    <string name="guide_desk_pc_1">PCのメディア再生やステータス更新が、デスクモードのディスプレイにリアルタイムで表示されます。</string>
+    <string name="guide_desk_opt_1">OLED焼き付き防止：定期的にレイアウトピクセルを移動させ、OLED画面を保護します。</string>
+    <string name="guide_desk_privacy">PCのリアルタイム状態をスマートフォン上でローカルに表示します。</string>
+    <string name="guide_desk_limits">画面を開いたまま点灯状態を維持します。</string>
+
+    <!-- 25. Wake PC -->
+    <string name="guide_wake_title">PCを起動</string>
+    <string name="guide_wake_summary">Wake-on-LANを使用して、ローカルネットワーク経由でペアリング済みのスリープ状態のPCを起動します。</string>
+    <string name="guide_wake_where">ホーム › ペアリング済みPCカード › 起動</string>
+    <string name="guide_wake_needs">BIOSおよびネットワーク アダプターでWake-on-LANを有効にしたペアリング済みPC</string>
+    <string name="guide_wake_need_1">NectarLinkがMACアドレスを認識できるよう、ペアリング済みのPCとLAN経由で少なくとも1回接続していること。</string>
+    <string name="guide_wake_need_2">Windowsのネットワーク アダプター設定およびBIOS/UEFIでWake-on-LANが有効になっていること。</string>
+    <string name="guide_wake_phone_1">ホーム画面でペアリング済みのPCがオフラインになっている場合は、そのカードにある「起動」をタップしてください。</string>
+    <string name="guide_wake_pc_1">デバイス マネージャー › ネットワーク アダプター › 電源の管理で、Wake-on-LANパケットによるウェイクアップを有効にします。</string>
+    <string name="guide_wake_opt_1">起動：ローカルネットワーク上でWake-on-LANパケットを送信します。</string>
+    <string name="guide_wake_privacy">前回の認証済みLANセッションで取得したMACアドレスを使用します。</string>
+    <string name="guide_wake_limits">イーサネット、またはWake-on-LAN対応のWi-Fiアダプターが必要です。</string>
+
+    <!-- 26. Quick actions -->
+    <string name="guide_quick_title">クイックアクション</string>
+    <string name="guide_quick_summary">ホーム画面やホーム画面ウィジェットから、PCの呼び出し・ロック・スリープができるほか、PCからスマートフォンのサイレント モード、ライト、明るさを制御できます。</string>
+    <string name="guide_quick_where">ホーム › ペアリング済みPCカード（および設定 › 権限 › PCからの操作）</string>
+    <string name="guide_quick_needs">PCからスマートフォンを操作するためのサイレント モードへのアクセス権限と画面の明るさの権限</string>
+    <string name="guide_quick_need_1">PCを鳴らす、PCのロック、スリープ、およびスマートフォンのライトは、追加の権限なしで動作します。</string>
+    <string name="guide_quick_need_2">サイレント モードとマナーモードには、サイレント モードへのアクセス権限が必要です。</string>
+    <string name="guide_quick_need_3">スマートフォンの輝度制御には、画面の明るさに関する権限または昇格が必要です。</string>
+    <string name="guide_quick_phone_1">ホーム画面のペアリング済みPCカードで「PCを鳴らす」「PCをロック」「スリープ」を使用するか、PCクイックアクションウィジェットを追加してください。</string>
+    <string name="guide_quick_pc_1">PC上のNectarLinkから、スマートフォンのサイレント モード、着信音、ライト、音量、明るさを切り替えます。</string>
+    <string name="guide_quick_opt_1">サイレント モード / 画面の明るさ：「設定」 › 「権限」 › 「PCからの操作」で許可してください。</string>
+    <string name="guide_quick_privacy">コマンドはTLS 1.3を用いてデバイスごとに認証されます。</string>
+    <string name="guide_quick_limits">PCのロックとスリープは、PC側のNectarLink設定 › デバイスでスマートフォンごとに切り替えられます。</string>
+
+    <!-- 27. Connect over mobile data -->
+    <string name="guide_away_title">モバイルデータ通信で接続</string>
+    <string name="guide_away_summary">Wi-Fi環境外でもモバイルデータ通信でPCと接続したままにしたり、USBケーブルで接続したりできます。</string>
+    <string name="guide_away_where">設定 › デバイス › モバイルデータ通信で接続</string>
+    <string name="guide_away_needs">バッテリーの制限なし、モバイルデータ通信経由の接続有効</string>
+    <string name="guide_away_need_1">「設定」›「権限」›「バックグラウンドとバッテリー」でバッテリーの制限を解除。</string>
+    <string name="guide_away_need_2">「設定」＞「デバイス」でモバイルデータ通信経由の接続が有効になっています。</string>
+    <string name="guide_away_phone_1">「設定」＞「デバイス」で「モバイルデータ通信経由で接続」をオンにします。</string>
+    <string name="guide_away_pc_1">PCのカードは、アクティブな接続に応じて「外出先で接続済み」または「USB接続時」と表示されます。</string>
+    <string name="guide_away_opt_1">モバイルデータ通信で接続：LANやUSBが利用できない場合に、エンドツーエンド暗号化されたリレーを使用します。</string>
+    <string name="guide_away_privacy">リレートラフィックは、ペアリング済みのTLS 1.3デバイスキーを用いてエンドツーエンドで暗号化されます。</string>
+    <string name="guide_away_limits">モバイルデータ通信によるファイル転送には、ご利用の通信プランが適用されます。</string>
+
+    <!-- 28. Connection Doctor -->
+    <string name="guide_doctor_title">接続診断</string>
+    <string name="guide_doctor_summary">スマートフォンがいつでも連絡可能な状態を維持できるよう、バックグラウンドでのバッテリー設定、コンパニオン デバイスのウェイクアップ、およびローカルネットワークアクセスを確認してください。</string>
+    <string name="guide_doctor_where">設定 › 権限 › バックグラウンドとバッテリー</string>
+    <string name="guide_doctor_needs">バッテリーの制限なし</string>
+    <string name="guide_doctor_need_1">バックグラウンドでの無制限のバッテリー使用が有効になっていること。</string>
+    <string name="guide_doctor_need_2">オプション：PCが近くにあるときに起動（コンパニオン デバイス）に関連付け。</string>
+    <string name="guide_doctor_phone_1">「設定」›「権限」›「バックグラウンドとバッテリー」を開き、無制限のバッテリー使用を許可してください。</string>
+    <string name="guide_doctor_phone_2">スマートフォンのメーカーがバックグラウンドアプリを制限している場合は、メーカーのバッテリー設定ガイドに従ってください。</string>
+    <string name="guide_doctor_pc_1">PCで接続診断を開き、通信遅延、ポート、およびリンクの状態を確認してください。</string>
+    <string name="guide_doctor_opt_1">PCが近くにあるときに起動：PCを関連付けることで、Android端末がBLE範囲内にあるときにNectarLinkを起動します。</string>
+    <string name="guide_doctor_privacy">診断は、スマートフォンとペアリング済みのPC間でローカルに実行されます。</string>
+    <string name="guide_doctor_limits">一部のスマートフォンメーカーのバッテリー セーバーは、「制限なし」に設定する必要があります。</string>
+    <string name="pair_link_title">%1$sとペアリングしますか？</string>
+    <string name="pair_link_body">ペアリング用リンクが開きました。このデバイスのコードをスキャンしたか、ご自身で開いた場合のみペアリングしてください。ペアリング済みのデバイスは、このスマートフォンの通知やメッセージを受信できます。</string>
+    <string name="pair_link_confirm">ペアリング</string>
+    <string name="pair_link_cancel">キャンセル</string>
+    <string name="pair_link_unknown_pc">このデバイス</string>
+    <string name="data_clear_failed">履歴の一部をクリアできませんでした。もう一度お試しください。</string>
+    <string name="channel_updates">アップデート</string>
+    <string name="update_ready_title">NectarLink %1$s の準備ができました</string>
+    <string name="update_ready_text">タップしてアップデートをインストールしてください。</string>
+    <string name="update_done_title">NectarLinkが%1$sに更新されました</string>
+    <string name="update_done_text">タップして開きます。PCは自動的に再接続されます。</string>
+    <string name="update_auto_title">アップデートを自動的にインストールする</string>
+    <string name="update_auto_text">GitHubからの新バージョンはバックグラウンドでインストールされます。</string>
+    <string name="update_nightly">Nightly %1$d</string>
+    <string name="update_nightly_named">Nightly %1$d (%2$s)</string>
+    <string name="update_channel_title">更新チャネル</string>
+    <string name="update_channel_stable">安定版</string>
+    <string name="update_channel_nightly">Nightly</string>
+    <string name="update_channel_stable_text">リリース版。テスト済みで、更新頻度は低めです。</string>
+    <string name="update_channel_nightly_text">2時間おきに更新される最新ビルドで、最新の修正や機能が追加されますが、時には新たなバグが含まれることもあります。「安定版」に戻した場合、このスマートフォンは次のリリースがより新しくなるまで、そのビルドを維持します。</string>
+
+    <string name="home_guide_title">ガイド</string>
+    <string name="home_whats_new_guide">新着情報：機能ガイド</string>
+    <string name="home_guide_card_body">NectarLinkの全機能を確認したり、リアルタイムの権限をチェックしたり、「表示する」をタップして任意の操作画面へ直接移動したりできます。</string>
+    <string name="home_no_pc_paired">まだペアリング済みのPCはありません</string>
+    <string name="home_no_pc_body">WindowsまたはLinux PCでNectarLinkを開き、QRコードまたはローカル検出でペアリングするか、セットアップガイドを再度開いてください。</string>
+    <string name="home_background_clipboard_title">バックグラウンドクリップボード＆フルコントロール</string>
+    <string name="home_background_clipboard_body">バックグラウンドでクリップボードを同期し、ワイヤレス デバッグによるタッチ操作を有効にします。</string>
+    <string name="home_section_screen">画面・カメラ・入力</string>
+    <string name="home_section_transfer">クイック転送＆クリップボード</string>
+    <string name="home_section_system">システムと電源</string>
+    <string name="settings_category_devices">デバイス</string>
+    <string name="settings_category_features">機能とデータ</string>
+    <string name="settings_theme_artwork_color">メディアアートワークの色</string>
+    <string name="settings_mobile_data_body">Wi-Fi環境外でもLTE/5Gやリレーで接続を維持</string>
+    <string name="settings_background_clipboard_title">バックグラウンドでのクリップボードアクセス</string>
+    <string name="settings_guide_card_body">すべての機能を閲覧したり、リアルタイムの要件を確認したり、あるいは直接操作画面へ進んだりできます。</string>
+    <string name="settings_walkthrough_body">権限、ペアリング、パワーレベルに関するセットアップガイドを再表示します。</string>
+    <string name="desk_exit">デスクモードを終了</string>
+    <string name="desk_media_playing">PCメディア · 再生中</string>
+    <string name="desk_media_audio">PCメディア＆オーディオ</string>
+    <string name="desk_pc_screen">PC画面</string>
+    <string name="queue_kind_clipboard">クリップボード</string>
+    <string name="queue_kind_clipboard_image">クリップボードの画像</string>
+    <string name="queue_kind_files">ファイル</string>
+    <string name="queue_kind_folder">フォルダ</string>
+    <string name="queue_kind_link">リンク</string>
+    <string name="queue_kind_document">ドキュメント</string>
+    <string name="queue_kind_recording">録音</string>
+    <string name="queue_kind_task_alert">タスク通知</string>
+    <string name="queue_kind_camera_request">カメラへのアクセスリクエスト</string>
+
+    <string name="settings_theme_artwork_body">アプリと透過背景の色を再生中のメディアアートワークに合わせる</string>
+    <string name="settings_wireless_debugging_active">昇格済み · クリップボードが自動的に同期されます</string>
+    <string name="settings_wireless_debugging_hint">バックグラウンドでクリップボードを同期できるよう昇格（ワイヤレス デバッグ、Shizuku、またはroot）を設定するか、通知の「クリップボードを送信」を使用してください。</string>
+
+    <!-- Pause for banking apps -->
+    <string name="banking_title">銀行アプリ用の一時停止</string>
+    <string name="banking_text">「開発者向けオプション」、「デバッグ」、または「ユーザー補助」サービスがオンになっていると、一部の銀行アプリが起動しません。対象アプリをここで選択すると、NectarLinkがアプリを開いている間はそれらの機能をオフにし、アプリを閉じると再びオンにします。</string>
+    <plurals name="banking_chosen">
+        <item quantity="other">%1$d 個のアプリを選択済み</item>
+    </plurals>
+    <string name="banking_needs_elevated">NectarLinkがこれらの設定を変更できるよう、昇格を一度設定する必要があります。</string>
+    <string name="banking_needs_usage">NectarLinkが銀行アプリの起動を検知できるよう、使用状況へのアクセスを許可してください。</string>
+    <string name="banking_paused_now">銀行アプリのため一時停止中。</string>
+    <string name="banking_choose">アプリを選択</string>
+    <string name="banking_pick_title">銀行アプリ</string>
+    <string name="banking_search">アプリを検索</string>
+    <string name="banking_shortcut">ショートカットを追加</string>
+    <string name="banking_shortcut_hint">それでもアプリが開かない場合は、ショートカットから開いてください。NectarLinkが一旦一時停止してから開きます。</string>
+    <string name="banking_channel">銀行アプリ用の一時停止</string>
+    <string name="banking_paused_title">銀行アプリで一時停止中</string>
+    <string name="banking_paused_text">開発者向けオプション、デバッグ、およびNectarLinkのユーザー補助サービスは、銀行アプリを閉じるまでオフになっています。</string>
+    <string name="banking_turn_back_on">再度オンにする</string>
+    <string name="action_done">完了</string>
+    <!-- The phone's name as PCs see it when NectarLink runs in another Android profile: "Pixel 9a (Work)". -->
+    <string name="device_name_in_profile">%1$s (%2$s)</string>
+    <string name="profile_work">仕事用</string>
+    <string name="profile_other">2つ目のプロファイル</string>
+    <string name="relay_settings_title">Irohリレーサーバー</string>
+    <string name="relay_waiting">接続サービスを待機中…</string>
+    <string name="relay_away_hint">「モバイルデータ通信で接続」をオンにして、有効化済みのリレーをご利用ください。</string>
+    <string name="relay_selection_hint">これらのスイッチで、irohがこのデバイスのホームリレーとして選択できるサーバーを制御します。</string>
+    <string name="relay_home">ホームリレー</string>
+    <string name="relay_home_empty">ホームリレーが選択されていません</string>
+    <string name="relay_home_connected">接続済み · %1$s</string>
+    <string name="relay_home_failed">接続に失敗しました · %1$s</string>
+    <string name="relay_home_connecting">接続中 · %1$s</string>
+    <string name="relay_device_routes">リレー経由のデバイストラフィック</string>
+    <string name="relay_routes_empty">リレーを経由するデバイストラフィックなし</string>
+    <string name="relay_route">%1$s（%2$s 経由）</string>
+    <string name="relay_check_all">すべてのリレーを確認</string>
+    <string name="relay_checking">リレーを確認中…</string>
+    <string name="relay_checking_short">確認中…</string>
+    <string name="relay_not_checked">未チェック</string>
+    <string name="relay_rtt">%1$d ms</string>
+    <string name="relay_timed_out">タイムアウトしました</string>
+    <string name="relay_unreachable">接続不能</string>
+    <string name="relay_address">カスタムリレーアドレス</string>
+    <string name="relay_add">リレーを追加</string>
+    <string name="relay_enable">%1$sを有効にする</string>
+    <string name="relay_invalid_address">認証情報、パス、またはクエリを含まないHTTPまたはHTTPSのリレーアドレスを入力してください。</string>
+    <string name="relay_duplicate">このリレーは既にリストに含まれています。</string>
+    <string name="relay_limit">リストには最大16個のカスタムリレーを登録できます。</string>
+    <string name="relay_save_failed">リレーの設定を保存できませんでした。</string>
+    <string name="relay_region_na_east">北米・東部</string>
+    <string name="relay_region_na_west">北米・西部</string>
+    <string name="relay_region_europe">ヨーロッパ</string>
+    <string name="relay_region_asia_pacific">アジア太平洋地域</string>
+    <string name="relay_region_custom">カスタム</string>
+</resources>
+
+
+
