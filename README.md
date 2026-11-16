@@ -169,7 +169,7 @@ in light and dark. In English, German, Turkish, Simplified Chinese, Brazilian Po
 | Screen recording (MP4) | Yes | Yes | Yes (H.264) |
 | PC audio stream / phone mic | Yes | Yes | Phone mic and sound play on the Mac; PC audio not yet |
 | Phone as webcam | Yes | Yes (with v4l2loopback) | Not yet (needs a Developer ID signed build) |
-| Phone storage in the file manager | Yes | Yes | Not yet |
+| Phone storage in the file manager | Yes | Yes | Yes (Finder via WebDAV) |
 
 ## Private by design
 

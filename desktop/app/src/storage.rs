@@ -8,7 +8,7 @@
 //! reads (`CF_CALLBACK_TYPE_FETCH_DATA`). Renames, deletes, and new or modified
 //! files dropped into the sync root are forwarded to the phone.
 
-#[cfg(any(windows, target_os = "linux"))]
+#[cfg(any(windows, target_os = "linux", target_os = "macos"))]
 mod imp {
 
     #![allow(unsafe_code)]
@@ -91,7 +91,7 @@ mod imp {
 
     /// Difference between Windows FILETIME epoch (1601-01-01) and Unix epoch
     /// (1970-01-01) in 100-nanosecond intervals.
-    #[cfg_attr(target_os = "linux", allow(dead_code))]
+    #[cfg_attr(not(windows), allow(dead_code))]
     const EPOCH_DIFF_100NS: i64 = 116_444_736_000_000_000;
 
     /// Cloud file network unavailable NTSTATUS (`STATUS_CLOUD_FILE_NETWORK_UNAVAILABLE`).
@@ -194,7 +194,7 @@ mod imp {
         sync();
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     pub fn start() {
         win::storage::start();
     }
@@ -270,7 +270,7 @@ mod imp {
         links.get_or_insert_with(HashMap::new).insert(device, online) != Some(online)
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     pub fn sync() {
         win::storage::sync();
     }
@@ -307,7 +307,7 @@ mod imp {
         }
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     pub fn on_event(event: &NodeEvent) {
         win::storage::on_event(event);
     }
@@ -324,7 +324,7 @@ mod imp {
         }
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     pub fn shutdown() {
         win::storage::shutdown();
     }
@@ -361,7 +361,7 @@ mod imp {
         });
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     pub fn unregister_all() {
         win::storage::unregister_all();
     }
@@ -372,7 +372,7 @@ mod imp {
         if let Some(active) = get_active_root(&device) {
             return Some(active.root_path.clone());
         }
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
         if let Some(path) = win::storage::mounted_path_for(&device) {
             return Some(path);
         }
@@ -411,7 +411,7 @@ mod imp {
         {
             win::shell::run(Path::new("explorer.exe"), &format!("\"{}\"", path.display()))
         }
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
         {
             win::shell::open_folder(&path)
         }
@@ -450,7 +450,7 @@ mod imp {
 
     /// Converts a Unix timestamp in milliseconds to Windows FILETIME 100ns ticks
     /// since 1601-01-01.
-    #[cfg_attr(target_os = "linux", allow(dead_code))]
+    #[cfg_attr(not(windows), allow(dead_code))]
     pub fn unix_ms_to_filetime_ticks(unix_ms: i64) -> i64 {
         EPOCH_DIFF_100NS.saturating_add(unix_ms.max(0).saturating_mul(10_000))
     }
@@ -464,7 +464,7 @@ mod imp {
     /// Computes the slash-separated relative path inside `root_path` from a full
     /// local path (`""` for the sync root itself). Returns `None` if `full_path` is
     /// not inside `root_path`.
-    #[cfg_attr(target_os = "linux", allow(dead_code))]
+    #[cfg_attr(not(windows), allow(dead_code))]
     pub fn relative_path_under_root(root_path: &Path, full_path: &Path) -> Option<String> {
         let root_norm = normalize_win_path(root_path);
         let full_norm = normalize_win_path(full_path);
@@ -489,7 +489,7 @@ mod imp {
     /// minute, then twice as long each time up to half an hour. A new name
     /// or folder is worth trying at once.
     #[derive(Debug, Clone, PartialEq, Eq)]
-    #[cfg_attr(target_os = "linux", allow(dead_code))]
+    #[cfg_attr(not(windows), allow(dead_code))]
     struct RetryLater {
         name: String,
         folder: String,
@@ -497,7 +497,7 @@ mod imp {
         delay: std::time::Duration,
     }
 
-    #[cfg_attr(target_os = "linux", allow(dead_code))]
+    #[cfg_attr(not(windows), allow(dead_code))]
     impl RetryLater {
         const FIRST: std::time::Duration = std::time::Duration::from_secs(60);
         const MOST: std::time::Duration = std::time::Duration::from_secs(30 * 60);
@@ -526,7 +526,7 @@ mod imp {
         }
     }
 
-    #[cfg_attr(target_os = "linux", allow(dead_code))]
+    #[cfg_attr(not(windows), allow(dead_code))]
     fn normalize_win_path(path: &Path) -> String {
         let s = path.to_string_lossy();
         let stripped = s.strip_prefix(r"\\?\").unwrap_or(&s);
@@ -1909,7 +1909,7 @@ mod imp {
     }
 }
 
-#[cfg(not(any(windows, target_os = "linux")))]
+#[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
 mod imp {
     #![allow(dead_code)]
 
