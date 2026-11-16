@@ -177,7 +177,7 @@ pub fn init(settings: &Settings) {
         match VirtualCameraHandle::start() {
             Ok(handle) => Some(handle),
             Err(e) => {
-                tracing::warn!(error = %e, "can't start IMFVirtualCamera session");
+                tracing::warn!(error = %e, "can't start virtual camera session");
                 None
             }
         }
@@ -338,7 +338,7 @@ pub fn setup_addon() {
         let registered = vcam::is_registered();
         let handle = if registered {
             VirtualCameraHandle::start()
-                .inspect_err(|e| tracing::warn!(error = %e, "can't start IMFVirtualCamera session"))
+                .inspect_err(|e| tracing::warn!(error = %e, "can't start virtual camera session"))
                 .ok()
         } else {
             None
@@ -441,6 +441,12 @@ fn refresh_idle_frame() {
     if let Some(mapping) = idle_mapping() {
         mapping.set_idle(&name);
     }
+    #[cfg(target_os = "macos")]
+    state(|s| {
+        if let Some(ref handle) = s.vcam_handle {
+            handle.set_idle(&name);
+        }
+    });
     if PREVIEW_ACTIVE.load(Ordering::Relaxed) {
         let (w, h) = (640u32, 360u32);
         let mut bgrx = vec![0u8; (w * h * 4) as usize];
@@ -855,6 +861,14 @@ fn decode(device: DeviceId, items: &Receiver<Item>, waiting: &AtomicUsize) {
                     if !published && let Some(ref map) = local_mapping {
                         // Already flipped in place if `flip` is true, so pass `false` here.
                         map.write_frame(&phone_name, src_w, src_h, time_us, &bgrx, false);
+                    }
+                    #[cfg(target_os = "macos")]
+                    if !published {
+                        state(|s| {
+                            if let Some(ref handle) = s.vcam_handle {
+                                handle.write_frame(&phone_name, src_w, src_h, time_us, &bgrx, false);
+                            }
+                        });
                     }
                     // Publish the CPU fallback before deselecting the previous
                     // GPU frame so a transport switch cannot expose an idle gap.

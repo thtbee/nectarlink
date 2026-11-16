@@ -48,6 +48,7 @@ pub const MAX_WIDTH: u32 = 3840;
 pub const MAX_HEIGHT: u32 = 2160;
 pub const MAX_FRAME_BYTES: usize = (MAX_WIDTH as usize) * (MAX_HEIGHT as usize) * 4;
 pub const HEADER_BYTES: usize = std::mem::size_of::<SharedHeader>();
+const _: () = assert!(HEADER_BYTES == 128);
 pub const TOTAL_MAPPING_BYTES: usize = HEADER_BYTES + MAX_FRAME_BYTES;
 
 const MAGIC: u32 = 0x4E4C_5643; // "NLVC"
@@ -326,11 +327,22 @@ impl SharedFrameMapping {
 #[cfg(unix)]
 impl SharedFrameMapping {
     /// Opens or creates the shared-memory frame mapping with `name` in
-    /// `$XDG_RUNTIME_DIR` or `/dev/shm` with `0600` owner-only permissions.
-    #[allow(unsafe_code)]
+    /// `$XDG_RUNTIME_DIR`, `/dev/shm`, or `std::env::temp_dir()` with `0600`
+    /// owner-only permissions.
     pub fn open_or_create(name: &str) -> std::io::Result<Self> {
-        use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
         let path = unix_shm_path(name);
+        Self::open_or_create_at(&path)
+    }
+
+    /// Opens or creates the shared-memory frame mapping at an explicit `path`
+    /// (for example, a macOS App Group container) with `0600` owner-only
+    /// permissions.
+    #[allow(unsafe_code)]
+    pub fn open_or_create_at(path: &std::path::Path) -> std::io::Result<Self> {
+        use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         // SAFETY: `geteuid` has no preconditions.
         let uid = unsafe { libc::geteuid() };
         let file = std::fs::OpenOptions::new()
