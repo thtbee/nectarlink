@@ -120,6 +120,7 @@ pub fn compute_capabilities(
         nectarlink_core::CONTACTS_SHOW.into(),
         nectarlink_core::SMS_SHOW.into(),
         nectarlink_core::TOGGLES_SHOW.into(),
+        nectarlink_core::RECORDER.into(),
     ];
     #[cfg(any(windows, target_os = "linux"))]
     {
@@ -132,7 +133,6 @@ pub fn compute_capabilities(
         caps.push(nectarlink_core::MIRROR_LISTEN.into());
         caps.push(nectarlink_core::DECK_ACTIONS.into());
         caps.push(nectarlink_core::PC_AUDIO.into());
-        caps.push(nectarlink_core::RECORDER.into());
         // Only while hibernation is on: Windows can turn it off (#355).
         if crate::win::shell::can_hibernate() {
             caps.push(nectarlink_core::PC_HIBERNATE.into());
@@ -479,7 +479,7 @@ mod tests {
             "macOS must not advertise camera.virtual"
         );
         assert!(!caps.contains(&nectarlink_core::PC_AUDIO.into()), "macOS must not advertise pc.audio");
-        assert!(!caps.contains(&nectarlink_core::RECORDER.into()), "macOS must not advertise recorder");
+        assert!(caps.contains(&nectarlink_core::RECORDER.into()), "macOS must advertise recorder");
         assert!(
             !caps.contains(&nectarlink_core::DECK_ACTIONS.into()),
             "macOS must not advertise deck.actions"

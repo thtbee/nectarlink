@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Linux MP4 recording for mirrored phone screens and app windows.
+//! Unix MP4 recording for mirrored phone screens and app windows.
 //!
 //! Video frames arrive as Annex-B H.264 access units and are muxed into an
 //! ISO-BMFF (`.mp4`) container (`ftyp` + `moov` + `mdat` with `avc1`/`avcC`
@@ -7,6 +7,8 @@
 //! present, the recorded PCM track is encoded to AAC in-process via
 //! `libavcodec` (falling back to `ffmpeg` on `PATH` if `libavcodec` is
 //! unavailable) and muxed alongside the H.264 video stream.
+
+#![allow(unsafe_code)]
 
 use std::{
     fs::{self, File},
@@ -101,6 +103,7 @@ pub fn has_idr_slice(data: &[u8]) -> bool {
 }
 
 /// Returns `true` if `data` already carries both SPS (NAL 7) and PPS (NAL 8) units in-band.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub fn has_inband_sps_pps(data: &[u8]) -> bool {
     let nals = split_annexb(data);
     nals.iter().any(|nal| nal_type(nal) == Some(7)) && nals.iter().any(|nal| nal_type(nal) == Some(8))
@@ -113,6 +116,7 @@ pub fn is_parameter_only(data: &[u8]) -> bool {
 }
 
 /// Extracts only SPS (NAL 7) and PPS (NAL 8) units from `data` with 4-byte Annex-B start codes.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub fn extract_sps_pps(data: &[u8]) -> Option<Vec<u8>> {
     let mut out = Vec::new();
     for nal in split_annexb(data) {
