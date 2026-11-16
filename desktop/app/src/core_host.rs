@@ -121,6 +121,10 @@ pub fn compute_capabilities(
         nectarlink_core::SMS_SHOW.into(),
         nectarlink_core::TOGGLES_SHOW.into(),
     ];
+    #[cfg(target_os = "macos")]
+    {
+        caps.push(nectarlink_core::PC_AUDIO.into());
+    }
     #[cfg(any(windows, target_os = "linux"))]
     {
         caps.push(nectarlink_core::PC_WAKE.into());
@@ -478,7 +482,6 @@ mod tests {
             !caps.contains(&nectarlink_core::WEBCAM_VIRTUAL.into()),
             "macOS must not advertise camera.virtual"
         );
-        assert!(!caps.contains(&nectarlink_core::PC_AUDIO.into()), "macOS must not advertise pc.audio");
         assert!(!caps.contains(&nectarlink_core::RECORDER.into()), "macOS must not advertise recorder");
         assert!(
             !caps.contains(&nectarlink_core::DECK_ACTIONS.into()),
@@ -499,5 +502,6 @@ mod tests {
         assert!(caps.contains(&nectarlink_core::CONTACTS_SHOW.into()));
         assert!(caps.contains(&nectarlink_core::SMS_SHOW.into()));
         assert!(caps.contains(&nectarlink_core::TOGGLES_SHOW.into()));
+        assert!(caps.contains(&nectarlink_core::PC_AUDIO.into()));
     }
 }
