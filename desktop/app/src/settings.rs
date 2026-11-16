@@ -139,7 +139,7 @@ fn default_true() -> bool {
 }
 
 fn default_close_to_tray() -> bool {
-    !cfg!(target_os = "macos")
+    true
 }
 
 fn default_webcam_camera() -> String {
@@ -776,10 +776,6 @@ impl Settings {
         if self.window_x.is_none() || self.window_y.is_none() {
             self.window_x = None;
             self.window_y = None;
-        }
-        #[cfg(target_os = "macos")]
-        {
-            self.close_to_tray = false;
         }
         self
     }
