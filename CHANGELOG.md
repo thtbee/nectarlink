@@ -12,14 +12,15 @@ change things that need a step from you, and its notes say so.
   or newer) get one with Nightlies and releases. On a Mac, NectarLink now mirrors the phone's screen,
   records it to MP4, plays the phone's sound and microphone, sends the Mac's sound to the
   phone (with Screen Recording permission), shows the phone's storage in Finder, sets the
-  Mac's volume instantly, and lives in the menu bar when its window is closed. It isn't signed with
+  Mac's volume instantly, and lives in the menu bar when its window is closed (the Dock
+  icon brings it back). It isn't signed with
   an Apple Developer ID yet, so macOS asks you to allow it once (see Getting started),
   and it doesn't update itself yet. Thanks to [@svkrvavilla](https://github.com/svkrvavilla)
   ([#410](https://github.com/thtbee/nectarlink/pull/410), [#411](https://github.com/thtbee/nectarlink/pull/411),
   [#412](https://github.com/thtbee/nectarlink/pull/412), [#413](https://github.com/thtbee/nectarlink/pull/413),
   [#414](https://github.com/thtbee/nectarlink/pull/414), [#415](https://github.com/thtbee/nectarlink/pull/415),
   [#416](https://github.com/thtbee/nectarlink/pull/416), [#417](https://github.com/thtbee/nectarlink/pull/417),
-  [#419](https://github.com/thtbee/nectarlink/pull/419)).
+  [#419](https://github.com/thtbee/nectarlink/pull/419), [#426](https://github.com/thtbee/nectarlink/pull/426)).
 - **Talk through your PC.** During a call, **On PC** on the call card or in Nectar Island moves the
   call's sound to a Windows PC: you hear the other person from its speakers or headphones
   and talk into its microphone, over NectarLink's own connection, without Bluetooth. The
