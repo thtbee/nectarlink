@@ -332,7 +332,7 @@ internal class NotificationReader(private val context: Context) {
         return null
     }
 
-    private fun appName(pkg: String): String = names.get(pkg) ?: runCatching {
+    fun appName(pkg: String): String = names.get(pkg) ?: runCatching {
         packages.getApplicationLabel(packages.getApplicationInfo(pkg, 0)).toString()
     }.getOrDefault(pkg).also { names.put(pkg, it) }
 
@@ -429,6 +429,19 @@ internal class NotificationReader(private val context: Context) {
         } else {
             runCatching { context.packageManager.getPackageUid(sbn.packageName, 0) }.getOrDefault(-1)
         }
+
+    /** Who's calling, for a call notification (#434): CallStyle's caller, else its title. */
+    fun callerName(sbn: StatusBarNotification): String? {
+        val n = sbn.notification
+        return app.nectarlink.android.calls.AppCalls.callerName(n) ?: n.extras.text(Notification.EXTRA_TITLE)
+    }
+
+    /** The caller's photo for a call notification (#434): CallStyle's caller, else the large icon. */
+    fun callerPhoto(sbn: StatusBarNotification): ByteArray? {
+        val n = sbn.notification
+        val icon = app.nectarlink.android.calls.AppCalls.callerIcon(n) ?: n.getLargeIcon()
+        return avatarFromIcon(icon, postingUid(sbn))
+    }
 
     private fun avatarFromIcon(icon: Icon?, postingUid: Int): ByteArray? = runCatching {
         if (!isSafeIcon(icon, postingUid)) return null

@@ -127,6 +127,13 @@ pub fn active_or_ringing(preferred: Option<DeviceId>) -> Option<(DeviceId, CallS
     })
 }
 
+/// Whether the PC can answer and end this call: always for a call in an
+/// app (#434), which the phone reports only when it can press the app's
+/// buttons; for a phone call, when the phone lets the PC control its calls.
+pub fn can_control_call(device: DeviceId, call: &CallState) -> bool {
+    call.app.is_some() || can_control(device)
+}
+
 /// Whether the PC can answer and end a phone's calls.
 pub fn can_control(device: DeviceId) -> bool {
     core_host::host().hub.read(|s| {
@@ -241,7 +248,7 @@ fn changed(device: DeviceId, call: &CallState) {
                 if let Some(previous) = previous {
                     toast::remove(TOAST_GROUP, &format!("{ACTIVE}{}", key(device, &previous.id)));
                 }
-                if can_control(device) {
+                if can_control_call(device, call) {
                     show_in_progress(device, call);
                 }
             }
@@ -323,6 +330,11 @@ fn stop_ringing(device: DeviceId) {
     }
 }
 
+/// A call in an app rather than a phone call, by the ID the phone gives it (#434).
+pub fn is_app_call(id: &str) -> bool {
+    id.starts_with("app:")
+}
+
 /// Who's calling, as well as the phone knows.
 fn caller(call: &CallState) -> String {
     call.name
@@ -338,16 +350,18 @@ fn phone_name(device: DeviceId) -> String {
 
 fn show_ringing(device: DeviceId, call: &CallState, silenced: bool) {
     let mut actions = Vec::new();
-    if can_control(device) {
+    if can_control_call(device, call) {
         actions.push((CALL_ANSWER.to_owned(), "Answer".to_owned()));
         actions.push((CALL_DECLINE.to_owned(), "Decline".to_owned()));
-        if !silenced {
+        // An app plays its own ringtone: there's nothing for the phone to silence.
+        if !silenced && call.app.is_none() {
             actions.push((ACTION_SILENCE.to_owned(), "Silence".to_owned()));
         }
     }
-    // The number under the name, when there's a name.
-    let body = match (&call.name, &call.number) {
-        (Some(name), Some(number)) if !name.trim().is_empty() => {
+    // The number under the name, when there's a name; or the app a call is in.
+    let body = match (&call.app, &call.name, &call.number) {
+        (Some(app), _, _) => tr!("Calls", "%1 call on %2", app, phone_name(device)),
+        (None, Some(name), Some(number)) if !name.trim().is_empty() => {
             format!("{number} · on {}", phone_name(device))
         }
         _ => tr!("Calls", "Calling %1", phone_name(device)),
@@ -392,7 +406,10 @@ fn show_in_progress(device: DeviceId, call: &CallState) {
         device: TOAST_GROUP.into(),
         key: format!("{ACTIVE}{}", key(device, &call.id)),
         title: tr!("Calls", "On a call with %1", caller(call)),
-        body: format!("On {}", phone_name(device)),
+        body: match &call.app {
+            Some(app) => tr!("Calls", "%1 call on %2", app, phone_name(device)),
+            None => format!("On {}", phone_name(device)),
+        },
         attribution: "NectarLink".into(),
         icon: None,
         image: None,
@@ -418,7 +435,8 @@ static DIALED_HERE: Mutex<Option<(DeviceId, std::time::Instant)>> = Mutex::new(N
 const DIALED_HERE_FOR: std::time::Duration = std::time::Duration::from_secs(60);
 
 fn note_answered_here(device: DeviceId, call: &str, command: CallCommand) {
-    if command == CallCommand::Answer {
+    // An app call's sound can't move to the PC (#434): it stays on the phone.
+    if command == CallCommand::Answer && !is_app_call(call) {
         *ANSWERED_HERE.lock().unwrap_or_else(|e| e.into_inner()) = Some((device, call.to_owned()));
     }
 }

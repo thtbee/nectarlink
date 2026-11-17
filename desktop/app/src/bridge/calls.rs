@@ -33,6 +33,8 @@ pub mod qobject {
         #[qproperty(QString, caller)]
         /// The number, when there's a name to show above it.
         #[qproperty(QString, number)]
+        /// The app the call is in (WhatsApp...), empty for a phone call (#434).
+        #[qproperty(QString, app)]
         /// When it was answered (Unix ms), or 0 when the phone didn't say.
         #[qproperty(f64, since)]
         /// The PC can end the call (and change the volume).
@@ -159,6 +161,7 @@ pub struct PhoneCallRust {
     ringing: bool,
     caller: QString,
     number: QString,
+    app: QString,
     since: f64,
     can_end: bool,
     controls: bool,
@@ -285,8 +288,11 @@ impl qobject::PhoneCall {
         };
         self.as_mut().set_caller(QString::from(&caller));
         self.as_mut().set_number(QString::from(&number));
+        let app = call.as_ref().and_then(|c| c.app.clone()).unwrap_or_default();
+        self.as_mut().set_app(QString::from(&app));
         self.as_mut().set_since(call.as_ref().and_then(|c| c.since).unwrap_or(0) as f64);
-        self.as_mut().set_can_end(call_device.is_some_and(calls::can_control));
+        self.as_mut()
+            .set_can_end(call_device.zip(call.as_ref()).is_some_and(|(d, c)| calls::can_control_call(d, c)));
         self.as_mut().set_can_dial(preferred_device.or(call_device).is_some_and(calls::can_dial));
         self.as_mut().set_controls(controls.is_some());
         let controls = controls.unwrap_or_default();
@@ -304,8 +310,9 @@ impl qobject::PhoneCall {
 
         let here = call_device.is_some_and(|d| crate::call_audio::phase().device() == Some(d));
         self.as_mut().set_call_audio(here);
+        // An app call's sound stays on the phone (#434).
         self.as_mut().set_call_audio_available(
-            !is_ringing && (here || call_device.is_some_and(crate::call_audio::available)),
+            !is_ringing && app.is_empty() && (here || call_device.is_some_and(crate::call_audio::available)),
         );
 
         let view = calls::view();

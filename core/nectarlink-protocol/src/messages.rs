@@ -2529,6 +2529,12 @@ pub struct CallState {
     /// and hold.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub controls: Option<CallControls>,
+    /// The app the call is in (`WhatsApp`, `Signal`...) when it isn't a
+    /// phone call (#434). The phone sends one only when it can answer,
+    /// decline and end it through the app's own buttons; its sound stays on
+    /// the phone, and there's no mute, speaker, hold or keypad.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app: Option<String>,
 }
 
 fn yes() -> bool {
@@ -2554,6 +2560,7 @@ impl CallState {
             && [calls::RINGING, calls::ACTIVE, calls::ENDED].contains(&self.state.as_str())
             && text_ok(&self.number)
             && text_ok(&self.name)
+            && text_ok(&self.app)
             && self.photo.as_ref().is_none_or(|p| p.len() <= calls::MAX_PHOTO_BYTES)
     }
 }
@@ -5363,6 +5370,7 @@ mod tests {
             missed: false,
             since: None,
             controls: None,
+            app: None,
         };
         assert!(call.is_valid());
         let shown = format!("{call:?}");
@@ -5373,7 +5381,27 @@ mod tests {
         // Missing fields take their defaults: incoming, not missed.
         let env = Envelope::new("x", &CallState { number: None, name: None, photo: None, ..call }).unwrap();
         let back: CallState = env.body().unwrap();
-        assert!(back.incoming && !back.missed && back.number.is_none());
+        assert!(back.incoming && !back.missed && back.number.is_none() && back.app.is_none());
+    }
+
+    #[test]
+    fn app_calls_name_their_app() {
+        let call = CallState {
+            id: "app:1".into(),
+            state: calls::RINGING.into(),
+            incoming: true,
+            number: None,
+            name: Some("Sam".into()),
+            photo: None,
+            missed: false,
+            since: None,
+            controls: None,
+            app: Some("WhatsApp".into()),
+        };
+        assert!(call.is_valid());
+        let back: CallState = Envelope::new("x", &call).unwrap().body().unwrap();
+        assert_eq!(back.app.as_deref(), Some("WhatsApp"));
+        assert!(!CallState { app: Some("x".repeat(calls::MAX_TEXT_BYTES + 1)), ..call }.is_valid());
     }
 
     #[test]

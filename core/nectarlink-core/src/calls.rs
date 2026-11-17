@@ -289,10 +289,17 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let current = shared.calls.get();
             let offers = |cap: &str| shared.we_offer(cap);
             let command = CallCommand::parse(&action, digit.as_deref());
+            // A call in an app (#434) is answered, declined and ended through the app's own
+            // buttons, which the phone reports only when it has them: no call control needed,
+            // and none of the phone call's mute, speaker, hold, keypad or silence.
+            let app_call = current.as_ref().is_some_and(|c| c.id == id && c.app.is_some());
             let reply = if !shared.toggle_on(&peer, TOGGLE) {
                 Envelope::error(ErrorCode::Denied, "calls are off for this device")
-            } else if !offers(calls::CONTROL)
-                || command.is_some_and(|c| c.needs_in_call() && !offers(calls::IN_CALL))
+            } else if app_call && command.is_some_and(|c| c.needs_in_call() || c == CallCommand::Silence) {
+                Envelope::error(ErrorCode::Unsupported, "an app call doesn't take that action")
+            } else if !app_call
+                && (!offers(calls::CONTROL)
+                    || command.is_some_and(|c| c.needs_in_call() && !offers(calls::IN_CALL)))
             {
                 Envelope::error(ErrorCode::Unsupported, "this phone doesn't take that call action")
             } else {
@@ -455,6 +462,7 @@ mod tests {
             missed: false,
             since: None,
             controls: None,
+            app: None,
         };
         current.set(&call);
         assert_eq!(current.get().map(|c| c.id), Some("7".into()));
@@ -475,6 +483,7 @@ mod tests {
             missed: false,
             since: None,
             controls: None,
+            app: None,
         };
         let start = Instant::now();
         current.set(&ringing);

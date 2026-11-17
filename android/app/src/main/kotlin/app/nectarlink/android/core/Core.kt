@@ -142,6 +142,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             )
         },
         calls = { calls },
+        appCalls = { appCalls },
         contacts = { contacts },
         sms = { sms },
         toggles = { toggles },
@@ -191,6 +192,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             enqueueNotificationOp { it.callLogChanged() }
         },
     )
+    /** Calls in other apps (WhatsApp, Signal...), reported like the phone's own (#434). */
+    internal val appCalls = app.nectarlink.android.calls.AppCalls(this.context) { call ->
+        enqueueNotificationOp { node ->
+            runCatching { node.callChanged(call) }.onFailure { Log.i(TAG, "an app call wasn't reported", it) }
+        }
+    }
     private val contacts = PhoneContacts(this.context) {
         enqueueNotificationOp { it.contactsChanged() }
     }

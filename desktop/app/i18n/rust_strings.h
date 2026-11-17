@@ -51,6 +51,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Battery", "%1's battery is low"), // desktop/app/src/battery.rs
     QT_TRANSLATE_NOOP("Battery", "You can unplug it."), // desktop/app/src/battery.rs
     QT_TRANSLATE_NOOP("Battery", "Your phone"), // desktop/app/src/battery.rs
+    QT_TRANSLATE_NOOP("Calls", "%1 call on %2"), // desktop/app/src/calls.rs
     QT_TRANSLATE_NOOP("Calls", "Calling %1"), // desktop/app/src/calls.rs
     QT_TRANSLATE_NOOP("Calls", "Missed call from %1"), // desktop/app/src/calls.rs
     QT_TRANSLATE_NOOP("Calls", "No microphone on this PC to talk with."), // desktop/app/src/call_audio.rs

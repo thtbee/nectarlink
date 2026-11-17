@@ -1414,6 +1414,10 @@ pub struct Call {
     /// With `Active`, when this app controls the call (its in-call service
     /// is bound): mute, speaker and hold.
     pub controls: Option<CallControls>,
+    /// The app the call is in (`WhatsApp`...), when it isn't a phone call
+    /// (#434): answered, declined and ended through that app's notification.
+    #[uniffi(default = None)]
+    pub app: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
@@ -4600,6 +4604,7 @@ impl NectarlinkNode {
                 held: c.held,
                 can_hold: c.can_hold,
             }),
+            app: call.app,
         };
         self.run(async move { Ok(node.call_changed(call).await?) }).await
     }

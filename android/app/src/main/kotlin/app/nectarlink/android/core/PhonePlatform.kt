@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.core
 
-import android.app.ActivityOptions
 import android.app.PendingIntent
 import android.app.RemoteInput
 import android.content.Context
@@ -73,6 +72,8 @@ internal class PhonePlatform(
     private val onTask: (String, TaskNotify) -> Boolean,
     /** The phone's calls (created after this). */
     private val calls: () -> PhoneCalls,
+    /** Calls in other apps, from their notifications (created after this). */
+    private val appCalls: () -> app.nectarlink.android.calls.AppCalls,
     /** The phone's contacts (created after this). */
     private val contacts: () -> PhoneContacts,
     /** The phone's texts (created after this). */
@@ -136,7 +137,8 @@ internal class PhonePlatform(
 
     override fun photoThumbs(ids: List<String>): List<PhotoThumb> = RecentPhotos.thumbs(context, ids)
 
-    override fun callCommand(id: String, command: CallCommand): Boolean = calls().command(id, command)
+    override fun callCommand(id: String, command: CallCommand): Boolean =
+        appCalls().command(id, command) ?: calls().command(id, command)
 
     override fun callLog(before: Long?, limit: UInt): List<CallLogEntry> =
         calls().callLog(before, limit.toInt())
@@ -358,23 +360,10 @@ internal class PhonePlatform(
             }
         }
         try {
-            intent.send(context, 0, fillIn, null, null, null, sendOptions())
+            intent.send(context, 0, fillIn, null, null, null, app.nectarlink.android.notifications.ActionStarts.options())
         } catch (e: PendingIntent.CanceledException) {
             throw NotificationFailure.NotFound()
         }
-    }
-
-    /** Lets an action open its app's screen, as tapping it on the phone would. */
-    private fun sendOptions(): Bundle? {
-        val mode = when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA -> ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_ALWAYS
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
-                @Suppress("DEPRECATION")
-                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-            }
-            else -> return null
-        }
-        return ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(mode).toBundle()
     }
 
     companion object {

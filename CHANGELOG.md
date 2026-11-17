@@ -8,6 +8,13 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Calls from WhatsApp and other apps show on the PC.** When a WhatsApp, Signal,
+  Messenger or Telegram call rings on the phone, the PC shows it like a phone call, with
+  the caller and the app's name, in the banner, Nectar Island and the call card. Answer,
+  Decline and End press the app's own buttons on the phone, and the PC's volume buttons
+  set the call's volume; the sound stays on the phone. Needs notification access. Thanks
+  to [@s-shahriar](https://github.com/s-shahriar)
+  ([#434](https://github.com/thtbee/nectarlink/issues/434)).
 - **The Mac preview does a lot more, and comes as a DMG.** Apple silicon Macs (macOS 14
   or newer) get one with Nightlies and releases. On a Mac, NectarLink now mirrors the phone's screen,
   records it to MP4, plays the phone's sound and microphone, sends the Mac's sound to the
