@@ -116,6 +116,8 @@ pub mod qobject {
         #[qproperty(bool, open_shared_files)]
         #[qproperty(bool, sync_wifi_only)]
         #[qproperty(bool, sync_passwords)]
+        /// Use phones' USB debugging for USB features (#439); applies on restart.
+        #[qproperty(bool, usb_debugging)]
         #[qproperty(QString, mirror_quality)]
         /// Send the clipboard to the phone when control moves to it.
         #[qproperty(bool, flow_follow_clipboard)]
@@ -209,6 +211,11 @@ pub mod qobject {
         /// Connects to OBS with the saved settings and shows the result as a message.
         #[qinvokable]
         fn test_obs(self: &Preferences);
+        /// Use USB debugging as NectarLink started with it, which is what's in
+        /// effect until it restarts (#439).
+        #[qinvokable]
+        #[cxx_name = "usbDebuggingAtStart"]
+        fn usb_debugging_at_start(self: &Preferences) -> bool;
 
         /// Sets the folder where voice recordings are saved (from a `file:` URL or path).
         #[qinvokable]
@@ -367,6 +374,7 @@ pub struct PreferencesRust {
     open_shared_files: bool,
     sync_wifi_only: bool,
     sync_passwords: bool,
+    usb_debugging: bool,
     mirror_quality: QString,
     flow_follow_clipboard: bool,
     nectar_island: bool,
@@ -473,6 +481,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_open_shared_files(settings.open_shared_files);
         self.as_mut().set_sync_wifi_only(settings.sync_wifi_only);
         self.as_mut().set_sync_passwords(settings.sync_passwords);
+        self.as_mut().set_usb_debugging(settings.usb_debugging);
         self.as_mut().set_mirror_quality(QString::from(crate::settings::mirror_quality().name()));
         self.as_mut().set_flow_follow_clipboard(settings.flow_follow_clipboard);
         self.as_mut().set_nectar_island(settings.nectar_island);
@@ -754,6 +763,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
                 p.save();
             })
             .release();
+        // Saved for the next start: the core reads it once (#439).
+        self.as_mut().on_usb_debugging_changed(|p| p.save()).release();
         self.as_mut()
             .on_sync_wifi_only_changed(|p| {
                 crate::settings::set_sync_wifi_only(p.sync_wifi_only);
@@ -935,6 +946,10 @@ impl qobject::Preferences {
 
     pub fn obs_has_password(&self) -> bool {
         crate::settings::obs_settings().1.is_some()
+    }
+
+    pub fn usb_debugging_at_start(&self) -> bool {
+        crate::settings::usb_debugging()
     }
 
     pub fn save_obs(self: Pin<&mut Self>, port: i32, password: &QString, replace_password: bool) {
@@ -1192,6 +1207,7 @@ impl qobject::Preferences {
             open_shared_files: p.open_shared_files,
             sync_wifi_only: p.sync_wifi_only,
             sync_passwords: p.sync_passwords,
+            usb_debugging: p.usb_debugging,
             mirror_quality: String::from(&p.mirror_quality),
             flow_follow_clipboard: p.flow_follow_clipboard,
             folder_sync_rules: crate::settings::folder_sync_rules(),

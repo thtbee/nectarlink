@@ -174,7 +174,9 @@ Column {
                     role: "bodySmall"
                     muted: true
                     wrapMode: Text.WordWrap
-                    text: qsTr("USB is turned off for this copy of NectarLink.")
+                    text: Preferences.usbDebuggingAtStart()
+                        ? qsTr("USB is turned off for this copy of NectarLink.")
+                        : qsTr("Use USB debugging is off in Settings › Connection & About.")
                 }
                 Txt {
                     width: parent.width

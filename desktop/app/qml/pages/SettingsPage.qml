@@ -3462,6 +3462,23 @@ Item {
                                 onToggled: function(v) { Preferences.awayMode = v }
                             }
                         }
+                        Divider { width: parent.width }
+                        // #439: off, NectarLink never asks a phone on a cable for USB debugging.
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.usb
+                            title: qsTr("Use USB debugging")
+                            description: Preferences.usbDebugging !== Preferences.usbDebuggingAtStart()
+                                ? qsTr("Applies when NectarLink restarts.")
+                                : Preferences.usbDebugging
+                                    ? qsTr("Connect, pair, install the app and start Elevated over a USB cable. Your phone asks once to allow USB debugging.")
+                                    : qsTr("Off: NectarLink never asks a phone on a cable for USB debugging. Wi-Fi works as usual.")
+                            Toggle {
+                                label: qsTr("Use USB debugging")
+                                checked: Preferences.usbDebugging
+                                onToggled: function(v) { Preferences.usbDebugging = v }
+                            }
+                        }
                         Divider { width: parent.width; visible: Qt.platform.os === "linux" }
                         ListRow {
                             width: parent.width

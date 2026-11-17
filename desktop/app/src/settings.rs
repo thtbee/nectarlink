@@ -159,6 +159,7 @@ static AWAY_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool:
 static FLOW_FOLLOW_CLIPBOARD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 static MIRROR_QUALITY: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 static SYNC_PASSWORDS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static USB_DEBUGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 static SYNC_WIFI_ONLY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static OPEN_SHARED_FILES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
@@ -185,6 +186,17 @@ pub fn mirror_quality() -> crate::mirror::Quality {
 
 pub fn set_mirror_quality(quality: &str) {
     quality.clone_into(&mut MIRROR_QUALITY.lock().unwrap_or_else(|e| e.into_inner()));
+}
+
+/// Whether NectarLink uses phones' USB debugging (adb) at all (#439). Off,
+/// it never asks a phone on a cable for it: no USB connection, pairing,
+/// installing or starting Elevated over USB. Read at startup.
+pub fn usb_debugging() -> bool {
+    USB_DEBUGGING.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub fn set_usb_debugging(on: bool) {
+    USB_DEBUGGING.store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
 pub fn sync_passwords() -> bool {
@@ -591,6 +603,9 @@ pub struct Settings {
     /// What password managers mark private also goes to phones.
     #[serde(default, alias = "sync_passwords")]
     pub sync_passwords: bool,
+    /// Use phones' USB debugging (adb) for USB features; off, never ask (#439).
+    #[serde(default = "default_true", alias = "usb_debugging")]
+    pub usb_debugging: bool,
     /// "sharper" or "smoother"; anything else is the balanced default. Text, so a
     /// value from a newer version can't stop this file from loading.
     #[serde(default, alias = "mirror_quality")]
@@ -752,6 +767,7 @@ impl Default for Settings {
             open_shared_files: false,
             sync_wifi_only: false,
             sync_passwords: false,
+            usb_debugging: true,
             mirror_quality: String::new(),
             flow_follow_clipboard: true,
             phone_beside: String::new(),
@@ -825,6 +841,7 @@ impl Settings {
         set_open_shared_files(self.open_shared_files);
         set_sync_wifi_only(self.sync_wifi_only);
         set_sync_passwords(self.sync_passwords);
+        set_usb_debugging(self.usb_debugging);
         set_mirror_quality(&self.mirror_quality);
         set_flow_follow_clipboard(self.flow_follow_clipboard);
         set_phone_beside(&self.phone_beside, &self.phone_beside_side);
@@ -1033,6 +1050,7 @@ mod tests {
             open_shared_files: true,
             sync_wifi_only: true,
             sync_passwords: true,
+            usb_debugging: false,
             mirror_quality: "sharper".into(),
             flow_follow_clipboard: false,
             phone_beside: String::new(),
