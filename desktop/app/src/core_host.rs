@@ -128,6 +128,9 @@ pub fn compute_capabilities(
     #[cfg(target_os = "macos")]
     {
         caps.push(nectarlink_core::PC_AUDIO.into());
+        caps.push(nectarlink_core::STORAGE_MOUNT.into());
+        caps.push(nectarlink_core::STORAGE_READ.into());
+        caps.push(nectarlink_core::STORAGE_WRITE.into());
     }
     #[cfg(any(windows, target_os = "linux"))]
     {
@@ -472,18 +475,6 @@ mod tests {
         assert!(caps.contains(&nectarlink_core::MIRROR_VIEW.into()), "macOS must advertise mirror.view");
         assert!(caps.contains(&nectarlink_core::MIRROR_LISTEN.into()), "macOS must advertise mirror.listen");
         assert!(!caps.contains(&"media.control".into()), "macOS must not advertise media.control");
-        assert!(
-            !caps.contains(&nectarlink_core::STORAGE_MOUNT.into()),
-            "macOS must not advertise storage.mount"
-        );
-        assert!(
-            !caps.contains(&nectarlink_core::STORAGE_READ.into()),
-            "macOS must not advertise storage.read"
-        );
-        assert!(
-            !caps.contains(&nectarlink_core::STORAGE_WRITE.into()),
-            "macOS must not advertise storage.write"
-        );
         assert_eq!(
             caps.contains(&nectarlink_core::WEBCAM_VIRTUAL.into()),
             crate::win::vcam::is_available(),
@@ -510,5 +501,8 @@ mod tests {
         assert!(caps.contains(&nectarlink_core::SMS_SHOW.into()));
         assert!(caps.contains(&nectarlink_core::TOGGLES_SHOW.into()));
         assert!(caps.contains(&nectarlink_core::PC_AUDIO.into()));
+        assert!(caps.contains(&nectarlink_core::STORAGE_MOUNT.into()));
+        assert!(caps.contains(&nectarlink_core::STORAGE_READ.into()));
+        assert!(caps.contains(&nectarlink_core::STORAGE_WRITE.into()));
     }
 }

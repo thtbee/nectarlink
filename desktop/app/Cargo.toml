@@ -29,6 +29,7 @@ nectarlink-adb.workspace = true
 nectarlink-core.workspace = true
 nectarlink-vcam.workspace = true
 qrcode.workspace = true
+rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha1_smol = "1"
