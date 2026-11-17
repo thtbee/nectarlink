@@ -2493,6 +2493,7 @@ dependencies = [
 name = "nectarlink-desktop"
 version = "0.1.5"
 dependencies = [
+ "anyhow",
  "blake3",
  "cc",
  "cxx",
