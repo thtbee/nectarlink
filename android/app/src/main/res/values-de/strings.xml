@@ -394,6 +394,7 @@
     <string name="remote_volume_hint">Solange dieser Bildschirm geöffnet ist, wechseln auch die Lautstärketasten die Folien.</string>
     <string name="remote_mode_screen">Bildschirm</string>
     <string name="pc_mirror_connecting">%1$s wird verbunden…</string>
+    <string name="pc_mirror_capture_failed">Die Bildschirmfreigabe ist fehlgeschlagen. Entsperre den PC, prüfe die Freigabeberechtigungen und versuche es erneut.</string>
     <string name="pc_mirror_fullscreen">Vollbild</string>
     <string name="pc_mirror_exit_fullscreen">Vollbild beenden</string>
     <string name="pc_mirror_right_click">Rechtsklick</string>

@@ -394,6 +394,7 @@
     <string name="remote_volume_hint">Os botões de volume também mudam os slides enquanto esta tela está aberta.</string>
     <string name="remote_mode_screen">Tela</string>
     <string name="pc_mirror_connecting">Conectando a %1$s…</string>
+    <string name="pc_mirror_capture_failed">Falha ao compartilhar a tela. Desbloqueie o PC, confira as permissões de compartilhamento e tente novamente.</string>
     <string name="pc_mirror_fullscreen">Tela inteira</string>
     <string name="pc_mirror_exit_fullscreen">Sair da tela inteira</string>
     <string name="pc_mirror_right_click">Clique direito</string>

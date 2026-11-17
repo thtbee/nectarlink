@@ -389,6 +389,7 @@
     <string name="remote_volume_hint">Кнопки громкости тоже переключают слайды, пока открыт этот экран.</string>
     <string name="remote_mode_screen">Экран</string>
     <string name="pc_mirror_connecting">Подключение к %1$s…</string>
+    <string name="pc_mirror_capture_failed">Не удалось показать экран. Разблокируйте ПК, проверьте разрешения на показ экрана и попробуйте снова.</string>
     <string name="pc_mirror_fullscreen">Полный экран</string>
     <string name="pc_mirror_exit_fullscreen">Выйти из полноэкранного режима</string>
     <string name="pc_mirror_right_click">Правый щелчок</string>

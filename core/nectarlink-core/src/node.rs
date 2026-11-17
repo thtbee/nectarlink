@@ -3171,8 +3171,7 @@ impl Node {
         crate::mirror::input(&self.shared, &session, mirroring, input).await
     }
 
-    /// Tells a PC something about its mirroring, by `code` (`mirror.notice`):
-    /// say, that this phone refuses its taps.
+    /// Sends a mirroring status to the viewer, by `code` (`mirror.notice`).
     pub async fn mirror_notice(&self, peer: DeviceId, mirroring: u32, code: &str) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::mirror::notice(&session, mirroring, code).await

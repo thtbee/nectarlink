@@ -546,6 +546,8 @@ fun PcMirrorView(
     val keyboardFocusRequester = remember { FocusRequester() }
 
     val mirrorConfig by core.pcMirrorConfig.collectAsStateWithLifecycle()
+    val failedPc by core.pcMirrorCaptureFailed.collectAsStateWithLifecycle()
+    val captureFailed = failedPc == pcId
     val activeConfig = mirrorConfig?.takeIf { it.pcId == pcId }
     val effectiveCodec = activeConfig?.codec ?: "h264"
 
@@ -563,6 +565,7 @@ fun PcMirrorView(
     var surface by remember { mutableStateOf<Surface?>(null) }
     var hasRenderedFrame by remember(pcId) { mutableStateOf(false) }
     var reconnectTick by remember { mutableIntStateOf(0) }
+    var requestTick by remember(pcId) { mutableIntStateOf(0) }
 
     // Full-screen overlay & auto-rotate state
     var overlayVisible by remember { mutableStateOf(true) }
@@ -761,7 +764,7 @@ fun PcMirrorView(
     val showing = watch != null || lifecycleState.isAtLeast(Lifecycle.State.STARTED)
     var asked by remember(pcId) { mutableStateOf(false) }
 
-    LaunchedEffect(pcId, maxSize, bitrate, showing) {
+    LaunchedEffect(pcId, maxSize, bitrate, showing, requestTick) {
         hasRenderedFrame = false
         if (!showing) {
             if (asked) {
@@ -797,7 +800,9 @@ fun PcMirrorView(
         effectiveCodec,
         useSoftwareDecoder,
         reconnectTick,
+        captureFailed,
     ) {
+        if (captureFailed) return@LaunchedEffect
         val targetSurface = surface?.takeIf { it.isValid } ?: return@LaunchedEffect
         hasRenderedFrame = false
         val width = (activeConfig?.width ?: 1280).coerceAtLeast(64)
@@ -1309,7 +1314,7 @@ fun PcMirrorView(
                     )
                 }
 
-                if (!hasRenderedFrame) {
+                if (!hasRenderedFrame || captureFailed) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -1318,16 +1323,27 @@ fun PcMirrorView(
                             .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(16.dp))
                             .padding(horizontal = 20.dp, vertical = 16.dp),
                     ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(28.dp),
-                            strokeWidth = 2.5.dp,
-                            color = Color.White,
-                        )
-                        Text(
-                            text = stringResource(R.string.pc_mirror_connecting, pcName),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White,
-                        )
+                        if (captureFailed) {
+                            Text(
+                                text = stringResource(R.string.pc_mirror_capture_failed),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White,
+                            )
+                            TextButton(onClick = { requestTick++ }) {
+                                Text(stringResource(R.string.action_try_again))
+                            }
+                        } else {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp),
+                                strokeWidth = 2.5.dp,
+                                color = Color.White,
+                            )
+                            Text(
+                                text = stringResource(R.string.pc_mirror_connecting, pcName),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White,
+                            )
+                        }
                     }
                 }
 

@@ -430,6 +430,7 @@ data class CoreState(
         is Event.PcMirrorConfig,
         is Event.PcMirrorFrame,
         is Event.PcMirrorEnded,
+        is Event.PcMirrorCaptureFailed,
         -> this
     }
 
@@ -515,6 +516,7 @@ internal fun Event.affectsCoreState(): Boolean = when (this) {
     is Event.PcMirrorConfig,
     is Event.PcMirrorFrame,
     is Event.PcMirrorEnded,
+    is Event.PcMirrorCaptureFailed,
     -> false
     else -> true
 }

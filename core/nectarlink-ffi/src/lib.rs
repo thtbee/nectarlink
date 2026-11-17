@@ -777,6 +777,10 @@ pub enum Event {
     PcMirrorEnded {
         id: String,
     },
+    /// The PC couldn't start or continue sharing its screen.
+    PcMirrorCaptureFailed {
+        id: String,
+    },
     /// The persistent outgoing send queue changed.
     QueueChanged,
     /// Pending outgoing queue items were dropped because the peer was unpaired.
@@ -2497,6 +2501,11 @@ impl Event {
             NodeEvent::PhotosChanged { device } => Event::PhotosChanged { id: device.to_string() },
             NodeEvent::Mirroring { device, session, on } => {
                 Event::Mirroring { id: device.to_string(), session, on }
+            }
+            NodeEvent::MirrorNotice { device, session: core::MIRROR_SCREEN, code }
+                if code == core::MIRROR_NOTICE_PC_CAPTURE_FAILED =>
+            {
+                Event::PcMirrorCaptureFailed { id: device.to_string() }
             }
             NodeEvent::Webcam { device, on } => Event::Webcam { id: device.to_string(), on },
             NodeEvent::CameraCaptureRequested { .. }

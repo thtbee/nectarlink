@@ -391,6 +391,7 @@
 <string name="remote_volume_hint">Nút âm lượng cũng chuyển trang chiếu khi màn hình này đang mở.</string>
 <string name="remote_mode_screen">Màn hình</string>
 <string name="pc_mirror_connecting">Đang kết nối với %1$s…</string>
+<string name="pc_mirror_capture_failed">Không thể chia sẻ màn hình. Hãy mở khóa PC, kiểm tra quyền chia sẻ và thử lại.</string>
 <string name="pc_mirror_fullscreen">Toàn màn hình</string>
 <string name="pc_mirror_exit_fullscreen">Thoát toàn màn hình</string>
 <string name="pc_mirror_right_click">Chuột phải</string>

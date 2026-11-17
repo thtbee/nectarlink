@@ -82,11 +82,11 @@ means 0, so PCs and phones that predate sessions work as before.
   to `width × height` pixels, the app drawing at `zoom` percent (50 to 200;
   100 when missing) of the display's usual density. Not answered; the phone sends a new `config`
   packet on the video stream once its encoder restarts at the new size.
-- `mirror.notice` (phone → PC): something the PC should tell its user about
-  that mirroring. `code` is `input_blocked` when the phone refuses the PC's
-  taps and keys (Xiaomi, Redmi and POCO phones do until **USB debugging
-  (Security settings)** is on). Not answered; a PC ignores codes it doesn't
-  know, and a PC from before this message ignores it.
+- `mirror.notice` reports a mirroring status to the viewer. A phone sends
+  `input_blocked` when it refuses the PC's taps and keys (Xiaomi, Redmi and
+  POCO phones do until **USB debugging (Security settings)** is on). A PC
+  sends `pc_capture_failed` for session 0 if it cannot start or continue
+  sharing its screen. Viewers ignore unknown codes and send no reply.
 
 ## 3. The video stream
 

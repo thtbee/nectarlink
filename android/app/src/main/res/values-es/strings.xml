@@ -400,6 +400,7 @@
     <string name="remote_volume_hint">Los botones de volumen también cambian de diapositiva mientras esta pantalla está abierta.</string>
     <string name="remote_mode_screen">Pantalla</string>
     <string name="pc_mirror_connecting">Conectándose a %1$s…</string>
+    <string name="pc_mirror_capture_failed">No se pudo compartir la pantalla. Desbloquea el PC, comprueba los permisos para compartir y vuelve a intentarlo.</string>
     <string name="pc_mirror_fullscreen">Pantalla completa</string>
     <string name="pc_mirror_exit_fullscreen">Salir de pantalla completa</string>
     <string name="pc_mirror_right_click">Clic derecho</string>

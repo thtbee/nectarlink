@@ -387,6 +387,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     private val _pcMirrorConfig = MutableStateFlow<PcMirrorConfigState?>(null)
     val pcMirrorConfig: StateFlow<PcMirrorConfigState?> = _pcMirrorConfig.asStateFlow()
+    private val _pcMirrorCaptureFailed = MutableStateFlow<String?>(null)
+    val pcMirrorCaptureFailed: StateFlow<String?> = _pcMirrorCaptureFailed.asStateFlow()
 
     @Volatile private var lastPcMirrorKeyframe: PcMirrorPacket? = null
 
@@ -880,6 +882,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 if (lastPcMirrorKeyframe?.pcId == event.id) {
                     lastPcMirrorKeyframe = null
                 }
+            }
+            is Event.PcMirrorCaptureFailed -> {
+                _pcMirrorCaptureFailed.value = event.id
             }
             // A PC that's gone isn't playing for this phone anymore; it
             // sends what plays when it's back.
@@ -2341,6 +2346,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         bitrate: Int = 4_000_000,
         watch: String? = null,
     ) {
+        _pcMirrorCaptureFailed.compareAndSet(id, null)
         command {
             it.startPcMirror(
                 id,
@@ -2354,6 +2360,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     /** Stops an active PC-to-phone screen mirror session (`mirror.stop`, session 0). */
     fun stopPcMirror(id: String) {
+        _pcMirrorCaptureFailed.compareAndSet(id, null)
         if (_pcMirrorConfig.value?.pcId == id) {
             _pcMirrorConfig.value = null
         }
