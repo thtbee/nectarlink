@@ -1088,6 +1088,12 @@ pub const FEATURES: &[FeatureDef] = &[
         partial: None,
     },
     FeatureDef {
+        id: "input.gamepad",
+        group: FeatureGroup::Input,
+        requires: &[desktop("input.gamepad", UPDATE)],
+        partial: None,
+    },
+    FeatureDef {
         id: "input.deck",
         group: FeatureGroup::Input,
         requires: &[desktop("deck.actions", UPDATE)],

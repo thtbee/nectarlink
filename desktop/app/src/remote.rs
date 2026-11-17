@@ -65,6 +65,8 @@ pub fn handle_input(peer: &DeviceId, input: RemoteInput) {
             }
         }
         RemoteInput::Laser { on: false, .. } => hide_laser(),
+        // These go to `gamepad` through the platform's `remote_pad`.
+        RemoteInput::Pad { .. } | RemoteInput::PadOff => {}
     }
 }
 
@@ -73,14 +75,21 @@ pub fn handle_input(peer: &DeviceId, input: RemoteInput) {
 pub fn stop_all() {
     let _ = crate::input_share::leave_remote();
     win::input::release_held_buttons();
+    crate::gamepad::stop_all();
     hide_laser();
 }
 
 pub fn on_event(event: &NodeEvent) {
     match event {
-        NodeEvent::LinkChanged { link: LinkState::Offline { .. }, .. } | NodeEvent::DeviceRemoved(_) => {
+        NodeEvent::LinkChanged { link: LinkState::Offline { .. }, device, .. } => {
             let _ = crate::input_share::leave_remote();
             win::input::release_held_buttons();
+            crate::gamepad::off(*device);
+        }
+        NodeEvent::DeviceRemoved(device) => {
+            let _ = crate::input_share::leave_remote();
+            win::input::release_held_buttons();
+            crate::gamepad::off(*device);
         }
         NodeEvent::RemoteInputRequested { .. } => {
             core_host::host().hub.update(|s| s.apply(event));

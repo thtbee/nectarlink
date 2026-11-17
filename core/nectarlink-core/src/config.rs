@@ -508,6 +508,20 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't take remote input".into())
     }
 
+    /// Sets a paired phone's game controller on this PC to `pad`, plugging
+    /// it in if needed, or unplugs it (`None`) (`docs/protocol/remote.md`
+    /// §3.1). With `wait` (a reliable request), returns once it's done, and
+    /// [`crate::PAD_DRIVER_MISSING`] when the platform's driver isn't there;
+    /// without, it must not block (it runs for every datagram).
+    fn remote_pad(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+        _pad: Option<crate::PadState>,
+        _wait: bool,
+    ) -> Result<(), String> {
+        Err("this device has no game controller".into())
+    }
+
     /// Change one of this phone's quick settings (`phone.toggle.set`,
     /// `docs/protocol/toggles.md`). `id` and `value` have been validated and
     /// checked against this phone's capabilities. `Err` holds a reason for logs.

@@ -22,6 +22,7 @@ mod deck;
 mod doctor;
 mod feed;
 mod folder_sync;
+mod gamepad;
 mod hotspot;
 mod i18n;
 mod icons;
@@ -204,6 +205,20 @@ impl Platform for DesktopPlatform {
     ) -> Result<(), String> {
         remote::handle_input(peer, input);
         Ok(())
+    }
+    fn remote_pad(
+        &self,
+        peer: &nectarlink_core::DeviceId,
+        pad: Option<nectarlink_core::PadState>,
+        wait: bool,
+    ) -> Result<(), String> {
+        match pad {
+            Some(pad) => gamepad::set(*peer, pad, wait),
+            None => {
+                gamepad::off(*peer);
+                Ok(())
+            }
+        }
     }
     fn deck_press(&self, peer: &nectarlink_core::DeviceId, tile: &str) -> Result<(), String> {
         deck::handle_press(peer, tile)

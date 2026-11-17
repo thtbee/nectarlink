@@ -3446,6 +3446,58 @@ pub mod remote {
     pub const SERVICE: &str = "remote";
     pub const OP_MOTION: &str = "motion";
     pub const VERSION: u32 = 1;
+    /// The buttons a [`super::PadState`] may hold: the Xbox layout's, so
+    /// `0x0800` (unused there) is never set.
+    pub const PAD_BUTTONS: u16 = 0xF7FF;
+}
+
+/// A whole game controller at one moment, in the Xbox layout
+/// (`docs/protocol/remote.md` §3.1). Each update carries everything, so one
+/// lost on the way is made up for by the next.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PadState {
+    /// Pressed buttons, XInput bits: `0x0001` up, `0x0002` down, `0x0004`
+    /// left, `0x0008` right, `0x0010` start, `0x0020` back, `0x0040` left
+    /// stick, `0x0080` right stick, `0x0100` LB, `0x0200` RB, `0x0400`
+    /// guide, `0x1000` A, `0x2000` B, `0x4000` X, `0x8000` Y.
+    #[serde(default)]
+    pub buttons: u16,
+    /// Left and right triggers, 0 (released) to 255 (all the way).
+    #[serde(default)]
+    pub lt: u8,
+    #[serde(default)]
+    pub rt: u8,
+    /// Sticks, -32768 to 32767; `y` positive is up, as in XInput.
+    #[serde(default)]
+    pub lx: i16,
+    #[serde(default)]
+    pub ly: i16,
+    #[serde(default)]
+    pub rx: i16,
+    #[serde(default)]
+    pub ry: i16,
+}
+
+impl PadState {
+    pub const A: u16 = 0x1000;
+    pub const B: u16 = 0x2000;
+    pub const X: u16 = 0x4000;
+    pub const Y: u16 = 0x8000;
+    pub const UP: u16 = 0x0001;
+    pub const DOWN: u16 = 0x0002;
+    pub const LEFT: u16 = 0x0004;
+    pub const RIGHT: u16 = 0x0008;
+    pub const START: u16 = 0x0010;
+    pub const BACK: u16 = 0x0020;
+    pub const LTHUMB: u16 = 0x0040;
+    pub const RTHUMB: u16 = 0x0080;
+    pub const LB: u16 = 0x0100;
+    pub const RB: u16 = 0x0200;
+    pub const GUIDE: u16 = 0x0400;
+
+    pub fn is_valid(&self) -> bool {
+        self.buttons & !remote::PAD_BUTTONS == 0
+    }
 }
 
 /// A mouse button on the PC (`docs/protocol/remote.md` §3).
@@ -3591,6 +3643,13 @@ pub enum RemoteInput {
         #[serde(default)]
         y: f32,
     },
+    /// The phone's game controller as it is now. Only to PCs that offer
+    /// `input.gamepad`; repeated while the controller is open, so the PC lets
+    /// go of everything when updates stop.
+    Pad { pad: PadState },
+    /// The phone closed its game controller: the PC unplugs it.
+    #[serde(rename = "pad_off")]
+    PadOff,
 }
 
 /// Never prints typed text (protocol v0 §11).
@@ -3606,6 +3665,8 @@ impl std::fmt::Debug for RemoteInput {
             RemoteInput::Slide { action } => write!(f, "Slide({action:?})"),
             RemoteInput::Laser { on: false, .. } => f.write_str("Laser(off)"),
             RemoteInput::Laser { on: true, x, y } => write!(f, "Laser({x}, {y})"),
+            RemoteInput::Pad { pad } => write!(f, "Pad({pad:?})"),
+            RemoteInput::PadOff => f.write_str("PadOff"),
         }
     }
 }
@@ -3638,12 +3699,20 @@ impl RemoteInput {
                     && y.is_finite()
                     && (!*on || ((0.0..=1.0).contains(x) && (0.0..=1.0).contains(y)))
             }
+            RemoteInput::Pad { pad } => pad.is_valid(),
+            RemoteInput::PadOff => true,
         }
     }
 
     /// Whether this event may travel in a lossy QUIC datagram.
     pub fn is_datagram_allowed(&self) -> bool {
-        matches!(self, RemoteInput::Move { .. } | RemoteInput::Scroll { .. } | RemoteInput::Laser { .. })
+        matches!(
+            self,
+            RemoteInput::Move { .. }
+                | RemoteInput::Scroll { .. }
+                | RemoteInput::Laser { .. }
+                | RemoteInput::Pad { .. }
+        )
     }
 
     /// Whether this event may travel in a `remote.input` control request.
@@ -5549,6 +5618,18 @@ mod tests {
         assert_eq!(RemoteInput::from_datagram(&laser.to_datagram()).unwrap(), laser);
         let laser_off = RemoteInput::Laser { on: false, x: 0.0, y: 0.0 };
         assert_eq!(RemoteInput::from_datagram(&laser_off.to_datagram()).unwrap(), laser_off);
+
+        // A controller travels both ways; unplugging it only reliably.
+        let pad = RemoteInput::Pad {
+            pad: PadState { buttons: PadState::A | PadState::LB, lt: 255, rt: 0, lx: -32768, ly: 32767, rx: 5, ry: -5 },
+        };
+        assert!(pad.is_valid() && pad.is_datagram_allowed() && pad.is_control_allowed());
+        assert_eq!(RemoteInput::from_datagram(&pad.to_datagram()).unwrap(), pad);
+        assert!(RemoteInput::from_datagram(&RemoteInput::PadOff.to_datagram()).is_err());
+        let env = Envelope::new(types::REMOTE_INPUT, &RemoteInput::PadOff).unwrap();
+        assert_eq!(env.body::<RemoteInput>().unwrap(), RemoteInput::PadOff);
+        // Bit 0x0800 isn't a button.
+        assert!(!RemoteInput::Pad { pad: PadState { buttons: 0x0800, ..PadState::default() } }.is_valid());
 
         // Button or key in a datagram is rejected.
         let click = RemoteInput::Button { button: MouseButton::Left, action: ButtonAction::Click };

@@ -39,6 +39,8 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 [target.'cfg(windows)'.dependencies]
+# A phone's Gamepad as an Xbox 360 controller, through the ViGEmBus driver.
+vigem-client = "0.1.4"
 # For the COM callbacks that `windows::core::implement` generates.
 windows-collections.workspace = true
 windows-core.workspace = true
