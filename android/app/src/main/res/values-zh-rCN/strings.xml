@@ -356,7 +356,7 @@
     <string name="remote_touchpad_hint">拖动以移动 · 点按以单击 · 双指右键或滚动 · 双击并按住以拖拽</string>
     <string name="remote_air_hold">按住以对准 %1$s</string>
     <string name="remote_air_active">正在 %1$s 上移动 · 倾斜手机或点按以单击</string>
-    <string name="remote_air_hint">按住触控区并倾斜手机以移动指针 · 点按触控区以单击 · 松开即停止</string>
+    <string name="remote_air_hint">按住触控区并倾斜手机以移动指针 · 点按触控区以单击 · 双指拖动即可滚动</string>
     <string name="remote_air_no_gyro_title">本手机没有陀螺仪</string>
     <string name="remote_air_no_gyro_text">空中鼠标依靠陀螺仪跟随手机的倾斜角度。请改用触控板模式。</string>
     <string name="remote_left_click">左键</string>

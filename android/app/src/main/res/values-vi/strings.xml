@@ -366,7 +366,7 @@
 <string name="remote_touchpad_hint">Kéo để di chuyển · Chạm để nhấp · Dùng hai ngón để nhấp chuột phải hoặc cuộn · Chạm đúp và giữ để kéo</string>
 <string name="remote_air_hold">Giữ để trỏ vào %1$s</string>
 <string name="remote_air_active">Đang điều khiển trên %1$s · nghiêng điện thoại hoặc chạm để nhấp</string>
-<string name="remote_air_hint">Giữ khu vực cảm ứng và nghiêng điện thoại để di chuyển con trỏ · Chạm để nhấp · Thả ra để dừng</string>
+<string name="remote_air_hint">Giữ khu vực cảm ứng và nghiêng điện thoại để di chuyển con trỏ · Chạm để nhấp · Kéo hai ngón tay để cuộn</string>
 <string name="remote_air_no_gyro_title">Điện thoại này không có con quay hồi chuyển</string>
 <string name="remote_air_no_gyro_text">Air Mouse dùng con quay hồi chuyển để theo dõi cách bạn nghiêng điện thoại. Hãy dùng chế độ Touchpad thay thế.</string>
 <string name="remote_left_click">Trái</string>

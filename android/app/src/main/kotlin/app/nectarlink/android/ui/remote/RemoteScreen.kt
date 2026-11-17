@@ -869,12 +869,19 @@ private fun AirMouseView(
                 .pointerInput(pcId, hasGyro) {
                     val tapSlop = viewConfiguration.touchSlop
                     val tapTimeoutMs = 240L
+                    val toReference = TOUCHPAD_REFERENCE_DENSITY / density
 
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
                         val downTime = System.currentTimeMillis()
                         var maxPointers = 1
                         var totalMoved = 0f
+                        // Two fingers dragging scroll, up and down or sideways (#442),
+                        // like on the touchpad; the pointer holds still meanwhile.
+                        var scrolled = false
+                        var twoFingerMoved = 0f
+                        var scrollAccumX = 0f
+                        var scrollAccumY = 0f
 
                         filter.reset()
                         aimOffset = Offset.Zero
@@ -884,16 +891,39 @@ private fun AirMouseView(
                             val event = awaitPointerEvent()
                             val changes = event.changes
                             var pressedCount = 0
+                            var sumDx = 0f
+                            var sumDy = 0f
                             for (i in 0 until changes.size) {
                                 val c = changes[i]
                                 if (c.pressed) {
                                     pressedCount++
                                     val d = c.positionChange()
                                     totalMoved += hypot(d.x, d.y)
+                                    sumDx += d.x
+                                    sumDy += d.y
                                 }
                             }
                             if (pressedCount == 0) break
                             if (pressedCount > maxPointers) maxPointers = pressedCount
+                            // Aim with one finger only: a second one stills the pointer.
+                            padHeld = hasGyro && pressedCount == 1 && !scrolled
+
+                            if (pressedCount >= 2) {
+                                val avgDx = sumDx / pressedCount
+                                val avgDy = sumDy / pressedCount
+                                twoFingerMoved += hypot(avgDx, avgDy)
+                                if (!scrolled && twoFingerMoved > tapSlop) scrolled = true
+                                if (scrolled) {
+                                    scrollAccumX += avgDx * toReference
+                                    scrollAccumY += avgDy * toReference
+                                    if (abs(scrollAccumX) >= 18f || abs(scrollAccumY) >= 18f) {
+                                        core.remoteScroll(pcId, -(scrollAccumX / 48f), -(scrollAccumY / 36f), fast = true)
+                                        scrollAccumX = 0f
+                                        scrollAccumY = 0f
+                                    }
+                                }
+                                for (i in 0 until changes.size) changes[i].consume()
+                            }
                         }
 
                         padHeld = false
@@ -901,7 +931,7 @@ private fun AirMouseView(
                         aimOffset = Offset.Zero
 
                         val elapsed = System.currentTimeMillis() - downTime
-                        if (elapsed <= tapTimeoutMs && totalMoved <= tapSlop * 1.5f) {
+                        if (!scrolled && elapsed <= tapTimeoutMs && totalMoved <= tapSlop * 1.5f) {
                             if (maxPointers == 1) {
                                 core.remoteButton(pcId, "left", "click", onStatus)
                             } else if (maxPointers == 2) {

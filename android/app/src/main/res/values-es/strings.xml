@@ -375,7 +375,7 @@
     <string name="remote_touchpad_hint">Arrastra para mover · Toca para hacer clic · Usa dos dedos para hacer clic derecho o desplazarte · Toca dos veces y mantén pulsado para arrastrar</string>
     <string name="remote_air_hold">Mantén pulsado para apuntar a %1$s</string>
     <string name="remote_air_active">Moviendo el puntero en %1$s · inclina el teléfono o toca para hacer clic</string>
-    <string name="remote_air_hint">Mantén pulsado el panel e inclina el teléfono para mover el puntero · Toca el panel para hacer clic · Suelta para detenerlo</string>
+    <string name="remote_air_hint">Mantén pulsado el panel e inclina el teléfono para mover el puntero · Toca el panel para hacer clic · Arrastra dos dedos para desplazarte</string>
     <string name="remote_air_no_gyro_title">No hay giroscopio en este teléfono</string>
     <string name="remote_air_no_gyro_text">El ratón aéreo utiliza un giroscopio para detectar la inclinación del teléfono. Utiliza el modo Panel táctil.</string>
     <string name="remote_left_click">Izquierdo</string>

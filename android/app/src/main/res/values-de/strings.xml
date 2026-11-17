@@ -369,7 +369,7 @@
     <string name="remote_touchpad_hint">Ziehen zum Bewegen · Tippen zum Klicken · Zwei Finger für Rechtsklick oder Scrollen · Doppeltippen und halten zum Ziehen</string>
     <string name="remote_air_hold">Halten, um auf %1$s zu zielen</string>
     <string name="remote_air_active">Bewegt sich auf %1$s · Gerät neigen oder zum Klicken tippen</string>
-    <string name="remote_air_hint">Fläche halten und Gerät neigen, um den Zeiger zu bewegen · Zum Klicken tippen · Loslassen zum Stoppen</string>
+    <string name="remote_air_hint">Fläche halten und Gerät neigen, um den Zeiger zu bewegen · Zum Klicken tippen · Mit zwei Fingern ziehen zum Scrollen</string>
     <string name="remote_air_no_gyro_title">Kein Gyroskop in diesem Gerät</string>
     <string name="remote_air_no_gyro_text">Die Air-Maus nutzt ein Gyroskop, um der Neigung deines Geräts zu folgen. Verwende stattdessen den Touchpad-Modus.</string>
     <string name="remote_left_click">Links</string>

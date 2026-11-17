@@ -17,6 +17,10 @@ change things that need a step from you, and its notes say so.
 - **Choose how long notification history stays.** Settings › Storage & Privacy › Keep
   notification history for: 1 day (as before), 3 days, 1 week or 30 days. Thanks to
   [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Scroll with the air mouse.** Drag two fingers on the air pad to scroll, up and down
+  or sideways, the same as on the touchpad. The pointer holds still while you scroll.
+  Thanks to [@w-rakeeb](https://github.com/w-rakeeb)
+  ([#442](https://github.com/thtbee/nectarlink/issues/442)).
 - **Two PCs work together.** Pair a PC with another PC, Windows, Mac or Linux, the
   same way as a phone: open the pairing screen on both and pick the other one. Home
   then shows that PC with Send files, Send clipboard and Ring PC, and what you copy on
