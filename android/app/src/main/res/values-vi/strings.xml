@@ -367,6 +367,15 @@
 <string name="remote_air_hold">Giữ để trỏ vào %1$s</string>
 <string name="remote_air_active">Đang điều khiển trên %1$s · nghiêng điện thoại hoặc chạm để nhấp</string>
 <string name="remote_air_hint">Giữ khu vực cảm ứng và nghiêng điện thoại để di chuyển con trỏ · Chạm để nhấp · Kéo hai ngón tay để cuộn</string>
+    <string name="gamepad_open">Tay cầm</string>
+    <string name="gamepad_title">Tay cầm cho %1$s</string>
+    <string name="gamepad_close">Đóng</string>
+    <string name="gamepad_retry">Thử lại</string>
+    <string name="gamepad_connecting">Đang cắm tay cầm vào %1$s…</string>
+    <string name="gamepad_offline">%1$s đang ngoại tuyến</string>
+    <string name="gamepad_failed">Không cắm được tay cầm vào %1$s</string>
+    <string name="gamepad_driver_title">%1$s cần trình điều khiển tay cầm</string>
+    <string name="gamepad_driver_text">Cài ViGEmBus trên %1$s rồi thử lại. Trò chơi sẽ thấy một tay cầm Xbox.</string>
 <string name="remote_air_no_gyro_title">Điện thoại này không có con quay hồi chuyển</string>
 <string name="remote_air_no_gyro_text">Air Mouse dùng con quay hồi chuyển để theo dõi cách bạn nghiêng điện thoại. Hãy dùng chế độ Touchpad thay thế.</string>
 <string name="remote_left_click">Trái</string>

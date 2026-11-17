@@ -370,6 +370,15 @@
     <string name="remote_air_hold">Mantenha pressionado para apontar para %1$s</string>
     <string name="remote_air_active">Movendo o ponteiro em %1$s · incline o celular ou toque para clicar</string>
     <string name="remote_air_hint">Mantenha o dedo na área de controle e incline o celular para mover o ponteiro · toque para clicar · arraste com dois dedos para rolar</string>
+    <string name="gamepad_open">Controle</string>
+    <string name="gamepad_title">Controle para %1$s</string>
+    <string name="gamepad_close">Fechar</string>
+    <string name="gamepad_retry">Tentar de novo</string>
+    <string name="gamepad_connecting">Conectando um controle a %1$s…</string>
+    <string name="gamepad_offline">%1$s está offline</string>
+    <string name="gamepad_failed">Não foi possível conectar um controle a %1$s</string>
+    <string name="gamepad_driver_title">%1$s precisa de um driver de controle</string>
+    <string name="gamepad_driver_text">Instale o ViGEmBus em %1$s e tente de novo. Os jogos verão um controle de Xbox.</string>
     <string name="remote_air_no_gyro_title">Este celular não tem giroscópio</string>
     <string name="remote_air_no_gyro_text">O mouse aéreo usa o giroscópio para acompanhar a inclinação do celular. Use o modo Touchpad.</string>
     <string name="remote_left_click">Clique esquerdo</string>

@@ -372,6 +372,15 @@
     <string name="remote_air_hold">Hold to aim at %1$s</string>
     <string name="remote_air_active">Moving on %1$s · tilt phone or tap to click</string>
     <string name="remote_air_hint">Hold the pad and tilt your phone to move the pointer · Tap the pad to click · Drag two fingers to scroll</string>
+    <string name="gamepad_open">Gamepad</string>
+    <string name="gamepad_title">Gamepad for %1$s</string>
+    <string name="gamepad_close">Close</string>
+    <string name="gamepad_retry">Try again</string>
+    <string name="gamepad_connecting">Plugging a controller into %1$s…</string>
+    <string name="gamepad_offline">%1$s is offline</string>
+    <string name="gamepad_failed">Couldn\'t plug a controller into %1$s</string>
+    <string name="gamepad_driver_title">%1$s needs a controller driver</string>
+    <string name="gamepad_driver_text">Install ViGEmBus on %1$s, then try again. Games there will see an Xbox controller.</string>
     <string name="remote_air_no_gyro_title">No gyroscope on this phone</string>
     <string name="remote_air_no_gyro_text">Air mouse uses a gyroscope to follow how you tilt the phone. Use Touchpad mode instead.</string>
     <string name="remote_left_click">Left</string>

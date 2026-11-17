@@ -98,6 +98,7 @@ capability is missing.
 | `files.browse` | Lets a paired phone browse and fetch its files | app update |
 | `storage.mount` | Mounts a paired phone's shared storage in File Explorer ([storage](storage.md)) | app update |
 | `input.inject` | Accepts pointer, keyboard and presentation input ([remote input](remote.md)) | app update |
+| `input.gamepad` | Plugs in a game controller for a phone's Gamepad ([remote input](remote.md) §3.1) | app update |
 | `recorder` | Saves and converts voice recordings from a phone ([recorder](recorder.md)) | app update |
 | `deck.actions` | Shares its Deck layout and live tile state and runs Deck actions ([deck](deck.md)) | app update |
 | `pc.audio` | Reports active audio output devices in `deck.state` and accepts `pc.audio.set` volume/mute changes ([deck](deck.md)) | app update |

@@ -47,10 +47,11 @@ fn worker() -> &'static Sender<Cmd> {
     })
 }
 
-/// Whether this PC can have a controller at all (the platform has a way;
-/// a missing Windows driver is told to the phone when it tries).
+/// Whether this PC can have a controller: on Windows always (a missing
+/// driver is told to the phone when it tries, so it can say what to
+/// install); on Linux when this app may write to `/dev/uinput`.
 pub fn is_supported() -> bool {
-    cfg!(any(windows, target_os = "linux"))
+    backend::available()
 }
 
 /// Sets `peer`'s controller to `pad`, plugging it in first if needed. With
@@ -62,7 +63,9 @@ pub fn set(peer: DeviceId, pad: PadState, wait: bool) -> Result<(), String> {
         return Ok(());
     }
     let (tx, rx) = mpsc::channel();
-    worker().send(Cmd::Set { peer, pad, reply: Some(tx) }).map_err(|_| "controller worker stopped".to_owned())?;
+    worker()
+        .send(Cmd::Set { peer, pad, reply: Some(tx) })
+        .map_err(|_| "controller worker stopped".to_owned())?;
     rx.recv_timeout(PLUG_TIMEOUT).unwrap_or_else(|_| Err("the controller took too long to plug in".into()))
 }
 
@@ -149,6 +152,10 @@ mod backend {
 
     pub struct Pad(Xbox360Wired<Client>);
 
+    pub fn available() -> bool {
+        true
+    }
+
     impl Pad {
         pub fn plug_in() -> Result<Self, String> {
             let client = Client::connect().map_err(|e| match e {
@@ -174,9 +181,23 @@ mod backend {
             self.0.update(&report).map_err(|e| format!("controller update failed: {e}"))
         }
     }
+
+    #[cfg(test)]
+    mod tests {
+        /// On a PC without ViGEmBus, plugging in says the driver is missing,
+        /// which the phone turns into "install ViGEmBus". Run by hand where
+        /// the driver isn't installed:
+        /// `cargo test -p nectarlink-desktop without_vigembus -- --ignored`.
+        #[test]
+        #[ignore = "depends on whether this PC has ViGEmBus"]
+        fn without_vigembus_the_driver_is_missing() {
+            assert_eq!(super::Pad::plug_in().err().as_deref(), Some(nectarlink_core::PAD_DRIVER_MISSING));
+        }
+    }
 }
 
 #[cfg(target_os = "linux")]
+#[allow(unsafe_code)] // The uinput ioctls, as in `linux::input`.
 mod backend {
     //! A `/dev/uinput` controller that says it's an Xbox 360 one, so SDL,
     //! Steam and games map its buttons without asking.
@@ -279,12 +300,22 @@ mod backend {
         last: Option<PadState>,
     }
 
+    /// Whether this app may write to `/dev/uinput` (the user is in the
+    /// group that owns it, or a udev rule lets them).
+    pub fn available() -> bool {
+        [c"/dev/uinput", c"/dev/input/uinput"]
+            .iter()
+            // SAFETY: each path is a valid null-terminated C string.
+            .any(|path| unsafe { libc::access(path.as_ptr(), libc::W_OK) } == 0)
+    }
+
     impl Pad {
         pub fn plug_in() -> Result<Self, String> {
             let mut fd = -1;
             for path in [c"/dev/uinput", c"/dev/input/uinput"] {
                 // SAFETY: `path` is a valid null-terminated C string.
-                fd = unsafe { libc::open(path.as_ptr(), libc::O_WRONLY | libc::O_NONBLOCK | libc::O_CLOEXEC) };
+                fd =
+                    unsafe { libc::open(path.as_ptr(), libc::O_WRONLY | libc::O_NONBLOCK | libc::O_CLOEXEC) };
                 if fd >= 0 {
                     break;
                 }
@@ -360,7 +391,7 @@ mod backend {
             let hat_x = |p: &PadState| hat(p.buttons, PadState::LEFT, PadState::RIGHT);
             // XInput's up is evdev's -1.
             let hat_y = |p: &PadState| hat(p.buttons, PadState::UP, PadState::DOWN);
-            let axes: [(u16, fn(&PadState) -> i32); 8] = [
+            let axes: [Axis; 8] = [
                 (ABS_X, |p| i32::from(p.lx)),
                 // evdev's y grows downwards; XInput's grows up.
                 (ABS_Y, |p| flip(p.ly)),
@@ -381,6 +412,9 @@ mod backend {
             if ok { Ok(()) } else { Err("controller update failed".into()) }
         }
     }
+
+    /// An evdev axis and how to read it from a [`PadState`].
+    type Axis = (u16, fn(&PadState) -> i32);
 
     fn hat(buttons: u16, minus: u16, plus: u16) -> i32 {
         i32::from(buttons & plus != 0) - i32::from(buttons & minus != 0)
@@ -414,6 +448,76 @@ mod backend {
             assert_eq!(flip(-32768), 32767);
             assert_eq!(flip(0), 0);
         }
+
+        /// Reads one `input_event` from an evdev node.
+        fn read_event(fd: c_int) -> Option<(u16, u16, i32)> {
+            let mut ev = InputEvent { tv_sec: 0, tv_usec: 0, type_: 0, code: 0, value: 0 };
+            let size = std::mem::size_of::<InputEvent>();
+            // SAFETY: `ev` is a repr(C) `input_event` the kernel fills whole.
+            let n = unsafe { libc::read(fd, (&raw mut ev).cast::<c_void>(), size) };
+            (n == size as isize).then_some((ev.type_, ev.code, ev.value))
+        }
+
+        /// Plugs in a real uinput controller and reads it back the way a game
+        /// would. Needs write access to `/dev/uinput` and read access to
+        /// `/dev/input`, so it's run by hand (as root in WSL):
+        /// `cargo test -p nectarlink-desktop uinput_controller -- --ignored`.
+        #[test]
+        #[ignore = "needs /dev/uinput and /dev/input access"]
+        fn uinput_controller_reports_what_it_was_given() {
+            let mut pad = Pad::plug_in().expect("plug in");
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            // Find it among the input devices by name.
+            let node = std::fs::read_dir("/sys/class/input")
+                .unwrap()
+                .filter_map(Result::ok)
+                .filter(|e| e.file_name().to_string_lossy().starts_with("event"))
+                .find(|e| {
+                    std::fs::read_to_string(e.path().join("device/name"))
+                        .is_ok_and(|n| n.trim() == "NectarLink Controller")
+                })
+                .expect("the controller is listed in /sys/class/input");
+            let ids = node.path().join("device/id");
+            assert_eq!(std::fs::read_to_string(ids.join("vendor")).unwrap().trim(), "045e");
+            assert_eq!(std::fs::read_to_string(ids.join("product")).unwrap().trim(), "028e");
+
+            let dev =
+                std::ffi::CString::new(format!("/dev/input/{}", node.file_name().to_string_lossy())).unwrap();
+            // SAFETY: `dev` is a valid C string; the fd is closed below.
+            let fd = unsafe { libc::open(dev.as_ptr(), libc::O_RDONLY | libc::O_NONBLOCK | libc::O_CLOEXEC) };
+            assert!(fd >= 0, "open {dev:?}");
+
+            pad.update(&PadState {
+                buttons: PadState::A | PadState::UP | PadState::RIGHT | PadState::START,
+                lt: 255,
+                lx: -32768,
+                ly: 32767,
+                ..PadState::default()
+            })
+            .unwrap();
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            let mut seen = Vec::new();
+            while let Some(ev) = read_event(fd) {
+                seen.push(ev);
+            }
+            // SAFETY: `fd` was opened above and isn't used after this.
+            unsafe { libc::close(fd) };
+
+            for expected in [
+                (EV_KEY, BTN_SOUTH, 1),
+                (EV_KEY, BTN_START, 1),
+                (EV_ABS, ABS_Z, 255),
+                (EV_ABS, ABS_X, -32768),
+                // Up on the stick is up to a game: evdev's -y.
+                (EV_ABS, ABS_Y, -32767),
+                (EV_ABS, ABS_HAT0X, 1),
+                (EV_ABS, ABS_HAT0Y, -1),
+                (EV_SYN, SYN_REPORT, 0),
+            ] {
+                assert!(seen.contains(&expected), "missing {expected:?} in {seen:?}");
+            }
+            assert!(!seen.iter().any(|&(t, c, _)| t == EV_KEY && c == BTN_EAST), "B was never pressed");
+        }
     }
 }
 
@@ -424,6 +528,10 @@ mod backend {
     use nectarlink_core::PadState;
 
     pub struct Pad;
+
+    pub fn available() -> bool {
+        false
+    }
 
     impl Pad {
         pub fn plug_in() -> Result<Self, String> {

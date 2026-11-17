@@ -370,6 +370,15 @@
     <string name="remote_air_hold">%1$s üzerinde nişan almak için basılı tutun</string>
     <string name="remote_air_active">%1$s üzerinde hareket ediyor · telefonu eğin veya tıklamak için dokunun</string>
     <string name="remote_air_hint">İşaretçiyi hareket ettirmek için alana basılı tutup telefonu eğin · Tıklamak için alana dokunun · Kaydırmak için iki parmakla sürükleyin</string>
+    <string name="gamepad_open">Oyun kumandası</string>
+    <string name="gamepad_title">%1$s için oyun kumandası</string>
+    <string name="gamepad_close">Kapat</string>
+    <string name="gamepad_retry">Tekrar dene</string>
+    <string name="gamepad_connecting">%1$s cihazına kumanda bağlanıyor…</string>
+    <string name="gamepad_offline">%1$s çevrimdışı</string>
+    <string name="gamepad_failed">%1$s cihazına kumanda bağlanamadı</string>
+    <string name="gamepad_driver_title">%1$s için kumanda sürücüsü gerekiyor</string>
+    <string name="gamepad_driver_text">%1$s cihazına ViGEmBus yükleyip tekrar deneyin. Oyunlar bir Xbox kumandası görecek.</string>
     <string name="remote_air_no_gyro_title">Bu telefonda jiroskop yok</string>
     <string name="remote_air_no_gyro_text">Air mouse, telefonu nasıl eğdiğinizi izlemek için jiroskop kullanır. Bunun yerine Dokunmatik yüzey modunu kullanın.</string>
     <string name="remote_left_click">Sol</string>

@@ -11,6 +11,7 @@ NectarLink lets you control your PC from your phone and control your phone from 
 | Feature | Requirements |
 | :--- | :--- |
 | **Control PC from phone (Touchpad, Air mouse, Keyboard, Voice dictation, Presentation remote)** | `Standard` power level on Android. Per-phone **Remote mouse, keyboard & Deck** (`remote_input`) toggle enabled on the PC in **Settings › Devices** (off by default; the PC shows a one-time consent prompt the first time your phone asks). Air mouse requires a phone gyroscope sensor; Voice dictation requires Android **Microphone** permission (`RECORD_AUDIO`). |
+| **Gamepad** | The **Remote mouse, keyboard & Deck** toggle on the PC, as above. On Windows, the free [ViGEmBus](https://github.com/nefarius/ViGEmBus/releases) driver installed on the PC (many PCs already have it from DS4Windows or similar). On Linux, access to `/dev/uinput`, which the mouse and keyboard already use. Not on macOS yet. |
 | **Type on phone from PC keyboard (without mirroring)** | `Assist` (Android Accessibility Service) or `Elevated` (Wireless Debugging) on the phone. |
 | **`Deck` macro pad** | Per-phone **Remote mouse, keyboard & Deck** (`remote_input`) toggle enabled on the PC. Tiles that run custom PC shell commands also require the separate per-phone **Run Deck shell commands** (`commands`) toggle in PC **Settings › Devices** (off by default). |
 | **Phone controls on PC Home** | `Standard` for Media volume, Ringer mode (Ring/Vibrate), and Flashlight. **Do Not Disturb and silent mode** requires Android Notification Policy Access (**Settings › Permissions › Control from your PC**). **Screen brightness** requires Android Modify system settings. **Wi-Fi** and **Bluetooth** toggles require `Elevated` (which also grants DND and brightness permissions automatically). |
@@ -57,6 +58,18 @@ With **Share PC screen to phone** and **Remote mouse, keyboard & Deck** on for t
 - Drag on the touchpad below the picture to move the cursor. Tap to click, and use two fingers to right-click or scroll.
 - **Keyboard** opens a box above the phone's keyboard. What you type goes to the PC as you type it, **Send** presses Enter, and the key beside it deletes.
 - The quality button changes the stream's resolution.
+
+#### Gamepad
+
+Tap the controller button at the top of **Control PC** to use your phone as a game controller. The phone turns sideways and the PC gets an Xbox controller that games see like a real one.
+
+- Two sticks, a d-pad, **A B X Y**, the bumpers and triggers, **Back**, **Home** and **Start**.
+- A stick starts wherever your thumb lands on its side of the screen. Tap it twice and hold to click it in.
+- Slide your thumb across **A B X Y** to go from one to the next without lifting it.
+- Several phones can each be a controller at once, up to four.
+- If you put the phone down or it loses the connection, the PC lets go of every button within a second.
+
+On Windows, if the PC doesn't have ViGEmBus yet, the Gamepad says so: install it on the PC, then tap **Try again**.
 
 ### 2. Typing on Your Phone from Your PC Keyboard (Without Mirroring)
 
@@ -130,6 +143,8 @@ When your phone is resting on a charger or desk stand, tap **Desk clock** on the
 - **Voice dictation**: Voice typing uses Android's system `SpeechRecognizer` (preferring on-device recognition when installed on your phone) and sends only the recognized text strings over your encrypted QUIC connection to the PC.
 
 ## Limits
+
+- **Gamepad on macOS**: a Mac only lets an app add a game controller with permission Apple grants, so the Gamepad isn't there on a Mac yet. The triggers are on or off, not pressed partway, and the phone doesn't rumble when a game asks the controller to.
 
 - **The mouse over the screen edge** is on Windows only for now, and needs Elevated on the phone. On Android versions that can't turn pointer acceleration off, the phone's pointer still speeds up with fast moves, so it can take a little more push at the edge to come back.
 - **Wake-on-LAN Hardware Requirements**: Waking a sleeping or powered-off PC over the network requires Wake-on-LAN to be enabled in your PC's BIOS/UEFI and in your network adapter's Windows Device Manager properties (**Power Management › Allow this device to wake the computer**). Most desktop Ethernet adapters support waking from both sleep (`S3`) and shutdown (`S5`), whereas many laptop Wi-Fi cards only support waking from low-power standby (`S0ix`) or sleep, not full shutdown.
