@@ -166,7 +166,7 @@ in light and dark. In English, German, Turkish, Simplified Chinese, Brazilian Po
 | Clipboard text & image sync | Yes | Yes | Yes (two-way text, incoming photo) |
 | System notifications | Yes | Yes | Yes (system banners) |
 | Phone screen mirroring | Yes | Yes | Yes (H.264) |
-| Screen recording (MP4) | Yes | Yes | Not yet |
+| Screen recording (MP4) | Yes | Yes | Yes (H.264) |
 | PC audio stream / phone mic | Yes | Yes | Not yet |
 | Phone as webcam | Yes | Yes (with v4l2loopback) | Not yet |
 | Phone storage in the file manager | Yes | Yes | Not yet |
