@@ -223,6 +223,12 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A PC's gamepad works in phone games.** Playing on a mirrored phone with a controller
+  on the PC, the phone read its buttons in the wrong order (B left the game, others did
+  nothing) and had forward and back the wrong way round. Buttons, sticks, triggers and the
+  D-pad now arrive as the phone expects. Thanks to
+  [@unamed666](https://github.com/unamed666)
+  ([#433](https://github.com/thtbee/nectarlink/discussions/433)).
 - **The Mac app talks like a Mac app.** The walkthrough and Settings no longer mention
   Windows notifications, Start with Windows, Windows DPAPI or Windows Firewall on a Mac:
   they say Start at login, the login Keychain and the menu bar, the network check says

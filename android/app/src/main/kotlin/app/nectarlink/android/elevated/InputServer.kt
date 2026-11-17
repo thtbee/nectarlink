@@ -926,8 +926,7 @@ object InputServer {
             val changed = buttons xor lastGamepadButtons
             lastGamepadButtons = buttons
 
-            for ((bit, keyCode) in GAMEPAD_BUTTON_KEYCODES) {
-                val mask = 1 shl bit
+            for ((mask, keyCode) in GamepadMapping.KEYCODES) {
                 if ((changed and mask) != 0) {
                     val action = if ((buttons and mask) != 0) KeyEvent.ACTION_DOWN else KeyEvent.ACTION_UP
                     send(
@@ -949,16 +948,7 @@ object InputServer {
 
             fun normAxis(v: Int): Float = (v.coerceIn(-32767, 32767) / 32767f)
             fun normTrigger(v: Int): Float = (v.coerceIn(0, 255) / 255f)
-            val hatX = when {
-                (buttons and (1 shl 13)) != 0 -> 1f
-                (buttons and (1 shl 12)) != 0 -> -1f
-                else -> 0f
-            }
-            val hatY = when {
-                (buttons and (1 shl 11)) != 0 -> 1f
-                (buttons and (1 shl 10)) != 0 -> -1f
-                else -> 0f
-            }
+            val (hatX, hatY) = GamepadMapping.hatAxes(buttons)
 
             val properties = arrayOf(
                 MotionEvent.PointerProperties().apply {
@@ -969,13 +959,13 @@ object InputServer {
             val coords = arrayOf(
                 MotionEvent.PointerCoords().apply {
                     setAxisValue(MotionEvent.AXIS_X, normAxis(lx))
-                    setAxisValue(MotionEvent.AXIS_Y, normAxis(ly))
+                    setAxisValue(MotionEvent.AXIS_Y, normAxis(GamepadMapping.stickY(ly)))
                     setAxisValue(MotionEvent.AXIS_Z, normAxis(rx))
-                    setAxisValue(MotionEvent.AXIS_RZ, normAxis(ry))
+                    setAxisValue(MotionEvent.AXIS_RZ, normAxis(GamepadMapping.stickY(ry)))
                     setAxisValue(MotionEvent.AXIS_LTRIGGER, normTrigger(lt))
                     setAxisValue(MotionEvent.AXIS_RTRIGGER, normTrigger(rt))
-                    setAxisValue(MotionEvent.AXIS_HAT_X, hatX)
-                    setAxisValue(MotionEvent.AXIS_HAT_Y, hatY)
+                    setAxisValue(MotionEvent.AXIS_HAT_X, hatX.toFloat())
+                    setAxisValue(MotionEvent.AXIS_HAT_Y, hatY.toFloat())
                 },
             )
             val motion = MotionEvent.obtain(
@@ -1051,24 +1041,6 @@ object InputServer {
 
         private companion object {
             const val BRIGHTNESS_PREFIX = "settings put system screen_brightness "
-
-            val GAMEPAD_BUTTON_KEYCODES = listOf(
-                0 to KeyEvent.KEYCODE_BUTTON_A,
-                1 to KeyEvent.KEYCODE_BUTTON_B,
-                2 to KeyEvent.KEYCODE_BUTTON_X,
-                3 to KeyEvent.KEYCODE_BUTTON_Y,
-                4 to KeyEvent.KEYCODE_BUTTON_L1,
-                5 to KeyEvent.KEYCODE_BUTTON_R1,
-                6 to KeyEvent.KEYCODE_BUTTON_SELECT,
-                7 to KeyEvent.KEYCODE_BUTTON_START,
-                8 to KeyEvent.KEYCODE_BUTTON_THUMBL,
-                9 to KeyEvent.KEYCODE_BUTTON_THUMBR,
-                10 to KeyEvent.KEYCODE_DPAD_UP,
-                11 to KeyEvent.KEYCODE_DPAD_DOWN,
-                12 to KeyEvent.KEYCODE_DPAD_LEFT,
-                13 to KeyEvent.KEYCODE_DPAD_RIGHT,
-                14 to KeyEvent.KEYCODE_BUTTON_MODE,
-            )
         }
     }
 
@@ -1085,8 +1057,8 @@ object InputServer {
         private const val UHID_EVENT_SIZE = 4380
         private const val BUS_USB = 0x03
 
-        // 12-byte HID gamepad report descriptor:
-        // [buttonsLo, buttonsHi, lxLo, lxHi, lyLo, lyHi, rxLo, rxHi, ryLo, ryHi, lt, rt]
+        // 13-byte HID gamepad report (see GamepadMapping for the button order):
+        // [buttonsLo, buttonsHi, hat (low 4 bits), lxLo, lxHi, lyLo, lyHi, rxLo, rxHi, ryLo, ryHi, lt, rt]
         private val GAMEPAD_RD = byteArrayOf(
             0x05, 0x01, // Usage Page (Generic Desktop)
             0x09, 0x05, // Usage (Game Pad)
@@ -1100,6 +1072,20 @@ object InputServer {
             0x95.toByte(), 0x10, //   Report Count (16)
             0x81.toByte(), 0x02, //   Input (Data, Variable, Absolute)
             0x05, 0x01, //   Usage Page (Generic Desktop)
+            0x09, 0x39, //   Usage (Hat switch)
+            0x15, 0x00, //   Logical Minimum (0)
+            0x25, 0x07, //   Logical Maximum (7)
+            0x35, 0x00, //   Physical Minimum (0)
+            0x46, 0x3B, 0x01, // Physical Maximum (315)
+            0x65, 0x14, //   Unit (degrees)
+            0x75, 0x04, //   Report Size (4)
+            0x95.toByte(), 0x01, //   Report Count (1)
+            0x81.toByte(), 0x42, //   Input (Data, Variable, Absolute, Null state)
+            0x65, 0x00, //   Unit (none)
+            0x45, 0x00, //   Physical Maximum (0)
+            0x75, 0x04, //   Report Size (4)
+            0x95.toByte(), 0x01, //   Report Count (1)
+            0x81.toByte(), 0x03, //   Input (Constant): padding
             0x09, 0x30, //   Usage (X)
             0x09, 0x31, //   Usage (Y)
             0x09, 0x32, //   Usage (Z)
@@ -1173,12 +1159,13 @@ object InputServer {
                 gamepadFd = openDevice("NectarLink Virtual Gamepad", 0x4EE8, GAMEPAD_RD)
             }
             val fd = gamepadFd ?: return false
-            val report = java.nio.ByteBuffer.allocate(12).order(java.nio.ByteOrder.LITTLE_ENDIAN).apply {
-                putShort(buttons.toShort())
+            val report = java.nio.ByteBuffer.allocate(13).order(java.nio.ByteOrder.LITTLE_ENDIAN).apply {
+                putShort(GamepadMapping.hidButtons(buttons).toShort())
+                put(GamepadMapping.hat(buttons).toByte())
                 putShort(lx.coerceIn(-32767, 32767).toShort())
-                putShort(ly.coerceIn(-32767, 32767).toShort())
+                putShort(GamepadMapping.stickY(ly).toShort())
                 putShort(rx.coerceIn(-32767, 32767).toShort())
-                putShort(ry.coerceIn(-32767, 32767).toShort())
+                putShort(GamepadMapping.stickY(ry).toShort())
                 put(lt.coerceIn(0, 255).toByte())
                 put(rt.coerceIn(0, 255).toByte())
             }.array()
