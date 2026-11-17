@@ -31,6 +31,7 @@ pub fn supported() -> bool {
 }
 
 /// A name a file can take: no path or reserved characters, not empty.
+#[cfg_attr(not(any(windows, target_os = "linux")), allow(dead_code))]
 fn file_stem(label: &str, pkg: &str) -> String {
     let spaced: String = label
         .chars()
