@@ -1,5 +1,182 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! macOS speaker volume, mute, and state.
+//! macOS speaker volume, mute, and state via CoreAudio (`AudioToolbox`
+//! virtual main volume for sub-millisecond updates, with `osascript` fallback).
+
+#![allow(unsafe_code)]
+
+use std::{ffi::c_void, mem::size_of, ptr};
+
+type OSStatus = i32;
+type AudioObjectID = u32;
+
+const K_AUDIO_OBJECT_SYSTEM_OBJECT: AudioObjectID = 1;
+const K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN: u32 = 0;
+
+const K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL: u32 = u32::from_be_bytes(*b"glob");
+const K_AUDIO_OBJECT_PROPERTY_SCOPE_OUTPUT: u32 = u32::from_be_bytes(*b"outp");
+const K_AUDIO_HARDWARE_PROPERTY_DEFAULT_OUTPUT_DEVICE: u32 = u32::from_be_bytes(*b"dOut");
+const K_AUDIO_DEVICE_PROPERTY_MUTE: u32 = u32::from_be_bytes(*b"mute");
+const K_AUDIO_HARDWARE_SERVICE_VIRTUAL_MAIN_VOLUME: u32 = u32::from_be_bytes(*b"vmvc");
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct AudioObjectPropertyAddress {
+    m_selector: u32,
+    m_scope: u32,
+    m_element: u32,
+}
+
+#[link(name = "CoreAudio", kind = "framework")]
+unsafe extern "C" {
+    fn AudioObjectGetPropertyData(
+        in_object_id: AudioObjectID,
+        in_address: *const AudioObjectPropertyAddress,
+        in_qualifier_data_size: u32,
+        in_qualifier_data: *const c_void,
+        io_data_size: *mut u32,
+        out_data: *mut c_void,
+    ) -> OSStatus;
+    fn AudioObjectSetPropertyData(
+        in_object_id: AudioObjectID,
+        in_address: *const AudioObjectPropertyAddress,
+        in_qualifier_data_size: u32,
+        in_qualifier_data: *const c_void,
+        in_data_size: u32,
+        in_data: *const c_void,
+    ) -> OSStatus;
+}
+
+#[link(name = "AudioToolbox", kind = "framework")]
+unsafe extern "C" {
+    fn AudioHardwareServiceGetPropertyData(
+        in_object_id: AudioObjectID,
+        in_address: *const AudioObjectPropertyAddress,
+        in_qualifier_data_size: u32,
+        in_qualifier_data: *const c_void,
+        io_data_size: *mut u32,
+        out_data: *mut c_void,
+    ) -> OSStatus;
+    fn AudioHardwareServiceSetPropertyData(
+        in_object_id: AudioObjectID,
+        in_address: *const AudioObjectPropertyAddress,
+        in_qualifier_data_size: u32,
+        in_qualifier_data: *const c_void,
+        in_data_size: u32,
+        in_data: *const c_void,
+    ) -> OSStatus;
+}
+
+fn default_output_device() -> Option<AudioObjectID> {
+    let addr = AudioObjectPropertyAddress {
+        m_selector: K_AUDIO_HARDWARE_PROPERTY_DEFAULT_OUTPUT_DEVICE,
+        m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+        m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+    };
+    let mut device: AudioObjectID = 0;
+    let mut size = size_of::<AudioObjectID>() as u32;
+    // SAFETY: stack-allocated `AudioObjectID` matching `size`.
+    let status = unsafe {
+        AudioObjectGetPropertyData(
+            K_AUDIO_OBJECT_SYSTEM_OBJECT,
+            &addr,
+            0,
+            ptr::null(),
+            &mut size,
+            (&raw mut device).cast::<c_void>(),
+        )
+    };
+    if status == 0 && device != 0 { Some(device) } else { None }
+}
+
+fn coreaudio_speaker_state() -> Option<(u8, bool)> {
+    let dev = default_output_device()?;
+    let vol_addr = AudioObjectPropertyAddress {
+        m_selector: K_AUDIO_HARDWARE_SERVICE_VIRTUAL_MAIN_VOLUME,
+        m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_OUTPUT,
+        m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+    };
+    let mut scalar: f32 = 0.0;
+    let mut vol_size = size_of::<f32>() as u32;
+    // SAFETY: stack-allocated `f32` matching `vol_size`.
+    let vol_status = unsafe {
+        AudioHardwareServiceGetPropertyData(
+            dev,
+            &vol_addr,
+            0,
+            ptr::null(),
+            &mut vol_size,
+            (&raw mut scalar).cast::<c_void>(),
+        )
+    };
+    if vol_status != 0 {
+        return None;
+    }
+
+    let mute_addr = AudioObjectPropertyAddress {
+        m_selector: K_AUDIO_DEVICE_PROPERTY_MUTE,
+        m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_OUTPUT,
+        m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+    };
+    let mut muted: u32 = 0;
+    let mut mute_size = size_of::<u32>() as u32;
+    // SAFETY: stack-allocated `u32` matching `mute_size`.
+    let mute_status = unsafe {
+        AudioObjectGetPropertyData(
+            dev,
+            &mute_addr,
+            0,
+            ptr::null(),
+            &mut mute_size,
+            (&raw mut muted).cast::<c_void>(),
+        )
+    };
+    let vol = (scalar.clamp(0.0, 1.0) * 100.0).round() as u8;
+    Some((vol, mute_status == 0 && muted != 0))
+}
+
+fn coreaudio_set_volume(level: u8) -> Result<(), String> {
+    let dev = default_output_device().ok_or_else(|| "no default output device".to_string())?;
+    let addr = AudioObjectPropertyAddress {
+        m_selector: K_AUDIO_HARDWARE_SERVICE_VIRTUAL_MAIN_VOLUME,
+        m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_OUTPUT,
+        m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+    };
+    let scalar: f32 = f32::from(level.min(100)) / 100.0;
+    // SAFETY: `scalar` is a valid stack `f32` of size `size_of::<f32>()`.
+    let status = unsafe {
+        AudioHardwareServiceSetPropertyData(
+            dev,
+            &addr,
+            0,
+            ptr::null(),
+            size_of::<f32>() as u32,
+            (&raw const scalar).cast::<c_void>(),
+        )
+    };
+    if status == 0 { Ok(()) } else { Err(format!("CoreAudio volume failed (OSStatus {status})")) }
+}
+
+fn coreaudio_set_mute(muted: bool) -> Result<(), String> {
+    let dev = default_output_device().ok_or_else(|| "no default output device".to_string())?;
+    let addr = AudioObjectPropertyAddress {
+        m_selector: K_AUDIO_DEVICE_PROPERTY_MUTE,
+        m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_OUTPUT,
+        m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+    };
+    let val: u32 = u32::from(muted);
+    // SAFETY: `val` is a valid stack `u32` of size `size_of::<u32>()`.
+    let status = unsafe {
+        AudioObjectSetPropertyData(
+            dev,
+            &addr,
+            0,
+            ptr::null(),
+            size_of::<u32>() as u32,
+            (&raw const val).cast::<c_void>(),
+        )
+    };
+    if status == 0 { Ok(()) } else { Err(format!("CoreAudio mute failed (OSStatus {status})")) }
+}
 
 fn parse_speaker_state(text: &str) -> Option<(u8, bool)> {
     let mut parts = text.split_whitespace();
@@ -9,6 +186,9 @@ fn parse_speaker_state(text: &str) -> Option<(u8, bool)> {
 }
 
 pub fn speaker_state() -> Option<(u8, bool)> {
+    if let Some(state) = coreaudio_speaker_state() {
+        return Some(state);
+    }
     let output = std::process::Command::new("osascript")
         .args([
             "-e",
@@ -40,10 +220,16 @@ fn run_osascript(script: &str) -> Result<(), String> {
 }
 
 pub fn set_speaker_volume(level: u8) -> Result<(), String> {
+    if coreaudio_set_volume(level).is_ok() {
+        return Ok(());
+    }
     run_osascript(&format!("set volume output volume {level}"))
 }
 
 pub fn set_speaker_mute(muted: bool) -> Result<(), String> {
+    if coreaudio_set_mute(muted).is_ok() {
+        return Ok(());
+    }
     run_osascript(&format!("set volume output muted {muted}"))
 }
 
@@ -139,6 +325,15 @@ mod tests {
     #[test]
     fn query_live_speaker_state() {
         if let Some((vol, _muted)) = speaker_state() {
+            assert!(vol <= 100);
+        }
+    }
+
+    #[test]
+    fn coreaudio_reads_speaker_state_when_device_present() {
+        if default_output_device().is_some()
+            && let Some((vol, _muted)) = coreaudio_speaker_state()
+        {
             assert!(vol <= 100);
         }
     }
