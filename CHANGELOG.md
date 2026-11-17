@@ -238,6 +238,13 @@ change things that need a step from you, and its notes say so.
 - **Typing on the PC's screen goes over as you type.** Each letter reaches the PC right
   away, like a keyboard, instead of after Send; the button presses Enter
   ([#351](https://github.com/thtbee/nectarlink/issues/351)).
+- **Polish.** The Android and Windows apps can now run in Polish, offered by their
+  language pickers. Thanks to [@erykosky](https://github.com/erykosky)
+  ([#253](https://github.com/thtbee/nectarlink/pull/253)).
+- **Japanese.** NectarLink speaks 日本語 on the phone and the PC. Language (Settings ›
+  Appearance on the phone, Settings › General on the PC) picks it, or the system language does.
+  Thanks to [@sho9029](https://github.com/sho9029)
+  ([#437](https://github.com/thtbee/nectarlink/pull/437)).
 
 ### Fixed
 

@@ -8,10 +8,12 @@
 <locale-config xmlns:android="http://schemas.android.com/apk/res/android">
     <locale android:name="en" />
     <locale android:name="de" />
+    <locale android:name="ja" />
     <locale android:name="zh-CN" />
     <locale android:name="tr" />
     <locale android:name="pt-BR" />
     <locale android:name="vi" />
     <locale android:name="es" />
     <locale android:name="ru" />
+    <locale android:name="pl" />
 </locale-config>

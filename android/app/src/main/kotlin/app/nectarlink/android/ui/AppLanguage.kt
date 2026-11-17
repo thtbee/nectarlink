@@ -17,12 +17,14 @@ object AppLanguage {
     val languages: List<Pair<String, String>> = listOf(
         "en" to "English",
         "de" to "Deutsch",
+        "ja" to "日本語",
         "zh-CN" to "简体中文",
         "tr" to "Türkçe",
         "pt-BR" to "Português (Brasil)",
         "vi" to "Tiếng Việt",
         "es" to "Español",
         "ru" to "Русский",
+        "pl" to "Polski",
     )
 
     /** Whether the phone lets the app pick its own language. */
@@ -54,11 +56,13 @@ object AppLanguage {
             lower.startsWith("zh") && ("hans" in lower || "-cn" in lower || "-sg" in lower) -> "zh-CN"
             lower == "de" || lower.startsWith("de-") -> "de"
             lower == "en" || lower.startsWith("en-") -> "en"
+            lower == "ja" || lower.startsWith("ja-") -> "ja"
             lower == "tr" || lower.startsWith("tr-") -> "tr"
             lower == "pt" || (lower.startsWith("pt-") && lower.endsWith("-br")) -> "pt-BR"
             lower == "vi" || lower.startsWith("vi-") -> "vi"
             lower == "es" || lower.startsWith("es-") -> "es"
             lower == "ru" || lower.startsWith("ru-") -> "ru"
+            lower == "pl" || lower.startsWith("pl-") -> "pl"
             else -> ""
         }
     }
