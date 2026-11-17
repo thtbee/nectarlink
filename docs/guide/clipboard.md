@@ -20,7 +20,7 @@ NectarLink shares your clipboard between your PC and your Android phone. Copy pl
 ### Copying on Your PC to Paste on Your Phone
 
 1. On your PC, copy any plain text, formatted HTML text, or image (`Ctrl+C`, right-click **Copy**, or `Win+Shift+S` screen snip).
-2. With **Sync clipboard to phone** turned on in **Settings › General** (the default), NectarLink sends the copied content to your connected phone automatically in the background.
+2. With **Sync clipboard** turned on in **Settings › General** (the default), NectarLink sends the copied content to your connected phone, and to other PCs paired with this one, automatically in the background.
 3. On your phone, tap **Paste** in any text field or image editor.
 4. You can also send your current PC clipboard manually at any time by clicking **Send clipboard** on the PC Home screen or running **Send clipboard to phone** in the `Command Palette` (`Ctrl+Alt+Space`).
 
@@ -68,7 +68,7 @@ Both the Windows app and the Android app keep an optional encrypted local **Clip
 
 ### On Windows
 
-- **Sync clipboard to phone** (`Settings › General`, default: **On**): Automatically sends text and images copied on the PC to connected phones.
+- **Sync clipboard** (`Settings › General`, default: **On**): Automatically sends text and images copied on the PC to connected phones and paired PCs.
 - **Copy one-time codes** (`Settings › General`, default: **Off**): Automatically copies verification codes detected in phone notifications and SMS messages to the PC clipboard.
 - **Copy received files** (`Settings › General`, default: **On**): Places newly received files onto the Windows file clipboard (`CF_HDROP`) so they are ready to paste with `Ctrl+V`.
 - **Suggest clipboard actions** (`Settings › General`, default: **On**): Shows context chips (**Open**, **Open in Maps**, **Call**, **Track**, **Email**) when matching text arrives.

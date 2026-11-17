@@ -241,7 +241,7 @@ Item {
                 wrapMode: Text.WordWrap
                 role: "body"
                 muted: true
-                text: qsTr("On your phone, open NectarLink and choose “Pair nearby”. It shows up here.")
+                text: qsTr("On your phone, open NectarLink and choose “Pair nearby”. It shows up here. To pair another PC, open this on that PC too.")
             }
             Repeater {
                 model: Pairing.nearby

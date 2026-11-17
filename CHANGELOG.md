@@ -8,6 +8,12 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Two PCs work together.** Pair a PC with another PC, Windows, Mac or Linux, the
+  same way as a phone: open the pairing screen on both and pick the other one. Home
+  then shows that PC with Send files, Send clipboard and Ring PC, and what you copy on
+  one goes to the other while Sync clipboard is on. No phone needed. Thanks to
+  [@ManuZhu0728](https://github.com/ManuZhu0728)
+  ([#432](https://github.com/thtbee/nectarlink/discussions/432)).
 - **Calls from WhatsApp and other apps show on the PC.** When a WhatsApp, Signal,
   Messenger or Telegram call rings on the phone, the PC shows it like a phone call, with
   the caller and the app's name, in the banner, Nectar Island and the call card. Answer,

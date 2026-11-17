@@ -1207,6 +1207,7 @@ mod tests {
             missed: false,
             since: None,
             controls: None,
+            app: None,
         }
     }
 

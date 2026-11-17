@@ -1256,14 +1256,14 @@ Item {
 
                         Divider { width: parent.width }
 
-                        // Row 3: Sync clipboard to phone
+                        // Row 3: Sync clipboard
                         ListRow {
                             width: parent.width
                             iconPath: Icons.clipboard
-                            title: qsTr("Sync clipboard to phone")
-                            description: qsTr("Share copied text and images with your phone.")
+                            title: qsTr("Sync clipboard")
+                            description: qsTr("Share copied text and images with your phone and paired PCs.")
                             Toggle {
-                                label: qsTr("Sync clipboard to phone")
+                                label: qsTr("Sync clipboard")
                                 checked: Preferences.autoClipboard
                                 onToggled: (on) => Preferences.autoClipboard = on
                             }
@@ -1454,12 +1454,20 @@ Item {
                         required property string deviceId
                         required property string name
                         required property bool online
+                        required property string kind
+                        required property string os
                         visible: index === page.selectedDeviceIndex
                         width: visible ? column.width : 0
 
+                        // Another PC (#432): only its clipboard and files switches mean anything.
+                        readonly property bool isPc: kind === "desktop" || kind === "laptop"
+                            || (kind === "unknown" && (os === "windows" || os === "macos" || os === "linux"))
+
                         // Re-read when toggles (and so capabilities) change.
                         readonly property var toggles: AppController.capsRevision >= 0 && AppController.togglesRevision >= 0
-                                                       ? AppController.deviceToggles(deviceId) : []
+                                                       ? AppController.deviceToggles(deviceId)
+                                                             .filter(t => !isPc || t.name === "clipboard" || t.name === "files")
+                                                       : []
 
                         Column {
                             width: parent.width
@@ -1467,7 +1475,10 @@ Item {
                             Row {
                                 width: parent.width
                                 spacing: 12
-                                Avatar { iconPath: Icons.phone; emphasized: deviceCard.online }
+                                Avatar {
+                                    iconPath: !deviceCard.isPc ? Icons.phone : deviceCard.kind === "laptop" ? Icons.laptop : Icons.desktop
+                                    emphasized: deviceCard.online
+                                }
                                 Column {
                                     anchors.verticalCenter: parent.verticalCenter
                                     width: parent.width - 36 - 12 - unpair.width - 12
@@ -1505,6 +1516,7 @@ Item {
                             ListRow {
                                 id: hotspotRow
                                 width: parent.width
+                                visible: !deviceCard.isPc
                                 property string network: AppController.hotspotNetwork(deviceCard.deviceId)
                                 iconPath: Icons.wifi
                                 title: qsTr("Join this phone's hotspot")
@@ -1531,6 +1543,7 @@ Item {
                             }
                             ListRow {
                                 width: parent.width
+                                visible: !deviceCard.isPc
                                 iconPath: Icons.screenOff
                                 title: qsTr("Keep phone screen off")
                                 description: qsTr("Mirroring and app windows start with this phone's screen off. Needs Elevated.")
@@ -1543,7 +1556,7 @@ Item {
                             // The phone beside the PC: the mouse goes over the edge of the screen to it (#107).
                             ListRow {
                                 width: parent.width
-                                visible: Qt.platform.os === "windows"
+                                visible: Qt.platform.os === "windows" && !deviceCard.isPc
                                 iconPath: Icons.desktop
                                 title: qsTr("Beside this PC")
                                 description: qsTr("Move the mouse past that edge of the screen to use it on this phone, and type there. Move it back, or press Ctrl+Alt+Esc, to return. Needs Elevated.")
