@@ -65,6 +65,17 @@ When your phone is sitting on a stand next to your monitor and you just want to 
 2. While the **Type on phone** card is active on your PC, every keystroke you type (including letters, numbers, Unicode text, **Arrow keys**, **Backspace**, **Enter**, and `Ctrl+V` clipboard paste) goes straight into the focused text field on your phone.
 3. Your phone displays a top banner (**Typing from `<PC>`**) with a one-tap **Stop typing** button, and pressing **Escape** on your PC ends keyboard capture immediately.
 
+#### Your PC's mouse on the phone, over the screen edge (Windows)
+
+With the phone on a stand beside your monitor, the PC's mouse can go over the edge of the screen onto it, like a second screen, with a pointer of the phone's own.
+
+1. Turn on Elevated on the phone (Settings › Permissions on the phone).
+2. On the PC, open **Settings › Devices**, pick the phone, and set **Beside this PC** to **Left** or **Right**: the side of your desk it's on.
+3. Push the mouse past that edge of the screen. The phone shows a pointer where it came in, and the mouse and keyboard work there: click, scroll, type, Ctrl+C, Ctrl+X, Ctrl+A, and Ctrl+V types what's on the PC's clipboard. Esc is Back, the Windows key is Home, and a mouse's back button is Back.
+4. Move the pointer back past the phone's edge facing the PC to return. **Ctrl+Alt+Esc** brings the mouse back from anywhere, and it comes back by itself if the phone disconnects.
+
+While it's on the phone, Android's pointer acceleration is off (it's given back after), so the PC can follow the pointer. The PC's cursor waits in the middle of the screen it left.
+
 ### 3. `Deck`: Customizable Macro Pad and PC Audio Controller
 
 `Deck` turns your phone into a tactile, multi-page button grid and live audio controller for your PC:
@@ -108,6 +119,7 @@ When your phone is resting on a charger or desk stand, tap **Desk clock** on the
 - **Run Deck shell commands** (`Settings › Devices` on PC, default: **Off**): Allows the selected phone to trigger `Deck` tiles that execute custom shell commands on the PC.
 - **Phone controls** (`Settings › Devices` on PC, default: **On**): Allows the PC to view and change the phone's volume, ringer, DND, flashlight, brightness, Wi-Fi, and Bluetooth.
 - **Lock, sleep & wake PC** (`Settings › Devices` on PC, default: **On**): Allows the selected phone to lock or sleep the PC and learn its MAC address for Wake-on-LAN.
+- **Beside this PC** (`Settings › Devices` on PC, Windows, default: **Off**): Which side of the PC the phone sits on, for the mouse to go over that edge of the screen onto it. One phone at a time.
 - **Touchpad speed** (`Settings › Features & Data › Control your PC` on Android, default: `1.0x`): Adjusts pointer sensitivity from `0.5x` to `2.5x`.
 
 ## Data and Privacy
@@ -118,5 +130,6 @@ When your phone is resting on a charger or desk stand, tap **Desk clock** on the
 
 ## Limits
 
+- **The mouse over the screen edge** is on Windows only for now, and needs Elevated on the phone. On Android versions that can't turn pointer acceleration off, the phone's pointer still speeds up with fast moves, so it can take a little more push at the edge to come back.
 - **Wake-on-LAN Hardware Requirements**: Waking a sleeping or powered-off PC over the network requires Wake-on-LAN to be enabled in your PC's BIOS/UEFI and in your network adapter's Windows Device Manager properties (**Power Management › Allow this device to wake the computer**). Most desktop Ethernet adapters support waking from both sleep (`S3`) and shutdown (`S5`), whereas many laptop Wi-Fi cards only support waking from low-power standby (`S0ix`) or sleep, not full shutdown.
 - **Wi-Fi and Bluetooth Toggles on Android 10+**: Starting in Android 10, regular apps cannot toggle Wi-Fi or Bluetooth directly. Those two toggles on PC Home require the `Elevated` power level on your phone.

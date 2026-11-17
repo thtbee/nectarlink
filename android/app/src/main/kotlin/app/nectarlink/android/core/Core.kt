@@ -2041,6 +2041,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (Elevated.running && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) listOf("mirror.virtual_display") else emptyList()) +
             // A PC can uninstall an app through Elevated (D349).
             (if (Elevated.running) listOf("mirror.apps.uninstall") else emptyList()) +
+            // The PC's mouse over the edge of its screen, with a pointer of the phone's own (#107).
+            (if (Elevated.running) listOf("mirror.pointer") else emptyList()) +
             // Asked for when a PC wants the sound, or streamed via Elevated helper.
             (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q || Elevated.running) listOf("mirror.audio.playback") else emptyList()) +
             // The same sound on its own, without the screen.
