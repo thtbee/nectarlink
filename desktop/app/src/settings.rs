@@ -134,6 +134,10 @@ fn default_window_height() -> u32 {
     DEFAULT_WINDOW_HEIGHT
 }
 
+fn default_history_days() -> u32 {
+    1
+}
+
 fn default_true() -> bool {
     true
 }
@@ -606,6 +610,9 @@ pub struct Settings {
     /// Use phones' USB debugging (adb) for USB features; off, never ask (#439).
     #[serde(default = "default_true", alias = "usb_debugging")]
     pub usb_debugging: bool,
+    /// How many days notification history is kept: 1, 3, 7 or 30 (#442).
+    #[serde(default = "default_history_days", alias = "notification_history_days")]
+    pub notification_history_days: u32,
     /// "sharper" or "smoother"; anything else is the balanced default. Text, so a
     /// value from a newer version can't stop this file from loading.
     #[serde(default, alias = "mirror_quality")]
@@ -768,6 +775,7 @@ impl Default for Settings {
             sync_wifi_only: false,
             sync_passwords: false,
             usb_debugging: true,
+            notification_history_days: 1,
             mirror_quality: String::new(),
             flow_follow_clipboard: true,
             phone_beside: String::new(),
@@ -842,6 +850,7 @@ impl Settings {
         set_sync_wifi_only(self.sync_wifi_only);
         set_sync_passwords(self.sync_passwords);
         set_usb_debugging(self.usb_debugging);
+        crate::state::set_history_days(self.notification_history_days);
         set_mirror_quality(&self.mirror_quality);
         set_flow_follow_clipboard(self.flow_follow_clipboard);
         set_phone_beside(&self.phone_beside, &self.phone_beside_side);
@@ -1051,6 +1060,7 @@ mod tests {
             sync_wifi_only: true,
             sync_passwords: true,
             usb_debugging: false,
+            notification_history_days: 7,
             mirror_quality: "sharper".into(),
             flow_follow_clipboard: false,
             phone_beside: String::new(),

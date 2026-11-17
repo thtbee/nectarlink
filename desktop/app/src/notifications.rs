@@ -200,8 +200,10 @@ pub fn maybe_auto_copy_otp(code: &str) {
     copy_otp(trimmed);
 }
 
-/// Pictures from notifications, kept for a couple of days (history lasts one).
-const KEEP_IMAGES: std::time::Duration = std::time::Duration::from_secs(2 * 24 * 3600);
+/// Pictures from notifications, kept a day longer than their history lasts.
+fn keep_images() -> std::time::Duration {
+    std::time::Duration::from_secs((u64::from(crate::state::history_days()) + 1) * 24 * 3600)
+}
 
 pub(crate) fn images_dir() -> std::path::PathBuf {
     core_host::host().data_dir.join("cache").join("images")
@@ -250,7 +252,7 @@ pub fn prune_images() {
         let old = entry
             .metadata()
             .and_then(|m| m.modified())
-            .is_ok_and(|t| now.duration_since(t).unwrap_or_default() > KEEP_IMAGES);
+            .is_ok_and(|t| now.duration_since(t).unwrap_or_default() > keep_images());
         if old {
             let _ = std::fs::remove_file(entry.path());
         }

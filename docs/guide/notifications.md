@@ -55,7 +55,7 @@ When an incoming notification or SMS contains a 4-to-8-digit one-time verificati
 If you accidentally swipe away an alert on your phone or want to check a notification from earlier in the day:
 
 1. In the **Notifications** card on PC Home, switch the filter from **Active** to **History**.
-2. NectarLink displays dismissed notifications from the last 24 hours (up to 300 items), complete with search filtering by app name or text.
+2. NectarLink displays dismissed notifications from the last day by default (up to 300 items; longer if you choose, see below), complete with search filtering by app name or text.
 3. You can clear the history at any time or turn 24-hour retention off in **Settings › Storage & Privacy › Notification history**.
 
 ### Forwarding PC Notifications to Your Phone (Optional)
@@ -79,12 +79,13 @@ All notification settings live in **Settings › Notifications** (and **Settings
   - **No pop-ups**: Suppresses Windows popup toasts for that app while keeping its notifications visible inside the NectarLink feed.
   - **Hide**: Completely blocks notifications from that app on your PC.
 - **Copy one-time codes** (`Settings › General`, default: **Off**): Automatically copies detected verification codes from incoming notifications and SMS messages to the PC clipboard.
-- **Notification history** (`Settings › Storage & Privacy`, default: **On**): Keeps dismissed phone notifications on the PC for 24 hours (up to 300 alerts). Includes a one-click **Clear** button.
+- **Notification history** (`Settings › Storage & Privacy`, default: **On**): Keeps dismissed phone notifications on the PC. Includes a one-click **Clear** button.
+- **Keep notification history for** (`Settings › Storage & Privacy`, default: **1 day**): 1 day, 3 days, 1 week or 30 days. Up to 300 alerts a day are kept, at most 3,000.
 
 ## Data and Privacy
 
 - **Where data travels**: Notification payloads, app icons, and inline images travel directly between your phone and PC over your end-to-end encrypted QUIC session.
-- **Where data stays**: Active notifications are held in memory while current (up to 200 active notifications). If **Notification history** is enabled on the PC, dismissed notifications are stored locally in `%LOCALAPPDATA%\Nectarlink\notification-history.json` (and per-app rules in `notification-rules.json`) and cached inline images are kept in `%LOCALAPPDATA%\Nectarlink\cache\images\` for up to 24 hours (capped at 300 entries), then automatically purged. No notification history is duplicated on the phone.
+- **Where data stays**: Active notifications are held in memory while current (up to 200 active notifications). If **Notification history** is enabled on the PC, dismissed notifications are stored locally in `%LOCALAPPDATA%\Nectarlink\notification-history.json` (and per-app rules in `notification-rules.json`) and cached inline images are kept in `%LOCALAPPDATA%\Nectarlink\cache\images\` for as long as you chose to keep history (a day by default; images a day longer), then automatically purged. No notification history is duplicated on the phone.
 - **OTP protection**: Notifications containing one-time verification codes are excluded from clipboard history and `Timeline` storage. Neither the Android app nor the `Elevated` shell helper ever logs notification text to `logcat` or disk logs.
 
 ## Limits

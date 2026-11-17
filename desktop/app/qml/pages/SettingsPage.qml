@@ -3209,7 +3209,7 @@ Item {
                                 description: {
                                     const count = Number(page.retentionSummary.notificationHistory || 0)
                                     const size = page.formatRetentionBytes(page.retentionSummary.notificationImageBytes)
-                                    return qsTr("%1 alerts · %2 · kept 24h").arg(count).arg(size)
+                                    return qsTr("%1 alerts · %2").arg(count).arg(size)
                                 }
                                 Row {
                                     spacing: 8
@@ -3234,6 +3234,29 @@ Item {
                                             AppController.refreshDataRetention()
                                         }
                                     }
+                                }
+                            }
+                        }
+
+                        // How long it's kept (#442).
+                        Divider { width: parent.width; visible: NotificationList.historyEnabled }
+                        ListRow {
+                            width: parent.width
+                            visible: NotificationList.historyEnabled
+                            iconPath: Icons.history
+                            title: qsTr("Keep notification history for")
+                            description: qsTr("Notifications that went away stay in the feed's history this long.")
+                            Segmented {
+                                options: [
+                                    { value: "1", label: qsTr("1 day") },
+                                    { value: "3", label: qsTr("3 days") },
+                                    { value: "7", label: qsTr("1 week") },
+                                    { value: "30", label: qsTr("30 days") }
+                                ]
+                                value: String(Preferences.notificationHistoryDays)
+                                onPicked: (days) => {
+                                    Preferences.notificationHistoryDays = Number(days)
+                                    AppController.refreshDataRetention()
                                 }
                             }
                         }
