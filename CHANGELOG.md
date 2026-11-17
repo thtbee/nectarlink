@@ -223,6 +223,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Pairing from the PC's list of nearby phones works.** Picking a phone there said it
+  couldn't reach the phone, because the phone only took pairing it started itself. While
+  its pairing screen is open, the phone now accepts it from either side.
 - **A PC's gamepad works in phone games.** Playing on a mirrored phone with a controller
   on the PC, the phone read its buttons in the wrong order (B left the game, others did
   nothing) and had forward and back the wrong way round. Buttons, sticks, triggers and the

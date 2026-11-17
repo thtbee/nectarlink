@@ -993,6 +993,46 @@ async fn nearby_pairing_with_matching_codes() {
     assert_eq!(phone.node.paired_devices().unwrap().len(), 1);
 }
 
+/// The PC's pairing screen lists the phone too, and its Pair button starts
+/// the pairing from the PC's side. The phone takes it while its own pairing
+/// screen is open (the app makes it accept pairing then, as a PC does).
+#[tokio::test(flavor = "multi_thread")]
+async fn nearby_pairing_started_from_the_pc() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    // Both pairing screens are open: each device accepts pairing.
+    pc.node.pairing_start_qr().await.unwrap();
+    phone.node.pairing_start_qr().await.unwrap();
+    pc.node.add_known_addrs(phone_id, &phone.node.direct_addrs().await);
+
+    let initiator = pc.node.clone();
+    let task = tokio::spawn(async move { initiator.pairing_start_nearby(phone_id).await });
+    let (pc_code, phone_code) = (sas_code(&mut pc).await, sas_code(&mut phone).await);
+    assert_eq!(pc_code, phone_code, "both screens show the same code");
+    pc.node.pairing_confirm(true).unwrap();
+    phone.node.pairing_confirm(true).unwrap();
+    with_timeout("nearby pairing from the PC", task).await.unwrap().expect("pairing succeeds");
+
+    wait_online(&mut pc, phone_id).await;
+    assert_eq!(phone.node.paired_devices().unwrap().len(), 1);
+    assert_eq!(phone.node.paired_devices().unwrap()[0].id, pc_id);
+}
+
+/// A device that isn't accepting pairing refuses one started from the other
+/// side: what the phone did before its pairing screen accepted pairing.
+#[tokio::test(flavor = "multi_thread")]
+async fn nearby_pairing_is_refused_by_a_device_not_accepting_it() {
+    let pc = device("Desktop", DeviceKind::Desktop).await;
+    let phone = device("Pixel", DeviceKind::Phone).await;
+    let phone_id = phone.node.device_id();
+    pc.node.pairing_start_qr().await.unwrap();
+    pc.node.add_known_addrs(phone_id, &phone.node.direct_addrs().await);
+    let result = with_timeout("refused pairing", pc.node.pairing_start_nearby(phone_id)).await;
+    assert!(result.is_err(), "the phone isn't accepting pairing");
+    assert!(phone.node.paired_devices().unwrap().is_empty());
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn nearby_pairing_fails_if_either_user_declines() {
     let (mut pc, mut phone, _) = start_nearby_setup().await;

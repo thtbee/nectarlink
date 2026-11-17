@@ -952,6 +952,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 if (noDevicesRemaining) ConnectionService.stop(context)
             }
             is Event.Paired -> ConnectionService.start(context)
+            // Accepting pairing lapses after a while; renewed quietly while the screen stays open.
+            is Event.PairingFailed -> if (event.failure == PairingFailure.Expired && pairingScreenOpen) {
+                scope.launch(discoveryPace) { if (pairingScreenOpen) acceptPairing(true) }
+            }
             is Event.ClipboardReceived -> scope.launch(Dispatchers.IO) { onClipboardReceived(event.id) }
             is Event.ClipboardHistoryChanged -> scope.launch(Dispatchers.IO) {
                 refreshClipboardHistory()
@@ -2151,10 +2155,33 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * Keeps local discovery working while the pairing screen is open, and has
      * it ask the network who's there often only then: asking all the time
      * kept the phone awake.
+     *
+     * While it's open the phone also accepts pairing, as a PC's pairing
+     * screen does, so pairing works from either side: picking the PC here,
+     * or this phone in the PC's list of nearby devices. Before, the phone
+     * refused the PC, which said it couldn't reach the phone.
      */
     fun setPairingScreenOpen(open: Boolean) {
+        pairingScreenOpen = open
         pairingMulticast?.runCatching { if (open) acquire() else release() }
-        scope.launch(discoveryPace) { runCatching { node?.setDiscoveryFast(open) } }
+        scope.launch(discoveryPace) {
+            runCatching { node?.setDiscoveryFast(open) }
+            acceptPairing(open)
+        }
+    }
+
+    @Volatile private var pairingScreenOpen = false
+
+    /** Starts (or renews) accepting pairing while the pairing screen is open; stops when it closes. */
+    private suspend fun acceptPairing(open: Boolean) {
+        startJob?.join()
+        val node = node ?: return
+        if (open) {
+            runCatching { node.pairingStartQr() }.onFailure { Log.w(TAG, "can't accept pairing", it) }
+        } else if (_state.value.pairing !is PairingState.Comparing && _state.value.pairing !is PairingState.Confirmed) {
+            // Left mid-comparison, the screen comes back to it; otherwise stop accepting.
+            runCatching { node.pairingCancel() }
+        }
     }
 
     /** One at a time, so a quick open and close can't land out of order. */
