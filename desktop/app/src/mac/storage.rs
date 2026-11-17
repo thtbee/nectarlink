@@ -3,11 +3,14 @@
 //! local loopback WebDAV server mounted into Finder with `/sbin/mount_webdav`.
 //!
 //! Zero third-party kernel extensions (no macFUSE required): every Mac with
-//! built-in `mount_webdav` can browse, read, write, rename, and delete files on
-//! paired phones directly in Finder.
+//! built-in WebDAV client (`NetFS`) can browse, read, write, rename, and delete
+//! files on paired phones directly in Finder.
+
+#![allow(unsafe_code)]
 
 use std::{
     collections::{HashMap, HashSet},
+    ffi::{CString, c_char, c_void},
     fs,
     io::{BufRead, BufReader, Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
@@ -108,6 +111,9 @@ struct MountedDevice {
     device_name: String,
     mount_path: PathBuf,
     port: u16,
+    auth_user: String,
+    auth_pass: String,
+    expected_auth: String,
     stop: Arc<AtomicBool>,
     dir_cache: Arc<Mutex<DirCache>>,
     worker: Mutex<Option<JoinHandle<()>>>,
@@ -244,6 +250,8 @@ fn reconcile(desired: &[DesiredMount], disabled: &[(DeviceId, String)]) {
         };
         let Ok(addr) = listener.local_addr() else { continue };
         let port = addr.port();
+        let (auth_user, auth_pass) = generate_mount_credentials();
+        let expected_auth = format_basic_auth(&auth_user, &auth_pass);
         let stop = Arc::new(AtomicBool::new(false));
         let dir_cache = Arc::new(Mutex::new(DirCache::default()));
         let mounted = Arc::new(MountedDevice {
@@ -251,6 +259,9 @@ fn reconcile(desired: &[DesiredMount], disabled: &[(DeviceId, String)]) {
             device_name: name.clone(),
             mount_path: mount_path.clone(),
             port,
+            auth_user,
+            auth_pass,
+            expected_auth,
             stop,
             dir_cache,
             worker: Mutex::new(None),
@@ -323,14 +334,214 @@ pub fn unregister_all() {
     }
 }
 
-fn mount_webdav_args(port: u16, device_name: &str, mount_path: &Path) -> Vec<String> {
-    vec![
-        "-S".into(),
-        "-v".into(),
-        device_name.into(),
-        format!("http://127.0.0.1:{port}/"),
-        mount_path.to_string_lossy().into_owned(),
-    ]
+const K_CF_STRING_ENCODING_UTF8: u32 = 0x0800_0100;
+
+#[link(name = "CoreFoundation", kind = "framework")]
+unsafe extern "C" {
+    static kCFBooleanTrue: *const c_void;
+    static kCFTypeDictionaryKeyCallBacks: c_void;
+    static kCFTypeDictionaryValueCallBacks: c_void;
+    fn CFStringCreateWithCString(alloc: *const c_void, c_str: *const c_char, encoding: u32) -> *const c_void;
+    fn CFURLCreateWithString(
+        allocator: *const c_void,
+        url_string: *const c_void,
+        base_url: *const c_void,
+    ) -> *const c_void;
+    fn CFURLCreateFromFileSystemRepresentation(
+        allocator: *const c_void,
+        buffer: *const u8,
+        buf_len: isize,
+        is_directory: u8,
+    ) -> *const c_void;
+    fn CFDictionaryCreateMutable(
+        allocator: *const c_void,
+        capacity: isize,
+        key_callbacks: *const c_void,
+        value_callbacks: *const c_void,
+    ) -> *mut c_void;
+    fn CFDictionarySetValue(the_dict: *mut c_void, key: *const c_void, value: *const c_void);
+    fn CFRelease(cf: *const c_void);
+}
+
+#[link(name = "NetFS", kind = "framework")]
+unsafe extern "C" {
+    fn NetFSMountURLSync(
+        url: *const c_void,
+        mountpath: *const c_void,
+        user: *const c_void,
+        passwd: *const c_void,
+        open_options: *mut c_void,
+        mount_options: *mut c_void,
+        mountpoints: *mut *const c_void,
+    ) -> i32;
+}
+
+fn cf_str(s: &str) -> Option<*const c_void> {
+    let c = CString::new(s).ok()?;
+    // SAFETY: `c` is a valid NUL-terminated UTF-8 string.
+    let cf = unsafe { CFStringCreateWithCString(std::ptr::null(), c.as_ptr(), K_CF_STRING_ENCODING_UTF8) };
+    (!cf.is_null()).then_some(cf)
+}
+
+fn netfs_mount_webdav(port: u16, mount_path: &Path, user: &str, pass: &str) -> Result<(), i32> {
+    let url_str = cf_str(&format!("http://127.0.0.1:{port}/")).ok_or(-1)?;
+    // SAFETY: `url_str` is a valid CFString.
+    let url = unsafe { CFURLCreateWithString(std::ptr::null(), url_str, std::ptr::null()) };
+    // SAFETY: `url_str` is no longer needed after creating `url`.
+    unsafe { CFRelease(url_str) };
+    if url.is_null() {
+        return Err(-1);
+    }
+
+    let path_bytes = mount_path.as_os_str().as_encoded_bytes();
+    // SAFETY: `path_bytes` is a valid POSIX path slice of length `path_bytes.len()`.
+    let mount_url = unsafe {
+        CFURLCreateFromFileSystemRepresentation(
+            std::ptr::null(),
+            path_bytes.as_ptr(),
+            path_bytes.len() as isize,
+            1,
+        )
+    };
+    if mount_url.is_null() {
+        // SAFETY: `url` was created above.
+        unsafe { CFRelease(url) };
+        return Err(-1);
+    }
+
+    let Some(cf_user) = cf_str(user) else {
+        // SAFETY: both CFURLs were created above.
+        unsafe {
+            CFRelease(mount_url);
+            CFRelease(url);
+        }
+        return Err(-1);
+    };
+    let Some(cf_pass) = cf_str(pass) else {
+        // SAFETY: all three CF objects were created above.
+        unsafe {
+            CFRelease(cf_user);
+            CFRelease(mount_url);
+            CFRelease(url);
+        }
+        return Err(-1);
+    };
+
+    // SAFETY: standard CFType dictionary callbacks.
+    let open_opts = unsafe {
+        CFDictionaryCreateMutable(
+            std::ptr::null(),
+            0,
+            &raw const kCFTypeDictionaryKeyCallBacks,
+            &raw const kCFTypeDictionaryValueCallBacks,
+        )
+    };
+    if !open_opts.is_null()
+        && let Some(k) = cf_str("NoUserPreferences")
+    {
+        // SAFETY: `open_opts`, `k`, and `kCFBooleanTrue` are valid CF objects.
+        unsafe {
+            CFDictionarySetValue(open_opts, k, kCFBooleanTrue);
+            CFRelease(k);
+        }
+    }
+
+    // SAFETY: standard CFType dictionary callbacks.
+    let mount_opts = unsafe {
+        CFDictionaryCreateMutable(
+            std::ptr::null(),
+            0,
+            &raw const kCFTypeDictionaryKeyCallBacks,
+            &raw const kCFTypeDictionaryValueCallBacks,
+        )
+    };
+    if !mount_opts.is_null()
+        && let Some(k) = cf_str("MountAtMountDir")
+    {
+        // SAFETY: `mount_opts`, `k`, and `kCFBooleanTrue` are valid CF objects.
+        unsafe {
+            CFDictionarySetValue(mount_opts, k, kCFBooleanTrue);
+            CFRelease(k);
+        }
+    }
+
+    let mut mountpoints: *const c_void = std::ptr::null();
+    // SAFETY: all CF arguments are valid non-null (or nullable options) for `NetFSMountURLSync`.
+    let rc = unsafe {
+        NetFSMountURLSync(url, mount_url, cf_user, cf_pass, open_opts, mount_opts, &raw mut mountpoints)
+    };
+
+    // SAFETY: release all owned CF objects created in this function.
+    unsafe {
+        if !mountpoints.is_null() {
+            CFRelease(mountpoints);
+        }
+        if !mount_opts.is_null() {
+            CFRelease(mount_opts);
+        }
+        if !open_opts.is_null() {
+            CFRelease(open_opts);
+        }
+        CFRelease(cf_pass);
+        CFRelease(cf_user);
+        CFRelease(mount_url);
+        CFRelease(url);
+    }
+
+    if rc == 0 { Ok(()) } else { Err(rc) }
+}
+
+fn generate_mount_credentials() -> (String, String) {
+    let mut bytes = [0u8; 32];
+    if let Ok(mut f) = fs::File::open("/dev/urandom") {
+        let _ = f.read_exact(&mut bytes);
+    }
+    let user = data_encoding::HEXLOWER.encode(&bytes[..16]);
+    let pass = data_encoding::HEXLOWER.encode(&bytes[16..]);
+    (user, pass)
+}
+
+fn format_basic_auth(user: &str, pass: &str) -> String {
+    let creds = format!("{user}:{pass}");
+    format!("Basic {}", data_encoding::BASE64.encode(creds.as_bytes()))
+}
+
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff: u8 = 0;
+    for (&x, &y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
+}
+
+fn is_allowed_host(host: &str, port: u16) -> bool {
+    let trimmed = host.trim();
+    trimmed == format!("127.0.0.1:{port}") || trimmed.eq_ignore_ascii_case(&format!("localhost:{port}"))
+}
+
+enum AuthHostCheck {
+    Ok,
+    ForbiddenHost,
+    Unauthorized,
+}
+
+fn check_request_auth_and_host(req: &HttpRequest, port: u16, expected_auth: &str) -> AuthHostCheck {
+    let Some(host) = req.headers.get("host") else {
+        return AuthHostCheck::ForbiddenHost;
+    };
+    if !is_allowed_host(host, port) {
+        return AuthHostCheck::ForbiddenHost;
+    }
+    let Some(auth) = req.headers.get("authorization") else {
+        return AuthHostCheck::Unauthorized;
+    };
+    if !constant_time_eq(auth.trim().as_bytes(), expected_auth.as_bytes()) {
+        return AuthHostCheck::Unauthorized;
+    }
+    AuthHostCheck::Ok
 }
 
 fn is_mounted(mount_path: &Path) -> bool {
@@ -376,7 +587,11 @@ fn serve_and_mount(listener: TcpListener, mounted: &Arc<MountedDevice>) {
     if mounted.stop.load(Ordering::Acquire) {
         return;
     }
-    let mount_args = mount_webdav_args(mounted.port, &mounted.device_name, &mounted.mount_path);
+    let port = mounted.port;
+    let mount_path = mounted.mount_path.clone();
+    let user = mounted.auth_user.clone();
+    let pass = mounted.auth_pass.clone();
+    let expected_auth = Arc::new(mounted.expected_auth.clone());
     let m_device = mounted.device;
     let m_stop = Arc::clone(&mounted.stop);
     let m_died = Arc::clone(mounted);
@@ -386,23 +601,12 @@ fn serve_and_mount(listener: TcpListener, mounted: &Arc<MountedDevice>) {
         if m_stop.load(Ordering::Acquire) {
             return;
         }
-        let res = Command::new("/sbin/mount_webdav")
-            .args(&mount_args)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::piped())
-            .output();
-        match res {
-            Ok(out) if out.status.success() => {
+        match netfs_mount_webdav(port, &mount_path, &user, &pass) {
+            Ok(()) => {
                 tracing::info!(device = %m_device.short(), port = m_died.port, "mounted phone storage in Finder via WebDAV");
             }
-            Ok(out) => {
-                let err = String::from_utf8_lossy(&out.stderr);
-                tracing::warn!(device = %m_device.short(), stderr = %err.trim(), "mount_webdav failed; will retry later");
-                *lock(&m_died.died_at) = Some(Instant::now());
-            }
-            Err(e) => {
-                tracing::warn!(device = %m_device.short(), error = %e, "failed to launch mount_webdav");
+            Err(code) => {
+                tracing::warn!(device = %m_device.short(), status = code, "NetFSMountURLSync failed; will retry later");
                 *lock(&m_died.died_at) = Some(Instant::now());
             }
         }
@@ -419,13 +623,21 @@ fn serve_and_mount(listener: TcpListener, mounted: &Arc<MountedDevice>) {
         let dev = mounted.device;
         let cache = Arc::clone(&mounted.dir_cache);
         let stop = Arc::clone(&mounted.stop);
+        let auth = Arc::clone(&expected_auth);
         let _ = std::thread::Builder::new()
             .name(format!("webdav-conn-{}", dev.short()))
-            .spawn(move || handle_connection(stream, dev, &cache, &stop));
+            .spawn(move || handle_connection(stream, dev, &cache, &stop, port, &auth));
     }
 }
 
-fn handle_connection(mut stream: TcpStream, device: DeviceId, cache: &Mutex<DirCache>, stop: &AtomicBool) {
+fn handle_connection(
+    mut stream: TcpStream,
+    device: DeviceId,
+    cache: &Mutex<DirCache>,
+    stop: &AtomicBool,
+    port: u16,
+    expected_auth: &str,
+) {
     let _ = stream.set_read_timeout(Some(CONN_IO_TIMEOUT));
     let _ = stream.set_write_timeout(Some(CONN_IO_TIMEOUT));
 
@@ -436,6 +648,20 @@ fn handle_connection(mut stream: TcpStream, device: DeviceId, cache: &Mutex<DirC
         let Some(req) = read_request(&mut reader, &mut stream) else {
             break;
         };
+        match check_request_auth_and_host(&req, port, expected_auth) {
+            AuthHostCheck::ForbiddenHost => {
+                let _ = send_empty_status(&mut stream, "403 Forbidden");
+                break;
+            }
+            AuthHostCheck::Unauthorized => {
+                let resp = "HTTP/1.1 401 Unauthorized\r\n\
+                            WWW-Authenticate: Basic realm=\"Nectarlink\"\r\n\
+                            Content-Length: 0\r\n\r\n";
+                let _ = stream.write_all(resp.as_bytes());
+                break;
+            }
+            AuthHostCheck::Ok => {}
+        }
         let keep_alive = req.keep_alive;
         if !dispatch_request(&req, &mut stream, device, cache) || !keep_alive {
             break;
@@ -1289,12 +1515,79 @@ mod tests {
     }
 
     #[test]
-    fn builds_mount_webdav_args() {
-        let args = mount_webdav_args(51234, "Pixel 9", Path::new("/Users/alice/Nectarlink/Pixel 9"));
-        assert_eq!(
-            args,
-            vec!["-S", "-v", "Pixel 9", "http://127.0.0.1:51234/", "/Users/alice/Nectarlink/Pixel 9"]
+    fn rejects_missing_or_wrong_credentials_with_401() {
+        let expected = format_basic_auth("user123", "secret456");
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let cache = Mutex::new(DirCache::default());
+        let stop = AtomicBool::new(false);
+
+        let srv = std::thread::spawn(move || {
+            for _ in 0..2 {
+                let (sock, _) = listener.accept().unwrap();
+                handle_connection(sock, DeviceId([1; 32]), &cache, &stop, port, &expected);
+            }
+        });
+
+        for auth_header in ["", "Authorization: Basic dXNlcjp3cm9uZw==\r\n"] {
+            let mut client = TcpStream::connect(("127.0.0.1", port)).unwrap();
+            let req = format!("OPTIONS / HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n{auth_header}\r\n");
+            client.write_all(req.as_bytes()).unwrap();
+            let mut resp = String::new();
+            let _ = client.read_to_string(&mut resp);
+            assert!(resp.starts_with("HTTP/1.1 401 Unauthorized\r\n"), "got: {resp}");
+            assert!(resp.contains("WWW-Authenticate: Basic "), "got: {resp}");
+        }
+        srv.join().unwrap();
+    }
+
+    #[test]
+    fn rejects_wrong_host_with_403() {
+        let expected = format_basic_auth("user123", "secret456");
+        let srv_expected = expected.clone();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let cache = Mutex::new(DirCache::default());
+        let stop = AtomicBool::new(false);
+
+        let srv = std::thread::spawn(move || {
+            let (sock, _) = listener.accept().unwrap();
+            handle_connection(sock, DeviceId([1; 32]), &cache, &stop, port, &srv_expected);
+        });
+
+        let mut client = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        let req =
+            format!("OPTIONS / HTTP/1.1\r\nHost: evil.example:{port}\r\nAuthorization: {expected}\r\n\r\n");
+        client.write_all(req.as_bytes()).unwrap();
+        let mut resp = String::new();
+        let _ = client.read_to_string(&mut resp);
+        assert!(resp.starts_with("HTTP/1.1 403 Forbidden\r\n"), "got: {resp}");
+        srv.join().unwrap();
+    }
+
+    #[test]
+    fn accepts_valid_host_and_basic_auth() {
+        let expected = format_basic_auth("user123", "secret456");
+        let srv_expected = expected.clone();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let cache = Mutex::new(DirCache::default());
+        let stop = AtomicBool::new(false);
+
+        let srv = std::thread::spawn(move || {
+            let (sock, _) = listener.accept().unwrap();
+            handle_connection(sock, DeviceId([1; 32]), &cache, &stop, port, &srv_expected);
+        });
+
+        let mut client = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        let req = format!(
+            "OPTIONS / HTTP/1.1\r\nHost: localhost:{port}\r\nAuthorization: {expected}\r\nConnection: close\r\n\r\n"
         );
+        client.write_all(req.as_bytes()).unwrap();
+        let mut resp = String::new();
+        let _ = client.read_to_string(&mut resp);
+        assert!(resp.starts_with("HTTP/1.1 200 OK\r\n"), "got: {resp}");
+        srv.join().unwrap();
     }
 
     #[test]
