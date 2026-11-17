@@ -422,6 +422,10 @@
     <string name="channel_mic_requests">Solicitudes de micrófono</string>
     <string name="mic_notification_title">Micrófono encendido para %1$s</string>
     <string name="mic_notification_text">Tu PC recibe el sonido del micrófono de este teléfono.</string>
+    <string name="channel_call_audio">Sonido de llamadas en el PC</string>
+    <string name="call_audio_notification_title">Sonido de la llamada en %1$s</string>
+    <string name="call_audio_notification_text">Hablas y escuchas en el PC.</string>
+    <string name="call_audio_back">Volver al teléfono</string>
     <string name="mic_request_title">%1$s quiere el micrófono de este teléfono</string>
     <string name="mic_request_text">Toca para iniciar. Permanecerá activo hasta que tú o el PC lo detengáis.</string>
     <string name="mic_request_start">Iniciar</string>

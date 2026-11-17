@@ -38,6 +38,10 @@ import kotlin.concurrent.thread
  * the app there and streams the display's video back on that connection
  * (see [AppDisplay]); a `K` line asks for a keyframe; closing the
  * connection closes the window.
+ *
+ * A first line of `A` streams the phone's sound instead, `CALL` carries the
+ * call in progress both ways, and `CALLCHECK` says whether this phone lets it
+ * (see [CallAudio]).
  */
 /**
  * Compiles NectarLink ahead of time from its startup profile, as Android does
@@ -371,6 +375,8 @@ object InputServer {
             client.soTimeout = 0
             if (first != null && first.startsWith("V ")) return appWindow(client, first, reader)
             if (first == "A") return streamDeviceAudio(client.getOutputStream(), injector)
+            if (first == "CALL") return CallAudio.serve(client)
+            if (first == "CALLCHECK") return CallAudio.check(client)
             val writer = java.io.OutputStreamWriter(client.getOutputStream(), Charsets.UTF_8)
             controlOut = writer
             blockedReported = false

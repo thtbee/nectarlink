@@ -412,6 +412,10 @@
 <string name="channel_mic_requests">Yêu cầu micrô</string>
 <string name="mic_notification_title">Micrô đang bật cho %1$s</string>
 <string name="mic_notification_text">PC của bạn đang nghe micrô của điện thoại này.</string>
+    <string name="channel_call_audio">Âm thanh cuộc gọi trên PC</string>
+    <string name="call_audio_notification_title">Âm thanh cuộc gọi trên %1$s</string>
+    <string name="call_audio_notification_text">Bạn nói và nghe trên PC.</string>
+    <string name="call_audio_back">Trở lại điện thoại</string>
 <string name="mic_request_title">%1$s muốn dùng micrô của điện thoại này</string>
 <string name="mic_request_text">Chạm để bắt đầu. Micrô sẽ bật cho đến khi bạn hoặc PC tắt.</string>
 <string name="mic_request_start">Bắt đầu</string>

@@ -759,6 +759,12 @@ pub enum Event {
         channels: u8,
         pcm: Vec<u8>,
     },
+    /// A paired PC's microphone for the call in progress (`call.audio`):
+    /// 16 kHz mono 16-bit PCM to put into the call.
+    CallAudioUplink {
+        device: String,
+        pcm: Vec<u8>,
+    },
     /// A paired PC started streaming its screen to this phone (`mirror` video stream config).
     PcMirrorConfig {
         id: String,
@@ -2551,6 +2557,7 @@ impl Event {
             NodeEvent::PcAudioFrame { device, sample_rate, channels, pcm } => {
                 Event::PcAudioFrame { device: device.to_string(), sample_rate, channels, pcm }
             }
+            NodeEvent::CallAudioUplink { device, pcm } => Event::CallAudioUplink { device: device.to_string(), pcm },
         })
     }
 }
@@ -2783,6 +2790,11 @@ pub trait Platform: Send + Sync {
     fn mic_requested(&self, pc_id: String) -> bool;
     /// The PC stopped listening to this phone's microphone: stop recording.
     fn mic_stop_requested(&self, pc_id: String);
+    /// A PC asked for call `call_id`'s sound (`call.audio.start`): get ready
+    /// to carry it, then stream with `call_audio_open`. False refuses.
+    fn call_audio_requested(&self, pc_id: String, call_id: String) -> bool;
+    /// The PC stopped taking the call's sound: give it back to the phone.
+    fn call_audio_stop_requested(&self, pc_id: String);
     /// The PC needs a fresh H.264 keyframe on the webcam stream.
     fn webcam_keyframe_requested(&self, pc_id: String);
     /// A PC asked this phone to capture a photo or scan a document (`mode` is
@@ -3022,6 +3034,16 @@ impl core::Platform for PlatformAdapter {
     }
     fn mic_stop_requested(&self, peer: &DeviceId) {
         self.0.mic_stop_requested(peer.to_string());
+    }
+    fn call_audio_requested(&self, peer: &DeviceId, call_id: &str) -> Result<(), String> {
+        if self.0.call_audio_requested(peer.to_string(), call_id.to_owned()) {
+            Ok(())
+        } else {
+            Err("the phone can't reach the call's sound".into())
+        }
+    }
+    fn call_audio_stop_requested(&self, peer: &DeviceId) {
+        self.0.call_audio_stop_requested(peer.to_string());
     }
     fn webcam_keyframe_requested(&self, peer: &DeviceId) {
         self.0.webcam_keyframe_requested(peer.to_string());
@@ -4390,6 +4412,25 @@ impl NectarlinkNode {
         let id = parse_id(&pc_id)?;
         let node = self.node.clone();
         self.run(async move { Ok(Arc::new(MirrorStream(node.mic_open(id).await?))) }).await
+    }
+
+    /// Opens the call's other party to a paired PC (`call.audio`, `downlink`):
+    /// a config packet (`mirror_audio_config(16000, 1)`) first, then 16-bit PCM.
+    pub async fn call_audio_open(&self, pc_id: String) -> Result<Arc<MirrorStream>> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(Arc::new(MirrorStream(node.call_audio_open(id, false).await?))) }).await
+    }
+
+    /// Gives the call's sound back to the phone and tells the PC.
+    pub async fn call_audio_stop(&self, pc_id: String) -> Result<()> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move {
+            node.call_audio_stop(id).await;
+            Ok(())
+        })
+        .await
     }
 
     /// Stops this phone's microphone stream to a paired PC and tells the PC.

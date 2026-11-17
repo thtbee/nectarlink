@@ -400,6 +400,10 @@
     <string name="channel_mic_requests">麦克风请求</string>
     <string name="mic_notification_title">正在为 %1$s 使用麦克风</string>
     <string name="mic_notification_text">电脑正在接收此手机的麦克风。</string>
+    <string name="channel_call_audio">电脑上的通话声音</string>
+    <string name="call_audio_notification_title">通话声音在 %1$s 上</string>
+    <string name="call_audio_notification_text">你在电脑上通话。</string>
+    <string name="call_audio_back">切回手机</string>
     <string name="mic_request_title">%1$s 想使用此手机的麦克风</string>
     <string name="mic_request_text">轻触即可开始。在你或电脑停止之前会一直开启。</string>
     <string name="mic_request_start">开始</string>

@@ -176,8 +176,18 @@ fn device_friendly_name(device: &IMMDevice) -> Option<String> {
 /// Lists active audio render (output) endpoints on this PC, marking the current
 /// default console output (`is_default: true`) and sorting the default first.
 pub fn output_devices() -> Vec<nectarlink_core::AudioOutputDevice> {
+    endpoints(eRender, eConsole, "Speakers")
+}
+
+/// Lists active microphones on this PC, the default communications one
+/// (what calls record when none is chosen) first and marked `is_default`.
+pub fn input_devices() -> Vec<nectarlink_core::AudioOutputDevice> {
+    endpoints(eCapture, windows::Win32::Media::Audio::eCommunications, "Microphone")
+}
+
+fn endpoints(flow: EDataFlow, role: ERole, unnamed: &str) -> Vec<nectarlink_core::AudioOutputDevice> {
     let _com = ComGuard::new();
-    // SAFETY: Enumerates active render endpoints via `IMMDeviceEnumerator`.
+    // SAFETY: Enumerates active endpoints via `IMMDeviceEnumerator`.
     unsafe {
         let Ok(enumerator) =
             CoCreateInstance::<_, IMMDeviceEnumerator>(&MMDeviceEnumerator, None, CLSCTX_ALL)
@@ -185,8 +195,8 @@ pub fn output_devices() -> Vec<nectarlink_core::AudioOutputDevice> {
             return Vec::new();
         };
         let default_id =
-            enumerator.GetDefaultAudioEndpoint(eRender, eConsole).ok().and_then(|d| device_id_string(&d));
-        let Ok(collection) = enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE) else {
+            enumerator.GetDefaultAudioEndpoint(flow, role).ok().and_then(|d| device_id_string(&d));
+        let Ok(collection) = enumerator.EnumAudioEndpoints(flow, DEVICE_STATE_ACTIVE) else {
             return Vec::new();
         };
         let count = collection.GetCount().unwrap_or(0);
@@ -194,7 +204,7 @@ pub fn output_devices() -> Vec<nectarlink_core::AudioOutputDevice> {
         for i in 0..count {
             let Ok(dev) = collection.Item(i) else { continue };
             let Some(id) = device_id_string(&dev) else { continue };
-            let name = device_friendly_name(&dev).unwrap_or_else(|| "Speakers".into());
+            let name = device_friendly_name(&dev).unwrap_or_else(|| unnamed.into());
             let is_default = default_id.as_deref() == Some(id.as_str());
             out.push(nectarlink_core::AudioOutputDevice { id, name, is_default });
         }

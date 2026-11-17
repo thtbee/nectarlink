@@ -68,6 +68,14 @@ pub mod qobject {
         #[qproperty(bool, hfp_connected, cxx_name = "hfpConnected")]
         /// Human-readable Bluetooth HFP status or pairing guidance.
         #[qproperty(QString, hfp_detail, cxx_name = "hfpDetail")]
+        /// The call in progress can sound on this PC (`call.audio`).
+        #[qproperty(bool, call_audio_available, cxx_name = "callAudioAvailable")]
+        /// The call sounds on this PC (or is moving here).
+        #[qproperty(bool, call_audio, cxx_name = "callAudio")]
+        /// The PC's microphones, as JSON `[{ id, name }]` (after `refreshCallMics`).
+        #[qproperty(QString, call_mics, cxx_name = "callMics")]
+        /// The microphone calls record on this PC (an id from `callMics`), or `""`.
+        #[qproperty(QString, call_mic, cxx_name = "callMic")]
         type PhoneCall = super::PhoneCallRust;
     }
 
@@ -129,6 +137,18 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "openBluetoothSettings"]
         fn open_bluetooth_settings(self: Pin<&mut PhoneCall>);
+        /// Moves the call's sound to this PC (true) or back to the phone.
+        #[qinvokable]
+        #[cxx_name = "moveCallAudio"]
+        fn move_call_audio(self: &PhoneCall, here: bool);
+        /// Lists the PC's microphones again (into `callMics` and `callMic`).
+        #[qinvokable]
+        #[cxx_name = "refreshCallMics"]
+        fn refresh_call_mics(self: Pin<&mut PhoneCall>);
+        /// Calls record this microphone (an id from `callMics`) from now on.
+        #[qinvokable]
+        #[cxx_name = "chooseCallMic"]
+        fn choose_call_mic(self: Pin<&mut PhoneCall>, id: &QString);
     }
 }
 
@@ -159,6 +179,10 @@ pub struct PhoneCallRust {
     hfp_available: bool,
     hfp_connected: bool,
     hfp_detail: QString,
+    call_audio_available: bool,
+    call_audio: bool,
+    call_mics: QString,
+    call_mic: QString,
     /// The call's ID on the phone, for its commands.
     call: Option<(DeviceId, String)>,
     /// What the Calls page last showed, to skip JSON updates that changed nothing.
@@ -172,6 +196,7 @@ impl cxx_qt::Initialize for qobject::PhoneCall {
         self.as_mut().set_contacts_status(QString::from("idle"));
         self.as_mut().set_contacts(QString::from("[]"));
         self.as_mut().set_sims(QString::from("[]"));
+        self.as_mut().set_call_mics(QString::from("[]"));
         super::subscribe(self.qt_thread(), Changes::CALLS | Changes::CAPABILITIES, Self::refresh_state);
     }
 }
@@ -277,6 +302,12 @@ impl qobject::PhoneCall {
         self.as_mut().set_hfp_connected(hfp.connected);
         self.as_mut().set_hfp_detail(QString::from(&hfp.detail));
 
+        let here = call_device.is_some_and(|d| crate::call_audio::phase().device() == Some(d));
+        self.as_mut().set_call_audio(here);
+        self.as_mut().set_call_audio_available(
+            !is_ringing && (here || call_device.is_some_and(crate::call_audio::available)),
+        );
+
         let view = calls::view();
         if self.rust().last_view.as_ref() != Some(&view) {
             let last = self.rust().last_view.clone();
@@ -337,5 +368,27 @@ impl qobject::PhoneCall {
 
     pub fn volume(&self, up: bool) {
         self.send(CallCommand::Volume(up));
+    }
+
+    pub fn refresh_call_mics(mut self: Pin<&mut Self>) {
+        let (devices, current) = crate::call_audio::mics();
+        let list: Vec<_> =
+            devices.iter().map(|d| serde_json::json!({ "id": d.id, "name": d.name })).collect();
+        self.as_mut().set_call_mics(QString::from(&serde_json::Value::from(list).to_string()));
+        self.as_mut().set_call_mic(QString::from(&current.unwrap_or_default()));
+    }
+
+    pub fn choose_call_mic(self: Pin<&mut Self>, id: &QString) {
+        crate::call_audio::set_mic(String::from(id));
+        self.refresh_call_mics();
+    }
+
+    pub fn move_call_audio(&self, here: bool) {
+        let Some((device, _)) = self.rust().call.clone() else { return };
+        if here {
+            crate::call_audio::start(device);
+        } else {
+            crate::call_audio::stop(device);
+        }
     }
 }

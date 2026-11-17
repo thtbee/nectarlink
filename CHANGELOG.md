@@ -18,6 +18,16 @@ change things that need a step from you, and its notes say so.
   [#412](https://github.com/thtbee/nectarlink/pull/412), [#413](https://github.com/thtbee/nectarlink/pull/413),
   [#414](https://github.com/thtbee/nectarlink/pull/414), [#417](https://github.com/thtbee/nectarlink/pull/417),
   [#419](https://github.com/thtbee/nectarlink/pull/419)).
+- **Talk through your PC.** During a call, **On PC** on the call card or in Nectar Island moves the
+  call's sound to a Windows PC: you hear the other person from its speakers or headphones
+  and talk into its microphone, over NectarLink's own connection, without Bluetooth. The
+  phone shows a notification while the sound is on the PC, with **Back to phone** to move
+  it back. A call answered or dialed from the PC moves there on its own. Settings › Camera &
+  Audio › Microphone for calls picks the PC's microphone. Needs Elevated on Android 13 or
+  newer, on a phone whose maker lets apps reach the call's sound (a Pixel 7 does; the PC
+  only shows On PC where the phone can). Thanks to [@rus152](https://github.com/rus152)
+  ([#418](https://github.com/thtbee/nectarlink/pull/418)); asked for in
+  [#133](https://github.com/thtbee/nectarlink/issues/133).
 - **Hide NectarLink from recent apps.** A switch in the phone's Settings › Background keeps
   it off the recent apps screen, so clearing that screen can't close it by accident on
   phones where that stops apps. Thanks to [@FlootingDream](https://github.com/FlootingDream)

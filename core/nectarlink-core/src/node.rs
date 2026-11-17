@@ -214,6 +214,8 @@ pub(crate) struct Shared {
     pub(crate) webcam_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
     /// Stop signals for phone microphone streams arriving here, by phone.
     pub(crate) mic_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
+    /// Stop signals for a call's sound arriving here, by peer.
+    pub(crate) call_audio_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
     /// Per-peer rate limiters and prompt state for remote input.
     pub(crate) remote: Mutex<crate::remote::RemoteState>,
     /// Per-peer prompt state and open folders for the storage service.
@@ -1947,6 +1949,7 @@ impl Node {
             watch_offers: Mutex::new(HashMap::new()),
             webcam_stops: Mutex::new(HashMap::new()),
             mic_stops: Mutex::new(HashMap::new()),
+            call_audio_stops: Mutex::new(HashMap::new()),
             remote: Mutex::new(Default::default()),
             storage: Mutex::new(Default::default()),
             clipboard_history,
@@ -2476,6 +2479,17 @@ impl Node {
                     for s in sessions_to_stop {
                         let _ = crate::mirror::stop(&session, s).await;
                     }
+                });
+            }
+        }
+        // Calls or their sound turned off: a call sounding on the other device comes back.
+        if (toggle == crate::call_audio::TOGGLE || toggle == crate::calls::TOGGLE) && !enabled {
+            self.shared.stop_call_audio(&peer);
+            let platform = self.shared.platform.clone();
+            drop(self.shared.runtime.spawn_blocking(move || platform.call_audio_stop_requested(&peer)));
+            if let Some(session) = self.shared.session(&peer) {
+                self.shared.runtime.spawn(async move {
+                    let _ = crate::call_audio::stop(&session).await;
                 });
             }
         }
@@ -3308,6 +3322,31 @@ impl Node {
     pub async fn mic_open(&self, peer: DeviceId) -> Result<crate::MirrorStream> {
         let session = self.connected(&peer)?;
         crate::mic::open(&self.shared, &session).await
+    }
+
+    // ---- A call's sound on a PC (docs/protocol/calls.md §2.6) ----
+
+    /// Asks `phone` to carry call `call_id`'s sound to this PC. The other
+    /// party then arrives through [`Platform::call_audio_sink`](crate::Platform::call_audio_sink);
+    /// send this PC's microphone with [`Node::call_audio_open`].
+    pub async fn call_audio_start(&self, phone: DeviceId, call_id: String) -> Result<()> {
+        let session = self.connected(&phone)?;
+        crate::call_audio::start(&self.shared, &session, call_id).await
+    }
+
+    /// Stops a call's sound with `peer` (either side) and tells `peer`.
+    pub async fn call_audio_stop(&self, peer: DeviceId) {
+        self.shared.stop_call_audio(&peer);
+        if let Ok(session) = self.connected(&peer) {
+            let _ = crate::call_audio::stop(&session).await;
+        }
+    }
+
+    /// Opens this device's side of a call's sound with `peer`: the PC's
+    /// microphone (`uplink`) or the phone's other party (`downlink`).
+    pub async fn call_audio_open(&self, peer: DeviceId, uplink: bool) -> Result<crate::MirrorStream> {
+        let session = self.connected(&peer)?;
+        crate::call_audio::open(&self.shared, &session, uplink).await
     }
 
     // ---- Continuity Camera (docs/protocol/v0.md §Continuity Camera) ----

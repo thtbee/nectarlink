@@ -20,6 +20,7 @@ import app.nectarlink.android.files.TransferNotifications
 import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.notifications.PcNotificationPoster
+import app.nectarlink.android.calls.CallAudioService
 import app.nectarlink.android.calls.CallCompanion
 import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.companion.PcCompanion
@@ -855,6 +856,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 event.pcm,
                 event.device,
             )
+            is Event.CallAudioUplink -> CallAudioService.uplink(event.device, event.pcm)
             is Event.PcMirrorConfig -> {
                 _pcMirrorConfig.value = PcMirrorConfigState(
                     pcId = event.id,
@@ -1189,6 +1191,22 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     /** Stops this phone's microphone stream to [pcId] and tells the PC. */
     fun micStop(pcId: String) {
         command { it.micStop(pcId) }
+    }
+
+    /** Opens the call's other party to [pcId] (`call.audio`); null if the link is gone. */
+    suspend fun callAudioOpen(pcId: String): MirrorStream? {
+        val node = node ?: return null
+        return try {
+            node.callAudioOpen(pcId)
+        } catch (e: NectarlinkException) {
+            Log.w(TAG, "can't send the call's sound", e)
+            null
+        }
+    }
+
+    /** Gives the call's sound back to this phone and tells [pcId]. */
+    fun callAudioStop(pcId: String) {
+        command { it.callAudioStop(pcId) }
     }
 
     /** The PC's request for the microphone is answered or withdrawn: take it off Home and the shade. */
@@ -1981,6 +1999,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneCalls.canFollow(context)) listOf("call.state") else emptyList()) +
             (if (PhoneCalls.canControl(context)) listOf("call.control") else emptyList()) +
             (if (PhoneCalls.canControl(context) && CallCompanion.allowed(context)) listOf("call.incall") else emptyList()) +
+            // A call's sound on the PC: only where the Elevated helper found it can reach it
+            // (Android 13+ and the phone's audio HAL), so PCs show no button that can't work.
+            (if (PhoneCalls.canControl(context) && Elevated.running && Elevated.callAudioSupported) {
+                listOf("call.audio")
+            } else {
+                emptyList()
+            }) +
             (if (PhoneCalls.canReadLog(context)) listOf("call.log") else emptyList()) +
             (if (PhoneCalls.canDial(context)) listOf("call.dial") else emptyList()) +
             (if (PhoneCalls.canListSims(context)) listOf("call.sims") else emptyList()) +

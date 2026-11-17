@@ -242,6 +242,12 @@ internal class PhonePlatform(
         app.nectarlink.android.mic.MicService.stop(context, pcId)
     }
 
+    override fun callAudioRequested(pcId: String, callId: String): Boolean =
+        app.nectarlink.android.calls.CallAudioService.start(context, pcId)
+
+    override fun callAudioStopRequested(pcId: String) =
+        app.nectarlink.android.calls.CallAudioService.stop(pcId)
+
     override fun webcamStopRequested(pcId: String) {
         WebcamRequests.dismiss(context, pcId)
         WebcamService.stopForPc(context, pcId)

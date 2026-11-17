@@ -647,6 +647,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
             && crate::actions::handle(shared, session, &env).await? => {}
         t if t.starts_with("clip.") && crate::clipboard::handle(shared, session, &env).await? => {}
         t if t.starts_with("photos.") && crate::photos::handle(shared, session, &env).await? => {}
+        t if t.starts_with("call.audio.") && crate::call_audio::handle(shared, session, &env).await? => {}
         t if t.starts_with("call.") && crate::calls::handle(shared, session, &env).await? => {}
         t if t.starts_with("contacts.") && crate::contacts::handle(shared, session, &env).await? => {}
         t if t.starts_with("sms.") && crate::sms::handle(shared, session, &env).await? => {}

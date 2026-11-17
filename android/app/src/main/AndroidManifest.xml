@@ -406,6 +406,12 @@
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
 
+        <!-- A call's sound carried to a PC (docs/protocol/calls.md §2.6). -->
+        <service
+            android:name=".calls.CallAudioService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
         <!-- Companion Device Manager service: woken by Android when a paired PC's
              BLE proximity beacon appears nearby. -->
         <service

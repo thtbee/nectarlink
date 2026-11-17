@@ -231,6 +231,10 @@ fn changed(device: DeviceId, call: &CallState) {
         _ => {}
     }
     if call.state == "active" {
+        let mut call = call.clone();
+        let kept = in_progress(|c| c.get(&device).filter(|p| p.id == call.id).map(|p| p.since));
+        call.since = local_since(kept, call.since, now_ms());
+        let call = &call;
         match in_progress(|c| c.insert(device, call.clone())) {
             Some(previous) if previous.id == call.id => {}
             previous => {
@@ -241,6 +245,22 @@ fn changed(device: DeviceId, call: &CallState) {
                     show_in_progress(device, call);
                 }
             }
+        }
+        // Answered or dialed here: talk here too, where the phone allows it.
+        let answered_here = {
+            let mut answered = ANSWERED_HERE.lock().unwrap_or_else(|e| e.into_inner());
+            answered.take_if(|(d, id)| *d == device && *id == call.id).is_some()
+        };
+        // A new outgoing call soon after this PC dialed (its ID isn't known before).
+        let dialed_here = kept.is_none()
+            && !call.incoming
+            && DIALED_HERE
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .take_if(|(d, at)| *d == device && at.elapsed() < DIALED_HERE_FOR)
+                .is_some();
+        if answered_here || dialed_here {
+            crate::call_audio::start(device);
         }
         core_host::host().hub.changed(Changes::CALLS);
     } else if call.state == "ended" || in_progress(|c| c.get(&device).is_some_and(|c| c.id == call.id)) {
@@ -265,8 +285,30 @@ fn changed(device: DeviceId, call: &CallState) {
     }
 }
 
+/// How far apart the phone's clock and this PC's may be for a call that has
+/// just been answered to still count as just answered.
+const JUST_ANSWERED_MS: i64 = 30_000;
+
+/// When a call was answered, on this PC's clock. The phone says when by its
+/// own clock, which can be seconds off this PC's, so the call's clock would
+/// stand at 0:00 and then lag (or jump ahead). A call answered just now starts
+/// now; one already going when this PC heard of it keeps the phone's time; the
+/// same call again keeps what was chosen (`kept`).
+fn local_since(kept: Option<Option<i64>>, phone: Option<i64>, now: i64) -> Option<i64> {
+    match (kept, phone) {
+        (Some(kept), _) => kept,
+        (None, Some(since)) if (now - since).abs() < JUST_ANSWERED_MS => Some(now),
+        (None, phone) => phone,
+    }
+}
+
+fn now_ms() -> i64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis() as i64)
+}
+
 /// The call in progress is over (or out of reach).
 fn finish(device: DeviceId) {
+    crate::call_audio::end(device);
     notified(|n| n.remove(&device));
     if let Some(call) = in_progress(|c| c.remove(&device)) {
         toast::remove(TOAST_GROUP, &format!("{ACTIVE}{}", key(device, &call.id)));
@@ -363,11 +405,32 @@ fn show_in_progress(device: DeviceId, call: &CallState) {
 }
 
 /// Asks a phone to do something with its call; problems are shown.
+/// The call answered from this PC, until the phone says it's active: its
+/// sound then moves here on its own (`call_audio`).
+static ANSWERED_HERE: Mutex<Option<(DeviceId, String)>> = Mutex::new(None);
+
+/// When this PC last asked a phone to dial: the next outgoing call there
+/// within [`DIALED_HERE_FOR`] has its sound moved here on its own.
+static DIALED_HERE: Mutex<Option<(DeviceId, std::time::Instant)>> = Mutex::new(None);
+
+/// How long a dial from here waits for its call (the phone may open its
+/// dialer for a tap first).
+const DIALED_HERE_FOR: std::time::Duration = std::time::Duration::from_secs(60);
+
+fn note_answered_here(device: DeviceId, call: &str, command: CallCommand) {
+    if command == CallCommand::Answer {
+        *ANSWERED_HERE.lock().unwrap_or_else(|e| e.into_inner()) = Some((device, call.to_owned()));
+    }
+}
+
 pub fn command(device: DeviceId, call: String, command: CallCommand) {
+    note_answered_here(device, &call, command);
     let Some(node) = core_host::node() else { return };
     core_host::spawn(async move {
         match node.call_command(device, call, command).await {
             Ok(()) => {}
+            // Hanging up a call that just ended did what was asked.
+            Err(Error::NotFound) if command == CallCommand::Decline => {}
             Err(Error::NotFound) => show_message(tr!("Calls", "That call is over.")),
             Err(e) => show_message(describe(&e)),
         }
@@ -425,6 +488,7 @@ pub fn on_toast(key: &str, action: &str) {
         ACTION_EARPIECE => CallCommand::Speaker(false),
         _ => return,
     };
+    note_answered_here(device, call, command);
     if in_call {
         // A button took the notification away: it comes back (quietly) once
         // the phone has done it, with the new state, unless the call ended.
@@ -440,6 +504,8 @@ pub fn on_toast(key: &str, action: &str) {
                         show_in_progress(device, &active);
                     }
                 }
+                // Hanging up a call that just ended did what was asked.
+                Err(Error::NotFound) if command == CallCommand::Decline => {}
                 Err(Error::NotFound) => show_message(tr!("Calls", "That call is over.")),
                 Err(e) => show_message(describe(&e)),
             }
@@ -457,6 +523,8 @@ pub fn on_toast(key: &str, action: &str) {
                 }
             }
             Ok(()) => {}
+            // Hanging up a call that just ended did what was asked.
+            Err(Error::NotFound) if command == CallCommand::Decline => {}
             Err(Error::NotFound) => show_message(tr!("Calls", "That call is over.")),
             Err(e) => show_message(describe(&e)),
         }
@@ -955,10 +1023,13 @@ pub fn dial(device: DeviceId, number: String) {
     page_changed();
     let Some(node) = core_host::node() else { return };
     core_host::spawn(async move {
+        // Before asking: the phone may report the call before it answers this.
+        *DIALED_HERE.lock().unwrap_or_else(|e| e.into_inner()) = Some((device, std::time::Instant::now()));
         let result = node.call_dial(device, number, sim).await;
         page_state(|s| s.dialing = false);
         page_changed();
         if let Err(e) = result {
+            DIALED_HERE.lock().unwrap_or_else(|e| e.into_inner()).take_if(|(d, _)| *d == device);
             show_message(dial_problem(&e));
         }
     });
@@ -1094,6 +1165,18 @@ pub fn open_bluetooth_settings() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_calls_clock_starts_on_this_pcs_time() {
+        let now = 1_000_000;
+        // Just answered, by a phone whose clock runs 4 s ahead: it starts now.
+        assert_eq!(local_since(None, Some(now + 4_000), now), Some(now));
+        // Already going when this PC heard of it: the phone's time.
+        assert_eq!(local_since(None, Some(now - 600_000), now), Some(now - 600_000));
+        // The same call again keeps what was chosen, even when the phone says otherwise.
+        assert_eq!(local_since(Some(Some(now - 5_000)), Some(now + 4_000), now), Some(now - 5_000));
+        assert_eq!(local_since(None, None, now), None);
+    }
 
     fn call(name: Option<&str>, number: Option<&str>) -> CallState {
         CallState {

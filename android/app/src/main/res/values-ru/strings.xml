@@ -408,6 +408,10 @@
     <string name="channel_mic_requests">Запросы микрофона</string>
     <string name="mic_notification_title">Микрофон включён для %1$s</string>
     <string name="mic_notification_text">ПК слышит микрофон этого телефона.</string>
+    <string name="channel_call_audio">Звук звонков на ПК</string>
+    <string name="call_audio_notification_title">Звук звонка на %1$s</string>
+    <string name="call_audio_notification_text">Говорите и слушайте через ПК.</string>
+    <string name="call_audio_back">Вернуть на телефон</string>
     <string name="mic_request_title">%1$s хочет использовать микрофон этого телефона</string>
     <string name="mic_request_text">Нажмите, чтобы начать. Он работает, пока вы или ПК его не остановите.</string>
     <string name="mic_request_start">Начать</string>

@@ -1150,6 +1150,7 @@ impl qobject::Preferences {
             webcam_camera: crate::webcam::camera().to_owned(),
             phone_mic_output: crate::phone_mic::chosen_output(),
             phone_mic_gain: crate::phone_mic::gain(),
+            call_mic: crate::call_audio::chosen_mic(),
             timeline_retention_days: p.timeline_retention_days.max(0) as u32,
             continuity_photo_hotkey: String::from(&p.continuity_photo_hotkey),
             continuity_scan_hotkey: String::from(&p.continuity_scan_hotkey),

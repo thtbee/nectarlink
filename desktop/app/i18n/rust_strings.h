@@ -48,8 +48,10 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Battery", "Your phone"), // desktop/app/src/battery.rs
     QT_TRANSLATE_NOOP("Calls", "Calling %1"), // desktop/app/src/calls.rs
     QT_TRANSLATE_NOOP("Calls", "Missed call from %1"), // desktop/app/src/calls.rs
+    QT_TRANSLATE_NOOP("Calls", "No microphone on this PC to talk with."), // desktop/app/src/call_audio.rs
     QT_TRANSLATE_NOOP("Calls", "On a call with %1"), // desktop/app/src/calls.rs
-    QT_TRANSLATE_NOOP("Calls", "That call is over."), // desktop/app/src/calls.rs
+    QT_TRANSLATE_NOOP("Calls", "That call is over."), // desktop/app/src/call_audio.rs
+    QT_TRANSLATE_NOOP("Calls", "This phone doesn't let NectarLink reach its calls' sound."), // desktop/app/src/call_audio.rs
     QT_TRANSLATE_NOOP("Calls", "Unknown caller"), // desktop/app/src/bridge/calls.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied from %1"), // desktop/app/src/clipboard.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied from %1."), // desktop/app/src/clipboard.rs
