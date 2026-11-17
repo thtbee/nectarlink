@@ -72,6 +72,8 @@ class PcMedia(
         val subtitle: String,
         val playing: Boolean,
         val artwork: Bitmap?,
+        val canPrevious: Boolean = true,
+        val canNext: Boolean = true,
     )
 
     @Volatile
@@ -227,6 +229,9 @@ class PcMedia(
             subtitle = subtitleLine,
             playing = player.playing,
             artwork = player.artKey?.let { art["$pc/$it"]?.first },
+            // An empty list is a PC that doesn't say: offer both, as before.
+            canPrevious = player.actions.isEmpty() || MediaAction.PREVIOUS in player.actions,
+            canNext = player.actions.isEmpty() || MediaAction.NEXT in player.actions,
         )
     }
 

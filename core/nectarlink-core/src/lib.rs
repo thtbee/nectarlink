@@ -51,6 +51,8 @@ pub mod webcam;
 pub use actions::{PC_WAKE, PowerAction};
 /// Offered by PCs that can hibernate right now.
 pub const PC_HIBERNATE: &str = nectarlink_protocol::messages::pc_power::HIBERNATE;
+/// Offered by PCs a phone may shut down.
+pub const PC_SHUTDOWN: &str = nectarlink_protocol::messages::pc_power::SHUTDOWN;
 pub use calls::CallCommand;
 pub use clip_kind::{
     ClipKind, ClipSuggestion, classify_clip, maps_web_url, percent_encode, tracking_search_url,
@@ -121,8 +123,8 @@ pub use nectarlink_protocol::{
         mirror::{
             AUDIO as MIRROR_AUDIO, AUDIO_PLAYBACK as MIRROR_AUDIO_PLAYBACK, AV1 as MIRROR_AV1,
             CAPTURE as MIRROR_CAPTURE, H264 as MIRROR_H264, H265 as MIRROR_H265, HEVC as MIRROR_HEVC,
-            INPUT as MIRROR_INPUT, LISTEN as MIRROR_LISTEN, MAX_TEXT_BYTES as MIRROR_MAX_TEXT_BYTES,
-            NOTICE_INPUT_BLOCKED as MIRROR_NOTICE_INPUT_BLOCKED,
+            INPUT as MIRROR_INPUT, LISTEN as MIRROR_LISTEN, LISTEN_ASK as MIRROR_LISTEN_ASK,
+            MAX_TEXT_BYTES as MIRROR_MAX_TEXT_BYTES, NOTICE_INPUT_BLOCKED as MIRROR_NOTICE_INPUT_BLOCKED,
             NOTICE_PC_CAPTURE_FAILED as MIRROR_NOTICE_PC_CAPTURE_FAILED, PCM as MIRROR_PCM,
             SCREEN as MIRROR_SCREEN, SOUND as MIRROR_SOUND, VIEW as MIRROR_VIEW,
             VIRTUAL_DISPLAY as MIRROR_VIRTUAL_DISPLAY,

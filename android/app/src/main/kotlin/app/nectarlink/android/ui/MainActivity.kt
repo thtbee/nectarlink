@@ -868,6 +868,8 @@ private fun App(
                                     onRefresh = core::refresh,
                                     onPower = core::pcPower,
                                     onHibernate = core::pcHibernate,
+                                    onShutdown = core::pcShutdown,
+                                    onPhoneSoundOnPc = core::askPcForPhoneSound,
                                     onWake = core::wake,
                                     onSetReconnect = core::setReconnect,
                                     onRemote = { id ->

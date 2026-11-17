@@ -74,6 +74,7 @@
     <string name="media_pause">Pausar</string>
     <string name="media_next">Siguiente</string>
     <string name="media_previous">Anterior</string>
+    <string name="media_seek">Posición en la pista</string>
     <string name="action_send_files">Enviar archivos</string>
     <string name="action_send_folder">Enviar una carpeta</string>
     <string name="input_service_label">NectarLink: control desde tu PC</string>
@@ -296,6 +297,11 @@
     <string name="action_lock_pc">Bloquear PC</string>
     <string name="action_sleep_pc">Suspender</string>
     <string name="action_hibernate_pc">Hibernar</string>
+    <string name="action_phone_sound_on_pc">Reproducir el sonido del teléfono en el PC</string>
+    <string name="phone_sound_on_pc_off">%1$s no reproduce el sonido de este teléfono. En el PC, activa Duplicación de pantalla para este teléfono en Ajustes › Dispositivos.</string>
+    <string name="action_shutdown_pc">Apagar</string>
+    <string name="shutdown_pc_title">¿Apagar %1$s?</string>
+    <string name="shutdown_pc_text">Las apps abiertas se cierran. Una con trabajo sin guardar todavía puede detenerlo.</string>
     <string name="action_wake_pc">Activar</string>
     <string name="action_disconnect">Desconectar</string>
     <string name="action_stop_reconnecting">Dejar de reconectar</string>
@@ -307,6 +313,7 @@
     <string name="pc_locked">%1$s está bloqueado.</string>
     <string name="pc_sleeping">%1$s va a suspenderse.</string>
     <string name="pc_hibernating">%1$s va a hibernar.</string>
+    <string name="pc_shutting_down">%1$s se está apagando.</string>
     <string name="pc_actions_off">El bloqueo y la suspensión están desactivados para este teléfono en %1$s.</string>
     <string name="channel_links">Enlaces desde tu PC</string>
     <!-- Play on phone: what a PC plays, streamed to the phone. -->

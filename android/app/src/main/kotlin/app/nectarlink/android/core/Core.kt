@@ -303,11 +303,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val accent = AccentMonitor(this.context) { seed ->
         node?.let { scope.launch { runCatching { it.updateAccent(seed) } } }
     }
-    private val network = NetworkMonitor(this.context) {
+    private val network: NetworkMonitor = NetworkMonitor(this.context) {
         // Network callbacks come in bursts; tell the core once they settle.
         networkChange?.cancel()
         networkChange = scope.launch {
             delay(150)
+            // No Wi-Fi, Ethernet or VPN: the core stops dialing PCs until there is (#397).
+            node?.setLocalNetwork(network.hasLocalNetwork())
             if (lastSignal.wifiBars != null || _state.value.awayMode) {
                 node?.networkChanged()
             }
@@ -444,6 +446,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 node = started
                 isRunning = true
             }
+            runCatching { started.setLocalNetwork(network.hasLocalNetwork()) }
             val devices = runCatching { started.pairedDevices() }.getOrDefault(emptyList())
             val pcToggles = perPcToggles(started, devices.map { it.id })
             val clipHistEnabled = runCatching { started.clipboardHistoryEnabled() }.getOrDefault(true)
@@ -2163,6 +2166,38 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             val message = try {
                 node.pcPower(id, sleep)
                 context.getString(if (sleep) R.string.pc_sleeping else R.string.pc_locked, name)
+            } catch (e: NectarlinkException) {
+                if (e is NectarlinkException.Denied) context.getString(R.string.pc_actions_off, name) else describe(e)
+            }
+            _messages.tryEmit(message)
+        }
+    }
+
+    /** Asks a PC to play this phone's sound (#398); says if it can't. */
+    fun askPcForPhoneSound(id: String) {
+        scope.launch {
+            startJob?.join()
+            val node = node ?: return@launch
+            val name = _state.value.nameOf(id).orEmpty()
+            try {
+                node.askPcForPhoneSound(id)
+            } catch (e: NectarlinkException) {
+                _messages.tryEmit(
+                    if (e is NectarlinkException.Denied) context.getString(R.string.phone_sound_on_pc_off, name) else describe(e),
+                )
+            }
+        }
+    }
+
+    /** Shuts a PC down (D372); says how it went. */
+    fun pcShutdown(id: String) {
+        scope.launch {
+            startJob?.join()
+            val node = node ?: return@launch
+            val name = _state.value.nameOf(id).orEmpty()
+            val message = try {
+                node.pcShutdown(id)
+                context.getString(R.string.pc_shutting_down, name)
             } catch (e: NectarlinkException) {
                 if (e is NectarlinkException.Denied) context.getString(R.string.pc_actions_off, name) else describe(e)
             }

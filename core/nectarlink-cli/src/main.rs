@@ -607,6 +607,7 @@ enum PowerArg {
     Lock,
     Sleep,
     Hibernate,
+    Shutdown,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -4070,6 +4071,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 PowerArg::Lock => PowerAction::Lock,
                 PowerArg::Sleep => PowerAction::Sleep,
                 PowerArg::Hibernate => PowerAction::Hibernate,
+                PowerArg::Shutdown => PowerAction::Shutdown,
             };
             node.pc_power(id, action).await.context("the PC didn't do it")?;
             println!("Done.");

@@ -392,6 +392,17 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
     let peer = session.peer;
     let platform = shared.platform.clone();
     match env.t.as_str() {
+        // A phone asks this PC to play its sound (#398): the PC asks back
+        // with mirror.start, so the phone's own consent still applies.
+        types::MIRROR_LISTEN_ASK if is_local_desktop(shared) => {
+            let reply = if shared.we_offer(mirror::LISTEN_ASK) && shared.toggle_on(&peer, TOGGLE) {
+                tokio::task::spawn_blocking(move || platform.phone_sound_asked(&peer));
+                Envelope::empty(types::OK)
+            } else {
+                Envelope::error(ErrorCode::Denied, "this PC doesn't play this phone's sound")
+            };
+            session.send(reply.reply_to(env.id)).await?;
+        }
         types::MIRROR_START => {
             let options: MirrorStart = env.body()?;
             let desktop = is_local_desktop(shared);

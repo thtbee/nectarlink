@@ -4052,6 +4052,12 @@ impl NectarlinkNode {
         self.node.away_mode()
     }
 
+    /// Whether the phone has Wi-Fi, Ethernet or a VPN (#397): without, and
+    /// with mobile data off, PCs aren't dialed until one comes back.
+    pub fn set_local_network(&self, available: bool) {
+        self.node.set_local_network(available);
+    }
+
     /// Enables or disables connecting over mobile data / non-LAN paths at runtime.
     pub fn set_away_mode(&self, enabled: bool) {
         self.node.set_away_mode(enabled);
@@ -4125,6 +4131,20 @@ impl NectarlinkNode {
         let node = self.node.clone();
         let action = if sleep { core::PowerAction::Sleep } else { core::PowerAction::Lock };
         self.run(async move { Ok(node.pc_power(id, action).await?) }).await
+    }
+
+    /// Asks a paired PC to play this phone's sound (#398).
+    pub async fn ask_pc_for_phone_sound(&self, id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.ask_pc_for_phone_sound(id).await?) }).await
+    }
+
+    /// Shuts a paired PC down (only one that offers `pc.power.shutdown`).
+    pub async fn pc_shutdown(&self, id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.pc_power(id, core::PowerAction::Shutdown).await?) }).await
     }
 
     /// Hibernates a paired PC (only one that offers `pc.power.hibernate`).

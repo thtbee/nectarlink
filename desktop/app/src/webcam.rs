@@ -72,6 +72,8 @@ struct State {
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
 static MIRROR: AtomicBool = AtomicBool::new(false);
+/// Torch on when the webcam starts with the back camera (#353).
+static TORCH: AtomicBool = AtomicBool::new(false);
 static CAMERA_FRONT: AtomicBool = AtomicBool::new(false);
 static HEIGHT: AtomicU32 = AtomicU32::new(720);
 /// Whether the phone's camera in use can stream 4K, as its last stream said
@@ -168,6 +170,7 @@ pub fn set_resolution(res: &str) {
 /// camera session.
 pub fn init(settings: &Settings) {
     MIRROR.store(settings.webcam_mirror, Ordering::Relaxed);
+    TORCH.store(settings.webcam_torch, Ordering::Relaxed);
     CAMERA_FRONT.store(settings.webcam_camera.trim().eq_ignore_ascii_case("front"), Ordering::Relaxed);
     let h = normalize_height(settings.webcam_height);
     HEIGHT.store(h, Ordering::Relaxed);
@@ -307,6 +310,35 @@ pub fn set_mirror(on: bool) {
         save_settings(|s| s.webcam_mirror = on);
         core_host::host().hub.changed(Changes::WEBCAM);
     }
+}
+
+pub fn torch() -> bool {
+    TORCH.load(Ordering::Relaxed)
+}
+
+pub fn set_torch(on: bool) {
+    TORCH.store(on, Ordering::Relaxed);
+    #[cfg(not(test))]
+    {
+        save_settings(|s| s.webcam_torch = on);
+        core_host::host().hub.changed(Changes::WEBCAM);
+    }
+}
+
+/// A webcam session just started on `device`: the torch goes on with the
+/// back camera, if the user asked for that. Not on a stream that only
+/// changed size, so a torch turned off by hand stays off.
+fn torch_on_start(device: DeviceId) {
+    if !torch() || camera() != "back" {
+        return;
+    }
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        let on = nectarlink_core::PhoneToggleValue::Bool(true);
+        if let Err(error) = node.set_phone_toggle(device, "flashlight".into(), on).await {
+            tracing::info!(%error, "couldn't turn the webcam's torch on");
+        }
+    });
 }
 
 pub fn phase() -> Phase {
@@ -660,6 +692,11 @@ impl WebcamSink for Sink {
     fn config(&self, config: WebcamConfig) {
         follow_stream(config.width, config.height);
         UHD.store(config.max_height >= 2160, Ordering::Relaxed);
+        let starting =
+            state(|s| !matches!(s.phase, Phase::Streaming { device, .. } if device == self.device));
+        if starting {
+            torch_on_start(self.device);
+        }
         state(|s| {
             s.preferred_phone = Some(self.device);
             s.phase = Phase::Streaming {

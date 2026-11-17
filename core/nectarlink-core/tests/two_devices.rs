@@ -2082,28 +2082,40 @@ async fn phones_lock_pcs_and_links_open_on_either_side() {
 
     with_timeout("lock", phone.node.pc_power(pc_id, PowerAction::Lock)).await.expect("locked");
     with_timeout("sleep", phone.node.pc_power(pc_id, PowerAction::Sleep)).await.expect("asleep");
-    // A PC that can't hibernate (turned off there) isn't asked to.
+    // A PC that can't hibernate (turned off there), or doesn't offer shutting
+    // down (a Mac), isn't asked to.
     let refused = phone.node.pc_power(pc_id, PowerAction::Hibernate).await;
     assert!(matches!(refused, Err(Error::Unsupported)), "{refused:?}");
+    let refused = phone.node.pc_power(pc_id, PowerAction::Shutdown).await;
+    assert!(matches!(refused, Err(Error::Unsupported)), "{refused:?}");
     pc.node
-        .update_power(PowerLevel::Basic, vec!["pc.power".into(), nectarlink_core::PC_HIBERNATE.into()])
+        .update_power(
+            PowerLevel::Basic,
+            vec![
+                "pc.power".into(),
+                nectarlink_core::PC_HIBERNATE.into(),
+                nectarlink_core::PC_SHUTDOWN.into(),
+            ],
+        )
         .await;
-    let deadline = tokio::time::Instant::now() + WAIT;
-    loop {
-        match phone.node.pc_power(pc_id, PowerAction::Hibernate).await {
-            Ok(()) => break,
-            Err(Error::Unsupported) if tokio::time::Instant::now() < deadline => {
-                tokio::time::sleep(Duration::from_millis(50)).await
+    for action in [PowerAction::Hibernate, PowerAction::Shutdown] {
+        let deadline = tokio::time::Instant::now() + WAIT;
+        loop {
+            match phone.node.pc_power(pc_id, action).await {
+                Ok(()) => break,
+                Err(Error::Unsupported) if tokio::time::Instant::now() < deadline => {
+                    tokio::time::sleep(Duration::from_millis(50)).await
+                }
+                Err(e) => panic!("didn't {}: {e}", action.as_str()),
             }
-            Err(e) => panic!("didn't hibernate: {e}"),
         }
     }
-    // The PC answers first and acts a moment later: sleep and hibernate after
-    // the same pause, so in either order.
+    // The PC answers first and acts a moment later: sleep, hibernate and
+    // shutdown after the same pause, so in any order.
     tokio::time::sleep(Duration::from_millis(800)).await;
     let mut done: Vec<_> = pc.platform.power.lock().unwrap().iter().map(|a| a.as_str()).collect();
     done.sort_unstable();
-    assert_eq!(done, ["hibernate", "lock", "sleep"]);
+    assert_eq!(done, ["hibernate", "lock", "shutdown", "sleep"]);
 
     // A phone doesn't lock or sleep on request.
     let phone_power = pc.node.pc_power(phone_id, PowerAction::Lock).await;
