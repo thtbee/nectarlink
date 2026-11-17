@@ -49,7 +49,9 @@ fn worker() -> &'static Sender<Cmd> {
 
 /// Whether this PC can have a controller: on Windows always (a missing
 /// driver is told to the phone when it tries, so it can say what to
-/// install); on Linux when this app may write to `/dev/uinput`.
+/// install); on Linux when this app may write to `/dev/uinput`. (A Mac
+/// never offers one.)
+#[cfg(any(windows, target_os = "linux"))]
 pub fn is_supported() -> bool {
     backend::available()
 }
@@ -528,10 +530,6 @@ mod backend {
     use nectarlink_core::PadState;
 
     pub struct Pad;
-
-    pub fn available() -> bool {
-        false
-    }
 
     impl Pad {
         pub fn plug_in() -> Result<Self, String> {
