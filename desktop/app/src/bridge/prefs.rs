@@ -412,8 +412,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_amoled(settings.amoled);
         self.as_mut().set_backdrop(settings.backdrop);
         self.as_mut().set_comb_motion(settings.comb_motion);
-        let close_to_tray = if cfg!(target_os = "macos") { false } else { settings.close_to_tray };
-        self.as_mut().set_close_to_tray(close_to_tray);
+        self.as_mut().set_close_to_tray(settings.close_to_tray);
         self.as_mut().set_auto_clipboard(settings.auto_clipboard);
         crate::clipboard::set_auto_send(settings.auto_clipboard);
         self.as_mut().set_clipboard_history(settings.clipboard_history);
@@ -516,18 +515,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_amoled_changed(|p| p.save()).release();
         self.as_mut().on_backdrop_changed(|p| p.save()).release();
         self.as_mut().on_comb_motion_changed(|p| p.save()).release();
-        self.as_mut()
-            .on_close_to_tray_changed(|p| {
-                #[cfg(target_os = "macos")]
-                let mut p = p;
-                #[cfg(target_os = "macos")]
-                if p.close_to_tray {
-                    p.as_mut().set_close_to_tray(false);
-                    return;
-                }
-                p.save();
-            })
-            .release();
+        self.as_mut().on_close_to_tray_changed(|p| p.save()).release();
         self.as_mut()
             .on_auto_clipboard_changed(|p| {
                 crate::clipboard::set_auto_send(p.auto_clipboard);
@@ -1131,7 +1119,7 @@ impl qobject::Preferences {
             amoled: p.amoled,
             backdrop: p.backdrop,
             comb_motion: p.comb_motion,
-            close_to_tray: if cfg!(target_os = "macos") { false } else { p.close_to_tray },
+            close_to_tray: p.close_to_tray,
             auto_clipboard: p.auto_clipboard,
             clipboard_history: p.clipboard_history,
             suggest_clipboard_actions: p.suggest_clipboard_actions,

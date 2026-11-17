@@ -1034,18 +1034,13 @@ Item {
                                     ? Math.round((parent.height - height) / 2)
                                     : (startWinRow.implicitHeight + 1)
                                 width: startupPairRow.colWidth
-                                opacity: Qt.platform.os === "osx" ? 0.5 : 1.0
                                 iconPath: Icons.window
                                 title: qsTr("Stay in system tray")
                                 description: qsTr("Keep running when the window is closed.")
                                 Toggle {
                                     label: qsTr("Stay in system tray")
                                     checked: Preferences.closeToTray
-                                    enabled: Qt.platform.os !== "osx"
-                                    onToggled: (on) => {
-                                        if (Qt.platform.os !== "osx")
-                                            Preferences.closeToTray = on
-                                    }
+                                    onToggled: (on) => Preferences.closeToTray = on
                                 }
                             }
                         }

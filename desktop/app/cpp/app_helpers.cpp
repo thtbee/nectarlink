@@ -34,7 +34,7 @@
 #include <malloc.h>
 #endif
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 #include <QtCore/QBuffer>
 #include <QtCore/QMetaObject>
 #include <QtCore/QThread>
@@ -51,6 +51,10 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#endif
+
+#ifdef __APPLE__
+#include <crt_externs.h>
 #endif
 
 namespace {
@@ -628,7 +632,7 @@ uint64_t mac_free_space(rust::Str path, bool &ok)
     return static_cast<uint64_t>(available);
 }
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 namespace {
 std::atomic<bool> &qtEventLoopRunning()
 {
@@ -636,6 +640,7 @@ std::atomic<bool> &qtEventLoopRunning()
     return running;
 }
 
+#ifdef __linux__
 struct LinuxClipboardWatch {
     std::mutex mutex;
     std::condition_variable cv;
@@ -647,6 +652,7 @@ LinuxClipboardWatch &linuxClipboardWatch()
     static LinuxClipboardWatch *watch = new LinuxClipboardWatch();
     return *watch;
 }
+#endif
 
 struct LinuxTrayState {
     QPointer<QSystemTrayIcon> icon;
@@ -729,16 +735,23 @@ bool runOnQtMainThreadSync(F &&fn, uint32_t timeout_ms = 500)
 } // namespace
 #endif
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 namespace {
 // This process's arguments, as the kernel has them.
 std::vector<std::string> processArguments()
 {
     std::vector<std::string> args;
+#ifdef __linux__
     std::ifstream cmdline("/proc/self/cmdline", std::ios::binary);
     std::string arg;
     while (std::getline(cmdline, arg, '\0'))
         args.push_back(arg);
+#elif defined(__APPLE__)
+    const int argc = *_NSGetArgc();
+    char **argv = *_NSGetArgv();
+    for (int i = 0; i < argc && argv && argv[i]; ++i)
+        args.emplace_back(argv[i]);
+#endif
     if (args.empty())
         args.emplace_back("nectarlink");
     return args;
@@ -748,7 +761,7 @@ std::vector<std::string> processArguments()
 
 std::unique_ptr<QGuiApplication> create_qt_app()
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     // The real arguments, as on the other systems: QML reads --minimized and
     // --send-to from them (#336). Qt keeps pointers to them, so they live on.
     static std::vector<std::string> s_args = processArguments();
@@ -761,8 +774,10 @@ std::unique_ptr<QGuiApplication> create_qt_app()
     }();
     static int s_argc = static_cast<int>(s_args.size());
     auto app = std::unique_ptr<QGuiApplication>(new QApplication(s_argc, s_argv_list.data()));
+#ifdef __linux__
     // On Wayland this is the app id, which is how the dock finds our icon and name.
     QGuiApplication::setDesktopFileName(QStringLiteral("nectarlink"));
+#endif
     QObject::connect(app.get(), &QCoreApplication::aboutToQuit, app.get(), []() {
         qtEventLoopRunning().store(false, std::memory_order_release);
     });
@@ -772,11 +787,13 @@ std::unique_ptr<QGuiApplication> create_qt_app()
             qtEventLoopRunning().store(true, std::memory_order_release);
         },
         Qt::QueuedConnection);
+#ifdef __linux__
     if (QClipboard *cb = QGuiApplication::clipboard()) {
         QObject::connect(cb, &QClipboard::dataChanged, cb, []() {
             linux_clipboard_notify_external();
         });
     }
+#endif
     return app;
 #else
     static int s_argc = 1;
@@ -799,7 +816,7 @@ void linux_tray_setup(
     rust::Str pause_notifications_label,
     rust::Str quit_label)
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     const QString iconPath = QString::fromUtf8(icon_path.data(), static_cast<qsizetype>(icon_path.size()));
     const QString tooltipStr = QString::fromUtf8(tooltip.data(), static_cast<qsizetype>(tooltip.size()));
     const QString openStr = QString::fromUtf8(open_label.data(), static_cast<qsizetype>(open_label.size()));
@@ -897,7 +914,7 @@ void linux_tray_setup(
 
 void linux_tray_set_pause_label(rust::Str label)
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     const QString text = QString::fromUtf8(label.data(), static_cast<qsizetype>(label.size()));
     runOnQtMainThread([text]() {
         if (auto *action = linuxTray().pauseAction.data())
@@ -910,7 +927,7 @@ void linux_tray_set_pause_label(rust::Str label)
 
 void linux_tray_set_tooltip(rust::Str tooltip)
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     const QString tooltipStr = QString::fromUtf8(tooltip.data(), static_cast<qsizetype>(tooltip.size()));
     runOnQtMainThread([tooltipStr]() {
         if (auto *icon = linuxTray().icon.data())
@@ -923,7 +940,7 @@ void linux_tray_set_tooltip(rust::Str tooltip)
 
 void linux_tray_set_find_phone_enabled(bool enabled)
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     runOnQtMainThread([enabled]() {
         auto &st = linuxTray();
         st.phoneActionsEnabled = enabled;
@@ -943,7 +960,7 @@ void linux_tray_set_find_phone_enabled(bool enabled)
 
 void linux_tray_teardown()
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     auto &st = linuxTray();
     st.cv.notify_all();
     runOnQtMainThread([]() {
@@ -965,7 +982,7 @@ void linux_tray_teardown()
 
 rust::String linux_tray_wait_action(uint32_t timeout_ms)
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     auto &st = linuxTray();
     std::unique_lock<std::mutex> lock(st.mutex);
     if (st.actions.empty() && timeout_ms > 0) {
@@ -984,7 +1001,7 @@ rust::String linux_tray_wait_action(uint32_t timeout_ms)
 
 bool linux_tray_is_available()
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     bool available = false;
     if (runOnQtMainThreadSync([&available]() {
             available = QSystemTrayIcon::isSystemTrayAvailable();
