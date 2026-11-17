@@ -15,7 +15,6 @@ name = "nectarlink-desktop"
 path = "src/main.rs"
 
 [dependencies]
-anyhow.workspace = true
 blake3.workspace = true
 cxx.workspace = true
 cxx-qt.workspace = true
@@ -25,7 +24,7 @@ dirs.workspace = true
 hostname.workspace = true
 material-colors.workspace = true
 # Inflates Google's platform-tools zip (Settings > Install on a phone).
-miniz_oxide = "0.8"
+miniz_oxide = "0.9"
 nectarlink-adb.workspace = true
 nectarlink-core.workspace = true
 nectarlink-vcam.workspace = true
