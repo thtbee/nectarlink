@@ -41,6 +41,7 @@ t = "call.state"            b = {
   ? name:    text,      // The contact's name, when the number is a contact
   ? photo:   bytes,     // The contact's photo, a JPEG of at most 64 KiB, with "ringing"
   ? missed:  bool,      // With "ended": it rang and nobody answered (default false)
+  ? app:     text,      // The app the call is in ("WhatsApp"), when it isn't a phone call; answered, declined and ended through the app (its sound stays on the phone)
   ? since:   int,       // With "active": when it was answered, in Unix milliseconds
   ? controls: {         // With "active", from a phone offering call.incall
       ? muted:    bool,     // The phone's microphone is muted

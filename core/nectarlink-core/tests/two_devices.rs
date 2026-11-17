@@ -2809,6 +2809,7 @@ async fn calls_show_on_the_pc_which_can_answer_them() {
         missed: false,
         since: None,
         controls: None,
+        app: None,
     };
     // The call in `state` (a PC that just connected may hear the earlier
     // one again).
@@ -2878,6 +2879,68 @@ async fn calls_show_on_the_pc_which_can_answer_them() {
     assert!(matches!(
         pc.node.call_command(phone_id, "c2".into(), CallCommand::Answer).await,
         Err(Error::Denied)
+    ));
+}
+
+/// A call in an app (#434): the phone reports it with the app's name, and a
+/// PC answers and ends it without the phone offering control of its own
+/// calls; a phone call's mute, keypad and silence don't apply.
+#[tokio::test(flavor = "multi_thread")]
+async fn app_calls_are_answered_without_phone_call_control() {
+    use nectarlink_core::{CallCommand, CallState};
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::CALLS_SHOW]).await;
+    // Only calls.state: no permission to control phone calls.
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::CALLS_STATE]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    let ringing = CallState {
+        id: "app:1".into(),
+        state: "ringing".into(),
+        incoming: true,
+        number: None,
+        name: Some("Sam".into()),
+        photo: None,
+        missed: false,
+        since: None,
+        controls: None,
+        app: Some("WhatsApp".into()),
+    };
+    phone.node.call_changed(ringing.clone()).await.unwrap();
+    let seen = wait_for(&mut pc, "the app call", |e| match e {
+        NodeEvent::Call { device, call } if *device == phone_id => Some(call.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(seen.app.as_deref(), Some("WhatsApp"));
+
+    for refused in [CallCommand::Silence, CallCommand::Mute(true), CallCommand::Dtmf('1')] {
+        assert!(
+            matches!(pc.node.call_command(phone_id, "app:1".into(), refused).await, Err(Error::Unsupported)),
+            "{refused:?}"
+        );
+    }
+    with_timeout("answer", pc.node.call_command(phone_id, "app:1".into(), CallCommand::Answer))
+        .await
+        .unwrap();
+    phone
+        .node
+        .call_changed(CallState { state: "active".into(), since: Some(1), ..ringing.clone() })
+        .await
+        .unwrap();
+    pc.node.call_command(phone_id, "app:1".into(), CallCommand::Volume(false)).await.unwrap();
+    pc.node.call_command(phone_id, "app:1".into(), CallCommand::Decline).await.unwrap();
+    let seen: Vec<CallCommand> = phone.platform.calls.lock().unwrap().iter().map(|(_, c)| *c).collect();
+    assert_eq!(seen, [CallCommand::Answer, CallCommand::Volume(false), CallCommand::Decline]);
+
+    // A phone call on the same phone still needs call control.
+    phone
+        .node
+        .call_changed(CallState { id: "c9".into(), number: Some("+15550100".into()), app: None, ..ringing })
+        .await
+        .unwrap();
+    assert!(matches!(
+        pc.node.call_command(phone_id, "c9".into(), CallCommand::Answer).await,
+        Err(Error::Unsupported)
     ));
 }
 
@@ -7258,6 +7321,7 @@ async fn a_calls_sound_moves_to_the_pc_and_back() {
         missed: false,
         since: None,
         controls: None,
+        app: None,
     };
 
     // Only a call in progress: not a ringing one, not another.

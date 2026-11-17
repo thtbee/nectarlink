@@ -360,6 +360,7 @@ Window {
             const parts = []
             if (callClock.length > 0) parts.push(callClock)
             if (PhoneCall.held) parts.push(qsTr("On hold"))
+            if (PhoneCall.app.length > 0) parts.push(PhoneCall.app)
             parts.push(PhoneCall.callAudio ? qsTr("On PC") : qsTr("On phone"))
             if (PhoneCall.controls) parts.push(PhoneCall.muted ? qsTr("Mic off") : qsTr("Mic on"))
             return parts.join(" · ")

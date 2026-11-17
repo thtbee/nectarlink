@@ -94,8 +94,8 @@ Card {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 44; height: 44
                 // A number alone has no letter worth showing.
-                name: PhoneCall.number.length > 0 ? PhoneCall.caller : ""
-                iconPath: PhoneCall.number.length > 0 ? "" : Icons.person
+                name: PhoneCall.number.length > 0 || PhoneCall.app.length > 0 ? PhoneCall.caller : ""
+                iconPath: PhoneCall.number.length > 0 || PhoneCall.app.length > 0 ? "" : Icons.person
                 emphasized: true
             }
             Column {
@@ -113,7 +113,8 @@ Card {
                     visible: text.length > 0
                     role: "bodySmall"
                     muted: true
-                    text: card.pressed.length > 0 ? card.pressed : PhoneCall.number
+                    text: card.pressed.length > 0 ? card.pressed
+                        : PhoneCall.app.length > 0 ? qsTr("%1 call").arg(PhoneCall.app) : PhoneCall.number
                     elide: Text.ElideLeft
                 }
             }
@@ -210,7 +211,8 @@ Card {
 
         Txt {
             width: parent.width
-            visible: !PhoneCall.controls && PhoneCall.canEnd
+            // An app call (#434) has no mute, speaker or keypad to unlock.
+            visible: !PhoneCall.controls && PhoneCall.canEnd && PhoneCall.app.length === 0
             role: "caption"
             muted: true
             wrapMode: Text.WordWrap

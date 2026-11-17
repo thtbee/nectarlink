@@ -398,6 +398,11 @@ enum Command {
         /// Already answered on the phone: the call is in progress.
         #[arg(long)]
         answered: bool,
+        /// A call in this app (`WhatsApp`) rather than a phone call (#434):
+        /// no number, no in-call controls, and the phone doesn't offer
+        /// control of its own calls.
+        #[arg(long)]
+        app: Option<String>,
     },
     /// A paired phone's text messages: list conversations, show one, or send.
     Sms {
@@ -2163,6 +2168,7 @@ impl Platform for TerminalPlatform {
             controls: CALL_CONTROLS
                 .load(std::sync::atomic::Ordering::Relaxed)
                 .then(|| nectarlink_core::CallControls { can_hold: true, ..Default::default() }),
+            app: None,
         };
         *CALL.lock().unwrap() = Some(call.clone());
         CALL_LOG.lock().unwrap().push(nectarlink_core::CallLogEntry {
@@ -3709,31 +3715,34 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             println!("Sharing sample conversations, contacts, and calls with paired PCs.");
             watch(node, false).await?;
         }
-        Command::IncomingCall { number, caller, basic, answered } => {
+        Command::IncomingCall { number, caller, basic, answered, app } => {
             if !cli.as_phone {
                 bail!("calls are on phones: add --as-phone");
             }
             let _ = CALL_NODE.set(node.clone());
             let mut offers = cli.offers.clone();
-            offers
-                .extend([nectarlink_core::CALLS_STATE.to_owned(), nectarlink_core::CALLS_CONTROL.to_owned()]);
-            CALL_CONTROLS.store(!*basic, std::sync::atomic::Ordering::Relaxed);
-            if !*basic {
+            offers.push(nectarlink_core::CALLS_STATE.to_owned());
+            if app.is_none() {
+                offers.push(nectarlink_core::CALLS_CONTROL.to_owned());
+            }
+            CALL_CONTROLS.store(!*basic && app.is_none(), std::sync::atomic::Ordering::Relaxed);
+            if !*basic && app.is_none() {
                 offers.push(nectarlink_core::CALLS_IN_CALL.to_owned());
             }
             node.update_power(node_power(cli), with_base_caps(offers)).await;
             let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis() as i64;
             let call = nectarlink_core::CallState {
-                id: now.to_string(),
+                id: if app.is_some() { format!("app:{now}") } else { now.to_string() },
                 state: if *answered { "active" } else { "ringing" }.into(),
                 incoming: true,
-                number: Some(number.clone()),
+                number: app.is_none().then(|| number.clone()),
                 name: caller.clone(),
                 photo: None,
                 missed: false,
                 since: answered.then_some(now),
-                controls: (*answered && !*basic)
+                controls: (*answered && !*basic && app.is_none())
                     .then(|| nectarlink_core::CallControls { can_hold: true, ..Default::default() }),
+                app: app.clone(),
             };
             *CALL.lock().unwrap() = Some(call.clone());
             node.call_changed(call).await.context("can't tell PCs")?;
@@ -3852,6 +3861,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                     missed: false,
                     since: Some(now - 83_000),
                     controls: Some(nectarlink_core::CallControls { can_hold: true, ..Default::default() }),
+                    app: None,
                 };
                 *CALL.lock().unwrap() = Some(call.clone());
                 node.call_changed(call).await.context("can't tell PCs")?;

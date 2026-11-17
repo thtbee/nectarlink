@@ -40,7 +40,9 @@ class NotificationListener : NotificationListenerService() {
             val ranking = runCatching { currentRanking }.getOrNull()
             limiter.clear()
             sent.clear()
-            val items = snapshot.mapNotNull { reader.read(it, ranking, update = false) }
+            val (calls, others) = snapshot.partition { core.appCalls.isAppCall(it) }
+            calls.forEach(::reportCall)
+            val items = others.mapNotNull { reader.read(it, ranking, update = false) }
             sent.addAll(items.map { it.key })
             core.notificationAccessChanged(true, items)
         }
@@ -58,6 +60,14 @@ class NotificationListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
         val key = sbn.key
         work {
+            // A call in another app goes to PCs as a call, not a notification (#434).
+            if (core.appCalls.isAppCall(sbn)) {
+                reportCall(sbn)
+                if (sent.remove(key)) core.notificationRemoved(key)
+                return@work
+            }
+            // A call's notification that stopped being one ("Call ended") ends it.
+            core.appCalls.removed(sbn)
             val notification = reader.read(sbn, rankingMap, update = key in sent)
             if (notification == null) {
                 // Something we mirrored may have turned into something we don't
@@ -74,9 +84,14 @@ class NotificationListener : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         val key = sbn.key
         work {
+            core.appCalls.removed(sbn)
             limiter.cancel(key)
             if (sent.remove(key)) core.notificationRemoved(key)
         }
+    }
+
+    private fun reportCall(sbn: StatusBarNotification) {
+        core.appCalls.posted(sbn, reader.callerName(sbn), { reader.callerPhoto(sbn) }, reader.appName(sbn.packageName))
     }
 
     override fun onDestroy() {
