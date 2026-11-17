@@ -147,7 +147,8 @@ object Elevated {
     fun usesShizuku(): Boolean = prefs().getBoolean(SHIZUKU, false)
 
     /** Set up one way or another, so it should start whenever it can. */
-    private fun isSetUp() = paired() || usesRoot() || usesShizuku()
+    /** Set up through Wireless debugging, root or Shizuku, whether or not it runs right now. */
+    fun isSetUp() = paired() || usesRoot() || usesShizuku()
 
     private fun prefs() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 

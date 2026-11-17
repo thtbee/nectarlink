@@ -354,6 +354,8 @@
     <string name="settings_quiet_while_using_pc_hint">Your phone skips its own sound and vibration for notifications while you\'re using a paired PC that shows them.</string>
     <string name="settings_hide_from_recents">Hide from recent apps</string>
     <string name="settings_hide_from_recents_hint">NectarLink stays off the recent apps screen, so clearing that screen can\'t close it by accident.</string>
+    <string name="settings_assist_on_demand">Assist only while a PC uses the phone</string>
+    <string name="settings_assist_on_demand_hint">With Elevated, Assist turns on while a PC shows this phone or types on it, and off a little after. For apps that won\'t open while an accessibility service is on.</string>
     <string name="settings_touchpad_sensitivity">Touchpad speed</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Touchpad</string>

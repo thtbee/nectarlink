@@ -347,6 +347,8 @@
     <string name="settings_quiet_while_using_pc_hint">Телефон не издаёт звук и не вибрирует при уведомлениях, пока вы пользуетесь сопряжённым ПК, который их показывает.</string>
     <string name="settings_hide_from_recents">Скрыть из недавних приложений</string>
     <string name="settings_hide_from_recents_hint">NectarLink не показывается в недавних приложениях, поэтому очистка списка не закроет его случайно.</string>
+    <string name="settings_assist_on_demand">Assist только пока ПК использует телефон</string>
+    <string name="settings_assist_on_demand_hint">С Elevated Assist включается, пока ПК показывает этот телефон или печатает на нём, и выключается вскоре после этого. Для приложений, которые не открываются при включённой службе специальных возможностей.</string>
     <string name="settings_touchpad_sensitivity">Скорость тачпада</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Тачпад</string>

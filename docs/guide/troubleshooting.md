@@ -80,6 +80,8 @@ Many banking apps refuse to run while **Developer options**, USB or Wireless Deb
 
 If an app checks before NectarLink notices it, tap **Add shortcut** next to it and open it from that home screen shortcut: NectarLink pauses first, then opens the app.
 
+Some apps only mind the accessibility service, and crash or close even when opened from the app drawer. With `Elevated` set up, turn on **Assist only while a PC uses the phone** in the same section: Assist is then on only while a PC shows the phone's screen, an app window, or types on it, and off again about 15 seconds after. That's all `Elevated` still needs Assist for (pressing Send in chat apps, and typing letters outside the basic Latin set).
+
 Some banking apps also refuse to run on a phone that was ever rooted (on Samsung phones, a tripped Knox flag). NectarLink can't change that.
 
 ## 5. Troubleshooting USB Auto-Pair and `On USB` Transport

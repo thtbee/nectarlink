@@ -352,6 +352,8 @@
     <string name="settings_quiet_while_using_pc_hint">O celular não toca nem vibra com notificações enquanto você usa um PC pareado que as mostra.</string>
     <string name="settings_hide_from_recents">Ocultar dos apps recentes</string>
     <string name="settings_hide_from_recents_hint">O NectarLink não aparece nos apps recentes, então limpar a lista não o fecha por engano.</string>
+    <string name="settings_assist_on_demand">Assist só enquanto um PC usa o celular</string>
+    <string name="settings_assist_on_demand_hint">Com o Elevated, o Assist liga enquanto um PC mostra este celular ou digita nele, e desliga pouco depois. Para apps que não abrem com um serviço de acessibilidade ativo.</string>
     <string name="settings_touchpad_sensitivity">Velocidade do touchpad</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Touchpad</string>

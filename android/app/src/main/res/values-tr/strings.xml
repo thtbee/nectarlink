@@ -352,6 +352,8 @@
     <string name="settings_quiet_while_using_pc_hint">Bildirimleri gösteren eşleştirilmiş bir bilgisayarı kullanırken telefonunuz bildirimler için ses çıkarmaz ve titremez.</string>
     <string name="settings_hide_from_recents">Son uygulamalardan gizle</string>
     <string name="settings_hide_from_recents_hint">NectarLink son uygulamalar ekranında görünmez, böylece listeyi temizlemek onu yanlışlıkla kapatmaz.</string>
+    <string name="settings_assist_on_demand">Yardımcı yalnızca bir bilgisayar telefonu kullanırken</string>
+    <string name="settings_assist_on_demand_hint">Yükseltilmiş modda Yardımcı, bir bilgisayar bu telefonu gösterirken veya ona yazarken açılır ve kısa süre sonra kapanır. Bir erişilebilirlik hizmeti açıkken açılmayan uygulamalar için.</string>
     <string name="settings_touchpad_sensitivity">Dokunmatik yüzey hızı</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Dokunmatik yüzey</string>

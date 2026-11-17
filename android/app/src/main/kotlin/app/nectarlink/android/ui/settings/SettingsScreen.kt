@@ -651,6 +651,7 @@ fun SettingsScreen(
                     ControlAccess(state.inputAccess)
                     SettingRowDivider()
                     ElevatedAccess()
+                    AssistOnDemandAccess(state.elevated)
                     SettingRowDivider()
                     BankingPauseAccess()
                     SettingRowDivider()
@@ -1419,6 +1420,35 @@ private fun ControlAccess(on: Boolean) {
             )
             OutlinedButton(onClick = { openAppInfoSettings(context) }) { Text(stringResource(R.string.action_app_info)) }
         }
+    }
+}
+
+/**
+ * Assist only while a PC uses the phone (#400): offered with Elevated, which
+ * does everything else Assist would. Its own divider, since it may not show.
+ */
+@Composable
+private fun AssistOnDemandAccess(elevatedRunning: Boolean) {
+    val context = LocalContext.current
+    val on by app.nectarlink.android.banking.AssistOnDemand.enabled.collectAsStateWithLifecycle()
+    if (!on && !elevatedRunning && !Elevated.isSetUp()) return
+    SettingRowDivider()
+    val title = stringResource(R.string.settings_assist_on_demand)
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(R.string.settings_assist_on_demand_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(
+            checked = on,
+            onCheckedChange = { app.nectarlink.android.banking.AssistOnDemand.setEnabled(context, it) },
+            colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+            modifier = Modifier.semantics { contentDescription = title },
+        )
     }
 }
 

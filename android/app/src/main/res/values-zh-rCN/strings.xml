@@ -339,6 +339,8 @@
     <string name="settings_quiet_while_using_pc_hint">当你正在使用显示通知的已配对电脑时，手机收到通知不响铃也不振动。</string>
     <string name="settings_hide_from_recents">在最近任务中隐藏</string>
     <string name="settings_hide_from_recents_hint">NectarLink 不出现在最近任务中，清理最近任务时不会被误关。</string>
+    <string name="settings_assist_on_demand">仅在电脑使用手机时开启辅助</string>
+    <string name="settings_assist_on_demand_hint">开启高级权限后，辅助只在电脑显示此手机或在手机上输入时开启，结束后不久关闭。适用于开启无障碍服务时无法打开的应用。</string>
     <string name="settings_touchpad_sensitivity">触控板速度</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">触控板</string>

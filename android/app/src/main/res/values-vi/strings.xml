@@ -349,6 +349,8 @@
 <string name="settings_quiet_while_using_pc_hint">Điện thoại không phát âm thanh hay rung khi có thông báo trong lúc bạn đang dùng PC đã ghép nối hiển thị các thông báo đó.</string>
 <string name="settings_hide_from_recents">Ẩn khỏi ứng dụng gần đây</string>
 <string name="settings_hide_from_recents_hint">NectarLink không hiện trong màn hình ứng dụng gần đây, nên dọn danh sách sẽ không vô tình đóng nó.</string>
+<string name="settings_assist_on_demand">Chỉ bật Assist khi PC đang dùng điện thoại</string>
+<string name="settings_assist_on_demand_hint">Với Nâng cao, Assist bật khi PC đang hiển thị hoặc gõ trên điện thoại này và tắt ngay sau đó. Dành cho các ứng dụng không mở khi có dịch vụ trợ năng đang bật.</string>
 <string name="settings_touchpad_sensitivity">Tốc độ Touchpad</string>
 <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
 <string name="remote_mode_touchpad">Touchpad</string>
