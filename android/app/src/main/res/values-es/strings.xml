@@ -301,7 +301,7 @@
     <string name="phone_sound_on_pc_off">%1$s no reproduce el sonido de este teléfono. En el PC, activa Duplicación de pantalla para este teléfono en Ajustes › Dispositivos.</string>
     <string name="action_shutdown_pc">Apagar</string>
     <string name="shutdown_pc_title">¿Apagar %1$s?</string>
-    <string name="shutdown_pc_text">Las apps abiertas se cierran. Una con trabajo sin guardar todavía puede detenerlo.</string>
+    <string name="shutdown_pc_text">Las aplicaciones abiertas se cierran. Si alguna tiene trabajo sin guardar, aún puede impedirlo.</string>
     <string name="action_wake_pc">Activar</string>
     <string name="action_disconnect">Desconectar</string>
     <string name="action_stop_reconnecting">Dejar de reconectar</string>
@@ -363,10 +363,10 @@
     <string name="settings_volume_keys_control_pc_hint">Mientras tu PC reproduce música o vídeo, los botones de volumen del teléfono cambian el volumen del PC.</string>
     <string name="settings_quiet_while_using_pc">Silencio mientras usas el PC</string>
     <string name="settings_quiet_while_using_pc_hint">El teléfono no suena ni vibra con las notificaciones mientras usas un PC emparejado que las muestra.</string>
-    <string name="settings_hide_from_recents">Ocultar de las apps recientes</string>
-    <string name="settings_hide_from_recents_hint">NectarLink no aparece en las apps recientes, así que al borrarlas no se cierra por error.</string>
+    <string name="settings_hide_from_recents">Ocultar de aplicaciones recientes</string>
+    <string name="settings_hide_from_recents_hint">NectarLink no aparece en la pantalla de aplicaciones recientes, así que al borrarla no se cierra por error.</string>
     <string name="settings_assist_on_demand">Assist solo mientras un PC usa el teléfono</string>
-    <string name="settings_assist_on_demand_hint">Con Elevated, Assist se activa mientras un PC muestra este teléfono o escribe en él, y se desactiva poco después. Para apps que no se abren con un servicio de accesibilidad activo.</string>
+    <string name="settings_assist_on_demand_hint">Con Elevated, Assist se activa mientras un PC muestra este teléfono o escribe en él, y se desactiva poco después. Para aplicaciones que no se abren con un servicio de accesibilidad activo.</string>
     <string name="settings_touchpad_sensitivity">Velocidad del panel táctil</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Panel táctil</string>
@@ -719,23 +719,23 @@
 
     <!-- Home-screen PC widget -->
     <string name="widget_pc_title">Tu PC de un vistazo</string>
-    <string name="widget_pc_description">Si tu PC está conectado, con Hacer sonar, opciones de energía y Encender.</string>
+    <string name="widget_pc_description">Si tu PC está conectado, con Hacer sonar, opciones de energía y Activar.</string>
     <string name="widget_now_playing_title">Reproduciendo</string>
     <string name="widget_now_playing_description">Lo que suena en tu PC, con sus controles.</string>
     <string name="widget_actions_title">Acciones rápidas</string>
-    <string name="widget_actions_description">Envía el portapapeles o archivos, haz sonar tu PC, o bloquéalo, suspéndelo o apágalo.</string>
+    <string name="widget_actions_description">Envía el portapapeles o archivos, haz sonar tu PC o bloquéalo, suspéndelo o apágalo.</string>
     <string name="widget_from_pc_title">Desde tu PC</string>
-    <string name="widget_from_pc_description">El último clip y archivo que envió tu PC, para copiar o abrir.</string>
-    <string name="widget_from_pc_empty">Aquí aparecen los clips y archivos que envía tu PC.</string>
+    <string name="widget_from_pc_description">El último elemento copiado y el último archivo que envió tu PC, para copiar o abrir.</string>
+    <string name="widget_from_pc_empty">Aquí aparecen los elementos copiados y archivos que envía tu PC.</string>
     <string name="widget_media_on_pc">En %1$s</string>
     <string name="widget_media_nothing">No se reproduce nada</string>
-    <string name="widget_media_nothing_hint">Aquí aparece la música y los vídeos que suenan en %1$s.</string>
+    <string name="widget_media_nothing_hint">Aquí aparecen la música y los vídeos que suenan en %1$s.</string>
     <string name="widget_battery">Batería %1$d%%</string>
     <string name="widget_battery_charging">Batería %1$d%% · cargando</string>
     <string name="widget_link_lan">En tu red</string>
-    <string name="widget_seen">Visto %1$s</string>
+    <string name="widget_seen">Visto: %1$s</string>
     <string name="widget_pc_send_clipboard">Enviar portapapeles</string>
-    <string name="widget_power">Encendido</string>
+    <string name="widget_power">Energía</string>
     <string name="widget_power_lock">Bloquear</string>
     <string name="widget_power_suspend">Suspender</string>
     <string name="widget_power_off">Apagar</string>
