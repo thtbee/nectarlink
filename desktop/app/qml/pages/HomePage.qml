@@ -487,7 +487,18 @@ Item {
                 model: DeviceList
                 delegate: DeviceHome {
                     required property int index
-                    visible: index === page.current
+                    required property string os
+                    visible: index === page.current && !page.isPc(kind, os)
+                    width: visible ? column.width : 0
+                }
+            }
+
+            // Another PC paired with this one (#432) gets its own, smaller page.
+            Repeater {
+                model: DeviceList
+                delegate: PcHome {
+                    required property int index
+                    visible: index === page.current && page.isPc(kind, os)
                     width: visible ? column.width : 0
                 }
             }
@@ -3140,6 +3151,165 @@ Item {
     }
 
     // A quick action. Unavailable actions are dimmed and say what unlocks them.
+    /** A paired PC rather than a phone or tablet. */
+    function isPc(kind, os) {
+        return kind === "desktop" || kind === "laptop"
+            || (kind === "unknown" && (os === "windows" || os === "macos" || os === "linux"))
+    }
+
+    // Another PC (#432): its status, and sending it files and the clipboard, or ringing it.
+    component PcHome: Column {
+        id: pcHome
+        required property string deviceId
+        required property string name
+        required property string kind
+        required property string os
+        required property bool online
+        required property string path
+        required property int rttMs
+        required property int battery
+        required property bool charging
+        required property real lastSeen
+        required property bool reconnect
+
+        spacing: Theme.gutter
+
+        // Dropped files go to this PC, as they do to a phone on screen.
+        Binding { target: page; property: "currentDeviceId"; value: pcHome.deviceId; when: pcHome.visible; restoreMode: Binding.RestoreNone }
+        Binding { target: page; property: "currentDeviceName"; value: pcHome.name; when: pcHome.visible; restoreMode: Binding.RestoreNone }
+        Binding {
+            target: page
+            property: "currentCanReceive"
+            value: pcHome.feature("pc.files").state === "available"
+                   || (!pcHome.online
+                       && pcHome.feature("pc.files").state !== "locked"
+                       && pcHome.feature("pc.files").state !== "unsupported")
+            when: pcHome.visible
+        }
+
+        function feature(id) {
+            return AppController.capsRevision >= 0 ? AppController.featureState(deviceId, id) : ({})
+        }
+        readonly property bool ringing: AppController.ringingDevices.includes(pcHome.deviceId)
+
+        Card {
+            width: parent.width
+            Row {
+                width: parent.width
+                spacing: 16
+
+                Rectangle {
+                    width: 56
+                    height: 56
+                    radius: 16
+                    color: Theme.primaryContainer
+                    Icon {
+                        anchors.centerIn: parent
+                        path: pcHome.kind === "laptop" ? Icons.laptop : Icons.desktop
+                        width: 28
+                        height: 28
+                        color: Theme.primaryContainerContent
+                    }
+                }
+
+                Column {
+                    width: parent.width - 72
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
+                    Txt {
+                        width: parent.width
+                        role: "title"
+                        text: pcHome.name
+                        elide: Text.ElideRight
+                    }
+                    Txt {
+                        width: parent.width
+                        role: "bodySmall"
+                        muted: true
+                        elide: Text.ElideRight
+                        text: {
+                            let link = pcHome.online
+                                ? (pcHome.path === "relay"
+                                   ? (pcHome.rttMs >= 1 ? qsTr("Away · %1 ms").arg(pcHome.rttMs) : qsTr("Away"))
+                                   : (pcHome.rttMs >= 1 ? qsTr("Connected · %1 ms").arg(pcHome.rttMs) : qsTr("Connected")))
+                                : !pcHome.reconnect ? qsTr("Not reconnecting")
+                                : (pcHome.lastSeen > 0 ? qsTr("Offline · %1").arg(page.relativeTime(pcHome.lastSeen))
+                                                       : qsTr("Offline"))
+                            if (pcHome.online && pcHome.battery >= 0 && pcHome.feature("pc.battery").state === "available")
+                                link += " · " + (pcHome.charging ? qsTr("%1% · charging").arg(pcHome.battery)
+                                                                  : qsTr("%1%").arg(pcHome.battery))
+                            return link
+                        }
+                    }
+                }
+            }
+        }
+
+        Grid {
+            id: pcActions
+            width: parent.width
+            columns: width > 640 ? 3 : 2
+            spacing: 12
+            readonly property real tileWidth: (width - spacing * (columns - 1)) / columns
+
+            ActionTile {
+                width: pcActions.tileWidth
+                deviceOnline: pcHome.online
+                queueableWhenOffline: true
+                title: qsTr("Send files")
+                subtitle: ""
+                iconPath: Icons.send
+                feature: pcHome.feature("pc.files")
+                onClicked: pcFilePicker.open()
+                sideIcon: Icons.folder
+                sideLabel: qsTr("Send a folder")
+                onSideClicked: pcFolderPicker.open()
+            }
+            ActionTile {
+                width: pcActions.tileWidth
+                deviceOnline: pcHome.online
+                title: qsTr("Send clipboard")
+                subtitle: ""
+                iconPath: Icons.clipboard
+                feature: pcHome.feature("pc.clipboard")
+                onClicked: AppController.sendClipboard(pcHome.deviceId)
+            }
+            ActionTile {
+                width: pcActions.tileWidth
+                deviceOnline: pcHome.online
+                title: pcHome.ringing ? qsTr("Stop ringing") : qsTr("Ring PC")
+                subtitle: ""
+                iconPath: Icons.ring
+                feature: pcHome.feature("pc.ring")
+                active: pcHome.ringing
+                onClicked: AppController.ring(pcHome.deviceId, !pcHome.ringing)
+            }
+        }
+
+        Txt {
+            width: parent.width
+            role: "bodySmall"
+            muted: true
+            wrapMode: Text.WordWrap
+            visible: pcHome.feature("pc.clipboard").state === "available"
+            text: Preferences.autoClipboard
+                ? qsTr("What you copy here also goes to %1, and what you copy there comes here.").arg(pcHome.name)
+                : qsTr("Sync clipboard is off in Settings, so copies only go over with Send clipboard.")
+        }
+
+        FileDialog {
+            id: pcFilePicker
+            title: qsTr("Send to %1").arg(pcHome.name)
+            fileMode: FileDialog.OpenFiles
+            onAccepted: TransferList.send(pcHome.deviceId, selectedFiles.map(url => url.toString()))
+        }
+        FolderDialog {
+            id: pcFolderPicker
+            title: qsTr("Send a folder to %1").arg(pcHome.name)
+            onAccepted: TransferList.send(pcHome.deviceId, [selectedFolder.toString()])
+        }
+    }
+
     component ActionTile: Rectangle {
         id: tile
         property string title

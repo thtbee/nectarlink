@@ -8,6 +8,12 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Two PCs work together.** Pair a PC with another PC, Windows, Mac or Linux, the
+  same way as a phone: open the pairing screen on both and pick the other one. Home
+  then shows that PC with Send files, Send clipboard and Ring PC, and what you copy on
+  one goes to the other while Sync clipboard is on. No phone needed. Thanks to
+  [@ManuZhu0728](https://github.com/ManuZhu0728)
+  ([#432](https://github.com/thtbee/nectarlink/discussions/432)).
 - **The Mac preview does a lot more, and comes as a DMG.** Apple silicon Macs (macOS 14
   or newer) get one with Nightlies and releases. On a Mac, NectarLink now mirrors the phone's screen,
   records it to MP4, plays the phone's sound and microphone, sends the Mac's sound to the

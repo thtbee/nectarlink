@@ -128,6 +128,13 @@ files and links). Their requirements name the other device (`Peer`) and
 this one (`Here`) rather than a role. Every other pair has them
 Unsupported, as two Android devices have the PC features.
 
+Two PCs get `DESKTOP_PAIR_FEATURES` the same way (#432): `pc.battery` and
+`pc.ring` (the other PC's battery, and ringing it), and `pc.clipboard`
+(it offers `clip.write`, toggle `clipboard`) and `pc.files` (it offers
+`files.transfer`, toggle `files`). Every PC offers `clip.write`; what one
+copies goes to the other while Sync clipboard is on, and a PC ignores
+clipboard changes it made itself, so nothing bounces back.
+
 ## Per-device toggles
 
 `notifications`, `messages`, `calls`, `contacts`, `clipboard`, `files`,

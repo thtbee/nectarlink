@@ -114,6 +114,8 @@ pub fn compute_capabilities(
 ) -> Vec<String> {
     let mut caps = vec![
         "pc.power".into(),
+        // Another PC's clipboard lands here (#432); phones already send theirs.
+        "clip.write".into(),
         nectarlink_core::PHOTOS_SHOW.into(),
         nectarlink_core::CAMERA_CONTINUITY.into(),
         nectarlink_core::CALLS_SHOW.into(),
