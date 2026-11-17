@@ -125,6 +125,10 @@ pub fn compute_capabilities(
         nectarlink_core::MIC_LISTEN.into(),
         nectarlink_core::RECORDER.into(),
     ];
+    #[cfg(target_os = "macos")]
+    {
+        caps.push(nectarlink_core::PC_AUDIO.into());
+    }
     #[cfg(any(windows, target_os = "linux"))]
     {
         caps.push(nectarlink_core::PC_WAKE.into());
@@ -485,7 +489,6 @@ mod tests {
             crate::win::vcam::is_available(),
             "macOS must advertise camera.virtual only when the virtual camera extension is available"
         );
-        assert!(!caps.contains(&nectarlink_core::PC_AUDIO.into()), "macOS must not advertise pc.audio");
         assert!(caps.contains(&nectarlink_core::RECORDER.into()), "macOS must advertise recorder");
         assert!(
             !caps.contains(&nectarlink_core::DECK_ACTIONS.into()),
@@ -506,5 +509,6 @@ mod tests {
         assert!(caps.contains(&nectarlink_core::CONTACTS_SHOW.into()));
         assert!(caps.contains(&nectarlink_core::SMS_SHOW.into()));
         assert!(caps.contains(&nectarlink_core::TOGGLES_SHOW.into()));
+        assert!(caps.contains(&nectarlink_core::PC_AUDIO.into()));
     }
 }

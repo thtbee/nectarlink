@@ -167,7 +167,7 @@ in light and dark. In English, German, Turkish, Simplified Chinese, Brazilian Po
 | System notifications | Yes | Yes | Yes (system banners) |
 | Phone screen mirroring | Yes | Yes | Yes (H.264) |
 | Screen recording (MP4) | Yes | Yes | Yes (H.264) |
-| PC audio stream / phone mic | Yes | Yes | Phone mic and sound play on the Mac; PC audio not yet |
+| PC audio stream / phone mic | Yes | Yes | Yes (PC audio needs Screen Recording permission) |
 | Phone as webcam | Yes | Yes (with v4l2loopback) | Not yet (needs a Developer ID signed build) |
 | Phone storage in the file manager | Yes | Yes | Not yet |
 
