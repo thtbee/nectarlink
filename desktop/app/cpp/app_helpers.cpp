@@ -54,6 +54,8 @@
 #endif
 
 #ifdef __APPLE__
+#include <QtGui/QWindow>
+#include <algorithm>
 #include <crt_externs.h>
 #endif
 
@@ -888,6 +890,32 @@ void linux_tray_setup(
                 pushTrayAction("OPEN");
         });
         tray->show();
+
+#ifdef __APPLE__
+        // Reopen the main window when the user clicks the Dock icon while hidden in the tray.
+        class MacDockReopenFilter final : public QObject {
+        public:
+            using QObject::QObject;
+
+        protected:
+            bool eventFilter(QObject *watched, QEvent *event) override
+            {
+                if (event->type() == QEvent::ApplicationActivate) {
+                    const auto windows = QGuiApplication::topLevelWindows();
+                    const bool anyVisible = std::any_of(windows.begin(), windows.end(), [](const QWindow *w) {
+                        return w && w->isVisible();
+                    });
+                    if (!anyVisible) {
+                        pushTrayAction("OPEN");
+                    }
+                }
+                return QObject::eventFilter(watched, event);
+            }
+        };
+        if (auto *app = QCoreApplication::instance()) {
+            app->installEventFilter(new MacDockReopenFilter(tray));
+        }
+#endif
 
         st.icon = tray;
         st.menu = menu;
