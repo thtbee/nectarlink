@@ -2764,6 +2764,8 @@ pub trait Platform: Send + Sync {
     /// on a display of its own and stream it with `mirror_open`, its config
     /// packets carrying the session. False if it can't.
     fn mirror_requested(&self, pc_id: String, options: MirrorOptions) -> bool;
+    /// A PC asked to uninstall `pkg` (D349): true once it's gone.
+    fn app_uninstall_requested(&self, pc_id: String, pkg: String) -> bool;
     /// The PC stopped watching the screen (session 0) or an app window.
     fn mirror_stop_requested(&self, pc_id: String, session: u32);
     /// The PC needs a keyframe.
@@ -2974,6 +2976,13 @@ impl core::Platform for PlatformAdapter {
             Ok(())
         } else {
             Err("the clipboard rejected it".into())
+        }
+    }
+    fn app_uninstall_requested(&self, peer: &DeviceId, pkg: &str) -> Result<(), String> {
+        if self.0.app_uninstall_requested(peer.to_string(), pkg.to_owned()) {
+            Ok(())
+        } else {
+            Err("the phone couldn't uninstall it".into())
         }
     }
     fn mirror_requested(&self, peer: &DeviceId, options: &core::MirrorStart) -> Result<(), String> {

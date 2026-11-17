@@ -310,6 +310,16 @@ pub trait Platform: Send + Sync + 'static {
     /// The PC stopped watching: stop sharing the screen or app window.
     fn mirror_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32) {}
 
+    /// A paired PC asked to uninstall `pkg` (`mirror.apps.uninstall`, D349).
+    /// `Ok` once it's gone; `Err` (a reason for logs) when it can't.
+    fn app_uninstall_requested(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+        _pkg: &str,
+    ) -> Result<(), String> {
+        Err("this device doesn't uninstall apps".into())
+    }
+
     /// A paired phone asked this PC to play its sound (`mirror.listen.ask`, #398).
     fn phone_sound_asked(&self, _peer: &nectarlink_protocol::DeviceId) {}
 

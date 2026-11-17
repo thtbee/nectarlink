@@ -39,6 +39,11 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("App", "Toggle Shelf"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Wi-Fi %1/4"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Your phone"), // desktop/app/src/bridge/app.rs
+    QT_TRANSLATE_NOOP("Apps", "Added %1 to your app menu."), // desktop/app/src/bridge/mirror.rs
+    QT_TRANSLATE_NOOP("Apps", "Added %1 to your desktop."), // desktop/app/src/bridge/mirror.rs
+    QT_TRANSLATE_NOOP("Apps", "Couldn't add a shortcut for %1."), // desktop/app/src/bridge/mirror.rs
+    QT_TRANSLATE_NOOP("Apps", "Couldn't uninstall %1."), // desktop/app/src/bridge/mirror.rs
+    QT_TRANSLATE_NOOP("Apps", "Uninstalled %1."), // desktop/app/src/bridge/mirror.rs
     QT_TRANSLATE_NOOP("Automations", "Triggered by %1"), // desktop/app/src/automations.rs
     QT_TRANSLATE_NOOP("Battery", "%1 has reached %2% charge"), // desktop/app/src/battery.rs
     QT_TRANSLATE_NOOP("Battery", "%1 is fully charged"), // desktop/app/src/battery.rs

@@ -87,6 +87,8 @@ pub mod types {
     pub const MIRROR_RESIZE: &str = "mirror.resize";
     pub const MIRROR_INPUT: &str = "mirror.input";
     pub const MIRROR_APPS: &str = "mirror.apps";
+    /// PC → phone: uninstall this app (`AppUninstall`); answered `ok` once it's gone.
+    pub const MIRROR_APP_UNINSTALL: &str = "mirror.apps.uninstall";
     pub const MIRROR_NOTICE: &str = "mirror.notice";
     pub const REMOTE_CHECK: &str = "remote.check";
     pub const REMOTE_INPUT: &str = "remote.input";
@@ -1404,6 +1406,8 @@ pub mod mirror {
     /// Offered by phones that run an app on a display of its own, shown in
     /// a window of its own (Elevated).
     pub const VIRTUAL_DISPLAY: &str = "mirror.virtual_display";
+    /// Offered by phones that uninstall an app a PC asks for (Elevated, D349).
+    pub const APP_UNINSTALL: &str = "mirror.apps.uninstall";
     /// The session of the phone's own screen; app windows have others.
     pub const SCREEN: u32 = 0;
     /// Apps in a `mirror.apps` answer, at most.
@@ -1578,6 +1582,18 @@ impl std::fmt::Debug for PhoneApp {
             .field("pkg", &self.pkg)
             .field("icon", &self.icon.as_ref().map(Vec::len))
             .finish_non_exhaustive()
+    }
+}
+
+/// Body of `mirror.apps.uninstall`: the app to remove from the phone.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AppUninstall {
+    pub pkg: String,
+}
+
+impl AppUninstall {
+    pub fn is_valid(&self) -> bool {
+        is_package_name(&self.pkg)
     }
 }
 

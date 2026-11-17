@@ -8,6 +8,7 @@
 // A GUI app: no console window in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod app_shortcuts;
 mod automations;
 mod battery;
 mod bridge;

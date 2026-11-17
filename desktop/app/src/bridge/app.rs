@@ -913,6 +913,13 @@ pub fn handle_jump_task(action: &str) {
 }
 
 fn dispatch_jump_task(qt: &CxxQtThread<qobject::AppController>, action: String) {
+    // A phone app's shortcut (#370): it opens in an app window, nothing else shows.
+    if let Some((device, pkg)) = crate::app_shortcuts::parse_task(&action) {
+        let data_dir = &core_host::host().data_dir;
+        let label = crate::mirror::saved_label(data_dir, &device, &pkg).unwrap_or_else(|| pkg.clone());
+        crate::mirror::start_app(device, pkg, label);
+        return;
+    }
     let _ = qt.queue(move |mut object| match action.as_str() {
         "send-files" => {
             object.as_mut().set_current_page(QString::from("home"));
