@@ -370,6 +370,15 @@
     <string name="remote_air_hold">Halten, um auf %1$s zu zielen</string>
     <string name="remote_air_active">Bewegt sich auf %1$s · Gerät neigen oder zum Klicken tippen</string>
     <string name="remote_air_hint">Fläche halten und Gerät neigen, um den Zeiger zu bewegen · Zum Klicken tippen · Mit zwei Fingern ziehen zum Scrollen</string>
+    <string name="gamepad_open">Gamepad</string>
+    <string name="gamepad_title">Gamepad für %1$s</string>
+    <string name="gamepad_close">Schließen</string>
+    <string name="gamepad_retry">Erneut versuchen</string>
+    <string name="gamepad_connecting">Controller wird an %1$s angeschlossen…</string>
+    <string name="gamepad_offline">%1$s ist offline</string>
+    <string name="gamepad_failed">Controller konnte nicht an %1$s angeschlossen werden</string>
+    <string name="gamepad_driver_title">%1$s braucht einen Controller-Treiber</string>
+    <string name="gamepad_driver_text">Installiere ViGEmBus auf %1$s und versuche es dann erneut. Spiele dort sehen einen Xbox-Controller.</string>
     <string name="remote_air_no_gyro_title">Kein Gyroskop in diesem Gerät</string>
     <string name="remote_air_no_gyro_text">Die Air-Maus nutzt ein Gyroskop, um der Neigung deines Geräts zu folgen. Verwende stattdessen den Touchpad-Modus.</string>
     <string name="remote_left_click">Links</string>

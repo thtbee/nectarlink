@@ -366,6 +366,15 @@
     <string name="remote_air_hold">長押しして %1$s を操作</string>
     <string name="remote_air_active">%1$s 上を移動中 · スマートフォンを傾けるかタップしてクリック</string>
     <string name="remote_air_hint">パッドを押したままスマートフォンを傾けてポインターを動かします · パッドをタップしてクリックします · 2 本の指でドラッグしてスクロールします</string>
+    <string name="gamepad_open">ゲームパッド</string>
+    <string name="gamepad_title">%1$s 用ゲームパッド</string>
+    <string name="gamepad_close">閉じる</string>
+    <string name="gamepad_retry">再試行</string>
+    <string name="gamepad_connecting">%1$s にコントローラーを接続しています…</string>
+    <string name="gamepad_offline">%1$s はオフラインです</string>
+    <string name="gamepad_failed">%1$s にコントローラーを接続できませんでした</string>
+    <string name="gamepad_driver_title">%1$s にはコントローラー ドライバーが必要です</string>
+    <string name="gamepad_driver_text">%1$s に ViGEmBus をインストールしてから、もう一度お試しください。ゲームからは Xbox コントローラーとして認識されます。</string>
     <string name="remote_air_no_gyro_title">このスマートフォンにはジャイロセンサーが搭載されていません</string>
     <string name="remote_air_no_gyro_text">エアマウスはジャイロセンサーを使用して、スマートフォンの傾きに追従します。代わりにタッチパッドモードをご利用ください。</string>
     <string name="remote_left_click">左</string>

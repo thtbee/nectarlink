@@ -376,6 +376,15 @@
     <string name="remote_air_hold">Mantén pulsado para apuntar a %1$s</string>
     <string name="remote_air_active">Moviendo el puntero en %1$s · inclina el teléfono o toca para hacer clic</string>
     <string name="remote_air_hint">Mantén pulsado el panel e inclina el teléfono para mover el puntero · Toca el panel para hacer clic · Arrastra dos dedos para desplazarte</string>
+    <string name="gamepad_open">Mando</string>
+    <string name="gamepad_title">Mando para %1$s</string>
+    <string name="gamepad_close">Cerrar</string>
+    <string name="gamepad_retry">Reintentar</string>
+    <string name="gamepad_connecting">Conectando un mando a %1$s…</string>
+    <string name="gamepad_offline">%1$s está sin conexión</string>
+    <string name="gamepad_failed">No se pudo conectar un mando a %1$s</string>
+    <string name="gamepad_driver_title">%1$s necesita un controlador para mandos</string>
+    <string name="gamepad_driver_text">Instala ViGEmBus en %1$s y vuelve a intentarlo. Los juegos verán un mando de Xbox.</string>
     <string name="remote_air_no_gyro_title">No hay giroscopio en este teléfono</string>
     <string name="remote_air_no_gyro_text">El ratón aéreo utiliza un giroscopio para detectar la inclinación del teléfono. Utiliza el modo Panel táctil.</string>
     <string name="remote_left_click">Izquierdo</string>

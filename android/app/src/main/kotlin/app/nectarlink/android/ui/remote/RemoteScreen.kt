@@ -155,6 +155,13 @@ fun RemoteScreen(
         }
     }
 
+    // The Gamepad takes the whole screen while it's open (#442).
+    var gamepadOpen by rememberSaveable(device.id) { mutableStateOf(false) }
+    if (gamepadOpen && device.has("input.gamepad")) {
+        GamepadScreen(device = device, core = core, onClose = { gamepadOpen = false })
+        return
+    }
+
     var mode by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
     var screenFullScreen by rememberSaveable { mutableStateOf(false) }
     var access by remember(device.id) { mutableStateOf(Core.RemoteAccess.Allowed) }
@@ -231,6 +238,15 @@ fun RemoteScreen(
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                 )
+                if (device.has("input.gamepad")) {
+                    IconButton(onClick = { gamepadOpen = true }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_gamepad),
+                            contentDescription = stringResource(R.string.gamepad_open),
+                        )
+                    }
+                    Spacer(Modifier.width(4.dp))
+                }
                 Surface(
                     shape = CircleShape,
                     color = if (device.online) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,

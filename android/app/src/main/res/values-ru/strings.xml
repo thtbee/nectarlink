@@ -365,6 +365,15 @@
     <string name="remote_air_hold">Удерживайте, чтобы целиться в %1$s</string>
     <string name="remote_air_active">Движение на %1$s · наклоняйте телефон или нажмите, чтобы щёлкнуть</string>
     <string name="remote_air_hint">Удерживайте панель и наклоняйте телефон, чтобы двигать указатель · Нажмите на панель, чтобы щёлкнуть · Проведите двумя пальцами для прокрутки</string>
+    <string name="gamepad_open">Геймпад</string>
+    <string name="gamepad_title">Геймпад для %1$s</string>
+    <string name="gamepad_close">Закрыть</string>
+    <string name="gamepad_retry">Повторить</string>
+    <string name="gamepad_connecting">Подключение контроллера к %1$s…</string>
+    <string name="gamepad_offline">%1$s не в сети</string>
+    <string name="gamepad_failed">Не удалось подключить контроллер к %1$s</string>
+    <string name="gamepad_driver_title">%1$s нужен драйвер контроллера</string>
+    <string name="gamepad_driver_text">Установите ViGEmBus на %1$s и повторите попытку. Игры увидят контроллер Xbox.</string>
     <string name="remote_air_no_gyro_title">На этом телефоне нет гироскопа</string>
     <string name="remote_air_no_gyro_text">Аэромышь следит за наклоном телефона с помощью гироскопа. Используйте режим тачпада.</string>
     <string name="remote_left_click">Левая</string>

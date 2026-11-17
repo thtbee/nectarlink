@@ -20,6 +20,12 @@ change things that need a step from you, and its notes say so.
 - **Scroll with the air mouse.** Drag two fingers on the air pad to scroll, up and down
   or sideways, the same as on the touchpad. The pointer holds still while you scroll.
   Thanks to [@w-rakeeb](https://github.com/w-rakeeb)
+- **Your phone as a game controller.** Tap the controller button in Control PC and the
+  phone turns into a gamepad: two sticks, a d-pad, A B X Y, bumpers, triggers, Back, Home
+  and Start. The PC gets an Xbox controller that games see like a real one, one per phone.
+  On Windows it needs the free ViGEmBus driver on the PC (the Gamepad tells you if it's
+  missing); on Linux it works as is. Not on macOS yet. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb)
   ([#442](https://github.com/thtbee/nectarlink/issues/442)).
 - **Two PCs work together.** Pair a PC with another PC, Windows, Mac or Linux, the
   same way as a phone: open the pairing screen on both and pick the other one. Home

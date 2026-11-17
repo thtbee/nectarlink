@@ -2446,6 +2446,75 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         enqueueRemoteOp { runCatching { it.remoteLaser(id, on, x, y) } }
     }
 
+    /** What the PC said when the Gamepad plugged its controller in. */
+    enum class PadAccess { Allowed, Denied, DriverMissing, Failed, Offline }
+
+    /**
+     * Plugs this phone's controller into a PC with [pad] (reliably) and says how it went:
+     * [PadAccess.DriverMissing] when the PC (Windows) lacks the driver for it.
+     */
+    suspend fun remotePadPlugIn(id: String, pad: app.nectarlink.android.ui.remote.PadSnapshot): PadAccess {
+        startJob?.join()
+        val node = node ?: return PadAccess.Offline
+        return try {
+            sendPad(node, id, pad, reliable = true)
+            PadAccess.Allowed
+        } catch (e: NectarlinkException) {
+            when (e) {
+                is NectarlinkException.Denied -> PadAccess.Denied
+                is NectarlinkException.Unsupported -> PadAccess.DriverMissing
+                is NectarlinkException.Internal -> PadAccess.Failed
+                else -> PadAccess.Offline
+            }
+        }
+    }
+
+    private val pendingPad = java.util.concurrent.atomic.AtomicReference<Pair<String, app.nectarlink.android.ui.remote.PadSnapshot>?>(null)
+
+    /**
+     * Sends this phone's controller as it is now in a datagram. Called on every change and
+     * every 100 ms while the Gamepad is open. With [coalesce] (a stick moved, or the repeat),
+     * only the newest waiting one is sent; without (a button or trigger changed), it goes
+     * out as is, so a quick tap's press and release both reach the PC.
+     */
+    fun remotePad(id: String, pad: app.nectarlink.android.ui.remote.PadSnapshot, coalesce: Boolean) {
+        if (!coalesce) {
+            // This one is newer than any waiting update, which then has nothing to send.
+            pendingPad.set(null)
+            enqueueRemoteOp { node -> runCatching { sendPad(node, id, pad, reliable = false) } }
+            return
+        }
+        if (pendingPad.getAndSet(id to pad) != null) return
+        enqueueRemoteOp { node ->
+            val (targetId, latest) = pendingPad.getAndSet(null) ?: return@enqueueRemoteOp
+            runCatching { sendPad(node, targetId, latest, reliable = false) }
+        }
+    }
+
+    /** Unplugs this phone's controller from a PC. */
+    fun remotePadOff(id: String) {
+        pendingPad.set(null)
+        // In the same queue as the updates, so none lands after it and plugs it back in.
+        enqueueRemoteOp { runCatching { it.remotePadOff(id) } }
+    }
+
+    private suspend fun sendPad(
+        node: NectarlinkNode,
+        id: String,
+        pad: app.nectarlink.android.ui.remote.PadSnapshot,
+        reliable: Boolean,
+    ) = node.remotePad(
+        id,
+        pad.buttons.toUShort(),
+        pad.lt.coerceIn(0, 255).toUByte(),
+        pad.rt.coerceIn(0, 255).toUByte(),
+        pad.lx.coerceIn(-32768, 32767).toShort(),
+        pad.ly.coerceIn(-32768, 32767).toShort(),
+        pad.rx.coerceIn(-32768, 32767).toShort(),
+        pad.ry.coerceIn(-32768, 32767).toShort(),
+        reliable,
+    )
+
     /**
      * Asks a paired PC to start streaming its desktop screen to this phone (`mirror.start`,
      * session 0), or with [watch], what that PC player plays, with its sound (Play on phone).

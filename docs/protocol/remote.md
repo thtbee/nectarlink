@@ -3,13 +3,15 @@
 > Status: **draft.** Builds on [protocol v0](v0.md); breaking changes are
 > allowed until v1. License: CC BY 4.0.
 
-A phone acts as a touchpad, keyboard, and presentation remote for a paired PC.
+A phone acts as a touchpad, keyboard, presentation remote, and game
+controller for a paired PC.
 
 ## 1. Capability and permission
 
 | ID | Offered by | Meaning |
 |---|---|---|
 | `input.inject` | desktop | Accepts pointer, keyboard, and presentation input from a paired phone |
+| `input.gamepad` | desktop | Also plugs in a game controller for a phone's `pad` input (§3.1); offered with `input.inject` |
 
 Input is governed by the `remote_input` per-device toggle on the PC, which is
 **off by default**. While `remote_input` is off for a phone:
@@ -82,6 +84,8 @@ Input =
   | { type: "key",    key: text, mods?: [KeyMod] }
   | { type: "slide",  action: SlideAction }
   | { type: "laser",  on: bool, x?: float32, y?: float32 }
+  | { type: "pad",    pad: Pad }
+  | { type: "pad_off" }
 
 Button       = "left" | "right" | "middle"
 ButtonAction = "down" | "up" | "click"
@@ -121,6 +125,36 @@ SlideAction  = "next" | "previous" | "start" | "stop" | "black"
   top-to-bottom). The PC draws a bright dot in a frameless, always-on-top,
   click-through overlay window and fades it out when `on` is `false` or updates
   stop arriving.
+
+### 3.1 Game controller (`pad`, `pad_off`)
+
+Only to a PC that offers `input.gamepad`, under the same `remote_input`
+toggle as the rest.
+
+```
+Pad = {
+  buttons?: uint16,   ; XInput bits, below; 0x0800 is never set
+  lt?: uint8, rt?: uint8,                     ; triggers, 0 to 255
+  lx?: int16, ly?: int16, rx?: int16, ry?: int16 ; sticks, y positive is up
+}
+```
+
+`buttons`: `0x0001` up, `0x0002` down, `0x0004` left, `0x0008` right,
+`0x0010` start, `0x0020` back, `0x0040` left stick, `0x0080` right stick,
+`0x0100` LB, `0x0200` RB, `0x0400` guide, `0x1000` A, `0x2000` B, `0x4000`
+X, `0x8000` Y. A missing field is 0.
+
+- Each `pad` carries the whole controller, so it may travel in a datagram:
+  one that's lost is made up for by the next. The phone sends it on every
+  change and again every 100 ms while its controller is open.
+- The first `pad` goes on the control stream. The PC plugs a controller in
+  for that phone (an Xbox 360 one on Windows and Linux) and answers `OK`, or
+  `UNSUPPORTED` when it can't: on Windows, when the ViGEmBus driver isn't
+  installed. A PC without `input.gamepad` answers `UNSUPPORTED` too.
+- The PC lets go of every button and centres the sticks when no `pad` has
+  come for 1 second, and unplugs the controller after 60 seconds, when the
+  phone sends `pad_off` (control stream only), when the link drops, or when
+  `remote_input` is turned off. Each phone gets its own controller, up to 4.
 
 ## 4. Validation and rate limiting
 

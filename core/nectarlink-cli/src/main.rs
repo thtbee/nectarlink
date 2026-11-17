@@ -2363,6 +2363,25 @@ impl Platform for TerminalPlatform {
         println!("Remote input: {input:?}");
         Ok(())
     }
+    fn remote_pad(
+        &self,
+        _peer: &DeviceId,
+        pad: Option<nectarlink_core::PadState>,
+        _wait: bool,
+    ) -> Result<(), String> {
+        // Only changes, so a phone's repeats every 100 ms don't flood the terminal.
+        static LAST: std::sync::Mutex<Option<Option<nectarlink_core::PadState>>> =
+            std::sync::Mutex::new(None);
+        let mut last = LAST.lock().unwrap_or_else(|e| e.into_inner());
+        if last.as_ref() != Some(&pad) {
+            match pad {
+                Some(pad) => println!("Controller: {pad:?}"),
+                None => println!("Controller unplugged"),
+            }
+            *last = Some(pad);
+        }
+        Ok(())
+    }
     fn set_phone_toggle(
         &self,
         id: &str,

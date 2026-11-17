@@ -380,6 +380,15 @@
     <string name="remote_air_hold">Przytrzymaj, aby sterować wskaźnikiem na %1$s</string>
     <string name="remote_air_active">Sterowanie wskaźnikiem na %1$s · przechyl telefon lub dotknij, aby kliknąć</string>
     <string name="remote_air_hint">Przytrzymaj pole sterowania i przechyl telefon, aby poruszyć wskaźnikiem · Dotknij pola, aby kliknąć · Przeciągnij dwoma palcami, aby przewijać</string>
+    <string name="gamepad_open">Gamepad</string>
+    <string name="gamepad_title">Gamepad dla %1$s</string>
+    <string name="gamepad_close">Zamknij</string>
+    <string name="gamepad_retry">Spróbuj ponownie</string>
+    <string name="gamepad_connecting">Podłączanie kontrolera do %1$s…</string>
+    <string name="gamepad_offline">%1$s jest offline</string>
+    <string name="gamepad_failed">Nie udało się podłączyć kontrolera do %1$s</string>
+    <string name="gamepad_driver_title">%1$s potrzebuje sterownika kontrolera</string>
+    <string name="gamepad_driver_text">Zainstaluj ViGEmBus na %1$s i spróbuj ponownie. Gry zobaczą kontroler Xbox.</string>
     <string name="remote_air_no_gyro_title">Ten telefon nie ma żyroskopu</string>
     <string name="remote_air_no_gyro_text">Mysz powietrzna korzysta z żyroskopu, aby śledzić przechylenie telefonu. Zamiast tego użyj trybu touchpada.</string>
     <string name="remote_left_click">Lewy</string>

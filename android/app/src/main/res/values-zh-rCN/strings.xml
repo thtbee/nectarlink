@@ -357,6 +357,15 @@
     <string name="remote_air_hold">按住以对准 %1$s</string>
     <string name="remote_air_active">正在 %1$s 上移动 · 倾斜手机或点按以单击</string>
     <string name="remote_air_hint">按住触控区并倾斜手机以移动指针 · 点按触控区以单击 · 双指拖动即可滚动</string>
+    <string name="gamepad_open">手柄</string>
+    <string name="gamepad_title">%1$s 的手柄</string>
+    <string name="gamepad_close">关闭</string>
+    <string name="gamepad_retry">重试</string>
+    <string name="gamepad_connecting">正在将手柄连接到 %1$s…</string>
+    <string name="gamepad_offline">%1$s 已离线</string>
+    <string name="gamepad_failed">无法将手柄连接到 %1$s</string>
+    <string name="gamepad_driver_title">%1$s 需要手柄驱动程序</string>
+    <string name="gamepad_driver_text">请在 %1$s 上安装 ViGEmBus，然后重试。游戏会将其识别为 Xbox 手柄。</string>
     <string name="remote_air_no_gyro_title">本手机没有陀螺仪</string>
     <string name="remote_air_no_gyro_text">空中鼠标依靠陀螺仪跟随手机的倾斜角度。请改用触控板模式。</string>
     <string name="remote_left_click">左键</string>
