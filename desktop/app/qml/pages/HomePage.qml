@@ -1812,9 +1812,9 @@ Item {
                                 width: parent.width - 32 - (turnOn.visible ? turnOn.width + 24 : 0)
                                 role: "bodySmall"
                                 wrapMode: Text.WordWrap
-                                text: Qt.platform.os === "linux"
-                                    ? qsTr("Desktop notifications are off. Turn them on in your system's notification settings.")
-                                    : qsTr("Windows notifications are off.")
+                                text: Qt.platform.os === "windows"
+                                    ? qsTr("Windows notifications are off.")
+                                    : qsTr("Desktop notifications are off. Turn them on in your system's notification settings.")
                             }
                             Button {
                                 id: turnOn
@@ -2689,9 +2689,9 @@ Item {
                       ? qsTr("Hidden on this PC.")
                       : appSheet.rule === "quiet"
                         ? qsTr("Shown in feed without pop-ups.")
-                        : Qt.platform.os === "linux"
-                          ? qsTr("Shown in feed and as desktop pop-ups.")
-                          : qsTr("Shown in feed and as Windows pop-ups.")
+                        : Qt.platform.os === "windows"
+                          ? qsTr("Shown in feed and as Windows pop-ups.")
+                          : qsTr("Shown in feed and as desktop pop-ups.")
             }
             Row {
                 anchors.right: parent.right

@@ -223,6 +223,13 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The Mac app talks like a Mac app.** The walkthrough and Settings no longer mention
+  Windows notifications, Start with Windows, Windows DPAPI or Windows Firewall on a Mac:
+  they say Start at login, the login Keychain and the menu bar, the network check says
+  what it really checks, and Send to and hotspot joining show as not on macOS yet. Next
+  and Done in the walkthrough follow the app's language. Thanks to
+  [@ManuZhu0728](https://github.com/ManuZhu0728)
+  ([#431](https://github.com/thtbee/nectarlink/issues/431)).
 - **The phone stops trying to reach PCs when it can't.** With no Wi-Fi, Ethernet or VPN,
   and Connect over mobile data off, it no longer dials every two minutes in the background:
   it waits until a network comes back, which saves battery away from home. A USB cable to
