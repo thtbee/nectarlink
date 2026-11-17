@@ -1646,6 +1646,11 @@ struct SavedApp {
     label: String,
 }
 
+/// What a phone calls `pkg`, as its saved app list says.
+pub fn saved_label(data_dir: &Path, device: &DeviceId, pkg: &str) -> Option<String> {
+    saved_apps(data_dir, device)?.into_iter().find(|a| a.pkg == pkg).map(|a| a.label)
+}
+
 /// The phone's apps as an earlier run saved them, with the icons it kept.
 fn saved_apps(data_dir: &Path, device: &DeviceId) -> Option<Vec<App>> {
     let bytes = std::fs::read(saved_apps_path(data_dir, device)).ok()?;

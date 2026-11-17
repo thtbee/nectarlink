@@ -962,6 +962,13 @@ pub const FEATURES: &[FeatureDef] = &[
             limit: "mirroring.limit.audio_some_apps",
         }),
     },
+    // Uninstalling a phone app from the PC (D349).
+    FeatureDef {
+        id: "mirroring.app_uninstall",
+        group: FeatureGroup::Mirroring,
+        requires: &[phone("mirror.apps.uninstall", ELEVATED), DeviceToggle("mirroring")],
+        partial: None,
+    },
     // Started from the phone (#398).
     FeatureDef {
         id: "mirroring.sound_from_phone",

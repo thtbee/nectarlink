@@ -47,6 +47,18 @@ Item {
         Mirror.startApp(deviceId, app.pkg, app.label)
     }
 
+    // An app's other actions: right-click, the Menu key, or a long press.
+    property var actionApp: null
+    property bool confirmUninstall: false
+    readonly property var uninstallFeature: AppController.capsRevision >= 0 && deviceId.length > 0
+        ? AppController.featureState(deviceId, "mirroring.app_uninstall") : ({})
+    readonly property bool canUninstall: uninstallFeature.state === "available"
+    function showActions(app) {
+        actionApp = app
+        confirmUninstall = false
+        appActions.open()
+    }
+
     // Loads the list the first time the page shows for a phone; Refresh reloads it.
     function loadIfNeeded() {
         if (!active || !available || deviceId.length === 0)
@@ -329,6 +341,64 @@ Item {
             }
         }
         HoverHandler { id: hover; cursorShape: Qt.PointingHandCursor }
-        TapHandler { id: tap; onTapped: page.launch(cell.app) }
+        Keys.onMenuPressed: page.showActions(app)
+        TapHandler { id: tap; onTapped: page.launch(cell.app); onLongPressed: page.showActions(cell.app) }
+        TapHandler { acceptedButtons: Qt.RightButton; onTapped: page.showActions(cell.app) }
+    }
+
+    Sheet {
+        id: appActions
+        cardWidth: 380
+        Column {
+            width: parent.width
+            spacing: 10
+
+            Txt {
+                width: parent.width
+                role: "headline"
+                text: page.actionApp ? page.actionApp.label : ""
+                elide: Text.ElideRight
+            }
+            Button {
+                width: parent.width
+                variant: "tonal"
+                iconPath: Icons.window
+                text: qsTr("Open in a window")
+                onClicked: {
+                    appActions.close()
+                    page.launch(page.actionApp)
+                }
+            }
+            // A shortcut that opens it straight in a window (#370).
+            Button {
+                width: parent.width
+                visible: Mirror.appShortcutsSupported()
+                variant: "tonal"
+                iconPath: Icons.pin
+                text: Qt.platform.os === "windows" ? qsTr("Add to desktop") : qsTr("Add to app menu")
+                onClicked: {
+                    appActions.close()
+                    Mirror.addAppShortcut(page.deviceId, page.actionApp.pkg, page.actionApp.label)
+                }
+            }
+            // Through Elevated, after a second press confirms it (D349).
+            Button {
+                width: parent.width
+                visible: page.canUninstall
+                variant: page.confirmUninstall ? "fill" : "outline"
+                iconPath: Icons.trash
+                text: page.confirmUninstall
+                    ? qsTr("Uninstall it from %1").arg(page.deviceName)
+                    : qsTr("Uninstall")
+                onClicked: {
+                    if (!page.confirmUninstall) {
+                        page.confirmUninstall = true
+                        return
+                    }
+                    appActions.close()
+                    Mirror.uninstallApp(page.deviceId, page.actionApp.pkg, page.actionApp.label)
+                }
+            }
+        }
     }
 }

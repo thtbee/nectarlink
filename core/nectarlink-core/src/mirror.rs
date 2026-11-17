@@ -542,6 +542,29 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                 }
             }
         }
+        types::MIRROR_APP_UNINSTALL => {
+            let request: nectarlink_protocol::messages::AppUninstall = env.body()?;
+            let reply = if !shared.toggle_on(&peer, TOGGLE) {
+                Envelope::error(ErrorCode::Denied, "mirroring is off for this device")
+            } else if !shared.we_offer(mirror::APP_UNINSTALL) {
+                Envelope::error(ErrorCode::Unsupported, "this phone doesn't uninstall apps for a PC")
+            } else if !request.is_valid() {
+                Envelope::error(ErrorCode::BadMessage, "not an app")
+            } else {
+                let pkg = request.pkg.clone();
+                match tokio::task::spawn_blocking(move || platform.app_uninstall_requested(&peer, &pkg))
+                    .await
+                    .unwrap_or_else(|e| Err(e.to_string()))
+                {
+                    Ok(()) => Envelope::empty(types::OK),
+                    Err(reason) => {
+                        tracing::info!(reason, "an app wasn't uninstalled");
+                        Envelope::error(ErrorCode::Internal, "the phone couldn't uninstall it")
+                    }
+                }
+            };
+            session.send(reply.reply_to(env.id)).await?;
+        }
         types::MIRROR_APPS => {
             let reply = if !shared.toggle_on(&peer, TOGGLE) {
                 Envelope::error(ErrorCode::Denied, "mirroring is off for this device")

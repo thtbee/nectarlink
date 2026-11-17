@@ -10,6 +10,7 @@ use cxx_qt_lib::{QList, QString, QUrl, QVariant};
 use nectarlink_core::{FeatureState, MIRROR_SCREEN, MirrorInput};
 
 use crate::{
+    i18n::tr,
     mirror::{self, Apps, Phase, Window},
     state::Changes,
 };
@@ -62,6 +63,19 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "startApp"]
         fn start_app(self: &Mirror, device: &QString, pkg: &QString, label: &QString);
+        /// Puts a shortcut to a phone app on the desktop (Windows) or in the
+        /// app menu (Linux), #370. Says how it went.
+        #[qinvokable]
+        #[cxx_name = "addAppShortcut"]
+        fn add_app_shortcut(self: &Mirror, device: &QString, pkg: &QString, label: &QString) -> bool;
+        /// Uninstalls a phone app (D349); the result shows as a message.
+        #[qinvokable]
+        #[cxx_name = "uninstallApp"]
+        fn uninstall_app(self: &Mirror, device: &QString, pkg: &QString, label: &QString);
+        /// Whether this system gets those shortcuts.
+        #[qinvokable]
+        #[cxx_name = "appShortcutsSupported"]
+        fn app_shortcuts_supported(self: &Mirror) -> bool;
         /// Reopens an ended window (the screen or an app window).
         #[qinvokable]
         fn reopen(self: &Mirror, key: &QString);
@@ -343,6 +357,51 @@ impl qobject::Mirror {
         if let Some(device) = super::parse_device(device) {
             mirror::start(device);
         }
+    }
+
+    pub fn add_app_shortcut(&self, device: &QString, pkg: &QString, label: &QString) -> bool {
+        let Some(device) = super::parse_device(device) else { return false };
+        let data_dir = &crate::core_host::host().data_dir;
+        let label = String::from(label);
+        match crate::app_shortcuts::add(data_dir, device, &String::from(pkg), &label) {
+            Ok(path) => {
+                tracing::info!(path = %path.display(), "added a phone app's shortcut");
+                crate::bridge::app::show_message(if cfg!(windows) {
+                    tr!("Apps", "Added %1 to your desktop.", label)
+                } else {
+                    tr!("Apps", "Added %1 to your app menu.", label)
+                });
+                true
+            }
+            Err(error) => {
+                tracing::warn!(%error, "couldn't add a phone app's shortcut");
+                crate::bridge::app::show_message(tr!("Apps", "Couldn't add a shortcut for %1.", label));
+                false
+            }
+        }
+    }
+
+    pub fn uninstall_app(&self, device: &QString, pkg: &QString, label: &QString) {
+        let (Some(device), Some(node)) = (super::parse_device(device), crate::core_host::node()) else {
+            return;
+        };
+        let (pkg, label) = (String::from(pkg), String::from(label));
+        crate::core_host::spawn(async move {
+            match node.uninstall_phone_app(device, pkg).await {
+                Ok(()) => {
+                    crate::bridge::app::show_message(tr!("Apps", "Uninstalled %1.", label));
+                    mirror::load_apps(device);
+                }
+                Err(error) => {
+                    tracing::info!(%error, "a phone app wasn't uninstalled");
+                    crate::bridge::app::show_message(tr!("Apps", "Couldn't uninstall %1.", label));
+                }
+            }
+        });
+    }
+
+    pub fn app_shortcuts_supported(&self) -> bool {
+        crate::app_shortcuts::supported()
     }
 
     pub fn start_app(&self, device: &QString, pkg: &QString, label: &QString) {

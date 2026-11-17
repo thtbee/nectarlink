@@ -70,6 +70,14 @@ change things that need a step from you, and its notes say so.
 - **The full PC media controls on the phone's Home.** What the PC plays shows its artwork,
   Previous as well as Play and Next, and a bar to see and move where it is, like the PC's
   own Home. Thanks to [@doodoobug-dot](https://github.com/doodoobug-dot) ([#399](https://github.com/thtbee/nectarlink/issues/399)).
+- **A phone app on the PC's desktop.** Right-click an app on the Apps page (or press the
+  Menu key) for Add to desktop on Windows, or Add to app menu on Linux: a shortcut with
+  the app's own icon that opens it straight in an app window. Thanks to
+  [@unaibenidorm](https://github.com/unaibenidorm) ([#370](https://github.com/thtbee/nectarlink/issues/370)).
+- **Uninstall a phone app from the PC.** With Elevated, the same menu has Uninstall, which
+  asks once more before it removes the app from the phone. NectarLink can't uninstall
+  itself this way. Thanks to [@twistkan](https://github.com/twistkan)
+  ([#349](https://github.com/thtbee/nectarlink/discussions/349)).
 - **Shut a PC down from the phone.** Shut down sits next to Lock and Sleep on the phone's
   Home, for Windows and Linux PCs, and asks before it does anything. It's the normal
   shutdown: an app with unsaved work can still stop it. Thanks to

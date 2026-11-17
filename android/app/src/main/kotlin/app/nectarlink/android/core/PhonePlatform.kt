@@ -148,6 +148,22 @@ internal class PhonePlatform(
     override fun contacts(query: String?, offset: UInt, limit: UInt): List<Contact> =
         contacts().list(query, offset.toInt(), limit.toInt())
 
+    /**
+     * A PC asked to uninstall [pkg] (D349): through Elevated, never NectarLink
+     * itself. True once Android no longer has it (checked for 8 s, since the
+     * helper runs the command on its own).
+     */
+    override fun appUninstallRequested(pcId: String, pkg: String): Boolean {
+        if (pkg == context.packageName || !PACKAGE.matches(pkg) || !Elevated.running) return false
+        if (!Elevated.runCommand("pm uninstall $pkg")) return false
+        repeat(32) {
+            val installed = runCatching { context.packageManager.getPackageInfo(pkg, 0) }.isSuccess
+            if (!installed) return true
+            Thread.sleep(250)
+        }
+        return false
+    }
+
     override fun mirrorRequested(pcId: String, options: MirrorOptions): Boolean =
         if (options.app != null) {
             appWindows.open(pcId, options)
@@ -346,5 +362,8 @@ internal class PhonePlatform(
 
         /** The phone's own screen's mirroring session. */
         private const val SCREEN = 0u
+
+        /** An Android package name, as the core checks it too. */
+        private val PACKAGE = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$")
     }
 }

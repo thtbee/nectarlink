@@ -3236,6 +3236,23 @@ impl Node {
     }
 
     /// The apps a phone can open in windows of their own (Elevated), by name.
+    /// Asks a phone to uninstall `pkg` (D349); only one that offers
+    /// `mirror.apps.uninstall`. `Ok` once the phone says it's gone.
+    pub async fn uninstall_phone_app(&self, phone: DeviceId, pkg: String) -> Result<()> {
+        let session = self.connected(&phone)?;
+        if !self.shared.offers(&phone, nectarlink_protocol::messages::mirror::APP_UNINSTALL)? {
+            return Err(Error::Unsupported);
+        }
+        let body = nectarlink_protocol::messages::AppUninstall { pkg };
+        if !body.is_valid() {
+            return Err(Error::Protocol("not an app".into()));
+        }
+        let env = Envelope::new(types::MIRROR_APP_UNINSTALL, &body)?;
+        // The phone waits for the app to be gone before it answers.
+        session.request(env, Duration::from_secs(20)).await?.expect(types::OK)?;
+        Ok(())
+    }
+
     pub async fn mirror_apps(&self, peer: DeviceId) -> Result<Vec<crate::PhoneApp>> {
         let session = self.connected(&peer)?;
         crate::mirror::apps(&self.shared, &session).await
