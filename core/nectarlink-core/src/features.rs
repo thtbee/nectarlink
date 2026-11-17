@@ -1537,7 +1537,8 @@ mod tests {
     #[test]
     fn two_pcs_get_the_pc_pair_features() {
         // What every PC offers (BASE_CAPABILITIES and the desktop app's own).
-        let caps: Vec<&str> = PC.iter().copied().chain(["device.battery", "device.ring", "clip.write"]).collect();
+        let caps: Vec<&str> =
+            PC.iter().copied().chain(["device.battery", "device.ring", "clip.write"]).collect();
         let windows = facts(DeviceKind::Desktop, "windows", "10.0.26200", PowerLevel::NotApplicable, &caps);
         let mac = facts(DeviceKind::Laptop, "macos", "15.0", PowerLevel::NotApplicable, &caps);
         let paths = [ConnectionPath::Lan];
