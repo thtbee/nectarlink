@@ -10,7 +10,7 @@ use std::{
 use bytes::Bytes;
 use iroh::endpoint::{RecvStream, SendStream};
 pub use nectarlink_protocol::messages::{
-    ButtonAction, KeyMod, MouseButton, RemoteInput, SlideAction, remote_keys,
+    ButtonAction, KeyMod, MouseButton, PadState, RemoteInput, SlideAction, remote_keys,
 };
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
@@ -23,6 +23,20 @@ use crate::{Error, NodeEvent, Result, node::Shared, session::Session};
 /// Capability ID announced by a desktop that can inject mouse, keyboard and
 /// presentation input (`docs/protocol/remote.md` §1).
 pub const INPUT_INJECT: &str = "input.inject";
+
+/// Capability ID announced by a desktop that can also plug in a game
+/// controller for a phone (`docs/protocol/remote.md` §3.1). Offered with
+/// [`INPUT_INJECT`], under the same per-device toggle.
+pub const INPUT_GAMEPAD: &str = "input.gamepad";
+
+/// What a PC's platform answers (and the PC sends back as `unsupported`)
+/// when it can't plug in a controller yet: on Windows, the driver for it
+/// isn't installed.
+pub const PAD_DRIVER_MISSING: &str = "gamepad driver missing";
+
+fn is_pad(event: &RemoteInput) -> bool {
+    matches!(event, RemoteInput::Pad { .. } | RemoteInput::PadOff)
+}
 
 /// Per-device toggle name on the PC (off by default).
 pub(crate) const TOGGLE: &str = "remote_input";
@@ -149,6 +163,20 @@ fn check_allowed(shared: &Shared, peer: &DeviceId) -> std::result::Result<(), (E
     check_allowed_with(shared, peer, false)
 }
 
+/// Whether this PC takes `event`: a controller only where it offers one.
+fn takes(shared: &Shared, event: &RemoteInput) -> bool {
+    !is_pad(event) || shared.we_offer(INPUT_GAMEPAD)
+}
+
+/// Hands `event` to the platform; `wait` for a reliable request.
+fn inject(shared: &Shared, peer: &DeviceId, event: RemoteInput, wait: bool) -> std::result::Result<(), String> {
+    match event {
+        RemoteInput::Pad { pad } => shared.platform.remote_pad(peer, Some(pad), wait),
+        RemoteInput::PadOff => shared.platform.remote_pad(peer, None, wait),
+        event => shared.platform.remote_input(peer, event),
+    }
+}
+
 /// Checks whether `peer` (a PC) currently accepts remote input from this phone.
 pub(crate) async fn check(shared: &Arc<Shared>, session: &Arc<Session>) -> Result<()> {
     if !peer_offers(shared, &session.peer, INPUT_INJECT)?
@@ -169,7 +197,9 @@ pub(crate) async fn input(shared: &Arc<Shared>, session: &Arc<Session>, event: R
     if !event.is_valid() {
         return Err(Error::Protocol("invalid remote input".into()));
     }
-    if !peer_offers(shared, &session.peer, INPUT_INJECT)? {
+    if !peer_offers(shared, &session.peer, INPUT_INJECT)?
+        || (is_pad(&event) && !peer_offers(shared, &session.peer, INPUT_GAMEPAD)?)
+    {
         return Err(Error::Unsupported);
     }
     if let RemoteInput::Move { dx, dy } = event {
@@ -217,6 +247,20 @@ pub(crate) async fn scroll_fast(
     let event = RemoteInput::Scroll { dx, dy };
     if !event.is_valid() {
         return Err(Error::Protocol("scroll delta out of bounds".into()));
+    }
+    send_datagram(shared, session, &event).await
+}
+
+/// Sends the phone's controller as it is now in a QUIC datagram. The phone
+/// repeats it while the controller is open; [`input`] with the same state
+/// sends it reliably and tells whether the PC could plug a controller in.
+pub(crate) async fn pad(shared: &Arc<Shared>, session: &Arc<Session>, pad: PadState) -> Result<()> {
+    let event = RemoteInput::Pad { pad };
+    if !event.is_valid() {
+        return Err(Error::Protocol("invalid controller state".into()));
+    }
+    if !peer_offers(shared, &session.peer, INPUT_GAMEPAD)? {
+        return Err(Error::Unsupported);
     }
     send_datagram(shared, session, &event).await
 }
@@ -274,6 +318,9 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         types::REMOTE_INPUT => match check_allowed(shared, &session.peer) {
             Err((code, msg)) => Envelope::error(code, msg),
             Ok(()) => match env.body::<RemoteInput>() {
+                Ok(event) if !takes(shared, &event) => {
+                    Envelope::error(ErrorCode::Unsupported, "no game controller here")
+                }
                 Ok(event) if event.is_control_allowed() && event.is_valid() => {
                     let allowed = shared
                         .remote
@@ -283,10 +330,11 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                     if !allowed {
                         Envelope::error(ErrorCode::Denied, RATE_LIMITED)
                     } else {
-                        let platform = shared.platform.clone();
+                        let shared = shared.clone();
                         let peer = session.peer;
-                        match tokio::task::spawn_blocking(move || platform.remote_input(&peer, event)).await {
+                        match tokio::task::spawn_blocking(move || inject(&shared, &peer, event, true)).await {
                             Ok(Ok(())) => Envelope::empty(types::OK),
+                            Ok(Err(e)) if e == PAD_DRIVER_MISSING => Envelope::error(ErrorCode::Unsupported, e),
                             Ok(Err(e)) => Envelope::error(ErrorCode::Internal, e),
                             Err(_) => Envelope::error(ErrorCode::Internal, "input task failed"),
                         }
@@ -309,12 +357,15 @@ pub(crate) fn handle_datagram(shared: &Arc<Shared>, peer: DeviceId, bytes: &[u8]
     let Ok(event) = RemoteInput::from_datagram(bytes) else {
         return;
     };
+    if !takes(shared, &event) {
+        return;
+    }
     let allowed =
         shared.remote.lock().unwrap_or_else(|e| e.into_inner()).allow_datagram(peer, Instant::now());
     if !allowed {
         return;
     }
-    let _ = shared.platform.remote_input(&peer, event);
+    let _ = inject(shared, &peer, event, false);
 }
 
 /// Handles a fallback `remote/motion` stream when QUIC datagrams aren't used.
@@ -330,13 +381,13 @@ pub(crate) async fn receive_motion(
         }
         let Ok(env) = Envelope::from_cbor(&bytes) else { break };
         let Ok(event) = env.expect_body::<RemoteInput>(types::REMOTE_INPUT) else { break };
-        if !event.is_datagram_allowed() || !event.is_valid() {
+        if !event.is_datagram_allowed() || !event.is_valid() || !takes(&shared, &event) {
             break;
         }
         let allowed =
             shared.remote.lock().unwrap_or_else(|e| e.into_inner()).allow_datagram(peer, Instant::now());
         if allowed {
-            let _ = shared.platform.remote_input(&peer, event);
+            let _ = inject(&shared, &peer, event, false);
         }
     }
     let _ = send.finish();

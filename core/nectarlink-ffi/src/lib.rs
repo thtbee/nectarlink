@@ -4349,6 +4349,45 @@ impl NectarlinkNode {
         self.run(async move { Ok(node.remote_laser(id, on, x, y).await?) }).await
     }
 
+    /// Sends the phone's game controller as it is now to a paired PC
+    /// (`input.gamepad`). With `reliable`, it goes on the control stream and
+    /// answers whether the PC could plug a controller in
+    /// (`NectarlinkError::Unsupported` when its driver is missing); otherwise
+    /// in a QUIC datagram, repeated by the caller while the controller is open.
+    /// `buttons` uses the XInput bits; sticks run -32768 to 32767, `y` up.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn remote_pad(
+        &self,
+        id: String,
+        buttons: u16,
+        lt: u8,
+        rt: u8,
+        lx: i16,
+        ly: i16,
+        rx: i16,
+        ry: i16,
+        reliable: bool,
+    ) -> Result<()> {
+        let id = parse_id(&id)?;
+        let pad = core::PadState { buttons, lt, rt, lx, ly, rx, ry };
+        let node = self.node.clone();
+        self.run(async move {
+            if reliable {
+                Ok(node.remote_input(id, core::RemoteInput::Pad { pad }).await?)
+            } else {
+                Ok(node.remote_pad(id, pad).await?)
+            }
+        })
+        .await
+    }
+
+    /// Unplugs this phone's game controller on a paired PC.
+    pub async fn remote_pad_off(&self, id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_input(id, core::RemoteInput::PadOff).await?) }).await
+    }
+
     // ---- Deck (macro pad) ----
 
     /// The latest Deck layout reported by a connected PC, if any.

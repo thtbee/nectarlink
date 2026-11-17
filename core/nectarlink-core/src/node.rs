@@ -3812,6 +3812,13 @@ impl Node {
         crate::remote::scroll_fast(&self.shared, &session, dx, dy).await
     }
 
+    /// Sends the phone's game controller as it is now to a paired PC in a
+    /// QUIC datagram (`docs/protocol/remote.md` §3.1).
+    pub async fn remote_pad(&self, peer: DeviceId, pad: crate::PadState) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::remote::pad(&self.shared, &session, pad).await
+    }
+
     /// Sends a laser pointer update to a paired PC (`x`, `y` in `0.0..=1.0`).
     pub async fn remote_laser(&self, peer: DeviceId, on: bool, x: f32, y: f32) -> Result<()> {
         let session = self.connected(&peer)?;

@@ -57,6 +57,11 @@ struct RecordingPlatform {
     /// Optional barrier `open_photo` waits on to simulate a slow platform call.
     photo_barrier: Mutex<Option<Arc<std::sync::Barrier>>>,
     remote_inputs: Mutex<Vec<nectarlink_core::RemoteInput>>,
+    /// Game controller updates: the state (`None` = unplug) and whether the
+    /// sender waits for it (a reliable request).
+    remote_pads: Mutex<Vec<(Option<nectarlink_core::PadState>, bool)>>,
+    /// Answers controller updates as if the PC's driver were missing.
+    pad_driver_missing: std::sync::atomic::AtomicBool,
     phone_toggles: Mutex<Vec<(String, nectarlink_core::PhoneToggleValue)>>,
     deck_presses: Mutex<Vec<String>>,
     pc_audio_changes: Mutex<Vec<(Option<u8>, Option<bool>)>>,
@@ -562,6 +567,18 @@ impl Platform for RecordingPlatform {
         input: nectarlink_core::RemoteInput,
     ) -> Result<(), String> {
         self.remote_inputs.lock().unwrap().push(input);
+        Ok(())
+    }
+    fn remote_pad(
+        &self,
+        _peer: &nectarlink_core::DeviceId,
+        pad: Option<nectarlink_core::PadState>,
+        wait: bool,
+    ) -> Result<(), String> {
+        if self.pad_driver_missing.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err(nectarlink_core::PAD_DRIVER_MISSING.into());
+        }
+        self.remote_pads.lock().unwrap().push((pad, wait));
         Ok(())
     }
     fn set_phone_toggle(&self, id: &str, value: &nectarlink_core::PhoneToggleValue) -> Result<(), String> {
@@ -3521,6 +3538,82 @@ async fn remote_input_needs_toggle_and_delivers_motion_keys_and_slides() {
             .is_err()
     );
     assert!(phone.node.remote_move(pc_id, 99999.0, 0.0).await.is_err());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn gamepad_goes_to_pcs_that_offer_it_reliably_or_by_datagram() {
+    use std::sync::atomic::Ordering;
+
+    use nectarlink_core::{INPUT_GAMEPAD, INPUT_INJECT, PadState, RemoteInput};
+
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    pc.node.set_device_toggle(phone_id, "remote_input", true).unwrap();
+    let pad = PadState { buttons: PadState::A | PadState::RB, lt: 200, lx: -20000, ry: 12000, ..PadState::default() };
+
+    // A PC with the mouse and keyboard but no controller (an older one, or a Mac).
+    pc.node.update_power(PowerLevel::NotApplicable, vec![INPUT_INJECT.into()]).await;
+    wait_for(&mut phone, "input.remote available on phone", |e| match e {
+        NodeEvent::Capabilities(m)
+            if m.device == pc_id && m.state("input.remote") == Some(FeatureState::Available) =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+    assert!(matches!(phone.node.remote_pad(pc_id, pad).await, Err(Error::Unsupported)));
+    assert!(matches!(phone.node.remote_input(pc_id, RemoteInput::Pad { pad }).await, Err(Error::Unsupported)));
+
+    pc.node.update_power(PowerLevel::NotApplicable, vec![INPUT_INJECT.into(), INPUT_GAMEPAD.into()]).await;
+    wait_for(&mut phone, "input.gamepad available on phone", |e| match e {
+        NodeEvent::Capabilities(m)
+            if m.device == pc_id && m.state("input.gamepad") == Some(FeatureState::Available) =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    // Reliable: the PC waits for the controller and says how it went.
+    with_timeout("reliable pad", phone.node.remote_input(pc_id, RemoteInput::Pad { pad })).await.unwrap();
+    assert_eq!(pc.platform.remote_pads.lock().unwrap().as_slice(), &[(Some(pad), true)]);
+
+    // By datagram: never waits.
+    let moved = PadState { lx: 32767, ..pad };
+    phone.node.remote_pad(pc_id, moved).await.unwrap();
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while !pc.platform.remote_pads.lock().unwrap().contains(&(Some(moved), false)) {
+        assert!(tokio::time::Instant::now() < deadline, "timed out waiting for the pad datagram");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    // None of it went in as mouse or keyboard input.
+    assert!(pc.platform.remote_inputs.lock().unwrap().is_empty());
+
+    // Unplugging is reliable.
+    with_timeout("pad off", phone.node.remote_input(pc_id, RemoteInput::PadOff)).await.unwrap();
+    assert_eq!(pc.platform.remote_pads.lock().unwrap().last(), Some(&(None, true)));
+
+    // No driver on the PC: the phone hears it's unsupported, to say what to install.
+    pc.platform.pad_driver_missing.store(true, Ordering::SeqCst);
+    assert!(matches!(
+        with_timeout("pad without driver", phone.node.remote_input(pc_id, RemoteInput::Pad { pad })).await,
+        Err(Error::Unsupported)
+    ));
+    pc.platform.pad_driver_missing.store(false, Ordering::SeqCst);
+
+    // Remote input turned off for this phone: refused like the rest.
+    pc.node.set_device_toggle(phone_id, "remote_input", false).unwrap();
+    assert!(matches!(
+        with_timeout("pad while off", phone.node.remote_input(pc_id, RemoteInput::Pad { pad })).await,
+        Err(Error::Denied)
+    ));
+    // A button the Xbox layout doesn't have never leaves the phone.
+    let bad = PadState { buttons: 0x0800, ..PadState::default() };
+    assert!(phone.node.remote_pad(pc_id, bad).await.is_err());
 }
 
 #[tokio::test(flavor = "multi_thread")]

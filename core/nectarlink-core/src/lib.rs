@@ -163,7 +163,10 @@ pub use palette::{
     extract_artwork_scheme_rgba, scheme_from_seed_rgb, scheme_json, seed_from_grid, seed_from_pixels,
 };
 pub use play_on_phone::PlayOnPhone;
-pub use remote::{ButtonAction, INPUT_INJECT, KeyMod, MouseButton, RemoteInput, SlideAction, remote_keys};
+pub use remote::{
+    ButtonAction, INPUT_GAMEPAD, INPUT_INJECT, KeyMod, MouseButton, PAD_DRIVER_MISSING, PadState, RemoteInput,
+    SlideAction, remote_keys,
+};
 pub use session::is_lan_ip;
 pub use storage::{
     FolderStorage, MAX_LISTED as MAX_STORAGE_LISTED, StorageError, StorageReadFile, TOGGLE as STORAGE_TOGGLE,

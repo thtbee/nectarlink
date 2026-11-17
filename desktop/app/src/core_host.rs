@@ -213,6 +213,9 @@ pub fn compute_capabilities(
     if remote_input_enabled && input_available {
         caps.push(nectarlink_core::MIRROR_INPUT.into());
         caps.push(nectarlink_core::INPUT_INJECT.into());
+        if crate::gamepad::is_supported() {
+            caps.push(nectarlink_core::INPUT_GAMEPAD.into());
+        }
     }
     if crate::win::vcam::is_registered() {
         caps.push(nectarlink_core::WEBCAM_ADDON_VCAM.into());
