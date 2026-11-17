@@ -46,7 +46,8 @@ API_AVAILABLE(macos(13.0))
 @interface NectarLinkAudioStreamDelegate : NSObject <SCStreamDelegate, SCStreamOutput>
 @property (nonatomic, assign) MacAudioCallback onAudio;
 @property (nonatomic, assign) MacAudioStopCallback onStop;
-@property (nonatomic, assign) void *ctx;
+@property (nonatomic, assign) void *audioCtx;
+@property (nonatomic, assign) void *stopCtx;
 @end
 
 @implementation NectarLinkAudioStreamDelegate {
@@ -126,7 +127,7 @@ API_AVAILABLE(macos(13.0))
             const size_t frames = std::min<size_t>(static_cast<size_t>(numFrames), availFrames);
             if (frames > 0) {
                 _onAudio(
-                    _ctx,
+                    _audioCtx,
                     static_cast<const float *>(abl->mBuffers[0].mData),
                     frames,
                     sampleRate,
@@ -145,14 +146,14 @@ API_AVAILABLE(macos(13.0))
                     _scratch[i * 2] = left[i];
                     _scratch[i * 2 + 1] = right[i];
                 }
-                _onAudio(_ctx, _scratch.data(), frames, sampleRate, 2);
+                _onAudio(_audioCtx, _scratch.data(), frames, sampleRate, 2);
             }
         } else if (nonInterleaved && channels == 1 && abl->mNumberBuffers >= 1 && abl->mBuffers[0].mData) {
             const size_t avail = abl->mBuffers[0].mDataByteSize / sizeof(float);
             const size_t frames = std::min<size_t>(static_cast<size_t>(numFrames), avail);
             if (frames > 0) {
                 _onAudio(
-                    _ctx,
+                    _audioCtx,
                     static_cast<const float *>(abl->mBuffers[0].mData),
                     frames,
                     sampleRate,
@@ -173,7 +174,7 @@ API_AVAILABLE(macos(13.0))
     if (_onStop) {
         const int32_t code = error ? static_cast<int32_t>(error.code) : 0;
         const char *msg = error ? error.localizedDescription.UTF8String : "stream stopped";
-        _onStop(_ctx, code, msg ? msg : "stream stopped");
+        _onStop(_stopCtx, code, msg ? msg : "stream stopped");
     }
 }
 
@@ -199,7 +200,8 @@ bool mac_audio_loopback_has_permission(void)
 void *mac_audio_loopback_start(
     MacAudioCallback on_audio,
     MacAudioStopCallback on_stop,
-    void *ctx,
+    void *audio_ctx,
+    void *stop_ctx,
     int32_t *out_err_code,
     char *err_buf,
     size_t err_buf_len)
@@ -254,12 +256,13 @@ void *mac_audio_loopback_start(
             config.channelCount = 2;
             config.width = 2;
             config.height = 2;
-            config.minimumFrameInterval = CMTimeMake(1, 1);
+            config.minimumFrameInterval = CMTimeMake(3600, 1);
 
             auto *delegate = [[NectarLinkAudioStreamDelegate alloc] init];
             delegate.onAudio = on_audio;
             delegate.onStop = on_stop;
-            delegate.ctx = ctx;
+            delegate.audioCtx = audio_ctx;
+            delegate.stopCtx = stop_ctx;
 
             SCStream *stream = [[SCStream alloc] initWithFilter:filter configuration:config delegate:delegate];
             dispatch_queue_t audioQueue =
@@ -278,6 +281,12 @@ void *mac_audio_loopback_start(
                 write_err(err_buf, err_buf_len, msg);
                 return nullptr;
             }
+            // Attach a no-op screen output so ScreenCaptureKit does not log dropped-frame warnings.
+            NSError *screenErr = nil;
+            [stream addStreamOutput:delegate
+                               type:SCStreamOutputTypeScreen
+                 sampleHandlerQueue:audioQueue
+                              error:&screenErr];
 
             __block NSError *startErr = nil;
             dispatch_semaphore_t startSem = dispatch_semaphore_create(0);
@@ -331,10 +340,14 @@ void mac_audio_loopback_stop(void *raw_handle)
             }];
             const dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC);
             dispatch_semaphore_wait(stopSem, timeout);
-            // Drain any already-queued audio callback before freeing `ctx` on the Rust side.
+            // Drain any already-queued audio callback before freeing `audio_ctx` and `stop_ctx` on the Rust side.
             if (handle->audioQueue) {
                 dispatch_sync(handle->audioQueue, ^{});
             }
+            handle->delegate.onAudio = nullptr;
+            handle->delegate.onStop = nullptr;
+            handle->delegate.audioCtx = nullptr;
+            handle->delegate.stopCtx = nullptr;
         }
     }
     delete handle;

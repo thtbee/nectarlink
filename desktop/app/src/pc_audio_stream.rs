@@ -432,7 +432,8 @@ mod imp {
             pub fn mac_audio_loopback_start(
                 on_audio: MacAudioCallback,
                 on_stop: MacAudioStopCallback,
-                ctx: *mut c_void,
+                audio_ctx: *mut c_void,
+                stop_ctx: *mut c_void,
                 out_err_code: *mut i32,
                 err_buf: *mut c_char,
                 err_buf_len: usize,
@@ -452,12 +453,26 @@ mod imp {
     const SC_STREAM_ERROR_USER_DECLINED: i32 = -3801;
 
     #[cfg(target_os = "macos")]
-    struct MacCallbackCtx {
+    struct MacAudioState {
         tx: tokio::sync::mpsc::Sender<(u32, u8, Vec<u8>)>,
         enhancer: SpeakerEnhancer,
         enhancer_rate: u32,
         silence_tail_packets: u32,
-        stopped: AtomicBool,
+        stopped: std::sync::Arc<AtomicBool>,
+    }
+
+    #[cfg(target_os = "macos")]
+    struct MacStopCtxGuard(*const AtomicBool);
+
+    #[cfg(target_os = "macos")]
+    impl Drop for MacStopCtxGuard {
+        fn drop(&mut self) {
+            if !self.0.is_null() {
+                // SAFETY: `self.0` was created via `Arc::into_raw` for `mac_on_stop` and is
+                // dropped after `MacStreamGuard` has stopped `SCStream` and cleared callbacks.
+                unsafe { drop(std::sync::Arc::from_raw(self.0)) };
+            }
+        }
     }
 
     #[cfg(target_os = "macos")]
@@ -484,9 +499,9 @@ mod imp {
         if ctx.is_null() || samples_ptr.is_null() || frame_count == 0 || channels == 0 {
             return;
         }
-        // SAFETY: `ctx` points to a live `MacCallbackCtx` until `mac_audio_loopback_stop` drains the serial queue,
-        // and `samples_ptr` points to `frame_count * channels` floats for the duration of this callback.
-        let ctx = unsafe { &mut *ctx.cast::<MacCallbackCtx>() };
+        // SAFETY: `ctx` points to a live `MacAudioState` exclusively accessed on the serial audio queue
+        // until `mac_audio_loopback_stop` drains it, and `samples_ptr` points to `frame_count * channels` floats.
+        let ctx = unsafe { &mut *ctx.cast::<MacAudioState>() };
         if ctx.stopped.load(Ordering::Acquire) {
             return;
         }
@@ -528,9 +543,9 @@ mod imp {
         if ctx.is_null() {
             return;
         }
-        // SAFETY: `ctx` points to a live `MacCallbackCtx` until `mac_audio_loopback_stop` finishes.
-        let ctx = unsafe { &*ctx.cast::<MacCallbackCtx>() };
-        ctx.stopped.store(true, Ordering::Release);
+        // SAFETY: `ctx` points to a shared `Arc<AtomicBool>` kept alive by `MacStopCtxGuard` until after `mac_audio_loopback_stop`.
+        let stopped = unsafe { &*ctx.cast::<AtomicBool>() };
+        stopped.store(true, Ordering::Release);
         let reason = if msg.is_null() {
             std::borrow::Cow::Borrowed("stream stopped")
         } else {
@@ -614,21 +629,24 @@ mod imp {
             }
         });
 
-        let mut ctx = Box::new(MacCallbackCtx {
+        let stopped = std::sync::Arc::new(AtomicBool::new(false));
+        let mut audio_ctx = Box::new(MacAudioState {
             tx,
             enhancer: SpeakerEnhancer::new(rate),
             enhancer_rate: rate,
             silence_tail_packets: 0,
-            stopped: AtomicBool::new(false),
+            stopped: std::sync::Arc::clone(&stopped),
         });
+        let stop_ctx_guard = MacStopCtxGuard(std::sync::Arc::into_raw(std::sync::Arc::clone(&stopped)));
         let mut err_code: i32 = 0;
         let mut err_buf = [0 as std::ffi::c_char; 512];
-        // SAFETY: `ctx` is pinned in a `Box` and outlives `_guard` (declared after `ctx`, dropped before `ctx`).
+        // SAFETY: `audio_ctx` and `stop_ctx_guard` outlive `_guard` (dropped in reverse declaration order).
         let handle = unsafe {
             mac_ffi::mac_audio_loopback_start(
                 mac_on_audio,
                 mac_on_stop,
-                std::ptr::from_mut(ctx.as_mut()).cast(),
+                std::ptr::from_mut(audio_ctx.as_mut()).cast(),
+                stop_ctx_guard.0.cast_mut().cast(),
                 &raw mut err_code,
                 err_buf.as_mut_ptr(),
                 err_buf.len(),
@@ -653,7 +671,7 @@ mod imp {
         }
         let _guard = MacStreamGuard(handle);
 
-        while is_enabled() && !ctx.stopped.load(Ordering::Acquire) {
+        while is_enabled() && !stopped.load(Ordering::Acquire) {
             if target() != wanted && target().is_some_and(|t| peers.contains(&t)) {
                 break;
             }
