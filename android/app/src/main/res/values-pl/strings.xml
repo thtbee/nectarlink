@@ -724,17 +724,37 @@
     <string name="keyboard_stop">Zakończ wpisywanie</string>
 
     <!-- Home-screen PC widget -->
-    <string name="widget_pc_title">Szybkie działania na komputerze</string>
-    <string name="widget_pc_description">Stan połączenia oraz wysyłanie zawartości schowka, włączanie dźwięku, blokowanie i wybudzanie sparowanego komputera.</string>
+    <string name="widget_pc_title">Komputer w skrócie</string>
+    <string name="widget_pc_description">Czy komputer jest połączony, z włączaniem dźwięku, opcjami zasilania i wybudzaniem.</string>
+    <string name="widget_now_playing_title">Teraz odtwarzane</string>
+    <string name="widget_now_playing_description">Co gra na komputerze, z przyciskami sterowania.</string>
+    <string name="widget_actions_title">Szybkie działania</string>
+    <string name="widget_actions_description">Wyślij zawartość schowka lub pliki, włącz dźwięk na komputerze albo go zablokuj, uśpij lub wyłącz.</string>
+    <string name="widget_from_pc_title">Z komputera</string>
+    <string name="widget_from_pc_description">Ostatni wycinek i plik wysłane z komputera, do skopiowania lub otwarcia.</string>
+    <string name="widget_from_pc_empty">Tutaj pojawią się wycinki i pliki wysłane z komputera.</string>
+    <string name="widget_media_on_pc">Na %1$s</string>
+    <string name="widget_media_nothing">Nic nie gra</string>
+    <string name="widget_media_nothing_hint">Tutaj pojawi się muzyka i filmy odtwarzane na %1$s.</string>
+    <string name="widget_battery">Bateria %1$d%%</string>
+    <string name="widget_battery_charging">Bateria %1$d%% · ładowanie</string>
+    <string name="widget_link_lan">W Twojej sieci</string>
+    <string name="widget_seen">Ostatnio widziany %1$s</string>
+    <string name="widget_pc_send_clipboard">Wyślij zawartość schowka</string>
+    <string name="widget_power">Zasilanie</string>
+    <string name="widget_power_lock">Zablokuj</string>
+    <string name="widget_power_suspend">Wstrzymaj</string>
+    <string name="widget_power_off">Wyłącz</string>
+    <string name="widget_power_off_title">Wyłączyć %1$s?</string>
+    <string name="widget_choose_pc">Wybierz komputer</string>
+    <string name="widget_power_offline">Opcje zasilania pojawią się, gdy %1$s będzie połączony.</string>
     <string name="widget_pc_no_pc">Brak sparowanego komputera</string>
     <string name="widget_pc_tap_to_pair">Dotknij, aby otworzyć NectarLink i sparować komputer</string>
     <string name="widget_pc_connected">Połączono</string>
     <string name="widget_pc_offline">Offline</string>
     <string name="widget_pc_waking">Wybudzanie…</string>
     <string name="widget_pc_wake">Wybudź</string>
-    <string name="widget_pc_send_clip">Wyślij zawartość schowka</string>
     <string name="widget_pc_ring">Włącz dźwięk na komputerze</string>
-    <string name="widget_pc_lock">Zablokuj komputer</string>
     <string name="widget_pc_ringing_toast">Włączanie dźwięku na %1$s…</string>
     <string name="widget_pc_waking_toast">Wybudzanie %1$s…</string>
 
