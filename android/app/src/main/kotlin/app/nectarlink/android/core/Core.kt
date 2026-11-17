@@ -2664,11 +2664,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         _state.update {
             it.copy(keyboardFromPc = if (on) it.keyboardFromPc + pcId else it.keyboardFromPc - pcId)
         }
+        app.nectarlink.android.banking.AssistOnDemand.typing(context, pcId, on)
     }
 
     /** Stops remote keyboard typing from `pcId` and notifies the PC. */
     fun stopKeyboardFromPc(pcId: String) {
         _state.update { it.copy(keyboardFromPc = it.keyboardFromPc - pcId) }
+        app.nectarlink.android.banking.AssistOnDemand.typing(context, pcId, false)
         val currentNode = node ?: return
         scope.launch(Dispatchers.IO) {
             runCatching { currentNode.mirrorStop(pcId, 0u) }

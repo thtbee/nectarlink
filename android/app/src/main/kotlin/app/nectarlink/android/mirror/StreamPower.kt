@@ -41,6 +41,7 @@ object StreamPower {
     @Suppress("DEPRECATION")
     private fun apply(context: Context) {
         val streaming = wants.isNotEmpty()
+        app.nectarlink.android.banking.AssistOnDemand.streaming(context, streaming)
         val off = wants.values.any { it.screenOff }
         val awake = off || wants.values.any { it.stayAwake }
         val power = context.getSystemService(PowerManager::class.java)

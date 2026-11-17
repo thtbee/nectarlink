@@ -358,6 +358,8 @@
     <string name="settings_quiet_while_using_pc_hint">El teléfono no suena ni vibra con las notificaciones mientras usas un PC emparejado que las muestra.</string>
     <string name="settings_hide_from_recents">Ocultar de las apps recientes</string>
     <string name="settings_hide_from_recents_hint">NectarLink no aparece en las apps recientes, así que al borrarlas no se cierra por error.</string>
+    <string name="settings_assist_on_demand">Assist solo mientras un PC usa el teléfono</string>
+    <string name="settings_assist_on_demand_hint">Con Elevated, Assist se activa mientras un PC muestra este teléfono o escribe en él, y se desactiva poco después. Para apps que no se abren con un servicio de accesibilidad activo.</string>
     <string name="settings_touchpad_sensitivity">Velocidad del panel táctil</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Panel táctil</string>

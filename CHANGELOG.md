@@ -30,6 +30,11 @@ change things that need a step from you, and its notes say so.
   only shows On PC where the phone can). Thanks to [@rus152](https://github.com/rus152)
   ([#418](https://github.com/thtbee/nectarlink/pull/418)); asked for in
   [#133](https://github.com/thtbee/nectarlink/issues/133).
+- **Assist only while a PC uses the phone.** With Elevated set up, a switch in the phone's
+  Settings › Permissions › Control from your PC keeps the accessibility service off until a PC shows the
+  phone, opens an app window or types on it, and turns it off again shortly after. For
+  apps that crash or refuse to open while an accessibility service is on, like InstaPay.
+  Thanks to [@Devhoss](https://github.com/Devhoss) ([#400](https://github.com/thtbee/nectarlink/issues/400)).
 - **Hide NectarLink from recent apps.** A switch in the phone's Settings › Background keeps
   it off the recent apps screen, so clearing that screen can't close it by accident on
   phones where that stops apps. Thanks to [@FlootingDream](https://github.com/FlootingDream)
