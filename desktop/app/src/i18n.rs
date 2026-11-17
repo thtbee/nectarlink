@@ -13,6 +13,7 @@ pub const LANGUAGES: &[(&str, &str)] = &[
     ("", ""),
     ("en", "English"),
     ("de", "Deutsch"),
+    ("ja", "日本語"),
     ("zh_CN", "简体中文"),
     ("tr", "Türkçe"),
     ("pt_BR", "Português (Brasil)"),
@@ -104,6 +105,7 @@ fn system_language(preferred: &[String]) -> &'static str {
             "en" => "en",
             "de" => "de",
             "es" => "es",
+            "ja" => "ja",
             "ru" => "ru",
             "tr" => "tr",
             "vi" => "vi",
@@ -212,14 +214,16 @@ mod tests {
         assert_eq!(system_language(&list(&["es-ES", "en-US"])), "es");
         assert_eq!(system_language(&list(&["es-MX"])), "es");
         // One it doesn't speak first: the next one it does.
-        assert_eq!(system_language(&list(&["ja-JP", "tr-TR"])), "tr");
+        assert_eq!(system_language(&list(&["fr-FR", "tr-TR"])), "tr");
+        assert_eq!(system_language(&list(&["ja-JP", "en-US"])), "ja");
+        assert_eq!(system_language(&list(&["ja"])), "ja");
         assert_eq!(system_language(&list(&["ru-RU", "en-US"])), "ru");
         assert_eq!(system_language(&list(&["vi-VN"])), "vi");
         assert_eq!(system_language(&list(&["zh-Hans-CN"])), "zh_CN");
         assert_eq!(system_language(&list(&["zh-Hant-TW", "en"])), "en");
         assert_eq!(system_language(&list(&["pt-BR"])), "pt_BR");
         assert_eq!(system_language(&list(&["pt-PT", "en-GB"])), "en");
-        assert_eq!(system_language(&list(&["ja-JP"])), "en");
+        assert_eq!(system_language(&list(&["fr-FR"])), "en");
         assert_eq!(system_language(&[]), "en");
     }
 
@@ -230,6 +234,7 @@ mod tests {
                 && is_known("zh_CN")
                 && is_known("de")
                 && is_known("en")
+                && is_known("ja")
                 && is_known("tr")
                 && is_known("pt_BR")
         );

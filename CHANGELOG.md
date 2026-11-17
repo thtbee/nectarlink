@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Japanese.** NectarLink speaks 日本語 on the phone and the PC. Language (Settings ›
+  Appearance on the phone, Settings › General on the PC) picks it, or the system language does.
+  Thanks to [@sho9029](https://github.com/sho9029).
 - **Two PCs work together.** Pair a PC with another PC, Windows, Mac or Linux, the
   same way as a phone: open the pairing screen on both and pick the other one. Home
   then shows that PC with Send files, Send clipboard and Ring PC, and what you copy on
