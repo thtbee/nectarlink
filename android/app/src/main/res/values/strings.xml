@@ -371,7 +371,7 @@
     <string name="remote_touchpad_hint">Drag to move · Tap to click · Two fingers to right-click or scroll · Double-tap and hold to drag</string>
     <string name="remote_air_hold">Hold to aim at %1$s</string>
     <string name="remote_air_active">Moving on %1$s · tilt phone or tap to click</string>
-    <string name="remote_air_hint">Hold the pad and tilt your phone to move the pointer · Tap the pad to click · Release to stop</string>
+    <string name="remote_air_hint">Hold the pad and tilt your phone to move the pointer · Tap the pad to click · Drag two fingers to scroll</string>
     <string name="remote_air_no_gyro_title">No gyroscope on this phone</string>
     <string name="remote_air_no_gyro_text">Air mouse uses a gyroscope to follow how you tilt the phone. Use Touchpad mode instead.</string>
     <string name="remote_left_click">Left</string>

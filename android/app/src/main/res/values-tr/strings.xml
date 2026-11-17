@@ -369,7 +369,7 @@
     <string name="remote_touchpad_hint">Taşımak için sürükleyin · Tıklamak için dokunun · Sağ tık veya kaydırma için iki parmak · Sürüklemek için iki kez dokunup basılı tutun</string>
     <string name="remote_air_hold">%1$s üzerinde nişan almak için basılı tutun</string>
     <string name="remote_air_active">%1$s üzerinde hareket ediyor · telefonu eğin veya tıklamak için dokunun</string>
-    <string name="remote_air_hint">İşaretçiyi hareket ettirmek için alana basılı tutup telefonu eğin · Tıklamak için alana dokunun · Durmak için bırakın</string>
+    <string name="remote_air_hint">İşaretçiyi hareket ettirmek için alana basılı tutup telefonu eğin · Tıklamak için alana dokunun · Kaydırmak için iki parmakla sürükleyin</string>
     <string name="remote_air_no_gyro_title">Bu telefonda jiroskop yok</string>
     <string name="remote_air_no_gyro_text">Air mouse, telefonu nasıl eğdiğinizi izlemek için jiroskop kullanır. Bunun yerine Dokunmatik yüzey modunu kullanın.</string>
     <string name="remote_left_click">Sol</string>

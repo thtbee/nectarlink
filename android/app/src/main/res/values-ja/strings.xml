@@ -365,7 +365,7 @@
     <string name="remote_touchpad_hint">ドラッグで移動 · タップでクリック · 2本指で右クリックまたはスクロール · ダブルタップ＆ホールドでドラッグ</string>
     <string name="remote_air_hold">長押しして %1$s を操作</string>
     <string name="remote_air_active">%1$s 上を移動中 · スマートフォンを傾けるかタップしてクリック</string>
-    <string name="remote_air_hint">パッドを押したままスマートフォンを傾けてポインターを動かします · パッドをタップしてクリックします · 離すと停止します</string>
+    <string name="remote_air_hint">パッドを押したままスマートフォンを傾けてポインターを動かします · パッドをタップしてクリックします · 2 本の指でドラッグしてスクロールします</string>
     <string name="remote_air_no_gyro_title">このスマートフォンにはジャイロセンサーが搭載されていません</string>
     <string name="remote_air_no_gyro_text">エアマウスはジャイロセンサーを使用して、スマートフォンの傾きに追従します。代わりにタッチパッドモードをご利用ください。</string>
     <string name="remote_left_click">左</string>

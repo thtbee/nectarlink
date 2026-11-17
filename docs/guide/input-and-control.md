@@ -34,7 +34,8 @@ Tap **Control PC** on the Android Home screen. The first time you open it, click
 #### Air Mouse Mode
 
 - Hold your thumb on the center pad and tilt your phone in the air. NectarLink reads your phone's gyroscope with hand-tremor filtering to move the PC cursor accurately where you point.
-- Tap the pad while holding to left-click, and release the pad to park the cursor. (If your phone does not have a gyroscope sensor, NectarLink lets you know and suggests Touchpad mode.)
+- Tap the pad while holding to left-click, and release the pad to park the cursor. Tap with two fingers to right-click.
+- Drag two fingers on the pad to scroll, up and down or sideways. The cursor holds still while you scroll. (If your phone does not have a gyroscope sensor, NectarLink lets you know and suggests Touchpad mode.)
 
 #### Keyboard and Voice Dictation
 

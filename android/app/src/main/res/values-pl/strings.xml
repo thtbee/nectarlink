@@ -379,7 +379,7 @@
     <string name="remote_touchpad_hint">Przesuń palcem, aby poruszyć wskaźnikiem · Dotknij, aby kliknąć · Użyj dwóch palców, aby kliknąć prawym przyciskiem lub przewinąć · Dotknij dwukrotnie i przytrzymaj, aby przeciągnąć</string>
     <string name="remote_air_hold">Przytrzymaj, aby sterować wskaźnikiem na %1$s</string>
     <string name="remote_air_active">Sterowanie wskaźnikiem na %1$s · przechyl telefon lub dotknij, aby kliknąć</string>
-    <string name="remote_air_hint">Przytrzymaj pole sterowania i przechyl telefon, aby poruszyć wskaźnikiem · Dotknij pola, aby kliknąć · Puść, aby zatrzymać</string>
+    <string name="remote_air_hint">Przytrzymaj pole sterowania i przechyl telefon, aby poruszyć wskaźnikiem · Dotknij pola, aby kliknąć · Przeciągnij dwoma palcami, aby przewijać</string>
     <string name="remote_air_no_gyro_title">Ten telefon nie ma żyroskopu</string>
     <string name="remote_air_no_gyro_text">Mysz powietrzna korzysta z żyroskopu, aby śledzić przechylenie telefonu. Zamiast tego użyj trybu touchpada.</string>
     <string name="remote_left_click">Lewy</string>
