@@ -70,17 +70,36 @@ mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 install -m 0755 "${BIN_PATH}" "${MACOS_DIR}/nectarlink-desktop"
 
 # Translations go in Resources: Contents/MacOS is for code only, which
-# is what codesign expects there.
-qm_count=0
-for qm in "$(dirname "${BIN_PATH}")"/nectarlink_*.qm; do
-    if [[ -f "${qm}" ]]; then
-        install -m 0644 "${qm}" "${RESOURCES_DIR}/$(basename "${qm}")"
-        qm_count=$((qm_count + 1))
-    fi
-done
-if [[ "${qm_count}" -eq 0 ]]; then
-    echo "warning: no translations next to ${BIN_PATH}; the app will be English only" >&2
+# is what codesign expects there. Compiled here from the catalogues with
+# Qt's lrelease; the ones the build left next to the binary otherwise.
+LRELEASE="${LRELEASE:-}"
+if [[ -z "${LRELEASE}" ]]; then
+    for candidate in "${QT_ROOT_DIR:-}/bin/lrelease" "$(dirname "${MACDEPLOYQT}")/lrelease" "$(command -v lrelease || true)"; do
+        if [[ -n "${candidate}" && -x "${candidate}" ]]; then
+            LRELEASE="${candidate}"
+            break
+        fi
+    done
 fi
+qm_count=0
+if [[ -n "${LRELEASE}" ]]; then
+    for ts in "${DESKTOP_DIR}"/i18n/nectarlink_*.ts; do
+        "${LRELEASE}" -silent "${ts}" -qm "${RESOURCES_DIR}/$(basename "${ts%.ts}").qm"
+        qm_count=$((qm_count + 1))
+    done
+else
+    for qm in "$(dirname "${BIN_PATH}")"/nectarlink_*.qm; do
+        if [[ -f "${qm}" ]]; then
+            install -m 0644 "${qm}" "${RESOURCES_DIR}/$(basename "${qm}")"
+            qm_count=$((qm_count + 1))
+        fi
+    done
+fi
+if [[ "${qm_count}" -eq 0 ]]; then
+    echo "error: no translations to bundle (set LRELEASE or QT_ROOT_DIR)" >&2
+    exit 1
+fi
+echo "Bundled ${qm_count} translations"
 
 sed -e "s/@VERSION@/${VERSION}/g" -e "s/@BUNDLE_VERSION@/${BUNDLE_VERSION}/g" \
     "${SCRIPT_DIR}/Info.plist.in" > "${CONTENTS_DIR}/Info.plist"

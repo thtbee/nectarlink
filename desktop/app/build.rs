@@ -355,6 +355,9 @@ fn compile_translations() {
             .arg(&out_qm)
             .status()
             .is_ok_and(|s| s.success());
+        if !compiled {
+            println!("cargo:warning={} couldn't compile {}", lrelease.display(), ts.display());
+        }
         if compiled && let Some(ref target_dir) = profile_dir {
             let _ = fs::copy(&out_qm, target_dir.join(&qm_name));
         }
