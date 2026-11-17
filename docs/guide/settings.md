@@ -38,7 +38,7 @@ Controls startup behavior, the system tray, `Nectar Island`, battery notificatio
 | **Nectar Island** | **Off** | Shows a compact pill at the top center of your primary monitor during active phone events. Automatically hides during full-screen games/videos or Windows Do Not Disturb. |
 | **Island triggers** *(shown when Nectar Island is On)* | **Calls**: On, **Transfers**: On, **Media**: On, **Alerts**: Off | Toggles which phone events expand `Nectar Island`: incoming/active **Calls**, active file **Transfers**, now-playing **Media**, and phone notification **Alerts** (including OTPs, timers, and recordings). |
 | **Battery alerts** | **On** | Shows a desktop notification when a connected phone's battery drops low or reaches a full charge. |
-| **Sync clipboard to phone** | **On** | Automatically sends text and images copied on this PC (`Ctrl+C`) to connected phones. |
+| **Sync clipboard** | **On** | Automatically sends text and images copied on this PC (`Ctrl+C`) to connected phones and paired PCs. |
 | **Clipboard follows control** | **On** | Sends the PC clipboard to the phone when you start controlling it: the mouse moves into its mirror window, or a remote control session starts. |
 | **Copy one-time codes** | **Off** | Automatically copies 4-to-8-digit verification codes detected in incoming phone notifications and SMS messages onto your PC clipboard. |
 | **Copy received files** | **On** | Automatically places small incoming files received from your phone onto the Windows clipboard (`CF_HDROP`) so you can press `Ctrl+V` to paste them anywhere. |

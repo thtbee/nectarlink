@@ -200,15 +200,19 @@ pub fn start() {
     clipboard::start(on_copy);
 }
 
-/// Connected phones that take this PC's clipboard (capable and allowed).
+/// Connected phones and PCs (#432) that take this PC's clipboard (capable
+/// and allowed). A PC never sends back what it got from one: it ignores
+/// clipboard changes it made itself.
 fn receivers() -> Vec<DeviceId> {
     core_host::host().hub.read(|s| {
         s.devices
             .iter()
             .filter(|d| matches!(d.link, LinkState::Online { .. }))
             .filter(|d| {
-                s.matrices.get(&d.id).and_then(|m| m.state("clipboard.pc_to_phone"))
-                    == Some(FeatureState::Available)
+                s.matrices.get(&d.id).is_some_and(|m| {
+                    m.state("clipboard.pc_to_phone") == Some(FeatureState::Available)
+                        || m.state("pc.clipboard") == Some(FeatureState::Available)
+                })
             })
             .map(|d| d.id)
             .collect()
