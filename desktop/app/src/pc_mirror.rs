@@ -1364,8 +1364,7 @@ mod imp {
                     }
                     e_frame_type = bs_info.e_frame_type;
                     let layer_count = (bs_info.i_layer_num as usize).min(bs_info.s_layer_info.len());
-                    for idx in 0..layer_count {
-                        let layer = &bs_info.s_layer_info[idx];
+                    for layer in bs_info.s_layer_info.iter().take(layer_count) {
                         if layer.p_bs_buf.is_null()
                             || layer.p_nal_length_in_byte.is_null()
                             || layer.i_nal_count <= 0
@@ -1394,8 +1393,7 @@ mod imp {
                     }
                     e_frame_type = bs_info.e_frame_type;
                     let layer_count = (bs_info.i_layer_num as usize).min(bs_info.s_layer_info.len());
-                    for idx in 0..layer_count {
-                        let layer = &bs_info.s_layer_info[idx];
+                    for layer in bs_info.s_layer_info.iter().take(layer_count) {
                         if layer.p_bs_buf.is_null()
                             || layer.p_nal_length_in_byte.is_null()
                             || layer.i_nal_count <= 0
