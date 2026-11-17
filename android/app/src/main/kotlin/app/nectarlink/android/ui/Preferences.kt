@@ -30,6 +30,9 @@ class Preferences(context: Context) {
     private val _quietWhileUsingPc = MutableStateFlow(prefs.getBoolean(QUIET_WHILE_USING_PC, false))
     val quietWhileUsingPc: StateFlow<Boolean> = _quietWhileUsingPc.asStateFlow()
 
+    private val _hideFromRecents = MutableStateFlow(prefs.getBoolean(HIDE_FROM_RECENTS, false))
+    val hideFromRecents: StateFlow<Boolean> = _hideFromRecents.asStateFlow()
+
     private val _backgroundServiceEnabled = MutableStateFlow(prefs.getBoolean(BACKGROUND_SERVICE_ENABLED, true))
     val backgroundServiceEnabled: StateFlow<Boolean> = _backgroundServiceEnabled.asStateFlow()
 
@@ -125,6 +128,12 @@ class Preferences(context: Context) {
         app.nectarlink.android.notifications.NotificationListener.refreshHostHints()
     }
 
+    fun updateHideFromRecents(hide: Boolean) {
+        prefs.edit { putBoolean(HIDE_FROM_RECENTS, hide) }
+        _hideFromRecents.value = hide
+        applyHideFromRecents(appContext, hide)
+    }
+
     fun updateBackgroundServiceEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(BACKGROUND_SERVICE_ENABLED, enabled) }
         _backgroundServiceEnabled.value = enabled
@@ -158,6 +167,7 @@ class Preferences(context: Context) {
         private const val SUGGEST_CLIPBOARD_ACTIONS = "suggest_clipboard_actions"
         private const val VOLUME_KEYS_CONTROL_PC = "volume_keys_control_pc"
         private const val QUIET_WHILE_USING_PC = "quiet_while_using_pc"
+        private const val HIDE_FROM_RECENTS = "hide_from_recents"
         internal const val BACKGROUND_SERVICE_ENABLED = "background_service_enabled"
         private const val AWAY_MODE = "away_mode"
         private const val WALKTHROUGH_COMPLETED = "walkthrough_completed"
@@ -218,6 +228,25 @@ class Preferences(context: Context) {
             context.applicationContext
                 .getSharedPreferences("appearance", Context.MODE_PRIVATE)
                 .getBoolean(QUIET_WHILE_USING_PC, false)
+
+        /**
+         * Keeps NectarLink's tasks out of the recent apps screen, or puts them
+         * back (#409): where clearing recent apps also stops what's running,
+         * NectarLink then can't be closed by accident.
+         */
+        fun applyHideFromRecents(context: Context, hide: Boolean) {
+            runCatching {
+                context.getSystemService(android.app.ActivityManager::class.java)?.appTasks?.forEach {
+                    it.setExcludeFromRecents(hide)
+                }
+            }
+        }
+
+        /** Whether NectarLink keeps out of the recent apps screen (#409). */
+        fun isHideFromRecents(context: Context): Boolean =
+            context.applicationContext
+                .getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .getBoolean(HIDE_FROM_RECENTS, false)
 
         fun isAwayModeEnabled(context: Context): Boolean =
             context.applicationContext

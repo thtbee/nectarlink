@@ -350,6 +350,8 @@
     <string name="settings_volume_keys_control_pc_hint">Enquanto o PC toca música ou vídeo, os botões de volume do celular mudam o volume do PC.</string>
     <string name="settings_quiet_while_using_pc">Silencioso enquanto você usa o PC</string>
     <string name="settings_quiet_while_using_pc_hint">O celular não toca nem vibra com notificações enquanto você usa um PC pareado que as mostra.</string>
+    <string name="settings_hide_from_recents">Ocultar dos apps recentes</string>
+    <string name="settings_hide_from_recents_hint">O NectarLink não aparece nos apps recentes, então limpar a lista não o fecha por engano.</string>
     <string name="settings_touchpad_sensitivity">Velocidade do touchpad</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Touchpad</string>

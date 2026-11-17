@@ -125,6 +125,8 @@ fun SettingsScreen(
     onSetVolumeKeysControlPc: (Boolean) -> Unit = {},
     quietWhileUsingPc: Boolean = false,
     onSetQuietWhileUsingPc: (Boolean) -> Unit = {},
+    hideFromRecents: Boolean = false,
+    onSetHideFromRecents: (Boolean) -> Unit = {},
     backgroundServiceEnabled: Boolean = true,
     onToggleBackgroundService: (Boolean) -> Unit = {},
     onSetTimelineRetentionDays: (UInt) -> Unit = {},
@@ -678,6 +680,24 @@ fun SettingsScreen(
                             onCheckedChange = onToggleBackgroundService,
                             colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
                             modifier = Modifier.semantics { contentDescription = runInBackgroundTitle },
+                        )
+                    }
+                    SettingRowDivider()
+                    val hideRecentsTitle = stringResource(R.string.settings_hide_from_recents)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(hideRecentsTitle, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                stringResource(R.string.settings_hide_from_recents_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = hideFromRecents,
+                            onCheckedChange = onSetHideFromRecents,
+                            colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+                            modifier = Modifier.semantics { contentDescription = hideRecentsTitle },
                         )
                     }
                     SettingRowDivider()

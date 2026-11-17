@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Hide NectarLink from recent apps.** A switch in the phone's Settings › Background keeps
+  it off the recent apps screen, so clearing that screen can't close it by accident on
+  phones where that stops apps. Thanks to [@FlootingDream](https://github.com/FlootingDream)
+  ([#409](https://github.com/thtbee/nectarlink/issues/409)).
 - **Install the phone app from the PC, over USB.** Settings › Install on a phone checks
   what's needed and walks you through the rest: it gets Android's USB tools from Google
   when the PC has none (checked against Google's checksum), helps turn on USB debugging,

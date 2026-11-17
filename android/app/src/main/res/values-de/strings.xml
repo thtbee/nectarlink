@@ -350,6 +350,8 @@
     <string name="settings_volume_keys_control_pc_hint">Während auf dem PC Musik oder ein Video läuft, ändern die Lautstärketasten des Smartphones die Lautstärke des PCs.</string>
     <string name="settings_quiet_while_using_pc">Leise, während du den PC nutzt</string>
     <string name="settings_quiet_while_using_pc_hint">Dein Smartphone spielt für Benachrichtigungen keinen Ton und keine Vibration ab, solange du einen gekoppelten PC nutzt, der sie anzeigt.</string>
+    <string name="settings_hide_from_recents">In den letzten Apps ausblenden</string>
+    <string name="settings_hide_from_recents_hint">NectarLink erscheint nicht in der Übersicht der letzten Apps und wird beim Leeren nicht versehentlich geschlossen.</string>
     <string name="settings_touchpad_sensitivity">Touchpad-Geschwindigkeit</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Touchpad</string>

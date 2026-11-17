@@ -352,6 +352,8 @@
     <string name="settings_volume_keys_control_pc_hint">While your PC plays music or video, your phone\'s volume buttons change the PC\'s volume.</string>
     <string name="settings_quiet_while_using_pc">Quiet while you use the PC</string>
     <string name="settings_quiet_while_using_pc_hint">Your phone skips its own sound and vibration for notifications while you\'re using a paired PC that shows them.</string>
+    <string name="settings_hide_from_recents">Hide from recent apps</string>
+    <string name="settings_hide_from_recents_hint">NectarLink stays off the recent apps screen, so clearing that screen can\'t close it by accident.</string>
     <string name="settings_touchpad_sensitivity">Touchpad speed</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Touchpad</string>
