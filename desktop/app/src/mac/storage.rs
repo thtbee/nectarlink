@@ -492,10 +492,7 @@ fn netfs_mount_webdav(port: u16, mount_path: &Path, user: &str, pass: &str) -> R
 }
 
 fn generate_mount_credentials() -> (String, String) {
-    let mut bytes = [0u8; 32];
-    if let Ok(mut f) = fs::File::open("/dev/urandom") {
-        let _ = f.read_exact(&mut bytes);
-    }
+    let bytes: [u8; 32] = rand::random();
     let user = data_encoding::HEXLOWER.encode(&bytes[..16]);
     let pass = data_encoding::HEXLOWER.encode(&bytes[16..]);
     (user, pass)
