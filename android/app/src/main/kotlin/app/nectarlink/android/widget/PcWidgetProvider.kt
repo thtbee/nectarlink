@@ -65,6 +65,7 @@ class PcWidgetProvider : BloomWidget() {
 
         val wake = !pc.online && pc.canWake && !waking
         views.setViewVisibility(R.id.widget_actions_row, if (pc.online) View.VISIBLE else View.GONE)
+        views.setViewVisibility(R.id.widget_fill, if (pc.online) View.GONE else View.VISIBLE)
         views.setViewVisibility(R.id.widget_btn_wake, if (wake) View.VISIBLE else View.GONE)
         if (pc.online) {
             views.setOnClickPendingIntent(R.id.widget_btn_ring, Widgets.action(context, ACTION_RING_PC, pc.id))
