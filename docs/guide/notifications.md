@@ -56,7 +56,7 @@ If you accidentally swipe away an alert on your phone or want to check a notific
 
 1. In the **Notifications** card on PC Home, switch the filter from **Active** to **History**.
 2. NectarLink displays dismissed notifications from the last day by default (up to 300 items; longer if you choose, see below), complete with search filtering by app name or text.
-3. You can clear the history at any time or turn 24-hour retention off in **Settings › Storage & Privacy › Notification history**.
+3. You can clear the history at any time, turn it off, or choose how long it stays (1 day to 30 days) in **Settings › Storage & Privacy**.
 
 ### Forwarding PC Notifications to Your Phone (Optional)
 
