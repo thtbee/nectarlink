@@ -1107,6 +1107,61 @@ async fn qr_pairing_recovers_after_an_offline_unpair() {
     phone.node.shutdown().await;
 }
 
+/// Nearby pairing between two devices that were paired before (#404): once
+/// after a normal unpair, and once after an unpair the PC never heard about,
+/// so the PC still has the phone.
+#[tokio::test(flavor = "multi_thread")]
+async fn nearby_pairing_works_again_after_unpairing() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Unpaired from the phone while both are online: both forget.
+    with_timeout("unpair", phone.node.unpair(pc_id)).await.unwrap();
+    wait_for(&mut pc, "device removed", |e| match e {
+        NodeEvent::DeviceRemoved(id) if *id == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(pc.node.paired_devices().unwrap().is_empty());
+
+    nearby_pair(&mut pc, &mut phone).await;
+    with_timeout("ring after pairing again", pc.node.ring(phone_id, true)).await.unwrap();
+
+    // Unpaired on the phone while the PC is away: the PC keeps a stale pairing.
+    pc.node.shutdown().await;
+    let TestDevice { node: old_pc, dir, .. } = pc;
+    drop(old_pc);
+    with_timeout("offline unpair", phone.node.unpair(pc_id)).await.unwrap();
+    let mut pc = start_in(dir, "Desktop", DeviceKind::Desktop).await;
+    assert_eq!(pc.node.paired_devices().unwrap().len(), 1, "the PC still has the phone");
+
+    nearby_pair(&mut pc, &mut phone).await;
+    assert_eq!(pc.node.paired_devices().unwrap().len(), 1);
+    assert_eq!(phone.node.paired_devices().unwrap().len(), 1);
+    with_timeout("ring after the stale pairing", pc.node.ring(phone_id, true)).await.unwrap();
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+/// The PC shows its pairing screen, the phone picks it, both confirm.
+async fn nearby_pair(pc: &mut TestDevice, phone: &mut TestDevice) {
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    pc.node.pairing_start_qr().await.unwrap();
+    phone.node.add_known_addrs(pc_id, &pc.node.direct_addrs().await);
+    let initiator = phone.node.clone();
+    let task = tokio::spawn(async move { initiator.pairing_start_nearby(pc_id).await });
+    let (phone_code, pc_code) = (sas_code(phone).await, sas_code(pc).await);
+    assert_eq!(phone_code, pc_code);
+    phone.node.pairing_confirm(true).unwrap();
+    pc.node.pairing_confirm(true).unwrap();
+    with_timeout("nearby pairing", task).await.unwrap().expect("pairing succeeds");
+    wait_online(phone, pc_id).await;
+    wait_online(pc, phone_id).await;
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn reconnects_after_a_restart() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;
