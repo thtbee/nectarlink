@@ -6651,7 +6651,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/PairingPanel.qml" line="244"/>
         <source>On your phone, open NectarLink and choose “Pair nearby”. It shows up here. To pair another PC, open this on that PC too.</source>
-        <translation>En tu teléfono, abre NectarLink y elige «Emparejar cerca». Aparece aquí. Para emparejar otro PC, abre esto también en ese PC.</translation>
+        <translation>En tu teléfono, abre NectarLink y elige “Emparejar cerca”. Aparece aquí. Para emparejar otro PC, abre esto también en ese PC.</translation>
     </message>
     <message>
         <location filename="../qml/pages/PairingPanel.qml" line="274"/>
@@ -8623,7 +8623,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="217"/>
         <source>Move a call&apos;s sound to this PC: its speakers and microphone.</source>
-        <translation>Pasar el sonido de una llamada a este PC: sus altavoces y su micrófono.</translation>
+        <translation>Pasa el sonido de una llamada a este PC: sus altavoces y su micrófono.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="219"/>
@@ -9012,7 +9012,7 @@ Qué necesitas
         <location filename="../qml/pages/SettingsPage.qml" line="2317"/>
         <location filename="../qml/pages/SettingsPage.qml" line="2324"/>
         <source>Finder Send to</source>
-        <translation>Enviar a en Finder</translation>
+        <translation>Finder: Enviar a</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2320"/>
@@ -11322,7 +11322,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="190"/>
         <source>Checking the local network...</source>
-        <translation>Comprobando la red local...</translation>
+        <translation>Comprobando la red local…</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="196"/>
