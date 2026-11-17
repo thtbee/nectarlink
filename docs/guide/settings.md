@@ -186,6 +186,7 @@ Provides network diagnostics, **Connect over mobile data**, Wake-on-LAN readines
 | :--- | :--- | :--- |
 | **Connection Doctor** | **Check** button | Runs a live check of Windows Firewall rules, network profile type (Public vs Private), active VPN interfaces, and suspected Wi-Fi AP isolation, and fixes firewall or network profile issues with one click. |
 | **Connect over mobile data** | **Off** | Allows this PC and paired phones to stay connected over LTE/5G or across separate networks via end-to-end encrypted relay packets when direct LAN/USB is unavailable. |
+| **Use USB debugging** | **On** | Connects, pairs, installs the app and starts Elevated over a USB cable. Off, NectarLink never asks a phone on a cable for USB debugging. Applies when NectarLink restarts. |
 | **Wake from your phone** | Read-only status indicator (`Ready`, `Off in Windows`, `Check settings`, `No adapter`) | Inspects your active Windows network adapter and tells you whether Wake on LAN is enabled in Device Manager so your phone can wake this PC from sleep. |
 | **Local automation API** | **Off** (default port `53320`) | Starts the loopback-only HTTP/JSON server (`127.0.0.1:<port>`) for PowerToys, AutoHotkey, and scripts, and writes the 256-bit Bearer token to `%LOCALAPPDATA%\Nectarlink\api-token.json`. |
 | **NectarLink `<version>`** | **Check for updates** and **Open logs** buttons | Shows the app version and this PC's device name, checks GitHub Releases for SHA-256 verified updates, or opens the local diagnostic logs folder. |

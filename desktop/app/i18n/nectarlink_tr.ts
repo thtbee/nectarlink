@@ -6905,244 +6905,249 @@ Neler gerekir
         <translation>Android&apos;in USB araçları</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="177"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="178"/>
         <source>USB is turned off for this copy of NectarLink.</source>
         <translation>NectarLink&apos;in bu kopyasında USB kapalı.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="186"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="179"/>
+        <source>Use USB debugging is off in Settings › Connection &amp; About.</source>
+        <translation>USB hata ayıklamayı kullan, Ayarlar › Bağlantı ve Hakkında'da kapalı.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="188"/>
         <source>Starting them…</source>
         <translation>Başlatılıyor…</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="188"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="190"/>
         <source>Ready. NectarLink uses the copy it downloaded from Google.</source>
         <translation>Hazır. NectarLink, Google&apos;dan indirdiği kopyayı kullanıyor.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="189"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="191"/>
         <source>Ready. NectarLink uses the ones already on this PC.</source>
         <translation>Hazır. NectarLink, bu bilgisayarda zaten olanları kullanıyor.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="200"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="202"/>
         <source>This PC doesn&apos;t have them yet. NectarLink can get them from Google: about 8 MB, kept in NectarLink&apos;s own folder, and also used to connect phones over a cable.</source>
         <translation>Bu bilgisayarda henüz yoklar. NectarLink onları Google&apos;dan indirebilir: yaklaşık 8 MB, NectarLink&apos;in kendi klasöründe tutulur ve telefonları kabloyla bağlamak için de kullanılır.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="208"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="210"/>
         <source>That didn&apos;t work: %1</source>
         <translation>Olmadı: %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="211"/>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="737"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="213"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="739"/>
         <source>Try again</source>
         <translation>Yeniden dene</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="211"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="213"/>
         <source>Download from Google</source>
         <translation>Google&apos;dan indir</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="222"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="224"/>
         <source>Downloading them means you accept Google&apos;s &lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;Android SDK terms&lt;/a&gt;.</source>
         <translation>İndirerek Google&apos;ın &lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;Android SDK koşullarını&lt;/a&gt; kabul etmiş olursunuz.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="235"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="237"/>
         <source>Downloading from Google… %1 of %2 MB</source>
         <translation>Google&apos;dan indiriliyor… %1 / %2 MB</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="236"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="238"/>
         <source>Asking Google which version is current…</source>
         <translation>Güncel sürüm Google&apos;a soruluyor…</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="250"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="252"/>
         <source>Google doesn&apos;t make them for this kind of PC. Install adb from your distribution&apos;s packages (for example: sudo apt install adb), then come back here.</source>
         <translation>Google bu tür bilgisayarlar için onları sunmuyor. adb&apos;yi dağıtımınızın paketlerinden kurun (örneğin: sudo apt install adb), sonra buraya dönün.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="261"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="263"/>
         <source>%1 is connected</source>
         <translation>%1 bağlı</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="262"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="264"/>
         <source>%1 phones are connected</source>
         <translation>%1 telefon bağlı</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="263"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="265"/>
         <source>Connect the phone</source>
         <translation>Telefonu bağlayın</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="275"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="277"/>
         <source>Unlock %1 and tap Allow on “Allow USB debugging?”. Tick “Always allow from this computer” so it doesn&apos;t ask again.</source>
         <translation>%1 kilidini açın ve “USB hata ayıklamaya izin verilsin mi?” sorusunda İzin ver&apos;e dokunun. Bir daha sormaması için “Bu bilgisayardan her zaman izin ver”i işaretleyin.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="277"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="279"/>
         <source>Linux needs Android&apos;s USB rules to reach %1. Install your distribution&apos;s android-udev-rules package (on Debian and Ubuntu: android-sdk-platform-tools-common), then plug the phone in again.</source>
         <translation>Linux&apos;un %1 cihazına ulaşması için Android&apos;in USB kuralları gerekir. Dağıtımınızın android-udev-rules paketini kurun (Debian ve Ubuntu&apos;da: android-sdk-platform-tools-common), sonra telefonu yeniden takın.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="278"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="280"/>
         <source>%1 isn&apos;t answering. Unplug it and plug it back in.</source>
         <translation>%1 yanıt vermiyor. Çıkarıp yeniden takın.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="291"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="293"/>
         <source>Windows sees the phone but has no driver for its USB debugging. Install your phone maker&apos;s USB driver, then plug the phone in again.</source>
         <translation>Windows telefonu görüyor ama USB hata ayıklaması için sürücüsü yok. Telefon üreticinizin USB sürücüsünü kurun, sonra telefonu yeniden takın.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="292"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="294"/>
         <source>Find the driver</source>
         <translation>Sürücüyü bul</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="300"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="302"/>
         <source>Plug the phone into this PC with a USB cable. If it&apos;s the first time, turn on USB debugging first:</source>
         <translation>Telefonu bu bilgisayara bir USB kablosuyla takın. İlk kez yapıyorsanız önce USB hata ayıklamayı açın:</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="305"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="307"/>
         <source>On the phone, open Settings › About phone and tap Build number seven times. On Xiaomi phones it&apos;s the OS version; on Samsung it&apos;s under Software information.</source>
         <translation>Telefonda Ayarlar › Telefon hakkında&apos;yı açın ve Derleme numarası&apos;na yedi kez dokunun. Xiaomi telefonlarda bu, işletim sistemi sürümüdür; Samsung&apos;da Yazılım bilgileri altındadır.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="306"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="308"/>
         <source>Go back to Settings, open Developer options (under System on many phones) and turn on USB debugging.</source>
         <translation>Ayarlar&apos;a dönün, Geliştirici seçenekleri&apos;ni açın (birçok telefonda Sistem altında) ve USB hata ayıklamayı açın.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="307"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="309"/>
         <source>Use a cable that carries data, since some only charge. If the phone asks what the USB connection is for, pick File transfer.</source>
         <translation>Veri aktaran bir kablo kullanın, çünkü bazıları yalnızca şarj eder. Telefon USB bağlantısının ne için olduğunu sorarsa Dosya aktarımı&apos;nı seçin.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="316"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="318"/>
         <source>Still nothing? Try another USB port or cable, and check that USB debugging stayed on (some phones turn it off when unplugged).</source>
         <translation>Hâlâ bir şey yok mu? Başka bir USB bağlantı noktası veya kablo deneyin ve USB hata ayıklamanın açık kaldığını kontrol edin (bazı telefonlar çıkarınca kapatır).</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="327"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="329"/>
         <source>Install NectarLink</source>
         <translation>NectarLink&apos;i yükleyin</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="337"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="339"/>
         <source>NectarLink %1 comes from its own releases on GitHub and is checked before it&apos;s sent to the phone.</source>
         <translation>NectarLink %1, GitHub&apos;daki kendi sürümlerinden gelir ve telefona gönderilmeden önce kontrol edilir.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="338"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="340"/>
         <source>NectarLink comes from its own releases on GitHub and is checked before it&apos;s sent to the phone.</source>
         <translation>NectarLink, GitHub&apos;daki kendi sürümlerinden gelir ve telefona gönderilmeden önce kontrol edilir.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="608"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="610"/>
         <source>Android %1</source>
         <translation>Android %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="611"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="613"/>
         <source>needs Android 8.0 or newer</source>
         <translation>Android 8.0 veya daha yenisi gerekir</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="613"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="615"/>
         <source>NectarLink isn&apos;t on it yet</source>
         <translation>NectarLink henüz yüklü değil</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="615"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="617"/>
         <source>has NectarLink %1, %2 is newer</source>
         <translation>NectarLink %1 yüklü, %2 daha yeni</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="617"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="619"/>
         <source>has NectarLink %1</source>
         <translation>NectarLink %1 yüklü</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="632"/>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="708"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="634"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="710"/>
         <source>Open on phone</source>
         <translation>Telefonda aç</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="633"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="635"/>
         <source>Update</source>
         <translation>Güncelle</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="633"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="635"/>
         <source>Install</source>
         <translation>Yükle</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="653"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="655"/>
         <source>Downloading NectarLink… %1%</source>
         <translation>NectarLink indiriliyor… %%1</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="654"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="656"/>
         <source>Getting NectarLink…</source>
         <translation>NectarLink alınıyor…</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="656"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="658"/>
         <source>Sending it to the phone… %1%</source>
         <translation>Telefona gönderiliyor… %%1</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="658"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="660"/>
         <source>Removing the other build…</source>
         <translation>Diğer sürüm kaldırılıyor…</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="659"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="661"/>
         <source>Installing… If the phone asks whether to allow it, tap Allow or Install.</source>
         <translation>Yükleniyor… Telefon izin verilip verilmeyeceğini sorarsa İzin ver&apos;e veya Yükle&apos;ye dokunun.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="701"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="703"/>
         <source>NectarLink %1 is installed and opening on the phone. Finish its setup there, then pair it with this PC from Home.</source>
         <translation>NectarLink %1 yüklendi ve telefonda açılıyor. Kurulumu orada bitirin, sonra Ana sayfa&apos;dan bu bilgisayarla eşleştirin.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="714"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="716"/>
         <source>Done</source>
         <translation>Tamam</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="743"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="745"/>
         <source>Replace it</source>
         <translation>Değiştir</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="749"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="751"/>
         <source>Close</source>
         <translation>Kapat</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="763"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="765"/>
         <source>Remove the NectarLink on %1 with everything it keeps, including the PCs it&apos;s paired with? This can&apos;t be undone.</source>
         <translation>%1 üzerindeki NectarLink, eşleştiği bilgisayarlar dahil tuttuğu her şeyle birlikte kaldırılsın mı? Bu geri alınamaz.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="769"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="771"/>
         <source>Remove and install</source>
         <translation>Kaldır ve yükle</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="778"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="780"/>
         <source>Cancel</source>
         <translation>İptal</translation>
     </message>
@@ -8031,7 +8036,7 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="29"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3727"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3744"/>
         <source>Support NectarLink</source>
         <translation>NectarLink&apos;i destekle</translation>
     </message>
@@ -8431,7 +8436,7 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="970"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4044"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4061"/>
         <source>Language</source>
         <translation>Dil</translation>
     </message>
@@ -8626,7 +8631,7 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1506"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4150"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4167"/>
         <source>Unpair</source>
         <translation>Eşleştirmeyi kaldır</translation>
     </message>
@@ -8671,8 +8676,8 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="1702"/>
         <location filename="../qml/pages/SettingsPage.qml" line="2502"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3274"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3693"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3706"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3710"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3723"/>
         <source>Open</source>
         <translation>Aç</translation>
     </message>
@@ -8856,7 +8861,7 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1917"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3520"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3537"/>
         <source>Ready</source>
         <translation>Hazır</translation>
     </message>
@@ -9353,7 +9358,7 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="3321"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3352"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3389"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4195"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4212"/>
         <source>Clear</source>
         <translation>Temizle</translation>
     </message>
@@ -9535,132 +9540,153 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3470"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3935"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3477"/>
+        <source>Use USB debugging</source>
+        <translation>USB hata ayıklamayı kullan</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3472"/>
+        <source>Applies when NectarLink restarts.</source>
+        <translation>NectarLink yeniden başladığında geçerli olur.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3474"/>
+        <source>Connect, pair, install the app and start Elevated over a USB cable. Your phone asks once to allow USB debugging.</source>
+        <translation>USB kabloyla bağlan, eşle, uygulamayı yükle ve Elevated'ı başlat. Telefonun USB hata ayıklamaya izin vermek için bir kez sorar.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3475"/>
+        <source>Off: NectarLink never asks a phone on a cable for USB debugging. Wi-Fi works as usual.</source>
+        <translation>Kapalı: NectarLink kablodaki bir telefondan asla USB hata ayıklama istemez. Wi-Fi her zamanki gibi çalışır.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3487"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3952"/>
         <source>Network interface</source>
         <translation>Ağ arayüzü</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3471"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3488"/>
         <source>Local connections switch after a restart. Relays switch right away if the app started with an interface selected.</source>
         <translation>Yerel bağlantılar uygulama yeniden başlatıldığında değişir. Uygulama başlatılırken bir ağ arayüzü seçiliyse aktarma sunucusu bağlantıları hemen değişir.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2118"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3475"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3942"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3492"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3959"/>
         <source>System default</source>
         <translation>Sistem varsayılanı</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3941"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3958"/>
         <source>%1 · Direct (without a VPN)</source>
         <translation>%1 · Doğrudan (VPN olmadan)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3965"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3982"/>
         <source>Could not use this network interface.</source>
         <translation>Bu ağ arayüzü kullanılamadı.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3487"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3504"/>
         <source>Iroh relay servers</source>
         <translation>iroh relay sunucuları</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3488"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3505"/>
         <source>View active routes, check latency and manage relay servers.</source>
         <translation>Etkin yolları gör, gecikmeyi kontrol et ve relay sunucularını yönet.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3492"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3509"/>
         <source>Manage</source>
         <translation>Yönet</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3500"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3517"/>
         <source>Wake from your phone</source>
         <translation>Telefonunuzdan uyandırma</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3505"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3522"/>
         <source>No active network adapter found.</source>
         <translation>Etkin ağ bağdaştırıcısı bulunamadı.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3507"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3524"/>
         <source>%1 · Wake on Magic Packet ready.</source>
         <translation>%1 · Wake on Magic Packet hazır.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3508"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3525"/>
         <source>%1 · Enable Wake on Magic Packet in Device Manager.</source>
         <translation>%1 · Aygıt Yöneticisi&apos;nde Wake on Magic Packet&apos;i etkinleştirin.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3522"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3539"/>
         <source>Off in Windows</source>
         <translation>Windows&apos;ta kapalı</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3522"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3539"/>
         <source>Off in the adapter&apos;s settings</source>
         <translation>Bağdaştırıcı ayarlarında kapalı</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3523"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3540"/>
         <source>Check settings</source>
         <translation>Ayarları denetle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3524"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3541"/>
         <source>No adapter</source>
         <translation>Bağdaştırıcı yok</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3532"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3571"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3549"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3588"/>
         <source>Local automation API</source>
         <translation>Yerel otomasyon API&apos;si</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3534"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3551"/>
         <source>Listening on 127.0.0.1:%1 · Token in %2</source>
         <translation>127.0.0.1:%1 dinleniyor · Token: %2</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3535"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3552"/>
         <source>Local HTTP/SSE server (127.0.0.1:%1) for scripts and tools.</source>
         <translation>Betikler ve araçlar için yerel HTTP/SSE sunucusu (127.0.0.1:%1).</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3581"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3598"/>
         <source>NectarLink %1</source>
         <translation>NectarLink %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3584"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3601"/>
         <source>This PC: %1</source>
         <translation>Bu bilgisayar: %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3596"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3613"/>
         <source>Update download</source>
         <translation>Güncelleme indirmesi</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3617"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3634"/>
         <source>Update to %1</source>
         <translation>%1 sürümüne güncelle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3618"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3637"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3642"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3635"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3654"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3659"/>
         <source>Check for updates</source>
         <translation>Güncellemeleri denetle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3627"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3644"/>
         <source>Open logs</source>
         <translation>Günlükleri aç</translation>
     </message>
@@ -9669,183 +9695,183 @@ Neler gerekir
         <translation type="vanished">Günde bir kez GitHub&apos;da yeni sürüm arar.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3670"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3673"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3687"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3690"/>
         <source>Install updates automatically</source>
         <translation>Güncellemeleri otomatik yükle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3671"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3688"/>
         <source>When nobody is using the PC and nothing is in progress.</source>
         <translation>Bilgisayarı kimse kullanmıyorken ve devam eden bir işlem yokken.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3688"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3705"/>
         <source>Setup walkthrough</source>
         <translation>Kurulum rehberi</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3689"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3706"/>
         <source>Re-open the setup guide.</source>
         <translation>Kurulum rehberini yeniden açın.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3701"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3718"/>
         <source>Features guide</source>
         <translation>Özellik rehberi</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3702"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3719"/>
         <source>What each feature needs and where to find it.</source>
         <translation>Her özelliğin neye ihtiyaç duyduğu ve nerede bulunduğu.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3728"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3745"/>
         <source>NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!</source>
         <translation>NectarLink ücretsiz ve açık kaynaklıdır. Günlerini biraz kolaylaştırıyorsa devam etmesine yardım edebilirsin. Teşekkürler!</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3733"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3750"/>
         <source>Support</source>
         <translation>Destekle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3805"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3822"/>
         <source>Sync a folder</source>
         <translation>Klasör eşitle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3814"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3845"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3831"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3862"/>
         <source>Folder on the phone</source>
         <translation>Telefondaki klasör</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3850"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3867"/>
         <source>Folder on this PC</source>
         <translation>Bu bilgisayardaki klasör</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3865"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3882"/>
         <source>Choose…</source>
         <translation>Seç…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3875"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3892"/>
         <source>Phone to PC</source>
         <translation>Telefondan bilgisayara</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3876"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3893"/>
         <source>PC to phone</source>
         <translation>PC&apos;den telefona</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3877"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3894"/>
         <source>Both ways</source>
         <translation>Her iki yönde</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3888"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3905"/>
         <source>New and changed files on the PC are copied to the phone. Nothing on the phone comes to the PC, and nothing is deleted.</source>
         <translation>PC&apos;deki yeni ve değişen dosyalar telefona kopyalanır. Telefondan PC&apos;ye hiçbir şey gelmez ve hiçbir şey silinmez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3890"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3907"/>
         <source>Changes on either side are copied to the other. When a file changed on both, both versions are kept.</source>
         <translation>Bir taraftaki değişiklikler diğerine kopyalanır. Bir dosya iki tarafta da değiştiyse iki sürüm de saklanır.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3891"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3908"/>
         <source>New and changed files on the phone are copied to the PC. Nothing on the PC goes to the phone.</source>
         <translation>Telefondaki yeni ve değişen dosyalar bilgisayara kopyalanır. Bilgisayardan telefona hiçbir şey gitmez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3897"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3902"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3914"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3919"/>
         <source>Also remove from the PC</source>
         <translation>PC&apos;den de kaldır</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3897"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3902"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3914"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3919"/>
         <source>Also remove deleted files</source>
         <translation>Silinen dosyaları da kaldır</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3899"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3916"/>
         <source>A synced file you delete on one side leaves the other. On the PC it goes to the Recycle Bin. On the phone, photos and videos go to its trash where Android has one, and other files are gone for good.</source>
         <translation>Bir tarafta sildiğin eşitlenmiş dosya diğer taraftan da kalkar. PC&apos;de Geri Dönüşüm Kutusu&apos;na gider. Telefonda fotoğraf ve videolar, Android&apos;de varsa çöp kutusuna gider; diğer dosyalar kalıcı olarak silinir.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3900"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3917"/>
         <source>A synced file you delete on the phone goes to the PC&apos;s Recycle Bin.</source>
         <translation>Telefonda sildiğin eşitlenmiş dosya PC&apos;nin Geri Dönüşüm Kutusu&apos;na gider.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3913"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3930"/>
         <source>Add</source>
         <translation>Ekle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3982"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3999"/>
         <source>Phone&apos;s hotspot network</source>
         <translation>Telefonun hotspot ağı</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3990"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4007"/>
         <source>Wi-Fi networks this PC has joined before. Your system keeps their passwords; NectarLink never sees them.</source>
         <translation>Bu bilgisayarın daha önce katıldığı Wi-Fi ağları. Parolalarını sisteminiz saklar; NectarLink bunları asla görmez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3991"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4008"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from your system Wi-Fi list first.</source>
         <translation>Bu bilgisayar henüz hiç Wi-Fi ağı kaydetmedi. Önce telefonun hotspot&apos;una bir kez sisteminizin Wi-Fi listesinden katılın.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3993"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4010"/>
         <source>Wi-Fi networks this PC has joined before. Windows keeps their passwords; NectarLink never sees them.</source>
         <translation>Bu bilgisayarın daha önce katıldığı Wi-Fi ağları. Parolalarını Windows saklar; NectarLink bunları asla görmez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3994"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4011"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from Windows&apos; Wi-Fi list first.</source>
         <translation>Bu bilgisayar henüz hiç Wi-Fi ağı kaydetmedi. Önce telefonun hotspot&apos;una bir kez Windows&apos;un Wi-Fi listesinden katılın.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4024"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4041"/>
         <source>Don&apos;t join</source>
         <translation>Katılma</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3967"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4033"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4061"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4096"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4124"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3984"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4050"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4078"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4113"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4141"/>
         <source>Close</source>
         <translation>Kapat</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4107"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4124"/>
         <source>Play the phone&apos;s microphone into</source>
         <translation>Telefonun mikrofonunu şu çıkışa çal</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4137"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4154"/>
         <source>Unpair %1?</source>
         <translation>%1 eşleştirmesi kaldırılsın mı?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4143"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4160"/>
         <source>Both devices forget each other. You can pair them again any time.</source>
         <translation>İki cihaz da birbirini unutur. İstediğiniz zaman yeniden eşleştirebilirsiniz.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3911"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4148"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4192"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4228"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3928"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4165"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4209"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4245"/>
         <source>Cancel</source>
         <translation>İptal</translation>
     </message>
@@ -9865,67 +9891,67 @@ Neler gerekir
         <translation>Parola yöneticilerinin özel olarak işaretlediklerini de gönderir. Android izin veriyorsa bir dakika sonra telefonun panosundan silinir ve geçmişte hiç tutulmaz.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3639"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3656"/>
         <source>Looks for a new build every couple of hours, and tells your phone.</source>
         <translation>Birkaç saatte bir yeni derleme arar ve telefonuna haber verir.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3640"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3657"/>
         <source>Looks for a new release twice a day, and tells your phone.</source>
         <translation>Günde iki kez yeni sürüm arar ve telefonuna haber verir.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3651"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3668"/>
         <source>Update channel</source>
         <translation>Güncelleme kanalı</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3653"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3670"/>
         <source>The newest build from every couple of hours, with the latest fixes and features, and sometimes new bugs. Back on Stable, this PC keeps its build until the next release is newer.</source>
         <translation>Birkaç saatte bir çıkan en yeni derleme: en son düzeltmeler ve özellikler, bazen de yeni hatalar. Kararlı&apos;ya dönünce bu bilgisayar, bir sonraki sürüm daha yeni olana kadar derlemesini korur.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3654"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3671"/>
         <source>Releases, tested and less often.</source>
         <translation>Yayınlanan sürümler: test edilmiş ve daha seyrek.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3657"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3674"/>
         <source>Stable</source>
         <translation>Kararlı</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3658"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3675"/>
         <source>Nightly</source>
         <translation>Nightly</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3811"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3828"/>
         <source>The phone asks once to let this PC in. NectarLink there also needs All files access, or this folder under Selected folders only.</source>
         <translation>Telefon, bu bilgisayara izin vermek için bir kez sorar. Oradaki NectarLink ayrıca Tüm dosyalara erişim iznine ya da bu klasörün Yalnızca seçili klasörler altında olmasına ihtiyaç duyar.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4072"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4089"/>
         <source>Talk on calls through</source>
         <translation>Aramalarda şununla konuş</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4091"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4108"/>
         <source>No microphone found on this PC.</source>
         <translation>Bu bilgisayarda mikrofon bulunamadı.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4214"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4231"/>
         <source>Clear all local history &amp; caches?</source>
         <translation>Tüm yerel geçmiş ve önbellekler temizlensin mi?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4223"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4240"/>
         <source>Deletes clipboard history, Timeline, notification history, cached messages, photo thumbnails and transfer history on this PC. Paired devices, settings and downloaded files are kept.</source>
         <translation>Bu bilgisayardaki pano geçmişini, Zaman Çizelgesi&apos;ni, bildirim geçmişini, önbellekteki mesajları, fotoğraf küçük resimlerini ve aktarım geçmişini siler. Eşleştirilmiş cihazlar, ayarlar ve indirilen dosyalar korunur.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4231"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4248"/>
         <source>Clear everything</source>
         <translation>Her şeyi temizle</translation>
     </message>

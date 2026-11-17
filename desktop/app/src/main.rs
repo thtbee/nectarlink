@@ -615,6 +615,8 @@ fn main() -> ExitCode {
     win::jumplist::register(options.data_dir.as_deref());
     // Before the core looks for adb: one downloaded for phones on a cable is used too.
     phone_install::init(&data_dir);
+    // The core reads it once, as it starts: off, it never asks phones for USB debugging (#439).
+    settings::set_usb_debugging(settings::Settings::load(&data_dir).usb_debugging);
     if let Err(e) = core_host::start(data_dir.clone(), Arc::new(DesktopPlatform)) {
         tracing::error!(error = %e, "can't start the core runtime");
         return ExitCode::FAILURE;

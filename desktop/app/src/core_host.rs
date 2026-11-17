@@ -45,13 +45,16 @@ pub fn try_data_dir() -> Option<&'static std::path::Path> {
     HOST.get().map(|h| h.data_dir.as_path())
 }
 
-/// Whether phones on a USB cable are looked for through adb.
-/// NECTARLINK_NO_ADB=1 keeps a development copy from reaching phones plugged in over USB,
-/// unless NECTARLINK_ADB_ONLY_SERIAL explicitly restricts ADB to an Android emulator.
+/// Whether phones on a USB cable are looked for through adb: not when the
+/// user turned Use USB debugging off (#439). NECTARLINK_NO_ADB=1 keeps a
+/// development copy from reaching phones plugged in over USB, unless
+/// NECTARLINK_ADB_ONLY_SERIAL explicitly restricts ADB to an Android emulator.
 pub fn adb_enabled() -> bool {
     let only_emulator =
         std::env::var("NECTARLINK_ADB_ONLY_SERIAL").is_ok_and(|s| s.trim().starts_with("emulator-"));
-    only_emulator || std::env::var_os("NECTARLINK_NO_ADB").is_none_or(|v| v != "1")
+    only_emulator
+        || (crate::settings::usb_debugging()
+            && std::env::var_os("NECTARLINK_NO_ADB").is_none_or(|v| v != "1"))
 }
 
 /// The node, once it has started.

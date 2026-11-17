@@ -6909,244 +6909,249 @@ What it needs
         <translation>Android 的 USB 工具</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="177"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="178"/>
         <source>USB is turned off for this copy of NectarLink.</source>
         <translation>这个 NectarLink 副本已关闭 USB。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="186"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="179"/>
+        <source>Use USB debugging is off in Settings › Connection &amp; About.</source>
+        <translation>设置 › 连接与关于 中已关闭“使用 USB 调试”。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="188"/>
         <source>Starting them…</source>
         <translation>正在启动…</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="188"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="190"/>
         <source>Ready. NectarLink uses the copy it downloaded from Google.</source>
         <translation>已就绪。NectarLink 使用从 Google 下载的副本。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="189"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="191"/>
         <source>Ready. NectarLink uses the ones already on this PC.</source>
         <translation>已就绪。NectarLink 使用这台电脑上已有的工具。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="200"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="202"/>
         <source>This PC doesn&apos;t have them yet. NectarLink can get them from Google: about 8 MB, kept in NectarLink&apos;s own folder, and also used to connect phones over a cable.</source>
         <translation>这台电脑还没有。NectarLink 可以从 Google 下载：约 8 MB，保存在 NectarLink 自己的文件夹中，也用于通过数据线连接手机。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="208"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="210"/>
         <source>That didn&apos;t work: %1</source>
         <translation>没有成功：%1</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="211"/>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="737"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="213"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="739"/>
         <source>Try again</source>
         <translation>重试</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="211"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="213"/>
         <source>Download from Google</source>
         <translation>从 Google 下载</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="222"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="224"/>
         <source>Downloading them means you accept Google&apos;s &lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;Android SDK terms&lt;/a&gt;.</source>
         <translation>下载即表示你接受 Google 的&lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;Android SDK 条款&lt;/a&gt;。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="235"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="237"/>
         <source>Downloading from Google… %1 of %2 MB</source>
         <translation>正在从 Google 下载… %1 / %2 MB</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="236"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="238"/>
         <source>Asking Google which version is current…</source>
         <translation>正在向 Google 查询当前版本…</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="250"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="252"/>
         <source>Google doesn&apos;t make them for this kind of PC. Install adb from your distribution&apos;s packages (for example: sudo apt install adb), then come back here.</source>
         <translation>Google 没有为这类电脑提供它们。请通过发行版的软件包安装 adb（例如：sudo apt install adb），然后回到这里。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="261"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="263"/>
         <source>%1 is connected</source>
         <translation>%1 已连接</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="262"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="264"/>
         <source>%1 phones are connected</source>
         <translation>已连接 %1 部手机</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="263"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="265"/>
         <source>Connect the phone</source>
         <translation>连接手机</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="275"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="277"/>
         <source>Unlock %1 and tap Allow on “Allow USB debugging?”. Tick “Always allow from this computer” so it doesn&apos;t ask again.</source>
         <translation>解锁 %1，在“允许 USB 调试吗？”中点按“允许”。勾选“一律允许使用这台计算机进行调试”，以后就不会再问。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="277"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="279"/>
         <source>Linux needs Android&apos;s USB rules to reach %1. Install your distribution&apos;s android-udev-rules package (on Debian and Ubuntu: android-sdk-platform-tools-common), then plug the phone in again.</source>
         <translation>Linux 需要 Android 的 USB 规则才能访问 %1。请安装发行版的 android-udev-rules 软件包（Debian 和 Ubuntu 上为 android-sdk-platform-tools-common），然后重新连接手机。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="278"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="280"/>
         <source>%1 isn&apos;t answering. Unplug it and plug it back in.</source>
         <translation>%1 没有响应。请拔下后重新连接。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="291"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="293"/>
         <source>Windows sees the phone but has no driver for its USB debugging. Install your phone maker&apos;s USB driver, then plug the phone in again.</source>
         <translation>Windows 能看到手机，但没有它的 USB 调试驱动。请安装手机厂商的 USB 驱动，然后重新连接手机。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="292"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="294"/>
         <source>Find the driver</source>
         <translation>查找驱动</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="300"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="302"/>
         <source>Plug the phone into this PC with a USB cable. If it&apos;s the first time, turn on USB debugging first:</source>
         <translation>用 USB 数据线把手机连到这台电脑。如果是第一次，请先开启 USB 调试：</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="305"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="307"/>
         <source>On the phone, open Settings › About phone and tap Build number seven times. On Xiaomi phones it&apos;s the OS version; on Samsung it&apos;s under Software information.</source>
         <translation>在手机上打开“设置 › 关于手机”，连续点按“版本号”七次。小米手机上是系统版本；三星手机在“软件信息”中。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="306"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="308"/>
         <source>Go back to Settings, open Developer options (under System on many phones) and turn on USB debugging.</source>
         <translation>返回设置，打开“开发者选项”（很多手机在“系统”中），开启“USB 调试”。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="307"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="309"/>
         <source>Use a cable that carries data, since some only charge. If the phone asks what the USB connection is for, pick File transfer.</source>
         <translation>请使用能传输数据的数据线，有些只能充电。如果手机询问 USB 连接的用途，请选择“文件传输”。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="316"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="318"/>
         <source>Still nothing? Try another USB port or cable, and check that USB debugging stayed on (some phones turn it off when unplugged).</source>
         <translation>还是没有？请换一个 USB 接口或数据线，并确认 USB 调试仍然开启（有些手机拔下后会自动关闭）。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="327"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="329"/>
         <source>Install NectarLink</source>
         <translation>安装 NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="337"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="339"/>
         <source>NectarLink %1 comes from its own releases on GitHub and is checked before it&apos;s sent to the phone.</source>
         <translation>NectarLink %1 来自它在 GitHub 上的官方发布版本，发送到手机前会经过校验。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="338"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="340"/>
         <source>NectarLink comes from its own releases on GitHub and is checked before it&apos;s sent to the phone.</source>
         <translation>NectarLink 来自它在 GitHub 上的官方发布版本，发送到手机前会经过校验。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="608"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="610"/>
         <source>Android %1</source>
         <translation>Android %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="611"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="613"/>
         <source>needs Android 8.0 or newer</source>
         <translation>需要 Android 8.0 或更高版本</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="613"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="615"/>
         <source>NectarLink isn&apos;t on it yet</source>
         <translation>还没有安装 NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="615"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="617"/>
         <source>has NectarLink %1, %2 is newer</source>
         <translation>已安装 NectarLink %1，%2 更新</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="617"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="619"/>
         <source>has NectarLink %1</source>
         <translation>已安装 NectarLink %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="632"/>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="708"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="634"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="710"/>
         <source>Open on phone</source>
         <translation>在手机上打开</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="633"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="635"/>
         <source>Update</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="633"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="635"/>
         <source>Install</source>
         <translation>安装</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="653"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="655"/>
         <source>Downloading NectarLink… %1%</source>
         <translation>正在下载 NectarLink… %1%</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="654"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="656"/>
         <source>Getting NectarLink…</source>
         <translation>正在获取 NectarLink…</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="656"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="658"/>
         <source>Sending it to the phone… %1%</source>
         <translation>正在发送到手机… %1%</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="658"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="660"/>
         <source>Removing the other build…</source>
         <translation>正在移除另一个版本…</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="659"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="661"/>
         <source>Installing… If the phone asks whether to allow it, tap Allow or Install.</source>
         <translation>正在安装… 如果手机询问是否允许，请点按“允许”或“安装”。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="701"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="703"/>
         <source>NectarLink %1 is installed and opening on the phone. Finish its setup there, then pair it with this PC from Home.</source>
         <translation>NectarLink %1 已安装，正在手机上打开。请在那里完成设置，然后在首页与这台电脑配对。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="714"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="716"/>
         <source>Done</source>
         <translation>完成</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="743"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="745"/>
         <source>Replace it</source>
         <translation>替换</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="749"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="751"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="763"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="765"/>
         <source>Remove the NectarLink on %1 with everything it keeps, including the PCs it&apos;s paired with? This can&apos;t be undone.</source>
         <translation>要删除 %1 上的 NectarLink 及其保存的所有内容（包括已配对的电脑）吗？此操作无法撤销。</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="769"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="771"/>
         <source>Remove and install</source>
         <translation>删除并安装</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="778"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="780"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
@@ -8035,7 +8040,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="29"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3727"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3744"/>
         <source>Support NectarLink</source>
         <translation>支持 NectarLink</translation>
     </message>
@@ -8435,7 +8440,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="970"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4044"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4061"/>
         <source>Language</source>
         <translation>语言</translation>
     </message>
@@ -8625,7 +8630,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1506"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4150"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4167"/>
         <source>Unpair</source>
         <translation>取消配对</translation>
     </message>
@@ -8670,8 +8675,8 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="1702"/>
         <location filename="../qml/pages/SettingsPage.qml" line="2502"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3274"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3693"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3706"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3710"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3723"/>
         <source>Open</source>
         <translation>打开</translation>
     </message>
@@ -8855,7 +8860,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1917"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3520"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3537"/>
         <source>Ready</source>
         <translation>就绪</translation>
     </message>
@@ -9352,7 +9357,7 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="3321"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3352"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3389"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4195"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4212"/>
         <source>Clear</source>
         <translation>清除</translation>
     </message>
@@ -9534,132 +9539,153 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3470"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3935"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3477"/>
+        <source>Use USB debugging</source>
+        <translation>使用 USB 调试</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3472"/>
+        <source>Applies when NectarLink restarts.</source>
+        <translation>NectarLink 重启后生效。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3474"/>
+        <source>Connect, pair, install the app and start Elevated over a USB cable. Your phone asks once to allow USB debugging.</source>
+        <translation>通过 USB 数据线连接、配对、安装应用并启动 Elevated。手机会询问一次是否允许 USB 调试。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3475"/>
+        <source>Off: NectarLink never asks a phone on a cable for USB debugging. Wi-Fi works as usual.</source>
+        <translation>关闭后：NectarLink 不会向连接数据线的手机请求 USB 调试。Wi-Fi 照常可用。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3487"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3952"/>
         <source>Network interface</source>
         <translation>网络接口</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3471"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3488"/>
         <source>Local connections switch after a restart. Relays switch right away if the app started with an interface selected.</source>
         <translation>本地连接会在应用重启后切换。如果启动应用时已选定网络接口，中继连接会立即切换。</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2118"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3475"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3942"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3492"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3959"/>
         <source>System default</source>
         <translation>系统默认</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3941"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3958"/>
         <source>%1 · Direct (without a VPN)</source>
         <translation>%1 · 直连（不经 VPN）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3965"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3982"/>
         <source>Could not use this network interface.</source>
         <translation>无法使用此网络接口。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3487"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3504"/>
         <source>Iroh relay servers</source>
         <translation>iroh 中继服务器</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3488"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3505"/>
         <source>View active routes, check latency and manage relay servers.</source>
         <translation>查看当前路由、检查延迟并管理中继服务器。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3492"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3509"/>
         <source>Manage</source>
         <translation>管理</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3500"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3517"/>
         <source>Wake from your phone</source>
         <translation>从手机唤醒</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3505"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3522"/>
         <source>No active network adapter found.</source>
         <translation>未找到可用的网络适配器。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3507"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3524"/>
         <source>%1 · Wake on Magic Packet ready.</source>
         <translation>%1 · Magic Packet 网络唤醒已就绪。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3508"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3525"/>
         <source>%1 · Enable Wake on Magic Packet in Device Manager.</source>
         <translation>%1 · 请在设备管理器中启用 Magic Packet 网络唤醒。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3522"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3539"/>
         <source>Off in Windows</source>
         <translation>在 Windows 中已关闭</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3522"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3539"/>
         <source>Off in the adapter&apos;s settings</source>
         <translation>在网卡设置中已关闭</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3523"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3540"/>
         <source>Check settings</source>
         <translation>检查设置</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3524"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3541"/>
         <source>No adapter</source>
         <translation>无适配器</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3532"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3571"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3549"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3588"/>
         <source>Local automation API</source>
         <translation>本地自动化 API</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3534"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3551"/>
         <source>Listening on 127.0.0.1:%1 · Token in %2</source>
         <translation>正在监听 127.0.0.1:%1 · 令牌位于 %2</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3535"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3552"/>
         <source>Local HTTP/SSE server (127.0.0.1:%1) for scripts and tools.</source>
         <translation>供脚本和工具使用的本地 HTTP/SSE 服务器（127.0.0.1:%1）。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3581"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3598"/>
         <source>NectarLink %1</source>
         <translation>NectarLink %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3584"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3601"/>
         <source>This PC: %1</source>
         <translation>本机：%1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3596"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3613"/>
         <source>Update download</source>
         <translation>更新下载</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3617"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3634"/>
         <source>Update to %1</source>
         <translation>更新到 %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3618"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3637"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3642"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3635"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3654"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3659"/>
         <source>Check for updates</source>
         <translation>检查更新</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3627"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3644"/>
         <source>Open logs</source>
         <translation>打开日志</translation>
     </message>
@@ -9668,175 +9694,175 @@ What it needs
         <translation type="vanished">每天在 GitHub 上检查一次新版本。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3670"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3673"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3687"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3690"/>
         <source>Install updates automatically</source>
         <translation>自动安装更新</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3671"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3688"/>
         <source>When nobody is using the PC and nothing is in progress.</source>
         <translation>在无人使用电脑且没有任务进行时。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3688"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3705"/>
         <source>Setup walkthrough</source>
         <translation>设置引导</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3689"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3706"/>
         <source>Re-open the setup guide.</source>
         <translation>重新打开设置指南。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3701"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3718"/>
         <source>Features guide</source>
         <translation>功能指南</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3702"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3719"/>
         <source>What each feature needs and where to find it.</source>
         <translation>了解各项功能需要什么以及在哪里找到。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3728"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3745"/>
         <source>NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!</source>
         <translation>NectarLink 免费且开源。如果它让你的日子轻松了一点，可以支持它继续走下去。谢谢！</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3733"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3750"/>
         <source>Support</source>
         <translation>支持</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3805"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3822"/>
         <source>Sync a folder</source>
         <translation>同步文件夹</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3814"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3845"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3831"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3862"/>
         <source>Folder on the phone</source>
         <translation>手机上的文件夹</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3850"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3867"/>
         <source>Folder on this PC</source>
         <translation>这台电脑上的文件夹</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3865"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3882"/>
         <source>Choose…</source>
         <translation>选择…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3875"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3892"/>
         <source>Phone to PC</source>
         <translation>手机到电脑</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3876"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3893"/>
         <source>PC to phone</source>
         <translation>电脑到手机</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3877"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3894"/>
         <source>Both ways</source>
         <translation>双向</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3888"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3905"/>
         <source>New and changed files on the PC are copied to the phone. Nothing on the phone comes to the PC, and nothing is deleted.</source>
         <translation>电脑上新增和更改的文件会复制到手机。手机上的内容不会传到电脑，也不会删除任何文件。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3890"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3907"/>
         <source>Changes on either side are copied to the other. When a file changed on both, both versions are kept.</source>
         <translation>任一侧的更改都会复制到另一侧。如果文件在两侧都有更改，两个版本都会保留。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3891"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3908"/>
         <source>New and changed files on the phone are copied to the PC. Nothing on the PC goes to the phone.</source>
         <translation>手机上新增和更改的文件会复制到电脑。电脑上的文件不会传到手机。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3897"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3902"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3914"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3919"/>
         <source>Also remove from the PC</source>
         <translation>同时从电脑移除</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3897"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3902"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3914"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3919"/>
         <source>Also remove deleted files</source>
         <translation>同时移除已删除的文件</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3899"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3916"/>
         <source>A synced file you delete on one side leaves the other. On the PC it goes to the Recycle Bin. On the phone, photos and videos go to its trash where Android has one, and other files are gone for good.</source>
         <translation>你在一侧删除已同步的文件后，另一侧也会移除。电脑上的文件会进入回收站。手机上的照片和视频会进入回收站（如果 Android 提供），其他文件会被永久删除。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3900"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3917"/>
         <source>A synced file you delete on the phone goes to the PC&apos;s Recycle Bin.</source>
         <translation>你在手机上删除已同步的文件后，电脑上的副本会移到回收站。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3913"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3930"/>
         <source>Add</source>
         <translation>添加</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3982"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3999"/>
         <source>Phone&apos;s hotspot network</source>
         <translation>手机热点网络</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3990"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4007"/>
         <source>Wi-Fi networks this PC has joined before. Your system keeps their passwords; NectarLink never sees them.</source>
         <translation>此电脑以前连接过的 Wi-Fi 网络。密码由系统保存，NectarLink 不会看到。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3991"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4008"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from your system Wi-Fi list first.</source>
         <translation>此电脑还没有保存任何 Wi-Fi 网络。请先在系统的 Wi-Fi 列表中连接一次手机热点。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3993"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4010"/>
         <source>Wi-Fi networks this PC has joined before. Windows keeps their passwords; NectarLink never sees them.</source>
         <translation>此电脑以前连接过的 Wi-Fi 网络。密码由 Windows 保存，NectarLink 不会看到。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3994"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4011"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from Windows&apos; Wi-Fi list first.</source>
         <translation>此电脑还没有保存任何 Wi-Fi 网络。请先在 Windows 的 Wi-Fi 列表中连接一次手机热点。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4024"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4041"/>
         <source>Don&apos;t join</source>
         <translation>不连接</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4072"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4089"/>
         <source>Talk on calls through</source>
         <translation>通话时使用</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4091"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4108"/>
         <source>No microphone found on this PC.</source>
         <translation>此电脑上未找到麦克风。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4107"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4124"/>
         <source>Play the phone&apos;s microphone into</source>
         <translation>将手机麦克风播放到</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3967"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4033"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4061"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4096"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4124"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3984"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4050"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4078"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4113"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4141"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
@@ -9861,75 +9887,75 @@ What it needs
         <translation>也会发送密码管理器标记为私密的内容。在 Android 允许的情况下，一分钟后会从手机的剪贴板清除，且不会保存到历史记录。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3639"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3656"/>
         <source>Looks for a new build every couple of hours, and tells your phone.</source>
         <translation>每隔几小时检查一次新版本，并告诉你的手机。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3640"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3657"/>
         <source>Looks for a new release twice a day, and tells your phone.</source>
         <translation>每天检查两次新的正式版，并告诉你的手机。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3651"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3668"/>
         <source>Update channel</source>
         <translation>更新渠道</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3653"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3670"/>
         <source>The newest build from every couple of hours, with the latest fixes and features, and sometimes new bugs. Back on Stable, this PC keeps its build until the next release is newer.</source>
         <translation>每隔几小时发布的最新版本，包含最新的修复和功能，有时也会带来新问题。切回稳定版后，这台电脑会保留当前版本，直到下一个正式版更新。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3654"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3671"/>
         <source>Releases, tested and less often.</source>
         <translation>正式发布的版本，经过测试，更新较少。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3657"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3674"/>
         <source>Stable</source>
         <translation>稳定版</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3658"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3675"/>
         <source>Nightly</source>
         <translation>Nightly</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3811"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3828"/>
         <source>The phone asks once to let this PC in. NectarLink there also needs All files access, or this folder under Selected folders only.</source>
         <translation>手机会询问一次是否允许这台电脑访问。手机上的 NectarLink 还需要“所有文件访问权限”，或在“仅选定的文件夹”中加入此文件夹。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4137"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4154"/>
         <source>Unpair %1?</source>
         <translation>取消配对 %1？</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4143"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4160"/>
         <source>Both devices forget each other. You can pair them again any time.</source>
         <translation>两台设备将互相遗忘。你可以随时重新配对。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3911"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4148"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4192"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4228"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3928"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4165"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4209"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4245"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4214"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4231"/>
         <source>Clear all local history &amp; caches?</source>
         <translation>清除所有本地历史记录和缓存？</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4223"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4240"/>
         <source>Deletes clipboard history, Timeline, notification history, cached messages, photo thumbnails and transfer history on this PC. Paired devices, settings and downloaded files are kept.</source>
         <translation>删除本机的剪贴板历史记录、时间线、通知历史记录、缓存的消息、照片缩略图和传输历史记录。已配对设备、设置和已下载的文件会保留。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4231"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4248"/>
         <source>Clear everything</source>
         <translation>清除全部</translation>
     </message>

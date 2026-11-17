@@ -8,6 +8,12 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **A switch for USB debugging on the PC.** Settings › Connection & About › Use USB
+  debugging (on by default) can turn off everything NectarLink does over a USB cable, so a
+  phone plugged in for something else is never asked to allow USB debugging. Wi-Fi works as
+  usual; it applies when NectarLink restarts. Thanks to
+  [@unaibenidorm](https://github.com/unaibenidorm)
+  ([#439](https://github.com/thtbee/nectarlink/issues/439)).
 - **Two PCs work together.** Pair a PC with another PC, Windows, Mac or Linux, the
   same way as a phone: open the pairing screen on both and pick the other one. Home
   then shows that PC with Send files, Send clipboard and Ring PC, and what you copy on
