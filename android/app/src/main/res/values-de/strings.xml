@@ -711,17 +711,37 @@
 
 
     <!-- Home-screen PC widget -->
-    <string name="widget_pc_title">PC-Schnellaktionen</string>
-    <string name="widget_pc_description">Verbindungsstatus, Zwischenablage senden, PC klingeln lassen, PC sperren und Aufwecken für deinen gekoppelten PC.</string>
+    <string name="widget_pc_title">PC auf einen Blick</string>
+    <string name="widget_pc_description">Ob dein PC verbunden ist, mit Klingeln, Energieoptionen und Aufwecken.</string>
+    <string name="widget_now_playing_title">Aktuelle Wiedergabe</string>
+    <string name="widget_now_playing_description">Was auf deinem PC läuft, mit Steuerung.</string>
+    <string name="widget_actions_title">Schnellaktionen</string>
+    <string name="widget_actions_description">Zwischenablage oder Dateien senden, PC klingeln lassen, sperren, schlafen legen oder herunterfahren.</string>
+    <string name="widget_from_pc_title">Von deinem PC</string>
+    <string name="widget_from_pc_description">Der letzte Clip und die letzte Datei von deinem PC, zum Kopieren oder Öffnen.</string>
+    <string name="widget_from_pc_empty">Clips und Dateien von deinem PC erscheinen hier.</string>
+    <string name="widget_media_on_pc">Auf %1$s</string>
+    <string name="widget_media_nothing">Keine Wiedergabe</string>
+    <string name="widget_media_nothing_hint">Musik und Videos, die auf %1$s laufen, erscheinen hier.</string>
+    <string name="widget_battery">Akku %1$d%%</string>
+    <string name="widget_battery_charging">Akku %1$d%% · lädt</string>
+    <string name="widget_link_lan">Im selben Netzwerk</string>
+    <string name="widget_seen">Zuletzt gesehen %1$s</string>
+    <string name="widget_pc_send_clipboard">Zwischenablage senden</string>
+    <string name="widget_power">Ein/Aus</string>
+    <string name="widget_power_lock">Sperren</string>
+    <string name="widget_power_suspend">Bereitschaft</string>
+    <string name="widget_power_off">Ausschalten</string>
+    <string name="widget_power_off_title">%1$s ausschalten?</string>
+    <string name="widget_choose_pc">PC auswählen</string>
+    <string name="widget_power_offline">Energieoptionen erscheinen, solange %1$s verbunden ist.</string>
     <string name="widget_pc_no_pc">Kein PC gekoppelt</string>
     <string name="widget_pc_tap_to_pair">Tippen, um NectarLink zu öffnen und einen PC zu koppeln</string>
     <string name="widget_pc_connected">Verbunden</string>
     <string name="widget_pc_offline">Offline</string>
     <string name="widget_pc_waking">Wird aufgeweckt…</string>
     <string name="widget_pc_wake">Aufwecken</string>
-    <string name="widget_pc_send_clip">Auswahl senden</string>
     <string name="widget_pc_ring">PC klingeln lassen</string>
-    <string name="widget_pc_lock">PC sperren</string>
     <string name="widget_pc_ringing_toast">%1$s klingelt…</string>
     <string name="widget_pc_waking_toast">%1$s wird aufgeweckt…</string>
 

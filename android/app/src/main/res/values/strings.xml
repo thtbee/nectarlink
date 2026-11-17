@@ -712,17 +712,37 @@
     <string name="keyboard_stop">Stop typing</string>
 
     <!-- Home-screen PC widget -->
-    <string name="widget_pc_title">PC quick actions</string>
-    <string name="widget_pc_description">Connection status, Send clipboard, Ring PC, Lock PC, and Wake for your paired PC.</string>
+    <string name="widget_pc_title">PC at a glance</string>
+    <string name="widget_pc_description">Whether your PC is connected, with Ring, power options and Wake.</string>
+    <string name="widget_now_playing_title">Now playing</string>
+    <string name="widget_now_playing_description">What\'s playing on your PC, with its controls.</string>
+    <string name="widget_actions_title">Quick actions</string>
+    <string name="widget_actions_description">Send your clipboard or files, ring your PC, or lock, sleep or shut it down.</string>
+    <string name="widget_from_pc_title">From your PC</string>
+    <string name="widget_from_pc_description">The last clip and file your PC sent, to copy or open.</string>
+    <string name="widget_from_pc_empty">Clips and files your PC sends show up here.</string>
+    <string name="widget_media_on_pc">On %1$s</string>
+    <string name="widget_media_nothing">Nothing playing</string>
+    <string name="widget_media_nothing_hint">Music and videos playing on %1$s show up here.</string>
+    <string name="widget_battery">Battery %1$d%%</string>
+    <string name="widget_battery_charging">Battery %1$d%% · charging</string>
+    <string name="widget_link_lan">On your network</string>
+    <string name="widget_seen">Seen %1$s</string>
+    <string name="widget_pc_send_clipboard">Send clipboard</string>
+    <string name="widget_power">Power</string>
+    <string name="widget_power_lock">Lock</string>
+    <string name="widget_power_suspend">Suspend</string>
+    <string name="widget_power_off">Power off</string>
+    <string name="widget_power_off_title">Power off %1$s?</string>
+    <string name="widget_choose_pc">Choose a PC</string>
+    <string name="widget_power_offline">Power options show up while %1$s is connected.</string>
     <string name="widget_pc_no_pc">No PC paired</string>
     <string name="widget_pc_tap_to_pair">Tap to open NectarLink and pair a PC</string>
     <string name="widget_pc_connected">Connected</string>
     <string name="widget_pc_offline">Offline</string>
     <string name="widget_pc_waking">Waking…</string>
     <string name="widget_pc_wake">Wake</string>
-    <string name="widget_pc_send_clip">Send clip</string>
     <string name="widget_pc_ring">Ring PC</string>
-    <string name="widget_pc_lock">Lock PC</string>
     <string name="widget_pc_ringing_toast">Ringing %1$s…</string>
     <string name="widget_pc_waking_toast">Waking %1$s…</string>
 

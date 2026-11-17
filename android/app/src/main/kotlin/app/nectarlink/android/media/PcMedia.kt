@@ -241,7 +241,7 @@ class PcMedia(
         val nextSummaries = preferred.mapValues { (pc, player) -> summary(pc, player) }
         if (_summaries.value != nextSummaries) {
             _summaries.value = nextSummaries
-            app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context)
+            app.nectarlink.android.widget.Widgets.refreshAll(context)
         }
 
         val first = preferred.entries.firstOrNull { it.value.playing } ?: preferred.entries.firstOrNull()

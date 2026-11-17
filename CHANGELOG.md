@@ -31,6 +31,14 @@ change things that need a step from you, and its notes say so.
   only shows On PC where the phone can). Thanks to [@rus152](https://github.com/rus152)
   ([#418](https://github.com/thtbee/nectarlink/pull/418)); asked for in
   [#133](https://github.com/thtbee/nectarlink/issues/133).
+- **New home-screen widgets on the phone.** Four of them, in the app's Bloom style, light and
+  dark: **PC at a glance** (connected or not, battery or when it was last seen, Ring, and
+  Wake when it's off), **Now playing** (what plays on the PC, with its controls), **Quick
+  actions** (send the clipboard or files, ring the PC) and **From your PC** (the last clip,
+  to copy again, and the last file, to open). The power button opens a menu with Lock,
+  Sleep, Hibernate and Shut down, named the way the PC's OS names them (Suspend and Power
+  off on Linux), and only what that PC allows. With more than one PC, each widget can show
+  a different one. The old PC widget becomes PC at a glance by itself.
 - **Assist only while a PC uses the phone.** With Elevated set up, a switch in the phone's
   Settings › Permissions › Control from your PC keeps the accessibility service off until a PC shows the
   phone, opens an app window or types on it, and turns it off again shortly after. For

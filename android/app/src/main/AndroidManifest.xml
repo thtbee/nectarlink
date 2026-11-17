@@ -424,7 +424,7 @@
             </intent-filter>
         </service>
 
-        <!-- Home-screen widget: paired PC connection status, Wake, and battery-free quick actions. -->
+        <!-- Home-screen widgets (Bloom). Glance keeps the first widget's class so placed ones carry on. -->
         <receiver
             android:name=".widget.PcWidgetProvider"
             android:exported="true"
@@ -436,6 +436,46 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/pc_widget_info" />
         </receiver>
+        <receiver
+            android:name=".widget.NowPlayingWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_now_playing_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/now_playing_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.ActionsWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_actions_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/actions_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widget.FromPcWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_from_pc_title">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/from_pc_widget_info" />
+        </receiver>
+        <!-- What a widget opens over the home screen: a PC's power menu, or the PCs to pick from. -->
+        <activity
+            android:name=".widget.WidgetMenuActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <receiver
             android:name=".widget.PcWidgetProvider$ActionReceiver"
             android:exported="false" />

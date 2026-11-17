@@ -130,6 +130,8 @@ data class Device(
     val id: String,
     val name: String,
     val kind: app.nectarlink.core.DeviceKind,
+    /** "windows", "macos", "linux", "android", or what a newer device says. */
+    val os: String = "",
     val model: String?,
     val accent: UInt? = null,
     val pairedAt: Long,
@@ -536,6 +538,7 @@ internal fun PairedDevice.toDevice() = Device(
     id = id,
     name = info.name,
     kind = info.kind,
+    os = info.os,
     model = info.model,
     accent = info.accent,
     pairedAt = pairedAt,
