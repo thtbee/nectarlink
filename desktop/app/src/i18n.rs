@@ -50,6 +50,13 @@ fn select_translation_dir(exe_dir: &Path) -> PathBuf {
     if has_qm_files(exe_dir) {
         return exe_dir.to_path_buf();
     }
+    // In an app bundle they're in Contents/Resources, next to Contents/MacOS.
+    #[cfg(target_os = "macos")]
+    if let Some(resources) = exe_dir.parent().map(|contents| contents.join("Resources"))
+        && has_qm_files(&resources)
+    {
+        return resources;
+    }
     #[cfg(target_os = "linux")]
     {
         if let Some(rel_share) = exe_dir.parent().map(|p| p.join("share").join("nectarlink"))

@@ -251,9 +251,12 @@ fn find_lrelease() -> Option<PathBuf> {
             return Some(p);
         }
     }
-    if let Some(qmake) = std::env::var_os("QMAKE").map(PathBuf::from)
-        && let Some(bin_dir) = qmake.parent()
-    {
+    // Next to qmake, or in the Qt that install-qt-action and aqt set up.
+    let qt_bins = [
+        std::env::var_os("QMAKE").map(PathBuf::from).and_then(|q| q.parent().map(Path::to_path_buf)),
+        std::env::var_os("QT_ROOT_DIR").map(|root| PathBuf::from(root).join("bin")),
+    ];
+    for bin_dir in qt_bins.into_iter().flatten() {
         for name in ["lrelease", "lrelease.exe", "lrelease-qt6"] {
             let candidate = bin_dir.join(name);
             if candidate.is_file() {

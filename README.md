@@ -150,8 +150,8 @@ searchable **Timeline** of everything that moved, a **Command Palette**
 (`Ctrl+Alt+Space`), a slide-out **Shelf**, a home-screen widget, and a
 **Connection Doctor** that finds and fixes what keeps devices from connecting.
 An optional **Nectar Island** at the top of the screen shows calls, music and
-transfers. Four themes, **Hive**, **Bloom**, **Glass** and **Graphite**, each
-in light and dark. In English, German, Turkish, Simplified Chinese, Brazilian Portuguese, Vietnamese and Spanish.
+transfers. Five themes, **Hive**, **Bloom**, **Glass**, **Graphite** and **Fluent**, each
+in light and dark. In English, German, Turkish, Simplified Chinese, Brazilian Portuguese, Vietnamese, Spanish and Russian.
 
 ### Platform support
 
@@ -167,8 +167,8 @@ in light and dark. In English, German, Turkish, Simplified Chinese, Brazilian Po
 | System notifications | Yes | Yes | Yes (system banners) |
 | Phone screen mirroring | Yes | Yes | Yes (H.264) |
 | Screen recording (MP4) | Yes | Yes | Yes (H.264) |
-| PC audio stream / phone mic | Yes | Yes | Not yet |
-| Phone as webcam | Yes | Yes (with v4l2loopback) | Not yet |
+| PC audio stream / phone mic | Yes | Yes | Phone mic and sound play on the Mac; PC audio not yet |
+| Phone as webcam | Yes | Yes (with v4l2loopback) | Not yet (needs a Developer ID signed build) |
 | Phone storage in the file manager | Yes | Yes | Not yet |
 
 ## Private by design

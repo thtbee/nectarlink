@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks you through installing NectarLink on Windows, Linux and Android, completing the first-run setup walkthrough, pairing your devices, and choosing the Android power level that fits how you work.
+This guide walks you through installing NectarLink on Windows, Linux, macOS and Android, completing the first-run setup walkthrough, pairing your devices, and choosing the Android power level that fits how you work.
 
 ## System Requirements
 
@@ -8,6 +8,7 @@ This guide walks you through installing NectarLink on Windows, Linux and Android
 | :--- | :--- | :--- |
 | **Windows PC** | Windows 10 (version 2004 or newer) or Windows 11, 64-bit | The phone as webcam (`MFCreateVirtualCamera`) and the Mica backdrop need Windows 11 (build 22000 or newer). The phone's storage in File Explorer has only been tested on Windows 11. |
 | **Linux PC** | Ubuntu 24.04 or newer, Debian 13, Fedora 40 or newer, or another distribution from 2024 on (glibc 2.39 or newer), 64-bit Intel or AMD | X11 or Wayland. The phone as a webcam needs the `v4l2loopback` driver, which the install command sets up. |
+| **Mac (preview)** | macOS 14 or newer, Apple silicon | A preview: mirroring, recording, the phone's sound and microphone, the menu bar icon and the rest of the shared features work; the phone's storage in Finder, PC sound on the phone and the phone as a webcam don't yet. |
 | **Android Phone or Tablet** | Android 8.0 (API 26) or newer | Android 10+ required for internal audio capture during mirroring; Android 11+ required for on-device Wireless Debugging (`Elevated`) and `app window` streaming; Android 12+ required for `Elevated` in-call mute/hold/speaker controls. |
 | **Network** | Shared Wi-Fi / LAN, USB cable, or **Connect over mobile data** | By default, all device-to-device traffic travels directly over your local network or a USB data cable without leaving your LAN (installed copies only contact GitHub Releases over HTTPS to check for app updates; see [Privacy and Security](privacy-and-security.md)). |
 
@@ -42,6 +43,14 @@ To install only the app, end the command with `sh -s -- --no-extras` instead of 
 You can also download a package from the GitHub Releases page yourself: `nectarlink_<version>_amd64.deb`, `nectarlink-<version>-1.x86_64.rpm`, `Nectarlink-<version>-x86_64.AppImage`, or `Nectarlink-<version>-linux-x86_64.tar.gz` (run its `install.sh`). The AppImage adds itself to your app menu the first time it runs. **Connection Doctor** in NectarLink's **Settings › Connection & About** finds anything still missing for the webcam, input or firewall and says how to fix it.
 
 Each kind of install updates itself the same way it was installed.
+
+### On macOS (preview)
+
+1. Download `Nectarlink-<version>-macos-arm64.dmg` from the project's GitHub Releases page (Nightlies for now) and open it.
+2. Drag **NectarLink** onto **Applications**.
+3. Open NectarLink from Applications. It isn't signed with an Apple Developer ID yet, so macOS stops it the first time: open **System Settings › Privacy & Security**, scroll down to the message about NectarLink and click **Open Anyway**.
+
+The Mac app doesn't update itself yet: install a new version the same way, over the old one.
 
 ### On Android
 

@@ -8,6 +8,16 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **The Mac preview does a lot more, and comes as a DMG.** Apple silicon Macs (macOS 14
+  or newer) get one with Nightlies and releases. On a Mac, NectarLink now mirrors the phone's screen,
+  records it to MP4, plays the phone's sound and microphone, sets the Mac's volume
+  instantly, and lives in the menu bar when its window is closed. It isn't signed with
+  an Apple Developer ID yet, so macOS asks you to allow it once (see Getting started),
+  and it doesn't update itself yet. Thanks to [@svkrvavilla](https://github.com/svkrvavilla)
+  ([#410](https://github.com/thtbee/nectarlink/pull/410), [#411](https://github.com/thtbee/nectarlink/pull/411),
+  [#412](https://github.com/thtbee/nectarlink/pull/412), [#413](https://github.com/thtbee/nectarlink/pull/413),
+  [#414](https://github.com/thtbee/nectarlink/pull/414), [#417](https://github.com/thtbee/nectarlink/pull/417),
+  [#419](https://github.com/thtbee/nectarlink/pull/419)).
 - **Hide NectarLink from recent apps.** A switch in the phone's Settings › Background keeps
   it off the recent apps screen, so clearing that screen can't close it by accident on
   phones where that stops apps. Thanks to [@FlootingDream](https://github.com/FlootingDream)
@@ -166,6 +176,12 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Sharing the PC's screen on Wayland recovers when the desktop doesn't answer.**
+  Starting it while the desktop was locked (on COSMIC, say) left the phone on
+  Connecting, and every later try got stuck behind the first. Each try now waits up to
+  20 seconds for the screen sharing permission and then lets go, and the phone says
+  sharing failed and offers to reconnect. Thanks to [@krakotay](https://github.com/krakotay)
+  ([#403](https://github.com/thtbee/nectarlink/pull/403)).
 - **Recording a mirror saves on Windows when the phone streams H.265.** It stopped with
   "required headers were not provided", since the recording was written as H.264. On
   Linux, an H.265 mirror says it can't be recorded yet instead of failing at the end.

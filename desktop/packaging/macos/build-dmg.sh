@@ -69,11 +69,18 @@ RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 install -m 0755 "${BIN_PATH}" "${MACOS_DIR}/nectarlink-desktop"
 
+# Translations go in Resources: Contents/MacOS is for code only, which
+# is what codesign expects there.
+qm_count=0
 for qm in "$(dirname "${BIN_PATH}")"/nectarlink_*.qm; do
     if [[ -f "${qm}" ]]; then
-        install -m 0644 "${qm}" "${MACOS_DIR}/$(basename "${qm}")"
+        install -m 0644 "${qm}" "${RESOURCES_DIR}/$(basename "${qm}")"
+        qm_count=$((qm_count + 1))
     fi
 done
+if [[ "${qm_count}" -eq 0 ]]; then
+    echo "warning: no translations next to ${BIN_PATH}; the app will be English only" >&2
+fi
 
 sed -e "s/@VERSION@/${VERSION}/g" -e "s/@BUNDLE_VERSION@/${BUNDLE_VERSION}/g" \
     "${SCRIPT_DIR}/Info.plist.in" > "${CONTENTS_DIR}/Info.plist"
