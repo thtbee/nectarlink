@@ -46,7 +46,13 @@ class NowPlayingWidgetProvider : BloomWidget() {
                 R.id.np_subtitle,
                 if (pc == null) context.getString(R.string.widget_pc_tap_to_pair) else context.getString(R.string.widget_media_nothing_hint, pcName),
             )
-            views.setViewVisibility(R.id.np_controls, View.GONE)
+            // The controls stay, dimmed, so the widget keeps its shape while nothing plays.
+            views.setViewVisibility(R.id.np_controls, View.VISIBLE)
+            views.setImageViewResource(R.id.np_play, R.drawable.ic_play)
+            for (button in intArrayOf(R.id.np_previous, R.id.np_play, R.id.np_next)) {
+                views.setFloat(button, "setAlpha", 0.38f)
+                views.setOnClickPendingIntent(button, null)
+            }
             views.setViewVisibility(R.id.np_art_image, View.GONE)
             return views
         }
@@ -69,6 +75,7 @@ class NowPlayingWidgetProvider : BloomWidget() {
             R.id.np_play,
             context.getString(if (media.playing) R.string.media_pause else R.string.media_play),
         )
+        views.setFloat(R.id.np_play, "setAlpha", 1f)
         views.setOnClickPendingIntent(R.id.np_play, Widgets.action(context, PcWidgetProvider.ACTION_MEDIA_PLAY_PAUSE, pc.id))
         button(views, R.id.np_previous, media.canPrevious, Widgets.action(context, PcWidgetProvider.ACTION_MEDIA_PREVIOUS, pc.id))
         button(views, R.id.np_next, media.canNext, Widgets.action(context, PcWidgetProvider.ACTION_MEDIA_NEXT, pc.id))
@@ -97,15 +104,15 @@ class NowPlayingWidgetProvider : BloomWidget() {
             )
         }
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply { this.shader = shader }
-        // The well's 18dp corner, in the bitmap's own pixels.
-        val radius = 18f * size / ART_DP
+        // The well's 16dp corner, in the bitmap's own pixels.
+        val radius = 16f * size / ART_DP
         Canvas(out).drawRoundRect(RectF(0f, 0f, size.toFloat(), size.toFloat()), radius, radius, paint)
         out
     }.getOrNull()
 
     private companion object {
         /** The art well's size in the layout. */
-        const val ART_DP = 96f
-        const val ART_PX = 240
+        const val ART_DP = 72f
+        const val ART_PX = 216
     }
 }
