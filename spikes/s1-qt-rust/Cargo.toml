@@ -28,3 +28,7 @@ windows = { workspace = true, features = [
 
 [build-dependencies]
 cxx-qt-build = { version = "0.10", features = ["link_qt_object_files"] }
+
+# A throwaway spike: the workspace's clippy level, but unsafe FFI code allowed.
+[lints.clippy]
+all = { level = "warn", priority = -1 }

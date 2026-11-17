@@ -403,12 +403,8 @@ fn is_map_url(host: &str, rest_after_scheme: &str) -> bool {
     }
     let path = rest_after_scheme.find('/').map_or("", |i| &rest_after_scheme[i..]);
     let lower_path = path.to_ascii_lowercase();
-    if (h.starts_with("google.") || h == "goo.gl" || h == "bing.com")
+    (h.starts_with("google.") || h == "goo.gl" || h == "bing.com")
         && (lower_path.starts_with("/maps") || lower_path.contains("/maps/"))
-    {
-        return true;
-    }
-    false
 }
 
 fn extract_geo_label(rest: &str) -> Option<String> {
