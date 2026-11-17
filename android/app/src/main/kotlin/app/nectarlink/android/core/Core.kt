@@ -491,7 +491,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             NotificationListener.instance?.refreshActive()
             refreshDataRetention()
             app.nectarlink.android.clipboard.DirectShareTargets.sync(context, _state.value.devices)
-            app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context, _state.value)
+            app.nectarlink.android.widget.Widgets.refreshAll(context, _state.value)
             currentRunScope.launch(Dispatchers.IO) {
                 // A rename in Android's settings reaches the PCs right away,
                 // not at the next start (#87).
@@ -521,8 +521,21 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     .collect {
                         val s = _state.value
                         app.nectarlink.android.clipboard.DirectShareTargets.sync(context, s.devices)
-                        app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context, s)
+                        app.nectarlink.android.widget.Widgets.refreshAll(context, s)
                     }
+            }
+            currentRunScope.launch(Dispatchers.IO) {
+                // The widgets also show a PC's battery, the last clip and the last file a PC sent.
+                _state
+                    .map { s ->
+                        listOf(
+                            s.devices.map { d -> listOf(d.battery?.level, d.battery?.charging) },
+                            s.clipboardHistory.filter { it.incoming }.maxByOrNull { it.timestamp }?.id,
+                            s.timeline.firstOrNull { it.incoming }?.id,
+                        )
+                    }
+                    .distinctUntilChanged()
+                    .collect { app.nectarlink.android.widget.Widgets.refreshAll(context, _state.value) }
             }
             currentRunScope.launch(Dispatchers.Default) {
                 // The volume buttons reach a PC whose volume this phone may set.
@@ -546,7 +559,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     .collect {
                         if (!first) delay(120L)
                         first = false
-                        app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context, _state.value)
+                        app.nectarlink.android.widget.Widgets.refreshAll(context, _state.value)
                     }
             }
             val initialInputEnabled = InputService.running || InputService.enabled(context)
@@ -667,7 +680,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 wakeTimers.clear()
 
                 _state.update { it.withDevicesOffline().copy(status = CoreStatus.Starting) }
-                app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context, _state.value)
+                app.nectarlink.android.widget.Widgets.refreshAll(context, _state.value)
             }
         }
     }

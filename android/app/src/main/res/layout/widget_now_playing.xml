@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Now playing: the PC's cover, title and artist, and its controls. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/np_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bloom_bg"
+    android:baselineAligned="false"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="14dp">
+
+    <FrameLayout
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:background="@drawable/widget_bloom_art">
+
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_music"
+            android:tint="@color/widget_primary" />
+
+        <ImageView
+            android:id="@+id/np_art_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/np_source"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:drawablePadding="2dp"
+            android:drawableTint="@color/widget_primary"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:textColor="@color/widget_primary"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/np_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="@string/widget_media_nothing"
+            android:textColor="@color/widget_on_surface"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/np_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="@color/widget_on_surface_variant"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:id="@+id/np_controls"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/np_previous"
+                android:layout_width="44dp"
+                android:layout_height="40dp"
+                android:background="@drawable/widget_bloom_btn_tonal"
+                android:contentDescription="@string/media_previous"
+                android:padding="10dp"
+                android:src="@drawable/ic_skip_previous"
+                android:tint="@color/widget_on_surface" />
+
+            <ImageView
+                android:id="@+id/np_play"
+                android:layout_width="56dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/widget_bloom_btn_primary"
+                android:contentDescription="@string/media_play"
+                android:padding="10dp"
+                android:src="@drawable/ic_play"
+                android:tint="@color/widget_on_primary" />
+
+            <ImageView
+                android:id="@+id/np_next"
+                android:layout_width="44dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/widget_bloom_btn_tonal"
+                android:contentDescription="@string/media_next"
+                android:padding="10dp"
+                android:src="@drawable/ic_skip_next"
+                android:tint="@color/widget_on_surface" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

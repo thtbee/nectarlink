@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#22000000">
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="999dp" />
+            <solid android:color="@color/widget_primary" />
+        </shape>
+    </item>
+</ripple>

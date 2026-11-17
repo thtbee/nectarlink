@@ -710,17 +710,37 @@
     <string name="keyboard_stop">Yazmayı durdur</string>
 
     <!-- Home-screen PC widget -->
-    <string name="widget_pc_title">Bilgisayar hızlı işlemleri</string>
-    <string name="widget_pc_description">Eşleştirilmiş bilgisayarınız için bağlantı durumu, Panoyu gönder, Bilgisayarı çaldır, Bilgisayarı kilitle ve Uyandır.</string>
+    <string name="widget_pc_title">Bir bakışta bilgisayar</string>
+    <string name="widget_pc_description">Bilgisayarın bağlı mı, Çaldır, güç seçenekleri ve Uyandır ile.</string>
+    <string name="widget_now_playing_title">Şimdi çalıyor</string>
+    <string name="widget_now_playing_description">Bilgisayarında çalan, denetimleriyle.</string>
+    <string name="widget_actions_title">Hızlı işlemler</string>
+    <string name="widget_actions_description">Panoyu veya dosyaları gönder, bilgisayarı çaldır ya da kilitle, uyut veya kapat.</string>
+    <string name="widget_from_pc_title">Bilgisayarından</string>
+    <string name="widget_from_pc_description">Bilgisayarının gönderdiği son pano ve dosya, kopyalamak ya da açmak için.</string>
+    <string name="widget_from_pc_empty">Bilgisayarının gönderdiği pano ve dosyalar burada görünür.</string>
+    <string name="widget_media_on_pc">%1$s üzerinde</string>
+    <string name="widget_media_nothing">Hiçbir şey çalmıyor</string>
+    <string name="widget_media_nothing_hint">%1$s üzerinde çalan müzik ve videolar burada görünür.</string>
+    <string name="widget_battery">Pil %%%1$d</string>
+    <string name="widget_battery_charging">Pil %%%1$d · şarj oluyor</string>
+    <string name="widget_link_lan">Ağında</string>
+    <string name="widget_seen">Son görülme %1$s</string>
+    <string name="widget_pc_send_clipboard">Panoyu gönder</string>
+    <string name="widget_power">Güç</string>
+    <string name="widget_power_lock">Kilitle</string>
+    <string name="widget_power_suspend">Askıya al</string>
+    <string name="widget_power_off">Kapat</string>
+    <string name="widget_power_off_title">%1$s kapatılsın mı?</string>
+    <string name="widget_choose_pc">Bir bilgisayar seç</string>
+    <string name="widget_power_offline">Güç seçenekleri %1$s bağlıyken görünür.</string>
     <string name="widget_pc_no_pc">Eşleştirilmiş bilgisayar yok</string>
     <string name="widget_pc_tap_to_pair">NectarLink\'i açıp bir bilgisayar eşleştirmek için dokunun</string>
     <string name="widget_pc_connected">Bağlı</string>
     <string name="widget_pc_offline">Çevrimdışı</string>
     <string name="widget_pc_waking">Uyandırılıyor…</string>
     <string name="widget_pc_wake">Uyandır</string>
-    <string name="widget_pc_send_clip">Panoyu gönder</string>
     <string name="widget_pc_ring">Bilgisayarı çaldır</string>
-    <string name="widget_pc_lock">Bilgisayarı kilitle</string>
     <string name="widget_pc_ringing_toast">%1$s çaldırılıyor…</string>
     <string name="widget_pc_waking_toast">%1$s uyandırılıyor…</string>
 

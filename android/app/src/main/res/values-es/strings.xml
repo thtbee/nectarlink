@@ -718,17 +718,37 @@
     <string name="keyboard_stop">Dejar de escribir</string>
 
     <!-- Home-screen PC widget -->
-    <string name="widget_pc_title">Acciones rápidas para PC</string>
-    <string name="widget_pc_description">Estado de conexión y acciones para enviar el portapapeles, hacer sonar, bloquear y activar el PC emparejado.</string>
+    <string name="widget_pc_title">Tu PC de un vistazo</string>
+    <string name="widget_pc_description">Si tu PC está conectado, con Hacer sonar, opciones de energía y Encender.</string>
+    <string name="widget_now_playing_title">Reproduciendo</string>
+    <string name="widget_now_playing_description">Lo que suena en tu PC, con sus controles.</string>
+    <string name="widget_actions_title">Acciones rápidas</string>
+    <string name="widget_actions_description">Envía el portapapeles o archivos, haz sonar tu PC, o bloquéalo, suspéndelo o apágalo.</string>
+    <string name="widget_from_pc_title">Desde tu PC</string>
+    <string name="widget_from_pc_description">El último clip y archivo que envió tu PC, para copiar o abrir.</string>
+    <string name="widget_from_pc_empty">Aquí aparecen los clips y archivos que envía tu PC.</string>
+    <string name="widget_media_on_pc">En %1$s</string>
+    <string name="widget_media_nothing">No se reproduce nada</string>
+    <string name="widget_media_nothing_hint">Aquí aparece la música y los vídeos que suenan en %1$s.</string>
+    <string name="widget_battery">Batería %1$d%%</string>
+    <string name="widget_battery_charging">Batería %1$d%% · cargando</string>
+    <string name="widget_link_lan">En tu red</string>
+    <string name="widget_seen">Visto %1$s</string>
+    <string name="widget_pc_send_clipboard">Enviar portapapeles</string>
+    <string name="widget_power">Encendido</string>
+    <string name="widget_power_lock">Bloquear</string>
+    <string name="widget_power_suspend">Suspender</string>
+    <string name="widget_power_off">Apagar</string>
+    <string name="widget_power_off_title">¿Apagar %1$s?</string>
+    <string name="widget_choose_pc">Elige un PC</string>
+    <string name="widget_power_offline">Las opciones de energía aparecen mientras %1$s está conectado.</string>
     <string name="widget_pc_no_pc">No hay ningún PC emparejado</string>
     <string name="widget_pc_tap_to_pair">Toca para abrir NectarLink y emparejar un PC</string>
     <string name="widget_pc_connected">Conectado</string>
     <string name="widget_pc_offline">Desconectado</string>
     <string name="widget_pc_waking">Despertando…</string>
     <string name="widget_pc_wake">Activar</string>
-    <string name="widget_pc_send_clip">Enviar portapapeles</string>
     <string name="widget_pc_ring">Hacer sonar el PC</string>
-    <string name="widget_pc_lock">Bloquear PC</string>
     <string name="widget_pc_ringing_toast">Haciendo sonar %1$s…</string>
     <string name="widget_pc_waking_toast">Despertando %1$s…</string>
 
