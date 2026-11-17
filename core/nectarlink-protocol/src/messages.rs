@@ -5621,7 +5621,15 @@ mod tests {
 
         // A controller travels both ways; unplugging it only reliably.
         let pad = RemoteInput::Pad {
-            pad: PadState { buttons: PadState::A | PadState::LB, lt: 255, rt: 0, lx: -32768, ly: 32767, rx: 5, ry: -5 },
+            pad: PadState {
+                buttons: PadState::A | PadState::LB,
+                lt: 255,
+                rt: 0,
+                lx: -32768,
+                ly: 32767,
+                rx: 5,
+                ry: -5,
+            },
         };
         assert!(pad.is_valid() && pad.is_datagram_allowed() && pad.is_control_allowed());
         assert_eq!(RemoteInput::from_datagram(&pad.to_datagram()).unwrap(), pad);

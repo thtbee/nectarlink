@@ -164,8 +164,8 @@ pub use palette::{
 };
 pub use play_on_phone::PlayOnPhone;
 pub use remote::{
-    ButtonAction, INPUT_GAMEPAD, INPUT_INJECT, KeyMod, MouseButton, PAD_DRIVER_MISSING, PadState, RemoteInput,
-    SlideAction, remote_keys,
+    ButtonAction, INPUT_GAMEPAD, INPUT_INJECT, KeyMod, MouseButton, PAD_DRIVER_MISSING, PadState,
+    RemoteInput, SlideAction, remote_keys,
 };
 pub use session::is_lan_ip;
 pub use storage::{
