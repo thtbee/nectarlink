@@ -74,6 +74,7 @@
     <string name="media_pause">Pause</string>
     <string name="media_next">Next</string>
     <string name="media_previous">Previous</string>
+    <string name="media_seek">Position in the track</string>
     <string name="action_send_files">Send files</string>
     <string name="action_send_folder">Send a folder</string>
     <string name="input_service_label">NectarLink: control from your PC</string>
@@ -295,6 +296,11 @@
     <string name="action_lock_pc">Lock PC</string>
     <string name="action_sleep_pc">Sleep</string>
     <string name="action_hibernate_pc">Hibernate</string>
+    <string name="action_phone_sound_on_pc">Play phone sound on the PC</string>
+    <string name="phone_sound_on_pc_off">%1$s doesn\'t play this phone\'s sound. On the PC, turn on Screen mirroring for this phone in Settings › Devices.</string>
+    <string name="action_shutdown_pc">Shut down</string>
+    <string name="shutdown_pc_title">Shut down %1$s?</string>
+    <string name="shutdown_pc_text">Open apps close. One with unsaved work can still stop it.</string>
     <string name="action_wake_pc">Wake</string>
     <string name="action_disconnect">Disconnect</string>
     <string name="action_stop_reconnecting">Stop reconnecting</string>
@@ -306,6 +312,7 @@
     <string name="pc_locked">%1$s is locked.</string>
     <string name="pc_sleeping">%1$s is going to sleep.</string>
     <string name="pc_hibernating">%1$s is hibernating.</string>
+    <string name="pc_shutting_down">%1$s is shutting down.</string>
     <string name="pc_actions_off">Locking and sleep are turned off for this phone on %1$s.</string>
     <string name="channel_links">Links from your PC</string>
     <!-- Play on phone: what a PC plays, streamed to the phone. -->

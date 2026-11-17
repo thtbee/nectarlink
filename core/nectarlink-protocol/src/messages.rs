@@ -80,6 +80,9 @@ pub mod types {
     pub const MIRROR_STOP: &str = "mirror.stop";
     pub const MIRROR_POWER: &str = "mirror.power";
     pub const MIRROR_SOUND: &str = "mirror.sound";
+    /// Phone → PC: play my sound (#398). The PC starts its phone sound as
+    /// if its user had turned it on; answered `ok`.
+    pub const MIRROR_LISTEN_ASK: &str = "mirror.listen.ask";
     pub const MIRROR_KEYFRAME: &str = "mirror.keyframe";
     pub const MIRROR_RESIZE: &str = "mirror.resize";
     pub const MIRROR_INPUT: &str = "mirror.input";
@@ -1153,8 +1156,9 @@ impl MediaWatch {
 
 // ---- Actions (docs/protocol/actions.md) ----
 
-/// Body of `pc.power`: `lock`, `sleep`, or `hibernate` (only to a PC that
-/// offers [`pc_power::HIBERNATE`]).
+/// Body of `pc.power`: `lock`, `sleep`, `hibernate` (only to a PC that
+/// offers [`pc_power::HIBERNATE`]) or `shutdown` (only to one offering
+/// [`pc_power::SHUTDOWN`]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PcPower {
     pub action: String,
@@ -1164,6 +1168,8 @@ pub mod pc_power {
     /// Offered by PCs that can hibernate right now (it can be turned off, or
     /// have nowhere to save to).
     pub const HIBERNATE: &str = "pc.power.hibernate";
+    /// Offered by PCs a phone may shut down (D372).
+    pub const SHUTDOWN: &str = "pc.power.shutdown";
 }
 
 /// The longest link sent, in bytes.
@@ -1384,6 +1390,8 @@ pub mod mirror {
     pub const AUDIO_PLAYBACK: &str = "mirror.audio.playback";
     /// Offered by PCs that play a mirrored phone's sound.
     pub const LISTEN: &str = "mirror.listen";
+    /// Offered by PCs a phone may ask to play its sound (`mirror.listen.ask`, #398).
+    pub const LISTEN_ASK: &str = "mirror.listen.ask";
     /// Offered by devices that report each video packet as it arrives, and
     /// use those reports to keep what they send from getting ahead of the link.
     pub const PACE: &str = "mirror.pace";

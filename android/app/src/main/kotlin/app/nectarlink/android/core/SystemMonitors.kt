@@ -754,6 +754,28 @@ class NetworkMonitor(context: Context, private val onChange: () -> Unit) {
     fun stop() {
         runCatching { connectivity?.unregisterNetworkCallback(callback) }
     }
+
+    /**
+     * Whether the phone is on a network a PC could share with it: Wi-Fi,
+     * Ethernet, a USB link or a VPN such as Tailscale (#397). Mobile data
+     * alone isn't, unless Connect over mobile data is on.
+     */
+    @Suppress("DEPRECATION")
+    fun hasLocalNetwork(): Boolean {
+        val manager = connectivity ?: return true
+        val transports = buildList {
+            add(NetworkCapabilities.TRANSPORT_WIFI)
+            add(NetworkCapabilities.TRANSPORT_ETHERNET)
+            add(NetworkCapabilities.TRANSPORT_VPN)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(NetworkCapabilities.TRANSPORT_USB)
+        }
+        return runCatching {
+            manager.allNetworks.any { network ->
+                val caps = manager.getNetworkCapabilities(network) ?: return@any false
+                transports.any(caps::hasTransport)
+            }
+        }.getOrDefault(true)
+    }
 }
 
 /**

@@ -183,6 +183,10 @@ impl Platform for DesktopPlatform {
     fn call_audio_stop_requested(&self, peer: &nectarlink_core::DeviceId) {
         call_audio::end(*peer);
     }
+    fn phone_sound_asked(&self, peer: &nectarlink_core::DeviceId) {
+        tracing::info!(peer = %peer.short(), "the phone asked to play its sound here");
+        phone_sound::set_on(*peer, true);
+    }
     fn webcam_sink(
         &self,
         peer: &nectarlink_core::DeviceId,

@@ -530,6 +530,9 @@ pub struct Settings {
     /// Horizontally mirror the webcam video.
     #[serde(alias = "webcam_mirror")]
     pub webcam_mirror: bool,
+    /// Turn the phone's torch on when the webcam starts with the back camera (#353).
+    #[serde(default)]
+    pub webcam_torch: bool,
     /// Where a phone's microphone plays (an output endpoint ID; `None`: a
     /// virtual audio cable if there is one, else the default output).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -716,6 +719,7 @@ impl Default for Settings {
             webcam_phone: None,
             webcam_height: 720,
             webcam_mirror: false,
+            webcam_torch: false,
             webcam_camera: default_webcam_camera(),
             phone_mic_output: None,
             phone_mic_gain: crate::phone_mic::DEFAULT_GAIN,
@@ -993,6 +997,7 @@ mod tests {
             webcam_phone: Some("0101".repeat(16)),
             webcam_height: 2160,
             webcam_mirror: true,
+            webcam_torch: true,
             webcam_camera: "front".into(),
             phone_mic_output: Some("{0.0.0.00000000}.{cable}".into()),
             phone_mic_gain: 250,

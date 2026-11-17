@@ -68,6 +68,7 @@
     <string name="media_pause">暂停</string>
     <string name="media_next">下一首</string>
     <string name="media_previous">上一首</string>
+    <string name="media_seek">播放进度</string>
     <string name="action_send_files">发送文件</string>
     <string name="action_send_folder">发送文件夹</string>
     <string name="input_service_label">NectarLink：从电脑控制</string>
@@ -285,6 +286,11 @@
     <string name="action_lock_pc">锁定电脑</string>
     <string name="action_sleep_pc">睡眠</string>
     <string name="action_hibernate_pc">休眠</string>
+    <string name="action_phone_sound_on_pc">在电脑上播放手机声音</string>
+    <string name="phone_sound_on_pc_off">%1$s 不播放此手机的声音。请在电脑的 设置 › 设备 中为此手机开启屏幕镜像。</string>
+    <string name="action_shutdown_pc">关机</string>
+    <string name="shutdown_pc_title">要关闭 %1$s 吗？</string>
+    <string name="shutdown_pc_text">打开的应用会关闭。有未保存内容的应用仍可阻止关机。</string>
     <string name="action_wake_pc">唤醒</string>
     <string name="action_disconnect">断开连接</string>
     <string name="action_stop_reconnecting">停止自动重连</string>
@@ -296,6 +302,7 @@
     <string name="pc_locked">%1$s 已锁定。</string>
     <string name="pc_sleeping">%1$s 正在进入睡眠。</string>
     <string name="pc_hibernating">%1$s 正在进入休眠。</string>
+    <string name="pc_shutting_down">%1$s 正在关机。</string>
     <string name="pc_actions_off">%1$s 上已对本手机关闭锁定与睡眠功能。</string>
     <string name="channel_links">来自电脑的链接</string>
     <string name="watch_offer_title">观看 %1$s 上的播放</string>

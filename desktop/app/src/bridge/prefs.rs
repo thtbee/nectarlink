@@ -1147,6 +1147,7 @@ impl qobject::Preferences {
             webcam_phone: crate::webcam::selected_phone().map(|d| d.to_string()),
             webcam_height: crate::webcam::height(),
             webcam_mirror: crate::webcam::mirror(),
+            webcam_torch: crate::webcam::torch(),
             webcam_camera: crate::webcam::camera().to_owned(),
             phone_mic_output: crate::phone_mic::chosen_output(),
             phone_mic_gain: crate::phone_mic::gain(),

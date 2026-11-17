@@ -71,6 +71,7 @@
 <string name="media_pause">Tạm dừng</string>
 <string name="media_next">Bài tiếp</string>
 <string name="media_previous">Bài trước</string>
+<string name="media_seek">Vị trí trong bài</string>
 <string name="action_send_files">Gửi tệp</string>
 <string name="action_send_folder">Gửi một thư mục</string>
 <string name="input_service_label">NectarLink: điều khiển từ PC của bạn</string>
@@ -292,6 +293,11 @@
 <string name="action_lock_pc">Khóa PC</string>
 <string name="action_sleep_pc">Ngủ</string>
 <string name="action_hibernate_pc">Ngủ đông</string>
+<string name="action_phone_sound_on_pc">Phát âm thanh điện thoại trên PC</string>
+<string name="phone_sound_on_pc_off">%1$s không phát âm thanh của điện thoại này. Trên PC, hãy bật Phản chiếu màn hình cho điện thoại này trong Cài đặt › Thiết bị.</string>
+<string name="action_shutdown_pc">Tắt máy</string>
+<string name="shutdown_pc_title">Tắt %1$s?</string>
+<string name="shutdown_pc_text">Các ứng dụng đang mở sẽ đóng. Ứng dụng có dữ liệu chưa lưu vẫn có thể chặn việc này.</string>
 <string name="action_wake_pc">Đánh thức</string>
 <string name="action_disconnect">Ngắt kết nối</string>
 <string name="action_stop_reconnecting">Ngừng kết nối lại</string>
@@ -303,6 +309,7 @@
 <string name="pc_locked">%1$s đã bị khóa.</string>
 <string name="pc_sleeping">%1$s sắp chuyển sang chế độ ngủ.</string>
 <string name="pc_hibernating">%1$s sắp chuyển sang chế độ ngủ đông.</string>
+<string name="pc_shutting_down">%1$s đang tắt.</string>
 <string name="pc_actions_off">Khóa và chế độ ngủ đã bị tắt cho điện thoại này trên %1$s.</string>
 <string name="channel_links">Liên kết từ PC của bạn</string>
 <!-- Play on phone: what a PC plays, streamed to the phone. -->

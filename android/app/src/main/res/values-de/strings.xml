@@ -74,6 +74,7 @@
     <string name="media_pause">Pause</string>
     <string name="media_next">Nächster Titel</string>
     <string name="media_previous">Vorheriger Titel</string>
+    <string name="media_seek">Position im Titel</string>
     <string name="action_send_files">Dateien senden</string>
     <string name="action_send_folder">Ordner senden</string>
     <string name="input_service_label">NectarLink: Steuerung vom PC</string>
@@ -293,6 +294,11 @@
     <string name="action_lock_pc">PC sperren</string>
     <string name="action_sleep_pc">Energie sparen</string>
     <string name="action_hibernate_pc">Ruhezustand</string>
+    <string name="action_phone_sound_on_pc">Smartphone-Ton auf dem PC abspielen</string>
+    <string name="phone_sound_on_pc_off">%1$s spielt den Ton dieses Smartphones nicht ab. Schalte am PC unter Einstellungen › Geräte die Bildschirmspiegelung für dieses Smartphone ein.</string>
+    <string name="action_shutdown_pc">Herunterfahren</string>
+    <string name="shutdown_pc_title">%1$s herunterfahren?</string>
+    <string name="shutdown_pc_text">Geöffnete Apps werden geschlossen. Eine App mit ungespeicherter Arbeit kann es noch aufhalten.</string>
     <string name="action_wake_pc">Aufwecken</string>
     <string name="action_disconnect">Trennen</string>
     <string name="action_stop_reconnecting">Nicht mehr neu verbinden</string>
@@ -304,6 +310,7 @@
     <string name="pc_locked">%1$s ist gesperrt.</string>
     <string name="pc_sleeping">%1$s wechselt in den Energiesparmodus.</string>
     <string name="pc_hibernating">%1$s wechselt in den Ruhezustand.</string>
+    <string name="pc_shutting_down">%1$s wird heruntergefahren.</string>
     <string name="pc_actions_off">Sperren und Energiesparmodus sind für dieses Gerät auf %1$s deaktiviert.</string>
     <string name="channel_links">Links von deinem PC</string>
     <!-- Play on phone: what a PC plays, streamed to the phone. -->

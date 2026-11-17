@@ -82,6 +82,10 @@ means 0, so PCs and phones that predate sessions work as before.
   to `width × height` pixels, the app drawing at `zoom` percent (50 to 200;
   100 when missing) of the display's usual density. Not answered; the phone sends a new `config`
   packet on the video stream once its encoder restarts at the new size.
+- `mirror.listen.ask` (phone → PC): play my sound. Only to a PC offering
+  `mirror.listen.ask`, with the phone's `mirroring` switch on there. The PC
+  answers `ok` and starts a sound-only `mirror.start` as if its own user had,
+  so the phone's consent works as usual; the phone ends it with `mirror.stop`.
 - `mirror.notice` reports a mirroring status to the viewer. A phone sends
   `input_blocked` when it refuses the PC's taps and keys (Xiaomi, Redmi and
   POCO phones do until **USB debugging (Security settings)** is on). A PC

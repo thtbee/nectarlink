@@ -682,6 +682,12 @@ pub const FEATURES: &[FeatureDef] = &[
         partial: None,
     },
     FeatureDef {
+        id: "device.pc_shutdown",
+        group: FeatureGroup::Device,
+        requires: &[desktop("pc.power.shutdown", UPDATE), DeviceToggle("pc_actions")],
+        partial: None,
+    },
+    FeatureDef {
         id: "device.links_to_pc",
         group: FeatureGroup::Device,
         requires: &[desktop("link.open", UPDATE)],
@@ -955,6 +961,17 @@ pub const FEATURES: &[FeatureDef] = &[
             ],
             limit: "mirroring.limit.audio_some_apps",
         }),
+    },
+    // Started from the phone (#398).
+    FeatureDef {
+        id: "mirroring.sound_from_phone",
+        group: FeatureGroup::Mirroring,
+        requires: &[
+            phone("mirror.sound", UPDATE),
+            desktop("mirror.listen.ask", UPDATE),
+            DeviceToggle("mirroring"),
+        ],
+        partial: None,
     },
     // The phone's sound on its own, played by the PC without a window.
     FeatureDef {

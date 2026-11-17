@@ -310,6 +310,9 @@ pub trait Platform: Send + Sync + 'static {
     /// The PC stopped watching: stop sharing the screen or app window.
     fn mirror_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32) {}
 
+    /// A paired phone asked this PC to play its sound (`mirror.listen.ask`, #398).
+    fn phone_sound_asked(&self, _peer: &nectarlink_protocol::DeviceId) {}
+
     /// The PC's mouse or keyboard on this phone's mirrored screen or app
     /// window (checked, and only while it offers `mirror.input`, or
     /// `mirror.virtual_display` for app windows). Must return quickly.

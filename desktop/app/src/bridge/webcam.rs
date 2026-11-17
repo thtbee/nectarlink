@@ -33,6 +33,7 @@ pub mod qobject {
         #[qproperty(bool, uhd)]
         #[qproperty(QString, camera)]
         #[qproperty(bool, mirror)]
+        #[qproperty(bool, torch)]
         #[qproperty(QString, phase)]
         #[qproperty(QString, active_device, cxx_name = "activeDevice")]
         #[qproperty(QString, status_text, cxx_name = "statusText")]
@@ -59,6 +60,9 @@ pub mod qobject {
         #[cxx_name = "setMirrorImage"]
         fn set_mirror_image(self: &Webcam, on: bool);
         #[qinvokable]
+        #[cxx_name = "setTorchOnStart"]
+        fn set_torch_on_start(self: &Webcam, on: bool);
+        #[qinvokable]
         fn start(self: &Webcam, device: &QString);
         #[qinvokable]
         fn stop(self: &Webcam);
@@ -78,6 +82,7 @@ pub struct WebcamRust {
     uhd: bool,
     camera: QString,
     mirror: bool,
+    torch: bool,
     phase: QString,
     active_device: QString,
     status_text: QString,
@@ -110,6 +115,7 @@ impl qobject::Webcam {
         self.as_mut().set_uhd(webcam::uhd());
         self.as_mut().set_camera(QString::from(webcam::camera()));
         self.as_mut().set_mirror(webcam::mirror());
+        self.as_mut().set_torch(webcam::torch());
 
         let selected = webcam::selected_phone();
         let selected_id = selected.map(|id| id.to_string()).unwrap_or_default();
@@ -158,6 +164,10 @@ impl qobject::Webcam {
 
     pub fn set_mirror_image(&self, on: bool) {
         webcam::set_mirror(on);
+    }
+
+    pub fn set_torch_on_start(&self, on: bool) {
+        webcam::set_torch(on);
     }
 
     pub fn start(&self, device: &QString) {

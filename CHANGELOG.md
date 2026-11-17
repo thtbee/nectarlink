@@ -67,6 +67,19 @@ change things that need a step from you, and its notes say so.
   app. While you hold an edge on Windows, the window shows the app blurred under its
   icon, and the app is laid out once, when you let go. Thanks to
   [@rus152](https://github.com/rus152) ([#368](https://github.com/thtbee/nectarlink/pull/368)).
+- **The full PC media controls on the phone's Home.** What the PC plays shows its artwork,
+  Previous as well as Play and Next, and a bar to see and move where it is, like the PC's
+  own Home. Thanks to [@doodoobug-dot](https://github.com/doodoobug-dot) ([#399](https://github.com/thtbee/nectarlink/issues/399)).
+- **Shut a PC down from the phone.** Shut down sits next to Lock and Sleep on the phone's
+  Home, for Windows and Linux PCs, and asks before it does anything. It's the normal
+  shutdown: an app with unsaved work can still stop it. Thanks to
+  [@unamed666](https://github.com/unamed666) for the idea ([#372](https://github.com/thtbee/nectarlink/discussions/372)).
+- **Play the phone's sound on the PC from the phone.** Play phone sound on the PC, on the
+  phone's Home, asks the PC to start it, the same as turning it on from the PC. Thanks to
+  [@doodoobug-dot](https://github.com/doodoobug-dot) ([#398](https://github.com/thtbee/nectarlink/issues/398)).
+- **The torch can turn on with the webcam.** Settings › Camera & Audio on the PC: Torch on
+  with the back camera turns the phone's torch on each time the webcam starts with the back
+  camera. Thanks to [@jerrywoo96](https://github.com/jerrywoo96) ([#353](https://github.com/thtbee/nectarlink/issues/353)).
 - **Hibernate a PC from the phone.** Next to Lock PC and Sleep on Home, for a PC that can
   hibernate: on Windows, while hibernation is turned on. Thanks to
   [@atilazz](https://github.com/atilazz) for the idea ([#355](https://github.com/thtbee/nectarlink/issues/355)).
@@ -194,6 +207,11 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The phone stops trying to reach PCs when it can't.** With no Wi-Fi, Ethernet or VPN,
+  and Connect over mobile data off, it no longer dials every two minutes in the background:
+  it waits until a network comes back, which saves battery away from home. A USB cable to
+  the PC still connects. Thanks to [@ThePharaohArt](https://github.com/ThePharaohArt)
+  ([#397](https://github.com/thtbee/nectarlink/issues/397)).
 - **Sharing the PC's screen on Wayland recovers when the desktop doesn't answer.**
   Starting it while the desktop was locked (on COSMIC, say) left the phone on
   Connecting, and every later try got stuck behind the first. Each try now waits up to

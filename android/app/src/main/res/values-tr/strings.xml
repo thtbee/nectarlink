@@ -74,6 +74,7 @@
     <string name="media_pause">Duraklat</string>
     <string name="media_next">Sonraki</string>
     <string name="media_previous">Önceki</string>
+    <string name="media_seek">Parçadaki konum</string>
     <string name="action_send_files">Dosya gönder</string>
     <string name="action_send_folder">Klasör gönder</string>
     <string name="input_service_label">NectarLink: bilgisayarınızdan kontrol</string>
@@ -293,6 +294,11 @@
     <string name="action_lock_pc">Bilgisayarı kilitle</string>
     <string name="action_sleep_pc">Uyut</string>
     <string name="action_hibernate_pc">Hazırda beklet</string>
+    <string name="action_phone_sound_on_pc">Telefon sesini bilgisayarda çal</string>
+    <string name="phone_sound_on_pc_off">%1$s bu telefonun sesini çalmıyor. Bilgisayarda Ayarlar › Cihazlar bölümünden bu telefon için Ekran yansıtmayı açın.</string>
+    <string name="action_shutdown_pc">Kapat</string>
+    <string name="shutdown_pc_title">%1$s kapatılsın mı?</string>
+    <string name="shutdown_pc_text">Açık uygulamalar kapanır. Kaydedilmemiş işi olan bir uygulama yine de durdurabilir.</string>
     <string name="action_wake_pc">Uyandır</string>
     <string name="action_disconnect">Bağlantıyı kes</string>
     <string name="action_stop_reconnecting">Yeniden bağlanmayı durdur</string>
@@ -304,6 +310,7 @@
     <string name="pc_locked">%1$s kilitlendi.</string>
     <string name="pc_sleeping">%1$s uyku moduna geçiyor.</string>
     <string name="pc_hibernating">%1$s hazırda bekletmeye geçiyor.</string>
+    <string name="pc_shutting_down">%1$s kapanıyor.</string>
     <string name="pc_actions_off">%1$s üzerinde bu telefon için kilitleme ve uyku kapalı.</string>
     <string name="channel_links">Bilgisayarınızdan gelen bağlantılar</string>
     <!-- Play on phone: what a PC plays, streamed to the phone. -->

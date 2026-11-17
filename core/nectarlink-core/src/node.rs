@@ -180,6 +180,9 @@ pub(crate) struct Shared {
     /// The last capability matrix emitted per device, to emit only changes.
     matrices: Mutex<HashMap<DeviceId, CapabilityMatrix>>,
     pub(crate) away_mode: std::sync::atomic::AtomicBool,
+    /// Whether this device has a network a paired device could be on: Wi-Fi,
+    /// Ethernet or a VPN (#397). True unless the platform says otherwise.
+    local_network: std::sync::atomic::AtomicBool,
     relay_settings: Mutex<RelaySettings>,
     relay_map: RelayMap,
     #[cfg(target_os = "linux")]
@@ -357,6 +360,17 @@ impl Shared {
         if self.store.update_timeline_duration(row_id, duration_secs.max(1)).unwrap_or(false) {
             self.emit(NodeEvent::TimelineChanged);
         }
+    }
+
+    /// No Wi-Fi, Ethernet or VPN, and no mobile data allowed: nothing a dial
+    /// could reach, so reconnecting waits instead of trying every two minutes
+    /// (#397). A cable to the PC still counts.
+    pub(crate) fn nothing_to_dial(&self, peer: &DeviceId) -> bool {
+        use std::sync::atomic::Ordering::Relaxed;
+        !self.local_network.load(Relaxed)
+            && !self.away_mode.load(Relaxed)
+            && self.usb_peer_addr(peer).is_none()
+            && !self.usb_tunnel_inbound(peer)
     }
 
     pub(crate) fn nudge_reconnect(&self) {
@@ -1635,9 +1649,9 @@ async fn maintain(shared: Weak<Shared>, peer: DeviceId, wake: Arc<Notify>, cance
         if cancel.is_cancelled() {
             return;
         }
-        // Reconnecting is off for this device: don't dial until the user
-        // turns it back on (which wakes this loop).
-        if node.session(&peer).is_none() && !node.reconnects(&peer) {
+        // Reconnecting is off for this device, or there's no network it could
+        // be on: don't dial until that changes (which wakes this loop).
+        if node.session(&peer).is_none() && (!node.reconnects(&peer) || node.nothing_to_dial(&peer)) {
             drop(node);
             tokio::select! {
                 _ = wake.notified() => {}
@@ -1929,6 +1943,7 @@ impl Node {
             dial_failures: Mutex::new(HashMap::new()),
             matrices: Mutex::new(HashMap::new()),
             away_mode: std::sync::atomic::AtomicBool::new(config.away_mode),
+            local_network: std::sync::atomic::AtomicBool::new(true),
             relay_settings: Mutex::new(relay_settings),
             relay_map,
             #[cfg(target_os = "linux")]
@@ -2090,12 +2105,29 @@ impl Node {
         Ok(true)
     }
 
+    /// Tells the core whether this device has Wi-Fi, Ethernet or a VPN (#397).
+    /// Without any, and with mobile data off ([`Node::set_away_mode`]), paired
+    /// devices aren't dialed until one comes back.
+    pub fn set_local_network(&self, available: bool) {
+        let was = self.shared.local_network.swap(available, std::sync::atomic::Ordering::Relaxed);
+        if was != available {
+            tracing::info!(available, "local network");
+            if available {
+                self.shared.nudge_reconnect();
+            }
+        }
+    }
+
     /// Enables or disables connecting over mobile data / non-LAN paths at runtime.
     pub fn set_away_mode(&self, enabled: bool) {
         let was = self.shared.away_mode.swap(enabled, std::sync::atomic::Ordering::Relaxed);
         if was != enabled {
             let shared = self.shared.clone();
             self.shared.runtime.spawn(async move { apply_internet_services(&shared).await });
+            // Dialing may have waited for a local network (#397).
+            if enabled {
+                self.shared.nudge_reconnect();
+            }
         }
         if !enabled {
             for session in self.shared.live_sessions() {
@@ -3186,6 +3218,18 @@ impl Node {
     }
 
     /// Sends a mirroring status to the viewer, by `code` (`mirror.notice`).
+    /// Asks a paired PC to play this phone's sound (#398); only one that
+    /// offers `mirror.listen.ask`. The PC then starts it as usual.
+    pub async fn ask_pc_for_phone_sound(&self, pc: DeviceId) -> Result<()> {
+        let session = self.connected(&pc)?;
+        if !self.shared.offers(&pc, nectarlink_protocol::messages::mirror::LISTEN_ASK)? {
+            return Err(Error::Unsupported);
+        }
+        let env = Envelope::empty(types::MIRROR_LISTEN_ASK);
+        session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect(types::OK)?;
+        Ok(())
+    }
+
     pub async fn mirror_notice(&self, peer: DeviceId, mirroring: u32, code: &str) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::mirror::notice(&session, mirroring, code).await

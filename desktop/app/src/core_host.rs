@@ -122,6 +122,7 @@ pub fn compute_capabilities(
         nectarlink_core::TOGGLES_SHOW.into(),
         nectarlink_core::MIRROR_VIEW.into(),
         nectarlink_core::MIRROR_LISTEN.into(),
+        nectarlink_core::MIRROR_LISTEN_ASK.into(),
         nectarlink_core::MIC_LISTEN.into(),
         nectarlink_core::RECORDER.into(),
     ];
@@ -141,6 +142,7 @@ pub fn compute_capabilities(
         caps.push(nectarlink_core::STORAGE_WRITE.into());
         caps.push(nectarlink_core::DECK_ACTIONS.into());
         caps.push(nectarlink_core::PC_AUDIO.into());
+        caps.push(nectarlink_core::PC_SHUTDOWN.into());
         // Only while hibernation is on: Windows can turn it off (#355).
         if crate::win::shell::can_hibernate() {
             caps.push(nectarlink_core::PC_HIBERNATE.into());

@@ -70,6 +70,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -181,6 +182,8 @@ fun HomeScreen(
     onRefresh: () -> Unit,
     onPower: (pcId: String, sleep: Boolean) -> Unit,
     onHibernate: (pcId: String) -> Unit,
+    onShutdown: (pcId: String) -> Unit = {},
+    onPhoneSoundOnPc: (pcId: String) -> Unit = {},
     onWake: (pcId: String) -> Unit,
     onSetReconnect: (pcId: String, on: Boolean) -> Unit,
     onRemote: (pcId: String) -> Unit,
@@ -673,6 +676,8 @@ fun HomeScreen(
                     onSendFolder = onSendFolder,
                     onPower = onPower,
                     onHibernate = onHibernate,
+                    onShutdown = onShutdown,
+                    onPhoneSoundOnPc = onPhoneSoundOnPc,
                     onWake = onWake,
                     onSetReconnect = onSetReconnect,
                     onRemote = onRemote,
@@ -1411,6 +1416,8 @@ private fun PcCard(
     onSendFolder: (String, Uri) -> Unit,
     onPower: (String, Boolean) -> Unit,
     onHibernate: (String) -> Unit,
+    onShutdown: (String) -> Unit,
+    onPhoneSoundOnPc: (String) -> Unit,
     onWake: (String) -> Unit,
     onSetReconnect: (String, Boolean) -> Unit,
     onRemote: (String) -> Unit,
@@ -1750,6 +1757,18 @@ private fun PcCard(
                         micOn = micOn,
                         onToggleMic = onToggleMic,
                     )
+                    // The phone's sound on the PC, started from here (#398); stopped
+                    // from the "sharing sound" card like any sharing.
+                    if (device.has("mirroring.sound_from_phone")) {
+                        FilledTonalButton(
+                            contentPadding = CardButtonPadding,
+                            colors = tonal,
+                            onClick = { onPhoneSoundOnPc(device.id) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            ButtonLabel(stringResource(R.string.action_phone_sound_on_pc))
+                        }
+                    }
                 }
 
                 // 4. Utilities & Power Row (Voice Memo, Ring PC, Lock, Sleep)
@@ -1795,43 +1814,52 @@ private fun PcCard(
                     }
                 }
                 if (device.has("device.pc_actions")) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        OutlinedButton(
-                            contentPadding = CardButtonPadding,
-                            enabled = device.online,
-                            colors = outlined,
-                            border = outline,
-                            onClick = { onPower(device.id, false) },
-                            modifier = Modifier.weight(1f),
+                    // Lock and Sleep, then Hibernate and Shut down where the PC offers them:
+                    // three to a row, or two and two (D372).
+                    var confirmShutdown by remember { mutableStateOf(false) }
+                    val actions = buildList<Pair<Int, () -> Unit>> {
+                        add(R.string.action_lock_pc to { onPower(device.id, false) })
+                        add(R.string.action_sleep_pc to { onPower(device.id, true) })
+                        if (device.has("device.pc_hibernate")) add(R.string.action_hibernate_pc to { onHibernate(device.id) })
+                        if (device.has("device.pc_shutdown")) add(R.string.action_shutdown_pc to { confirmShutdown = true })
+                    }
+                    actions.chunked(if (actions.size == 4) 2 else 3).forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            ButtonLabel(stringResource(R.string.action_lock_pc))
-                        }
-                        OutlinedButton(
-                            contentPadding = CardButtonPadding,
-                            enabled = device.online,
-                            colors = outlined,
-                            border = outline,
-                            onClick = { onPower(device.id, true) },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            ButtonLabel(stringResource(R.string.action_sleep_pc))
-                        }
-                        // Only for a PC that can hibernate right now (#355).
-                        if (device.has("device.pc_hibernate")) {
-                            OutlinedButton(
-                                contentPadding = CardButtonPadding,
-                                enabled = device.online,
-                                colors = outlined,
-                                border = outline,
-                                onClick = { onHibernate(device.id) },
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                ButtonLabel(stringResource(R.string.action_hibernate_pc))
+                            row.forEach { (label, action) ->
+                                OutlinedButton(
+                                    contentPadding = CardButtonPadding,
+                                    enabled = device.online,
+                                    colors = outlined,
+                                    border = outline,
+                                    onClick = action,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    ButtonLabel(stringResource(label))
+                                }
                             }
                         }
+                    }
+                    if (confirmShutdown) {
+                        AlertDialog(
+                            onDismissRequest = { confirmShutdown = false },
+                            containerColor = glassModalContainerColor(),
+                            title = { Text(stringResource(R.string.shutdown_pc_title, device.name)) },
+                            text = { Text(stringResource(R.string.shutdown_pc_text)) },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    confirmShutdown = false
+                                    onShutdown(device.id)
+                                }) { Text(stringResource(R.string.action_shutdown_pc)) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { confirmShutdown = false }) {
+                                    Text(stringResource(R.string.action_cancel))
+                                }
+                            },
+                        )
                     }
                 }
             }
@@ -1870,6 +1898,53 @@ private fun PcCard(
     }
 }
 
+/**
+ * Where the PC's player is, and a bar to move it (#399): ticks once a second
+ * only while it plays and is on screen. Nothing for a player without a length.
+ */
+@Composable
+private fun PcMediaSeekBar(pcMedia: app.nectarlink.android.media.PcMedia, pcId: String, playerId: String, ink: Color) {
+    val timelines by pcMedia.timelines.collectAsStateWithLifecycle()
+    val timeline = timelines["$pcId/$playerId"] ?: return
+    if (timeline.durationMs <= 0) return
+    var now by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
+    LaunchedEffect(timeline) {
+        now = android.os.SystemClock.elapsedRealtime()
+        while (timeline.playing) {
+            kotlinx.coroutines.delay(1_000)
+            now = android.os.SystemClock.elapsedRealtime()
+        }
+    }
+    var dragging by remember { mutableStateOf<Float?>(null) }
+    val position = dragging ?: timeline.positionAt(now).toFloat()
+    val seekLabel = stringResource(R.string.media_seek)
+    Slider(
+        value = position.coerceIn(0f, timeline.durationMs.toFloat()),
+        onValueChange = { dragging = it },
+        onValueChangeFinished = {
+            dragging?.let { pcMedia.seek(pcId, playerId, it.toLong()) }
+            dragging = null
+        },
+        valueRange = 0f..timeline.durationMs.toFloat(),
+        enabled = timeline.canSeek,
+        modifier = Modifier.fillMaxWidth().height(28.dp).semantics { contentDescription = seekLabel },
+    )
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Text(mediaClock(position.toLong()), style = MaterialTheme.typography.labelSmall, color = ink.copy(alpha = 0.78f))
+        Spacer(Modifier.weight(1f))
+        Text(mediaClock(timeline.durationMs), style = MaterialTheme.typography.labelSmall, color = ink.copy(alpha = 0.78f))
+    }
+}
+
+/** 3:07, or 1:02:07 past an hour. */
+private fun mediaClock(ms: Long): String {
+    val total = (ms / 1000).coerceAtLeast(0)
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val sec = total % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
+}
+
 @Composable
 private fun PcAudioCardSection(
     pcId: String,
@@ -1904,7 +1979,8 @@ private fun PcAudioCardSection(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (mediaSummary != null) {
-            Row(
+            // What the PC plays, with the same controls as the PC's Home (#399).
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .bentoWell(
@@ -1912,57 +1988,88 @@ private fun PcAudioCardSection(
                         fillColor = ink.copy(alpha = 0.10f),
                     )
                     .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = mediaSummary.title,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = ink,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    if (mediaSummary.subtitle.isNotBlank()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    mediaSummary.artwork?.let { art ->
+                        androidx.compose.foundation.Image(
+                            bitmap = art.asImageBitmap(),
+                            contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)),
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = mediaSummary.subtitle,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = ink.copy(alpha = 0.78f),
+                            text = mediaSummary.title,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = ink,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        if (mediaSummary.subtitle.isNotBlank()) {
+                            Text(
+                                text = mediaSummary.subtitle,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = ink.copy(alpha = 0.78f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    if (mediaSummary.canPrevious) {
+                        IconButton(
+                            onClick = { pcMedia?.command(pcId, mediaSummary.playerId, app.nectarlink.core.MediaAction.PREVIOUS) },
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_skip_previous),
+                                contentDescription = stringResource(R.string.media_previous),
+                                tint = ink,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = {
+                            pcMedia?.command(
+                                pcId,
+                                mediaSummary.playerId,
+                                if (mediaSummary.playing) app.nectarlink.core.MediaAction.PAUSE
+                                else app.nectarlink.core.MediaAction.PLAY,
+                            )
+                        },
+                        modifier = Modifier.size(40.dp),
+                    ) {
+                        Icon(
+                            painter = painterResource(if (mediaSummary.playing) R.drawable.ic_pause else R.drawable.ic_play),
+                            contentDescription = stringResource(
+                                if (mediaSummary.playing) R.string.media_pause else R.string.media_play,
+                            ),
+                            tint = ink,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    if (mediaSummary.canNext) {
+                        IconButton(
+                            onClick = { pcMedia?.command(pcId, mediaSummary.playerId, app.nectarlink.core.MediaAction.NEXT) },
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_skip_next),
+                                contentDescription = stringResource(R.string.media_next),
+                                tint = ink,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
                 }
-                IconButton(
-                    onClick = {
-                        pcMedia?.command(
-                            pcId,
-                            mediaSummary.playerId,
-                            if (mediaSummary.playing) app.nectarlink.core.MediaAction.PAUSE
-                            else app.nectarlink.core.MediaAction.PLAY,
-                        )
-                    },
-                    modifier = Modifier.size(32.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(if (mediaSummary.playing) R.drawable.ic_pause else R.drawable.ic_play),
-                        contentDescription = stringResource(
-                            if (mediaSummary.playing) R.string.media_pause else R.string.media_play,
-                        ),
-                        tint = ink,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                IconButton(
-                    onClick = { pcMedia?.command(pcId, mediaSummary.playerId, app.nectarlink.core.MediaAction.NEXT) },
-                    modifier = Modifier.size(32.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_skip_next),
-                        contentDescription = stringResource(R.string.media_next),
-                        tint = ink,
-                        modifier = Modifier.size(18.dp),
-                    )
+                if (pcMedia != null) {
+                    PcMediaSeekBar(pcMedia, pcId, mediaSummary.playerId, ink)
                 }
             }
         }

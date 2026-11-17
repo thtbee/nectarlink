@@ -1985,6 +1985,19 @@ Item {
                         }
 
                         Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.flashlight
+                            title: qsTr("Torch on with the back camera")
+                            description: qsTr("Turns the phone's torch on when the webcam starts with the back camera.")
+                            Toggle {
+                                label: qsTr("Torch on with the back camera")
+                                checked: Webcam.torch
+                                onToggled: (on) => Webcam.setTorchOnStart(on)
+                            }
+                        }
+
+                        Divider { width: parent.width }
                         Column {
                             width: parent.width
                             spacing: 10
