@@ -219,12 +219,16 @@ change things that need a step from you, and its notes say so.
 - **Deleting photos from the PC counts what the phone deleted correctly**, and a phone
   can't claim more than were asked for. Thanks to [@localzet](https://github.com/localzet) ([#395](https://github.com/thtbee/nectarlink/pull/395)).
 - **Handoff spots videos and maps in links with a port**, like `youtube.com:443`, and
-  keeps a Vimeo time right. Thanks to [@localzet](https://github.com/localzet) ([#391](https://github.com/thtbee/nectarlink/pull/391)).
+  keeps a Vimeo time right, even in a link that already had one. Thanks to
+  [@localzet](https://github.com/localzet) ([#391](https://github.com/thtbee/nectarlink/pull/391),
+  [#405](https://github.com/thtbee/nectarlink/pull/405)).
 - **The Theme picker in Settings › Appearance no longer sits over its label.**
 - **Waking a PC through another device says when no packet went out**, instead of
   reporting success. Thanks to [@localzet](https://github.com/localzet) ([#385](https://github.com/thtbee/nectarlink/pull/385)).
 - **The Linux install tests fail when they should**: uninstalling, and a damaged package
   being refused for its checksum. Thanks to [@localzet](https://github.com/localzet) ([#386](https://github.com/thtbee/nectarlink/pull/386)).
+- **Pairing a phone again after unpairing is covered by tests**, also when one side
+  forgot the other while it was away. Thanks to [@localzet](https://github.com/localzet) ([#406](https://github.com/thtbee/nectarlink/pull/406)).
 - **The phone's screen window keeps the phone's shape, and its size.** Resizing it no
   longer leaves black bars: a moment after, it fits the phone's shape again. It opens
   at the size you left it, also when the phone turns. Thanks to
