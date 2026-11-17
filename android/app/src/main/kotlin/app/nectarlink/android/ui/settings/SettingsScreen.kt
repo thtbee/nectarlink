@@ -123,6 +123,8 @@ fun SettingsScreen(
     onSetSuggestClipboardActions: (Boolean) -> Unit = {},
     volumeKeysControlPc: Boolean = true,
     onSetVolumeKeysControlPc: (Boolean) -> Unit = {},
+    quietWhileUsingPc: Boolean = false,
+    onSetQuietWhileUsingPc: (Boolean) -> Unit = {},
     backgroundServiceEnabled: Boolean = true,
     onToggleBackgroundService: (Boolean) -> Unit = {},
     onSetTimelineRetentionDays: (UInt) -> Unit = {},
@@ -618,6 +620,24 @@ fun SettingsScreen(
                     highlighted = pulsingSectionKey == "notifications",
                 ) {
                     NotificationAccess(state.notificationAccess)
+                    SettingRowDivider()
+                    val quietTitle = stringResource(R.string.settings_quiet_while_using_pc)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(quietTitle, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                stringResource(R.string.settings_quiet_while_using_pc_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = quietWhileUsingPc,
+                            onCheckedChange = onSetQuietWhileUsingPc,
+                            colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+                            modifier = Modifier.semantics { contentDescription = quietTitle },
+                        )
+                    }
                 }
             }
 

@@ -354,6 +354,8 @@
     <string name="settings_remote">Controlar tu PC</string>
     <string name="settings_volume_keys_control_pc">Los botones de volumen controlan tu PC</string>
     <string name="settings_volume_keys_control_pc_hint">Mientras tu PC reproduce música o vídeo, los botones de volumen del teléfono cambian el volumen del PC.</string>
+    <string name="settings_quiet_while_using_pc">Silencio mientras usas el PC</string>
+    <string name="settings_quiet_while_using_pc_hint">El teléfono no suena ni vibra con las notificaciones mientras usas un PC emparejado que las muestra.</string>
     <string name="settings_touchpad_sensitivity">Velocidad del panel táctil</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Panel táctil</string>

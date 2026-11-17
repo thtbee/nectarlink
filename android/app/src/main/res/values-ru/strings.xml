@@ -343,6 +343,8 @@
     <string name="settings_remote">Управление ПК</string>
     <string name="settings_volume_keys_control_pc">Кнопки громкости управляют ПК</string>
     <string name="settings_volume_keys_control_pc_hint">Пока на ПК играет музыка или видео, кнопки громкости телефона меняют громкость ПК.</string>
+    <string name="settings_quiet_while_using_pc">Без звука, пока вы за ПК</string>
+    <string name="settings_quiet_while_using_pc_hint">Телефон не издаёт звук и не вибрирует при уведомлениях, пока вы пользуетесь сопряжённым ПК, который их показывает.</string>
     <string name="settings_touchpad_sensitivity">Скорость тачпада</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Тачпад</string>

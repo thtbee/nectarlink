@@ -335,6 +335,8 @@
     <string name="settings_remote">控制你的电脑</string>
     <string name="settings_volume_keys_control_pc">音量键控制电脑</string>
     <string name="settings_volume_keys_control_pc_hint">电脑播放音乐或视频时，手机的音量键会调节电脑的音量。</string>
+    <string name="settings_quiet_while_using_pc">使用电脑时手机保持安静</string>
+    <string name="settings_quiet_while_using_pc_hint">当你正在使用显示通知的已配对电脑时，手机收到通知不响铃也不振动。</string>
     <string name="settings_touchpad_sensitivity">触控板速度</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">触控板</string>

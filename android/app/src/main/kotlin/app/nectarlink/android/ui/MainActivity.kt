@@ -821,6 +821,7 @@ private fun App(
                     val touchpadSensitivity by preferences.touchpadSensitivity.collectAsStateWithLifecycle()
                     val suggestClipboardActions by preferences.suggestClipboardActions.collectAsStateWithLifecycle()
                     val volumeKeysControlPc by preferences.volumeKeysControlPc.collectAsStateWithLifecycle()
+                    val quietWhileUsingPc by preferences.quietWhileUsingPc.collectAsStateWithLifecycle()
                     val backgroundServiceEnabled by preferences.backgroundServiceEnabled.collectAsStateWithLifecycle()
                     val startWithoutAsking by app.nectarlink.android.service.PcAutoStart.pcs(context).collectAsStateWithLifecycle()
                     val hiveInviteShown by preferences.hiveInviteShown.collectAsStateWithLifecycle()
@@ -1003,6 +1004,8 @@ private fun App(
                                     onSetSuggestClipboardActions = preferences::updateSuggestClipboardActions,
                                     volumeKeysControlPc = volumeKeysControlPc,
                                     onSetVolumeKeysControlPc = preferences::updateVolumeKeysControlPc,
+                                    quietWhileUsingPc = quietWhileUsingPc,
+                                    onSetQuietWhileUsingPc = preferences::updateQuietWhileUsingPc,
                                     backgroundServiceEnabled = backgroundServiceEnabled,
                                     onToggleBackgroundService = { enabled ->
                                         preferences.updateBackgroundServiceEnabled(enabled)

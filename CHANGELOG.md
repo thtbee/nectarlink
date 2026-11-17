@@ -173,10 +173,12 @@ change things that need a step from you, and its notes say so.
   serif font like SimSun that was hard to read; it now uses Microsoft YaHei UI (or the
   matching font for Traditional Chinese, Japanese and Korean). Thanks to
   [@ManuZhu0728](https://github.com/ManuZhu0728) ([#390](https://github.com/thtbee/nectarlink/issues/390)).
-- **The phone vibrates again when the PC doesn't show its notifications.** While you
-  used the PC, the phone silenced its own notification sounds and vibration, even with
-  notifications turned off for that PC or paused. Now it only does that while the PC
-  shows them. Thanks to [@sbstn87](https://github.com/sbstn87) ([#384](https://github.com/thtbee/nectarlink/issues/384)).
+- **The phone sounds and vibrates for notifications while you use the PC.** It used to
+  silence them whenever you were active on a paired PC. That's now a choice, off by
+  default: Quiet while you use the PC, in the phone's Settings › Notifications, and it
+  only applies while the PC shows the phone's notifications. Thanks to
+  [@sbstn87](https://github.com/sbstn87) ([#384](https://github.com/thtbee/nectarlink/issues/384))
+  and [@krilok](https://github.com/krilok) ([#407](https://github.com/thtbee/nectarlink/issues/407)).
 - **NectarLink starts quietly in KDE Plasma.** Plasma opened its shortcut settings at
   every start, since NectarLink asked for its global shortcuts each time (twice); it now
   asks only when Plasma doesn't have them yet, or when you change one. And Plasma's

@@ -345,6 +345,8 @@
 <string name="settings_remote">Điều khiển PC của bạn</string>
 <string name="settings_volume_keys_control_pc">Nút âm lượng điều khiển PC</string>
 <string name="settings_volume_keys_control_pc_hint">Khi PC đang phát nhạc hoặc video, nút âm lượng của điện thoại sẽ thay đổi âm lượng của PC.</string>
+<string name="settings_quiet_while_using_pc">Im lặng khi bạn dùng PC</string>
+<string name="settings_quiet_while_using_pc_hint">Điện thoại không phát âm thanh hay rung khi có thông báo trong lúc bạn đang dùng PC đã ghép nối hiển thị các thông báo đó.</string>
 <string name="settings_touchpad_sensitivity">Tốc độ Touchpad</string>
 <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
 <string name="remote_mode_touchpad">Touchpad</string>

@@ -27,6 +27,9 @@ class Preferences(context: Context) {
     private val _volumeKeysControlPc = MutableStateFlow(prefs.getBoolean(VOLUME_KEYS_CONTROL_PC, true))
     val volumeKeysControlPc: StateFlow<Boolean> = _volumeKeysControlPc.asStateFlow()
 
+    private val _quietWhileUsingPc = MutableStateFlow(prefs.getBoolean(QUIET_WHILE_USING_PC, false))
+    val quietWhileUsingPc: StateFlow<Boolean> = _quietWhileUsingPc.asStateFlow()
+
     private val _backgroundServiceEnabled = MutableStateFlow(prefs.getBoolean(BACKGROUND_SERVICE_ENABLED, true))
     val backgroundServiceEnabled: StateFlow<Boolean> = _backgroundServiceEnabled.asStateFlow()
 
@@ -116,6 +119,12 @@ class Preferences(context: Context) {
         (appContext as app.nectarlink.android.NectarlinkApplication).core.pcMedia.volumeKeys(enabled)
     }
 
+    fun updateQuietWhileUsingPc(enabled: Boolean) {
+        prefs.edit { putBoolean(QUIET_WHILE_USING_PC, enabled) }
+        _quietWhileUsingPc.value = enabled
+        app.nectarlink.android.notifications.NotificationListener.refreshHostHints()
+    }
+
     fun updateBackgroundServiceEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(BACKGROUND_SERVICE_ENABLED, enabled) }
         _backgroundServiceEnabled.value = enabled
@@ -148,6 +157,7 @@ class Preferences(context: Context) {
         private const val TOUCHPAD_SENSITIVITY = "touchpad_sensitivity"
         private const val SUGGEST_CLIPBOARD_ACTIONS = "suggest_clipboard_actions"
         private const val VOLUME_KEYS_CONTROL_PC = "volume_keys_control_pc"
+        private const val QUIET_WHILE_USING_PC = "quiet_while_using_pc"
         internal const val BACKGROUND_SERVICE_ENABLED = "background_service_enabled"
         private const val AWAY_MODE = "away_mode"
         private const val WALKTHROUGH_COMPLETED = "walkthrough_completed"
@@ -198,6 +208,16 @@ class Preferences(context: Context) {
             context.applicationContext
                 .getSharedPreferences("appearance", Context.MODE_PRIVATE)
                 .getBoolean(VOLUME_KEYS_CONTROL_PC, true)
+
+        /**
+         * Whether the phone silences its own notification sounds and vibration
+         * while a paired PC that shows them is in use. Off by default: the
+         * phone sounds as it always does (#384, #407).
+         */
+        fun isQuietWhileUsingPc(context: Context): Boolean =
+            context.applicationContext
+                .getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .getBoolean(QUIET_WHILE_USING_PC, false)
 
         fun isAwayModeEnabled(context: Context): Boolean =
             context.applicationContext
