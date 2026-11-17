@@ -19,6 +19,7 @@ pub const LANGUAGES: &[(&str, &str)] = &[
     ("vi", "Tiếng Việt"),
     ("es", "Español"),
     ("ru", "Русский"),
+    ("pl", "Polski"),
 ];
 
 /// [`LANGUAGES`] without the system's, as JSON for Settings: `[{ code, name }]`.

@@ -23,6 +23,7 @@ object AppLanguage {
         "vi" to "Tiếng Việt",
         "es" to "Español",
         "ru" to "Русский",
+        "pl" to "Polski",
     )
 
     /** Whether the phone lets the app pick its own language. */
@@ -59,6 +60,7 @@ object AppLanguage {
             lower == "vi" || lower.startsWith("vi-") -> "vi"
             lower == "es" || lower.startsWith("es-") -> "es"
             lower == "ru" || lower.startsWith("ru-") -> "ru"
+            lower == "pl" || lower.startsWith("pl-") -> "pl"
             else -> ""
         }
     }
