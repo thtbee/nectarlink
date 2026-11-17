@@ -99,9 +99,10 @@ class NotificationListener : NotificationListenerService() {
         }
     }
 
-    internal fun applyHostHints(suppressPhoneEffects: Boolean) {
+    internal fun applyHostHints(pcActive: Boolean) {
+        val quiet = pcActive && app.nectarlink.android.ui.Preferences.isQuietWhileUsingPc(this)
         runCatching {
-            requestListenerHints(if (suppressPhoneEffects) HINT_HOST_DISABLE_NOTIFICATION_EFFECTS else 0)
+            requestListenerHints(if (quiet) HINT_HOST_DISABLE_NOTIFICATION_EFFECTS else 0)
         }
     }
 
@@ -143,9 +144,10 @@ class NotificationListener : NotificationListenerService() {
 
         /**
          * Updates whether the user is actively using a paired PC (`pc_active`
-         * toggle). When active, Android's `HINT_HOST_DISABLE_NOTIFICATION_EFFECTS`
-         * suppresses redundant phone notification sound/vibration effects while
-         * still delivering notifications to the PC.
+         * toggle). When active and the user turned on "Quiet while you use the
+         * PC", Android's `HINT_HOST_DISABLE_NOTIFICATION_EFFECTS` silences the
+         * phone's own notification sound and vibration; notifications still
+         * reach the PC either way.
          */
         fun setPcActive(active: Boolean) {
             mainHandler.removeCallbacks(expirePcActive)
@@ -157,6 +159,11 @@ class NotificationListener : NotificationListenerService() {
                 pcActiveUntilMs = 0L
                 instance?.applyHostHints(false)
             }
+        }
+
+        /** Applies the quiet setting again after it changed. */
+        fun refreshHostHints() {
+            instance?.applyHostHints(isPcActive())
         }
 
         /** Whether the user granted notification access to this app. */

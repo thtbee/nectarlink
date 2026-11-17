@@ -74,6 +74,7 @@
     <string name="media_pause">Pausar</string>
     <string name="media_next">Siguiente</string>
     <string name="media_previous">Anterior</string>
+    <string name="media_seek">Posición en la pista</string>
     <string name="action_send_files">Enviar archivos</string>
     <string name="action_send_folder">Enviar una carpeta</string>
     <string name="input_service_label">NectarLink: control desde tu PC</string>
@@ -296,6 +297,11 @@
     <string name="action_lock_pc">Bloquear PC</string>
     <string name="action_sleep_pc">Suspender</string>
     <string name="action_hibernate_pc">Hibernar</string>
+    <string name="action_phone_sound_on_pc">Reproducir el sonido del teléfono en el PC</string>
+    <string name="phone_sound_on_pc_off">%1$s no reproduce el sonido de este teléfono. En el PC, activa Duplicación de pantalla para este teléfono en Ajustes › Dispositivos.</string>
+    <string name="action_shutdown_pc">Apagar</string>
+    <string name="shutdown_pc_title">¿Apagar %1$s?</string>
+    <string name="shutdown_pc_text">Las apps abiertas se cierran. Una con trabajo sin guardar todavía puede detenerlo.</string>
     <string name="action_wake_pc">Activar</string>
     <string name="action_disconnect">Desconectar</string>
     <string name="action_stop_reconnecting">Dejar de reconectar</string>
@@ -307,6 +313,7 @@
     <string name="pc_locked">%1$s está bloqueado.</string>
     <string name="pc_sleeping">%1$s va a suspenderse.</string>
     <string name="pc_hibernating">%1$s va a hibernar.</string>
+    <string name="pc_shutting_down">%1$s se está apagando.</string>
     <string name="pc_actions_off">El bloqueo y la suspensión están desactivados para este teléfono en %1$s.</string>
     <string name="channel_links">Enlaces desde tu PC</string>
     <!-- Play on phone: what a PC plays, streamed to the phone. -->
@@ -354,6 +361,12 @@
     <string name="settings_remote">Controlar tu PC</string>
     <string name="settings_volume_keys_control_pc">Los botones de volumen controlan tu PC</string>
     <string name="settings_volume_keys_control_pc_hint">Mientras tu PC reproduce música o vídeo, los botones de volumen del teléfono cambian el volumen del PC.</string>
+    <string name="settings_quiet_while_using_pc">Silencio mientras usas el PC</string>
+    <string name="settings_quiet_while_using_pc_hint">El teléfono no suena ni vibra con las notificaciones mientras usas un PC emparejado que las muestra.</string>
+    <string name="settings_hide_from_recents">Ocultar de las apps recientes</string>
+    <string name="settings_hide_from_recents_hint">NectarLink no aparece en las apps recientes, así que al borrarlas no se cierra por error.</string>
+    <string name="settings_assist_on_demand">Assist solo mientras un PC usa el teléfono</string>
+    <string name="settings_assist_on_demand_hint">Con Elevated, Assist se activa mientras un PC muestra este teléfono o escribe en él, y se desactiva poco después. Para apps que no se abren con un servicio de accesibilidad activo.</string>
     <string name="settings_touchpad_sensitivity">Velocidad del panel táctil</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Panel táctil</string>
@@ -396,6 +409,7 @@
     <string name="remote_volume_hint">Los botones de volumen también cambian de diapositiva mientras esta pantalla está abierta.</string>
     <string name="remote_mode_screen">Pantalla</string>
     <string name="pc_mirror_connecting">Conectándose a %1$s…</string>
+    <string name="pc_mirror_capture_failed">No se pudo compartir la pantalla. Desbloquea el PC, comprueba los permisos para compartir y vuelve a intentarlo.</string>
     <string name="pc_mirror_fullscreen">Pantalla completa</string>
     <string name="pc_mirror_exit_fullscreen">Salir de pantalla completa</string>
     <string name="pc_mirror_right_click">Clic derecho</string>
@@ -417,6 +431,10 @@
     <string name="channel_mic_requests">Solicitudes de micrófono</string>
     <string name="mic_notification_title">Micrófono encendido para %1$s</string>
     <string name="mic_notification_text">Tu PC recibe el sonido del micrófono de este teléfono.</string>
+    <string name="channel_call_audio">Sonido de llamadas en el PC</string>
+    <string name="call_audio_notification_title">Sonido de la llamada en %1$s</string>
+    <string name="call_audio_notification_text">Hablas y escuchas en el PC.</string>
+    <string name="call_audio_back">Volver al teléfono</string>
     <string name="mic_request_title">%1$s quiere el micrófono de este teléfono</string>
     <string name="mic_request_text">Toca para iniciar. Permanecerá activo hasta que tú o el PC lo detengáis.</string>
     <string name="mic_request_start">Iniciar</string>
@@ -700,17 +718,37 @@
     <string name="keyboard_stop">Dejar de escribir</string>
 
     <!-- Home-screen PC widget -->
-    <string name="widget_pc_title">Acciones rápidas para PC</string>
-    <string name="widget_pc_description">Estado de conexión y acciones para enviar el portapapeles, hacer sonar, bloquear y activar el PC emparejado.</string>
+    <string name="widget_pc_title">Tu PC de un vistazo</string>
+    <string name="widget_pc_description">Si tu PC está conectado, con Hacer sonar, opciones de energía y Encender.</string>
+    <string name="widget_now_playing_title">Reproduciendo</string>
+    <string name="widget_now_playing_description">Lo que suena en tu PC, con sus controles.</string>
+    <string name="widget_actions_title">Acciones rápidas</string>
+    <string name="widget_actions_description">Envía el portapapeles o archivos, haz sonar tu PC, o bloquéalo, suspéndelo o apágalo.</string>
+    <string name="widget_from_pc_title">Desde tu PC</string>
+    <string name="widget_from_pc_description">El último clip y archivo que envió tu PC, para copiar o abrir.</string>
+    <string name="widget_from_pc_empty">Aquí aparecen los clips y archivos que envía tu PC.</string>
+    <string name="widget_media_on_pc">En %1$s</string>
+    <string name="widget_media_nothing">No se reproduce nada</string>
+    <string name="widget_media_nothing_hint">Aquí aparece la música y los vídeos que suenan en %1$s.</string>
+    <string name="widget_battery">Batería %1$d%%</string>
+    <string name="widget_battery_charging">Batería %1$d%% · cargando</string>
+    <string name="widget_link_lan">En tu red</string>
+    <string name="widget_seen">Visto %1$s</string>
+    <string name="widget_pc_send_clipboard">Enviar portapapeles</string>
+    <string name="widget_power">Encendido</string>
+    <string name="widget_power_lock">Bloquear</string>
+    <string name="widget_power_suspend">Suspender</string>
+    <string name="widget_power_off">Apagar</string>
+    <string name="widget_power_off_title">¿Apagar %1$s?</string>
+    <string name="widget_choose_pc">Elige un PC</string>
+    <string name="widget_power_offline">Las opciones de energía aparecen mientras %1$s está conectado.</string>
     <string name="widget_pc_no_pc">No hay ningún PC emparejado</string>
     <string name="widget_pc_tap_to_pair">Toca para abrir NectarLink y emparejar un PC</string>
     <string name="widget_pc_connected">Conectado</string>
     <string name="widget_pc_offline">Desconectado</string>
     <string name="widget_pc_waking">Despertando…</string>
     <string name="widget_pc_wake">Activar</string>
-    <string name="widget_pc_send_clip">Enviar portapapeles</string>
     <string name="widget_pc_ring">Hacer sonar el PC</string>
-    <string name="widget_pc_lock">Bloquear PC</string>
     <string name="widget_pc_ringing_toast">Haciendo sonar %1$s…</string>
     <string name="widget_pc_waking_toast">Despertando %1$s…</string>
 

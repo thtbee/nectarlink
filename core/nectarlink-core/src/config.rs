@@ -310,6 +310,19 @@ pub trait Platform: Send + Sync + 'static {
     /// The PC stopped watching: stop sharing the screen or app window.
     fn mirror_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32) {}
 
+    /// A paired PC asked to uninstall `pkg` (`mirror.apps.uninstall`, D349).
+    /// `Ok` once it's gone; `Err` (a reason for logs) when it can't.
+    fn app_uninstall_requested(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+        _pkg: &str,
+    ) -> Result<(), String> {
+        Err("this device doesn't uninstall apps".into())
+    }
+
+    /// A paired phone asked this PC to play its sound (`mirror.listen.ask`, #398).
+    fn phone_sound_asked(&self, _peer: &nectarlink_protocol::DeviceId) {}
+
     /// The PC's mouse or keyboard on this phone's mirrored screen or app
     /// window (checked, and only while it offers `mirror.input`, or
     /// `mirror.virtual_display` for app windows). Must return quickly.
@@ -344,13 +357,15 @@ pub trait Platform: Send + Sync + 'static {
     fn mirror_keyframe_requested(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32) {}
 
     /// The PC resized an app window (`session` != 0): resize its display and
-    /// restart its encoder at `width × height` pixels.
+    /// restart its encoder at `width × height` pixels, the app drawing at
+    /// `zoom` percent of the display's usual density.
     fn mirror_resize_requested(
         &self,
         _peer: &nectarlink_protocol::DeviceId,
         _session: u32,
         _width: u32,
         _height: u32,
+        _zoom: u32,
     ) {
     }
 
@@ -600,6 +615,29 @@ pub trait Platform: Send + Sync + 'static {
 
     /// The PC stopped listening to this phone's microphone: stop recording.
     fn mic_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
+
+    /// Where a call's sound from a phone goes on this PC (`call.audio`):
+    /// `Some` only while this PC asked that phone for it.
+    fn call_audio_sink(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+    ) -> Option<std::sync::Arc<dyn crate::MicSink>> {
+        None
+    }
+
+    /// A paired PC asked for call `call_id`'s sound: get ready to carry it,
+    /// then stream with [`Node::call_audio_open`](crate::Node::call_audio_open).
+    /// An error refuses (the phone can't reach the call's sound).
+    fn call_audio_requested(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+        _call_id: &str,
+    ) -> Result<(), String> {
+        Err("this device doesn't carry a call's sound".into())
+    }
+
+    /// The other side stopped the call's sound (`call.audio.stop`).
+    fn call_audio_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}
 
     /// The PC stopped using this phone's webcam: stop streaming.
     fn webcam_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId) {}

@@ -45,6 +45,8 @@ struct RecordingPlatform {
     watch_offers: Mutex<Vec<String>>,
     mic_asks: Mutex<Vec<String>>,
     mic: Arc<TestMicSink>,
+    call_audio_asks: Mutex<Vec<String>>,
+    call_audio: Arc<TestMicSink>,
     /// What a PC got of a phone's screen.
     screen: Arc<ScreenSink>,
     webcam_asks: Mutex<Vec<String>>,
@@ -172,6 +174,7 @@ impl Platform for RecordingPlatform {
         session: u32,
         width: u32,
         height: u32,
+        _zoom: u32,
     ) {
         self.mirror_asks.lock().unwrap().push(format!("resize {session} {width}x{height}"));
     }
@@ -198,6 +201,19 @@ impl Platform for RecordingPlatform {
     }
     fn mic_stop_requested(&self, _peer: &nectarlink_core::DeviceId) {
         self.mic_asks.lock().unwrap().push("stop".into());
+    }
+    fn call_audio_sink(
+        &self,
+        _peer: &nectarlink_core::DeviceId,
+    ) -> Option<Arc<dyn nectarlink_core::MicSink>> {
+        Some(self.call_audio.clone())
+    }
+    fn call_audio_requested(&self, _peer: &nectarlink_core::DeviceId, call_id: &str) -> Result<(), String> {
+        self.call_audio_asks.lock().unwrap().push(format!("start {call_id}"));
+        Ok(())
+    }
+    fn call_audio_stop_requested(&self, _peer: &nectarlink_core::DeviceId) {
+        self.call_audio_asks.lock().unwrap().push("stop".into());
     }
     fn webcam_sink(&self, _peer: &nectarlink_core::DeviceId) -> Option<Arc<dyn nectarlink_core::WebcamSink>> {
         self.webcam_asks.lock().unwrap().push("sink".into());
@@ -506,6 +522,9 @@ impl Platform for RecordingPlatform {
             .collect())
     }
     fn photo_delete(&self, ids: &[String]) -> Result<u32, String> {
+        if ids.iter().any(|id| id == "overcount") {
+            return Ok(u32::MAX);
+        }
         Ok(ids.iter().filter(|id| id.as_str() != "gone").count() as u32)
     }
     fn photo_thumbs(&self, ids: &[String]) -> Result<Vec<nectarlink_core::PhotoThumb>, String> {
@@ -993,6 +1012,46 @@ async fn nearby_pairing_with_matching_codes() {
     assert_eq!(phone.node.paired_devices().unwrap().len(), 1);
 }
 
+/// The PC's pairing screen lists the phone too, and its Pair button starts
+/// the pairing from the PC's side. The phone takes it while its own pairing
+/// screen is open (the app makes it accept pairing then, as a PC does).
+#[tokio::test(flavor = "multi_thread")]
+async fn nearby_pairing_started_from_the_pc() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    // Both pairing screens are open: each device accepts pairing.
+    pc.node.pairing_start_qr().await.unwrap();
+    phone.node.pairing_start_qr().await.unwrap();
+    pc.node.add_known_addrs(phone_id, &phone.node.direct_addrs().await);
+
+    let initiator = pc.node.clone();
+    let task = tokio::spawn(async move { initiator.pairing_start_nearby(phone_id).await });
+    let (pc_code, phone_code) = (sas_code(&mut pc).await, sas_code(&mut phone).await);
+    assert_eq!(pc_code, phone_code, "both screens show the same code");
+    pc.node.pairing_confirm(true).unwrap();
+    phone.node.pairing_confirm(true).unwrap();
+    with_timeout("nearby pairing from the PC", task).await.unwrap().expect("pairing succeeds");
+
+    wait_online(&mut pc, phone_id).await;
+    assert_eq!(phone.node.paired_devices().unwrap().len(), 1);
+    assert_eq!(phone.node.paired_devices().unwrap()[0].id, pc_id);
+}
+
+/// A device that isn't accepting pairing refuses one started from the other
+/// side: what the phone did before its pairing screen accepted pairing.
+#[tokio::test(flavor = "multi_thread")]
+async fn nearby_pairing_is_refused_by_a_device_not_accepting_it() {
+    let pc = device("Desktop", DeviceKind::Desktop).await;
+    let phone = device("Pixel", DeviceKind::Phone).await;
+    let phone_id = phone.node.device_id();
+    pc.node.pairing_start_qr().await.unwrap();
+    pc.node.add_known_addrs(phone_id, &phone.node.direct_addrs().await);
+    let result = with_timeout("refused pairing", pc.node.pairing_start_nearby(phone_id)).await;
+    assert!(result.is_err(), "the phone isn't accepting pairing");
+    assert!(phone.node.paired_devices().unwrap().is_empty());
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn nearby_pairing_fails_if_either_user_declines() {
     let (mut pc, mut phone, _) = start_nearby_setup().await;
@@ -1081,6 +1140,100 @@ async fn unpairing_is_mirrored_on_the_other_device() {
     assert!(pc.node.paired_devices().unwrap().is_empty());
     assert!(phone.node.paired_devices().unwrap().is_empty());
     assert!(matches!(pc.node.ring(phone_id, true).await, Err(Error::NotPaired)));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn qr_pairing_recovers_after_an_offline_unpair() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // The phone is offline when the PC forgets it, so it cannot receive pair.revoke.
+    phone.node.shutdown().await;
+    wait_for(&mut pc, "phone offline", |e| match e {
+        NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    with_timeout("offline unpair", pc.node.unpair(phone_id)).await.unwrap();
+    assert!(pc.node.paired_devices().unwrap().is_empty());
+
+    let TestDevice { node: old_node, dir, .. } = phone;
+    drop(old_node);
+    let mut phone = start_in(dir, "Pixel", DeviceKind::Phone).await;
+    assert_eq!(phone.node.device_id(), phone_id);
+    let stale = phone.node.paired_devices().unwrap();
+    assert_eq!(stale.len(), 1);
+    assert_eq!(stale[0].id, pc_id);
+
+    // Explicit pairing must work even with a stale pairing on the joining device.
+    pair_qr(&mut pc, &mut phone).await;
+    let pc_peers = pc.node.paired_devices().unwrap();
+    let phone_peers = phone.node.paired_devices().unwrap();
+    assert_eq!(pc_peers.len(), 1);
+    assert_eq!(pc_peers[0].id, phone_id);
+    assert_eq!(phone_peers.len(), 1);
+    assert_eq!(phone_peers[0].id, pc_id);
+    with_timeout("ring after pairing again", pc.node.ring(phone_id, true)).await.unwrap();
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+/// Nearby pairing between two devices that were paired before (#404): once
+/// after a normal unpair, and once after an unpair the PC never heard about,
+/// so the PC still has the phone.
+#[tokio::test(flavor = "multi_thread")]
+async fn nearby_pairing_works_again_after_unpairing() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Unpaired from the phone while both are online: both forget.
+    with_timeout("unpair", phone.node.unpair(pc_id)).await.unwrap();
+    wait_for(&mut pc, "device removed", |e| match e {
+        NodeEvent::DeviceRemoved(id) if *id == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(pc.node.paired_devices().unwrap().is_empty());
+
+    nearby_pair(&mut pc, &mut phone).await;
+    with_timeout("ring after pairing again", pc.node.ring(phone_id, true)).await.unwrap();
+
+    // Unpaired on the phone while the PC is away: the PC keeps a stale pairing.
+    pc.node.shutdown().await;
+    let TestDevice { node: old_pc, dir, .. } = pc;
+    drop(old_pc);
+    with_timeout("offline unpair", phone.node.unpair(pc_id)).await.unwrap();
+    let mut pc = start_in(dir, "Desktop", DeviceKind::Desktop).await;
+    assert_eq!(pc.node.paired_devices().unwrap().len(), 1, "the PC still has the phone");
+
+    nearby_pair(&mut pc, &mut phone).await;
+    assert_eq!(pc.node.paired_devices().unwrap().len(), 1);
+    assert_eq!(phone.node.paired_devices().unwrap().len(), 1);
+    with_timeout("ring after the stale pairing", pc.node.ring(phone_id, true)).await.unwrap();
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+/// The PC shows its pairing screen, the phone picks it, both confirm.
+async fn nearby_pair(pc: &mut TestDevice, phone: &mut TestDevice) {
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    pc.node.pairing_start_qr().await.unwrap();
+    phone.node.add_known_addrs(pc_id, &pc.node.direct_addrs().await);
+    let initiator = phone.node.clone();
+    let task = tokio::spawn(async move { initiator.pairing_start_nearby(pc_id).await });
+    let (phone_code, pc_code) = (sas_code(phone).await, sas_code(pc).await);
+    assert_eq!(phone_code, pc_code);
+    phone.node.pairing_confirm(true).unwrap();
+    pc.node.pairing_confirm(true).unwrap();
+    with_timeout("nearby pairing", task).await.unwrap().expect("pairing succeeds");
+    wait_online(phone, pc_id).await;
+    wait_online(pc, phone_id).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1213,12 +1366,16 @@ async fn a_phone_stopped_and_started_again_in_the_same_process_reconnects() {
     }
 }
 
-/// A phone that refuses the PC's taps (Xiaomi without USB debugging (Security
-/// settings)) says so, and the PC hears which window it's about.
+/// Input and capture failures reach the viewer with their session and code.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_phone_that_refuses_taps_tells_the_pc() {
+async fn mirror_notices_reach_the_viewer_on_both_platforms() {
     let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::MIRROR_VIEW]).await;
-    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::MIRROR_CAPTURE]).await;
+    let mut phone = device_with(
+        "Pixel",
+        DeviceKind::Phone,
+        &[nectarlink_core::MIRROR_CAPTURE, nectarlink_core::MIRROR_VIEW],
+    )
+    .await;
     pair_qr(&mut pc, &mut phone).await;
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
     with_timeout("notice", phone.node.mirror_notice(pc_id, 2, nectarlink_core::MIRROR_NOTICE_INPUT_BLOCKED))
@@ -1230,6 +1387,26 @@ async fn a_phone_that_refuses_taps_tells_the_pc() {
     })
     .await;
     assert_eq!((device, session, code.as_str()), (phone_id, 2, nectarlink_core::MIRROR_NOTICE_INPUT_BLOCKED));
+
+    with_timeout(
+        "PC capture failure",
+        pc.node.mirror_notice(
+            phone_id,
+            nectarlink_core::MIRROR_SCREEN,
+            nectarlink_core::MIRROR_NOTICE_PC_CAPTURE_FAILED,
+        ),
+    )
+    .await
+    .unwrap();
+    let (device, session, code) = wait_for(&mut phone, "the notice", |e| match e {
+        NodeEvent::MirrorNotice { device, session, code } => Some((*device, *session, code.clone())),
+        _ => None,
+    })
+    .await;
+    assert_eq!(
+        (device, session, code.as_str()),
+        (pc_id, nectarlink_core::MIRROR_SCREEN, nectarlink_core::MIRROR_NOTICE_PC_CAPTURE_FAILED)
+    );
 }
 
 /// Each packet is reported back to the sender, and well past what a device
@@ -1964,28 +2141,40 @@ async fn phones_lock_pcs_and_links_open_on_either_side() {
 
     with_timeout("lock", phone.node.pc_power(pc_id, PowerAction::Lock)).await.expect("locked");
     with_timeout("sleep", phone.node.pc_power(pc_id, PowerAction::Sleep)).await.expect("asleep");
-    // A PC that can't hibernate (turned off there) isn't asked to.
+    // A PC that can't hibernate (turned off there), or doesn't offer shutting
+    // down (a Mac), isn't asked to.
     let refused = phone.node.pc_power(pc_id, PowerAction::Hibernate).await;
     assert!(matches!(refused, Err(Error::Unsupported)), "{refused:?}");
+    let refused = phone.node.pc_power(pc_id, PowerAction::Shutdown).await;
+    assert!(matches!(refused, Err(Error::Unsupported)), "{refused:?}");
     pc.node
-        .update_power(PowerLevel::Basic, vec!["pc.power".into(), nectarlink_core::PC_HIBERNATE.into()])
+        .update_power(
+            PowerLevel::Basic,
+            vec![
+                "pc.power".into(),
+                nectarlink_core::PC_HIBERNATE.into(),
+                nectarlink_core::PC_SHUTDOWN.into(),
+            ],
+        )
         .await;
-    let deadline = tokio::time::Instant::now() + WAIT;
-    loop {
-        match phone.node.pc_power(pc_id, PowerAction::Hibernate).await {
-            Ok(()) => break,
-            Err(Error::Unsupported) if tokio::time::Instant::now() < deadline => {
-                tokio::time::sleep(Duration::from_millis(50)).await
+    for action in [PowerAction::Hibernate, PowerAction::Shutdown] {
+        let deadline = tokio::time::Instant::now() + WAIT;
+        loop {
+            match phone.node.pc_power(pc_id, action).await {
+                Ok(()) => break,
+                Err(Error::Unsupported) if tokio::time::Instant::now() < deadline => {
+                    tokio::time::sleep(Duration::from_millis(50)).await
+                }
+                Err(e) => panic!("didn't {}: {e}", action.as_str()),
             }
-            Err(e) => panic!("didn't hibernate: {e}"),
         }
     }
-    // The PC answers first and acts a moment later: sleep and hibernate after
-    // the same pause, so in either order.
+    // The PC answers first and acts a moment later: sleep, hibernate and
+    // shutdown after the same pause, so in any order.
     tokio::time::sleep(Duration::from_millis(800)).await;
     let mut done: Vec<_> = pc.platform.power.lock().unwrap().iter().map(|a| a.as_str()).collect();
     done.sort_unstable();
-    assert_eq!(done, ["hibernate", "lock", "sleep"]);
+    assert_eq!(done, ["hibernate", "lock", "shutdown", "sleep"]);
 
     // A phone doesn't lock or sleep on request.
     let phone_power = pc.node.pc_power(phone_id, PowerAction::Lock).await;
@@ -2511,9 +2700,10 @@ async fn phone_apps_open_in_windows_of_their_own() {
     })
     .await;
     assert_eq!(session, 7);
-    assert!(matches!(pc.node.mirror_resize(phone_id, 0, 800, 600).await, Err(Error::Protocol(_))));
-    assert!(matches!(pc.node.mirror_resize(phone_id, 7, 10, 600).await, Err(Error::Protocol(_))));
-    pc.node.mirror_resize(phone_id, 7, 1024, 768).await.unwrap();
+    assert!(matches!(pc.node.mirror_resize(phone_id, 0, 800, 600, 100).await, Err(Error::Protocol(_))));
+    assert!(matches!(pc.node.mirror_resize(phone_id, 7, 10, 600, 100).await, Err(Error::Protocol(_))));
+    assert!(matches!(pc.node.mirror_resize(phone_id, 7, 1024, 768, 400).await, Err(Error::Protocol(_))));
+    pc.node.mirror_resize(phone_id, 7, 1024, 768, 100).await.unwrap();
     pc.node.mirror_input(phone_id, 7, MirrorInput::Key { key: "back".into() }).await.unwrap();
     pc.node.mirror_keyframe(phone_id, 7).await;
     pc.node.mirror_stop(phone_id, 7).await;
@@ -3066,6 +3256,12 @@ async fn gallery_albums_paging_thumbs_download_and_toggles() {
     // Deleting asks the phone and reports how many went; nonsense IDs never leave the PC.
     let ids = vec!["media:4".to_owned(), "gone".to_owned(), "../bad id".to_owned()];
     assert_eq!(pc.node.photos_delete(phone_id, ids).await.unwrap(), 1);
+    // A larger selection is split into batches and their counts are added.
+    let ids = (0..50).map(|i| format!("media:{i}")).collect();
+    assert_eq!(pc.node.photos_delete(phone_id, ids).await.unwrap(), 50);
+    // A peer cannot report more deleted items than were requested.
+    let result = pc.node.photos_delete(phone_id, vec!["overcount".into()]).await;
+    assert!(matches!(result, Err(Error::Protocol(msg)) if msg == "invalid photo delete count"));
     // Batch thumbnails (oversized or missing ones are skipped without failing the batch).
     let thumbs = with_timeout(
         "thumbs",
@@ -3540,10 +3736,7 @@ async fn wake_relay_is_only_for_a_paired_pcs_own_address() {
     let mut pc = device_with("Desktop", DeviceKind::Desktop, &[PC_WAKE]).await;
     let mut phone = device("Pixel", DeviceKind::Phone).await;
     pc.node
-        .set_wake_info(PcWakeInfo {
-            macs: vec!["00:00:5E:00:53:01".into()],
-            broadcasts: vec!["127.255.255.255".into()],
-        })
+        .set_wake_info(PcWakeInfo { macs: vec!["00:00:5E:00:53:01".into()], broadcasts: Vec::new() })
         .await;
     pair_qr(&mut pc, &mut phone).await;
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
@@ -3552,19 +3745,22 @@ async fn wake_relay_is_only_for_a_paired_pcs_own_address() {
         _ => None,
     })
     .await;
-    let loopback = Some(std::net::Ipv4Addr::new(127, 255, 255, 255));
-
-    // The PC's own address: the phone relays it.
-    with_timeout(
+    // A paired PC's own address is authorized. The global broadcast can
+    // still fail on a runner without a broadcast-capable network interface.
+    let own = with_timeout(
         "relay own",
-        pc.node.wake_via_relay(&phone_id, [0x00, 0x00, 0x5e, 0x00, 0x53, 0x01], loopback),
+        pc.node.wake_via_relay(&phone_id, [0x00, 0x00, 0x5e, 0x00, 0x53, 0x01], None),
     )
-    .await
-    .expect("a paired PC's own address is relayed");
-    // Any other address: refused.
+    .await;
+    match own {
+        Ok(()) => {}
+        Err(Error::Protocol(msg)) => assert_eq!(msg, "INTERNAL: couldn't send Wake-on-LAN packet"),
+        other => panic!("unexpected result for a paired PC's own address: {other:?}"),
+    }
+    // Any other address: refused, regardless of whether broadcasting works.
     let other = with_timeout(
         "relay other",
-        pc.node.wake_via_relay(&phone_id, [0x02, 0x11, 0x22, 0x33, 0x44, 0x55], loopback),
+        pc.node.wake_via_relay(&phone_id, [0x02, 0x11, 0x22, 0x33, 0x44, 0x55], None),
     )
     .await;
     assert!(matches!(other, Err(Error::Denied)), "{other:?}");
@@ -7040,6 +7236,101 @@ async fn play_on_phone_needs_a_phone_that_can_watch() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn a_calls_sound_moves_to_the_pc_and_back() {
+    use nectarlink_core::{CallState, MirrorAudioConfig, MirrorSend, PacketKind};
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::CALLS_SHOW]).await;
+    let mut phone = device_with(
+        "Pixel",
+        DeviceKind::Phone,
+        &[nectarlink_core::CALLS_STATE, nectarlink_core::CALLS_CONTROL, nectarlink_core::CALLS_AUDIO],
+    )
+    .await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let call = CallState {
+        id: "c1".into(),
+        state: "ringing".into(),
+        incoming: true,
+        number: None,
+        name: None,
+        photo: None,
+        missed: false,
+        since: None,
+        controls: None,
+    };
+
+    // Only a call in progress: not a ringing one, not another.
+    phone.node.call_changed(call.clone()).await.unwrap();
+    let ringing = pc.node.call_audio_start(phone_id, "c1".into()).await;
+    assert!(matches!(ringing, Err(Error::NotFound)), "{ringing:?}");
+    phone.node.call_changed(CallState { state: "active".into(), ..call.clone() }).await.unwrap();
+    let other = pc.node.call_audio_start(phone_id, "c0".into()).await;
+    assert!(matches!(other, Err(Error::NotFound)), "{other:?}");
+    with_timeout("call_audio_start", pc.node.call_audio_start(phone_id, "c1".into())).await.unwrap();
+    assert_eq!(*phone.platform.call_audio_asks.lock().unwrap(), ["start c1"]);
+
+    let config = MirrorAudioConfig { codec: nectarlink_core::MIRROR_PCM.into(), rate: 16_000, channels: 1 };
+    async fn send(
+        stream: nectarlink_core::MirrorStream,
+        config: &MirrorAudioConfig,
+    ) -> Arc<nectarlink_core::MirrorStream> {
+        let stream = Arc::new(stream);
+        let (sender, config) = (stream.clone(), config.to_cbor());
+        let sent = tokio::task::spawn_blocking(move || {
+            [
+                sender.send(PacketKind::Config, 0, config),
+                sender.send(PacketKind::Frame, 20_000, vec![7u8; 640]),
+            ]
+        })
+        .await
+        .unwrap();
+        assert!(sent.iter().all(|s| *s == MirrorSend::Queued), "{sent:?}");
+        stream
+    }
+
+    // The other party, phone to PC.
+    let down = with_timeout("downlink", phone.node.call_audio_open(pc_id, false)).await.unwrap();
+    let _down = send(down, &config).await;
+    let deadline = std::time::Instant::now() + WAIT;
+    while pc.platform.call_audio.got.lock().unwrap().len() < 2 {
+        assert!(std::time::Instant::now() < deadline, "{:?}", pc.platform.call_audio.got.lock().unwrap());
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(pc.platform.call_audio.got.lock().unwrap()[..2], ["config 16000 Hz x1", "audio 640"]);
+
+    // The PC's microphone, PC to phone.
+    let up = with_timeout("uplink", pc.node.call_audio_open(phone_id, true)).await.unwrap();
+    let _up = send(up, &config).await;
+    let pcm = wait_for(&mut phone, "uplink", |e| match e {
+        NodeEvent::CallAudioUplink { device, pcm } if *device == pc_id => Some(pcm.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(pcm, vec![7u8; 640]);
+
+    // The PC stops: the phone is told.
+    pc.node.call_audio_stop(phone_id).await;
+    let deadline = std::time::Instant::now() + WAIT;
+    while !phone.platform.call_audio_asks.lock().unwrap().contains(&"stop".to_owned()) {
+        assert!(std::time::Instant::now() < deadline, "the phone wasn't told to stop");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+
+    // With the call's sound (or calls) off for the PC on the phone, the PC's ask is refused.
+    phone.node.set_device_toggle(pc_id, "call_audio", false).unwrap();
+    let off = pc.node.call_audio_start(phone_id, "c1".into()).await;
+    assert!(matches!(off, Err(Error::Denied)), "{off:?}");
+    phone.node.set_device_toggle(pc_id, "call_audio", true).unwrap();
+    phone.node.set_device_toggle(pc_id, "calls", false).unwrap();
+    let off = pc.node.call_audio_start(phone_id, "c1".into()).await;
+    assert!(matches!(off, Err(Error::Denied)), "{off:?}");
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn a_phone_streams_its_microphone_when_its_user_agrees() {
     use nectarlink_core::{MIC_LISTEN, MIC_STREAM, MirrorAudioConfig, MirrorSend, PacketKind};
 
@@ -7568,4 +7859,36 @@ async fn spoofed_usb_hello_is_not_trusted_without_matching_quic_identity() {
     server_task.abort();
     pc.node.shutdown().await;
     phone.node.shutdown().await;
+}
+
+/// `pc_active` quiets the phone's own notification sounds because the PC
+/// shows them: where either side has notifications off, it doesn't (#384).
+#[tokio::test]
+async fn pc_active_needs_notifications_on_both_sides() {
+    use nectarlink_core::{PhoneToggleValue, TOGGLES_READ, toggle_ids};
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[TOGGLES_READ]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let node = pc.node.clone();
+    let send = || node.set_phone_toggle(phone_id, toggle_ids::PC_ACTIVE.into(), PhoneToggleValue::Bool(true));
+
+    with_timeout("pc active", send()).await.unwrap();
+    pc.node.set_device_toggle(phone_id, "notifications", false).unwrap();
+    with_timeout("pc active, its notifications off", send()).await.unwrap();
+    pc.node.set_device_toggle(phone_id, "notifications", true).unwrap();
+    phone.node.set_device_toggle(pc_id, "notifications", false).unwrap();
+    with_timeout("pc active, the phone's notifications off", send()).await.unwrap();
+
+    let recorded = phone.platform.phone_toggles.lock().unwrap().clone();
+    let pc_active = toggle_ids::PC_ACTIVE.to_owned();
+    assert_eq!(
+        recorded,
+        vec![
+            (pc_active.clone(), PhoneToggleValue::Bool(true)),
+            (pc_active.clone(), PhoneToggleValue::Bool(false)),
+            (pc_active, PhoneToggleValue::Bool(false)),
+        ]
+    );
 }

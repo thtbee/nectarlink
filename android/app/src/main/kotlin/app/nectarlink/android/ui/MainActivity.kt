@@ -233,6 +233,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        Preferences.applyHideFromRecents(this, Preferences.isHideFromRecents(this))
         // Back from Settings, maybe with notification access changed.
         val app = application as NectarlinkApplication
         if (app.core.state.value.status is CoreStatus.Ready) {
@@ -821,6 +822,8 @@ private fun App(
                     val touchpadSensitivity by preferences.touchpadSensitivity.collectAsStateWithLifecycle()
                     val suggestClipboardActions by preferences.suggestClipboardActions.collectAsStateWithLifecycle()
                     val volumeKeysControlPc by preferences.volumeKeysControlPc.collectAsStateWithLifecycle()
+                    val quietWhileUsingPc by preferences.quietWhileUsingPc.collectAsStateWithLifecycle()
+                    val hideFromRecents by preferences.hideFromRecents.collectAsStateWithLifecycle()
                     val backgroundServiceEnabled by preferences.backgroundServiceEnabled.collectAsStateWithLifecycle()
                     val startWithoutAsking by app.nectarlink.android.service.PcAutoStart.pcs(context).collectAsStateWithLifecycle()
                     val hiveInviteShown by preferences.hiveInviteShown.collectAsStateWithLifecycle()
@@ -865,6 +868,8 @@ private fun App(
                                     onRefresh = core::refresh,
                                     onPower = core::pcPower,
                                     onHibernate = core::pcHibernate,
+                                    onShutdown = core::pcShutdown,
+                                    onPhoneSoundOnPc = core::askPcForPhoneSound,
                                     onWake = core::wake,
                                     onSetReconnect = core::setReconnect,
                                     onRemote = { id ->
@@ -1003,6 +1008,10 @@ private fun App(
                                     onSetSuggestClipboardActions = preferences::updateSuggestClipboardActions,
                                     volumeKeysControlPc = volumeKeysControlPc,
                                     onSetVolumeKeysControlPc = preferences::updateVolumeKeysControlPc,
+                                    quietWhileUsingPc = quietWhileUsingPc,
+                                    onSetQuietWhileUsingPc = preferences::updateQuietWhileUsingPc,
+                                    hideFromRecents = hideFromRecents,
+                                    onSetHideFromRecents = preferences::updateHideFromRecents,
                                     backgroundServiceEnabled = backgroundServiceEnabled,
                                     onToggleBackgroundService = { enabled ->
                                         preferences.updateBackgroundServiceEnabled(enabled)

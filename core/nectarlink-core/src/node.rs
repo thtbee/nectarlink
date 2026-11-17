@@ -180,6 +180,9 @@ pub(crate) struct Shared {
     /// The last capability matrix emitted per device, to emit only changes.
     matrices: Mutex<HashMap<DeviceId, CapabilityMatrix>>,
     pub(crate) away_mode: std::sync::atomic::AtomicBool,
+    /// Whether this device has a network a paired device could be on: Wi-Fi,
+    /// Ethernet or a VPN (#397). True unless the platform says otherwise.
+    local_network: std::sync::atomic::AtomicBool,
     relay_settings: Mutex<RelaySettings>,
     relay_map: RelayMap,
     #[cfg(target_os = "linux")]
@@ -214,6 +217,8 @@ pub(crate) struct Shared {
     pub(crate) webcam_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
     /// Stop signals for phone microphone streams arriving here, by phone.
     pub(crate) mic_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
+    /// Stop signals for a call's sound arriving here, by peer.
+    pub(crate) call_audio_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
     /// Per-peer rate limiters and prompt state for remote input.
     pub(crate) remote: Mutex<crate::remote::RemoteState>,
     /// Per-peer prompt state and open folders for the storage service.
@@ -355,6 +360,17 @@ impl Shared {
         if self.store.update_timeline_duration(row_id, duration_secs.max(1)).unwrap_or(false) {
             self.emit(NodeEvent::TimelineChanged);
         }
+    }
+
+    /// No Wi-Fi, Ethernet or VPN, and no mobile data allowed: nothing a dial
+    /// could reach, so reconnecting waits instead of trying every two minutes
+    /// (#397). A cable to the PC still counts.
+    pub(crate) fn nothing_to_dial(&self, peer: &DeviceId) -> bool {
+        use std::sync::atomic::Ordering::Relaxed;
+        !self.local_network.load(Relaxed)
+            && !self.away_mode.load(Relaxed)
+            && self.usb_peer_addr(peer).is_none()
+            && !self.usb_tunnel_inbound(peer)
     }
 
     pub(crate) fn nudge_reconnect(&self) {
@@ -1639,9 +1655,9 @@ async fn maintain(shared: Weak<Shared>, peer: DeviceId, wake: Arc<Notify>, cance
         if cancel.is_cancelled() {
             return;
         }
-        // Reconnecting is off for this device: don't dial until the user
-        // turns it back on (which wakes this loop).
-        if node.session(&peer).is_none() && !node.reconnects(&peer) {
+        // Reconnecting is off for this device, or there's no network it could
+        // be on: don't dial until that changes (which wakes this loop).
+        if node.session(&peer).is_none() && (!node.reconnects(&peer) || node.nothing_to_dial(&peer)) {
             drop(node);
             tokio::select! {
                 _ = wake.notified() => {}
@@ -1933,6 +1949,7 @@ impl Node {
             dial_failures: Mutex::new(HashMap::new()),
             matrices: Mutex::new(HashMap::new()),
             away_mode: std::sync::atomic::AtomicBool::new(config.away_mode),
+            local_network: std::sync::atomic::AtomicBool::new(true),
             relay_settings: Mutex::new(relay_settings),
             relay_map,
             #[cfg(target_os = "linux")]
@@ -1953,6 +1970,7 @@ impl Node {
             watch_offers: Mutex::new(HashMap::new()),
             webcam_stops: Mutex::new(HashMap::new()),
             mic_stops: Mutex::new(HashMap::new()),
+            call_audio_stops: Mutex::new(HashMap::new()),
             remote: Mutex::new(Default::default()),
             storage: Mutex::new(Default::default()),
             clipboard_history,
@@ -2093,12 +2111,29 @@ impl Node {
         Ok(true)
     }
 
+    /// Tells the core whether this device has Wi-Fi, Ethernet or a VPN (#397).
+    /// Without any, and with mobile data off ([`Node::set_away_mode`]), paired
+    /// devices aren't dialed until one comes back.
+    pub fn set_local_network(&self, available: bool) {
+        let was = self.shared.local_network.swap(available, std::sync::atomic::Ordering::Relaxed);
+        if was != available {
+            tracing::info!(available, "local network");
+            if available {
+                self.shared.nudge_reconnect();
+            }
+        }
+    }
+
     /// Enables or disables connecting over mobile data / non-LAN paths at runtime.
     pub fn set_away_mode(&self, enabled: bool) {
         let was = self.shared.away_mode.swap(enabled, std::sync::atomic::Ordering::Relaxed);
         if was != enabled {
             let shared = self.shared.clone();
             self.shared.runtime.spawn(async move { apply_internet_services(&shared).await });
+            // Dialing may have waited for a local network (#397).
+            if enabled {
+                self.shared.nudge_reconnect();
+            }
         }
         if !enabled {
             for session in self.shared.live_sessions() {
@@ -2482,6 +2517,17 @@ impl Node {
                     for s in sessions_to_stop {
                         let _ = crate::mirror::stop(&session, s).await;
                     }
+                });
+            }
+        }
+        // Calls or their sound turned off: a call sounding on the other device comes back.
+        if (toggle == crate::call_audio::TOGGLE || toggle == crate::calls::TOGGLE) && !enabled {
+            self.shared.stop_call_audio(&peer);
+            let platform = self.shared.platform.clone();
+            drop(self.shared.runtime.spawn_blocking(move || platform.call_audio_stop_requested(&peer)));
+            if let Some(session) = self.shared.session(&peer) {
+                self.shared.runtime.spawn(async move {
+                    let _ = crate::call_audio::stop(&session).await;
                 });
             }
         }
@@ -3140,10 +3186,18 @@ impl Node {
         }
     }
 
-    /// Resizes an app window's display (`mirroring` != 0) on a phone.
-    pub async fn mirror_resize(&self, peer: DeviceId, mirroring: u32, width: u32, height: u32) -> Result<()> {
+    /// Resizes an app window's display (`mirroring` != 0) on a phone; the app
+    /// draws at `zoom` percent of its usual size (100: as it is).
+    pub async fn mirror_resize(
+        &self,
+        peer: DeviceId,
+        mirroring: u32,
+        width: u32,
+        height: u32,
+        zoom: u32,
+    ) -> Result<()> {
         let session = self.connected(&peer)?;
-        crate::mirror::resize(&self.shared, &session, mirroring, width, height).await
+        crate::mirror::resize(&self.shared, &session, mirroring, width, height, zoom).await
     }
 
     /// Updates `stay_awake` and `screen_off` while mirroring a phone's screen (`session == 0`).
@@ -3169,14 +3223,42 @@ impl Node {
         crate::mirror::input(&self.shared, &session, mirroring, input).await
     }
 
-    /// Tells a PC something about its mirroring, by `code` (`mirror.notice`):
-    /// say, that this phone refuses its taps.
+    /// Sends a mirroring status to the viewer, by `code` (`mirror.notice`).
+    /// Asks a paired PC to play this phone's sound (#398); only one that
+    /// offers `mirror.listen.ask`. The PC then starts it as usual.
+    pub async fn ask_pc_for_phone_sound(&self, pc: DeviceId) -> Result<()> {
+        let session = self.connected(&pc)?;
+        if !self.shared.offers(&pc, nectarlink_protocol::messages::mirror::LISTEN_ASK)? {
+            return Err(Error::Unsupported);
+        }
+        let env = Envelope::empty(types::MIRROR_LISTEN_ASK);
+        session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect(types::OK)?;
+        Ok(())
+    }
+
     pub async fn mirror_notice(&self, peer: DeviceId, mirroring: u32, code: &str) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::mirror::notice(&session, mirroring, code).await
     }
 
     /// The apps a phone can open in windows of their own (Elevated), by name.
+    /// Asks a phone to uninstall `pkg` (D349); only one that offers
+    /// `mirror.apps.uninstall`. `Ok` once the phone says it's gone.
+    pub async fn uninstall_phone_app(&self, phone: DeviceId, pkg: String) -> Result<()> {
+        let session = self.connected(&phone)?;
+        if !self.shared.offers(&phone, nectarlink_protocol::messages::mirror::APP_UNINSTALL)? {
+            return Err(Error::Unsupported);
+        }
+        let body = nectarlink_protocol::messages::AppUninstall { pkg };
+        if !body.is_valid() {
+            return Err(Error::Protocol("not an app".into()));
+        }
+        let env = Envelope::new(types::MIRROR_APP_UNINSTALL, &body)?;
+        // The phone waits for the app to be gone before it answers.
+        session.request(env, Duration::from_secs(20)).await?.expect(types::OK)?;
+        Ok(())
+    }
+
     pub async fn mirror_apps(&self, peer: DeviceId) -> Result<Vec<crate::PhoneApp>> {
         let session = self.connected(&peer)?;
         crate::mirror::apps(&self.shared, &session).await
@@ -3337,6 +3419,31 @@ impl Node {
     pub async fn mic_open(&self, peer: DeviceId) -> Result<crate::MirrorStream> {
         let session = self.connected(&peer)?;
         crate::mic::open(&self.shared, &session).await
+    }
+
+    // ---- A call's sound on a PC (docs/protocol/calls.md §2.6) ----
+
+    /// Asks `phone` to carry call `call_id`'s sound to this PC. The other
+    /// party then arrives through [`Platform::call_audio_sink`](crate::Platform::call_audio_sink);
+    /// send this PC's microphone with [`Node::call_audio_open`].
+    pub async fn call_audio_start(&self, phone: DeviceId, call_id: String) -> Result<()> {
+        let session = self.connected(&phone)?;
+        crate::call_audio::start(&self.shared, &session, call_id).await
+    }
+
+    /// Stops a call's sound with `peer` (either side) and tells `peer`.
+    pub async fn call_audio_stop(&self, peer: DeviceId) {
+        self.shared.stop_call_audio(&peer);
+        if let Ok(session) = self.connected(&peer) {
+            let _ = crate::call_audio::stop(&session).await;
+        }
+    }
+
+    /// Opens this device's side of a call's sound with `peer`: the PC's
+    /// microphone (`uplink`) or the phone's other party (`downlink`).
+    pub async fn call_audio_open(&self, peer: DeviceId, uplink: bool) -> Result<crate::MirrorStream> {
+        let session = self.connected(&peer)?;
+        crate::call_audio::open(&self.shared, &session, uplink).await
     }
 
     // ---- Continuity Camera (docs/protocol/v0.md §Continuity Camera) ----

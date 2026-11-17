@@ -20,6 +20,7 @@ import app.nectarlink.android.files.TransferNotifications
 import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.notifications.PcNotificationPoster
+import app.nectarlink.android.calls.CallAudioService
 import app.nectarlink.android.calls.CallCompanion
 import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.companion.PcCompanion
@@ -302,11 +303,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val accent = AccentMonitor(this.context) { seed ->
         node?.let { scope.launch { runCatching { it.updateAccent(seed) } } }
     }
-    private val network = NetworkMonitor(this.context) {
+    private val network: NetworkMonitor = NetworkMonitor(this.context) {
         // Network callbacks come in bursts; tell the core once they settle.
         networkChange?.cancel()
         networkChange = scope.launch {
             delay(150)
+            // No Wi-Fi, Ethernet or VPN: the core stops dialing PCs until there is (#397).
+            node?.setLocalNetwork(network.hasLocalNetwork())
             if (lastSignal.wifiBars != null || _state.value.awayMode) {
                 node?.networkChanged()
             }
@@ -387,6 +390,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     private val _pcMirrorConfig = MutableStateFlow<PcMirrorConfigState?>(null)
     val pcMirrorConfig: StateFlow<PcMirrorConfigState?> = _pcMirrorConfig.asStateFlow()
+    private val _pcMirrorCaptureFailed = MutableStateFlow<String?>(null)
+    val pcMirrorCaptureFailed: StateFlow<String?> = _pcMirrorCaptureFailed.asStateFlow()
 
     @Volatile private var lastPcMirrorKeyframe: PcMirrorPacket? = null
 
@@ -441,6 +446,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 node = started
                 isRunning = true
             }
+            runCatching { started.setLocalNetwork(network.hasLocalNetwork()) }
             val devices = runCatching { started.pairedDevices() }.getOrDefault(emptyList())
             val pcToggles = perPcToggles(started, devices.map { it.id })
             val clipHistEnabled = runCatching { started.clipboardHistoryEnabled() }.getOrDefault(true)
@@ -485,7 +491,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             NotificationListener.instance?.refreshActive()
             refreshDataRetention()
             app.nectarlink.android.clipboard.DirectShareTargets.sync(context, _state.value.devices)
-            app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context, _state.value)
+            app.nectarlink.android.widget.Widgets.refreshAll(context, _state.value)
             currentRunScope.launch(Dispatchers.IO) {
                 // A rename in Android's settings reaches the PCs right away,
                 // not at the next start (#87).
@@ -515,8 +521,21 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     .collect {
                         val s = _state.value
                         app.nectarlink.android.clipboard.DirectShareTargets.sync(context, s.devices)
-                        app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context, s)
+                        app.nectarlink.android.widget.Widgets.refreshAll(context, s)
                     }
+            }
+            currentRunScope.launch(Dispatchers.IO) {
+                // The widgets also show a PC's battery, the last clip and the last file a PC sent.
+                _state
+                    .map { s ->
+                        listOf(
+                            s.devices.map { d -> listOf(d.battery?.level, d.battery?.charging) },
+                            s.clipboardHistory.filter { it.incoming }.maxByOrNull { it.timestamp }?.id,
+                            s.timeline.firstOrNull { it.incoming }?.id,
+                        )
+                    }
+                    .distinctUntilChanged()
+                    .collect { app.nectarlink.android.widget.Widgets.refreshAll(context, _state.value) }
             }
             currentRunScope.launch(Dispatchers.Default) {
                 // The volume buttons reach a PC whose volume this phone may set.
@@ -540,7 +559,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     .collect {
                         if (!first) delay(120L)
                         first = false
-                        app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context, _state.value)
+                        app.nectarlink.android.widget.Widgets.refreshAll(context, _state.value)
                     }
             }
             val initialInputEnabled = InputService.running || InputService.enabled(context)
@@ -661,7 +680,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 wakeTimers.clear()
 
                 _state.update { it.withDevicesOffline().copy(status = CoreStatus.Starting) }
-                app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context, _state.value)
+                app.nectarlink.android.widget.Widgets.refreshAll(context, _state.value)
             }
         }
     }
@@ -853,6 +872,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 event.pcm,
                 event.device,
             )
+            is Event.CallAudioUplink -> CallAudioService.uplink(event.device, event.pcm)
             is Event.PcMirrorConfig -> {
                 _pcMirrorConfig.value = PcMirrorConfigState(
                     pcId = event.id,
@@ -880,6 +900,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 if (lastPcMirrorKeyframe?.pcId == event.id) {
                     lastPcMirrorKeyframe = null
                 }
+            }
+            is Event.PcMirrorCaptureFailed -> {
+                _pcMirrorCaptureFailed.value = event.id
             }
             // A PC that's gone isn't playing for this phone anymore; it
             // sends what plays when it's back.
@@ -929,6 +952,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 if (noDevicesRemaining) ConnectionService.stop(context)
             }
             is Event.Paired -> ConnectionService.start(context)
+            // Accepting pairing lapses after a while; renewed quietly while the screen stays open.
+            is Event.PairingFailed -> if (event.failure == PairingFailure.Expired && pairingScreenOpen) {
+                scope.launch(discoveryPace) { if (pairingScreenOpen) acceptPairing(true) }
+            }
             is Event.ClipboardReceived -> scope.launch(Dispatchers.IO) { onClipboardReceived(event.id) }
             is Event.ClipboardHistoryChanged -> scope.launch(Dispatchers.IO) {
                 refreshClipboardHistory()
@@ -1184,6 +1211,22 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     /** Stops this phone's microphone stream to [pcId] and tells the PC. */
     fun micStop(pcId: String) {
         command { it.micStop(pcId) }
+    }
+
+    /** Opens the call's other party to [pcId] (`call.audio`); null if the link is gone. */
+    suspend fun callAudioOpen(pcId: String): MirrorStream? {
+        val node = node ?: return null
+        return try {
+            node.callAudioOpen(pcId)
+        } catch (e: NectarlinkException) {
+            Log.w(TAG, "can't send the call's sound", e)
+            null
+        }
+    }
+
+    /** Gives the call's sound back to this phone and tells [pcId]. */
+    fun callAudioStop(pcId: String) {
+        command { it.callAudioStop(pcId) }
     }
 
     /** The PC's request for the microphone is answered or withdrawn: take it off Home and the shade. */
@@ -1976,6 +2019,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneCalls.canFollow(context)) listOf("call.state") else emptyList()) +
             (if (PhoneCalls.canControl(context)) listOf("call.control") else emptyList()) +
             (if (PhoneCalls.canControl(context) && CallCompanion.allowed(context)) listOf("call.incall") else emptyList()) +
+            // A call's sound on the PC: only where the Elevated helper found it can reach it
+            // (Android 13+ and the phone's audio HAL), so PCs show no button that can't work.
+            (if (PhoneCalls.canControl(context) && Elevated.running && Elevated.callAudioSupported) {
+                listOf("call.audio")
+            } else {
+                emptyList()
+            }) +
             (if (PhoneCalls.canReadLog(context)) listOf("call.log") else emptyList()) +
             (if (PhoneCalls.canDial(context)) listOf("call.dial") else emptyList()) +
             (if (PhoneCalls.canListSims(context)) listOf("call.sims") else emptyList()) +
@@ -1989,6 +2039,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (Elevated.running) listOf("clip.read.auto") else emptyList()) +
             // Apps in windows of their own run on displays the Elevated helper makes.
             (if (Elevated.running && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) listOf("mirror.virtual_display") else emptyList()) +
+            // A PC can uninstall an app through Elevated (D349).
+            (if (Elevated.running) listOf("mirror.apps.uninstall") else emptyList()) +
             // The PC's mouse over the edge of its screen, with a pointer of the phone's own (#107).
             (if (Elevated.running) listOf("mirror.pointer") else emptyList()) +
             // Asked for when a PC wants the sound, or streamed via Elevated helper.
@@ -2105,10 +2157,33 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * Keeps local discovery working while the pairing screen is open, and has
      * it ask the network who's there often only then: asking all the time
      * kept the phone awake.
+     *
+     * While it's open the phone also accepts pairing, as a PC's pairing
+     * screen does, so pairing works from either side: picking the PC here,
+     * or this phone in the PC's list of nearby devices. Before, the phone
+     * refused the PC, which said it couldn't reach the phone.
      */
     fun setPairingScreenOpen(open: Boolean) {
+        pairingScreenOpen = open
         pairingMulticast?.runCatching { if (open) acquire() else release() }
-        scope.launch(discoveryPace) { runCatching { node?.setDiscoveryFast(open) } }
+        scope.launch(discoveryPace) {
+            runCatching { node?.setDiscoveryFast(open) }
+            acceptPairing(open)
+        }
+    }
+
+    @Volatile private var pairingScreenOpen = false
+
+    /** Starts (or renews) accepting pairing while the pairing screen is open; stops when it closes. */
+    private suspend fun acceptPairing(open: Boolean) {
+        startJob?.join()
+        val node = node ?: return
+        if (open) {
+            runCatching { node.pairingStartQr() }.onFailure { Log.w(TAG, "can't accept pairing", it) }
+        } else if (_state.value.pairing !is PairingState.Comparing && _state.value.pairing !is PairingState.Confirmed) {
+            // Left mid-comparison, the screen comes back to it; otherwise stop accepting.
+            runCatching { node.pairingCancel() }
+        }
     }
 
     /** One at a time, so a quick open and close can't land out of order. */
@@ -2135,6 +2210,38 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             val message = try {
                 node.pcPower(id, sleep)
                 context.getString(if (sleep) R.string.pc_sleeping else R.string.pc_locked, name)
+            } catch (e: NectarlinkException) {
+                if (e is NectarlinkException.Denied) context.getString(R.string.pc_actions_off, name) else describe(e)
+            }
+            _messages.tryEmit(message)
+        }
+    }
+
+    /** Asks a PC to play this phone's sound (#398); says if it can't. */
+    fun askPcForPhoneSound(id: String) {
+        scope.launch {
+            startJob?.join()
+            val node = node ?: return@launch
+            val name = _state.value.nameOf(id).orEmpty()
+            try {
+                node.askPcForPhoneSound(id)
+            } catch (e: NectarlinkException) {
+                _messages.tryEmit(
+                    if (e is NectarlinkException.Denied) context.getString(R.string.phone_sound_on_pc_off, name) else describe(e),
+                )
+            }
+        }
+    }
+
+    /** Shuts a PC down (D372); says how it went. */
+    fun pcShutdown(id: String) {
+        scope.launch {
+            startJob?.join()
+            val node = node ?: return@launch
+            val name = _state.value.nameOf(id).orEmpty()
+            val message = try {
+                node.pcShutdown(id)
+                context.getString(R.string.pc_shutting_down, name)
             } catch (e: NectarlinkException) {
                 if (e is NectarlinkException.Denied) context.getString(R.string.pc_actions_off, name) else describe(e)
             }
@@ -2343,6 +2450,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         bitrate: Int = 4_000_000,
         watch: String? = null,
     ) {
+        _pcMirrorCaptureFailed.compareAndSet(id, null)
         command {
             it.startPcMirror(
                 id,
@@ -2356,6 +2464,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     /** Stops an active PC-to-phone screen mirror session (`mirror.stop`, session 0). */
     fun stopPcMirror(id: String) {
+        _pcMirrorCaptureFailed.compareAndSet(id, null)
         if (_pcMirrorConfig.value?.pcId == id) {
             _pcMirrorConfig.value = null
         }
@@ -2634,11 +2743,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         _state.update {
             it.copy(keyboardFromPc = if (on) it.keyboardFromPc + pcId else it.keyboardFromPc - pcId)
         }
+        app.nectarlink.android.banking.AssistOnDemand.typing(context, pcId, on)
     }
 
     /** Stops remote keyboard typing from `pcId` and notifies the PC. */
     fun stopKeyboardFromPc(pcId: String) {
         _state.update { it.copy(keyboardFromPc = it.keyboardFromPc - pcId) }
+        app.nectarlink.android.banking.AssistOnDemand.typing(context, pcId, false)
         val currentNode = node ?: return
         scope.launch(Dispatchers.IO) {
             runCatching { currentNode.mirrorStop(pcId, 0u) }

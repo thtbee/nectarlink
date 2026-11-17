@@ -80,6 +80,8 @@ Many banking apps refuse to run while **Developer options**, USB or Wireless Deb
 
 If an app checks before NectarLink notices it, tap **Add shortcut** next to it and open it from that home screen shortcut: NectarLink pauses first, then opens the app.
 
+Some apps only mind the accessibility service, and crash or close even when opened from the app drawer. With `Elevated` set up, turn on **Assist only while a PC uses the phone** in the same section: Assist is then on only while a PC shows the phone's screen, an app window, or types on it, and off again about 15 seconds after. That's all `Elevated` still needs Assist for (pressing Send in chat apps, and typing letters outside the basic Latin set).
+
 Some banking apps also refuse to run on a phone that was ever rooted (on Samsung phones, a tripped Knox flag). NectarLink can't change that.
 
 ## 5. Troubleshooting USB Auto-Pair and `On USB` Transport
@@ -89,12 +91,13 @@ If plugging your phone into your PC with a USB cable does not trigger USB auto-p
 1. **Check the USB cable**: Use a USB cable that carries data (some charging-only cables lack data wires).
 2. **Enable USB debugging on the phone**: Open **Android Settings › Developer options** and turn on **USB debugging**.
 3. **Approve the RSA key prompt on the phone**: Wake your phone screen when plugging it into the PC, check **Always allow from this computer**, and tap **Allow** on Android's **Allow USB debugging?** dialog.
+4. **Check adb in the Connection Doctor**: The PC reaches a phone on a cable through Android's `adb`. The Doctor says whether it's running, with a **Start adb** button when it isn't, and whether it's missing. NectarLink finds `adb` from Android Studio's SDK folder, `ANDROID_HOME`, `ANDROID_SDK_ROOT` or your `PATH`; if there's none, install Google's platform-tools.
 
 ## 6. Troubleshooting Screen Mirroring and Audio
 
 ### Mirroring Is View-Only (Mouse Clicks Do Nothing)
 
-- At the `Standard` power level, Android does not allow apps to inject touch or key events into other apps. To control your phone with your PC mouse and keyboard during mirroring, enable either **`Assist`** (**Settings › Permissions › Control from your PC › Use your PC's mouse and keyboard**) or **`Elevated`** (**Real touch and keys (Wireless debugging)**) on your phone.
+- At the `Standard` power level, Android does not allow apps to inject touch or key events into other apps. To control your phone with your PC mouse and keyboard during mirroring, enable either **`Assist`** (**Settings › Permissions › Control from your PC › Use your PC's mouse and keyboard**) or **`Elevated`** (the **Elevated** card there) on your phone.
 - **On Xiaomi, Redmi and POCO phones with `Elevated`:** if the picture works but clicks and typing do nothing, and no banner asks you to turn on control, open **Developer options** and turn on **USB debugging (Security settings)**. The phone blocks simulated input without it.
 
 ### Mirror Window Shows a Black Screen

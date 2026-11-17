@@ -607,6 +607,7 @@ enum PowerArg {
     Lock,
     Sleep,
     Hibernate,
+    Shutdown,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -1909,7 +1910,7 @@ impl Platform for TerminalPlatform {
             }
         });
     }
-    fn mirror_resize_requested(&self, _peer: &DeviceId, session: u32, width: u32, height: u32) {
+    fn mirror_resize_requested(&self, _peer: &DeviceId, session: u32, width: u32, height: u32, _zoom: u32) {
         let (w, h) = ((width & !1).max(64), (height & !1).max(64));
         println!("The PC resized session {session} to {w}x{h}.");
         for (s, pending, _) in SCREEN_SESSIONS.lock().unwrap().iter() {
@@ -3283,7 +3284,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                 let (w, h) = dim.split_once('x').context("--resize takes WxH")?;
                 let (w, h): (u32, u32) = (w.trim().parse()?, h.trim().parse()?);
-                node.mirror_resize(id, session, w, h).await.context("resize not sent")?;
+                node.mirror_resize(id, session, w, h, 100).await.context("resize not sent")?;
                 println!("Resized to {w}x{h}.");
             }
             for at in tap {
@@ -4070,6 +4071,7 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
                 PowerArg::Lock => PowerAction::Lock,
                 PowerArg::Sleep => PowerAction::Sleep,
                 PowerArg::Hibernate => PowerAction::Hibernate,
+                PowerArg::Shutdown => PowerAction::Shutdown,
             };
             node.pc_power(id, action).await.context("the PC didn't do it")?;
             println!("Done.");

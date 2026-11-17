@@ -64,7 +64,9 @@ Item {
         Behavior on scale { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springStandard; damping: Theme.dampingStandard } }
         clip: true
 
+        ScrollRail { flick: sheetFlick }
         Flickable {
+            id: sheetFlick
             anchors.fill: parent
             anchors.margins: 24
             contentWidth: width

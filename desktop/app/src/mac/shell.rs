@@ -72,6 +72,11 @@ pub fn sleep() -> Result<(), String> {
     std::process::Command::new("pmset").arg("sleepnow").spawn().map(|_| ()).map_err(|e| e.to_string())
 }
 
+/// Macs aren't shut down on request; they don't offer `pc.power.shutdown`.
+pub fn shutdown() -> Result<(), String> {
+    Err("not on macOS".into())
+}
+
 /// Macs aren't hibernated on request (#355).
 pub fn hibernate() -> Result<(), String> {
     Err("not on macOS".into())

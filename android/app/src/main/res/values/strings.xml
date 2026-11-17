@@ -74,6 +74,7 @@
     <string name="media_pause">Pause</string>
     <string name="media_next">Next</string>
     <string name="media_previous">Previous</string>
+    <string name="media_seek">Position in the track</string>
     <string name="action_send_files">Send files</string>
     <string name="action_send_folder">Send a folder</string>
     <string name="input_service_label">NectarLink: control from your PC</string>
@@ -121,7 +122,7 @@
     <string name="elevated_pair_title">Pair NectarLink with Wireless debugging</string>
     <string name="elevated_pair_text">In Wireless debugging, tap Pair device with pairing code, then type the code here.</string>
     <string name="elevated_pair_action">Enter code</string>
-    <string name="elevated_pair_collapsed">Swipe this notification down, then tap Enter code.</string>
+    <string name="elevated_pair_collapsed">Swipe this notification down (on Xiaomi phones, long-press it), then tap Enter code.</string>
     <string name="elevated_pair_hint">6-digit pairing code</string>
     <string name="elevated_pairing">Pairing…</string>
     <string name="elevated_no_dialog">The pairing code isn\'t showing. In Wireless debugging, tap Pair device with pairing code, then type it here.</string>
@@ -295,6 +296,11 @@
     <string name="action_lock_pc">Lock PC</string>
     <string name="action_sleep_pc">Sleep</string>
     <string name="action_hibernate_pc">Hibernate</string>
+    <string name="action_phone_sound_on_pc">Play phone sound on the PC</string>
+    <string name="phone_sound_on_pc_off">%1$s doesn\'t play this phone\'s sound. On the PC, turn on Screen mirroring for this phone in Settings › Devices.</string>
+    <string name="action_shutdown_pc">Shut down</string>
+    <string name="shutdown_pc_title">Shut down %1$s?</string>
+    <string name="shutdown_pc_text">Open apps close. One with unsaved work can still stop it.</string>
     <string name="action_wake_pc">Wake</string>
     <string name="action_disconnect">Disconnect</string>
     <string name="action_stop_reconnecting">Stop reconnecting</string>
@@ -306,6 +312,7 @@
     <string name="pc_locked">%1$s is locked.</string>
     <string name="pc_sleeping">%1$s is going to sleep.</string>
     <string name="pc_hibernating">%1$s is hibernating.</string>
+    <string name="pc_shutting_down">%1$s is shutting down.</string>
     <string name="pc_actions_off">Locking and sleep are turned off for this phone on %1$s.</string>
     <string name="channel_links">Links from your PC</string>
     <!-- Play on phone: what a PC plays, streamed to the phone. -->
@@ -350,6 +357,12 @@
     <string name="settings_remote">Control your PC</string>
     <string name="settings_volume_keys_control_pc">Volume buttons control your PC</string>
     <string name="settings_volume_keys_control_pc_hint">While your PC plays music or video, your phone\'s volume buttons change the PC\'s volume.</string>
+    <string name="settings_quiet_while_using_pc">Quiet while you use the PC</string>
+    <string name="settings_quiet_while_using_pc_hint">Your phone skips its own sound and vibration for notifications while you\'re using a paired PC that shows them.</string>
+    <string name="settings_hide_from_recents">Hide from recent apps</string>
+    <string name="settings_hide_from_recents_hint">NectarLink stays off the recent apps screen, so clearing that screen can\'t close it by accident.</string>
+    <string name="settings_assist_on_demand">Assist only while a PC uses the phone</string>
+    <string name="settings_assist_on_demand_hint">With Elevated, Assist turns on while a PC shows this phone or types on it, and off a little after. For apps that won\'t open while an accessibility service is on.</string>
     <string name="settings_touchpad_sensitivity">Touchpad speed</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Touchpad</string>
@@ -392,6 +405,7 @@
     <string name="remote_volume_hint">Volume buttons also change slides while this screen is open.</string>
     <string name="remote_mode_screen">Screen</string>
     <string name="pc_mirror_connecting">Connecting to %1$s…</string>
+    <string name="pc_mirror_capture_failed">Screen sharing failed. Unlock the PC, check its sharing permissions and try again.</string>
     <string name="pc_mirror_fullscreen">Full screen</string>
     <string name="pc_mirror_exit_fullscreen">Exit full screen</string>
     <string name="pc_mirror_right_click">Right click</string>
@@ -413,6 +427,10 @@
     <string name="channel_mic_requests">Microphone requests</string>
     <string name="mic_notification_title">Microphone on for %1$s</string>
     <string name="mic_notification_text">Your PC hears this phone\'s microphone.</string>
+    <string name="channel_call_audio">Call sound on your PC</string>
+    <string name="call_audio_notification_title">Call sound on %1$s</string>
+    <string name="call_audio_notification_text">You talk and listen on the PC.</string>
+    <string name="call_audio_back">Back to phone</string>
     <string name="mic_request_title">%1$s wants this phone\'s microphone</string>
     <string name="mic_request_text">Tap to start. It stays on until you or the PC stop it.</string>
     <string name="mic_request_start">Start</string>
@@ -694,17 +712,37 @@
     <string name="keyboard_stop">Stop typing</string>
 
     <!-- Home-screen PC widget -->
-    <string name="widget_pc_title">PC quick actions</string>
-    <string name="widget_pc_description">Connection status, Send clipboard, Ring PC, Lock PC, and Wake for your paired PC.</string>
+    <string name="widget_pc_title">PC at a glance</string>
+    <string name="widget_pc_description">Whether your PC is connected, with Ring, power options and Wake.</string>
+    <string name="widget_now_playing_title">Now playing</string>
+    <string name="widget_now_playing_description">What\'s playing on your PC, with its controls.</string>
+    <string name="widget_actions_title">Quick actions</string>
+    <string name="widget_actions_description">Send your clipboard or files, ring your PC, or lock, sleep or shut it down.</string>
+    <string name="widget_from_pc_title">From your PC</string>
+    <string name="widget_from_pc_description">The last clip and file your PC sent, to copy or open.</string>
+    <string name="widget_from_pc_empty">Clips and files your PC sends show up here.</string>
+    <string name="widget_media_on_pc">On %1$s</string>
+    <string name="widget_media_nothing">Nothing playing</string>
+    <string name="widget_media_nothing_hint">Music and videos playing on %1$s show up here.</string>
+    <string name="widget_battery">Battery %1$d%%</string>
+    <string name="widget_battery_charging">Battery %1$d%% · charging</string>
+    <string name="widget_link_lan">On your network</string>
+    <string name="widget_seen">Seen %1$s</string>
+    <string name="widget_pc_send_clipboard">Send clipboard</string>
+    <string name="widget_power">Power</string>
+    <string name="widget_power_lock">Lock</string>
+    <string name="widget_power_suspend">Suspend</string>
+    <string name="widget_power_off">Power off</string>
+    <string name="widget_power_off_title">Power off %1$s?</string>
+    <string name="widget_choose_pc">Choose a PC</string>
+    <string name="widget_power_offline">Power options show up while %1$s is connected.</string>
     <string name="widget_pc_no_pc">No PC paired</string>
     <string name="widget_pc_tap_to_pair">Tap to open NectarLink and pair a PC</string>
     <string name="widget_pc_connected">Connected</string>
     <string name="widget_pc_offline">Offline</string>
     <string name="widget_pc_waking">Waking…</string>
     <string name="widget_pc_wake">Wake</string>
-    <string name="widget_pc_send_clip">Send clip</string>
     <string name="widget_pc_ring">Ring PC</string>
-    <string name="widget_pc_lock">Lock PC</string>
     <string name="widget_pc_ringing_toast">Ringing %1$s…</string>
     <string name="widget_pc_waking_toast">Waking %1$s…</string>
 
@@ -1160,7 +1198,7 @@
     <!-- 16. App streams -->
     <string name="guide_apps_title">App streams</string>
     <string name="guide_apps_summary">Open individual Android apps in dedicated windows on your PC while your phone screen stays independent.</string>
-    <string name="guide_apps_where">Settings › Permissions › Control from your PC › Real touch and keys (Wireless debugging)</string>
+    <string name="guide_apps_where">Settings › Permissions › Control from your PC › Elevated</string>
     <string name="guide_apps_needs">Elevated (Wireless debugging)</string>
     <string name="guide_apps_need_1">Elevated, set up through Wireless debugging.</string>
     <string name="guide_apps_need_2">Online paired PC.</string>
@@ -1234,11 +1272,11 @@
 
     <!-- 22. Elevated -->
     <string name="guide_elevated_title">Elevated</string>
-    <string name="guide_elevated_summary">Real touch and keys, App streams, background clipboard sync and in-call controls, through Wireless debugging.</string>
-    <string name="guide_elevated_where">Settings › Permissions › Control from your PC › Real touch and keys (Wireless debugging)</string>
+    <string name="guide_elevated_summary">Real touch and keys, App streams, background clipboard sync and in-call controls, through Wireless debugging, Shizuku or root.</string>
+    <string name="guide_elevated_where">Settings › Permissions › Control from your PC › Elevated</string>
     <string name="guide_elevated_needs">Wireless debugging</string>
     <string name="guide_elevated_need_1">Developer options and Wireless debugging turned on.</string>
-    <string name="guide_elevated_phone_1">Open Settings › Permissions › Control from your PC and tap Set up under Real touch and keys.</string>
+    <string name="guide_elevated_phone_1">Open Settings › Permissions › Control from your PC and tap Set up under Elevated.</string>
     <string name="guide_elevated_phone_2">In Wireless debugging, tap Pair device with pairing code and enter the 6-digit code in the notification.</string>
     <string name="guide_elevated_pc_1">Use App streams, background clipboard sync, and low-latency input from your PC.</string>
     <string name="guide_elevated_opt_1">Set up / Turn off: Pairs or stops the local Wireless debugging helper.</string>

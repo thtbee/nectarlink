@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Linux MP4 recording for mirrored phone screens and app windows.
+//! Unix MP4 recording for mirrored phone screens and app windows.
 //!
 //! Video frames arrive as Annex-B H.264 access units and are muxed into an
 //! ISO-BMFF (`.mp4`) container (`ftyp` + `moov` + `mdat` with `avc1`/`avcC`
@@ -7,6 +7,8 @@
 //! present, the recorded PCM track is encoded to AAC in-process via
 //! `libavcodec` (falling back to `ffmpeg` on `PATH` if `libavcodec` is
 //! unavailable) and muxed alongside the H.264 video stream.
+
+#![allow(unsafe_code)]
 
 use std::{
     fs::{self, File},
@@ -101,6 +103,7 @@ pub fn has_idr_slice(data: &[u8]) -> bool {
 }
 
 /// Returns `true` if `data` already carries both SPS (NAL 7) and PPS (NAL 8) units in-band.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub fn has_inband_sps_pps(data: &[u8]) -> bool {
     let nals = split_annexb(data);
     nals.iter().any(|nal| nal_type(nal) == Some(7)) && nals.iter().any(|nal| nal_type(nal) == Some(8))
@@ -113,6 +116,7 @@ pub fn is_parameter_only(data: &[u8]) -> bool {
 }
 
 /// Extracts only SPS (NAL 7) and PPS (NAL 8) units from `data` with 4-byte Annex-B start codes.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub fn extract_sps_pps(data: &[u8]) -> Option<Vec<u8>> {
     let mut out = Vec::new();
     for nal in split_annexb(data) {
@@ -124,9 +128,41 @@ pub fn extract_sps_pps(data: &[u8]) -> Option<Vec<u8>> {
     (!out.is_empty()).then_some(out)
 }
 
+/// The video codec of a mirror stream.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum VideoCodec {
+    #[default]
+    H264,
+    Hevc,
+}
+
+impl VideoCodec {
+    /// From a stream's codec name ("h264", "h265").
+    pub fn from_name(name: &str) -> VideoCodec {
+        if name.eq_ignore_ascii_case("h265") || name.eq_ignore_ascii_case("hevc") {
+            VideoCodec::Hevc
+        } else {
+            VideoCodec::H264
+        }
+    }
+}
+
+/// Whether recordings of `codec` streams can be made here: this muxer writes
+/// H.264 (`avc1`) only.
+pub fn can_record(codec: VideoCodec) -> bool {
+    codec == VideoCodec::H264
+}
+
+/// Merges the parameter sets in `incoming` into `dest` (H.264 only here).
+pub fn merge_sps_pps(codec: VideoCodec, dest: &mut Vec<u8>, incoming: &[u8]) {
+    if codec == VideoCodec::H264 {
+        merge_h264_sps_pps(dest, incoming);
+    }
+}
+
 /// Extracts any SPS (NAL 7) and PPS (NAL 8) units from `incoming` and merges them
 /// into `dest` with 4-byte `00 00 00 01` Annex-B start codes, preserving SPS-then-PPS order.
-pub fn merge_sps_pps(dest: &mut Vec<u8>, incoming: &[u8]) {
+fn merge_h264_sps_pps(dest: &mut Vec<u8>, incoming: &[u8]) {
     let nals = split_annexb(incoming);
     if !nals.iter().any(|nal| matches!(nal_type(nal), Some(7 | 8))) {
         return;
@@ -282,9 +318,12 @@ impl MirrorRecorder {
     /// Seeds cached SPS/PPS NAL units collected before recording started.
     pub fn set_sps_pps(&mut self, sps_pps: &[u8]) {
         if !sps_pps.is_empty() {
-            merge_sps_pps(&mut self.sps_pps, sps_pps);
+            merge_h264_sps_pps(&mut self.sps_pps, sps_pps);
         }
     }
+
+    /// The stream's codec; only H.264 is recorded here (see [`can_record`]).
+    pub fn set_codec(&mut self, _codec: VideoCodec) {}
 
     /// Updates stream dimensions before the first keyframe initializes the recording.
     pub fn on_config(&mut self, width: u32, height: u32) {
@@ -327,7 +366,7 @@ impl MirrorRecorder {
         if data.is_empty() {
             return Ok(());
         }
-        merge_sps_pps(&mut self.sps_pps, data);
+        merge_h264_sps_pps(&mut self.sps_pps, data);
 
         if is_parameter_only(data) {
             return Ok(());
@@ -1198,10 +1237,10 @@ mod tests {
         let mut buf = Vec::new();
         let sps1 = [0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0x00, 0x1F];
         let pps1 = [0x00, 0x00, 0x00, 0x01, 0x68, 0xCE, 0x3C, 0x80];
-        merge_sps_pps(&mut buf, &sps1);
+        merge_h264_sps_pps(&mut buf, &sps1);
         assert_eq!(buf, sps1);
 
-        merge_sps_pps(&mut buf, &pps1);
+        merge_h264_sps_pps(&mut buf, &pps1);
         let mut expected = Vec::new();
         expected.extend_from_slice(&sps1);
         expected.extend_from_slice(&pps1);
@@ -1209,7 +1248,7 @@ mod tests {
 
         // Updating PPS alone preserves existing SPS and replaces PPS.
         let pps2 = [0x00, 0x00, 0x01, 0x68, 0xDE, 0xAD, 0xBE];
-        merge_sps_pps(&mut buf, &pps2);
+        merge_h264_sps_pps(&mut buf, &pps2);
         let mut expected2 = Vec::new();
         expected2.extend_from_slice(&sps1);
         expected2.extend_from_slice(&[0x00, 0x00, 0x00, 0x01, 0x68, 0xDE, 0xAD, 0xBE]);
@@ -1217,7 +1256,7 @@ mod tests {
 
         // Slice NAL without SPS/PPS leaves `buf` untouched.
         let idr = [0x00, 0x00, 0x00, 0x01, 0x65, 0x88, 0x84];
-        merge_sps_pps(&mut buf, &idr);
+        merge_h264_sps_pps(&mut buf, &idr);
         assert_eq!(buf, expected2);
     }
 

@@ -19,6 +19,7 @@ Item {
         { id: "appearance", title: qsTr("Appearance"), icon: Icons.palette, subtitle: qsTr("Theme, mode & colors") },
         { id: "general", title: qsTr("General"), icon: Icons.laptop, subtitle: qsTr("Startup, clipboard & desktop") },
         { id: "devices", title: qsTr("Devices"), icon: Icons.phone, subtitle: qsTr("Paired phones & permissions") },
+        { id: "install_phone", title: qsTr("Install on a phone"), icon: Icons.usb, subtitle: qsTr("The phone app, over a USB cable") },
         { id: "camera_audio", title: qsTr("Camera & Audio"), icon: Icons.video, subtitle: qsTr("Webcam, speaker & calls") },
         { id: "notifications", title: qsTr("Notifications"), icon: Icons.bell, subtitle: qsTr("Do not disturb & app rules") },
         { id: "files_sync", title: qsTr("Files & Sync"), icon: Icons.folder, subtitle: qsTr("Folder sync, storage & recordings") },
@@ -168,6 +169,7 @@ Item {
         notifications: qsTr("Notifications"),
         messages: qsTr("Messages"),
         calls: qsTr("Calls"),
+        call_audio: qsTr("Talk through this PC"),
         contacts: qsTr("Contacts"),
         clipboard: qsTr("Clipboard"),
         files: qsTr("Files"),
@@ -180,7 +182,8 @@ Item {
         pc_mirror: qsTr("Share PC screen to phone"),
         webcam: qsTr("Webcam"),
         mic: qsTr("Phone as microphone"),
-        storage: Qt.platform.os === "linux" ? qsTr("File manager integration") : qsTr("File Explorer integration"),
+        storage: Qt.platform.os === "windows" ? qsTr("File Explorer integration")
+            : Qt.platform.os === "osx" ? qsTr("Finder integration") : qsTr("File manager integration"),
         remote_input: qsTr("Remote mouse, keyboard & Deck"),
         commands: qsTr("Run Deck shell commands"),
         remote_files: qsTr("Remote PC file access")
@@ -190,6 +193,7 @@ Item {
         notifications: Icons.bell,
         messages: Icons.messages,
         calls: Icons.call,
+        call_audio: Icons.desktop,
         contacts: Icons.person,
         clipboard: Icons.clipboard,
         files: Icons.send,
@@ -210,13 +214,15 @@ Item {
 
     readonly property var toggleDescriptions: ({
         pc_mirror: qsTr("Allow this phone to view this PC's screen."),
-        commands: qsTr("Only enable for a phone you trust.")
+        call_audio: qsTr("Move a call's sound to this PC: its speakers and microphone."),
+        commands: qsTr("Only enable for a phone you trust."),
+        remote_files: qsTr("Allow this phone to browse and download shared PC files over mobile data.")
     })
 
     readonly property var toggleGroups: [
         {
             title: qsTr("Calls, messages & notifications"),
-            keys: ["notifications", "messages", "calls", "contacts"]
+            keys: ["notifications", "messages", "calls", "call_audio", "contacts"]
         },
         {
             title: qsTr("Files, photos & clipboard"),
@@ -252,7 +258,7 @@ Item {
     }
 
     readonly property var allGroupedKeys: [
-        "notifications", "messages", "calls", "contacts",
+        "notifications", "messages", "calls", "call_audio", "contacts",
         "clipboard", "files", "photos", "recordings", "storage", "remote_files",
         "media", "toggles", "mirroring", "pc_mirror", "webcam", "pc_actions", "remote_input", "commands"
     ]
@@ -472,6 +478,7 @@ Item {
     }
 
     // ---- Right Content Pane ----
+    ScrollRail { flick: contentFlickable }
     Flickable {
         id: contentFlickable
         x: page.wideLayout ? (categoryRail.x + categoryRail.width + 33) : 0
@@ -851,9 +858,9 @@ Item {
                             iconPath: Icons.sparkle
                             title: qsTr("Animated comb")
                             description: AppController.reduceMotion
-                                ? (Qt.platform.os === "linux"
-                                    ? qsTr("Still while animations are off in system settings.")
-                                    : qsTr("Still while animations are off in Windows."))
+                                ? (Qt.platform.os === "windows"
+                                    ? qsTr("Still while animations are off in Windows.")
+                                    : qsTr("Still while animations are off in system settings."))
                                 : (AppController.powerSaver
                                     ? qsTr("Still while energy saver is on.")
                                     : qsTr("The honeycomb breathes and pulses."))
@@ -961,9 +968,9 @@ Item {
                             width: parent.width
                             iconPath: Icons.globe
                             title: qsTr("Language")
-                            description: Qt.platform.os === "linux"
-                                ? qsTr("NectarLink follows the system unless you pick one.")
-                                : qsTr("NectarLink follows Windows unless you pick one.")
+                            description: Qt.platform.os === "windows"
+                                ? qsTr("NectarLink follows Windows unless you pick one.")
+                                : qsTr("NectarLink follows the system unless you pick one.")
                             Segmented {
                                 readonly property var other: page.languages.find(
                                     (l) => l.code === Preferences.language && l.code !== "en")
@@ -1001,10 +1008,10 @@ Item {
                                 y: startupPairRow.splitCols ? Math.round((parent.height - height) / 2) : 0
                                 width: startupPairRow.colWidth
                                 iconPath: Icons.power
-                                title: Qt.platform.os === "linux" ? qsTr("Start at login") : qsTr("Start with Windows")
+                                title: Qt.platform.os === "windows" ? qsTr("Start with Windows") : qsTr("Start at login")
                                 description: qsTr("Launch in the tray when you sign in.")
                                 Toggle {
-                                    label: Qt.platform.os === "linux" ? qsTr("Start at login") : qsTr("Start with Windows")
+                                    label: Qt.platform.os === "windows" ? qsTr("Start with Windows") : qsTr("Start at login")
                                     checked: Preferences.startWithWindows
                                     onToggled: (on) => Preferences.startWithWindows = on
                                 }
@@ -1032,18 +1039,13 @@ Item {
                                     ? Math.round((parent.height - height) / 2)
                                     : (startWinRow.implicitHeight + 1)
                                 width: startupPairRow.colWidth
-                                opacity: Qt.platform.os === "osx" ? 0.5 : 1.0
                                 iconPath: Icons.window
                                 title: qsTr("Stay in system tray")
                                 description: qsTr("Keep running when the window is closed.")
                                 Toggle {
                                     label: qsTr("Stay in system tray")
                                     checked: Preferences.closeToTray
-                                    enabled: Qt.platform.os !== "osx"
-                                    onToggled: (on) => {
-                                        if (Qt.platform.os !== "osx")
-                                            Preferences.closeToTray = on
-                                    }
+                                    onToggled: (on) => Preferences.closeToTray = on
                                 }
                             }
                         }
@@ -1506,14 +1508,18 @@ Item {
                                 property string network: AppController.hotspotNetwork(deviceCard.deviceId)
                                 iconPath: Icons.wifi
                                 title: qsTr("Join this phone's hotspot")
-                                description: hotspotRow.network.length > 0
+                                description: Qt.platform.os === "osx"
+                                    ? qsTr("Not on macOS yet.")
+                                    : hotspotRow.network.length > 0
                                     ? qsTr("When Instant Hotspot turns it on, this PC joins %1.").arg(hotspotRow.network)
                                     : (Qt.platform.os === "linux"
                                         ? qsTr("Join the phone's hotspot once from your system Wi-Fi list, then choose it here.")
                                         : qsTr("Join the phone's hotspot once from Windows' Wi-Fi list, then choose it here."))
+                                opacity: Qt.platform.os === "osx" ? 0.5 : 1.0
                                 Button {
                                     variant: "tonal"
                                     size: "sm"
+                                    enabled: Qt.platform.os !== "osx"
                                     text: qsTr("Choose network")
                                     onClicked: {
                                         hotspotSheet.deviceId = deviceCard.deviceId
@@ -2009,6 +2015,19 @@ Item {
                         }
 
                         Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.flashlight
+                            title: qsTr("Torch on with the back camera")
+                            description: qsTr("Turns the phone's torch on when the webcam starts with the back camera.")
+                            Toggle {
+                                label: qsTr("Torch on with the back camera")
+                                checked: Webcam.torch
+                                onToggled: (on) => Webcam.setTorchOnStart(on)
+                            }
+                        }
+
+                        Divider { width: parent.width }
                         Column {
                             width: parent.width
                             spacing: 10
@@ -2061,6 +2080,39 @@ Item {
                                 VideoView {
                                     anchors.fill: parent
                                     stream: "webcam"
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Calls through this PC (call.audio): what a phone call uses here.
+                Card {
+                    visible: Qt.platform.os === "windows"
+                    width: parent.width
+                    Column {
+                        width: parent.width
+                        spacing: 6
+                        Txt { text: qsTr("Calls through this PC"); role: "label"; muted: true }
+                        ListRow {
+                            id: callMicRow
+                            width: parent.width
+                            iconPath: Icons.mic
+                            title: qsTr("Microphone for calls")
+                            readonly property var mics: { try { return JSON.parse(PhoneCall.callMics) } catch (e) { return [] } }
+                            readonly property string micName: {
+                                const mic = mics.find(m => m.id === PhoneCall.callMic)
+                                return mic ? mic.name : (Qt.platform.os === "windows" ? qsTr("Windows default") : qsTr("System default"))
+                            }
+                            description: qsTr("Talking through this PC on a call records %1.").arg(micName)
+                            Component.onCompleted: PhoneCall.refreshCallMics()
+                            Button {
+                                variant: "outline"
+                                size: "sm"
+                                text: qsTr("Microphone")
+                                onClicked: {
+                                    PhoneCall.refreshCallMics()
+                                    callMicSheet.open()
                                 }
                             }
                         }
@@ -2261,10 +2313,16 @@ Item {
                                 y: filesSharePairRow.splitCols ? Math.round((parent.height - height) / 2) : 0
                                 width: filesSharePairRow.colWidth
                                 iconPath: Icons.send
-                                title: Qt.platform.os === "linux" ? qsTr("File manager Send to") : qsTr("File Explorer Send to")
-                                description: qsTr("Send files from right-click menu.")
+                                title: Qt.platform.os === "windows" ? qsTr("File Explorer Send to")
+                                    : Qt.platform.os === "osx" ? qsTr("Finder Send to") : qsTr("File manager Send to")
+                                description: Qt.platform.os === "osx"
+                                    ? qsTr("Not on macOS yet.")
+                                    : qsTr("Send files from right-click menu.")
+                                opacity: Qt.platform.os === "osx" ? 0.5 : 1.0
                                 Toggle {
-                                    label: Qt.platform.os === "linux" ? qsTr("File manager Send to") : qsTr("File Explorer Send to")
+                                    label: Qt.platform.os === "windows" ? qsTr("File Explorer Send to")
+                                        : Qt.platform.os === "osx" ? qsTr("Finder Send to") : qsTr("File manager Send to")
+                                    enabled: Qt.platform.os !== "osx"
                                     checked: Preferences.sendToMenu
                                     onToggled: (on) => Preferences.sendToMenu = on
                                 }
@@ -3344,6 +3402,19 @@ Item {
             }
 
             // ================================================================
+            // INSTALL ON A PHONE (over USB): loaded only while open, so its
+            // checks for phones run only then.
+            // ================================================================
+            Loader {
+                active: page.active && page.currentSection === "install_phone"
+                visible: active
+                width: visible ? parent.width : 0
+                sourceComponent: Component {
+                    PhoneInstallPane { width: parent ? parent.width : 0 }
+                }
+            }
+
+            // ================================================================
             // 9. CONNECTION & ABOUT
             // ================================================================
             Column {
@@ -3435,7 +3506,7 @@ Item {
                                     muted: true
                                     text: AppController.wakeState === "enabled" ? qsTr("Ready")
                                         : AppController.wakeState === "disabled"
-                                          ? (Qt.platform.os === "linux" ? qsTr("Off in the adapter's settings") : qsTr("Off in Windows"))
+                                          ? (Qt.platform.os === "windows" ? qsTr("Off in Windows") : qsTr("Off in the adapter's settings"))
                                         : AppController.wakeState === "unknown" ? qsTr("Check settings")
                                         : qsTr("No adapter")
                                 }
@@ -3975,6 +4046,41 @@ Item {
             Row {
                 anchors.right: parent.right
                 Button { variant: "text"; text: qsTr("Close"); onClicked: languageSheet.close() }
+            }
+        }
+    }
+
+    Sheet {
+        id: callMicSheet
+        cardWidth: 440
+        Column {
+            width: parent.width
+            spacing: 12
+            Txt { width: parent.width; text: qsTr("Talk on calls through"); role: "headline"; wrapMode: Text.WordWrap }
+            Repeater {
+                model: callMicRow.mics
+                delegate: Button {
+                    required property var modelData
+                    width: parent.width
+                    variant: modelData.id === PhoneCall.callMic ? "tonal" : "text"
+                    iconPath: modelData.id === PhoneCall.callMic ? Icons.check : Icons.mic
+                    text: modelData.name
+                    onClicked: {
+                        PhoneCall.chooseCallMic(modelData.id)
+                        callMicSheet.close()
+                    }
+                }
+            }
+            Txt {
+                visible: callMicRow.mics.length === 0
+                width: parent.width
+                muted: true
+                text: qsTr("No microphone found on this PC.")
+                wrapMode: Text.WordWrap
+            }
+            Row {
+                anchors.right: parent.right
+                Button { variant: "text"; text: qsTr("Close"); onClicked: callMicSheet.close() }
             }
         }
     }

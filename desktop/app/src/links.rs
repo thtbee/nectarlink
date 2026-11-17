@@ -34,13 +34,14 @@ pub fn open_here(url: &str) -> Result<(), String> {
     shell::open_url(url)
 }
 
-/// Locks this PC, or puts it to sleep or hibernates it (a phone asked).
+/// Locks this PC, puts it to sleep, hibernates it or shuts it down (a phone asked).
 pub fn power(action: PowerAction) -> Result<(), String> {
     tracing::info!(action = action.as_str(), "a phone asked");
     match action {
         PowerAction::Lock => shell::lock(),
         PowerAction::Sleep => shell::sleep(),
         PowerAction::Hibernate => shell::hibernate(),
+        PowerAction::Shutdown => shell::shutdown(),
     }
 }
 

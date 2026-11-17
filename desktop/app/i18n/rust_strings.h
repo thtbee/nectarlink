@@ -39,6 +39,11 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("App", "Toggle Shelf"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Wi-Fi %1/4"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Your phone"), // desktop/app/src/bridge/app.rs
+    QT_TRANSLATE_NOOP("Apps", "Added %1 to your app menu."), // desktop/app/src/bridge/mirror.rs
+    QT_TRANSLATE_NOOP("Apps", "Added %1 to your desktop."), // desktop/app/src/bridge/mirror.rs
+    QT_TRANSLATE_NOOP("Apps", "Couldn't add a shortcut for %1."), // desktop/app/src/bridge/mirror.rs
+    QT_TRANSLATE_NOOP("Apps", "Couldn't uninstall %1."), // desktop/app/src/bridge/mirror.rs
+    QT_TRANSLATE_NOOP("Apps", "Uninstalled %1."), // desktop/app/src/bridge/mirror.rs
     QT_TRANSLATE_NOOP("Automations", "Triggered by %1"), // desktop/app/src/automations.rs
     QT_TRANSLATE_NOOP("Battery", "%1 has reached %2% charge"), // desktop/app/src/battery.rs
     QT_TRANSLATE_NOOP("Battery", "%1 is fully charged"), // desktop/app/src/battery.rs
@@ -48,8 +53,10 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Battery", "Your phone"), // desktop/app/src/battery.rs
     QT_TRANSLATE_NOOP("Calls", "Calling %1"), // desktop/app/src/calls.rs
     QT_TRANSLATE_NOOP("Calls", "Missed call from %1"), // desktop/app/src/calls.rs
+    QT_TRANSLATE_NOOP("Calls", "No microphone on this PC to talk with."), // desktop/app/src/call_audio.rs
     QT_TRANSLATE_NOOP("Calls", "On a call with %1"), // desktop/app/src/calls.rs
-    QT_TRANSLATE_NOOP("Calls", "That call is over."), // desktop/app/src/calls.rs
+    QT_TRANSLATE_NOOP("Calls", "That call is over."), // desktop/app/src/call_audio.rs
+    QT_TRANSLATE_NOOP("Calls", "This phone doesn't let NectarLink reach its calls' sound."), // desktop/app/src/call_audio.rs
     QT_TRANSLATE_NOOP("Calls", "Unknown caller"), // desktop/app/src/bridge/calls.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied from %1"), // desktop/app/src/clipboard.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied from %1."), // desktop/app/src/clipboard.rs
@@ -200,6 +207,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Doctor", "%1 isn't connected"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 minutes ago"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 · %2 ms"), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "A USB cable needs adb"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "A VPN is on"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "A firewall rule blocks incoming NectarLink connections. Allow it, and your phone can connect."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Calls and alerts can't play sound yet"), // desktop/app/src/linux/doctor.rs
@@ -234,6 +242,8 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Doctor", "Phone as webcam needs one more step"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Phone storage can open in your file manager"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Phone storage needs one more step"), // desktop/app/src/linux/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "Phones on a USB cable connect through adb. NectarLink starts it every minute or so; start it now if a phone on a cable isn't showing up."), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "Ready for a USB cable"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Showing this PC's screen needs one more step"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Someone chose not to allow it when Windows asked. Allow it, and your phone can connect."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Sound is ready"), // desktop/app/src/linux/doctor.rs
@@ -245,6 +255,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Doctor", "This PC isn't on a network"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "This network"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "This usually takes a few seconds."), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "To connect over a cable, NectarLink can get Android's USB tools from Google for you, and the phone needs USB debugging on. Wi-Fi works without them."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "VPNs often keep devices on your network from reaching this PC. If your phone can't connect, try turning it off."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "While away"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Windows Firewall blocks NectarLink"), // desktop/app/src/doctor.rs
@@ -255,6 +266,8 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Doctor", "Your phone can't control this PC yet"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Your phone may not be able to connect. Allow it once here."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "a minute ago"), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "adb is running, so a phone with USB debugging on connects over a cable."), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "adb isn't running"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "an hour ago"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "just now"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Errors", "Something went wrong: %1"), // desktop/app/src/bridge/app.rs
@@ -397,6 +410,26 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Obs", "OBS: %1"), // desktop/app/src/obs.rs
     QT_TRANSLATE_NOOP("Obs", "The service on that port isn't OBS."), // desktop/app/src/obs.rs
     QT_TRANSLATE_NOOP("PcMirror", "Can't find the player's window. Play the video on this PC again, then turn on Play on phone."), // desktop/app/src/pc_mirror.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "Android said: %1"), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "Another build of NectarLink is on this phone"), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "Check this PC's internet connection and try again. (%1)"), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "Couldn't download the phone app"), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "Free up some storage on the phone, then try again."), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "In Developer options, turn on Install via USB, then try again. On Xiaomi, Redmi and POCO phones it may ask you to sign in to a Xiaomi account first."), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "It didn't match its checksum, so it wasn't installed. Try again."), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "It was signed differently (a test build, or one from another store), so Android won't update it. Replacing it removes it with its data, including the PCs it's paired with, then installs this one."), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "Keep it plugged in and unlocked until the install is done, then try again."), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "NectarLink needs Android 8.0 or newer."), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "The download was damaged"), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "The install was stopped on the phone"), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "The phone already has a newer version"), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "The phone asked whether to allow it and the answer was no, or Google Play Protect stopped it. Try again and allow it on the phone. If Play Protect stops it, turn off Verify apps over USB in Developer options for the install."), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "The phone blocks installs over USB"), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "The phone didn't install it"), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "The phone is out of space"), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "The phone stopped answering"), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "There's nothing to install. Open NectarLink on the phone to pair it."), // desktop/app/src/bridge/phone_install.rs
+    QT_TRANSLATE_NOOP("PhoneInstall", "This phone's Android is too old"), // desktop/app/src/bridge/phone_install.rs
     QT_TRANSLATE_NOOP("PhoneMic", "Tap Start on %1 to use its microphone."), // desktop/app/src/phone_mic.rs
     QT_TRANSLATE_NOOP("PhoneMic", "The microphone is turned off for this PC on %1."), // desktop/app/src/phone_mic.rs
     QT_TRANSLATE_NOOP("PhoneMic", "Update NectarLink on %1 to use its microphone."), // desktop/app/src/phone_mic.rs

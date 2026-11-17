@@ -304,3 +304,39 @@ jobs:
         with:
           name: android
           path: out/*.apk
+
+  macos:
+    name: macOS DMG (Apple Silicon)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set the version
+        run: bash .github/scripts/set-version.sh "$VERSION"
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-macos-arm64
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: desktop
+          arch: clang_64
+          cache: true
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+      - name: Build and package macOS DMG
+        run: bash desktop/packaging/macos/build-dmg.sh
+      - name: Check the DMG launches cleanly
+        run: |
+          MNT=$(mktemp -d)
+          hdiutil attach dist/*.dmg -mountpoint "$MNT" -nobrowse -quiet
+          "$MNT/NectarLink.app/Contents/MacOS/nectarlink-desktop" --version
+          hdiutil detach "$MNT" -quiet
+          rmdir "$MNT"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos
+          path: dist/*.dmg

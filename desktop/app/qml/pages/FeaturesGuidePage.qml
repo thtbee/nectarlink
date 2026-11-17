@@ -453,7 +453,9 @@ Item {
             wolCheck: true,
             summary: qsTr("Let your paired phone wake this PC from sleep over your local network using Wake-on-LAN."),
             whereLabel: qsTr("Settings › Connection & About › Wake from your phone"),
-            needsLabel: qsTr("Network adapter with Wake-on-LAN enabled in Windows"),
+            needsLabel: Qt.platform.os === "windows"
+                ? qsTr("Network adapter with Wake-on-LAN enabled in Windows")
+                : qsTr("Network adapter with Wake-on-LAN enabled"),
             targetId: "settings:connection:wol",
             docKey: "wol"
         },
@@ -466,7 +468,11 @@ Item {
             toggleKey: "",
             pcLocal: true,
             localAlways: true,
-            summary: qsTr("Diagnose and fix Windows Firewall rules, network profile type, and local discovery issues."),
+            summary: Qt.platform.os === "windows"
+                ? qsTr("Diagnose and fix Windows Firewall rules, network profile type, and local discovery issues.")
+                : Qt.platform.os === "osx"
+                    ? qsTr("Diagnose network and local discovery issues.")
+                    : qsTr("Diagnose and fix firewall rules, network zones, and local discovery issues."),
             whereLabel: qsTr("Settings › Connection & About › Connection Doctor"),
             needsLabel: qsTr("Always available on PC"),
             targetId: "doctor:open",

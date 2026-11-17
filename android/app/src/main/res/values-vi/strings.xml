@@ -71,6 +71,7 @@
 <string name="media_pause">Tạm dừng</string>
 <string name="media_next">Bài tiếp</string>
 <string name="media_previous">Bài trước</string>
+<string name="media_seek">Vị trí trong bài</string>
 <string name="action_send_files">Gửi tệp</string>
 <string name="action_send_folder">Gửi một thư mục</string>
 <string name="input_service_label">NectarLink: điều khiển từ PC của bạn</string>
@@ -292,6 +293,11 @@
 <string name="action_lock_pc">Khóa PC</string>
 <string name="action_sleep_pc">Ngủ</string>
 <string name="action_hibernate_pc">Ngủ đông</string>
+<string name="action_phone_sound_on_pc">Phát âm thanh điện thoại trên PC</string>
+<string name="phone_sound_on_pc_off">%1$s không phát âm thanh của điện thoại này. Trên PC, hãy bật Phản chiếu màn hình cho điện thoại này trong Cài đặt › Thiết bị.</string>
+<string name="action_shutdown_pc">Tắt máy</string>
+<string name="shutdown_pc_title">Tắt %1$s?</string>
+<string name="shutdown_pc_text">Các ứng dụng đang mở sẽ đóng. Ứng dụng có dữ liệu chưa lưu vẫn có thể chặn việc này.</string>
 <string name="action_wake_pc">Đánh thức</string>
 <string name="action_disconnect">Ngắt kết nối</string>
 <string name="action_stop_reconnecting">Ngừng kết nối lại</string>
@@ -303,6 +309,7 @@
 <string name="pc_locked">%1$s đã bị khóa.</string>
 <string name="pc_sleeping">%1$s sắp chuyển sang chế độ ngủ.</string>
 <string name="pc_hibernating">%1$s sắp chuyển sang chế độ ngủ đông.</string>
+<string name="pc_shutting_down">%1$s đang tắt.</string>
 <string name="pc_actions_off">Khóa và chế độ ngủ đã bị tắt cho điện thoại này trên %1$s.</string>
 <string name="channel_links">Liên kết từ PC của bạn</string>
 <!-- Play on phone: what a PC plays, streamed to the phone. -->
@@ -345,6 +352,12 @@
 <string name="settings_remote">Điều khiển PC của bạn</string>
 <string name="settings_volume_keys_control_pc">Nút âm lượng điều khiển PC</string>
 <string name="settings_volume_keys_control_pc_hint">Khi PC đang phát nhạc hoặc video, nút âm lượng của điện thoại sẽ thay đổi âm lượng của PC.</string>
+<string name="settings_quiet_while_using_pc">Im lặng khi bạn dùng PC</string>
+<string name="settings_quiet_while_using_pc_hint">Điện thoại không phát âm thanh hay rung khi có thông báo trong lúc bạn đang dùng PC đã ghép nối hiển thị các thông báo đó.</string>
+<string name="settings_hide_from_recents">Ẩn khỏi ứng dụng gần đây</string>
+<string name="settings_hide_from_recents_hint">NectarLink không hiện trong màn hình ứng dụng gần đây, nên dọn danh sách sẽ không vô tình đóng nó.</string>
+<string name="settings_assist_on_demand">Chỉ bật Assist khi PC đang dùng điện thoại</string>
+<string name="settings_assist_on_demand_hint">Với Nâng cao, Assist bật khi PC đang hiển thị hoặc gõ trên điện thoại này và tắt ngay sau đó. Dành cho các ứng dụng không mở khi có dịch vụ trợ năng đang bật.</string>
 <string name="settings_touchpad_sensitivity">Tốc độ Touchpad</string>
 <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
 <string name="remote_mode_touchpad">Touchpad</string>
@@ -387,6 +400,7 @@
 <string name="remote_volume_hint">Nút âm lượng cũng chuyển trang chiếu khi màn hình này đang mở.</string>
 <string name="remote_mode_screen">Màn hình</string>
 <string name="pc_mirror_connecting">Đang kết nối với %1$s…</string>
+<string name="pc_mirror_capture_failed">Không thể chia sẻ màn hình. Hãy mở khóa PC, kiểm tra quyền chia sẻ và thử lại.</string>
 <string name="pc_mirror_fullscreen">Toàn màn hình</string>
 <string name="pc_mirror_exit_fullscreen">Thoát toàn màn hình</string>
 <string name="pc_mirror_right_click">Chuột phải</string>
@@ -407,6 +421,10 @@
 <string name="channel_mic_requests">Yêu cầu micrô</string>
 <string name="mic_notification_title">Micrô đang bật cho %1$s</string>
 <string name="mic_notification_text">PC của bạn đang nghe micrô của điện thoại này.</string>
+    <string name="channel_call_audio">Âm thanh cuộc gọi trên PC</string>
+    <string name="call_audio_notification_title">Âm thanh cuộc gọi trên %1$s</string>
+    <string name="call_audio_notification_text">Bạn nói và nghe trên PC.</string>
+    <string name="call_audio_back">Trở lại điện thoại</string>
 <string name="mic_request_title">%1$s muốn dùng micrô của điện thoại này</string>
 <string name="mic_request_text">Chạm để bắt đầu. Micrô sẽ bật cho đến khi bạn hoặc PC tắt.</string>
 <string name="mic_request_start">Bắt đầu</string>
@@ -672,17 +690,37 @@
 <string name="keyboard_from_pc_banner">Đang gõ từ %1$s</string>
 <string name="keyboard_stop">Ngừng gõ</string>
 <!-- Home-screen PC widget -->
-<string name="widget_pc_title">Thao tác nhanh PC</string>
-<string name="widget_pc_description">Trạng thái kết nối, Gửi bảng nhớ tạm, Đổ chuông PC, Khóa PC và Đánh thức PC đã ghép nối của bạn.</string>
+<string name="widget_pc_title">Máy tính trong nháy mắt</string>
+<string name="widget_pc_description">Máy tính có đang kết nối không, kèm Đổ chuông, tùy chọn nguồn và Bật.</string>
+<string name="widget_now_playing_title">Đang phát</string>
+<string name="widget_now_playing_description">Nội dung đang phát trên máy tính, kèm nút điều khiển.</string>
+<string name="widget_actions_title">Thao tác nhanh</string>
+<string name="widget_actions_description">Gửi bộ nhớ tạm hoặc tệp, đổ chuông máy tính, hoặc khóa, cho ngủ hay tắt máy.</string>
+<string name="widget_from_pc_title">Từ máy tính</string>
+<string name="widget_from_pc_description">Đoạn sao chép và tệp mới nhất máy tính gửi, để sao chép hoặc mở.</string>
+<string name="widget_from_pc_empty">Đoạn sao chép và tệp máy tính gửi sẽ hiện ở đây.</string>
+<string name="widget_media_on_pc">Trên %1$s</string>
+<string name="widget_media_nothing">Không có gì đang phát</string>
+<string name="widget_media_nothing_hint">Nhạc và video đang phát trên %1$s sẽ hiện ở đây.</string>
+<string name="widget_battery">Pin %1$d%%</string>
+<string name="widget_battery_charging">Pin %1$d%% · đang sạc</string>
+<string name="widget_link_lan">Trong mạng của bạn</string>
+<string name="widget_seen">Thấy lần cuối %1$s</string>
+<string name="widget_pc_send_clipboard">Gửi bộ nhớ tạm</string>
+<string name="widget_power">Nguồn</string>
+<string name="widget_power_lock">Khóa</string>
+<string name="widget_power_suspend">Tạm ngưng</string>
+<string name="widget_power_off">Tắt nguồn</string>
+<string name="widget_power_off_title">Tắt nguồn %1$s?</string>
+<string name="widget_choose_pc">Chọn máy tính</string>
+<string name="widget_power_offline">Tùy chọn nguồn sẽ hiện khi %1$s được kết nối.</string>
 <string name="widget_pc_no_pc">Chưa ghép nối PC nào</string>
 <string name="widget_pc_tap_to_pair">Chạm để mở NectarLink và ghép nối PC</string>
 <string name="widget_pc_connected">Đã kết nối</string>
 <string name="widget_pc_offline">Ngoại tuyến</string>
 <string name="widget_pc_waking">Đang đánh thức…</string>
 <string name="widget_pc_wake">Đánh thức</string>
-<string name="widget_pc_send_clip">Gửi clip</string>
 <string name="widget_pc_ring">Đổ chuông PC</string>
-<string name="widget_pc_lock">Khóa PC</string>
 <string name="widget_pc_ringing_toast">Đang đổ chuông %1$s…</string>
 <string name="widget_pc_waking_toast">Đang đánh thức %1$s…</string>
 <!-- Companion Device Manager proximity wake -->

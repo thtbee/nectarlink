@@ -186,11 +186,15 @@ FocusScope {
 
     readonly property string doctorSummaryLabel: {
         if (AppController.doctorBusy)
-            return qsTr("Checking firewall and local network...")
+            return Qt.platform.os === "osx"
+                ? qsTr("Checking the local network...")
+                : qsTr("Checking firewall and local network...")
         if (parsedDoctorChecks.length === 0)
-            return Qt.platform.os === "linux"
-                ? qsTr("Run a quick check to verify your firewall and local discovery.")
-                : qsTr("Run a quick check to verify Windows Firewall and local discovery.")
+            return Qt.platform.os === "windows"
+                ? qsTr("Run a quick check to verify Windows Firewall and local discovery.")
+                : Qt.platform.os === "osx"
+                    ? qsTr("Run a quick check to verify the network and local discovery.")
+                    : qsTr("Run a quick check to verify your firewall and local discovery.")
         let problems = 0
         for (let i = 0; i < parsedDoctorChecks.length; i++) {
             if (parsedDoctorChecks[i].outcome !== "ok")
@@ -852,8 +856,14 @@ FocusScope {
                                     },
                                     {
                                         icon: Icons.shield,
-                                        title: qsTr("Hardware-backed device keys"),
-                                        body: qsTr("Device keys are protected by Windows DPAPI and the Android Keystore.")
+                                        title: Qt.platform.os === "linux"
+                                            ? qsTr("Device keys stay on your devices")
+                                            : qsTr("Hardware-backed device keys"),
+                                        body: Qt.platform.os === "windows"
+                                            ? qsTr("Device keys are protected by Windows DPAPI and the Android Keystore.")
+                                            : Qt.platform.os === "osx"
+                                                ? qsTr("Device keys are protected by the login Keychain and the Android Keystore.")
+                                                : qsTr("This PC's key is in a file only your account can read. The phone's is protected by the Android Keystore.")
                                     },
                                     {
                                         icon: Icons.wifi,
@@ -1463,13 +1473,15 @@ FocusScope {
 
                                         Txt {
                                             Layout.fillWidth: true
-                                            text: Qt.platform.os === "linux" ? qsTr("Desktop notifications") : qsTr("Windows notifications")
+                                            text: Qt.platform.os === "windows" ? qsTr("Windows notifications") : qsTr("Desktop notifications")
                                             role: "title"
                                         }
 
                                         Txt {
                                             Layout.fillWidth: true
-                                            text: AppController.toastsEnabled
+                                            text: Qt.platform.os === "osx"
+                                                ? qsTr("macOS asks the first time NectarLink shows one. Change it any time in System Settings › Notifications.")
+                                                : AppController.toastsEnabled
                                                 ? (Qt.platform.os === "linux"
                                                     ? qsTr("Enabled in desktop notification settings.")
                                                     : qsTr("Enabled in Windows Settings."))
@@ -1545,13 +1557,15 @@ FocusScope {
 
                                         Txt {
                                             Layout.fillWidth: true
-                                            text: Qt.platform.os === "linux" ? qsTr("Start at login") : qsTr("Start with Windows")
+                                            text: Qt.platform.os === "windows" ? qsTr("Start with Windows") : qsTr("Start at login")
                                             role: "title"
                                         }
 
                                         Txt {
                                             Layout.fillWidth: true
-                                            text: qsTr("Keep NectarLink ready in the system tray when you sign in.")
+                                            text: Qt.platform.os === "osx"
+                                                ? qsTr("Keep NectarLink ready in the menu bar when you log in.")
+                                                : qsTr("Keep NectarLink ready in the system tray when you sign in.")
                                             role: "caption"
                                             color: Theme.surfaceContentVariant
                                             wrapMode: Text.WordWrap
@@ -1559,7 +1573,7 @@ FocusScope {
                                     }
 
                                     Toggle {
-                                        label: Qt.platform.os === "linux" ? qsTr("Start at login") : qsTr("Start with Windows")
+                                        label: Qt.platform.os === "windows" ? qsTr("Start with Windows") : qsTr("Start at login")
                                         checked: Preferences.startWithWindows
                                         onToggled: next => Preferences.startWithWindows = next
                                     }
@@ -1609,7 +1623,9 @@ FocusScope {
 
                                             Txt {
                                                 Layout.fillWidth: true
-                                                text: qsTr("Firewall and network check")
+                                                text: Qt.platform.os === "osx"
+                                                    ? qsTr("Network check")
+                                                    : qsTr("Firewall and network check")
                                                 role: "title"
                                             }
 
@@ -1756,8 +1772,8 @@ FocusScope {
 
             Button {
                 text: walkthrough.step === walkthrough.totalSteps - 1
-                    ? "Done"
-                    : (walkthrough.step === 0 ? qsTr("Get started") : "Next")
+                    ? qsTr("Done")
+                    : (walkthrough.step === 0 ? qsTr("Get started") : qsTr("Next"))
                 iconPath: walkthrough.step === walkthrough.totalSteps - 1 ? Icons.check : Icons.chevronRight
                 variant: "fill"
                 size: "md"

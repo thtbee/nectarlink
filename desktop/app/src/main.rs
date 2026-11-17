@@ -8,9 +8,11 @@
 // A GUI app: no console window in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod app_shortcuts;
 mod automations;
 mod battery;
 mod bridge;
+mod call_audio;
 mod calls;
 mod clipboard;
 mod command_palette;
@@ -41,6 +43,7 @@ mod pc_audio_stream;
 mod pc_mirror;
 mod pc_notifications;
 mod pc_storage;
+mod phone_install;
 mod phone_mic;
 mod phone_sound;
 mod photo_backup;
@@ -82,7 +85,7 @@ use std::{
     time::Duration,
 };
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 use cxx_qt_lib::QGuiApplication;
 use cxx_qt_lib::{QQmlApplicationEngine, QString, QUrl};
 use nectarlink_core::{
@@ -174,6 +177,19 @@ impl Platform for DesktopPlatform {
         peer: &nectarlink_core::DeviceId,
     ) -> Option<std::sync::Arc<dyn nectarlink_core::MicSink>> {
         phone_mic::sink(peer)
+    }
+    fn call_audio_sink(
+        &self,
+        peer: &nectarlink_core::DeviceId,
+    ) -> Option<std::sync::Arc<dyn nectarlink_core::MicSink>> {
+        call_audio::sink(peer)
+    }
+    fn call_audio_stop_requested(&self, peer: &nectarlink_core::DeviceId) {
+        call_audio::end(*peer);
+    }
+    fn phone_sound_asked(&self, peer: &nectarlink_core::DeviceId) {
+        tracing::info!(peer = %peer.short(), "the phone asked to play its sound here");
+        phone_sound::set_on(*peer, true);
     }
     fn webcam_sink(
         &self,
@@ -464,9 +480,9 @@ fn run_setup_window(mode: setup::Mode) -> ExitCode {
     }
     bridge::setup::set_mode(mode);
     bridge::native::ffi::prepare_qt_without_log();
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     let mut app = bridge::native::ffi::create_qt_app();
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     let mut app = QGuiApplication::new();
     if let Some(mut app) = app.as_mut() {
         app.as_mut().set_application_name(&QString::from("NectarLink Setup"));
@@ -597,6 +613,8 @@ fn main() -> ExitCode {
     #[cfg(target_os = "linux")]
     win::quit_on_signals(bridge::app::request_quit);
     win::jumplist::register(options.data_dir.as_deref());
+    // Before the core looks for adb: one downloaded for phones on a cable is used too.
+    phone_install::init(&data_dir);
     if let Err(e) = core_host::start(data_dir.clone(), Arc::new(DesktopPlatform)) {
         tracing::error!(error = %e, "can't start the core runtime");
         return ExitCode::FAILURE;
@@ -642,6 +660,7 @@ fn main() -> ExitCode {
     photo_backup::start();
     webcam::init(&settings);
     phone_mic::init(&settings);
+    call_audio::init(&settings);
     local_api::init(&settings);
     win::widget::write_state_snapshot(&data_dir);
     win::tray::update_hotkeys(
@@ -714,9 +733,9 @@ fn main() -> ExitCode {
         bridge::native::ffi::prepare_qt(&logging::logs_dir(&data_dir).to_string_lossy());
     }
     bridge::native::ffi::set_ui_scale(i32::from(settings::Settings::load(&data_dir).ui_scale));
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     let mut app = bridge::native::ffi::create_qt_app();
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     let mut app = QGuiApplication::new();
     if let Some(mut app) = app.as_mut() {
         app.as_mut().set_application_name(&QString::from("Nectarlink"));
@@ -734,6 +753,7 @@ fn main() -> ExitCode {
         bridge::native::ffi::add_app_icon_image(size, &mark::render(size as usize));
     }
     bridge::native::ffi::apply_app_icon();
+    bridge::native::ffi::stay_out_of_session_restore();
 
     if let Some(instance) = instance {
         let data_dir = data_dir.clone();

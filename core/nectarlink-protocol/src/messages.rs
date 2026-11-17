@@ -67,6 +67,8 @@ pub mod types {
     pub const CALL_LOG_CHANGED: &str = "call.log.changed";
     pub const CALL_DIAL: &str = "call.dial";
     pub const CALL_SIMS: &str = "call.sims";
+    pub const CALL_AUDIO_START: &str = "call.audio.start";
+    pub const CALL_AUDIO_STOP: &str = "call.audio.stop";
     pub const CONTACTS_LIST: &str = "contacts.list";
     pub const CONTACTS_CHANGED: &str = "contacts.changed";
     pub const SMS_THREADS: &str = "sms.threads";
@@ -78,10 +80,15 @@ pub mod types {
     pub const MIRROR_STOP: &str = "mirror.stop";
     pub const MIRROR_POWER: &str = "mirror.power";
     pub const MIRROR_SOUND: &str = "mirror.sound";
+    /// Phone → PC: play my sound (#398). The PC starts its phone sound as
+    /// if its user had turned it on; answered `ok`.
+    pub const MIRROR_LISTEN_ASK: &str = "mirror.listen.ask";
     pub const MIRROR_KEYFRAME: &str = "mirror.keyframe";
     pub const MIRROR_RESIZE: &str = "mirror.resize";
     pub const MIRROR_INPUT: &str = "mirror.input";
     pub const MIRROR_APPS: &str = "mirror.apps";
+    /// PC → phone: uninstall this app (`AppUninstall`); answered `ok` once it's gone.
+    pub const MIRROR_APP_UNINSTALL: &str = "mirror.apps.uninstall";
     pub const MIRROR_NOTICE: &str = "mirror.notice";
     pub const POINTER_ENTER: &str = "pointer.enter";
     pub const POINTER_MOVE: &str = "pointer.move";
@@ -1155,8 +1162,9 @@ impl MediaWatch {
 
 // ---- Actions (docs/protocol/actions.md) ----
 
-/// Body of `pc.power`: `lock`, `sleep`, or `hibernate` (only to a PC that
-/// offers [`pc_power::HIBERNATE`]).
+/// Body of `pc.power`: `lock`, `sleep`, `hibernate` (only to a PC that
+/// offers [`pc_power::HIBERNATE`]) or `shutdown` (only to one offering
+/// [`pc_power::SHUTDOWN`]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PcPower {
     pub action: String,
@@ -1166,6 +1174,8 @@ pub mod pc_power {
     /// Offered by PCs that can hibernate right now (it can be turned off, or
     /// have nowhere to save to).
     pub const HIBERNATE: &str = "pc.power.hibernate";
+    /// Offered by PCs a phone may shut down (D372).
+    pub const SHUTDOWN: &str = "pc.power.shutdown";
 }
 
 /// The longest link sent, in bytes.
@@ -1386,6 +1396,8 @@ pub mod mirror {
     pub const AUDIO_PLAYBACK: &str = "mirror.audio.playback";
     /// Offered by PCs that play a mirrored phone's sound.
     pub const LISTEN: &str = "mirror.listen";
+    /// Offered by PCs a phone may ask to play its sound (`mirror.listen.ask`, #398).
+    pub const LISTEN_ASK: &str = "mirror.listen.ask";
     /// Offered by devices that report each video packet as it arrives, and
     /// use those reports to keep what they send from getting ahead of the link.
     pub const PACE: &str = "mirror.pace";
@@ -1398,6 +1410,8 @@ pub mod mirror {
     /// Offered by phones that run an app on a display of its own, shown in
     /// a window of its own (Elevated).
     pub const VIRTUAL_DISPLAY: &str = "mirror.virtual_display";
+    /// Offered by phones that uninstall an app a PC asks for (Elevated, D349).
+    pub const APP_UNINSTALL: &str = "mirror.apps.uninstall";
     /// The session of the phone's own screen; app windows have others.
     pub const SCREEN: u32 = 0;
     /// Apps in a `mirror.apps` answer, at most.
@@ -1410,6 +1424,8 @@ pub mod mirror {
     /// `mirror.notice`: the phone refuses the PC's taps and keys (on Xiaomi,
     /// until USB debugging (Security settings) is on).
     pub const NOTICE_INPUT_BLOCKED: &str = "input_blocked";
+    /// `mirror.notice`: the PC could not start or continue sharing its screen.
+    pub const NOTICE_PC_CAPTURE_FAILED: &str = "pc_capture_failed";
 }
 
 /// Whether `name` looks like an Android package name.
@@ -1514,8 +1530,8 @@ pub struct MirrorSession {
     pub session: u32,
 }
 
-/// Body of `mirror.notice` (phone → PC): something the PC should tell its
-/// user about a mirroring, by a code it knows (`mirror::NOTICE_*`).
+/// Body of `mirror.notice`: something the viewer should tell its user
+/// about a mirroring, by a code it knows (`mirror::NOTICE_*`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MirrorNotice {
     #[serde(default)]
@@ -1535,13 +1551,24 @@ pub struct MirrorResize {
     pub session: u32,
     pub width: u32,
     pub height: u32,
+    /// How big the app draws, in percent of the display's usual density
+    /// (100 from PCs that don't say; phones from before this ignore it).
+    #[serde(default = "MirrorResize::usual_zoom")]
+    pub zoom: u32,
 }
 
 impl MirrorResize {
+    pub const ZOOM: std::ops::RangeInclusive<u32> = 50..=200;
+
+    fn usual_zoom() -> u32 {
+        100
+    }
+
     pub fn is_valid(&self) -> bool {
         self.session != mirror::SCREEN
             && (64..=4096).contains(&self.width)
             && (64..=4096).contains(&self.height)
+            && Self::ZOOM.contains(&self.zoom)
     }
 }
 
@@ -1562,6 +1589,18 @@ impl std::fmt::Debug for PhoneApp {
             .field("pkg", &self.pkg)
             .field("icon", &self.icon.as_ref().map(Vec::len))
             .finish_non_exhaustive()
+    }
+}
+
+/// Body of `mirror.apps.uninstall`: the app to remove from the phone.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AppUninstall {
+    pub pkg: String,
+}
+
+impl AppUninstall {
+    pub fn is_valid(&self) -> bool {
+        is_package_name(&self.pkg)
     }
 }
 
@@ -2398,6 +2437,19 @@ pub mod calls {
     /// Offered by phones that list their SIMs (`call.sims`) and dial on the
     /// one a PC picks (`call.dial`'s `sim`).
     pub const SIMS: &str = "call.sims";
+    /// Offered by phones that carry a call's sound to a PC and the PC's
+    /// microphone into the call (`call.audio.start`).
+    pub const AUDIO: &str = "call.audio";
+    /// Stream service of the call's sound; `downlink` goes phone to PC (the
+    /// other party), `uplink` PC to phone (the PC's microphone).
+    pub const AUDIO_SERVICE: &str = "calls";
+    pub const OP_DOWNLINK: &str = "downlink";
+    pub const OP_UPLINK: &str = "uplink";
+    pub const AUDIO_VERSION: u32 = 1;
+    /// The call's sound: 16 kHz mono 16-bit PCM, both ways.
+    pub const AUDIO_RATE: u32 = 16_000;
+    /// Stream reset code: the call's sound stopped (or was refused).
+    pub const AUDIO_STOPPED: u32 = 14;
     /// Most SIMs (phone accounts that place calls) in one answer.
     pub const MAX_SIMS: usize = 8;
     /// A caller's photo: a JPEG of at most this many bytes.
@@ -2596,6 +2648,18 @@ impl CallDial {
             && self.number.len() <= calls::MAX_TEXT_BYTES
             && !self.number.chars().any(char::is_control)
             && self.sim.as_deref().is_none_or(is_valid_sim_id)
+    }
+}
+
+/// Body of `call.audio.start`: carry this call's sound to the PC.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallAudioStart {
+    pub id: String,
+}
+
+impl CallAudioStart {
+    pub fn is_valid(&self) -> bool {
+        !self.id.is_empty() && self.id.len() <= calls::MAX_ID_BYTES
     }
 }
 
@@ -5351,6 +5415,11 @@ mod tests {
         assert!(CallDial { number: "555".into(), sim: Some("1".into()) }.is_valid());
         assert!(!CallDial { number: "555".into(), sim: Some(String::new()) }.is_valid());
         assert!(!CallDial { number: "555".into(), sim: Some("a\nb".into()) }.is_valid());
+        let start = CallAudioStart { id: "7".into() };
+        let env = Envelope::new(types::CALL_AUDIO_START, &start).unwrap();
+        assert_eq!(Envelope::from_cbor(&env.to_cbor()).unwrap().body::<CallAudioStart>().unwrap(), start);
+        assert!(!CallAudioStart { id: String::new() }.is_valid());
+        assert!(!CallAudioStart { id: "1".repeat(calls::MAX_ID_BYTES + 1) }.is_valid());
         let old = Envelope::new(types::CALL_DIAL, &CallDial { number: "555".into(), sim: None }).unwrap();
         assert_eq!(old.body::<CallDial>().unwrap().sim, None);
         let sims = CallSims {

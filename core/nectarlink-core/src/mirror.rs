@@ -120,7 +120,7 @@ pub(crate) async fn start(shared: &Shared, session: &Session, options: MirrorSta
     Ok(())
 }
 
-/// Tells the PC something about its mirroring (`mirror.notice`), by `code`.
+/// Tells the viewer something about its mirroring (`mirror.notice`), by `code`.
 pub(crate) async fn notice(session: &Session, mirroring: u32, code: &str) -> Result<()> {
     let body = MirrorNotice { session: mirroring, code: code.to_owned() };
     if !body.is_valid() {
@@ -176,11 +176,12 @@ pub(crate) async fn resize(
     mirroring: u32,
     width: u32,
     height: u32,
+    zoom: u32,
 ) -> Result<()> {
     if !shared.toggle_on(&session.peer, TOGGLE) {
         return Err(Error::Denied);
     }
-    let msg = MirrorResize { session: mirroring, width, height };
+    let msg = MirrorResize { session: mirroring, width, height, zoom };
     if !msg.is_valid() {
         return Err(Error::Protocol("invalid resize".into()));
     }
@@ -464,6 +465,17 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
     let peer = session.peer;
     let platform = shared.platform.clone();
     match env.t.as_str() {
+        // A phone asks this PC to play its sound (#398): the PC asks back
+        // with mirror.start, so the phone's own consent still applies.
+        types::MIRROR_LISTEN_ASK if is_local_desktop(shared) => {
+            let reply = if shared.we_offer(mirror::LISTEN_ASK) && shared.toggle_on(&peer, TOGGLE) {
+                tokio::task::spawn_blocking(move || platform.phone_sound_asked(&peer));
+                Envelope::empty(types::OK)
+            } else {
+                Envelope::error(ErrorCode::Denied, "this PC doesn't play this phone's sound")
+            };
+            session.send(reply.reply_to(env.id)).await?;
+        }
         types::MIRROR_START => {
             let options: MirrorStart = env.body()?;
             let desktop = is_local_desktop(shared);
@@ -550,7 +562,13 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let allowed = shared.toggle_on(&peer, TOGGLE) && shared.we_offer(mirror::VIRTUAL_DISPLAY);
             if allowed && resize.is_valid() {
                 tokio::task::spawn_blocking(move || {
-                    platform.mirror_resize_requested(&peer, resize.session, resize.width, resize.height);
+                    platform.mirror_resize_requested(
+                        &peer,
+                        resize.session,
+                        resize.width,
+                        resize.height,
+                        resize.zoom,
+                    );
                 });
             }
         }
@@ -596,6 +614,29 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                     shared.emit(NodeEvent::RemoteInputRequested { device: peer });
                 }
             }
+        }
+        types::MIRROR_APP_UNINSTALL => {
+            let request: nectarlink_protocol::messages::AppUninstall = env.body()?;
+            let reply = if !shared.toggle_on(&peer, TOGGLE) {
+                Envelope::error(ErrorCode::Denied, "mirroring is off for this device")
+            } else if !shared.we_offer(mirror::APP_UNINSTALL) {
+                Envelope::error(ErrorCode::Unsupported, "this phone doesn't uninstall apps for a PC")
+            } else if !request.is_valid() {
+                Envelope::error(ErrorCode::BadMessage, "not an app")
+            } else {
+                let pkg = request.pkg.clone();
+                match tokio::task::spawn_blocking(move || platform.app_uninstall_requested(&peer, &pkg))
+                    .await
+                    .unwrap_or_else(|e| Err(e.to_string()))
+                {
+                    Ok(()) => Envelope::empty(types::OK),
+                    Err(reason) => {
+                        tracing::info!(reason, "an app wasn't uninstalled");
+                        Envelope::error(ErrorCode::Internal, "the phone couldn't uninstall it")
+                    }
+                }
+            };
+            session.send(reply.reply_to(env.id)).await?;
         }
         types::POINTER_ENTER => {
             let enter: PointerEnter = env.body()?;

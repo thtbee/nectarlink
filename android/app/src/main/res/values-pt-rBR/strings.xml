@@ -74,6 +74,7 @@
     <string name="media_pause">Pausar</string>
     <string name="media_next">Próximo</string>
     <string name="media_previous">Anterior</string>
+    <string name="media_seek">Posição na faixa</string>
     <string name="action_send_files">Enviar arquivos</string>
     <string name="action_send_folder">Enviar uma pasta</string>
     <string name="input_service_label">NectarLink: controle pelo PC</string>
@@ -99,7 +100,7 @@
     <string name="elevated_failed">Não foi possível iniciar. Confira se a depuração por Wi-Fi está ativada e tente de novo.</string>
     <string name="elevated_not_paired">O celular esqueceu o pareamento do NectarLink. Configure de novo.</string>
     <string name="elevated_start_with">Iniciar com</string>
-    <string name="elevated_method_wireless">Sem fio</string>
+    <string name="elevated_method_wireless">Wi-Fi</string>
     <string name="elevated_set_up">Configurar</string>
     <string name="elevated_root_hint">Este celular tem root, então o Elevated pode ser iniciado pelo root: sem pareamento, e ele volta sozinho depois de reiniciar ou fora do Wi-Fi. As permissões são as mesmas da depuração por Wi-Fi.</string>
     <string name="elevated_running_root">Ativado pelo root: o mouse e o teclado do PC funcionam como uma tela touch e um teclado de verdade.</string>
@@ -293,6 +294,11 @@
     <string name="action_lock_pc">Bloquear PC</string>
     <string name="action_sleep_pc">Suspender</string>
     <string name="action_hibernate_pc">Hibernar</string>
+    <string name="action_phone_sound_on_pc">Tocar o som do celular no PC</string>
+    <string name="phone_sound_on_pc_off">%1$s não toca o som deste celular. No PC, ative Espelhamento de tela para este celular em Configurações › Dispositivos.</string>
+    <string name="action_shutdown_pc">Desligar</string>
+    <string name="shutdown_pc_title">Desligar %1$s?</string>
+    <string name="shutdown_pc_text">Os apps abertos são fechados. Um app com trabalho não salvo ainda pode impedir.</string>
     <string name="action_wake_pc">Acordar</string>
     <string name="action_disconnect">Desconectar</string>
     <string name="action_stop_reconnecting">Parar de tentar reconectar</string>
@@ -304,6 +310,7 @@
     <string name="pc_locked">%1$s foi bloqueado.</string>
     <string name="pc_sleeping">%1$s está entrando em suspensão.</string>
     <string name="pc_hibernating">%1$s está hibernando.</string>
+    <string name="pc_shutting_down">%1$s está desligando.</string>
     <string name="pc_actions_off">As ações de bloquear e suspender estão desativadas para este celular em %1$s.</string>
     <string name="channel_links">Links do PC</string>
     <!-- Play on phone: what a PC plays, streamed to the phone. -->
@@ -348,6 +355,12 @@
     <string name="settings_remote">Controlar o PC</string>
     <string name="settings_volume_keys_control_pc">Botões de volume controlam o PC</string>
     <string name="settings_volume_keys_control_pc_hint">Enquanto o PC toca música ou vídeo, os botões de volume do celular mudam o volume do PC.</string>
+    <string name="settings_quiet_while_using_pc">Silencioso enquanto você usa o PC</string>
+    <string name="settings_quiet_while_using_pc_hint">O celular não toca nem vibra com notificações enquanto você usa um PC pareado que as mostra.</string>
+    <string name="settings_hide_from_recents">Ocultar dos apps recentes</string>
+    <string name="settings_hide_from_recents_hint">O NectarLink não aparece nos apps recentes, então limpar a lista não o fecha por engano.</string>
+    <string name="settings_assist_on_demand">Assist só enquanto um PC usa o celular</string>
+    <string name="settings_assist_on_demand_hint">Com o Elevated, o Assist liga enquanto um PC mostra este celular ou digita nele, e desliga pouco depois. Para apps que não abrem com um serviço de acessibilidade ativo.</string>
     <string name="settings_touchpad_sensitivity">Velocidade do touchpad</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Touchpad</string>
@@ -390,6 +403,7 @@
     <string name="remote_volume_hint">Os botões de volume também mudam os slides enquanto esta tela está aberta.</string>
     <string name="remote_mode_screen">Tela</string>
     <string name="pc_mirror_connecting">Conectando a %1$s…</string>
+    <string name="pc_mirror_capture_failed">Falha ao compartilhar a tela. Desbloqueie o PC, confira as permissões de compartilhamento e tente novamente.</string>
     <string name="pc_mirror_fullscreen">Tela inteira</string>
     <string name="pc_mirror_exit_fullscreen">Sair da tela inteira</string>
     <string name="pc_mirror_right_click">Clique direito</string>
@@ -411,6 +425,10 @@
     <string name="channel_mic_requests">Pedidos de microfone</string>
     <string name="mic_notification_title">Microfone ativado para %1$s</string>
     <string name="mic_notification_text">Seu PC está ouvindo o microfone deste celular.</string>
+    <string name="channel_call_audio">Som da chamada no PC</string>
+    <string name="call_audio_notification_title">Som da chamada em %1$s</string>
+    <string name="call_audio_notification_text">Você fala e ouve pelo PC.</string>
+    <string name="call_audio_back">Voltar ao celular</string>
     <string name="mic_request_title">%1$s quer usar o microfone deste celular</string>
     <string name="mic_request_text">Toque para começar. Ele fica ligado até você ou o PC desligar.</string>
     <string name="mic_request_start">Iniciar</string>
@@ -692,17 +710,37 @@
     <string name="keyboard_stop">Parar de digitar</string>
 
     <!-- Home-screen PC widget -->
-    <string name="widget_pc_title">Ações rápidas do PC</string>
-    <string name="widget_pc_description">Status da conexão, Enviar item copiado, Fazer o PC tocar, Bloquear PC e Acordar para o PC pareado.</string>
+    <string name="widget_pc_title">Seu PC num relance</string>
+    <string name="widget_pc_description">Se o seu PC está conectado, com Tocar, opções de energia e Ligar.</string>
+    <string name="widget_now_playing_title">Tocando agora</string>
+    <string name="widget_now_playing_description">O que está tocando no seu PC, com os controles.</string>
+    <string name="widget_actions_title">Ações rápidas</string>
+    <string name="widget_actions_description">Envie a área de transferência ou arquivos, toque o PC, ou bloqueie, suspenda ou desligue.</string>
+    <string name="widget_from_pc_title">Do seu PC</string>
+    <string name="widget_from_pc_description">O último clipe e arquivo que o seu PC enviou, para copiar ou abrir.</string>
+    <string name="widget_from_pc_empty">Clipes e arquivos que o seu PC envia aparecem aqui.</string>
+    <string name="widget_media_on_pc">No %1$s</string>
+    <string name="widget_media_nothing">Nada tocando</string>
+    <string name="widget_media_nothing_hint">Músicas e vídeos tocando no %1$s aparecem aqui.</string>
+    <string name="widget_battery">Bateria %1$d%%</string>
+    <string name="widget_battery_charging">Bateria %1$d%% · carregando</string>
+    <string name="widget_link_lan">Na sua rede</string>
+    <string name="widget_seen">Visto %1$s</string>
+    <string name="widget_pc_send_clipboard">Enviar área de transferência</string>
+    <string name="widget_power">Energia</string>
+    <string name="widget_power_lock">Bloquear</string>
+    <string name="widget_power_suspend">Suspender</string>
+    <string name="widget_power_off">Desligar</string>
+    <string name="widget_power_off_title">Desligar %1$s?</string>
+    <string name="widget_choose_pc">Escolha um PC</string>
+    <string name="widget_power_offline">As opções de energia aparecem enquanto %1$s estiver conectado.</string>
     <string name="widget_pc_no_pc">Nenhum PC pareado</string>
     <string name="widget_pc_tap_to_pair">Toque para abrir o NectarLink e parear um PC</string>
     <string name="widget_pc_connected">Conectado</string>
     <string name="widget_pc_offline">Desconectado</string>
     <string name="widget_pc_waking">Acordando…</string>
     <string name="widget_pc_wake">Acordar</string>
-    <string name="widget_pc_send_clip">Enviar item copiado</string>
     <string name="widget_pc_ring">Fazer o PC tocar</string>
-    <string name="widget_pc_lock">Bloquear PC</string>
     <string name="widget_pc_ringing_toast">Fazendo %1$s tocar…</string>
     <string name="widget_pc_waking_toast">Acordando %1$s…</string>
 
@@ -1400,29 +1438,29 @@
     <string name="profile_work">Trabalho</string>
     <string name="profile_other">Segundo perfil</string>
 
-    <string name="relay_settings_title">Servidores de retransmissão Iroh</string>
+    <string name="relay_settings_title">Servidores de retransmissão do iroh</string>
     <string name="relay_waiting">Aguardando o serviço de conexão…</string>
-    <string name="relay_away_hint">Ative “Conectar usando dados móveis” para usar os retransmissores habilitados.</string>
-    <string name="relay_selection_hint">Os controles definem quais servidores o Iroh pode escolher como retransmissor principal deste dispositivo.</string>
+    <string name="relay_away_hint">Ative “Conectar usando dados móveis” para usar os retransmissores ativados.</string>
+    <string name="relay_selection_hint">As chaves definem quais servidores o iroh pode escolher como retransmissor principal deste dispositivo.</string>
     <string name="relay_home">Retransmissores principais</string>
     <string name="relay_home_empty">Nenhum retransmissor principal selecionado</string>
     <string name="relay_home_connected">Conectado · %1$s</string>
     <string name="relay_home_failed">Falha na conexão · %1$s</string>
     <string name="relay_home_connecting">Conectando · %1$s</string>
-    <string name="relay_device_routes">Tráfego dos dispositivos via retransmissão</string>
+    <string name="relay_device_routes">Tráfego dos dispositivos via retransmissor</string>
     <string name="relay_routes_empty">Nenhum dispositivo está usando um retransmissor</string>
     <string name="relay_route">%1$s via %2$s</string>
     <string name="relay_check_all">Verificar todos os retransmissores</string>
     <string name="relay_checking">Verificando retransmissores…</string>
     <string name="relay_checking_short">Verificando…</string>
-    <string name="relay_not_checked">Ainda não verificado</string>
+    <string name="relay_not_checked">Não verificado</string>
     <string name="relay_rtt">%1$d ms</string>
-    <string name="relay_timed_out">Tempo limite excedido</string>
+    <string name="relay_timed_out">Tempo esgotado</string>
     <string name="relay_unreachable">Inacessível</string>
     <string name="relay_address">Endereço do retransmissor personalizado</string>
     <string name="relay_add">Adicionar retransmissor</string>
     <string name="relay_enable">Ativar %1$s</string>
-    <string name="relay_invalid_address">Informe um endereço HTTP ou HTTPS sem credenciais, caminho ou parâmetros de consulta.</string>
+    <string name="relay_invalid_address">Digite um endereço de retransmissor HTTP ou HTTPS, sem credenciais, caminho nem parâmetros de consulta.</string>
     <string name="relay_duplicate">Este retransmissor já está na lista.</string>
     <string name="relay_limit">A lista aceita até 16 retransmissores personalizados.</string>
     <string name="relay_save_failed">Não foi possível salvar as configurações de retransmissão.</string>
@@ -1430,7 +1468,7 @@
     <string name="relay_region_na_west">América do Norte · Oeste</string>
     <string name="relay_region_europe">Europa</string>
     <string name="relay_region_asia_pacific">Ásia-Pacífico</string>
-    <string name="relay_region_custom">Personalizados</string>
+    <string name="relay_region_custom">Personalizado</string>
 </resources>
 
 

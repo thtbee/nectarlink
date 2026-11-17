@@ -8,6 +8,94 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **The Mac preview does a lot more, and comes as a DMG.** Apple silicon Macs (macOS 14
+  or newer) get one with Nightlies and releases. On a Mac, NectarLink now mirrors the phone's screen,
+  records it to MP4, plays the phone's sound and microphone, sends the Mac's sound to the
+  phone (with Screen Recording permission), shows the phone's storage in Finder, sets the
+  Mac's volume instantly, and lives in the menu bar when its window is closed (the Dock
+  icon brings it back). It isn't signed with
+  an Apple Developer ID yet, so macOS asks you to allow it once (see Getting started),
+  and it doesn't update itself yet. Thanks to [@svkrvavilla](https://github.com/svkrvavilla)
+  ([#410](https://github.com/thtbee/nectarlink/pull/410), [#411](https://github.com/thtbee/nectarlink/pull/411),
+  [#412](https://github.com/thtbee/nectarlink/pull/412), [#413](https://github.com/thtbee/nectarlink/pull/413),
+  [#414](https://github.com/thtbee/nectarlink/pull/414), [#415](https://github.com/thtbee/nectarlink/pull/415),
+  [#416](https://github.com/thtbee/nectarlink/pull/416), [#417](https://github.com/thtbee/nectarlink/pull/417),
+  [#419](https://github.com/thtbee/nectarlink/pull/419), [#426](https://github.com/thtbee/nectarlink/pull/426)).
+- **Talk through your PC.** During a call, **On PC** on the call card or in Nectar Island moves the
+  call's sound to a Windows PC: you hear the other person from its speakers or headphones
+  and talk into its microphone, over NectarLink's own connection, without Bluetooth. The
+  phone shows a notification while the sound is on the PC, with **Back to phone** to move
+  it back. A call answered or dialed from the PC moves there on its own. Settings › Camera &
+  Audio › Microphone for calls picks the PC's microphone. Needs Elevated on Android 13 or
+  newer, on a phone whose maker lets apps reach the call's sound (a Pixel 7 does; the PC
+  only shows On PC where the phone can). Thanks to [@rus152](https://github.com/rus152)
+  ([#418](https://github.com/thtbee/nectarlink/pull/418)); asked for in
+  [#133](https://github.com/thtbee/nectarlink/issues/133).
+- **New home-screen widgets on the phone.** Four of them, in the app's Bloom style, light and
+  dark: **PC at a glance** (connected or not, battery or when it was last seen, Ring, and
+  Wake when it's off), **Now playing** (what plays on the PC, with its controls), **Quick
+  actions** (send the clipboard or files, ring the PC) and **From your PC** (the last clip,
+  to copy again, and the last file, to open). The power button opens a menu with Lock,
+  Sleep, Hibernate and Shut down, named the way the PC's OS names them (Suspend and Power
+  off on Linux), and only what that PC allows. With more than one PC, each widget can show
+  a different one. The old PC widget becomes PC at a glance by itself.
+- **Assist only while a PC uses the phone.** With Elevated set up, a switch in the phone's
+  Settings › Permissions › Control from your PC keeps the accessibility service off until a PC shows the
+  phone, opens an app window or types on it, and turns it off again shortly after. For
+  apps that crash or refuse to open while an accessibility service is on, like InstaPay.
+  Thanks to [@Devhoss](https://github.com/Devhoss) ([#400](https://github.com/thtbee/nectarlink/issues/400)).
+- **Hide NectarLink from recent apps.** A switch in the phone's Settings › Background keeps
+  it off the recent apps screen, so clearing that screen can't close it by accident on
+  phones where that stops apps. Thanks to [@FlootingDream](https://github.com/FlootingDream)
+  ([#409](https://github.com/thtbee/nectarlink/issues/409)).
+- **Install the phone app from the PC, over USB.** Settings › Install on a phone checks
+  what's needed and walks you through the rest: it gets Android's USB tools from Google
+  when the PC has none (checked against Google's checksum), helps turn on USB debugging,
+  notices a missing USB driver on Windows, then installs and opens the newest phone app.
+  When the phone refuses, it says why and what to do. For phones where Play Protect or
+  the maker blocks installing from a browser. The adb it downloads also connects phones
+  over a cable from then on.
+- **Select a whole day of photos.** On the PC's Photos page, click the day at the top of
+  the grid to select everything from that day; click it again to clear it. Thanks to
+  [@Dipen425](https://github.com/Dipen425) ([#388](https://github.com/thtbee/nectarlink/issues/388)).
+- **Scrollbars.** Long pages on the PC (Home, Settings, Timeline, Messages, Photos, Calls,
+  Apps, Deck) and sheets show a thin scrollbar while they scroll or when the pointer is near
+  their edge; drag it, or click to jump. Thanks to [@Dipen425](https://github.com/Dipen425)
+  ([#387](https://github.com/thtbee/nectarlink/issues/387)).
+- **Flex mode for app windows.** A button in an app window's toolbar turns off fitting
+  the app to the window, for apps that don't take odd shapes well: the app restarts at
+  the phone's resolution and the window keeps that shape when resized. It's remembered
+  for each app.
+- **Zoom an app window.** Ctrl + mouse wheel makes the app in a window draw bigger or
+  smaller, from 50% to 200%, remembered for each app. The window is blurred with a
+  spinner until the phone has drawn the app at its new size. Both thanks to
+  [@rus152](https://github.com/rus152) ([#369](https://github.com/thtbee/nectarlink/pull/369)).
+- **App windows fit any shape, and say when they're catching up.** With Elevated, an app
+  window's display now takes the window's exact size, so there are no bars beside the
+  app. While you hold an edge on Windows, the window shows the app blurred under its
+  icon, and the app is laid out once, when you let go. Thanks to
+  [@rus152](https://github.com/rus152) ([#368](https://github.com/thtbee/nectarlink/pull/368)).
+- **The full PC media controls on the phone's Home.** What the PC plays shows its artwork,
+  Previous as well as Play and Next, and a bar to see and move where it is, like the PC's
+  own Home. Thanks to [@doodoobug-dot](https://github.com/doodoobug-dot) ([#399](https://github.com/thtbee/nectarlink/issues/399)).
+- **A phone app on the PC's desktop.** Right-click an app on the Apps page (or press the
+  Menu key) for Add to desktop on Windows, or Add to app menu on Linux: a shortcut with
+  the app's own icon that opens it straight in an app window. Thanks to
+  [@unaibenidorm](https://github.com/unaibenidorm) ([#370](https://github.com/thtbee/nectarlink/issues/370)).
+- **Uninstall a phone app from the PC.** With Elevated, the same menu has Uninstall, which
+  asks once more before it removes the app from the phone. NectarLink can't uninstall
+  itself this way. Thanks to [@twistkan](https://github.com/twistkan)
+  ([#349](https://github.com/thtbee/nectarlink/discussions/349)).
+- **Shut a PC down from the phone.** Shut down sits next to Lock and Sleep on the phone's
+  Home, for Windows and Linux PCs, and asks before it does anything. It's the normal
+  shutdown: an app with unsaved work can still stop it. Thanks to
+  [@unamed666](https://github.com/unamed666) for the idea ([#372](https://github.com/thtbee/nectarlink/discussions/372)).
+- **Play the phone's sound on the PC from the phone.** Play phone sound on the PC, on the
+  phone's Home, asks the PC to start it, the same as turning it on from the PC. Thanks to
+  [@doodoobug-dot](https://github.com/doodoobug-dot) ([#398](https://github.com/thtbee/nectarlink/issues/398)).
+- **The torch can turn on with the webcam.** Settings › Camera & Audio on the PC: Torch on
+  with the back camera turns the phone's torch on each time the webcam starts with the back
+  camera. Thanks to [@jerrywoo96](https://github.com/jerrywoo96) ([#353](https://github.com/thtbee/nectarlink/issues/353)).
 - **Hibernate a PC from the phone.** Next to Lock PC and Sleep on Home, for a PC that can
   hibernate: on Windows, while hibernation is turned on. Thanks to
   [@atilazz](https://github.com/atilazz) for the idea ([#355](https://github.com/thtbee/nectarlink/issues/355)).
@@ -36,14 +124,15 @@ change things that need a step from you, and its notes say so.
 - **Keep a mirror window on top.** A pin button in the window's controls keeps it above other windows. Thanks to [@Nebhay](https://github.com/Nebhay) ([#327](https://github.com/thtbee/nectarlink/pull/327)).
 - **Spanish.** NectarLink is available in Spanish on Android and Windows.
   Thanks to José María Garcia Dominguez, and to
-  [@KevinL50-sysadmin](https://github.com/KevinL50-sysadmin) for a review pass on it.
+  [@KevinL50-sysadmin](https://github.com/KevinL50-sysadmin) for review passes on it
+  ([#348](https://github.com/thtbee/nectarlink/pull/348), [#402](https://github.com/thtbee/nectarlink/pull/402)).
 
 - **Vietnamese.** NectarLink speaks Tiếng Việt now: on the Android phone and
-  the Windows PC, every screen is translated. Settings › Appearance › Language
-  picks it, or the system language does. Thanks to
+  the Windows PC, every screen is translated. Language (Settings › Appearance on the
+  phone, Settings › General on the PC) picks it, or the system language does. Thanks to
   [@wuwenhou](https://github.com/wuwenhou).
-- **Russian.** NectarLink speaks Русский on the phone and the PC. Settings › Appearance ›
-  Language picks it, or the system language does. Thanks to
+- **Russian.** NectarLink speaks Русский on the phone and the PC. Language (Settings ›
+  Appearance on the phone, Settings › General on the PC) picks it, or the system language does. Thanks to
   [@krakotay](https://github.com/krakotay) for reviewing it
   ([#343](https://github.com/thtbee/nectarlink/issues/343)).
 - **More ways to sync a folder.** A synced folder can now go one way from the PC to the
@@ -91,7 +180,9 @@ change things that need a step from you, and its notes say so.
   ([#192](https://github.com/thtbee/nectarlink/issues/192)).
 - **Brazilian Portuguese.** The Android and PC apps speak Brazilian Portuguese
   (Português (Brasil)): pick it in Settings, or they follow the system's language.
-  Thanks to [@AlphaOrionisWKG](https://github.com/AlphaOrionisWKG).
+  Thanks to [@AlphaOrionisWKG](https://github.com/AlphaOrionisWKG), and to
+  [@AlphaOrionisBetelgeuse](https://github.com/AlphaOrionisBetelgeuse) for a polish pass
+  ([#375](https://github.com/thtbee/nectarlink/pull/375)).
 - **Enter sends messages.** An option under Settings › General: in mirroring and app
   windows, Enter presses the app's Send and Ctrl+Enter makes a new line. It needs
   Assist on the phone, and both devices on this version. Thanks to
@@ -103,6 +194,14 @@ change things that need a step from you, and its notes say so.
   that phone, and Settings › Devices has the same switch, so mirroring and app
   windows start with the screen off, barely lighting it up
   ([#217](https://github.com/thtbee/nectarlink/issues/217)).
+- **App windows run while the phone sleeps.** With Elevated on Android 14 or newer,
+  an app window gets a display of its own that keeps running when the phone's screen
+  turns off or locks, including on Android 17, and opening one no longer wakes the
+  phone. While a window is open, the phone has an app streaming link for the shell,
+  removed with the last window; where it can't make one, windows wake the screen as
+  before. Their toolbar no longer shows Keep phone awake, Turn phone screen off and
+  Lock phone, and they no longer ask the phone for the first two. Thanks to
+  [@rus152](https://github.com/rus152) ([#365](https://github.com/thtbee/nectarlink/pull/365)).
 - **Pause phone notifications.** From the tray, Home or the command palette, for when
   you're presenting or sharing your screen. They still collect on Home
   ([#218](https://github.com/thtbee/nectarlink/issues/218)).
@@ -129,9 +228,108 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Pairing from the PC's list of nearby phones works.** Picking a phone there said it
+  couldn't reach the phone, because the phone only took pairing it started itself. While
+  its pairing screen is open, the phone now accepts it from either side.
+- **A PC's gamepad works in phone games.** Playing on a mirrored phone with a controller
+  on the PC, the phone read its buttons in the wrong order (B left the game, others did
+  nothing) and had forward and back the wrong way round. Buttons, sticks, triggers and the
+  D-pad now arrive as the phone expects. Thanks to
+  [@unamed666](https://github.com/unamed666)
+  ([#433](https://github.com/thtbee/nectarlink/discussions/433)).
+- **The Mac app talks like a Mac app.** The walkthrough and Settings no longer mention
+  Windows notifications, Start with Windows, Windows DPAPI or Windows Firewall on a Mac:
+  they say Start at login, the login Keychain and the menu bar, the network check says
+  what it really checks, and Send to and hotspot joining show as not on macOS yet. Next
+  and Done in the walkthrough follow the app's language. Thanks to
+  [@ManuZhu0728](https://github.com/ManuZhu0728)
+  ([#431](https://github.com/thtbee/nectarlink/issues/431)).
+- **The phone stops trying to reach PCs when it can't.** With no Wi-Fi, Ethernet or VPN,
+  and Connect over mobile data off, it no longer dials every two minutes in the background:
+  it waits until a network comes back, which saves battery away from home. A USB cable to
+  the PC still connects. Thanks to [@ThePharaohArt](https://github.com/ThePharaohArt)
+  ([#397](https://github.com/thtbee/nectarlink/issues/397)).
+- **Sharing the PC's screen on Wayland recovers when the desktop doesn't answer.**
+  Starting it while the desktop was locked (on COSMIC, say) left the phone on
+  Connecting, and every later try got stuck behind the first. Each try now waits up to
+  20 seconds for the screen sharing permission and then lets go, and the phone says
+  sharing failed and offers to reconnect. Thanks to [@krakotay](https://github.com/krakotay)
+  ([#403](https://github.com/thtbee/nectarlink/pull/403)).
+- **Recording a mirror saves on Windows when the phone streams H.265.** It stopped with
+  "required headers were not provided", since the recording was written as H.264. On
+  Linux, an H.265 mirror says it can't be recorded yet instead of failing at the end.
+  Thanks to [@znbaboy](https://github.com/znbaboy) ([#393](https://github.com/thtbee/nectarlink/issues/393)).
+- **The phone's seek bar for what the PC plays stays put.** It disappeared whenever a
+  player on the PC dropped its timeline for a moment, around play and pause. Thanks to
+  [@znbaboy](https://github.com/znbaboy) ([#392](https://github.com/thtbee/nectarlink/issues/392)).
+- **Chinese, Japanese and Korean text uses Windows' own UI fonts.** Chinese showed in a
+  serif font like SimSun that was hard to read; it now uses Microsoft YaHei UI (or the
+  matching font for Traditional Chinese, Japanese and Korean). Thanks to
+  [@ManuZhu0728](https://github.com/ManuZhu0728) ([#390](https://github.com/thtbee/nectarlink/issues/390)).
+- **The phone sounds and vibrates for notifications while you use the PC.** It used to
+  silence them whenever you were active on a paired PC. That's now a choice, off by
+  default: Quiet while you use the PC, in the phone's Settings › Notifications, and it
+  only applies while the PC shows the phone's notifications. Thanks to
+  [@sbstn87](https://github.com/sbstn87) ([#384](https://github.com/thtbee/nectarlink/issues/384))
+  and [@krilok](https://github.com/krilok) ([#407](https://github.com/thtbee/nectarlink/issues/407)).
+- **NectarLink starts quietly in KDE Plasma.** Plasma opened its shortcut settings at
+  every start, since NectarLink asked for its global shortcuts each time (twice); it now
+  asks only when Plasma doesn't have them yet, or when you change one. And Plasma's
+  session restore no longer reopens NectarLink's window at login: Start at login starts
+  it, in the tray. Thanks to [@sbstn87](https://github.com/sbstn87) ([#383](https://github.com/thtbee/nectarlink/issues/383)).
+- **Elevated starts through root.** Magisk and KernelSU gave the shell user none of its
+  groups, so the helper couldn't open its connection. NectarLink now asks for them.
+  Thanks to [@SA-SUJON](https://github.com/SA-SUJON) ([#366](https://github.com/thtbee/nectarlink/issues/366)).
+- **Resizing a window is smooth on Windows.** Dragging the edge of an app window, the
+  mirror or the main window often froze for a second at a time. Thanks to
+  [@rus152](https://github.com/rus152) ([#367](https://github.com/thtbee/nectarlink/pull/367)).
+- **App windows open with Elevated on ROMs that treat their display as screen sharing.**
+  Some Android 13 ROMs refused the display an app window draws into, because the shell
+  user only has the screen capture permission from Android 14, and fell back to the
+  screen sharing prompt. NectarLink now makes a private display there, which needs no
+  such permission. Thanks to [@Rajdave69](https://github.com/Rajdave69) ([#136](https://github.com/thtbee/nectarlink/issues/136)).
+- **Setup works on Windows that can't show the admin prompt.** Some Windows installs have
+  lost "Run as administrator" for programs. Setup then said it needed your permission as if
+  you'd said no; it now shows Windows' real reason, and started from an administrator
+  prompt it installs without asking again ([#364](https://github.com/thtbee/nectarlink/discussions/364)).
+- **USB connects after a restart without starting adb yourself.** When no adb server is
+  running, NectarLink starts one, using the adb from Android Studio's SDK folder or your
+  `PATH`, and tries again every minute until one answers. The Connection Doctor says whether
+  adb is running, with a Start adb button, or missing. Thanks to
+  [@Asofwar](https://github.com/Asofwar) ([#360](https://github.com/thtbee/nectarlink/pull/360), [#322](https://github.com/thtbee/nectarlink/issues/322)).
+- **Russian reads more naturally on the phone.** Pairing, silent mode, file transfer and
+  clipboard history wording, and the screen sharing hints name the real Stop button.
+  Thanks to [@localzet](https://github.com/localzet) ([#361](https://github.com/thtbee/nectarlink/pull/361)).
+- **A cut-off video stream counts as an error, not a clean end.** Phone screen, webcam
+  and microphone streams also reject a packet length that doesn't fit before using it.
+  Thanks to [@localzet](https://github.com/localzet) ([#362](https://github.com/thtbee/nectarlink/pull/362)).
+- **The Linux updater's tests cover ARM64 packages**, a first step towards Linux ARM64 builds
+  ([#356](https://github.com/thtbee/nectarlink/issues/356)). Thanks to
+  [@localzet](https://github.com/localzet) ([#363](https://github.com/thtbee/nectarlink/pull/363)).
+- **Relays through a chosen network interface on Linux try every address**: one that
+  can't be set up (IPv6 on that interface, say) no longer stops the IPv4 one being tried.
+  Thanks to [@localzet](https://github.com/localzet) ([#396](https://github.com/thtbee/nectarlink/pull/396)).
+- **Deleting photos from the PC counts what the phone deleted correctly**, and a phone
+  can't claim more than were asked for. Thanks to [@localzet](https://github.com/localzet) ([#395](https://github.com/thtbee/nectarlink/pull/395)).
+- **Handoff spots videos and maps in links with a port**, like `youtube.com:443`, and
+  keeps a Vimeo time right, even in a link that already had one. Thanks to
+  [@localzet](https://github.com/localzet) ([#391](https://github.com/thtbee/nectarlink/pull/391),
+  [#405](https://github.com/thtbee/nectarlink/pull/405)).
+- **The Theme picker in Settings › Appearance no longer sits over its label.**
+- **Waking a PC through another device says when no packet went out**, instead of
+  reporting success. Thanks to [@localzet](https://github.com/localzet) ([#385](https://github.com/thtbee/nectarlink/pull/385)).
+- **The Linux install tests fail when they should**: uninstalling, and a damaged package
+  being refused for its checksum. Thanks to [@localzet](https://github.com/localzet) ([#386](https://github.com/thtbee/nectarlink/pull/386)).
+- **Pairing a phone again after unpairing is covered by tests**, also when one side
+  forgot the other while it was away. Thanks to [@localzet](https://github.com/localzet) ([#406](https://github.com/thtbee/nectarlink/pull/406)).
+- **The phone's screen window keeps the phone's shape, and its size.** Resizing it no
+  longer leaves black bars: a moment after, it fits the phone's shape again. It opens
+  at the size you left it, also when the phone turns. Thanks to
+  [@MikeWilliams-UK](https://github.com/MikeWilliams-UK) ([#358](https://github.com/thtbee/nectarlink/issues/358)).
 - **The flashlight works from the PC while the phone is a webcam.** The phone's camera is busy then,
-  so the flashlight button now switches the webcam's own torch, and shows it, instead of failing
-  ([#353](https://github.com/thtbee/nectarlink/issues/353)).
+  so the flashlight button now switches the webcam's own torch, and shows it, instead of failing.
+  The button also follows the webcam starting and stopping, so it never shows a torch that's off
+  as on. Thanks to [@jerrywoo96](https://github.com/jerrywoo96) ([#353](https://github.com/thtbee/nectarlink/issues/353)).
 - **Full-screen controls beside the PC's screen.** They're one size and shape on both
   sides, labels shrink to fit instead of breaking mid-word with a large font, the
   selected one is easy to read, and so is what you type in the bar below.

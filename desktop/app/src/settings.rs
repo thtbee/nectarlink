@@ -139,7 +139,7 @@ fn default_true() -> bool {
 }
 
 fn default_close_to_tray() -> bool {
-    !cfg!(target_os = "macos")
+    true
 }
 
 fn default_webcam_camera() -> String {
@@ -540,12 +540,19 @@ pub struct Settings {
     /// Horizontally mirror the webcam video.
     #[serde(alias = "webcam_mirror")]
     pub webcam_mirror: bool,
+    /// Turn the phone's torch on when the webcam starts with the back camera (#353).
+    #[serde(default)]
+    pub webcam_torch: bool,
     /// Where a phone's microphone plays (an output endpoint ID; `None`: a
     /// virtual audio cable if there is one, else the default output).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub phone_mic_output: Option<String>,
     /// How loud a phone's microphone plays, in percent (50 to 400).
     pub phone_mic_gain: u32,
+    /// The microphone a phone call records on this PC (an input endpoint ID;
+    /// `None`: Windows' default communications microphone).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub call_mic: Option<String>,
     /// Which phone camera lens to stream (`"back"` or `"front"`).
     #[serde(default = "default_webcam_camera", alias = "webcam_camera")]
     pub webcam_camera: String,
@@ -729,9 +736,11 @@ impl Default for Settings {
             webcam_phone: None,
             webcam_height: 720,
             webcam_mirror: false,
+            webcam_torch: false,
             webcam_camera: default_webcam_camera(),
             phone_mic_output: None,
             phone_mic_gain: crate::phone_mic::DEFAULT_GAIN,
+            call_mic: None,
             timeline_retention_days: 90,
             continuity_photo_hotkey: "Ctrl+Alt+C".into(),
             continuity_scan_hotkey: "Ctrl+Alt+D".into(),
@@ -795,10 +804,6 @@ impl Settings {
         if self.window_x.is_none() || self.window_y.is_none() {
             self.window_x = None;
             self.window_y = None;
-        }
-        #[cfg(target_os = "macos")]
-        {
-            self.close_to_tray = false;
         }
         self
     }
@@ -1012,9 +1017,11 @@ mod tests {
             webcam_phone: Some("0101".repeat(16)),
             webcam_height: 2160,
             webcam_mirror: true,
+            webcam_torch: true,
             webcam_camera: "front".into(),
             phone_mic_output: Some("{0.0.0.00000000}.{cable}".into()),
             phone_mic_gain: 250,
+            call_mic: Some("{0.0.1.00000000}.{headset}".into()),
             timeline_retention_days: 30,
             continuity_photo_hotkey: "Ctrl+Alt+P".into(),
             continuity_scan_hotkey: "Ctrl+Alt+S".into(),

@@ -31,6 +31,8 @@ class AppDisplay(
     private val bitrate: Int,
     private val fps: Int,
     private val codecName: String = "h264",
+    /** Wakes the phone; a window on a plain display needs it awake (#152). */
+    private val wakePhone: () -> Unit = {},
 ) {
     private data class EncodedSurface(
         val codecName: String,
@@ -44,6 +46,8 @@ class AppDisplay(
     @Volatile private var size = Triple(width, height, dpi)
     private var lastRotationCheck = 0L
     private var display: VirtualDisplay? = null
+    /** Owns [display] when it has one; closed after it. */
+    private var device: VirtualDevice? = null
 
     /** The display's ID, once made. */
     var displayId: Int = -1
@@ -86,6 +90,15 @@ class AppDisplay(
                 val (newW, newH, newDpi) = nextSize ?: continue
                 nextSize = null
                 if (newW == curW && newH == curH && newDpi == curDpi) continue
+                if (newW == curW && newH == curH) {
+                    // Only the density (the PC's zoom): the picture's size
+                    // stays, so the encoder does too, and nothing restarts.
+                    made.resize(curW, curH, newDpi)
+                    forceDensity(displayId, newDpi)
+                    curDpi = newDpi
+                    size = Triple(curW, curH, curDpi)
+                    continue
+                }
                 codecForKeyframes = null
                 runCatching { activeCodec.stop() }
                 runCatching { activeCodec.release() }
@@ -105,6 +118,7 @@ class AppDisplay(
                 writeConfig(data, curW, curH, displayId, next.codecName)
             }
         } finally {
+            if (!fullScreen && displayId > 0) forceDensity(displayId, null)
             running = false
             codecForKeyframes = null
             runCatching { codec?.stop() }
@@ -112,6 +126,8 @@ class AppDisplay(
             runCatching { surface?.release() }
             display?.release()
             display = null
+            device?.close()
+            device = null
         }
     }
 
@@ -306,14 +322,31 @@ class AppDisplay(
         }
     }
 
-    private fun createDisplay(w: Int, h: Int, d: Int, surface: Surface): VirtualDisplay {
-        var flags = PUBLIC or OWN_CONTENT_ONLY or SUPPORTS_TOUCH or ROTATES_WITH_CONTENT or DESTROY_CONTENT_ON_REMOVAL
+    private fun createDisplay(w: Int, h: Int, d: Int, surface: Surface): VirtualDisplay =
+        try {
+            createDisplay(w, h, d, surface, public = true)
+        } catch (e: SecurityException) {
+            // A public display mirrors unless it shows only its own content, and stock
+            // Android lets the shell make one that doesn't. Some ROMs mirror it anyway
+            // and then want CAPTURE_VIDEO_OUTPUT, which the shell only has from Android
+            // 14 (#136). A private display needs no such permission, and the shell
+            // owns it, so it can still start the app there.
+            if (e.message?.contains("CAPTURE_VIDEO_OUTPUT") != true) throw e
+            System.err.println("a public display was refused (${e.message}); making a private one")
+            createDisplay(w, h, d, surface, public = false)
+        }
+
+    private fun createDisplay(w: Int, h: Int, d: Int, surface: Surface, public: Boolean): VirtualDisplay {
+        var flags = OWN_CONTENT_ONLY or SUPPORTS_TOUCH or ROTATES_WITH_CONTENT or DESTROY_CONTENT_ON_REMOVAL
+        if (public) flags = flags or PUBLIC
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             flags = flags or TRUSTED or OWN_DISPLAY_GROUP or ALWAYS_UNLOCKED or TOUCH_FEEDBACK_DISABLED
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             flags = flags or OWN_FOCUS or DEVICE_DISPLAY_GROUP
+            ownedDisplay(w, h, d, surface, flags)?.let { return it }
         }
+        wakePhone()
         val constructor = DisplayManager::class.java.getDeclaredConstructor(Context::class.java)
         constructor.isAccessible = true
         val manager = constructor.newInstance(ShellContext.get())
@@ -321,6 +354,37 @@ class AppDisplay(
         // the shell may use.
         @SuppressLint("WrongConstant")
         return manager.createVirtualDisplay("Nectarlink", w, h, d, surface, flags)
+    }
+
+    /**
+     * A display owned by a virtual device, which runs while the phone sleeps
+     * (see [VirtualDevice]), or null to make a plain one.
+     */
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    private fun ownedDisplay(w: Int, h: Int, d: Int, surface: Surface, flags: Int): VirtualDisplay? {
+        val owner = VirtualDevice.create() ?: return null
+        return runCatching {
+            owner.createVirtualDisplay("Nectarlink", w, h, d, surface, flags and OWN_DISPLAY_GROUP.inv())
+        }.onSuccess { device = owner }.onFailure {
+            System.err.println("no display on the virtual device: $it")
+            owner.close()
+        }.getOrNull()
+    }
+
+    /**
+     * The window manager's own density for [display] ([dpi] null: none).
+     * Resizing a display to the size it has with another density reached
+     * the app only seconds later, or with the next touch; this is applied
+     * at once (the app draws anew within half a second). Taken off when the
+     * window closes: it's remembered by the display's name, which another
+     * window may get.
+     */
+    private fun forceDensity(display: Int, dpi: Int?) {
+        runCatching {
+            Runtime.getRuntime()
+                .exec(arrayOf("wm", "density", dpi?.toString() ?: "reset", "-d", display.toString()))
+                .waitFor()
+        }.onFailure { System.err.println("can't set the density of display $display: $it") }
     }
 
     /** Hides the soft keyboard on this virtual display so typing from the PC never pops it up on the phone. */

@@ -163,6 +163,8 @@ object BankingPause {
         context.getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID)
         // Elevated waited while paused; with debugging back it starts again.
         Elevated.onNetworkChanged()
+        // Assist came back as Pause found it; off again if only a PC needs it.
+        AssistOnDemand.reconcile(context)
     }
 
     /** At process start: a pause left over from before (a crash, a reboot) with nothing to wait for ends now. */

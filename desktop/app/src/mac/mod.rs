@@ -17,6 +17,7 @@ pub mod image;
 pub mod input;
 pub mod jumplist;
 pub mod media_sessions;
+#[path = "../linux/mp4.rs"]
 pub mod mp4;
 pub mod net;
 pub mod share;
@@ -26,6 +27,7 @@ pub mod shortcut;
 pub mod single_instance;
 pub mod smtc;
 pub mod sound;
+pub mod storage;
 pub mod toast;
 pub mod tray;
 pub mod vcam;

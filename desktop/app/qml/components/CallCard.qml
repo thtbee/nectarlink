@@ -3,7 +3,7 @@ import QtQuick
 import app.nectarlink
 
 // The call in progress on the phone: who, for how long, and its controls.
-// The call's audio stays on the phone; these change what the phone does.
+// They change what the phone does; On PC moves the call's sound here (call.audio).
 Card {
     id: card
 
@@ -135,6 +135,14 @@ Card {
                 label: qsTr("Speaker")
                 on: PhoneCall.speaker
                 onClicked: PhoneCall.setSpeakerOn(!PhoneCall.speaker)
+            }
+            // The call's sound on this PC: a toggle like Speaker, lit while it's here.
+            Control {
+                visible: PhoneCall.callAudioAvailable
+                iconPath: Icons.desktop
+                label: qsTr("On PC")
+                on: PhoneCall.callAudio
+                onClicked: PhoneCall.moveCallAudio(!PhoneCall.callAudio)
             }
             Control {
                 visible: PhoneCall.canHold || PhoneCall.held

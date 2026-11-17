@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks you through installing NectarLink on Windows, Linux and Android, completing the first-run setup walkthrough, pairing your devices, and choosing the Android power level that fits how you work.
+This guide walks you through installing NectarLink on Windows, Linux, macOS and Android, completing the first-run setup walkthrough, pairing your devices, and choosing the Android power level that fits how you work.
 
 ## System Requirements
 
@@ -8,6 +8,7 @@ This guide walks you through installing NectarLink on Windows, Linux and Android
 | :--- | :--- | :--- |
 | **Windows PC** | Windows 10 (version 2004 or newer) or Windows 11, 64-bit | The phone as webcam (`MFCreateVirtualCamera`) and the Mica backdrop need Windows 11 (build 22000 or newer). The phone's storage in File Explorer has only been tested on Windows 11. |
 | **Linux PC** | Ubuntu 24.04 or newer, Debian 13, Fedora 40 or newer, or another distribution from 2024 on (glibc 2.39 or newer), 64-bit Intel or AMD | X11 or Wayland. The phone as a webcam needs the `v4l2loopback` driver, which the install command sets up. |
+| **Mac (preview)** | macOS 14 or newer, Apple silicon | A preview: mirroring, recording, the phone's sound and microphone, the menu bar icon, the Mac's sound on the phone (macOS asks for Screen Recording permission the first time) the phone's storage in Finder and the rest of the shared features work; the phone as a webcam doesn't yet. |
 | **Android Phone or Tablet** | Android 8.0 (API 26) or newer | Android 10+ required for internal audio capture during mirroring; Android 11+ required for on-device Wireless Debugging (`Elevated`) and `app window` streaming; Android 12+ required for `Elevated` in-call mute/hold/speaker controls. |
 | **Network** | Shared Wi-Fi / LAN, USB cable, or **Connect over mobile data** | By default, all device-to-device traffic travels directly over your local network or a USB data cable without leaving your LAN (installed copies only contact GitHub Releases over HTTPS to check for app updates; see [Privacy and Security](privacy-and-security.md)). |
 
@@ -43,13 +44,29 @@ You can also download a package from the GitHub Releases page yourself: `nectarl
 
 Each kind of install updates itself the same way it was installed.
 
+### On macOS (preview)
+
+1. Download `Nectarlink-<version>-macos-arm64.dmg` from the project's GitHub Releases page (Nightlies for now) and open it.
+2. Drag **NectarLink** onto **Applications**.
+3. Open NectarLink from Applications. It isn't signed with an Apple Developer ID yet, so macOS stops it the first time: open **System Settings › Privacy & Security**, scroll down to the message about NectarLink and click **Open Anyway**.
+
+The Mac app doesn't update itself yet: install a new version the same way, over the old one.
+
 ### On Android
 
 1. Download `Nectarlink-<version>-android.apk` from the GitHub Releases page (or scan the QR code shown when Windows setup finishes, or in the PC walkthrough).
 2. Open the downloaded APK and allow installation if Android prompts you. Because NectarLink supports full SMS/MMS messaging, call logs, notification actions, accessibility input, and optional `All files access` for mounting phone storage in File Explorer (permissions that Google Play restricts), the full app is distributed directly as a signed APK with built-in SHA-256 verified updates:
    - If Google Play Protect shows an unrecognized-developer prompt, tap **More details › Install anyway**.
-   - Where Google Play Protect's **Enhanced Fraud Protection** is on (185 markets, including India), it blocks browser-sideloaded APKs that declare `READ_SMS`, `BIND_NOTIFICATION_LISTENER_SERVICE`, or `BIND_ACCESSIBILITY_SERVICE` without showing an **Install anyway** button, either install over USB with `adb install -r Nectarlink-<version>-android.apk` or temporarily pause **Scan apps with Play Protect** in **Google Play Store › Profile icon › Play Protect › Settings (gear)** while installing the APK, then turn it back on.
+   - Where Google Play Protect's **Enhanced Fraud Protection** is on (185 markets, including India), it blocks browser-sideloaded APKs that declare `READ_SMS`, `BIND_NOTIFICATION_LISTENER_SERVICE`, or `BIND_ACCESSIBILITY_SERVICE` without showing an **Install anyway** button. Install it from the PC over USB instead (below), or temporarily pause **Scan apps with Play Protect** in **Google Play Store › Profile icon › Play Protect › Settings (gear)** while installing the APK, then turn it back on.
 3. Open **NectarLink** on your phone.
+
+#### From the PC, over a USB cable
+
+On the PC, open **Settings › Install on a phone**. It checks three things, live, and says what to do about any that isn't ready:
+
+1. **Android's USB tools** (`adb`). NectarLink uses the ones already on the PC (Android Studio, a package manager or `PATH`). If there are none, **Download from Google** gets Google's platform-tools (about 8 MB), checks them against the SHA-1 Google publishes, and keeps only `adb` in NectarLink's own folder. Phones on a cable then connect through it too. Linux on ARM has no build from Google: install your distribution's `adb` package.
+2. **The phone.** Plug it in with a data cable and turn on USB debugging (the page walks you through it), then tap **Allow** on the phone's **Allow USB debugging?** prompt. On Windows, the page says when the phone needs its maker's USB driver; on Linux, when it needs Android's udev rules.
+3. **The app.** **Install** downloads the newest phone app on the PC's update channel from NectarLink's GitHub releases, checks its SHA-256, sends it straight to the phone and opens it. If the phone refuses (installs over USB turned off on Xiaomi phones, another build of NectarLink signed differently, no space, Play Protect), the page says why and what to do.
 
 ### Uninstalling
 
@@ -125,7 +142,7 @@ NectarLink supports three ways to `pair` your phone and PC. All three methods es
 
 ### Method 3: Plug in a USB Cable (Auto-Pair)
 
-If you have USB debugging (`adb`) enabled on your phone, NectarLink detects the phone as soon as you plug it into your PC with a USB cable. USB needs Android's `adb` on the PC with its server running: install Google's platform-tools and run `adb start-server` after each restart (Android Studio and scrcpy also start it). NectarLink doesn't start it itself.
+If you have USB debugging (`adb`) enabled on your phone, NectarLink detects the phone as soon as you plug it into your PC with a USB cable. USB needs Android's `adb` on the PC: **Settings › Install on a phone** can download Google's platform-tools for you, or install them yourself so `adb` is on your `PATH`. When NectarLink starts and no adb server is running, it starts one, so a restart needs nothing from you.
 
 <p align="center">
   <img src="images/usb-autopair.png" alt="USB auto-pair confirmation with 6-digit verification code on PC" width="760">
@@ -173,7 +190,7 @@ You can set up `Elevated` directly on your phone in about two minutes on Android
 </p>
 
 1. Open **NectarLink** on your phone and go to **Settings › Permissions › Control from your PC**.
-2. Next to **Real touch and keys**, tap **Set up**.
+2. On the **Elevated** card, tap **Set up**.
 3. If **Developer options** is not enabled on your phone yet, open Android's **Settings › About phone** and tap **Build number** 7 times until Android confirms you are a developer.
 4. Tap **Open Developer options** in NectarLink. Scroll down to **Wireless debugging**, turn the switch **On**, and tap the words **Wireless debugging** to open its sub-screen.
 5. Tap **Pair device with pairing code**. A dialog appears showing a 6-digit Wi-Fi pairing code.

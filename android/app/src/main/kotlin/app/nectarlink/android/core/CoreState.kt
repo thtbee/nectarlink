@@ -130,6 +130,8 @@ data class Device(
     val id: String,
     val name: String,
     val kind: app.nectarlink.core.DeviceKind,
+    /** "windows", "macos", "linux", "android", or what a newer device says. */
+    val os: String = "",
     val model: String?,
     val accent: UInt? = null,
     val pairedAt: Long,
@@ -427,9 +429,11 @@ data class CoreState(
         is Event.StorageChanged,
         is Event.Webcam,
         is Event.PcAudioFrame,
+        is Event.CallAudioUplink,
         is Event.PcMirrorConfig,
         is Event.PcMirrorFrame,
         is Event.PcMirrorEnded,
+        is Event.PcMirrorCaptureFailed,
         -> this
     }
 
@@ -512,9 +516,11 @@ internal fun Event.affectsCoreState(): Boolean = when (this) {
     is Event.StorageChanged,
     is Event.Webcam,
     is Event.PcAudioFrame,
+    is Event.CallAudioUplink,
     is Event.PcMirrorConfig,
     is Event.PcMirrorFrame,
     is Event.PcMirrorEnded,
+    is Event.PcMirrorCaptureFailed,
     -> false
     else -> true
 }
@@ -532,6 +538,7 @@ internal fun PairedDevice.toDevice() = Device(
     id = id,
     name = info.name,
     kind = info.kind,
+    os = info.os,
     model = info.model,
     accent = info.accent,
     pairedAt = pairedAt,

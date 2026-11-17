@@ -7,7 +7,7 @@ import app.nectarlink
 // Dynamic Island-style floating pill anchored at the top-center of the primary
 // monitor (340×40px compact, expanding smoothly to 380×88px on hover or incoming call).
 // Stays hidden when idle and surfaces live activity:
-//   1. Incoming / active phone call (caller name + Answer / Mute / Speaker / Hang up)
+//   1. Incoming / active phone call (caller name + Answer / Mute / On PC / Hang up)
 //   2. File transfer in progress (circular progress ring + transfer title & speed)
 //   3. Active media playback on Phone or PC (album art + scrolling song title + Play/Pause & Next)
 Window {
@@ -335,11 +335,34 @@ Window {
             : qsTr("Nectar Island · Ready")
     }
 
+    // The call's clock, ticking once a second while a call is shown.
+    property real callNow: Date.now()
+    Timer {
+        interval: 1000
+        repeat: true
+        running: islandWin.visible && islandWin.mode === "call" && PhoneCall.since > 0
+        triggeredOnStart: true
+        onTriggered: islandWin.callNow = Date.now()
+    }
+    readonly property string callClock: {
+        if (PhoneCall.since <= 0) return ""
+        const s = Math.max(0, Math.floor((callNow - PhoneCall.since) / 1000))
+        const h = Math.floor(s / 3600)
+        const m = Math.floor((s % 3600) / 60)
+        const ss = String(s % 60).padStart(2, "0")
+        return h > 0 ? h + ":" + String(m).padStart(2, "0") + ":" + ss : m + ":" + ss
+    }
+
     readonly property string secondaryLabel: {
         if (mode === "call") {
             if (PhoneCall.ringing) return qsTr("Incoming call")
-            if (PhoneCall.held) return qsTr("On hold")
-            return PhoneCall.number.length > 0 ? PhoneCall.number : qsTr("Call in progress")
+            // How long, where the sound is, and whether the other side hears this end.
+            const parts = []
+            if (callClock.length > 0) parts.push(callClock)
+            if (PhoneCall.held) parts.push(qsTr("On hold"))
+            parts.push(PhoneCall.callAudio ? qsTr("On PC") : qsTr("On phone"))
+            if (PhoneCall.controls) parts.push(PhoneCall.muted ? qsTr("Mic off") : qsTr("Mic on"))
+            return parts.join(" · ")
         }
         if (mode === "transfer") {
             if (transferJustFinished && TransferList.active === 0)
@@ -633,6 +656,37 @@ Window {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 4
+
+                    // A call in progress: where its sound is, the microphone, and how long.
+                    Row {
+                        id: compactCallStatus
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 6
+                        visible: islandWin.mode === "call" && !PhoneCall.ringing
+                        Accessible.role: Accessible.StaticText
+                        Accessible.name: islandWin.secondaryLabel
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 12; height: 12
+                            path: PhoneCall.callAudio ? Icons.desktop : Icons.phone
+                            color: PhoneCall.callAudio ? "#4ADE80" : Qt.rgba(1, 1, 1, 0.7)
+                        }
+                        Icon {
+                            visible: PhoneCall.controls
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 12; height: 12
+                            path: PhoneCall.muted ? Icons.micOff : Icons.mic
+                            color: PhoneCall.muted ? "#EF4444" : Qt.rgba(1, 1, 1, 0.7)
+                        }
+                        Txt {
+                            visible: text.length > 0
+                            anchors.verticalCenter: parent.verticalCenter
+                            role: "label"
+                            size: 12
+                            color: PhoneCall.held ? "#FBBF24" : Qt.rgba(1, 1, 1, 0.85)
+                            text: islandWin.callClock
+                        }
+                    }
 
                     // Animated 3-bar equalizer in media mode
                     Row {
@@ -971,6 +1025,23 @@ Window {
                         }
                         HoverHandler { cursorShape: Qt.PointingHandCursor }
                         TapHandler { onTapped: PhoneCall.setMute(!PhoneCall.muted) }
+                    }
+
+                    // The call's sound on this PC (call.audio), lit while it's here.
+                    Rectangle {
+                        visible: islandWin.mode === "call" && !PhoneCall.ringing && PhoneCall.callAudioAvailable
+                        width: 30; height: 30; radius: 15
+                        color: PhoneCall.callAudio ? Qt.rgba(1, 1, 1, 0.26) : Qt.rgba(1, 1, 1, 0.12)
+                        Accessible.role: Accessible.Button
+                        Accessible.name: PhoneCall.callAudio ? qsTr("Back to phone") : qsTr("On PC")
+                        Icon {
+                            anchors.centerIn: parent
+                            width: 14; height: 14
+                            path: Icons.desktop
+                            color: "#FFFFFF"
+                        }
+                        HoverHandler { cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: PhoneCall.moveCallAudio(!PhoneCall.callAudio) }
                     }
 
                     Rectangle {

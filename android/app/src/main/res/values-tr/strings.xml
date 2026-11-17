@@ -74,6 +74,7 @@
     <string name="media_pause">Duraklat</string>
     <string name="media_next">Sonraki</string>
     <string name="media_previous">Önceki</string>
+    <string name="media_seek">Parçadaki konum</string>
     <string name="action_send_files">Dosya gönder</string>
     <string name="action_send_folder">Klasör gönder</string>
     <string name="input_service_label">NectarLink: bilgisayarınızdan kontrol</string>
@@ -293,6 +294,11 @@
     <string name="action_lock_pc">Bilgisayarı kilitle</string>
     <string name="action_sleep_pc">Uyut</string>
     <string name="action_hibernate_pc">Hazırda beklet</string>
+    <string name="action_phone_sound_on_pc">Telefon sesini bilgisayarda çal</string>
+    <string name="phone_sound_on_pc_off">%1$s bu telefonun sesini çalmıyor. Bilgisayarda Ayarlar › Cihazlar bölümünden bu telefon için Ekran yansıtmayı açın.</string>
+    <string name="action_shutdown_pc">Kapat</string>
+    <string name="shutdown_pc_title">%1$s kapatılsın mı?</string>
+    <string name="shutdown_pc_text">Açık uygulamalar kapanır. Kaydedilmemiş işi olan bir uygulama yine de durdurabilir.</string>
     <string name="action_wake_pc">Uyandır</string>
     <string name="action_disconnect">Bağlantıyı kes</string>
     <string name="action_stop_reconnecting">Yeniden bağlanmayı durdur</string>
@@ -304,6 +310,7 @@
     <string name="pc_locked">%1$s kilitlendi.</string>
     <string name="pc_sleeping">%1$s uyku moduna geçiyor.</string>
     <string name="pc_hibernating">%1$s hazırda bekletmeye geçiyor.</string>
+    <string name="pc_shutting_down">%1$s kapanıyor.</string>
     <string name="pc_actions_off">%1$s üzerinde bu telefon için kilitleme ve uyku kapalı.</string>
     <string name="channel_links">Bilgisayarınızdan gelen bağlantılar</string>
     <!-- Play on phone: what a PC plays, streamed to the phone. -->
@@ -348,6 +355,12 @@
     <string name="settings_remote">Bilgisayarınızı kontrol edin</string>
     <string name="settings_volume_keys_control_pc">Ses düğmeleri bilgisayarınızı kontrol eder</string>
     <string name="settings_volume_keys_control_pc_hint">Bilgisayarınız müzik veya video çalarken telefonunuzun ses düğmeleri bilgisayarın ses düzeyini değiştirir.</string>
+    <string name="settings_quiet_while_using_pc">Bilgisayarı kullanırken sessiz</string>
+    <string name="settings_quiet_while_using_pc_hint">Bildirimleri gösteren eşleştirilmiş bir bilgisayarı kullanırken telefonunuz bildirimler için ses çıkarmaz ve titremez.</string>
+    <string name="settings_hide_from_recents">Son uygulamalardan gizle</string>
+    <string name="settings_hide_from_recents_hint">NectarLink son uygulamalar ekranında görünmez, böylece listeyi temizlemek onu yanlışlıkla kapatmaz.</string>
+    <string name="settings_assist_on_demand">Yardımcı yalnızca bir bilgisayar telefonu kullanırken</string>
+    <string name="settings_assist_on_demand_hint">Yükseltilmiş modda Yardımcı, bir bilgisayar bu telefonu gösterirken veya ona yazarken açılır ve kısa süre sonra kapanır. Bir erişilebilirlik hizmeti açıkken açılmayan uygulamalar için.</string>
     <string name="settings_touchpad_sensitivity">Dokunmatik yüzey hızı</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Dokunmatik yüzey</string>
@@ -390,6 +403,7 @@
     <string name="remote_volume_hint">Bu ekran açıkken ses düğmeleri de slayt değiştirir.</string>
     <string name="remote_mode_screen">Ekran</string>
     <string name="pc_mirror_connecting">Bağlanılıyor: %1$s…</string>
+    <string name="pc_mirror_capture_failed">Ekran paylaşımı başarısız oldu. Bilgisayarın kilidini açın, paylaşım izinlerini kontrol edin ve tekrar deneyin.</string>
     <string name="pc_mirror_fullscreen">Tam ekran</string>
     <string name="pc_mirror_exit_fullscreen">Tam ekrandan çık</string>
     <string name="pc_mirror_right_click">Sağ tık</string>
@@ -411,6 +425,10 @@
     <string name="channel_mic_requests">Mikrofon istekleri</string>
     <string name="mic_notification_title">%1$s için mikrofon açık</string>
     <string name="mic_notification_text">Bilgisayarınız bu telefonun mikrofonunu duyuyor.</string>
+    <string name="channel_call_audio">Arama sesi bilgisayarda</string>
+    <string name="call_audio_notification_title">Arama sesi %1$s üzerinde</string>
+    <string name="call_audio_notification_text">Bilgisayardan konuşup dinliyorsunuz.</string>
+    <string name="call_audio_back">Telefona geri al</string>
     <string name="mic_request_title">%1$s bu telefonun mikrofonunu istiyor</string>
     <string name="mic_request_text">Başlatmak için dokunun. Siz veya bilgisayar durdurana kadar açık kalır.</string>
     <string name="mic_request_start">Başlat</string>
@@ -692,17 +710,37 @@
     <string name="keyboard_stop">Yazmayı durdur</string>
 
     <!-- Home-screen PC widget -->
-    <string name="widget_pc_title">Bilgisayar hızlı işlemleri</string>
-    <string name="widget_pc_description">Eşleştirilmiş bilgisayarınız için bağlantı durumu, Panoyu gönder, Bilgisayarı çaldır, Bilgisayarı kilitle ve Uyandır.</string>
+    <string name="widget_pc_title">Bir bakışta bilgisayar</string>
+    <string name="widget_pc_description">Bilgisayarın bağlı mı, Çaldır, güç seçenekleri ve Uyandır ile.</string>
+    <string name="widget_now_playing_title">Şimdi çalıyor</string>
+    <string name="widget_now_playing_description">Bilgisayarında çalan, denetimleriyle.</string>
+    <string name="widget_actions_title">Hızlı işlemler</string>
+    <string name="widget_actions_description">Panoyu veya dosyaları gönder, bilgisayarı çaldır ya da kilitle, uyut veya kapat.</string>
+    <string name="widget_from_pc_title">Bilgisayarından</string>
+    <string name="widget_from_pc_description">Bilgisayarının gönderdiği son pano ve dosya, kopyalamak ya da açmak için.</string>
+    <string name="widget_from_pc_empty">Bilgisayarının gönderdiği pano ve dosyalar burada görünür.</string>
+    <string name="widget_media_on_pc">%1$s üzerinde</string>
+    <string name="widget_media_nothing">Hiçbir şey çalmıyor</string>
+    <string name="widget_media_nothing_hint">%1$s üzerinde çalan müzik ve videolar burada görünür.</string>
+    <string name="widget_battery">Pil %%%1$d</string>
+    <string name="widget_battery_charging">Pil %%%1$d · şarj oluyor</string>
+    <string name="widget_link_lan">Ağında</string>
+    <string name="widget_seen">Son görülme %1$s</string>
+    <string name="widget_pc_send_clipboard">Panoyu gönder</string>
+    <string name="widget_power">Güç</string>
+    <string name="widget_power_lock">Kilitle</string>
+    <string name="widget_power_suspend">Askıya al</string>
+    <string name="widget_power_off">Kapat</string>
+    <string name="widget_power_off_title">%1$s kapatılsın mı?</string>
+    <string name="widget_choose_pc">Bir bilgisayar seç</string>
+    <string name="widget_power_offline">Güç seçenekleri %1$s bağlıyken görünür.</string>
     <string name="widget_pc_no_pc">Eşleştirilmiş bilgisayar yok</string>
     <string name="widget_pc_tap_to_pair">NectarLink\'i açıp bir bilgisayar eşleştirmek için dokunun</string>
     <string name="widget_pc_connected">Bağlı</string>
     <string name="widget_pc_offline">Çevrimdışı</string>
     <string name="widget_pc_waking">Uyandırılıyor…</string>
     <string name="widget_pc_wake">Uyandır</string>
-    <string name="widget_pc_send_clip">Panoyu gönder</string>
     <string name="widget_pc_ring">Bilgisayarı çaldır</string>
-    <string name="widget_pc_lock">Bilgisayarı kilitle</string>
     <string name="widget_pc_ringing_toast">%1$s çaldırılıyor…</string>
     <string name="widget_pc_waking_toast">%1$s uyandırılıyor…</string>
 

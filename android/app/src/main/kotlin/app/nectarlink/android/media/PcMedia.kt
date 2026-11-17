@@ -72,6 +72,8 @@ class PcMedia(
         val subtitle: String,
         val playing: Boolean,
         val artwork: Bitmap?,
+        val canPrevious: Boolean = true,
+        val canNext: Boolean = true,
     )
 
     @Volatile
@@ -227,6 +229,9 @@ class PcMedia(
             subtitle = subtitleLine,
             playing = player.playing,
             artwork = player.artKey?.let { art["$pc/$it"]?.first },
+            // An empty list is a PC that doesn't say: offer both, as before.
+            canPrevious = player.actions.isEmpty() || MediaAction.PREVIOUS in player.actions,
+            canNext = player.actions.isEmpty() || MediaAction.NEXT in player.actions,
         )
     }
 
@@ -236,7 +241,7 @@ class PcMedia(
         val nextSummaries = preferred.mapValues { (pc, player) -> summary(pc, player) }
         if (_summaries.value != nextSummaries) {
             _summaries.value = nextSummaries
-            app.nectarlink.android.widget.PcWidgetProvider.refreshAll(context)
+            app.nectarlink.android.widget.Widgets.refreshAll(context)
         }
 
         val first = preferred.entries.firstOrNull { it.value.playing } ?: preferred.entries.firstOrNull()

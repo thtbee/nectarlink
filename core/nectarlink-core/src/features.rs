@@ -349,6 +349,8 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("notifications", true),
     ("messages", true),
     ("calls", true),
+    // A call's sound on a PC (`call.audio`), with `calls` on too.
+    ("call_audio", true),
     ("contacts", true),
     ("clipboard", true),
     ("files", true),
@@ -680,6 +682,12 @@ pub const FEATURES: &[FeatureDef] = &[
         partial: None,
     },
     FeatureDef {
+        id: "device.pc_shutdown",
+        group: FeatureGroup::Device,
+        requires: &[desktop("pc.power.shutdown", UPDATE), DeviceToggle("pc_actions")],
+        partial: None,
+    },
+    FeatureDef {
         id: "device.links_to_pc",
         group: FeatureGroup::Device,
         requires: &[desktop("link.open", UPDATE)],
@@ -834,6 +842,17 @@ pub const FEATURES: &[FeatureDef] = &[
         partial: None,
     },
     FeatureDef {
+        id: "calls.audio",
+        group: FeatureGroup::Calls,
+        requires: &[
+            phone("call.control", Unlock::Permission(Permission::Phone)),
+            phone("call.audio", ELEVATED),
+            DeviceToggle("calls"),
+            DeviceToggle("call_audio"),
+        ],
+        partial: None,
+    },
+    FeatureDef {
         id: "contacts.read",
         group: FeatureGroup::Calls,
         requires: &[
@@ -942,6 +961,24 @@ pub const FEATURES: &[FeatureDef] = &[
             ],
             limit: "mirroring.limit.audio_some_apps",
         }),
+    },
+    // Uninstalling a phone app from the PC (D349).
+    FeatureDef {
+        id: "mirroring.app_uninstall",
+        group: FeatureGroup::Mirroring,
+        requires: &[phone("mirror.apps.uninstall", ELEVATED), DeviceToggle("mirroring")],
+        partial: None,
+    },
+    // Started from the phone (#398).
+    FeatureDef {
+        id: "mirroring.sound_from_phone",
+        group: FeatureGroup::Mirroring,
+        requires: &[
+            phone("mirror.sound", UPDATE),
+            desktop("mirror.listen.ask", UPDATE),
+            DeviceToggle("mirroring"),
+        ],
+        partial: None,
     },
     // The phone's sound on its own, played by the PC without a window.
     FeatureDef {

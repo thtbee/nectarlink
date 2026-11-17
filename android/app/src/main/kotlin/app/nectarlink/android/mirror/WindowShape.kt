@@ -42,6 +42,18 @@ object WindowShape {
         return unitW * count to unitH * count
     }
 
+    /**
+     * [width] x [height] scaled down to [maxSize], each side to the nearest
+     * multiple of 16: the PC window's own shape, so a resized window has no
+     * bars (the PC stretches the last few pixels). Unlike [fit], an app may
+     * see an uncommon shape (Samsung's Camera refuses some).
+     */
+    fun exact(width: Int, height: Int, maxSize: Int): Pair<Int, Int> {
+        val scale = minOf(1.0, maxSize.toDouble() / maxOf(width, height))
+        fun side(v: Int) = (Math.round(v * scale / ALIGN) * ALIGN).toInt().coerceAtLeast(MIN_SIDE)
+        return side(width) to side(height)
+    }
+
     /** [COMMON] and the phone's own shape, each reduced (long : short). */
     private fun shapes(phoneW: Int, phoneH: Int): List<Pair<Int, Int>> {
         val own = if (phoneW > 0 && phoneH > 0) {

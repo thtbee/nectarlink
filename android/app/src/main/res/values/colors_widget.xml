@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Bloom (Honey) for the home-screen widgets. -->
+<resources>
+    <color name="widget_surface">#FFFFF8F3</color>
+    <color name="widget_container">#FFF5ECE4</color>
+    <color name="widget_container_high">#FFE9E1D9</color>
+    <color name="widget_on_surface">#FF1F1B16</color>
+    <color name="widget_on_surface_variant">#FF51453A</color>
+    <color name="widget_primary">#FF8A5100</color>
+    <color name="widget_on_primary">#FFFFFFFF</color>
+    <color name="widget_primary_container">#FFFFDDB8</color>
+    <color name="widget_on_primary_container">#FF2C1600</color>
+    <color name="widget_outline">#FFD5C3B5</color>
+</resources>

@@ -246,6 +246,19 @@ jobs:
           aqtsource: git+https://github.com/miurahr/aqtinstall.git
       - name: Release build
         run: cargo build --locked --release -p nectarlink-desktop
+      # The same packaging Nightlies and releases use, so a broken DMG shows
+      # up here first.
+      - name: Package the DMG
+        run: BIN_PATH="$PWD/target/release/nectarlink-desktop" bash desktop/packaging/macos/build-dmg.sh
+      - name: Check the DMG starts and carries its translations
+        run: |
+          MNT=$(mktemp -d)
+          hdiutil attach dist/*.dmg -mountpoint "$MNT" -nobrowse -quiet
+          "$MNT/NectarLink.app/Contents/MacOS/nectarlink-desktop" --version
+          ls "$MNT/NectarLink.app/Contents/Resources/"nectarlink_*.qm
+          codesign --verify --deep --strict "$MNT/NectarLink.app"
+          hdiutil detach "$MNT" -quiet
+          rmdir "$MNT"
 
   desktop-linux:
     name: Linux app (x64)

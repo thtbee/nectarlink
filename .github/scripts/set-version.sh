@@ -19,8 +19,10 @@ fi
 [[ "${old}" == "${new}" ]] && exit 0
 # Dots in the old version are matched literally.
 pattern="${old//./\\.}"
-sed -i -e "s/^version = \"${pattern}\"/version = \"${new}\"/" \
+# -i with its suffix attached works in GNU and BSD (macOS) sed alike.
+sed -i.orig -e "s/^version = \"${pattern}\"/version = \"${new}\"/" \
     -e "/path = /s/version = \"${pattern}\"/version = \"${new}\"/" "${manifest}"
+rm -f "${manifest}.orig"
 grep -c "\"${new}\"" "${manifest}" >/dev/null
 # Our own crates' entries in Cargo.lock follow, so `--locked` builds still
 # pass; no dependency changes version.

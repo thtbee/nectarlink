@@ -45,6 +45,15 @@ pub fn try_data_dir() -> Option<&'static std::path::Path> {
     HOST.get().map(|h| h.data_dir.as_path())
 }
 
+/// Whether phones on a USB cable are looked for through adb.
+/// NECTARLINK_NO_ADB=1 keeps a development copy from reaching phones plugged in over USB,
+/// unless NECTARLINK_ADB_ONLY_SERIAL explicitly restricts ADB to an Android emulator.
+pub fn adb_enabled() -> bool {
+    let only_emulator =
+        std::env::var("NECTARLINK_ADB_ONLY_SERIAL").is_ok_and(|s| s.trim().starts_with("emulator-"));
+    only_emulator || std::env::var_os("NECTARLINK_NO_ADB").is_none_or(|v| v != "1")
+}
+
 /// The node, once it has started.
 pub fn node() -> Option<Node> {
     HOST.get()?.node.get().cloned()
@@ -111,7 +120,19 @@ pub fn compute_capabilities(
         nectarlink_core::CONTACTS_SHOW.into(),
         nectarlink_core::SMS_SHOW.into(),
         nectarlink_core::TOGGLES_SHOW.into(),
+        nectarlink_core::MIRROR_VIEW.into(),
+        nectarlink_core::MIRROR_LISTEN.into(),
+        nectarlink_core::MIRROR_LISTEN_ASK.into(),
+        nectarlink_core::MIC_LISTEN.into(),
+        nectarlink_core::RECORDER.into(),
     ];
+    #[cfg(target_os = "macos")]
+    {
+        caps.push(nectarlink_core::PC_AUDIO.into());
+        caps.push(nectarlink_core::STORAGE_MOUNT.into());
+        caps.push(nectarlink_core::STORAGE_READ.into());
+        caps.push(nectarlink_core::STORAGE_WRITE.into());
+    }
     #[cfg(any(windows, target_os = "linux"))]
     {
         caps.push(nectarlink_core::PC_WAKE.into());
@@ -119,11 +140,9 @@ pub fn compute_capabilities(
         caps.push(nectarlink_core::STORAGE_MOUNT.into());
         caps.push(nectarlink_core::STORAGE_READ.into());
         caps.push(nectarlink_core::STORAGE_WRITE.into());
-        caps.push(nectarlink_core::MIRROR_VIEW.into());
-        caps.push(nectarlink_core::MIRROR_LISTEN.into());
         caps.push(nectarlink_core::DECK_ACTIONS.into());
         caps.push(nectarlink_core::PC_AUDIO.into());
-        caps.push(nectarlink_core::RECORDER.into());
+        caps.push(nectarlink_core::PC_SHUTDOWN.into());
         // Only while hibernation is on: Windows can turn it off (#355).
         if crate::win::shell::can_hibernate() {
             caps.push(nectarlink_core::PC_HIBERNATE.into());
@@ -149,7 +168,12 @@ pub fn compute_capabilities(
                 caps.push(nectarlink_core::MEDIA_STREAM.into());
             }
         }
-        caps.push(nectarlink_core::MIC_LISTEN.into());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        if crate::win::vcam::is_available() {
+            caps.push(nectarlink_core::WEBCAM_VIRTUAL.into());
+        }
     }
     #[cfg(any(windows, target_os = "linux"))]
     let mut pc_mirror_enabled = crate::pc_mirror::is_active();
@@ -206,12 +230,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     let wake = crate::win::wol::query_wake_status();
     let mut config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
     config.downloads_dir = Some(downloads_dir());
-    // NECTARLINK_NO_ADB=1 keeps a development copy from reaching phones plugged in over USB,
-    // unless NECTARLINK_ADB_ONLY_SERIAL explicitly restricts ADB to an Android emulator.
-    let only_emulator =
-        std::env::var("NECTARLINK_ADB_ONLY_SERIAL").is_ok_and(|s| s.trim().starts_with("emulator-"));
-    let adb_disabled = !only_emulator && std::env::var_os("NECTARLINK_NO_ADB").is_some_and(|v| v == "1");
-    config.adb_server = (!adb_disabled).then_some(nectarlink_core::DEFAULT_ADB_ADDR);
+    config.adb_server = adb_enabled().then_some(nectarlink_core::DEFAULT_ADB_ADDR);
     let settings = crate::settings::Settings::load(&data_dir);
     config.away_mode = settings.away_mode;
     #[cfg(target_os = "linux")]
@@ -302,7 +321,10 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                 was_active = false;
                 continue;
             }
-            let active = crate::win::input::is_user_active_within_ms(30_000);
+            // Active quiets the phone's own notification sounds, since this PC
+            // shows them: not while its pop-ups are paused (#384).
+            let active =
+                crate::win::input::is_user_active_within_ms(30_000) && !crate::notifications::paused();
             let should_send = active != was_active
                 || (active && last_sent_at.elapsed() >= std::time::Duration::from_secs(30));
             if should_send {
@@ -454,27 +476,15 @@ mod tests {
     fn macos_advertises_only_supported_capabilities() {
         let caps = compute_capabilities(None);
         // Ensure unsupported features on macOS are never advertised
-        assert!(!caps.contains(&"mirror.view".into()), "macOS must not advertise mirror.view");
-        assert!(!caps.contains(&"mirror.listen".into()), "macOS must not advertise mirror.listen");
+        assert!(caps.contains(&nectarlink_core::MIRROR_VIEW.into()), "macOS must advertise mirror.view");
+        assert!(caps.contains(&nectarlink_core::MIRROR_LISTEN.into()), "macOS must advertise mirror.listen");
         assert!(!caps.contains(&"media.control".into()), "macOS must not advertise media.control");
-        assert!(
-            !caps.contains(&nectarlink_core::STORAGE_MOUNT.into()),
-            "macOS must not advertise storage.mount"
+        assert_eq!(
+            caps.contains(&nectarlink_core::WEBCAM_VIRTUAL.into()),
+            crate::win::vcam::is_available(),
+            "macOS must advertise camera.virtual only when the virtual camera extension is available"
         );
-        assert!(
-            !caps.contains(&nectarlink_core::STORAGE_READ.into()),
-            "macOS must not advertise storage.read"
-        );
-        assert!(
-            !caps.contains(&nectarlink_core::STORAGE_WRITE.into()),
-            "macOS must not advertise storage.write"
-        );
-        assert!(
-            !caps.contains(&nectarlink_core::WEBCAM_VIRTUAL.into()),
-            "macOS must not advertise camera.virtual"
-        );
-        assert!(!caps.contains(&nectarlink_core::PC_AUDIO.into()), "macOS must not advertise pc.audio");
-        assert!(!caps.contains(&nectarlink_core::RECORDER.into()), "macOS must not advertise recorder");
+        assert!(caps.contains(&nectarlink_core::RECORDER.into()), "macOS must advertise recorder");
         assert!(
             !caps.contains(&nectarlink_core::DECK_ACTIONS.into()),
             "macOS must not advertise deck.actions"
@@ -483,7 +493,7 @@ mod tests {
             !caps.contains(&nectarlink_core::MEDIA_STREAM.into()),
             "macOS must not advertise media.stream"
         );
-        assert!(!caps.contains(&nectarlink_core::MIC_LISTEN.into()), "macOS must not advertise mic.listen");
+        assert!(caps.contains(&nectarlink_core::MIC_LISTEN.into()), "macOS must advertise mic.listen");
         assert!(!caps.contains(&nectarlink_core::PC_WAKE.into()), "macOS must not advertise pc.wake");
 
         // Ensure supported features on macOS are advertised
@@ -494,5 +504,9 @@ mod tests {
         assert!(caps.contains(&nectarlink_core::CONTACTS_SHOW.into()));
         assert!(caps.contains(&nectarlink_core::SMS_SHOW.into()));
         assert!(caps.contains(&nectarlink_core::TOGGLES_SHOW.into()));
+        assert!(caps.contains(&nectarlink_core::PC_AUDIO.into()));
+        assert!(caps.contains(&nectarlink_core::STORAGE_MOUNT.into()));
+        assert!(caps.contains(&nectarlink_core::STORAGE_READ.into()));
+        assert!(caps.contains(&nectarlink_core::STORAGE_WRITE.into()));
     }
 }

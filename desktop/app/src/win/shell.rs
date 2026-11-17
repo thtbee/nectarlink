@@ -175,6 +175,21 @@ pub fn hibernate() -> Result<(), String> {
     if unsafe { SetSuspendState(true, false, false) } { Ok(()) } else { Err("SetSuspendState failed".into()) }
 }
 
+/// Shuts the PC down the way Start's Shut down does (D372). Not forced: an
+/// app with unsaved work can still stop it.
+pub fn shutdown() -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let system =
+        std::env::var_os("SystemRoot").map_or_else(|| "C:\\Windows".into(), std::path::PathBuf::from);
+    std::process::Command::new(system.join("System32").join("shutdown.exe"))
+        .args(["/s", "/t", "0"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("shutdown.exe: {e}"))
+}
+
 /// Whether the PC can hibernate now: supported, and turned on (`powercfg /h`
 /// leaves no hibernation file when it's off).
 pub fn can_hibernate() -> bool {

@@ -23,6 +23,7 @@
 #include <QtGui/QImage>
 #include <QtGui/QPixmap>
 #include <QtGui/QPixmapCache>
+#include <QtGui/QSessionManager>
 #include <QtQml/QQmlApplicationEngine>
 #include <QtQml/QQmlEngine>
 #include <QtQuick/QQuickWindow>
@@ -33,7 +34,7 @@
 #include <malloc.h>
 #endif
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 #include <QtCore/QBuffer>
 #include <QtCore/QMetaObject>
 #include <QtCore/QThread>
@@ -50,6 +51,12 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#endif
+
+#ifdef __APPLE__
+#include <QtGui/QWindow>
+#include <algorithm>
+#include <crt_externs.h>
 #endif
 
 namespace {
@@ -189,6 +196,10 @@ void prepare_qt_without_log()
     QQuickWindow::setDefaultAlphaBuffer(true);
     qputenv("QT_QPA_DISABLE_REDIRECTION_SURFACE", "1");
     qputenv("QSG_RENDER_LOOP", "basic");
+    // With the basic loop, a frame after a resize often waited out the D3D
+    // swap chain's latency object (1 s), so dragging a window's edge stalled
+    // (a quarter of resize steps took ~1 s; none over 15 ms without it).
+    qputenv("QT_D3D_MAX_FRAME_LATENCY", "0");
     // Qt's V4 JS engine reserves 2 x QV4_JS_MAX_STACK_SIZE of committed RW
     // memory (8 MB by default). 512 KB per stack (1 MB total) is plenty for
     // UI bindings and saves 7 MB of private commit in the tray.
@@ -208,6 +219,19 @@ void add_app_icon_image(int32_t size, rust::Slice<const uint8_t> rgba)
 void apply_app_icon()
 {
     QGuiApplication::setWindowIcon(appIcon());
+}
+
+void stay_out_of_session_restore()
+{
+#if defined(__linux__) && QT_CONFIG(sessionmanager)
+    // Desktops that restore the last session (KDE Plasma, through XSMP) start
+    // every app that was open at logout again, without --minimized, so the
+    // window opened at login although the app starts in the tray. Start at
+    // login (the autostart entry) is what starts it with the session.
+    QObject::connect(qGuiApp, &QGuiApplication::saveStateRequest, qGuiApp, [](QSessionManager &manager) {
+        manager.setRestartHint(QSessionManager::RestartNever);
+    });
+#endif
 }
 
 void keep_running_without_windows()
@@ -307,12 +331,40 @@ rust::Vec<rust::String> system_ui_languages()
     return out;
 }
 
+// The app's fonts (Figtree, Segoe UI Variable) have no Chinese, Japanese or
+// Korean, and on Windows Qt's own fallback for them was often SimSun, a serif
+// that's hard to read (#390). Windows' UI fonts come first instead, the one
+// for the app's language before the others, since the same characters look
+// different in each.
+static void use_windows_cjk_fonts(const QLocale &locale)
+{
+#ifdef _WIN32
+    const QStringList simplified{QStringLiteral("Microsoft YaHei UI"), QStringLiteral("Microsoft YaHei")};
+    const QStringList traditional{QStringLiteral("Microsoft JhengHei UI"), QStringLiteral("Microsoft JhengHei")};
+    const QStringList japanese{QStringLiteral("Yu Gothic UI"), QStringLiteral("Meiryo UI")};
+    QStringList han;
+    if (locale.language() == QLocale::Japanese)
+        han = japanese + simplified + traditional;
+    else if (locale.language() == QLocale::Chinese && locale.script() == QLocale::TraditionalHanScript)
+        han = traditional + simplified + japanese;
+    else
+        han = simplified + traditional + japanese;
+    QFontDatabase::setApplicationFallbackFontFamilies(QChar::Script_Han, han);
+    QFontDatabase::setApplicationFallbackFontFamilies(QChar::Script_Hiragana, japanese + han);
+    QFontDatabase::setApplicationFallbackFontFamilies(QChar::Script_Katakana, japanese + han);
+    QFontDatabase::setApplicationFallbackFontFamilies(QChar::Script_Hangul, {QStringLiteral("Malgun Gothic")});
+#else
+    Q_UNUSED(locale);
+#endif
+}
+
 bool install_translator(rust::Str dir, rust::Str language)
 {
     const QString folder = QString::fromUtf8(dir.data(), static_cast<qsizetype>(dir.size()));
     const QString chosen = QString::fromUtf8(language.data(), static_cast<qsizetype>(language.size()));
     const QLocale locale = chosen.isEmpty() ? QLocale::system() : QLocale(chosen);
     QLocale::setDefault(locale);
+    use_windows_cjk_fonts(locale);
     drop(qtTranslator());
     drop(appTranslator());
 
@@ -582,7 +634,7 @@ uint64_t mac_free_space(rust::Str path, bool &ok)
     return static_cast<uint64_t>(available);
 }
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 namespace {
 std::atomic<bool> &qtEventLoopRunning()
 {
@@ -590,6 +642,7 @@ std::atomic<bool> &qtEventLoopRunning()
     return running;
 }
 
+#ifdef __linux__
 struct LinuxClipboardWatch {
     std::mutex mutex;
     std::condition_variable cv;
@@ -601,6 +654,7 @@ LinuxClipboardWatch &linuxClipboardWatch()
     static LinuxClipboardWatch *watch = new LinuxClipboardWatch();
     return *watch;
 }
+#endif
 
 struct LinuxTrayState {
     QPointer<QSystemTrayIcon> icon;
@@ -683,16 +737,23 @@ bool runOnQtMainThreadSync(F &&fn, uint32_t timeout_ms = 500)
 } // namespace
 #endif
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 namespace {
 // This process's arguments, as the kernel has them.
 std::vector<std::string> processArguments()
 {
     std::vector<std::string> args;
+#ifdef __linux__
     std::ifstream cmdline("/proc/self/cmdline", std::ios::binary);
     std::string arg;
     while (std::getline(cmdline, arg, '\0'))
         args.push_back(arg);
+#elif defined(__APPLE__)
+    const int argc = *_NSGetArgc();
+    char **argv = *_NSGetArgv();
+    for (int i = 0; i < argc && argv && argv[i]; ++i)
+        args.emplace_back(argv[i]);
+#endif
     if (args.empty())
         args.emplace_back("nectarlink");
     return args;
@@ -702,7 +763,7 @@ std::vector<std::string> processArguments()
 
 std::unique_ptr<QGuiApplication> create_qt_app()
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     // The real arguments, as on the other systems: QML reads --minimized and
     // --send-to from them (#336). Qt keeps pointers to them, so they live on.
     static std::vector<std::string> s_args = processArguments();
@@ -715,8 +776,10 @@ std::unique_ptr<QGuiApplication> create_qt_app()
     }();
     static int s_argc = static_cast<int>(s_args.size());
     auto app = std::unique_ptr<QGuiApplication>(new QApplication(s_argc, s_argv_list.data()));
+#ifdef __linux__
     // On Wayland this is the app id, which is how the dock finds our icon and name.
     QGuiApplication::setDesktopFileName(QStringLiteral("nectarlink"));
+#endif
     QObject::connect(app.get(), &QCoreApplication::aboutToQuit, app.get(), []() {
         qtEventLoopRunning().store(false, std::memory_order_release);
     });
@@ -726,11 +789,13 @@ std::unique_ptr<QGuiApplication> create_qt_app()
             qtEventLoopRunning().store(true, std::memory_order_release);
         },
         Qt::QueuedConnection);
+#ifdef __linux__
     if (QClipboard *cb = QGuiApplication::clipboard()) {
         QObject::connect(cb, &QClipboard::dataChanged, cb, []() {
             linux_clipboard_notify_external();
         });
     }
+#endif
     return app;
 #else
     static int s_argc = 1;
@@ -753,7 +818,7 @@ void linux_tray_setup(
     rust::Str pause_notifications_label,
     rust::Str quit_label)
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     const QString iconPath = QString::fromUtf8(icon_path.data(), static_cast<qsizetype>(icon_path.size()));
     const QString tooltipStr = QString::fromUtf8(tooltip.data(), static_cast<qsizetype>(tooltip.size()));
     const QString openStr = QString::fromUtf8(open_label.data(), static_cast<qsizetype>(open_label.size()));
@@ -826,6 +891,32 @@ void linux_tray_setup(
         });
         tray->show();
 
+#ifdef __APPLE__
+        // Reopen the main window when the user clicks the Dock icon while hidden in the tray.
+        class MacDockReopenFilter final : public QObject {
+        public:
+            using QObject::QObject;
+
+        protected:
+            bool eventFilter(QObject *watched, QEvent *event) override
+            {
+                if (event->type() == QEvent::ApplicationActivate) {
+                    const auto windows = QGuiApplication::topLevelWindows();
+                    const bool anyVisible = std::any_of(windows.begin(), windows.end(), [](const QWindow *w) {
+                        return w && w->isVisible();
+                    });
+                    if (!anyVisible) {
+                        pushTrayAction("OPEN");
+                    }
+                }
+                return QObject::eventFilter(watched, event);
+            }
+        };
+        if (auto *app = QCoreApplication::instance()) {
+            app->installEventFilter(new MacDockReopenFilter(tray));
+        }
+#endif
+
         st.icon = tray;
         st.menu = menu;
         st.takePhotoAction = takePhoto;
@@ -851,7 +942,7 @@ void linux_tray_setup(
 
 void linux_tray_set_pause_label(rust::Str label)
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     const QString text = QString::fromUtf8(label.data(), static_cast<qsizetype>(label.size()));
     runOnQtMainThread([text]() {
         if (auto *action = linuxTray().pauseAction.data())
@@ -864,7 +955,7 @@ void linux_tray_set_pause_label(rust::Str label)
 
 void linux_tray_set_tooltip(rust::Str tooltip)
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     const QString tooltipStr = QString::fromUtf8(tooltip.data(), static_cast<qsizetype>(tooltip.size()));
     runOnQtMainThread([tooltipStr]() {
         if (auto *icon = linuxTray().icon.data())
@@ -877,7 +968,7 @@ void linux_tray_set_tooltip(rust::Str tooltip)
 
 void linux_tray_set_find_phone_enabled(bool enabled)
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     runOnQtMainThread([enabled]() {
         auto &st = linuxTray();
         st.phoneActionsEnabled = enabled;
@@ -897,7 +988,7 @@ void linux_tray_set_find_phone_enabled(bool enabled)
 
 void linux_tray_teardown()
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     auto &st = linuxTray();
     st.cv.notify_all();
     runOnQtMainThread([]() {
@@ -919,7 +1010,7 @@ void linux_tray_teardown()
 
 rust::String linux_tray_wait_action(uint32_t timeout_ms)
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     auto &st = linuxTray();
     std::unique_lock<std::mutex> lock(st.mutex);
     if (st.actions.empty() && timeout_ms > 0) {
@@ -938,7 +1029,7 @@ rust::String linux_tray_wait_action(uint32_t timeout_ms)
 
 bool linux_tray_is_available()
 {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
     bool available = false;
     if (runOnQtMainThreadSync([&available]() {
             available = QSystemTrayIcon::isSystemTrayAvailable();

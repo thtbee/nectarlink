@@ -354,6 +354,12 @@ pub fn sleep_system() -> Result<(), String> {
     sleep()
 }
 
+/// Shuts the system down (`systemctl poweroff`, D372); logind may still
+/// ask when other sessions are signed in.
+pub fn shutdown() -> Result<(), String> {
+    spawn_detached("systemctl", &["poweroff"])
+}
+
 /// Hibernates the system (`systemctl hibernate`, #355).
 pub fn hibernate() -> Result<(), String> {
     spawn_detached("systemctl", &["hibernate"])

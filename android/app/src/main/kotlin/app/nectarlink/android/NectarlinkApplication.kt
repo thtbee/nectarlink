@@ -56,8 +56,13 @@ class NectarlinkApplication : Application(), DefaultLifecycleObserver {
         // The media volume, if the app stopped while the phone's sound played on the PC.
         app.nectarlink.android.mirror.PhoneQuiet.end(this)
         Elevated.init(this)
+        // Assist only while a PC uses the phone, if the user chose that (#400).
+        app.nectarlink.android.banking.AssistOnDemand.init(this)
         // What the phone offers PCs follows Elevated starting and stopping.
-        Elevated.onChange = { core.refreshNotificationAccess() }
+        Elevated.onChange = {
+            core.refreshNotificationAccess()
+            app.nectarlink.android.banking.AssistOnDemand.reconcile(this)
+        }
         Elevated.onClipboardChanged = { text, html -> core.onElevatedClipboardChanged(text, html) }
         Elevated.onSensitiveCopied = { text -> core.onElevatedSensitiveCopied(text) }
         Elevated.onInputBlocked = { core.onElevatedInputBlocked() }

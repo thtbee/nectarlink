@@ -20,6 +20,8 @@ Sheet {
         case "firewall": return qsTr("Allow")
         case "network-settings": return qsTr("Open settings")
         case "reconnect": return qsTr("Reconnect")
+        case "start-adb": return qsTr("Start adb")
+        case "get-adb": return qsTr("Set up USB")
         default: return ""
         }
     }
@@ -142,7 +144,15 @@ Sheet {
                                 variant: row.modelData.outcome === "fail" ? "fill" : "tonal"
                                 size: "sm"
                                 text: sheet.fixLabel(row.modelData.fix)
-                                onClicked: AppController.doctorFix(row.modelData.fix)
+                                onClicked: {
+                                    // Getting the USB tools is a page of its own (Settings › Install on a phone).
+                                    if (row.modelData.fix === "get-adb") {
+                                        sheet.close()
+                                        AppController.triggerHighlight("settings:install_phone")
+                                    } else {
+                                        AppController.doctorFix(row.modelData.fix)
+                                    }
+                                }
                             }
                         }
                     }

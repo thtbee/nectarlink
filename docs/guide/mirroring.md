@@ -70,7 +70,7 @@ With `Elevated` on Android 11 or newer, you can run individual phone apps in sep
 
 3. Click any app. NectarLink creates an isolated virtual display on your phone and opens that app on your PC in its own `app window` with its own Windows taskbar icon.
 4. The app runs independently beside whatever is shown on your phone's physical screen, and typing from your PC does not pop up the on-screen soft keyboard on your phone.
-5. Resize the `app window` on your PC and the Android app dynamically re-lays out to match the new aspect ratio. NectarLink remembers each app's window size and screen position for the next time you open it. You can open multiple `app window` instances side by side in tabs or separate windows.
+5. Resize the `app window` on your PC and the Android app re-lays out to fill the window's new shape when you let go of the edge; while you hold it, the window shows the app blurred under its icon. Hold `Ctrl` and turn the mouse wheel to make the app draw bigger or smaller (50% to 200%). For an app that doesn't take odd shapes well, turn off **Flex mode** in the window's toolbar: the app restarts at your phone's resolution and the window keeps that shape. Flex mode and zoom are remembered for each app. NectarLink remembers each app's window size and screen position for the next time you open it. You can open multiple `app window` instances side by side in tabs or separate windows.
 6. The phone's sound comes to your PC with its app windows, and the phone itself goes quiet. It's the phone's whole sound, so with several app windows open you hear all of them. The speaker icon in any `app window` toolbar mutes it on the PC, and the sound stops when you close the last `app window`.
 
 ### Desktop Display Mode (DeX / Desktop Mode)
@@ -95,7 +95,7 @@ You can also view (and optionally control) your PC's desktop from your phone:
 - **Share PC screen to phone** (`Settings › Devices` on PC, default: **Off**): Allows the selected phone to view this PC's screen without showing the one-time consent dialog each time.
 - **Remote mouse, keyboard & Deck** (`Settings › Devices` on PC, default: **Off**): Allows the selected phone to send touch/mouse clicks and keystrokes to this PC (including during reverse mirroring).
 - **Use your PC's mouse and keyboard** (`Settings › Permissions › Control from your PC` on Android): Opens Android Accessibility settings to enable or disable `Assist` mode.
-- **Real touch and keys** (`Settings › Permissions › Control from your PC` on Android): Guides you through setting up or turning off `Elevated` mode.
+- **Elevated** (`Settings › Permissions › Control from your PC` on Android): Guides you through setting up or turning off `Elevated` mode.
 
 ## Data and Privacy
 

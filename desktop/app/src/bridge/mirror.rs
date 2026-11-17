@@ -10,6 +10,7 @@ use cxx_qt_lib::{QList, QString, QUrl, QVariant};
 use nectarlink_core::{FeatureState, MIRROR_SCREEN, MirrorInput};
 
 use crate::{
+    i18n::tr,
     mirror::{self, Apps, Phase, Window},
     state::Changes,
 };
@@ -62,6 +63,19 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "startApp"]
         fn start_app(self: &Mirror, device: &QString, pkg: &QString, label: &QString);
+        /// Puts a shortcut to a phone app on the desktop (Windows) or in the
+        /// app menu (Linux), #370. Says how it went.
+        #[qinvokable]
+        #[cxx_name = "addAppShortcut"]
+        fn add_app_shortcut(self: &Mirror, device: &QString, pkg: &QString, label: &QString) -> bool;
+        /// Uninstalls a phone app (D349); the result shows as a message.
+        #[qinvokable]
+        #[cxx_name = "uninstallApp"]
+        fn uninstall_app(self: &Mirror, device: &QString, pkg: &QString, label: &QString);
+        /// Whether this system gets those shortcuts.
+        #[qinvokable]
+        #[cxx_name = "appShortcutsSupported"]
+        fn app_shortcuts_supported(self: &Mirror) -> bool;
         /// Reopens an ended window (the screen or an app window).
         #[qinvokable]
         fn reopen(self: &Mirror, key: &QString);
@@ -71,6 +85,16 @@ pub mod qobject {
         /// Resizes an app window's display on the phone.
         #[qinvokable]
         fn resize(self: &Mirror, key: &QString, width: u32, height: u32);
+        /// Makes an app window's app draw bigger (`steps` > 0) or smaller;
+        /// the next `resize` applies it. False when nothing changed.
+        #[qinvokable]
+        #[cxx_name = "changeZoom"]
+        fn change_zoom(self: &Mirror, key: &QString, steps: i32) -> bool;
+        /// Applies the zoom to a window that isn't flexible, whose picture
+        /// is `width` x `height` pixels.
+        #[qinvokable]
+        #[cxx_name = "zoomDisplay"]
+        fn zoom_display(self: &Mirror, key: &QString, width: u32, height: u32);
         /// Saves an app window's position and size on this PC.
         #[qinvokable]
         #[cxx_name = "saveGeometry"]
@@ -107,6 +131,11 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "screenshotFile"]
         fn screenshot_file(self: &Mirror, key: &QString);
+        /// Turns an app window's flexible display on or off (off restarts
+        /// the app at the phone's resolution).
+        #[qinvokable]
+        #[cxx_name = "setFlexible"]
+        fn set_flexible(self: &Mirror, key: &QString, on: bool);
         /// Starts or stops MP4 video recording for a mirror window.
         #[qinvokable]
         #[cxx_name = "toggleRecording"]
@@ -214,6 +243,7 @@ impl qobject::Mirror {
                         == Some(FeatureState::Available);
                     (control, can_screen_off, s.name_of(&window.device).unwrap_or_default())
                 });
+                let power_buttons = mirror::power_matters(&window);
                 let (phase, reason) = match shown.phase {
                     Phase::Asking => ("asking", String::new()),
                     Phase::Showing => ("showing", String::new()),
@@ -226,7 +256,11 @@ impl qobject::Mirror {
                     .as_deref()
                     .map(crate::icons::file_url)
                     .unwrap_or_default();
-                let geom = (!pkg.is_empty()).then(|| mirror::geometry(&window.device, &pkg)).flatten();
+                let geom = if window.session == MIRROR_SCREEN {
+                    mirror::geometry(&window.device, mirror::SCREEN_GEOMETRY)
+                } else {
+                    (!pkg.is_empty()).then(|| mirror::geometry(&window.device, &pkg)).flatten()
+                };
                 serde_json::json!({
                     "key": window.key(),
                     "device": window.device.to_string(),
@@ -247,9 +281,14 @@ impl qobject::Mirror {
                     },
                     "recording": mirror::is_recording(&window),
                     "recordingStartedMs": mirror::recording_started_ms(&window),
-                    "stayAwake": mirror::stay_awake(&window.device),
-                    "screenOff": mirror::screen_off(&window.device),
+                    // Off where the window has no say in them (and no buttons).
+                    "stayAwake": power_buttons && mirror::stay_awake(&window.device),
+                    "screenOff": power_buttons && mirror::screen_off(&window.device),
                     "canScreenOff": can_screen_off,
+                    // Stay awake and screen off: only where the phone's power matters to this window.
+                    "powerButtons": power_buttons,
+                    "flexible": mirror::flexible(&window),
+                    "zoom": mirror::zoom(&window),
                     "notice": mirror::last_notice(&window),
                     "savedX": geom.map(|g| g.x),
                     "savedY": geom.map(|g| g.y),
@@ -320,6 +359,51 @@ impl qobject::Mirror {
         }
     }
 
+    pub fn add_app_shortcut(&self, device: &QString, pkg: &QString, label: &QString) -> bool {
+        let Some(device) = super::parse_device(device) else { return false };
+        let data_dir = &crate::core_host::host().data_dir;
+        let label = String::from(label);
+        match crate::app_shortcuts::add(data_dir, device, &String::from(pkg), &label) {
+            Ok(path) => {
+                tracing::info!(path = %path.display(), "added a phone app's shortcut");
+                crate::bridge::app::show_message(if cfg!(windows) {
+                    tr!("Apps", "Added %1 to your desktop.", label)
+                } else {
+                    tr!("Apps", "Added %1 to your app menu.", label)
+                });
+                true
+            }
+            Err(error) => {
+                tracing::warn!(%error, "couldn't add a phone app's shortcut");
+                crate::bridge::app::show_message(tr!("Apps", "Couldn't add a shortcut for %1.", label));
+                false
+            }
+        }
+    }
+
+    pub fn uninstall_app(&self, device: &QString, pkg: &QString, label: &QString) {
+        let (Some(device), Some(node)) = (super::parse_device(device), crate::core_host::node()) else {
+            return;
+        };
+        let (pkg, label) = (String::from(pkg), String::from(label));
+        crate::core_host::spawn(async move {
+            match node.uninstall_phone_app(device, pkg).await {
+                Ok(()) => {
+                    crate::bridge::app::show_message(tr!("Apps", "Uninstalled %1.", label));
+                    mirror::load_apps(device);
+                }
+                Err(error) => {
+                    tracing::info!(%error, "a phone app wasn't uninstalled");
+                    crate::bridge::app::show_message(tr!("Apps", "Couldn't uninstall %1.", label));
+                }
+            }
+        });
+    }
+
+    pub fn app_shortcuts_supported(&self) -> bool {
+        crate::app_shortcuts::supported()
+    }
+
     pub fn start_app(&self, device: &QString, pkg: &QString, label: &QString) {
         let pkg = String::from(pkg);
         if let (Some(device), true) = (super::parse_device(device), nectarlink_core::is_package_name(&pkg)) {
@@ -342,6 +426,16 @@ impl qobject::Mirror {
     pub fn resize(&self, key: &QString, width: u32, height: u32) {
         if let Some(window) = Window::parse(&String::from(key)) {
             mirror::resize(window, width, height);
+        }
+    }
+
+    pub fn change_zoom(&self, key: &QString, steps: i32) -> bool {
+        Window::parse(&String::from(key)).is_some_and(|window| mirror::change_zoom(window, steps))
+    }
+
+    pub fn zoom_display(&self, key: &QString, width: u32, height: u32) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::zoom_display(window, width, height);
         }
     }
 
@@ -422,6 +516,12 @@ impl qobject::Mirror {
     pub fn screenshot_clipboard(&self, key: &QString) {
         if let Some(window) = Window::parse(&String::from(key)) {
             mirror::screenshot_clipboard(window);
+        }
+    }
+
+    pub fn set_flexible(&self, key: &QString, on: bool) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::set_flexible(window, on);
         }
     }
 

@@ -46,6 +46,15 @@ pub struct DeviceFact {
     pub dial_failures: u32,
 }
 
+/// Whether this PC can reach phones on a USB cable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AdbFact {
+    /// adb was found, in an SDK folder or on `PATH`.
+    pub installed: bool,
+    /// An adb server answers.
+    pub running: bool,
+}
+
 /// What the OS said, gathered first so the wording can be tested.
 #[derive(Debug, Clone, Default)]
 pub struct Facts {
@@ -57,6 +66,8 @@ pub struct Facts {
     pub firewall: Option<windows_checks::Firewall>,
     /// Paired devices: link and discovery diagnostics.
     pub devices: Vec<DeviceFact>,
+    /// adb, which phones on a USB cable connect through; `None` when USB is off.
+    pub adb: Option<AdbFact>,
     /// Optional helper tools missing from `PATH` on Linux.
     #[cfg(target_os = "linux")]
     pub missing_tools: Vec<&'static str>,
@@ -90,12 +101,17 @@ pub fn gather() -> Facts {
             })
             .collect()
     });
+    let adb = core_host::adb_enabled().then(|| AdbFact {
+        installed: nectarlink_core::locate_adb().is_some(),
+        running: nectarlink_core::adb_server_answers(nectarlink_core::DEFAULT_ADB_ADDR),
+    });
     Facts {
         local_address: adapters.local_address,
         vpn: adapters.vpn,
         networks,
         firewall,
         devices,
+        adb,
         #[cfg(target_os = "linux")]
         missing_tools: windows_checks::missing_tools(),
         #[cfg(target_os = "linux")]
@@ -306,6 +322,45 @@ pub fn diagnose(facts: &Facts, now_secs: i64) -> Vec<Check> {
         ));
     }
 
+    // USB: phones on a cable connect through adb (#322). Not having it only
+    // matters while a phone isn't reachable another way.
+    match facts.adb {
+        Some(AdbFact { running: true, .. }) => checks.push(check(
+            "adb",
+            Outcome::Ok,
+            tr!("Doctor", "Ready for a USB cable"),
+            tr!("Doctor", "adb is running, so a phone with USB debugging on connects over a cable."),
+            None,
+        )),
+        Some(AdbFact { installed: true, running: false }) => checks.push(check(
+            "adb",
+            Outcome::Warn,
+            tr!("Doctor", "adb isn't running"),
+            tr!(
+                "Doctor",
+                "Phones on a USB cable connect through adb. NectarLink starts it every minute or so; \
+                 start it now if a phone on a cable isn't showing up."
+            ),
+            Some("start-adb"),
+        )),
+        Some(AdbFact { installed: false, .. })
+            if facts.devices.iter().any(|d| !matches!(d.link, LinkState::Online { .. })) =>
+        {
+            checks.push(check(
+                "adb",
+                Outcome::Warn,
+                tr!("Doctor", "A USB cable needs adb"),
+                tr!(
+                    "Doctor",
+                    "To connect over a cable, NectarLink can get Android's USB tools from Google \
+                     for you, and the phone needs USB debugging on. Wi-Fi works without them."
+                ),
+                Some("get-adb"),
+            ));
+        }
+        _ => {}
+    }
+
     #[cfg(target_os = "linux")]
     if !facts.missing_tools.is_empty() {
         let list = facts.missing_tools.join(", ");
@@ -494,6 +549,11 @@ pub fn fix(id: &str) -> bool {
         "network-settings" => windows_checks::open_network_settings(),
         #[cfg(not(target_os = "linux"))]
         "network-settings" => crate::win::shell::open_url("ms-settings:network-status").is_ok(),
+        // The USB watcher finds the server on its next round, within seconds.
+        "start-adb" => {
+            nectarlink_core::start_adb_server(nectarlink_core::DEFAULT_ADB_ADDR);
+            nectarlink_core::adb_server_answers(nectarlink_core::DEFAULT_ADB_ADDR)
+        }
         "reconnect" => {
             if let Some(node) = core_host::node() {
                 core_host::spawn(async move { node.refresh().await });
@@ -527,6 +587,7 @@ mod tests {
             networks: vec![("Home".into(), true)],
             firewall: Some(windows_checks::Firewall { on: true, allowed: true, blocked: false }),
             devices: vec![device_fact("Pixel", LinkState::Online { path: ConnectionPath::Lan, rtt_ms: 4 })],
+            adb: None,
             #[cfg(target_os = "linux")]
             missing_tools: Vec::new(),
             #[cfg(target_os = "linux")]
@@ -536,6 +597,38 @@ mod tests {
 
     fn outcomes(checks: &[Check]) -> Vec<(&str, Outcome)> {
         checks.iter().map(|c| (c.id.as_str(), c.outcome)).collect()
+    }
+
+    #[test]
+    fn adb_is_reported_for_usb_and_only_nags_while_a_phone_is_unreachable() {
+        let adb = |installed, running| {
+            let mut f = facts();
+            f.adb = Some(AdbFact { installed, running });
+            f
+        };
+        let find = |f: &Facts| diagnose(f, 0).into_iter().find(|c| c.id == "adb");
+
+        let ready = find(&adb(true, true)).unwrap();
+        assert_eq!(ready.outcome, Outcome::Ok);
+        assert_eq!(ready.fix, None);
+
+        let stopped = find(&adb(true, false)).unwrap();
+        assert_eq!(stopped.outcome, Outcome::Warn);
+        assert_eq!(stopped.fix, Some("start-adb"));
+
+        // Not installed: nothing while the phone is connected another way...
+        assert!(find(&adb(false, false)).is_none());
+        // ...and a warning once it isn't, whose button sets USB up (Install on a phone).
+        let mut offline = adb(false, false);
+        offline.devices = vec![device_fact("Pixel", LinkState::Offline { last_seen: None })];
+        let missing = find(&offline).unwrap();
+        assert_eq!(missing.outcome, Outcome::Warn);
+        assert_eq!(missing.fix, Some("get-adb"));
+
+        // USB turned off (NECTARLINK_NO_ADB): no line at all.
+        let mut off = facts();
+        off.devices = vec![device_fact("Pixel", LinkState::Offline { last_seen: None })];
+        assert!(find(&off).is_none());
     }
 
     #[test]

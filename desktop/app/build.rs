@@ -42,10 +42,12 @@ const QML: &[&str] = &[
     "qml/components/NavItem.qml",
     "qml/components/NotificationItem.qml",
     "qml/components/NowPlaying.qml",
+    "qml/components/PhoneInstallPane.qml",
     "qml/components/QrCode.qml",
     "qml/components/RelaySheet.qml",
     "qml/components/RoundedImage.qml",
     "qml/components/Segmented.qml",
+    "qml/components/ScrollRail.qml",
     "qml/components/Sheet.qml",
     "qml/components/Spinner.qml",
     "qml/components/StarPrompt.qml",
@@ -249,9 +251,12 @@ fn find_lrelease() -> Option<PathBuf> {
             return Some(p);
         }
     }
-    if let Some(qmake) = std::env::var_os("QMAKE").map(PathBuf::from)
-        && let Some(bin_dir) = qmake.parent()
-    {
+    // Next to qmake, or in the Qt that install-qt-action and aqt set up.
+    let qt_bins = [
+        std::env::var_os("QMAKE").map(PathBuf::from).and_then(|q| q.parent().map(Path::to_path_buf)),
+        std::env::var_os("QT_ROOT_DIR").map(|root| PathBuf::from(root).join("bin")),
+    ];
+    for bin_dir in qt_bins.into_iter().flatten() {
         for name in ["lrelease", "lrelease.exe", "lrelease-qt6"] {
             let candidate = bin_dir.join(name);
             if candidate.is_file() {
@@ -350,6 +355,9 @@ fn compile_translations() {
             .arg(&out_qm)
             .status()
             .is_ok_and(|s| s.success());
+        if !compiled {
+            println!("cargo:warning={} couldn't compile {}", lrelease.display(), ts.display());
+        }
         if compiled && let Some(ref target_dir) = profile_dir {
             let _ = fs::copy(&out_qm, target_dir.join(&qm_name));
         }
@@ -375,7 +383,7 @@ fn main() {
         .qml_files(QML.iter().map(|f| QmlFile::from(*f)))
         .qml_files(QML_SINGLETONS.iter().map(|f| QmlFile::from(*f).singleton(true)));
     let mut builder = CxxQtBuilder::new_qml_module(module).qt_module("Quick");
-    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
+    if matches!(std::env::var("CARGO_CFG_TARGET_OS").as_deref(), Ok("linux" | "macos")) {
         builder = builder.qt_module("Widgets");
     }
     builder
@@ -400,6 +408,7 @@ fn main() {
             "src/bridge/mirror.rs",
             "src/bridge/notifications.rs",
             "src/bridge/pairing.rs",
+            "src/bridge/phone_install.rs",
             "src/bridge/phone_mic.rs",
             "src/bridge/photo_backup.rs",
             "src/bridge/photos.rs",
@@ -424,11 +433,15 @@ fn main() {
             "cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN:$ORIGIN/lib:$ORIGIN/../lib:$ORIGIN/../lib/nectarlink/lib"
         );
     } else if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
+        build_macos_audio_loopback();
         println!("cargo:rustc-link-lib=framework=AppKit");
         println!("cargo:rustc-link-lib=framework=CoreGraphics");
         println!("cargo:rustc-link-lib=framework=CoreAudio");
         println!("cargo:rustc-link-lib=framework=AudioToolbox");
         println!("cargo:rustc-link-lib=framework=IOKit");
+        println!("cargo:rustc-link-lib=framework=ScreenCaptureKit");
+        println!("cargo:rustc-link-lib=framework=CoreMedia");
+        println!("cargo:rustc-link-lib=framework=Foundation");
     }
     println!("cargo:rerun-if-changed=cpp/app_helpers.h");
     println!("cargo:rerun-if-changed=cpp/app_helpers.cpp");
@@ -459,4 +472,13 @@ fn build_linux_video_codec() {
     build.compile("nectarlink_linux_video_codec");
     println!("cargo::rustc-link-lib=dl");
     println!("cargo::rustc-cfg=linux_ffmpeg_video");
+}
+
+fn build_macos_audio_loopback() {
+    println!("cargo::rerun-if-changed=cpp/mac_audio_loopback.mm");
+    cc::Build::new()
+        .file("cpp/mac_audio_loopback.mm")
+        .flag("-fobjc-arc")
+        .flag("-std=c++17")
+        .compile("nectarlink_mac_audio_loopback");
 }

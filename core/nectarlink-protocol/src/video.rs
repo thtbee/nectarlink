@@ -61,7 +61,7 @@ pub fn video_packet_header(
     time_us: u64,
     data_len: usize,
 ) -> Result<[u8; 4 + HEADER], ProtocolError> {
-    let len = HEADER + data_len;
+    let len = HEADER.saturating_add(data_len);
     if len > MAX_VIDEO_PACKET {
         return Err(ProtocolError::FrameTooLarge(len));
     }
@@ -72,16 +72,17 @@ pub fn video_packet_header(
     Ok(header)
 }
 
-/// Reads one packet; `None` at the end of the stream.
+/// Reads one packet; `None` only on a clean end of stream before a packet starts.
 pub async fn read_video_packet<R: AsyncRead + Unpin>(
     reader: &mut R,
 ) -> Result<Option<VideoPacket>, ProtocolError> {
     let mut len = [0u8; 4];
-    match reader.read_exact(&mut len).await {
-        Ok(_) => {}
+    len[0] = match reader.read_u8().await {
+        Ok(byte) => byte,
         Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => return Ok(None),
         Err(e) => return Err(e.into()),
-    }
+    };
+    reader.read_exact(&mut len[1..]).await?;
     let len = u32::from_be_bytes(len) as usize;
     if !(HEADER..=MAX_VIDEO_PACKET).contains(&len) {
         return Err(ProtocolError::FrameTooLarge(len));
@@ -117,6 +118,31 @@ mod tests {
         let second = read_video_packet(&mut reader).await.unwrap().unwrap();
         assert_eq!((second.kind, second.time_us, second.data.len()), (PacketKind::Keyframe, 16_667, 70_000));
         assert!(read_video_packet(&mut reader).await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn truncated_packets_are_rejected() {
+        let mut bytes = video_packet_header(PacketKind::Frame, 0, 1).unwrap().to_vec();
+        bytes.push(7);
+        // Only an empty stream is a clean EOF. Every partial packet is an error.
+        assert!(read_video_packet(&mut [].as_slice()).await.unwrap().is_none());
+        for end in 1..bytes.len() {
+            let mut reader = &bytes[..end];
+            assert!(read_video_packet(&mut reader).await.is_err(), "truncated at {end}");
+        }
+    }
+
+    #[test]
+    fn packet_length_boundaries() {
+        assert!(video_packet_header(PacketKind::Frame, 0, MAX_VIDEO_PACKET - HEADER).is_ok());
+        assert!(matches!(
+            video_packet_header(PacketKind::Frame, 0, MAX_VIDEO_PACKET - HEADER + 1),
+            Err(ProtocolError::FrameTooLarge(_))
+        ));
+        assert!(matches!(
+            video_packet_header(PacketKind::Frame, 0, usize::MAX),
+            Err(ProtocolError::FrameTooLarge(_))
+        ));
     }
 
     #[tokio::test]

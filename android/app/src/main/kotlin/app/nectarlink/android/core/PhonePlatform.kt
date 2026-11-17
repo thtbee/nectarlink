@@ -150,6 +150,22 @@ internal class PhonePlatform(
     override fun contacts(query: String?, offset: UInt, limit: UInt): List<Contact> =
         contacts().list(query, offset.toInt(), limit.toInt())
 
+    /**
+     * A PC asked to uninstall [pkg] (D349): through Elevated, never NectarLink
+     * itself. True once Android no longer has it (checked for 8 s, since the
+     * helper runs the command on its own).
+     */
+    override fun appUninstallRequested(pcId: String, pkg: String): Boolean {
+        if (pkg == context.packageName || !PACKAGE.matches(pkg) || !Elevated.running) return false
+        if (!Elevated.runCommand("pm uninstall $pkg")) return false
+        repeat(32) {
+            val installed = runCatching { context.packageManager.getPackageInfo(pkg, 0) }.isSuccess
+            if (!installed) return true
+            Thread.sleep(250)
+        }
+        return false
+    }
+
     override fun mirrorRequested(pcId: String, options: MirrorOptions): Boolean =
         if (options.app != null) {
             appWindows.open(pcId, options)
@@ -190,8 +206,8 @@ internal class PhonePlatform(
     override fun mirrorKeyframeRequested(pcId: String, session: UInt) =
         if (session == SCREEN) MirrorService.keyframe(pcId) else appWindows.keyframe(pcId, session)
 
-    override fun mirrorResizeRequested(pcId: String, session: UInt, width: UInt, height: UInt) {
-        if (session != SCREEN) appWindows.resize(pcId, session, width.toInt(), height.toInt())
+    override fun mirrorResizeRequested(pcId: String, session: UInt, width: UInt, height: UInt, zoom: UInt) {
+        if (session != SCREEN) appWindows.resize(pcId, session, width.toInt(), height.toInt(), zoom.toInt())
     }
 
     // The PC's mouse over the edge of its screen (#107): a pointer of the
@@ -262,6 +278,12 @@ internal class PhonePlatform(
         onMicStop(pcId)
         app.nectarlink.android.mic.MicService.stop(context, pcId)
     }
+
+    override fun callAudioRequested(pcId: String, callId: String): Boolean =
+        app.nectarlink.android.calls.CallAudioService.start(context, pcId)
+
+    override fun callAudioStopRequested(pcId: String) =
+        app.nectarlink.android.calls.CallAudioService.stop(pcId)
 
     override fun webcamStopRequested(pcId: String) {
         WebcamRequests.dismiss(context, pcId)
@@ -361,5 +383,8 @@ internal class PhonePlatform(
 
         /** The phone's own screen's mirroring session. */
         private const val SCREEN = 0u
+
+        /** An Android package name, as the core checks it too. */
+        private val PACKAGE = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$")
     }
 }

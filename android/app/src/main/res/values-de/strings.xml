@@ -74,6 +74,7 @@
     <string name="media_pause">Pause</string>
     <string name="media_next">Nächster Titel</string>
     <string name="media_previous">Vorheriger Titel</string>
+    <string name="media_seek">Position im Titel</string>
     <string name="action_send_files">Dateien senden</string>
     <string name="action_send_folder">Ordner senden</string>
     <string name="input_service_label">NectarLink: Steuerung vom PC</string>
@@ -293,6 +294,11 @@
     <string name="action_lock_pc">PC sperren</string>
     <string name="action_sleep_pc">Energie sparen</string>
     <string name="action_hibernate_pc">Ruhezustand</string>
+    <string name="action_phone_sound_on_pc">Smartphone-Ton auf dem PC abspielen</string>
+    <string name="phone_sound_on_pc_off">%1$s spielt den Ton dieses Smartphones nicht ab. Schalte am PC unter Einstellungen › Geräte die Bildschirmspiegelung für dieses Smartphone ein.</string>
+    <string name="action_shutdown_pc">Herunterfahren</string>
+    <string name="shutdown_pc_title">%1$s herunterfahren?</string>
+    <string name="shutdown_pc_text">Geöffnete Apps werden geschlossen. Eine App mit ungespeicherter Arbeit kann es noch aufhalten.</string>
     <string name="action_wake_pc">Aufwecken</string>
     <string name="action_disconnect">Trennen</string>
     <string name="action_stop_reconnecting">Nicht mehr neu verbinden</string>
@@ -304,6 +310,7 @@
     <string name="pc_locked">%1$s ist gesperrt.</string>
     <string name="pc_sleeping">%1$s wechselt in den Energiesparmodus.</string>
     <string name="pc_hibernating">%1$s wechselt in den Ruhezustand.</string>
+    <string name="pc_shutting_down">%1$s wird heruntergefahren.</string>
     <string name="pc_actions_off">Sperren und Energiesparmodus sind für dieses Gerät auf %1$s deaktiviert.</string>
     <string name="channel_links">Links von deinem PC</string>
     <!-- Play on phone: what a PC plays, streamed to the phone. -->
@@ -348,6 +355,12 @@
     <string name="settings_remote">Deinen PC steuern</string>
     <string name="settings_volume_keys_control_pc">Lautstärketasten steuern den PC</string>
     <string name="settings_volume_keys_control_pc_hint">Während auf dem PC Musik oder ein Video läuft, ändern die Lautstärketasten des Smartphones die Lautstärke des PCs.</string>
+    <string name="settings_quiet_while_using_pc">Leise, während du den PC nutzt</string>
+    <string name="settings_quiet_while_using_pc_hint">Dein Smartphone spielt für Benachrichtigungen keinen Ton und keine Vibration ab, solange du einen gekoppelten PC nutzt, der sie anzeigt.</string>
+    <string name="settings_hide_from_recents">In den letzten Apps ausblenden</string>
+    <string name="settings_hide_from_recents_hint">NectarLink erscheint nicht in der Übersicht der letzten Apps und wird beim Leeren nicht versehentlich geschlossen.</string>
+    <string name="settings_assist_on_demand">Assistenz nur, während ein PC das Smartphone nutzt</string>
+    <string name="settings_assist_on_demand_hint">Mit Erweitert schaltet sich die Assistenz ein, während ein PC dieses Smartphone anzeigt oder darauf tippt, und kurz danach wieder aus. Für Apps, die nicht starten, solange eine Bedienungshilfe aktiv ist.</string>
     <string name="settings_touchpad_sensitivity">Touchpad-Geschwindigkeit</string>
     <string name="settings_touchpad_sensitivity_value">%1$.1f×</string>
     <string name="remote_mode_touchpad">Touchpad</string>
@@ -390,6 +403,7 @@
     <string name="remote_volume_hint">Solange dieser Bildschirm geöffnet ist, wechseln auch die Lautstärketasten die Folien.</string>
     <string name="remote_mode_screen">Bildschirm</string>
     <string name="pc_mirror_connecting">%1$s wird verbunden…</string>
+    <string name="pc_mirror_capture_failed">Die Bildschirmfreigabe ist fehlgeschlagen. Entsperre den PC, prüfe die Freigabeberechtigungen und versuche es erneut.</string>
     <string name="pc_mirror_fullscreen">Vollbild</string>
     <string name="pc_mirror_exit_fullscreen">Vollbild beenden</string>
     <string name="pc_mirror_right_click">Rechtsklick</string>
@@ -411,6 +425,10 @@
     <string name="channel_mic_requests">Mikrofonanfragen</string>
     <string name="mic_notification_title">Mikrofon aktiv für %1$s</string>
     <string name="mic_notification_text">Dein PC hört das Mikrofon dieses Geräts.</string>
+    <string name="channel_call_audio">Anrufton am PC</string>
+    <string name="call_audio_notification_title">Anrufton auf %1$s</string>
+    <string name="call_audio_notification_text">Du sprichst und hörst am PC.</string>
+    <string name="call_audio_back">Zurück zum Telefon</string>
     <string name="mic_request_title">%1$s möchte das Mikrofon dieses Geräts nutzen</string>
     <string name="mic_request_text">Tippe zum Starten. Es bleibt aktiv, bis du oder der PC es beenden.</string>
     <string name="mic_request_start">Starten</string>
@@ -693,17 +711,37 @@
 
 
     <!-- Home-screen PC widget -->
-    <string name="widget_pc_title">PC-Schnellaktionen</string>
-    <string name="widget_pc_description">Verbindungsstatus, Zwischenablage senden, PC klingeln lassen, PC sperren und Aufwecken für deinen gekoppelten PC.</string>
+    <string name="widget_pc_title">PC auf einen Blick</string>
+    <string name="widget_pc_description">Ob dein PC verbunden ist, mit Klingeln, Energieoptionen und Aufwecken.</string>
+    <string name="widget_now_playing_title">Aktuelle Wiedergabe</string>
+    <string name="widget_now_playing_description">Was auf deinem PC läuft, mit Steuerung.</string>
+    <string name="widget_actions_title">Schnellaktionen</string>
+    <string name="widget_actions_description">Zwischenablage oder Dateien senden, PC klingeln lassen, sperren, schlafen legen oder herunterfahren.</string>
+    <string name="widget_from_pc_title">Von deinem PC</string>
+    <string name="widget_from_pc_description">Der letzte Clip und die letzte Datei von deinem PC, zum Kopieren oder Öffnen.</string>
+    <string name="widget_from_pc_empty">Clips und Dateien von deinem PC erscheinen hier.</string>
+    <string name="widget_media_on_pc">Auf %1$s</string>
+    <string name="widget_media_nothing">Keine Wiedergabe</string>
+    <string name="widget_media_nothing_hint">Musik und Videos, die auf %1$s laufen, erscheinen hier.</string>
+    <string name="widget_battery">Akku %1$d%%</string>
+    <string name="widget_battery_charging">Akku %1$d%% · lädt</string>
+    <string name="widget_link_lan">Im selben Netzwerk</string>
+    <string name="widget_seen">Zuletzt gesehen %1$s</string>
+    <string name="widget_pc_send_clipboard">Zwischenablage senden</string>
+    <string name="widget_power">Ein/Aus</string>
+    <string name="widget_power_lock">Sperren</string>
+    <string name="widget_power_suspend">Bereitschaft</string>
+    <string name="widget_power_off">Ausschalten</string>
+    <string name="widget_power_off_title">%1$s ausschalten?</string>
+    <string name="widget_choose_pc">PC auswählen</string>
+    <string name="widget_power_offline">Energieoptionen erscheinen, solange %1$s verbunden ist.</string>
     <string name="widget_pc_no_pc">Kein PC gekoppelt</string>
     <string name="widget_pc_tap_to_pair">Tippen, um NectarLink zu öffnen und einen PC zu koppeln</string>
     <string name="widget_pc_connected">Verbunden</string>
     <string name="widget_pc_offline">Offline</string>
     <string name="widget_pc_waking">Wird aufgeweckt…</string>
     <string name="widget_pc_wake">Aufwecken</string>
-    <string name="widget_pc_send_clip">Auswahl senden</string>
     <string name="widget_pc_ring">PC klingeln lassen</string>
-    <string name="widget_pc_lock">PC sperren</string>
     <string name="widget_pc_ringing_toast">%1$s klingelt…</string>
     <string name="widget_pc_waking_toast">%1$s wird aufgeweckt…</string>
 

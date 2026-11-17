@@ -6,6 +6,7 @@
 #![allow(unsafe_code)]
 
 pub mod audio;
+pub mod audio_in;
 pub mod audio_out;
 pub mod autostart;
 pub mod ble_beacon;
@@ -34,6 +35,7 @@ pub mod smtc;
 pub mod sound;
 pub mod toast;
 pub mod tray;
+pub mod usb_driver;
 pub mod vcam;
 pub mod wallpaper;
 pub mod widget;

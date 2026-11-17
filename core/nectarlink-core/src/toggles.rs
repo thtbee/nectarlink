@@ -125,6 +125,19 @@ impl Shared {
     }
 }
 
+/// `pc_active` asks the phone to stop its own notification sounds and
+/// vibration because the PC shows its notifications. Where this device doesn't
+/// pass notifications on with `peer` (its notifications toggle is off), the PC
+/// shows none, so it counts as inactive: the phone keeps its own.
+fn pc_active_for(shared: &Shared, peer: &DeviceId, value: PhoneToggleValue) -> PhoneToggleValue {
+    match value {
+        PhoneToggleValue::Bool(true) if !shared.toggle_on(peer, crate::notifications::TOGGLE) => {
+            PhoneToggleValue::Bool(false)
+        }
+        other => other,
+    }
+}
+
 /// Asks a paired phone to change one toggle (`phone.toggle.set`).
 pub(crate) async fn set(
     shared: &Arc<Shared>,
@@ -132,6 +145,7 @@ pub(crate) async fn set(
     id: String,
     value: PhoneToggleValue,
 ) -> Result<()> {
+    let value = if id == toggle_ids::PC_ACTIVE { pc_active_for(shared, &session.peer, value) } else { value };
     let req = PhoneToggleSet { id, value };
     if !req.is_valid() {
         return Err(Error::Protocol("invalid phone toggle or value".into()));
@@ -199,6 +213,7 @@ async fn run_set(shared: &Arc<Shared>, peer: &DeviceId, req: PhoneToggleSet) -> 
     }
     let platform = shared.platform.clone();
     let PhoneToggleSet { id, value } = req;
+    let value = if id == toggle_ids::PC_ACTIVE { pc_active_for(shared, peer, value) } else { value };
     let ran = tokio::task::spawn_blocking(move || platform.set_phone_toggle(&id, &value))
         .await
         .unwrap_or_else(|e| Err(e.to_string()));

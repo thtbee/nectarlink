@@ -2,9 +2,9 @@
 //! MP4 recording for mirrored phone screens and app windows using Windows
 //! Media Foundation's `IMFSinkWriter`.
 //!
-//! Video is muxed as H.264 passthrough (`MFVideoFormat_H264` on both input and
-//! output streams of the sink writer) so zero video re-encoding occurs on the
-//! PC. When phone audio (16-bit PCM) is present, it is encoded to AAC-LC
+//! Video is muxed as passthrough (`MFVideoFormat_H264`, or `MFVideoFormat_HEVC`
+//! for an H.265 mirror, on both input and output streams of the sink writer)
+//! so zero video re-encoding occurs on the PC. When phone audio (16-bit PCM) is present, it is encoded to AAC-LC
 //! (`MFAudioFormat_AAC`) into the same `.mp4` container.
 
 use crate::i18n::tr;
@@ -22,7 +22,7 @@ use windows::{
             MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE, MF_MT_MAJOR_TYPE, MF_MT_MPEG_SEQUENCE_HEADER,
             MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE, MFAudioFormat_AAC, MFAudioFormat_PCM, MFCreateMediaType,
             MFCreateMemoryBuffer, MFCreateSample, MFCreateSinkWriterFromURL, MFMediaType_Audio,
-            MFMediaType_Video, MFSampleExtension_CleanPoint, MFVideoFormat_H264,
+            MFMediaType_Video, MFSampleExtension_CleanPoint, MFVideoFormat_H264, MFVideoFormat_HEVC,
             MFVideoInterlace_Progressive,
         },
         System::SystemInformation::GetLocalTime,
@@ -31,6 +31,56 @@ use windows::{
 };
 
 use super::h264::ensure_mf_started;
+
+/// The video codec of a mirror stream.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum VideoCodec {
+    #[default]
+    H264,
+    Hevc,
+}
+
+impl VideoCodec {
+    /// From a stream's codec name ("h264", "h265").
+    pub fn from_name(name: &str) -> VideoCodec {
+        if name.eq_ignore_ascii_case("h265") || name.eq_ignore_ascii_case("hevc") {
+            VideoCodec::Hevc
+        } else {
+            VideoCodec::H264
+        }
+    }
+
+    /// The NAL unit type of a NAL unit's first bytes.
+    fn nal_type(self, payload: &[u8]) -> u8 {
+        match self {
+            VideoCodec::H264 => payload[0] & 0x1F,
+            VideoCodec::Hevc => (payload[0] >> 1) & 0x3F,
+        }
+    }
+
+    /// Parameter set NAL types, in the order a sequence header lists them
+    /// (H.264: SPS, PPS; H.265: VPS, SPS, PPS).
+    fn parameter_sets(self) -> &'static [u8] {
+        match self {
+            VideoCodec::H264 => &[7, 8],
+            VideoCodec::Hevc => &[32, 33, 34],
+        }
+    }
+
+    /// Whether a NAL type starts a picture a decoder can start at (H.264 IDR;
+    /// H.265 IRAP: BLA, IDR, CRA).
+    fn is_random_access(self, nal_type: u8) -> bool {
+        match self {
+            VideoCodec::H264 => nal_type == 5,
+            VideoCodec::Hevc => (16..=21).contains(&nal_type),
+        }
+    }
+}
+
+/// Whether recordings of `codec` streams can be made here.
+pub fn can_record(_codec: VideoCodec) -> bool {
+    true
+}
 
 /// Formats `<prefix> YYYY-MM-DD HH.MM.SS.<ext>` using the PC's local clock.
 pub fn local_timestamp_filename(prefix: &str, ext: &str) -> String {
@@ -58,9 +108,10 @@ struct ActiveWriter {
 // via `ensure_mf_started`), and all access to `ActiveWriter` is serialized through `&mut self`.
 unsafe impl Send for ActiveWriter {}
 
-/// Records a mirrored H.264 stream (and optional PCM audio stream) into an `.mp4` file.
+/// Records a mirrored H.264 or H.265 stream (and optional PCM audio stream) into an `.mp4` file.
 pub struct MirrorRecorder {
     path: PathBuf,
+    codec: VideoCodec,
     width: u32,
     height: u32,
     fps: u32,
@@ -94,6 +145,7 @@ impl MirrorRecorder {
             SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_millis() as i64);
         MirrorRecorder {
             path,
+            codec: VideoCodec::H264,
             width,
             height,
             fps: fps.max(1),
@@ -113,10 +165,18 @@ impl MirrorRecorder {
         self.started_epoch_ms
     }
 
-    /// Seeds cached SPS/PPS NAL units collected before recording started.
+    /// Seeds cached parameter sets collected before recording started.
     pub fn set_sps_pps(&mut self, sps_pps: &[u8]) {
         if !sps_pps.is_empty() {
-            merge_sps_pps(&mut self.sps_pps, sps_pps);
+            merge_sps_pps(self.codec, &mut self.sps_pps, sps_pps);
+        }
+    }
+
+    /// The stream's codec, before the first keyframe opens the file.
+    pub fn set_codec(&mut self, codec: VideoCodec) {
+        if self.writer.is_none() && self.codec != codec {
+            self.codec = codec;
+            self.sps_pps.clear();
         }
     }
 
@@ -135,20 +195,21 @@ impl MirrorRecorder {
         }
     }
 
-    /// Processes an incoming Annex-B H.264 access unit.
+    /// Processes an incoming Annex-B H.264 or H.265 access unit.
     pub fn on_packet(&mut self, keyframe: bool, time_us: u64, data: &[u8]) -> Result<(), String> {
         if data.is_empty() {
             return Ok(());
         }
-        merge_sps_pps(&mut self.sps_pps, data);
+        let codec = self.codec;
+        merge_sps_pps(codec, &mut self.sps_pps, data);
 
         // If this packet only carries parameter sets (SPS/PPS) without a coded frame,
         // keep them for the upcoming keyframe without writing an empty video sample.
-        if is_parameter_only(data) {
+        if is_parameter_only(codec, data) {
             return Ok(());
         }
 
-        let is_keyframe = keyframe || has_idr_slice(data);
+        let is_keyframe = keyframe || has_idr_slice(codec, data);
 
         if self.writer.is_none() {
             if !is_keyframe || self.width == 0 || self.height == 0 {
@@ -156,6 +217,7 @@ impl MirrorRecorder {
             }
             let active = ActiveWriter::open(
                 &self.path,
+                codec,
                 self.width,
                 self.height,
                 self.fps,
@@ -180,7 +242,7 @@ impl MirrorRecorder {
         let dur_hns = (10_000_000 / u64::from(self.fps.max(1))) as i64;
 
         let mut combined = Vec::new();
-        let payload: &[u8] = if is_keyframe && !data_has_sps_pps(data) && !self.sps_pps.is_empty() {
+        let payload: &[u8] = if is_keyframe && !data_has_sps_pps(codec, data) && !self.sps_pps.is_empty() {
             combined.reserve(self.sps_pps.len() + data.len());
             combined.extend_from_slice(&self.sps_pps);
             combined.extend_from_slice(data);
@@ -255,6 +317,7 @@ impl MirrorRecorder {
 impl ActiveWriter {
     fn open(
         path: &Path,
+        codec: VideoCodec,
         width: u32,
         height: u32,
         fps: u32,
@@ -274,7 +337,11 @@ impl ActiveWriter {
 
             let video_out: IMFMediaType = MFCreateMediaType()?;
             video_out.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;
-            video_out.SetGUID(&MF_MT_SUBTYPE, &MFVideoFormat_H264)?;
+            let subtype = match codec {
+                VideoCodec::H264 => MFVideoFormat_H264,
+                VideoCodec::Hevc => MFVideoFormat_HEVC,
+            };
+            video_out.SetGUID(&MF_MT_SUBTYPE, &subtype)?;
             video_out.SetUINT32(&MF_MT_AVG_BITRATE, 8_000_000)?;
             video_out.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
             video_out.SetUINT64(&MF_MT_FRAME_SIZE, (u64::from(width) << 32) | u64::from(height))?;
@@ -376,7 +443,7 @@ fn write_sample(
 }
 
 /// Splits an Annex-B buffer into `(nal_type, nal_payload_without_start_code)` slices.
-fn annex_b_nals(data: &[u8]) -> Vec<(u8, &[u8])> {
+fn annex_b_nals(codec: VideoCodec, data: &[u8]) -> Vec<(u8, &[u8])> {
     let mut starts = Vec::new();
     let mut i = 0;
     while i + 3 <= data.len() {
@@ -395,52 +462,48 @@ fn annex_b_nals(data: &[u8]) -> Vec<(u8, &[u8])> {
         let payload_end = starts.get(idx + 1).map_or(data.len(), |&(next_code, _)| next_code);
         if payload_start < payload_end {
             let payload = &data[payload_start..payload_end];
-            out.push((payload[0] & 0x1F, payload));
+            out.push((codec.nal_type(payload), payload));
         }
     }
     out
 }
 
-/// Extracts any SPS (NAL 7) and PPS (NAL 8) units from `data` and merges them
-/// into `sps_pps` with 4-byte `00 00 00 01` Annex-B start codes.
-pub fn merge_sps_pps(sps_pps: &mut Vec<u8>, data: &[u8]) {
-    let nals = annex_b_nals(data);
-    if !nals.iter().any(|&(t, _)| t == 7 || t == 8) {
+/// Extracts the parameter sets (H.264 SPS and PPS; H.265 VPS, SPS and PPS)
+/// from `data` and merges them into `sps_pps`, the latest of each, with
+/// 4-byte `00 00 00 01` Annex-B start codes.
+pub fn merge_sps_pps(codec: VideoCodec, sps_pps: &mut Vec<u8>, data: &[u8]) {
+    let kinds = codec.parameter_sets();
+    let nals = annex_b_nals(codec, data);
+    if !nals.iter().any(|(t, _)| kinds.contains(t)) {
         return;
     }
-    let existing = annex_b_nals(sps_pps);
-    let mut sps: Option<Vec<u8>> = existing.iter().find(|&&(t, _)| t == 7).map(|&(_, p)| p.to_vec());
-    let mut pps: Option<Vec<u8>> = existing.iter().find(|&&(t, _)| t == 8).map(|&(_, p)| p.to_vec());
+    let existing = annex_b_nals(codec, sps_pps);
+    let mut latest: Vec<Option<Vec<u8>>> =
+        kinds.iter().map(|kind| existing.iter().find(|(t, _)| t == kind).map(|(_, p)| p.to_vec())).collect();
     for (t, payload) in nals {
-        if t == 7 {
-            sps = Some(payload.to_vec());
-        } else if t == 8 {
-            pps = Some(payload.to_vec());
+        if let Some(slot) = kinds.iter().position(|k| *k == t) {
+            latest[slot] = Some(payload.to_vec());
         }
     }
     sps_pps.clear();
-    if let Some(s) = sps {
+    for unit in latest.into_iter().flatten() {
         sps_pps.extend_from_slice(&[0, 0, 0, 1]);
-        sps_pps.extend_from_slice(&s);
-    }
-    if let Some(p) = pps {
-        sps_pps.extend_from_slice(&[0, 0, 0, 1]);
-        sps_pps.extend_from_slice(&p);
+        sps_pps.extend_from_slice(&unit);
     }
 }
 
-fn data_has_sps_pps(data: &[u8]) -> bool {
-    let nals = annex_b_nals(data);
-    nals.iter().any(|&(t, _)| t == 7) && nals.iter().any(|&(t, _)| t == 8)
+fn data_has_sps_pps(codec: VideoCodec, data: &[u8]) -> bool {
+    let nals = annex_b_nals(codec, data);
+    codec.parameter_sets().iter().all(|kind| nals.iter().any(|(t, _)| t == kind))
 }
 
-fn has_idr_slice(data: &[u8]) -> bool {
-    annex_b_nals(data).iter().any(|&(t, _)| t == 5)
+fn has_idr_slice(codec: VideoCodec, data: &[u8]) -> bool {
+    annex_b_nals(codec, data).iter().any(|&(t, _)| codec.is_random_access(t))
 }
 
-fn is_parameter_only(data: &[u8]) -> bool {
-    let nals = annex_b_nals(data);
-    !nals.is_empty() && nals.iter().all(|&(t, _)| t == 7 || t == 8)
+fn is_parameter_only(codec: VideoCodec, data: &[u8]) -> bool {
+    let nals = annex_b_nals(codec, data);
+    !nals.is_empty() && nals.iter().all(|(t, _)| codec.parameter_sets().contains(t))
 }
 
 #[cfg(test)]
@@ -460,6 +523,57 @@ mod tests {
 
     fn contains_subslice(haystack: &[u8], needle: &[u8]) -> bool {
         haystack.windows(needle.len()).any(|w| w == needle)
+    }
+
+    /// Splits an H.265 Annex-B stream at its access unit delimiters (NAL type 35).
+    fn hevc_access_units(stream: &[u8]) -> Vec<&[u8]> {
+        let starts: Vec<usize> =
+            (0..stream.len()).filter(|&i| stream[i..].starts_with(&[0, 0, 0, 1, 0x46])).collect();
+        starts
+            .iter()
+            .enumerate()
+            .map(|(n, &s)| &stream[s..*starts.get(n + 1).unwrap_or(&stream.len())])
+            .collect()
+    }
+
+    /// An H.265 mirror (#393): Media Foundation refused to finish the file
+    /// ("required headers were not provided") while it was written as H.264.
+    #[test]
+    fn muxes_h265_passthrough_to_mp4() {
+        let dir = tempfile::tempdir().unwrap();
+        let mp4_path = dir.path().join("hevc.mp4");
+        let units = hevc_access_units(include_bytes!("testdata/testsrc.h265"));
+        assert!(units.len() > 5);
+
+        let mut rec = MirrorRecorder::new(mp4_path.clone(), 320, 240, 30, None);
+        rec.set_codec(VideoCodec::from_name("h265"));
+        for (i, unit) in units.iter().enumerate() {
+            rec.on_packet(has_idr_slice(VideoCodec::Hevc, unit), (i as u64) * 33_333, unit).unwrap();
+        }
+        let saved = rec.finish().unwrap();
+        let bytes = std::fs::read(&saved).unwrap();
+        assert_eq!(&bytes[4..8], b"ftyp");
+        assert!(contains_subslice(&bytes, b"moov"), "missing moov box");
+        assert!(
+            contains_subslice(&bytes, b"hvc1") || contains_subslice(&bytes, b"hev1"),
+            "missing an HEVC sample entry"
+        );
+        let _ = std::fs::remove_file(&saved);
+    }
+
+    #[test]
+    fn h265_parameter_sets_and_keyframes_are_recognized() {
+        let units = hevc_access_units(include_bytes!("testdata/testsrc.h265"));
+        let mut sets = Vec::new();
+        merge_sps_pps(VideoCodec::Hevc, &mut sets, units[0]);
+        let kinds: Vec<u8> = annex_b_nals(VideoCodec::Hevc, &sets).iter().map(|(t, _)| *t).collect();
+        assert_eq!(kinds, [32, 33, 34]);
+        assert!(has_idr_slice(VideoCodec::Hevc, units[0]));
+        assert!(!has_idr_slice(VideoCodec::Hevc, units[1]));
+        // Read as H.264, the same bytes hold no parameter sets: what went wrong before.
+        let mut h264 = Vec::new();
+        merge_sps_pps(VideoCodec::H264, &mut h264, units[0]);
+        assert!(!data_has_sps_pps(VideoCodec::H264, &h264));
     }
 
     #[test]

@@ -1071,14 +1071,59 @@ pub(crate) fn hotkey_to_portal_trigger(spec: &str) -> Option<String> {
     Some(parts.join("+"))
 }
 
+/// The hotkeys as [`update_hotkeys`] last set them.
+fn hotkey_specs() -> (String, String, String, String) {
+    HOTKEY_SPECS.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+/// The portal shortcut IDs NectarLink binds for `specs` (those with a key).
+fn portal_shortcut_ids(specs: &(String, String, String, String)) -> Vec<&'static str> {
+    let (photo, scan, palette, shelf) = specs;
+    [("take-photo", photo), ("scan-document", scan), ("command-palette", palette), ("shelf", shelf)]
+        .into_iter()
+        .filter(|(_, spec)| hotkey_to_portal_trigger(spec).is_some_and(|t| !t.is_empty()))
+        .map(|(id, _)| id)
+        .collect()
+}
+
+/// Whether the portal already holds every shortcut in `wanted`, from a
+/// `ListShortcuts` answer's IDs. Binding again would make KDE open its
+/// shortcut dialog at every start.
+fn portal_has_shortcuts(listed: &[String], wanted: &[&str]) -> bool {
+    wanted.iter().all(|id| listed.iter().any(|l| l == id))
+}
+
+/// The IDs in a `ListShortcuts` answer's `shortcuts` (`a(sa{sv})`).
+fn listed_shortcut_ids(value: &zbus::zvariant::Value<'_>) -> Vec<String> {
+    use zbus::zvariant::Value;
+    let Value::Array(list) = value else {
+        return Vec::new();
+    };
+    list.iter()
+        .filter_map(|item| match item {
+            Value::Value(inner) => match &**inner {
+                Value::Structure(entry) => entry.fields().first().cloned(),
+                _ => None,
+            }
+            .and_then(|id| if let Value::Str(id) = id { Some(id.to_string()) } else { None }),
+            Value::Structure(entry) => match entry.fields().first() {
+                Some(Value::Str(id)) => Some(id.to_string()),
+                _ => None,
+            },
+            _ => None,
+        })
+        .collect()
+}
+
 fn bind_portal_global_shortcuts(
     conn: &zbus::blocking::Connection,
     session_path: zbus::zvariant::ObjectPath<'_>,
     bind_seq: &mut u64,
+    specs: &(String, String, String, String),
 ) -> bool {
     use zbus::zvariant::Value;
 
-    let (photo, scan, palette, shelf) = HOTKEY_SPECS.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    let (photo, scan, palette, shelf) = specs;
     let specs = [
         ("take-photo", "Take photo with phone", photo.as_str()),
         ("scan-document", "Scan document with phone", scan.as_str()),
@@ -1183,13 +1228,38 @@ fn try_run_wayland_portal_shortcuts(stop: &AtomicBool, handler: &SharedHandler) 
         .filter(|p| p.as_str().contains("/session/"))
         .or(predicted_session_path);
 
-    let mut applied_gen: u64 = 0;
     let mut bind_seq: u64 = 0;
+    // The hotkeys the portal holds for this session; None until its list is in.
+    let mut applied: Option<(String, String, String, String)> = None;
+    let list_token = format!("nectarlink_gs_list_{pid}");
+    let mut listed = false;
+    // Asks what the portal already has (KDE keeps an app's shortcuts between
+    // runs); without an answer, binds as before.
+    let list = |conn: &zbus::blocking::Connection,
+                sp: &OwnedObjectPath,
+                bind_seq: &mut u64,
+                applied: &mut Option<(String, String, String, String)>| {
+        let mut opts: HashMap<&str, Value<'_>> = HashMap::new();
+        opts.insert("handle_token", Value::from(list_token.as_str()));
+        let asked = conn
+            .call_method(
+                Some("org.freedesktop.portal.Desktop"),
+                "/org/freedesktop/portal/desktop",
+                Some("org.freedesktop.portal.GlobalShortcuts"),
+                "ListShortcuts",
+                &(sp.as_ref(), opts),
+            )
+            .is_ok();
+        if !asked {
+            let specs = hotkey_specs();
+            let _ = bind_portal_global_shortcuts(conn, sp.as_ref(), bind_seq, &specs);
+            *applied = Some(specs);
+        }
+    };
 
     if let Some(ref sp) = session_path {
-        let gen_now = HOTKEY_GENERATION.load(Ordering::Acquire);
-        let _ = bind_portal_global_shortcuts(&conn, sp.as_ref(), &mut bind_seq);
-        applied_gen = gen_now;
+        list(&conn, sp, &mut bind_seq, &mut applied);
+        listed = true;
     }
 
     for msg in zbus::blocking::MessageIterator::from(&conn) {
@@ -1207,28 +1277,48 @@ fn try_run_wayland_portal_shortcuts(stop: &AtomicBool, handler: &SharedHandler) 
             && member == Some("Response")
             && let Ok((code, results)) = msg.body().deserialize::<(u32, HashMap<String, OwnedValue>)>()
         {
-            if code != 0 && session_path.is_none() {
-                return false;
-            }
-            if let Some(val) = results.get("session_handle") {
-                if let Ok(s) = <&str>::try_from(val)
-                    && let Ok(op) = ObjectPath::try_from(s)
+            let is_list = hdr.path().is_some_and(|p| p.as_str().ends_with(&format!("/{list_token}")));
+            if is_list {
+                if applied.is_none()
+                    && let Some(ref sp) = session_path
                 {
-                    session_path = Some(OwnedObjectPath::from(op));
-                    applied_gen = 0;
-                } else if let Ok(op) = <ObjectPath<'_>>::try_from(&**val) {
-                    session_path = Some(OwnedObjectPath::from(op));
-                    applied_gen = 0;
+                    let ids = results.get("shortcuts").map(|v| listed_shortcut_ids(v)).unwrap_or_default();
+                    let specs = hotkey_specs();
+                    if code != 0 || !portal_has_shortcuts(&ids, &portal_shortcut_ids(&specs)) {
+                        let _ = bind_portal_global_shortcuts(&conn, sp.as_ref(), &mut bind_seq, &specs);
+                    }
+                    applied = Some(specs);
+                }
+            } else {
+                if code != 0 && session_path.is_none() {
+                    return false;
+                }
+                if session_path.is_none()
+                    && let Some(val) = results.get("session_handle")
+                {
+                    if let Ok(s) = <&str>::try_from(val)
+                        && let Ok(op) = ObjectPath::try_from(s)
+                    {
+                        session_path = Some(OwnedObjectPath::from(op));
+                    } else if let Ok(op) = <ObjectPath<'_>>::try_from(&**val) {
+                        session_path = Some(OwnedObjectPath::from(op));
+                    }
                 }
             }
         }
 
-        let current_gen = HOTKEY_GENERATION.load(Ordering::Acquire);
-        if current_gen != applied_gen
-            && let Some(ref sp) = session_path
-        {
-            let _ = bind_portal_global_shortcuts(&conn, sp.as_ref(), &mut bind_seq);
-            applied_gen = current_gen;
+        if !listed && let Some(ref sp) = session_path {
+            list(&conn, sp, &mut bind_seq, &mut applied);
+            listed = true;
+        }
+
+        // The user changed a hotkey: bind the new set (KDE then asks to confirm it).
+        if let (Some(have), Some(sp)) = (&applied, &session_path) {
+            let specs = hotkey_specs();
+            if *have != specs {
+                let _ = bind_portal_global_shortcuts(&conn, sp.as_ref(), &mut bind_seq, &specs);
+                applied = Some(specs);
+            }
         }
 
         if iface == Some("org.freedesktop.portal.GlobalShortcuts")
@@ -1689,6 +1779,24 @@ mod tests {
         assert_eq!(hotkey_to_portal_trigger("Ctrl+Alt+Space").as_deref(), Some("CTRL+ALT+space"));
         assert_eq!(hotkey_to_portal_trigger("Super+Shift+F9").as_deref(), Some("SHIFT+LOGO+F9"));
         assert!(hotkey_to_portal_trigger("none").is_none());
+    }
+
+    #[test]
+    fn shortcuts_the_portal_already_has_are_not_bound_again() {
+        use zbus::zvariant::Value;
+        let specs =
+            ("Ctrl+Alt+C".to_owned(), String::new(), "Ctrl+Alt+Space".to_owned(), "Ctrl+Alt+S".to_owned());
+        let wanted = portal_shortcut_ids(&specs);
+        assert_eq!(wanted, ["take-photo", "command-palette", "shelf"]);
+
+        // As the portal sends it: a(sa{sv}).
+        let entry = |id: &str| (id.to_owned(), std::collections::HashMap::<String, Value<'_>>::new());
+        let listed = Value::from(vec![entry("take-photo"), entry("command-palette"), entry("shelf")]);
+        assert_eq!(listed.value_signature().to_string(), "a(sa{sv})");
+        let ids = listed_shortcut_ids(&listed);
+        assert!(portal_has_shortcuts(&ids, &wanted));
+        assert!(!portal_has_shortcuts(&ids[..2], &wanted));
+        assert!(listed_shortcut_ids(&Value::from(3u32)).is_empty());
     }
 
     #[test]

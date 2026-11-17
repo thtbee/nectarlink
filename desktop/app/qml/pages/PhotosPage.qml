@@ -142,6 +142,42 @@ Item {
         selectedIds = Object.keys(next)
     }
 
+    // The loaded items from the same day as `row`. They sit together: the grid
+    // is in date order.
+    function dayIds(row) {
+        if (row < 0 || row >= Photos.count) return []
+        const day = new Date(Photos.dateAt(row)).toDateString()
+        const sameDay = (r) => new Date(Photos.dateAt(r)).toDateString() === day
+        let first = row
+        while (first > 0 && sameDay(first - 1)) first--
+        const ids = []
+        for (let r = first; r < Photos.count && sameDay(r); r++) {
+            const rowId = Photos.idAt(r)
+            if (rowId.length > 0) ids.push(rowId)
+        }
+        return ids
+    }
+
+    function dayAllSelected(row) {
+        const ids = dayIds(row)
+        return ids.length > 0 && ids.every(id => !!selectedMap[id])
+    }
+
+    // Selects a whole day (#388), or clears it when it's all selected already.
+    function toggleDay(row) {
+        const ids = dayIds(row)
+        if (ids.length === 0) return
+        const next = Object.assign({}, selectedMap)
+        const clear = ids.every(id => !!next[id])
+        for (const id of ids) {
+            if (clear) delete next[id]
+            else next[id] = true
+        }
+        selectedMap = next
+        selectedIds = Object.keys(next)
+        selectMode = selectedIds.length > 0
+    }
+
     function selectAllLoaded() {
         const next = {}
         const n = Math.min(Photos.count, 500)
@@ -318,7 +354,9 @@ Item {
             }
         }
 
+        ScrollRail { flick: albumsFlick }
         Flickable {
+            id: albumsFlick
             anchors.top: albumHeader.bottom
             anchors.bottom: parent.bottom
             width: parent.width
@@ -696,6 +734,7 @@ Item {
             }
 
             // Virtualized thumbnail grid grouped by day.
+            ScrollRail { flick: grid }
             GridView {
                 id: grid
                 anchors.fill: parent
@@ -722,10 +761,10 @@ Item {
                     0,
                     Math.floor(Math.max(0, contentY + 20) / Math.max(1, cellHeight)) * columns
                 )
+                readonly property int stickyRow: Photos.count > 0 ? Math.min(topVisibleRow, Photos.count - 1) : -1
                 readonly property string stickyDay: {
-                    if (Photos.revision < 0 || Photos.count === 0) return ""
-                    const row = Math.min(topVisibleRow, Photos.count - 1)
-                    const ms = Photos.dateAt(row)
+                    if (Photos.revision < 0 || stickyRow < 0) return ""
+                    const ms = Photos.dateAt(stickyRow)
                     return ms > 0 ? page.dayLabel(ms) : ""
                 }
 
@@ -750,19 +789,66 @@ Item {
                 anchors.topMargin: 8
                 anchors.left: parent.left
                 anchors.leftMargin: 20
+                id: dayBanner
+                // Clicking the day selects all of it, or clears it again (#388).
+                readonly property bool allSelected: page.selectedCount >= 0 && grid.stickyRow >= 0
+                    && Photos.revision >= 0 && page.dayAllSelected(grid.stickyRow)
                 visible: Photos.count > 0 && grid.stickyDay.length > 0
                 height: 28
-                width: stickyDayTxt.implicitWidth + 24
+                width: dayCheck.width + 6 + stickyDayTxt.implicitWidth + 24
                 radius: Theme.pill(height)
-                color: Qt.rgba(Theme.surfaceContainerHigh.r, Theme.surfaceContainerHigh.g, Theme.surfaceContainerHigh.b, 0.92)
-                border.width: Theme.graphite ? 1 : 0
-                border.color: Theme.outlineVariant
+                color: allSelected
+                    ? Theme.secondaryContainer
+                    : Qt.rgba(Theme.surfaceContainerHigh.r, Theme.surfaceContainerHigh.g, Theme.surfaceContainerHigh.b,
+                              dayArea.containsMouse ? 1 : 0.92)
+                border.width: Theme.graphite || Theme.focusVisible(dayBanner) ? 1 : 0
+                border.color: Theme.focusVisible(dayBanner) ? Theme.primary : Theme.outlineVariant
+                activeFocusOnTab: visible
+                Accessible.role: Accessible.CheckBox
+                Accessible.name: grid.stickyDay
+                Accessible.checkable: true
+                Accessible.checked: allSelected
+                Accessible.onPressAction: page.toggleDay(grid.stickyRow)
+                Keys.onSpacePressed: page.toggleDay(grid.stickyRow)
+                Keys.onReturnPressed: page.toggleDay(grid.stickyRow)
+
+                Rectangle {
+                    id: dayCheck
+                    anchors.left: parent.left
+                    anchors.leftMargin: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 14
+                    height: 14
+                    radius: 7
+                    color: dayBanner.allSelected ? Theme.primary : "transparent"
+                    border.width: dayBanner.allSelected ? 0 : 1.5
+                    border.color: Theme.surfaceContentVariant
+                    Icon {
+                        anchors.centerIn: parent
+                        visible: dayBanner.allSelected
+                        path: Icons.check
+                        width: 10
+                        height: 10
+                        stroke: 3
+                        color: Theme.primaryContent
+                    }
+                }
                 Txt {
                     id: stickyDayTxt
-                    anchors.centerIn: parent
+                    anchors.left: dayCheck.right
+                    anchors.leftMargin: 6
+                    anchors.verticalCenter: parent.verticalCenter
                     role: "label"
                     size: 12
                     text: grid.stickyDay
+                    color: dayBanner.allSelected ? Theme.secondaryContainerContent : Theme.surfaceContent
+                }
+                MouseArea {
+                    id: dayArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: page.toggleDay(grid.stickyRow)
                 }
             }
         }

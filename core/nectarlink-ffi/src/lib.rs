@@ -759,6 +759,12 @@ pub enum Event {
         channels: u8,
         pcm: Vec<u8>,
     },
+    /// A paired PC's microphone for the call in progress (`call.audio`):
+    /// 16 kHz mono 16-bit PCM to put into the call.
+    CallAudioUplink {
+        device: String,
+        pcm: Vec<u8>,
+    },
     /// A paired PC started streaming its screen to this phone (`mirror` video stream config).
     PcMirrorConfig {
         id: String,
@@ -775,6 +781,10 @@ pub enum Event {
     },
     /// A paired PC's screen stream ended.
     PcMirrorEnded {
+        id: String,
+    },
+    /// The PC couldn't start or continue sharing its screen.
+    PcMirrorCaptureFailed {
         id: String,
     },
     /// The persistent outgoing send queue changed.
@@ -2515,6 +2525,11 @@ impl Event {
             NodeEvent::Mirroring { device, session, on } => {
                 Event::Mirroring { id: device.to_string(), session, on }
             }
+            NodeEvent::MirrorNotice { device, session: core::MIRROR_SCREEN, code }
+                if code == core::MIRROR_NOTICE_PC_CAPTURE_FAILED =>
+            {
+                Event::PcMirrorCaptureFailed { id: device.to_string() }
+            }
             NodeEvent::Webcam { device, on } => Event::Webcam { id: device.to_string(), on },
             NodeEvent::CameraCaptureRequested { .. }
             | NodeEvent::CameraCaptureReceived { .. }
@@ -2559,6 +2574,7 @@ impl Event {
             NodeEvent::PcAudioFrame { device, sample_rate, channels, pcm } => {
                 Event::PcAudioFrame { device: device.to_string(), sample_rate, channels, pcm }
             }
+            NodeEvent::CallAudioUplink { device, pcm } => Event::CallAudioUplink { device: device.to_string(), pcm },
         })
     }
 }
@@ -2765,12 +2781,15 @@ pub trait Platform: Send + Sync {
     /// on a display of its own and stream it with `mirror_open`, its config
     /// packets carrying the session. False if it can't.
     fn mirror_requested(&self, pc_id: String, options: MirrorOptions) -> bool;
+    /// A PC asked to uninstall `pkg` (D349): true once it's gone.
+    fn app_uninstall_requested(&self, pc_id: String, pkg: String) -> bool;
     /// The PC stopped watching the screen (session 0) or an app window.
     fn mirror_stop_requested(&self, pc_id: String, session: u32);
     /// The PC needs a keyframe.
     fn mirror_keyframe_requested(&self, pc_id: String, session: u32);
-    /// The PC resized an app window (`session` != 0) to `width × height`.
-    fn mirror_resize_requested(&self, pc_id: String, session: u32, width: u32, height: u32);
+    /// The PC resized an app window (`session` != 0) to `width × height`,
+    /// the app drawing at `zoom` percent of its usual size.
+    fn mirror_resize_requested(&self, pc_id: String, session: u32, width: u32, height: u32, zoom: u32);
     /// The PC updated `stay_awake` or `screen_off` while mirroring the screen (`session == 0`).
     fn mirror_power_requested(&self, pc_id: String, stay_awake: bool, screen_off: bool);
     /// The PC wants the phone's sound sent to it, or left on the phone, while
@@ -2802,6 +2821,11 @@ pub trait Platform: Send + Sync {
     fn mic_requested(&self, pc_id: String) -> bool;
     /// The PC stopped listening to this phone's microphone: stop recording.
     fn mic_stop_requested(&self, pc_id: String);
+    /// A PC asked for call `call_id`'s sound (`call.audio.start`): get ready
+    /// to carry it, then stream with `call_audio_open`. False refuses.
+    fn call_audio_requested(&self, pc_id: String, call_id: String) -> bool;
+    /// The PC stopped taking the call's sound: give it back to the phone.
+    fn call_audio_stop_requested(&self, pc_id: String);
     /// The PC needs a fresh H.264 keyframe on the webcam stream.
     fn webcam_keyframe_requested(&self, pc_id: String);
     /// A PC asked this phone to capture a photo or scan a document (`mode` is
@@ -2983,6 +3007,13 @@ impl core::Platform for PlatformAdapter {
             Err("the clipboard rejected it".into())
         }
     }
+    fn app_uninstall_requested(&self, peer: &DeviceId, pkg: &str) -> Result<(), String> {
+        if self.0.app_uninstall_requested(peer.to_string(), pkg.to_owned()) {
+            Ok(())
+        } else {
+            Err("the phone couldn't uninstall it".into())
+        }
+    }
     fn mirror_requested(&self, peer: &DeviceId, options: &core::MirrorStart) -> Result<(), String> {
         let options = MirrorOptions {
             max_size: options.max_size,
@@ -3007,8 +3038,8 @@ impl core::Platform for PlatformAdapter {
     fn mirror_keyframe_requested(&self, peer: &DeviceId, session: u32) {
         self.0.mirror_keyframe_requested(peer.to_string(), session);
     }
-    fn mirror_resize_requested(&self, peer: &DeviceId, session: u32, width: u32, height: u32) {
-        self.0.mirror_resize_requested(peer.to_string(), session, width, height);
+    fn mirror_resize_requested(&self, peer: &DeviceId, session: u32, width: u32, height: u32, zoom: u32) {
+        self.0.mirror_resize_requested(peer.to_string(), session, width, height, zoom);
     }
     fn mirror_power_requested(&self, peer: &DeviceId, stay_awake: bool, screen_off: bool) {
         self.0.mirror_power_requested(peer.to_string(), stay_awake, screen_off);
@@ -3066,6 +3097,16 @@ impl core::Platform for PlatformAdapter {
     }
     fn mic_stop_requested(&self, peer: &DeviceId) {
         self.0.mic_stop_requested(peer.to_string());
+    }
+    fn call_audio_requested(&self, peer: &DeviceId, call_id: &str) -> Result<(), String> {
+        if self.0.call_audio_requested(peer.to_string(), call_id.to_owned()) {
+            Ok(())
+        } else {
+            Err("the phone can't reach the call's sound".into())
+        }
+    }
+    fn call_audio_stop_requested(&self, peer: &DeviceId) {
+        self.0.call_audio_stop_requested(peer.to_string());
     }
     fn webcam_keyframe_requested(&self, peer: &DeviceId) {
         self.0.webcam_keyframe_requested(peer.to_string());
@@ -4074,6 +4115,12 @@ impl NectarlinkNode {
         self.node.away_mode()
     }
 
+    /// Whether the phone has Wi-Fi, Ethernet or a VPN (#397): without, and
+    /// with mobile data off, PCs aren't dialed until one comes back.
+    pub fn set_local_network(&self, available: bool) {
+        self.node.set_local_network(available);
+    }
+
     /// Enables or disables connecting over mobile data / non-LAN paths at runtime.
     pub fn set_away_mode(&self, enabled: bool) {
         self.node.set_away_mode(enabled);
@@ -4147,6 +4194,20 @@ impl NectarlinkNode {
         let node = self.node.clone();
         let action = if sleep { core::PowerAction::Sleep } else { core::PowerAction::Lock };
         self.run(async move { Ok(node.pc_power(id, action).await?) }).await
+    }
+
+    /// Asks a paired PC to play this phone's sound (#398).
+    pub async fn ask_pc_for_phone_sound(&self, id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.ask_pc_for_phone_sound(id).await?) }).await
+    }
+
+    /// Shuts a paired PC down (only one that offers `pc.power.shutdown`).
+    pub async fn pc_shutdown(&self, id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.pc_power(id, core::PowerAction::Shutdown).await?) }).await
     }
 
     /// Hibernates a paired PC (only one that offers `pc.power.hibernate`).
@@ -4434,6 +4495,25 @@ impl NectarlinkNode {
         let id = parse_id(&pc_id)?;
         let node = self.node.clone();
         self.run(async move { Ok(Arc::new(MirrorStream(node.mic_open(id).await?))) }).await
+    }
+
+    /// Opens the call's other party to a paired PC (`call.audio`, `downlink`):
+    /// a config packet (`mirror_audio_config(16000, 1)`) first, then 16-bit PCM.
+    pub async fn call_audio_open(&self, pc_id: String) -> Result<Arc<MirrorStream>> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(Arc::new(MirrorStream(node.call_audio_open(id, false).await?))) }).await
+    }
+
+    /// Gives the call's sound back to the phone and tells the PC.
+    pub async fn call_audio_stop(&self, pc_id: String) -> Result<()> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move {
+            node.call_audio_stop(id).await;
+            Ok(())
+        })
+        .await
     }
 
     /// Stops this phone's microphone stream to a paired PC and tells the PC.

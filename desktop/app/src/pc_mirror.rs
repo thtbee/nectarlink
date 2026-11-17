@@ -62,6 +62,9 @@ mod imp {
         force_keyframe: Arc<AtomicBool>,
         /// Play on phone: the phone watches a player, and its input is ignored.
         watching: bool,
+        video_ready: bool,
+        #[cfg(target_os = "linux")]
+        input_portal: Option<Arc<win::input::RemoteDesktopPortal>>,
     }
 
     static ACTIVE: Mutex<Option<ActiveSession>> = Mutex::new(None);
@@ -90,6 +93,12 @@ mod imp {
     /// Returns the device currently viewing this PC's screen, if any.
     pub fn active_peer() -> Option<DeviceId> {
         ACTIVE.lock().unwrap_or_else(|e| e.into_inner()).as_ref().map(|s| s.peer)
+    }
+
+    fn remote_input_allowed(peer: DeviceId) -> bool {
+        core_host::node()
+            .and_then(|n| n.device_toggles(peer).ok())
+            .is_some_and(|toggles| toggles.iter().any(|(k, v)| *k == "remote_input" && *v))
     }
 
     /// Whether this PC's screen is currently being shared with a phone.
@@ -140,19 +149,30 @@ mod imp {
 
     /// Starts or replaces the active PC-to-phone screen mirror stream for `peer`.
     pub fn start(peer: DeviceId, options: MirrorStart) {
-        // The same phone asking again replaced its own stream: telling it to
-        // stop could land after the new one starts and end that.
-        stop_session(Some(peer));
         let stop = Arc::new(AtomicBool::new(false));
         let force_keyframe = Arc::new(AtomicBool::new(false));
-        {
+        let previous = {
             let mut guard = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
-            *guard = Some(ActiveSession {
+            if let Some(previous) = guard.as_ref() {
+                previous.stop.store(true, Ordering::Release);
+            }
+            guard.replace(ActiveSession {
                 peer,
                 stop: Arc::clone(&stop),
                 force_keyframe: Arc::clone(&force_keyframe),
                 watching: options.watch.is_some(),
-            });
+                video_ready: false,
+                #[cfg(target_os = "linux")]
+                input_portal: None,
+            })
+        };
+        if let Some(previous) = previous {
+            win::input::release_held_buttons();
+            crate::input_share::leave_remote();
+            // A stop for this phone could arrive after the replacement started.
+            if previous.peer != peer {
+                notify_stopped(previous.peer);
+            }
         }
         core_host::host().hub.changed(crate::state::Changes::REMOTE);
         core_host::refresh_capabilities();
@@ -191,11 +211,6 @@ mod imp {
 
     /// Stops any active PC-to-phone mirroring session.
     pub fn stop_all() {
-        stop_session(None);
-    }
-
-    /// Stops the active session, telling its phone unless it's `replaced_by`.
-    fn stop_session(replaced_by: Option<DeviceId>) {
         let stopped = {
             let mut guard = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
             if let Some(s) = guard.take() {
@@ -208,16 +223,18 @@ mod imp {
         if let Some(peer) = stopped {
             win::input::release_held_buttons();
             crate::input_share::leave_remote();
-            if let Some(node) = core_host::node()
-                && replaced_by != Some(peer)
-            {
-                node.set_pc_mirror_session_allowed(peer, false);
-                core_host::spawn(async move {
-                    node.mirror_stop(peer, nectarlink_core::MIRROR_SCREEN).await;
-                });
-            }
+            notify_stopped(peer);
             core_host::host().hub.changed(crate::state::Changes::REMOTE);
             core_host::refresh_capabilities();
+        }
+    }
+
+    fn notify_stopped(peer: DeviceId) {
+        if let Some(node) = core_host::node() {
+            node.set_pc_mirror_session_allowed(peer, false);
+            core_host::spawn(async move {
+                node.mirror_stop(peer, nectarlink_core::MIRROR_SCREEN).await;
+            });
         }
     }
 
@@ -236,17 +253,26 @@ mod imp {
         if session != nectarlink_core::MIRROR_SCREEN {
             return;
         }
-        if active_peer() != Some(*peer) || is_watching() {
-            return;
+        #[cfg(target_os = "linux")]
+        let input_portal;
+        {
+            let guard = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
+            let Some(active) = guard.as_ref().filter(|s| s.peer == *peer && !s.watching && s.video_ready)
+            else {
+                return;
+            };
+            #[cfg(target_os = "linux")]
+            {
+                input_portal = active.input_portal.clone();
+            }
+            #[cfg(windows)]
+            let _ = active;
         }
-        let remote_input_on = core_host::node()
-            .and_then(|n| n.device_toggles(*peer).ok())
-            .is_some_and(|toggles| toggles.iter().any(|(k, v)| *k == "remote_input" && *v));
-        if !remote_input_on {
+        if !remote_input_allowed(*peer) {
             return;
         }
         let _ = crate::input_share::enter_remote(*peer);
-        match input {
+        let inject = || match input {
             MirrorInput::Touch { action, x, y } => {
                 win::input::mirror_touch(action, x, y);
             }
@@ -273,7 +299,11 @@ mod imp {
                 _ => {}
             },
             MirrorInput::Gamepad { .. } => {}
-        }
+        };
+        #[cfg(windows)]
+        inject();
+        #[cfg(target_os = "linux")]
+        win::input::with_screencast_input(input_portal, inject);
     }
 
     pub fn on_event(event: &nectarlink_core::NodeEvent) {
@@ -1334,8 +1364,7 @@ mod imp {
                     }
                     e_frame_type = bs_info.e_frame_type;
                     let layer_count = (bs_info.i_layer_num as usize).min(bs_info.s_layer_info.len());
-                    for idx in 0..layer_count {
-                        let layer = &bs_info.s_layer_info[idx];
+                    for layer in bs_info.s_layer_info.iter().take(layer_count) {
                         if layer.p_bs_buf.is_null()
                             || layer.p_nal_length_in_byte.is_null()
                             || layer.i_nal_count <= 0
@@ -1364,8 +1393,7 @@ mod imp {
                     }
                     e_frame_type = bs_info.e_frame_type;
                     let layer_count = (bs_info.i_layer_num as usize).min(bs_info.s_layer_info.len());
-                    for idx in 0..layer_count {
-                        let layer = &bs_info.s_layer_info[idx];
+                    for layer in bs_info.s_layer_info.iter().take(layer_count) {
                         if layer.p_bs_buf.is_null()
                             || layer.p_nal_length_in_byte.is_null()
                             || layer.i_nal_count <= 0
@@ -1875,13 +1903,8 @@ mod imp {
     #[cfg(target_os = "linux")]
     pub(crate) fn pipewire_capture_installed() -> bool {
         has_executable("gst-launch-1.0")
-            && std::process::Command::new("gst-inspect-1.0")
-                .args(["--exists", "pipewiresrc"])
-                .stdin(std::process::Stdio::null())
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .status()
-                .is_ok_and(|s| s.success())
+            && win::run_cmd_timeout("gst-inspect-1.0", &["--exists", "pipewiresrc"], Duration::from_secs(2))
+                .is_some_and(|out| out.status.success())
     }
 
     #[cfg(target_os = "linux")]
@@ -1909,187 +1932,37 @@ mod imp {
     }
 
     #[cfg(target_os = "linux")]
+    type LatestFrame = Arc<Mutex<Option<(Instant, Vec<u8>)>>>;
+
+    #[cfg(target_os = "linux")]
     struct WaylandScreenCaster {
-        _conn: zbus::blocking::Connection,
-        /// The PipeWire connection the portal opened for us; the stream is
-        /// only readable through it.
-        remote: std::os::fd::OwnedFd,
-        node_id: u32,
+        portal: win::screen_portal::ScreenPortal,
         started: Instant,
-        src_w: u32,
-        src_h: u32,
-        dst_w: u32,
-        dst_h: u32,
-        child: Option<std::process::Child>,
-        latest_frame: Arc<Mutex<Option<Vec<u8>>>>,
+        child: std::process::Child,
+        latest_frame: LatestFrame,
     }
 
     #[cfg(target_os = "linux")]
     impl Drop for WaylandScreenCaster {
         fn drop(&mut self) {
-            if let Some(mut child) = self.child.take() {
-                let _ = child.kill();
-                let _ = child.wait();
-            }
+            let _ = self.child.kill();
+            let _ = self.child.wait();
         }
-    }
-
-    #[cfg(target_os = "linux")]
-    fn wait_portal_response(
-        iter: &mut zbus::blocking::MessageIterator,
-        expected_path: &str,
-    ) -> Option<std::collections::HashMap<String, zbus::zvariant::OwnedValue>> {
-        for msg in iter.by_ref() {
-            let msg = msg.ok()?;
-            let hdr = msg.header();
-            if hdr.interface().map(|i| i.as_str()) == Some("org.freedesktop.portal.Request")
-                && hdr.member().map(|m| m.as_str()) == Some("Response")
-                && hdr.path().map(|p| p.as_str()) == Some(expected_path)
-            {
-                let (code, results): (u32, std::collections::HashMap<String, zbus::zvariant::OwnedValue>) =
-                    msg.body().deserialize().ok()?;
-                return if code == 0 { Some(results) } else { None };
-            }
-        }
-        None
     }
 
     #[cfg(target_os = "linux")]
     impl WaylandScreenCaster {
-        #[allow(clippy::type_complexity)]
-        fn negotiate_portal() -> Option<(zbus::blocking::Connection, std::os::fd::OwnedFd, u32, u32, u32)> {
-            use std::collections::HashMap;
-            use zbus::zvariant::{ObjectPath, OwnedObjectPath, OwnedValue, Value};
-
-            let conn = zbus::blocking::Connection::session().ok()?;
-            let rule = zbus::MatchRule::builder()
-                .msg_type(zbus::message::Type::Signal)
-                .interface("org.freedesktop.portal.Request")
-                .and_then(|b| b.member("Response"))
-                .map(|b| b.build())
-                .ok()?;
-            let dbus = zbus::blocking::fdo::DBusProxy::new(&conn).ok()?;
-            dbus.add_match_rule(rule).ok()?;
-            let mut iter = zbus::blocking::MessageIterator::from(&conn);
-
-            let pid = std::process::id();
-
-            // 1. CreateSession
-            let mut create_opts: HashMap<&str, Value<'_>> = HashMap::new();
-            let req_tok_1 = format!("nectarlink_sc_req1_{pid}");
-            let sess_tok = format!("nectarlink_sc_sess_{pid}");
-            create_opts.insert("handle_token", Value::from(req_tok_1.as_str()));
-            create_opts.insert("session_handle_token", Value::from(sess_tok.as_str()));
-
-            let reply = conn
-                .call_method(
-                    Some("org.freedesktop.portal.Desktop"),
-                    "/org/freedesktop/portal/desktop",
-                    Some("org.freedesktop.portal.ScreenCast"),
-                    "CreateSession",
-                    &(&create_opts,),
-                )
-                .ok()?;
-            let req_path_1: OwnedObjectPath = reply.body().deserialize().ok()?;
-            let create_res = wait_portal_response(&mut iter, req_path_1.as_str())?;
-            let session_path_str = create_res.get("session_handle").and_then(|v| {
-                String::try_from(v.clone())
-                    .ok()
-                    .or_else(|| OwnedObjectPath::try_from(v.clone()).ok().map(|p| p.to_string()))
-            })?;
-            let session_obj = ObjectPath::try_from(session_path_str.as_str()).ok()?;
-
-            // 2. SelectSources (types = 1 MONITOR, cursor_mode = 2 EMBEDDED)
-            let mut select_opts: HashMap<&str, Value<'_>> = HashMap::new();
-            let req_tok_2 = format!("nectarlink_sc_req2_{pid}");
-            select_opts.insert("handle_token", Value::from(req_tok_2.as_str()));
-            select_opts.insert("types", Value::from(1u32));
-            select_opts.insert("multiple", Value::from(false));
-            select_opts.insert("cursor_mode", Value::from(2u32));
-            // Ask once until the user takes it back: the portal hands back a token
-            // that restores the same choice without a dialog, also after a restart.
-            select_opts.insert("persist_mode", Value::from(2u32));
-            let restore = read_restore_token(&restore_token_path());
-            if let Some(token) = restore.as_deref() {
-                select_opts.insert("restore_token", Value::from(token));
-            }
-
-            let reply = conn
-                .call_method(
-                    Some("org.freedesktop.portal.Desktop"),
-                    "/org/freedesktop/portal/desktop",
-                    Some("org.freedesktop.portal.ScreenCast"),
-                    "SelectSources",
-                    &(&session_obj, &select_opts),
-                )
-                .ok()?;
-            let req_path_2: OwnedObjectPath = reply.body().deserialize().ok()?;
-            wait_portal_response(&mut iter, req_path_2.as_str())?;
-
-            // 3. Start
-            let mut start_opts: HashMap<&str, Value<'_>> = HashMap::new();
-            let req_tok_3 = format!("nectarlink_sc_req3_{pid}");
-            start_opts.insert("handle_token", Value::from(req_tok_3.as_str()));
-
-            let reply = conn
-                .call_method(
-                    Some("org.freedesktop.portal.Desktop"),
-                    "/org/freedesktop/portal/desktop",
-                    Some("org.freedesktop.portal.ScreenCast"),
-                    "Start",
-                    &(&session_obj, "", &start_opts),
-                )
-                .ok()?;
-            let req_path_3: OwnedObjectPath = reply.body().deserialize().ok()?;
-            let start_res = wait_portal_response(&mut iter, req_path_3.as_str())?;
-            if let Some(token) = start_res.get("restore_token").and_then(|v| String::try_from(v.clone()).ok())
-            {
-                // Each token works once, and this is the one for next time.
-                if let Err(error) = save_restore_token(&restore_token_path(), &token) {
-                    tracing::warn!(%error, "can't save the screen choice");
-                }
-            }
-
-            let streams_val = start_res.get("streams")?;
-            let streams: Vec<(u32, HashMap<String, OwnedValue>)> = streams_val.clone().try_into().ok()?;
-            let (node_id, props) = streams.into_iter().next()?;
-            let (src_w, src_h) = props
-                .get("size")
-                .and_then(|v| <(i32, i32)>::try_from(v.clone()).ok())
-                .filter(|&(w, h)| w > 0 && h > 0)
-                .map(|(w, h)| (w as u32, h as u32))
-                .unwrap_or((1920, 1080));
-
-            // The stream is only readable through the PipeWire connection
-            // the portal opens for this session.
-            let empty_opts: HashMap<&str, Value<'_>> = HashMap::new();
-            let reply = conn
-                .call_method(
-                    Some("org.freedesktop.portal.Desktop"),
-                    "/org/freedesktop/portal/desktop",
-                    Some("org.freedesktop.portal.ScreenCast"),
-                    "OpenPipeWireRemote",
-                    &(&session_obj, &empty_opts),
-                )
-                .ok()?;
-            let remote: zbus::zvariant::OwnedFd = reply.body().deserialize().ok()?;
-            let remote: std::os::fd::OwnedFd = remote.into();
-
-            Some((conn, remote, node_id, src_w, src_h))
-        }
-
         /// The fd number the portal's PipeWire connection gets in the capture process.
         const REMOTE_FD: i32 = 3;
 
         /// Starts gst-launch reading the stream through `remote` and writing
         /// raw BGRx frames of `dst_w` x `dst_h` to its stdout.
-        #[allow(clippy::type_complexity)]
         fn spawn_pipeline(
             remote: &std::os::fd::OwnedFd,
             node_id: u32,
             dst_w: u32,
             dst_h: u32,
-        ) -> Option<(std::process::Child, Arc<Mutex<Option<Vec<u8>>>>)> {
+        ) -> std::io::Result<(std::process::Child, LatestFrame)> {
             use std::io::Read;
             use std::os::fd::AsRawFd;
             use std::os::unix::process::CommandExt;
@@ -2101,10 +1974,11 @@ mod imp {
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::null());
-            // SAFETY: runs in the child between fork and exec and only calls
-            // async-signal-safe functions (dup2, fcntl) on descriptors we own.
+            // SAFETY: runs in the child between fork and exec and only makes
+            // async-signal-safe system calls.
             unsafe {
                 cmd.pre_exec(move || {
+                    let _ = libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
                     if raw == Self::REMOTE_FD {
                         // Already in place: only let it survive exec.
                         if libc::fcntl(raw, libc::F_SETFD, 0) < 0 {
@@ -2116,131 +1990,78 @@ mod imp {
                     Ok(())
                 });
             }
-            let mut child = cmd.spawn().ok()?;
-
-            let mut stdout = child.stdout.take()?;
-            let latest_frame: Arc<Mutex<Option<Vec<u8>>>> = Arc::new(Mutex::new(None));
+            let mut child = cmd.spawn()?;
+            let mut stdout = child.stdout.take().expect("GStreamer stdout is piped");
+            let latest_frame = Arc::new(Mutex::new(None));
             let frame_slot = Arc::clone(&latest_frame);
             let frame_bytes = (dst_w as usize) * (dst_h as usize) * 4;
 
-            std::thread::Builder::new()
-                .name("wayland-screencast-reader".into())
-                .spawn(move || {
+            let reader =
+                std::thread::Builder::new().name("wayland-screencast-reader".into()).spawn(move || {
                     let mut buf = vec![0u8; frame_bytes];
                     while stdout.read_exact(&mut buf).is_ok() {
                         for chunk in buf.as_chunks_mut::<4>().0 {
                             chunk[3] = 0xFF;
                         }
-                        *frame_slot.lock().unwrap_or_else(|e| e.into_inner()) = Some(buf.clone());
+                        *frame_slot.lock().unwrap_or_else(|e| e.into_inner()) =
+                            Some((Instant::now(), buf.clone()));
                     }
-                })
-                .ok()?;
-
-            Some((child, latest_frame))
-        }
-
-        fn start(dst_w: u32, dst_h: u32) -> Option<Self> {
-            let (conn, remote, node_id, src_w, src_h) = Self::negotiate_portal()?;
-            let (child, latest_frame) = Self::spawn_pipeline(&remote, node_id, dst_w, dst_h)?;
-            Some(Self {
-                _conn: conn,
-                remote,
-                node_id,
-                started: Instant::now(),
-                src_w,
-                src_h,
-                dst_w,
-                dst_h,
-                child: Some(child),
-                latest_frame,
-            })
-        }
-
-        /// Whether the capture process is still running.
-        fn alive(&mut self) -> bool {
-            self.child.as_mut().is_some_and(|c| matches!(c.try_wait(), Ok(None)))
-        }
-
-        fn capture(&mut self, dst_w: u32, dst_h: u32, bgra: &mut Vec<u8>) -> Option<(u32, u32)> {
-            if (self.dst_w, self.dst_h) != (dst_w, dst_h) {
-                if let Some(mut old) = self.child.take() {
-                    let _ = old.kill();
-                    let _ = old.wait();
-                }
-                let (child, latest_frame) = Self::spawn_pipeline(&self.remote, self.node_id, dst_w, dst_h)?;
-                self.started = Instant::now();
-                self.dst_w = dst_w;
-                self.dst_h = dst_h;
-                self.child = Some(child);
-                self.latest_frame = latest_frame;
+                });
+            if let Err(error) = reader {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(error);
             }
 
-            // The first frame can take a while (the pipeline negotiates
-            // formats); after that a frame is late only for a moment.
-            let wait = if self.started.elapsed() < Duration::from_secs(3) {
-                Duration::from_secs(3).saturating_sub(self.started.elapsed())
-            } else {
-                Duration::from_millis(250)
-            };
-            // Its last frame would otherwise show as a live screen for good.
-            if !self.alive() {
-                return None;
-            }
-            let deadline = Instant::now() + wait;
-            loop {
-                if let Some(frame) = self.latest_frame.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
-                    bgra.clear();
-                    bgra.extend_from_slice(frame);
-                    return Some((self.src_w, self.src_h));
-                }
-                if Instant::now() >= deadline {
-                    return None;
-                }
-                std::thread::sleep(Duration::from_millis(10));
-            }
+            Ok((child, latest_frame))
         }
-    }
 
-    #[cfg(target_os = "linux")]
-    static WAYLAND_CASTER: Mutex<Option<WaylandScreenCaster>> = Mutex::new(None);
+        fn start(portal: win::screen_portal::ScreenPortal, dst_w: u32, dst_h: u32) -> anyhow::Result<Self> {
+            let (child, latest_frame) = Self::spawn_pipeline(&portal.remote, portal.node_id, dst_w, dst_h)?;
+            Ok(Self { portal, started: Instant::now(), child, latest_frame })
+        }
 
-    /// Where the ScreenCast portal's restore token is kept, so later sessions
-    /// reuse the screen the user chose instead of asking again.
-    #[cfg(target_os = "linux")]
-    fn restore_token_path() -> std::path::PathBuf {
-        core_host::host().data_dir.join("screencast-restore-token")
-    }
-
-    /// A token that's gone or unusable just means the portal asks again.
-    #[cfg(target_os = "linux")]
-    fn read_restore_token(path: &std::path::Path) -> Option<String> {
-        let token = std::fs::read_to_string(path).ok()?;
-        let token = token.trim();
-        (!token.is_empty() && token.len() <= 256).then(|| token.to_owned())
-    }
-
-    /// Only this user may read it: it lets this app see the screen without asking.
-    #[cfg(target_os = "linux")]
-    fn save_restore_token(path: &std::path::Path, token: &str) -> std::io::Result<()> {
-        use std::{io::Write, os::unix::fs::OpenOptionsExt};
-        let tmp = path.with_extension("tmp");
-        let mut file =
-            std::fs::OpenOptions::new().create(true).write(true).truncate(true).mode(0o600).open(&tmp)?;
-        file.write_all(token.as_bytes())?;
-        drop(file);
-        std::fs::rename(&tmp, path)
+        fn capture(&mut self, bgra: &mut Vec<u8>) -> anyhow::Result<bool> {
+            const FRAME_TIMEOUT: Duration = Duration::from_secs(8);
+            if self.portal.is_closed() {
+                anyhow::bail!("the Wayland portal closed the screen sharing session");
+            }
+            if let Some(status) = self.child.try_wait()? {
+                anyhow::bail!("the PipeWire capture process exited ({status})");
+            }
+            let latest = self.latest_frame.lock().unwrap_or_else(|e| e.into_inner());
+            if latest.as_ref().map_or(self.started, |(at, _)| *at).elapsed() >= FRAME_TIMEOUT {
+                anyhow::bail!("the PipeWire capture process stopped supplying frames");
+            }
+            let Some((_, frame)) = latest.as_ref() else { return Ok(false) };
+            bgra.clear();
+            bgra.extend_from_slice(frame);
+            Ok(true)
+        }
     }
 
     /// gst-launch arguments: read stream `node_id` through the portal's
     /// PipeWire connection (fd 3) and write raw BGRx frames to stdout.
     #[cfg(target_os = "linux")]
     pub(crate) fn pipeline_args(node_id: u32, dst_w: u32, dst_h: u32) -> Vec<String> {
-        [
+        static HAS_ON_DISCONNECT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        let mut args = vec![
             "-q".to_owned(),
             "pipewiresrc".to_owned(),
             format!("fd={}", WaylandScreenCaster::REMOTE_FD),
             format!("path={node_id}"),
             "do-timestamp=true".to_owned(),
+            // Static desktops can go without damage events.
+            "keepalive-time=1000".to_owned(),
+        ];
+        if *HAS_ON_DISCONNECT.get_or_init(|| {
+            win::run_cmd_timeout("gst-inspect-1.0", &["pipewiresrc"], Duration::from_secs(2)).is_some_and(
+                |out| out.status.success() && String::from_utf8_lossy(&out.stdout).contains("on-disconnect "),
+            )
+        }) {
+            args.push("on-disconnect=error".to_owned());
+        }
+        args.extend([
             "!".to_owned(),
             "videoconvert".to_owned(),
             "!".to_owned(),
@@ -2250,32 +2071,8 @@ mod imp {
             "!".to_owned(),
             "fdsink".to_owned(),
             "fd=1".to_owned(),
-        ]
-        .into()
-    }
-
-    #[cfg(target_os = "linux")]
-    fn capture_screen_wayland(dst_w: u32, dst_h: u32, bgra: &mut Vec<u8>) -> Option<(u32, u32)> {
-        if !is_wayland_screencast_available() {
-            return None;
-        }
-        let mut guard = WAYLAND_CASTER.lock().unwrap_or_else(|e| e.into_inner());
-        if guard.is_none() {
-            *guard = WaylandScreenCaster::start(dst_w, dst_h);
-        }
-        let caster = guard.as_mut()?;
-        let res = caster.capture(dst_w, dst_h, bgra);
-        // A late frame is skipped; only a stopped capture ends the session
-        // (starting a new one would ask the user again).
-        if res.is_none() && !caster.alive() {
-            *guard = None;
-        }
-        res
-    }
-
-    #[cfg(target_os = "linux")]
-    fn stop_wayland_screencast() {
-        *WAYLAND_CASTER.lock().unwrap_or_else(|e| e.into_inner()) = None;
+        ]);
+        args
     }
 
     #[cfg(target_os = "linux")]
@@ -2285,12 +2082,6 @@ mod imp {
         dst_h: u32,
         bgra: &mut Vec<u8>,
     ) -> Option<(u32, u32)> {
-        if region.is_none()
-            && std::env::var_os("WAYLAND_DISPLAY").is_some()
-            && let Some(dims) = capture_screen_wayland(dst_w, dst_h, bgra)
-        {
-            return Some(dims);
-        }
         with_x11_display(|api, dpy| unsafe {
             let root = (api.default_root_window)(dpy);
             let mut attrs: XWindowAttributes = std::mem::zeroed();
@@ -2407,10 +2198,52 @@ mod imp {
             return;
         };
         let runtime = &core_host::host().runtime;
-        let Ok(sender) = runtime.block_on(node.mirror_open(peer)) else {
-            tracing::warn!(%peer, "couldn't open PC mirror stream to phone");
+        #[cfg(target_os = "linux")]
+        let (mut wayland, wayland_dims) = if options.watch.is_none() && is_wayland_screencast_available() {
+            let portal = runtime.block_on(win::screen_portal::ScreenPortal::open(
+                remote_input_allowed(peer),
+                &core_host::host().data_dir,
+                || stop.load(Ordering::Acquire),
+            ));
+            match portal.and_then(|portal| {
+                let dims = target_dimensions(portal.size.0, portal.size.1, options.max_size);
+                WaylandScreenCaster::start(portal, dims.0, dims.1).map(|caster| (caster, dims))
+            }) {
+                Ok((caster, dims)) => {
+                    if caster.portal.input {
+                        let mut active = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
+                        if let Some(active) = active.as_mut().filter(|s| Arc::ptr_eq(&s.stop, &stop)) {
+                            active.input_portal = Some(Arc::new(caster.portal.input_portal()));
+                        }
+                    }
+                    (Some(caster), Some(dims))
+                }
+                Err(error) => {
+                    finish_failed_capture(peer, &stop, &error);
+                    return;
+                }
+            }
+        } else {
+            (None, None)
+        };
+
+        if stop.load(Ordering::Acquire) {
             cleanup_session(&stop);
             return;
+        }
+        let sender = match runtime.block_on(node.mirror_open(peer)) {
+            Ok(sender) => sender,
+            Err(error) => {
+                tracing::warn!(%peer, %error, "couldn't open PC mirror stream to phone");
+                #[cfg(target_os = "linux")]
+                if wayland.is_some() {
+                    drop(wayland);
+                    finish_failed_capture(peer, &stop, &error.into());
+                    return;
+                }
+                cleanup_session(&stop);
+                return;
+            }
         };
 
         // Give the phone's PcMirrorView TextureView and MediaCodec a brief moment to
@@ -2433,7 +2266,10 @@ mod imp {
 
         let mut bgra = Vec::new();
         let mut nv12 = Vec::new();
+        #[cfg(windows)]
         let mut stream_dims: Option<(u32, u32)> = None;
+        #[cfg(target_os = "linux")]
+        let mut stream_dims = wayland_dims;
         let mut encoder: Option<ScreenEncoder> = None;
         let started = Instant::now();
         let mut last_reinit = Instant::now() - Duration::from_secs(5);
@@ -2457,7 +2293,11 @@ mod imp {
             tracing::info!(%peer, fps, bitrate, "sharing this PC's screen");
         }
 
-        while !stop.load(Ordering::Relaxed) {
+        #[cfg(target_os = "linux")]
+        let mut capture_failed = None;
+        #[cfg(target_os = "linux")]
+        let mut last_video = Instant::now();
+        while !stop.load(Ordering::Relaxed) && !sender.is_closed() {
             let tick_start = Instant::now();
 
             let place = watched.as_ref().and_then(crate::play_on_phone::Watched::place);
@@ -2506,6 +2346,25 @@ mod imp {
                 }
             };
 
+            #[cfg(target_os = "linux")]
+            if let Some(caster) = wayland.as_mut() {
+                if last_video.elapsed() >= Duration::from_secs(12) {
+                    capture_failed = Some(anyhow::anyhow!("the video encoder stopped producing frames"));
+                    break;
+                }
+                match caster.capture(&mut bgra) {
+                    Ok(true) => {}
+                    Ok(false) => {
+                        std::thread::sleep(frame_interval);
+                        continue;
+                    }
+                    Err(error) => {
+                        capture_failed = Some(error);
+                        break;
+                    }
+                }
+            }
+
             // A keyframe on request comes from the running encoder. Rebuilding it (a new
             // stream config plus a full keyframe) is the fallback for encoders that can't.
             let requested_kf = force_keyframe.swap(false, Ordering::SeqCst);
@@ -2528,30 +2387,48 @@ mod imp {
                         if matches!(sender.send(PacketKind::Config, 0, cfg.to_cbor()), MirrorSend::Closed) {
                             break;
                         }
+                        let mut active = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
+                        if let Some(active) = active.as_mut().filter(|s| Arc::ptr_eq(&s.stop, &stop)) {
+                            active.video_ready = true;
+                        }
                         encoder = Some(enc);
                         last_reinit = Instant::now();
                         stats.rebuilds += 1;
                     }
                     Err(e) => {
                         tracing::warn!(error = %e, codec, "PC mirror encoder init failed");
+                        #[cfg(target_os = "linux")]
+                        if wayland.is_some() {
+                            capture_failed =
+                                Some(anyhow::anyhow!("couldn't initialize the video encoder: {e}"));
+                        }
                         break;
                     }
                 }
             }
 
-            let captured = match (place, window_capture.as_mut()) {
-                (Some(place), Some(capture)) => capture.capture(place.in_window, dst_w, dst_h, &mut bgra),
-                (Some(place), None) => {
-                    capture_screen(Some(place.on_screen), dst_w, dst_h, &mut bgra).is_some()
-                }
-                (None, _) => capture_screen(None, dst_w, dst_h, &mut bgra).is_some(),
-            };
+            #[cfg(windows)]
+            let wayland_captured = false;
+            #[cfg(target_os = "linux")]
+            let wayland_captured = wayland.is_some();
+            let captured = wayland_captured
+                || match (place, window_capture.as_mut()) {
+                    (Some(place), Some(capture)) => capture.capture(place.in_window, dst_w, dst_h, &mut bgra),
+                    (Some(place), None) => {
+                        capture_screen(Some(place.on_screen), dst_w, dst_h, &mut bgra).is_some()
+                    }
+                    (None, _) => capture_screen(None, dst_w, dst_h, &mut bgra).is_some(),
+                };
             if captured && let Some(enc) = encoder.as_mut() {
                 bgra_to_nv12(&bgra, dst_w as usize, dst_h as usize, &mut nv12);
                 let time_us = started.elapsed().as_micros() as u64;
                 let hns = (time_us * 10) as i64;
                 match enc.encode(&nv12, hns, dur_hns, &stop) {
                     Ok(packets) => {
+                        #[cfg(target_os = "linux")]
+                        if !packets.is_empty() {
+                            last_video = Instant::now();
+                        }
                         let mut send_failed = false;
                         for (is_keyframe, bytes) in packets {
                             let kind = if is_keyframe { PacketKind::Keyframe } else { PacketKind::Frame };
@@ -2660,20 +2537,42 @@ mod imp {
             }
         }
 
-        // Only when no newer session took over: the screencast is shared.
         #[cfg(target_os = "linux")]
-        if ACTIVE
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .as_ref()
-            .is_none_or(|s| Arc::ptr_eq(&s.stop, &stop))
         {
-            stop_wayland_screencast();
+            if wayland.is_some() && sender.is_closed() && !stop.load(Ordering::Acquire) {
+                capture_failed.get_or_insert_with(|| anyhow::anyhow!("the video stream disconnected"));
+            }
+            drop(wayland);
+            if let Some(error) = capture_failed {
+                sender.close();
+                finish_failed_capture(peer, &stop, &error);
+                return;
+            }
         }
         tracing::info!(%peer, "stopped sharing this PC's screen");
-        crate::input_share::leave_remote();
         sender.close();
         cleanup_session(&stop);
+    }
+
+    #[cfg(target_os = "linux")]
+    fn finish_failed_capture(peer: DeviceId, stop: &Arc<AtomicBool>, error: &anyhow::Error) {
+        if cleanup_session(stop) && !stop.load(Ordering::Acquire) {
+            tracing::warn!(%peer, error = %format_args!("{error:#}"), "Wayland screen sharing stopped");
+            if let Some(node) = core_host::node() {
+                core_host::spawn(async move {
+                    // A retry can take over while resources from the old attempt close.
+                    if active_peer() != Some(peer) {
+                        let _ = node
+                            .mirror_notice(
+                                peer,
+                                nectarlink_core::MIRROR_SCREEN,
+                                nectarlink_core::MIRROR_NOTICE_PC_CAPTURE_FAILED,
+                            )
+                            .await;
+                    }
+                });
+            }
+        }
     }
 
     /// Mute this PC's speakers while a phone watches (the setting).
@@ -2735,7 +2634,7 @@ mod imp {
         }
     }
 
-    fn cleanup_session(stop: &Arc<AtomicBool>) {
+    fn cleanup_session(stop: &Arc<AtomicBool>) -> bool {
         let removed = {
             let mut guard = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
             if guard.as_ref().is_some_and(|s| Arc::ptr_eq(&s.stop, stop)) {
@@ -2745,29 +2644,16 @@ mod imp {
             }
         };
         if removed {
+            win::input::release_held_buttons();
+            crate::input_share::leave_remote();
             core_host::host().hub.changed(crate::state::Changes::REMOTE);
             core_host::refresh_capabilities();
         }
+        removed
     }
 
     #[cfg(test)]
     mod tests {
-        #[cfg(target_os = "linux")]
-        #[test]
-        fn the_screen_choice_survives_a_restart_privately() {
-            use std::os::unix::fs::PermissionsExt;
-            let dir = tempfile::tempdir().unwrap();
-            let path = dir.path().join("token");
-            assert_eq!(super::read_restore_token(&path), None);
-            super::save_restore_token(&path, "first").unwrap();
-            assert_eq!(super::read_restore_token(&path).as_deref(), Some("first"));
-            super::save_restore_token(&path, "second").unwrap();
-            assert_eq!(super::read_restore_token(&path).as_deref(), Some("second"));
-            assert_eq!(std::fs::metadata(&path).unwrap().permissions().mode() & 0o777, 0o600);
-            std::fs::write(&path, "  ").unwrap();
-            assert_eq!(super::read_restore_token(&path), None);
-        }
-
         use super::*;
 
         #[cfg(windows)]

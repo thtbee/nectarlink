@@ -1404,6 +1404,31 @@ mod tests {
                         "https://github.com/thtbee/nectarlink/releases/download/v9/rpm-x86_64".into(),
                 },
                 Asset {
+                    name: "Nectarlink-9.0.0-aarch64.AppImage".into(),
+                    browser_download_url:
+                        "https://github.com/thtbee/nectarlink/releases/download/v9/appimage-arm64".into(),
+                },
+                Asset {
+                    name: "nectarlink_9.0.0_arm64.deb".into(),
+                    browser_download_url:
+                        "https://github.com/thtbee/nectarlink/releases/download/v9/deb-arm64".into(),
+                },
+                Asset {
+                    name: "nectarlink-9.0.0-1.aarch64.rpm".into(),
+                    browser_download_url:
+                        "https://github.com/thtbee/nectarlink/releases/download/v9/rpm-aarch64".into(),
+                },
+                Asset {
+                    name: "Nectarlink-9.0.0-linux-x86_64.tar.gz".into(),
+                    browser_download_url:
+                        "https://github.com/thtbee/nectarlink/releases/download/v9/tarball-x64".into(),
+                },
+                Asset {
+                    name: "Nectarlink-9.0.0-linux-aarch64.tar.gz".into(),
+                    browser_download_url:
+                        "https://github.com/thtbee/nectarlink/releases/download/v9/tarball-arm64".into(),
+                },
+                Asset {
                     name: "SHA256SUMS.txt".into(),
                     browser_download_url: "https://github.com/thtbee/nectarlink/releases/download/v9/sums"
                         .into(),
@@ -1530,15 +1555,33 @@ mod tests {
         );
         #[cfg(target_os = "linux")]
         {
+            let (appimage_name, deb_name, rpm_name, tarball_name) = if cfg!(target_arch = "aarch64") {
+                (
+                    "Nectarlink-9.0.0-aarch64.AppImage",
+                    "nectarlink_9.0.0_arm64.deb",
+                    "nectarlink-9.0.0-1.aarch64.rpm",
+                    "Nectarlink-9.0.0-linux-aarch64.tar.gz",
+                )
+            } else {
+                (
+                    "Nectarlink-9.0.0-x86_64.AppImage",
+                    "nectarlink_9.0.0_amd64.deb",
+                    "nectarlink-9.0.0-1.x86_64.rpm",
+                    "Nectarlink-9.0.0-linux-x86_64.tar.gz",
+                )
+            };
             let picked_appimage = newer_release_linux(release("v9.0.0"), "0.0.1", true).unwrap();
-            assert!(picked_appimage.installer_name.ends_with(".AppImage"));
+            assert_eq!(picked_appimage.installer_name, appimage_name);
             let picked_deb = newer_release_linux(release("v9.0.0"), "0.0.1", false).unwrap();
-            assert!(picked_deb.installer_name.ends_with(".deb"));
+            assert_eq!(picked_deb.installer_name, deb_name);
             assert!(PRIVILEGED_DEB_INSTALL_SCRIPT.contains("install -d -m 0700 -o 0 -g 0"));
             assert!(PRIVILEGED_DEB_INSTALL_SCRIPT.contains("sha256sum -c --status -"));
             assert!(PRIVILEGED_DEB_INSTALL_SCRIPT.contains("dpkg -i -- \"$dst\""));
             let rpm = newer_release_linux_kind(release("v9.0.0"), "0.0.1", LinuxInstallKind::Rpm).unwrap();
-            assert_eq!(rpm.installer_name, "nectarlink-9.0.0-1.x86_64.rpm");
+            assert_eq!(rpm.installer_name, rpm_name);
+            let tarball =
+                newer_release_linux_kind(release("v9.0.0"), "0.0.1", LinuxInstallKind::Tarball).unwrap();
+            assert_eq!(tarball.installer_name, tarball_name);
             assert!(PRIVILEGED_RPM_INSTALL_SCRIPT.contains("sha256sum -c --status -"));
             assert!(PRIVILEGED_RPM_INSTALL_SCRIPT.contains("dnf install -y --nogpgcheck -- \"$1\""));
             // An RPM install never falls back to a tarball, a second copy in /opt.

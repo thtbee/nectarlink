@@ -81,6 +81,7 @@ fn run(on_change: &OnChange) -> windows::core::Result<()> {
 
     let mut watched: HashMap<String, GlobalSystemMediaTransportControlsSession> = HashMap::new();
     let mut art = ArtCache::default();
+    let mut timelines = SteadyTimelines::default();
     let mut last: Option<(Vec<MediaPlayer>, Instant)> = None;
     loop {
         // Hook up sessions that are new since last time, keeping their COM wrappers alive.
@@ -95,7 +96,8 @@ fn run(on_change: &OnChange) -> windows::core::Result<()> {
         }
         // A session that ends and comes back is hooked up again.
         watched.retain(|id, _| present.contains(id));
-        let players = snapshot(&manager, &mut art);
+        let mut players = snapshot(&manager, &mut art);
+        timelines.steady(&mut players, Instant::now());
         let retry_soon = art.needs_retry(&players);
         let should_emit = match &last {
             None => true,
@@ -118,6 +120,68 @@ fn run(on_change: &OnChange) -> windows::core::Result<()> {
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
+        }
+    }
+}
+
+/// How long a track's timeline and seeking are kept through a moment without them.
+const TIMELINE_HOLD: Duration = Duration::from_secs(10);
+
+/// Players' timelines as last reported. Apps (browsers above all) report an
+/// empty timeline, or stop offering seeking, for a moment around play and
+/// pause or between updates; each blip reached the phone, and its media
+/// controls dropped the seek bar until the next update (#392). For the same
+/// track, a blip shorter than [`TIMELINE_HOLD`] keeps what was there.
+#[derive(Default)]
+struct SteadyTimelines {
+    seen: HashMap<String, SeenTimeline>,
+}
+
+struct SeenTimeline {
+    title: Option<String>,
+    duration: u64,
+    position: u64,
+    playing: bool,
+    /// When the app last reported this timeline itself.
+    at: Instant,
+    /// When the app last offered seeking.
+    seek_at: Option<Instant>,
+}
+
+impl SteadyTimelines {
+    fn steady(&mut self, players: &mut [MediaPlayer], now: Instant) {
+        self.seen.retain(|id, _| players.iter().any(|p| &p.id == id));
+        for p in players.iter_mut() {
+            let offers_seek = p.actions.iter().any(|a| a == "seek");
+            let same_track = self.seen.get(&p.id).filter(|s| s.title == p.title);
+            let held = |at: Instant| now.saturating_duration_since(at) < TIMELINE_HOLD;
+            if let (Some(duration), Some(position)) = (p.duration, p.position) {
+                let seek_at = if offers_seek { Some(now) } else { same_track.and_then(|s| s.seek_at) };
+                if !offers_seek && seek_at.is_some_and(held) {
+                    p.actions.push("seek".to_owned());
+                }
+                self.seen.insert(
+                    p.id.clone(),
+                    SeenTimeline {
+                        title: p.title.clone(),
+                        duration,
+                        position,
+                        playing: p.playing,
+                        at: now,
+                        seek_at,
+                    },
+                );
+            } else if let Some(s) = same_track.filter(|s| held(s.at)) {
+                let moved =
+                    if s.playing { now.saturating_duration_since(s.at).as_millis() as u64 } else { 0 };
+                p.duration = Some(s.duration);
+                p.position = Some(s.position.saturating_add(moved).min(s.duration));
+                if !offers_seek && s.seek_at.is_some_and(held) {
+                    p.actions.push("seek".to_owned());
+                }
+            } else {
+                self.seen.remove(&p.id);
+            }
         }
     }
 }
@@ -749,6 +813,67 @@ pub fn resume_after_call() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn playing(title: &str, timeline: Option<(u64, u64)>, seek: bool) -> MediaPlayer {
+        MediaPlayer {
+            id: "Chrome".into(),
+            app: "Chrome".into(),
+            title: Some(title.into()),
+            artist: None,
+            album: None,
+            playing: true,
+            duration: timeline.map(|t| t.0),
+            position: timeline.map(|t| t.1),
+            actions: [Some("pause"), seek.then_some("seek")]
+                .into_iter()
+                .flatten()
+                .map(str::to_owned)
+                .collect(),
+            art_key: None,
+            art: None,
+        }
+    }
+
+    #[test]
+    fn a_moment_without_a_timeline_keeps_the_seek_bar() {
+        let mut steady = SteadyTimelines::default();
+        let start = Instant::now();
+        let mut first = [playing("Clip", Some((600_000, 10_000)), true)];
+        steady.steady(&mut first, start);
+
+        // The app drops its timeline and seeking for a moment.
+        let mut blip = [playing("Clip", None, false)];
+        steady.steady(&mut blip, start + Duration::from_secs(2));
+        assert_eq!(blip[0].duration, Some(600_000));
+        assert_eq!(blip[0].position, Some(12_000));
+        assert!(blip[0].actions.iter().any(|a| a == "seek"));
+
+        // Seeking alone dropping out is held too.
+        let mut no_seek = [playing("Clip", Some((600_000, 13_000)), false)];
+        steady.steady(&mut no_seek, start + Duration::from_secs(3));
+        assert!(no_seek[0].actions.iter().any(|a| a == "seek"));
+    }
+
+    #[test]
+    fn a_lasting_or_new_track_without_a_timeline_shows_none() {
+        let mut steady = SteadyTimelines::default();
+        let start = Instant::now();
+        steady.steady(&mut [playing("Clip", Some((600_000, 10_000)), true)], start);
+
+        let mut next = [playing("Another", None, false)];
+        steady.steady(&mut next, start + Duration::from_secs(1));
+        assert_eq!(next[0].duration, None);
+        assert!(!next[0].actions.iter().any(|a| a == "seek"));
+
+        steady.steady(&mut [playing("Clip", Some((600_000, 10_000)), true)], start);
+        let mut later = [playing("Clip", None, false)];
+        steady.steady(&mut later, start + TIMELINE_HOLD + Duration::from_secs(1));
+        assert_eq!(later[0].duration, None);
+
+        let mut seekless = [playing("Clip", Some((600_000, 10_000)), false)];
+        steady.steady(&mut seekless, start + TIMELINE_HOLD * 3);
+        assert!(!seekless[0].actions.iter().any(|a| a == "seek"));
+    }
 
     #[test]
     fn app_ids_read_as_names() {

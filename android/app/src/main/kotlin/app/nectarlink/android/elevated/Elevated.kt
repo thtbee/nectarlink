@@ -71,6 +71,9 @@ object Elevated {
     enum class Reason { WrongCode, NoPairingDialog, NotPaired, RootDenied, ShizukuNotRunning, ShizukuDenied, ShizukuRoot, Other }
 
     private const val TAG = "Elevated"
+
+    /** How long the helper may take to set up a call's sound. */
+    private const val CALL_AUDIO_ANSWER_MS = 3_000
     private const val PREFS = "elevated"
     private const val PAIRED = "paired"
     /** Set up through root (the user chose Use root) rather than Wireless debugging. */
@@ -79,6 +82,14 @@ object Elevated {
     private const val SHIZUKU = "shizuku"
     /** The shell user, which the helper runs as however it's started. */
     private const val SHELL_UID = "2000"
+    /**
+     * The shell user's groups as adbd gives them: input, log, adb, storage,
+     * Bluetooth, inet (sockets), network stats, readproc, uhid (gamepads)
+     * and readtracefs.
+     */
+    private val SHELL_GROUPS = listOf(1004, 1007, 1011, 1015, 1028, 1078, 1079, 3001, 3002, 3003, 3006, 3009, 3011, 3012)
+    /** Android lets only this group open sockets, the helper's included. */
+    private const val INET_GROUP = "3003"
     /** The version [compileIfUpdated] last asked Android to compile. */
     private const val COMPILED_VERSION = "compiled_version"
     /** How long after the helper starts the compile waits, so Android has recorded which code starting up uses. */
@@ -136,7 +147,8 @@ object Elevated {
     fun usesShizuku(): Boolean = prefs().getBoolean(SHIZUKU, false)
 
     /** Set up one way or another, so it should start whenever it can. */
-    private fun isSetUp() = paired() || usesRoot() || usesShizuku()
+    /** Set up through Wireless debugging, root or Shizuku, whether or not it runs right now. */
+    fun isSetUp() = paired() || usesRoot() || usesShizuku()
 
     private fun prefs() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -492,7 +504,7 @@ object Elevated {
             val token = ByteArray(24).also(SecureRandom()::nextBytes).joinToString("") { "%02x".format(it) }
             val apk = context.applicationInfo.sourceDir
             val cmd = "CLASSPATH=$apk app_process /system/bin ${InputServer::class.java.name} $token"
-            val proc = ProcessBuilder("su", SHELL_UID, "-c", cmd).start()
+            val proc = ProcessBuilder(suAsShell() + listOf("-c", cmd)).start()
             rootProcess = proc
             // The helper reports what fails (a screen it can't capture) on
             // stderr. Read it, so it reaches the log and a full pipe never
@@ -568,8 +580,36 @@ object Elevated {
     }
 
     /** Runs [command] as the shell user through `su`; its output, or null if it didn't run. */
-    private fun asShell(command: String): String? = runCatching {
-        val process = ProcessBuilder("su", SHELL_UID, "-c", command).redirectErrorStream(true).start()
+    private fun asShell(command: String): String? = runSu(suAsShell(), command)
+
+    /** The `su` that [suAsShell] settled on, once root answered. */
+    @Volatile
+    private var shellSu: List<String>? = null
+
+    /**
+     * `su` to the shell user with the shell user's groups, which Magisk 26+
+     * and KernelSU take as -g and -G. A plain `su 2000` leaves the user in no
+     * group at all, so the helper can't open its socket (no inet) or make a
+     * gamepad (no uhid). Root managers without -G get the plain one.
+     */
+    private fun suAsShell(): List<String> = shellSu ?: run {
+        val plain = listOf("su", SHELL_UID)
+        val withGroups = listOf("su", "-g", SHELL_UID) + SHELL_GROUPS.flatMap { listOf("-G", it.toString()) } + SHELL_UID
+        val groups = runSu(withGroups, "id -G")?.trim()?.split(Regex("\\s+"))
+        when {
+            groups != null && INET_GROUP in groups -> withGroups.also { shellSu = it }
+            groups != null -> plain.also {
+                shellSu = it
+                Log.i(TAG, "root gives the shell user no inet group: the helper may not open its socket")
+            }
+            // -G not understood, or root not allowed (yet): ask again next time.
+            else -> plain
+        }
+    }
+
+    /** Runs [command] through `su` with [su] as its arguments; its output, or null if it didn't run. */
+    private fun runSu(su: List<String>, command: String): String? = runCatching {
+        val process = ProcessBuilder(su + listOf("-c", command)).redirectErrorStream(true).start()
         if (!process.waitFor(SU_WAIT_S, java.util.concurrent.TimeUnit.SECONDS)) {
             process.destroyForcibly()
             return null
@@ -661,6 +701,7 @@ object Elevated {
         _state.value = State.Running
         if (screenOffRequested) send(writer, "P 0")
         compileIfUpdated()
+        checkCallAudio()
         Thread {
             runCatching {
                 local.inputStream.bufferedReader().lineSequence().forEach { line ->
@@ -825,6 +866,7 @@ object Elevated {
         val writer = input
         input = null
         helper = null
+        callAudioSupported = false
         if (wasScreenOff && writer != null) {
             runCatching {
                 synchronized(writer) {
@@ -1012,6 +1054,63 @@ object Elevated {
                 out.flush()
             }
         }.onFailure { Log.w(TAG, "can't open Elevated audio stream", it) }.getOrNull()
+    }
+
+    /**
+     * Opens the call in progress's sound from the Elevated helper ([CallAudio]):
+     * the other party arrives on the socket, what's written goes into the
+     * call. Null, with the helper's reason logged, if it can't.
+     */
+    fun openCallAudio(): java.net.Socket? = askCallAudio("CALL")
+
+    /**
+     * Whether this phone lets the helper reach a call's sound (Android 13+ and
+     * the audio HAL's telephony Rx/Tx devices): checked each time the helper
+     * starts, and `call.audio` is offered only when true.
+     */
+    @Volatile var callAudioSupported: Boolean = false
+        private set
+
+    private fun checkCallAudio() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        Thread {
+            val supported = askCallAudio("CALLCHECK")?.also { runCatching { it.close() } } != null
+            if (supported != callAudioSupported && helper != null) {
+                callAudioSupported = supported
+                Log.i(TAG, "call sound on a PC: ${if (supported) "supported" else "not supported"}")
+                onChange()
+            }
+        }.start()
+    }
+
+    /** Sends a call-sound command to the helper: the socket after its `OK`, or null. */
+    private fun askCallAudio(command: String): java.net.Socket? {
+        val (port, token) = helper ?: return null
+        val socket = runCatching {
+            java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
+                tcpNoDelay = true
+                soTimeout = CALL_AUDIO_ANSWER_MS
+                getOutputStream().write("$token\n$command\n".toByteArray())
+                getOutputStream().flush()
+            }
+        }.onFailure { Log.w(TAG, "can't reach the Elevated helper for call sound", it) }.getOrNull() ?: return null
+        // The answer line, read byte by byte so no sound after it is swallowed.
+        val answer = runCatching {
+            val line = StringBuilder()
+            while (true) {
+                val b = socket.getInputStream().read()
+                if (b < 0 || b == '\n'.code || line.length > 256) break
+                line.append(b.toChar())
+            }
+            line.toString()
+        }.getOrDefault("")
+        if (answer != "OK") {
+            Log.w(TAG, "no call sound: $answer")
+            runCatching { socket.close() }
+            return null
+        }
+        socket.soTimeout = 0
+        return socket
     }
 
     /** Lets NectarLink see which app is in front (for Pause for banking apps); false if Elevated isn't running. */
