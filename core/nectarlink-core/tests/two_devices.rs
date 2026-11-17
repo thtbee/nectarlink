@@ -3551,7 +3551,13 @@ async fn gamepad_goes_to_pcs_that_offer_it_reliably_or_by_datagram() {
     pair_qr(&mut pc, &mut phone).await;
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
     pc.node.set_device_toggle(phone_id, "remote_input", true).unwrap();
-    let pad = PadState { buttons: PadState::A | PadState::RB, lt: 200, lx: -20000, ry: 12000, ..PadState::default() };
+    let pad = PadState {
+        buttons: PadState::A | PadState::RB,
+        lt: 200,
+        lx: -20000,
+        ry: 12000,
+        ..PadState::default()
+    };
 
     // A PC with the mouse and keyboard but no controller (an older one, or a Mac).
     pc.node.update_power(PowerLevel::NotApplicable, vec![INPUT_INJECT.into()]).await;
@@ -3565,7 +3571,10 @@ async fn gamepad_goes_to_pcs_that_offer_it_reliably_or_by_datagram() {
     })
     .await;
     assert!(matches!(phone.node.remote_pad(pc_id, pad).await, Err(Error::Unsupported)));
-    assert!(matches!(phone.node.remote_input(pc_id, RemoteInput::Pad { pad }).await, Err(Error::Unsupported)));
+    assert!(matches!(
+        phone.node.remote_input(pc_id, RemoteInput::Pad { pad }).await,
+        Err(Error::Unsupported)
+    ));
 
     pc.node.update_power(PowerLevel::NotApplicable, vec![INPUT_INJECT.into(), INPUT_GAMEPAD.into()]).await;
     wait_for(&mut phone, "input.gamepad available on phone", |e| match e {

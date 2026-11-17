@@ -169,7 +169,12 @@ fn takes(shared: &Shared, event: &RemoteInput) -> bool {
 }
 
 /// Hands `event` to the platform; `wait` for a reliable request.
-fn inject(shared: &Shared, peer: &DeviceId, event: RemoteInput, wait: bool) -> std::result::Result<(), String> {
+fn inject(
+    shared: &Shared,
+    peer: &DeviceId,
+    event: RemoteInput,
+    wait: bool,
+) -> std::result::Result<(), String> {
     match event {
         RemoteInput::Pad { pad } => shared.platform.remote_pad(peer, Some(pad), wait),
         RemoteInput::PadOff => shared.platform.remote_pad(peer, None, wait),
@@ -334,7 +339,9 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                         let peer = session.peer;
                         match tokio::task::spawn_blocking(move || inject(&shared, &peer, event, true)).await {
                             Ok(Ok(())) => Envelope::empty(types::OK),
-                            Ok(Err(e)) if e == PAD_DRIVER_MISSING => Envelope::error(ErrorCode::Unsupported, e),
+                            Ok(Err(e)) if e == PAD_DRIVER_MISSING => {
+                                Envelope::error(ErrorCode::Unsupported, e)
+                            }
                             Ok(Err(e)) => Envelope::error(ErrorCode::Internal, e),
                             Err(_) => Envelope::error(ErrorCode::Internal, "input task failed"),
                         }
