@@ -160,6 +160,12 @@ pub fn compute_capabilities(
             }
         }
     }
+    #[cfg(target_os = "macos")]
+    {
+        if crate::win::vcam::is_available() {
+            caps.push(nectarlink_core::WEBCAM_VIRTUAL.into());
+        }
+    }
     #[cfg(any(windows, target_os = "linux"))]
     let mut pc_mirror_enabled = crate::pc_mirror::is_active();
     #[cfg(any(windows, target_os = "linux"))]
@@ -474,9 +480,10 @@ mod tests {
             !caps.contains(&nectarlink_core::STORAGE_WRITE.into()),
             "macOS must not advertise storage.write"
         );
-        assert!(
-            !caps.contains(&nectarlink_core::WEBCAM_VIRTUAL.into()),
-            "macOS must not advertise camera.virtual"
+        assert_eq!(
+            caps.contains(&nectarlink_core::WEBCAM_VIRTUAL.into()),
+            crate::win::vcam::is_available(),
+            "macOS must advertise camera.virtual only when the virtual camera extension is available"
         );
         assert!(!caps.contains(&nectarlink_core::PC_AUDIO.into()), "macOS must not advertise pc.audio");
         assert!(caps.contains(&nectarlink_core::RECORDER.into()), "macOS must advertise recorder");
