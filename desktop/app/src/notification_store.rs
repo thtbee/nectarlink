@@ -127,7 +127,7 @@ fn snapshot(state: &AppState) -> (Rules, Vec<HistoryEntry>) {
     (Rules { history: state.history_enabled, apps }, state.history.clone())
 }
 
-/// Saves after changes from now on, and lets history older than a day go
+/// Saves after changes from now on, and lets history older than the user keeps it go
 /// while the app runs.
 pub fn start(dir: PathBuf) {
     static PENDING: AtomicBool = AtomicBool::new(false);
@@ -217,7 +217,7 @@ mod tests {
         state.history.push(HistoryEntry {
             device: DeviceId([1; 32]),
             notification: note("old", "com.chat"),
-            removed_at: now - crate::state::HISTORY_MS - 1,
+            removed_at: now - crate::state::history_ms() - 1,
         });
         let (rules, history) = snapshot(&state);
         write(&dir.path().join(RULES_FILE), &rules).unwrap();
