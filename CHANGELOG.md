@@ -268,6 +268,11 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Linux packages always carry every language.** The .deb, .rpm, tarball and AppImage
+  now build the translations for each language offered in Settings themselves, so a
+  package can't go out missing one or carrying an old one. Thanks to
+  [@hvenanc](https://github.com/hvenanc)
+  ([#333](https://github.com/thtbee/nectarlink/pull/333)).
 - **Pairing from the PC's list of nearby phones works.** Picking a phone there said it
   couldn't reach the phone, because the phone only took pairing it started itself. While
   its pairing screen is open, the phone now accepts it from either side.
