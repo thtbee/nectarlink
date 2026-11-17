@@ -235,6 +235,7 @@ pub fn history_days() -> u32 {
 }
 
 /// How long history is kept, in milliseconds.
+#[cfg(test)]
 pub fn history_ms() -> i64 {
     days_ms(history_days())
 }
