@@ -436,6 +436,8 @@
     <string name="unlock_prompt_text">只有在你正坐在这台电脑前时才确认。</string>
     <string name="unlock_pc_toggle">用指纹解锁这台电脑</string>
     <string name="unlock_pc_toggle_hint">在这里和电脑上都打开。每次解锁都需要你的指纹。</string>
+    <string name="unlock_prompt_directly_hint">要直接弹出指纹验证而不是先点通知，请允许 NectarLink 显示在其他应用上层。</string>
+    <string name="unlock_prompt_directly_action">允许</string>
     <string name="mic_pc_toggle_hint_auto">默认开启。此电脑可以请求使用麦克风，请求后会立即开启。</string>
     <string name="start_without_asking_toggle">无需询问即可启动相机和麦克风</string>
     <string name="start_without_asking_hint">此电脑请求时，相机或麦克风会立即开启，无需在手机上轻触。需要 Elevated。没有 Elevated 时，手机会照常询问。</string>

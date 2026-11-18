@@ -452,6 +452,8 @@
     <string name="unlock_prompt_text">Yalnızca şu anda bu bilgisayarın başındaysanız onaylayın.</string>
     <string name="unlock_pc_toggle">Bu bilgisayarın kilidini parmak izinizle açın</string>
     <string name="unlock_pc_toggle_hint">Burada ve bilgisayarda açın. Her kilit açma parmak izinizi ister.</string>
+    <string name="unlock_prompt_directly_hint">Dokunulacak bir bildirim yerine parmak izi isteminin hemen açılması için NectarLink\'in diğer uygulamaların üzerinde gösterilmesine izin verin.</string>
+    <string name="unlock_prompt_directly_action">İzin ver</string>
     <string name="mic_pc_toggle_hint_auto">Varsayılan olarak açık. Bu bilgisayar mikrofonu isteyebilir ve mikrofon hemen açılır.</string>
     <string name="start_without_asking_toggle">Kamerayı ve mikrofonu sormadan başlat</string>
     <string name="start_without_asking_hint">Bu bilgisayar istediğinde telefona dokunmadan hemen açılırlar. Elevated gerekir. Elevated olmadan telefon her zamanki gibi sorar.</string>

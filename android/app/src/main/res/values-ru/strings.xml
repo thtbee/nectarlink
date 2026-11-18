@@ -444,6 +444,8 @@
     <string name="unlock_prompt_text">Подтверждайте, только если вы сейчас у этого ПК.</string>
     <string name="unlock_pc_toggle">Разблокировать этот ПК отпечатком пальца</string>
     <string name="unlock_pc_toggle_hint">Включите здесь и на ПК. Каждая разблокировка запрашивает отпечаток.</string>
+    <string name="unlock_prompt_directly_hint">Чтобы запрос отпечатка появлялся сразу, а не через уведомление, разрешите NectarLink показ поверх других приложений.</string>
+    <string name="unlock_prompt_directly_action">Разрешить</string>
     <string name="mic_pc_toggle_hint_auto">Включено по умолчанию. Этот ПК может запросить микрофон, и он сразу включается.</string>
     <string name="start_without_asking_toggle">Включать камеру и микрофон без вопросов</string>
     <string name="start_without_asking_hint">Когда этот ПК просит, они сразу включаются, без нажатия на телефоне. Нужен Elevated. Без него телефон спрашивает как обычно.</string>

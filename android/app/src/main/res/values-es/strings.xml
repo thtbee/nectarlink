@@ -458,6 +458,8 @@
     <string name="unlock_prompt_text">Confirma solo si estás ahora mismo frente a este PC.</string>
     <string name="unlock_pc_toggle">Desbloquear este PC con tu huella</string>
     <string name="unlock_pc_toggle_hint">Actívalo aquí y en el PC. Cada desbloqueo pide tu huella.</string>
+    <string name="unlock_prompt_directly_hint">Para que la huella se pida al momento en lugar de con una notificación que tocar, permite que NectarLink se muestre sobre otras apps.</string>
+    <string name="unlock_prompt_directly_action">Permitir</string>
     <string name="mic_pc_toggle_hint_auto">Activado de forma predeterminada. Este PC puede solicitar el micrófono, que se activa de inmediato.</string>
     <string name="start_without_asking_toggle">Iniciar la cámara y el micrófono sin preguntar</string>
     <string name="start_without_asking_hint">Cuando este PC lo solicite, se activarán de inmediato, sin necesidad de tocar el teléfono. Requiere Elevated. Sin él, el teléfono pedirá permiso como siempre.</string>

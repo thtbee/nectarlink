@@ -448,6 +448,8 @@
     <string name="unlock_prompt_text">今この PC の前にいる場合のみ確認してください。</string>
     <string name="unlock_pc_toggle">指紋でこの PC のロックを解除</string>
     <string name="unlock_pc_toggle_hint">ここと PC の両方でオンにします。ロック解除のたびに指紋が必要です。</string>
+    <string name="unlock_prompt_directly_hint">通知をタップせずにすぐ指紋の確認を表示するには、NectarLink に「他のアプリの上に重ねて表示」を許可してください。</string>
+    <string name="unlock_prompt_directly_action">許可</string>
     <string name="mic_pc_toggle_hint_auto">デフォルトでオン。このPCはマイクの使用をリクエストでき、すぐに有効になります。</string>
     <string name="start_without_asking_toggle">確認なしでカメラとマイクを開始</string>
     <string name="start_without_asking_hint">このPCがリクエストすると、スマートフォンを操作しなくてもすぐにオンになります。昇格が必要です。昇格していない場合は、通常通りスマートフォン側にリクエストが届きます。</string>

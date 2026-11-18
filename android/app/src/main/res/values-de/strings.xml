@@ -452,6 +452,8 @@
     <string name="unlock_prompt_text">Bestätige nur, wenn du gerade an diesem PC bist.</string>
     <string name="unlock_pc_toggle">Diesen PC mit dem Fingerabdruck entsperren</string>
     <string name="unlock_pc_toggle_hint">Hier und am PC einschalten. Jedes Entsperren fragt nach deinem Fingerabdruck.</string>
+    <string name="unlock_prompt_directly_hint">Damit die Fingerabdruck-Abfrage sofort erscheint statt einer Benachrichtigung zum Antippen, erlaube NectarLink, über anderen Apps einzublenden.</string>
+    <string name="unlock_prompt_directly_action">Erlauben</string>
     <string name="mic_pc_toggle_hint_auto">Standardmäßig ein. Dieser PC kann das Mikrofon anfordern, und es schaltet sich sofort ein.</string>
     <string name="start_without_asking_toggle">Kamera und Mikrofon ohne Nachfrage starten</string>
     <string name="start_without_asking_hint">Wenn dieser PC fragt, schalten sie sich sofort ein, ohne Tippen auf dem Telefon. Braucht Elevated. Ohne Elevated fragt das Telefon wie gewohnt.</string>

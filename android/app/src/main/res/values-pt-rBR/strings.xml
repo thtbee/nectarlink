@@ -452,6 +452,8 @@
     <string name="unlock_prompt_text">Só confirme se você estiver neste PC agora.</string>
     <string name="unlock_pc_toggle">Desbloquear este PC com sua digital</string>
     <string name="unlock_pc_toggle_hint">Ative aqui e no PC. Cada desbloqueio pede sua digital.</string>
+    <string name="unlock_prompt_directly_hint">Para pedir a digital na hora, em vez de uma notificação para tocar, permita que o NectarLink sobreponha outros apps.</string>
+    <string name="unlock_prompt_directly_action">Permitir</string>
     <string name="mic_pc_toggle_hint_auto">Ativado por padrão. Este PC pode pedir o microfone, e ele liga na hora.</string>
     <string name="start_without_asking_toggle">Iniciar a câmera e o microfone sem pedir confirmação</string>
     <string name="start_without_asking_hint">Quando este PC pedir, eles ligam na hora, sem precisar tocar no celular. Precisa do Elevated. Sem ele, o celular pergunta como sempre.</string>

@@ -448,6 +448,8 @@
     <string name="unlock_prompt_text">Chỉ xác nhận nếu bạn đang ở trước PC này.</string>
     <string name="unlock_pc_toggle">Mở khóa PC này bằng vân tay</string>
     <string name="unlock_pc_toggle_hint">Bật ở đây và trên PC. Mỗi lần mở khóa đều cần vân tay.</string>
+    <string name="unlock_prompt_directly_hint">Để hiện ngay yêu cầu vân tay thay vì thông báo cần chạm, hãy cho phép NectarLink hiển thị trên các ứng dụng khác.</string>
+    <string name="unlock_prompt_directly_action">Cho phép</string>
 <string name="mic_pc_toggle_hint_auto">Bật theo mặc định. PC này có thể xin dùng micrô và micrô sẽ bật ngay.</string>
 <string name="start_without_asking_toggle">Bật máy ảnh và micrô mà không cần hỏi</string>
 <string name="start_without_asking_hint">Khi PC này yêu cầu, chúng sẽ bật ngay mà không cần chạm trên điện thoại. Cần quyền Elevated. Nếu không có, điện thoại sẽ hỏi như thường lệ.</string>

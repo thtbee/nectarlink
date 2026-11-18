@@ -13,6 +13,9 @@ import android.hardware.biometrics.BiometricPrompt
 import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
+import android.os.Handler
+import android.os.Looper
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
@@ -75,8 +78,20 @@ object UnlockPrompts {
             .putExtra(UnlockPromptActivity.EXTRA_ID, id)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
         // Straight to the prompt when Android lets this app open a screen now (the app is in
-        // front, or allowed as the PC's companion app); the notification otherwise.
+        // front, may display over other apps, or is the PC's companion app); the notification
+        // otherwise. Android drops a blocked start silently, so when it may well have worked the
+        // notification waits a moment and only comes if the prompt didn't show.
         runCatching { context.startActivity(open) }
+        if (Settings.canDrawOverlays(context)) {
+            Handler(Looper.getMainLooper()).postDelayed({
+                if (pending[id] === request && !request.showing.get()) notify(context, id, request, open)
+            }, 1_500L)
+        } else {
+            notify(context, id, request, open)
+        }
+    }
+
+    private fun notify(context: Context, id: Int, request: Pending, open: Intent) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
