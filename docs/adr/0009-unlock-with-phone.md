@@ -152,10 +152,18 @@ What each side holds:
   `unlock/UnlockPrompts.kt` (BiometricPrompt with a CryptoObject).
 - Credential provider: `desktop/credprov` (Rust; only for the account signed in to the locked session; the
   pipe client checks the server is the NectarLink next to the DLL and connects
-  at identification level; 40 s cap; panics caught).
+  at identification level; 40 s cap; panics caught). Its tile carries a picture
+  (Windows 10 and later list a provider under "Sign-in options" by it), is never
+  the default (the user picks it), and asks the phone as soon as it's picked,
+  once per lock screen; its arrow asks again. What LogonUI asked and what it answered go to
+  the Application event log (source "NectarLink Unlock"), never names, SIDs or
+  passwords.
 - PC app: `win/unlock.rs` (registration, the SYSTEM-only pipe answering
   LogonUI in this session while it's locked, enrolling with a Windows password
-  check). The PC offers `unlock.pc` only while the provider is registered.
+  check). The app runs as the user and can't open LogonUI's process, so it
+  checks the caller from what it can see: the client's token (read while
+  impersonating it at identification level) is SYSTEM, it's in this session,
+  and its program is `logonui.exe`. The PC offers `unlock.pc` only while the provider is registered.
 
 ## Test plan before release
 

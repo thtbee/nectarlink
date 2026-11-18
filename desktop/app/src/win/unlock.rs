@@ -31,26 +31,30 @@ use windows::{
             Authorization::{
                 ConvertSidToStringSidW, ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1,
             },
-            GetTokenInformation, LOGON32_LOGON_INTERACTIVE, LOGON32_LOGON_NETWORK, LOGON32_PROVIDER_DEFAULT,
-            LogonUserW, PSECURITY_DESCRIPTOR, SECURITY_ATTRIBUTES, TOKEN_QUERY, TOKEN_USER, TokenUser,
+            GetTokenInformation, IsWellKnownSid, LOGON32_LOGON_INTERACTIVE, LOGON32_LOGON_NETWORK,
+            LOGON32_PROVIDER_DEFAULT, LogonUserW, PSECURITY_DESCRIPTOR, RevertToSelf, SECURITY_ATTRIBUTES,
+            TOKEN_QUERY, TOKEN_USER, TokenUser, WinLocalSystemSid,
         },
         Storage::FileSystem::{
             FILE_FLAG_FIRST_PIPE_INSTANCE, FlushFileBuffers, PIPE_ACCESS_DUPLEX, ReadFile, WriteFile,
         },
         System::{
+            Diagnostics::ToolHelp::{
+                CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
+                TH32CS_SNAPPROCESS,
+            },
             Pipes::{
                 ConnectNamedPipe, CreateNamedPipeW, DisconnectNamedPipe, GetNamedPipeClientProcessId,
-                PIPE_READMODE_MESSAGE, PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_MESSAGE, PIPE_WAIT,
+                GetNamedPipeClientSessionId, ImpersonateNamedPipeClient, PIPE_READMODE_MESSAGE,
+                PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_MESSAGE, PIPE_WAIT,
             },
             Registry::{HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ, RegDeleteTreeW, RegGetValueW},
             RemoteDesktop::{
                 ProcessIdToSessionId, WTS_CURRENT_SERVER_HANDLE, WTSFreeMemory, WTSINFOEXW,
                 WTSQuerySessionInformationW, WTSSessionInfoEx,
             },
-            SystemInformation::GetSystemDirectoryW,
             Threading::{
-                GetCurrentProcess, GetCurrentProcessId, OpenProcess, OpenProcessToken, PROCESS_NAME_WIN32,
-                PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW,
+                GetCurrentProcess, GetCurrentProcessId, GetCurrentThread, OpenProcessToken, OpenThreadToken,
             },
         },
     },
@@ -274,33 +278,88 @@ fn session_locked(session: u32) -> bool {
     locked
 }
 
-/// Whether `pid` is this Windows's LogonUI, in `session`.
-fn is_logonui(pid: u32, session: u32) -> bool {
+/// Whether the pipe's client is LogonUI in `session`: running as SYSTEM (as
+/// the pipe's ACL already demands), in this session, from `logonui.exe`. This
+/// app runs as the user, so it can't open LogonUI's process to read its path;
+/// it reads the client's token while impersonating it at identification level
+/// (all the credential provider allows) instead. Call after reading from the
+/// pipe: Windows impersonates a client only once it has written.
+fn is_logonui(pipe: HANDLE, pid: u32, session: u32) -> bool {
+    // From the pipe, not the process: asking for a SYSTEM process's session
+    // needs a handle to it, which this app can't have.
     let mut their_session = u32::MAX;
-    // SAFETY: valid out pointer.
-    if unsafe { ProcessIdToSessionId(pid, &mut their_session) }.is_err() || their_session != session {
+    // SAFETY: a connected server handle and a valid out pointer.
+    if unsafe { GetNamedPipeClientSessionId(pipe, &mut their_session) }.is_err() || their_session != session {
+        tracing::warn!("unlock pipe: the caller is in another session");
         return false;
     }
-    let mut system = [0u16; 260];
-    // SAFETY: `system` is a valid buffer.
-    let len = unsafe { GetSystemDirectoryW(Some(&mut system)) } as usize;
-    if len == 0 || len >= system.len() {
+    if !client_is_system(pipe) {
+        tracing::warn!("unlock pipe: the caller isn't SYSTEM");
         return false;
     }
-    let expected = format!(r"{}\logonui.exe", String::from_utf16_lossy(&system[..len])).to_lowercase();
-    // SAFETY: query access only; closed below.
-    let Ok(process) = (unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }) else {
+    if !process_name(pid).is_some_and(|name| name.eq_ignore_ascii_case("logonui.exe")) {
+        tracing::warn!("unlock pipe: the caller isn't LogonUI");
         return false;
-    };
-    let mut path = [0u16; 1024];
-    let mut plen = path.len() as u32;
-    // SAFETY: `path` and `plen` describe a valid buffer.
-    let ok = unsafe {
-        QueryFullProcessImageNameW(process, PROCESS_NAME_WIN32, PWSTR(path.as_mut_ptr()), &mut plen)
+    }
+    true
+}
+
+/// Whether the pipe's client runs as SYSTEM.
+fn client_is_system(pipe: HANDLE) -> bool {
+    // SAFETY: a connected pipe the client has written to; reverted below.
+    if unsafe { ImpersonateNamedPipeClient(pipe) }.is_err() {
+        return false;
+    }
+    let mut token = HANDLE::default();
+    // SAFETY: this thread's impersonation token, read as the app itself.
+    let opened = unsafe { OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, true, &mut token) };
+    // SAFETY: ends the impersonation started above, whatever happened.
+    let reverted = unsafe { RevertToSelf() };
+    if reverted.is_err() {
+        // Never carry on as someone else.
+        std::process::abort();
+    }
+    if opened.is_err() {
+        return false;
+    }
+    let mut buf = [0u8; 256];
+    let mut len = 0u32;
+    // SAFETY: `buf` is large enough for a TOKEN_USER and its SID.
+    let read = unsafe {
+        GetTokenInformation(token, TokenUser, Some(buf.as_mut_ptr().cast()), buf.len() as u32, &mut len)
     };
     // SAFETY: opened above.
-    let _ = unsafe { CloseHandle(process) };
-    ok.is_ok() && String::from_utf16_lossy(&path[..plen as usize]).to_lowercase() == expected
+    let _ = unsafe { CloseHandle(token) };
+    if read.is_err() {
+        return false;
+    }
+    // SAFETY: Windows filled `buf` with a TOKEN_USER.
+    let user = unsafe { std::ptr::read_unaligned(buf.as_ptr().cast::<TOKEN_USER>()) };
+    // SAFETY: the SID points into `buf`, still alive.
+    unsafe { IsWellKnownSid(user.User.Sid, WinLocalSystemSid) }.as_bool()
+}
+
+/// The file name of process `pid`'s program, without opening the process.
+fn process_name(pid: u32) -> Option<String> {
+    // SAFETY: a snapshot handle, closed below.
+    let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) }.ok()?;
+    let mut entry =
+        PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
+    let mut name = None;
+    // SAFETY: `entry` is a valid, sized PROCESSENTRY32W.
+    let mut more = unsafe { Process32FirstW(snapshot, &mut entry) }.is_ok();
+    while more {
+        if entry.th32ProcessID == pid {
+            let len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(entry.szExeFile.len());
+            name = Some(String::from_utf16_lossy(&entry.szExeFile[..len]));
+            break;
+        }
+        // SAFETY: as above.
+        more = unsafe { Process32NextW(snapshot, &mut entry) }.is_ok();
+    }
+    // SAFETY: opened above.
+    let _ = unsafe { CloseHandle(snapshot) };
+    name
 }
 
 static SERVING: AtomicBool = AtomicBool::new(false);
@@ -388,16 +447,18 @@ fn run_pipe() -> Result<(), String> {
 }
 
 fn serve_one(pipe: HANDLE, session: u32, user: &str) {
-    let mut client = 0u32;
-    // SAFETY: a connected server handle.
-    if unsafe { GetNamedPipeClientProcessId(pipe, &mut client) }.is_err() || !is_logonui(client, session) {
-        tracing::warn!("unlock pipe: refused a caller that isn't this session's LogonUI");
-        return;
-    }
     let mut request = [0u8; 256];
     let mut read = 0u32;
     // SAFETY: `request` is a valid buffer.
     if unsafe { ReadFile(pipe, Some(&mut request), Some(&mut read), None) }.is_err() {
+        return;
+    }
+    let mut client = 0u32;
+    // SAFETY: a connected server handle.
+    if unsafe { GetNamedPipeClientProcessId(pipe, &mut client) }.is_err()
+        || !is_logonui(pipe, client, session)
+    {
+        tracing::warn!("unlock pipe: refused a caller that isn't this session's LogonUI");
         return;
     }
     let (status, mut password) = match wire::parse_request(&request[..read as usize]) {

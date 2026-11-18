@@ -20,18 +20,19 @@ use windows::{
     Win32::{
         Foundation::{E_INVALIDARG, E_NOTIMPL, E_POINTER, E_UNEXPECTED, NTSTATUS},
         Globalization::GetUserDefaultUILanguage,
-        Graphics::Gdi::HBITMAP,
+        Graphics::Gdi::{BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CreateDIBSection, DIB_RGB_COLORS, HBITMAP},
         Storage::EnhancedStorage::PKEY_Identity_QualifiedUserName,
         System::Com::{CoTaskMemAlloc, CoTaskMemFree},
         UI::Shell::{
-            CPFG_CREDENTIAL_PROVIDER_LABEL, CPFIS_NONE, CPFS_DISPLAY_IN_BOTH, CPFS_DISPLAY_IN_SELECTED_TILE,
-            CPFT_LARGE_TEXT, CPFT_SMALL_TEXT, CPFT_SUBMIT_BUTTON, CPGSR_NO_CREDENTIAL_NOT_FINISHED,
-            CPGSR_RETURN_CREDENTIAL_FINISHED, CPSI_ERROR, CPSI_NONE, CPUS_LOGON, CPUS_UNLOCK_WORKSTATION,
-            CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION, CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR,
-            CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE, CREDENTIAL_PROVIDER_FIELD_STATE,
-            CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE, CREDENTIAL_PROVIDER_NO_DEFAULT,
-            CREDENTIAL_PROVIDER_STATUS_ICON, CREDENTIAL_PROVIDER_USAGE_SCENARIO, ICredentialProvider,
-            ICredentialProvider_Impl, ICredentialProviderCredential, ICredentialProviderCredential_Impl,
+            CPFG_CREDENTIAL_PROVIDER_LABEL, CPFG_CREDENTIAL_PROVIDER_LOGO, CPFIS_NONE, CPFS_DISPLAY_IN_BOTH,
+            CPFS_DISPLAY_IN_SELECTED_TILE, CPFT_LARGE_TEXT, CPFT_SMALL_TEXT, CPFT_SUBMIT_BUTTON,
+            CPFT_TILE_IMAGE, CPGSR_NO_CREDENTIAL_NOT_FINISHED, CPGSR_RETURN_CREDENTIAL_FINISHED, CPSI_ERROR,
+            CPSI_NONE, CPUS_LOGON, CPUS_UNLOCK_WORKSTATION, CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION,
+            CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR, CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE,
+            CREDENTIAL_PROVIDER_FIELD_STATE, CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE,
+            CREDENTIAL_PROVIDER_NO_DEFAULT, CREDENTIAL_PROVIDER_STATUS_ICON,
+            CREDENTIAL_PROVIDER_USAGE_SCENARIO, ICredentialProvider, ICredentialProvider_Impl,
+            ICredentialProviderCredential, ICredentialProviderCredential_Impl,
             ICredentialProviderCredential2, ICredentialProviderCredential2_Impl,
             ICredentialProviderCredentialEvents, ICredentialProviderEvents, ICredentialProviderSetUserArray,
             ICredentialProviderSetUserArray_Impl, ICredentialProviderUserArray, SHStrDupW,
@@ -43,6 +44,7 @@ use windows::{
 use crate::{
     CLSID_NECTARLINK_UNLOCK, kerb, pipe, session,
     text::{self, Text},
+    trace::note,
     wire::{self, Status},
 };
 
@@ -74,7 +76,38 @@ impl Drop for ObjectGuard {
 const FIELD_TITLE: u32 = 0;
 const FIELD_STATUS: u32 = 1;
 const FIELD_SUBMIT: u32 = 2;
-const FIELD_COUNT: u32 = 3;
+/// The tile's picture, which Windows 10 and later also show as the icon
+/// under "Sign-in options".
+const FIELD_TILE: u32 = 3;
+const FIELD_COUNT: u32 = 4;
+
+/// The tile's picture: NectarLink's icon, 128 px square, as top-down BGRA rows.
+const TILE: &[u8; 128 * 128 * 4] = include_bytes!("tile.bgra");
+
+/// A new bitmap of [`TILE`]; LogonUI deletes it.
+fn tile_bitmap() -> windows::core::Result<HBITMAP> {
+    let info = BITMAPINFO {
+        bmiHeader: BITMAPINFOHEADER {
+            biSize: size_of::<BITMAPINFOHEADER>() as u32,
+            biWidth: 128,
+            biHeight: -128,
+            biPlanes: 1,
+            biBitCount: 32,
+            biCompression: BI_RGB.0,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut bits = std::ptr::null_mut();
+    // SAFETY: `info` describes a 128x128 32-bit DIB; Windows allocates `bits` for it.
+    let bitmap = unsafe { CreateDIBSection(None, &info, DIB_RGB_COLORS, &mut bits, None, 0) }?;
+    if bits.is_null() {
+        return Err(E_UNEXPECTED.into());
+    }
+    // SAFETY: `bits` holds exactly TILE.len() bytes for this bitmap.
+    unsafe { std::ptr::copy_nonoverlapping(TILE.as_ptr(), bits.cast::<u8>(), TILE.len()) };
+    Ok(bitmap)
+}
 
 /// Runs `f`, turning a panic into `E_UNEXPECTED` instead of unwinding into LogonUI.
 fn guarded<T>(f: impl FnOnce() -> windows::core::Result<T>) -> windows::core::Result<T> {
@@ -147,6 +180,7 @@ impl ICredentialProvider_Impl for Provider_Impl {
             // (sign-in and unlock were merged), some setups for an unlock. Never
             // other password prompts (CredUI, changing a password). The tile is
             // then only for the account signed in to this session.
+            note!("usage scenario {}", cpus.0);
             if cpus == CPUS_LOGON || cpus == CPUS_UNLOCK_WORKSTATION {
                 self.scenario.store(cpus.0, Ordering::SeqCst);
                 Ok(())
@@ -189,6 +223,7 @@ impl ICredentialProvider_Impl for Provider_Impl {
                 FIELD_TITLE => (CPFT_LARGE_TEXT, say(Text::Title), CPFG_CREDENTIAL_PROVIDER_LABEL),
                 FIELD_STATUS => (CPFT_SMALL_TEXT, say(Text::Hint), GUID::zeroed()),
                 FIELD_SUBMIT => (CPFT_SUBMIT_BUTTON, say(Text::Unlock), GUID::zeroed()),
+                FIELD_TILE => (CPFT_TILE_IMAGE, say(Text::Title), CPFG_CREDENTIAL_PROVIDER_LOGO),
                 _ => return Err(E_INVALIDARG.into()),
             };
             let label = dup(label)?;
@@ -224,12 +259,17 @@ impl ICredentialProvider_Impl for Provider_Impl {
                 return Err(E_POINTER.into());
             }
             // Nothing to offer unless NectarLink is running in this session.
-            let active = self.scenario.load(Ordering::SeqCst) != 0 && pipe::server_present();
-            let count =
-                if active { self.credentials.lock().map_err(|_| E_UNEXPECTED)?.len() as u32 } else { 0 };
+            let scenario = self.scenario.load(Ordering::SeqCst);
+            let served = scenario != 0 && pipe::server_present();
+            let tiles = self.credentials.lock().map_err(|_| E_UNEXPECTED)?.len() as u32;
+            let count = if served { tiles } else { 0 };
+            note!(
+                "credential count: scenario {scenario}, NectarLink running {served}, tiles {tiles}, offering {count}"
+            );
             // SAFETY: checked non-null above; LogonUI owns them.
             unsafe {
                 *pdwcount = count;
+                // Never the default: the user picks the tile under Sign-in options.
                 *pdwdefault = CREDENTIAL_PROVIDER_NO_DEFAULT;
                 *pbautologonwithdefault = BOOL(0);
             }
@@ -257,19 +297,23 @@ impl ICredentialProviderSetUserArray_Impl for Provider_Impl {
             // Only the account already signed in to this session: nobody at the
             // first sign-in after a restart, so no tile then.
             let Some(signed_in) = session::signed_in_sid() else {
+                note!("user array: nobody is signed in to this session");
                 *self.credentials.lock().map_err(|_| E_UNEXPECTED)? = credentials;
                 return Ok(());
             };
             // SAFETY: a valid user array from LogonUI; each string is ours to free.
             unsafe {
+                note!("user array: {} users", users.GetCount()?);
                 for i in 0..users.GetCount()? {
                     let user = users.GetAt(i)?;
                     let (Some(sid), Some(qualified)) =
                         (take(user.GetSid()?), take(user.GetStringValue(&PKEY_Identity_QualifiedUserName)?))
                     else {
+                        note!("user array: user {i} has no SID or name");
                         continue;
                     };
                     if !wire::user_ok(&sid) || sid != signed_in {
+                        note!("user array: user {i} isn't the one signed in");
                         continue;
                     }
                     let credential: ICredentialProviderCredential2 =
@@ -291,6 +335,8 @@ pub struct Credential {
     qualified: String,
     scenario: Arc<AtomicI32>,
     status: Mutex<String>,
+    /// Whether this lock screen already asked the phone by itself.
+    asked: std::sync::atomic::AtomicBool,
     _events: Mutex<Option<ICredentialProviderCredentialEvents>>,
     _guard: ObjectGuard,
 }
@@ -309,6 +355,7 @@ impl Credential {
             qualified,
             scenario,
             status: Mutex::new(say(Text::Hint).to_owned()),
+            asked: std::sync::atomic::AtomicBool::new(false),
             _events: Mutex::default(),
             _guard: ObjectGuard::new(),
         }
@@ -401,8 +448,10 @@ impl ICredentialProviderCredential_Impl for Credential_Impl {
     }
 
     fn SetSelected(&self) -> windows::core::Result<BOOL> {
-        // Never submit by itself: the user presses Unlock.
-        Ok(BOOL(0))
+        // Picking the tile asks the phone right away, once per lock screen:
+        // after a no or a timeout the tile is selected again, and the arrow
+        // asks again only when pressed.
+        Ok(BOOL::from(!self.asked.swap(true, Ordering::SeqCst)))
     }
 
     fn SetDeselected(&self) -> windows::core::Result<()> {
@@ -419,7 +468,7 @@ impl ICredentialProviderCredential_Impl for Credential_Impl {
             return Err(E_POINTER.into());
         }
         let state = match field {
-            FIELD_TITLE => CPFS_DISPLAY_IN_BOTH,
+            FIELD_TITLE | FIELD_TILE => CPFS_DISPLAY_IN_BOTH,
             FIELD_STATUS | FIELD_SUBMIT => CPFS_DISPLAY_IN_SELECTED_TILE,
             _ => return Err(E_INVALIDARG.into()),
         };
@@ -439,8 +488,8 @@ impl ICredentialProviderCredential_Impl for Credential_Impl {
         })
     }
 
-    fn GetBitmapValue(&self, _field: u32) -> windows::core::Result<HBITMAP> {
-        Err(E_NOTIMPL.into())
+    fn GetBitmapValue(&self, field: u32) -> windows::core::Result<HBITMAP> {
+        guarded(|| if field == FIELD_TILE { tile_bitmap() } else { Err(E_INVALIDARG.into()) })
     }
 
     fn GetCheckboxValue(
@@ -503,6 +552,7 @@ impl ICredentialProviderCredential_Impl for Credential_Impl {
             }
             match self.unlock() {
                 Ok(serialization) => {
+                    note!("unlock: the phone said yes, handing Windows the credential");
                     // SAFETY: checked non-null above.
                     unsafe {
                         *pcpcs = serialization;
@@ -510,7 +560,10 @@ impl ICredentialProviderCredential_Impl for Credential_Impl {
                     }
                     set_status(ppszoptionalstatustext, pcpsioptionalstatusicon, None);
                 }
-                Err(text) => set_status(ppszoptionalstatustext, pcpsioptionalstatusicon, Some(say(text))),
+                Err(text) => {
+                    note!("unlock: no credential ({text:?})");
+                    set_status(ppszoptionalstatustext, pcpsioptionalstatusicon, Some(say(text)));
+                }
             }
             Ok(())
         })
@@ -524,6 +577,7 @@ impl ICredentialProviderCredential_Impl for Credential_Impl {
         pcpsioptionalstatusicon: *mut CREDENTIAL_PROVIDER_STATUS_ICON,
     ) -> windows::core::Result<()> {
         guarded(|| {
+            note!("result from Windows: {:#x}", ntsstatus.0);
             let message = ntsstatus.is_err().then(|| say(Text::Rejected));
             set_status(ppszoptionalstatustext, pcpsioptionalstatusicon, message);
             Ok(())
@@ -540,4 +594,26 @@ impl ICredentialProviderCredential2_Impl for Credential_Impl {
 /// The provider as LogonUI asks for it.
 pub fn provider() -> ICredentialProvider {
     Provider::new().into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use windows::Win32::Graphics::Gdi::{BITMAP, DeleteObject, GetObjectW, HGDIOBJ};
+
+    #[test]
+    fn the_tile_has_its_picture() {
+        let bitmap = tile_bitmap().unwrap();
+        let mut info = BITMAP::default();
+        // SAFETY: a live bitmap and a BITMAP-sized buffer; deleted below.
+        unsafe {
+            let read =
+                GetObjectW(HGDIOBJ(bitmap.0), size_of::<BITMAP>() as i32, Some((&raw mut info).cast()));
+            assert_eq!(read as usize, size_of::<BITMAP>());
+            let _ = DeleteObject(HGDIOBJ(bitmap.0));
+        }
+        assert_eq!((info.bmWidth, info.bmHeight, info.bmBitsPixel), (128, 128, 32));
+        let provider = Provider::new();
+        assert_eq!(Provider_Impl::GetFieldDescriptorCount(&provider.into_outer()).unwrap(), FIELD_COUNT);
+    }
 }

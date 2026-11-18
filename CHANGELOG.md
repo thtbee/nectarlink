@@ -9,7 +9,9 @@ change things that need a step from you, and its notes say so.
 ### New
 
 - **Unlock the PC with your phone's fingerprint (Windows, Android 11+).** On the lock
-  screen, pick Unlock with phone and confirm on the phone. Off by default on both sides;
+  screen, pick NectarLink under Sign-in options and confirm with your fingerprint on the
+  phone; allow NectarLink to display over other apps and the fingerprint prompt opens
+  straight away instead of a notification to tap. Off by default on both sides;
   turning it on asks for an administrator once and for your Windows password once. The
   password is kept encrypted on the PC with a key only the phone holds, behind its
   fingerprint. Only for unlocking, not the first sign-in after a restart

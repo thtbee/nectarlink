@@ -22,6 +22,8 @@ mod provider;
 mod session;
 #[cfg(windows)]
 mod text;
+#[cfg(windows)]
+mod trace;
 
 pub use wire::CLSID_TEXT;
 
@@ -153,7 +155,7 @@ mod com {
                 // The lock screen asks for either (Windows 10 merged them).
                 assert!(provider.SetUsageScenario(CPUS_UNLOCK_WORKSTATION, 0).is_ok());
                 assert!(provider.SetUsageScenario(CPUS_LOGON, 0).is_ok());
-                assert_eq!(provider.GetFieldDescriptorCount().unwrap(), 3);
+                assert_eq!(provider.GetFieldDescriptorCount().unwrap(), 4);
                 let (mut count, mut default, mut auto) = (9, 0, BOOL(1));
                 provider.GetCredentialCount(&mut count, &mut default, &mut auto).unwrap();
                 // No user array yet, and no NectarLink pipe in a test run: no tile.
