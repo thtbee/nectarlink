@@ -65,14 +65,26 @@ What each side holds:
 ### Guards
 
 - **Only on the local network**, never over relays or mobile data, and only
-  with a live session to the enrolled phone. Optionally, BLE proximity (the
-  beacon already in `ble_beacon`).
+  with a live session to the enrolled phone: the USB cable, or a direct path
+  whose address is on this network (private or link-local, a tailnet, or one
+  the phone announced over mDNS here). Away mode doesn't widen it, and a
+  session with no selected path is refused. Both sides check before the phone
+  asks its owner, and the PC checks again before opening the password.
+  Optionally, BLE proximity (the beacon already in `ble_beacon`).
 - **Rate limit:** 5 failed attempts in 15 minutes locks the feature for 15
-  minutes and notifies the user on both devices.
+  minutes and notifies the user on both devices. A failed attempt is a key that
+  doesn't open the password, an answer from the wrong device, or a prompt the
+  phone's owner declined or didn't answer, so the lock screen can't keep asking.
 - **Revocable:** unpairing, turning the feature off, changing the Windows
   password (which makes the ciphertext useless; the PC asks to re-enroll),
   or a new fingerprint on the phone (the Keystore key is invalidated) all end
-  it.
+  it. An unlock already waiting on the phone ends too: the PC opens the
+  password only if the same enrollment is still there. When Windows refuses
+  the password the tile handed it (wrong password, not a locked account), the
+  tile tells NectarLink over the pipe, which forgets that user's enrollment and
+  asks to set it up again, so an old password isn't tried again and again under
+  an account lockout policy. A forget message that doesn't parse, or names an
+  invalid user, is ignored rather than read as "everyone".
 - **Unlock only:** since Windows 10 the lock screen mostly asks providers for
   `CPUS_LOGON` (sign-in and unlock were merged; `CPUS_UNLOCK_WORKSTATION` only in
   some setups), so the provider takes both but offers its tile only to the account

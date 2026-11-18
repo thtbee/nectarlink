@@ -332,6 +332,20 @@ impl Session {
         }
     }
 
+    /// The address of the path the connection uses now, when that's a direct IP path
+    /// (not a relay, not the USB tunnel). `None` while no path is selected.
+    pub(crate) fn selected_direct_addr(&self) -> Option<std::net::SocketAddr> {
+        let paths = self.conn.paths();
+        let selected = paths.iter().find(|p| p.is_selected())?;
+        if selected.is_relay() {
+            return None;
+        }
+        match selected.remote_addr() {
+            iroh::TransportAddr::Ip(addr) if !self.is_usb_addr(addr) => Some(*addr),
+            _ => None,
+        }
+    }
+
     /// The peer's direct IP addresses currently in use, for reconnecting later.
     pub fn remote_ip_addrs(&self) -> Vec<std::net::SocketAddr> {
         self.conn

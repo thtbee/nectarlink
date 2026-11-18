@@ -304,9 +304,20 @@ impl KeyRefusal {
 }
 
 /// Whether unlocking may happen over `session`: the toggle is on here for the
-/// other device, and the path is direct (never a relay).
+/// other device, and the two are on the same network right now.
 fn allowed(shared: &Shared, session: &Session) -> bool {
-    shared.toggle_on(&session.peer, TOGGLE) && session.path() != ConnectionPath::Relay
+    shared.toggle_on(&session.peer, TOGGLE) && on_local_network(shared, session)
+}
+
+/// Whether `session` runs over the USB cable or a direct path to an address on this
+/// network: a private or link-local one, a tailnet one, or one the peer announced over
+/// mDNS here (`Shared::is_lan_peer_ip`). Never a relay or an internet address, even
+/// with away mode on, and not while no path is selected.
+fn on_local_network(shared: &Shared, session: &Session) -> bool {
+    if session.path() == ConnectionPath::Usb {
+        return true;
+    }
+    session.selected_direct_addr().is_some_and(|addr| shared.is_lan_peer_ip(&session.peer, addr.ip()))
 }
 
 fn binding(pc: DeviceId, phone: DeviceId, user: &str) -> Binding {
@@ -380,8 +391,17 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         },
         // Either side: the other one turned it off.
         types::UNLOCK_FORGET => {
-            let forget = env.body::<UnlockForget>().unwrap_or_default();
-            let user = forget.user.as_deref().filter(|u| unlock::user_ok_pub(u));
+            // No user means every user; a body that doesn't parse, or names a user
+            // that isn't valid, means nothing.
+            let Ok(forget) = env.body::<UnlockForget>() else {
+                tracing::warn!(peer = %session.peer.short(), "ignored an unlock.forget that doesn't parse");
+                return Ok(true);
+            };
+            if forget.user.as_deref().is_some_and(|u| !unlock::user_ok_pub(u)) {
+                tracing::warn!(peer = %session.peer.short(), "ignored an unlock.forget for an invalid user");
+                return Ok(true);
+            }
+            let user = forget.user.as_deref();
             let _ = shared.store.remove_unlock(&session.peer, user);
             let (platform, pc, user) = (shared.platform.clone(), session.peer, user.map(str::to_owned));
             let _ = tokio::task::spawn_blocking(move || platform.unlock_forget(&pc, user.as_deref())).await;
@@ -463,12 +483,29 @@ pub(crate) async fn password(shared: &Arc<Shared>, session: &Arc<Session>, user:
     let release: UnlockRelease = match reply.and_then(|r| Ok(r.expect_body(types::UNLOCK_RELEASE)?)) {
         Ok(release) => release,
         Err(e) => {
-            // The request is used up; a key that's gone means enrolling again.
-            let _ = lock(&shared.unlock_requests).answer(&id, session.peer, Instant::now());
+            // The request is used up; a key that's gone means enrolling again. A
+            // declined or unanswered prompt counts toward the lockout, so the lock
+            // screen can't keep asking the phone's owner.
+            let now = Instant::now();
+            let mut requests = lock(&shared.unlock_requests);
+            let _ = requests.answer(&id, session.peer, now);
+            if matches!(e, Error::Denied | Error::Timeout) {
+                requests.failed(now);
+            }
             return Err(e);
         }
     };
     let key = Secret::new(release.key);
+    // Unlocking may have been turned off, the phone forgotten, or the network left
+    // while the phone asked its owner: then the key opens nothing.
+    let still_enrolled = shared
+        .store
+        .unlock_entry(&session.peer, user)?
+        .is_some_and(|now| now.enrolled_at == entry.enrolled_at && now.wrapped == entry.wrapped);
+    if !still_enrolled || !allowed(shared, session) {
+        let _ = lock(&shared.unlock_requests).answer(&id, session.peer, Instant::now());
+        return Err(Error::Denied);
+    }
     let now = Instant::now();
     let mut requests = lock(&shared.unlock_requests);
     if release.request.as_slice() != id.as_slice() || key.expose().len() != KEY_LEN {

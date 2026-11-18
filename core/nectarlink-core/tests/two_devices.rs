@@ -3771,6 +3771,41 @@ async fn a_phone_unlocks_its_pc_only_as_enrolled_and_with_its_biometric() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn declined_unlock_prompts_count_toward_the_lockout() {
+    use nectarlink_core::unlock::{MAX_FAILURES, Secret};
+
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let sid = "S-1-5-21-1004336348-1177238915-682003330-1001";
+    pc.node.update_power(PowerLevel::NotApplicable, vec!["unlock.pc".into()]).await;
+    phone.node.update_power(PowerLevel::Basic, vec!["unlock.key".into()]).await;
+    pc.node.set_device_toggle(phone_id, "unlock", true).unwrap();
+    phone.node.set_device_toggle(pc_id, "unlock", true).unwrap();
+    let deadline = tokio::time::Instant::now() + WAIT;
+    loop {
+        let r = pc.node.unlock_enroll(phone_id, sid, "bee", Secret::new(b"pw".to_vec())).await;
+        if r.is_ok() {
+            break;
+        }
+        assert!(tokio::time::Instant::now() < deadline, "never enrolled: {r:?}");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+
+    // Someone at the lock screen keeps asking; the phone's owner keeps saying no.
+    *phone.platform.unlock_answer.lock().unwrap() = FakeKeystore::Declines;
+    for _ in 0..MAX_FAILURES {
+        assert!(matches!(pc.node.unlock_password(phone_id, sid).await, Err(Error::Denied)));
+    }
+    // Then it stops asking for a while, even if the owner would agree now.
+    *phone.platform.unlock_answer.lock().unwrap() = FakeKeystore::Works;
+    let asked = phone.platform.unlock_asks.lock().unwrap().len();
+    assert!(matches!(pc.node.unlock_password(phone_id, sid).await, Err(Error::Denied)), "locked out");
+    assert_eq!(phone.platform.unlock_asks.lock().unwrap().len(), asked, "the phone isn't asked again");
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn voice_recordings_arrive_with_markers_and_respect_capability_and_toggle() {
     use nectarlink_core::{RECORDER, RecordingMarker, TransferFailure};
 
