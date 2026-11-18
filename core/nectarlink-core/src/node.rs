@@ -1867,6 +1867,7 @@ impl Node {
     /// networking, and begins reconnecting to paired devices.
     pub async fn start(config: NodeConfig, platform: Arc<dyn Platform>) -> Result<Node> {
         std::fs::create_dir_all(&config.data_dir)?;
+        crate::store::keep_private(&config.data_dir);
         let protector = config.key_protector.clone().unwrap_or_else(identity::default_protector);
         let secret = identity::load_or_create(&config.data_dir, protector.as_ref())?;
         let store = Store::open(&config.data_dir)?;

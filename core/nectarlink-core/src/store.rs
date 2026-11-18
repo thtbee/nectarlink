@@ -672,9 +672,65 @@ pub(crate) struct Store {
     toggles: Mutex<HashMap<DeviceId, Arc<HashMap<String, bool>>>>,
 }
 
+/// On Unix, takes the group's and others' access off NectarLink's data folder
+/// (`dir`), so other accounts on the computer can't read chats, codes or the
+/// timeline whatever the umask was. Never the home folder itself. Elsewhere the
+/// folder already belongs to the user alone.
+pub(crate) fn keep_private(dir: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let home = std::env::var_os("HOME").map(PathBuf::from);
+        if home.is_some_and(|home| same_path(&home, dir)) {
+            return;
+        }
+        if let Ok(meta) = std::fs::metadata(dir) {
+            let mode = meta.permissions().mode();
+            if mode & 0o077 != 0
+                && let Err(e) = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(mode & !0o077))
+            {
+                tracing::warn!(error = %e, "can't make the data folder private");
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = dir;
+}
+
+#[cfg(unix)]
+fn same_path(a: &Path, b: &Path) -> bool {
+    match (a.canonicalize(), b.canonicalize()) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => a == b,
+    }
+}
+
+/// On Unix, makes the database readable by this user only before SQLite opens
+/// it; its `-wal` and `-shm` files take the database's mode.
+fn private_database(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        let _ = std::fs::OpenOptions::new().write(true).create(true).truncate(false).mode(0o600).open(path);
+        for suffix in ["", "-wal", "-shm"] {
+            let mut file = path.as_os_str().to_owned();
+            file.push(suffix);
+            if let Ok(meta) = std::fs::metadata(&file)
+                && meta.permissions().mode() & 0o077 != 0
+            {
+                let _ = std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600));
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = path;
+}
+
 impl Store {
     pub fn open(dir: &Path) -> Result<Self> {
-        Self::init_with_dir(Connection::open(dir.join(FILE_NAME))?, Some(dir.to_path_buf()))
+        let path = dir.join(FILE_NAME);
+        private_database(&path);
+        Self::init_with_dir(Connection::open(&path)?, Some(dir.to_path_buf()))
     }
 
     #[cfg(test)]
@@ -2844,6 +2900,31 @@ fn cleanup_peers(
 mod tests {
     use super::*;
     use nectarlink_protocol::messages::{ScreenCorners, ScreenRect};
+
+    #[cfg(unix)]
+    #[test]
+    fn the_data_folder_and_database_are_private_whatever_the_umask() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let data = dir.path().join("nectarlink");
+        std::fs::create_dir(&data).unwrap();
+        std::fs::set_permissions(&data, std::fs::Permissions::from_mode(0o755)).unwrap();
+        // An older version left the database readable by everyone.
+        std::fs::write(data.join(FILE_NAME), b"").unwrap();
+        std::fs::set_permissions(data.join(FILE_NAME), std::fs::Permissions::from_mode(0o644)).unwrap();
+
+        keep_private(&data);
+        let store = Store::open(&data).unwrap();
+        store.upsert_peer(&DeviceId([7; 32]), &info("Pixel"), 1).unwrap();
+
+        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&data), 0o700);
+        assert_eq!(mode(&data.join(FILE_NAME)), 0o600);
+        let wal = data.join(format!("{FILE_NAME}-wal"));
+        if wal.exists() {
+            assert_eq!(mode(&wal), 0o600, "SQLite gives the WAL the database's mode");
+        }
+    }
 
     fn info(name: &str) -> DeviceInfo {
         DeviceInfo {
