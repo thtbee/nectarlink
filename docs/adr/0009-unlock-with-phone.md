@@ -138,6 +138,35 @@ What each side holds:
    is built behind the `unlock` toggle (off by default), and the PC doesn't
    offer `unlock.pc` until the credential provider is installed.
 
+## Implementation (2026-11-18)
+
+- Core: `unlock.rs` (vault, request rules, both sides' messages), the
+  `unlock_vault` table, platform hooks `unlock_wrap` / `unlock_unwrap` /
+  `unlock_forget`, a two-device test covering every rule.
+- Phone: `unlock/UnlockKeys.kt` (Keystore key per PC and user, StrongBox when
+  present, per-use strong biometric, invalidated by a new fingerprint) and
+  `unlock/UnlockPrompts.kt` (BiometricPrompt with a CryptoObject).
+- Credential provider: `desktop/credprov` (Rust; unlock scenario only; the
+  pipe client checks the server is the NectarLink next to the DLL and connects
+  at identification level; 40 s cap; panics caught).
+- PC app: `win/unlock.rs` (registration, the SYSTEM-only pipe answering
+  LogonUI in this session while it's locked, enrolling with a Windows password
+  check). The PC offers `unlock.pc` only while the provider is registered.
+
+## Test plan before release
+
+1. A spare Windows 11 machine or VM with a local account and with a Microsoft
+   account: register, enroll, lock (Win+L), unlock with the phone; decline on
+   the phone; phone away; wrong key (tampered vault row); five failures; change
+   the Windows password; add a fingerprint on the phone; uninstall (the tile
+   goes).
+2. Confirm the password tile and PIN keep working throughout, and that a
+   crash in the provider (forced in a debug build) doesn't block sign-in.
+3. Process Monitor / handle checks: the password isn't written anywhere; the
+   pipe refuses a non-SYSTEM client and a client outside LogonUI.
+4. External review of `desktop/credprov`, `win/unlock.rs` and the phone's
+   key handling.
+
 ## Consequences
 
 - A security-critical component that needs its own tests, a VM test plan, and

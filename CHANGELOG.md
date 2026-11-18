@@ -8,6 +8,12 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Unlock the PC with your phone's fingerprint (Windows, Android 11+).** On the lock
+  screen, pick Unlock with phone and confirm on the phone. Off by default on both sides;
+  turning it on asks for an administrator once and for your Windows password once. The
+  password is kept encrypted on the PC with a key only the phone holds, behind its
+  fingerprint. Only for unlocking, not the first sign-in after a restart
+  ([#36](https://github.com/thtbee/nectarlink/pull/36)).
 - **A switch for USB debugging on the PC.** Settings › Connection & About › Use USB
   debugging (on by default) can turn off everything NectarLink does over a USB cable, so a
   phone plugged in for something else is never asked to allow USB debugging. Wi-Fi works as
