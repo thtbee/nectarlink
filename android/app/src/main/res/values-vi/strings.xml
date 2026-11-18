@@ -91,6 +91,8 @@
 <string name="channel_elevated">Thiết lập gỡ lỗi không dây</string>
 <string name="elevated_title">Nâng cao</string>
 <string name="elevated_not_set_up">Chạm theo thời gian thực, mọi phím, và tắt tiếng, giữ và bàn phím số khi gọi từ PC của bạn.</string>
+    <string name="elevated_turn_on_wireless">Tự bật Gỡ lỗi không dây</string>
+    <string name="elevated_turn_on_wireless_hint">Elevated cần tính năng này nên sẽ bật lại khi thấy nó tắt, trên mọi mạng Wi-Fi. Tắt mục này để tự bật trong Tùy chọn nhà phát triển.</string>
 <string name="elevated_waiting">Đang chờ Gỡ lỗi không dây. Hãy bật nó trong Tùy chọn nhà phát triển.</string>
 <string name="elevated_starting">Đang khởi động…</string>
 <string name="elevated_running">Bật: chuột và bàn phím của PC hoạt động như màn hình cảm ứng và bàn phím thật.</string>
@@ -443,6 +445,8 @@
 <string name="mic_pc_toggle_hint_auto">Bật theo mặc định. PC này có thể xin dùng micrô và micrô sẽ bật ngay.</string>
 <string name="start_without_asking_toggle">Bật máy ảnh và micrô mà không cần hỏi</string>
 <string name="start_without_asking_hint">Khi PC này yêu cầu, chúng sẽ bật ngay mà không cần chạm trên điện thoại. Cần quyền Elevated. Nếu không có, điện thoại sẽ hỏi như thường lệ.</string>
+    <string name="mirror_ask_toggle">Hỏi trước khi chia sẻ màn hình</string>
+    <string name="mirror_ask_hint">Mỗi lần PC này muốn xem màn hình, nó sẽ chờ bạn chạm. Nếu tắt, Elevated chia sẻ ngay.</string>
 <string name="recorder_notification_recording">Đang ghi âm cho %1$s</string>
 <string name="recorder_notification_paused">Đã tạm dừng ghi âm (%1$s)</string>
 <string name="recorder_permission_title">Cho phép truy cập micrô</string>
