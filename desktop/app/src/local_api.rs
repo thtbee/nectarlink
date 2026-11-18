@@ -405,18 +405,7 @@ async fn handle_connection(mut stream: TcpStream, expected_token: &str) -> std::
     }
 
     // 2. Verify `Authorization: Bearer <token>` in constant time.
-    let provided = req
-        .headers
-        .get("authorization")
-        .and_then(|v| {
-            let trimmed = v.trim();
-            if trimmed.len() >= 7 && trimmed[..7].eq_ignore_ascii_case("bearer ") {
-                Some(trimmed[7..].trim())
-            } else {
-                None
-            }
-        })
-        .unwrap_or("");
+    let provided = req.headers.get("authorization").map(String::as_str).and_then(bearer_token).unwrap_or("");
     if provided.is_empty() || !constant_time_eq(provided, expected_token) {
         return write_json_response(
             &mut stream,
@@ -820,8 +809,27 @@ fn handle_get_timeline(query: &HashMap<String, String>) -> (u16, &'static str, V
     (200, "OK", json!({ "ok": true, "items": items }))
 }
 
+/// The token in an `Authorization: Bearer <token>` value.
+fn bearer_token(value: &str) -> Option<&str> {
+    let trimmed = value.trim();
+    // `get`: byte 7 may fall inside a multi-byte character.
+    match (trimmed.get(..7), trimmed.get(7..)) {
+        (Some(scheme), Some(token)) if scheme.eq_ignore_ascii_case("bearer ") => Some(token.trim()),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn bearer_tokens_are_read_without_slicing_inside_a_character() {
+        assert_eq!(bearer_token("Bearer abc"), Some("abc"));
+        assert_eq!(bearer_token("  bearer   abc  "), Some("abc"));
+        assert_eq!(bearer_token("123456é"), None);
+        assert_eq!(bearer_token("Basic abc"), None);
+        assert_eq!(bearer_token("Bear"), None);
+    }
+
     use super::*;
 
     async fn raw_http_call(addr: SocketAddr, raw_request: &str) -> (u16, Value) {
