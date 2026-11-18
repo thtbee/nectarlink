@@ -276,6 +276,27 @@ change things that need a step from you, and its notes say so.
   package can't go out missing one or carrying an old one. Thanks to
   [@hvenanc](https://github.com/hvenanc)
   ([#333](https://github.com/thtbee/nectarlink/pull/333)).
+- **Uninstalling a phone app from the PC works.** It always failed: Elevated's helper
+  didn't run the uninstall it was asked for.
+- **Pictures and files attach to texts on Linux and macOS.** Picking one turned its path
+  into a relative one, so nothing was attached.
+- **Polish follows the system language on the PC.** With the PC set to Polish and the app
+  on "Follow system", it showed English.
+- **Widgets for two PCs act on the right one.** Ring, Wake and the media buttons went to
+  whichever PC's widget was drawn last.
+- **Links from the PC open with the phone's notifications off.** With NectarLink open they
+  open at once; otherwise they come as a notification and never open over what you're doing.
+- **Linux updates start the new version.** After a .deb or .rpm update the app closed and
+  didn't come back. Without curl, downloading an update hung.
+- **Settings shows only update options that work.** Linux no longer offers installing
+  updates by itself (it asks for your password each time), and the Mac preview no longer
+  says it's up to date without checking for a Mac build.
+- **A video from the PC lets the phone's screen sleep once paused or finished.**
+- **A drag on the touchpad never leaves the PC's mouse button held**, even if the screen
+  is left midway.
+- **NectarLink's data on Linux and macOS is readable by you only.** The data folder and
+  database took the system default, which on many Linux systems lets other accounts on
+  the same computer read them.
 - **Pairing from the PC's list of nearby phones works.** Picking a phone there said it
   couldn't reach the phone, because the phone only took pairing it started itself. While
   its pairing screen is open, the phone now accepts it from either side.
