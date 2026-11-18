@@ -3841,6 +3841,11 @@ impl Node {
         crate::unlock::password(&self.shared, &session, user).await
     }
 
+    /// Whether paired device `peer` offers `capability` (as last heard).
+    pub fn peer_offers(&self, peer: DeviceId, capability: &str) -> bool {
+        self.shared.offers(&peer, capability).unwrap_or(false)
+    }
+
     /// PC side: the Windows users enrolled to unlock with `phone`, as
     /// `(security identifier, name)`.
     pub fn unlock_users(&self, phone: DeviceId) -> Result<Vec<(String, String)>> {

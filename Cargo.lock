@@ -2517,6 +2517,7 @@ dependencies = [
  "miniz_oxide",
  "nectarlink-adb",
  "nectarlink-core",
+ "nectarlink-credprov",
  "nectarlink-vcam",
  "pkg-config",
  "qrcode",
