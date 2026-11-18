@@ -118,8 +118,8 @@ jobs:
           target: desktop
           arch: win64_msvc2022_64
           cache: true
-          # Qt 6.12's repository layout needs a current aqtinstall.
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+          # Qt 6.12's repository layout needs a current aqtinstall, pinned to a commit so nothing upstream reaches a build unreviewed.
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Clippy
         run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p s1-qt-rust --all-targets -- -D warnings
       - name: Tests
@@ -146,8 +146,8 @@ jobs:
           target: desktop
           arch: win64_msvc2022_64
           cache: true
-          # Qt 6.12's repository layout needs a current aqtinstall.
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+          # Qt 6.12's repository layout needs a current aqtinstall, pinned to a commit so nothing upstream reaches a build unreviewed.
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Release build
         run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-vcam
       - name: Install NSIS
@@ -188,7 +188,7 @@ jobs:
           target: desktop
           arch: win64_msvc2022_arm64_cross_compiled
           cache: true
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Install NSIS
         shell: pwsh
         run: ./scripts/install-nsis.ps1
@@ -219,7 +219,7 @@ jobs:
           target: desktop
           arch: clang_64
           cache: true
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Clippy
         run: cargo clippy --locked -p nectarlink-desktop --all-targets -- -D warnings
       - name: Tests
@@ -243,7 +243,7 @@ jobs:
           target: desktop
           arch: clang_64
           cache: true
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Release build
         run: cargo build --locked --release -p nectarlink-desktop
       # The same packaging Nightlies and releases use, so a broken DMG shows
@@ -300,7 +300,7 @@ jobs:
           target: desktop
           arch: linux_gcc_64
           cache: true
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Clippy
         run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p s1-qt-rust --all-targets -- -D warnings
       - name: Tests
@@ -352,7 +352,7 @@ jobs:
           target: desktop
           arch: linux_gcc_64
           cache: true
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Release build
         run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-vcam
 

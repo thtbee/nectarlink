@@ -52,7 +52,7 @@ jobs:
           target: desktop
           arch: win64_msvc2022_64
           cache: true
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Install NSIS
         shell: pwsh
         run: ./scripts/install-nsis.ps1
@@ -96,7 +96,7 @@ jobs:
           target: desktop
           arch: win64_msvc2022_arm64_cross_compiled
           cache: true
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Install NSIS
         shell: pwsh
         run: ./scripts/install-nsis.ps1
@@ -139,7 +139,7 @@ jobs:
           arch: linux_gcc_64
           modules: qtshadertools qtwaylandcompositor
           cache: true
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Install appimagetool and the AppImage runtime (pinned, checked)
         run: |
           curl -fsSL -o /tmp/appimagetool \
@@ -169,7 +169,7 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
           FFMPEG_SOURCE_CACHE: ${{ runner.temp }}/ffmpeg-sources
         run: |
-          cargo build --release -p nectarlink-desktop
+          cargo build --release --locked -p nectarlink-desktop
           bash ./desktop/packaging/linux/build-ffmpeg-backends.sh
           ./desktop/packaging/linux/build-deb.sh
           ./desktop/packaging/linux/build-rpm.sh
@@ -326,7 +326,7 @@ jobs:
           target: desktop
           arch: clang_64
           cache: true
-          aqtsource: git+https://github.com/miurahr/aqtinstall.git
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Build and package macOS DMG
         run: bash desktop/packaging/macos/build-dmg.sh
       - name: Check the DMG launches cleanly
