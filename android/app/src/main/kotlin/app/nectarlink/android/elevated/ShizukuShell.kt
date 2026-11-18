@@ -45,8 +45,11 @@ object ShizukuElevated {
     /** Why starting through Shizuku didn't work. */
     enum class Problem { NotRunning, Denied, Root }
 
-    /** Whether Shizuku's app is on the phone (so Elevated may offer it). */
-    fun installed(context: Context): Boolean = runCatching {
+    /**
+     * Whether Shizuku is on the phone (so Elevated may offer it): its own app, or a
+     * fork under another name whose service is already answering (#452).
+     */
+    fun installed(context: Context): Boolean = running() || runCatching {
         context.packageManager.getPackageInfo(PACKAGE, 0)
         true
     }.getOrDefault(false)
