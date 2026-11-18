@@ -10739,8 +10739,8 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/TimelinePage.qml" line="41"/>
-        <location filename="../qml/pages/TimelinePage.qml" line="659"/>
-        <location filename="../qml/pages/TimelinePage.qml" line="688"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="700"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="729"/>
         <source>All devices</source>
         <translation>所有设备</translation>
     </message>
@@ -10820,32 +10820,42 @@ What it needs
         <translation>共享的文件、片段、链接和照片会显示在这里。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="565"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="576"/>
         <source>Open</source>
         <translation>打开</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="574"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="585"/>
         <source>Show in folder</source>
         <translation>在文件夹中显示</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="583"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="594"/>
         <source>Copy</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="592"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="603"/>
         <source>Send again</source>
         <translation>再次发送</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="599"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="611"/>
+        <source>Show less</source>
+        <translation>收起</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/TimelinePage.qml" line="611"/>
+        <source>Show all</source>
+        <translation>显示全部</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/TimelinePage.qml" line="618"/>
         <source>Remove from timeline</source>
         <translation>从时间线移除</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="614"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="655"/>
         <source>Load more</source>
         <translation>加载更多</translation>
     </message>

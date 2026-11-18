@@ -453,8 +453,12 @@ Item {
             required property bool canShowInFolder
             required property bool canCopy
             required property bool canSendAgain
+            required property string fullText
 
             readonly property bool showDay: index === 0 || page.dayKey(timestamp) !== page.dayKey(prevTimestamp)
+            // A clip whose title shows only part of its text opens up to show all of it (#442).
+            property bool expanded: false
+            onEntryIdChanged: expanded = false
 
             width: listView.width
             spacing: 6
@@ -471,17 +475,24 @@ Item {
             Rectangle {
                 id: itemCard
                 width: parent.width
-                height: Math.max(62, textCol.implicitHeight + 24)
+                height: head.height + (fullTextView.visible ? fullTextView.height + 14 : 0)
                 radius: Theme.radiusMd
                 color: Theme.cardColor
                 border.width: Theme.graphite ? 1 : 0
                 border.color: Theme.cardBorder
 
+                // The row itself; a clip's whole text opens up below it.
+                Item {
+                    id: head
+                    width: parent.width
+                    height: Math.max(62, textCol.implicitHeight + 24)
+                }
+
                 // Leading thumbnail or kind icon
                 Item {
                     id: leading
                     x: 14
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenter: head.verticalCenter
                     width: 40; height: 40
 
                     RoundedImage {
@@ -517,7 +528,7 @@ Item {
                     anchors.leftMargin: 12
                     anchors.right: actionsRow.left
                     anchors.rightMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenter: head.verticalCenter
                     spacing: 2
 
                     Row {
@@ -553,7 +564,7 @@ Item {
                     id: actionsRow
                     anchors.right: parent.right
                     anchors.rightMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.verticalCenter: head.verticalCenter
                     spacing: 6
 
                     Button {
@@ -594,11 +605,41 @@ Item {
                     }
                     IconButton {
                         anchors.verticalCenter: parent.verticalCenter
+                        visible: rowRoot.fullText.length > 0
+                        width: 30; height: 30
+                        iconPath: rowRoot.expanded ? Icons.chevronUp : Icons.chevronDown
+                        label: rowRoot.expanded ? qsTr("Show less") : qsTr("Show all")
+                        onClicked: rowRoot.expanded = !rowRoot.expanded
+                    }
+                    IconButton {
+                        anchors.verticalCenter: parent.verticalCenter
                         width: 30; height: 30
                         iconPath: Icons.close
                         label: qsTr("Remove from timeline")
                         onClicked: TimelineModel.removeEntry(rowRoot.entryId)
                     }
+                }
+
+                // The clip's whole text, selectable so part of it can be copied.
+                TextEdit {
+                    id: fullTextView
+                    visible: rowRoot.expanded && rowRoot.fullText.length > 0
+                    anchors.top: head.bottom
+                    anchors.left: parent.left
+                    anchors.leftMargin: 66
+                    anchors.right: parent.right
+                    anchors.rightMargin: 16
+                    text: visible ? rowRoot.fullText : ""
+                    readOnly: true
+                    selectByMouse: true
+                    wrapMode: TextEdit.Wrap
+                    textFormat: TextEdit.PlainText
+                    font.family: Theme.fontUi
+                    font.pixelSize: 13
+                    color: Theme.surfaceContent
+                    selectionColor: Theme.primary
+                    selectedTextColor: Theme.primaryContent
+                    HoverHandler { cursorShape: Qt.IBeamCursor }
                 }
             }
         }
