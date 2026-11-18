@@ -2490,6 +2490,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "nectarlink-credprov"
+version = "0.1.5"
+dependencies = [
+ "windows",
+ "windows-core",
+]
+
+[[package]]
 name = "nectarlink-desktop"
 version = "0.1.5"
 dependencies = [
