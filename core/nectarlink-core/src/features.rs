@@ -373,6 +373,8 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("commands", false),
     // Browsing the PC's files from anywhere is opt-in.
     ("remote_files", false),
+    // Unlocking the PC with the phone's fingerprint is opt-in on both sides.
+    ("unlock", false),
 ];
 
 /// The default for a toggle, or `None` if no such toggle exists.
@@ -698,6 +700,12 @@ pub const FEATURES: &[FeatureDef] = &[
         id: "device.battery",
         group: FeatureGroup::Device,
         requires: &[phone("device.battery", UPDATE)],
+        partial: None,
+    },
+    FeatureDef {
+        id: "device.unlock",
+        group: FeatureGroup::Device,
+        requires: &[phone("unlock.key", UPDATE), desktop("unlock.pc", UPDATE), DeviceToggle("unlock")],
         partial: None,
     },
     FeatureDef {

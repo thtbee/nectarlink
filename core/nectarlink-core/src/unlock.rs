@@ -1,31 +1,46 @@
 // SPDX-License-Identifier: MPL-2.0
-//! Unlock the PC with the phone, the PC's half (docs/adr/0009-unlock-with-phone.md;
-//! proposed, not wired up). The user's Windows password is kept only sealed
+//! Unlock the PC with the phone (docs/adr/0009-unlock-with-phone.md,
+//! docs/protocol/unlock.md). The user's Windows password is kept only sealed
 //! under a key `K` the PC doesn't keep: the phone holds `K`, wrapped by a
 //! Keystore key that needs the owner's fingerprint for every use, and returns
 //! it for one unlock at a time.
 //!
-//! This module is the part that can be tested on its own: sealing and opening
-//! the password (AES-256-GCM, bound to the PC, the phone and the Windows user),
-//! and the rules for unlock requests: single use, a short expiry, only the
-//! enrolled phone may answer, and a lockout after repeated failures.
+//! Here: sealing and opening the password (AES-256-GCM, bound to the PC, the
+//! phone and the Windows user), the rules for unlock requests (single use, a
+//! short expiry, only the enrolled phone may answer, a lockout after repeated
+//! failures), and the messages on both sides. Only on a direct local path,
+//! and only with the `unlock` toggle on at both ends.
 
 use std::{
     collections::{HashMap, VecDeque},
+    sync::Arc,
     time::{Duration, Instant},
 };
 
-use nectarlink_protocol::DeviceId;
+use nectarlink_protocol::{
+    DeviceId, Envelope, ErrorCode,
+    messages::{UnlockEnroll, UnlockForget, UnlockRelease, UnlockRequest, UnlockWrapped, types, unlock},
+};
 use ring::{
     aead::{AES_256_GCM, Aad, LessSafeKey, NONCE_LEN, Nonce, UnboundKey},
     rand::{SecureRandom, SystemRandom},
 };
 use serde::{Deserialize, Serialize};
 
+use crate::{ConnectionPath, Error, Result, node::Shared, session::Session};
+
 /// Bytes in `K`.
 pub const KEY_LEN: usize = 32;
 /// How long the phone has to answer a request.
 pub const REQUEST_TTL: Duration = Duration::from_secs(30);
+/// How long the phone's owner has to agree to enrolling.
+pub const ENROLL_TTL: Duration = Duration::from_secs(90);
+/// Capability a phone offers when it can hold a key behind a biometric.
+pub const KEY: &str = unlock::CAP_KEY;
+/// Capability a PC offers when it can unlock its locked session with a phone.
+pub const PC: &str = unlock::CAP_PC;
+/// The per-device toggle, off by default on both sides.
+pub const TOGGLE: &str = unlock::TOGGLE;
 /// Failed unlocks allowed within [`FAILURE_WINDOW`] before a lockout.
 pub const MAX_FAILURES: usize = 5;
 pub const FAILURE_WINDOW: Duration = Duration::from_secs(15 * 60);
@@ -250,6 +265,251 @@ impl Requests {
     pub fn succeeded(&mut self) {
         self.failures.clear();
     }
+}
+
+// ---- On the wire ----
+
+/// What the phone shows its owner before using its key.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Ask {
+    pub pc_name: String,
+    pub user_name: String,
+    /// The Windows user's security identifier.
+    pub user: String,
+}
+
+/// Why the phone didn't wrap or unwrap a key.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum KeyRefusal {
+    /// The owner said no, or didn't answer in time.
+    #[error("declined on the phone")]
+    Declined,
+    /// No strong biometric set up, or no secure key storage.
+    #[error("this phone can't keep the key behind a fingerprint")]
+    Unsupported,
+    /// The key is gone (a fingerprint was added, or the app's data was
+    /// cleared): the PC must enroll again.
+    #[error("the phone's key is gone; turn unlocking on again")]
+    KeyGone,
+}
+
+impl KeyRefusal {
+    fn reply(&self) -> Envelope {
+        match self {
+            KeyRefusal::Declined => Envelope::error(ErrorCode::Denied, "declined"),
+            KeyRefusal::Unsupported => Envelope::error(ErrorCode::Unsupported, "no strong biometric"),
+            KeyRefusal::KeyGone => Envelope::error(ErrorCode::NotFound, "key gone"),
+        }
+    }
+}
+
+/// Whether unlocking may happen over `session`: the toggle is on here for the
+/// other device, and the path is direct (never a relay).
+fn allowed(shared: &Shared, session: &Session) -> bool {
+    shared.toggle_on(&session.peer, TOGGLE) && session.path() != ConnectionPath::Relay
+}
+
+fn binding(pc: DeviceId, phone: DeviceId, user: &str) -> Binding {
+    Binding { pc, phone, user: user.to_owned() }
+}
+
+/// The PC's own name, as the phone shows it.
+fn pc_name(shared: &Shared) -> String {
+    let name = shared.local.read().unwrap_or_else(|e| e.into_inner()).device.name.clone();
+    name.chars().filter(|c| !c.is_control()).take(unlock::MAX_NAME / 4).collect()
+}
+
+/// Handles `unlock.*` messages. Returns whether the message was one of them.
+pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &Envelope) -> Result<bool> {
+    let reply = match env.t.as_str() {
+        // Phone side: wrap a key for this PC.
+        types::UNLOCK_ENROLL => match env.body::<UnlockEnroll>() {
+            Ok(enroll) if enroll.is_valid() => {
+                if !allowed(shared, session) {
+                    Envelope::error(ErrorCode::Denied, "unlocking is off")
+                } else {
+                    let ask = Ask { pc_name: enroll.pc_name, user_name: enroll.user_name, user: enroll.user };
+                    let key = Secret::new(enroll.key);
+                    let (platform, pc) = (shared.platform.clone(), session.peer);
+                    let wrapped = tokio::time::timeout(
+                        ENROLL_TTL,
+                        tokio::task::spawn_blocking(move || platform.unlock_wrap(&pc, &ask, key.expose())),
+                    )
+                    .await;
+                    match wrapped {
+                        Ok(Ok(Ok(wrapped)))
+                            if !wrapped.is_empty() && wrapped.len() <= unlock::MAX_WRAPPED =>
+                        {
+                            Envelope::new(types::UNLOCK_WRAPPED, &UnlockWrapped { wrapped })?
+                        }
+                        Ok(Ok(Err(refusal))) => refusal.reply(),
+                        _ => KeyRefusal::Declined.reply(),
+                    }
+                }
+            }
+            _ => Envelope::error(ErrorCode::BadMessage, "invalid unlock.enroll"),
+        },
+        // Phone side: release the key for one unlock.
+        types::UNLOCK_REQUEST => match env.body::<UnlockRequest>() {
+            Ok(request) if request.is_valid() => {
+                if !allowed(shared, session) {
+                    Envelope::error(ErrorCode::Denied, "unlocking is off")
+                } else {
+                    let ask =
+                        Ask { pc_name: request.pc_name, user_name: request.user_name, user: request.user };
+                    let (platform, pc, wrapped) = (shared.platform.clone(), session.peer, request.wrapped);
+                    let key = tokio::time::timeout(
+                        REQUEST_TTL,
+                        tokio::task::spawn_blocking(move || platform.unlock_unwrap(&pc, &ask, &wrapped)),
+                    )
+                    .await;
+                    match key {
+                        Ok(Ok(Ok(key))) if key.len() == unlock::KEY_LEN => {
+                            let key = Secret::new(key);
+                            Envelope::new(
+                                types::UNLOCK_RELEASE,
+                                &UnlockRelease { request: request.request, key: key.expose().to_vec() },
+                            )?
+                        }
+                        Ok(Ok(Err(refusal))) => refusal.reply(),
+                        _ => KeyRefusal::Declined.reply(),
+                    }
+                }
+            }
+            _ => Envelope::error(ErrorCode::BadMessage, "invalid unlock.request"),
+        },
+        // Either side: the other one turned it off.
+        types::UNLOCK_FORGET => {
+            let forget = env.body::<UnlockForget>().unwrap_or_default();
+            let user = forget.user.as_deref().filter(|u| unlock::user_ok_pub(u));
+            let _ = shared.store.remove_unlock(&session.peer, user);
+            let (platform, pc, user) = (shared.platform.clone(), session.peer, user.map(str::to_owned));
+            let _ = tokio::task::spawn_blocking(move || platform.unlock_forget(&pc, user.as_deref())).await;
+            return Ok(true);
+        }
+        _ => return Ok(false),
+    };
+    session.send(reply.reply_to(env.id)).await?;
+    Ok(true)
+}
+
+/// PC side: enrolls `user` to unlock with `phone`. The phone's owner agrees
+/// and confirms with a strong biometric; the password is then kept only
+/// sealed under a key the phone holds.
+pub(crate) async fn enroll(
+    shared: &Arc<Shared>,
+    session: &Arc<Session>,
+    user: &str,
+    user_name: &str,
+    password: &Secret,
+) -> Result<()> {
+    if !shared.offers(&session.peer, KEY)? || !shared.we_offer(PC) {
+        return Err(Error::Unsupported);
+    }
+    if !allowed(shared, session) {
+        return Err(Error::Denied);
+    }
+    let key = new_key().map_err(|e| Error::Internal(e.to_string()))?;
+    let enroll = UnlockEnroll {
+        pc_name: pc_name(shared),
+        user_name: user_name.to_owned(),
+        user: user.to_owned(),
+        key: key.expose().to_vec(),
+    };
+    if !enroll.is_valid() {
+        return Err(Error::Protocol("invalid user for unlocking".into()));
+    }
+    let env = Envelope::new(types::UNLOCK_ENROLL, &enroll)?;
+    drop(Secret::new(enroll.key));
+    let reply = session.request(env, ENROLL_TTL + Duration::from_secs(5)).await?;
+    let wrapped: UnlockWrapped = reply.expect_body(types::UNLOCK_WRAPPED)?;
+    if !wrapped.is_valid() {
+        return Err(Error::Protocol("invalid unlock.wrapped".into()));
+    }
+    let sealed = seal(password, &key, &binding(shared.id, session.peer, user))
+        .map_err(|e| Error::Internal(e.to_string()))?;
+    shared.store.save_unlock(
+        &session.peer,
+        &crate::store::UnlockEntry {
+            user: user.to_owned(),
+            user_name: user_name.to_owned(),
+            sealed,
+            wrapped: wrapped.wrapped,
+            enrolled_at: crate::now_unix(),
+        },
+    )?;
+    Ok(())
+}
+
+/// PC side: asks `phone` for the key to `user`'s password and opens it. The
+/// phone's owner confirms with their biometric.
+pub(crate) async fn password(shared: &Arc<Shared>, session: &Arc<Session>, user: &str) -> Result<Secret> {
+    if !shared.offers(&session.peer, KEY)? || !shared.we_offer(PC) {
+        return Err(Error::Unsupported);
+    }
+    if !allowed(shared, session) {
+        return Err(Error::Denied);
+    }
+    let entry = shared.store.unlock_entry(&session.peer, user)?.ok_or(Error::NotFound)?;
+    let id = lock(&shared.unlock_requests).begin(session.peer, user, Instant::now()).map_err(refused)?;
+    let request = UnlockRequest {
+        request: id.to_vec(),
+        pc_name: pc_name(shared),
+        user_name: entry.user_name.clone(),
+        user: user.to_owned(),
+        wrapped: entry.wrapped.clone(),
+    };
+    let reply = session.request(Envelope::new(types::UNLOCK_REQUEST, &request)?, REQUEST_TTL).await;
+    let release: UnlockRelease = match reply.and_then(|r| Ok(r.expect_body(types::UNLOCK_RELEASE)?)) {
+        Ok(release) => release,
+        Err(e) => {
+            // The request is used up; a key that's gone means enrolling again.
+            let _ = lock(&shared.unlock_requests).answer(&id, session.peer, Instant::now());
+            return Err(e);
+        }
+    };
+    let key = Secret::new(release.key);
+    let now = Instant::now();
+    let mut requests = lock(&shared.unlock_requests);
+    if release.request.as_slice() != id.as_slice() || key.expose().len() != KEY_LEN {
+        requests.failed(now);
+        return Err(Error::Protocol("invalid unlock.release".into()));
+    }
+    requests.answer(&id, session.peer, now).map_err(refused)?;
+    match open(&entry.sealed, &key, &binding(shared.id, session.peer, user)) {
+        Ok(password) => {
+            requests.succeeded();
+            Ok(password)
+        }
+        Err(_) => {
+            requests.failed(now);
+            Err(Error::Denied)
+        }
+    }
+}
+
+/// PC side: forgets `user` (or everyone) for `phone`, and tells the phone to
+/// drop its keys if it's connected.
+pub(crate) async fn forget(shared: &Arc<Shared>, phone: &DeviceId, user: Option<&str>) -> Result<()> {
+    shared.store.remove_unlock(phone, user)?;
+    if let Some(session) = shared.session(phone) {
+        let forget = UnlockForget { user: user.map(str::to_owned) };
+        let _ = session.send(Envelope::new(types::UNLOCK_FORGET, &forget)?).await;
+    }
+    Ok(())
+}
+
+fn refused(refused: Refused) -> Error {
+    match refused {
+        Refused::LockedOut { .. } | Refused::WrongDevice => Error::Denied,
+        Refused::Expired => Error::Timeout,
+        Refused::Unknown => Error::Protocol("unknown unlock request".into()),
+        Refused::Random => Error::Internal("no secure random numbers".into()),
+    }
+}
+
+fn lock<T>(m: &std::sync::Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 #[cfg(test)]

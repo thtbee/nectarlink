@@ -2589,6 +2589,30 @@ fn parse_id(id: &str) -> Result<DeviceId> {
 
 // ---- Foreign interfaces (implemented in Kotlin) ----
 
+/// Why the phone didn't wrap or unwrap a PC's unlock key (ADR 0009).
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum UnlockRefusal {
+    /// The owner said no, or didn't confirm in time.
+    #[error("declined")]
+    Declined,
+    /// No strong biometric enrolled, or no secure key storage.
+    #[error("unsupported")]
+    Unsupported,
+    /// The key is gone (a fingerprint was added, or app data cleared).
+    #[error("key gone")]
+    KeyGone,
+}
+
+impl From<UnlockRefusal> for core::unlock::KeyRefusal {
+    fn from(r: UnlockRefusal) -> Self {
+        match r {
+            UnlockRefusal::Declined => core::unlock::KeyRefusal::Declined,
+            UnlockRefusal::Unsupported => core::unlock::KeyRefusal::Unsupported,
+            UnlockRefusal::KeyGone => core::unlock::KeyRefusal::KeyGone,
+        }
+    }
+}
+
 /// Why a notification couldn't be dismissed or its action run.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum NotificationFailure {
@@ -2861,6 +2885,34 @@ pub trait Platform: Send + Sync {
     /// `"ringer"`, `"flashlight"`, `"volume"`, `"brightness"`, `"wifi"`,
     /// `"bluetooth"`). False if the phone couldn't.
     fn set_phone_toggle(&self, id: String, value: PhoneToggleValue) -> bool;
+    /// Unlock the PC with this phone (ADR 0009), enrolling: ask the owner
+    /// ("Let `pc_name` unlock with your fingerprint for `user_name`?"); after a
+    /// strong biometric, encrypt `key` with a Keystore key for `pc` and `user`
+    /// that needs a strong biometric for every use and is invalidated by a new
+    /// fingerprint. Return it encrypted (IV included). Blocks until answered
+    /// (the core gives up after 90 s).
+    fn unlock_wrap(
+        &self,
+        pc: String,
+        pc_name: String,
+        user_name: String,
+        user: String,
+        key: Vec<u8>,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
+    /// Unlock the PC with this phone: show "Unlock `pc_name` for
+    /// `user_name`?"; after a strong biometric, decrypt `wrapped` with that
+    /// Keystore key and return the key. Blocks until answered (30 s).
+    fn unlock_unwrap(
+        &self,
+        pc: String,
+        pc_name: String,
+        user_name: String,
+        user: String,
+        wrapped: Vec<u8>,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
+    /// Unlock the PC with this phone: delete the Keystore keys kept for `pc`
+    /// (for `user`, or all of them).
+    fn unlock_forget(&self, pc: String, user: Option<String>);
     /// A PC asked to list a folder in this phone's storage (`""` is root).
     fn storage_list(&self, path: String) -> Result<Vec<StorageEntry>, StorageFailure>;
     /// A PC asked to open a file in this phone's storage for ranged reading.
@@ -3317,6 +3369,37 @@ impl core::Platform for PlatformAdapter {
             .into_iter()
             .map(|t| core::PhotoThumb { id: t.id, data: t.data })
             .collect())
+    }
+    fn unlock_wrap(
+        &self,
+        pc: &core::DeviceId,
+        ask: &core::unlock::Ask,
+        key: &[u8],
+    ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
+        Ok(self.0.unlock_wrap(
+            pc.to_string(),
+            ask.pc_name.clone(),
+            ask.user_name.clone(),
+            ask.user.clone(),
+            key.to_vec(),
+        )?)
+    }
+    fn unlock_unwrap(
+        &self,
+        pc: &core::DeviceId,
+        ask: &core::unlock::Ask,
+        wrapped: &[u8],
+    ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
+        Ok(self.0.unlock_unwrap(
+            pc.to_string(),
+            ask.pc_name.clone(),
+            ask.user_name.clone(),
+            ask.user.clone(),
+            wrapped.to_vec(),
+        )?)
+    }
+    fn unlock_forget(&self, pc: &core::DeviceId, user: Option<&str>) {
+        self.0.unlock_forget(pc.to_string(), user.map(str::to_owned));
     }
     fn set_phone_toggle(&self, id: &str, value: &core::PhoneToggleValue) -> Result<(), String> {
         let value = match value {

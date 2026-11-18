@@ -1,7 +1,7 @@
 # ADR 0009: Unlock the PC with the phone
 
-- **Status:** Proposed (needs the owner's decision and an external security review before any of it ships)
-- **Date:** 2026-10-19
+- **Status:** Accepted for building (2026-11-18); ships only after an external security review
+- **Date:** 2026-10-19, decisions 2026-11-18
 
 ## Context
 
@@ -108,15 +108,35 @@ What each side holds:
 | Bugs in the credential provider locking the user out | It only adds a tile; the normal password tile stays. Tested in a VM with recovery snapshots before any real machine. |
 | Brute force via the lock screen | Rate limit and lockout above |
 
-## Open questions for the owner
+## Decisions (2026-11-18)
 
-1. Is storing the password (split as above) acceptable, or should we first
-   confirm whether Windows Hello's companion device API still works on
-   Windows 11 24H2 and later?
-2. PIN-only and passwordless Microsoft accounts have no usable password; we
-   would tell those users it isn't available. Acceptable?
-3. Who does the external review, and does the credential provider need code
-   signing first (SignPath)?
+1. **Store the password, split as above.** Windows Hello's companion device
+   framework is ruled out: every `SecondaryAuthenticationFactor` API is marked
+   deprecated ("might not work on all platforms"), and it's gated: Microsoft
+   must approve each app first (cdfonboard@microsoft.com), or calls fail. The
+   one shipping open-source tool for this, PulseUnlock (GPL-3.0, formerly PC
+   Bio Unlock), uses the same split: AES-256-GCM on the PC, the key only on the
+   phone, a one-time challenge per unlock.
+2. **PIN-only and passwordless Microsoft accounts** are told it isn't
+   available for them. Settings explains what it needs (a password; and with
+   "only allow Windows Hello sign-in for Microsoft accounts" on, Windows hides
+   other sign-in options).
+3. **The credential provider is written in Rust** (`windows` crate,
+   `#[implement]` of `ICredentialProvider` and `ICredentialProviderCredential`),
+   like the rest of the PC app: no C++ inside LogonUI. Every exported entry
+   point catches panics.
+4. **The pipe admits only SYSTEM** (LogonUI's account), never the user: malware
+   running as the user must not be able to ask for the password. The app also
+   checks the caller is LogonUI in its own session and that the session is
+   locked before it asks the phone.
+5. **The DLL lives where only administrators can write** (the install folder
+   under Program Files, or System32): a DLL that SYSTEM loads from a
+   user-writable folder would let any user process become SYSTEM. Enabling the
+   feature copies and registers it with one administrator prompt; turning it
+   off removes it.
+6. **External review and code signing** stay open before release: the feature
+   is built behind the `unlock` toggle (off by default), and the PC doesn't
+   offer `unlock.pc` until the credential provider is installed.
 
 ## Consequences
 

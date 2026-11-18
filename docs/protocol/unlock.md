@@ -1,6 +1,7 @@
 # Unlock the PC with the phone (draft)
 
-> Status: **proposal**, not implemented on the wire. See
+> Status: **draft**, implemented in the core (`unlock.rs`) and tested between
+> two nodes; not offered by the apps yet. See
 > [ADR 0009](../adr/0009-unlock-with-phone.md) for the design, the threat model
 > and the open questions. Builds on [protocol v0](v0.md). License: CC BY 4.0.
 
@@ -27,7 +28,7 @@ On the control stream.
 ```
 t = "unlock.enroll"   id = n   b = { pc_name: text, user_name: text, user: text, key: bytes(32) }
 t = "unlock.wrapped"  re = n   b = { wrapped: bytes }
-t = "unlock.request"  id = n   b = { request: bytes(16), user_name: text, wrapped: bytes }
+t = "unlock.request"  id = n   b = { request: bytes(16), pc_name: text, user_name: text, user: text, wrapped: bytes }
 t = "unlock.release"  re = n   b = { request: bytes(16), key: bytes(32) }
 t = "unlock.forget"            b = { user?: text }
 ```
@@ -48,7 +49,8 @@ forgets `key`.
 ### 2.2 `unlock.request` (PC to phone)
 
 Sent when the user picks "Unlock with <phone>" on the lock screen. `request` is
-random and single use; the phone must answer within 30 seconds. The phone
+random and single use; the phone must answer within 30 seconds. `user` names
+the Keystore key to use; `pc_name` and `user_name` are what the prompt shows. The phone
 shows its biometric prompt ("Unlock <pc_name> for <user_name>?"), unwraps
 `wrapped`, and answers `unlock.release` with the same `request` and `key`.
 Errors: `DENIED` (declined or off), `NOT_FOUND` (the Keystore key is gone,
@@ -62,6 +64,13 @@ as a failure; five failures in 15 minutes lock the feature for 15 minutes.
 Ends it: the phone deletes its Keystore key for this PC (or for `user`), the PC
 deletes the sealed password and the wrapped key. Sent when either side turns
 the toggle off or unpairs.
+
+Both requests can take as long as the phone's owner does, so a receiver handles
+them off the control stream (they never hold up other messages).
+
+Limits: names are 1 to 128 bytes without control characters; `user` is a
+security identifier (ASCII letters, digits and `-`, at most 184 bytes); keys
+are 32 bytes, request IDs 16, a wrapped key at most 256.
 
 ## 3. Privacy and logging
 

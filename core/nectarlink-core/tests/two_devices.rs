@@ -62,6 +62,11 @@ struct RecordingPlatform {
     remote_pads: Mutex<Vec<(Option<nectarlink_core::PadState>, bool)>>,
     /// Answers controller updates as if the PC's driver were missing.
     pad_driver_missing: std::sync::atomic::AtomicBool,
+    /// A stand-in for the phone's Keystore (ADR 0009): what it was asked, how
+    /// it answers, and what it was told to forget.
+    unlock_asks: Mutex<Vec<nectarlink_core::unlock::Ask>>,
+    unlock_answer: Mutex<FakeKeystore>,
+    unlock_forgotten: Mutex<Vec<(nectarlink_core::DeviceId, Option<String>)>>,
     phone_toggles: Mutex<Vec<(String, nectarlink_core::PhoneToggleValue)>>,
     deck_presses: Mutex<Vec<String>>,
     pc_audio_changes: Mutex<Vec<(Option<u8>, Option<bool>)>>,
@@ -585,6 +590,36 @@ impl Platform for RecordingPlatform {
         self.phone_toggles.lock().unwrap().push((id.to_owned(), value.clone()));
         Ok(())
     }
+    fn unlock_wrap(
+        &self,
+        _pc: &nectarlink_core::DeviceId,
+        ask: &nectarlink_core::unlock::Ask,
+        key: &[u8],
+    ) -> Result<Vec<u8>, nectarlink_core::unlock::KeyRefusal> {
+        self.unlock_asks.lock().unwrap().push(ask.clone());
+        match *self.unlock_answer.lock().unwrap() {
+            FakeKeystore::Declines => Err(nectarlink_core::unlock::KeyRefusal::Declined),
+            _ => Ok(std::iter::once(0xAB).chain(key.iter().map(|b| b ^ FAKE_KEYSTORE_KEY)).collect()),
+        }
+    }
+    fn unlock_unwrap(
+        &self,
+        _pc: &nectarlink_core::DeviceId,
+        ask: &nectarlink_core::unlock::Ask,
+        wrapped: &[u8],
+    ) -> Result<Vec<u8>, nectarlink_core::unlock::KeyRefusal> {
+        self.unlock_asks.lock().unwrap().push(ask.clone());
+        let key: Vec<u8> = wrapped.iter().skip(1).map(|b| b ^ FAKE_KEYSTORE_KEY).collect();
+        match *self.unlock_answer.lock().unwrap() {
+            FakeKeystore::Works => Ok(key),
+            FakeKeystore::Declines => Err(nectarlink_core::unlock::KeyRefusal::Declined),
+            FakeKeystore::WrongKey => Ok(key.iter().map(|b| b ^ 1).collect()),
+            FakeKeystore::KeyGone => Err(nectarlink_core::unlock::KeyRefusal::KeyGone),
+        }
+    }
+    fn unlock_forget(&self, pc: &nectarlink_core::DeviceId, user: Option<&str>) {
+        self.unlock_forgotten.lock().unwrap().push((*pc, user.map(str::to_owned)));
+    }
     fn deck_press(&self, _from: &nectarlink_core::DeviceId, tile: &str) -> Result<(), String> {
         self.deck_presses.lock().unwrap().push(tile.to_owned());
         Ok(())
@@ -715,6 +750,20 @@ impl nectarlink_core::MicSink for TestMicSink {
         self.got.lock().unwrap().push("ended".into());
     }
 }
+
+/// How the stand-in Keystore answers.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum FakeKeystore {
+    #[default]
+    Works,
+    Declines,
+    /// Unwraps to the wrong key (as if the PC's copy were tampered with).
+    WrongKey,
+    KeyGone,
+}
+
+/// The stand-in's "hardware key": wrapping is XOR with it plus a marker.
+const FAKE_KEYSTORE_KEY: u8 = 0x5a;
 
 struct TestDevice {
     node: Node,
@@ -3634,6 +3683,91 @@ async fn gamepad_goes_to_pcs_that_offer_it_reliably_or_by_datagram() {
     // A button the Xbox layout doesn't have never leaves the phone.
     let bad = PadState { buttons: 0x0800, ..PadState::default() };
     assert!(phone.node.remote_pad(pc_id, bad).await.is_err());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_phone_unlocks_its_pc_only_as_enrolled_and_with_its_biometric() {
+    use nectarlink_core::unlock::{MAX_FAILURES, Secret};
+
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let sid = "S-1-5-21-1004336348-1177238915-682003330-1001";
+    let password = || Secret::new(b"hunter2 is not my password".to_vec());
+
+    // Neither side offers it yet.
+    assert!(matches!(pc.node.unlock_enroll(phone_id, sid, "bee", password()).await, Err(Error::Unsupported)));
+
+    pc.node.update_power(PowerLevel::NotApplicable, vec!["unlock.pc".into()]).await;
+    phone.node.update_power(PowerLevel::Basic, vec!["unlock.key".into()]).await;
+    // Wait until each side has the other's capabilities.
+    let deadline = tokio::time::Instant::now() + WAIT;
+    loop {
+        let r = pc.node.unlock_enroll(phone_id, sid, "bee", password()).await;
+        if matches!(r, Err(Error::Denied)) {
+            break; // offered both ways now; refused because the toggles are off
+        }
+        assert!(tokio::time::Instant::now() < deadline, "capabilities never arrived: {r:?}");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+
+    // On at the PC only: the phone still refuses.
+    pc.node.set_device_toggle(phone_id, "unlock", true).unwrap();
+    assert!(matches!(pc.node.unlock_enroll(phone_id, sid, "bee", password()).await, Err(Error::Denied)));
+    assert!(phone.platform.unlock_asks.lock().unwrap().is_empty(), "the phone's owner was never asked");
+
+    // On at both: the phone's owner agrees, and only sealed data stays on the PC.
+    phone.node.set_device_toggle(pc_id, "unlock", true).unwrap();
+    with_timeout("enroll", pc.node.unlock_enroll(phone_id, sid, "bee", password())).await.unwrap();
+    let ask = phone.platform.unlock_asks.lock().unwrap().last().cloned().unwrap();
+    assert_eq!((ask.pc_name.as_str(), ask.user_name.as_str(), ask.user.as_str()), ("Desktop", "bee", sid));
+    assert_eq!(pc.node.unlock_users(phone_id).unwrap(), vec![(sid.to_owned(), "bee".to_owned())]);
+
+    // An unlock gets exactly the password back, after the phone asks again.
+    let got = with_timeout("unlock", pc.node.unlock_password(phone_id, sid)).await.unwrap();
+    assert_eq!(got.expose(), password().expose());
+    assert_eq!(phone.platform.unlock_asks.lock().unwrap().len(), 2, "asked for each use");
+    assert!(
+        matches!(pc.node.unlock_password(phone_id, "S-1-5-21-1-2-3-1002").await, Err(Error::NotFound)),
+        "a user who never enrolled"
+    );
+
+    // The owner declines: no password.
+    *phone.platform.unlock_answer.lock().unwrap() = FakeKeystore::Declines;
+    assert!(matches!(pc.node.unlock_password(phone_id, sid).await, Err(Error::Denied)));
+
+    // The phone's key is gone (a new fingerprint): enroll again.
+    *phone.platform.unlock_answer.lock().unwrap() = FakeKeystore::KeyGone;
+    assert!(matches!(pc.node.unlock_password(phone_id, sid).await, Err(Error::NotFound)));
+
+    // Keys that don't open it count as failures, and enough of them lock it
+    // out, even for the right key afterwards.
+    *phone.platform.unlock_answer.lock().unwrap() = FakeKeystore::WrongKey;
+    for _ in 0..MAX_FAILURES {
+        assert!(matches!(pc.node.unlock_password(phone_id, sid).await, Err(Error::Denied)));
+    }
+    *phone.platform.unlock_answer.lock().unwrap() = FakeKeystore::Works;
+    let asked = phone.platform.unlock_asks.lock().unwrap().len();
+    assert!(matches!(pc.node.unlock_password(phone_id, sid).await, Err(Error::Denied)), "locked out");
+    assert_eq!(phone.platform.unlock_asks.lock().unwrap().len(), asked, "the phone isn't even asked");
+
+    // Turned off on the phone: its keys go, and so does the PC's sealed copy.
+    phone.node.set_device_toggle(pc_id, "unlock", false).unwrap();
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while !pc.node.unlock_users(phone_id).unwrap().is_empty() {
+        assert!(tokio::time::Instant::now() < deadline, "the PC kept the sealed password");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert!(
+        phone
+            .platform
+            .unlock_forgotten
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|(pc, user)| *pc == pc_id && user.is_none())
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

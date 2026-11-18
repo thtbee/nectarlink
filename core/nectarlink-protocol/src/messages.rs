@@ -19,6 +19,11 @@ pub mod types {
     pub const EVENT_UPDATE: &str = "event.update";
     pub const DEVICE_RING: &str = "device.ring";
     pub const DEVICE_RING_STOPPED: &str = "device.ring_stopped";
+    pub const UNLOCK_ENROLL: &str = "unlock.enroll";
+    pub const UNLOCK_WRAPPED: &str = "unlock.wrapped";
+    pub const UNLOCK_REQUEST: &str = "unlock.request";
+    pub const UNLOCK_RELEASE: &str = "unlock.release";
+    pub const UNLOCK_FORGET: &str = "unlock.forget";
 
     pub const PAIR_REQUEST: &str = "pair.request";
     pub const PAIR_ACCEPT: &str = "pair.accept";
@@ -4712,6 +4717,155 @@ impl StorageChanged {
     pub fn is_valid(&self) -> bool {
         is_valid_storage_dir_path(&self.path)
     }
+}
+
+// ---- Unlock the PC with the phone (docs/protocol/unlock.md) ----
+
+pub mod unlock {
+    /// Offered by a phone that can hold a PC's key behind a strong biometric.
+    pub const CAP_KEY: &str = "unlock.key";
+    /// Offered by a PC that can unlock its locked session with a phone.
+    pub const CAP_PC: &str = "unlock.pc";
+    /// The per-device toggle on both sides, off by default.
+    pub const TOGGLE: &str = "unlock";
+    /// Bytes in the key `K`.
+    pub const KEY_LEN: usize = 32;
+    /// Bytes in a request ID.
+    pub const REQUEST_LEN: usize = 16;
+    /// Largest wrapped key accepted (AES-GCM of 32 bytes plus IV and tag fits
+    /// easily; room for a format byte).
+    pub const MAX_WRAPPED: usize = 256;
+    /// Longest PC or user name shown on the phone, in UTF-8 bytes.
+    pub const MAX_NAME: usize = 128;
+    /// Longest Windows security identifier (`S-1-5-21-…`).
+    pub const MAX_USER: usize = 184;
+
+    pub(crate) fn name_ok(s: &str) -> bool {
+        !s.is_empty() && s.len() <= MAX_NAME && !s.chars().any(char::is_control)
+    }
+
+    pub(crate) fn user_ok(s: &str) -> bool {
+        !s.is_empty() && s.len() <= MAX_USER && s.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+    }
+
+    /// Whether `s` looks like a Windows security identifier.
+    pub fn user_ok_pub(s: &str) -> bool {
+        user_ok(s)
+    }
+}
+
+/// `unlock.enroll` (PC to phone): wrap `key` behind the phone owner's
+/// biometric for this PC and Windows user.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnlockEnroll {
+    pub pc_name: String,
+    pub user_name: String,
+    /// The Windows user's security identifier.
+    pub user: String,
+    #[serde(with = "serde_bytes")]
+    pub key: Vec<u8>,
+}
+
+impl UnlockEnroll {
+    pub fn is_valid(&self) -> bool {
+        unlock::name_ok(&self.pc_name)
+            && unlock::name_ok(&self.user_name)
+            && unlock::user_ok(&self.user)
+            && self.key.len() == unlock::KEY_LEN
+    }
+}
+
+/// Never prints the key.
+impl std::fmt::Debug for UnlockEnroll {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UnlockEnroll")
+            .field("pc_name", &self.pc_name)
+            .field("user_name", &self.user_name)
+            .field("user", &self.user)
+            .finish_non_exhaustive()
+    }
+}
+
+/// `unlock.wrapped` (phone to PC, the answer to `unlock.enroll`).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnlockWrapped {
+    #[serde(with = "serde_bytes")]
+    pub wrapped: Vec<u8>,
+}
+
+impl UnlockWrapped {
+    pub fn is_valid(&self) -> bool {
+        !self.wrapped.is_empty() && self.wrapped.len() <= unlock::MAX_WRAPPED
+    }
+}
+
+impl std::fmt::Debug for UnlockWrapped {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "UnlockWrapped({} bytes)", self.wrapped.len())
+    }
+}
+
+/// `unlock.request` (PC to phone): someone at the locked PC asked to unlock it.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnlockRequest {
+    #[serde(with = "serde_bytes")]
+    pub request: Vec<u8>,
+    pub pc_name: String,
+    pub user_name: String,
+    pub user: String,
+    #[serde(with = "serde_bytes")]
+    pub wrapped: Vec<u8>,
+}
+
+impl UnlockRequest {
+    pub fn is_valid(&self) -> bool {
+        self.request.len() == unlock::REQUEST_LEN
+            && unlock::name_ok(&self.pc_name)
+            && unlock::name_ok(&self.user_name)
+            && unlock::user_ok(&self.user)
+            && !self.wrapped.is_empty()
+            && self.wrapped.len() <= unlock::MAX_WRAPPED
+    }
+}
+
+impl std::fmt::Debug for UnlockRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UnlockRequest")
+            .field("pc_name", &self.pc_name)
+            .field("user_name", &self.user_name)
+            .field("user", &self.user)
+            .finish_non_exhaustive()
+    }
+}
+
+/// `unlock.release` (phone to PC, the answer to `unlock.request`): the
+/// unwrapped key, after the owner's biometric.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnlockRelease {
+    #[serde(with = "serde_bytes")]
+    pub request: Vec<u8>,
+    #[serde(with = "serde_bytes")]
+    pub key: Vec<u8>,
+}
+
+impl UnlockRelease {
+    pub fn is_valid(&self) -> bool {
+        self.request.len() == unlock::REQUEST_LEN && self.key.len() == unlock::KEY_LEN
+    }
+}
+
+impl std::fmt::Debug for UnlockRelease {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("UnlockRelease")
+    }
+}
+
+/// `unlock.forget` (either way): drop what's kept for this pair, or only for
+/// `user`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnlockForget {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user: Option<String>,
 }
 
 #[cfg(test)]
