@@ -141,6 +141,8 @@ struct Row {
     device_name: String,
     title: String,
     subtitle: String,
+    /// A clip's whole text, when its title shows only part of it.
+    full_text: String,
     thumb_url: String,
     primary_path: String,
     item_count: u32,
@@ -172,6 +174,7 @@ const ROLES: &[&str] = &[
     "prevTimestamp",
     "title",
     "subtitle",
+    "fullText",
     "sizeBytes",
     "durationSecs",
     "itemCount",
@@ -197,6 +200,7 @@ fn role_value(row: &Row, role: &str) -> QVariant {
         "prevTimestamp" => QVariant::from(&(row.prev_timestamp as f64)),
         "title" => text(&row.title),
         "subtitle" => text(&row.subtitle),
+        "fullText" => text(&row.full_text),
         "sizeBytes" => QVariant::from(&(e.size_bytes as f64)),
         "durationSecs" => QVariant::from(&(e.duration_secs as i32)),
         "itemCount" => QVariant::from(&(row.item_count as i32)),
@@ -561,6 +565,7 @@ fn build_rows(entries: &[TimelineEntry], initial_prev_ts: Option<i64>) -> Vec<Ro
             device_name,
             title,
             subtitle,
+            full_text: clip_full_text(entry),
             thumb_url,
             primary_path,
             item_count,
@@ -765,6 +770,30 @@ pub fn preview_json() -> String {
     serde_json::Value::Array(items).to_string()
 }
 
+/// The most of a clip's text the Timeline shows when a row is opened up.
+const FULL_TEXT_MAX: usize = 20_000;
+
+/// A text clip's whole text when its row's title shows only part of it (a
+/// first line, the first words or a link's domain), so the row can open up
+/// to show the rest (#442). Empty otherwise.
+fn clip_full_text(entry: &TimelineEntry) -> String {
+    if entry.kind != TimelineKind::Clip || entry.title == "Image clip" {
+        return String::new();
+    }
+    let text = entry.title.trim();
+    if text.is_empty() {
+        return String::new();
+    }
+    let (shown, _) = nectarlink_core::format_clip_display(text);
+    if !text.contains('\n') && shown == text {
+        return String::new();
+    }
+    match text.char_indices().nth(FULL_TEXT_MAX) {
+        Some((end, _)) => format!("{}…", &text[..end]),
+        None => text.to_owned(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -786,6 +815,24 @@ mod tests {
             clip_available: false,
             image_data_url: None,
         }
+    }
+
+    #[test]
+    fn clip_rows_offer_their_whole_text_only_when_the_title_shows_part_of_it() {
+        let clip = |title: &str| TimelineEntry {
+            title: title.into(),
+            ..sample_entry(TimelineKind::Clip, String::new())
+        };
+        assert_eq!(clip_full_text(&clip("Replace")), "");
+        assert_eq!(clip_full_text(&clip("Replace\nwith this line")), "Replace\nwith this line");
+        let long = "word ".repeat(20);
+        assert_eq!(clip_full_text(&clip(&long)), long.trim());
+        assert_eq!(clip_full_text(&clip("Image clip")), "");
+        assert_eq!(clip_full_text(&clip("  ")), "");
+        let note = TimelineEntry { title: "a\nb".into(), ..sample_entry(TimelineKind::Link, String::new()) };
+        assert_eq!(clip_full_text(&note), "");
+        let huge = "é".repeat(FULL_TEXT_MAX + 5);
+        assert_eq!(clip_full_text(&clip(&huge)).chars().count(), FULL_TEXT_MAX + 1);
     }
 
     #[test]
