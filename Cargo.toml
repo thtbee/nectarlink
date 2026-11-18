@@ -32,7 +32,6 @@ nectarlink-adb = { path = "core/nectarlink-adb", version = "0.1.5" }
 nectarlink-protocol = { path = "core/nectarlink-protocol", version = "0.1.5" }
 nectarlink-core = { path = "core/nectarlink-core", version = "0.1.5" }
 nectarlink-vcam = { path = "desktop/vcam", version = "0.1.5" }
-nectarlink-credprov = { path = "desktop/credprov", version = "0.1.5" }
 
 anyhow = "1"
 ciborium = "0.2"

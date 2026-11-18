@@ -21,9 +21,7 @@ mod provider;
 #[cfg(windows)]
 mod text;
 
-/// CLSID of the NectarLink unlock credential provider:
-/// `{BC7B4BCF-B24C-4C5B-9E55-CB09E19A8799}`.
-pub const CLSID_TEXT: &str = "{BC7B4BCF-B24C-4C5B-9E55-CB09E19A8799}";
+pub use wire::CLSID_TEXT;
 
 #[cfg(windows)]
 pub use self::com::*;

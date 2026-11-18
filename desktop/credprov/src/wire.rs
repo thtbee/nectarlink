@@ -5,7 +5,11 @@
 //! One exchange per connection: the provider sends a request naming the Windows
 //! user; NectarLink asks the enrolled phone and answers with a status and, when
 //! the phone's owner confirmed, the password. Pure code, so it's tested on every
-//! platform.
+//! platform. The desktop app includes this file as its own module (it doesn't
+//! link the DLL's crate), so it depends on nothing but `std`.
+
+/// CLSID of the NectarLink unlock credential provider.
+pub const CLSID_TEXT: &str = "{BC7B4BCF-B24C-4C5B-9E55-CB09E19A8799}";
 
 /// The pipe for Windows session `session`: one per session, since each has
 /// its own LogonUI and its own signed-in NectarLink.

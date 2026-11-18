@@ -18,7 +18,6 @@ use std::{
 };
 
 use nectarlink_core::{DeviceId, Error, unlock::Secret};
-use nectarlink_credprov::{CLSID_TEXT, wire};
 use windows::{
     Win32::{
         Foundation::{
@@ -57,6 +56,12 @@ use windows::{
     },
     core::{HSTRING, PCWSTR, PWSTR},
 };
+use wire::CLSID_TEXT;
+
+/// The unlock pipe's messages, shared with the credential provider by source.
+#[path = "../../../credprov/src/wire.rs"]
+#[allow(dead_code)]
+mod wire;
 
 pub const REGISTER_ARG: &str = "--register-unlock";
 pub const UNREGISTER_ARG: &str = "--unregister-unlock";

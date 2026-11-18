@@ -39,8 +39,6 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-# Unlock the PC with the phone: the pipe messages its credential provider speaks.
-nectarlink-credprov.workspace = true
 # A phone's Gamepad as an Xbox 360 controller, through the ViGEmBus driver.
 vigem-client = "0.1.4"
 # For the COM callbacks that `windows::core::implement` generates.
