@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! The credential provider LogonUI loads (ADR 0009): a tile, "Unlock with
-//! phone", under each locked user, only when unlocking a locked session. Its
+//! phone", for the account signed in to the locked session, and only while its
+//! NectarLink is running (so never at the first sign-in after a restart). Its
 //! button asks the user's NectarLink over the unlock pipe; with the password
 //! the phone's owner released, it hands Windows a Kerberos unlock credential.
 //! Every entry point catches panics: nothing may unwind into LogonUI.
@@ -10,8 +11,8 @@
 use std::{
     panic::{AssertUnwindSafe, catch_unwind},
     sync::{
-        Mutex,
-        atomic::{AtomicU32, Ordering},
+        Arc, Mutex,
+        atomic::{AtomicI32, AtomicU32, Ordering},
     },
 };
 
@@ -25,7 +26,7 @@ use windows::{
         UI::Shell::{
             CPFG_CREDENTIAL_PROVIDER_LABEL, CPFIS_NONE, CPFS_DISPLAY_IN_BOTH, CPFS_DISPLAY_IN_SELECTED_TILE,
             CPFT_LARGE_TEXT, CPFT_SMALL_TEXT, CPFT_SUBMIT_BUTTON, CPGSR_NO_CREDENTIAL_NOT_FINISHED,
-            CPGSR_RETURN_CREDENTIAL_FINISHED, CPSI_ERROR, CPSI_NONE, CPUS_UNLOCK_WORKSTATION,
+            CPGSR_RETURN_CREDENTIAL_FINISHED, CPSI_ERROR, CPSI_NONE, CPUS_LOGON, CPUS_UNLOCK_WORKSTATION,
             CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION, CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR,
             CREDENTIAL_PROVIDER_FIELD_INTERACTIVE_STATE, CREDENTIAL_PROVIDER_FIELD_STATE,
             CREDENTIAL_PROVIDER_GET_SERIALIZATION_RESPONSE, CREDENTIAL_PROVIDER_NO_DEFAULT,
@@ -40,7 +41,7 @@ use windows::{
 };
 
 use crate::{
-    CLSID_NECTARLINK_UNLOCK, kerb, pipe,
+    CLSID_NECTARLINK_UNLOCK, kerb, pipe, session,
     text::{self, Text},
     wire::{self, Status},
 };
@@ -108,7 +109,8 @@ fn take(p: PWSTR) -> Option<String> {
 #[implement(ICredentialProvider, ICredentialProviderSetUserArray)]
 pub struct Provider {
     credentials: Mutex<Vec<ICredentialProviderCredential>>,
-    unlocking: Mutex<bool>,
+    /// The scenario LogonUI set (`0` before it did, or for one it isn't for).
+    scenario: Arc<AtomicI32>,
     _guard: ObjectGuard,
 }
 
@@ -120,7 +122,11 @@ impl std::fmt::Debug for Provider {
 
 impl Provider {
     pub fn new() -> Provider {
-        Provider { credentials: Mutex::default(), unlocking: Mutex::new(false), _guard: ObjectGuard::new() }
+        Provider {
+            credentials: Mutex::default(),
+            scenario: Arc::new(AtomicI32::new(0)),
+            _guard: ObjectGuard::new(),
+        }
     }
 }
 
@@ -137,11 +143,17 @@ impl ICredentialProvider_Impl for Provider_Impl {
         _dwflags: u32,
     ) -> windows::core::Result<()> {
         guarded(|| {
-            // Unlocking a session that's already signed in, and nothing else: not
-            // the first sign-in after a restart, not other password prompts.
-            let unlocking = cpus == CPUS_UNLOCK_WORKSTATION;
-            *self.unlocking.lock().map_err(|_| E_UNEXPECTED)? = unlocking;
-            if unlocking { Ok(()) } else { Err(E_NOTIMPL.into()) }
+            // The lock screen: Windows 10 and later mostly ask for a logon there
+            // (sign-in and unlock were merged), some setups for an unlock. Never
+            // other password prompts (CredUI, changing a password). The tile is
+            // then only for the account signed in to this session.
+            if cpus == CPUS_LOGON || cpus == CPUS_UNLOCK_WORKSTATION {
+                self.scenario.store(cpus.0, Ordering::SeqCst);
+                Ok(())
+            } else {
+                self.scenario.store(0, Ordering::SeqCst);
+                Err(E_NOTIMPL.into())
+            }
         })
     }
 
@@ -211,9 +223,10 @@ impl ICredentialProvider_Impl for Provider_Impl {
             if pdwcount.is_null() || pdwdefault.is_null() || pbautologonwithdefault.is_null() {
                 return Err(E_POINTER.into());
             }
-            let unlocking = *self.unlocking.lock().map_err(|_| E_UNEXPECTED)?;
+            // Nothing to offer unless NectarLink is running in this session.
+            let active = self.scenario.load(Ordering::SeqCst) != 0 && pipe::server_present();
             let count =
-                if unlocking { self.credentials.lock().map_err(|_| E_UNEXPECTED)?.len() as u32 } else { 0 };
+                if active { self.credentials.lock().map_err(|_| E_UNEXPECTED)?.len() as u32 } else { 0 };
             // SAFETY: checked non-null above; LogonUI owns them.
             unsafe {
                 *pdwcount = count;
@@ -241,6 +254,12 @@ impl ICredentialProviderSetUserArray_Impl for Provider_Impl {
         guarded(|| {
             let users = users.ok()?;
             let mut credentials = Vec::new();
+            // Only the account already signed in to this session: nobody at the
+            // first sign-in after a restart, so no tile then.
+            let Some(signed_in) = session::signed_in_sid() else {
+                *self.credentials.lock().map_err(|_| E_UNEXPECTED)? = credentials;
+                return Ok(());
+            };
             // SAFETY: a valid user array from LogonUI; each string is ours to free.
             unsafe {
                 for i in 0..users.GetCount()? {
@@ -250,10 +269,11 @@ impl ICredentialProviderSetUserArray_Impl for Provider_Impl {
                     else {
                         continue;
                     };
-                    if !wire::user_ok(&sid) {
+                    if !wire::user_ok(&sid) || sid != signed_in {
                         continue;
                     }
-                    let credential: ICredentialProviderCredential2 = Credential::new(sid, qualified).into();
+                    let credential: ICredentialProviderCredential2 =
+                        Credential::new(sid, qualified, self.scenario.clone()).into();
                     credentials.push(credential.into());
                 }
             }
@@ -269,6 +289,7 @@ impl ICredentialProviderSetUserArray_Impl for Provider_Impl {
 pub struct Credential {
     sid: String,
     qualified: String,
+    scenario: Arc<AtomicI32>,
     status: Mutex<String>,
     _events: Mutex<Option<ICredentialProviderCredentialEvents>>,
     _guard: ObjectGuard,
@@ -282,10 +303,11 @@ impl std::fmt::Debug for Credential {
 }
 
 impl Credential {
-    fn new(sid: String, qualified: String) -> Credential {
+    fn new(sid: String, qualified: String, scenario: Arc<AtomicI32>) -> Credential {
         Credential {
             sid,
             qualified,
+            scenario,
             status: Mutex::new(say(Text::Hint).to_owned()),
             _events: Mutex::default(),
             _guard: ObjectGuard::new(),
@@ -319,7 +341,12 @@ impl Credential {
             return Err(Text::Failed);
         }
         let (domain, user) = wire::split_qualified(&self.qualified);
-        let packed = kerb::pack_unlock(domain, user, &wide);
+        let kind = if self.scenario.load(Ordering::SeqCst) == CPUS_UNLOCK_WORKSTATION.0 {
+            kerb::Kind::Unlock
+        } else {
+            kerb::Kind::Logon
+        };
+        let packed = kerb::pack_unlock(kind, domain, user, &wide);
         wide.fill(0);
         std::hint::black_box(&wide);
         let mut packed = packed.map_err(|_| Text::Failed)?;

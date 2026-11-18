@@ -19,6 +19,8 @@ mod pipe;
 #[cfg(windows)]
 mod provider;
 #[cfg(windows)]
+mod session;
+#[cfg(windows)]
 mod text;
 
 pub use wire::CLSID_TEXT;
@@ -147,13 +149,15 @@ mod com {
             let provider: ICredentialProvider = unsafe { factory.CreateInstance(None) }.unwrap();
             // SAFETY: plain COM calls on a live object.
             unsafe {
-                assert!(provider.SetUsageScenario(CPUS_LOGON, 0).is_err(), "never the first sign-in");
                 assert!(provider.SetUsageScenario(CPUS_CREDUI, 0).is_err(), "never other prompts");
+                // The lock screen asks for either (Windows 10 merged them).
                 assert!(provider.SetUsageScenario(CPUS_UNLOCK_WORKSTATION, 0).is_ok());
+                assert!(provider.SetUsageScenario(CPUS_LOGON, 0).is_ok());
                 assert_eq!(provider.GetFieldDescriptorCount().unwrap(), 3);
                 let (mut count, mut default, mut auto) = (9, 0, BOOL(1));
                 provider.GetCredentialCount(&mut count, &mut default, &mut auto).unwrap();
-                assert_eq!((count, auto.as_bool()), (0, false), "no tile before it knows the user");
+                // No user array yet, and no NectarLink pipe in a test run: no tile.
+                assert_eq!((count, auto.as_bool()), (0, false));
             }
             drop(provider);
             drop(factory);

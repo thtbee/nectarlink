@@ -12,9 +12,9 @@ use windows::{
     Win32::{
         Foundation::{HANDLE, LUID},
         Security::Authentication::Identity::{
-            KERB_INTERACTIVE_LOGON, KERB_INTERACTIVE_UNLOCK_LOGON, KerbWorkstationUnlockLogon, LSA_STRING,
-            LSA_UNICODE_STRING, LsaConnectUntrusted, LsaDeregisterLogonProcess,
-            LsaLookupAuthenticationPackage,
+            KERB_INTERACTIVE_LOGON, KERB_INTERACTIVE_UNLOCK_LOGON, KERB_LOGON_SUBMIT_TYPE,
+            KerbInteractiveLogon, KerbWorkstationUnlockLogon, LSA_STRING, LSA_UNICODE_STRING,
+            LsaConnectUntrusted, LsaDeregisterLogonProcess, LsaLookupAuthenticationPackage,
         },
     },
     core::{PSTR, PWSTR},
@@ -27,9 +27,18 @@ pub enum PackError {
     TooLong,
 }
 
-/// Packs `domain\user` and `password` (UTF-16, no terminator) for unlocking a
-/// workstation. The result holds the password: wipe it after use.
-pub fn pack_unlock(domain: &str, user: &str, password: &[u16]) -> Result<Vec<u8>, PackError> {
+/// How LogonUI asked: the lock screen of Windows 10 and later mostly asks for a
+/// logon (sign-in and unlock were merged), some setups still for an unlock.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kind {
+    Logon,
+    Unlock,
+}
+
+/// Packs `domain\user` and `password` (UTF-16, no terminator) for `kind`. For
+/// the account already signed in to the session, either one unlocks it. The
+/// result holds the password: wipe it after use.
+pub fn pack_unlock(kind: Kind, domain: &str, user: &str, password: &[u16]) -> Result<Vec<u8>, PackError> {
     let domain: Vec<u16> = domain.encode_utf16().collect();
     let user: Vec<u16> = user.encode_utf16().collect();
     let header = size_of::<KERB_INTERACTIVE_UNLOCK_LOGON>();
@@ -50,7 +59,7 @@ pub fn pack_unlock(domain: &str, user: &str, password: &[u16]) -> Result<Vec<u8>
     };
     let logon = KERB_INTERACTIVE_UNLOCK_LOGON {
         Logon: KERB_INTERACTIVE_LOGON {
-            MessageType: KerbWorkstationUnlockLogon,
+            MessageType: message_type(kind),
             LogonDomainName: place(&domain, &mut buffer)?,
             UserName: place(&user, &mut buffer)?,
             Password: place(password, &mut buffer)?,
@@ -63,6 +72,13 @@ pub fn pack_unlock(domain: &str, user: &str, password: &[u16]) -> Result<Vec<u8>
         std::ptr::copy_nonoverlapping((&raw const logon).cast::<u8>(), buffer.as_mut_ptr(), header);
     }
     Ok(buffer)
+}
+
+fn message_type(kind: Kind) -> KERB_LOGON_SUBMIT_TYPE {
+    match kind {
+        Kind::Logon => KerbInteractiveLogon,
+        Kind::Unlock => KerbWorkstationUnlockLogon,
+    }
 }
 
 /// The ID Windows gives the Negotiate package, which LogonUI expects unlock
@@ -104,7 +120,7 @@ mod tests {
     #[test]
     fn strings_follow_the_struct_at_the_offsets_it_names() {
         let password: Vec<u16> = "pässwörd 🐝".encode_utf16().collect();
-        let packed = pack_unlock("MicrosoftAccount", "me@example.com", &password).unwrap();
+        let packed = pack_unlock(Kind::Unlock, "MicrosoftAccount", "me@example.com", &password).unwrap();
         let header = size_of::<KERB_INTERACTIVE_UNLOCK_LOGON>();
         // SAFETY: `packed` starts with a whole KERB_INTERACTIVE_UNLOCK_LOGON.
         let logon: KERB_INTERACTIVE_UNLOCK_LOGON =
@@ -119,8 +135,17 @@ mod tests {
     }
 
     #[test]
+    fn a_logon_uses_the_interactive_message() {
+        let packed = pack_unlock(Kind::Logon, ".", "bee", &[b'p' as u16]).unwrap();
+        // SAFETY: `packed` starts with a whole KERB_INTERACTIVE_UNLOCK_LOGON.
+        let logon: KERB_INTERACTIVE_UNLOCK_LOGON =
+            unsafe { std::ptr::read_unaligned(packed.as_ptr().cast::<KERB_INTERACTIVE_UNLOCK_LOGON>()) };
+        assert_eq!(logon.Logon.MessageType, KerbInteractiveLogon);
+    }
+
+    #[test]
     fn a_string_too_long_for_windows_is_refused() {
         let long = vec![b'a' as u16; 40_000];
-        assert_eq!(pack_unlock(".", "bee", &long), Err(PackError::TooLong));
+        assert_eq!(pack_unlock(Kind::Logon, ".", "bee", &long), Err(PackError::TooLong));
     }
 }

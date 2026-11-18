@@ -130,6 +130,23 @@ fn overlapped(
     Ok(n)
 }
 
+/// Whether this session's NectarLink is serving the unlock pipe (busy counts).
+pub fn server_present() -> bool {
+    let mut session = 0u32;
+    // SAFETY: valid out pointer.
+    if unsafe { ProcessIdToSessionId(GetCurrentProcessId(), &mut session) }.is_err() {
+        return false;
+    }
+    let name = HSTRING::from(wire::pipe_name(session));
+    // SAFETY: `name` outlives the call.
+    if unsafe { WaitNamedPipeW(&name, 1) }.as_bool() {
+        return true;
+    }
+    // Busy or timed out: it's there. Not found: it isn't.
+    let error = windows::core::Error::from_thread();
+    error.code() != windows::Win32::Foundation::ERROR_FILE_NOT_FOUND.to_hresult()
+}
+
 /// Asks this session's NectarLink to unlock `user` (a security identifier). The
 /// returned password is UTF-8: wipe it after use.
 pub fn ask(user: &str) -> Result<(Status, Vec<u8>), AskError> {

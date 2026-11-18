@@ -73,9 +73,13 @@ What each side holds:
   password (which makes the ciphertext useless; the PC asks to re-enroll),
   or a new fingerprint on the phone (the Keystore key is invalidated) all end
   it.
-- **Unlock only:** the credential provider answers `CPUS_UNLOCK_WORKSTATION`,
-  not `CPUS_LOGON`. Unlocking needs NectarLink running in the locked session,
-  which also means a restart always asks for the real password once.
+- **Unlock only:** since Windows 10 the lock screen mostly asks providers for
+  `CPUS_LOGON` (sign-in and unlock were merged; `CPUS_UNLOCK_WORKSTATION` only in
+  some setups), so the provider takes both but offers its tile only to the account
+  already signed in to this session (WTS session user), and only while that
+  user's NectarLink serves the pipe. At the first sign-in after a restart nobody
+  is signed in, so there's no tile; the app also answers only while the session
+  is locked. A restart always asks for the real password once.
 - **Off by default**, behind a clear explanation, and absent from builds until
   the review is done.
 
@@ -146,7 +150,7 @@ What each side holds:
 - Phone: `unlock/UnlockKeys.kt` (Keystore key per PC and user, StrongBox when
   present, per-use strong biometric, invalidated by a new fingerprint) and
   `unlock/UnlockPrompts.kt` (BiometricPrompt with a CryptoObject).
-- Credential provider: `desktop/credprov` (Rust; unlock scenario only; the
+- Credential provider: `desktop/credprov` (Rust; only for the account signed in to the locked session; the
   pipe client checks the server is the NectarLink next to the DLL and connects
   at identification level; 40 s cap; panics caught).
 - PC app: `win/unlock.rs` (registration, the SYSTEM-only pipe answering
