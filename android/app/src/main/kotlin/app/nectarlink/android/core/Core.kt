@@ -474,7 +474,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             updateLocalSendMulticast(lsEnabled)
             pruneOldTempCaches()
             _state.update {
-                it.withDevices(devices, pcToggles.storageAllowed, pcToggles.micOff).copy(
+                it.withDevices(devices, pcToggles.storageAllowed, pcToggles.micOff, pcToggles.unlockAllowed).copy(
                     sendQueue = initialQueue,
                     clipboardHistoryEnabled = clipHistEnabled,
                     clipboardHistory = clipHist,
@@ -794,7 +794,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                             localNetwork = localNetwork,
                             devices = if (pcToggles != null) {
                                 it.devices.map { d ->
-                                    d.copy(storageEnabled = d.id in pcToggles.storageAllowed, micEnabled = d.id !in pcToggles.micOff)
+                                    d.copy(
+                                        storageEnabled = d.id in pcToggles.storageAllowed,
+                                        micEnabled = d.id !in pcToggles.micOff,
+                                        unlockEnabled = d.id in pcToggles.unlockAllowed,
+                                    )
                                 }
                             } else {
                                 it.devices
@@ -1263,18 +1267,37 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
-    /** Which PCs may browse this phone's storage, and which may not ask for its microphone. */
-    private class PerPcToggles(val storageAllowed: Set<String>, val micOff: Set<String>)
+    /**
+     * Which PCs may browse this phone's storage, which may not ask for its microphone, and
+     * which may ask it to unlock them.
+     */
+    private class PerPcToggles(val storageAllowed: Set<String>, val micOff: Set<String>, val unlockAllowed: Set<String>)
 
     private fun perPcToggles(node: NectarlinkNode, ids: List<String>): PerPcToggles {
         val storage = mutableSetOf<String>()
         val micOff = mutableSetOf<String>()
+        val unlock = mutableSetOf<String>()
         for (id in ids) {
             val toggles = runCatching { node.deviceToggles(id) }.getOrNull() ?: continue
             if (toggles.any { it.name == PhoneStorage.TOGGLE_NAME && it.enabled }) storage += id
             if (toggles.any { it.name == app.nectarlink.android.mic.MicService.TOGGLE_NAME && !it.enabled }) micOff += id
+            if (toggles.any { it.name == UNLOCK_TOGGLE && it.enabled }) unlock += id
         }
-        return PerPcToggles(storage, micOff)
+        return PerPcToggles(storage, micOff, unlock)
+    }
+
+    /**
+     * Lets [pcId] ask this phone to unlock it with the owner's fingerprint (off by default).
+     * Off drops this phone's keys for that PC, and the core tells the PC to drop its copy.
+     */
+    fun setUnlockEnabled(pcId: String, enabled: Boolean) {
+        _state.update { it.withUnlockEnabled(pcId, enabled) }
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@launch
+            runCatching { currentNode.setDeviceToggle(pcId, UNLOCK_TOGGLE, enabled) }
+                .onFailure { Log.w(TAG, "can't change the unlock toggle", it) }
+        }
     }
 
     fun clearWebcamRequest(pcId: String? = null) {
@@ -2040,6 +2063,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
             PhoneStorage.capabilities(context) +
+            // Unlock a PC with this phone's fingerprint (ADR 0009).
+            (if (app.nectarlink.android.unlock.UnlockKeys.supported(context)) listOf("unlock.key") else emptyList()) +
             (if (WebcamService.hasPermission(context)) listOf("camera.stream") else emptyList()) +
             (if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) listOf("camera.capture") else emptyList()) +
             (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList()) +
@@ -2863,6 +2888,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         /** Sharing this phone's players, which also needs notification access. */
         val MEDIA_CAPABILITIES = listOf("media.control")
         /** Accepting the PC's clipboard, and sending this one when asked. */
+        /** The per-PC toggle for unlocking it with this phone (ADR 0009). */
+        const val UNLOCK_TOGGLE = "unlock"
+
         val CLIPBOARD_CAPABILITIES = listOf("clip.write", "clip.share", "mirror.capture", "mirror.view")
         /** With access to the phone's photos. */
         val PHOTO_CAPABILITIES = listOf("photos.read")

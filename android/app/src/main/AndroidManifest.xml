@@ -359,6 +359,15 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
+        <!-- Shows the biometric prompt for unlocking a PC (ADR 0009); nothing else. -->
+        <activity
+            android:name=".unlock.UnlockPromptActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <activity
             android:name=".mic.MicStartActivity"
             android:exported="false"

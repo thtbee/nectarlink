@@ -446,6 +446,14 @@
     <string name="mic_request_card_text">It stays on until you or the PC stop it.</string>
     <string name="mic_pc_toggle">Use this phone as a microphone</string>
     <string name="mic_pc_toggle_hint">On by default. This PC can ask for the microphone. It only turns on when you tap Start.</string>
+    <string name="channel_unlock_requests">Unlocking your PC</string>
+    <string name="unlock_enroll_title">Let %1$s unlock with this phone?</string>
+    <string name="unlock_enroll_text">From now on your fingerprint can unlock %1$s. It asks for it every time.</string>
+    <string name="unlock_request_title">Unlock %1$s?</string>
+    <string name="unlock_request_text">As %1$s</string>
+    <string name="unlock_prompt_text">Only confirm if you\'re at this PC right now.</string>
+    <string name="unlock_pc_toggle">Unlock this PC with your fingerprint</string>
+    <string name="unlock_pc_toggle_hint">Turn it on here and on the PC. Every unlock asks for your fingerprint.</string>
     <string name="mic_pc_toggle_hint_auto">On by default. This PC can ask for the microphone, and it turns on right away.</string>
     <string name="start_without_asking_toggle">Start the camera and microphone without asking</string>
     <string name="start_without_asking_hint">When this PC asks, they turn on right away, with no tap on the phone. Needs Elevated. Without it, the phone asks as usual.</string>

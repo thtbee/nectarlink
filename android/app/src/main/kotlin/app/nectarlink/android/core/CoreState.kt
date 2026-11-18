@@ -149,6 +149,8 @@ data class Device(
     val storageEnabled: Boolean = false,
     /** Whether this PC may ask for this phone's microphone (on by default). */
     val micEnabled: Boolean = true,
+    /** Whether this PC may ask this phone to unlock it (off by default). */
+    val unlockEnabled: Boolean = false,
 ) {
     /** A paired phone or tablet rather than a PC. */
     val isAndroid: Boolean
@@ -277,6 +279,7 @@ data class CoreState(
         paired: List<PairedDevice>,
         storageAllowed: Set<String> = emptySet(),
         micOff: Set<String> = emptySet(),
+        unlockAllowed: Set<String> = emptySet(),
     ): CoreState {
         val prevById = devices.associateBy { it.id }
         return copy(
@@ -287,6 +290,7 @@ data class CoreState(
                     deckState = prev?.deckState,
                     storageEnabled = if (p.id in storageAllowed) true else prev?.storageEnabled ?: false,
                     micEnabled = p.id !in micOff,
+                    unlockEnabled = p.id in unlockAllowed,
                 )
             }.sortedWith(deviceOrder),
         )
@@ -299,6 +303,9 @@ data class CoreState(
         update(id) { it.copy(micEnabled = enabled) }.copy(
             micRequestFrom = if (!enabled && micRequestFrom == id) null else micRequestFrom,
         )
+
+    fun withUnlockEnabled(id: String, enabled: Boolean): CoreState =
+        update(id) { it.copy(unlockEnabled = enabled) }
 
     fun withStorageEnabled(id: String, enabled: Boolean): CoreState =
         update(id) { it.copy(storageEnabled = enabled) }.copy(

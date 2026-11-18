@@ -998,6 +998,7 @@ private fun App(
                                     updater = (context.applicationContext as NectarlinkApplication).updater,
                                     onSetStorageEnabled = core::setStorageEnabled,
                                     onSetMicEnabled = core::setMicEnabled,
+                                    onSetUnlockEnabled = core::setUnlockEnabled,
                                     startWithoutAsking = startWithoutAsking,
                                     onSetStartWithoutAsking = { pc, on -> app.nectarlink.android.service.PcAutoStart.set(context, pc, on) },
                                     onAddSafFolder = core::addSafFolder,

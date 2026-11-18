@@ -440,6 +440,14 @@
 <string name="mic_request_card_text">Sẽ bật cho đến khi bạn hoặc PC tắt.</string>
 <string name="mic_pc_toggle">Dùng điện thoại này làm micrô</string>
 <string name="mic_pc_toggle_hint">Bật theo mặc định. PC này có thể xin dùng micrô. Micrô chỉ bật khi bạn chạm Bắt đầu.</string>
+    <string name="channel_unlock_requests">Mở khóa PC</string>
+    <string name="unlock_enroll_title">Cho phép mở khóa %1$s bằng điện thoại này?</string>
+    <string name="unlock_enroll_text">Từ giờ vân tay của bạn có thể mở khóa %1$s. Lần nào cũng cần vân tay.</string>
+    <string name="unlock_request_title">Mở khóa %1$s?</string>
+    <string name="unlock_request_text">Với tư cách %1$s</string>
+    <string name="unlock_prompt_text">Chỉ xác nhận nếu bạn đang ở trước PC này.</string>
+    <string name="unlock_pc_toggle">Mở khóa PC này bằng vân tay</string>
+    <string name="unlock_pc_toggle_hint">Bật ở đây và trên PC. Mỗi lần mở khóa đều cần vân tay.</string>
 <string name="mic_pc_toggle_hint_auto">Bật theo mặc định. PC này có thể xin dùng micrô và micrô sẽ bật ngay.</string>
 <string name="start_without_asking_toggle">Bật máy ảnh và micrô mà không cần hỏi</string>
 <string name="start_without_asking_hint">Khi PC này yêu cầu, chúng sẽ bật ngay mà không cần chạm trên điện thoại. Cần quyền Elevated. Nếu không có, điện thoại sẽ hỏi như thường lệ.</string>
