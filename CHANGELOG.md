@@ -308,7 +308,9 @@ change things that need a step from you, and its notes say so.
   Linux, an H.265 mirror says it can't be recorded yet instead of failing at the end.
   Thanks to [@znbaboy](https://github.com/znbaboy) ([#393](https://github.com/thtbee/nectarlink/issues/393)).
 - **The phone's seek bar for what the PC plays stays put.** It disappeared whenever a
-  player on the PC dropped its timeline for a moment, around play and pause. Thanks to
+  player on the PC dropped its timeline for a moment, around play and pause, and while
+  the phone was locked or asleep and the PC's player stopped reporting it for a while
+  during playback. Thanks to
   [@znbaboy](https://github.com/znbaboy) ([#392](https://github.com/thtbee/nectarlink/issues/392)).
 - **Chinese, Japanese and Korean text uses Windows' own UI fonts.** Chinese showed in a
   serif font like SimSun that was hard to read; it now uses Microsoft YaHei UI (or the

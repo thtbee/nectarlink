@@ -124,14 +124,17 @@ fn run(on_change: &OnChange) -> windows::core::Result<()> {
     }
 }
 
-/// How long a track's timeline and seeking are kept through a moment without them.
+/// How long seeking is kept through a moment without it, and how far past
+/// its end a track's held timeline may run.
 const TIMELINE_HOLD: Duration = Duration::from_secs(10);
 
 /// Players' timelines as last reported. Apps (browsers above all) report an
-/// empty timeline, or stop offering seeking, for a moment around play and
-/// pause or between updates; each blip reached the phone, and its media
-/// controls dropped the seek bar until the next update (#392). For the same
-/// track, a blip shorter than [`TIMELINE_HOLD`] keeps what was there.
+/// empty timeline, or stop offering seeking, around play and pause or
+/// between updates, sometimes for longer stretches; each gap reached the
+/// phone, and its media controls dropped the seek bar until play or pause
+/// brought the timeline back (#392). For the same track, a missing timeline
+/// is carried on from the last one for as long as that track would still be
+/// playing, and seeking that drops out alone is kept for [`TIMELINE_HOLD`].
 #[derive(Default)]
 struct SteadyTimelines {
     seen: HashMap<String, SeenTimeline>,
@@ -146,6 +149,22 @@ struct SeenTimeline {
     at: Instant,
     /// When the app last offered seeking.
     seek_at: Option<Instant>,
+}
+
+impl SeenTimeline {
+    /// Whether this timeline still stands in for one the app stopped
+    /// reporting: while paused, or until the track would have ended.
+    fn lasts(&self, now: Instant) -> bool {
+        let since = now.saturating_duration_since(self.at);
+        !self.playing
+            || since < TIMELINE_HOLD
+            || self.position.saturating_add(since.as_millis() as u64) < self.duration
+    }
+
+    /// Whether the app offered seeking while it still reported this timeline.
+    fn could_seek(&self) -> bool {
+        self.seek_at.is_some_and(|at| self.at.saturating_duration_since(at) < TIMELINE_HOLD)
+    }
 }
 
 impl SteadyTimelines {
@@ -171,12 +190,12 @@ impl SteadyTimelines {
                         seek_at,
                     },
                 );
-            } else if let Some(s) = same_track.filter(|s| held(s.at)) {
+            } else if let Some(s) = same_track.filter(|s| s.lasts(now)) {
                 let moved =
                     if s.playing { now.saturating_duration_since(s.at).as_millis() as u64 } else { 0 };
                 p.duration = Some(s.duration);
                 p.position = Some(s.position.saturating_add(moved).min(s.duration));
-                if !offers_seek && s.seek_at.is_some_and(held) {
+                if !offers_seek && s.could_seek() {
                     p.actions.push("seek".to_owned());
                 }
             } else {
@@ -855,6 +874,30 @@ mod tests {
     }
 
     #[test]
+    fn a_long_stretch_without_a_timeline_keeps_the_seek_bar_while_the_track_plays() {
+        let mut steady = SteadyTimelines::default();
+        let start = Instant::now();
+        steady.steady(&mut [playing("Clip", Some((600_000, 10_000)), true)], start);
+
+        // The app reports no timeline and no seeking for two minutes.
+        let mut gap = [playing("Clip", None, false)];
+        steady.steady(&mut gap, start + Duration::from_secs(120));
+        assert_eq!(gap[0].duration, Some(600_000));
+        assert_eq!(gap[0].position, Some(130_000));
+        assert!(gap[0].actions.iter().any(|a| a == "seek"));
+
+        // Seeking it had stopped offering before then isn't brought back.
+        let mut steady = SteadyTimelines::default();
+        steady.steady(&mut [playing("Clip", Some((600_000, 10_000)), true)], start);
+        let at = start + TIMELINE_HOLD * 2;
+        steady.steady(&mut [playing("Clip", Some((600_000, 30_000)), false)], at);
+        let mut gap = [playing("Clip", None, false)];
+        steady.steady(&mut gap, at + Duration::from_secs(1));
+        assert_eq!(gap[0].duration, Some(600_000));
+        assert!(!gap[0].actions.iter().any(|a| a == "seek"));
+    }
+
+    #[test]
     fn a_lasting_or_new_track_without_a_timeline_shows_none() {
         let mut steady = SteadyTimelines::default();
         let start = Instant::now();
@@ -865,10 +908,11 @@ mod tests {
         assert_eq!(next[0].duration, None);
         assert!(!next[0].actions.iter().any(|a| a == "seek"));
 
-        steady.steady(&mut [playing("Clip", Some((600_000, 10_000)), true)], start);
-        let mut later = [playing("Clip", None, false)];
-        steady.steady(&mut later, start + TIMELINE_HOLD + Duration::from_secs(1));
-        assert_eq!(later[0].duration, None);
+        // Carried on past where the track would have ended, it stops.
+        steady.steady(&mut [playing("Clip", Some((15_000, 10_000)), true)], start);
+        let mut ended = [playing("Clip", None, false)];
+        steady.steady(&mut ended, start + Duration::from_secs(5) + TIMELINE_HOLD);
+        assert_eq!(ended[0].duration, None);
 
         let mut seekless = [playing("Clip", Some((600_000, 10_000)), false)];
         steady.steady(&mut seekless, start + TIMELINE_HOLD * 3);
