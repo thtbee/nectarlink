@@ -94,6 +94,8 @@
     <string name="channel_elevated">ワイヤレス デバッグの設定</string>
     <string name="elevated_title">昇格</string>
     <string name="elevated_not_set_up">PCからの通話時に、リアルタイムタッチ、全キー操作、ミュート、保留、キーパッド操作が可能です。</string>
+    <string name="elevated_turn_on_wireless">ワイヤレス デバッグを自動でオンにする</string>
+    <string name="elevated_turn_on_wireless_hint">Elevated に必要なため、オフになっていればどの Wi-Fi でもオンに戻します。オフにすると、開発者向けオプションで自分でオンにします。</string>
     <string name="elevated_waiting">ワイヤレス デバッグを待機中です。「開発者向けオプション」で有効にしてください。</string>
     <string name="elevated_starting">開始中…</string>
     <string name="elevated_running">オン：PCのマウスとキーボードが、本物のタッチスクリーンやキーボードのように動作します。</string>
@@ -443,6 +445,8 @@
     <string name="mic_pc_toggle_hint_auto">デフォルトでオン。このPCはマイクの使用をリクエストでき、すぐに有効になります。</string>
     <string name="start_without_asking_toggle">確認なしでカメラとマイクを開始</string>
     <string name="start_without_asking_hint">このPCがリクエストすると、スマートフォンを操作しなくてもすぐにオンになります。昇格が必要です。昇格していない場合は、通常通りスマートフォン側にリクエストが届きます。</string>
+    <string name="mirror_ask_toggle">画面を共有する前に確認する</string>
+    <string name="mirror_ask_hint">この PC が画面を見ようとするたびに、タップを待ちます。オフの場合、Elevated はすぐに共有します。</string>
     <string name="recorder_notification_recording">%1$s の録音中</string>
     <string name="recorder_notification_paused">録音一時停止中 (%1$s)</string>
     <string name="recorder_permission_title">マイクへのアクセスを許可する</string>

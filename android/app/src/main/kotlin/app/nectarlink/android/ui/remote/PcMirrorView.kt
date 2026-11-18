@@ -16,7 +16,6 @@ import android.provider.Settings
 import android.view.OrientationEventListener
 import android.view.Surface
 import android.view.TextureView
-import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -700,13 +699,11 @@ fun PcMirrorView(
 
     var appliedFullScreen by remember { mutableStateOf(false) }
 
-    // Apply orientation, keep-screen-on, and immersive system bars for full-screen vs portrait.
+    // Apply orientation and immersive system bars for full-screen vs portrait.
     LaunchedEffect(isFullScreen, autoRotateEnabled, suppressAutoEnterInLandscape, view) {
         val activity = context as? Activity ?: return@LaunchedEffect
         val window = activity.window ?: return@LaunchedEffect
         val controller = WindowCompat.getInsetsController(window, view)
-        view.keepScreenOn = true
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         if (isFullScreen) {
             appliedFullScreen = true
@@ -723,6 +720,10 @@ fun PcMirrorView(
             }
         }
     }
+
+    // On while the PC's screen is showing here. It used to set the window's flag and
+    // never clear it, so the phone stopped sleeping anywhere in the app afterwards.
+    app.nectarlink.android.ui.KeepScreenOn(hasRenderedFrame)
 
     // Restore previous requestedOrientation and system bars when leaving PcMirrorView.
     DisposableEffect(view) {

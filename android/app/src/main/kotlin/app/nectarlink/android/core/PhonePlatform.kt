@@ -184,7 +184,9 @@ internal class PhonePlatform(
                 options.screenOff,
                 options.soundOnly,
             )
-            if (Elevated.running && MirrorService.startElevated(context, request)) {
+            // Elevated shares at once, unless the user wants this PC to ask each time.
+            val ask = app.nectarlink.android.mirror.MirrorAsk.isOn(context, pcId)
+            if (Elevated.running && !ask && MirrorService.startElevated(context, request)) {
                 true
             } else {
                 onMirror(pcId, request)

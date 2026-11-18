@@ -8,6 +8,12 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Ask before sharing your screen, per PC.** In the phone's Settings, under each PC:
+  with it on, that PC's requests to see your screen always wait for your tap, even when
+  Elevated could share it at once. Off by default, so nothing changes unless you turn it on.
+- **Choose whether Elevated turns Wireless debugging on by itself.** It does by default, on
+  any Wi-Fi, so Elevated keeps working; turn it off in Elevated's settings to switch it on
+  yourself in Developer options.
 - **A switch for USB debugging on the PC.** Settings › Connection & About › Use USB
   debugging (on by default) can turn off everything NectarLink does over a USB cable, so a
   phone plugged in for something else is never asked to allow USB debugging. Wi-Fi works as
@@ -282,6 +288,10 @@ change things that need a step from you, and its notes say so.
   package can't go out missing one or carrying an old one. Thanks to
   [@hvenanc](https://github.com/hvenanc)
   ([#333](https://github.com/thtbee/nectarlink/pull/333)).
+- **The phone's screen sleeps when nothing is happening.** After viewing a PC's screen,
+  the phone never slept again while NectarLink was open. The touchpad, Deck and Desk now
+  keep it on for 10 minutes after the last touch (Deck and Desk stay on while charging),
+  the PC's screen while it shows, and the webcam while it streams.
 - **Uninstalling a phone app from the PC works.** It always failed: Elevated's helper
   didn't run the uninstall it was asked for.
 - **Pictures and files attach to texts on Linux and macOS.** Picking one turned its path

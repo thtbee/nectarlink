@@ -3,7 +3,6 @@ package app.nectarlink.android.ui.desk
 
 import android.app.Activity
 import android.text.format.DateFormat
-import android.view.WindowManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -95,14 +94,16 @@ fun DeskScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    // On a charger it stays up as a dashboard; on battery, only while it's being used.
+    app.nectarlink.android.ui.KeepScreenOn(
+        app.nectarlink.android.ui.rememberCharging() || app.nectarlink.android.ui.rememberTouchedRecently(),
+    )
     DisposableEffect(Unit) {
         val window = (context as? Activity)?.window
-        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
         controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         controller?.hide(WindowInsetsCompat.Type.systemBars())
         onDispose {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             controller?.show(WindowInsetsCompat.Type.systemBars())
         }
     }

@@ -34,7 +34,6 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,7 +46,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -74,15 +72,10 @@ fun WebcamScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val view = LocalView.current
     val session by WebcamService.session.collectAsStateWithLifecycle()
 
-    // Keep the phone's screen on while the webcam viewfinder/controls are open.
-    DisposableEffect(view) {
-        val prev = view.keepScreenOn
-        view.keepScreenOn = true
-        onDispose { view.keepScreenOn = prev }
-    }
+    // Keep the phone's screen on while it streams to this PC.
+    app.nectarlink.android.ui.KeepScreenOn(session.active && session.pcId == device.id)
 
     var hasCameraPermission by remember { mutableStateOf(WebcamService.hasPermission(context)) }
     var startAfterGrant by remember { mutableStateOf(false) }

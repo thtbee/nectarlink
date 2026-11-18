@@ -88,6 +88,8 @@
     <string name="channel_elevated">无线调试设置</string>
     <string name="elevated_title">高级权限</string>
     <string name="elevated_not_set_up">从电脑实现实时触控、全部按键，以及通话中的静音、保持和拨号盘。</string>
+    <string name="elevated_turn_on_wireless">自动开启无线调试</string>
+    <string name="elevated_turn_on_wireless_hint">Elevated 需要它，所以发现它关闭时会在任何 Wi-Fi 上重新开启。关闭此项后，请自行在开发者选项中开启。</string>
     <string name="elevated_waiting">正在等待无线调试，请在开发者选项中开启。</string>
     <string name="elevated_starting">正在启动…</string>
     <string name="elevated_running">已开启：电脑的鼠标和键盘就像真实的触摸屏和键盘一样工作。</string>
@@ -431,6 +433,8 @@
     <string name="mic_pc_toggle_hint_auto">默认开启。此电脑可以请求使用麦克风，请求后会立即开启。</string>
     <string name="start_without_asking_toggle">无需询问即可启动相机和麦克风</string>
     <string name="start_without_asking_hint">此电脑请求时，相机或麦克风会立即开启，无需在手机上轻触。需要 Elevated。没有 Elevated 时，手机会照常询问。</string>
+    <string name="mirror_ask_toggle">共享屏幕前先询问</string>
+    <string name="mirror_ask_hint">每次这台电脑想查看你的屏幕时，都会等你点按。关闭后，Elevated 会立即共享。</string>
     <string name="recorder_notification_recording">正在为 %1$s 录音</string>
     <string name="recorder_notification_paused">录音已暂停（%1$s）</string>
     <string name="recorder_permission_title">允许使用麦克风</string>
