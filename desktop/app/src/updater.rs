@@ -218,9 +218,18 @@ pub fn set_auto_install(on: bool) {
 }
 
 /// Whether this copy updates itself (an installed one, not a build run
-/// from its folder).
+/// from its folder). Not on macOS yet: nothing there picks a Mac build or
+/// installs one, so a check would always say it's up to date.
 pub fn can_update() -> bool {
-    std::env::current_exe().is_ok_and(|exe| autostart::is_installed(&exe))
+    cfg!(any(windows, target_os = "linux"))
+        && std::env::current_exe().is_ok_and(|exe| autostart::is_installed(&exe))
+}
+
+/// Whether an update can also install by itself at a quiet moment, with no
+/// one to answer a prompt: only on Windows, through the scheduled task the
+/// installer sets up. Linux updates ask for the password each time.
+pub fn can_install_unattended() -> bool {
+    cfg!(windows) && can_update()
 }
 
 /// Checks soon after startup, then on the channel's schedule ([`check_every`])
@@ -1148,6 +1157,25 @@ set -- \"$dir\"/Nectarlink-*/install.sh\n\
 /// Starts the new version once this one has quit. If that can't be arranged
 /// the app stays open (it would otherwise just disappear) and says the update
 /// is in place.
+/// The path this app was started from, to start the new version from after a
+/// package update. Linux adds " (deleted)" once the file there was replaced (by
+/// an earlier update while this kept running); the path itself is still right.
+#[cfg(target_os = "linux")]
+fn installed_exe() -> Option<std::path::PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    Some(strip_deleted(exe))
+}
+
+#[cfg(target_os = "linux")]
+fn strip_deleted(exe: std::path::PathBuf) -> std::path::PathBuf {
+    use std::os::unix::ffi::OsStrExt;
+    let bytes = exe.as_os_str().as_bytes();
+    match bytes.strip_suffix(b" (deleted)") {
+        Some(path) => std::path::PathBuf::from(std::ffi::OsStr::from_bytes(path)),
+        None => exe,
+    }
+}
+
 #[cfg(target_os = "linux")]
 fn relaunch_after_install(exe: &Path, version: &str) -> Result<(), String> {
     spawn_relauncher(exe, version, true).map_err(|e| {
@@ -1190,6 +1218,9 @@ fn install_with_prompt(update: &Update, staged: &Path) -> Result<(), String> {
 
     if staged_name.ends_with(".deb") {
         let staged_str = staged.to_string_lossy();
+        // Before installing: once the package replaces the binary, Linux names
+        // the running one "<path> (deleted)", which can't be started.
+        let exe = installed_exe();
         let code = crate::win::elevated::run_elevated(
             Path::new("sh"),
             &["-e", "-c", PRIVILEGED_DEB_INSTALL_SCRIPT, "sh", &staged_str, &expected],
@@ -1198,7 +1229,7 @@ fn install_with_prompt(update: &Update, staged: &Path) -> Result<(), String> {
         if code != 0 {
             return Err(failed(format!("privileged .deb install exited with status {code}")));
         }
-        if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe) = exe {
             relaunch_after_install(&exe, &update.version)?;
         }
         crate::bridge::app::request_quit();
@@ -1207,6 +1238,9 @@ fn install_with_prompt(update: &Update, staged: &Path) -> Result<(), String> {
 
     if staged_name.ends_with(".rpm") {
         let staged_str = staged.to_string_lossy();
+        // Before installing: once the package replaces the binary, Linux names
+        // the running one "<path> (deleted)", which can't be started.
+        let exe = installed_exe();
         let code = crate::win::elevated::run_elevated(
             Path::new("sh"),
             &["-e", "-c", PRIVILEGED_RPM_INSTALL_SCRIPT, "sh", &staged_str, &expected],
@@ -1215,7 +1249,7 @@ fn install_with_prompt(update: &Update, staged: &Path) -> Result<(), String> {
         if code != 0 {
             return Err(failed(format!("privileged .rpm install exited with status {code}")));
         }
-        if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe) = exe {
             relaunch_after_install(&exe, &update.version)?;
         }
         crate::bridge::app::request_quit();
@@ -1370,6 +1404,20 @@ impl Clone for Release {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_replaced_binary_is_started_again_from_its_own_path() {
+        use std::path::PathBuf;
+        assert_eq!(
+            strip_deleted(PathBuf::from("/usr/bin/nectarlink-desktop (deleted)")),
+            PathBuf::from("/usr/bin/nectarlink-desktop")
+        );
+        assert_eq!(
+            strip_deleted(PathBuf::from("/usr/bin/nectarlink-desktop")),
+            PathBuf::from("/usr/bin/nectarlink-desktop")
+        );
+    }
 
     fn release(tag: &str) -> Release {
         Release {

@@ -3703,7 +3703,7 @@ Item {
                         }
                         ListRow {
                             width: parent.width
-                            visible: AppController.canUpdate
+                            visible: AppController.canInstallUnattended
                             enabled: Preferences.autoUpdate
                             opacity: enabled ? 1 : 0.5
                             iconPath: Icons.download
