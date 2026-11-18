@@ -1727,7 +1727,10 @@ async fn maintain(shared: Weak<Shared>, peer: DeviceId, wake: Arc<Notify>, cance
                 _ = cancel.cancelled() => return,
             }
             let Some(again) = shared.upgrade() else { return };
-            if again.session(&peer).is_some() {
+            // Back to the top if it connected meanwhile, or if reconnecting was
+            // turned off while this waited (dialing then would connect for a moment
+            // and show this device online on the other side).
+            if again.session(&peer).is_some() || !again.reconnects(&peer) {
                 continue;
             }
             let Some(result) = dial_with_usb_interrupt(&again, peer, &wake).await else {
@@ -1793,6 +1796,15 @@ impl ProtocolHandler for SessionProtocol {
             tracing::debug!(peer = %peer.short(), "refusing session from unpaired device");
             conn.close(VarInt::from_u32(ErrorCode::Unpaired.close_code()), b"unpaired");
             return Err(AcceptError::from_err(Error::NotPaired));
+        }
+        // "Stop reconnecting": refused before the handshake, so the device
+        // dialing never registers the session and shows this one online for a
+        // moment on each try. (`register_session` checks again, for a switch
+        // turned off while a handshake runs.)
+        if !shared.reconnects(&peer) {
+            tracing::debug!(peer = %peer.short(), "refusing incoming session: reconnecting is off for this device");
+            conn.close(VarInt::from_u32(CLOSE_NORMAL), b"reconnect off");
+            return Err(AcceptError::from_err(Error::Declined));
         }
         if !shared.wait_connection_allowed(&conn).await {
             tracing::debug!(peer = %peer.short(), "refusing incoming session on non-LAN path while away_mode is off");

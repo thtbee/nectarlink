@@ -268,6 +268,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Stop reconnecting stops at once.** Right after turning it on, a device could still dial
+  once, and the other side showed it connected for a moment. The other side also no
+  longer flashes it as connected each time it tries to reach a device that has stopped.
 - **Linux packages always carry every language.** The .deb, .rpm, tarball and AppImage
   now build the translations for each language offered in Settings themselves, so a
   package can't go out missing one or carrying an old one. Thanks to

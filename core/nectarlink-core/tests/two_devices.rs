@@ -1321,6 +1321,16 @@ async fn stop_reconnecting_keeps_a_device_disconnected_until_turned_back_on() {
     // The PC dials again with its backoff (1 s, then 2 s); the phone refuses.
     tokio::time::sleep(Duration::from_secs(5)).await;
     assert!(offline(&pc) && offline(&phone), "still disconnected while the PC keeps dialing");
+    // The phone refuses before the handshake, so the PC never shows it online
+    // for a moment on each try (and nothing waiting for "online" is fooled).
+    let never_online = |dev: &mut TestDevice, peer: nectarlink_core::DeviceId| {
+        while let Ok(event) = dev.events.try_recv() {
+            if let NodeEvent::LinkChanged { device, link: LinkState::Online { .. } } = event {
+                assert_ne!(device, peer, "{} showed the refusing device online", dev.name);
+            }
+        }
+    };
+    never_online(&mut pc, phone_id);
 
     // Kept across a restart.
     phone.node.shutdown().await;
@@ -1330,6 +1340,7 @@ async fn stop_reconnecting_keeps_a_device_disconnected_until_turned_back_on() {
     assert!(!phone.node.paired_devices().unwrap()[0].reconnect, "the setting survives a restart");
     tokio::time::sleep(Duration::from_secs(4)).await;
     assert!(offline(&pc) && offline(&phone), "still disconnected after the restart");
+    never_online(&mut pc, phone_id);
 
     // Reconnect: it dials right away.
     phone.node.set_reconnect(pc_id, true).unwrap();
