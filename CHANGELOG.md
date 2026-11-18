@@ -280,6 +280,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A paired phone's music stays on that phone.** When two phones were paired, music
+  playing on one showed up in the other's media controls. Only a PC's players show there
+  now (#454).
 - **Stop reconnecting stops at once.** Right after turning it on, a device could still dial
   once, and the other side showed it connected for a moment. The other side also no
   longer flashes it as connected each time it tries to reach a device that has stopped.
