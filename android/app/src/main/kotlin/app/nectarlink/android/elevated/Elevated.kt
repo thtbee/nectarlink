@@ -759,43 +759,6 @@ object Elevated {
         }
     }
 
-    internal fun isAllowedAttachSenderUid(uid: Int): Boolean =
-        uid == android.os.Process.SHELL_UID || uid == android.os.Process.ROOT_UID
-
-    /** Attaches to an [InputServer] started directly from `adb shell`. */
-    suspend fun attachFromShell(appContext: Context, port: Int, token: String): Boolean = withContext(Dispatchers.IO) {
-        if (port !in 1..65535 || !ShizukuShellRules.isToken(token)) return@withContext false
-        if (!::context.isInitialized) init(appContext)
-        lock.withLock {
-            if (running) return@withLock true
-            runCatching { socket?.close() }
-            runCatching { connectSocketLocked(port, token) }.onFailure {
-                Log.w(TAG, "couldn't attach to shell helper", it)
-            }.isSuccess
-        }
-    }
-
-    /** Receives the loopback port and token from an [InputServer] started via `adb shell`. */
-    class AttachReceiver : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                if (!isAllowedAttachSenderUid(sentFromUid)) return
-            }
-            val port = intent.getIntExtra("port", 0)
-            val token = intent.getStringExtra("token").orEmpty()
-            if (port !in 1..65535 || !ShizukuShellRules.isToken(token)) return
-            val pending = goAsync()
-            val app = context.applicationContext
-            scope.launch {
-                try {
-                    attachFromShell(app, port, token)
-                } finally {
-                    pending.finish()
-                }
-            }
-        }
-    }
-
     /** Runs a shell command to its end; returns what it printed. */
     private fun run(adb: Connection, command: String): String {
         val out = java.io.ByteArrayOutputStream()

@@ -55,11 +55,7 @@ class ShizukuShellRulesTest {
     }
 
     @Test
-    fun attachSenderUidAndBoundedReaderRejectUntrustedOrOversizedInput() {
-        assertTrue(Elevated.isAllowedAttachSenderUid(android.os.Process.SHELL_UID))
-        assertTrue(Elevated.isAllowedAttachSenderUid(android.os.Process.ROOT_UID))
-        assertFalse(Elevated.isAllowedAttachSenderUid(10234))
-
+    fun boundedReaderRejectsOversizedInput() {
         val okReader = java.io.StringReader("hello\r\nworld\n")
         with(InputServer) {
             assertEquals("hello", okReader.nextLine(16))

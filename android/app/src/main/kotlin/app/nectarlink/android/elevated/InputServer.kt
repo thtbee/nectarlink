@@ -84,13 +84,10 @@ object InputServer {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        val rawArg = args.getOrNull(0)
-        val attach = rawArg == null || rawArg == "--attach"
-        val token = if (attach) {
-            ByteArray(24).also(java.security.SecureRandom()::nextBytes).joinToString("") { "%02x".format(it) }
-        } else {
-            rawArg
-        }
+        // The app that starts the helper (over adb, USB or Shizuku) passes the
+        // token it will present; nothing else may connect.
+        val token = args.getOrNull(0)?.takeIf { it.length in 32..64 && it.all { c -> c in '0'..'9' || c in 'a'..'f' } }
+            ?: return fail("usage: InputServer <token>")
         grantAppOps()
         // A helper that stopped while the PC's mouse was here left the
         // pointer's acceleration off.
@@ -103,25 +100,6 @@ object InputServer {
         serverSocket = server
         println("ready ${server.localPort}")
         System.out.flush()
-        if (attach) {
-            runCatching {
-                Runtime.getRuntime().exec(
-                    arrayOf(
-                        "am",
-                        "broadcast",
-                        "--include-stopped-packages",
-                        "-n",
-                        "$PKG/${Elevated.AttachReceiver::class.java.name}",
-                        "--ei",
-                        "port",
-                        server.localPort.toString(),
-                        "--es",
-                        "token",
-                        token,
-                    ),
-                ).waitFor()
-            }
-        }
         while (!server.isClosed) {
             val client = runCatching { server.accept() }.getOrNull() ?: continue
             try {

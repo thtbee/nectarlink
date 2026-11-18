@@ -100,6 +100,10 @@ class SendActivity : ComponentActivity() {
         return true
     }
 
+    // The token is what keeps other apps out: it's random and only in this app's
+    // private preferences. The uid only narrows it further. A caller that doesn't
+    // share its identity reports -1, and launchers starting our own pinned and
+    // Direct Share shortcuts are such callers, so -1 passes here.
     private fun isSystemUid(uid: Int): Boolean {
         if (uid <= 0 || uid == Process.SYSTEM_UID) return true
         val pkgs = runCatching { packageManager.getPackagesForUid(uid) }.getOrNull().orEmpty()
