@@ -19,6 +19,8 @@ pub fn pipe_name(session: u32) -> String {
 
 /// Starts every request, so a stray connection isn't read as one.
 const MAGIC: &[u8; 4] = b"NLU1";
+/// Starts a notice that Windows refused the password it was given.
+const REJECTED: &[u8; 4] = b"NLR1";
 /// Longest security identifier accepted.
 pub const MAX_USER: usize = 184;
 /// Longest password accepted, in UTF-8 bytes (Windows allows 256 characters).
@@ -69,19 +71,38 @@ pub fn user_ok(user: &str) -> bool {
 
 /// The request for `user` (a security identifier).
 pub fn request(user: &str) -> Option<Vec<u8>> {
+    naming(MAGIC, user)
+}
+
+/// The user a request names, if it's a whole, valid request.
+pub fn parse_request(bytes: &[u8]) -> Option<String> {
+    named(MAGIC, bytes)
+}
+
+/// The notice that Windows refused `user`'s password from the phone (it changed
+/// since setting up). No answer follows.
+pub fn rejected(user: &str) -> Option<Vec<u8>> {
+    naming(REJECTED, user)
+}
+
+/// The user a rejection notice names, if it's a whole, valid one.
+pub fn parse_rejected(bytes: &[u8]) -> Option<String> {
+    named(REJECTED, bytes)
+}
+
+fn naming(magic: &[u8; 4], user: &str) -> Option<Vec<u8>> {
     if !user_ok(user) {
         return None;
     }
-    let mut out = Vec::with_capacity(MAGIC.len() + 1 + user.len());
-    out.extend_from_slice(MAGIC);
+    let mut out = Vec::with_capacity(magic.len() + 1 + user.len());
+    out.extend_from_slice(magic);
     out.push(user.len() as u8);
     out.extend_from_slice(user.as_bytes());
     Some(out)
 }
 
-/// The user a request names, if it's a whole, valid request.
-pub fn parse_request(bytes: &[u8]) -> Option<String> {
-    let rest = bytes.strip_prefix(MAGIC)?;
+fn named(magic: &[u8; 4], bytes: &[u8]) -> Option<String> {
+    let rest = bytes.strip_prefix(magic)?;
     let (&len, user) = rest.split_first()?;
     if user.len() != usize::from(len) {
         return None;
@@ -132,6 +153,17 @@ pub fn split_qualified(qualified: &str) -> (&str, &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_rejection_notice_is_never_read_as_a_request() {
+        let sid = "S-1-5-21-1-2-3-1001";
+        let notice = rejected(sid).unwrap();
+        assert_eq!(parse_rejected(&notice).as_deref(), Some(sid));
+        assert_eq!(parse_request(&notice), None, "a notice never asks for a password");
+        assert_eq!(parse_rejected(&request(sid).unwrap()), None);
+        assert_eq!(rejected("not a sid"), None);
+        assert_eq!(parse_rejected(&notice[..notice.len() - 1]), None);
+    }
 
     const SID: &str = "S-1-5-21-1004336348-1177238915-682003330-1001";
 

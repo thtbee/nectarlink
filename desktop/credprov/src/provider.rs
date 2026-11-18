@@ -578,6 +578,13 @@ impl ICredentialProviderCredential_Impl for Credential_Impl {
     ) -> windows::core::Result<()> {
         guarded(|| {
             note!("result from Windows: {:#x}", ntsstatus.0);
+            // The password from the phone is wrong: it was changed since setting up.
+            // NectarLink drops it, so this tile doesn't keep trying it (and lock
+            // the account under a lockout policy).
+            if wrong_password(ntsstatus) {
+                let told = pipe::tell_rejected(&self.sid);
+                note!("told NectarLink the password is out of date: {}", told.is_ok());
+            }
             let message = ntsstatus.is_err().then(|| say(Text::Rejected));
             set_status(ppszoptionalstatustext, pcpsioptionalstatusicon, message);
             Ok(())
@@ -589,6 +596,12 @@ impl ICredentialProviderCredential2_Impl for Credential_Impl {
     fn GetUserSid(&self) -> windows::core::Result<PWSTR> {
         guarded(|| dup(&self.sid))
     }
+}
+
+/// Whether Windows refused the password itself: `STATUS_LOGON_FAILURE` or
+/// `STATUS_WRONG_PASSWORD`, not a locked or disabled account.
+fn wrong_password(status: NTSTATUS) -> bool {
+    matches!(status.0 as u32, 0xC000_006D | 0xC000_006A)
 }
 
 /// The provider as LogonUI asks for it.

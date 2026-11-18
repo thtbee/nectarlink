@@ -7847,7 +7847,7 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="176"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2524"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2527"/>
         <source>Voice recordings</source>
         <translation type="unfinished"></translation>
     </message>
@@ -8079,7 +8079,7 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="975"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4200"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4203"/>
         <source>Language</source>
         <translation type="unfinished"></translation>
     </message>
@@ -8244,7 +8244,7 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="1511"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4306"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4309"/>
         <source>Unpair</source>
         <translation type="unfinished"></translation>
     </message>
@@ -8274,51 +8274,51 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1776"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1817"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2618"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3413"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3849"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3862"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1779"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1820"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2621"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3416"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3852"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3865"/>
         <source>Open</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1896"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="1899"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1902"/>
         <source>Stream PC audio to phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1897"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1900"/>
         <source>Listen to PC audio through your phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1928"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="1931"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1934"/>
         <source>Pause media during calls</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1929"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1932"/>
         <source>Auto-pause PC media when phone rings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1943"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="1946"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1949"/>
         <source>Mute this PC while a phone watches</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1944"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1947"/>
         <source>With Play on phone, the phone still gets the sound.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="184"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1959"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1962"/>
         <source>Phone as microphone</source>
         <translation type="unfinished"></translation>
     </message>
@@ -8334,7 +8334,7 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="29"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3883"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3886"/>
         <source>Support NectarLink</source>
         <translation type="unfinished"></translation>
     </message>
@@ -8413,7 +8413,7 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="1529"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2448"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2451"/>
         <source>Not on macOS yet.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -8454,118 +8454,118 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1857"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1860"/>
         <source>Mirror quality</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1859"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1862"/>
         <source>The phone&apos;s full resolution. Uses more of its battery, and needs good Wi-Fi or USB and a GPU on this PC.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1861"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1864"/>
         <source>A softer picture that holds up better on weak Wi-Fi.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1862"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1865"/>
         <source>For the phone&apos;s screen and app windows, from the next time you open them.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1865"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1868"/>
         <source>Balanced</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1866"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1869"/>
         <source>Sharper</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1867"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1870"/>
         <source>Smoother</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1961"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1964"/>
         <source>Live from %1, playing into %2.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1963"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1966"/>
         <source>Tap Start on %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1965"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1968"/>
         <source>Plays into %1, so apps can pick its other end as a microphone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1966"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1969"/>
         <source>Plays into %1. To use it as a microphone in other apps, install a virtual audio cable such as VB-CABLE.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1972"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1975"/>
         <source>Output</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1982"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1985"/>
         <source>Start</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1982"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1985"/>
         <source>Stop</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1991"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1999"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1994"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2002"/>
         <source>Microphone volume</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1992"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2000"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1995"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2003"/>
         <source>%1%</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2011"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2014"/>
         <source>Virtual camera add-on</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2013"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2016"/>
         <source>Registered for Zoom, Teams &amp; Meet.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2014"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2017"/>
         <source>One-time setup (admin required) for Zoom, Teams &amp; Meet.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2033"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3676"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2036"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3679"/>
         <source>Ready</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2041"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2718"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3088"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2044"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2721"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3091"/>
         <source>Remove</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1679"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2041"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1682"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2044"/>
         <source>Set up</source>
         <translation type="unfinished"></translation>
     </message>
@@ -8582,1159 +8582,1159 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1620"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1623"/>
         <source>Done. On the lock screen, pick Unlock with phone, then confirm on the phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1621"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1624"/>
         <source>That isn&apos;t this account&apos;s Windows password.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1622"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1625"/>
         <source>Not confirmed on the phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1623"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1626"/>
         <source>The phone isn&apos;t connected on this network.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1624"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1627"/>
         <source>Turn on Unlock this PC with your fingerprint for this PC on the phone too.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1625"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1628"/>
         <source>Couldn&apos;t set it up. Try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1627"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1630"/>
         <source>Windows didn&apos;t allow it. Turn it off and on to try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1639"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1642"/>
         <source>Set up for this Windows account. Type the password again here if you change it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1640"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1643"/>
         <source>Type this account&apos;s Windows password once. It&apos;s kept locked with a key only the phone has, and the phone asks for your fingerprint every time.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1665"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1672"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1668"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1675"/>
         <source>Windows password</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1679"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1682"/>
         <source>Confirm on the phone…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="1679"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1682"/>
         <source>Update</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2052"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2055"/>
         <source>Phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2087"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2090"/>
         <source>Camera</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2090"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2093"/>
         <source>Back</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2091"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2094"/>
         <source>Front</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2121"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2123"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2124"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2126"/>
         <source>Mirror image</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2134"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2137"/>
         <source>Resolution</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2150"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="2153"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2156"/>
         <source>Torch on with the back camera</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2151"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2154"/>
         <source>Turns the phone&apos;s torch on when the webcam starts with the back camera.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2179"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2182"/>
         <source>Preview · %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2180"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2183"/>
         <source>Pair a phone to use its camera as a webcam</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2191"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2194"/>
         <source>Stop webcam</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2192"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2195"/>
         <source>Start webcam</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2225"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2228"/>
         <source>Calls through this PC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2230"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2233"/>
         <source>Microphone for calls</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2234"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2237"/>
         <source>Windows default</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2236"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2239"/>
         <source>Talking through this PC on a call records %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2241"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2244"/>
         <source>Microphone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2268"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="2271"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2274"/>
         <source>Quiet while this PC is locked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2269"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2272"/>
         <source>No pop-ups while it&apos;s locked. Notifications still collect on Home.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2280"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="2283"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2286"/>
         <source>Don&apos;t receive while this PC is locked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2281"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2284"/>
         <source>The phone sends nothing until you unlock. Then Home shows what&apos;s still on the phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2306"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="2309"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2312"/>
         <source>Follow phone Do not disturb</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2307"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2310"/>
         <source>Mute pop-ups while phone is on DND.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2338"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="2341"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2344"/>
         <source>Forward PC notifications</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2339"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2342"/>
         <source>Send PC alerts to phone while away.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2353"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2356"/>
         <source>Quiet hours</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2354"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2357"/>
         <source>Configure automatic DND schedule in Windows.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2358"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2361"/>
         <source>Set a schedule</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2402"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2405"/>
         <source>Show</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2403"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2406"/>
         <source>No pop-ups</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2404"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2407"/>
         <source>Hide</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2445"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2452"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2448"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2455"/>
         <source>File Explorer Send to</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2446"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2453"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2449"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2456"/>
         <source>File manager Send to</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2446"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2453"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2449"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2456"/>
         <source>Finder Send to</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2449"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2452"/>
         <source>Send files from right-click menu.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2483"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="2486"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2489"/>
         <source>Your PC in your pocket</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2484"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2487"/>
         <source>Share Downloads, Documents, Desktop &amp; Pictures.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2497"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="2500"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2503"/>
         <source>LocalSend on local network</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2498"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2501"/>
         <source>Share with nearby LocalSend devices without pairing.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2510"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="2513"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2516"/>
         <source>Open files shared from the phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2511"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2514"/>
         <source>Opens a shared photo or document as soon as it arrives.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2544"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2773"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2848"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2919"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2994"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2547"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2776"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2851"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2922"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2997"/>
         <source>Reset</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2551"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2625"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2554"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2628"/>
         <source>Choose folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2564"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="2567"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2570"/>
         <source>Sync on Wi-Fi only</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2565"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2568"/>
         <source>Folder sync and photo backup wait while the phone is away, so they don&apos;t use its mobile data.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2582"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2585"/>
         <source>Photo backup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2583"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2586"/>
         <source>Copies new photos from every album into a folder on this PC, by year and month. Nothing is deleted, here or on the phone. Needs only the phone&apos;s photos permission.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2601"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2604"/>
         <source>Back up photos from %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2611"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2614"/>
         <source>Backup folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2637"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2652"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2640"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2655"/>
         <source>Include videos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2638"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2641"/>
         <source>Videos can be large. Copied one at a time, so a lost connection costs at most one file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2646"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2649"/>
         <source>Back up now</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2670"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2673"/>
         <source>Synced folders</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2671"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2674"/>
         <source>One-way or two-way folder sync between phone and PC.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2678"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2681"/>
         <source>Sync now</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2706"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2709"/>
         <source>Two-way sync · conflict copies kept · deletions go across</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2707"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2710"/>
         <source>Two-way sync · conflict copies kept</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2708"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2711"/>
         <source>One-way · PC to phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2709"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2712"/>
         <source>One-way · phone to PC · removes files deleted on the phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2710"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2713"/>
         <source>One-way · phone to PC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2764"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2767"/>
         <source>Command palette</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2765"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2768"/>
         <source>Open from any app.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2810"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2813"/>
         <source>Command palette shortcut</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2839"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2842"/>
         <source>File shelf</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2840"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2843"/>
         <source>Toggle screen-edge shelf.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2885"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2888"/>
         <source>Shelf shortcut</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2910"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2913"/>
         <source>Take photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2911"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2914"/>
         <source>Capture &amp; paste photo.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2956"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2959"/>
         <source>Take photo shortcut</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2985"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2988"/>
         <source>Scan document</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2986"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2989"/>
         <source>Scan &amp; paste document.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3031"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3034"/>
         <source>Scan document shortcut</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3047"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3050"/>
         <source>Trigger-action rules</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3048"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3051"/>
         <source>Run actions when your phone connects, disconnects, or rings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3055"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3058"/>
         <source>Lock PC on disconnect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3062"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3065"/>
         <source>Pause media on ring</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3115"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3118"/>
         <source>OBS Studio</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3116"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3119"/>
         <source>For Deck tiles that run obs: commands. Turn on OBS&apos;s WebSocket server in Tools › WebSocket Server Settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3124"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3127"/>
         <source>Port</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3148"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3151"/>
         <source>OBS WebSocket port</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3155"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3158"/>
         <source>Password</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3177"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3180"/>
         <source>OBS WebSocket password</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3183"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3186"/>
         <source>Saved</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3183"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3186"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3192"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3195"/>
         <source>Save</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3203"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3206"/>
         <source>Test connection</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3210"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3213"/>
         <source>Remove password</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3238"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="3241"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3244"/>
         <source>Sync copied passwords</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3267"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3291"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3270"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3294"/>
         <source>Clipboard history</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3271"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3274"/>
         <source>%1 clips · %2 · kept 7 days</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3280"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3338"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3400"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3460"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3491"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3528"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4351"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3283"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3341"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3403"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3463"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3494"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3531"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4354"/>
         <source>Clear</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3282"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3285"/>
         <source>Clear clipboard history?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3283"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3286"/>
         <source>Deletes the clips kept on this PC. What&apos;s on the clipboard now stays.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3324"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3346"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3327"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3349"/>
         <source>Notification history</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3340"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3343"/>
         <source>Clear notification history?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3341"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3344"/>
         <source>Deletes the notifications kept after they went away. Ones still showing stay.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3386"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3389"/>
         <source>Cross-device timeline</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3390"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3393"/>
         <source>1 item stored (max 5,000).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3391"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3394"/>
         <source>%1 items stored (max 5,000).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3402"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3405"/>
         <source>Clear the Timeline?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3403"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3406"/>
         <source>Deletes the Timeline&apos;s entries on this PC. Files stay where they were saved.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3419"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3422"/>
         <source>30d</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3420"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3423"/>
         <source>90d</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3421"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3424"/>
         <source>1y</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3422"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3425"/>
         <source>All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3437"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3440"/>
         <source>Cached messages</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3445"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3448"/>
         <source>1 chat</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3445"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3448"/>
         <source>%1 chats</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3446"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3449"/>
         <source>1 message</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3446"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3449"/>
         <source>%1 messages</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3447"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3450"/>
         <source>%1 · %2 · %3 · kept 90 days</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3481"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3484"/>
         <source>Photo thumbnails</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3485"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3488"/>
         <source>%1 cached · %2 · kept 30 days</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3519"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3522"/>
         <source>Transfer history</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3522"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3525"/>
         <source>%1 records · kept with timeline</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3530"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3533"/>
         <source>Clear transfer history?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3531"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3534"/>
         <source>Deletes the list of past transfers. The files stay where they were saved.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3542"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3545"/>
         <source>Clear all local history &amp; caches</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3543"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3546"/>
         <source>Wipes local history and caches; keeps paired devices and settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3548"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3551"/>
         <source>Clear everything…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3584"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3587"/>
         <source>Connection Doctor</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3585"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3588"/>
         <source>Diagnose and fix firewall, network, or VPN issues.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3589"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3592"/>
         <source>Check</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3597"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3600"/>
         <source>Connect over mobile data</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3598"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3601"/>
         <source>Stay connected over LTE/5G or relay when away from Wi-Fi.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3609"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3616"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3612"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3619"/>
         <source>Use USB debugging</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3611"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3614"/>
         <source>Applies when NectarLink restarts.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3613"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3616"/>
         <source>Connect, pair, install the app and start Elevated over a USB cable. Your phone asks once to allow USB debugging.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3614"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3617"/>
         <source>Off: NectarLink never asks a phone on a cable for USB debugging. Wi-Fi works as usual.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3626"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4091"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3629"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4094"/>
         <source>Network interface</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3627"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3630"/>
         <source>Local connections switch after a restart. Relays switch right away if the app started with an interface selected.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2234"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3631"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4098"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2237"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3634"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4101"/>
         <source>System default</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4097"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4100"/>
         <source>%1 · Direct (without a VPN)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4121"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4124"/>
         <source>Could not use this network interface.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3643"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3646"/>
         <source>Iroh relay servers</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3328"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3331"/>
         <source>%1 alerts · %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3363"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3366"/>
         <source>Keep notification history for</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3364"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3367"/>
         <source>Notifications that went away stay in the feed&apos;s history this long.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3367"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3370"/>
         <source>1 day</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3368"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3371"/>
         <source>3 days</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3369"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3372"/>
         <source>1 week</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3370"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3373"/>
         <source>30 days</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3644"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3647"/>
         <source>View active routes, check latency and manage relay servers.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3648"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3651"/>
         <source>Manage</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3656"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3659"/>
         <source>Wake from your phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3661"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3664"/>
         <source>No active network adapter found.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3663"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3666"/>
         <source>%1 · Wake on Magic Packet ready.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3664"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3667"/>
         <source>%1 · Enable Wake on Magic Packet in Device Manager.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3678"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3681"/>
         <source>Off in Windows</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3678"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3681"/>
         <source>Off in the adapter&apos;s settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3679"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3682"/>
         <source>Check settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3680"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3683"/>
         <source>No adapter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3688"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3727"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3691"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3730"/>
         <source>Local automation API</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3690"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3693"/>
         <source>Listening on 127.0.0.1:%1 · Token in %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3691"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3694"/>
         <source>Local HTTP/SSE server (127.0.0.1:%1) for scripts and tools.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3737"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3740"/>
         <source>NectarLink %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3740"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3743"/>
         <source>This PC: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3752"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3755"/>
         <source>Update download</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3773"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3776"/>
         <source>Update to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3774"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3793"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3798"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3777"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3796"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3801"/>
         <source>Check for updates</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3783"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3786"/>
         <source>Open logs</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3826"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="3829"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3832"/>
         <source>Install updates automatically</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3827"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3830"/>
         <source>When nobody is using the PC and nothing is in progress.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3844"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3847"/>
         <source>Setup walkthrough</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3845"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3848"/>
         <source>Re-open the setup guide.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3857"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3860"/>
         <source>Features guide</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3858"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3861"/>
         <source>What each feature needs and where to find it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3884"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3887"/>
         <source>NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3889"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3892"/>
         <source>Support</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3961"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3964"/>
         <source>Sync a folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3967"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3970"/>
         <source>The phone asks once to let this PC in. NectarLink there also needs All files access, or this folder under Selected folders only.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3970"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4001"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3973"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4004"/>
         <source>Folder on the phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4006"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4009"/>
         <source>Folder on this PC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4021"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4024"/>
         <source>Choose…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4031"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4034"/>
         <source>Phone to PC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4032"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4035"/>
         <source>PC to phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4033"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4036"/>
         <source>Both ways</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4044"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4047"/>
         <source>New and changed files on the PC are copied to the phone. Nothing on the phone comes to the PC, and nothing is deleted.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4046"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4049"/>
         <source>Changes on either side are copied to the other. When a file changed on both, both versions are kept.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4047"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4050"/>
         <source>New and changed files on the phone are copied to the PC. Nothing on the PC goes to the phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4053"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4058"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4056"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4061"/>
         <source>Also remove from the PC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4053"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4058"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4056"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4061"/>
         <source>Also remove deleted files</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4055"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4058"/>
         <source>A synced file you delete on one side leaves the other. On the PC it goes to the Recycle Bin. On the phone, photos and videos go to its trash where Android has one, and other files are gone for good.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4056"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4059"/>
         <source>A synced file you delete on the phone goes to the PC&apos;s Recycle Bin.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4069"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4072"/>
         <source>Add</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4138"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4141"/>
         <source>Phone&apos;s hotspot network</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4146"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4149"/>
         <source>Wi-Fi networks this PC has joined before. Your system keeps their passwords; NectarLink never sees them.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4147"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4150"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from your system Wi-Fi list first.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4149"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4152"/>
         <source>Wi-Fi networks this PC has joined before. Windows keeps their passwords; NectarLink never sees them.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4150"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4153"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from Windows&apos; Wi-Fi list first.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4180"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4183"/>
         <source>Don&apos;t join</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4123"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4189"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4217"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4252"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4280"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4126"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4192"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4220"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4255"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4283"/>
         <source>Close</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4263"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4266"/>
         <source>Play the phone&apos;s microphone into</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4293"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4296"/>
         <source>Unpair %1?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4299"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4302"/>
         <source>Both devices forget each other. You can pair them again any time.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4067"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4304"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4348"/>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4384"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4070"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4307"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4351"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4387"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="2685"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2688"/>
         <source>Add folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3239"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3242"/>
         <source>Also sends what password managers mark private. It leaves the phone&apos;s clipboard after a minute where Android allows it, and is never kept in history.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3795"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3798"/>
         <source>Looks for a new build every couple of hours, and tells your phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3796"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3799"/>
         <source>Looks for a new release twice a day, and tells your phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3807"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3810"/>
         <source>Update channel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3809"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3812"/>
         <source>The newest build from every couple of hours, with the latest fixes and features, and sometimes new bugs. Back on Stable, this PC keeps its build until the next release is newer.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3810"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3813"/>
         <source>Releases, tested and less often.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3813"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3816"/>
         <source>Stable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3814"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3817"/>
         <source>Nightly</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4228"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4231"/>
         <source>Talk on calls through</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4247"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4250"/>
         <source>No microphone found on this PC.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4370"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4373"/>
         <source>Clear all local history &amp; caches?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4379"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4382"/>
         <source>Deletes clipboard history, Timeline, notification history, cached messages, photo thumbnails and transfer history on this PC. Paired devices, settings and downloaded files are kept.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="4387"/>
+        <location filename="../../qml/pages/SettingsPage.qml" line="4390"/>
         <source>Clear everything</source>
         <translation type="unfinished"></translation>
     </message>
@@ -10781,84 +10781,97 @@ What it needs
     </message>
 </context>
 <context>
-    <name>Updater</name>
+    <name>Unlock</name>
     <message>
         <location filename="../rust_strings.h" line="542"/>
-        <source>Couldn&apos;t check for updates. Check your internet connection.</source>
+        <source>Set up unlocking with %1 again</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="543"/>
-        <source>NectarLink %1 is available</source>
+        <source>Windows didn&apos;t accept the password saved for it, so it was probably changed. Set it up again under Unlock this PC with the phone.</source>
         <translation type="unfinished"></translation>
     </message>
+</context>
+<context>
+    <name>Updater</name>
     <message>
         <location filename="../rust_strings.h" line="544"/>
-        <source>NectarLink %1 is available.</source>
+        <source>Couldn&apos;t check for updates. Check your internet connection.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="545"/>
-        <source>NectarLink is still on the version you had. Try again from Settings.</source>
+        <source>NectarLink %1 is available</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="546"/>
-        <source>NectarLink is up to date.</source>
+        <source>NectarLink %1 is available.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="547"/>
-        <source>NectarLink is updated to %1</source>
+        <source>NectarLink is still on the version you had. Try again from Settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="548"/>
-        <source>Nightly %1</source>
+        <source>NectarLink is up to date.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="549"/>
-        <source>Nightly %1 (%2)</source>
+        <source>NectarLink is updated to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="550"/>
-        <source>The download was damaged, so it wasn&apos;t installed. Try again.</source>
+        <source>Nightly %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="551"/>
-        <source>The update couldn&apos;t be downloaded. Check your internet connection and try again.</source>
+        <source>Nightly %1 (%2)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="552"/>
-        <source>The update couldn&apos;t be saved. Check that there&apos;s free space and try again.</source>
+        <source>The download was damaged, so it wasn&apos;t installed. Try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="553"/>
-        <source>The update couldn&apos;t be started. Try again.</source>
+        <source>The update couldn&apos;t be downloaded. Check your internet connection and try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="554"/>
-        <source>The update didn&apos;t install</source>
+        <source>The update couldn&apos;t be saved. Check that there&apos;s free space and try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="555"/>
-        <source>The update is installed. Restart NectarLink to use it.</source>
+        <source>The update couldn&apos;t be started. Try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="556"/>
-        <source>Update now, or later from Settings.</source>
+        <source>The update didn&apos;t install</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../rust_strings.h" line="557"/>
+        <source>The update is installed. Restart NectarLink to use it.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="558"/>
+        <source>Update now, or later from Settings.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="559"/>
         <source>Your phone reconnects on its own.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -11416,12 +11429,12 @@ What it needs
 <context>
     <name>Webcam</name>
     <message>
-        <location filename="../rust_strings.h" line="558"/>
+        <location filename="../rust_strings.h" line="560"/>
         <source>Starting camera on %1…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../rust_strings.h" line="559"/>
+        <location filename="../rust_strings.h" line="561"/>
         <source>Streaming %1 × %2 · %3 fps from %4</source>
         <translation type="unfinished"></translation>
     </message>

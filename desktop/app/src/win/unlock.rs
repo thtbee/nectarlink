@@ -461,10 +461,24 @@ fn serve_one(pipe: HANDLE, session: u32, user: &str) {
         tracing::warn!("unlock pipe: refused a caller that isn't this session's LogonUI");
         return;
     }
+    if let Some(rejected) = wire::parse_rejected(&request[..read as usize]) {
+        if rejected == user {
+            forget_rejected(user);
+        }
+        return;
+    }
     let (status, mut password) = match wire::parse_request(&request[..read as usize]) {
         Some(asked) if asked == user && session_locked(session) => answer(user),
         Some(_) => (wire::Status::NotEnrolled, Vec::new()),
         None => (wire::Status::Failed, Vec::new()),
+    };
+    // The phone takes a while: if the session was unlocked some other way
+    // meanwhile, the password isn't needed and isn't handed out.
+    let (status, mut password) = if status == wire::Status::Ok && !session_locked(session) {
+        wire::wipe(&mut password);
+        (wire::Status::Failed, Vec::new())
+    } else {
+        (status, password)
     };
     let mut reply = wire::answer(status, Some(&password));
     wire::wipe(&mut password);
@@ -472,6 +486,47 @@ fn serve_one(pipe: HANDLE, session: u32, user: &str) {
     // SAFETY: `reply` is a valid buffer.
     let _ = unsafe { WriteFile(pipe, Some(&reply), Some(&mut written), None) };
     wire::wipe(&mut reply);
+}
+
+/// Windows refused the password a phone gave for `user`: it was changed since
+/// setting up. Forgets it on every phone, so the lock screen stops offering it,
+/// and says how to set it up again.
+fn forget_rejected(user: &str) {
+    let Some(node) = crate::core_host::node() else { return };
+    let phones: Vec<(DeviceId, String)> = node
+        .paired_devices()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|d| node.unlock_users(d.id).is_ok_and(|users| users.iter().any(|(sid, _)| sid == user)))
+        .map(|d| (d.id, d.info.name.clone()))
+        .collect();
+    let user = user.to_owned();
+    crate::core_host::host().runtime.spawn(async move {
+        for (phone, name) in phones {
+            if let Err(e) = node.unlock_forget(phone, Some(&user)).await {
+                tracing::warn!(error = %e, "couldn't forget an out-of-date unlock password");
+                continue;
+            }
+            tracing::info!("Windows refused the unlock password; it was forgotten");
+            crate::win::toast::show(crate::win::toast::Toast {
+                device: phone.to_string(),
+                key: "unlock-rejected".into(),
+                title: crate::i18n::tr!("Unlock", "Set up unlocking with %1 again", name),
+                body: crate::i18n::tr!(
+                    "Unlock",
+                    "Windows didn't accept the password saved for it, so it was probably changed. Set it up again under Unlock this PC with the phone."
+                ),
+                attribution: "NectarLink".into(),
+                icon: None,
+                image: None,
+                actions: Vec::new(),
+                reply: None,
+                silent: false,
+                progress: None,
+                call: false,
+            });
+        }
+    });
 }
 
 /// Asks the phone `user` is enrolled with for the password.

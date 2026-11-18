@@ -151,6 +151,35 @@ pub fn server_present() -> bool {
 /// returned password is UTF-8: wipe it after use.
 pub fn ask(user: &str) -> Result<(Status, Vec<u8>), AskError> {
     let request = wire::request(user).ok_or(AskError::Broken)?;
+    let pipe = connect()?;
+    // SAFETY (both closures): `request` and `answer` outlive the operations,
+    // which `overlapped` waits for (or cancels and waits for) before returning.
+    overlapped(pipe.0, 5_000, |ov| unsafe { WriteFile(pipe.0, Some(&request), None, Some(ov)) })?;
+    let mut answer = vec![0u8; 1 + 4 + wire::MAX_PASSWORD];
+    let read = overlapped(pipe.0, wire::ANSWER_TIMEOUT_MS, |ov| unsafe {
+        ReadFile(pipe.0, Some(&mut answer), None, Some(ov))
+    });
+    let result = match read {
+        Ok(n) => wire::parse_answer(&answer[..n as usize]).ok_or(AskError::Broken),
+        Err(e) => Err(e),
+    };
+    wire::wipe(&mut answer);
+    result
+}
+
+/// Tells this session's NectarLink that Windows refused `user`'s password from
+/// the phone, so it stops offering one that no longer works.
+pub fn tell_rejected(user: &str) -> Result<(), AskError> {
+    let notice = wire::rejected(user).ok_or(AskError::Broken)?;
+    let pipe = connect()?;
+    // SAFETY: `notice` outlives the operation, which `overlapped` waits for.
+    overlapped(pipe.0, 5_000, |ov| unsafe { WriteFile(pipe.0, Some(&notice), None, Some(ov)) })?;
+    Ok(())
+}
+
+/// Opens this session's unlock pipe, served by the NectarLink installed next to
+/// this DLL and nothing else.
+fn connect() -> Result<Handle, AskError> {
     let mut session = 0u32;
     // SAFETY: valid out pointer.
     unsafe { ProcessIdToSessionId(GetCurrentProcessId(), &mut session) }.map_err(|_| AskError::NotRunning)?;
@@ -189,18 +218,5 @@ pub fn ask(user: &str) -> Result<(Status, Vec<u8>), AskError> {
     let mode = PIPE_READMODE_MESSAGE;
     // SAFETY: `pipe` is valid; `mode` outlives the call.
     unsafe { SetNamedPipeHandleState(pipe.0, Some(&mode), None, None) }.map_err(|_| AskError::Broken)?;
-
-    // SAFETY (both closures): `request` and `answer` outlive the operations,
-    // which `overlapped` waits for (or cancels and waits for) before returning.
-    overlapped(pipe.0, 5_000, |ov| unsafe { WriteFile(pipe.0, Some(&request), None, Some(ov)) })?;
-    let mut answer = vec![0u8; 1 + 4 + wire::MAX_PASSWORD];
-    let read = overlapped(pipe.0, wire::ANSWER_TIMEOUT_MS, |ov| unsafe {
-        ReadFile(pipe.0, Some(&mut answer), None, Some(ov))
-    });
-    let result = match read {
-        Ok(n) => wire::parse_answer(&answer[..n as usize]).ok_or(AskError::Broken),
-        Err(e) => Err(e),
-    };
-    wire::wipe(&mut answer);
-    result
+    Ok(pipe)
 }
