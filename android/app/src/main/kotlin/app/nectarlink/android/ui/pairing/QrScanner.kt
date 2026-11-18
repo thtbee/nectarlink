@@ -157,6 +157,10 @@ private fun decode(reader: MultiFormatReader, image: ImageProxy): String? {
         reader.decodeWithState(BinaryBitmap(HybridBinarizer(source))).text
     } catch (_: NotFoundException) {
         null
+    } catch (_: Exception) {
+        // A damaged or unusual code can make ZXing throw something else; this frame
+        // just has no code, rather than the analyzer thread (and the app) going down.
+        null
     } finally {
         reader.reset()
     }

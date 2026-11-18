@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -186,8 +187,19 @@ internal fun GamepadScreen(device: Device, core: Core, onClose: () -> Unit) {
         }
         access = result
     }
-    val allowed = access == Core.PadAccess.Allowed
+    // Only while the controller is on screen: after Home or with the screen off, the
+    // PC's controller is unplugged and nothing more is sent; coming back plugs it in again.
+    val lifecycleState by androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+        .currentStateFlow.collectAsState()
+    val onScreen = lifecycleState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+    val allowed = access == Core.PadAccess.Allowed && onScreen
     val sending by rememberUpdatedState(allowed)
+    LaunchedEffect(device.id, onScreen) {
+        if (!onScreen) {
+            pad = PadSnapshot()
+            core.remotePadOff(device.id)
+        }
+    }
     // Each change goes from the touch handler as it happens (below). This repeats the
     // newest every 100 ms, so a lost one is made up for and the PC lets go if the phone
     // goes quiet.

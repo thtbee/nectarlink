@@ -151,7 +151,6 @@ fun FileWatchView(
         AndroidView(
             factory = { context ->
                 SurfaceView(context).apply {
-                    keepScreenOn = true
                     holder.addCallback(
                         object : SurfaceHolder.Callback {
                             override fun surfaceCreated(holder: SurfaceHolder) {
@@ -168,6 +167,8 @@ fun FileWatchView(
                 }
             },
             modifier = if (ratio != null) Modifier.aspectRatio(ratio) else Modifier.fillMaxSize(),
+            // Awake while it plays; paused, finished or failed, the screen sleeps as usual.
+            update = { view -> view.keepScreenOn = playback.playing },
         )
         // Taps over the picture show and hide the controls.
         Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { onTap() } })

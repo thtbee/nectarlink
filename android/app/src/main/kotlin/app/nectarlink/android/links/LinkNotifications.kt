@@ -13,6 +13,8 @@ import androidx.core.net.toUri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
 import app.nectarlink.android.R
 import app.nectarlink.core.ClipKind
 import app.nectarlink.core.ClipSuggestion
@@ -37,13 +39,12 @@ object LinkNotifications {
         )
     }
 
-    /** Shows a link, video with timestamp, or map location from a PC; false if notifications are off. */
+    /**
+     * Shows a link, video with timestamp, or map location from a PC: opened right away
+     * while NectarLink is in front, otherwise as a notification to tap (never opened over
+     * whatever the user is doing). False if it could do neither.
+     */
     fun show(context: Context, pcName: String, url: String): Boolean {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            return false
-        }
         val handoff = app.nectarlink.core.extractHandoffLink(url)
         val viewIntent = if (url.startsWith("geo:", ignoreCase = true)) {
             val geoIntent = Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -56,8 +57,12 @@ object LinkNotifications {
         } else {
             Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        // When NectarLink is in the foreground, Android allows opening the target right away.
-        runCatching { context.startActivity(viewIntent) }
+        if (appInForeground() && runCatching { context.startActivity(viewIntent) }.isSuccess) return true
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return false
+        }
 
         val open = PendingIntent.getActivity(
             context,
@@ -90,6 +95,9 @@ object LinkNotifications {
             .build()
         return runCatching { NotificationManagerCompat.from(context).notify(TAG, url.hashCode(), notification) }.isSuccess
     }
+
+    private fun appInForeground(): Boolean =
+        ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
 
     /** Short action chip label for a [ClipKind]. */
     fun actionLabel(context: Context, kind: ClipKind): String = when (kind) {

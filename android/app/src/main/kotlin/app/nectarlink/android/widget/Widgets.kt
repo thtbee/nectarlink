@@ -7,6 +7,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.util.Log
@@ -136,9 +137,16 @@ object Widgets {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
-    /** A tap handled by [PcWidgetProvider.ActionReceiver], which no other app can send to. */
+    /**
+     * A tap handled by [PcWidgetProvider.ActionReceiver], which no other app can send to.
+     * Android tells PendingIntents apart by their intent, not its extras, so the PC is in
+     * the intent's data too: otherwise two widgets for different PCs would share one, and
+     * Wake on one would wake the PC of whichever was drawn last.
+     */
     fun action(context: Context, action: String, pcId: String?, extras: Bundle? = null): PendingIntent {
-        val intent = Intent(context, PcWidgetProvider.ActionReceiver::class.java).setAction(action)
+        val intent = Intent(context, PcWidgetProvider.ActionReceiver::class.java)
+            .setAction(action)
+            .setData(actionUri(action, pcId))
         if (!pcId.isNullOrEmpty()) intent.putExtra(PcWidgetProvider.EXTRA_PC_ID, pcId)
         if (extras != null) intent.putExtras(extras)
         return PendingIntent.getBroadcast(
@@ -148,6 +156,11 @@ object Widgets {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
     }
+
+    /** What tells one PC's widget action from another's (see [action]). */
+    internal fun actionUri(action: String, pcId: String?): Uri =
+        Uri.Builder().scheme("nectarlink-widget").authority("action").appendPath(action)
+            .appendPath(pcId.orEmpty()).build()
 
     /** When something arrived, as a clock time today or a date before, which doesn't go stale on the home screen. */
     fun whenText(context: Context, secs: Long): String {

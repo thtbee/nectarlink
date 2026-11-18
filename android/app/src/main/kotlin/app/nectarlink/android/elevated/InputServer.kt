@@ -82,6 +82,50 @@ object InputServer {
     @Volatile private var displayTurnedOff = false
     @Volatile private var savedBrightness: Int? = null
 
+    /** The only fixed shell commands the app may run through the helper. */
+    private val allowedCommands = setOf(
+        "cmd statusbar expand-notifications",
+        "svc wifi enable",
+        "svc wifi disable",
+        "svc bluetooth enable",
+        "svc bluetooth disable",
+        "hotspot on",
+        "hotspot off",
+        "cmd wifi start-softap",
+        "cmd wifi stop-softap",
+        // Pause for banking apps: seeing which app is in front.
+        "appops set $PKG GET_USAGE_STATS allow",
+        // Fast starts right after an install or update.
+        COMPILE_APP_COMMAND,
+        // Start without asking: the camera or microphone a chosen PC asked for.
+        app.nectarlink.android.service.PcAutoStart.OPEN_COMMAND,
+    )
+
+
+    private const val BRIGHTNESS_PREFIX = "settings put system screen_brightness "
+    private const val UNINSTALL_PREFIX = "pm uninstall "
+    // Release and debug builds alike: neither may uninstall the other.
+    private const val OWN_PACKAGE = "app.nectarlink"
+    private val PACKAGE_NAME = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
+
+    /**
+     * Whether the app may run [cmd] through the helper: one of [allowedCommands],
+     * a screen brightness, or uninstalling another app (a PC asked, D349), never
+     * NectarLink itself.
+     */
+    internal fun isAllowedCommand(cmd: String): Boolean {
+        if (cmd in allowedCommands) return true
+        if (cmd.startsWith(BRIGHTNESS_PREFIX)) {
+            val v = cmd.removePrefix(BRIGHTNESS_PREFIX).toIntOrNull()
+            return v != null && v in 0..255
+        }
+        if (cmd.startsWith(UNINSTALL_PREFIX)) {
+            val pkg = cmd.removePrefix(UNINSTALL_PREFIX)
+            return PACKAGE_NAME.matches(pkg) && pkg != OWN_PACKAGE && !pkg.startsWith("$OWN_PACKAGE.")
+        }
+        return false
+    }
+
     @JvmStatic
     fun main(args: Array<String>) {
         // The app that starts the helper (over adb, USB or Shizuku) passes the
@@ -1012,37 +1056,8 @@ object InputServer {
             }
         }
 
-        private fun allowedCommand(cmd: String): Boolean {
-            if (cmd in allowed) return true
-            if (cmd.startsWith(BRIGHTNESS_PREFIX)) {
-                val v = cmd.removePrefix(BRIGHTNESS_PREFIX).toIntOrNull()
-                return v != null && v in 0..255
-            }
-            return false
-        }
+        private fun allowedCommand(cmd: String): Boolean = isAllowedCommand(cmd)
 
-        /** The only shell commands the app may run through this. */
-        private val allowed = setOf(
-            "cmd statusbar expand-notifications",
-            "svc wifi enable",
-            "svc wifi disable",
-            "svc bluetooth enable",
-            "svc bluetooth disable",
-            "hotspot on",
-            "hotspot off",
-            "cmd wifi start-softap",
-            "cmd wifi stop-softap",
-            // Pause for banking apps: seeing which app is in front.
-            "appops set $PKG GET_USAGE_STATS allow",
-            // Fast starts right after an install or update.
-            COMPILE_APP_COMMAND,
-            // Start without asking: the camera or microphone a chosen PC asked for.
-            app.nectarlink.android.service.PcAutoStart.OPEN_COMMAND,
-        )
-
-        private companion object {
-            const val BRIGHTNESS_PREFIX = "settings put system screen_brightness "
-        }
     }
 
     /**
