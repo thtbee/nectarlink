@@ -13,7 +13,7 @@ use serde_json::json;
 
 use super::{Edit, diff};
 use crate::{
-    photos::{self, ItemRow},
+    photos::{self, ItemRow, Rows},
     state::Changes,
 };
 
@@ -73,6 +73,12 @@ pub mod qobject {
         #[inherit]
         #[cxx_name = "endRemoveRows"]
         unsafe fn end_remove_rows(self: Pin<&mut Photos>);
+        #[inherit]
+        #[cxx_name = "beginResetModel"]
+        unsafe fn begin_reset_model(self: Pin<&mut Photos>);
+        #[inherit]
+        #[cxx_name = "endResetModel"]
+        unsafe fn end_reset_model(self: Pin<&mut Photos>);
         #[inherit]
         fn index(self: &Photos, row: i32, column: i32, parent: &QModelIndex) -> QModelIndex;
 
@@ -187,6 +193,8 @@ const ROLES: &[&str] = &[
     "fullUrl",
 ];
 const USER_ROLE: i32 = 0x0100;
+/// More row edits than this replace the whole list at once.
+const MAX_ROW_EDITS: usize = 64;
 
 fn role_value(row: &ItemRow, role: &str) -> QVariant {
     let text = |s: &str| QVariant::from(&QString::from(s));
@@ -243,7 +251,7 @@ impl qobject::Photos {
             tracing::warn!(reason, "can't open the share sheet");
             photos::show_share_failed();
         }
-        let view = photos::view();
+        let view = photos::view_since(&self.rows);
         self.as_mut().set_device(QString::from(&view.device.map(|d| d.to_string()).unwrap_or_default()));
         self.as_mut().set_status(QString::from(view.status.as_str()));
         let albums_str = view.albums.to_string();
@@ -259,78 +267,84 @@ impl qobject::Photos {
         self.as_mut().set_save_folder(QString::from(&view.save_folder));
 
         let root = QModelIndex::default();
-        if view.rows.is_empty() {
-            if !self.rows.is_empty() {
-                let last = (self.rows.len() - 1) as i32;
-                // SAFETY: 0..=last exists; begin/end are balanced.
-                unsafe {
-                    self.as_mut().begin_remove_rows(&root, 0, last);
-                    self.as_mut().rust_mut().rows = Vec::new();
-                    self.as_mut().end_remove_rows();
-                }
-            }
-        } else if self.rows.is_empty() {
-            let last = (view.rows.len() - 1) as i32;
-            // SAFETY: 0..=last is valid for empty model; begin/end are balanced.
-            unsafe {
-                self.as_mut().begin_insert_rows(&root, 0, last);
-                self.as_mut().rust_mut().rows = view.rows;
-                self.as_mut().end_insert_rows();
-            }
-        } else if view.rows.len() >= self.rows.len()
-            && self.rows.iter().zip(&view.rows).all(|(a, b)| a.id == b.id)
-        {
-            let old_len = self.rows.len();
-            for row in 0..old_len {
-                if self.rows[row] != view.rows[row] {
-                    self.as_mut().rust_mut().rows[row] = view.rows[row].clone();
+        match view.rows {
+            Rows::Patch { changed, appended } => {
+                for (row, item) in changed {
+                    self.as_mut().rust_mut().rows[row] = item;
                     let index = self.index(row as i32, 0, &root);
                     self.as_mut().data_changed(&index, &index, &QList::default());
                 }
-            }
-            if view.rows.len() > old_len {
-                let first = old_len as i32;
-                let last = (view.rows.len() - 1) as i32;
-                // SAFETY: first..=last appends to end; begin/end are balanced.
-                unsafe {
-                    self.as_mut().begin_insert_rows(&root, first, last);
-                    self.as_mut().rust_mut().rows.extend_from_slice(&view.rows[old_len..]);
-                    self.as_mut().end_insert_rows();
-                }
-            }
-        } else {
-            for edit in diff(&self.rows, &view.rows, |r| r.id.clone()) {
-                match edit {
-                    Edit::Remove(row) => {
-                        let r = row as i32;
-                        // SAFETY: row exists; begin/end are balanced.
-                        unsafe {
-                            self.as_mut().begin_remove_rows(&root, r, r);
-                            self.as_mut().rust_mut().rows.remove(row);
-                            self.as_mut().end_remove_rows();
-                        }
-                    }
-                    Edit::Insert(row) => {
-                        let r = row as i32;
-                        // SAFETY: row <= len; begin/end are balanced.
-                        unsafe {
-                            self.as_mut().begin_insert_rows(&root, r, r);
-                            self.as_mut().rust_mut().rows.insert(row, view.rows[row].clone());
-                            self.as_mut().end_insert_rows();
-                        }
-                    }
-                    Edit::Change(row) => {
-                        self.as_mut().rust_mut().rows[row] = view.rows[row].clone();
-                        let index = self.index(row as i32, 0, &root);
-                        self.as_mut().data_changed(&index, &index, &QList::default());
+                if !appended.is_empty() {
+                    let first = self.rows.len() as i32;
+                    let last = first + appended.len() as i32 - 1;
+                    // SAFETY: first..=last appends to the end; begin/end are balanced.
+                    unsafe {
+                        self.as_mut().begin_insert_rows(&root, first, last);
+                        self.as_mut().rust_mut().rows.extend(appended);
+                        self.as_mut().end_insert_rows();
                     }
                 }
             }
+            Rows::All(rows) => self.as_mut().replace_rows(rows),
         }
         let count = self.rows.len() as i32;
         self.as_mut().set_count(count);
         let rev = self.revision().wrapping_add(1);
         self.set_revision(rev);
+    }
+
+    /// Shows `rows` instead of the current ones: row by row for a few
+    /// changes, so tiles keep their state, or all at once for many, since
+    /// thousands of single-row signals each relayout the grid.
+    fn replace_rows(mut self: Pin<&mut Self>, rows: Vec<ItemRow>) {
+        let root = QModelIndex::default();
+        if rows.is_empty() && self.rows.is_empty() {
+            return;
+        }
+        let edits = if self.rows.is_empty() || rows.is_empty() {
+            None
+        } else {
+            Some(diff(&self.rows, &rows, |r| r.id.clone()))
+        };
+        match edits {
+            Some(edits) if edits.len() <= MAX_ROW_EDITS => {
+                for edit in edits {
+                    match edit {
+                        Edit::Remove(row) => {
+                            let r = row as i32;
+                            // SAFETY: row exists; begin/end are balanced.
+                            unsafe {
+                                self.as_mut().begin_remove_rows(&root, r, r);
+                                self.as_mut().rust_mut().rows.remove(row);
+                                self.as_mut().end_remove_rows();
+                            }
+                        }
+                        Edit::Insert(row) => {
+                            let r = row as i32;
+                            // SAFETY: row <= len; begin/end are balanced.
+                            unsafe {
+                                self.as_mut().begin_insert_rows(&root, r, r);
+                                self.as_mut().rust_mut().rows.insert(row, rows[row].clone());
+                                self.as_mut().end_insert_rows();
+                            }
+                        }
+                        Edit::Change(row) => {
+                            self.as_mut().rust_mut().rows[row] = rows[row].clone();
+                            let index = self.index(row as i32, 0, &root);
+                            self.as_mut().data_changed(&index, &index, &QList::default());
+                        }
+                    }
+                }
+            }
+            _ => {
+                // SAFETY: begin/end are balanced around the swap.
+                unsafe {
+                    self.as_mut().begin_reset_model();
+                    self.as_mut().rust_mut().rows = rows;
+                    self.as_mut().end_reset_model();
+                }
+            }
+        }
     }
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {

@@ -533,13 +533,24 @@ pub struct ItemRow {
     pub full_url: String,
 }
 
+/// Gallery rows for the page: all of them, or the changes to what it shows.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Rows {
+    All(Vec<ItemRow>),
+    /// Rows to replace by index, then rows to add at the end.
+    Patch {
+        changed: Vec<(usize, ItemRow)>,
+        appended: Vec<ItemRow>,
+    },
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct View {
     pub device: Option<DeviceId>,
     pub status: Status,
     pub albums: Value,
     pub album: String,
-    pub rows: Vec<ItemRow>,
+    pub rows: Rows,
     pub more: bool,
     pub loading_older: bool,
     pub saving: bool,
@@ -784,38 +795,51 @@ fn folder_display_name(dir: &Path) -> String {
     dir.to_string_lossy().into_owned()
 }
 
+/// The whole gallery as rows, for a page showing nothing yet.
 pub fn view() -> View {
+    view_since(&[])
+}
+
+/// The gallery as changes to `shown`, the rows the page has now. While the
+/// list only grows at the end, only rows whose thumbnail, file or details
+/// changed are built again: with thousands of photos, building every row for
+/// each thumbnail that arrived kept the whole app busy.
+pub fn view_since(shown: &[ItemRow]) -> View {
     gallery_state(|s| {
-        let mut prev_date = 0i64;
-        let rows: Vec<ItemRow> = s
-            .items
-            .iter()
-            .map(|item| {
-                let thumb = s.thumbs.get(&item.id).map(|p| crate::icons::file_url(p)).unwrap_or_default();
-                let full_url = s
-                    .full_files
-                    .get(&item.id)
-                    .filter(|p| p.exists())
-                    .map(|p| crate::icons::file_url(p))
-                    .unwrap_or_default();
-                let row = ItemRow {
-                    id: item.id.clone(),
-                    name: item.name.clone(),
-                    date: item.date,
-                    prev_date,
-                    size: item.size,
-                    width: item.width,
-                    height: item.height,
-                    duration: item.duration.unwrap_or(0),
-                    is_video: item.duration.is_some() || item.id.starts_with("video:"),
-                    album: item.album.clone().unwrap_or_default(),
-                    thumb,
-                    full_url,
-                };
-                prev_date = item.date;
-                row
-            })
-            .collect();
+        let prefix = !shown.is_empty()
+            && s.items.len() >= shown.len()
+            && s.items.iter().zip(shown).all(|(item, row)| item.id == row.id);
+        let rows = if prefix {
+            let mut changed = Vec::new();
+            for (i, (item, row)) in s.items.iter().zip(shown).enumerate() {
+                let prev_date = if i == 0 { 0 } else { s.items[i - 1].date };
+                if row_differs(s, item, prev_date, row) {
+                    changed.push((i, item_row(s, item, prev_date)));
+                }
+            }
+            let mut prev_date = s.items[shown.len() - 1].date;
+            let appended = s.items[shown.len()..]
+                .iter()
+                .map(|item| {
+                    let row = item_row(s, item, prev_date);
+                    prev_date = item.date;
+                    row
+                })
+                .collect();
+            Rows::Patch { changed, appended }
+        } else {
+            let mut prev_date = 0i64;
+            Rows::All(
+                s.items
+                    .iter()
+                    .map(|item| {
+                        let row = item_row(s, item, prev_date);
+                        prev_date = item.date;
+                        row
+                    })
+                    .collect(),
+            )
+        };
         let albums = Value::Array(
             s.albums
                 .iter()
@@ -858,6 +882,44 @@ pub fn view() -> View {
             save_folder,
         }
     })
+}
+
+fn full_url_of(s: &GalleryState, id: &str) -> String {
+    s.full_files.get(id).filter(|p| p.exists()).map(|p| crate::icons::file_url(p)).unwrap_or_default()
+}
+
+fn item_row(s: &GalleryState, item: &PhotoItem, prev_date: i64) -> ItemRow {
+    ItemRow {
+        id: item.id.clone(),
+        name: item.name.clone(),
+        date: item.date,
+        prev_date,
+        size: item.size,
+        width: item.width,
+        height: item.height,
+        duration: item.duration.unwrap_or(0),
+        is_video: item.duration.is_some() || item.id.starts_with("video:"),
+        album: item.album.clone().unwrap_or_default(),
+        thumb: s.thumbs.get(&item.id).map(|p| crate::icons::file_url(p)).unwrap_or_default(),
+        full_url: full_url_of(s, &item.id),
+    }
+}
+
+/// Whether `row` no longer shows `item`, without building a new row. A
+/// thumbnail's path depends only on the photo, so having one or not is
+/// enough, and only photos with a full file are looked up on disk.
+fn row_differs(s: &GalleryState, item: &PhotoItem, prev_date: i64, row: &ItemRow) -> bool {
+    row.prev_date != prev_date
+        || row.date != item.date
+        || row.size != item.size
+        || row.width != item.width
+        || row.height != item.height
+        || row.duration != item.duration.unwrap_or(0)
+        || row.name != item.name
+        || row.album != item.album.as_deref().unwrap_or_default()
+        || row.thumb.is_empty() == s.thumbs.contains_key(&item.id)
+        || ((!row.full_url.is_empty() || s.full_files.contains_key(&item.id))
+            && row.full_url != full_url_of(s, &item.id))
 }
 
 /// Opens the gallery for `device` (reloads albums and items).
@@ -1640,6 +1702,60 @@ pub fn stage_for_drag(id: &str) -> Option<PathBuf> {
 mod tests {
     use super::*;
 
+    fn all_rows(v: &View) -> &[ItemRow] {
+        match &v.rows {
+            Rows::All(rows) => rows,
+            Rows::Patch { .. } => panic!("expected every row"),
+        }
+    }
+
+    fn photo(i: usize) -> PhotoItem {
+        PhotoItem {
+            id: format!("media:{i}"),
+            name: format!("IMG_{i:05}.jpg"),
+            date: 1_728_000_000_000 - i as i64 * 60_000,
+            size: 1_000,
+            width: 4000,
+            height: 3000,
+            duration: None,
+            album: None,
+        }
+    }
+
+    #[test]
+    fn a_new_thumbnail_rebuilds_only_its_row() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        gallery_state(|s| {
+            *s = GalleryState {
+                status: Status::Ready,
+                items: (0..5_000).map(photo).collect(),
+                ..Default::default()
+            }
+        });
+        let shown = all_rows(&view()).to_vec();
+
+        assert_eq!(view_since(&shown).rows, Rows::Patch { changed: Vec::new(), appended: Vec::new() });
+
+        gallery_state(|s| {
+            s.thumbs.insert("media:42".into(), PathBuf::from("C:/cache/thumb-42.jpg"));
+            s.items.extend((5_000..5_080).map(photo));
+        });
+        let Rows::Patch { changed, appended } = view_since(&shown).rows else { panic!("expected a patch") };
+        assert_eq!(changed.len(), 1);
+        assert_eq!(changed[0].0, 42);
+        assert!(changed[0].1.thumb.ends_with("thumb-42.jpg"));
+        assert_eq!(appended.len(), 80);
+        assert_eq!(appended[0].id, "media:5000");
+        assert_eq!(appended[0].prev_date, shown[4_999].date);
+
+        // A list that changed order or lost rows is sent whole.
+        gallery_state(|s| {
+            s.items.remove(0);
+        });
+        assert!(matches!(view_since(&shown).rows, Rows::All(ref rows) if rows.len() == 5_079));
+        gallery_state(|s| *s = GalleryState::default());
+    }
+
     static TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     #[test]
@@ -1686,14 +1802,14 @@ mod tests {
         assert_eq!(v.status, Status::Ready);
         assert_eq!(v.album, "bucket:1");
         assert!(v.more);
-        assert_eq!(v.rows.len(), 2);
-        assert_eq!(v.rows[0].id, "media:2");
-        assert_eq!(v.rows[0].prev_date, 0);
-        assert!(!v.rows[0].is_video);
-        assert_eq!(v.rows[1].id, "video:1");
-        assert_eq!(v.rows[1].prev_date, 1_710_000_000_000);
-        assert!(v.rows[1].is_video);
-        assert_eq!(v.rows[1].duration, 14_500);
+        assert_eq!(all_rows(&v).len(), 2);
+        assert_eq!(all_rows(&v)[0].id, "media:2");
+        assert_eq!(all_rows(&v)[0].prev_date, 0);
+        assert!(!all_rows(&v)[0].is_video);
+        assert_eq!(all_rows(&v)[1].id, "video:1");
+        assert_eq!(all_rows(&v)[1].prev_date, 1_710_000_000_000);
+        assert!(all_rows(&v)[1].is_video);
+        assert_eq!(all_rows(&v)[1].duration, 14_500);
         gallery_state(|s| *s = GalleryState::default());
     }
 
@@ -1857,16 +1973,15 @@ mod tests {
         });
 
         let v = view();
-        let camera_count = v.rows.iter().filter(|r| r.album == "bucket:camera").count();
-        let video_count = v.rows.iter().filter(|r| r.is_video).count();
-        let day_boundaries = v
-            .rows
+        let camera_count = all_rows(&v).iter().filter(|r| r.album == "bucket:camera").count();
+        let video_count = all_rows(&v).iter().filter(|r| r.is_video).count();
+        let day_boundaries = all_rows(&v)
             .iter()
             .filter(|r| r.prev_date == 0 || (r.prev_date / 86_400_000) != (r.date / 86_400_000))
             .count();
         let elapsed = start.elapsed();
 
-        assert_eq!(v.rows.len(), total);
+        assert_eq!(all_rows(&v).len(), total);
         assert_eq!(camera_count, 5_000);
         assert_eq!(video_count, 500);
         assert!(day_boundaries >= 200, "expected >= 200 day groups, got {day_boundaries}");
