@@ -343,6 +343,7 @@
         <item quantity="other">Connected to %1$d PCs</item>
     </plurals>
     <string name="notification_waiting">Waiting for your PC</string>
+    <string name="notification_waiting_network">Waiting for Wi-Fi to reach your PC</string>
     <string name="notification_not_paired">Not paired with a PC yet</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d file</item>

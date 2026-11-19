@@ -249,6 +249,9 @@ data class CoreState(
     val localsendEnabled: Boolean = false,
     /** Whether staying connected over mobile data (LTE/5G) or relay when away from Wi-Fi is enabled. */
     val awayMode: Boolean = false,
+    /** Whether the phone has Wi-Fi, Ethernet, USB or a VPN; without one (and without
+     *  [awayMode]) it waits for one rather than trying to reach PCs (#397). */
+    val hasNetwork: Boolean = true,
     /** Nearby LocalSend devices discovered on the LAN. */
     val localsendPeers: List<LocalSendPeer> = emptyList(),
     /** IDs of paired PCs currently typing on this phone without mirroring. */

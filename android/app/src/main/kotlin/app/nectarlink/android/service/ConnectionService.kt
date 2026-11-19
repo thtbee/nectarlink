@@ -224,9 +224,14 @@ class ConnectionService : LifecycleService() {
     }.isSuccess
 
     /** What the ongoing notification says. */
-    private data class Status(val connected: List<String>, val paired: Int) {
+    private data class Status(val connected: List<String>, val paired: Int, val noNetwork: Boolean) {
         companion object {
-            fun of(state: CoreState) = Status(state.devices.filter { it.online }.map { it.name }, state.devices.size)
+            fun of(state: CoreState) = Status(
+                state.devices.filter { it.online }.map { it.name },
+                state.devices.size,
+                // Not trying to reach PCs then (#397), so it shouldn't look like it is.
+                noNetwork = !state.hasNetwork && !state.awayMode,
+            )
         }
     }
 
@@ -239,6 +244,7 @@ class ConnectionService : LifecycleService() {
                 status.connected.size,
             )
             status.paired == 0 -> getString(R.string.notification_not_paired)
+            status.noNetwork -> getString(R.string.notification_waiting_network)
             else -> getString(R.string.notification_waiting)
         }
         val builder = NotificationCompat.Builder(this, CHANNEL_CONNECTION)

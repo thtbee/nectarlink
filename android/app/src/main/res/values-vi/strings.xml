@@ -339,6 +339,7 @@
         <item quantity="other">Đã kết nối với %1$d PC</item>
     </plurals>
 <string name="notification_waiting">Đang chờ PC của bạn</string>
+<string name="notification_waiting_network">Đang chờ Wi-Fi để kết nối với PC</string>
 <string name="notification_not_paired">Chưa ghép nối với PC nào</string>
 <plurals name="transfer_files">
         <item quantity="one">%1$d tệp</item>

@@ -339,6 +339,7 @@
         <item quantity="other">%1$d台のPCに接続済み</item>
     </plurals>
     <string name="notification_waiting">PCを待機中</string>
+    <string name="notification_waiting_network">PC に接続するため Wi-Fi を待っています</string>
     <string name="notification_not_paired">まだPCとペアリングされていません</string>
     <plurals name="transfer_files">
         <item quantity="other">%1$d 個のファイル</item>

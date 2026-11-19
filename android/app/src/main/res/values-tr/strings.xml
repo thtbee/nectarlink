@@ -341,6 +341,7 @@
         <item quantity="other">%1$d bilgisayara bağlı</item>
     </plurals>
     <string name="notification_waiting">Bilgisayarınız bekleniyor</string>
+    <string name="notification_waiting_network">Bilgisayarına ulaşmak için Wi-Fi bekleniyor</string>
     <string name="notification_not_paired">Henüz bir bilgisayarla eşleştirilmedi</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d dosya</item>

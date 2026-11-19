@@ -347,6 +347,7 @@
         <item quantity="other">Połączono z %1$d komputerami</item>
     </plurals>
     <string name="notification_waiting">Oczekiwanie na komputer</string>
+    <string name="notification_waiting_network">Czekam na Wi-Fi, by połączyć się z komputerem</string>
     <string name="notification_not_paired">Jeszcze nie sparowano z komputerem</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d plik</item>

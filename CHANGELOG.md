@@ -337,8 +337,8 @@ change things that need a step from you, and its notes say so.
   ([#431](https://github.com/thtbee/nectarlink/issues/431)).
 - **The phone stops trying to reach PCs when it can't.** With no Wi-Fi, Ethernet or VPN,
   and Connect over mobile data off, it no longer dials every two minutes in the background:
-  it waits until a network comes back, which saves battery away from home. A USB cable to
-  the PC still connects. Thanks to [@ThePharaohArt](https://github.com/ThePharaohArt)
+  it waits until a network comes back, which saves battery away from home, and its
+  notification says it's waiting for Wi-Fi. A USB cable to the PC still connects. Thanks to [@ThePharaohArt](https://github.com/ThePharaohArt)
   ([#397](https://github.com/thtbee/nectarlink/issues/397)).
 - **Sharing the PC's screen on Wayland recovers when the desktop doesn't answer.**
   Starting it while the desktop was locked (on COSMIC, say) left the phone on

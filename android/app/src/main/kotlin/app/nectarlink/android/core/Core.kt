@@ -316,7 +316,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         networkChange = scope.launch {
             delay(150)
             // No Wi-Fi, Ethernet or VPN: the core stops dialing PCs until there is (#397).
-            node?.setLocalNetwork(network.hasLocalNetwork())
+            val local = network.hasLocalNetwork()
+            node?.setLocalNetwork(local)
+            _state.update { it.copy(hasNetwork = local) }
             if (lastSignal.wifiBars != null || _state.value.awayMode) {
                 node?.networkChanged()
             }
@@ -453,7 +455,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 node = started
                 isRunning = true
             }
-            runCatching { started.setLocalNetwork(network.hasLocalNetwork()) }
+            val local = network.hasLocalNetwork()
+            runCatching { started.setLocalNetwork(local) }
+            _state.update { it.copy(hasNetwork = local) }
             val devices = runCatching { started.pairedDevices() }.getOrDefault(emptyList())
             val pcToggles = perPcToggles(started, devices.map { it.id })
             val clipHistEnabled = runCatching { started.clipboardHistoryEnabled() }.getOrDefault(true)
