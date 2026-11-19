@@ -1234,6 +1234,31 @@ NativeWindow {
         anchors.right: parent.right
     }
 
+    // What's new (#461): by itself once after an update, when the window is
+    // in use and nothing else is asking; from Settings any time.
+    Loader {
+        id: whatsNewLoader
+        anchors.fill: parent
+        active: false
+        source: active ? "qrc:/qt/qml/app/nectarlink/qml/components/WhatsNewSheet.qml" : ""
+        onLoaded: item.openNotes()
+        function show() {
+            if (active && item) item.openNotes()
+            else active = true
+        }
+    }
+    Timer {
+        // A moment after the window settles, so it isn't the first thing drawn.
+        interval: 1200
+        running: AppController.whatsNewPending && AppController.status === "ready"
+            && !window.showWalkthrough && window.active && !whatsNewLoader.active
+        onTriggered: whatsNewLoader.show()
+    }
+    Connections {
+        target: AppController
+        function onWhatsNewRequested() { whatsNewLoader.show() }
+    }
+
     Loader {
         id: doctorLoader
         anchors.fill: parent

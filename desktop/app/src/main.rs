@@ -68,6 +68,7 @@ mod update_relay;
 mod updater;
 mod version;
 mod webcam;
+mod whats_new;
 #[cfg(windows)]
 mod win;
 #[cfg(target_os = "linux")]
@@ -691,6 +692,7 @@ fn main() -> ExitCode {
         &settings.shelf_hotkey,
     );
     let updated_from = updater::note_running_version(&data_dir);
+    whats_new::note_start(&data_dir, updated_from.is_some());
     if updated_from.is_some() {
         let mut saved = settings::Settings::load(&data_dir);
         if saved.ask_for_star_after_update()

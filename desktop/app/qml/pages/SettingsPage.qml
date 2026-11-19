@@ -3690,6 +3690,19 @@ Item {
                                 }
                             }
                         }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.sparkles
+                            title: qsTr("What's new")
+                            description: qsTr("What changed in this version, and in the ones before it.")
+                            Button {
+                                text: qsTr("Open")
+                                variant: "tonal"
+                                size: "sm"
+                                onClicked: AppController.openWhatsNew()
+                            }
+                        }
                         Divider { width: parent.width; visible: AppController.canUpdate }
                         ListRow {
                             width: parent.width
