@@ -8,6 +8,13 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **AI agents can use NectarLink.** Claude Code, Codex, Cursor, Gemini CLI, VS Code and
+  other AI assistants on the PC can read notifications and texts, send files and messages,
+  and control media, through MCP or the `nectarlink-agent` command. Off by default: turn it
+  on in **Settings › AI agents**, add each agent with Read only or Everyday permissions, and
+  copy the setup line it shows. Sending a text, replying, calling or deleting always waits
+  for your OK in NectarLink, and every agent's activity is listed there
+  ([docs](https://github.com/thtbee/nectarlink/blob/main/docs/guide/ai-agents.md)).
 - **Share and accept the clipboard separately, per device.** In the phone's Settings, under
   each paired device: **Share my clipboard with it** decides whether what you copy goes
   there by itself (with Elevated on), and **Accept its clipboard** whether what it copies

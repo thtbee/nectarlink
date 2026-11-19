@@ -18,7 +18,7 @@ env:
   CARGO_TERM_COLOR: always
   QT_VERSION: "6.12.0"
   # The crates that build without Qt or the Android NDK.
-  CORE_CRATES: -p nectarlink-protocol -p nectarlink-core -p nectarlink-ffi -p nectarlink-cli -p nectarlink-adb -p xtask
+  CORE_CRATES: -p nectarlink-protocol -p nectarlink-core -p nectarlink-actions -p nectarlink-mcp -p nectarlink-ffi -p nectarlink-cli -p nectarlink-adb -p xtask
 
 jobs:
   # Whether anything but docs changed (docs-only.sh). A push or pull request
@@ -149,7 +149,7 @@ jobs:
           # Qt 6.12's repository layout needs a current aqtinstall, pinned to a commit so nothing upstream reaches a build unreviewed.
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Release build
-        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-vcam
+        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam
       - name: Install NSIS
         shell: pwsh
         run: ./scripts/install-nsis.ps1
@@ -245,7 +245,7 @@ jobs:
           cache: true
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Release build
-        run: cargo build --locked --release -p nectarlink-desktop
+        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp
       # The same packaging Nightlies and releases use, so a broken DMG shows
       # up here first.
       - name: Package the DMG
@@ -354,7 +354,7 @@ jobs:
           cache: true
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Release build
-        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-vcam
+        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam
 
   linux-install:
     name: Linux packages and install.sh

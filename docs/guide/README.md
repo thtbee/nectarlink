@@ -36,6 +36,7 @@ Separating task-oriented workflows from implementation internals keeps everyday 
 - [Cameras and Audio](cameras-and-audio.md): Using your phone as a Windows webcam (`NectarLink Webcam` virtual camera add-on), lens and zoom controls, Continuity Camera for capturing photos and scanning documents with corner crop and black-and-white enhancement, using your phone as a low-latency wireless speaker for PC audio, and recording voice notes with timestamped markers.
 - [Input and Control](input-and-control.md): Controlling your PC from your phone (touchpad, gyroscope air mouse, keyboard with modifier bar, voice dictation, presentation remote with laser pointer), typing on your phone from your PC keyboard, the `Deck` macro pad, phone system controls on PC Home, Desk Mode stand display, and Lock, Sleep, and Wake-on-LAN actions.
 - [Desktop Surfaces and Automation](desktop-surfaces.md): The slide-out `Shelf` edge panel, Flick to send gestures, `Nectar Island` top-of-screen activity pill, the searchable cross-device `Timeline`, the global `Command Palette` (`Ctrl+Alt+Space`), rich `Handoff` for links, maps, videos, and documents, `notify-when` task completion alerts, trigger-action automations, the local HTTP API, and the command-line client.
+- [AI agents](ai-agents.md): Let Claude Code, Codex, Cursor and other AI assistants on your PC use NectarLink, with the permissions you choose and your approval for anything sensitive.
 
 ### Configuration, Privacy, and Support
 

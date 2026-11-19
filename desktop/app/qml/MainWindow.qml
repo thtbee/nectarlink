@@ -1049,6 +1049,9 @@ NativeWindow {
         }
     }
 
+    // An AI agent asks the user to approve something (crate::agents).
+    AgentConfirmSheet {}
+
     Sheet {
         id: ringingSheet
         opened: AppController.ringingFrom.length > 0

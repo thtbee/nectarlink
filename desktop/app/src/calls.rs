@@ -110,6 +110,13 @@ pub fn active(device: DeviceId) -> Option<CallState> {
     in_progress(|c| c.get(&device).cloned())
 }
 
+/// Every ringing or active call, as `(device, call, is_ringing)`.
+pub fn all() -> Vec<(DeviceId, CallState, bool)> {
+    let mut out: Vec<_> = ringing(|r| r.iter().map(|(d, c)| (*d, c.clone(), true)).collect());
+    out.extend(in_progress(|c| c.iter().map(|(d, call)| (*d, call.clone(), false)).collect::<Vec<_>>()));
+    out
+}
+
 /// Returns `(device, call, is_ringing)` for `preferred` if it has a ringing or active call,
 /// or falls back to any paired device with a ringing or active call.
 pub fn active_or_ringing(preferred: Option<DeviceId>) -> Option<(DeviceId, CallState, bool)> {

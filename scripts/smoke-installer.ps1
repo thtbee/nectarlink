@@ -58,6 +58,10 @@ Write-Host "Installing $Setup"
 Start-Process $Setup -ArgumentList '/S' -Wait
 Check "the app is installed" (Test-Path $exe)
 Check "an uninstaller is installed" (Test-Path (Join-Path $dir 'uninstall.exe'))
+$agent = Join-Path $dir 'nectarlink-agent.exe'
+Check "the agent command is installed next to the app" (Test-Path $agent)
+& $agent --help | Out-Null
+Check "the agent command runs" ($LASTEXITCODE -eq 0)
 Check "it's in Apps (uninstall entry)" (Test-Path $uninstallKey)
 Check "it's in the Start menu" (Test-Path $shortcut)
 Check "a first install adds a desktop shortcut" (Test-Path $desktopShortcut)

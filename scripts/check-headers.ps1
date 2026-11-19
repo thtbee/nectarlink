@@ -10,6 +10,7 @@ Push-Location (Split-Path -Parent $PSScriptRoot)
 # Which license a source file must declare (mirrors LICENSE).
 function Get-ExpectedLicense([string]$path) {
     if ($path -like "core/nectarlink-cli/*") { return "GPL-3.0-or-later" }
+    if ($path -like "core/nectarlink-mcp/*") { return "GPL-3.0-or-later" }
     if ($path -like "core/*") { return "MPL-2.0" }
     return "GPL-3.0-or-later"
 }

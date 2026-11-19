@@ -22,6 +22,8 @@ const QML: &[&str] = &[
     "qml/MainWindow.qml",
     "qml/MirrorWindow.qml",
     "qml/ShelfWindow.qml",
+    "qml/components/AgentConfirmSheet.qml",
+    "qml/components/AgentsSection.qml",
     "qml/components/AppsSheet.qml",
     "qml/components/Avatar.qml",
     "qml/components/Button.qml",
@@ -400,6 +402,7 @@ fn main() {
         .files([
             "src/bridge/native.rs",
             "src/bridge/app.rs",
+            "src/bridge/agents.rs",
             "src/bridge/calls.rs",
             "src/bridge/devices.rs",
             "src/bridge/history.rs",
