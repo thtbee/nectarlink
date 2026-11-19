@@ -73,9 +73,15 @@ mod tests {
         for p in [
             "/home/bee/.ssh/id_ed25519",
             "/home/bee/.config/nectarlink/identity.key",
+            "/home/bee/.mozilla/firefox/abc.default/logins.json",
+        ] {
+            assert!(is_private(Path::new(p)), "{p}");
+        }
+        // Backslashes only separate folders on Windows.
+        #[cfg(windows)]
+        for p in [
             r"C:\Users\bee\AppData\Roaming\Nectarlink\api-token.json",
             r"C:\Users\bee\AppData\Local\Google\Chrome\User Data\Default\Login Data",
-            "/home/bee/.mozilla/firefox/abc.default/logins.json",
         ] {
             assert!(is_private(Path::new(p)), "{p}");
         }
