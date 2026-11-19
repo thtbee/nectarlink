@@ -59,7 +59,7 @@
     <string name="notifications_off">NectarLink нужен доступ к уведомлениям, чтобы показывать уведомления этого телефона на ПК.</string>
     <string name="notifications_restricted">Переключатель неактивен? Откройте «О приложении», нажмите ⋮, выберите «Разрешить доступ к ограниченным настройкам» и попробуйте снова.</string>
     <string name="action_allow">Разрешить</string>
-    <string name="clip_share_label">Отправить на ПК</string>
+    <string name="clip_share_label">Отправить через NectarLink</string>
     <string name="channel_transfers">Передача файлов</string>
     <string name="channel_received">Полученные файлы</string>
     <string name="channel_pc_media">Медиа на ПК</string>
@@ -1036,10 +1036,10 @@
     <string name="guide_queue_limits">Вмещает до 200 элементов или 10 ГиБ. Файлы истекают через 7 дней, фрагменты и ссылки через 24 часа.</string>
     <string name="guide_share_title">Отправить на ПК</string>
     <string name="guide_share_summary">Делитесь ссылками, текстом, фото или документами из любого приложения Android с ПК через системное меню «Поделиться».</string>
-    <string name="guide_share_where">Меню «Поделиться» Android › Отправить на ПК</string>
+    <string name="guide_share_where">Меню «Поделиться» Android › Отправить через NectarLink</string>
     <string name="guide_share_needs">Связанный ПК</string>
     <string name="guide_share_ext_1">1. Нажмите «Поделиться» в браузере, галерее или приложении документов на телефоне.</string>
-    <string name="guide_share_ext_2">2. Выберите NectarLink («Отправить на ПК» или «Открыть на ПК»).</string>
+    <string name="guide_share_ext_2">2. Выберите NectarLink («Отправить через NectarLink» или «Открыть на ПК»).</string>
     <string name="guide_share_need_1">Хотя бы один связанный ПК.</string>
     <string name="guide_share_phone_1">Поделитесь любой ссылкой или файлом через «Поделиться» Android и выберите нужный ПК.</string>
     <string name="guide_share_pc_1">Ссылки открываются в браузере ПК по умолчанию, файлы сохраняются в «Загрузки».</string>

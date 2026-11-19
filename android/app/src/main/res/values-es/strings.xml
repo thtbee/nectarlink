@@ -65,7 +65,7 @@
     <string name="notifications_off">NectarLink necesita acceso a las notificaciones para mostrarlas en tu PC.</string>
     <string name="notifications_restricted">¿El interruptor aparece atenuado? Abre Información de la aplicación, toca ⋮, selecciona “Permitir ajustes restringidos” y vuelve a intentarlo.</string>
     <string name="action_allow">Permitir</string>
-    <string name="clip_share_label">Enviar a PC</string>
+    <string name="clip_share_label">Enviar con NectarLink</string>
     <string name="channel_transfers">Transferencias de archivos</string>
     <string name="channel_received">Archivos recibidos</string>
     <string name="channel_pc_media">Contenido multimedia de tu PC</string>
@@ -1132,10 +1132,10 @@
     <!-- 9. Send to PC -->
     <string name="guide_share_title">Enviar a PC</string>
     <string name="guide_share_summary">Comparte enlaces, texto, fotos o documentos desde cualquier aplicación de Android con tu PC mediante el menú Compartir del sistema.</string>
-    <string name="guide_share_where">Menú Compartir de Android › Enviar a PC</string>
+    <string name="guide_share_where">Menú Compartir de Android › Enviar con NectarLink</string>
     <string name="guide_share_needs">PC emparejado</string>
     <string name="guide_share_ext_1">1. Toca Compartir en cualquier navegador, galería o aplicación de documentos de tu teléfono.</string>
-    <string name="guide_share_ext_2">2. Selecciona NectarLink (Enviar a PC o Abrir en PC).</string>
+    <string name="guide_share_ext_2">2. Selecciona NectarLink (Enviar con NectarLink o Abrir en PC).</string>
     <string name="guide_share_need_1">Al menos un PC emparejado.</string>
     <string name="guide_share_phone_1">Comparte cualquier enlace o archivo desde el menú Compartir de Android y elige el PC de destino.</string>
     <string name="guide_share_pc_1">Los enlaces se abren en el navegador predeterminado de tu PC; los archivos se guardan en Descargas.</string>

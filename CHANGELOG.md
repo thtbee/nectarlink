@@ -286,6 +286,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The share sheet says "Send with NectarLink".** It said "Send to PC", but it sends to
+  whichever paired device is connected, another phone included. Each device still shows
+  by name next to it. Thanks to [@FlootingDream](https://github.com/FlootingDream)
+  ([#458](https://github.com/thtbee/nectarlink/issues/458)).
 - **Shizuku forks work for Elevated.** Elevated offered Shizuku only when Shizuku's own
   app was installed. It now also offers it when a fork under another name is running
   (#452).

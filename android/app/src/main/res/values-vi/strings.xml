@@ -62,7 +62,7 @@
 <string name="notifications_off">NectarLink cần quyền truy cập thông báo để hiển thị thông báo của điện thoại này trên PC của bạn.</string>
 <string name="notifications_restricted">Công tắc bị mờ? Mở Thông tin ứng dụng, chạm ⋮, chọn “Cho phép cài đặt bị hạn chế”, rồi thử lại.</string>
 <string name="action_allow">Cho phép</string>
-<string name="clip_share_label">Gửi đến PC</string>
+<string name="clip_share_label">Gửi bằng NectarLink</string>
 <string name="channel_transfers">Chuyển tệp</string>
 <string name="channel_received">Tệp đã nhận</string>
 <string name="channel_pc_media">Phương tiện trên PC của bạn</string>
@@ -1073,10 +1073,10 @@
 <!-- 9. Send to PC -->
 <string name="guide_share_title">Gửi tới PC</string>
 <string name="guide_share_summary">Chia sẻ liên kết, văn bản, ảnh hoặc tài liệu từ bất kỳ ứng dụng Android nào tới PC qua bảng Chia sẻ của hệ thống.</string>
-<string name="guide_share_where">Bảng Chia sẻ Android › Gửi tới PC</string>
+<string name="guide_share_where">Bảng Chia sẻ Android › Gửi bằng NectarLink</string>
 <string name="guide_share_needs">PC đã ghép nối</string>
 <string name="guide_share_ext_1">1. Chạm Chia sẻ trong bất kỳ trình duyệt, thư viện ảnh hoặc ứng dụng tài liệu nào trên điện thoại.</string>
-<string name="guide_share_ext_2">2. Chọn NectarLink (Gửi tới PC hoặc Mở trên PC).</string>
+<string name="guide_share_ext_2">2. Chọn NectarLink (Gửi bằng NectarLink hoặc Mở trên PC).</string>
 <string name="guide_share_need_1">Ít nhất một PC đã ghép nối.</string>
 <string name="guide_share_phone_1">Chia sẻ bất kỳ liên kết hoặc tệp nào từ Chia sẻ Android và chọn PC đích.</string>
 <string name="guide_share_pc_1">Liên kết mở trong trình duyệt mặc định của PC; tệp được lưu vào Downloads.</string>

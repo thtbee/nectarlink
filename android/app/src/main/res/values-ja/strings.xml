@@ -65,7 +65,7 @@
     <string name="notifications_off">NectarLinkがこのスマートフォンの通知をPCに表示するには、通知へのアクセス権限が必要です。</string>
     <string name="notifications_restricted">スイッチがグレーアウトしていますか？アプリ情報を開き、⋮をタップして「制限付き設定を許可」を選択し、再度お試しください。</string>
     <string name="action_allow">許可</string>
-    <string name="clip_share_label">PCに送信</string>
+    <string name="clip_share_label">NectarLink で送信</string>
     <string name="channel_transfers">ファイル転送</string>
     <string name="channel_received">受信済みファイル</string>
     <string name="channel_pc_media">PCでのメディア</string>
@@ -1117,10 +1117,10 @@
     <!-- 9. Send to PC -->
     <string name="guide_share_title">PCに送信</string>
     <string name="guide_share_summary">あらゆるAndroidアプリから、システムの共有シート経由でリンク、テキスト、写真、またはドキュメントをPCに共有できます。</string>
-    <string name="guide_share_where">Android 共有シート › PCに送信</string>
+    <string name="guide_share_where">Android 共有シート › NectarLink で送信</string>
     <string name="guide_share_needs">ペアリング済みのPC</string>
     <string name="guide_share_ext_1">1. スマートフォンの任意のブラウザ、ギャラリー、またはドキュメントアプリで「共有」をタップします。</string>
-    <string name="guide_share_ext_2">2. NectarLink（PCに送信またはPCで開く）を選択します。</string>
+    <string name="guide_share_ext_2">2. NectarLink（NectarLink で送信またはPCで開く）を選択します。</string>
     <string name="guide_share_need_1">ペアリング済みのPCが1台以上。</string>
     <string name="guide_share_phone_1">Androidの「共有」から任意のリンクやファイルを共有し、対象のPCを選択してください。</string>
     <string name="guide_share_pc_1">リンクはPCの既定のブラウザで開き、ファイルは「ダウンロード」に保存されます。</string>

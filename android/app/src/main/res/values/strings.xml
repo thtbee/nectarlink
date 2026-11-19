@@ -65,7 +65,7 @@
     <string name="notifications_off">NectarLink needs notification access to show this phone’s notifications on your PC.</string>
     <string name="notifications_restricted">Switch greyed out? Open App info, tap ⋮, choose “Allow restricted settings”, then try again.</string>
     <string name="action_allow">Allow</string>
-    <string name="clip_share_label">Send to PC</string>
+    <string name="clip_share_label">Send with NectarLink</string>
     <string name="channel_transfers">File transfers</string>
     <string name="channel_received">Received files</string>
     <string name="channel_pc_media">Media on your PC</string>
@@ -1126,10 +1126,10 @@
     <!-- 9. Send to PC -->
     <string name="guide_share_title">Send to PC</string>
     <string name="guide_share_summary">Share links, text, photos, or documents from any Android app to your PC via the system Share sheet.</string>
-    <string name="guide_share_where">Android Share sheet › Send to PC</string>
+    <string name="guide_share_where">Android Share sheet › Send with NectarLink</string>
     <string name="guide_share_needs">Paired PC</string>
     <string name="guide_share_ext_1">1. Tap Share in any browser, gallery, or document app on your phone.</string>
-    <string name="guide_share_ext_2">2. Select NectarLink (Send to PC or Open on PC).</string>
+    <string name="guide_share_ext_2">2. Select NectarLink (Send with NectarLink or Open on PC).</string>
     <string name="guide_share_need_1">At least one paired PC.</string>
     <string name="guide_share_phone_1">Share any link or file from Android Share and pick your target PC.</string>
     <string name="guide_share_pc_1">Links open in your default PC browser; files save to Downloads.</string>

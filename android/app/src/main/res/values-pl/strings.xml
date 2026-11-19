@@ -65,7 +65,7 @@
     <string name="notifications_off">NectarLink potrzebuje dostępu do powiadomień, aby wyświetlać powiadomienia z tego telefonu na komputerze.</string>
     <string name="notifications_restricted">Przełącznik jest nieaktywny? Otwórz Informacje o aplikacji, dotknij ⋮, wybierz „Zezwól na ustawienia z ograniczonym dostępem” i spróbuj ponownie.</string>
     <string name="action_allow">Zezwól</string>
-    <string name="clip_share_label">Wyślij na komputer</string>
+    <string name="clip_share_label">Wyślij przez NectarLink</string>
     <string name="channel_transfers">Przesyłanie plików</string>
     <string name="channel_received">Odebrane pliki</string>
     <string name="channel_pc_media">Multimedia na komputerze</string>
@@ -1138,10 +1138,10 @@
     <!-- 9. Send to PC -->
     <string name="guide_share_title">Wyślij na komputer</string>
     <string name="guide_share_summary">Udostępniaj linki, tekst, zdjęcia lub dokumenty z dowolnej aplikacji Android na komputer przez systemowy panel udostępniania.</string>
-    <string name="guide_share_where">Panel udostępniania systemu Android › Wyślij na komputer</string>
+    <string name="guide_share_where">Panel udostępniania systemu Android › Wyślij przez NectarLink</string>
     <string name="guide_share_needs">Sparowany komputer</string>
     <string name="guide_share_ext_1">1. Dotknij Udostępnij w dowolnej przeglądarce, galerii lub aplikacji do dokumentów na telefonie.</string>
-    <string name="guide_share_ext_2">2. Wybierz NectarLink (Wyślij na komputer lub Otwórz na komputerze).</string>
+    <string name="guide_share_ext_2">2. Wybierz NectarLink (Wyślij przez NectarLink lub Otwórz na komputerze).</string>
     <string name="guide_share_need_1">Co najmniej jeden sparowany komputer.</string>
     <string name="guide_share_phone_1">Udostępnij dowolny link lub plik przez panel udostępniania systemu Android i wybierz komputer docelowy.</string>
     <string name="guide_share_pc_1">Linki otwierają się w domyślnej przeglądarce na komputerze, a pliki zapisują się w folderze Pobieranie.</string>

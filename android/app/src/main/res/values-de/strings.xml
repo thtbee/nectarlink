@@ -65,7 +65,7 @@
     <string name="notifications_off">NectarLink benötigt Benachrichtigungszugriff, um die Benachrichtigungen dieses Geräts auf deinem PC anzuzeigen.</string>
     <string name="notifications_restricted">Schalter ausgegraut? Öffne „App-Info“, tippe auf ⋮, wähle „Eingeschränkte Einstellungen zulassen“ und versuche es erneut.</string>
     <string name="action_allow">Erlauben</string>
-    <string name="clip_share_label">An PC senden</string>
+    <string name="clip_share_label">Mit NectarLink senden</string>
     <string name="channel_transfers">Dateiübertragungen</string>
     <string name="channel_received">Empfangene Dateien</string>
     <string name="channel_pc_media">Medien auf deinem PC</string>
@@ -1124,10 +1124,10 @@
     <!-- 9. Send to PC -->
     <string name="guide_share_title">An PC senden</string>
     <string name="guide_share_summary">Teile Links, Text, Fotos oder Dokumente aus jeder Android-App über das System-Teilen-Menü mit deinem PC.</string>
-    <string name="guide_share_where">Android-Teilen-Menü › An PC senden</string>
+    <string name="guide_share_where">Android-Teilen-Menü › Mit NectarLink senden</string>
     <string name="guide_share_needs">Gekoppelter PC</string>
     <string name="guide_share_ext_1">1. Tippe in einem beliebigen Browser, einer Galerie oder einer Dokumenten-App auf deinem Gerät auf „Teilen“.</string>
-    <string name="guide_share_ext_2">2. Wähle NectarLink („An PC senden“ oder „Auf PC öffnen“).</string>
+    <string name="guide_share_ext_2">2. Wähle NectarLink („Mit NectarLink senden“ oder „Auf PC öffnen“).</string>
     <string name="guide_share_need_1">Mindestens ein gekoppelter PC.</string>
     <string name="guide_share_phone_1">Teile einen beliebigen Link oder eine Datei über das Android-Teilen-Menü und wähle deinen Ziel-PC.</string>
     <string name="guide_share_pc_1">Links öffnen sich im Standardbrowser deines PCs; Dateien werden unter „Downloads“ gespeichert.</string>

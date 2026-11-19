@@ -65,7 +65,7 @@
     <string name="notifications_off">NectarLink\'in bu telefonun bildirimlerini bilgisayarınızda göstermesi için bildirim erişimine ihtiyacı var.</string>
     <string name="notifications_restricted">Anahtar gri mi görünüyor? Uygulama bilgileri\'ni açın, ⋮ simgesine dokunun, “Kısıtlanmış ayarlara izin ver”i seçin ve tekrar deneyin.</string>
     <string name="action_allow">İzin ver</string>
-    <string name="clip_share_label">Bilgisayara gönder</string>
+    <string name="clip_share_label">NectarLink ile gönder</string>
     <string name="channel_transfers">Dosya aktarımları</string>
     <string name="channel_received">Alınan dosyalar</string>
     <string name="channel_pc_media">Bilgisayarınızdaki medya</string>
@@ -1123,10 +1123,10 @@
     <!-- 9. Send to PC -->
     <string name="guide_share_title">Bilgisayara gönder</string>
     <string name="guide_share_summary">Herhangi bir Android uygulamasından bağlantı, metin, fotoğraf veya belgeleri sistemin Paylaş menüsüyle bilgisayarınıza paylaşın.</string>
-    <string name="guide_share_where">Android Paylaş menüsü › Bilgisayara gönder</string>
+    <string name="guide_share_where">Android Paylaş menüsü › NectarLink ile gönder</string>
     <string name="guide_share_needs">Eşleştirilmiş bilgisayar</string>
     <string name="guide_share_ext_1">1. Telefonunuzdaki herhangi bir tarayıcı, galeri veya belge uygulamasında Paylaş\'a dokunun.</string>
-    <string name="guide_share_ext_2">2. NectarLink\'i seçin (Bilgisayara gönder veya Bilgisayarda aç).</string>
+    <string name="guide_share_ext_2">2. NectarLink\'i seçin (NectarLink ile gönder veya Bilgisayarda aç).</string>
     <string name="guide_share_need_1">En az bir eşleştirilmiş bilgisayar.</string>
     <string name="guide_share_phone_1">Android Paylaş menüsünden herhangi bir bağlantı veya dosyayı paylaşın ve hedef bilgisayarınızı seçin.</string>
     <string name="guide_share_pc_1">Bağlantılar bilgisayarınızın varsayılan tarayıcısında açılır; dosyalar İndirilenler\'e kaydedilir.</string>
