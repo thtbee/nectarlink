@@ -165,6 +165,10 @@ pub mod qobject {
         /// Which photo `row` is, counting from 1 (0 for a day row or gap).
         #[qinvokable]
         fn ordinal(self: &Photos, row: i32) -> i32;
+        /// The row showing photo `id` now (-1 if it isn't loaded).
+        #[qinvokable]
+        #[cxx_name = "rowOf"]
+        fn row_of(self: &Photos, id: &QString) -> i32;
         #[qinvokable]
         #[cxx_name = "startDrag"]
         fn start_drag(self: &Photos, id: &QString) -> bool;
@@ -500,6 +504,15 @@ impl qobject::Photos {
             }
         }
         i32::try_from(at).unwrap_or(-1)
+    }
+
+    pub fn row_of(&self, id: &QString) -> i32 {
+        let id = String::from(id);
+        self.rows
+            .iter()
+            .position(|r| r.kind == CellKind::Photo && r.id == id)
+            .and_then(|i| i32::try_from(i).ok())
+            .unwrap_or(-1)
     }
 
     pub fn ordinal(&self, row: i32) -> i32 {

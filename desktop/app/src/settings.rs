@@ -174,6 +174,8 @@ static MIRROR_QUALITY: std::sync::Mutex<String> = std::sync::Mutex::new(String::
 static MIRROR_FPS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(60);
 static SYNC_PASSWORDS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static KEEP_POPUPS_PAUSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// Held while settings are written, and while they're read for a change.
+static SAVE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 static USB_DEBUGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 static SYNC_WIFI_ONLY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static OPEN_SHARED_FILES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -247,12 +249,9 @@ pub fn remember_popups_paused(paused: bool) {
     }
     let dir = crate::core_host::host().data_dir.clone();
     let _ = std::thread::Builder::new().name("save-popups-paused".into()).spawn(move || {
-        let mut settings = Settings::load(&dir);
-        if settings.popups_paused != paused {
-            settings.popups_paused = paused;
-            if let Err(e) = settings.save(&dir) {
-                tracing::warn!(error = %e, "can't save whether pop-ups are paused");
-            }
+        // Read and written under one lock, so a toggle can't undo a save in between.
+        if let Err(e) = Settings::update(&dir, |settings| settings.popups_paused = paused) {
+            tracing::warn!(error = %e, "can't save whether pop-ups are paused");
         }
     });
 }
@@ -984,8 +983,19 @@ impl Settings {
 
     /// Saves atomically: a crash mid-write never leaves a half-written file.
     pub fn save(&self, dir: &Path) -> std::io::Result<()> {
-        static SAVE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
         let _guard = SAVE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        self.save_locked(dir)
+    }
+
+    /// Changes what's saved on disk, read and written under the save lock.
+    pub fn update(dir: &Path, change: impl FnOnce(&mut Settings)) -> std::io::Result<()> {
+        let _guard = SAVE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let mut settings = Settings::load(dir);
+        change(&mut settings);
+        settings.save_locked(dir)
+    }
+
+    fn save_locked(&self, dir: &Path) -> std::io::Result<()> {
         let path = Self::path(dir);
         let tmp = path.with_extension("json.tmp");
         {

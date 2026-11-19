@@ -92,6 +92,12 @@ impl Seen {
 pub fn note_start(dir: &Path, updated: bool) {
     let mut seen = Seen::load(dir);
     if updated {
+        // Only with something not shown before: a Nightly that adds nothing stays quiet.
+        let known: HashSet<&String> = seen.seen.iter().collect();
+        let unseen = current_ids().iter().any(|id| !known.contains(id));
+        if !unseen || seen.pending {
+            return;
+        }
         seen.pending = true;
     } else if seen.seen.is_empty() && !seen.pending {
         seen.seen = current_ids();
@@ -318,7 +324,10 @@ fn rich(text: &str) -> String {
             && let Some((label, url, len)) = link_at(rest)
             && (url.starts_with("https://") || url.starts_with("http://"))
         {
-            out.push_str(&format!("<a href=\"{}\">{}</a>", escape(url), escape(&plain(label))));
+            // A URL from `link_at` has no whitespace; quotes and brackets are
+            // kept out, and `&` stays as it is (StyledText doesn't decode attributes).
+            let url = url.replace(['"', '<', '>'], "");
+            out.push_str(&format!("<a href=\"{url}\">{}</a>", escape(&plain(label))));
             rest = &rest[len..];
         } else {
             let next = rest.char_indices().skip(1).map(|(i, _)| i).next().unwrap_or(rest.len());
@@ -430,11 +439,16 @@ To [@someone](https://github.com/someone) for testing.
 
     #[test]
     fn an_update_opens_the_sheet_and_a_new_install_starts_with_all_seen() {
-        let dir = tempfile::tempdir().unwrap();
-        note_start(dir.path(), false);
-        assert!(!pending(dir.path()));
-        assert!(json(dir.path()).contains("\"newCount\":0"));
+        let fresh = tempfile::tempdir().unwrap();
+        note_start(fresh.path(), false);
+        assert!(!pending(fresh.path()));
+        assert!(json(fresh.path()).contains("\"newCount\":0"));
+        // Updated to a build with nothing new: it stays closed.
+        note_start(fresh.path(), true);
+        assert!(!pending(fresh.path()));
 
+        // Updated from a version that never showed these notes.
+        let dir = tempfile::tempdir().unwrap();
         note_start(dir.path(), true);
         assert!(pending(dir.path()));
         mark_seen(dir.path());

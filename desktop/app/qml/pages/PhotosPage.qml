@@ -29,6 +29,27 @@ Item {
 
     // In-app viewer index (-1 when closed).
     property int viewerIndex: -1
+    // The photo the viewer shows: its row moves when the grid's columns change
+    // and the gaps between days with them.
+    property string viewerId: ""
+    property string lastClickedId: ""
+    Connections {
+        target: Photos
+        function onRevisionChanged() {
+            if (page.viewerId.length > 0) {
+                const row = Photos.rowOf(page.viewerId)
+                if (row < 0) {
+                    page.viewerIndex = -1
+                    page.viewerId = ""
+                } else if (row !== page.viewerIndex) {
+                    page.viewerIndex = row
+                }
+            }
+            if (page.lastClickedId.length > 0)
+                page.lastClickedIndex = Photos.rowOf(page.lastClickedId)
+        }
+    }
+    onViewerIndexChanged: if (viewerIndex < 0) viewerId = ""
     readonly property var viewedItem: {
         if (Photos.revision < 0 || viewerIndex < 0 || viewerIndex >= Photos.count)
             return null
@@ -137,7 +158,10 @@ Item {
         } else {
             next[id] = true
         }
-        if (index >= 0) lastClickedIndex = index
+        if (index >= 0) {
+            lastClickedIndex = index
+            lastClickedId = Photos.idAt(index)
+        }
         selectedMap = next
         selectedIds = Object.keys(next)
     }
@@ -196,11 +220,13 @@ Item {
         selectedIds = []
         selectMode = false
         lastClickedIndex = -1
+        lastClickedId = ""
     }
 
     function openViewer(index) {
         if (index < 0 || index >= Photos.count) return
         viewerIndex = index
+        viewerId = Photos.idAt(index)
         try {
             const item = JSON.parse(Photos.itemAt(index))
             if (item && !item.isVideo) {

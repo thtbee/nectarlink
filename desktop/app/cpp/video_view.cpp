@@ -388,11 +388,18 @@ void VideoView::applyWindowChrome()
                 const QString command = relaunch.value(QStringLiteral("command")).toString();
                 const QString name = relaunch.value(QStringLiteral("name")).toString();
                 const QString icon = relaunch.value(QStringLiteral("icon")).toString();
+                PROPVARIANT empty{};
                 if (!command.isEmpty() && !name.isEmpty()) {
                     set(PKEY_AppUserModel_RelaunchCommand, command);
                     set(PKEY_AppUserModel_RelaunchDisplayNameResource, name);
                     if (!icon.isEmpty())
                         set(PKEY_AppUserModel_RelaunchIconResource, icon);
+                    else
+                        store->SetValue(PKEY_AppUserModel_RelaunchIconResource, empty);
+                } else {
+                    store->SetValue(PKEY_AppUserModel_RelaunchIconResource, empty);
+                    store->SetValue(PKEY_AppUserModel_RelaunchDisplayNameResource, empty);
+                    store->SetValue(PKEY_AppUserModel_RelaunchCommand, empty);
                 }
                 set(PKEY_AppUserModel_ID, m_windowAppId);
                 store->Commit();

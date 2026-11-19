@@ -724,7 +724,8 @@ pub fn toggle_recording(window: Window) {
         show_message(tr!("Mirror", "Couldn't start recording."));
         return;
     }
-    let mut recorder = MirrorRecorder::new(path, width, height, OPTIONS.fps, audio_cfg);
+    let fps = with_frame_rate(OPTIONS, on_relay(&window.device)).fps;
+    let mut recorder = MirrorRecorder::new(path, width, height, fps, audio_cfg);
     recorder.set_codec(codec);
     if let Some(sps_pps) =
         LAST_SPS_PPS.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|m| m.get(&window))
@@ -1575,7 +1576,8 @@ pub fn on_event(event: &NodeEvent) {
                 let (stay_awake, screen_off) = state(|s| power(s, device));
                 set_phase(window, Phase::Asking);
                 set_notice(window, "This phone can't mirror at that quality, so it's using Balanced");
-                request(window, MirrorStart { stay_awake, screen_off, ..OPTIONS });
+                let relayed = on_relay(device);
+                request(window, MirrorStart { stay_awake, screen_off, ..with_frame_rate(OPTIONS, relayed) });
                 return;
             }
             if phase(&window).is_some() {

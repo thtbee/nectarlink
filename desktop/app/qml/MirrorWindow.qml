@@ -376,7 +376,7 @@ Window {
             const relaunch = Mirror.relaunch(win.info.device || "", win.info.pkg)
             if (relaunch.length === 0) return ""
             const r = JSON.parse(relaunch)
-            r.name = win.info.title || win.info.pkg
+            r.name = (win.info.title || win.info.pkg).replace(/^@+/, "")
             return JSON.stringify(r)
         }
         focus: true
@@ -648,6 +648,10 @@ Window {
             stream: win.mirrorKey
             frosted: true
             frozen: win.frosted
+            layer.enabled: win.dark
+            layer.effect: ShaderEffect {
+                fragmentShader: "qrc:/shaders/darken.frag.qsb"
+            }
         }
         RoundedImage {
             anchors.centerIn: parent

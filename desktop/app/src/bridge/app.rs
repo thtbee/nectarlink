@@ -914,7 +914,10 @@ impl cxx_qt::Initialize for qobject::AppController {
             quit: tr!("App", "Quit NectarLink"),
         };
         match tray::Tray::create("NectarLink", labels, move |event| on_tray_event(&qt, event)) {
-            Ok(tray) => self.rust_mut().tray = Some(tray),
+            Ok(tray) => {
+                tray.set_notifications_paused(crate::notifications::paused());
+                self.rust_mut().tray = Some(tray);
+            }
             Err(e) => tracing::warn!(error = %e, "no tray icon"),
         }
     }
