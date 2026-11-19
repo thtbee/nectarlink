@@ -1,0 +1,30 @@
+[package]
+name = "nectarlink-actions"
+description = "NectarLink agent actions: one registry of what agents may do, and the gateway every request passes through"
+license = "MPL-2.0"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+nectarlink-core.workspace = true
+nectarlink-protocol.workspace = true
+data-encoding.workspace = true
+rand.workspace = true
+rusqlite.workspace = true
+schemars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
+
+[lints]
+workspace = true

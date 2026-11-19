@@ -18,7 +18,7 @@ env:
   CARGO_TERM_COLOR: always
   QT_VERSION: "6.12.0"
   # The crates that build without Qt or the Android NDK.
-  CORE_CRATES: -p nectarlink-protocol -p nectarlink-core -p nectarlink-ffi -p nectarlink-cli -p nectarlink-adb -p xtask
+  CORE_CRATES: -p nectarlink-protocol -p nectarlink-core -p nectarlink-actions -p nectarlink-ffi -p nectarlink-cli -p nectarlink-adb -p xtask
 
 jobs:
   # Whether anything but docs changed (docs-only.sh). A push or pull request

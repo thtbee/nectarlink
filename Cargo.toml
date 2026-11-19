@@ -6,6 +6,7 @@ members = [
     "core/nectarlink-core",
     "core/nectarlink-cli",
     "core/nectarlink-ffi",
+    "core/nectarlink-actions",
     "desktop/app",
     "desktop/vcam",
     "tools/xtask",
@@ -59,6 +60,8 @@ n0-future = "0.3"
 qrcode = { version = "0.14", default-features = false }
 rand = "0.10"
 rusqlite = { version = "0.42", features = ["bundled"] }
+# JSON Schemas for agent actions, from the same structs the actions take.
+schemars = "1.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_bytes = "0.11"
