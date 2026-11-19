@@ -7,6 +7,7 @@ members = [
     "core/nectarlink-cli",
     "core/nectarlink-ffi",
     "core/nectarlink-actions",
+    "core/nectarlink-mcp",
     "desktop/app",
     "desktop/vcam",
     "tools/xtask",
@@ -31,6 +32,8 @@ name = "Pollen"
 nectarlink-adb = { path = "core/nectarlink-adb", version = "0.1.5" }
 nectarlink-protocol = { path = "core/nectarlink-protocol", version = "0.1.5" }
 nectarlink-core = { path = "core/nectarlink-core", version = "0.1.5" }
+nectarlink-actions = { path = "core/nectarlink-actions", version = "0.1.5" }
+nectarlink-mcp = { path = "core/nectarlink-mcp", version = "0.1.5" }
 nectarlink-vcam = { path = "desktop/vcam", version = "0.1.5" }
 
 anyhow = "1"

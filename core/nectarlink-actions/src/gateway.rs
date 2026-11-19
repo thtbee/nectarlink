@@ -183,15 +183,25 @@ impl Gateway {
             .and_then(|m| m.remove("confirmation_id"))
             .and_then(|v| v.as_str().map(str::to_owned));
         let Some(def) = self.actions.iter().find(|a| a.id == action_id || a.tool_name() == action_id) else {
-            return Err(ActionError::new(
-                Code::UnknownAction,
-                format!("There's no action named {action_id:?}."),
-            ));
+            let err =
+                ActionError::new(Code::UnknownAction, format!("There's no action named {action_id:?}."));
+            let record = Record {
+                client: &client,
+                channel: &caller.channel,
+                action: untrusted::clean(action_id, 60),
+                device: None,
+                summary: String::new(),
+                confirm: "none",
+                started,
+            };
+            let outcome = Err(err);
+            self.audit(&record, &outcome);
+            return outcome;
         };
         let mut record = Record {
             client: &client,
             channel: &caller.channel,
-            action: def.id,
+            action: def.id.to_owned(),
             device: None,
             summary: summarize(&args),
             confirm: "none",
@@ -392,7 +402,7 @@ impl Gateway {
             client_id: r.client.id.clone(),
             client_name: r.client.display_name.clone(),
             channel: r.channel.to_owned(),
-            action: r.action.to_owned(),
+            action: r.action.clone(),
             device: r.device.clone(),
             summary: r.summary.clone(),
             decision,
@@ -409,7 +419,7 @@ impl Gateway {
 struct Record<'a> {
     client: &'a Client,
     channel: &'a str,
-    action: &'static str,
+    action: String,
     device: Option<String>,
     summary: String,
     confirm: &'static str,
