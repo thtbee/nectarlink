@@ -22,7 +22,7 @@ For end-user setup and feature guides, see [docs/guide/README.md](../guide/READM
 ```text
 nectarlink/
 ├── Cargo.toml                  Workspace manifest and shared dependency versions
-├── rust-toolchain.toml         Pinned stable Rust toolchain (1.97+ MSRV, 2024 edition) and Android targets
+├── rust-toolchain.toml         Exact Rust toolchain (1.100.0; MSRV 1.97, 2024 edition); builds add their targets
 ├── core/
 │   ├── nectarlink-protocol/    Wire framing, CBOR envelopes, capability constants, SAS derivation
 │   ├── nectarlink-core/        QUIC node, ADB/USB tunnel, session engine, SQLite store, send queue, OKLab palette

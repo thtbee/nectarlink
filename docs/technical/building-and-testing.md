@@ -6,7 +6,7 @@ This document covers the pinned toolchain versions, environment variables, build
 
 | Component | Required Version | Configuration File / Default Path |
 |---|---|---|
-| **Rust Toolchain** | `stable` (pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml)) | [`rust-toolchain.toml`](../../rust-toolchain.toml) |
+| **Rust Toolchain** | `1.100.0` (pinned in [`rust-toolchain.toml`](../../rust-toolchain.toml)) | [`rust-toolchain.toml`](../../rust-toolchain.toml) |
 | **Rust Targets** | `x86_64-pc-windows-msvc`, `aarch64-pc-windows-msvc`, `aarch64-linux-android`, `x86_64-linux-android` | Installed via `rustup target add` |
 | **MSVC Build Tools** | Visual Studio 2022 Build Tools (C++, `x64` and `ARM64/ARM64EC`) | Windows 11 SDK |
 | **Qt 6** | `Qt 6.12` (`msvc2022_64` and `msvc2022_arm64`, QtQuick, QtQuickControls2, QtShaderTools, QtMultimedia) | `C:\Qt\6.12.0\msvc2022_64` / `msvc2022_arm64` |
