@@ -35,6 +35,11 @@ change things that need a step from you, and its notes say so.
   sends an app file (.apk) to the phone, whose notification then offers **Install**, which
   opens Android's installer. Thanks to [@w-rakeeb](https://github.com/w-rakeeb)
   ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Make Desk clock yours.** **Customize** on Desk clock picks the background (black,
+  graphite or your accent color), the clock's font (mono, sans or serif) and what it shows:
+  seconds, the date, the PC's media and volume, and the battery of the phone and the PC.
+  Thanks to [@xo4x4ww](https://github.com/xo4x4ww)
+  ([#380](https://github.com/thtbee/nectarlink/discussions/380)).
 - **Look for PCs only where they are, and stop after a while.** In the phone's Settings,
   under Connect over mobile data: **Only on networks where a PC was found** keeps the
   phone from looking for your PCs on other Wi-Fi, and **Stop looking after** 15 minutes, 1
