@@ -31,6 +31,9 @@ class VideoView : public QQuickItem, public QAbstractNativeEventFilter
     Q_PROPERTY(QString windowIcon READ windowIcon WRITE setWindowIcon NOTIFY windowIconChanged)
     // Optional Windows AppUserModelID so each app window gets its own taskbar identity.
     Q_PROPERTY(QString windowAppId READ windowAppId WRITE setWindowAppId NOTIFY windowAppIdChanged)
+    // How Windows starts this window's app again once it's pinned to the
+    // taskbar: JSON with `command`, `name` and `icon` (a `path,0` resource).
+    Q_PROPERTY(QString windowRelaunch READ windowRelaunch WRITE setWindowRelaunch NOTIFY windowRelaunchChanged)
     // Whether text from input methods (the emoji panel, IMEs for Chinese and
     // other languages) is taken, and given out through `textCommitted`.
     Q_PROPERTY(bool acceptsText READ acceptsText WRITE setAcceptsText NOTIFY acceptsTextChanged)
@@ -65,6 +68,8 @@ public:
     void setWindowIcon(const QString &icon);
     QString windowAppId() const { return m_windowAppId; }
     void setWindowAppId(const QString &appId);
+    QString windowRelaunch() const { return m_windowRelaunch; }
+    void setWindowRelaunch(const QString &relaunch);
     bool acceptsText() const { return m_acceptsText; }
     void setAcceptsText(bool on);
     bool frosted() const { return m_frosted; }
@@ -90,6 +95,7 @@ signals:
     void framesChanged();
     void windowIconChanged();
     void windowAppIdChanged();
+    void windowRelaunchChanged();
     void acceptsTextChanged();
     void frostedChanged();
     void frozenChanged();
@@ -117,6 +123,7 @@ private:
     quint64 m_shown = 0;
     QString m_windowIcon;
     QString m_windowAppId;
+    QString m_windowRelaunch;
     bool m_acceptsText = false;
     bool m_frosted = false;
     bool m_frozen = false;

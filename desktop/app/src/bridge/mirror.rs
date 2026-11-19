@@ -76,6 +76,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "appShortcutsSupported"]
         fn app_shortcuts_supported(self: &Mirror) -> bool;
+        /// How the taskbar starts an app window again once it's pinned, as
+        /// JSON (`command`, `icon`), or "" for a window that has none (#465).
+        #[qinvokable]
+        fn relaunch(self: &Mirror, device: &QString, pkg: &QString) -> QString;
         /// Reopens an ended window (the screen or an app window).
         #[qinvokable]
         fn reopen(self: &Mirror, key: &QString);
@@ -402,6 +406,19 @@ impl qobject::Mirror {
 
     pub fn app_shortcuts_supported(&self) -> bool {
         crate::app_shortcuts::supported()
+    }
+
+    pub fn relaunch(&self, device: &QString, pkg: &QString) -> QString {
+        #[cfg(windows)]
+        if let Some(device) = super::parse_device(device)
+            && let Some((command, icon)) =
+                crate::app_shortcuts::relaunch(&crate::core_host::host().data_dir, device, &String::from(pkg))
+        {
+            return QString::from(&serde_json::json!({ "command": command, "icon": icon }).to_string());
+        }
+        #[cfg(not(windows))]
+        let _ = (device, pkg);
+        QString::default()
     }
 
     pub fn start_app(&self, device: &QString, pkg: &QString, label: &QString) {

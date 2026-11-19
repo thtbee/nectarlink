@@ -796,6 +796,7 @@ fn folder_display_name(dir: &Path) -> String {
 }
 
 /// The whole gallery as rows, for a page showing nothing yet.
+#[cfg(test)]
 pub fn view() -> View {
     view_since(&[])
 }

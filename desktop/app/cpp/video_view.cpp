@@ -2,6 +2,8 @@
 #include "video_view.h"
 
 #include <QtCore/QHash>
+#include <QtCore/QJsonDocument>
+#include <QtCore/QJsonObject>
 #include <QtCore/QMetaMethod>
 #include <QtCore/QUrl>
 #include <QtGui/QGuiApplication>
@@ -173,6 +175,15 @@ void VideoView::setWindowAppId(const QString &appId)
     applyWindowChrome();
 }
 
+void VideoView::setWindowRelaunch(const QString &relaunch)
+{
+    if (relaunch == m_windowRelaunch)
+        return;
+    m_windowRelaunch = relaunch;
+    emit windowRelaunchChanged();
+    applyWindowChrome();
+}
+
 void VideoView::setAcceptsText(bool on)
 {
     if (on == m_acceptsText)
@@ -318,11 +329,39 @@ QVariant VideoView::inputMethodQuery(Qt::InputMethodQuery query) const
     }
 }
 
+#ifdef _WIN32
+namespace {
+// Takes the window's taskbar ID and relaunch details off it again.
+void clearTaskbarProperties(QWindow *win)
+{
+    HWND hwnd = reinterpret_cast<HWND>(win->winId());
+    IPropertyStore *store = nullptr;
+    if (!hwnd || FAILED(SHGetPropertyStoreForWindow(hwnd, IID_PPV_ARGS(&store))) || !store)
+        return;
+    PROPVARIANT empty{};
+    for (const PROPERTYKEY &key : {PKEY_AppUserModel_RelaunchIconResource,
+                                   PKEY_AppUserModel_RelaunchDisplayNameResource,
+                                   PKEY_AppUserModel_RelaunchCommand, PKEY_AppUserModel_ID})
+        store->SetValue(key, empty);
+    store->Commit();
+    store->Release();
+}
+} // namespace
+#endif
+
 void VideoView::itemChange(ItemChange change, const ItemChangeData &value)
 {
     QQuickItem::itemChange(change, value);
     if (change == ItemSceneChange && value.window) {
         connect(value.window, &QWindow::visibleChanged, this, [this](bool) { applyWindowChrome(); });
+#ifdef _WIN32
+        // Windows wants the taskbar properties gone before the window is.
+        QQuickWindow *win = value.window;
+        connect(win, &QWindow::visibleChanged, this, [win](bool visible) {
+            if (!visible)
+                clearTaskbarProperties(win);
+        });
+#endif
         applyWindowChrome();
     }
 }
@@ -333,14 +372,29 @@ void VideoView::applyWindowChrome()
     if (!win)
         return;
 #ifdef _WIN32
-    if (!m_windowAppId.isEmpty()) {
+    if (!m_windowAppId.isEmpty() && win->isVisible()) {
         if (HWND hwnd = reinterpret_cast<HWND>(win->winId())) {
             IPropertyStore *store = nullptr;
             if (SUCCEEDED(SHGetPropertyStoreForWindow(hwnd, IID_PPV_ARGS(&store))) && store) {
-                PROPVARIANT pv{};
-                pv.vt = VT_LPWSTR;
-                pv.pwszVal = const_cast<LPWSTR>(reinterpret_cast<LPCWSTR>(m_windowAppId.utf16()));
-                store->SetValue(PKEY_AppUserModel_ID, pv);
+                auto set = [store](const PROPERTYKEY &key, const QString &text) {
+                    PROPVARIANT pv{};
+                    pv.vt = VT_LPWSTR;
+                    pv.pwszVal = const_cast<LPWSTR>(reinterpret_cast<LPCWSTR>(text.utf16()));
+                    store->SetValue(key, pv);
+                };
+                // Pinned, the window starts its app again, not NectarLink
+                // (#465). Windows reads these with the ID, so they go first.
+                const QJsonObject relaunch = QJsonDocument::fromJson(m_windowRelaunch.toUtf8()).object();
+                const QString command = relaunch.value(QStringLiteral("command")).toString();
+                const QString name = relaunch.value(QStringLiteral("name")).toString();
+                const QString icon = relaunch.value(QStringLiteral("icon")).toString();
+                if (!command.isEmpty() && !name.isEmpty()) {
+                    set(PKEY_AppUserModel_RelaunchCommand, command);
+                    set(PKEY_AppUserModel_RelaunchDisplayNameResource, name);
+                    if (!icon.isEmpty())
+                        set(PKEY_AppUserModel_RelaunchIconResource, icon);
+                }
+                set(PKEY_AppUserModel_ID, m_windowAppId);
                 store->Commit();
                 store->Release();
             }
