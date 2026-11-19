@@ -114,6 +114,7 @@ fun SettingsScreen(
     updater: AppUpdater,
     onSetStorageEnabled: (pcId: String, enabled: Boolean) -> Unit = { _, _ -> },
     onSetMicEnabled: (pcId: String, enabled: Boolean) -> Unit = { _, _ -> },
+    onSetClipboardAccepted: (deviceId: String, on: Boolean) -> Unit = { _, _ -> },
     startWithoutAsking: Set<String> = emptySet(),
     onSetStartWithoutAsking: (pcId: String, on: Boolean) -> Unit = { _, _ -> },
     onAddSafFolder: (Uri) -> Unit = {},
@@ -605,6 +606,42 @@ fun SettingsScreen(
                                         modifier = Modifier.semantics { contentDescription = mirrorAskTitle },
                                     )
                                 }
+                            }
+                            val notShared by app.nectarlink.android.clipboard.ClipboardPeers.notShared(context).collectAsState()
+                            val notAccepted by app.nectarlink.android.clipboard.ClipboardPeers.notAccepted(context).collectAsState()
+                            val clipShareTitle = stringResource(R.string.clip_share_toggle)
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                                    Text(clipShareTitle, style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        stringResource(R.string.clip_share_hint),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                Switch(
+                                    checked = device.id !in notShared,
+                                    onCheckedChange = { on -> app.nectarlink.android.clipboard.ClipboardPeers.setShared(context, device.id, on) },
+                                    colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+                                    modifier = Modifier.semantics { contentDescription = clipShareTitle },
+                                )
+                            }
+                            val clipAcceptTitle = stringResource(R.string.clip_accept_toggle)
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                                    Text(clipAcceptTitle, style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        stringResource(R.string.clip_accept_hint),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                Switch(
+                                    checked = device.id !in notAccepted,
+                                    onCheckedChange = { on -> onSetClipboardAccepted(device.id, on) },
+                                    colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+                                    modifier = Modifier.semantics { contentDescription = clipAcceptTitle },
+                                )
                             }
                         }
                     }

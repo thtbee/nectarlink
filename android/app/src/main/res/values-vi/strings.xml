@@ -448,6 +448,10 @@
 <string name="start_without_asking_hint">Khi PC này yêu cầu, chúng sẽ bật ngay mà không cần chạm trên điện thoại. Cần quyền Elevated. Nếu không có, điện thoại sẽ hỏi như thường lệ.</string>
     <string name="mirror_ask_toggle">Hỏi trước khi chia sẻ màn hình</string>
     <string name="mirror_ask_hint">Mỗi lần PC này muốn xem màn hình, nó sẽ chờ bạn chạm. Nếu tắt, Elevated chia sẻ ngay.</string>
+    <string name="clip_share_toggle">Chia sẻ bộ nhớ tạm của tôi</string>
+    <string name="clip_share_hint">Nội dung bạn sao chép tự gửi đến đó khi Elevated đang bật. Vẫn có thể gửi thủ công.</string>
+    <string name="clip_accept_toggle">Nhận bộ nhớ tạm của thiết bị đó</string>
+    <string name="clip_accept_hint">Nội dung sao chép ở đó sẽ vào bộ nhớ tạm của điện thoại này.</string>
 <string name="recorder_notification_recording">Đang ghi âm cho %1$s</string>
 <string name="recorder_notification_paused">Đã tạm dừng ghi âm (%1$s)</string>
 <string name="recorder_permission_title">Cho phép truy cập micrô</string>

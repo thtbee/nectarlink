@@ -436,6 +436,10 @@
     <string name="start_without_asking_hint">此电脑请求时，相机或麦克风会立即开启，无需在手机上轻触。需要 Elevated。没有 Elevated 时，手机会照常询问。</string>
     <string name="mirror_ask_toggle">共享屏幕前先询问</string>
     <string name="mirror_ask_hint">每次这台电脑想查看你的屏幕时，都会等你点按。关闭后，Elevated 会立即共享。</string>
+    <string name="clip_share_toggle">共享我的剪贴板</string>
+    <string name="clip_share_hint">开启 Elevated 时，你复制的内容会自动发送过去。仍可手动发送。</string>
+    <string name="clip_accept_toggle">接收它的剪贴板</string>
+    <string name="clip_accept_hint">在那边复制的内容会进入这台手机的剪贴板。</string>
     <string name="recorder_notification_recording">正在为 %1$s 录音</string>
     <string name="recorder_notification_paused">录音已暂停（%1$s）</string>
     <string name="recorder_permission_title">允许使用麦克风</string>

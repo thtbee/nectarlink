@@ -1823,6 +1823,15 @@ async fn clipboard_text_goes_both_ways_with_consent() {
         Some(&("Plain survives".to_owned(), Some("<i>Plain</i> survives".to_owned()), None)),
     );
 
+    // The phone stops taking the PC's clipboard but still shares its own (#453).
+    phone.node.set_device_toggle(pc_id, "clipboard_receive", false).unwrap();
+    let refused = with_timeout("not accepted", pc.node.send_clipboard(phone_id, "not taken".into())).await;
+    assert!(matches!(refused, Err(Error::Denied)), "{refused:?}");
+    assert_eq!(phone.platform.clipboard.lock().unwrap().len(), 3, "nothing new on the phone");
+    with_timeout("still shares", phone.node.send_clipboard(pc_id, "still goes".into())).await.expect("sent");
+    assert_eq!(pc.platform.clipboard.lock().unwrap().last().map(String::as_str), Some("still goes"));
+    phone.node.set_device_toggle(pc_id, "clipboard_receive", true).unwrap();
+
     // The receiver turned the clipboard off for the sender.
     phone.node.set_device_toggle(pc_id, "clipboard", false).unwrap();
     let denied = with_timeout("denied", pc.node.send_clipboard(phone_id, "nope".into())).await;

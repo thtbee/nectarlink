@@ -452,6 +452,10 @@
     <string name="start_without_asking_hint">Quando este PC pedir, eles ligam na hora, sem precisar tocar no celular. Precisa do Elevated. Sem ele, o celular pergunta como sempre.</string>
     <string name="mirror_ask_toggle">Perguntar antes de compartilhar a tela</string>
     <string name="mirror_ask_hint">Sempre que este PC quiser ver sua tela, ele espera seu toque. Sem isso, o Elevated compartilha na hora.</string>
+    <string name="clip_share_toggle">Compartilhar minha área de transferência</string>
+    <string name="clip_share_hint">O que você copia vai sozinho enquanto o Elevated está ligado. Enviar à mão continua funcionando.</string>
+    <string name="clip_accept_toggle">Aceitar a área de transferência dele</string>
+    <string name="clip_accept_hint">O que for copiado lá vai para a área de transferência deste celular.</string>
     <string name="recorder_notification_recording">Gravando para %1$s</string>
     <string name="recorder_notification_paused">Gravação pausada (%1$s)</string>
     <string name="recorder_permission_title">Permitir acesso ao microfone</string>

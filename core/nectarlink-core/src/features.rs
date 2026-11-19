@@ -353,6 +353,8 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("call_audio", true),
     ("contacts", true),
     ("clipboard", true),
+    // Taking that device's clipboard here, with `clipboard` on too (#453).
+    ("clipboard_receive", true),
     ("files", true),
     ("media", true),
     ("photos", true),

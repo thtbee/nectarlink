@@ -448,6 +448,10 @@
     <string name="start_without_asking_hint">このPCがリクエストすると、スマートフォンを操作しなくてもすぐにオンになります。昇格が必要です。昇格していない場合は、通常通りスマートフォン側にリクエストが届きます。</string>
     <string name="mirror_ask_toggle">画面を共有する前に確認する</string>
     <string name="mirror_ask_hint">この PC が画面を見ようとするたびに、タップを待ちます。オフの場合、Elevated はすぐに共有します。</string>
+    <string name="clip_share_toggle">クリップボードを共有</string>
+    <string name="clip_share_hint">Elevated がオンの間、コピーした内容が自動で送られます。手動で送ることもできます。</string>
+    <string name="clip_accept_toggle">相手のクリップボードを受け取る</string>
+    <string name="clip_accept_hint">相手でコピーした内容がこのスマートフォンのクリップボードに入ります。</string>
     <string name="recorder_notification_recording">%1$s の録音中</string>
     <string name="recorder_notification_paused">録音一時停止中 (%1$s)</string>
     <string name="recorder_permission_title">マイクへのアクセスを許可する</string>
