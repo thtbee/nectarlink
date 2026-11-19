@@ -42,6 +42,8 @@ struct RecordingPlatform {
     mms_sent: Mutex<Vec<MmsRecord>>,
     mirror_asks: Mutex<Vec<String>>,
     mirror_reject: std::sync::atomic::AtomicBool,
+    /// Says no computer can be reaching it through adb.
+    adb_off: std::sync::atomic::AtomicBool,
     watch_offers: Mutex<Vec<String>>,
     mic_asks: Mutex<Vec<String>>,
     mic: Arc<TestMicSink>,
@@ -71,6 +73,9 @@ struct RecordingPlatform {
 }
 
 impl Platform for RecordingPlatform {
+    fn adb_may_be_connected(&self) -> bool {
+        !self.adb_off.load(std::sync::atomic::Ordering::SeqCst)
+    }
     fn start_ringing(&self) {
         self.rings.lock().unwrap().push(true);
     }
@@ -6331,6 +6336,33 @@ async fn start_usb_device_in(
     let node = Node::start(config, platform.clone()).await.expect("usb test node starts");
     let events = node.events();
     TestDevice { node, events, platform, dir, name }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn usb_tunnel_pairing_needs_adb_to_be_possible() {
+    // Something on the phone that isn't adb (adb is off) reaches the tunnel's
+    // port and asks to pair: the phone isn't in pairing mode, so it refuses
+    // without showing a code.
+    let mut phone = start_usb_device("Pixel USB", DeviceKind::Phone, Some(0), &[]).await;
+    phone.platform.adb_off.store(true, std::sync::atomic::Ordering::SeqCst);
+    let mut pc = start_usb_device("Desktop USB", DeviceKind::Desktop, None, &[]).await;
+    let phone_id = phone.node.device_id();
+    let usb_port = phone.node.usb_port().expect("phone bound ephemeral USB TCP listener");
+    let tunnel_addr: SocketAddr = ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), usb_port).into();
+    pc.node.connect_usb_tunnel(tunnel_addr).await.expect("connect USB tunnel");
+
+    wait_for(&mut pc, "pc pairing refused", |e| match e {
+        NodeEvent::Pairing(PairingEvent::Failed(_)) => Some(()),
+        NodeEvent::Pairing(PairingEvent::SasCode { peer, .. }) if *peer == phone_id => {
+            panic!("the PC got a code from a phone that should have refused")
+        }
+        _ => None,
+    })
+    .await;
+    while let Ok(Ok(ev)) = tokio::time::timeout(Duration::from_millis(500), phone.events.recv()).await {
+        assert!(!matches!(ev, NodeEvent::Pairing(PairingEvent::SasCode { .. })), "the phone showed a code");
+    }
+    assert!(phone.node.paired_devices().unwrap().is_empty());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

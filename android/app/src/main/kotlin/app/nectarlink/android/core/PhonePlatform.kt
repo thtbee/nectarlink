@@ -115,6 +115,8 @@ internal class PhonePlatform(
     override fun mediaCommand(player: String, action: MediaAction, position: ULong?) =
         media.command(player, action, position)
 
+    override fun adbMayBeConnected(): Boolean = app.nectarlink.android.usb.AdbState.mayBeConnected(context)
+
     override fun openLink(fromId: String, url: String): Boolean = onLink(fromId, url)
 
     override fun watchOffered(

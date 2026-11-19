@@ -343,7 +343,9 @@ async fn settle_initiator(
 /// Handles an incoming pairing connection (host side of both flows).
 pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
     let peer = crate::device_id(&conn.remote_id());
-    let is_usb = shared.is_usb_connection(&conn);
+    // Over the USB tunnel pairing needs no pairing mode, but only while adb
+    // could be what reached the tunnel: any app on the phone can reach it too.
+    let is_usb = shared.is_usb_connection(&conn) && shared.platform.adb_may_be_connected();
     if !shared.pairing.is_hosting() && !is_usb {
         tracing::debug!(peer = %peer.short(), "refusing pairing connection: not in pairing mode");
         conn.close(VarInt::from_u32(ErrorCode::Denied.close_code()), b"not pairing");
