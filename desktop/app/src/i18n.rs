@@ -106,6 +106,7 @@ fn system_language(preferred: &[String]) -> &'static str {
             "de" => "de",
             "es" => "es",
             "ja" => "ja",
+            "pl" => "pl",
             "ru" => "ru",
             "tr" => "tr",
             "vi" => "vi",
@@ -219,6 +220,8 @@ mod tests {
         assert_eq!(system_language(&list(&["ja"])), "ja");
         assert_eq!(system_language(&list(&["ru-RU", "en-US"])), "ru");
         assert_eq!(system_language(&list(&["vi-VN"])), "vi");
+        assert_eq!(system_language(&list(&["pl-PL"])), "pl");
+        assert_eq!(system_language(&list(&["pl"])), "pl");
         assert_eq!(system_language(&list(&["zh-Hans-CN"])), "zh_CN");
         assert_eq!(system_language(&list(&["zh-Hant-TW", "en"])), "en");
         assert_eq!(system_language(&list(&["pt-BR"])), "pt_BR");

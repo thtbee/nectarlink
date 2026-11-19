@@ -191,7 +191,9 @@ internal class PhonePlatform(
                 options.screenOff,
                 options.soundOnly,
             )
-            if (Elevated.running && MirrorService.startElevated(context, request)) {
+            // Elevated shares at once, unless the user wants this PC to ask each time.
+            val ask = app.nectarlink.android.mirror.MirrorAsk.isOn(context, pcId)
+            if (Elevated.running && !ask && MirrorService.startElevated(context, request)) {
                 true
             } else {
                 onMirror(pcId, request)
@@ -335,6 +337,15 @@ internal class PhonePlatform(
         WebcamService.keyframe(pcId)
 
     override fun cameraCaptureRequested(pcId: String, requestId: String, mode: String): Boolean {
+        // In the background with notifications off, the camera screen can't be shown or
+        // offered: say no now rather than let the PC wait out its request.
+        val inFront = androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.currentState
+            .isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)
+        val canNotify = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.POST_NOTIFICATIONS,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!inFront && !canNotify) return false
         val pcName = nameOf(pcId)
         mainHandler.post { ContinuityCameraRequests.show(context, pcId, requestId, mode, pcName) }
         return true

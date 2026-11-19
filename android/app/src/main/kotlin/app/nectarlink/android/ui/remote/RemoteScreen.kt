@@ -16,7 +16,6 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
-import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -141,16 +140,11 @@ fun RemoteScreen(
     val view = LocalView.current
     val context = LocalContext.current
 
-    // Keep the phone's screen on while controlling the PC, and release any
-    // held laser/button when leaving.
+    // Keep the phone's screen on while controlling the PC (for a while after each
+    // touch), and release any held laser/button when leaving.
+    app.nectarlink.android.ui.KeepScreenOn(device.online && app.nectarlink.android.ui.rememberTouchedRecently())
     DisposableEffect(view, device.id) {
-        val window = (context as? Activity)?.window
-        val prevKeepOn = view.keepScreenOn
-        view.keepScreenOn = true
-        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose {
-            view.keepScreenOn = prevKeepOn
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             core.remoteLaser(device.id, false)
         }
     }

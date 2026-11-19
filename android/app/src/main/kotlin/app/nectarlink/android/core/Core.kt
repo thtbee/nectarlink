@@ -863,8 +863,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         when (event) {
             is Event.Transfer -> onTransfer(event.transfer)
             is Event.MediaChanged -> {
+                val peer = peerOf(event.id).first
                 val pcName = _state.value.nameOf(event.id).orEmpty()
-                pcMedia.update(event.id, pcName, event.players)
+                // Only a PC's players show here. A paired phone's music would otherwise
+                // sit in this phone's media controls as if it were playing here (#454).
+                pcMedia.update(event.id, pcName, if (peer) emptyList() else event.players)
             }
             is Event.NotificationPosted -> scope.launch(Dispatchers.Default) {
                 val (peer, name) = peerOf(event.id)

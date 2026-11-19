@@ -16,6 +16,12 @@ change things that need a step from you, and its notes say so.
   password is kept encrypted on the PC with a key only the phone holds, behind its
   fingerprint. Only for unlocking, not the first sign-in after a restart
   ([#36](https://github.com/thtbee/nectarlink/pull/36)).
+- **Ask before sharing your screen, per PC.** In the phone's Settings, under each PC:
+  with it on, that PC's requests to see your screen always wait for your tap, even when
+  Elevated could share it at once. Off by default, so nothing changes unless you turn it on.
+- **Choose whether Elevated turns Wireless debugging on by itself.** It does by default, on
+  any Wi-Fi, so Elevated keeps working; turn it off in Elevated's settings to switch it on
+  yourself in Developer options.
 - **A switch for USB debugging on the PC.** Settings › Connection & About › Use USB
   debugging (on by default) can turn off everything NectarLink does over a USB cable, so a
   phone plugged in for something else is never asked to allow USB debugging. Wi-Fi works as
@@ -28,6 +34,12 @@ change things that need a step from you, and its notes say so.
 - **Scroll with the air mouse.** Drag two fingers on the air pad to scroll, up and down
   or sideways, the same as on the touchpad. The pointer holds still while you scroll.
   Thanks to [@w-rakeeb](https://github.com/w-rakeeb)
+  ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **See all of a copied text in the Timeline.** A clipboard entry with more than its
+  first line gets a **Show all** arrow that opens the whole text right in the entry,
+  where you can select and copy just the part you need. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb)
+  ([#442](https://github.com/thtbee/nectarlink/issues/442)).
 - **Your phone as a game controller.** Tap the controller button in Control PC and the
   phone turns into a gamepad: two sticks, a d-pad, A B X Y, bumpers, triggers, Back, Home
   and Start. The PC gets an Xbox controller that games see like a real one, one per phone.
@@ -276,6 +288,12 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Shizuku forks work for Elevated.** Elevated offered Shizuku only when Shizuku's own
+  app was installed. It now also offers it when a fork under another name is running
+  (#452).
+- **A paired phone's music stays on that phone.** When two phones were paired, music
+  playing on one showed up in the other's media controls. Only a PC's players show there
+  now (#454).
 - **Stop reconnecting stops at once.** Right after turning it on, a device could still dial
   once, and the other side showed it connected for a moment. The other side also no
   longer flashes it as connected each time it tries to reach a device that has stopped.
@@ -284,6 +302,31 @@ change things that need a step from you, and its notes say so.
   package can't go out missing one or carrying an old one. Thanks to
   [@hvenanc](https://github.com/hvenanc)
   ([#333](https://github.com/thtbee/nectarlink/pull/333)).
+- **The phone's screen sleeps when nothing is happening.** After viewing a PC's screen,
+  the phone never slept again while NectarLink was open. The touchpad, Deck and Desk now
+  keep it on for 10 minutes after the last touch (Deck and Desk stay on while charging),
+  the PC's screen while it shows, and the webcam while it streams.
+- **Uninstalling a phone app from the PC works.** It always failed: Elevated's helper
+  didn't run the uninstall it was asked for.
+- **Pictures and files attach to texts on Linux and macOS.** Picking one turned its path
+  into a relative one, so nothing was attached.
+- **Polish follows the system language on the PC.** With the PC set to Polish and the app
+  on "Follow system", it showed English.
+- **Widgets for two PCs act on the right one.** Ring, Wake and the media buttons went to
+  whichever PC's widget was drawn last.
+- **Links from the PC open with the phone's notifications off.** With NectarLink open they
+  open at once; otherwise they come as a notification and never open over what you're doing.
+- **Linux updates start the new version.** After a .deb or .rpm update the app closed and
+  didn't come back. Without curl, downloading an update hung.
+- **Settings shows only update options that work.** Linux no longer offers installing
+  updates by itself (it asks for your password each time), and the Mac preview no longer
+  says it's up to date without checking for a Mac build.
+- **A video from the PC lets the phone's screen sleep once paused or finished.**
+- **A drag on the touchpad never leaves the PC's mouse button held**, even if the screen
+  is left midway.
+- **NectarLink's data on Linux and macOS is readable by you only.** The data folder and
+  database took the system default, which on many Linux systems lets other accounts on
+  the same computer read them.
 - **Pairing from the PC's list of nearby phones works.** Picking a phone there said it
   couldn't reach the phone, because the phone only took pairing it started itself. While
   its pairing screen is open, the phone now accepts it from either side.
@@ -316,7 +359,9 @@ change things that need a step from you, and its notes say so.
   Linux, an H.265 mirror says it can't be recorded yet instead of failing at the end.
   Thanks to [@znbaboy](https://github.com/znbaboy) ([#393](https://github.com/thtbee/nectarlink/issues/393)).
 - **The phone's seek bar for what the PC plays stays put.** It disappeared whenever a
-  player on the PC dropped its timeline for a moment, around play and pause. Thanks to
+  player on the PC dropped its timeline for a moment, around play and pause, and while
+  the phone was locked or asleep and the PC's player stopped reporting it for a while
+  during playback. Thanks to
   [@znbaboy](https://github.com/znbaboy) ([#392](https://github.com/thtbee/nectarlink/issues/392)).
 - **Chinese, Japanese and Korean text uses Windows' own UI fonts.** Chinese showed in a
   serif font like SimSun that was hard to read; it now uses Microsoft YaHei UI (or the

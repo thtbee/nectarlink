@@ -186,6 +186,36 @@ async fn check_versions(
 
 /// A live session. Cheap to share; dropping the last handle does not close
 /// the connection (call [`Session::close`]).
+/// Runs a session's end once its task is over, normally or by a panic: cancels its
+/// work, fails the requests still waiting, then `on_end`.
+///
+/// A task dropped unfinished without a panic means the runtime is shutting down: then
+/// only its work is cancelled, since `on_end` starts more work, which can't run then.
+struct SessionEnd<F: FnOnce(Arc<Session>)> {
+    session: Option<Arc<Session>>,
+    on_end: Option<F>,
+    finished: bool,
+}
+
+impl<F: FnOnce(Arc<Session>)> Drop for SessionEnd<F> {
+    fn drop(&mut self) {
+        let (Some(s), Some(on_end)) = (self.session.take(), self.on_end.take()) else { return };
+        s.cancel.cancel();
+        // Fail any requests still waiting for a reply.
+        s.pending.lock().unwrap_or_else(|e| e.into_inner()).clear();
+        let panicked = std::thread::panicking();
+        if !self.finished && !panicked {
+            return;
+        }
+        if panicked {
+            tracing::error!(peer = %s.peer.short(), "session ended by a panic");
+        } else {
+            tracing::debug!(peer = %s.peer.short(), "session ended");
+        }
+        on_end(s);
+    }
+}
+
 pub(crate) struct Session {
     pub peer: DeviceId,
     /// Who opened the connection; used to resolve duplicate connections.
@@ -261,6 +291,9 @@ impl Session {
         let s = session.clone();
         tokio::spawn(async move {
             let cancel = s.cancel.clone();
+            // Ends the session however this task ends: normally, or by a panic in one of
+            // its parts, which would otherwise leave a dead session registered as live.
+            let mut end = SessionEnd { session: Some(s.clone()), on_end: Some(on_end), finished: false };
             tokio::select! {
                 _ = cancel.cancelled() => {}
                 _ = writer(send, outbox_rx) => {}
@@ -270,11 +303,7 @@ impl Session {
                 _ = datagrams(&s, &weak) => {}
                 _ = s.conn.closed() => {}
             }
-            cancel.cancel();
-            // Fail any requests still waiting for a reply.
-            s.pending.lock().unwrap_or_else(|e| e.into_inner()).clear();
-            tracing::debug!(peer = %s.peer.short(), "session ended");
-            on_end(s);
+            end.finished = true;
         });
         session
     }

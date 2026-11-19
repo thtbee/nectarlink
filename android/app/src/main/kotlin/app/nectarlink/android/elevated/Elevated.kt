@@ -92,6 +92,8 @@ object Elevated {
     private const val INET_GROUP = "3003"
     /** The version [compileIfUpdated] last asked Android to compile. */
     private const val COMPILED_VERSION = "compiled_version"
+    /** Whether NectarLink turns Wireless debugging back on by itself (on unless turned off). */
+    private const val TURN_ON_WIRELESS = "turn_on_wireless_debugging"
     /** How long after the helper starts the compile waits, so Android has recorded which code starting up uses. */
     private const val COMPILE_AFTER_MS = 2 * 60_000L
 
@@ -617,8 +619,21 @@ object Elevated {
         process.inputStream.bufferedReader().readText().takeIf { process.exitValue() == 0 }
     }.getOrNull()
 
-    /** Wireless debugging back on, when NectarLink may (granted at the first start). */
+    /**
+     * Whether Elevated turns Wireless debugging back on by itself when it finds it off
+     * (on any Wi-Fi). On unless the user turned it off; then they turn it on themselves
+     * in Developer options when they want Elevated.
+     */
+    fun turnsOnWirelessDebugging(): Boolean =
+        !::context.isInitialized || prefs().getBoolean(TURN_ON_WIRELESS, true)
+
+    fun setTurnsOnWirelessDebugging(on: Boolean) {
+        prefs().edit { putBoolean(TURN_ON_WIRELESS, on) }
+    }
+
+    /** Wireless debugging back on, when NectarLink may (granted at the first start, and not turned off). */
     private fun turnOnWirelessDebugging() {
+        if (!turnsOnWirelessDebugging()) return
         if (context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) != PackageManager.PERMISSION_GRANTED) return
         runCatching {
             if (Settings.Global.getInt(context.contentResolver, ADB_WIFI, 0) != 1) {
@@ -756,43 +771,6 @@ object Elevated {
         compileJob = scope.launch {
             delay(COMPILE_AFTER_MS)
             if (runCommand(COMPILE_APP_COMMAND)) prefs().edit { putInt(COMPILED_VERSION, version) }
-        }
-    }
-
-    internal fun isAllowedAttachSenderUid(uid: Int): Boolean =
-        uid == android.os.Process.SHELL_UID || uid == android.os.Process.ROOT_UID
-
-    /** Attaches to an [InputServer] started directly from `adb shell`. */
-    suspend fun attachFromShell(appContext: Context, port: Int, token: String): Boolean = withContext(Dispatchers.IO) {
-        if (port !in 1..65535 || !ShizukuShellRules.isToken(token)) return@withContext false
-        if (!::context.isInitialized) init(appContext)
-        lock.withLock {
-            if (running) return@withLock true
-            runCatching { socket?.close() }
-            runCatching { connectSocketLocked(port, token) }.onFailure {
-                Log.w(TAG, "couldn't attach to shell helper", it)
-            }.isSuccess
-        }
-    }
-
-    /** Receives the loopback port and token from an [InputServer] started via `adb shell`. */
-    class AttachReceiver : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                if (!isAllowedAttachSenderUid(sentFromUid)) return
-            }
-            val port = intent.getIntExtra("port", 0)
-            val token = intent.getStringExtra("token").orEmpty()
-            if (port !in 1..65535 || !ShizukuShellRules.isToken(token)) return
-            val pending = goAsync()
-            val app = context.applicationContext
-            scope.launch {
-                try {
-                    attachFromShell(app, port, token)
-                } finally {
-                    pending.finish()
-                }
-            }
         }
     }
 

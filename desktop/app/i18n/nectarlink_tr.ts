@@ -10805,8 +10805,8 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/TimelinePage.qml" line="41"/>
-        <location filename="../qml/pages/TimelinePage.qml" line="659"/>
-        <location filename="../qml/pages/TimelinePage.qml" line="688"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="700"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="729"/>
         <source>All devices</source>
         <translation>Tüm cihazlar</translation>
     </message>
@@ -10886,32 +10886,42 @@ Neler gerekir
         <translation>Paylaşılan dosyalar, pano öğeleri, bağlantılar ve fotoğraflar burada görünür.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="565"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="576"/>
         <source>Open</source>
         <translation>Aç</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="574"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="585"/>
         <source>Show in folder</source>
         <translation>Klasörde göster</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="583"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="594"/>
         <source>Copy</source>
         <translation>Kopyala</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="592"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="603"/>
         <source>Send again</source>
         <translation>Yeniden gönder</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="599"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="611"/>
+        <source>Show less</source>
+        <translation>Daha az göster</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/TimelinePage.qml" line="611"/>
+        <source>Show all</source>
+        <translation>Tümünü göster</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/TimelinePage.qml" line="618"/>
         <source>Remove from timeline</source>
         <translation>Zaman çizelgesinden kaldır</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="614"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="655"/>
         <source>Load more</source>
         <translation>Daha fazla yükle</translation>
     </message>

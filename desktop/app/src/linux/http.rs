@@ -103,52 +103,124 @@ fn parse_last_http_status(stderr_text: &str) -> Option<u32> {
 /// Reads response header blocks from `stderr` until the final non-1xx, non-3xx
 /// response header block completes, then returns its parsed headers and drains
 /// the remainder of `stderr`.
+///
+/// curl ends a block with a blank line. `wget -qS` doesn't: it prints each
+/// response's headers in one go and then nothing until it exits, which for a
+/// large download is only after the body, and the body can't flow while no one
+/// reads stdout. So a final block also counts as complete once stderr has been
+/// quiet for [`HEADERS_QUIET`].
 fn spawn_header_reader(stderr: std::process::ChildStderr) -> mpsc::Receiver<ResponseHeaders> {
-    let (tx, rx) = mpsc::sync_channel(1);
+    let (lines_tx, lines_rx) = mpsc::channel::<String>();
     std::thread::spawn(move || {
         let mut reader = BufReader::new(stderr);
-        let mut line = String::new();
-        let mut current: Option<ResponseHeaders> = None;
-        let mut sent = false;
-
         loop {
-            line.clear();
-            let Ok(n) = reader.read_line(&mut line) else { break };
-            if n == 0 {
-                break;
-            }
-            if sent {
-                continue;
-            }
-            let trimmed = line.trim();
-            if let Some(code) = parse_status_line(trimmed) {
-                current = Some(ResponseHeaders { status: code, content_length: None, range_total: None });
-                continue;
-            }
-            if let Some(ref mut hdrs) = current {
-                if trimmed.is_empty() {
-                    let code = hdrs.status;
-                    if !(100..200).contains(&code) && !(300..400).contains(&code) {
-                        let _ = tx.send(hdrs.clone());
-                        sent = true;
-                    }
-                    current = None;
-                } else if let Some((name, val)) = trimmed.split_once(':') {
-                    let name = name.trim();
-                    let val = val.trim();
-                    if name.eq_ignore_ascii_case("content-length") {
-                        hdrs.content_length = val.parse::<u64>().ok();
-                    } else if name.eq_ignore_ascii_case("content-range") {
-                        hdrs.range_total = range_total(val);
+            let mut line = String::new();
+            match reader.read_line(&mut line) {
+                Ok(0) | Err(_) => break,
+                Ok(_) => {
+                    if lines_tx.send(line).is_err() {
+                        // Nobody listens any more: keep draining so the downloader never blocks.
+                        let _ = std::io::copy(&mut reader, &mut std::io::sink());
+                        break;
                     }
                 }
             }
         }
-        if !sent && let Some(hdrs) = current {
-            let _ = tx.send(hdrs);
+    });
+    let (tx, rx) = mpsc::sync_channel(1);
+    std::thread::spawn(move || {
+        let mut headers = HeaderBlocks::default();
+        loop {
+            match lines_rx.recv_timeout(HEADERS_QUIET) {
+                Ok(line) => headers.line(&line),
+                Err(mpsc::RecvTimeoutError::Timeout) => headers.quiet(),
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    headers.end();
+                    break;
+                }
+            }
+            if let Some(done) = headers.take_final() {
+                let _ = tx.send(done);
+                break;
+            }
+        }
+        if let Some(done) = headers.take_final() {
+            let _ = tx.send(done);
         }
     });
     rx
+}
+
+/// How long stderr stays quiet after a final header block before that block
+/// counts as complete (see [`spawn_header_reader`]).
+const HEADERS_QUIET: Duration = Duration::from_millis(400);
+
+/// Header blocks as they come, line by line.
+#[derive(Default)]
+struct HeaderBlocks {
+    current: Option<ResponseHeaders>,
+    done: Option<ResponseHeaders>,
+    sent: bool,
+}
+
+impl HeaderBlocks {
+    fn line(&mut self, line: &str) {
+        if self.sent {
+            return;
+        }
+        let trimmed = line.trim();
+        if let Some(code) = parse_status_line(trimmed) {
+            self.current = Some(ResponseHeaders { status: code, content_length: None, range_total: None });
+            return;
+        }
+        let Some(hdrs) = self.current.as_mut() else { return };
+        if trimmed.is_empty() {
+            self.finish_block();
+        } else if let Some((name, val)) = trimmed.split_once(':') {
+            let (name, val) = (name.trim(), val.trim());
+            if name.eq_ignore_ascii_case("content-length") {
+                hdrs.content_length = val.parse::<u64>().ok();
+            } else if name.eq_ignore_ascii_case("content-range") {
+                hdrs.range_total = range_total(val);
+            }
+        }
+    }
+
+    /// Nothing more for a while: a final block is complete.
+    fn quiet(&mut self) {
+        if self.current.as_ref().is_some_and(|h| is_final(h.status)) {
+            self.finish_block();
+        }
+    }
+
+    /// stderr ended: whatever block is open is the last one.
+    fn end(&mut self) {
+        if !self.sent && self.done.is_none() {
+            self.done = self.current.take();
+        }
+    }
+
+    fn finish_block(&mut self) {
+        if let Some(hdrs) = self.current.take()
+            && is_final(hdrs.status)
+        {
+            self.done = Some(hdrs);
+        }
+    }
+
+    fn take_final(&mut self) -> Option<ResponseHeaders> {
+        if self.sent {
+            return None;
+        }
+        let done = self.done.take()?;
+        self.sent = true;
+        Some(done)
+    }
+}
+
+/// A response that isn't followed by another: not 1xx, not a redirect.
+fn is_final(status: u32) -> bool {
+    !(100..200).contains(&status) && !(300..400).contains(&status)
 }
 
 /// Fetches `url` over HTTPS, returning at most `limit` bytes.
@@ -509,6 +581,73 @@ pub fn download_to_file(url: &str, dest: &Path, on_progress: impl FnMut(u64, u64
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn feed(lines: &[&str]) -> HeaderBlocks {
+        let mut blocks = HeaderBlocks::default();
+        for line in lines {
+            blocks.line(line);
+        }
+        blocks
+    }
+
+    #[test]
+    fn wget_headers_count_once_stderr_goes_quiet() {
+        // wget -qS: indented, no blank line after a block, a redirect first.
+        let mut blocks = feed(&[
+            "  HTTP/1.1 302 Found
+",
+            "  Location: https://objects.example/x
+",
+            "  HTTP/1.1 200 OK
+",
+            "  Content-Length: 104857600
+",
+        ]);
+        assert_eq!(blocks.take_final(), None, "not before stderr goes quiet");
+        blocks.quiet();
+        let headers = blocks.take_final().unwrap();
+        assert_eq!((headers.status, headers.content_length), (200, Some(104_857_600)));
+        assert_eq!(blocks.take_final(), None, "only once");
+    }
+
+    #[test]
+    fn a_redirect_is_never_taken_for_the_answer() {
+        let mut blocks = feed(&[
+            "  HTTP/1.1 302 Found
+",
+            "  Location: https://x/y
+",
+        ]);
+        blocks.quiet();
+        assert_eq!(blocks.take_final(), None);
+        blocks.line(
+            "  HTTP/1.1 206 Partial Content
+",
+        );
+        blocks.line(
+            "  Content-Range: bytes 10-99/100
+",
+        );
+        blocks.quiet();
+        assert_eq!(blocks.take_final().map(|h| (h.status, h.range_total)), Some((206, Some(100))));
+    }
+
+    #[test]
+    fn curl_headers_end_at_the_blank_line() {
+        let mut blocks = feed(&[
+            "HTTP/2 200
+",
+            "content-length: 5
+",
+            "
+",
+        ]);
+        assert_eq!(blocks.take_final().map(|h| (h.status, h.content_length)), Some((200, Some(5))));
+        let mut open = feed(&["HTTP/2 404
+"]);
+        open.end();
+        assert_eq!(open.take_final().map(|h| h.status), Some(404), "stderr ended mid-block");
+    }
 
     #[test]
     fn refuses_plain_http_urls() {

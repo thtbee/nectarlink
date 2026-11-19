@@ -995,12 +995,15 @@ pub fn format_attachment_size(bytes: usize) -> String {
 
 fn url_to_path(raw: &str) -> PathBuf {
     let trimmed = raw.trim();
-    let stripped = if let Some(rest) = trimmed.strip_prefix("file:///") {
-        rest
-    } else if let Some(rest) = trimmed.strip_prefix("file://") {
-        rest
-    } else {
+    let Some(rest) = trimmed.strip_prefix("file://") else {
         return PathBuf::from(trimmed);
+    };
+    // `file:///home/a.png` is `/home/a.png`, and `file:///C:/a.png` is
+    // `C:/a.png`; `file://server/share/a.png` is a network path.
+    let stripped: std::borrow::Cow<'_, str> = match rest.strip_prefix('/') {
+        Some(local) if is_drive_path(local) => local.into(),
+        Some(_) => rest.into(),
+        None => format!("//{rest}").into(),
     };
     let bytes = stripped.as_bytes();
     let mut out = Vec::with_capacity(bytes.len());
@@ -1019,6 +1022,13 @@ fn url_to_path(raw: &str) -> PathBuf {
         i += 1;
     }
     PathBuf::from(String::from_utf8_lossy(&out).into_owned())
+}
+
+/// Whether `path` starts with a Windows drive, as in `C:/` (a file URL's path
+/// after its first `/`). Never on Linux or macOS, where `/C:/x` is a real path.
+fn is_drive_path(path: &str) -> bool {
+    let b = path.as_bytes();
+    cfg!(windows) && b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':'
 }
 
 fn detect_or_convert_attachment(path: &Path, raw: Vec<u8>) -> Result<(String, Vec<u8>), String> {
@@ -1544,9 +1554,18 @@ mod tests {
         assert_eq!(format_attachment_size(512), "512 B");
         assert_eq!(format_attachment_size(245 * 1024), "245 KB");
         assert_eq!(format_attachment_size(1_468_006), "1.4 MB");
+        if cfg!(windows) {
+            assert_eq!(
+                url_to_path("file:///C:/Users/Sam/My%20Photo.png"),
+                PathBuf::from("C:/Users/Sam/My Photo.png")
+            );
+        }
+        // Linux and macOS paths stay absolute.
         assert_eq!(
-            url_to_path("file:///C:/Users/Sam/My%20Photo.png"),
-            PathBuf::from("C:/Users/Sam/My Photo.png")
+            url_to_path("file:///home/alice/Pictures/a%20b.png"),
+            PathBuf::from("/home/alice/Pictures/a b.png")
         );
+        assert_eq!(url_to_path("file://server/share/a.png"), PathBuf::from("//server/share/a.png"));
+        assert_eq!(url_to_path("/already/a/path.png"), PathBuf::from("/already/a/path.png"));
     }
 }

@@ -488,7 +488,8 @@ finish() {
     printf '\n%sNectarLink %s is ready.%s\n' "$BOLD" "$VERSION" "$RESET"
     echo "Open it from your app menu, or run nectarlink-desktop. Then install the"
     echo "Android app and pair: https://github.com/$REPO#get-started"
-    echo "It updates itself from now on. If it was already open, quit and open it again."
+    echo "It checks for updates itself and asks before installing one. If it was"
+    echo "already open, quit and open it again."
 }
 
 uninstall() {

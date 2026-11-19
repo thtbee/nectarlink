@@ -3617,11 +3617,20 @@ impl NectarlinkNode {
         let mut events = node.events();
         let node_for_events = node.clone();
         runtime.spawn(async move {
+            // An exception thrown by the app's listener comes back as a panic here. One
+            // bad event must not end this task, or no event would reach the app again.
+            let deliver = |event: Event| {
+                let delivered =
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| listener.on_event(event)));
+                if delivered.is_err() {
+                    tracing::error!("the app's event listener failed on an event; carrying on");
+                }
+            };
             loop {
                 match events.recv().await {
                     Ok(event) => {
                         if let Some(ev) = Event::from_node(event) {
-                            listener.on_event(ev);
+                            deliver(ev);
                         }
                     }
                     Err(RecvError::Lagged(missed)) => {
@@ -3631,26 +3640,18 @@ impl NectarlinkNode {
                             Vec::new()
                         });
                         for d in devices {
-                            listener
-                                .on_event(Event::LinkChanged { id: d.id.to_string(), link: d.link.into() });
-                            listener.on_event(Event::WakeInfoChanged {
-                                id: d.id.to_string(),
-                                can_wake: d.can_wake,
-                            });
-                            listener
-                                .on_event(Event::ReconnectChanged { id: d.id.to_string(), on: d.reconnect });
-                            listener.on_event(Event::PeerInfoChanged {
-                                id: d.id.to_string(),
-                                info: d.info.into(),
-                            });
+                            deliver(Event::LinkChanged { id: d.id.to_string(), link: d.link.into() });
+                            deliver(Event::WakeInfoChanged { id: d.id.to_string(), can_wake: d.can_wake });
+                            deliver(Event::ReconnectChanged { id: d.id.to_string(), on: d.reconnect });
+                            deliver(Event::PeerInfoChanged { id: d.id.to_string(), info: d.info.into() });
                             if let Ok(matrix) = node_for_events.capabilities(d.id) {
-                                listener.on_event(Event::Capabilities {
+                                deliver(Event::Capabilities {
                                     id: d.id.to_string(),
                                     features: features(&matrix),
                                 });
                             }
                         }
-                        listener.on_event(Event::QueueChanged);
+                        deliver(Event::QueueChanged);
                     }
                     Err(RecvError::Closed) => return,
                 }

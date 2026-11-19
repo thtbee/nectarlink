@@ -5,7 +5,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.res.Configuration
 import android.view.HapticFeedbackConstants
-import android.view.WindowManager
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -114,15 +113,15 @@ fun DeckScreen(
     var access by remember(device.id) { mutableStateOf(Core.RemoteAccess.Allowed) }
     var commandsDenied by remember(device.id) { mutableStateOf(false) }
 
-    // Keep the phone's screen on while Deck is open, and restore system bars on exit.
+    // The screen stays on while Deck is in use with its PC there: on a charger, or
+    // for a while after each tap. Restore system bars on exit.
+    app.nectarlink.android.ui.KeepScreenOn(
+        device.online &&
+            (app.nectarlink.android.ui.rememberCharging() || app.nectarlink.android.ui.rememberTouchedRecently()),
+    )
     DisposableEffect(view, device.id) {
         val window = (context as? Activity)?.window
-        val prevKeepOn = view.keepScreenOn
-        view.keepScreenOn = true
-        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose {
-            view.keepScreenOn = prevKeepOn
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             if (window != null) {
                 WindowCompat.getInsetsController(window, view)
                     .show(WindowInsetsCompat.Type.systemBars())

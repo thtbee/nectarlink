@@ -321,12 +321,6 @@
             android:name=".elevated.PairingNotification$Receiver"
             android:exported="false" />
 
-        <!-- Connects to an InputServer started from adb shell (shell UID only). -->
-        <receiver
-            android:name=".elevated.Elevated$AttachReceiver"
-            android:exported="true"
-            android:permission="android.permission.DUMP" />
-
         <!-- Telecom binds it while there are calls (CALL_COMPANION_APP), apps'
              own calls too (WhatsApp, Telegram...): only a companion that
              gets them can answer them, as Telecom ignores acceptRingingCall

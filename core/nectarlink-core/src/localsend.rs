@@ -1951,6 +1951,9 @@ async fn read_chunked_vec<S: AsyncRead + Unpin>(
                 return Err(std::io::Error::new(ErrorKind::UnexpectedEof, "unexpected EOF"));
             }
             buf.extend_from_slice(&tmp[..n]);
+            if find_crlf(&buf).is_none() && buf.len() > MAX_CHUNK_LINE {
+                return Err(std::io::Error::new(ErrorKind::InvalidData, "chunk size line too long"));
+            }
         }
         let Some(line_end) = find_crlf(&buf) else {
             break;
@@ -2038,6 +2041,9 @@ where
                     return Err(upload_failed("upload stream ended early"));
                 }
                 buf.extend_from_slice(&tmp[..n]);
+                if find_crlf(&buf).is_none() && buf.len() > MAX_CHUNK_LINE {
+                    return Err(upload_failed("chunk size line too long"));
+                }
             }
             let Some(line_end) = find_crlf(&buf) else {
                 return Err(upload_failed("upload stream ended early"));
@@ -2203,6 +2209,10 @@ async fn read_http_response<S: AsyncRead + Unpin>(stream: &mut S) -> std::io::Re
 fn find_header_end(buf: &[u8]) -> Option<usize> {
     buf.windows(4).position(|w| w == b"\r\n\r\n")
 }
+
+/// Longest chunk-size line accepted (a size in hex, maybe extensions): before an
+/// unauthenticated sender could grow it without end, one CRLF-less byte at a time.
+const MAX_CHUNK_LINE: usize = 1024;
 
 fn find_crlf(buf: &[u8]) -> Option<usize> {
     buf.windows(2).position(|w| w == b"\r\n")
@@ -2670,6 +2680,10 @@ mod tests {
         let mut empty: &[u8] = &[];
         assert!(read_chunked_vec(&mut empty, b"3\r\nhelXX0\r\n\r\n", 64).await.is_err());
         assert!(read_chunked_vec(&mut empty, b"5\r\nhel", 64).await.is_err());
+        // A size line that never ends is refused once it's too long, not buffered on.
+        let mut endless: &[u8] = &[b'a'; 64 * 1024];
+        let err = read_chunked_vec(&mut endless, b"", 1 << 20).await.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidData);
         assert!(read_http_body(&mut empty, &upload_head(Some(5), false)).await.is_err());
     }
 

@@ -94,6 +94,8 @@
     <string name="channel_elevated">Configuração da depuração por Wi-Fi</string>
     <string name="elevated_title">Elevated</string>
     <string name="elevated_not_set_up">Toque em tempo real, todas as teclas e, nas chamadas, silenciar, colocar em espera e teclado numérico pelo PC.</string>
+    <string name="elevated_turn_on_wireless">Ativar a depuração por Wi-Fi sozinho</string>
+    <string name="elevated_turn_on_wireless_hint">O Elevated precisa dela, então a ativa de novo quando a encontra desligada, em qualquer Wi-Fi. Desative isto para ativá-la você mesmo nas Opções do desenvolvedor.</string>
     <string name="elevated_waiting">Aguardando a depuração por Wi-Fi. Ative nas Opções do desenvolvedor.</string>
     <string name="elevated_starting">Iniciando…</string>
     <string name="elevated_running">Ativado: o mouse e o teclado do PC funcionam como uma tela touch e um teclado de verdade.</string>
@@ -457,6 +459,8 @@
     <string name="mic_pc_toggle_hint_auto">Ativado por padrão. Este PC pode pedir o microfone, e ele liga na hora.</string>
     <string name="start_without_asking_toggle">Iniciar a câmera e o microfone sem pedir confirmação</string>
     <string name="start_without_asking_hint">Quando este PC pedir, eles ligam na hora, sem precisar tocar no celular. Precisa do Elevated. Sem ele, o celular pergunta como sempre.</string>
+    <string name="mirror_ask_toggle">Perguntar antes de compartilhar a tela</string>
+    <string name="mirror_ask_hint">Sempre que este PC quiser ver sua tela, ele espera seu toque. Sem isso, o Elevated compartilha na hora.</string>
     <string name="recorder_notification_recording">Gravando para %1$s</string>
     <string name="recorder_notification_paused">Gravação pausada (%1$s)</string>
     <string name="recorder_permission_title">Permitir acesso ao microfone</string>

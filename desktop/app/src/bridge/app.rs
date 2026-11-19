@@ -84,6 +84,7 @@ pub mod qobject {
         #[qproperty(bool, relay_check_busy)]
         /// This copy updates itself (it's installed).
         #[qproperty(bool, can_update)]
+        #[qproperty(bool, can_install_unattended)]
         /// A newer version that's available ("" when none).
         #[qproperty(QString, update_version)]
         /// Checking for or installing an update.
@@ -481,6 +482,7 @@ pub struct AppControllerRust {
     doctor_checks: QString,
     doctor_busy: bool,
     can_update: bool,
+    can_install_unattended: bool,
     update_version: QString,
     update_busy: bool,
     update_progress: f64,
@@ -802,6 +804,7 @@ impl cxx_qt::Initialize for qobject::AppController {
         self.as_mut().set_version(QString::from(env!("CARGO_PKG_VERSION")));
         self.as_mut().set_current_page(QString::from("home"));
         self.as_mut().set_can_update(crate::updater::can_update());
+        self.as_mut().set_can_install_unattended(crate::updater::can_install_unattended());
         // Nothing downloading yet (0 would show an empty bar).
         self.as_mut().set_update_progress(-1.0);
         self.as_mut().set_clipboard_history(QString::from(&crate::clipboard::history_json()));

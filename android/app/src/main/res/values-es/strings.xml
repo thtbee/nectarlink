@@ -94,6 +94,8 @@
     <string name="channel_elevated">Configuración de depuración inalámbrica</string>
     <string name="elevated_title">Elevated</string>
     <string name="elevated_not_set_up">Control táctil en tiempo real, todas las teclas y controles para silenciar, poner en espera y usar el teclado en las llamadas desde tu PC.</string>
+    <string name="elevated_turn_on_wireless">Activar la depuración inalámbrica por sí solo</string>
+    <string name="elevated_turn_on_wireless_hint">Elevated la necesita, así que la vuelve a activar cuando la encuentra desactivada, en cualquier Wi-Fi. Desactiva esto para activarla tú en Opciones de desarrollador.</string>
     <string name="elevated_waiting">Esperando la depuración inalámbrica. Actívala en Opciones de desarrollador.</string>
     <string name="elevated_starting">Iniciando…</string>
     <string name="elevated_running">Activado: el ratón y el teclado de tu PC funcionan como una pantalla táctil y un teclado reales.</string>
@@ -463,6 +465,8 @@
     <string name="mic_pc_toggle_hint_auto">Activado de forma predeterminada. Este PC puede solicitar el micrófono, que se activa de inmediato.</string>
     <string name="start_without_asking_toggle">Iniciar la cámara y el micrófono sin preguntar</string>
     <string name="start_without_asking_hint">Cuando este PC lo solicite, se activarán de inmediato, sin necesidad de tocar el teléfono. Requiere Elevated. Sin él, el teléfono pedirá permiso como siempre.</string>
+    <string name="mirror_ask_toggle">Preguntar antes de compartir mi pantalla</string>
+    <string name="mirror_ask_hint">Cada vez que este PC quiera ver tu pantalla, esperará a que toques. Sin esto, Elevated la comparte al instante.</string>
     <string name="recorder_notification_recording">Grabando para %1$s</string>
     <string name="recorder_notification_paused">Grabación en pausa (%1$s)</string>
     <string name="recorder_permission_title">Permitir acceso al micrófono</string>

@@ -88,6 +88,8 @@
     <string name="channel_elevated">Настройка отладки по Wi-Fi</string>
     <string name="elevated_title">Elevated</string>
     <string name="elevated_not_set_up">Касания в реальном времени, любые клавиши, а также выключение микрофона, удержание и клавиатура в вызовах с ПК.</string>
+    <string name="elevated_turn_on_wireless">Включать отладку по Wi-Fi автоматически</string>
+    <string name="elevated_turn_on_wireless_hint">Она нужна Elevated, поэтому он снова включает её, если она выключена, в любой сети Wi-Fi. Выключите это, чтобы включать её самостоятельно в параметрах для разработчиков.</string>
     <string name="elevated_waiting">Ожидание отладки по Wi-Fi. Включите её в параметрах для разработчиков.</string>
     <string name="elevated_starting">Запуск…</string>
     <string name="elevated_running">Вкл.: мышь и клавиатура ПК работают как настоящий сенсорный экран и клавиатура.</string>
@@ -449,6 +451,8 @@
     <string name="mic_pc_toggle_hint_auto">Включено по умолчанию. Этот ПК может запросить микрофон, и он сразу включается.</string>
     <string name="start_without_asking_toggle">Включать камеру и микрофон без вопросов</string>
     <string name="start_without_asking_hint">Когда этот ПК просит, они сразу включаются, без нажатия на телефоне. Нужен Elevated. Без него телефон спрашивает как обычно.</string>
+    <string name="mirror_ask_toggle">Спрашивать перед показом экрана</string>
+    <string name="mirror_ask_hint">Каждый раз, когда этот ПК хочет увидеть экран, он ждёт вашего нажатия. Без этого Elevated показывает экран сразу.</string>
     <string name="recorder_notification_recording">Запись для %1$s</string>
     <string name="recorder_notification_paused">Запись на паузе (%1$s)</string>
     <string name="recorder_permission_title">Разрешите доступ к микрофону</string>

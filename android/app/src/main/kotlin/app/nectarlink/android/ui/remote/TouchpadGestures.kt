@@ -48,81 +48,92 @@ internal suspend fun PointerInputScope.touchpadGestures(
 
         onTouch(firstDown.position)
 
-        while (true) {
-            val event = awaitPointerEvent()
-            val changes = event.changes
-            var pressedCount = 0
-            var firstPressed: PointerInputChange? = null
-            for (i in 0 until changes.size) {
-                val c = changes[i]
-                if (c.pressed) {
-                    if (firstPressed == null) firstPressed = c
-                    pressedCount++
-                }
-            }
-            if (pressedCount == 0 || firstPressed == null) break
-
-            if (pressedCount > maxPointers) {
-                maxPointers = pressedCount
-                if (dragStarted) {
-                    core.remoteButton(pcId, "left", "up", onStatus)
-                    dragStarted = false
-                    onDragging(false)
-                }
-                isDragHold = false
-            }
-
-            if (pressedCount == 1 && maxPointers == 1) {
-                val change = firstPressed
-                onTouch(change.position)
-                val delta = change.positionChange()
-                val dist = hypot(delta.x, delta.y)
-                totalMoved += dist
-
-                if (isDragHold && !dragStarted && totalMoved > tapSlop * 0.6f) {
-                    dragStarted = true
-                    onDragging(true)
-                    core.remoteButton(pcId, "left", "down", onStatus)
-                }
-
-                if (dist > 0f) {
-                    val dtMs = change.uptimeMillis - change.previousUptimeMillis
-                    val gain = ballistics.gain(dist * toReference, dtMs)
-                    core.remoteMove(
-                        pcId,
-                        delta.x * toReference * gain * sensitivity,
-                        delta.y * toReference * gain * sensitivity,
-                    )
-                    change.consume()
-                }
-            } else if (pressedCount >= 2) {
-                onTouch(firstPressed.position)
-                var avgDx = 0f
-                var avgDy = 0f
+        // A drag holds the PC's left button: if the gesture is cancelled midway (the
+        // screen goes away, the sensitivity changes), let go of it, or it stays held.
+        try {
+            while (true) {
+                val event = awaitPointerEvent()
+                val changes = event.changes
+                var pressedCount = 0
+                var firstPressed: PointerInputChange? = null
                 for (i in 0 until changes.size) {
                     val c = changes[i]
                     if (c.pressed) {
-                        val d = c.positionChange()
-                        avgDx += d.x
-                        avgDy += d.y
-                        c.consume()
+                        if (firstPressed == null) firstPressed = c
+                        pressedCount++
                     }
                 }
-                avgDx /= pressedCount
-                avgDy /= pressedCount
-                totalMoved += hypot(avgDx, avgDy)
+                if (pressedCount == 0 || firstPressed == null) break
 
-                scrollAccumX += avgDx * toReference
-                scrollAccumY += avgDy * toReference
-                val stepPx = 18f
-                if (abs(scrollAccumX) >= stepPx || abs(scrollAccumY) >= stepPx) {
-                    val notchesX = -(scrollAccumX / 48f)
-                    val notchesY = -(scrollAccumY / 36f)
-                    scrollAccumX = 0f
-                    scrollAccumY = 0f
-                    core.remoteScroll(pcId, notchesX, notchesY, fast = true)
+                if (pressedCount > maxPointers) {
+                    maxPointers = pressedCount
+                    if (dragStarted) {
+                        core.remoteButton(pcId, "left", "up", onStatus)
+                        dragStarted = false
+                        onDragging(false)
+                    }
+                    isDragHold = false
+                }
+
+                if (pressedCount == 1 && maxPointers == 1) {
+                    val change = firstPressed
+                    onTouch(change.position)
+                    val delta = change.positionChange()
+                    val dist = hypot(delta.x, delta.y)
+                    totalMoved += dist
+
+                    if (isDragHold && !dragStarted && totalMoved > tapSlop * 0.6f) {
+                        dragStarted = true
+                        onDragging(true)
+                        core.remoteButton(pcId, "left", "down", onStatus)
+                    }
+
+                    if (dist > 0f) {
+                        val dtMs = change.uptimeMillis - change.previousUptimeMillis
+                        val gain = ballistics.gain(dist * toReference, dtMs)
+                        core.remoteMove(
+                            pcId,
+                            delta.x * toReference * gain * sensitivity,
+                            delta.y * toReference * gain * sensitivity,
+                        )
+                        change.consume()
+                    }
+                } else if (pressedCount >= 2) {
+                    onTouch(firstPressed.position)
+                    var avgDx = 0f
+                    var avgDy = 0f
+                    for (i in 0 until changes.size) {
+                        val c = changes[i]
+                        if (c.pressed) {
+                            val d = c.positionChange()
+                            avgDx += d.x
+                            avgDy += d.y
+                            c.consume()
+                        }
+                    }
+                    avgDx /= pressedCount
+                    avgDy /= pressedCount
+                    totalMoved += hypot(avgDx, avgDy)
+
+                    scrollAccumX += avgDx * toReference
+                    scrollAccumY += avgDy * toReference
+                    val stepPx = 18f
+                    if (abs(scrollAccumX) >= stepPx || abs(scrollAccumY) >= stepPx) {
+                        val notchesX = -(scrollAccumX / 48f)
+                        val notchesY = -(scrollAccumY / 36f)
+                        scrollAccumX = 0f
+                        scrollAccumY = 0f
+                        core.remoteScroll(pcId, notchesX, notchesY, fast = true)
+                    }
                 }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            if (dragStarted) {
+                core.remoteButton(pcId, "left", "up", onStatus)
+                onDragging(false)
+            }
+            onTouch(null)
+            throw e
         }
 
         onTouch(null)

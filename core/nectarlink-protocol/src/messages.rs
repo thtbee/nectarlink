@@ -1803,7 +1803,10 @@ impl PointerMove {
     pub const MAX_COUNTS: i32 = 4096;
 
     pub fn is_valid(&self) -> bool {
-        self.dx.abs() <= Self::MAX_COUNTS && self.dy.abs() <= Self::MAX_COUNTS && self.buttons <= 7
+        // `unsigned_abs`: `i32::MIN.abs()` overflows (and wraps to itself in release).
+        self.dx.unsigned_abs() <= Self::MAX_COUNTS.unsigned_abs()
+            && self.dy.unsigned_abs() <= Self::MAX_COUNTS.unsigned_abs()
+            && self.buttons <= 7
     }
 }
 
@@ -1934,14 +1937,25 @@ fn is_shell_word(s: &str) -> bool {
     !s.is_empty() && s.bytes().all(|b| b.is_ascii_alphanumeric() || b"._/=~+-:".contains(&b))
 }
 
-/// The app's own installed APK (`pm path` gives `/data/app/<...>/base.apk`).
+/// The app's own installed APK: `/data/app/<package>-<random>/base.apk`, or
+/// since Android 11 `/data/app/~~<random>/<package>-<random>/base.apk`. Android
+/// names the folder after the package, and package names never contain `-`, so
+/// the folder's name up to its first `-` is the package. That has to be
+/// NectarLink's own ([`is_own_package`]): another app whose name merely contains
+/// it (`com.x.app.nectarlink.y`) would otherwise get its code run as the shell.
 pub fn is_valid_app_apk(apk: &str) -> bool {
-    apk.len() <= 512
-        && apk.starts_with("/data/app/")
-        && apk.ends_with("/base.apk")
-        && !apk.contains("..")
-        && apk.contains(elevated::PACKAGE)
-        && is_shell_word(apk)
+    if apk.len() > 512 || apk.contains("..") || !is_shell_word(apk) {
+        return false;
+    }
+    let Some(dirs) = apk.strip_prefix("/data/app/").and_then(|p| p.strip_suffix("/base.apk")) else {
+        return false;
+    };
+    let package_dir = match dirs.split('/').collect::<Vec<_>>().as_slice() {
+        [dir] => *dir,
+        [random, dir] if random.starts_with("~~") && random.len() > 2 => *dir,
+        _ => return false,
+    };
+    package_dir.split_once('-').is_some_and(|(package, random)| is_own_package(package) && !random.is_empty())
 }
 
 /// NectarLink's package. Debug builds of the PC app also accept its local
@@ -4980,9 +4994,24 @@ mod tests {
         };
         assert!(start.is_valid());
 
+        // Before Android 11 the package's folder sits right under /data/app.
+        assert!(
+            ElevatedUsbStart { apk: "/data/app/app.nectarlink-1/base.apk".into(), ..start.clone() }
+                .is_valid()
+        );
         for apk in [
             "/data/app/other.app-1/base.apk",
             "/sdcard/app.nectarlink/base.apk",
+            // Other apps whose package merely contains NectarLink's.
+            "/data/app/~~kG3x_Q==/com.x.app.nectarlink.y-Ab1==/base.apk",
+            "/data/app/~~kG3x_Q==/app.nectarlink.evil-Ab1==/base.apk",
+            "/data/app/~~kG3x_Q==/app.nectarlinkx-Ab1==/base.apk",
+            "/data/app/app.nectarlink.evil-1/base.apk",
+            "/data/app/~~kG3x_Q==/other-1/app.nectarlink-1/base.apk",
+            "/data/app/~~kG3x_Q==/app.nectarlink/base.apk",
+            "/data/app/~~kG3x_Q==/app.nectarlink-/base.apk",
+            "/data/app/~~/app.nectarlink-1/base.apk",
+            "/data/app/x/app.nectarlink-1/base.apk",
             "/data/app/app.nectarlink-1/../../evil/base.apk",
             "/data/app/app.nectarlink-1/base.apk; reboot",
             "/data/app/app.nectarlink-1/base.apk$(id)",
@@ -5016,6 +5045,16 @@ mod tests {
             ..start
         };
         assert_eq!(dev.is_valid(), cfg!(debug_assertions));
+    }
+
+    #[test]
+    fn pointer_moves_stay_within_bounds_at_the_integer_limits() {
+        let ok =
+            PointerMove { dx: PointerMove::MAX_COUNTS, dy: -PointerMove::MAX_COUNTS, buttons: 7, wheel: 0 };
+        assert!(ok.is_valid());
+        for (dx, dy) in [(i32::MIN, 0), (0, i32::MIN), (i32::MAX, 0), (PointerMove::MAX_COUNTS + 1, 0)] {
+            assert!(!PointerMove { dx, dy, ..ok }.is_valid(), "{dx} {dy}");
+        }
     }
 
     #[test]

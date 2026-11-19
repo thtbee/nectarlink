@@ -10817,8 +10817,8 @@ Voraussetzungen
     </message>
     <message>
         <location filename="../qml/pages/TimelinePage.qml" line="41"/>
-        <location filename="../qml/pages/TimelinePage.qml" line="659"/>
-        <location filename="../qml/pages/TimelinePage.qml" line="688"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="700"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="729"/>
         <source>All devices</source>
         <translation>Alle Geräte</translation>
     </message>
@@ -10898,32 +10898,42 @@ Voraussetzungen
         <translation>Geteilte Dateien, Zwischenablage-Einträge, Links und Fotos erscheinen hier.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="565"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="576"/>
         <source>Open</source>
         <translation>Öffnen</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="574"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="585"/>
         <source>Show in folder</source>
         <translation>Im Ordner anzeigen</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="583"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="594"/>
         <source>Copy</source>
         <translation>Kopieren</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="592"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="603"/>
         <source>Send again</source>
         <translation>Erneut senden</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="599"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="611"/>
+        <source>Show less</source>
+        <translation>Weniger anzeigen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/TimelinePage.qml" line="611"/>
+        <source>Show all</source>
+        <translation>Alles anzeigen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/TimelinePage.qml" line="618"/>
         <source>Remove from timeline</source>
         <translation>Aus Zeitverlauf entfernen</translation>
     </message>
     <message>
-        <location filename="../qml/pages/TimelinePage.qml" line="614"/>
+        <location filename="../qml/pages/TimelinePage.qml" line="655"/>
         <source>Load more</source>
         <translation>Mehr laden</translation>
     </message>

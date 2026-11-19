@@ -42,6 +42,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -631,6 +632,24 @@ fun SettingsScreen(
                                         onCheckedChange = { on -> onSetStartWithoutAsking(device.id, on) },
                                         colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
                                         modifier = Modifier.semantics { contentDescription = autoStartTitle },
+                                    )
+                                }
+                                val mirrorAsk by app.nectarlink.android.mirror.MirrorAsk.pcs(context).collectAsState()
+                                val mirrorAskTitle = stringResource(R.string.mirror_ask_toggle)
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(mirrorAskTitle, style = MaterialTheme.typography.bodyMedium)
+                                        Text(
+                                            stringResource(R.string.mirror_ask_hint),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    Switch(
+                                        checked = device.id in mirrorAsk,
+                                        onCheckedChange = { on -> app.nectarlink.android.mirror.MirrorAsk.set(context, device.id, on) },
+                                        colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+                                        modifier = Modifier.semantics { contentDescription = mirrorAskTitle },
                                     )
                                 }
                             }
@@ -1587,6 +1606,31 @@ private fun ElevatedAccess() {
                     Text(stringResource(R.string.elevated_turn_off))
                 }
                 Elevated.State.Starting -> {}
+            }
+        }
+        // Set up through Wireless debugging: whether NectarLink may turn it back on by
+        // itself (on any Wi-Fi), or leaves that to the user.
+        if (Elevated.isSetUp() && !viaShizuku && !Elevated.rootActive && state != Elevated.State.Starting) {
+            var turnsOn by remember { mutableStateOf(Elevated.turnsOnWirelessDebugging()) }
+            val turnsOnTitle = stringResource(R.string.elevated_turn_on_wireless)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text(turnsOnTitle, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.elevated_turn_on_wireless_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = turnsOn,
+                    onCheckedChange = { on ->
+                        turnsOn = on
+                        Elevated.setTurnsOnWirelessDebugging(on)
+                    },
+                    colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+                    modifier = Modifier.semantics { contentDescription = turnsOnTitle },
+                )
             }
         }
         if (state == Elevated.State.Waiting || state is Elevated.State.Failed) {

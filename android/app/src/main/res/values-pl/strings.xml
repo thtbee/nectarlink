@@ -94,6 +94,8 @@
     <string name="channel_elevated">Konfiguracja debugowania bezprzewodowego</string>
     <string name="elevated_title">Rozszerzone uprawnienia</string>
     <string name="elevated_not_set_up">Obsługa dotyku w czasie rzeczywistym i wszystkich klawiszy oraz wyciszanie, wstrzymywanie i klawiatura numerów podczas rozmów — z komputera.</string>
+    <string name="elevated_turn_on_wireless">Włączaj debugowanie bezprzewodowe samodzielnie</string>
+    <string name="elevated_turn_on_wireless_hint">Elevated go potrzebuje, więc włącza je ponownie, gdy jest wyłączone, w każdej sieci Wi-Fi. Wyłącz to, aby włączać je samemu w opcjach programisty.</string>
     <string name="elevated_waiting">Oczekiwanie na debugowanie bezprzewodowe. Włącz je w opcjach programisty.</string>
     <string name="elevated_starting">Uruchamianie…</string>
     <string name="elevated_running">Włączone: mysz i klawiatura komputera działają jak prawdziwy ekran dotykowy i klawiatura.</string>
@@ -467,6 +469,8 @@
     <string name="mic_pc_toggle_hint_auto">Domyślnie włączone. Ten komputer może poprosić o dostęp do mikrofonu telefonu, a mikrofon włączy się od razu.</string>
     <string name="start_without_asking_toggle">Włączaj kamerę i mikrofon telefonu bez pytania</string>
     <string name="start_without_asking_hint">Na żądanie tego komputera kamera i mikrofon włączą się od razu, bez dotykania telefonu. Wymaga Elevated. Bez niego telefon zapyta o zgodę jak zwykle.</string>
+    <string name="mirror_ask_toggle">Pytaj przed udostępnieniem ekranu</string>
+    <string name="mirror_ask_hint">Za każdym razem, gdy ten komputer chce zobaczyć ekran, czeka na Twoje dotknięcie. Bez tego Elevated udostępnia go od razu.</string>
     <string name="recorder_notification_recording">Nagrywanie dla %1$s</string>
     <string name="recorder_notification_paused">Nagrywanie wstrzymane (%1$s)</string>
     <string name="recorder_permission_title">Zezwól na dostęp do mikrofonu telefonu</string>
