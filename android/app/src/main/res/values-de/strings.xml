@@ -167,6 +167,8 @@
     <string name="transfer_resume">Fortsetzen</string>
     <string name="transfer_paused_progress">Pausiert · %1$s / %2$s</string>
     <string name="transfer_received_from">Von %1$s · in Download/Nectarlink</string>
+    <string name="transfer_app_received_from">Von %1$s · zum Installieren tippen</string>
+    <string name="transfer_install">Installieren</string>
     <string name="transfer_sent_to">Gesendet an %1$s</string>
     <string name="transfer_cancelled">Abgebrochen</string>
     <string name="transfer_denied">%1$s nimmt keine Dateien von diesem Gerät an.</string>

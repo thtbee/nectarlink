@@ -166,6 +166,8 @@
     <string name="transfer_resume">再開</string>
     <string name="transfer_paused_progress">一時停止中 · %1$s / %2$s</string>
     <string name="transfer_received_from">%1$s から · Download/Nectarlink 内</string>
+    <string name="transfer_app_received_from">%1$s から · タップしてインストール</string>
+    <string name="transfer_install">インストール</string>
     <string name="transfer_sent_to">%1$s に送信済み</string>
     <string name="transfer_cancelled">キャンセル済み</string>
     <string name="transfer_denied">%1$s はこのスマートフォンからのファイルを受け付けません。</string>

@@ -171,6 +171,8 @@
     <string name="transfer_resume">Wznów</string>
     <string name="transfer_paused_progress">Wstrzymano · %1$s / %2$s</string>
     <string name="transfer_received_from">Z %1$s · w folderze Download/Nectarlink</string>
+    <string name="transfer_app_received_from">Od %1$s · dotknij, aby zainstalować</string>
+    <string name="transfer_install">Zainstaluj</string>
     <string name="transfer_sent_to">Wysłano do %1$s</string>
     <string name="transfer_cancelled">Anulowano</string>
     <string name="transfer_denied">%1$s nie przyjmuje plików z tego telefonu.</string>

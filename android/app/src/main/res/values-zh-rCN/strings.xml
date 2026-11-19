@@ -161,6 +161,8 @@
     <string name="transfer_resume">继续</string>
     <string name="transfer_paused_progress">已暂停 · %1$s / %2$s</string>
     <string name="transfer_received_from">来自 %1$s · 位于Download/Nectarlink</string>
+    <string name="transfer_app_received_from">来自 %1$s · 点按即可安装</string>
+    <string name="transfer_install">安装</string>
     <string name="transfer_sent_to">已发送到 %1$s</string>
     <string name="transfer_cancelled">已取消</string>
     <string name="transfer_denied">%1$s 不接受来自本手机的文件。</string>

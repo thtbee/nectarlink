@@ -170,6 +170,8 @@
     <string name="transfer_resume">Reanudar</string>
     <string name="transfer_paused_progress">En pausa · %1$s / %2$s</string>
     <string name="transfer_received_from">De %1$s · en Download/Nectarlink</string>
+    <string name="transfer_app_received_from">De %1$s · toca para instalar</string>
+    <string name="transfer_install">Instalar</string>
     <string name="transfer_sent_to">Enviado a %1$s</string>
     <string name="transfer_cancelled">Cancelado</string>
     <string name="transfer_denied">%1$s no acepta archivos de este teléfono.</string>

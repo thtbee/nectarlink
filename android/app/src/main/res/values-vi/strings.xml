@@ -166,6 +166,8 @@
 <string name="transfer_resume">Tiếp tục</string>
 <string name="transfer_paused_progress">Đã tạm dừng · %1$s / %2$s</string>
 <string name="transfer_received_from">Từ %1$s · trong Download/Nectarlink</string>
+<string name="transfer_app_received_from">Từ %1$s · nhấn để cài đặt</string>
+<string name="transfer_install">Cài đặt</string>
 <string name="transfer_sent_to">Đã gửi tới %1$s</string>
 <string name="transfer_cancelled">Đã hủy</string>
 <string name="transfer_denied">%1$s không chấp nhận tệp từ điện thoại này.</string>

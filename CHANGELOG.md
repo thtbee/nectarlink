@@ -31,6 +31,10 @@ change things that need a step from you, and its notes say so.
   there. Thanks to [@Dipen425](https://github.com/Dipen425)
   ([#388](https://github.com/thtbee/nectarlink/issues/388)) and
   [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Install an app on the phone from the PC.** The download button on the PC's Apps page
+  sends an app file (.apk) to the phone, whose notification then offers **Install**, which
+  opens Android's installer. Thanks to [@w-rakeeb](https://github.com/w-rakeeb)
+  ([#442](https://github.com/thtbee/nectarlink/issues/442)).
 - **Look for PCs only where they are, and stop after a while.** In the phone's Settings,
   under Connect over mobile data: **Only on networks where a PC was found** keeps the
   phone from looking for your PCs on other Wi-Fi, and **Stop looking after** 15 minutes, 1
