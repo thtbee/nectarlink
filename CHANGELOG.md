@@ -8,10 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
-- **What's new, in the app.** After an update, NectarLink on the PC shows what changed,
-  leading with what's new since you last looked (Nightly to Nightly too), with earlier
-  versions folded below. **Settings › Connection & About › What's new** opens it any time.
-  Thanks to [@zzz1465720680](https://github.com/zzz1465720680)
+- **What's new, in the app.** The sparkle button at the top of the PC app lists what
+  changed since you last looked, in short points by category, with a link to the full
+  release notes. A dot on it means something new arrived with an update. Thanks to
+  [@zzz1465720680](https://github.com/zzz1465720680)
   ([#461](https://github.com/thtbee/nectarlink/issues/461)).
 - **Dark picture for apps with no dark mode.** The moon button on a mirroring or app
   window swaps light and dark in the picture, so a white map turns dark gray with its

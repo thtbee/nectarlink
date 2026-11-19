@@ -3719,7 +3719,7 @@ Item {
                             width: parent.width
                             iconPath: Icons.sparkles
                             title: qsTr("What's new")
-                            description: qsTr("What changed in this version, and in the ones before it.")
+                            description: qsTr("What changed since your last update.")
                             Button {
                                 text: qsTr("Open")
                                 variant: "tonal"

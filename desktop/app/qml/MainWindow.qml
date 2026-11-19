@@ -13,7 +13,10 @@ NativeWindow {
     readonly property bool welcome: AppController.status !== "ready" || showWalkthrough
     property string page: AppController.currentPage.length > 0 ? AppController.currentPage : "home"
     property string pendingSettingsSection: ""
-    onPageChanged: if (AppController.currentPage !== page) AppController.currentPage = page
+    onPageChanged: {
+        if (AppController.currentPage !== page) AppController.currentPage = page
+        whatsNewLoader.hide()
+    }
     Connections {
         target: AppController
         function onCurrentPageChanged() {
@@ -388,6 +391,8 @@ NativeWindow {
                 AppController.refreshToastsEnabled()
                 if (!window.activeFocusItem && window.contentItem)
                     window.contentItem.forceActiveFocus()
+            } else {
+                whatsNewLoader.hide()
             }
         }
         function onActiveFocusItemChanged() {
@@ -875,6 +880,19 @@ NativeWindow {
                     }
                     Component.onCompleted: window.addCaptionHole(refresh)
                 }
+                // What's new (#461), last on the right; its dot shows after an
+                // update that brought something not seen yet.
+                IconButton {
+                    id: whatsNewBtn
+                    anchors.verticalCenter: parent.verticalCenter
+                    iconPath: Icons.sparkles
+                    iconSize: 16
+                    label: qsTr("What's new")
+                    dot: AppController.whatsNewPending
+                    tonal: whatsNewLoader.item ? whatsNewLoader.item.opened : false
+                    onClicked: whatsNewLoader.toggle()
+                    Component.onCompleted: window.addCaptionHole(whatsNewBtn)
+                }
             }
         }
 
@@ -996,7 +1014,6 @@ NativeWindow {
 
     StarPrompt {
         eligible: AppController.status === "ready" && !window.showWalkthrough && window.active
-            && !AppController.whatsNewPending
         onStarred: Qt.openUrlExternally("https://github.com/thtbee/nectarlink")
         onSupported: Qt.openUrlExternally("https://buymeacoffee.com/thtbee_")
     }
@@ -1235,29 +1252,30 @@ NativeWindow {
         anchors.right: parent.right
     }
 
-    // What's new (#461): by itself once after an update, when the window is
-    // in use and nothing else is asking; from Settings any time.
+    // What's new (#461): a panel under the top bar's sparkle button. It
+    // never opens by itself; the button's dot says there's something new.
     Loader {
         id: whatsNewLoader
         anchors.fill: parent
+        z: 120
         active: false
-        source: active ? "qrc:/qt/qml/app/nectarlink/qml/components/WhatsNewSheet.qml" : ""
-        onLoaded: item.openNotes()
-        function show() {
-            if (active && item) item.openNotes()
-            else active = true
+        source: active ? "qrc:/qt/qml/app/nectarlink/qml/components/WhatsNewPanel.qml" : ""
+        onLoaded: {
+            item.anchorItem = whatsNewBtn
+            item.open()
         }
-    }
-    Timer {
-        // A moment after the window settles, so it isn't the first thing drawn.
-        interval: 1200
-        running: AppController.whatsNewPending && AppController.status === "ready"
-            && !window.showWalkthrough && window.active && !whatsNewLoader.active
-        onTriggered: whatsNewLoader.show()
+        function toggle() {
+            if (!active) active = true
+            else if (item && item.opened) item.close()
+            else if (item) item.open()
+        }
+        function hide() { if (item) item.close() }
     }
     Connections {
         target: AppController
-        function onWhatsNewRequested() { whatsNewLoader.show() }
+        function onWhatsNewRequested() {
+            if (!whatsNewLoader.item || !whatsNewLoader.item.opened) whatsNewLoader.toggle()
+        }
     }
 
     Loader {

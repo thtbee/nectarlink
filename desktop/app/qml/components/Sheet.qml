@@ -32,6 +32,14 @@ Item {
         }
     }
 
+    MouseArea {
+        anchors.fill: parent
+        enabled: sheet.opened
+        acceptedButtons: Qt.NoButton
+        hoverEnabled: true
+        onWheel: (wheel) => wheel.accepted = true
+    }
+
     Rectangle {
         id: scrim
         anchors.fill: parent

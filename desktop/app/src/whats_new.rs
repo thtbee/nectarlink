@@ -5,8 +5,10 @@
 //! on a Nightly, its own on a release.
 //!
 //! Each entry has an ID made from its text, and the IDs already shown are
-//! saved, so after an update the sheet can lead with what's new since the
-//! last look, Nightly to Nightly too, where the version's section only grows.
+//! saved. After an update with something new, a dot on the What's new button
+//! says so, and the panel lists only what changed since the last look, one
+//! short line per change (its bold lead), Nightly to Nightly too, where the
+//! version's section only grows.
 
 use std::{
     collections::HashSet,
@@ -18,9 +20,18 @@ use serde::Serialize;
 const CHANGELOG: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../CHANGELOG.md"));
 
 /// How many releases before this one the sheet offers.
+#[cfg(test)]
 const EARLIER: usize = 4;
 /// How many shown entries are remembered: far more than a release has.
 pub const SEEN_LIMIT: usize = 2000;
+/// Where the full notes are.
+const RELEASES_URL: &str = "https://github.com/thtbee/nectarlink/releases";
+/// Points per group; the rest is "and N more".
+const MAX_POINTS: usize = 5;
+/// How many entries of the last update are kept to show again.
+const BATCH_LIMIT: usize = 400;
+/// A point longer than this is cut at a word.
+const MAX_POINT_CHARS: usize = 90;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Release {
@@ -50,6 +61,9 @@ pub struct Entry {
     /// Not shown before on this PC.
     #[serde(rename = "new")]
     pub unseen: bool,
+    /// The markdown after the bold lead, for an entry without one.
+    #[serde(skip)]
+    pub text: String,
 }
 
 /// What this PC has seen, in `whats-new.json`.
@@ -57,9 +71,15 @@ pub struct Entry {
 struct Seen {
     #[serde(default)]
     seen: Vec<String>,
-    /// Updated since the sheet was last closed: it opens by itself.
+    /// Updated with something new since the panel was last opened: the dot shows.
     #[serde(default)]
     pending: bool,
+    /// What the last update brought, to show again after the dot is gone.
+    #[serde(default)]
+    batch: Vec<String>,
+    /// The newest release when the panel was last opened.
+    #[serde(default)]
+    version: String,
 }
 
 impl Seen {
@@ -87,58 +107,203 @@ impl Seen {
     }
 }
 
-/// At start: after an update the sheet opens by itself; on a new install
-/// everything counts as seen, so only later changes are marked new.
+/// At start: after an update that brought something not seen, the dot
+/// shows; on a new install everything counts as seen.
 pub fn note_start(dir: &Path, updated: bool) {
     let mut seen = Seen::load(dir);
+    let releases = parse(CHANGELOG);
     if updated {
-        // Only with something not shown before: a Nightly that adds nothing stays quiet.
         let known: HashSet<&String> = seen.seen.iter().collect();
-        let unseen = current_ids().iter().any(|id| !known.contains(id));
+        let unseen = ids_of(scope(&releases, &seen.version)).any(|id| !known.contains(id));
         if !unseen || seen.pending {
             return;
         }
         seen.pending = true;
     } else if seen.seen.is_empty() && !seen.pending {
-        seen.seen = current_ids();
+        seen.seen = ids_of(&releases[..releases.len().min(1)]).cloned().collect();
+        seen.version = releases.first().map(|r| r.version.clone()).unwrap_or_default();
     } else {
         return;
     }
     seen.save(dir);
 }
 
-/// Whether the sheet should open by itself.
+/// Whether the dot shows.
 pub fn pending(dir: &Path) -> bool {
     Seen::load(dir).pending
 }
 
-/// The sheet as JSON: this build's release first, then the ones before it,
-/// with how many entries are new here.
-pub fn json(dir: &Path) -> String {
-    let seen: HashSet<String> = Seen::load(dir).seen.into_iter().collect();
-    let releases = releases(&seen);
-    let unseen = releases
-        .first()
-        .map_or(0, |r| r.sections.iter().flat_map(|s| &s.entries).filter(|e| e.unseen).count());
-    serde_json::json!({ "releases": releases, "newCount": unseen }).to_string()
+/// One group of points: "New", "Changed", "Fixed"...
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Group {
+    pub title: String,
+    pub items: Vec<String>,
+    pub more: usize,
 }
 
-/// The sheet was closed: everything in this build is seen.
+/// What the panel shows.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Summary {
+    pub version: String,
+    /// "new" (since the last look), "highlights" (nothing new) or "empty".
+    pub mode: &'static str,
+    #[serde(rename = "newCount")]
+    pub new_count: usize,
+    pub groups: Vec<Group>,
+    pub url: &'static str,
+}
+
+/// The releases since the one last seen: from the top down to `version`, or
+/// only this build's when it isn't known.
+fn scope<'a>(releases: &'a [Release], version: &str) -> &'a [Release] {
+    let end = releases.iter().position(|r| !version.is_empty() && r.version == version).map_or(1, |i| i + 1);
+    &releases[..end.min(releases.len())]
+}
+
+fn ids_of(releases: &[Release]) -> impl Iterator<Item = &String> {
+    releases.iter().flat_map(|r| &r.sections).flat_map(|s| &s.entries).map(|e| &e.id)
+}
+
+/// An entry as one short line: its bold lead, or else its first sentence
+/// without credits or issue links.
+fn point(entry: &Entry) -> Option<String> {
+    let mut line = if entry.title.is_empty() {
+        let mut text = plain(&entry.text);
+        if let Some(at) = text.find(" Thanks to ") {
+            text.truncate(at);
+        }
+        if let Some(at) = text.find(". ") {
+            text.truncate(at);
+        }
+        drop_references(&text)
+    } else {
+        entry.title.clone()
+    };
+    line = line.trim().trim_end_matches('.').trim_end().to_owned();
+    if line.chars().count() > MAX_POINT_CHARS {
+        let cut: String = line.chars().take(MAX_POINT_CHARS - 2).collect();
+        let at = cut.rfind(' ').unwrap_or(cut.len());
+        line = format!("{}…", cut[..at].trim_end_matches([',', ';', ':', ' ']));
+    }
+    (!line.is_empty()).then_some(line)
+}
+
+/// Removes "(#123)", "(@name)" and the like.
+fn drop_references(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(open) = rest.find('(') {
+        let Some(close) = rest[open..].find(')').map(|c| open + c) else { break };
+        let inner = &rest[open + 1..close];
+        out.push_str(&rest[..open]);
+        if inner.contains('#') || inner.contains('@') {
+            // Also the space before it.
+            while out.ends_with(' ') {
+                out.pop();
+            }
+        } else {
+            out.push_str(&rest[open..=close]);
+        }
+        rest = &rest[close + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Groups `entries` by section, in the order New, Changed, Fixed, then others.
+fn groups<'a>(entries: impl Iterator<Item = (&'a str, &'a Entry)>) -> Vec<Group> {
+    let mut groups: Vec<(String, Vec<String>)> = Vec::new();
+    for (section, entry) in entries {
+        let Some(line) = point(entry) else { continue };
+        match groups.iter_mut().find(|(title, _)| title == section) {
+            Some((_, items)) => {
+                if !items.contains(&line) {
+                    items.push(line);
+                }
+            }
+            None => groups.push((section.to_owned(), vec![line])),
+        }
+    }
+    let rank = |title: &str| match title {
+        "New" => 0,
+        "Changed" => 1,
+        "Fixed" => 2,
+        _ => 3,
+    };
+    groups.sort_by_key(|(title, _)| rank(title));
+    groups
+        .into_iter()
+        .map(|(title, mut items)| {
+            let more = items.len().saturating_sub(MAX_POINTS);
+            items.truncate(MAX_POINTS);
+            Group { title, items, more }
+        })
+        .collect()
+}
+
+/// What the panel shows: what's new since the last look, or what the last
+/// update brought, or this version's first points when nothing is new.
+pub fn summary(dir: &Path) -> Summary {
+    let seen = Seen::load(dir);
+    let releases = parse(CHANGELOG);
+    let version = releases.first().map(|r| r.version.clone()).unwrap_or_default();
+    let known: HashSet<&String> = seen.seen.iter().collect();
+    let batch: HashSet<&String> = seen.batch.iter().collect();
+    let in_scope = || {
+        scope(&releases, &seen.version)
+            .iter()
+            .flat_map(|r| &r.sections)
+            .flat_map(|s| s.entries.iter().map(move |e| (s.title.as_str(), e)))
+    };
+    let new_count = in_scope().filter(|(_, e)| !known.contains(&e.id)).count();
+    let (mode, groups) = if new_count > 0 {
+        ("new", groups(in_scope().filter(|(_, e)| !known.contains(&e.id))))
+    } else if in_scope().any(|(_, e)| batch.contains(&e.id)) {
+        ("new", groups(in_scope().filter(|(_, e)| batch.contains(&e.id))))
+    } else if let Some(current) = releases.first() {
+        // Nothing new: the first points of this version, under "In this version".
+        let first = current.sections.iter().find(|s| s.title == "New").or_else(|| current.sections.first());
+        let groups =
+            first.map(|s| groups(s.entries.iter().map(|e| (s.title.as_str(), e)))).unwrap_or_default();
+        ("highlights", groups)
+    } else {
+        ("empty", Vec::new())
+    };
+    let mode = if groups.is_empty() { "empty" } else { mode };
+    Summary { version, mode, new_count, groups, url: RELEASES_URL }
+}
+
+/// The panel as JSON.
+pub fn json(dir: &Path) -> String {
+    serde_json::to_string(&summary(dir)).unwrap_or_else(|_| "{}".into())
+}
+
+/// The panel opened: what it shows stays as the last update's, the dot goes.
 pub fn mark_seen(dir: &Path) {
     let mut seen = Seen::load(dir);
-    let mut ids: Vec<String> = current_ids();
-    let current: HashSet<&String> = ids.iter().collect();
+    let releases = parse(CHANGELOG);
+    let in_scope: Vec<String> = ids_of(scope(&releases, &seen.version)).cloned().collect();
+    let known: HashSet<&String> = seen.seen.iter().collect();
+    let unseen: Vec<String> = in_scope.iter().filter(|id| !known.contains(id)).cloned().collect();
+    if !unseen.is_empty() {
+        seen.batch = unseen;
+        seen.batch.truncate(BATCH_LIMIT);
+    }
     // Keep older IDs too (a Nightly's section can lose an entry it shows
     // again later), newest first, up to the limit.
+    let current: HashSet<&String> = in_scope.iter().collect();
     let older: Vec<String> = seen.seen.drain(..).filter(|id| !current.contains(id)).collect();
+    let mut ids = in_scope.clone();
     ids.extend(older);
     ids.truncate(SEEN_LIMIT);
     seen.seen = ids;
+    seen.version = releases.first().map(|r| r.version.clone()).unwrap_or_default();
     seen.pending = false;
     seen.save(dir);
 }
 
 /// This build's release first, then the ones before it.
+#[cfg(test)]
 pub fn releases(seen: &HashSet<String>) -> Vec<Release> {
     let mut releases = parse(CHANGELOG);
     releases.truncate(EARLIER + 1);
@@ -149,6 +314,7 @@ pub fn releases(seen: &HashSet<String>) -> Vec<Release> {
 }
 
 /// The IDs of this build's entries, to mark them all seen.
+#[cfg(test)]
 pub fn current_ids() -> Vec<String> {
     parse(CHANGELOG)
         .into_iter()
@@ -170,7 +336,13 @@ fn parse(text: &str) -> Vec<Release> {
         let text = lines.join(" ");
         let (title, rest) = split_lead(&text);
         let id = entry_id(&release.version, &section.title, &text);
-        section.entries.push(Entry { id, title, body: rich(rest.trim()), unseen: false });
+        section.entries.push(Entry {
+            id,
+            title,
+            body: rich(rest.trim()),
+            unseen: false,
+            text: rest.trim().to_owned(),
+        });
     }
 
     for line in text.lines() {
@@ -438,12 +610,14 @@ To [@someone](https://github.com/someone) for testing.
     }
 
     #[test]
-    fn an_update_opens_the_sheet_and_a_new_install_starts_with_all_seen() {
+    fn an_update_shows_the_dot_and_a_new_install_starts_with_all_seen() {
         let fresh = tempfile::tempdir().unwrap();
         note_start(fresh.path(), false);
         assert!(!pending(fresh.path()));
-        assert!(json(fresh.path()).contains("\"newCount\":0"));
-        // Updated to a build with nothing new: it stays closed.
+        let first = summary(fresh.path());
+        assert_eq!((first.new_count, first.mode), (0, "highlights"));
+        assert!(first.groups.iter().all(|g| g.items.len() <= MAX_POINTS));
+        // Updated to a build with nothing new: no dot.
         note_start(fresh.path(), true);
         assert!(!pending(fresh.path()));
 
@@ -451,11 +625,71 @@ To [@someone](https://github.com/someone) for testing.
         let dir = tempfile::tempdir().unwrap();
         note_start(dir.path(), true);
         assert!(pending(dir.path()));
+        let before = summary(dir.path());
+        assert_eq!(before.mode, "new");
+        assert!(before.new_count > 0);
         mark_seen(dir.path());
         assert!(!pending(dir.path()));
+        // Opened again: still what that update brought.
+        let after = summary(dir.path());
+        assert_eq!((after.mode, after.new_count), ("new", 0));
+        assert_eq!(after.groups, before.groups);
         // A later start without an update changes nothing.
         note_start(dir.path(), false);
         assert!(!pending(dir.path()));
+    }
+
+    fn entry(title: &str, text: &str) -> Entry {
+        Entry {
+            id: String::new(),
+            title: title.into(),
+            body: String::new(),
+            unseen: false,
+            text: text.into(),
+        }
+    }
+
+    #[test]
+    fn a_point_is_the_lead_or_a_short_first_sentence_without_credits() {
+        assert_eq!(
+            point(&entry("Two PCs work together.", "Pair a PC.")).as_deref(),
+            Some("Two PCs work together")
+        );
+        assert_eq!(
+            point(&entry("", "Voice typing works in Notepad ([#52](https://x.y/52)). It typed too fast."))
+                .as_deref(),
+            Some("Voice typing works in Notepad")
+        );
+        assert_eq!(
+            point(&entry(
+                "",
+                "Send to opens faster Thanks to [@someone](https://x.y) ([#9](https://x.y/9))."
+            ))
+            .as_deref(),
+            Some("Send to opens faster")
+        );
+        let long = "word ".repeat(40);
+        let cut = point(&entry("", &long)).unwrap();
+        assert!(cut.chars().count() <= MAX_POINT_CHARS && cut.ends_with('…'), "{cut}");
+        assert_eq!(point(&entry("", "")), None);
+    }
+
+    #[test]
+    fn groups_keep_five_points_and_count_the_rest() {
+        let fixed: Vec<Entry> = (0..8).map(|i| entry(&format!("Fix {i}."), "")).collect();
+        let new = [entry("Gamepad.", "")];
+        let all = fixed.iter().map(|e| ("Fixed", e)).chain(new.iter().map(|e| ("New", e)));
+        let g = groups(all);
+        assert_eq!(g[0].title, "New");
+        assert_eq!((g[1].title.as_str(), g[1].items.len(), g[1].more), ("Fixed", 5, 3));
+    }
+
+    #[test]
+    fn the_scope_reaches_back_to_the_release_last_seen() {
+        let releases = parse(SAMPLE);
+        assert_eq!(scope(&releases, "").len(), 1);
+        assert_eq!(scope(&releases, "0.1.5").len(), 2);
+        assert_eq!(scope(&releases, "0.0.9").len(), 1, "an unknown version is this build's only");
     }
 
     #[test]
