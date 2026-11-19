@@ -81,6 +81,13 @@ fn app_options(quality: Quality, on_relay: bool) -> MirrorStart {
     MirrorStart { max_size: options.max_size.min(OPTIONS.max_size), ..options }
 }
 
+/// The frame rate chosen in Settings (#442). Over the relay it stays at
+/// most 60: more frames there only queue up behind each other.
+fn with_frame_rate(options: MirrorStart, on_relay: bool) -> MirrorStart {
+    let fps = crate::settings::mirror_fps();
+    MirrorStart { fps: if on_relay { fps.min(OPTIONS.fps) } else { fps }, ..options }
+}
+
 fn on_relay(device: &DeviceId) -> bool {
     core_host::host().hub.read(|s| {
         s.devices.iter().any(|d| {
@@ -1130,7 +1137,8 @@ pub fn start(device: DeviceId) {
         s.windows.insert(window, Shown { phase: Phase::Asking, app: None, pkg: None, restarting: false });
         power(s, &device)
     });
-    let options = screen_options(crate::settings::mirror_quality(), on_relay(&device));
+    let relayed = on_relay(&device);
+    let options = with_frame_rate(screen_options(crate::settings::mirror_quality(), relayed), relayed);
     set_unproven(device, options.max_size != OPTIONS.max_size);
     request(window, MirrorStart { stay_awake, screen_off, ..options });
 }
@@ -1232,7 +1240,8 @@ pub fn start_app(device: DeviceId, pkg: String, label: String) {
     });
     let Some(window) = window else { return };
     let (stay_awake, screen_off) = app_power(&window);
-    let options = app_options(crate::settings::mirror_quality(), on_relay(&device));
+    let relayed = on_relay(&device);
+    let options = with_frame_rate(app_options(crate::settings::mirror_quality(), relayed), relayed);
     ffi::video_clear(&window.key());
     request(
         window,
@@ -1263,7 +1272,8 @@ pub fn reopen(window: Window) {
     });
     let Some(pkg) = pkg else { return };
     let (stay_awake, screen_off) = app_power(&window);
-    let options = app_options(crate::settings::mirror_quality(), on_relay(&window.device));
+    let relayed = on_relay(&window.device);
+    let options = with_frame_rate(app_options(crate::settings::mirror_quality(), relayed), relayed);
     ffi::video_clear(&window.key());
     request(
         window,
@@ -1449,6 +1459,18 @@ mod quality_tests {
         }
         assert!(screen_options(Quality::Sharper, false).max_size > OPTIONS.max_size);
         assert!(screen_options(Quality::Smoother, false).bitrate < OPTIONS.bitrate);
+    }
+
+    #[test]
+    fn the_frame_rate_follows_settings_but_not_past_60_over_the_relay() {
+        crate::settings::set_mirror_fps(120);
+        assert_eq!(with_frame_rate(OPTIONS, false).fps, 120);
+        assert_eq!(with_frame_rate(OPTIONS, true).fps, 60);
+        crate::settings::set_mirror_fps(30);
+        assert_eq!(with_frame_rate(OPTIONS, true).fps, 30);
+        crate::settings::set_mirror_fps(45);
+        assert_eq!(crate::settings::mirror_fps(), 60, "only 30, 60, 90 or 120");
+        assert!(with_frame_rate(app_options(Quality::Smoother, false), false).is_valid());
     }
 
     #[test]

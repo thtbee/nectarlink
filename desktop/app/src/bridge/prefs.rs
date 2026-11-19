@@ -126,6 +126,7 @@ pub mod qobject {
         /// How many days notification history is kept: 1, 3, 7 or 30 (#442).
         #[qproperty(i32, notification_history_days)]
         #[qproperty(QString, mirror_quality)]
+        #[qproperty(i32, mirror_fps, cxx_name = "mirrorFps")]
         /// Send the clipboard to the phone when control moves to it.
         #[qproperty(bool, flow_follow_clipboard)]
         /// Floating Nectar Island pill at the top center of the screen.
@@ -387,6 +388,7 @@ pub struct PreferencesRust {
     usb_debugging: bool,
     notification_history_days: i32,
     mirror_quality: QString,
+    mirror_fps: i32,
     flow_follow_clipboard: bool,
     nectar_island: bool,
     nectar_island_calls: bool,
@@ -498,6 +500,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_usb_debugging(settings.usb_debugging);
         self.as_mut().set_notification_history_days(settings.notification_history_days as i32);
         self.as_mut().set_mirror_quality(QString::from(crate::settings::mirror_quality().name()));
+        self.as_mut().set_mirror_fps(crate::settings::sane_mirror_fps(settings.mirror_fps) as i32);
         self.as_mut().set_flow_follow_clipboard(settings.flow_follow_clipboard);
         self.as_mut().set_nectar_island(settings.nectar_island);
         self.as_mut().set_nectar_island_calls(settings.nectar_island_calls);
@@ -779,6 +782,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_open_shared_files_changed(|p| {
                 crate::settings::set_open_shared_files(p.open_shared_files);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_mirror_fps_changed(|p| {
+                crate::settings::set_mirror_fps(u32::try_from(p.mirror_fps).unwrap_or(60));
                 p.save();
             })
             .release();
@@ -1260,6 +1269,7 @@ impl qobject::Preferences {
             usb_debugging: p.usb_debugging,
             notification_history_days: u32::try_from(p.notification_history_days).unwrap_or(1),
             mirror_quality: String::from(&p.mirror_quality),
+            mirror_fps: crate::settings::sane_mirror_fps(u32::try_from(p.mirror_fps).unwrap_or(60)),
             flow_follow_clipboard: p.flow_follow_clipboard,
             folder_sync_rules: crate::settings::folder_sync_rules(),
             nectar_island: p.nectar_island,

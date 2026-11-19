@@ -1736,23 +1736,47 @@ Item {
 
                 Card {
                     width: parent.width
-                    ListRow {
+                    Column {
                         width: parent.width
-                        iconPath: Icons.screenOff
-                        title: qsTr("Mirror quality")
-                        description: Preferences.mirrorQuality === "sharper"
-                            ? qsTr("The phone's full resolution. Uses more of its battery, and needs good Wi-Fi or USB and a GPU on this PC.")
-                            : Preferences.mirrorQuality === "smoother"
-                            ? qsTr("A softer picture that holds up better on weak Wi-Fi.")
-                            : qsTr("For the phone's screen and app windows, from the next time you open them.")
-                        Segmented {
-                            options: [
-                                { value: "balanced", label: qsTr("Balanced") },
-                                { value: "sharper", label: qsTr("Sharper") },
-                                { value: "smoother", label: qsTr("Smoother") }
-                            ]
-                            value: Preferences.mirrorQuality
-                            onPicked: (value) => Preferences.mirrorQuality = value
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.screenOff
+                            title: qsTr("Mirror quality")
+                            description: Preferences.mirrorQuality === "sharper"
+                                ? qsTr("The phone's full resolution. Uses more of its battery, and needs good Wi-Fi or USB and a GPU on this PC.")
+                                : Preferences.mirrorQuality === "smoother"
+                                ? qsTr("A softer picture that holds up better on weak Wi-Fi.")
+                                : qsTr("For the phone's screen and app windows, from the next time you open them.")
+                            Segmented {
+                                options: [
+                                    { value: "balanced", label: qsTr("Balanced") },
+                                    { value: "sharper", label: qsTr("Sharper") },
+                                    { value: "smoother", label: qsTr("Smoother") }
+                                ]
+                                value: Preferences.mirrorQuality
+                                onPicked: (value) => Preferences.mirrorQuality = value
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.bolt
+                            title: qsTr("Frame rate")
+                            description: Preferences.mirrorFps > 60
+                                ? qsTr("Smoother motion where the phone's screen refreshes that fast. Uses more battery, Wi-Fi and PC.")
+                                : Preferences.mirrorFps < 60
+                                ? qsTr("Half the frames: easier on the phone's battery and weak Wi-Fi.")
+                                : qsTr("For the phone's screen and app windows, from the next time you open them.")
+                            Segmented {
+                                options: [
+                                    { value: "30", label: "30" },
+                                    { value: "60", label: "60" },
+                                    { value: "90", label: "90" },
+                                    { value: "120", label: "120" }
+                                ]
+                                value: String(Preferences.mirrorFps)
+                                onPicked: (value) => Preferences.mirrorFps = parseInt(value)
+                            }
                         }
                     }
                 }

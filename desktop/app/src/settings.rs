@@ -138,6 +138,15 @@ fn default_history_days() -> u32 {
     1
 }
 
+fn default_mirror_fps() -> u32 {
+    60
+}
+
+/// A frame rate the phone is asked for: 30, 60, 90 or 120 (60 otherwise).
+pub fn sane_mirror_fps(fps: u32) -> u32 {
+    if matches!(fps, 30 | 60 | 90 | 120) { fps } else { 60 }
+}
+
 fn default_true() -> bool {
     true
 }
@@ -162,6 +171,7 @@ static FORWARD_PC_NOTIFICATIONS: std::sync::atomic::AtomicBool = std::sync::atom
 static AWAY_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static FLOW_FOLLOW_CLIPBOARD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 static MIRROR_QUALITY: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+static MIRROR_FPS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(60);
 static SYNC_PASSWORDS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static KEEP_POPUPS_PAUSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static USB_DEBUGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
@@ -187,6 +197,15 @@ pub fn set_clipboard_auto_copy_received_files(on: bool) {
 /// Whether a single file shared from the phone opens in its default app on arrival.
 pub fn mirror_quality() -> crate::mirror::Quality {
     crate::mirror::Quality::parse(&MIRROR_QUALITY.lock().unwrap_or_else(|e| e.into_inner()))
+}
+
+/// The frame rate mirroring asks the phone for (#442).
+pub fn mirror_fps() -> u32 {
+    MIRROR_FPS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub fn set_mirror_fps(fps: u32) {
+    MIRROR_FPS.store(sane_mirror_fps(fps), std::sync::atomic::Ordering::Relaxed);
 }
 
 pub fn set_mirror_quality(quality: &str) {
@@ -655,6 +674,9 @@ pub struct Settings {
     /// value from a newer version can't stop this file from loading.
     #[serde(default, alias = "mirror_quality")]
     pub mirror_quality: String,
+    /// Frames per second for mirroring and app windows: 30, 60, 90 or 120.
+    #[serde(default = "default_mirror_fps", alias = "mirror_fps")]
+    pub mirror_fps: u32,
     /// Send the PC's clipboard to the phone when control moves to it: the mouse
     /// enters the phone's window, or a remote control session starts.
     #[serde(default = "default_true", alias = "flow_follow_clipboard")]
@@ -819,6 +841,7 @@ impl Default for Settings {
             usb_debugging: true,
             notification_history_days: 1,
             mirror_quality: String::new(),
+            mirror_fps: 60,
             flow_follow_clipboard: true,
             phone_beside: String::new(),
             phone_beside_side: String::new(),
@@ -895,6 +918,7 @@ impl Settings {
         set_usb_debugging(self.usb_debugging);
         crate::state::set_history_days(self.notification_history_days);
         set_mirror_quality(&self.mirror_quality);
+        set_mirror_fps(self.mirror_fps);
         set_flow_follow_clipboard(self.flow_follow_clipboard);
         set_phone_beside(&self.phone_beside, &self.phone_beside_side);
         set_folder_sync_rules(self.folder_sync_rules.clone());
@@ -1109,6 +1133,7 @@ mod tests {
             usb_debugging: false,
             notification_history_days: 7,
             mirror_quality: "sharper".into(),
+            mirror_fps: 120,
             flow_follow_clipboard: false,
             phone_beside: String::new(),
             phone_beside_side: String::new(),
