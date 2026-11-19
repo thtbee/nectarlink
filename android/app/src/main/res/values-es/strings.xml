@@ -458,6 +458,10 @@
     <string name="start_without_asking_hint">Cuando este PC lo solicite, se activarán de inmediato, sin necesidad de tocar el teléfono. Requiere Elevated. Sin él, el teléfono pedirá permiso como siempre.</string>
     <string name="mirror_ask_toggle">Preguntar antes de compartir mi pantalla</string>
     <string name="mirror_ask_hint">Cada vez que este PC quiera ver tu pantalla, esperará a que toques. Sin esto, Elevated la comparte al instante.</string>
+    <string name="clip_share_toggle">Compartir mi portapapeles</string>
+    <string name="clip_share_hint">Lo que copias llega solo mientras Elevated está activado. Enviarlo a mano sigue funcionando.</string>
+    <string name="clip_accept_toggle">Aceptar su portapapeles</string>
+    <string name="clip_accept_hint">Lo que copie ahí llega al portapapeles de este teléfono.</string>
     <string name="recorder_notification_recording">Grabando para %1$s</string>
     <string name="recorder_notification_paused">Grabación en pausa (%1$s)</string>
     <string name="recorder_permission_title">Permitir acceso al micrófono</string>

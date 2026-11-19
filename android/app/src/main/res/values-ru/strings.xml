@@ -444,6 +444,10 @@
     <string name="start_without_asking_hint">Когда этот ПК просит, они сразу включаются, без нажатия на телефоне. Нужен Elevated. Без него телефон спрашивает как обычно.</string>
     <string name="mirror_ask_toggle">Спрашивать перед показом экрана</string>
     <string name="mirror_ask_hint">Каждый раз, когда этот ПК хочет увидеть экран, он ждёт вашего нажатия. Без этого Elevated показывает экран сразу.</string>
+    <string name="clip_share_toggle">Делиться моим буфером обмена</string>
+    <string name="clip_share_hint">Скопированное уходит туда само, пока включён Elevated. Отправлять вручную тоже можно.</string>
+    <string name="clip_accept_toggle">Принимать его буфер обмена</string>
+    <string name="clip_accept_hint">Скопированное там попадает в буфер обмена этого телефона.</string>
     <string name="recorder_notification_recording">Запись для %1$s</string>
     <string name="recorder_notification_paused">Запись на паузе (%1$s)</string>
     <string name="recorder_permission_title">Разрешите доступ к микрофону</string>

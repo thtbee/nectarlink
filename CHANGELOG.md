@@ -8,6 +8,12 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Share and accept the clipboard separately, per device.** In the phone's Settings, under
+  each paired device: **Share my clipboard with it** decides whether what you copy goes
+  there by itself (with Elevated on), and **Accept its clipboard** whether what it copies
+  lands on this phone. Both are on, so nothing changes unless you turn one off. Thanks to
+  [@FlootingDream](https://github.com/FlootingDream)
+  ([#453](https://github.com/thtbee/nectarlink/issues/453)).
 - **Ask before sharing your screen, per PC.** In the phone's Settings, under each PC:
   with it on, that PC's requests to see your screen always wait for your tap, even when
   Elevated could share it at once. Off by default, so nothing changes unless you turn it on.

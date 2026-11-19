@@ -452,6 +452,10 @@
     <string name="start_without_asking_hint">Bu bilgisayar istediğinde telefona dokunmadan hemen açılırlar. Elevated gerekir. Elevated olmadan telefon her zamanki gibi sorar.</string>
     <string name="mirror_ask_toggle">Ekranımı paylaşmadan önce sor</string>
     <string name="mirror_ask_hint">Bu bilgisayar ekranını her görmek istediğinde dokunmanı bekler. Bu kapalıyken Elevated ekranı hemen paylaşır.</string>
+    <string name="clip_share_toggle">Panomu paylaş</string>
+    <string name="clip_share_hint">Elevated açıkken kopyaladıkların oraya kendiliğinden gider. Elle göndermek yine çalışır.</string>
+    <string name="clip_accept_toggle">Onun panosunu kabul et</string>
+    <string name="clip_accept_hint">Orada kopyalanan bu telefonun panosuna gelir.</string>
     <string name="recorder_notification_recording">%1$s için kaydediliyor</string>
     <string name="recorder_notification_paused">Kayıt duraklatıldı (%1$s)</string>
     <string name="recorder_permission_title">Mikrofon erişimine izin verin</string>

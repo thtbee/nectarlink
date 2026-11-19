@@ -462,6 +462,10 @@
     <string name="start_without_asking_hint">Na żądanie tego komputera kamera i mikrofon włączą się od razu, bez dotykania telefonu. Wymaga Elevated. Bez niego telefon zapyta o zgodę jak zwykle.</string>
     <string name="mirror_ask_toggle">Pytaj przed udostępnieniem ekranu</string>
     <string name="mirror_ask_hint">Za każdym razem, gdy ten komputer chce zobaczyć ekran, czeka na Twoje dotknięcie. Bez tego Elevated udostępnia go od razu.</string>
+    <string name="clip_share_toggle">Udostępniaj mój schowek</string>
+    <string name="clip_share_hint">To, co skopiujesz, trafia tam samo, gdy Elevated jest włączone. Ręczne wysyłanie nadal działa.</string>
+    <string name="clip_accept_toggle">Przyjmuj jego schowek</string>
+    <string name="clip_accept_hint">To, co tam skopiujesz, trafia do schowka tego telefonu.</string>
     <string name="recorder_notification_recording">Nagrywanie dla %1$s</string>
     <string name="recorder_notification_paused">Nagrywanie wstrzymane (%1$s)</string>
     <string name="recorder_permission_title">Zezwól na dostęp do mikrofonu telefonu</string>

@@ -1617,7 +1617,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         scope.launch(Dispatchers.IO) {
             startJob?.join()
             val currentNode = node ?: return@launch
-            for (pc in _state.value.devices.filter { it.online }) {
+            for (pc in autoClipboardTargets()) {
                 runCatching { currentNode.sendClipboardPrivate(pc.id, text) }
                     .onFailure { Log.d(TAG, "private clip not sent to ${pc.id}") }
             }
@@ -1650,12 +1650,16 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             }
             startJob?.join()
             val currentNode = node ?: return@launch
-            val onlinePcs = _state.value.devices.filter { it.online }
-            for (pc in onlinePcs) {
+            for (pc in autoClipboardTargets()) {
                 runCatching { currentNode.sendClipboardRich(pc.id, text, html, null) }
                     .onFailure { Log.d(TAG, "auto clipboard not sent to ${pc.id}: $it") }
             }
         }
+    }
+
+    /** Where a copy goes by itself: connected devices this phone shares its clipboard with. */
+    private fun autoClipboardTargets(): List<Device> = _state.value.devices.filter {
+        it.online && app.nectarlink.android.clipboard.ClipboardPeers.shares(context, it.id)
     }
 
     private fun targetPcsForSend(pcId: String?): List<Device> {
@@ -2816,7 +2820,21 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         command { it.refresh() }
     }
 
-    fun unpair(id: String) = command { it.unpair(id) }
+    fun unpair(id: String) {
+        app.nectarlink.android.clipboard.ClipboardPeers.forget(context, id)
+        command { it.unpair(id) }
+    }
+
+    /** Takes [deviceId]'s clipboard on this phone, or not (on by default, #453). */
+    fun setClipboardAccepted(deviceId: String, on: Boolean) {
+        app.nectarlink.android.clipboard.ClipboardPeers.setAccepted(context, deviceId, on)
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@launch
+            runCatching { currentNode.setDeviceToggle(deviceId, CLIPBOARD_RECEIVE_TOGGLE, on) }
+                .onFailure { Log.w(TAG, "can't change the clipboard toggle", it) }
+        }
+    }
 
     /** Stops this phone ringing. */
     fun stopRinging() = command { it.stopRinging() }
@@ -2864,6 +2882,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     enum class RemoteAccess { Allowed, Denied, Offline, Unsupported }
 
     private companion object {
+        /** See `ClipboardPeers`: the core refuses that device's clipboard when off. */
+        const val CLIPBOARD_RECEIVE_TOGGLE = "clipboard_receive"
         const val TAG = "Nectarlink"
         /** Offered while notification access is granted (docs/protocol/capabilities.md). */
         val NOTIFICATION_CAPABILITIES = listOf("notify.mirror", "notify.reply", "notify.live")

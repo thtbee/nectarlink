@@ -1752,6 +1752,10 @@ impl qobject::AppController {
         let mut list = QList::default();
         let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return list };
         for (name, on) in node.device_toggles(id).unwrap_or_default() {
+            // Set on the phone (#453); the PC keeps taking the clipboard.
+            if name == "clipboard_receive" {
+                continue;
+            }
             let mut item = QHash::<QHashPair_QString_QVariant>::default();
             item.insert(QString::from("name"), QVariant::from(&QString::from(name)));
             item.insert(QString::from("on"), QVariant::from(&on));
