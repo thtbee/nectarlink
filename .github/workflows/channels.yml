@@ -49,3 +49,14 @@ jobs:
           name=$(awk '/^\[workspace.metadata.release\]/{f=1;next} /^\[/{f=0} f && /^name = /{print $3}' Cargo.toml | tr -d '"')
           python3 .github/scripts/write-feed.py stable "$TAG" "$name" stable.json
           bash .github/scripts/publish-feed.sh stable stable.json
+      - name: Tell Discord
+        # Once, when it's published; pointing the feed again posts nothing.
+        if: github.event_name == 'release'
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+          DISCORD_ROLE_ID: ${{ vars.DISCORD_RELEASE_ROLE_ID }}
+          TITLE: ${{ github.event.release.name }}
+          LINK: ${{ github.event.release.html_url }}
+          NOTES: ${{ github.event.release.body }}
+        run: |
+          printf '%s\n' "$NOTES" | python3 .github/scripts/discord-post.py "${TITLE:-NectarLink $TAG}" "$LINK"
