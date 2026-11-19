@@ -569,11 +569,15 @@ pub fn open_device(device: DeviceId) {
 
 /// Synchronously refreshes persisted `MessagingStyle` chat threads from SQLite.
 pub fn load_chat_threads() {
-    let Some(device) = state(|s| s.device) else { return };
+    let Some((device, generation)) = state(|s| s.device.map(|d| (d, s.generation))) else { return };
     let Some(node) = core_host::node() else { return };
     let chat_threads = node.chat_threads(device);
     let (photos, app_icons) = save_chat_assets(device, &chat_threads);
+    // Another phone was picked meanwhile: what was read here is for the old one.
     let open_chat = state(|s| {
+        if s.generation != generation {
+            return Err(());
+        }
         s.chat_threads = chat_threads;
         s.photos.extend(photos);
         s.app_icons.extend(app_icons);
@@ -586,13 +590,17 @@ pub fn load_chat_threads() {
         {
             s.app_filter.clear();
         }
-        s.thread.clone().filter(|t| t.starts_with("chat:"))
+        Ok(s.thread.clone().filter(|t| t.starts_with("chat:")))
     });
+    let Ok(open_chat) = open_chat else { return };
     if let Some(thread) = open_chat {
         let _ = node.mark_chat_thread_read(device, &thread);
         let msgs = node.chat_messages(device, &thread, PAGE);
         let refreshed = node.chat_threads(device);
         state(|s| {
+            if s.generation != generation {
+                return;
+            }
             s.chat_threads = refreshed;
             if s.thread.as_deref() == Some(&thread) {
                 s.chat_messages = msgs;
