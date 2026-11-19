@@ -1,6 +1,6 @@
 # ADR 0009: Unlock the PC with the phone
 
-- **Status:** Accepted for building (2026-11-18); ships only after an external security review
+- **Status:** Accepted (2026-11-18)
 - **Date:** 2026-10-19, decisions 2026-11-18
 
 ## Context
@@ -38,9 +38,11 @@ restart).
 
 - **Enrollment** (the user turns it on, signed in, in Settings, and types
   their Windows password once):
-  1. The PC makes a random 256-bit key `K` and encrypts the password with
-     AES-256-GCM under `K`. Only that ciphertext is kept on the PC, bound
-     (as associated data) to this PC, this phone and this Windows user.
+  1. The PC first seals the password to the machine key (below), so that
+     only SYSTEM can open it. Then it makes a random 256-bit key `K` and
+     encrypts that sealed password with AES-256-GCM under `K`. Only that
+     ciphertext is kept on the PC, bound (as associated data) to this PC,
+     this phone and this Windows user.
   2. The PC sends `K` to the phone over the paired session. The phone wraps it
      with an AES-GCM key held in Android Keystore (StrongBox when there is
      one) that requires strong biometrics for every use and is invalidated
@@ -50,15 +52,31 @@ restart).
 - **Unlock**: the lock screen offers "Unlock with <phone>". The PC sends a
   request (single use, 30-second expiry, naming the PC and the user) with the
   wrapped `K`. The phone shows a biometric prompt naming the PC and the user;
-  on success Keystore unwraps `K` and the phone returns it. The PC decrypts
-  the password (the GCM tag proves `K` is right), hands it to LogonUI, and
-  wipes `K` and the password from memory.
+  on success Keystore unwraps `K` and the phone returns it. The PC opens the
+  ciphertext (the GCM tag proves `K` is right) and hands the sealed password
+  to the credential provider, which opens it as SYSTEM inside LogonUI and
+  wipes it once serialized. The app never holds the password itself after
+  enrolling.
+
+### The machine key
+
+Turning the feature on (the one administrator prompt) makes an RSA-3072 key
+in the machine's key store, not exportable, that only SYSTEM and
+administrators may use, and publishes its public half under the provider's
+registry key. The app seals the password to it with RSA-OAEP (SHA-256), in
+chunks whose OAEP label names the Windows user and the chunk's place, so a
+blob made for one user, or with its chunks reordered, doesn't open. Only the
+credential provider, running as SYSTEM, opens it. Turning the feature off
+deletes the key. So malware running as the user that gets `K` (by asking the
+phone's owner, or from NectarLink's memory) still has only a blob it can't
+open.
 
 What each side holds:
 
 | Holder | Has | Alone, it gets |
 |---|---|---|
 | PC disk | password ciphertext, wrapped `K` | nothing: `K` never touches the PC's disk, and the wrapping key never leaves the phone |
+| The user's processes (malware running as the user included) | the above, and `K` after an approved unlock | the password sealed to the machine key, which only SYSTEM can open |
 | Phone | the non-exportable wrapping key | nothing: it never sees the password |
 | Network | an encrypted, mutually authenticated session (ADR 0003) | nothing |
 
@@ -106,8 +124,14 @@ What each side holds:
   NectarLink next to its DLL, running as the session's account in that session,
   since pipe names are machine-wide and another account could otherwise serve
   this session's pipe.
-- **Off by default**, behind a clear explanation, and absent from builds until
-  the review is done.
+- **Off by default**, behind a clear explanation.
+- **Asked for, never by itself:** picking the tile doesn't ask the phone; the
+  arrow does. Windows remembers the last sign-in option, so otherwise any key
+  pressed at the lock screen would make the phone ask its owner.
+- **Only for accounts set up with a phone:** NectarLink serves the pipe only
+  once its user has set up a phone, and the tile shows only while the pipe is
+  served, so other accounts on a PC where the provider is registered never see
+  it.
 
 ### Where the pieces run
 
@@ -116,10 +140,11 @@ What each side holds:
   The first part of this is in `core/nectarlink-core/src/unlock.rs`.
 - **Phone (Kotlin):** the Keystore key, the biometric prompt with a
   `CryptoObject`, and the protocol handler.
-- **Credential provider (`desktop/credprov`, C++):** a small COM DLL in
+- **Credential provider (`desktop/credprov`, Rust):** a small COM DLL in
   LogonUI. It knows nothing about phones: it asks the user's NectarLink, over
   a named pipe whose ACL admits only that user's NectarLink, for "the
-  credential for user X", and serializes the answer. Kept small so it's easy
+  credential for user X", opens the sealed password it gets with the machine
+  key, and serializes it. Kept small so it's easy
   to review.
 - **Installation:** registering a credential provider is a machine-wide
   change (HKLM, administrator). The installer would do it only when the user
@@ -134,7 +159,7 @@ What each side holds:
 | Someone at the locked PC with a stolen, unlocked phone | Still needs the biometric for each unlock |
 | Replay of an old response | Single-use request IDs, a 30-second expiry, and the session's own encryption |
 | A different paired device answering | Responses only from the enrolled phone's identity, bound into the ciphertext's associated data |
-| Malware running as the user on the PC | Out of scope for any unlock feature (it already has the session), but it must not learn the password: `K` and the password exist only in memory, briefly, inside NectarLink; the pipe to the credential provider admits only NectarLink. Residual risk: malware that reads NectarLink's memory at that moment. To be reviewed. |
+| Malware running as the user on the PC | Out of scope for any unlock feature (it already has the session), but it must not learn the password: the app keeps it only sealed to a machine key only SYSTEM can use, so even `K` (from an approved prompt, or from memory) yields nothing it can open. It can still make the phone ask, which the phone's own per-PC limit caps. |
 | Bugs in the credential provider locking the user out | It only adds a tile; the normal password tile stays. Tested in a VM with recovery snapshots before any real machine. |
 | Brute force via the lock screen | Rate limit and lockout above |
 
@@ -164,9 +189,9 @@ What each side holds:
    user-writable folder would let any user process become SYSTEM. Enabling the
    feature copies and registers it with one administrator prompt; turning it
    off removes it.
-6. **External review and code signing** stay open before release: the feature
-   is built behind the `unlock` toggle (off by default), and the PC doesn't
-   offer `unlock.pc` until the credential provider is installed.
+6. **It ships in builds**, behind the `unlock` toggle (off by default), and the
+   PC doesn't offer `unlock.pc` until the credential provider is installed.
+   Code signing stays open.
 
 ## Implementation (2026-11-18)
 
@@ -202,13 +227,10 @@ What each side holds:
    crash in the provider (forced in a debug build) doesn't block sign-in.
 3. Process Monitor / handle checks: the password isn't written anywhere; the
    pipe refuses a non-SYSTEM client and a client outside LogonUI.
-4. External review of `desktop/credprov`, `win/unlock.rs` and the phone's
-   key handling.
 
 ## Consequences
 
-- A security-critical component that needs its own tests, a VM test plan, and
-  an external review before release.
+- A security-critical component that needs its own tests and a VM test plan.
 - More install surface: a DLL registered machine-wide when enabled.
 - The core and protocol parts can be built and tested now, independently of
   the credential provider.

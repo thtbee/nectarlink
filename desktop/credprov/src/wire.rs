@@ -23,8 +23,9 @@ const MAGIC: &[u8; 4] = b"NLU1";
 const REJECTED: &[u8; 4] = b"NLR1";
 /// Longest security identifier accepted.
 pub const MAX_USER: usize = 184;
-/// Longest password accepted, in UTF-8 bytes (Windows allows 256 characters).
-pub const MAX_PASSWORD: usize = 1024;
+/// Longest answer accepted: the password sealed to the machine key
+/// (`system_seal::MAX_SEALED`), with room to spare.
+pub const MAX_PASSWORD: usize = 2048;
 /// How long the provider waits for an answer: the phone has 30 s, plus margin.
 pub const ANSWER_TIMEOUT_MS: u32 = 40_000;
 

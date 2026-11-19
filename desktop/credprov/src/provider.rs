@@ -335,8 +335,6 @@ pub struct Credential {
     qualified: String,
     scenario: Arc<AtomicI32>,
     status: Mutex<String>,
-    /// Whether this lock screen already asked the phone by itself.
-    asked: std::sync::atomic::AtomicBool,
     _events: Mutex<Option<ICredentialProviderCredentialEvents>>,
     _guard: ObjectGuard,
 }
@@ -355,7 +353,6 @@ impl Credential {
             qualified,
             scenario,
             status: Mutex::new(say(Text::Hint).to_owned()),
-            asked: std::sync::atomic::AtomicBool::new(false),
             _events: Mutex::default(),
             _guard: ObjectGuard::new(),
         }
@@ -382,6 +379,17 @@ impl Credential {
             wire::wipe(&mut password);
             return Err(text);
         }
+        // NectarLink hands over the password sealed to the machine key, which only
+        // SYSTEM (this process) can open; it never has the password itself.
+        let opened = crate::system_seal::open_machine_key().and_then(|key| {
+            let opened = crate::system_seal::open(key, &self.sid, &password);
+            crate::system_seal::close_key(key);
+            opened
+        });
+        wire::wipe(&mut password);
+        let Some(mut password) = opened else {
+            return Err(Text::Failed);
+        };
         let mut wide: Vec<u16> =
             std::str::from_utf8(&password).map(|p| p.encode_utf16().collect()).unwrap_or_default();
         wire::wipe(&mut password);
@@ -449,10 +457,10 @@ impl ICredentialProviderCredential_Impl for Credential_Impl {
     }
 
     fn SetSelected(&self) -> windows::core::Result<BOOL> {
-        // Picking the tile asks the phone right away, once per lock screen:
-        // after a no or a timeout the tile is selected again, and the arrow
-        // asks again only when pressed.
-        Ok(BOOL::from(!self.asked.swap(true, Ordering::SeqCst)))
+        // Picking the tile never asks the phone by itself: the arrow does. Windows
+        // remembers the last sign-in option, so otherwise any key at the lock
+        // screen would make the phone ask its owner.
+        Ok(BOOL::from(false))
     }
 
     fn SetDeselected(&self) -> windows::core::Result<()> {

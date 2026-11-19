@@ -67,6 +67,15 @@ use wire::CLSID_TEXT;
 #[allow(dead_code)]
 mod wire;
 
+/// The password sealed so only SYSTEM can open it, shared with the credential
+/// provider by source.
+#[path = "../../../credprov/src/system_seal.rs"]
+mod system_seal;
+
+/// Where registering publishes the machine key's public half, under the provider's
+/// class key (so removing the provider removes it too).
+const PUBLIC_KEY_VALUE: &str = "UnlockKey";
+
 pub const REGISTER_ARG: &str = "--register-unlock";
 pub const UNREGISTER_ARG: &str = "--unregister-unlock";
 
@@ -95,7 +104,7 @@ fn protected(path: &Path) -> bool {
 }
 
 fn reg_string(subkey: &str, name: Option<&str>) -> Option<String> {
-    let mut buf = [0u16; 512];
+    let mut buf = [0u16; 2048];
     let mut size = std::mem::size_of_val(&buf) as u32;
     let name = name.map(HSTRING::from);
     // SAFETY: `buf` and `size` describe a valid buffer.
@@ -127,6 +136,166 @@ pub fn is_registered() -> bool {
     reg_string(&format!(r"{PROVIDERS}\{CLSID_TEXT}"), None).is_some()
         && PathBuf::from(registered).eq(&dll)
         && protected(&dll)
+        && machine_public_key().is_some()
+}
+
+/// The machine key's public half, as registering published it.
+fn machine_public_key() -> Option<Vec<u8>> {
+    let hex = reg_string(&format!(r"{CLASSES}\{CLSID_TEXT}"), Some(PUBLIC_KEY_VALUE))?;
+    from_hex(&hex).filter(|key| !key.is_empty())
+}
+
+fn to_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn from_hex(hex: &str) -> Option<Vec<u8>> {
+    if !hex.len().is_multiple_of(2) {
+        return None;
+    }
+    (0..hex.len()).step_by(2).map(|i| u8::from_str_radix(hex.get(i..i + 2)?, 16).ok()).collect()
+}
+
+/// Opens the machine key, or makes it: RSA, not exportable, usable only by SYSTEM
+/// and administrators. Returns its public half. Run elevated.
+fn machine_key_public() -> Result<Vec<u8>, String> {
+    use windows::Win32::Security::Cryptography::{
+        BCRYPT_RSA_ALGORITHM, BCRYPT_RSAPUBLIC_BLOB, MS_KEY_STORAGE_PROVIDER, NCRYPT_FLAGS, NCRYPT_HANDLE,
+        NCRYPT_KEY_HANDLE, NCRYPT_LENGTH_PROPERTY, NCRYPT_MACHINE_KEY_FLAG, NCRYPT_PROV_HANDLE,
+        NCRYPT_SILENT_FLAG, NCryptCreatePersistedKey, NCryptExportKey, NCryptFinalizeKey, NCryptFreeObject,
+        NCryptOpenKey, NCryptOpenStorageProvider, NCryptSetProperty,
+    };
+    let mut provider = NCRYPT_PROV_HANDLE::default();
+    // SAFETY: valid out pointer; freed below.
+    unsafe { NCryptOpenStorageProvider(&mut provider, MS_KEY_STORAGE_PROVIDER, 0) }
+        .map_err(|e| e.message())?;
+    let name = HSTRING::from(system_seal::KEY_NAME);
+    let mut key = NCRYPT_KEY_HANDLE::default();
+    let flags = NCRYPT_MACHINE_KEY_FLAG | NCRYPT_SILENT_FLAG;
+    // SAFETY: valid out pointer.
+    let existing = unsafe { NCryptOpenKey(provider, &mut key, &name, Default::default(), flags) }.is_ok();
+    // SAFETY (below): `key` is made here and freed at the end; the inputs outlive the calls.
+    let made = existing
+        || (unsafe {
+            NCryptCreatePersistedKey(
+                provider,
+                &mut key,
+                BCRYPT_RSA_ALGORITHM,
+                &name,
+                Default::default(),
+                flags,
+            )
+        }
+        .is_ok()
+            && unsafe {
+                NCryptSetProperty(
+                    NCRYPT_HANDLE(key.0),
+                    NCRYPT_LENGTH_PROPERTY,
+                    &system_seal::KEY_BITS.to_le_bytes(),
+                    NCRYPT_FLAGS(0),
+                )
+            }
+            .is_ok()
+            && unsafe { NCryptFinalizeKey(key, NCRYPT_SILENT_FLAG) }.is_ok()
+            && only_system_and_admins(key).is_ok());
+    let public = if made {
+        let mut len = 0u32;
+        // SAFETY: a size query, then an export into a buffer of that size.
+        let sized = unsafe {
+            NCryptExportKey(key, None, BCRYPT_RSAPUBLIC_BLOB, None, None, &mut len, NCRYPT_FLAGS(0))
+        }
+        .is_ok();
+        let mut public = vec![0u8; len as usize];
+        let exported = sized
+            && unsafe {
+                NCryptExportKey(
+                    key,
+                    None,
+                    BCRYPT_RSAPUBLIC_BLOB,
+                    None,
+                    Some(&mut public),
+                    &mut len,
+                    NCRYPT_FLAGS(0),
+                )
+            }
+            .is_ok();
+        public.truncate(len as usize);
+        exported.then_some(public)
+    } else {
+        None
+    };
+    // SAFETY: freed once each; a key that was never made is skipped.
+    unsafe {
+        if key.0 != 0 {
+            let _ = NCryptFreeObject(NCRYPT_HANDLE(key.0));
+        }
+        let _ = NCryptFreeObject(NCRYPT_HANDLE(provider.0));
+    }
+    public.ok_or_else(|| "couldn't make the unlock key".into())
+}
+
+/// Lets only SYSTEM and administrators use `key`.
+fn only_system_and_admins(
+    key: windows::Win32::Security::Cryptography::NCRYPT_KEY_HANDLE,
+) -> Result<(), String> {
+    use windows::Win32::Security::{
+        Cryptography::{
+            NCRYPT_FLAGS, NCRYPT_HANDLE, NCRYPT_SECURITY_DESCR_PROPERTY, NCRYPT_SILENT_FLAG,
+            NCryptSetProperty,
+        },
+        DACL_SECURITY_INFORMATION,
+    };
+    let sddl = HSTRING::from("D:P(A;;GA;;;SY)(A;;GA;;;BA)");
+    let mut descriptor = PSECURITY_DESCRIPTOR::default();
+    let mut size = 0u32;
+    // SAFETY: `descriptor` is freed with LocalFree below.
+    unsafe {
+        ConvertStringSecurityDescriptorToSecurityDescriptorW(
+            &sddl,
+            SDDL_REVISION_1,
+            &mut descriptor,
+            Some(&mut size),
+        )
+    }
+    .map_err(|e| e.message())?;
+    // SAFETY: `descriptor` is `size` bytes, self-relative, alive until LocalFree.
+    let bytes = unsafe { std::slice::from_raw_parts(descriptor.0.cast::<u8>(), size as usize) };
+    // SAFETY: `bytes` outlives the call.
+    let set = unsafe {
+        NCryptSetProperty(
+            NCRYPT_HANDLE(key.0),
+            NCRYPT_SECURITY_DESCR_PROPERTY,
+            bytes,
+            NCRYPT_FLAGS(DACL_SECURITY_INFORMATION.0) | NCRYPT_SILENT_FLAG,
+        )
+    };
+    // SAFETY: allocated by ConvertStringSecurityDescriptorToSecurityDescriptorW.
+    unsafe { LocalFree(Some(HLOCAL(descriptor.0))) };
+    set.map_err(|e| e.message())
+}
+
+/// Deletes the machine key, if there is one. Run elevated.
+fn delete_machine_key() {
+    use windows::Win32::Security::Cryptography::{
+        MS_KEY_STORAGE_PROVIDER, NCRYPT_HANDLE, NCRYPT_KEY_HANDLE, NCRYPT_MACHINE_KEY_FLAG,
+        NCRYPT_PROV_HANDLE, NCRYPT_SILENT_FLAG, NCryptDeleteKey, NCryptFreeObject, NCryptOpenKey,
+        NCryptOpenStorageProvider,
+    };
+    let mut provider = NCRYPT_PROV_HANDLE::default();
+    // SAFETY: valid out pointer; freed below.
+    if unsafe { NCryptOpenStorageProvider(&mut provider, MS_KEY_STORAGE_PROVIDER, 0) }.is_err() {
+        return;
+    }
+    let mut key = NCRYPT_KEY_HANDLE::default();
+    let flags = NCRYPT_MACHINE_KEY_FLAG | NCRYPT_SILENT_FLAG;
+    let name = HSTRING::from(system_seal::KEY_NAME);
+    // SAFETY: valid out pointer; deleting the key frees it.
+    if unsafe { NCryptOpenKey(provider, &mut key, &name, Default::default(), flags) }.is_ok() {
+        // SAFETY: `key` is open; deleting frees it.
+        let _ = unsafe { NCryptDeleteKey(key, NCRYPT_SILENT_FLAG.0) };
+    }
+    // SAFETY: opened above.
+    let _ = unsafe { NCryptFreeObject(NCRYPT_HANDLE(provider.0)) };
 }
 
 /// Registers the credential provider (run elevated, with [`REGISTER_ARG`]).
@@ -136,8 +305,13 @@ pub fn register_hklm() -> Result<(), String> {
         return Err(format!("{} isn't in Program Files; not registering it", dll.display()));
     }
     let dll = dll.to_string_lossy();
+    let public = to_hex(&machine_key_public()?);
     let class = format!(r"{CLASSES}\{CLSID_TEXT}");
-    crate::win::vcam::create_and_set(HKEY_LOCAL_MACHINE, &class, &[(None, "NectarLink unlock with phone")])?;
+    crate::win::vcam::create_and_set(
+        HKEY_LOCAL_MACHINE,
+        &class,
+        &[(None, "NectarLink unlock with phone"), (Some(PUBLIC_KEY_VALUE), &public)],
+    )?;
     crate::win::vcam::create_and_set(
         HKEY_LOCAL_MACHINE,
         &format!(r"{class}\InprocServer32"),
@@ -153,6 +327,7 @@ pub fn register_hklm() -> Result<(), String> {
 /// Removes the credential provider (run elevated, with [`UNREGISTER_ARG`]; the
 /// uninstaller does it too).
 pub fn unregister_hklm() -> Result<(), String> {
+    delete_machine_key();
     for subkey in [format!(r"{PROVIDERS}\{CLSID_TEXT}"), format!(r"{CLASSES}\{CLSID_TEXT}")] {
         // SAFETY: deleting a key by name.
         let status = unsafe { RegDeleteTreeW(HKEY_LOCAL_MACHINE, &HSTRING::from(subkey.as_str())) };
@@ -386,10 +561,12 @@ fn watch_first_unlock(session: u32) {
     });
 }
 
-/// Starts serving the unlock pipe if the credential provider is registered and
-/// it isn't served yet.
+/// Starts serving the unlock pipe if the credential provider is registered, the
+/// signed-in user is set up with a phone, and it isn't served yet. The lock screen
+/// offers the tile only while the pipe is served, so other accounts on this PC,
+/// and this one before setting up, never see it.
 pub fn serve() {
-    if !is_registered() || SERVING.swap(true, Ordering::SeqCst) {
+    if !is_registered() || !enrolled_with_any() || SERVING.swap(true, Ordering::SeqCst) {
         return;
     }
     let started = std::thread::Builder::new().name("unlock-pipe".into()).spawn(|| {
@@ -628,16 +805,37 @@ pub async fn enroll(phone: DeviceId, password: String) -> Enrolled {
         wire::wipe(&mut bytes);
         return Enrolled::Failed;
     };
-    let secret = Secret::new(bytes.clone());
+    // Sealed so only SYSTEM (the credential provider) can open it: from here on
+    // this app only ever holds that, never the password.
+    let sealed = machine_public_key()
+        .ok_or_else(|| "no unlock key; turn it on again".to_owned())
+        .and_then(|public| system_seal::seal(&public, &sid, &bytes));
     wire::wipe(&mut bytes);
+    let secret = match sealed {
+        Ok(sealed) => Secret::new(sealed),
+        Err(e) => {
+            tracing::warn!("couldn't seal the unlock password: {e}");
+            return Enrolled::Failed;
+        }
+    };
     let name: String = current_user_name().chars().filter(|c| !c.is_control()).take(60).collect();
     match node.unlock_enroll(phone, &sid, if name.is_empty() { "Windows" } else { &name }, secret).await {
-        Ok(()) => Enrolled::Done,
+        Ok(()) => {
+            // The lock screen offers the tile from now on.
+            serve();
+            Enrolled::Done
+        }
         Err(Error::Denied) => Enrolled::Declined,
         Err(Error::Offline | Error::Timeout) => Enrolled::PhoneAway,
         Err(Error::Unsupported) => Enrolled::PhoneCant,
         Err(_) => Enrolled::Failed,
     }
+}
+
+/// Whether the signed-in user is set up to unlock with any phone.
+fn enrolled_with_any() -> bool {
+    let Some(node) = crate::core_host::node() else { return false };
+    node.paired_devices().unwrap_or_default().iter().any(|d| enrolled_with(d.id))
 }
 
 /// Whether the signed-in user is set up to unlock with `phone`.
@@ -656,6 +854,15 @@ mod tests {
         // Tests run from the build folder, which any user can write.
         assert!(!protected(&exe));
         assert!(!protected(Path::new(r"C:\Users\Public\nectarlink_credprov.dll")));
+    }
+
+    #[test]
+    fn hex_round_trips_and_rejects_junk() {
+        let bytes = [0u8, 1, 0xab, 0xff];
+        assert_eq!(from_hex(&to_hex(&bytes)).as_deref(), Some(bytes.as_slice()));
+        assert_eq!(from_hex("abc"), None);
+        assert_eq!(from_hex("zz"), None);
+        assert_eq!(from_hex("\u{e9}1"), None);
     }
 
     #[test]

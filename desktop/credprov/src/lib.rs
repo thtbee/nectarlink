@@ -21,6 +21,8 @@ mod provider;
 #[cfg(windows)]
 mod session;
 #[cfg(windows)]
+mod system_seal;
+#[cfg(windows)]
 mod text;
 #[cfg(windows)]
 mod trace;
