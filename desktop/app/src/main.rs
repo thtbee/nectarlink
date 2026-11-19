@@ -290,6 +290,9 @@ struct Options {
     widget_provider: bool,
     /// The update task's job, as SYSTEM (`--update-service`, see `updater`).
     update_service: bool,
+    /// The same after the administrator prompt, with no task: the channel
+    /// to follow (`--update-elevated <channel>`, see `updater`).
+    update_elevated: Option<String>,
     /// The installer's window (`--setup --installer <setup.exe>`, see `setup`).
     setup: Option<PathBuf>,
     /// The uninstaller's window (`--remove [--installed <folder>]`).
@@ -362,6 +365,11 @@ fn parse_options_from<I: IntoIterator<Item = std::ffi::OsString>>(iter: I) -> Op
             Some(updater::SERVICE_ARG) => {
                 in_share = false;
                 options.update_service = true;
+            }
+            Some(updater::ELEVATED_ARG) => {
+                in_share = false;
+                options.update_elevated =
+                    Some(args.next().and_then(|a| a.into_string().ok()).unwrap_or_default());
             }
             Some(updater::UPDATED_ARG) => {
                 in_share = false;
@@ -540,6 +548,9 @@ fn main() -> ExitCode {
     }
     if options.update_service {
         return updater::run_service();
+    }
+    if let Some(channel) = &options.update_elevated {
+        return updater::run_elevated(Some(channel.as_str()));
     }
     if options.register_vcam {
         return match win::vcam::register_hklm() {
@@ -878,6 +889,16 @@ mod tests {
         assert!(!opts.minimized);
         assert_eq!(opts.data_dir, Some(PathBuf::from(r"C:\Temp\nectarlink-test")));
         assert!(!parse_options_from(["--minimized"].into_iter().map(OsString::from)).ui_check);
+    }
+
+    #[test]
+    fn parse_options_recognizes_the_elevated_update_flag() {
+        let opts = parse_options_from([updater::ELEVATED_ARG, "nightly"].into_iter().map(OsString::from));
+        assert_eq!(opts.update_elevated.as_deref(), Some("nightly"));
+        assert!(!opts.update_service);
+        assert!(
+            parse_options_from(["--minimized"].into_iter().map(OsString::from)).update_elevated.is_none()
+        );
     }
 
     #[test]
