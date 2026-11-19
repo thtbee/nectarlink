@@ -141,6 +141,18 @@ pub fn set_channel(channel: Channel) {
     }
 }
 
+/// Whether the installer's update task installs updates on this PC, for
+/// every account on it (asked once).
+pub fn task_installs() -> bool {
+    static REGISTERED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *REGISTERED.get_or_init(task_registered)
+}
+
+/// The channel the update task was told, if any, without asking whether the task is there.
+pub fn machine_channel() -> Option<Channel> {
+    read_service_channel()
+}
+
 /// Where the app tells the update task which channel to follow.
 #[cfg(windows)]
 fn service_channel_file() -> PathBuf {

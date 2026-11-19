@@ -82,6 +82,9 @@ pub mod qobject {
         #[qproperty(bool, install_updates)]
         /// The update channel: "stable" or "nightly" (the build's own when unset).
         #[qproperty(QString, update_channel)]
+        /// Whether the channel is this PC's, for every account on it (Windows'
+        /// update task installs for all of them).
+        #[qproperty(bool, update_channel_shared)]
         /// Tell when a phone's battery is low, or full.
         #[qproperty(bool, battery_alerts)]
         /// Charge level threshold for full battery alerts (e.g. 100 or 80 for protect battery mode).
@@ -362,6 +365,7 @@ pub struct PreferencesRust {
     auto_update: bool,
     install_updates: bool,
     update_channel: QString,
+    update_channel_shared: bool,
     battery_alerts: bool,
     battery_full_threshold: i32,
     ui_scale: i32,
@@ -885,6 +889,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_star_prompt_minutes_changed(|p| p.save()).release();
 
         super::subscribe(self.qt_thread(), crate::state::Changes::PREFS, Self::refresh_runtime_flags);
+        // Asking Windows takes a moment: not on this thread.
+        let qt = self.qt_thread();
+        std::thread::spawn(move || {
+            let shared = crate::updater::task_installs();
+            let _ = qt.queue(move |p| p.set_update_channel_shared(shared));
+        });
     }
 }
 
