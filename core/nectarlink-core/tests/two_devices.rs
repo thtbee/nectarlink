@@ -818,6 +818,35 @@ async fn pair_qr(pc: &mut TestDevice, phone: &mut TestDevice) {
     wait_online(pc, phone_id).await;
 }
 
+/// A quiet healthy link pings once, to check the new session end to end,
+/// and then lives on QUIC's own keepalives: no ping of its own every 15 s.
+/// It stays online, and its round-trip time is known.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_quiet_session_sends_no_pings_after_the_first() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    tokio::time::sleep(Duration::from_secs(21)).await;
+
+    // Still the same live session (a count needs one), with at most one
+    // more ping: a window can look empty when a keepalive arrives just
+    // after the look (about RTT / 5 s of them).
+    for (who, pings) in
+        [("PC", pc.node.heartbeat_pings(&phone_id)), ("phone", phone.node.heartbeat_pings(&pc_id))]
+    {
+        assert!((1..=2).contains(&pings), "{who} sent {pings} pings in 21 s");
+    }
+    // And neither side saw the other go offline meanwhile.
+    for (dev, peer) in [(&mut pc, phone_id), (&mut phone, pc_id)] {
+        while let Ok(event) = dev.events.try_recv() {
+            let went = matches!(event, NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if device == peer);
+            assert!(!went, "{} saw its peer go offline", dev.name);
+        }
+    }
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn qr_pairing_connects_both_devices() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;

@@ -336,6 +336,12 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Less battery on the phone while it's connected.** A quiet connection no longer sends
+  pings of its own every 15 seconds on top of the connection's keepalives; it only checks
+  when nothing has arrived for a while, and a PC that's gone still shows as offline as
+  quickly as before. A small change in the round-trip time also no longer redoes the
+  work of a new connection, and the banking pause sleeps when no apps are chosen. Thanks
+  to [@Roxxust](https://github.com/Roxxust) ([#145](https://github.com/thtbee/nectarlink/issues/145)).
 - **Photos on the PC no longer slows the whole app down with thousands of photos.** Each
   thumbnail that arrived made the PC rebuild the entire gallery, so with a large library
   everything lagged while the grid filled in. Thanks to
