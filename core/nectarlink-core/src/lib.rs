@@ -37,6 +37,7 @@ mod photos;
 pub mod play_on_phone;
 pub mod relays;
 pub mod remote;
+mod resync;
 mod ring;
 mod session;
 mod sms;
@@ -167,6 +168,7 @@ pub use remote::{
     ButtonAction, INPUT_GAMEPAD, INPUT_INJECT, KeyMod, MouseButton, PAD_DRIVER_MISSING, PadState,
     RemoteInput, SlideAction, remote_keys,
 };
+pub use resync::Resync;
 pub use session::is_lan_ip;
 pub use storage::{
     FolderStorage, MAX_LISTED as MAX_STORAGE_LISTED, StorageError, StorageReadFile, TOGGLE as STORAGE_TOGGLE,

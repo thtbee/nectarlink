@@ -3550,9 +3550,12 @@ impl NectarlinkNode {
                     tracing::error!("the app's event listener failed on an event; carrying on");
                 }
             };
+            // What the app was given, so after a lag it gets only what it missed.
+            let mut given = core::Resync::new();
             loop {
                 match events.recv().await {
                     Ok(event) => {
+                        given.note(&event);
                         if let Some(ev) = Event::from_node(event) {
                             deliver(ev);
                         }
@@ -3576,6 +3579,12 @@ impl NectarlinkNode {
                             }
                         }
                         deliver(Event::QueueChanged);
+                        // Transfers, rings and pairing only ever come as events.
+                        for event in given.missed(node_for_events.latest_state()) {
+                            if let Some(ev) = Event::from_node(event) {
+                                deliver(ev);
+                            }
+                        }
                     }
                     Err(RecvError::Closed) => return,
                 }
