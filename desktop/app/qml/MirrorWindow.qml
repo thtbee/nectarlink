@@ -364,6 +364,15 @@ Window {
         windowAppId: win.info.app && (win.info.pkg || "").length > 0
             ? "Nectarlink.App." + (win.info.device || "").slice(0, 8) + "." + win.info.pkg
             : ""
+        // Pinned to the taskbar, it opens this app again (#465).
+        windowRelaunch: {
+            if (!win.info.app || (win.info.pkg || "").length === 0) return ""
+            const relaunch = Mirror.relaunch(win.info.device || "", win.info.pkg)
+            if (relaunch.length === 0) return ""
+            const r = JSON.parse(relaunch)
+            r.name = win.info.title || win.info.pkg
+            return JSON.stringify(r)
+        }
         focus: true
         acceptsText: win.phase === "showing" && win.canControl
         // The emoji panel (Win+.) and input methods give finished text here
