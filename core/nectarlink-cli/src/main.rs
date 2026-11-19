@@ -2638,9 +2638,18 @@ fn main() -> Result<()> {
                         return nectarlink_mcp::cli::mcp(agent, *dispatch, toolsets).await;
                     }
                     Command::Do { action, agent, args, device, pretty } => {
-                        return nectarlink_mcp::cli::run(agent, action, args.as_deref(), device.as_deref(), *pretty).await;
+                        return nectarlink_mcp::cli::run(
+                            agent,
+                            action,
+                            args.as_deref(),
+                            device.as_deref(),
+                            *pretty,
+                        )
+                        .await;
                     }
-                    Command::Actions { agent, pretty } => return nectarlink_mcp::cli::list(agent, *pretty).await,
+                    Command::Actions { agent, pretty } => {
+                        return nectarlink_mcp::cli::list(agent, *pretty).await;
+                    }
                     _ => {}
                 }
 

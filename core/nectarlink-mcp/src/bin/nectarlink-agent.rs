@@ -6,7 +6,11 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
-#[command(name = "nectarlink-agent", version, about = "Lets AI agents use NectarLink, through the running app")]
+#[command(
+    name = "nectarlink-agent",
+    version,
+    about = "Lets AI agents use NectarLink, through the running app"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -56,7 +60,9 @@ fn main() -> anyhow::Result<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread().enable_all().build()?;
     let code = runtime.block_on(async {
         match &cli.command {
-            Command::Mcp { agent, dispatch, toolsets } => nectarlink_mcp::cli::mcp(agent, *dispatch, toolsets).await,
+            Command::Mcp { agent, dispatch, toolsets } => {
+                nectarlink_mcp::cli::mcp(agent, *dispatch, toolsets).await
+            }
             Command::Do { action, agent, args, device, pretty } => {
                 nectarlink_mcp::cli::run(agent, action, args.as_deref(), device.as_deref(), *pretty).await
             }

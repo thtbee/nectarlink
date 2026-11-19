@@ -3,8 +3,8 @@
 //! way into the running NectarLink app. These never start a node of their
 //! own; the app checks every call (docs/agents/README.md).
 
-use anyhow::Result;
 use crate::{AppClient, Mode, client::app_dir};
+use anyhow::Result;
 use serde_json::{Value, json};
 
 /// Exit codes for `nectarlink do`, so scripts can tell what happened.
