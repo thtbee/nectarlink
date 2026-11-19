@@ -517,8 +517,28 @@ fn copy_file_to_clipboard(path: &Path, remove_after: bool, notify_ui: bool) {
 
 // ---- Photos gallery page ----
 
+/// What a cell of the gallery's grid holds (#388): a photo, or space that
+/// ends a day's last row so the next day starts on a row of its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CellKind {
+    #[default]
+    Photo,
+    Gap,
+}
+
+impl CellKind {
+    pub fn name(self) -> &'static str {
+        match self {
+            CellKind::Photo => "photo",
+            CellKind::Gap => "gap",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ItemRow {
+    pub kind: CellKind,
+    /// The photo's ID, or the cell's own for a day's row or a gap.
     pub id: String,
     pub name: String,
     pub date: i64,
@@ -537,8 +557,10 @@ pub struct ItemRow {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Rows {
     All(Vec<ItemRow>),
-    /// Rows to replace by index, then rows to add at the end.
+    /// The first `keep` rows stay, some of them replaced by index; the rest
+    /// go and `appended` follows.
     Patch {
+        keep: usize,
         changed: Vec<(usize, ItemRow)>,
         appended: Vec<ItemRow>,
     },
@@ -551,6 +573,8 @@ pub struct View {
     pub albums: Value,
     pub album: String,
     pub rows: Rows,
+    /// Photos and videos loaded, without the cells around them.
+    pub photo_count: usize,
     pub more: bool,
     pub loading_older: bool,
     pub saving: bool,
@@ -572,6 +596,9 @@ struct GalleryState {
     full_files: HashMap<String, PathBuf>,
     wanted_thumbs: Vec<String>,
     fetching_thumbs: bool,
+    /// The grid's columns, to start each day on a row of its own; 0 or 1
+    /// lays photos out without day rows.
+    columns: u32,
     saving: bool,
     busy_item: Option<String>,
     /// Files waiting for Qt's thread to open the share sheet.
@@ -807,39 +834,19 @@ pub fn view() -> View {
 /// each thumbnail that arrived kept the whole app busy.
 pub fn view_since(shown: &[ItemRow]) -> View {
     gallery_state(|s| {
-        let prefix = !shown.is_empty()
-            && s.items.len() >= shown.len()
-            && s.items.iter().zip(shown).all(|(item, row)| item.id == row.id);
-        let rows = if prefix {
-            let mut changed = Vec::new();
-            for (i, (item, row)) in s.items.iter().zip(shown).enumerate() {
-                let prev_date = if i == 0 { 0 } else { s.items[i - 1].date };
-                if row_differs(s, item, prev_date, row) {
-                    changed.push((i, item_row(s, item, prev_date)));
-                }
-            }
-            let mut prev_date = s.items[shown.len() - 1].date;
-            let appended = s.items[shown.len()..]
-                .iter()
-                .map(|item| {
-                    let row = item_row(s, item, prev_date);
-                    prev_date = item.date;
-                    row
-                })
-                .collect();
-            Rows::Patch { changed, appended }
+        let cells = cells(s);
+        let keep = cells.iter().zip(shown).take_while(|(cell, row)| cell.id() == row.id).count();
+        let rows = if keep == 0 {
+            Rows::All(cells.iter().map(|cell| cell.row(s)).collect())
         } else {
-            let mut prev_date = 0i64;
-            Rows::All(
-                s.items
-                    .iter()
-                    .map(|item| {
-                        let row = item_row(s, item, prev_date);
-                        prev_date = item.date;
-                        row
-                    })
-                    .collect(),
-            )
+            let changed = cells[..keep]
+                .iter()
+                .zip(shown)
+                .enumerate()
+                .filter(|(_, (cell, row))| cell.differs(s, row))
+                .map(|(i, (cell, _))| (i, cell.row(s)))
+                .collect();
+            Rows::Patch { keep, changed, appended: cells[keep..].iter().map(|cell| cell.row(s)).collect() }
         };
         let albums = Value::Array(
             s.albums
@@ -876,6 +883,7 @@ pub fn view_since(shown: &[ItemRow]) -> View {
             albums,
             album: s.album.clone(),
             rows,
+            photo_count: s.items.len(),
             more: s.more,
             loading_older: s.loading_older,
             saving: s.saving,
@@ -889,8 +897,107 @@ fn full_url_of(s: &GalleryState, id: &str) -> String {
     s.full_files.get(id).filter(|p| p.exists()).map(|p| crate::icons::file_url(p)).unwrap_or_default()
 }
 
+/// A cell of the grid, before it's a row.
+enum Cell<'a> {
+    Photo { item: &'a PhotoItem, prev_date: i64 },
+    Filler { kind: CellKind, id: String, date: i64 },
+}
+
+impl Cell<'_> {
+    fn id(&self) -> &str {
+        match self {
+            Cell::Photo { item, .. } => &item.id,
+            Cell::Filler { id, .. } => id,
+        }
+    }
+
+    fn row(&self, s: &GalleryState) -> ItemRow {
+        match self {
+            Cell::Photo { item, prev_date } => item_row(s, item, *prev_date),
+            Cell::Filler { kind, id, date } => ItemRow {
+                kind: *kind,
+                id: id.clone(),
+                name: String::new(),
+                date: *date,
+                prev_date: 0,
+                size: 0,
+                width: 0,
+                height: 0,
+                duration: 0,
+                is_video: false,
+                album: String::new(),
+                thumb: String::new(),
+                full_url: String::new(),
+            },
+        }
+    }
+
+    fn differs(&self, s: &GalleryState, row: &ItemRow) -> bool {
+        match self {
+            Cell::Photo { item, prev_date } => row_differs(s, item, *prev_date, row),
+            Cell::Filler { date, .. } => row.date != *date,
+        }
+    }
+}
+
+const DAY_MS: i64 = 86_400_000;
+
+/// The cells of the grid: with columns known, each day's last row is filled
+/// up, so the next day starts on a row of its own.
+fn cells(s: &GalleryState) -> Vec<Cell<'_>> {
+    let columns = s.columns as usize;
+    let mut cells = Vec::with_capacity(s.items.len() + if columns > 1 { s.items.len() / 4 } else { 0 });
+    let mut prev_date = 0i64;
+    let mut day_now: Option<i64> = None;
+    let mut in_row = 0usize;
+    // The local offset only changes with the clocks: look it up once an hour of photos.
+    let mut offset: Option<(i64, i64)> = None;
+    for item in &s.items {
+        if columns > 1 {
+            let hour = item.date.div_euclid(3_600_000);
+            let off = match offset {
+                Some((h, off)) if h == hour => off,
+                _ => {
+                    let off = crate::win::local_offset_ms(item.date);
+                    offset = Some((hour, off));
+                    off
+                }
+            };
+            let day = (item.date + off).div_euclid(DAY_MS);
+            if day_now != Some(day) {
+                if let Some(ended) = day_now
+                    && in_row > 0
+                {
+                    for k in in_row..columns {
+                        cells.push(Cell::Filler {
+                            kind: CellKind::Gap,
+                            id: format!("gap:{ended}:{k}"),
+                            date: prev_date,
+                        });
+                    }
+                }
+                day_now = Some(day);
+                in_row = 0;
+            }
+            in_row = (in_row + 1) % columns;
+        }
+        cells.push(Cell::Photo { item, prev_date });
+        prev_date = item.date;
+    }
+    cells
+}
+
+/// Lays the grid out for `columns` (#388).
+pub fn set_columns(columns: u32) {
+    let changed = gallery_state(|s| std::mem::replace(&mut s.columns, columns) != columns);
+    if changed {
+        gallery_changed();
+    }
+}
+
 fn item_row(s: &GalleryState, item: &PhotoItem, prev_date: i64) -> ItemRow {
     ItemRow {
+        kind: CellKind::Photo,
         id: item.id.clone(),
         name: item.name.clone(),
         date: item.date,
@@ -1723,6 +1830,58 @@ mod tests {
         }
     }
 
+    /// A photo at `minute` past local noon on `day` days before a fixed day.
+    fn photo_on(i: usize, day: i64, minute: i64) -> PhotoItem {
+        let noon_utc = (20_000 - day) * DAY_MS + 12 * 3_600_000;
+        let date = noon_utc - crate::win::local_offset_ms(noon_utc) + minute * 60_000;
+        PhotoItem { date, ..photo(i) }
+    }
+
+    fn kinds(rows: &[ItemRow]) -> String {
+        rows.iter()
+            .map(|r| match r.kind {
+                CellKind::Photo => 'p',
+                CellKind::Gap => '.',
+            })
+            .collect()
+    }
+
+    #[test]
+    fn each_day_starts_a_row_of_its_own() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let day_a = (0..5).map(|i| photo_on(i, 0, 10 - i as i64));
+        let day_b = (5..7).map(|i| photo_on(i, 2, 10 - i as i64));
+        gallery_state(|s| {
+            *s = GalleryState {
+                status: Status::Ready,
+                columns: 4,
+                items: day_a.chain(day_b).collect(),
+                ..Default::default()
+            }
+        });
+        let shown = all_rows(&view()).to_vec();
+        assert_eq!(kinds(&shown), "ppppp...pp");
+        assert_eq!(view().photo_count, 7);
+
+        // More of the same day only adds at the end.
+        gallery_state(|s| s.items.extend((7..9).map(|i| photo_on(i, 2, 1 - i as i64))));
+        let Rows::Patch { keep, changed, appended } = view_since(&shown).rows else {
+            panic!("expected a patch")
+        };
+        assert_eq!((keep, changed.len(), kinds(&appended).as_str()), (shown.len(), 0, "pp"));
+
+        // Day B fills its row exactly: a new day needs no gap.
+        let shown = all_rows(&view()).to_vec();
+        gallery_state(|s| s.items.push(photo_on(9, 5, 0)));
+        let Rows::Patch { keep, appended, .. } = view_since(&shown).rows else { panic!("expected a patch") };
+        assert_eq!((keep, kinds(&appended).as_str()), (shown.len(), "p"));
+
+        // Without columns, just the photos.
+        gallery_state(|s| s.columns = 0);
+        assert_eq!(kinds(all_rows(&view())), "pppppppppp");
+        gallery_state(|s| *s = GalleryState::default());
+    }
+
     #[test]
     fn a_new_thumbnail_rebuilds_only_its_row() {
         let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
@@ -1735,13 +1894,19 @@ mod tests {
         });
         let shown = all_rows(&view()).to_vec();
 
-        assert_eq!(view_since(&shown).rows, Rows::Patch { changed: Vec::new(), appended: Vec::new() });
+        assert_eq!(
+            view_since(&shown).rows,
+            Rows::Patch { keep: 5_000, changed: Vec::new(), appended: Vec::new() }
+        );
 
         gallery_state(|s| {
             s.thumbs.insert("media:42".into(), PathBuf::from("C:/cache/thumb-42.jpg"));
             s.items.extend((5_000..5_080).map(photo));
         });
-        let Rows::Patch { changed, appended } = view_since(&shown).rows else { panic!("expected a patch") };
+        let Rows::Patch { keep, changed, appended } = view_since(&shown).rows else {
+            panic!("expected a patch")
+        };
+        assert_eq!(keep, 5_000);
         assert_eq!(changed.len(), 1);
         assert_eq!(changed[0].0, 42);
         assert!(changed[0].1.thumb.ends_with("thumb-42.jpg"));

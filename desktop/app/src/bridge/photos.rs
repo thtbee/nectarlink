@@ -13,7 +13,7 @@ use serde_json::json;
 
 use super::{Edit, diff};
 use crate::{
-    photos::{self, ItemRow, Rows},
+    photos::{self, CellKind, ItemRow, Rows},
     state::Changes,
 };
 
@@ -49,7 +49,10 @@ pub mod qobject {
         #[qproperty(QString, albums)]
         /// Selected album ID ("" for All photos).
         #[qproperty(QString, album)]
+        /// Rows in the grid, with the day rows and gaps around the photos.
         #[qproperty(i32, count)]
+        /// Photos and videos loaded.
+        #[qproperty(i32, photo_count, cxx_name = "photoCount")]
         #[qproperty(bool, more)]
         #[qproperty(bool, loading_older, cxx_name = "loadingOlder")]
         #[qproperty(bool, saving)]
@@ -152,6 +155,16 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "dateAt"]
         fn date_at(self: &Photos, row: i32) -> f64;
+        /// Lays the grid out for this many columns, each day on rows of its own.
+        #[qinvokable]
+        #[cxx_name = "setColumns"]
+        fn set_columns(self: &Photos, columns: i32);
+        /// The row of the photo `delta` photos from `row` (-1 if none).
+        #[qinvokable]
+        fn step(self: &Photos, row: i32, delta: i32) -> i32;
+        /// Which photo `row` is, counting from 1 (0 for a day row or gap).
+        #[qinvokable]
+        fn ordinal(self: &Photos, row: i32) -> i32;
         #[qinvokable]
         #[cxx_name = "startDrag"]
         fn start_drag(self: &Photos, id: &QString) -> bool;
@@ -168,6 +181,7 @@ pub struct PhotosRust {
     albums: QString,
     album: QString,
     count: i32,
+    photo_count: i32,
     more: bool,
     loading_older: bool,
     saving: bool,
@@ -179,6 +193,7 @@ pub struct PhotosRust {
 }
 
 const ROLES: &[&str] = &[
+    "kind",
     "itemId",
     "name",
     "date",
@@ -199,7 +214,9 @@ const MAX_ROW_EDITS: usize = 64;
 fn role_value(row: &ItemRow, role: &str) -> QVariant {
     let text = |s: &str| QVariant::from(&QString::from(s));
     match role {
-        "itemId" => text(&row.id),
+        "kind" => text(row.kind.name()),
+        // A day row or gap is no photo: nothing to select or fetch.
+        "itemId" => text(if row.kind == CellKind::Photo { &row.id } else { "" }),
         "name" => text(&row.name),
         "date" => QVariant::from(&(row.date as f64)),
         "prevDate" => QVariant::from(&(row.prev_date as f64)),
@@ -268,7 +285,17 @@ impl qobject::Photos {
 
         let root = QModelIndex::default();
         match view.rows {
-            Rows::Patch { changed, appended } => {
+            Rows::Patch { keep, changed, appended } => {
+                if keep < self.rows.len() {
+                    let first = keep as i32;
+                    let last = self.rows.len() as i32 - 1;
+                    // SAFETY: keep..len exists; begin/end are balanced.
+                    unsafe {
+                        self.as_mut().begin_remove_rows(&root, first, last);
+                        self.as_mut().rust_mut().rows.truncate(keep);
+                        self.as_mut().end_remove_rows();
+                    }
+                }
                 for (row, item) in changed {
                     self.as_mut().rust_mut().rows[row] = item;
                     let index = self.index(row as i32, 0, &root);
@@ -289,6 +316,7 @@ impl qobject::Photos {
         }
         let count = self.rows.len() as i32;
         self.as_mut().set_count(count);
+        self.as_mut().set_photo_count(i32::try_from(view.photo_count).unwrap_or(i32::MAX));
         let rev = self.revision().wrapping_add(1);
         self.set_revision(rev);
     }
@@ -430,7 +458,9 @@ impl qobject::Photos {
     }
 
     pub fn item_at(&self, row: i32) -> QString {
-        let Some(r) = usize::try_from(row).ok().and_then(|i| self.rows.get(i)) else {
+        let Some(r) =
+            usize::try_from(row).ok().and_then(|i| self.rows.get(i)).filter(|r| r.kind == CellKind::Photo)
+        else {
             return QString::from("null");
         };
         QString::from(
@@ -452,10 +482,40 @@ impl qobject::Photos {
         )
     }
 
+    pub fn set_columns(&self, columns: i32) {
+        photos::set_columns(u32::try_from(columns).unwrap_or(0));
+    }
+
+    pub fn step(&self, row: i32, delta: i32) -> i32 {
+        let Ok(start) = usize::try_from(row) else { return -1 };
+        let mut left = delta.unsigned_abs();
+        let mut at = start;
+        while left > 0 {
+            at = match if delta > 0 { at.checked_add(1) } else { at.checked_sub(1) } {
+                Some(next) if next < self.rows.len() => next,
+                _ => return -1,
+            };
+            if self.rows[at].kind == CellKind::Photo {
+                left -= 1;
+            }
+        }
+        i32::try_from(at).unwrap_or(-1)
+    }
+
+    pub fn ordinal(&self, row: i32) -> i32 {
+        let Some(end) = usize::try_from(row).ok().filter(|&r| r < self.rows.len()) else { return 0 };
+        if self.rows[end].kind != CellKind::Photo {
+            return 0;
+        }
+        let n = self.rows[..=end].iter().filter(|r| r.kind == CellKind::Photo).count();
+        i32::try_from(n).unwrap_or(0)
+    }
+
     pub fn id_at(&self, row: i32) -> QString {
         usize::try_from(row)
             .ok()
             .and_then(|i| self.rows.get(i))
+            .filter(|r| r.kind == CellKind::Photo)
             .map(|r| QString::from(&r.id))
             .unwrap_or_default()
     }
@@ -480,6 +540,7 @@ mod tests {
     #[test]
     fn roles_describe_gallery_item() {
         let row = ItemRow {
+            kind: photos::CellKind::Photo,
             id: "media:42".into(),
             name: "IMG_0042.jpg".into(),
             date: 1_710_000_000_000,
