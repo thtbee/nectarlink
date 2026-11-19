@@ -36,6 +36,9 @@ pub mod qobject {
         #[qml_element]
         #[qml_singleton]
         #[qproperty(i32, count)]
+        // Goes up whenever a row changes, moves or comes and goes, for
+        // bindings that read rows through deviceIdAt and deviceNameAt.
+        #[qproperty(i32, revision)]
         type DeviceList = super::DeviceListRust;
     }
 
@@ -104,13 +107,21 @@ pub mod qobject {
 struct Row {
     device: DeviceView,
     screen_json: String,
+    /// The name the user gave it, part of the row so renaming it updates the row.
+    nickname: Option<String>,
 }
 
 impl Row {
     fn from_device(device: DeviceView) -> Self {
         let screen_json =
             device.info.screen.as_ref().and_then(|s| serde_json::to_string(s).ok()).unwrap_or_default();
-        Self { device, screen_json }
+        let nickname = crate::settings::nickname_for(&device.id.to_string());
+        Self { device, screen_json, nickname }
+    }
+
+    /// The name shown: the nickname, or the device's own.
+    fn shown_name(&self) -> &str {
+        self.nickname.as_deref().unwrap_or(&self.device.info.name)
     }
 }
 
@@ -125,6 +136,7 @@ impl std::ops::Deref for Row {
 #[derive(Default)]
 pub struct DeviceListRust {
     count: i32,
+    revision: i32,
     rows: Vec<Row>,
 }
 
@@ -161,12 +173,9 @@ fn role_value(device: &Row, role: &str) -> QVariant {
     let text = |s: &str| QVariant::from(&QString::from(s));
     match role {
         "deviceId" => text(&device.id.to_string()),
-        "name" => text(
-            &crate::settings::nickname_for(&device.id.to_string())
-                .unwrap_or_else(|| device.info.name.clone()),
-        ),
+        "name" => text(device.shown_name()),
         "rawName" => text(&device.info.name),
-        "hasNickname" => QVariant::from(&crate::settings::nickname_for(&device.id.to_string()).is_some()),
+        "hasNickname" => QVariant::from(&device.nickname.is_some()),
         "kind" => text(match device.info.kind {
             DeviceKind::Phone => "phone",
             DeviceKind::Tablet => "tablet",
@@ -235,7 +244,9 @@ impl qobject::DeviceList {
         let new: Vec<Row> =
             core_host::host().hub.read(|s| s.devices.iter().cloned().map(Row::from_device).collect());
         let root = QModelIndex::default();
-        for edit in diff(&self.rows, &new, |d| d.id) {
+        let edits = diff(&self.rows, &new, |d| d.id);
+        let edited = !edits.is_empty();
+        for edit in edits {
             match edit {
                 Edit::Remove(row) => {
                     let r = row as i32;
@@ -263,7 +274,11 @@ impl qobject::DeviceList {
             }
         }
         let count = self.rows.len() as i32;
-        self.set_count(count);
+        self.as_mut().set_count(count);
+        if edited {
+            let revision = self.revision().wrapping_add(1).max(0);
+            self.set_revision(revision);
+        }
     }
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
@@ -304,11 +319,7 @@ impl qobject::DeviceList {
         usize::try_from(row)
             .ok()
             .and_then(|i| self.rows.get(i))
-            .map(|d| {
-                let name =
-                    crate::settings::nickname_for(&d.id.to_string()).unwrap_or_else(|| d.info.name.clone());
-                QString::from(&name)
-            })
+            .map(|d| QString::from(d.shown_name()))
             .unwrap_or_default()
     }
 }
