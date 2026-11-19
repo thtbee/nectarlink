@@ -373,6 +373,8 @@ change things that need a step from you, and its notes say so.
 - **Transfers, rings and pairing catch up when the app falls behind.** In a very busy
   moment the app can miss some of what happens; a transfer could then stay "receiving", a
   ring stay on screen or pairing wait forever. The app now gets what it missed.
+- **Switching the phone's update channel during a check no longer offers the old
+  channel's build,** or installs it by itself.
 - **Pairing from the PC's list of nearby phones works.** Picking a phone there said it
   couldn't reach the phone, because the phone only took pairing it started itself. While
   its pairing screen is open, the phone now accepts it from either side.

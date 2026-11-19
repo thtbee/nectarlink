@@ -192,8 +192,13 @@ class AppUpdater(context: Context) {
 
     private suspend fun installIfAutomatic() {
         val available = (_state.value as? State.Available)?.update ?: return
+        // Found for another channel than the one picked now: not this one's to install.
+        if (availableFor != _channel.value) return
         if (_autoInstall.value && canInstall()) install(available, automatic = true)
     }
+
+    /** The channel the update in [State.Available] was found for. */
+    @Volatile private var availableFor: Channel? = null
 
     /**
      * Checks when due: daily on Stable, every six hours on Nightly (call when the
@@ -209,16 +214,23 @@ class AppUpdater(context: Context) {
     /** Checks now; returns whether an update is available. Leaves an install in progress alone. */
     suspend fun check(): Boolean {
         if (!enabled || isBusy()) return _state.value is State.Available
-        _state.value = State.Checking
-        val found = withContext(Dispatchers.IO) {
-            runCatching { latest() }.onFailure { Log.i(TAG, "couldn't check for updates", it) }
+        while (true) {
+            val channel = _channel.value
+            _state.value = State.Checking
+            val found = withContext(Dispatchers.IO) {
+                runCatching { latest(channel) }.onFailure { Log.i(TAG, "couldn't check for updates", it) }
+            }
+            // The channel changed while this ran (its own check found this one
+            // busy): what was found is for the old one, so check the new one.
+            if (_channel.value != channel) continue
+            prefs.edit { putLong(LAST_CHECK, System.currentTimeMillis()) }
+            availableFor = channel
+            _state.value = found.fold(
+                onSuccess = { update -> update?.let { State.Available(it) } ?: State.UpToDate },
+                onFailure = { State.Failed(null, Reason.Offline) },
+            )
+            return _state.value is State.Available
         }
-        prefs.edit { putLong(LAST_CHECK, System.currentTimeMillis()) }
-        _state.value = found.fold(
-            onSuccess = { update -> update?.let { State.Available(it) } ?: State.UpToDate },
-            onFailure = { State.Failed(null, Reason.Offline) },
-        )
-        return _state.value is State.Available
     }
 
     /** Checks now, from a button. */
@@ -236,8 +248,8 @@ class AppUpdater(context: Context) {
      * last nightly is for nightly installs too), or until a feed is published,
      * from GitHub's latest release.
      */
-    private fun latest(): Update? {
-        val feeds = if (_channel.value == Channel.Nightly) listOf(Channel.Stable, Channel.Nightly) else listOf(Channel.Stable)
+    private fun latest(channel: Channel): Update? {
+        val feeds = if (channel == Channel.Nightly) listOf(Channel.Stable, Channel.Nightly) else listOf(Channel.Stable)
         var published = false
         var newest: Update? = null
         var failure: Exception? = null
