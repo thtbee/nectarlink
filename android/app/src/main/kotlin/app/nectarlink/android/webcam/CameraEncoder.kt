@@ -90,6 +90,8 @@ internal class CameraEncoder(
     @Volatile private var running = true
     @Volatile private var keyframeWanted = false
     @Volatile private var hevcFailed = false
+    /** Times the H.264 encoder was started again after it failed while streaming. */
+    @Volatile private var h264Restarts = 0
     @Volatile private var cameraFacing: String = if (initialCamera == "front") "front" else "back"
 
     /** Whether the camera in use and the encoder can both do 4K. */
@@ -550,9 +552,19 @@ internal class CameraEncoder(
             } catch (e: Exception) {
                 if (active.get() && running) {
                     Log.w(TAG, "webcam encoder drain interrupted", e)
-                    if (codecName == "h265") {
-                        hevcFailed = true
-                        main.post { if (running && activeCodec === this) bindCamera() }
+                    when {
+                        codecName == "h265" -> {
+                            hevcFailed = true
+                            main.post { if (running && activeCodec === this) bindCamera() }
+                        }
+                        // Android can take the codec back for another app: start it
+                        // again once, and if that fails too, end the stream (the PC
+                        // hears it ended) rather than leave it frozen with the camera on.
+                        h264Restarts < MAX_H264_RESTARTS -> {
+                            h264Restarts++
+                            main.post { if (running && activeCodec === this) bindCamera() }
+                        }
+                        else -> this@CameraEncoder.stop()
                     }
                 }
             }
@@ -562,6 +574,7 @@ internal class CameraEncoder(
     companion object {
         private const val TAG = "CameraEncoder"
         private const val WAIT_US = 40_000L
+        private const val MAX_H264_RESTARTS = 1
         private const val I_FRAME_INTERVAL_SEC = 2
 
         /** Only offer hardware HEVC encoding at the actual requested size/rate. */

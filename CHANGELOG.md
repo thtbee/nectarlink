@@ -375,6 +375,8 @@ change things that need a step from you, and its notes say so.
   ring stay on screen or pairing wait forever. The app now gets what it missed.
 - **Switching the phone's update channel during a check no longer offers the old
   channel's build,** or installs it by itself.
+- **The phone as a webcam recovers when Android takes its video encoder away.** It
+  starts it again, or ends the stream, instead of leaving the PC a frozen picture.
 - **Pairing from the PC's list of nearby phones works.** Picking a phone there said it
   couldn't reach the phone, because the phone only took pairing it started itself. While
   its pairing screen is open, the phone now accepts it from either side.
