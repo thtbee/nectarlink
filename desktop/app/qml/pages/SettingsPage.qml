@@ -2171,6 +2171,18 @@ Item {
                             }
                         }
                         Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.pause
+                            title: qsTr("Keep pop-ups paused after a restart")
+                            description: qsTr("Pause pop-ups on Home stays on until you resume them, even when NectarLink or the PC restarts.")
+                            Toggle {
+                                label: qsTr("Keep pop-ups paused after a restart")
+                                checked: Preferences.keepPopupsPaused
+                                onToggled: (on) => Preferences.keepPopupsPaused = on
+                            }
+                        }
+                        Divider { width: parent.width }
 
                         // Row 1: Follow phone Do not disturb | Forward PC notifications
                         Item {

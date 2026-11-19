@@ -163,6 +163,7 @@ static AWAY_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool:
 static FLOW_FOLLOW_CLIPBOARD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 static MIRROR_QUALITY: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 static SYNC_PASSWORDS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static KEEP_POPUPS_PAUSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static USB_DEBUGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 static SYNC_WIFI_ONLY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static OPEN_SHARED_FILES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -209,6 +210,32 @@ pub fn sync_passwords() -> bool {
 
 pub fn set_sync_passwords(on: bool) {
     SYNC_PASSWORDS.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Whether pausing pop-ups lasts until it's resumed, even across restarts (#442).
+pub fn keep_popups_paused() -> bool {
+    KEEP_POPUPS_PAUSED.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub fn set_keep_popups_paused(on: bool) {
+    KEEP_POPUPS_PAUSED.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Saves whether pop-ups are paused, when that's kept across restarts.
+pub fn remember_popups_paused(paused: bool) {
+    if !keep_popups_paused() {
+        return;
+    }
+    let dir = crate::core_host::host().data_dir.clone();
+    let _ = std::thread::Builder::new().name("save-popups-paused".into()).spawn(move || {
+        let mut settings = Settings::load(&dir);
+        if settings.popups_paused != paused {
+            settings.popups_paused = paused;
+            if let Err(e) = settings.save(&dir) {
+                tracing::warn!(error = %e, "can't save whether pop-ups are paused");
+            }
+        }
+    });
 }
 
 pub fn sync_wifi_only() -> bool {
@@ -612,6 +639,12 @@ pub struct Settings {
     /// What password managers mark private also goes to phones.
     #[serde(default, alias = "sync_passwords")]
     pub sync_passwords: bool,
+    /// Pausing pop-ups lasts across restarts until it's resumed (#442).
+    #[serde(default, alias = "keep_popups_paused")]
+    pub keep_popups_paused: bool,
+    /// Whether pop-ups were paused, kept only with `keep_popups_paused`.
+    #[serde(default, alias = "popups_paused")]
+    pub popups_paused: bool,
     /// Use phones' USB debugging (adb) for USB features; off, never ask (#439).
     #[serde(default = "default_true", alias = "usb_debugging")]
     pub usb_debugging: bool,
@@ -781,6 +814,8 @@ impl Default for Settings {
             open_shared_files: false,
             sync_wifi_only: false,
             sync_passwords: false,
+            keep_popups_paused: false,
+            popups_paused: false,
             usb_debugging: true,
             notification_history_days: 1,
             mirror_quality: String::new(),
@@ -856,6 +891,7 @@ impl Settings {
         set_open_shared_files(self.open_shared_files);
         set_sync_wifi_only(self.sync_wifi_only);
         set_sync_passwords(self.sync_passwords);
+        set_keep_popups_paused(self.keep_popups_paused);
         set_usb_debugging(self.usb_debugging);
         crate::state::set_history_days(self.notification_history_days);
         set_mirror_quality(&self.mirror_quality);
@@ -1068,6 +1104,8 @@ mod tests {
             open_shared_files: true,
             sync_wifi_only: true,
             sync_passwords: true,
+            keep_popups_paused: true,
+            popups_paused: true,
             usb_debugging: false,
             notification_history_days: 7,
             mirror_quality: "sharper".into(),

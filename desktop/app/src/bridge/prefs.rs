@@ -120,6 +120,7 @@ pub mod qobject {
         #[qproperty(bool, open_shared_files)]
         #[qproperty(bool, sync_wifi_only)]
         #[qproperty(bool, sync_passwords)]
+        #[qproperty(bool, keep_popups_paused, cxx_name = "keepPopupsPaused")]
         /// Use phones' USB debugging for USB features (#439); applies on restart.
         #[qproperty(bool, usb_debugging)]
         /// How many days notification history is kept: 1, 3, 7 or 30 (#442).
@@ -382,6 +383,7 @@ pub struct PreferencesRust {
     open_shared_files: bool,
     sync_wifi_only: bool,
     sync_passwords: bool,
+    keep_popups_paused: bool,
     usb_debugging: bool,
     notification_history_days: i32,
     mirror_quality: QString,
@@ -492,6 +494,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_open_shared_files(settings.open_shared_files);
         self.as_mut().set_sync_wifi_only(settings.sync_wifi_only);
         self.as_mut().set_sync_passwords(settings.sync_passwords);
+        self.as_mut().set_keep_popups_paused(settings.keep_popups_paused);
         self.as_mut().set_usb_debugging(settings.usb_debugging);
         self.as_mut().set_notification_history_days(settings.notification_history_days as i32);
         self.as_mut().set_mirror_quality(QString::from(crate::settings::mirror_quality().name()));
@@ -788,6 +791,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_sync_passwords_changed(|p| {
                 crate::settings::set_sync_passwords(p.sync_passwords);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_keep_popups_paused_changed(|p| {
+                crate::settings::set_keep_popups_paused(p.keep_popups_paused);
                 p.save();
             })
             .release();
@@ -1246,6 +1255,8 @@ impl qobject::Preferences {
             open_shared_files: p.open_shared_files,
             sync_wifi_only: p.sync_wifi_only,
             sync_passwords: p.sync_passwords,
+            keep_popups_paused: p.keep_popups_paused,
+            popups_paused: p.keep_popups_paused && crate::notifications::paused(),
             usb_debugging: p.usb_debugging,
             notification_history_days: u32::try_from(p.notification_history_days).unwrap_or(1),
             mirror_quality: String::from(&p.mirror_quality),
