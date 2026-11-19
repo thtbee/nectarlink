@@ -220,6 +220,10 @@ struct SavedWindows {
     /// (Ctrl + mouse wheel); missing is 100.
     #[serde(default)]
     zoom: HashMap<String, u32>,
+    /// `<device>/<pkg>` (or `<device>/#screen`) shown with light and dark
+    /// swapped, for apps with no dark mode of their own.
+    #[serde(default)]
+    dark: HashSet<String>,
 }
 
 impl SavedWindows {
@@ -869,6 +873,37 @@ pub fn flexible(window: &Window) -> bool {
             let pkg = s.windows.get(window).and_then(|w| w.pkg.clone());
             pkg.is_none_or(|pkg| !s.saved.fixed.contains(&format!("{}/{pkg}", window.device)))
         })
+}
+
+/// What a window's saved choices are kept under: its app, or the screen.
+fn saved_key(s: &State, window: &Window) -> Option<String> {
+    if window.session == MIRROR_SCREEN {
+        return Some(format!("{}/{SCREEN_GEOMETRY}", window.device));
+    }
+    let pkg = s.windows.get(window).and_then(|w| w.pkg.as_deref())?;
+    Some(format!("{}/{pkg}", window.device))
+}
+
+/// Whether a window shows its picture with light and dark swapped.
+pub fn dark(window: &Window) -> bool {
+    state(|s| saved_key(s, window).is_some_and(|key| s.saved.dark.contains(&key)))
+}
+
+/// Swaps light and dark in a window's picture, or stops, for its app (or
+/// the phone's screen) from now on. For apps with no dark mode, like a map
+/// that stays white.
+pub fn set_dark(window: Window, on: bool) {
+    let changed = state(|s| {
+        let Some(key) = saved_key(s, &window) else { return false };
+        let changed = if on { s.saved.dark.insert(key) } else { s.saved.dark.remove(&key) };
+        if changed {
+            s.saved.save();
+        }
+        changed
+    });
+    if changed {
+        core_host::host().hub.changed(Changes::MIRROR);
+    }
 }
 
 /// Turns an app window's flexible display on or off, for its app. Off, the

@@ -41,6 +41,8 @@ Window {
     // An app window whose display follows its size (see Mirror.setFlexible);
     // otherwise the display keeps the phone's resolution and the window its shape.
     readonly property bool flexible: info.app === true && info.flexible !== false
+    // Light and dark swapped in the picture, for apps with no dark mode.
+    readonly property bool dark: info.dark === true
     // A flexible window between its size changing and the phone's picture
     // of the new size: frost covers it (see `frost`), and the phone is told
     // the size once, when the edge is let go.
@@ -361,6 +363,10 @@ Window {
         keepShape: win.info.app === true && !win.flexible
         fillsNearShape: win.info.app === true
         windowIcon: win.info.icon || ""
+        layer.enabled: win.dark
+        layer.effect: ShaderEffect {
+            fragmentShader: "qrc:/shaders/darken.frag.qsb"
+        }
         windowAppId: win.info.app && (win.info.pkg || "").length > 0
             ? "Nectarlink.App." + (win.info.device || "").slice(0, 8) + "." + win.info.pkg
             : ""
@@ -729,6 +735,13 @@ Window {
                 size: 12
                 color: "white"
                 text: win.formatDuration(win.recordingElapsedSecs)
+            }
+            IconButton {
+                id: darkBtn
+                iconPath: Icons.moon
+                iconColor: win.dark ? Theme.primary : "white"
+                label: win.dark ? qsTr("Show the picture as it is") : qsTr("Dark picture: swap light and dark")
+                onClicked: Mirror.setDark(win.mirrorKey, !win.dark)
             }
             IconButton {
                 id: flexibleBtn

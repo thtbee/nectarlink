@@ -164,7 +164,7 @@ fn icon_file() -> Vec<u8> {
 }
 
 /// Fragment shaders, served under `qrc:/shaders/`.
-const SHADERS: &[&str] = &["glassrim.frag", "hive.frag"];
+const SHADERS: &[&str] = &["darken.frag", "glassrim.frag", "hive.frag"];
 
 /// Compiles the shaders with Qt's `qsb` when it can be found (next to qmake, or on PATH),
 /// otherwise uses the compiled copies committed beside the sources. Returns the qrc path.
