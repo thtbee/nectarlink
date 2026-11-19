@@ -78,3 +78,44 @@ impl From<rusqlite::Error> for Error {
 pub(crate) fn net(err: impl std::fmt::Display) -> Error {
     Error::Network(err.to_string())
 }
+
+/// Like [`net`], with every cause after it ("Service 'mdns' error: Cannot
+/// bind to IPv4 or IPv6"): the top error alone often says too little (#466).
+pub(crate) fn net_chain(err: &(dyn std::error::Error + 'static)) -> Error {
+    let mut text = err.to_string();
+    let mut cause = err.source();
+    while let Some(next) = cause {
+        let more = next.to_string();
+        if !text.contains(&more) {
+            text.push_str(": ");
+            text.push_str(&more);
+        }
+        cause = next.source();
+    }
+    Error::Network(text)
+}
+
+#[cfg(test)]
+mod chain_tests {
+    use super::*;
+
+    #[derive(Debug)]
+    struct Outer(std::io::Error);
+    impl std::fmt::Display for Outer {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("Service 'mdns' error")
+        }
+    }
+    impl std::error::Error for Outer {
+        fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+            Some(&self.0)
+        }
+    }
+
+    #[test]
+    fn a_network_error_keeps_its_causes() {
+        let err = Outer(std::io::Error::other("Cannot bind to IPv4 or IPv6"));
+        let Error::Network(text) = net_chain(&err) else { panic!("not a network error") };
+        assert_eq!(text, "Service 'mdns' error: Cannot bind to IPv4 or IPv6");
+    }
+}

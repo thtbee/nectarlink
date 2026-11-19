@@ -233,22 +233,42 @@ pub fn refresh_capabilities() {
     });
 }
 
+/// How many times a start that failed on the network is tried again, with
+/// the wait before each: at sign-in the network may still be coming up (#466).
+const START_RETRIES: [Duration; 3] =
+    [Duration::from_secs(3), Duration::from_secs(10), Duration::from_secs(30)];
+
 async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     let host = host();
     let wake = crate::win::wol::query_wake_status();
-    let mut config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
-    config.downloads_dir = Some(downloads_dir());
-    config.adb_server = adb_enabled().then_some(nectarlink_core::DEFAULT_ADB_ADDR);
-    let settings = crate::settings::Settings::load(&data_dir);
-    config.away_mode = settings.away_mode;
-    #[cfg(target_os = "linux")]
-    {
-        config.network_interface = Some(settings.network_interface);
+    let config = || {
+        let mut config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
+        config.downloads_dir = Some(downloads_dir());
+        config.adb_server = adb_enabled().then_some(nectarlink_core::DEFAULT_ADB_ADDR);
+        let settings = crate::settings::Settings::load(&data_dir);
+        config.away_mode = settings.away_mode;
+        #[cfg(target_os = "linux")]
+        {
+            config.network_interface = Some(settings.network_interface);
+        }
+        // This PC's own players, for phones (crate::win::media_sessions).
+        config.capabilities = compute_capabilities(None);
+        config
+    };
+    let first = config();
+    let initial_caps = first.capabilities.clone();
+    let mut started = Node::start(first, platform.clone()).await;
+    for wait in START_RETRIES {
+        match &started {
+            Err(e @ nectarlink_core::Error::Network(_)) => {
+                tracing::warn!(error = %e, retry_in_s = wait.as_secs(), "core couldn't start; trying again");
+                tokio::time::sleep(wait).await;
+                started = Node::start(config(), platform.clone()).await;
+            }
+            _ => break,
+        }
     }
-    // This PC's own players, for phones (crate::win::media_sessions).
-    config.capabilities = compute_capabilities(None);
-    let initial_caps = config.capabilities.clone();
-    let node = match Node::start(config, platform).await {
+    let node = match started {
         Ok(node) => node,
         Err(e) => {
             tracing::error!(error = %e, "core failed to start");
