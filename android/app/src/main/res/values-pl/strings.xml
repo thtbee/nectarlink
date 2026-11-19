@@ -348,6 +348,23 @@
     </plurals>
     <string name="notification_waiting">Oczekiwanie na komputer</string>
     <string name="notification_waiting_network">Czekam na Wi-Fi, by połączyć się z komputerem</string>
+    <string name="reconnect_known_only_title">Tylko w sieciach, w których znaleziono komputer</string>
+    <string name="reconnect_known_only_body">Sam szuka komputerów tylko w sieciach Wi-Fi, w których już się z którymś połączył. W innych komputer nadal może połączyć się z telefonem.</string>
+    <plurals name="reconnect_known_count">
+        <item quantity="one">Na razie %1$d sieć</item>
+        <item quantity="few">Na razie %1$d sieci</item>
+        <item quantity="many">Na razie %1$d sieci</item>
+        <item quantity="other">Na razie %1$d sieci</item>
+    </plurals>
+    <string name="reconnect_forget">Zapomnij je</string>
+    <string name="reconnect_give_up_title">Przestań szukać po</string>
+    <string name="reconnect_give_up_body">Jeśli przez ten czas żaden komputer nie będzie osiągalny, telefon przestanie szukać, aż zmieni się sieć lub otworzysz NectarLink.</string>
+    <string name="reconnect_give_up_never">Nigdy</string>
+    <string name="reconnect_give_up_15_min">15 min</string>
+    <string name="reconnect_give_up_1_hour">1 godz.</string>
+    <string name="reconnect_give_up_4_hours">4 godz.</string>
+    <string name="notification_stopped_looking">Przestano szukać komputera. Otwórz NectarLink, by szukać ponownie</string>
+    <string name="notification_unknown_network">Nie szuka komputera w tej sieci</string>
     <string name="notification_not_paired">Jeszcze nie sparowano z komputerem</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d plik</item>

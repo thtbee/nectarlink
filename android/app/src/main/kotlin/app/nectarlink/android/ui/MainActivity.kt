@@ -239,6 +239,8 @@ class MainActivity : ComponentActivity() {
         if (app.core.state.value.status is CoreStatus.Ready) {
             app.core.refreshNotificationAccess()
         }
+        // Opened after the phone stopped looking for its PCs: look again (#397).
+        app.core.retryReconnecting()
         if (app.updater.enabled) {
             // Back from allowing installs: the update the user started carries on.
             app.updater.onAppResumed()

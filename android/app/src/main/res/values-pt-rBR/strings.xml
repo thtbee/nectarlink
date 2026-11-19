@@ -342,6 +342,22 @@
     </plurals>
     <string name="notification_waiting">Aguardando seu PC</string>
     <string name="notification_waiting_network">Aguardando Wi-Fi para chegar ao seu PC</string>
+    <string name="reconnect_known_only_title">Só em redes onde um PC foi encontrado</string>
+    <string name="reconnect_known_only_body">Procura seus PCs sozinho só no Wi-Fi onde já encontrou um. Em outras redes, um PC ainda pode chegar ao celular.</string>
+    <plurals name="reconnect_known_count">
+        <item quantity="one">%1$d rede até agora</item>
+        <item quantity="many">%1$d redes até agora</item>
+        <item quantity="other">%1$d redes até agora</item>
+    </plurals>
+    <string name="reconnect_forget">Esquecer</string>
+    <string name="reconnect_give_up_title">Parar de procurar após</string>
+    <string name="reconnect_give_up_body">Sem nenhum PC disponível por esse tempo, o celular para de procurar até a rede mudar ou você abrir o NectarLink.</string>
+    <string name="reconnect_give_up_never">Nunca</string>
+    <string name="reconnect_give_up_15_min">15 min</string>
+    <string name="reconnect_give_up_1_hour">1 hora</string>
+    <string name="reconnect_give_up_4_hours">4 horas</string>
+    <string name="notification_stopped_looking">Parou de procurar seu PC. Abra o NectarLink para procurar de novo</string>
+    <string name="notification_unknown_network">Não está procurando seu PC nesta rede</string>
     <string name="notification_not_paired">Ainda não pareado com um PC</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d arquivo</item>

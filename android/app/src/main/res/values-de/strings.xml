@@ -342,6 +342,21 @@
     </plurals>
     <string name="notification_waiting">Warte auf deinen PC</string>
     <string name="notification_waiting_network">Wartet auf WLAN, um deinen PC zu erreichen</string>
+    <string name="reconnect_known_only_title">Nur in Netzwerken mit gefundenem PC</string>
+    <string name="reconnect_known_only_body">Sucht nur in WLANs von selbst nach deinen PCs, in denen es schon einen erreicht hat. Anderswo kann ein PC das Handy trotzdem erreichen.</string>
+    <plurals name="reconnect_known_count">
+        <item quantity="one">Bisher %1$d Netzwerk</item>
+        <item quantity="other">Bisher %1$d Netzwerke</item>
+    </plurals>
+    <string name="reconnect_forget">Vergessen</string>
+    <string name="reconnect_give_up_title">Suche beenden nach</string>
+    <string name="reconnect_give_up_body">Ist so lange kein PC erreichbar, sucht das Handy nicht mehr, bis sich das Netzwerk ändert oder du NectarLink öffnest.</string>
+    <string name="reconnect_give_up_never">Nie</string>
+    <string name="reconnect_give_up_15_min">15 Min.</string>
+    <string name="reconnect_give_up_1_hour">1 Stunde</string>
+    <string name="reconnect_give_up_4_hours">4 Stunden</string>
+    <string name="notification_stopped_looking">Suche nach deinem PC beendet. Öffne NectarLink, um wieder zu suchen</string>
+    <string name="notification_unknown_network">Sucht in diesem Netzwerk nicht nach deinem PC</string>
     <string name="notification_not_paired">Noch nicht mit einem PC gekoppelt</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d Datei</item>

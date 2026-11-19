@@ -331,6 +331,20 @@
     </plurals>
     <string name="notification_waiting">正在等待电脑</string>
     <string name="notification_waiting_network">正在等待 Wi-Fi 以连接你的电脑</string>
+    <string name="reconnect_known_only_title">仅在找到过电脑的网络中</string>
+    <string name="reconnect_known_only_body">仅在曾连接到电脑的 Wi-Fi 中自动寻找你的电脑。在其他网络中，电脑仍可连接到手机。</string>
+    <plurals name="reconnect_known_count">
+        <item quantity="other">目前已记住 %1$d 个网络</item>
+    </plurals>
+    <string name="reconnect_forget">忘记这些网络</string>
+    <string name="reconnect_give_up_title">停止寻找的时间</string>
+    <string name="reconnect_give_up_body">若这段时间内都连不上电脑，手机会停止寻找，直到网络变化或你打开 NectarLink。</string>
+    <string name="reconnect_give_up_never">从不</string>
+    <string name="reconnect_give_up_15_min">15 分钟</string>
+    <string name="reconnect_give_up_1_hour">1 小时</string>
+    <string name="reconnect_give_up_4_hours">4 小时</string>
+    <string name="notification_stopped_looking">已停止寻找你的电脑。打开 NectarLink 可重新寻找</string>
+    <string name="notification_unknown_network">不在此网络中寻找你的电脑</string>
     <string name="notification_not_paired">尚未与电脑配对</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d 个文件</item>

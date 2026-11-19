@@ -252,6 +252,8 @@ data class CoreState(
     /** Whether the phone has Wi-Fi, Ethernet, USB or a VPN; without one (and without
      *  [awayMode]) it waits for one rather than trying to reach PCs (#397). */
     val hasNetwork: Boolean = true,
+    /** Why the phone isn't looking for its PCs on the network it has, if it isn't (#397). */
+    val dialingPause: DialingPause? = null,
     /** Nearby LocalSend devices discovered on the LAN. */
     val localsendPeers: List<LocalSendPeer> = emptyList(),
     /** IDs of paired PCs currently typing on this phone without mirroring. */
@@ -549,3 +551,12 @@ internal fun PairedDevice.toDevice() = Device(
     canWake = canWake,
     reconnect = reconnect,
 )
+
+/** Why the phone holds back from looking for its PCs on a network it has (#397). */
+enum class DialingPause {
+    /** Known networks only is on, and this isn't one where a PC was found. */
+    UnknownNetwork,
+
+    /** No PC was reachable for as long as Stop trying after allows. */
+    GaveUp,
+}

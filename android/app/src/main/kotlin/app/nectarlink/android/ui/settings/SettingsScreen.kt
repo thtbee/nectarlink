@@ -667,6 +667,8 @@ fun SettingsScreen(
                     FilledTonalButton(onClick = onOpenRelaySettings) {
                         Text(stringResource(R.string.relay_settings_title))
                     }
+                    SettingRowDivider()
+                    ReconnectSettings()
                 }
             }
         }
@@ -1877,6 +1879,73 @@ private fun Label(text: String) {
 
 /** The third language choice when it isn't a picked language: opens the list. */
 private const val MORE_LANGUAGES = "more"
+
+/** When the phone looks for its PCs by itself (#397). */
+@Composable
+private fun ReconnectSettings() {
+    val core = (LocalContext.current.applicationContext as app.nectarlink.android.NectarlinkApplication).core
+    var knownOnly by remember { mutableStateOf(core.reconnectKnownOnly) }
+    var giveUp by remember { mutableStateOf(core.reconnectGiveUpMinutes) }
+    var known by remember { mutableStateOf(core.reconnectKnownNetworks) }
+    val knownTitle = stringResource(R.string.reconnect_known_only_title)
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(knownTitle, style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(R.string.reconnect_known_only_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (known > 0) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        pluralStringResource(R.plurals.reconnect_known_count, known, known),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = {
+                        core.forgetReconnectNetworks()
+                        known = 0
+                    }) { Text(stringResource(R.string.reconnect_forget)) }
+                }
+            }
+        }
+        Switch(
+            checked = knownOnly,
+            onCheckedChange = { on ->
+                knownOnly = on
+                core.setReconnectKnownOnly(on)
+                known = core.reconnectKnownNetworks
+            },
+            colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+            modifier = Modifier.semantics { contentDescription = knownTitle },
+        )
+    }
+    SettingRowDivider()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.reconnect_give_up_title), style = MaterialTheme.typography.titleSmall)
+        Text(
+            stringResource(R.string.reconnect_give_up_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val labels = listOf(
+            stringResource(R.string.reconnect_give_up_never),
+            stringResource(R.string.reconnect_give_up_15_min),
+            stringResource(R.string.reconnect_give_up_1_hour),
+            stringResource(R.string.reconnect_give_up_4_hours),
+        )
+        Choice(
+            options = app.nectarlink.android.core.ReconnectPolicy.GIVE_UP_CHOICES.map { it.toString() }.zip(labels),
+            selected = giveUp.toString(),
+            onSelect = { value ->
+                val minutes = value.toIntOrNull() ?: 0
+                giveUp = minutes
+                core.setReconnectGiveUpMinutes(minutes)
+            },
+        )
+    }
+}
 
 /** A row of choices, one picked. */
 @Composable

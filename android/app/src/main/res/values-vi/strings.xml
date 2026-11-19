@@ -340,6 +340,20 @@
     </plurals>
 <string name="notification_waiting">Đang chờ PC của bạn</string>
 <string name="notification_waiting_network">Đang chờ Wi-Fi để kết nối với PC</string>
+<string name="reconnect_known_only_title">Chỉ trên mạng đã từng thấy PC</string>
+<string name="reconnect_known_only_body">Chỉ tự tìm PC trên các mạng Wi-Fi đã từng kết nối được với một PC. Ở mạng khác, PC vẫn có thể kết nối tới điện thoại.</string>
+<plurals name="reconnect_known_count">
+    <item quantity="other">Đến nay có %1$d mạng</item>
+</plurals>
+<string name="reconnect_forget">Quên các mạng này</string>
+<string name="reconnect_give_up_title">Ngừng tìm sau</string>
+<string name="reconnect_give_up_body">Nếu không kết nối được PC nào trong khoảng thời gian này, điện thoại sẽ ngừng tìm cho đến khi đổi mạng hoặc bạn mở NectarLink.</string>
+<string name="reconnect_give_up_never">Không bao giờ</string>
+<string name="reconnect_give_up_15_min">15 phút</string>
+<string name="reconnect_give_up_1_hour">1 giờ</string>
+<string name="reconnect_give_up_4_hours">4 giờ</string>
+<string name="notification_stopped_looking">Đã ngừng tìm PC. Mở NectarLink để tìm lại</string>
+<string name="notification_unknown_network">Không tìm PC trên mạng này</string>
 <string name="notification_not_paired">Chưa ghép nối với PC nào</string>
 <plurals name="transfer_files">
         <item quantity="one">%1$d tệp</item>

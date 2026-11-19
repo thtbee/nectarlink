@@ -226,6 +226,8 @@ On Android, tap **Settings** in the floating bottom dock. You can view all setti
 | **Browse this phone's storage in File Explorer** | **Off** (per PC) | Allows that specific PC to mount this phone's shared storage (or selected folders) inside Windows File Explorer. |
 | **Pair another PC** | Button | Opens the pairing screen to scan a QR code or pair nearby with another PC. |
 | **Connect over mobile data** | **Off** | Allows this phone to stay connected to paired PCs over LTE/5G or across different networks when away from Wi-Fi. |
+| **Only on networks where a PC was found** | **Off** | The phone looks for your PCs by itself only on Wi-Fi where it has reached one directly before (it learns these as it goes; **Forget them** clears the list). On other networks a PC can still reach the phone. Networks are told apart by their router and address range, so the phone needs no location permission. |
+| **Stop looking after** | **Never** | With no PC reachable for 15 minutes, 1 hour or 4 hours, the phone stops looking until the network changes or you open NectarLink. Its notification says so. |
 
 ### 3. Permissions
 

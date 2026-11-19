@@ -340,6 +340,20 @@
     </plurals>
     <string name="notification_waiting">PCを待機中</string>
     <string name="notification_waiting_network">PC に接続するため Wi-Fi を待っています</string>
+    <string name="reconnect_known_only_title">PC が見つかったネットワークのみ</string>
+    <string name="reconnect_known_only_body">以前 PC に接続できた Wi-Fi でのみ、自動で PC を探します。それ以外のネットワークでも、PC からスマートフォンには接続できます。</string>
+    <plurals name="reconnect_known_count">
+        <item quantity="other">これまで %1$d 件のネットワーク</item>
+    </plurals>
+    <string name="reconnect_forget">消去</string>
+    <string name="reconnect_give_up_title">探すのをやめるまでの時間</string>
+    <string name="reconnect_give_up_body">この時間 PC に接続できないと、ネットワークが変わるか NectarLink を開くまで探すのをやめます。</string>
+    <string name="reconnect_give_up_never">やめない</string>
+    <string name="reconnect_give_up_15_min">15 分</string>
+    <string name="reconnect_give_up_1_hour">1 時間</string>
+    <string name="reconnect_give_up_4_hours">4 時間</string>
+    <string name="notification_stopped_looking">PC を探すのをやめました。NectarLink を開くと再び探します</string>
+    <string name="notification_unknown_network">このネットワークでは PC を探していません</string>
     <string name="notification_not_paired">まだPCとペアリングされていません</string>
     <plurals name="transfer_files">
         <item quantity="other">%1$d 個のファイル</item>
