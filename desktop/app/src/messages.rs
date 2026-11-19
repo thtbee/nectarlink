@@ -116,6 +116,40 @@ struct State {
     seen: HashMap<String, i64>,
     /// Bumped when the phone changes, so late answers are dropped.
     generation: u64,
+    /// Chat replies that didn't go out, kept (marked "Not sent") when the
+    /// conversation is read again from the database, which never had them.
+    failed_replies: Vec<ChatMessageRecord>,
+}
+
+/// What was typed and not sent, by `"<device>|<conversation>"` (`""` for a new
+/// message), kept while the app runs so a page change doesn't lose it.
+static DRAFTS: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
+
+/// Keeps `text` as the draft for `key`; an empty one is dropped.
+pub fn save_draft(key: String, text: String) {
+    let mut drafts = DRAFTS.lock().unwrap_or_else(|e| e.into_inner());
+    let drafts = drafts.get_or_insert_default();
+    if text.is_empty() {
+        drafts.remove(&key);
+    } else {
+        drafts.insert(key, text);
+    }
+}
+
+/// The draft kept for `key`, or nothing.
+pub fn draft(key: &str) -> String {
+    DRAFTS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .and_then(|d| d.get(key).cloned())
+        .unwrap_or_default()
+}
+
+/// Shows `messages` read for `thread`, with the replies to it that didn't go out.
+fn set_chat_messages(s: &mut State, thread: &str, mut messages: Vec<ChatMessageRecord>) {
+    messages.extend(s.failed_replies.iter().filter(|m| m.thread_id == thread).cloned());
+    s.chat_messages = messages;
 }
 
 /// How many conversations [`State::recent`] keeps.
@@ -331,7 +365,12 @@ pub fn view() -> View {
         let messages = if current_is_chat {
             let mut ordered = s.chat_messages.clone();
             ordered.sort_by(|a, b| a.time_ms.cmp(&b.time_ms).then_with(|| a.id.cmp(&b.id)));
-            Value::Array(ordered.iter().map(chat_message_json).collect())
+            Value::Array(
+                ordered
+                    .iter()
+                    .map(|m| chat_message_json(m, s.failed_replies.iter().any(|f| f.id == m.id)))
+                    .collect(),
+            )
         } else {
             // In a group, who sent each message (by contact name when known).
             let thread = s.thread.as_ref().and_then(|id| s.threads.iter().find(|t| &t.id == id));
@@ -493,7 +532,7 @@ fn message_json(m: &SmsMessage, pictures: &HashMap<String, PathBuf>, sender: Opt
     })
 }
 
-fn chat_message_json(m: &ChatMessageRecord) -> Value {
+fn chat_message_json(m: &ChatMessageRecord, failed: bool) -> Value {
     let sender = if m.self_sent {
         None
     } else {
@@ -504,7 +543,7 @@ fn chat_message_json(m: &ChatMessageRecord) -> Value {
         "body": m.text,
         "date": m.time_ms,
         "outgoing": m.self_sent,
-        "status": if m.id < 0 { "pending" } else { "" },
+        "status": if failed { "failed" } else if m.id < 0 { "pending" } else { "" },
         "images": [],
         "audios": [],
         "attachments": 0,
@@ -603,7 +642,7 @@ pub fn load_chat_threads() {
             }
             s.chat_threads = refreshed;
             if s.thread.as_deref() == Some(&thread) {
-                s.chat_messages = msgs;
+                set_chat_messages(s, &thread, msgs);
             }
         });
     }
@@ -753,7 +792,7 @@ pub fn open_thread(thread: String) {
             state(|s| {
                 s.chat_threads = refreshed;
                 if s.thread.as_deref() == Some(&thread) {
-                    s.chat_messages = msgs;
+                    set_chat_messages(s, &thread, msgs);
                 }
             });
         }
@@ -1257,11 +1296,16 @@ fn send_chat_reply(thread_id: String, body: String) {
         state(|s| {
             s.sending = false;
             // Only for the phone still shown; and a reply that failed stays,
-            // with the message saying so, rather than vanish.
+            // marked "Not sent", rather than vanish or say "Sending…" forever.
             if s.device == Some(device) {
                 s.chat_threads = refreshed_threads;
+                if result.is_err()
+                    && let Some(reply) = s.chat_messages.iter().find(|m| m.id == local_id)
+                {
+                    s.failed_replies.push(reply.clone());
+                }
                 if result.is_ok() && s.thread.as_deref() == Some(&thread_id) {
-                    s.chat_messages = refreshed_messages;
+                    set_chat_messages(s, &thread_id, refreshed_messages);
                 }
             }
         });
@@ -1278,12 +1322,21 @@ pub fn send_to(to: Vec<String>, body: String) {
     let now = now_ms();
     let seq = NEXT_LOCAL.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let local_id = format!("local:{now}:{seq}");
-    let Some((device, attachments)) = state(|s| {
+    let Some((device, attachments, unsent)) = state(|s| {
         let valid_att =
             s.staged_attachment.as_ref().filter(|a| a.error.is_empty() && !a.data.is_empty()).cloned();
         if body.trim().is_empty() && valid_att.is_none() {
             return None;
         }
+        // A new conversation has no message to mark "Not sent": if it fails,
+        // the recipient, text and picture come back to the composer instead.
+        let unsent = s.thread.is_none().then(|| Unsent {
+            generation: s.generation,
+            to: to.join(", "),
+            name: s.compose_name.clone(),
+            body: body.clone(),
+            attachment: s.staged_attachment.clone(),
+        });
         s.staged_attachment = None;
         s.sending = true;
         s.compose_to = None;
@@ -1314,7 +1367,7 @@ pub fn send_to(to: Vec<String>, body: String) {
                 },
             );
         }
-        Some((s.device?, attachments))
+        Some((s.device?, attachments, unsent))
     }) else {
         return;
     };
@@ -1333,6 +1386,14 @@ pub fn send_to(to: Vec<String>, body: String) {
                 if let Some(m) = s.messages.iter_mut().find(|m| m.id == local_id) {
                     m.status = Some("failed".into());
                 }
+                if let Some(unsent) = unsent.filter(|u| u.generation == s.generation && s.thread.is_none()) {
+                    save_draft(format!("{device}|to:{}", unsent.to), unsent.body);
+                    if s.staged_attachment.is_none() {
+                        s.staged_attachment = unsent.attachment;
+                    }
+                    s.compose_name = unsent.name;
+                    s.compose_to = Some(unsent.to);
+                }
             }
         });
         changed();
@@ -1345,6 +1406,15 @@ pub fn send_to(to: Vec<String>, body: String) {
             Err(e) => crate::bridge::app::show_message(send_problem(&e)),
         }
     });
+}
+
+/// A new conversation's first message while it's being sent.
+struct Unsent {
+    generation: u64,
+    to: String,
+    name: Option<String>,
+    body: String,
+    attachment: Option<StagedAttachment>,
 }
 
 fn reload_after_send(to: &[String]) {
@@ -1527,6 +1597,36 @@ mod tests {
         assert_eq!(title_of(&thread(&["+1555"], &["Sam"])), "Sam");
         assert_eq!(title_of(&thread(&["+1555", "+1666"], &["Sam", ""])), "Sam, +1666");
         assert_eq!(title_of(&thread(&["+1555"], &[])), "+1555");
+    }
+
+    #[test]
+    fn drafts_outlive_the_page_and_go_when_emptied() {
+        save_draft("dev|t1".into(), "half a reply".into());
+        assert_eq!(draft("dev|t1"), "half a reply");
+        assert_eq!(draft("dev|t2"), "");
+        save_draft("dev|t1".into(), String::new());
+        assert_eq!(draft("dev|t1"), "");
+    }
+
+    #[test]
+    fn a_reply_that_didnt_go_out_stays_when_the_conversation_is_read_again() {
+        let record = |id: i64, text: &str| ChatMessageRecord {
+            id,
+            peer: DeviceId([1; 32]),
+            thread_id: "chat:a".into(),
+            sender: None,
+            text: text.into(),
+            time_ms: 1,
+            self_sent: true,
+            avatar: None,
+        };
+        let mut s = State { failed_replies: vec![record(-5, "unsent")], ..State::default() };
+        set_chat_messages(&mut s, "chat:a", vec![record(1, "from the phone")]);
+        assert_eq!(s.chat_messages.len(), 2);
+        assert_eq!(chat_message_json(&s.chat_messages[1], true)["status"], "failed");
+        assert_eq!(chat_message_json(&record(-6, "x"), false)["status"], "pending");
+        set_chat_messages(&mut s, "chat:b", Vec::new());
+        assert!(s.chat_messages.is_empty(), "only in its own conversation");
     }
 
     #[test]

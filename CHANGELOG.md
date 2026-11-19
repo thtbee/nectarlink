@@ -354,6 +354,13 @@ change things that need a step from you, and its notes say so.
   sender hasn't started: it could stay "receiving". A cancel at the last
   moment is no longer reported as received, a file that fails to save to another drive
   leaves no broken copy, and a write error at the very end now fails the file.
+- **What you type in Messages on the PC stays when you go to another page.** A half
+  written text came back empty after a look at Calls or Settings; it now waits in its
+  conversation until you send it or clear it.
+- **A first text to someone new that fails to send comes back to the box,** with the
+  number and the picture, instead of being lost.
+- **A chat reply from the PC that fails says "Not sent".** It said "Sending…" for good,
+  then vanished.
 - **The PC stays on the phone you picked when its list reorders.** When a phone paired
   earlier came back online and moved up the list, a page open for another phone could
   act on the one that took its place, such as taking a photo with the wrong phone.
