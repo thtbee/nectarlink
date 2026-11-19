@@ -83,11 +83,11 @@ fn dll_path() -> Option<PathBuf> {
 /// A DLL that LogonUI (SYSTEM) loads from anywhere a user can change would let
 /// that user become SYSTEM, so nothing else is ever registered.
 fn protected(path: &Path) -> bool {
-    let Some(program_files) = std::env::var_os("ProgramW6432").or_else(|| std::env::var_os("ProgramFiles"))
+    // From Windows, not the environment, which the user can set to anything.
+    let Some(base) = crate::win::shortcut::known_folder(&windows::Win32::UI::Shell::FOLDERID_ProgramFiles)
     else {
         return false;
     };
-    let base = PathBuf::from(program_files);
     path.is_file()
         && path.parent().is_some_and(|dir| {
             dir.to_string_lossy().to_lowercase().starts_with(&(base.to_string_lossy().to_lowercase() + "\\"))
@@ -364,6 +364,28 @@ fn process_name(pid: u32) -> Option<String> {
 
 static SERVING: AtomicBool = AtomicBool::new(false);
 
+/// Whether this session has been unlocked, or was unlocked, since NectarLink started.
+/// Windows can sign in by itself after an update and lock the session ("use my
+/// sign-in info to finish setting up"); then nobody has typed the password since
+/// the restart, and the phone mustn't stand in for it (ADR 0009: a restart always
+/// asks for the real password).
+static UNLOCKED_SINCE_START: AtomicBool = AtomicBool::new(false);
+
+/// Notes whether the session is unlocked now; while it isn't, checks again every
+/// few seconds until it is.
+fn watch_first_unlock(session: u32) {
+    if !session_locked(session) {
+        UNLOCKED_SINCE_START.store(true, Ordering::SeqCst);
+        return;
+    }
+    let _ = std::thread::Builder::new().name("unlock-first".into()).spawn(move || {
+        while session_locked(session) {
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+        UNLOCKED_SINCE_START.store(true, Ordering::SeqCst);
+    });
+}
+
 /// Starts serving the unlock pipe if the credential provider is registered and
 /// it isn't served yet.
 pub fn serve() {
@@ -393,9 +415,12 @@ impl Drop for Pipe {
 fn run_pipe() -> Result<(), String> {
     let session = this_session().ok_or("no session")?;
     let user = current_user_sid().ok_or("no user")?;
+    watch_first_unlock(session);
     // Only SYSTEM (LogonUI) may open it: never the user's own processes, so
-    // nothing running as the user can ask for the password.
-    let sddl = HSTRING::from("D:P(A;;GA;;;SY)");
+    // nothing running as the user can ask for the password. OWNER RIGHTS keeps
+    // the user, who owns it, from changing that: an owner may otherwise always
+    // rewrite the access list.
+    let sddl = HSTRING::from("D:P(A;;GA;;;SY)(A;;RC;;;OW)");
     let mut descriptor = PSECURITY_DESCRIPTOR::default();
     // SAFETY: `descriptor` is freed with LocalFree below.
     unsafe {
@@ -468,6 +493,11 @@ fn serve_one(pipe: HANDLE, session: u32, user: &str) {
         return;
     }
     let (status, mut password) = match wire::parse_request(&request[..read as usize]) {
+        Some(asked)
+            if asked == user && session_locked(session) && !UNLOCKED_SINCE_START.load(Ordering::SeqCst) =>
+        {
+            (wire::Status::PasswordFirst, Vec::new())
+        }
         Some(asked) if asked == user && session_locked(session) => answer(user),
         Some(_) => (wire::Status::NotEnrolled, Vec::new()),
         None => (wire::Status::Failed, Vec::new()),
@@ -551,6 +581,9 @@ fn answer(user: &str) -> (wire::Status, Vec<u8>) {
             Ok(Ok(password)) => return (wire::Status::Ok, password.expose().to_vec()),
             Ok(Err(Error::Offline)) => last = wire::Status::PhoneAway,
             Ok(Err(Error::NotFound)) => last = wire::Status::NotEnrolled,
+            Ok(Err(Error::Denied)) if node.unlock_locked_out() => {
+                return (wire::Status::LockedOut, Vec::new());
+            }
             Ok(Err(Error::Denied | Error::Timeout)) | Err(_) => return (wire::Status::Declined, Vec::new()),
             Ok(Err(_)) => last = wire::Status::Failed,
         }

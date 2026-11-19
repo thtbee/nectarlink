@@ -45,6 +45,8 @@ pub enum Status {
     LockedOut = 4,
     /// Anything else.
     Failed = 5,
+    /// Nobody has typed the password since a restart: it's needed once first.
+    PasswordFirst = 6,
 }
 
 impl Status {
@@ -56,6 +58,7 @@ impl Status {
             3 => Status::PhoneAway,
             4 => Status::LockedOut,
             5 => Status::Failed,
+            6 => Status::PasswordFirst,
             _ => return None,
         })
     }
@@ -187,7 +190,9 @@ mod tests {
         assert_eq!(parse_answer(&a), Some((Status::Ok, "pässwörd".as_bytes().to_vec())));
         let d = answer(Status::Declined, Some(b"leak"));
         assert_eq!(parse_answer(&d), Some((Status::Declined, Vec::new())), "never sent on refusal");
-        for s in [Status::NotEnrolled, Status::PhoneAway, Status::LockedOut, Status::Failed] {
+        for s in
+            [Status::NotEnrolled, Status::PhoneAway, Status::LockedOut, Status::Failed, Status::PasswordFirst]
+        {
             assert_eq!(parse_answer(&answer(s, None)).map(|(s, _)| s), Some(s));
         }
         assert!(parse_answer(&[9, 0, 0, 0, 0]).is_none(), "unknown status");

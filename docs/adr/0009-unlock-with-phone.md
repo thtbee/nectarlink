@@ -66,15 +66,21 @@ What each side holds:
 
 - **Only on the local network**, never over relays or mobile data, and only
   with a live session to the enrolled phone: the USB cable, or a direct path
-  whose address is on this network (private or link-local, a tailnet, or one
-  the phone announced over mDNS here). Away mode doesn't widen it, and a
+  whose address is on this network: private or link-local, or one the other
+  device announced over mDNS here that is also on one of this device's own
+  subnets. Tailnet and CGNAT (`100.64.0.0/10`) addresses don't count, since
+  they reach a phone on mobile data too, and neither does an address announced
+  here once but reached later from elsewhere. Away mode doesn't widen it, and a
   session with no selected path is refused. Both sides check before the phone
   asks its owner, and the PC checks again before opening the password.
   Optionally, BLE proximity (the beacon already in `ble_beacon`).
 - **Rate limit:** 5 failed attempts in 15 minutes locks the feature for 15
-  minutes and notifies the user on both devices. A failed attempt is a key that
-  doesn't open the password, an answer from the wrong device, or a prompt the
-  phone's owner declined or didn't answer, so the lock screen can't keep asking.
+  minutes, and the tile says so. A failed attempt is a key that doesn't open
+  the password, an answer from the wrong device, or a prompt the phone's owner
+  declined or didn't answer, so the lock screen can't keep asking. The phone
+  keeps its own count per PC too, so a PC that skips its limit still can't
+  keep prompting. The prompt names the PC as the phone knows it, not as the
+  request says.
 - **Revocable:** unpairing, turning the feature off, changing the Windows
   password (which makes the ciphertext useless; the PC asks to re-enroll),
   or a new fingerprint on the phone (the Keystore key is invalidated) all end
@@ -91,7 +97,15 @@ What each side holds:
   already signed in to this session (WTS session user), and only while that
   user's NectarLink serves the pipe. At the first sign-in after a restart nobody
   is signed in, so there's no tile; the app also answers only while the session
-  is locked. A restart always asks for the real password once.
+  is locked. A restart always asks for the real password once: when Windows
+  signs in by itself after an update and locks the session ("use my sign-in
+  info to finish setting up"), NectarLink answers only once the session has
+  been unlocked some other way since it started.
+- **The pipe:** only SYSTEM may open it, and OWNER RIGHTS keeps the user who
+  owns it from rewriting that. The tile talks only to a server that is the
+  NectarLink next to its DLL, running as the session's account in that session,
+  since pipe names are machine-wide and another account could otherwise serve
+  this session's pipe.
 - **Off by default**, behind a clear explanation, and absent from builds until
   the review is done.
 

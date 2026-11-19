@@ -376,6 +376,7 @@ impl Credential {
             Status::PhoneAway => Some(Text::PhoneAway),
             Status::LockedOut => Some(Text::LockedOut),
             Status::Failed => Some(Text::Failed),
+            Status::PasswordFirst => Some(Text::PasswordFirst),
         };
         if let Some(text) = refusal {
             wire::wipe(&mut password);

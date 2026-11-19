@@ -4,8 +4,10 @@
 //! so the lock screen never hangs.
 //!
 //! It only talks to the NectarLink installed next to this DLL (checked by the
-//! pipe server's process image), and connects at identification level, so
-//! whatever holds the pipe can't act as SYSTEM.
+//! pipe server's process image), run by the account signed in to this session
+//! in this session (pipe names are machine-wide, so another account could
+//! otherwise serve this session's pipe), and connects at identification level,
+//! so whatever holds the pipe can't act as SYSTEM.
 
 #![allow(unsafe_code)]
 
@@ -13,7 +15,12 @@ use std::ffi::c_void;
 
 use windows::{
     Win32::{
-        Foundation::{CloseHandle, GENERIC_READ, GENERIC_WRITE, HANDLE, HMODULE, WAIT_OBJECT_0},
+        Foundation::{
+            CloseHandle, GENERIC_READ, GENERIC_WRITE, HANDLE, HLOCAL, HMODULE, LocalFree, WAIT_OBJECT_0,
+        },
+        Security::{
+            Authorization::ConvertSidToStringSidW, GetTokenInformation, TOKEN_QUERY, TOKEN_USER, TokenUser,
+        },
         Storage::FileSystem::{
             CreateFileW, FILE_FLAG_OVERLAPPED, FILE_FLAGS_AND_ATTRIBUTES, FILE_SHARE_NONE, OPEN_EXISTING,
             ReadFile, SECURITY_IDENTIFICATION, SECURITY_SQOS_PRESENT, WriteFile,
@@ -29,7 +36,7 @@ use windows::{
             },
             RemoteDesktop::ProcessIdToSessionId,
             Threading::{
-                CreateEventW, GetCurrentProcessId, OpenProcess, PROCESS_NAME_WIN32,
+                CreateEventW, GetCurrentProcessId, OpenProcess, OpenProcessToken, PROCESS_NAME_WIN32,
                 PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW, WaitForSingleObject,
             },
         },
@@ -87,6 +94,52 @@ fn process_image(pid: u32) -> Option<String> {
     let _ = unsafe { CloseHandle(process) };
     ok.ok()?;
     Some(String::from_utf16_lossy(&path[..len as usize]).to_lowercase())
+}
+
+/// The security identifier of the account process `pid` runs as.
+fn process_user(pid: u32) -> Option<String> {
+    // SAFETY: plain query access to a process; the handle is owned by `Handle`.
+    let process = Handle(unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?);
+    let mut token = HANDLE::default();
+    // SAFETY: `process` is valid; `token` is closed by `Handle`.
+    unsafe { OpenProcessToken(process.0, TOKEN_QUERY, &mut token) }.ok()?;
+    let token = Handle(token);
+    // TOKEN_USER plus the SID it points to; u64s keep it aligned.
+    let mut buf = [0u64; 64];
+    let mut len = 0u32;
+    // SAFETY: `buf` is a writable buffer of the size given.
+    unsafe {
+        GetTokenInformation(
+            token.0,
+            TokenUser,
+            Some(buf.as_mut_ptr().cast()),
+            std::mem::size_of_val(&buf) as u32,
+            &mut len,
+        )
+    }
+    .ok()?;
+    // SAFETY: Windows wrote a TOKEN_USER at the start of `buf`, aligned for it.
+    let user = unsafe { &*buf.as_ptr().cast::<TOKEN_USER>() };
+    let mut text = PWSTR::null();
+    // SAFETY: the SID points into `buf`, alive here; `text` is freed below.
+    unsafe { ConvertSidToStringSidW(user.User.Sid, &mut text) }.ok()?;
+    // SAFETY: a valid string from ConvertSidToStringSidW.
+    let sid = unsafe { text.to_string() }.ok();
+    // SAFETY: allocated by ConvertSidToStringSidW with LocalAlloc.
+    unsafe { LocalFree(Some(HLOCAL(text.0.cast()))) };
+    sid
+}
+
+/// Whether the pipe's server, process `pid`, is the NectarLink next to this DLL,
+/// run by `user` in `session`.
+fn trusted_server(pid: u32, session: u32, user: &str) -> bool {
+    let mut their_session = u32::MAX;
+    // SAFETY: valid out pointer.
+    let in_session =
+        unsafe { ProcessIdToSessionId(pid, &mut their_session) }.is_ok() && their_session == session;
+    in_session
+        && matches!((process_image(pid), expected_server()), (Some(actual), Some(expected)) if actual == expected)
+        && process_user(pid).is_some_and(|sid| sid.eq_ignore_ascii_case(user))
 }
 
 struct Handle(HANDLE);
@@ -207,13 +260,14 @@ fn connect() -> Result<Handle, AskError> {
         }
         .map_err(|_| AskError::NotRunning)?,
     );
-    // Only NectarLink, installed next to this DLL, gets asked.
+    // Only NectarLink, installed next to this DLL and run by this session's
+    // account in this session, gets asked.
     let mut server = 0u32;
     // SAFETY: `pipe` is a connected pipe client handle.
     unsafe { GetNamedPipeServerProcessId(pipe.0, &mut server) }.map_err(|_| AskError::NotRunning)?;
-    match (process_image(server), expected_server()) {
-        (Some(actual), Some(expected)) if actual == expected => {}
-        _ => return Err(AskError::NotRunning),
+    let user = crate::session::signed_in_sid().ok_or(AskError::NotRunning)?;
+    if !trusted_server(server, session, &user) {
+        return Err(AskError::NotRunning);
     }
     let mode = PIPE_READMODE_MESSAGE;
     // SAFETY: `pipe` is valid; `mode` outlives the call.

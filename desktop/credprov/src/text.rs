@@ -25,12 +25,14 @@ pub enum Text {
     Rejected,
     /// Anything else.
     Failed,
+    /// Nobody has typed the password since a restart (or since NectarLink started).
+    PasswordFirst,
 }
 
 /// The language to show: the primary language ID Windows reports.
 pub fn get(text: Text, primary_language: u16) -> &'static str {
     let i = text as usize;
-    let table: &[&str; 10] = match primary_language {
+    let table: &[&str; 11] = match primary_language {
         0x07 => &DE,
         0x0a => &ES,
         0x11 => &JA,
@@ -45,7 +47,7 @@ pub fn get(text: Text, primary_language: u16) -> &'static str {
     table[i]
 }
 
-const EN: [&str; 10] = [
+const EN: [&str; 11] = [
     "Unlock with phone",
     "Confirm with your fingerprint on your phone.",
     "Unlock",
@@ -56,8 +58,9 @@ const EN: [&str; 10] = [
     "NectarLink isn't running for this account.",
     "Windows didn't accept the password. If you changed it, set up unlocking again in NectarLink.",
     "Couldn't unlock with the phone. Use your password.",
+    "After a restart, use your password once. Then you can unlock with your phone.",
 ];
-const DE: [&str; 10] = [
+const DE: [&str; 11] = [
     "Mit Telefon entsperren",
     "Bestätige mit deinem Fingerabdruck am Telefon.",
     "Entsperren",
@@ -68,8 +71,9 @@ const DE: [&str; 10] = [
     "NectarLink läuft für dieses Konto nicht.",
     "Windows hat das Kennwort nicht angenommen. Wenn du es geändert hast, richte das Entsperren in NectarLink neu ein.",
     "Entsperren mit dem Telefon hat nicht geklappt. Nutze dein Kennwort.",
+    "Nach einem Neustart einmal das Kennwort nutzen. Danach geht das Entsperren mit dem Telefon.",
 ];
-const ES: [&str; 10] = [
+const ES: [&str; 11] = [
     "Desbloquear con el teléfono",
     "Confirma con tu huella en el teléfono.",
     "Desbloquear",
@@ -80,8 +84,9 @@ const ES: [&str; 10] = [
     "NectarLink no se está ejecutando para esta cuenta.",
     "Windows no aceptó la contraseña. Si la cambiaste, vuelve a configurar el desbloqueo en NectarLink.",
     "No se pudo desbloquear con el teléfono. Usa tu contraseña.",
+    "Tras reiniciar, usa tu contraseña una vez. Después podrás desbloquear con el teléfono.",
 ];
-const JA: [&str; 10] = [
+const JA: [&str; 11] = [
     "スマートフォンでロック解除",
     "スマートフォンで指紋を使って確認してください。",
     "ロック解除",
@@ -92,8 +97,9 @@ const JA: [&str; 10] = [
     "このアカウントで NectarLink が実行されていません。",
     "Windows がパスワードを受け付けませんでした。変更した場合は NectarLink でロック解除を設定し直してください。",
     "スマートフォンでロック解除できませんでした。パスワードを使ってください。",
+    "再起動後は一度パスワードを使ってください。その後はスマートフォンでロック解除できます。",
 ];
-const PL: [&str; 10] = [
+const PL: [&str; 11] = [
     "Odblokuj telefonem",
     "Potwierdź odciskiem palca na telefonie.",
     "Odblokuj",
@@ -104,8 +110,9 @@ const PL: [&str; 10] = [
     "NectarLink nie działa dla tego konta.",
     "Windows nie przyjął hasła. Jeśli je zmieniłeś, skonfiguruj odblokowywanie w NectarLink od nowa.",
     "Nie udało się odblokować telefonem. Użyj hasła.",
+    "Po ponownym uruchomieniu użyj raz hasła. Potem odblokujesz telefonem.",
 ];
-const PT: [&str; 10] = [
+const PT: [&str; 11] = [
     "Desbloquear com o celular",
     "Confirme com sua digital no celular.",
     "Desbloquear",
@@ -116,8 +123,9 @@ const PT: [&str; 10] = [
     "O NectarLink não está em execução para esta conta.",
     "O Windows não aceitou a senha. Se você a mudou, configure o desbloqueio de novo no NectarLink.",
     "Não foi possível desbloquear com o celular. Use sua senha.",
+    "Depois de reiniciar, use sua senha uma vez. Depois disso, dá para desbloquear com o celular.",
 ];
-const RU: [&str; 10] = [
+const RU: [&str; 11] = [
     "Разблокировать телефоном",
     "Подтвердите отпечатком пальца на телефоне.",
     "Разблокировать",
@@ -128,8 +136,9 @@ const RU: [&str; 10] = [
     "NectarLink не запущен для этой учётной записи.",
     "Windows не принял пароль. Если вы его меняли, настройте разблокировку в NectarLink заново.",
     "Не удалось разблокировать телефоном. Используйте пароль.",
+    "После перезагрузки один раз войдите с паролем. Потом можно будет разблокировать телефоном.",
 ];
-const TR: [&str; 10] = [
+const TR: [&str; 11] = [
     "Telefonla kilidi aç",
     "Telefonunda parmak izinle onayla.",
     "Kilidi aç",
@@ -140,8 +149,9 @@ const TR: [&str; 10] = [
     "NectarLink bu hesap için çalışmıyor.",
     "Windows parolayı kabul etmedi. Değiştirdiysen NectarLink'te kilit açmayı yeniden ayarla.",
     "Telefonla kilit açılamadı. Parolanı kullan.",
+    "Yeniden başlattıktan sonra bir kez parolanı kullan. Sonra telefonla kilidi açabilirsin.",
 ];
-const VI: [&str; 10] = [
+const VI: [&str; 11] = [
     "Mở khóa bằng điện thoại",
     "Xác nhận bằng vân tay trên điện thoại.",
     "Mở khóa",
@@ -152,8 +162,9 @@ const VI: [&str; 10] = [
     "NectarLink không chạy cho tài khoản này.",
     "Windows không chấp nhận mật khẩu. Nếu bạn đã đổi, hãy thiết lập lại mở khóa trong NectarLink.",
     "Không mở khóa được bằng điện thoại. Hãy dùng mật khẩu.",
+    "Sau khi khởi động lại, hãy dùng mật khẩu một lần. Sau đó bạn có thể mở khóa bằng điện thoại.",
 ];
-const ZH: [&str; 10] = [
+const ZH: [&str; 11] = [
     "用手机解锁",
     "请在手机上用指纹确认。",
     "解锁",
@@ -164,6 +175,7 @@ const ZH: [&str; 10] = [
     "NectarLink 未在此账户下运行。",
     "Windows 未接受该密码。如果你改过密码，请在 NectarLink 中重新设置解锁。",
     "无法用手机解锁。请使用密码。",
+    "重启后请先用密码登录一次，之后即可用手机解锁。",
 ];
 
 #[cfg(test)]
