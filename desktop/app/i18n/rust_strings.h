@@ -4,6 +4,8 @@
 // in Rust is translated like the rest (see desktop/app/src/i18n.rs).
 
 static const char *const nectarlink_rust_strings[] = {
+    QT_TRANSLATE_NOOP("Agents", "%1 is asking"), // desktop/app/src/agents.rs
+    QT_TRANSLATE_NOOP("Agents", "%1. Open NectarLink to allow or deny it."), // desktop/app/src/agents.rs
     QT_TRANSLATE_NOOP("App", "Already on clipboard."), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Command palette"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Copied to clipboard."), // desktop/app/src/bridge/app.rs
