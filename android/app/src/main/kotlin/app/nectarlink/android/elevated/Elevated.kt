@@ -291,6 +291,10 @@ object Elevated {
         retryAttempt = 0
     }
 
+    /** Whether wireless debugging is on; on when the setting can't be read. */
+    private fun wirelessDebuggingOn(): Boolean =
+        runCatching { Settings.Global.getInt(context.contentResolver, ADB_WIFI, 1) == 1 }.getOrDefault(true)
+
     private fun onWifi(): Boolean = runCatching {
         val connectivity = context.getSystemService(ConnectivityManager::class.java)
         connectivity.getNetworkCapabilities(connectivity.activeNetwork)
@@ -360,6 +364,9 @@ object Elevated {
      * for it to start listening.
      */
     private suspend fun connectOverLoopback(adb: Connection): Boolean {
+        // With wireless debugging off nothing listens: no need to look through
+        // every port for 10 seconds on each retry.
+        if (!wirelessDebuggingOn()) return false
         val deadline = System.currentTimeMillis() + CONNECT_MS
         while (true) {
             val port = LoopbackAdb.connectPort(LoopbackAdb.openPorts())
@@ -1243,6 +1250,10 @@ object Elevated {
     private const val CONNECT_MS = 10_000L
     /** How long a `su` command may take; the first one waits for the root manager's prompt. */
     private const val SU_WAIT_S = 30L
-    /** Waits between attempts to start again; the last one repeats. */
-    private val RETRY_MS = longArrayOf(2_000L, 5_000L, 10_000L, 20_000L, 40_000L, 60_000L)
+    /**
+     * Waits between attempts to start again; the last one repeats. Up to 10
+     * minutes: a network change or wireless debugging coming on tries at once
+     * anyway, and each try looks through thousands of ports.
+     */
+    private val RETRY_MS = longArrayOf(2_000L, 5_000L, 10_000L, 20_000L, 40_000L, 60_000L, 120_000L, 300_000L, 600_000L)
 }

@@ -384,6 +384,8 @@ change things that need a step from you, and its notes say so.
   has been away for half an hour.
 - **A file saved from the PC over one on the phone's SD card is never left half
   written** when saving fails; the old one stays as it was.
+- **Elevated uses less battery while it can't reach Wireless debugging.** It tries less
+  often as time goes on, and right away when Wi-Fi or Wireless debugging changes.
 - **Pairing from the PC's list of nearby phones works.** Picking a phone there said it
   couldn't reach the phone, because the phone only took pairing it started itself. While
   its pairing screen is open, the phone now accepts it from either side.
